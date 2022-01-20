@@ -3,7 +3,7 @@ name = "valence"
 version = "0.0.1"
 edition = "2021"
 description = "Coming soon to a package manager near you!"
-repository = "github.com/rj00a/valence"
+repository = "https://github.com/rj00a/valence"
 license = "MIT"
 
 [dependencies]
