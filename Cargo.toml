@@ -1,9 +1,50 @@
 [package]
 name = "valence"
-version = "0.0.1"
+version = "0.1.0"
 edition = "2021"
-description = "Coming soon to a package manager near you!"
+description = "A framework for building Minecraft servers in Rust."
 repository = "https://github.com/rj00a/valence"
 license = "MIT"
 
+[workspace]
+members = ["valence-data"]
+
 [dependencies]
+aes = "0.7"
+anyhow = "1"
+ascii = "1"
+async-trait = "0.1"
+base64 = "0.13"
+bitvec = "1"
+bytes = "1"
+byteorder = "1"
+cfb8 = "0.7"
+flate2 = "1"
+flume = "0.10"
+futures = "0.3"
+hematite-nbt = "0.5"
+log = "0.4"
+nalgebra-glm = "0.16"
+num = "0.4"
+parking_lot = "0.12"
+paste = "1"
+rand = "0.8"
+rayon = "1"
+rsa = "0.5"
+rsa-der = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha1 = "0.10"
+sha2 = "0.10"
+thiserror = "1"
+tokio = { version = "1", features = ["full"] }
+uuid = "0.8"
+
+[dependencies.reqwest]
+version = "0.11"
+default-features = false
+# Avoid OpenSSL dependency on Linux.
+features = ["rustls-tls", "json"]
+
+[dev-dependencies]
+env_logger = "0.9"
