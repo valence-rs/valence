@@ -19,6 +19,7 @@ pub mod util;
 mod var_int;
 mod var_long;
 mod world;
+pub mod block;
 
 pub use aabb::Aabb;
 pub use chunk::{Chunk, ChunkPos};

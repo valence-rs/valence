@@ -1,9 +1,0 @@
-[package]
-name = "valence-data"
-version = "0.1.0"
-edition = "2021"
-description = "Generated code for the Valence project."
-repository = "https://github.com/rj00a/valence"
-license = "MIT"
-
-[dependencies]

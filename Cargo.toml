@@ -5,9 +5,7 @@ edition = "2021"
 description = "A framework for building Minecraft servers in Rust."
 repository = "https://github.com/rj00a/valence"
 license = "MIT"
-
-[workspace]
-members = ["valence-data"]
+build = "build/main.rs"
 
 [dependencies]
 aes = "0.7"
@@ -48,3 +46,11 @@ features = ["rustls-tls", "json"]
 
 [dev-dependencies]
 env_logger = "0.9"
+
+[build-dependencies]
+anyhow = "1"
+heck = "0.4"
+proc-macro2 = "1"
+quote = "1"
+serde = {version = "1", features = ["derive"]}
+serde_json = "1"
