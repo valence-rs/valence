@@ -324,7 +324,7 @@ pub fn build() -> anyhow::Result<()> {
             }
 
             /// Gets the value of the property with the given name from this block.
-            /// 
+            ///
             /// If this block does not have the property, then `None` is returned.
             pub const fn get(self, name: PropName) -> Option<PropValue> {
                 match self.to_type() {
@@ -334,7 +334,7 @@ pub fn build() -> anyhow::Result<()> {
             }
 
             /// Sets the value of a propery on this block, returning the modified block.
-            /// 
+            ///
             /// If this block does not have the given property or the property value is invalid,
             /// then the orginal block is returned unchanged.
             #[must_use]

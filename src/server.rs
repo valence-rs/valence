@@ -120,8 +120,8 @@ struct NewClientMessage {
     reply: oneshot::Sender<anyhow::Result<ClientPacketChannels>>,
 }
 
-/// The result type returned from [`ServerConfig::start`] after the server is shut
-/// down.
+/// The result type returned from [`ServerConfig::start`] after the server is
+/// shut down.
 pub type ShutdownResult = Result<(), ShutdownError>;
 pub type ShutdownError = Box<dyn Error + Send + Sync + 'static>;
 

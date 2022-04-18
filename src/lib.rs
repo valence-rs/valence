@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 mod aabb;
+pub mod block;
 mod block_pos;
 mod byte_angle;
 mod chunk;
@@ -19,7 +20,6 @@ pub mod util;
 mod var_int;
 mod var_long;
 mod world;
-pub mod block;
 
 pub use aabb::Aabb;
 pub use chunk::{Chunk, ChunkPos};
