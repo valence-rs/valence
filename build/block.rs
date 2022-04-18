@@ -286,7 +286,7 @@ pub fn build() -> anyhow::Result<()> {
     let finshed = quote! {
         /// Represents the state of a block, not including block entity data such as
         /// the text on a sign, the design on a banner, or the content of a spawner.
-        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash, Debug)]
+        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
         pub struct BlockState(u16);
 
         impl BlockState {
@@ -566,6 +566,7 @@ fn parse_blocks_json() -> anyhow::Result<Vec<Block>> {
             props: b
                 .states
                 .into_iter()
+                .rev()
                 .map(|s| Prop {
                     name: match &s {
                         State::Enum { name, .. } => name.clone(),
@@ -575,7 +576,7 @@ fn parse_blocks_json() -> anyhow::Result<Vec<Block>> {
                     vals: match &s {
                         State::Enum { values, .. } => values.clone(),
                         State::Int { values, .. } => values.clone(),
-                        State::Bool { .. } => vec!["false".to_string(), "true".to_string()],
+                        State::Bool { .. } => vec!["true".to_string(), "false".to_string()],
                     },
                 })
                 .collect(),
