@@ -24,7 +24,7 @@ use crate::Identifier;
 /// ## Example
 /// With [`TextFormat`] in scope, you can write the following:
 /// ```
-/// use server::text::{Color, Text, TextFormat};
+/// use valence::text::{Color, Text, TextFormat};
 ///
 /// let txt = "The text is ".into_text()
 ///     + "Red".color(Color::RED)
@@ -42,6 +42,7 @@ use crate::Identifier;
 /// );
 /// ```
 #[derive(Clone, PartialEq, Default, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Text {
     #[serde(flatten)]
     content: TextContent,
@@ -70,11 +71,9 @@ pub struct Text {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     insertion: Option<Cow<'static, str>>,
 
-    #[serde(rename = "clickEvent")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     click_event: Option<ClickEvent>,
 
-    #[serde(rename = "hoverEvent")]
     #[serde(default, skip_serializing_if = "Option::is_none")]
     hover_event: Option<HoverEvent>,
 
@@ -284,7 +283,7 @@ enum TextContent {
     // TODO: nbt
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct Color {
     pub r: u8,
     pub g: u8,
