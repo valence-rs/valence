@@ -131,6 +131,24 @@ pub fn build() -> anyhow::Result<()> {
         })
         .collect::<TokenStream>();
 
+    let is_transparent_types = blocks
+        .iter()
+        .filter(|&b| b.transparent)
+        .map(|b| ident(b.name.to_pascal_case()));
+
+    let filter_light_arms = blocks
+        .iter()
+        .map(|b| {
+            let type_name = ident(b.name.to_pascal_case());
+            assert!(b.filter_light <= 15);
+            let filter_light = b.filter_light as u8;
+
+            quote! {
+                BlockType::#type_name => #filter_light,
+            }
+        })
+        .collect::<TokenStream>();
+
     let default_block_states = blocks
         .iter()
         .map(|b| {
@@ -345,6 +363,34 @@ pub fn build() -> anyhow::Result<()> {
                 }
             }
 
+            /// If this block is `air`, `cave_air` or `void_air`.
+            pub const fn is_air(self) -> bool {
+                matches!(
+                    self.to_type(),
+                    BlockType::Air | BlockType::CaveAir | BlockType::VoidAir
+                )
+            }
+
+            /// Is the block visually transparent?
+            pub const fn is_transparent(self) -> bool {
+                matches!(self.to_type(), #(BlockType::#is_transparent_types)|*)
+            }
+
+            // TODO: is_solid
+
+            /// If this block is water or lava.
+            pub const fn is_liquid(self) -> bool {
+                matches!(self.to_type(), BlockType::Water | BlockType::Lava)
+            }
+
+            /// Returns the amount of light that is normally filtered by this block.
+            /// The returned value is in `0..=15`.
+            pub const fn filter_light(self) -> u8 {
+                match self.to_type() {
+                    #filter_light_arms
+                }
+            }
+
             #default_block_states
         }
 
@@ -515,6 +561,8 @@ struct Block {
     default_state: u16,
     min_state_id: u16,
     max_state_id: u16,
+    transparent: bool,
+    filter_light: u8,
     /// Order of elements in this vec is significant.
     props: Vec<Prop>,
 }
@@ -563,6 +611,8 @@ fn parse_blocks_json() -> anyhow::Result<Vec<Block>> {
             default_state: b.default_state,
             min_state_id: b.min_state_id,
             max_state_id: b.max_state_id,
+            transparent: b.transparent,
+            filter_light: b.filter_light,
             props: b
                 .states
                 .into_iter()
