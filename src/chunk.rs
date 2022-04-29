@@ -1,18 +1,74 @@
 // TODO: https://github.com/rust-lang/rust/issues/88581 for div_ceil
 
 use std::io::Write;
+use std::iter::FusedIterator;
 
 use bitvec::bitvec;
 use bitvec::vec::BitVec;
 use num::Integer;
+use rayon::iter::ParallelIterator;
 
 use crate::glm::DVec2;
 use crate::packets::play::{
     BlockChange, ChunkDataAndUpdateLight, ChunkDataHeightmaps, ClientPlayPacket, MultiBlockChange,
 };
 use crate::protocol::{Encode, Nbt};
+use crate::slotmap::{Key, SlotMap};
 use crate::var_int::VarInt;
 use crate::BiomeId;
+
+pub struct ChunkStore {
+    sm: SlotMap<Chunk>,
+}
+
+impl ChunkStore {
+    pub(crate) fn new() -> Self {
+        Self { sm: SlotMap::new() }
+    }
+
+    pub fn count(&self) -> usize {
+        self.sm.count()
+    }
+
+    pub fn create(&mut self, section_count: usize) -> ChunkId {
+        ChunkId(self.sm.insert(Chunk::new(section_count)))
+    }
+
+    pub fn delete(&mut self, chunk: ChunkId) -> bool {
+        self.sm.remove(chunk.0).is_some()
+    }
+
+    pub fn get(&self, chunk: ChunkId) -> Option<&Chunk> {
+        self.sm.get(chunk.0)
+    }
+
+    pub fn get_mut(&mut self, chunk: ChunkId) -> Option<&mut Chunk> {
+        self.sm.get_mut(chunk.0)
+    }
+
+    pub fn clear(&mut self) {
+        self.sm.clear();
+    }
+
+    pub fn iter(&self) -> impl FusedIterator<Item = (ChunkId, &Chunk)> + Clone + '_ {
+        self.sm.iter().map(|(k, v)| (ChunkId(k), v))
+    }
+
+    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (ChunkId, &mut Chunk)> + '_ {
+        self.sm.iter_mut().map(|(k, v)| (ChunkId(k), v))
+    }
+
+    pub fn par_iter(&self) -> impl ParallelIterator<Item = (ChunkId, &Chunk)> + Clone + '_ {
+        self.sm.par_iter().map(|(k, v)| (ChunkId(k), v))
+    }
+
+    pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (ChunkId, &mut Chunk)> + '_ {
+        self.sm.par_iter_mut().map(|(k, v)| (ChunkId(k), v))
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct ChunkId(Key);
 
 pub struct Chunk {
     sections: Box<[ChunkSection]>,
@@ -23,7 +79,7 @@ pub struct Chunk {
 }
 
 impl Chunk {
-    pub(crate) fn new(num_sections: usize) -> Self {
+    pub(crate) fn new(section_count: usize) -> Self {
         let sect = ChunkSection {
             blocks: [0; 4096],
             biomes: [0; 64],
@@ -32,7 +88,7 @@ impl Chunk {
         };
 
         let mut chunk = Self {
-            sections: vec![sect; num_sections].into(),
+            sections: vec![sect; section_count].into(),
             heightmap: Vec::new(),
             modified: true,
             created_this_tick: true,
@@ -40,10 +96,6 @@ impl Chunk {
 
         chunk.apply_modifications();
         chunk
-    }
-
-    pub(crate) fn deallocate(&mut self) {
-        self.sections = Box::new([]);
     }
 
     pub fn created_this_tick(&self) -> bool {
@@ -99,11 +151,11 @@ impl Chunk {
     pub(crate) fn chunk_data_packet(
         &self,
         pos: ChunkPos,
-        num_sections: usize,
+        section_count: usize,
     ) -> ChunkDataAndUpdateLight {
         let mut blocks_and_biomes = Vec::new();
 
-        for i in 0..num_sections {
+        for i in 0..section_count {
             match self.sections.get(i) {
                 Some(sect) => {
                     blocks_and_biomes.extend_from_slice(&sect.compact_data);
@@ -121,7 +173,7 @@ impl Chunk {
             }
         }
 
-        let motion_blocking = if num_sections == self.sections.len() {
+        let motion_blocking = if section_count == self.sections.len() {
             self.heightmap.clone()
         } else {
             // This is bad for two reasons:
@@ -142,11 +194,11 @@ impl Chunk {
             blocks_and_biomes,
             block_entities: Vec::new(), // TODO
             trust_edges: true,
-            sky_light_mask: bitvec![u64, _; 1; num_sections + 2],
+            sky_light_mask: bitvec![u64, _; 1; section_count + 2],
             block_light_mask: BitVec::new(),
             empty_sky_light_mask: BitVec::new(),
             empty_block_light_mask: BitVec::new(),
-            sky_light_arrays: vec![[0xff; 2048]; num_sections + 2],
+            sky_light_arrays: vec![[0xff; 2048]; section_count + 2],
             block_light_arrays: Vec::new(),
         }
     }
@@ -253,10 +305,10 @@ fn build_heightmap(sections: &[ChunkSection], heightmap: &mut Vec<i64>) {
     let height = sections.len() * 16;
     let bits_per_val = log2_ceil(height);
     let vals_per_u64 = 64 / bits_per_val;
-    let num_u64s = Integer::div_ceil(&256, &vals_per_u64);
+    let u64_count = Integer::div_ceil(&256, &vals_per_u64);
 
     heightmap.clear();
-    heightmap.resize(num_u64s, 0);
+    heightmap.resize(u64_count, 0);
 
     for x in 0..16 {
         for z in 0..16 {
@@ -304,9 +356,9 @@ fn encode_paletted_container(
         // Direct case
         // Skip the palette
         let idxs_per_u64 = 64 / direct_bits_per_idx;
-        let num_u64s = Integer::div_ceil(&entries.len(), &idxs_per_u64);
+        let u64_count = Integer::div_ceil(&entries.len(), &idxs_per_u64);
 
-        VarInt(num_u64s as i32).encode(w)?;
+        VarInt(u64_count as i32).encode(w)?;
 
         for &entry in entries {
             let mut val = 0u64;
@@ -324,9 +376,9 @@ fn encode_paletted_container(
 
         let bits_per_idx = bits_per_idx.max(min_bits_per_idx);
         let idxs_per_u64 = 64 / bits_per_idx;
-        let num_u64s = Integer::div_ceil(&entries.len(), &idxs_per_u64);
+        let u64_count = Integer::div_ceil(&entries.len(), &idxs_per_u64);
 
-        VarInt(num_u64s as i32).encode(w)?;
+        VarInt(u64_count as i32).encode(w)?;
 
         for &entry in entries {
             let palette_idx = palette

@@ -201,7 +201,10 @@ impl Decode for f64 {
 impl<T: Encode> Encode for Option<T> {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         match self {
-            Some(t) => true.encode(w).and_then(|_| t.encode(w)),
+            Some(t) => {
+                true.encode(w)?;
+                t.encode(w)
+            }
             None => false.encode(w),
         }
     }

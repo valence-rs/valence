@@ -188,23 +188,23 @@ impl<I: Id> ComponentStore<I> {
         })
     }
 
-    pub fn register_component<C: 'static + Send + Sync + Default>(&mut self) {
+    pub fn register_component<C: 'static + Send + Sync + DefaultPrivate>(&mut self) {
         if let Entry::Vacant(ve) = self.components.entry(TypeId::of::<C>()) {
             let mut vec = Vec::new();
-            vec.resize_with(self.ids.len(), C::default);
+            vec.resize_with(self.ids.len(), C::default_private);
             ve.insert(Box::new(RwLock::new(vec)));
         }
     }
 
-    pub fn unregister_component<C: 'static + Send + Sync + Default>(&mut self) {
+    pub fn unregister_component<C: 'static + Send + Sync + DefaultPrivate>(&mut self) {
         self.components.remove(&TypeId::of::<C>());
     }
 
-    pub fn is_registered<C: 'static + Send + Sync + Default>(&self) -> bool {
+    pub fn is_registered<C: 'static + Send + Sync + DefaultPrivate>(&self) -> bool {
         self.components.contains_key(&TypeId::of::<C>())
     }
 
-    pub fn components<C: 'static + Send + Sync + Default>(
+    pub fn components<C: 'static + Send + Sync + DefaultPrivate>(
         &self,
     ) -> Result<Components<C, I>, Error> {
         let handle = self
@@ -223,7 +223,7 @@ impl<I: Id> ComponentStore<I> {
         })
     }
 
-    pub fn components_mut<C: 'static + Send + Sync + Default>(
+    pub fn components_mut<C: 'static + Send + Sync + DefaultPrivate>(
         &self,
     ) -> Result<ComponentsMut<C, I>, Error> {
         let handle = self
@@ -266,32 +266,30 @@ trait ComponentVec: Any + Send + Sync {
     fn as_any_mut(&mut self) -> &mut dyn Any;
 }
 
-impl<T: 'static + Send + Sync + Default> ComponentVec for RwLock<Vec<T>> {
+impl<T: 'static + Send + Sync + DefaultPrivate> ComponentVec for RwLock<Vec<T>> {
     fn push_default(&mut self) {
-        self.get_mut().push(T::default());
+        self.get_mut().push(T::default_private());
     }
 
     fn clear_at(&mut self, idx: usize) {
-        self.get_mut()[idx] = T::default();
+        self.get_mut()[idx] = T::default_private();
     }
 
     fn as_any(&self) -> &dyn Any {
-        self as _
+        self
     }
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
-        self as _
+        self
     }
 }
 
-pub struct Components<'a, C: 'static + Send + Sync + Default, I: Id> {
+pub struct Components<'a, C: 'static + Send + Sync, I: Id> {
     handle: RwLockReadGuard<'a, Vec<C>>,
     _marker: PhantomData<fn(I) -> I>,
 }
 
-impl<'a, 'b, C: 'static + Send + Sync + Default, I: Id> ZippedComponentsRaw
-    for &'b Components<'a, C, I>
-{
+impl<'a, 'b, C: 'static + Send + Sync, I: Id> ZippedComponentsRaw for &'b Components<'a, C, I> {
     type RawItem = &'b C;
     type RawIter = std::slice::Iter<'b, C>;
     type RawParIter = rayon::slice::Iter<'b, C>;
@@ -309,21 +307,17 @@ impl<'a, 'b, C: 'static + Send + Sync + Default, I: Id> ZippedComponentsRaw
     }
 }
 
-impl<'a, 'b, C: 'static + Send + Sync + Default, I: Id> ZippedComponents
-    for &'b Components<'a, C, I>
-{
+impl<'a, 'b, C: 'static + Send + Sync, I: Id> ZippedComponents for &'b Components<'a, C, I> {
     type Id = I;
     type Item = &'b C;
 }
 
-pub struct ComponentsMut<'a, C: 'static + Send + Sync + Default, I: Id> {
+pub struct ComponentsMut<'a, C: 'static + Send + Sync, I: Id> {
     handle: RwLockWriteGuard<'a, Vec<C>>,
     _marker: PhantomData<fn(I) -> I>,
 }
 
-impl<'a, 'b, C: 'static + Send + Sync + Default, I: Id> ZippedComponentsRaw
-    for &'b ComponentsMut<'a, C, I>
-{
+impl<'a, 'b, C: 'static + Send + Sync, I: Id> ZippedComponentsRaw for &'b ComponentsMut<'a, C, I> {
     type RawItem = &'b C;
     type RawIter = std::slice::Iter<'b, C>;
     type RawParIter = rayon::slice::Iter<'b, C>;
@@ -341,14 +335,12 @@ impl<'a, 'b, C: 'static + Send + Sync + Default, I: Id> ZippedComponentsRaw
     }
 }
 
-impl<'a, 'b, C: 'static + Send + Sync + Default, I: Id> ZippedComponents
-    for &'b ComponentsMut<'a, C, I>
-{
+impl<'a, 'b, C: 'static + Send + Sync, I: Id> ZippedComponents for &'b ComponentsMut<'a, C, I> {
     type Id = I;
     type Item = &'b C;
 }
 
-impl<'a, 'b, C: 'static + Send + Sync + Default, I: Id> ZippedComponentsRaw
+impl<'a, 'b, C: 'static + Send + Sync, I: Id> ZippedComponentsRaw
     for &'b mut ComponentsMut<'a, C, I>
 {
     type RawItem = &'b mut C;
@@ -368,13 +360,12 @@ impl<'a, 'b, C: 'static + Send + Sync + Default, I: Id> ZippedComponentsRaw
     }
 }
 
-impl<'a, 'b, C: 'static + Send + Sync + Default, I: Id> ZippedComponents
-    for &'b mut ComponentsMut<'a, C, I>
-{
+impl<'a, 'b, C: 'static + Send + Sync, I: Id> ZippedComponents for &'b mut ComponentsMut<'a, C, I> {
     type Id = I;
     type Item = &'b mut C;
 }
 
+/// The possible errors when requesting a component.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Error)]
 pub enum Error {
     #[error("an unknown component type was requested")]
@@ -441,6 +432,20 @@ pub(crate) mod private {
 }
 
 pub(crate) use private::*;
+
+/// Like `Default`, but only usable internally by this crate.
+///
+/// This prevents invariants regarding built-in components from being broken
+/// by library users.
+pub(crate) trait DefaultPrivate {
+    fn default_private() -> Self;
+}
+
+impl<T: Default> DefaultPrivate for T {
+    fn default_private() -> Self {
+        T::default()
+    }
+}
 
 pub trait ZippedComponents: ZippedComponentsRaw<RawItem = Self::Item> {
     type Id: Copy;

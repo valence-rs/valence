@@ -1,17 +1,13 @@
 // TODO: can't match on str in const fn.
 
 use std::collections::BTreeSet;
-use std::path::Path;
-use std::process::Command;
-use std::{env, fs};
 
-use anyhow::Context;
 use heck::{ToPascalCase, ToShoutySnakeCase};
 use proc_macro2::TokenStream;
 use quote::quote;
 use serde::Deserialize;
 
-use crate::ident;
+use crate::{ident, write_to_out_path};
 
 pub fn build() -> anyhow::Result<()> {
     let blocks = parse_blocks_json()?;
@@ -49,7 +45,7 @@ pub fn build() -> anyhow::Result<()> {
                         .map(|p| p.vals.len() as u16)
                         .product();
 
-                    let num_values = p.vals.len() as u16;
+                    let values_count = p.vals.len() as u16;
 
                     let arms = p.vals.iter().enumerate().map(|(i, v)| {
                         let value_idx = i as u16;
@@ -60,7 +56,7 @@ pub fn build() -> anyhow::Result<()> {
                     }).collect::<TokenStream>();
 
                     quote! {
-                        PropName::#prop_name => match (self.0 - #min_state_id) / #product % #num_values {
+                        PropName::#prop_name => match (self.0 - #min_state_id) / #product % #values_count {
                             #arms
                             _ => unreachable!(),
                         },
@@ -96,7 +92,7 @@ pub fn build() -> anyhow::Result<()> {
                         .map(|p| p.vals.len() as u16)
                         .product();
 
-                    let num_values = p.vals.len() as u16;
+                    let values_count = p.vals.len() as u16;
 
                     let arms = p
                         .vals
@@ -107,7 +103,7 @@ pub fn build() -> anyhow::Result<()> {
                             let val_name = ident(v.to_pascal_case());
                             quote! {
                                 PropValue::#val_name =>
-                                    Self(self.0 - (self.0 - #min_state_id) / #product % #num_values * #product
+                                    Self(self.0 - (self.0 - #min_state_id) / #product % #values_count * #product
                                         + #val_idx * #product),
                             }
                         })
@@ -213,7 +209,7 @@ pub fn build() -> anyhow::Result<()> {
         })
         .collect::<TokenStream>();
 
-    let num_block_types = blocks.len();
+    let block_type_count = blocks.len();
 
     let prop_names = blocks
         .iter()
@@ -245,7 +241,7 @@ pub fn build() -> anyhow::Result<()> {
         })
         .collect::<TokenStream>();
 
-    let num_prop_names = prop_names.len();
+    let prop_name_count = prop_names.len();
 
     let prop_values = blocks
         .iter()
@@ -299,9 +295,9 @@ pub fn build() -> anyhow::Result<()> {
         })
         .collect::<TokenStream>();
 
-    let num_property_names = prop_values.len();
+    let property_name_count = prop_values.len();
 
-    let finshed = quote! {
+    let finished = quote! {
         /// Represents the state of a block, not including block entity data such as
         /// the text on a sign, the design on a banner, or the content of a spawner.
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
@@ -432,7 +428,7 @@ pub fn build() -> anyhow::Result<()> {
             }
 
             /// An array of all block types.
-            pub const ALL: [Self; #num_block_types] = [#(Self::#block_type_variants,)*];
+            pub const ALL: [Self; #block_type_count] = [#(Self::#block_type_variants,)*];
         }
 
         /// The default block type is `air`.
@@ -469,7 +465,7 @@ pub fn build() -> anyhow::Result<()> {
             }
 
             /// An array of all property names.
-            pub const ALL: [Self; #num_prop_names] = [#(Self::#prop_name_variants,)*];
+            pub const ALL: [Self; #prop_name_count] = [#(Self::#prop_name_variants,)*];
         }
 
         /// Contains all possible values that a block property might have.
@@ -534,7 +530,7 @@ pub fn build() -> anyhow::Result<()> {
             }
 
             /// An array of all property values.
-            pub const ALL: [Self; #num_property_names] = [#(Self::#prop_value_variants,)*];
+            pub const ALL: [Self; #property_name_count] = [#(Self::#prop_value_variants,)*];
         }
 
         impl From<bool> for PropValue {
@@ -544,16 +540,7 @@ pub fn build() -> anyhow::Result<()> {
         }
     };
 
-    let out_path =
-        Path::new(&env::var_os("OUT_DIR").context("can't get OUT_DIR env var")?).join("block.rs");
-
-    fs::write(&out_path, &finshed.to_string())?;
-
-    // Format the output for debugging purposes.
-    // Doesn't matter if rustfmt is unavailable.
-    let _ = Command::new("rustfmt").arg(out_path).output();
-
-    Ok(())
+    write_to_out_path("block.rs", &finished.to_string())
 }
 
 struct Block {

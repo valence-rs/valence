@@ -1,14 +1,19 @@
+use std::cmp::Ordering;
+use std::hash::{Hash, Hasher};
+
 use crate::glm::{self, Number, RealNumber, TVec};
 
 /// An Axis-aligned bounding box in an arbitrary dimension.
-#[derive(Clone, Copy, Debug)] // TODO: impl PartialEq, Eq, PartialOrd, Ord, Hash
+#[derive(Clone, Copy, Debug)]
 pub struct Aabb<T, const D: usize> {
     min: TVec<T, D>,
     max: TVec<T, D>,
 }
 
 impl<T: Number, const D: usize> Aabb<T, D> {
-    pub fn new(p0: TVec<T, D>, p1: TVec<T, D>) -> Self {
+    pub fn new(p0: impl Into<TVec<T, D>>, p1: impl Into<TVec<T, D>>) -> Self {
+        let p0 = p0.into();
+        let p1 = p1.into();
         Self {
             min: glm::min2(&p0, &p1),
             max: glm::max2(&p0, &p1),
@@ -62,3 +67,44 @@ impl<T: RealNumber, const D: usize> Aabb<T, D> {
         glm::distance(&p, &glm::clamp_vec(&p, &self.min, &self.max))
     }
 }
+
+impl<T: Number + Default, const D: usize> Default for Aabb<T, D> {
+    fn default() -> Self {
+        let d = T::default();
+        Self::new([d; D], [d; D])
+    }
+}
+
+impl<T: Number, const D: usize> PartialEq for Aabb<T, D> {
+    fn eq(&self, other: &Self) -> bool {
+        self.min == other.min && self.max == other.max
+    }
+}
+
+impl<T: Number + Eq, const D: usize> Eq for Aabb<T, D> {}
+
+impl<T: Number, const D: usize> PartialOrd for Aabb<T, D> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match self.min.partial_cmp(&other.min) {
+            Some(Ordering::Equal) => self.max.partial_cmp(&other.max),
+            ord => return ord,
+        }
+    }
+}
+
+impl<T: Number + Hash, const D: usize> Hash for Aabb<T, D> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.min.hash(state);
+        self.max.hash(state);
+    }
+}
+
+// TODO: impl Ord for Aabb
+//impl<T: Number + Ord, const D: usize> Ord for Aabb<T, D> {
+//    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+//        match self.min.cmp(&other.min) {
+//            Ordering::Equal => self.max.cmp(&other.max),
+//            ord => ord,
+//        }
+//    }
+//}

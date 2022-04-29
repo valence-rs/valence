@@ -83,8 +83,8 @@ pub struct Text {
 
 /// Provides the methods necessary for working with [`Text`] objects.
 ///
-/// This trait exists to allow using `Into<Text>` impls without having to first
-/// convert `Self` into [`Text`]. It is automatically implemented for all
+/// This trait exists to allow using `Into<Text>` types without having to first
+/// convert the type into [`Text`]. It is automatically implemented for all
 /// `Into<Text>` types, including [`Text`] itself.
 pub trait TextFormat: Into<Text> {
     fn into_text(self) -> Text {
@@ -347,6 +347,8 @@ impl Text {
 
         Ok(())
     }
+
+    // TODO: getters
 }
 
 impl<T: Into<Text>> TextFormat for T {}

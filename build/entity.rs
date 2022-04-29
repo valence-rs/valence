@@ -1,6 +1,14 @@
 //! See: <https://wiki.vg/Entity_metadata>
 
-#![allow(unused)]
+use std::collections::{BTreeMap, HashMap};
+
+use anyhow::Context;
+use heck::{ToPascalCase, ToSnakeCase};
+use proc_macro2::TokenStream;
+use quote::quote;
+use serde::Deserialize;
+
+use crate::{ident, write_to_out_path};
 
 struct Class {
     name: &'static str,
@@ -24,72 +32,70 @@ enum Type {
     OptText(Option<&'static str>),
     Slot,
     Bool(bool),
-    Rotations(f32, f32, f32),
+    ArmorStandRotations(f32, f32, f32),
     BlockPos(i32, i32, i32),
-    OptPosition(Option<(i32, i32, i32)>),
-    Direction(Direction),
+    OptBlockPos(Option<(i32, i32, i32)>),
+    Direction,
     OptUuid,
-    OptBlockId,
+    BlockState,
     Nbt,
     Particle,
     VillagerData,
     OptVarInt,
     Pose,
-    OptBlockPos, // TODO: What is this type?
     // ==== Specialized ==== //
     OptEntityId,
-    BoatType,
+    BoatVariant,
     MainHand,
-}
-
-enum Direction {
-    Down,
-    Up,
-    North,
-    South,
-    West,
-    East,
 }
 
 struct BitField {
     name: &'static str,
     offset: u8,
+    default: bool,
 }
 
 const BASE_ENTITY: Class = Class {
-    name: "entity_base",
+    name: "base_entity",
     inherit: None,
     fields: &[
         Field {
-            name: "entity_base_bits",
+            name: "base_entity_bits",
             typ: Type::BitFields(&[
                 BitField {
                     name: "on_fire",
                     offset: 0,
+                    default: false,
                 },
                 BitField {
                     name: "crouching",
                     offset: 1,
+                    default: false,
                 },
                 BitField {
                     name: "sprinting",
-                    offset: 3, // Skipping unused field
+                    offset: 3, // Skipping unused
+                    default: false,
                 },
                 BitField {
                     name: "swimming",
                     offset: 4,
+                    default: false,
                 },
                 BitField {
                     name: "invisible",
                     offset: 5,
+                    default: false,
                 },
                 BitField {
                     name: "glowing",
                     offset: 6,
+                    default: false,
                 },
                 BitField {
                     name: "elytra_flying",
                     offset: 7,
+                    default: false,
                 },
             ]),
         },
@@ -134,10 +140,12 @@ const ABSTRACT_ARROW: Class = Class {
                 BitField {
                     name: "critical",
                     offset: 0,
+                    default: false,
                 },
                 BitField {
                     name: "noclip",
                     offset: 1,
+                    default: false,
                 },
             ]),
         },
@@ -158,14 +166,17 @@ const LIVING_ENTITY: Class = Class {
                 BitField {
                     name: "hand_active",
                     offset: 0,
+                    default: false,
                 },
                 BitField {
                     name: "active_hand",
                     offset: 1,
+                    default: false,
                 },
                 BitField {
                     name: "riptide_spin_attack",
                     offset: 2,
+                    default: false,
                 },
             ]),
         },
@@ -191,7 +202,7 @@ const LIVING_ENTITY: Class = Class {
         },
         Field {
             name: "bed_sleeping_position",
-            typ: Type::OptBlockPos,
+            typ: Type::OptBlockPos(None),
         },
     ],
 };
@@ -205,14 +216,17 @@ const MOB: Class = Class {
             BitField {
                 name: "ai_disabled",
                 offset: 0,
+                default: false,
             },
             BitField {
                 name: "left_handed",
                 offset: 1,
+                default: false,
             },
             BitField {
                 name: "aggressive",
                 offset: 2,
+                default: false,
             },
         ]),
     }],
@@ -270,26 +284,32 @@ const ABSTRACT_HORSE: Class = Class {
                 BitField {
                     name: "tame",
                     offset: 1, // Skip unused
+                    default: false,
                 },
                 BitField {
                     name: "saddled",
                     offset: 2,
+                    default: false,
                 },
                 BitField {
                     name: "bred",
                     offset: 3,
+                    default: false,
                 },
                 BitField {
                     name: "eating",
                     offset: 4,
+                    default: false,
                 },
                 BitField {
                     name: "rearing",
                     offset: 5,
+                    default: false,
                 },
                 BitField {
                     name: "mouth_open",
                     offset: 6,
+                    default: false,
                 },
             ]),
         },
@@ -324,10 +344,12 @@ const TAMEABLE_ANIMAL: Class = Class {
             BitField {
                 name: "sitting",
                 offset: 0,
+                default: false,
             },
             BitField {
                 name: "tamed",
                 offset: 2, // Skip unused.
+                default: false,
             },
         ]),
     }],
@@ -417,6 +439,7 @@ const SPIDER: Class = Class {
         typ: Type::BitFields(&[BitField {
             name: "climbing",
             offset: 0,
+            default: false,
         }]),
     }],
 };
@@ -475,6 +498,18 @@ const ABSTRACT_MINECART_CONTAINER: Class = Class {
 
 const ENTITIES: &[Class] = &[
     Class {
+        // TODO: how is this defined?
+        name: "leash_knot",
+        inherit: None,
+        fields: &[],
+    },
+    Class {
+        // TODO: how is this defined?
+        name: "lightning_bolt",
+        inherit: None,
+        fields: &[],
+    },
+    Class {
         name: "experience_orb",
         inherit: None,
         fields: &[],
@@ -485,7 +520,17 @@ const ENTITIES: &[Class] = &[
         fields: &[],
     },
     Class {
-        name: "thrown_egg",
+        name: "marker",
+        inherit: None,
+        fields: &[],
+    },
+    Class {
+        name: "item",
+        inherit: Some(&BASE_ENTITY),
+        fields: &[], // TODO: what are the fields?
+    },
+    Class {
+        name: "egg",
         inherit: Some(&BASE_ENTITY),
         fields: &[Field {
             name: "item",
@@ -493,7 +538,7 @@ const ENTITIES: &[Class] = &[
         }],
     },
     Class {
-        name: "thrown_ender_pearl",
+        name: "ender_pearl",
         inherit: Some(&BASE_ENTITY),
         fields: &[Field {
             name: "item",
@@ -501,7 +546,7 @@ const ENTITIES: &[Class] = &[
         }],
     },
     Class {
-        name: "thrown_experience_bottle",
+        name: "experience_bottle",
         inherit: Some(&BASE_ENTITY),
         fields: &[Field {
             name: "item",
@@ -509,7 +554,7 @@ const ENTITIES: &[Class] = &[
         }],
     },
     Class {
-        name: "thrown_potion",
+        name: "potion",
         inherit: Some(&BASE_ENTITY),
         fields: &[Field {
             name: "potion",
@@ -563,7 +608,7 @@ const ENTITIES: &[Class] = &[
         ],
     },
     Class {
-        name: "fishing_hook",
+        name: "fishing_bobber",
         inherit: Some(&BASE_ENTITY),
         fields: &[
             Field {
@@ -590,7 +635,7 @@ const ENTITIES: &[Class] = &[
         fields: &[],
     },
     Class {
-        name: "thrown_trident",
+        name: "trident",
         inherit: Some(&ABSTRACT_ARROW),
         fields: &[
             Field {
@@ -621,7 +666,7 @@ const ENTITIES: &[Class] = &[
             },
             Field {
                 name: "typ",
-                typ: Type::BoatType,
+                typ: Type::BoatVariant,
             },
             Field {
                 name: "left_paddle_turning",
@@ -643,7 +688,7 @@ const ENTITIES: &[Class] = &[
         fields: &[
             Field {
                 name: "beam_target",
-                typ: Type::OptBlockPos,
+                typ: Type::OptBlockPos(None),
             },
             Field {
                 name: "show_bottom",
@@ -745,30 +790,37 @@ const ENTITIES: &[Class] = &[
                     BitField {
                         name: "cape_enabled",
                         offset: 0,
+                        default: false,
                     },
                     BitField {
                         name: "jacket_enabled",
                         offset: 1,
+                        default: false,
                     },
                     BitField {
                         name: "left_sleeve_enabled",
                         offset: 2,
+                        default: false,
                     },
                     BitField {
                         name: "right_sleeve_enabled",
                         offset: 3,
+                        default: false,
                     },
                     BitField {
                         name: "left_pants_leg_enabled",
                         offset: 4,
+                        default: false,
                     },
                     BitField {
                         name: "right_pants_leg_enabled",
                         offset: 5,
+                        default: false,
                     },
                     BitField {
                         name: "hat_enabled",
                         offset: 6,
+                        default: false,
                     },
                 ]),
             },
@@ -796,44 +848,48 @@ const ENTITIES: &[Class] = &[
                     BitField {
                         name: "small",
                         offset: 0,
+                        default: false,
                     },
                     BitField {
                         name: "has_arms",
                         offset: 1,
+                        default: false,
                     },
                     BitField {
                         name: "no_baseplate",
                         offset: 2,
+                        default: false,
                     },
                     BitField {
                         name: "is_marker",
                         offset: 3,
+                        default: false,
                     },
                 ]),
             },
             Field {
                 name: "head_rotation",
-                typ: Type::Rotations(0.0, 0.0, 0.0),
+                typ: Type::ArmorStandRotations(0.0, 0.0, 0.0),
             },
             Field {
                 name: "body_rotation",
-                typ: Type::Rotations(0.0, 0.0, 0.0),
+                typ: Type::ArmorStandRotations(0.0, 0.0, 0.0),
             },
             Field {
                 name: "left_arm_rotation",
-                typ: Type::Rotations(-10.0, 0.0, -10.0),
+                typ: Type::ArmorStandRotations(-10.0, 0.0, -10.0),
             },
             Field {
                 name: "right_arm_rotation",
-                typ: Type::Rotations(-15.0, 0.0, -10.0),
+                typ: Type::ArmorStandRotations(-15.0, 0.0, -10.0),
             },
             Field {
                 name: "left_leg_rotation",
-                typ: Type::Rotations(-1.0, 0.0, -1.0),
+                typ: Type::ArmorStandRotations(-1.0, 0.0, -1.0),
             },
             Field {
                 name: "right_leg_rotation",
-                typ: Type::Rotations(1.0, 0.0, 1.0),
+                typ: Type::ArmorStandRotations(1.0, 0.0, 1.0),
             },
         ],
     },
@@ -845,6 +901,7 @@ const ENTITIES: &[Class] = &[
             typ: Type::BitFields(&[BitField {
                 name: "hanging",
                 offset: 0,
+                default: false,
             }]),
         }],
     },
@@ -883,7 +940,7 @@ const ENTITIES: &[Class] = &[
         fields: &[],
     },
     Class {
-        name: "puffer_fish",
+        name: "pufferfish",
         inherit: Some(&ABSTRACT_FISH),
         fields: &[Field {
             name: "puff_state",
@@ -982,14 +1039,17 @@ const ENTITIES: &[Class] = &[
                     BitField {
                         name: "angry",
                         offset: 1, // Skip unused.
+                        default: false,
                     },
                     BitField {
                         name: "stung",
                         offset: 2,
+                        default: false,
                     },
                     BitField {
                         name: "nectar",
                         offset: 3,
+                        default: false,
                     },
                 ]),
             },
@@ -1013,10 +1073,37 @@ const ENTITIES: &[Class] = &[
                     BitField {
                         name: "sitting",
                         offset: 0,
+                        default: false,
                     },
                     BitField {
-                        name: "",
+                        name: "fox_crouching",
                         offset: 2, // Skip unused
+                        default: false,
+                    },
+                    BitField {
+                        name: "interested",
+                        offset: 3,
+                        default: false,
+                    },
+                    BitField {
+                        name: "pouncing",
+                        offset: 4,
+                        default: false,
+                    },
+                    BitField {
+                        name: "sleeping",
+                        offset: 5,
+                        default: false,
+                    },
+                    BitField {
+                        name: "faceplanted",
+                        offset: 6,
+                        default: false,
+                    },
+                    BitField {
+                        name: "defending",
+                        offset: 7,
+                        default: false,
                     },
                 ]),
             },
@@ -1069,18 +1156,22 @@ const ENTITIES: &[Class] = &[
                     BitField {
                         name: "sneezing",
                         offset: 1, // Skip unused.
+                        default: false,
                     },
                     BitField {
                         name: "rolling",
                         offset: 2,
+                        default: false,
                     },
                     BitField {
                         name: "sitting",
                         offset: 3,
+                        default: false,
                     },
                     BitField {
                         name: "on_back",
                         offset: 4,
+                        default: false,
                     },
                 ]),
             },
@@ -1177,6 +1268,11 @@ const ENTITIES: &[Class] = &[
         }],
     },
     Class {
+        name: "goat",
+        inherit: Some(&ANIMAL),
+        fields: &[], // TODO: What are the goat fields?
+    },
+    Class {
         name: "strider",
         inherit: Some(&ANIMAL),
         fields: &[
@@ -1263,6 +1359,7 @@ const ENTITIES: &[Class] = &[
             typ: Type::BitFields(&[BitField {
                 name: "player_created",
                 offset: 0,
+                default: false,
             }]),
         }],
     },
@@ -1274,7 +1371,7 @@ const ENTITIES: &[Class] = &[
             typ: Type::BitFields(&[BitField {
                 name: "pumpkin_hat",
                 offset: 4,
-                // TODO: should default to true.
+                default: true,
             }]),
         }],
     },
@@ -1284,11 +1381,11 @@ const ENTITIES: &[Class] = &[
         fields: &[
             Field {
                 name: "attach_face",
-                typ: Type::Direction(Direction::Down),
+                typ: Type::Direction,
             },
             Field {
                 name: "attachment_position",
-                typ: Type::OptPosition(None),
+                typ: Type::OptBlockPos(None),
             },
             Field {
                 name: "shield_height",
@@ -1299,6 +1396,12 @@ const ENTITIES: &[Class] = &[
                 typ: Type::Byte(10), // TODO: dye color enum
             },
         ],
+    },
+    Class {
+        // TODO: how is this defined?
+        name: "shulker_bullet",
+        inherit: Some(&BASE_ENTITY),
+        fields: &[],
     },
     Class {
         name: "piglin",
@@ -1331,6 +1434,7 @@ const ENTITIES: &[Class] = &[
             typ: Type::BitFields(&[BitField {
                 name: "blaze_on_fire", // TODO: better name for this?
                 offset: 0,
+                default: false,
             }]),
         }],
     },
@@ -1402,7 +1506,7 @@ const ENTITIES: &[Class] = &[
         fields: &[],
     },
     Class {
-        name: "evoker_fanges",
+        name: "evoker_fangs",
         inherit: Some(&BASE_ENTITY),
         fields: &[],
     },
@@ -1422,6 +1526,7 @@ const ENTITIES: &[Class] = &[
             typ: Type::BitFields(&[BitField {
                 name: "attacking",
                 offset: 0,
+                default: false,
             }]),
         }],
     },
@@ -1513,7 +1618,7 @@ const ENTITIES: &[Class] = &[
         fields: &[
             Field {
                 name: "carried_block",
-                typ: Type::OptBlockId,
+                typ: Type::BlockState,
             },
             Field {
                 name: "screaming",
@@ -1558,6 +1663,11 @@ const ENTITIES: &[Class] = &[
         }],
     },
     Class {
+        name: "magma_cube",
+        inherit: Some(&MOB),
+        fields: &[], // TODO: what are the fields?
+    },
+    Class {
         name: "llama_spit",
         inherit: Some(&BASE_ENTITY),
         fields: &[],
@@ -1568,17 +1678,17 @@ const ENTITIES: &[Class] = &[
         fields: &[],
     },
     Class {
-        name: "minecart_hopper",
+        name: "hopper_minecart",
         inherit: Some(&ABSTRACT_MINECART_CONTAINER),
         fields: &[],
     },
     Class {
-        name: "minecart_chest",
+        name: "chest_minecart",
         inherit: Some(&ABSTRACT_MINECART_CONTAINER),
         fields: &[],
     },
     Class {
-        name: "minecart_furnace",
+        name: "furnace_minecart",
         inherit: Some(&ABSTRACT_MINECART),
         fields: &[Field {
             name: "has_fuel",
@@ -1586,17 +1696,17 @@ const ENTITIES: &[Class] = &[
         }],
     },
     Class {
-        name: "minecart_tnt",
+        name: "tnt_minecart",
         inherit: Some(&ABSTRACT_MINECART),
         fields: &[],
     },
     Class {
-        name: "minecart_spawner",
+        name: "spawner_minecart",
         inherit: Some(&ABSTRACT_MINECART),
         fields: &[],
     },
     Class {
-        name: "minecart_command_block",
+        name: "command_block_minecart",
         inherit: Some(&ABSTRACT_MINECART),
         fields: &[
             Field {
@@ -1610,7 +1720,7 @@ const ENTITIES: &[Class] = &[
         ],
     },
     Class {
-        name: "primed_tnt",
+        name: "tnt",
         inherit: Some(&BASE_ENTITY),
         fields: &[Field {
             name: "fuse_timer",
@@ -1620,5 +1730,344 @@ const ENTITIES: &[Class] = &[
 ];
 
 pub fn build() -> anyhow::Result<()> {
-    Ok(())
+    // Sort the entities in ID order, where the IDs are obtained from entities.json.
+    let entities = {
+        let entities: HashMap<_, _> = ENTITIES.iter().map(|c| (c.name, c)).collect();
+
+        #[derive(Deserialize)]
+        struct JsonEntity {
+            id: usize,
+            name: String,
+        }
+
+        let json_entities: Vec<JsonEntity> =
+            serde_json::from_str(include_str!("../data/entities.json"))?;
+
+        let mut res = Vec::new();
+
+        for (i, e) in json_entities.iter().enumerate() {
+            assert_eq!(e.id, i);
+
+            let name = e.name.as_str();
+
+            res.push(
+                *entities
+                    .get(name)
+                    .with_context(|| format!("entity \"{name}\" was not defined"))?,
+            );
+        }
+
+        assert_eq!(json_entities.len(), entities.len());
+
+        res
+    };
+
+    let mut all_classes = BTreeMap::new();
+    for mut class in entities.iter().cloned() {
+        while let None = all_classes.insert(class.name, class) {
+            match class.inherit {
+                Some(parent) => class = parent,
+                None => break,
+            }
+        }
+    }
+
+    let entity_type_variants = entities
+        .iter()
+        .map(|c| ident(c.name.to_pascal_case()))
+        .collect::<Vec<_>>();
+
+    let entity_structs = entities.iter().map(|&class| {
+       let mut fields = Vec::new();
+       collect_class_fields(class, &mut fields);
+
+       let name = ident(class.name.to_pascal_case());
+       let struct_fields = fields.iter().map(|&f| {
+           let name = ident(f.name.to_snake_case());
+           let typ = match f.typ {
+               Type::BitFields(_) => quote! { u8 },
+               Type::Byte(_) => quote! { u8 },
+               Type::VarInt(_) => quote! { i32 },
+               Type::Float(_) => quote! { f32 },
+               Type::String(_) => quote! { Box<str> },
+               Type::Text => quote! { Box<Text> },
+               Type::OptText(_) => quote! { Option<Box<Text>> },
+               Type::Slot => quote! { () }, // TODO
+               Type::Bool(_) => quote! { bool },
+               Type::ArmorStandRotations(_, _, _) => quote! { ArmorStandRotations },
+               Type::BlockPos(_, _, _) => quote! { BlockPos },
+               Type::OptBlockPos(_) => quote! { Option<BlockPos> },
+               Type::Direction => quote! { Direction },
+               Type::OptUuid => quote! { Option<Uuid> },
+               Type::BlockState => quote! { BlockState },
+               Type::Nbt => quote! { nbt::Blob },
+               Type::Particle => quote! { () }, // TODO
+               Type::VillagerData => quote! { VillagerData },
+               Type::OptVarInt => quote! { OptVarInt },
+               Type::Pose => quote! { Pose },
+               Type::OptEntityId => quote! { Option<EntityId> },
+               Type::BoatVariant => quote! { BoatVariant },
+               Type::MainHand => quote! { MainHand },
+           };
+           quote! {
+               #name: #typ,
+           }
+       });
+
+       let constructor_fields = fields.iter().map(|field| {
+           let name = ident(field.name.to_snake_case());
+           let val = match field.typ {
+               Type::BitFields(bfs) => {
+                   let mut default = 0;
+                   for bf in bfs {
+                       default = (bf.default as u8) << bf.offset;
+                   }
+                   quote! { #default }
+               }
+               Type::Byte(d) => quote! { #d },
+               Type::VarInt(d) => quote! { #d },
+               Type::Float(d) => quote! { #d },
+               Type::String(d) => quote! { #d.into() },
+               Type::Text => quote! { Default::default() },
+               Type::OptText(d) => match d {
+                   Some(d) => quote! { Some(Box::new(Text::from(#d))) },
+                   None => quote! { None },
+               },
+               Type::Slot => quote! { () }, // TODO
+               Type::Bool(d) => quote! { #d },
+               Type::ArmorStandRotations(x, y, z) => {
+                   quote! { ArmorStandRotations::new(#x, #y, #z) }
+               }
+               Type::BlockPos(x, y, z) => quote! { BlockPos::new(#x, #y, #z) },
+               Type::OptBlockPos(d) => match d {
+                   Some((x, y, z)) => quote! { Some(BlockPos::new(#x, #y, #z)) },
+                   None => quote! { None },
+               },
+               Type::Direction => quote! { Direction::Down },
+               Type::OptUuid => quote! { None },
+               Type::BlockState => quote! { BlockState::AIR },
+               Type::Nbt => quote! { nbt::Blob::new() },
+               Type::Particle => quote! { () }, // TODO
+               Type::VillagerData => quote! { VillagerData::default() },
+               Type::OptVarInt => quote! { 0 },
+               Type::Pose => quote! { Pose::default() },
+               Type::OptEntityId => quote! { None },
+               Type::BoatVariant => quote! { BoatVariant::default() },
+               Type::MainHand => quote! { MainHand::default() },
+           };
+
+           quote! {
+               #name: #val,
+           }
+       });
+        
+        let getter_setters = 
+            fields
+            .iter()
+            .enumerate()
+            .map(|(field_offset, field)| {
+                let name = ident(field.name.to_snake_case());
+                let getter_name = ident(format!("get_{}", name.to_string()));
+                let setter_name = ident(format!("set_{}", name.to_string()));
+
+                let field_offset = field_offset as u32;
+
+                // TODO: documentation on methods.
+
+                let standard_getter_setter = |type_name: TokenStream| quote! {
+                    pub fn #getter_name(&self) -> #type_name {
+                        self.#name
+                    }
+
+                    pub fn #setter_name(&mut self, #name: #type_name) {
+                        if self.#name != #name {
+                            self.modified_bits |= 1 << #field_offset;
+                        }
+
+                        self.#name = #name;
+                    }
+                };
+
+                match field.typ {
+                    Type::BitFields(bfs) => bfs
+                        .iter()
+                        .map(|bf| {
+                            if bf.name.to_snake_case().is_empty() {
+                                eprintln!("{}", field.name);
+                            }
+                            let bit_name = ident(bf.name.to_snake_case());
+
+                            let getter_name = ident(format!("get_{}", bit_name.to_string()));
+                            let setter_name = ident(format!("set_{}", bit_name.to_string()));
+
+                            let offset = bf.offset;
+
+                            quote! {
+                                pub fn #getter_name(&self) -> bool {
+                                    (self.#name >> #offset) & 1 == 1
+                                }
+
+                                pub fn #setter_name(&mut self, #bit_name: bool) {
+                                    let orig = self.#getter_name();
+
+                                    self.#name = (self.#name & !(1 << #offset)) | ((#bit_name as u8) << #offset);
+
+                                    if orig != self.#getter_name() {
+                                        self.modified_bits |= 1 << #field_offset;
+                                    }
+                                }
+                            }
+                        })
+                        .collect(),
+                    Type::Byte(_) => standard_getter_setter(quote!(u8)),
+                    Type::VarInt(_) => standard_getter_setter(quote!(i32)),
+                    Type::Float(_) => standard_getter_setter(quote!(f32)),
+                    Type::String(_) => quote! {
+                        pub fn #getter_name(&self) -> &str {
+                            &self.#name
+                        }
+
+                        pub fn #setter_name(&mut self, #name: impl Into<Box<str>>) {
+                            let #name = #name.into();
+
+                            if self.#name != #name {
+                                self.modified_bits |= 1 << #field_offset;
+                            }
+
+                            self.#name = #name;
+                        }
+                    },
+                    Type::Text => quote! {
+                        pub fn #getter_name(&self) -> &Text {
+                            &self.#name
+                        }
+
+                        pub fn #setter_name(&mut self, #name: impl Into<Text>) {
+                            let #name = Box::new(#name.into());
+
+                            if self.#name != #name {
+                                self.modified_bits |= 1 << #field_offset;
+                            }
+
+                            self.#name = #name;
+                        }
+                    },
+                    Type::OptText(_) => quote! {
+                        pub fn #getter_name(&self) -> Option<&Text> {
+                            self.#name.as_deref()
+                        }
+
+                        pub fn #setter_name(&mut self, #name: Option<impl Into<Text>>) {
+                            let #name = #name.map(|x| Box::new(x.into()));
+
+                            if self.#name != #name {
+                                self.modified_bits |= 1 << #field_offset;
+                            }
+
+                            self.#name = #name;
+                        }
+                    },
+                    Type::Slot => quote! {}, // TODO
+                    Type::Bool(_) => standard_getter_setter(quote!(bool)),
+                    Type::ArmorStandRotations(_, _, _) => standard_getter_setter(quote!(ArmorStandRotations)),
+                    Type::BlockPos(_, _, _) => standard_getter_setter(quote!(BlockPos)),
+                    Type::OptBlockPos(_) => standard_getter_setter(quote!(Option<BlockPos>)),
+                    Type::Direction => standard_getter_setter(quote!(Direction)),
+                    Type::OptUuid => standard_getter_setter(quote!(Option<Uuid>)),
+                    Type::BlockState => standard_getter_setter(quote!(BlockState)),
+                    Type::Nbt => quote! {
+                        pub fn #getter_name(&self) -> &nbt::Blob {
+                            &self.#name
+                        }
+
+                        pub fn #setter_name(&mut self, #name: nbt::Blob) {
+                            if self.#name != #name {
+                                self.modified_bits |= 1 << #field_offset;
+                            }
+
+                            self.#name = #name;
+                        }
+                    },
+                    Type::Particle => quote! {}, // TODO
+                    Type::VillagerData => standard_getter_setter(quote!(VillagerData)),
+                    Type::OptVarInt => quote! {
+                        pub fn #getter_name(&self) -> i32 {
+                            self.#name.0
+                        }
+
+                        pub fn #setter_name(&mut self, #name: i32) {
+                            if self.#name.0 != #name {
+                                self.modified_bits |= 1 << #field_offset;
+                            }
+
+                            self.#name = OptVarInt(#name);
+                        }
+                    },
+                    Type::Pose => standard_getter_setter(quote!(Pose)),
+                    Type::OptEntityId => quote! {}, // TODO
+                    Type::BoatVariant => standard_getter_setter(quote!(BoatVariant)),
+                    Type::MainHand => standard_getter_setter(quote!(MainHand)),
+                }
+            })
+            .collect::<TokenStream>();
+
+        quote! {
+            pub struct #name {
+                /// Contains a set bit for each modified field.
+                modified_bits: u32,
+                #(#struct_fields)*
+            }
+
+            impl #name {
+                pub(super) fn new() -> Self {
+                    Self {
+                        modified_bits: 0,
+                        #(#constructor_fields)*
+                    }
+                }
+
+                #getter_setters
+            }
+        }
+    });
+
+    let finished = quote! {
+        pub enum EntityData {
+            #(#entity_type_variants(#entity_type_variants),)*
+        }
+
+        impl EntityData {
+            pub(super) fn new() -> Self {
+                Self::Marker(Marker::new())
+            }
+
+            pub fn typ(&self) -> EntityType {
+                match self {
+                    #(Self::#entity_type_variants(_) => EntityType::#entity_type_variants,)*
+                }
+            }
+        }
+
+        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+        pub enum EntityType {
+            #(#entity_type_variants,)*
+        }
+
+        impl Default for EntityType {
+            fn default() -> Self {
+                Self::Marker
+            }
+        }
+
+        #(#entity_structs)*
+    };
+
+    write_to_out_path("entity.rs", &finished.to_string())
+}
+
+fn collect_class_fields(class: &Class, fields: &mut Vec<&'static Field>) {
+    if let Some(parent) = class.inherit {
+        collect_class_fields(parent, fields);
+    }
+    fields.extend(class.fields);
 }

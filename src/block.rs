@@ -1,6 +1,12 @@
 #![allow(clippy::all)]
 
 use std::fmt;
+use std::io::{Read, Write};
+
+use anyhow::Context;
+
+use crate::protocol::{Decode, Encode};
+use crate::var_int::VarInt;
 
 include!(concat!(env!("OUT_DIR"), "/block.rs"));
 
@@ -29,6 +35,21 @@ impl fmt::Debug for BlockState {
         } else {
             Ok(())
         }
+    }
+}
+
+impl Encode for BlockState {
+    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+        VarInt(self.0 as i32).encode(w)
+    }
+}
+
+impl Decode for BlockState {
+    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+        let id = VarInt::decode(r)?.0;
+        let errmsg = "invalid block state ID";
+
+        BlockState::from_raw(id.try_into().context(errmsg)?).context(errmsg)
     }
 }
 

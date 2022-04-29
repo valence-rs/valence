@@ -1,11 +1,13 @@
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
+use std::iter::FusedIterator;
 
 use flume::{Receiver, Sender, TrySendError};
 use glm::DVec3;
+use rayon::iter::ParallelIterator;
 
 use crate::block_pos::BlockPos;
-use crate::chunk_store::ChunkId;
+use crate::chunk::ChunkId;
 use crate::config::{
     Biome, BiomeGrassColorModifier, BiomePrecipitation, Dimension, DimensionEffects, DimensionId,
 };
@@ -18,38 +20,67 @@ use crate::packets::play::{
     ServerPlayPacket, SpawnPosition, UnloadChunk, UpdateViewDistance, UpdateViewPosition,
 };
 use crate::protocol::{BoundedInt, Nbt};
-use crate::server::ServerPacketChannels;
+use crate::server::{Other, ServerPacketChannels};
+use crate::slotmap::{Key, SlotMap};
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::var_int::VarInt;
 use crate::world::WorldId;
-use crate::{glm, ident, ChunkPos, EntityId, Server, SharedServer, Text, Ticks, LIBRARY_NAMESPACE};
+use crate::{
+    glm, ident, ChunkPos, ChunkStore, EntityId, EntityStore, Server, SharedServer, Text, Ticks,
+    WorldStore, LIBRARY_NAMESPACE,
+};
 
-pub struct MaybeClient(pub(crate) Option<Box<Client>>);
+pub struct ClientStore {
+    sm: SlotMap<Client>,
+}
 
-impl MaybeClient {
-    pub fn get(&self) -> Option<&Client> {
-        self.0.as_deref()
+impl ClientStore {
+    pub(crate) fn new() -> Self {
+        Self { sm: SlotMap::new() }
     }
 
-    pub fn get_mut(&mut self) -> Option<&mut Client> {
-        self.0.as_deref_mut()
+    pub fn count(&self) -> usize {
+        self.sm.count()
     }
 
-    /// Drops the inner [`Client`]. Future calls to [`get`](MaybeClient::get)
-    /// and [`get_mut`](MaybeClient::get_mut) will return `None`.
-    ///
-    /// If the client was still connected prior to calling this function, the
-    /// client is disconnected from the server without a displayed reason.
-    ///
-    /// If the inner client was already dropped, this function has no effect.
-    pub fn clear(&mut self) {
-        self.0 = None;
+    pub(crate) fn create(&mut self, client: Client) -> ClientId {
+        ClientId(self.sm.insert(client))
     }
 
-    pub fn is_disconnected(&self) -> bool {
-        self.get().map_or(true, |c| c.is_disconnected())
+    pub fn delete(&mut self, client: ClientId) -> bool {
+        self.sm.remove(client.0).is_some()
+    }
+
+    pub fn retain(&mut self, mut f: impl FnMut(ClientId, &mut Client) -> bool) {
+        self.sm.retain(|k, v| f(ClientId(k), v))
+    }
+
+    pub fn get(&self, client: ClientId) -> Option<&Client> {
+        self.sm.get(client.0)
+    }
+
+    pub fn get_mut(&mut self, client: ClientId) -> Option<&mut Client> {
+        self.sm.get_mut(client.0)
+    }
+
+    pub fn iter(&self) -> impl FusedIterator<Item = (ClientId, &Client)> + Clone + '_ {
+        self.sm.iter().map(|(k, v)| (ClientId(k), v))
+    }
+
+    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (ClientId, &mut Client)> + '_ {
+        self.sm.iter_mut().map(|(k, v)| (ClientId(k), v))
+    }
+
+    pub fn par_iter(&self) -> impl ParallelIterator<Item = (ClientId, &Client)> + Clone + '_ {
+        self.sm.par_iter().map(|(k, v)| (ClientId(k), v))
+    }
+
+    pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (ClientId, &mut Client)> + '_ {
+        self.sm.par_iter_mut().map(|(k, v)| (ClientId(k), v))
     }
 }
+
+pub struct ClientId(Key);
 
 /// Represents a client connected to the server after logging in.
 pub struct Client {
@@ -57,12 +88,14 @@ pub struct Client {
     /// Setting this to `None` disconnects the client.
     send: Option<Sender<ClientPlayPacket>>,
     recv: Receiver<ServerPlayPacket>,
+    /// The entity this client is associated with.
+    entity: EntityId,
     /// The tick this client was created.
     created_tick: Ticks,
     username: String,
     on_ground: bool,
-    old_position: DVec3,
     new_position: DVec3,
+    old_position: DVec3,
     /// Measured in degrees
     yaw: f32,
     /// Measured in degrees
@@ -81,15 +114,15 @@ pub struct Client {
     /// If spawn_position or spawn_position_yaw were modified this tick.
     modified_spawn_position: bool,
     /// The world that this client was in at the end of the previous tick.
-    old_world: WorldId,
-    new_world: WorldId,
+    new_world: Option<WorldId>,
+    old_world: Option<WorldId>,
     events: Vec<Event>,
     /// The ID of the last keepalive sent.
     last_keepalive_id: i64,
     /// If the last sent keepalive got a response.
     got_keepalive: bool,
-    old_max_view_distance: u8,
     new_max_view_distance: u8,
+    old_max_view_distance: u8,
     /// Entities that were visible to this client at the end of the last tick.
     /// This is used to determine what entity create/destroy packets should be
     /// sent.
@@ -97,8 +130,8 @@ pub struct Client {
     hidden_entities: HashSet<EntityId>,
     /// Loaded chunks and their positions.
     loaded_chunks: HashMap<ChunkPos, ChunkId>,
-    old_game_mode: GameMode,
     new_game_mode: GameMode,
+    old_game_mode: GameMode,
     settings: Option<Settings>,
     // TODO: latency
     // TODO: time, weather
@@ -107,6 +140,7 @@ pub struct Client {
 impl Client {
     pub(crate) fn new(
         packet_channels: ServerPacketChannels,
+        entity: EntityId,
         username: String,
         server: &Server,
     ) -> Self {
@@ -116,11 +150,12 @@ impl Client {
             shared: server.shared().clone(),
             send: Some(send),
             recv,
+            entity,
             created_tick: server.current_tick(),
             username,
             on_ground: false,
-            old_position: DVec3::default(),
             new_position: DVec3::default(),
+            old_position: DVec3::default(),
             yaw: 0.0,
             pitch: 0.0,
             teleported_this_tick: false,
@@ -129,18 +164,18 @@ impl Client {
             spawn_position: BlockPos::default(),
             spawn_position_yaw: 0.0,
             modified_spawn_position: true,
-            new_world: WorldId::NULL,
-            old_world: WorldId::NULL,
+            old_world: None,
+            new_world: None,
             events: Vec::new(),
             last_keepalive_id: 0,
             got_keepalive: true,
-            old_max_view_distance: 0,
             new_max_view_distance: 16,
+            old_max_view_distance: 0,
             loaded_entities: HashSet::new(),
             hidden_entities: HashSet::new(),
             loaded_chunks: HashMap::new(),
-            old_game_mode: GameMode::Survival,
             new_game_mode: GameMode::Survival,
+            old_game_mode: GameMode::Survival,
             settings: None,
         }
     }
@@ -199,11 +234,11 @@ impl Client {
         }
     }
 
-    pub fn world(&self) -> WorldId {
+    pub fn world(&self) -> Option<WorldId> {
         self.new_world
     }
 
-    pub fn set_world(&mut self, new_world: WorldId) {
+    pub fn set_world(&mut self, new_world: Option<WorldId>) {
         self.new_world = new_world;
     }
 
@@ -252,14 +287,241 @@ impl Client {
         self.settings.as_ref()
     }
 
-    pub fn update(&mut self, client_eid: EntityId, server: &Server) {
+    /// Returns the entity this client is backing.
+    pub fn entity(&self) -> EntityId {
+        self.entity
+    }
+
+    pub(crate) fn update(
+        &mut self,
+        entities: &EntityStore,
+        worlds: &WorldStore,
+        chunks: &ChunkStore,
+        other: &Other,
+    ) {
         self.events.clear();
 
         if self.is_disconnected() {
             return;
         }
 
-        (0..self.recv.len()).for_each(|_| match self.recv.try_recv().unwrap() {
+        for _ in 0..self.recv.len() {
+            self.handle_serverbound_packet(self.recv.try_recv().unwrap());
+        }
+
+        // Mark the client as disconnected when appropriate.
+        // We do this check after handling serverbound packets so that none are lost.
+        if self.recv.is_disconnected()
+            || self.send.as_ref().map_or(true, |s| s.is_disconnected())
+            || entities.get(self.entity).is_none()
+        {
+            self.send = None;
+            return;
+        }
+
+        let world = self.new_world.and_then(|w| worlds.get(w));
+
+        let dim_id = world.map_or(DimensionId::default(), |w| w.dimension());
+        let dim = other.dimension(dim_id);
+
+        // Send the join game packet and other initial packets. We defer this until now
+        // so that the user can set the client's location, game mode, etc.
+        if self.created_tick == other.current_tick() {
+            self.send_packet(JoinGame {
+                entity_id: self.entity.to_network_id(),
+                is_hardcore: false,
+                gamemode: self.new_game_mode,
+                previous_gamemode: self.old_game_mode,
+                dimension_names: other
+                    .dimensions()
+                    .map(|(_, id)| ident!("{LIBRARY_NAMESPACE}:dimension_{}", id.0))
+                    .collect(),
+                dimension_codec: Nbt(make_dimension_codec(other)),
+                dimension: Nbt(to_dimension_registry_item(dim)),
+                dimension_name: ident!("{LIBRARY_NAMESPACE}:dimension_{}", dim_id.0),
+                hashed_seed: 0,
+                max_players: VarInt(0),
+                view_distance: BoundedInt(VarInt(self.new_max_view_distance as i32)),
+                simulation_distance: VarInt(16),
+                reduced_debug_info: false,
+                enable_respawn_screen: false, // TODO
+                is_debug: false,
+                is_flat: false, // TODO
+            });
+
+            self.teleport(self.position(), self.yaw(), self.pitch());
+        }
+
+        // Update the players spawn position (compass position)
+        if self.modified_spawn_position {
+            self.modified_spawn_position = false;
+
+            self.send_packet(SpawnPosition {
+                location: self.spawn_position,
+                angle: self.spawn_position_yaw,
+            })
+        }
+
+        // Update view distance fog on the client if necessary.
+        if self.old_max_view_distance != self.new_max_view_distance {
+            self.old_max_view_distance = self.new_max_view_distance;
+            if self.created_tick != other.current_tick() {
+                self.send_packet(UpdateViewDistance {
+                    view_distance: BoundedInt(VarInt(self.new_max_view_distance as i32)),
+                })
+            }
+        }
+
+        // Check if it's time to send another keepalive.
+        if other.last_keepalive == other.tick_start() {
+            if self.got_keepalive {
+                let id = rand::random();
+                self.send_packet(KeepAliveClientbound { id });
+                self.last_keepalive_id = id;
+                self.got_keepalive = false;
+            } else {
+                self.disconnect("Timed out (no keepalive response)");
+            }
+        }
+
+        // Load, update, and unload chunks.
+        if self.old_world != self.new_world {
+            let old_dim = self
+                .old_world
+                .and_then(|w| worlds.get(w))
+                .map_or(DimensionId::default(), |w| w.dimension());
+
+            let new_dim = dim_id;
+
+            if old_dim != new_dim {
+                // Changing dimensions automatically unloads all chunks and
+                // entities.
+                self.loaded_chunks.clear();
+                self.loaded_entities.clear();
+
+                todo!("need to send respawn packet for new dimension");
+            }
+
+            self.old_world = self.new_world;
+        }
+
+        let view_dist = self
+            .settings
+            .as_ref()
+            .map_or(2, |s| s.view_distance)
+            .min(self.new_max_view_distance);
+
+        let center = ChunkPos::from_xz(self.new_position.xz());
+
+        // Send the update view position packet if the client changes the chunk section
+        // they're in.
+        {
+            let old_section = self.old_position.map(|n| (n / 16.0) as i32);
+            let new_section = self.new_position.map(|n| (n / 16.0) as i32);
+
+            if old_section != new_section {
+                self.send_packet(UpdateViewPosition {
+                    chunk_x: VarInt(new_section.x),
+                    chunk_z: VarInt(new_section.z),
+                })
+            }
+        }
+
+        // Unload deleted chunks and those outside the view distance. Also update
+        // existing chunks.
+        self.loaded_chunks.retain(|&pos, &mut chunk_id| {
+            if let Some(chunk) = chunks.get(chunk_id) {
+                // The cache stops chunk data packets from needing to be sent when a player is
+                // jumping between adjacent chunks.
+                let cache = 2;
+                if is_chunk_in_view_distance(center, pos, view_dist + cache) {
+                    if let Some(pkt) = chunk.block_change_packet(pos) {
+                        send_packet(&mut self.send, pkt);
+                    }
+                    true
+                } else {
+                    send_packet(
+                        &mut self.send,
+                        UnloadChunk {
+                            chunk_x: pos.x,
+                            chunk_z: pos.z,
+                        },
+                    );
+                    false
+                }
+            } else {
+                send_packet(
+                    &mut self.send,
+                    UnloadChunk {
+                        chunk_x: pos.x,
+                        chunk_z: pos.z,
+                    },
+                );
+                false
+            }
+        });
+
+        // Load new chunks within the view distance
+        for pos in chunks_in_view_distance(center, view_dist) {
+            if let Entry::Vacant(ve) = self.loaded_chunks.entry(pos) {
+                if let Some(&chunk_id) = world.and_then(|w| w.chunks().get(&pos)) {
+                    if let Some(chunk) = chunks.get(chunk_id) {
+                        ve.insert(chunk_id);
+                        self.send_packet(chunk.chunk_data_packet(pos, (dim.height / 16) as usize));
+                        if let Some(pkt) = chunk.block_change_packet(pos) {
+                            self.send_packet(pkt);
+                        }
+                    }
+                }
+            }
+        }
+
+        // This is done after the chunks are loaded so that the "downloading terrain"
+        // screen is closed at the appropriate time.
+        if self.teleported_this_tick {
+            self.teleported_this_tick = false;
+
+            self.send_packet(PlayerPositionAndLook {
+                x: self.new_position.x,
+                y: self.new_position.y,
+                z: self.new_position.z,
+                yaw: self.yaw,
+                pitch: self.pitch,
+                flags: PlayerPositionAndLookFlags::new(false, false, false, false, false),
+                teleport_id: VarInt((self.teleport_id_counter - 1) as i32),
+                dismount_vehicle: false,
+            });
+        }
+
+        self.old_position = self.new_position;
+    }
+
+    fn handle_serverbound_packet(&mut self, pkt: ServerPlayPacket) {
+        fn handle_movement_packet(
+            client: &mut Client,
+            new_position: DVec3,
+            new_yaw: f32,
+            new_pitch: f32,
+            new_on_ground: bool,
+        ) {
+            if client.pending_teleports == 0 {
+                let event = Event::Movement {
+                    position: client.new_position,
+                    yaw_degrees: client.yaw,
+                    pitch_degrees: client.pitch,
+                    on_ground: client.on_ground,
+                };
+
+                client.new_position = new_position;
+                client.yaw = new_yaw;
+                client.pitch = new_pitch;
+                client.on_ground = new_on_ground;
+
+                client.events.push(event);
+            }
+        }
+
+        match pkt {
             ServerPlayPacket::TeleportConfirm(p) => {
                 if self.pending_teleports == 0 {
                     self.disconnect("Unexpected teleport confirmation");
@@ -366,217 +628,7 @@ impl Client {
             ServerPlayPacket::Spectate(_) => {}
             ServerPlayPacket::PlayerBlockPlacement(_) => {}
             ServerPlayPacket::UseItem(_) => {}
-        });
-
-        fn handle_movement_packet(
-            client: &mut Client,
-            new_position: DVec3,
-            new_yaw: f32,
-            new_pitch: f32,
-            new_on_ground: bool,
-        ) {
-            if client.pending_teleports == 0 {
-                let event = Event::Movement {
-                    position: client.new_position,
-                    yaw_degrees: client.yaw,
-                    pitch_degrees: client.pitch,
-                    on_ground: client.on_ground,
-                };
-
-                client.new_position = new_position;
-                client.yaw = new_yaw;
-                client.pitch = new_pitch;
-                client.on_ground = new_on_ground;
-
-                client.events.push(event);
-            }
         }
-
-        if let Some(send) = &self.send {
-            if send.is_disconnected() || self.recv.is_disconnected() {
-                self.send = None;
-                return;
-            }
-        }
-
-        let worlds = server.worlds.worlds().unwrap();
-        let world = server.worlds.get(&worlds, self.new_world);
-
-        let dim_id = world.map_or(DimensionId::default(), |w| w.dimension());
-        let dim = server.dimension(dim_id);
-
-        if self.created_tick == server.current_tick() {
-            // Send the join game packet and other initial packets. We defer this until now
-            // so that the user can set the client's location, game mode, etc.
-
-            self.send_packet(JoinGame {
-                entity_id: client_eid.to_network_id(),
-                is_hardcore: false,
-                gamemode: self.new_game_mode,
-                previous_gamemode: self.old_game_mode,
-                dimension_names: server
-                    .dimensions()
-                    .map(|(_, id)| ident!("{LIBRARY_NAMESPACE}:dimension_{}", id.0))
-                    .collect(),
-                dimension_codec: Nbt(make_dimension_codec(server)),
-                dimension: Nbt(to_dimension_registry_item(dim)),
-                dimension_name: ident!("{LIBRARY_NAMESPACE}:dimension_{}", dim_id.0),
-                hashed_seed: 0,
-                max_players: VarInt(0),
-                view_distance: BoundedInt(VarInt(self.new_max_view_distance as i32)),
-                simulation_distance: VarInt(16),
-                reduced_debug_info: false,
-                enable_respawn_screen: false, // TODO
-                is_debug: false,
-                is_flat: false, // TODO
-            });
-
-            self.teleport(self.position(), self.yaw(), self.pitch());
-        }
-
-        if self.modified_spawn_position {
-            self.modified_spawn_position = false;
-
-            self.send_packet(SpawnPosition {
-                location: self.spawn_position,
-                angle: self.spawn_position_yaw,
-            })
-        }
-
-        // Update view distance fog on the client if necessary.
-        if self.old_max_view_distance != self.new_max_view_distance {
-            self.old_max_view_distance = self.new_max_view_distance;
-            if self.created_tick != server.current_tick() {
-                self.send_packet(UpdateViewDistance {
-                    view_distance: BoundedInt(VarInt(self.new_max_view_distance as i32)),
-                })
-            }
-        }
-
-        // Check if it's time to send another keepalive.
-        if server.last_keepalive == server.tick_start() {
-            if self.got_keepalive {
-                let id = rand::random();
-                self.send_packet(KeepAliveClientbound { id });
-                self.last_keepalive_id = id;
-                self.got_keepalive = false;
-            } else {
-                self.disconnect("Timed out (no keepalive response)");
-            }
-        }
-
-        // Load, update, and unload chunks.
-        if self.old_world != self.new_world {
-            let old_dim = server
-                .worlds
-                .get(&worlds, self.old_world)
-                .map_or(DimensionId::default(), |w| w.dimension());
-
-            let new_dim = dim_id;
-
-            if old_dim != new_dim {
-                // Changing dimensions automatically unloads all chunks and
-                // entities.
-                self.loaded_chunks.clear();
-                self.loaded_entities.clear();
-
-                todo!("need to send respawn packet for new dimension");
-            }
-
-            self.old_world = self.new_world;
-        }
-
-        let view_dist = self
-            .settings
-            .as_ref()
-            .map_or(2, |s| s.view_distance)
-            .min(self.new_max_view_distance);
-
-        let chunks = server.chunks.chunks().unwrap();
-
-        let center = ChunkPos::from_xz(self.new_position.xz());
-
-        // Send the update view position packet if the client changes the chunk section
-        // they're in.
-        {
-            let old_section = self.old_position.map(|n| (n / 16.0) as i32);
-            let new_section = self.new_position.map(|n| (n / 16.0) as i32);
-
-            if old_section != new_section {
-                self.send_packet(UpdateViewPosition {
-                    chunk_x: VarInt(new_section.x),
-                    chunk_z: VarInt(new_section.z),
-                })
-            }
-        }
-
-        // Unload deleted chunks and those outside the view distance. Also update
-        // existing chunks.
-        self.loaded_chunks.retain(|&pos, &mut chunk_id| {
-            if let Some(chunk) = server.chunks.get(&chunks, chunk_id) {
-                // The cache stops chunk data packets from needing to be sent when a player is
-                // jumping between adjacent chunks.
-                let cache = 2;
-                if is_chunk_in_view_distance(center, pos, view_dist + cache) {
-                    if let Some(pkt) = chunk.block_change_packet(pos) {
-                        send_packet(&mut self.send, pkt);
-                    }
-                    true
-                } else {
-                    send_packet(
-                        &mut self.send,
-                        UnloadChunk {
-                            chunk_x: pos.x,
-                            chunk_z: pos.z,
-                        },
-                    );
-                    false
-                }
-            } else {
-                send_packet(
-                    &mut self.send,
-                    UnloadChunk {
-                        chunk_x: pos.x,
-                        chunk_z: pos.z,
-                    },
-                );
-                false
-            }
-        });
-
-        // Load new chunks within the view distance
-        for pos in chunks_in_view_distance(center, view_dist) {
-            if let Entry::Vacant(ve) = self.loaded_chunks.entry(pos) {
-                if let Some(&chunk_id) = world.and_then(|w| w.chunks().get(&pos)) {
-                    if let Some(chunk) = server.chunks.get(&chunks, chunk_id) {
-                        ve.insert(chunk_id);
-                        self.send_packet(chunk.chunk_data_packet(pos, (dim.height / 16) as usize));
-                        if let Some(pkt) = chunk.block_change_packet(pos) {
-                            self.send_packet(pkt);
-                        }
-                    }
-                }
-            }
-        }
-
-        // This is done after the chunks are loaded so that the "downloading terrain"
-        // screen is closed at the appropriate time.
-        if self.teleported_this_tick {
-            self.teleported_this_tick = false;
-
-            self.send_packet(PlayerPositionAndLook {
-                x: self.new_position.x,
-                y: self.new_position.y,
-                z: self.new_position.z,
-                yaw: self.yaw,
-                pitch: self.pitch,
-                flags: PlayerPositionAndLookFlags::new(false, false, false, false, false),
-                teleport_id: VarInt((self.teleport_id_counter - 1) as i32),
-                dismount_vehicle: false,
-            });
-        }
-
-        self.old_position = self.new_position;
     }
 }
 
@@ -603,7 +655,7 @@ pub enum Event {
     },
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Settings {
     /// e.g. en_US
     pub locale: String,
@@ -636,9 +688,9 @@ fn send_packet(send_opt: &mut Option<Sender<ClientPlayPacket>>, pkt: impl Into<C
     }
 }
 
-fn make_dimension_codec(server: &Server) -> DimensionCodec {
+fn make_dimension_codec(other: &Other) -> DimensionCodec {
     let mut dims = Vec::new();
-    for (dim, id) in server.dimensions() {
+    for (dim, id) in other.dimensions() {
         let id = id.0 as i32;
         dims.push(DimensionTypeRegistryEntry {
             name: ident!("{LIBRARY_NAMESPACE}:dimension_type_{id}"),
@@ -648,7 +700,7 @@ fn make_dimension_codec(server: &Server) -> DimensionCodec {
     }
 
     let mut biomes = Vec::new();
-    for (biome, id) in server.biomes() {
+    for (biome, id) in other.biomes() {
         biomes.push(to_biome_registry_item(biome, id.0 as i32));
     }
 

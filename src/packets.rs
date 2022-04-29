@@ -1,4 +1,4 @@
-//! Contains packet definitions and the types contained within them.
+//! Contains packet definitions and some types contained within them.
 //!
 //! See <https://wiki.vg/Protocol> for up to date protocol information.
 
@@ -258,6 +258,8 @@ macro_rules! if_typ_is_empty_pat {
     };
 }
 
+#[doc(hidden)]
+#[macro_export]
 macro_rules! def_bitfield {
     (
         $(#[$struct_attrs:meta])*
@@ -269,7 +271,7 @@ macro_rules! def_bitfield {
         }
     ) => {
         // TODO: custom Debug impl.
-        #[derive(Copy, Clone, Default, PartialEq, Eq, Debug)]
+        #[derive(Clone, Copy, PartialEq, Eq, Debug)]
         $(#[$struct_attrs])*
         pub struct $name($inner_ty);
 
@@ -279,8 +281,8 @@ macro_rules! def_bitfield {
                     $bit: bool,
                 )*
             ) -> Self {
-                let mut res = Self::default();
-                paste! {
+                let mut res = Self(Default::default());
+                paste::paste! {
                     $(
                         res = res.[<set_ $bit:snake>]($bit);
                     )*
@@ -288,7 +290,7 @@ macro_rules! def_bitfield {
                 res
             }
 
-            paste! {
+            paste::paste! {
                 $(
                     #[doc = "Gets the " $bit " bit on this bitfield.\n"]
                     $(#[$bit_attrs])*

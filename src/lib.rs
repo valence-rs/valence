@@ -1,12 +1,19 @@
 #![forbid(unsafe_code)]
+#![warn(
+    missing_debug_implementations,
+    trivial_casts,
+    trivial_numeric_casts,
+    unused_lifetimes,
+    unused_import_braces,
+    missing_docs
+)]
 
 mod aabb;
 pub mod block;
 mod block_pos;
 mod byte_angle;
-mod chunk;
-mod chunk_store;
-mod client;
+pub mod chunk;
+pub mod client;
 mod codec;
 pub mod component;
 pub mod config;
@@ -14,23 +21,25 @@ pub mod entity;
 pub mod identifier;
 mod packets;
 mod protocol;
-mod server;
+pub mod server;
+mod slotmap;
 pub mod text;
 pub mod util;
 mod var_int;
 mod var_long;
-mod world;
+pub mod world;
 
 pub use aabb::Aabb;
-pub use chunk::{Chunk, ChunkPos};
-pub use client::Client;
+pub use block_pos::BlockPos;
+pub use chunk::{Chunk, ChunkPos, ChunkStore};
+pub use client::{Client, ClientStore};
 pub use config::{BiomeId, DimensionId, ServerConfig};
-pub use entity::{EntityId, EntityStore};
+pub use entity::{Entity, EntityId, EntityStore};
 pub use identifier::Identifier;
 pub use text::{Text, TextFormat};
 pub use uuid::Uuid;
-pub use world::{World, WorldId};
-pub use {nalgebra_glm as glm, nbt};
+pub use world::{World, WorldId, WorldStore};
+pub use {nalgebra_glm as glm, nbt, uuid};
 
 pub use crate::server::{NewClientData, Server, SharedServer, ShutdownResult};
 
@@ -48,3 +57,18 @@ const LIBRARY_NAMESPACE: &str = "valence";
 /// The duration of a game update depends on the current configuration, which
 /// may or may not be the same as Minecraft's standard 20 ticks/second.
 pub type Ticks = i64;
+
+/// Types such as [`EntityId`], [`WorldId`], and [`ChunkId`] which can be used
+/// as indices into an array.
+///
+/// Every ID is either valid or invalid. Valid IDs point to living values. For
+/// instance, a valid [`EntityId`] points to a living entity on the server. When
+/// that entity is deleted, the corresponding [`EntityId`] becomes invalid.
+pub trait Id: Copy + Send + Sync + PartialEq + Eq {
+    /// Returns the index of this ID.
+    ///
+    /// For all IDs `a` and `b`, `a == b` implies `a.idx() == b.idx()`. If
+    /// both `a` and `b` are currently valid, then `a != b` implies `a.idx() !=
+    /// b.idx()`.
+    fn idx(self) -> usize;
+}

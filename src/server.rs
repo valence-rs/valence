@@ -26,11 +26,8 @@ use tokio::runtime::{Handle, Runtime};
 use tokio::sync::{oneshot, Semaphore};
 use uuid::Uuid;
 
-use crate::chunk_store::ChunkStore;
-use crate::client::MaybeClient;
 use crate::codec::{Decoder, Encoder};
 use crate::config::{Biome, BiomeId, Dimension, DimensionId, Handler, Login, ServerListPing};
-use crate::entity::Appearance;
 use crate::packets::handshake::{Handshake, HandshakeNextState};
 use crate::packets::login::{
     self, EncryptionRequest, EncryptionResponse, LoginStart, LoginSuccess, SetCompression,
@@ -40,8 +37,10 @@ use crate::packets::status::{Ping, Pong, Request, Response};
 use crate::protocol::{BoundedArray, BoundedString};
 use crate::util::valid_username;
 use crate::var_int::VarInt;
-use crate::world::WorldStore;
-use crate::{Client, EntityStore, ServerConfig, Ticks, PROTOCOL_VERSION, VERSION_NAME};
+use crate::{
+    ChunkStore, Client, ClientStore, EntityStore, ServerConfig, Ticks, WorldStore,
+    PROTOCOL_VERSION, VERSION_NAME,
+};
 
 /// Holds the state of a running Minecraft server which is accessible inside the
 /// update loop. To start a server, see [`ServerConfig`].
@@ -55,6 +54,7 @@ use crate::{Client, EntityStore, ServerConfig, Ticks, PROTOCOL_VERSION, VERSION_
 #[non_exhaustive]
 pub struct Server {
     pub entities: EntityStore,
+    pub clients: ClientStore,
     pub worlds: WorldStore,
     pub chunks: ChunkStore,
     pub other: Other,
@@ -89,7 +89,6 @@ struct SharedServerInner {
     tokio_handle: Handle,
     dimensions: Vec<Dimension>,
     biomes: Vec<Biome>,
-
     /// The instant the server was started.
     start_instant: Instant,
     /// A semaphore used to limit the number of simultaneous connections to the
@@ -338,7 +337,8 @@ pub(crate) fn start_server(config: ServerConfig) -> ShutdownResult {
 
     let mut server = Server {
         entities: EntityStore::new(),
-        worlds: WorldStore::new(shared.clone()),
+        clients: ClientStore::new(),
+        worlds: WorldStore::new(),
         chunks: ChunkStore::new(),
         other: Other {
             shared: shared.clone(),
@@ -375,43 +375,35 @@ fn do_update_loop(server: &mut Server) -> ShutdownResult {
         }
 
         {
-            let mut clients = server.entities.clients_mut().unwrap();
-
-            server
-                .entities
-                .par_iter(&mut clients)
-                .for_each(|(e, client)| {
-                    if let Some(client) = client.get_mut() {
-                        client.update(e, server);
-                    }
-                });
-        }
-
-        server.entities.update_old_appearances();
-
-        {
-            let mut chunks = server.chunks.chunks_mut().unwrap();
-
-            server.chunks.par_iter(&mut chunks).for_each(|(_, chunk)| {
-                chunk.apply_modifications();
+            server.clients.par_iter_mut().for_each(|(_, client)| {
+                client.update(
+                    &server.entities,
+                    &server.worlds,
+                    &server.chunks,
+                    &server.other,
+                )
             });
         }
+
+        server.entities.update();
+
+        server
+            .chunks
+            .par_iter_mut()
+            .for_each(|(_, chunk)| chunk.apply_modifications());
 
         shared.handler().update(server);
 
-        {
-            let mut chunks = server.chunks.chunks_mut().unwrap();
+        // Chunks modified this tick can have their changes applied immediately because
+        // they have not been observed by clients yet.
+        server.chunks.par_iter_mut().for_each(|(_, chunk)| {
+            if chunk.created_this_tick() {
+                chunk.clear_created_this_tick();
+                chunk.apply_modifications();
+            }
+        });
 
-            // Chunks modified this tick can have their changes applied immediately because
-            // they have not been observed by clients yet.
-            server.chunks.par_iter(&mut chunks).for_each(|(_, chunk)| {
-                if chunk.created_this_tick() {
-                    chunk.clear_created_this_tick();
-                    chunk.apply_modifications();
-                }
-            });
-        }
-
+        // Sleep for the remainder of the tick.
         thread::sleep(
             server
                 .0
@@ -433,34 +425,28 @@ fn join_player(server: &mut Server, msg: NewClientMessage) {
 
     let _ = msg.reply.send(Ok(client_packet_channels));
 
-    let mut client = Client::new(server_packet_channels, msg.ncd.username, server);
-
-    let client_eid = match server
-        .entities
-        .create_with_uuid(Appearance::None, msg.ncd.uuid)
-    {
-        Some(eid) => eid,
+    let client_backed_entity = match server.entities.create_with_uuid(msg.ncd.uuid) {
+        Some(id) => id,
         None => {
             log::error!(
                 "player '{}' cannot join the server because their UUID ({}) conflicts with an \
                  existing entity",
-                client.username(),
+                msg.ncd.username,
                 msg.ncd.uuid
             );
-
-            client.disconnect("Cannot join server: Your UUID conflicts with an existing entity.");
             return;
         }
     };
 
-    let mut clients = server.entities.clients_mut().unwrap();
-    *server.entities.get(&mut clients, client_eid).unwrap() = MaybeClient(Some(Box::new(client)));
+    let client_id = server.clients.create(Client::new(
+        server_packet_channels,
+        client_backed_entity,
+        msg.ncd.username,
+        server,
+    ));
 }
 
 type Codec = (Encoder<OwnedWriteHalf>, Decoder<OwnedReadHalf>);
-
-/// The duration of time between each sent keep alive packet.
-// TODO: remove this.
 
 async fn do_accept_loop(server: SharedServer) {
     log::trace!("entering accept loop");
