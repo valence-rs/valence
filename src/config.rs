@@ -1,83 +1,64 @@
-// TODO: rate limit, view distance?
-
 use std::any::Any;
-use std::collections::HashSet;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::panic::{RefUnwindSafe, UnwindSafe};
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::ensure;
 use async_trait::async_trait;
 use tokio::runtime::Handle as TokioHandle;
 
-use crate::server::{start_server, ShutdownError};
-use crate::{ident, Identifier, NewClientData, Server, SharedServer, ShutdownResult, Text};
+use crate::{ident, Id, Identifier, NewClientData, Server, SharedServer, Text};
 
-/// A builder type used to configure and start the server.
-pub struct ServerConfig {
-    pub(crate) handler: Option<Box<dyn Handler>>,
-    pub(crate) address: SocketAddr,
-    pub(crate) update_duration: Duration,
-    pub(crate) online_mode: bool,
-    pub(crate) max_clients: usize,
-    pub(crate) clientbound_packet_capacity: usize,
-    pub(crate) serverbound_packet_capacity: usize,
-    pub(crate) tokio_handle: Option<TokioHandle>,
-    pub(crate) dimensions: Vec<Dimension>,
-    pub(crate) biomes: Vec<Biome>,
-}
-
-impl ServerConfig {
-    /// Constructs a new server configuration with the provided handler.
-    pub fn new() -> Self {
-        Self {
-            handler: None,
-            address: SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 25565).into(),
-            update_duration: Duration::from_secs_f64(1.0 / 20.0),
-            online_mode: false,
-            max_clients: 32,
-            clientbound_packet_capacity: 128,
-            serverbound_packet_capacity: 32,
-            tokio_handle: None,
-            dimensions: Vec::new(),
-            biomes: Vec::new(),
-        }
-    }
-
-    /// Sets the [`Handler`] to use for this server.
-    pub fn handler(&mut self, handler: impl Handler) {
-        self.handler = Some(Box::new(handler));
-    }
-
-    /// Sets the socket address that the server will be bound to.
+/// A trait containing callbacks which are invoked by the running Minecraft
+/// server.
+///
+/// The config is used from multiple threads and must therefore implement
+/// `Send` and `Sync`. From within a single thread, methods are never invoked
+/// recursively. In other words, a mutex can always be aquired at the beginning
+/// of a method and released at the end without risk of deadlocking.
+///
+/// This trait uses the [async_trait](https://docs.rs/async-trait/latest/async_trait/) attribute macro.
+/// This will be removed once `impl Trait` in return position in traits is
+/// available in stable rust.
+#[async_trait]
+#[allow(unused_variables)]
+pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
+    /// Called once at startup to get the maximum number of connections allowed
+    /// to the server. Note that this includes all connections, not just those
+    /// past the login stage.
     ///
-    /// The default is `127.0.0.1:25565`.
-    pub fn address(&mut self, addr: impl Into<SocketAddr>) {
-        self.address = addr.into();
+    /// You will want this value to be somewhere above the maximum number of
+    /// players, since status pings should still succeed even when the server is
+    /// full.
+    fn max_connections(&self) -> usize;
+
+    /// Called once at startup to get the socket address the server will
+    /// be bound to.
+    ///
+    /// # Default Implementation
+    /// Returns `127.0.0.1:25565`.
+    fn address(&self) -> SocketAddr {
+        SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 25565).into()
     }
 
-    /// Sets the duration of each game update.
+    /// Called once at startup to get the duration of each game update.
     ///
     /// On each game update (a.k.a. tick), the server is expected to update game
     /// logic and respond to packets from clients. Once this is complete,
     /// the server will sleep for any remaining time until the full update
     /// duration has passed.
     ///
-    /// If the server is running behind schedule due to heavy load or some other
-    /// reason, the actual duration of a game update will exceed what has been
-    /// specified.
-    ///
     /// The duration must be nonzero.
     ///
-    /// The default value is the same as Minecraft's official server (20 ticks
-    /// per second). You may want to use a shorter duration if you can afford to
-    /// do so.
-    pub fn update_duration(&mut self, duration: Duration) {
-        self.update_duration = duration;
+    /// # Default Implementation
+    /// Returns 1/20th of a second, which is the same as Minecraft's official
+    /// server.
+    fn update_duration(&self) -> Duration {
+        Duration::from_secs_f64(1.0 / 20.0)
     }
 
-    /// Sets the state of "online mode", which determines if client
-    /// authentication and encryption should occur.
+    /// Called once at startup to get the "online mode" option, which determines
+    /// if client authentication and encryption should take place.
     ///
     /// When online mode is disabled, malicious clients can give themselves any
     /// username and UUID they want, potentially gaining privileges they
@@ -86,177 +67,89 @@ impl ServerConfig {
     /// for development purposes and enabled on servers exposed to the
     /// internet.
     ///
-    /// By default, online mode is enabled.
-    pub fn online_mode(&mut self, online_mode: bool) {
-        self.online_mode = online_mode;
+    /// # Default Implementation
+    /// Returns `true`.
+    fn online_mode(&self) -> bool {
+        true
     }
 
-    /// Sets the maximum number of clients (past the login stage) allowed on the
-    /// server simultaneously.
-    ///
-    /// The default is 32.
-    pub fn max_clients(&mut self, clients: usize) {
-        self.max_clients = clients;
-    }
-
-    /// The capacity of the buffer used to hold clientbound packets.
+    /// Called once at startup to get the capacity of the buffer used to
+    /// hold incoming packets.
     ///
     /// A larger capcity reduces the chance of packet loss but increases
-    /// potential memory usage. The default value is unspecified but should be
-    /// adequate for most situations.
+    /// potential memory usage.
     ///
-    /// The capacity must be nonzero.
-    pub fn clientbound_packet_capacity(&mut self, cap: usize) {
-        self.clientbound_packet_capacity = cap;
+    /// # Default Implementation
+    /// An unspecified value is returned that should be adequate in most
+    /// situations.
+    fn incoming_packet_capacity(&self) -> usize {
+        32
     }
 
-    /// Sets the capacity of the buffer used to hold serverbound packets.
+    /// Called once at startup to get the capacity of the buffer used to
+    /// hold outgoing packets.
     ///
-    /// A larger capcity reduces the chance of packet loss but increases
-    /// potential memory usage. The default value is unspecified but should be
-    /// adequate for most situations.
+    /// A larger capcity reduces the chance of packet loss due to a full buffer
+    /// but increases potential memory usage.
     ///
-    /// The capacity must be nonzero.
-    pub fn serverbound_packet_capacity(&mut self, cap: usize) {
-        self.serverbound_packet_capacity = cap;
+    /// # Default Implementation
+    /// An unspecified value is returned that should be adequate in most
+    /// situations.
+    fn outgoing_packet_capacity(&self) -> usize {
+        128
     }
 
-    /// Sets the handle to the tokio runtime the server will use.
+    /// Called once at startup to get a handle to the tokio runtime the server
+    /// will use.
     ///
     /// If a handle is not provided, the server will create its own tokio
     /// runtime.
-    pub fn tokio_handle(&mut self, handle: TokioHandle) {
-        self.tokio_handle = Some(handle);
+    ///
+    /// # Default Implementation
+    /// Returns `None`.
+    fn tokio_handle(&self) -> Option<TokioHandle> {
+        None
     }
 
-    /// Adds a new dimension to the server which is identified by the returned
-    /// [`DimensionId`]. The default dimension is added if none are provided.
+    /// Called once at startup to get the list of [`Dimension`]s usable on the
+    /// server.
     ///
+    /// The dimensions traversed by [`Server::dimensions`] will be in the same
+    /// order as the `Vec` returned by this function.
+    ///
+    /// The number of elements in the returned `Vec` must be in \[1, u16::MAX].
     /// Additionally, the documented requirements on the fields of [`Dimension`]
-    /// must be met. No more than `u16::MAX` dimensions may be added.
-    pub fn push_dimension(&mut self, dimension: Dimension) -> DimensionId {
-        let id = self.biomes.len();
-        self.dimensions.push(dimension);
-        DimensionId(id as u16)
+    /// must be met.
+    ///
+    /// # Default Implementation
+    /// Returns `vec![Dimension::default()]`.
+    fn dimensions(&self) -> Vec<Dimension> {
+        vec![Dimension::default()]
     }
 
-    /// Adds a new biome to the server which is identified by the returned
-    /// [`BiomeId`]. The default biome is added if none are provided.
+    /// Called once at startup to get the list of [`Biome`]s usable on the
+    /// server.
     ///
+    /// The biomes traversed by [`Server::biomes`] will be in the same
+    /// order as the `Vec` returned by this function.
+    ///
+    /// The number of elements in the returned `Vec` must be in \[1, u16::MAX].
     /// Additionally, the documented requirements on the fields of [`Biome`]
-    /// must be met. No more than `u16::MAX` biomes may be added.
-    pub fn push_biome(&mut self, biome: Biome) -> BiomeId {
-        let id = self.biomes.len();
-        self.biomes.push(biome);
-        BiomeId(id as u16)
-    }
-
-    /// Consumes the configuration and starts the server.
+    /// must be met.
     ///
-    /// The function returns once the server has been shut down, a runtime error
-    /// occurs, or the configuration is invalid.
-    pub fn start(mut self) -> ShutdownResult {
-        if self.biomes.is_empty() {
-            self.biomes.push(Biome::default());
-        }
-
-        if self.dimensions.is_empty() {
-            self.dimensions.push(Dimension::default());
-        }
-
-        self.validate().map_err(ShutdownError::from)?;
-        start_server(self)
+    /// # Default Implementation
+    /// Returns `vec![Dimension::default()]`.
+    fn biomes(&self) -> Vec<Biome> {
+        vec![Biome::default()]
     }
 
-    fn validate(&self) -> anyhow::Result<()> {
-        ensure!(
-            self.dimensions.len() <= u16::MAX as usize,
-            "more than u16::MAX dimensions added"
-        );
-
-        ensure!(
-            self.biomes.len() <= u16::MAX as usize,
-            "more than u16::MAX biomes added"
-        );
-
-        ensure!(
-            self.update_duration != Duration::ZERO,
-            "update duration must be nonzero"
-        );
-
-        ensure!(
-            self.clientbound_packet_capacity > 0,
-            "clientbound packet capacity must be nonzero"
-        );
-
-        ensure!(
-            self.serverbound_packet_capacity > 0,
-            "serverbound packet capacity must be nonzero"
-        );
-
-        for (i, dim) in self.dimensions.iter().enumerate() {
-            ensure!(
-                dim.min_y % 16 == 0 && (-2032..=2016).contains(&dim.min_y),
-                "invalid min_y in dimension #{i}",
-            );
-
-            ensure!(
-                dim.height % 16 == 0
-                    && (0..=4064).contains(&dim.height)
-                    && dim.min_y.saturating_add(dim.height) <= 2032,
-                "invalid height in dimension #{i}",
-            );
-
-            ensure!(
-                (0.0..=1.0).contains(&dim.ambient_light),
-                "ambient_light is out of range in dimension #{i}",
-            );
-
-            if let Some(fixed_time) = dim.fixed_time {
-                assert!(
-                    (0..=24_000).contains(&fixed_time),
-                    "fixed_time is out of range in dimension #{i}",
-                );
-            }
-        }
-
-        let mut names = HashSet::new();
-
-        for biome in self.biomes.iter() {
-            ensure!(
-                names.insert(biome.name.clone()),
-                "biome \"{}\" already added",
-                biome.name
-            );
-        }
-
-        Ok(())
-    }
-}
-
-impl Default for ServerConfig {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-/// A trait containing callbacks which are invoked by the running Minecraft
-/// server.
-///
-/// The handler is used from multiple threads and must therefore implement
-/// `Send` and `Sync`. From within a single thread, callbacks are never invoked
-/// recursively. In other words, a mutex can be aquired at the beginning of a
-/// callback and released at the end without risk of deadlocking.
-///
-/// All methods are called from within a tokio context.
-#[async_trait]
-#[allow(unused_variables)]
-pub trait Handler: Any + Send + Sync {
     /// Called after the server is created, but prior to accepting connections
     /// and entering the update loop.
     ///
     /// This is useful for performing initialization work with a guarantee that
     /// no connections to the server will be made until this function returns.
+    ///
+    /// This method is called from within a tokio runtime.
     ///
     /// # Default Implementation
     /// The default implementation does nothing.
@@ -268,36 +161,25 @@ pub trait Handler: Any + Send + Sync {
     /// The frequency of server updates can be configured by `update_duration`
     /// in [`ServerConfig`].
     ///
+    /// This method is called from within a tokio runtime.
+    ///
     /// # Default Implementation
     /// The default implementation does nothing.
     fn update(&self, server: &mut Server) {}
 
     /// Called when the server receives a Server List Ping query.
-    /// Data for the query can be provided or the query can be ignored.
+    /// Data for the response can be provided or the query can be ignored.
+    ///
+    /// This method is called from within a tokio runtime.
     ///
     /// # Default Implementation
-    /// A placeholder response is returned.
+    /// The query is ignored.
     async fn server_list_ping(
         &self,
         server: &SharedServer,
         remote_addr: SocketAddr,
     ) -> ServerListPing {
-        ServerListPing::Respond {
-            online_players: server.client_count() as i32,
-            max_players: server.max_clients() as i32,
-            description: "A Minecraft Server".into(),
-            favicon_png: None,
-        }
-    }
-
-    /// Called when a client is disconnected due to the server being full.
-    /// The return value is the disconnect message to use.
-    ///
-    /// # Default Implementation
-    /// A placeholder message is returned.
-    async fn max_client_message(&self, server: &SharedServer, npd: &NewClientData) -> Text {
-        // TODO: Standard translated text for this purpose?
-        "The server is full!".into()
+        ServerListPing::Ignore
     }
 
     /// Called asynchronously for each client after successful authentication
@@ -305,7 +187,9 @@ pub trait Handler: Any + Send + Sync {
     /// server. On success, a client-backed entity is spawned.
     ///
     /// This function is the appropriate place to perform
-    /// whitelist checks, database queries, etc.
+    /// player count checks, whitelist checks, database queries, etc.
+    ///
+    /// This method is called from within a tokio runtime.
     ///
     /// # Default Implementation
     /// The client is allowed to join unconditionally.
@@ -315,6 +199,7 @@ pub trait Handler: Any + Send + Sync {
 }
 
 /// The result of the [`server_list_ping`](Handler::server_list_ping) callback.
+#[derive(Debug)]
 pub enum ServerListPing {
     /// Responds to the server list ping with the given information.
     Respond {
@@ -341,18 +226,33 @@ pub enum Login {
     Disconnect(Text),
 }
 
-/// Identifies a particular [`Dimension`].
+/// A handle to a particular [`Dimension`] on the server.
 ///
-/// Dimension IDs are always valid and are cheap to copy and store.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash, Debug)]
+/// Dimension IDs must only be used on servers from which they originate.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct DimensionId(pub(crate) u16);
 
-/// Contains the configuration for a custom dimension type.
+/// All dimension IDs are valid.
+impl Id for DimensionId {
+    fn idx(self) -> usize {
+        self.0 as usize
+    }
+}
+
+/// The default dimension ID corresponds to the first element in the `Vec`
+/// returned by [`Config::dimensions`].
+impl Default for DimensionId {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+
+/// Contains the configuration for a dimension type.
 ///
 /// In Minecraft, "dimension" and "dimension type" are two different concepts.
 /// For instance, the Overworld and Nether are dimensions, each with
 /// their own dimension type. A dimension in this library is analogous to a
-/// [`World`](crate::World) while the [`Dimension`] struct represents a
+/// [`World`](crate::World) while [`Dimension`] represents a
 /// dimension type.
 #[derive(Clone, Debug)]
 pub struct Dimension {
@@ -394,7 +294,7 @@ impl Default for Dimension {
     fn default() -> Self {
         Self {
             natural: true,
-            ambient_light: 0.0,
+            ambient_light: 1.0,
             fixed_time: None,
             effects: DimensionEffects::Overworld,
             min_y: -64,
@@ -416,7 +316,14 @@ pub enum DimensionEffects {
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct BiomeId(pub(crate) u16);
 
-/// Contains the configuration for a custom biome.
+/// All Biome IDs are valid.
+impl Id for BiomeId {
+    fn idx(self) -> usize {
+        self.0 as usize
+    }
+}
+
+/// Contains the configuration for a biome.
 #[derive(Clone, Debug)]
 pub struct Biome {
     /// The unique name for this biome. The name can be

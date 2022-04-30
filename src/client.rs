@@ -14,10 +14,11 @@ use crate::config::{
 pub use crate::packets::play::GameMode;
 use crate::packets::play::{
     Biome as BiomeRegistryBiome, BiomeAdditionsSound, BiomeEffects, BiomeMoodSound, BiomeMusic,
-    BiomeParticle, BiomeParticleOptions, BiomeProperty, BiomeRegistry, ClientPlayPacket,
-    DimensionCodec, DimensionType, DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect,
-    JoinGame, KeepAliveClientbound, PlayerPositionAndLook, PlayerPositionAndLookFlags,
-    ServerPlayPacket, SpawnPosition, UnloadChunk, UpdateViewDistance, UpdateViewPosition,
+    BiomeParticle, BiomeParticleOptions, BiomeProperty, BiomeRegistry, ChangeGameState,
+    ChangeGameStateReason, ClientPlayPacket, DimensionCodec, DimensionType, DimensionTypeRegistry,
+    DimensionTypeRegistryEntry, Disconnect, JoinGame, KeepAliveClientbound, PlayerPositionAndLook,
+    PlayerPositionAndLookFlags, ServerPlayPacket, SpawnPosition, UnloadChunk, UpdateViewDistance,
+    UpdateViewPosition,
 };
 use crate::protocol::{BoundedInt, Nbt};
 use crate::server::{Other, ServerPacketChannels};
@@ -84,7 +85,6 @@ pub struct ClientId(Key);
 
 /// Represents a client connected to the server after logging in.
 pub struct Client {
-    shared: SharedServer,
     /// Setting this to `None` disconnects the client.
     send: Option<Sender<ClientPlayPacket>>,
     recv: Receiver<ServerPlayPacket>,
@@ -147,7 +147,6 @@ impl Client {
         let (send, recv) = packet_channels;
 
         Self {
-            shared: server.shared().clone(),
             send: Some(send),
             recv,
             entity,
@@ -200,10 +199,10 @@ impl Client {
         self.pitch
     }
 
-    pub fn teleport(&mut self, pos: DVec3, yaw_degrees: f32, pitch_degrees: f32) {
-        self.new_position = pos;
-        self.yaw = yaw_degrees;
-        self.pitch = pitch_degrees;
+    pub fn teleport(&mut self, pos: impl Into<DVec3>, yaw: f32, pitch: f32) {
+        self.new_position = pos.into();
+        self.yaw = yaw;
+        self.pitch = pitch;
 
         if !self.teleported_this_tick {
             self.teleported_this_tick = true;
@@ -218,6 +217,14 @@ impl Client {
 
             self.teleport_id_counter = self.teleport_id_counter.wrapping_add(1);
         }
+    }
+
+    pub fn game_mode(&self) -> GameMode {
+        self.new_game_mode
+    }
+
+    pub fn set_game_mode(&mut self, new_game_mode: GameMode) {
+        self.new_game_mode = new_game_mode;
     }
 
     pub fn on_ground(&self) -> bool {
@@ -329,12 +336,12 @@ impl Client {
         if self.created_tick == other.current_tick() {
             self.send_packet(JoinGame {
                 entity_id: self.entity.to_network_id(),
-                is_hardcore: false,
+                is_hardcore: false, // TODO
                 gamemode: self.new_game_mode,
                 previous_gamemode: self.old_game_mode,
                 dimension_names: other
                     .dimensions()
-                    .map(|(_, id)| ident!("{LIBRARY_NAMESPACE}:dimension_{}", id.0))
+                    .map(|(id, _)| ident!("{LIBRARY_NAMESPACE}:dimension_{}", id.0))
                     .collect(),
                 dimension_codec: Nbt(make_dimension_codec(other)),
                 dimension: Nbt(to_dimension_registry_item(dim)),
@@ -350,6 +357,12 @@ impl Client {
             });
 
             self.teleport(self.position(), self.yaw(), self.pitch());
+        } else if self.old_game_mode != self.new_game_mode {
+            self.old_game_mode = self.new_game_mode;
+            self.send_packet(ChangeGameState {
+                reason: ChangeGameStateReason::ChangeGameMode,
+                value: self.new_game_mode as i32 as f32,
+            });
         }
 
         // Update the players spawn position (compass position)
@@ -635,7 +648,6 @@ impl Client {
 impl Drop for Client {
     fn drop(&mut self) {
         log::trace!("Dropping client '{}'", self.username);
-        self.shared.dec_client_count();
     }
 }
 
@@ -690,7 +702,7 @@ fn send_packet(send_opt: &mut Option<Sender<ClientPlayPacket>>, pkt: impl Into<C
 
 fn make_dimension_codec(other: &Other) -> DimensionCodec {
     let mut dims = Vec::new();
-    for (dim, id) in other.dimensions() {
+    for (id, dim) in other.dimensions() {
         let id = id.0 as i32;
         dims.push(DimensionTypeRegistryEntry {
             name: ident!("{LIBRARY_NAMESPACE}:dimension_type_{id}"),
@@ -700,7 +712,7 @@ fn make_dimension_codec(other: &Other) -> DimensionCodec {
     }
 
     let mut biomes = Vec::new();
-    for (biome, id) in other.biomes() {
+    for (id, biome) in other.biomes() {
         biomes.push(to_biome_registry_item(biome, id.0 as i32));
     }
 

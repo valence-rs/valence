@@ -258,8 +258,6 @@ macro_rules! if_typ_is_empty_pat {
     };
 }
 
-#[doc(hidden)]
-#[macro_export]
 macro_rules! def_bitfield {
     (
         $(#[$struct_attrs:meta])*
@@ -282,7 +280,7 @@ macro_rules! def_bitfield {
                 )*
             ) -> Self {
                 let mut res = Self(Default::default());
-                paste::paste! {
+                paste! {
                     $(
                         res = res.[<set_ $bit:snake>]($bit);
                     )*
@@ -290,7 +288,7 @@ macro_rules! def_bitfield {
                 res
             }
 
-            paste::paste! {
+            paste! {
                 $(
                     #[doc = "Gets the " $bit " bit on this bitfield.\n"]
                     $(#[$bit_attrs])*
@@ -743,7 +741,7 @@ pub mod play {
             NoRespawnBlockAvailable = 0,
             EndRaining = 1,
             BeginRaining = 2,
-            ChangeGamemode = 3,
+            ChangeGameMode = 3,
             WinGame = 4,
             DemoEvent = 5,
             ArrowHitPlayer = 6,
@@ -965,7 +963,7 @@ pub mod play {
     }
 
     def_enum! {
-        #[derive(Copy, PartialEq, Eq)]
+        #[derive(Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         GameMode: u8 {
             Survival = 0,
             Creative = 1,
@@ -1116,6 +1114,7 @@ pub mod play {
         Disconnect,
         EntityStatus,
         UnloadChunk,
+        ChangeGameState,
         KeepAliveClientbound,
         ChunkDataAndUpdateLight,
         JoinGame,

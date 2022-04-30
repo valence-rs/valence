@@ -6,7 +6,7 @@ use uuid::Uuid;
 use crate::block_pos::BlockPos;
 use crate::protocol::Encode;
 use crate::var_int::VarInt;
-use crate::{def_bitfield, Text};
+use crate::Text;
 
 #[derive(Clone, Copy, Default, PartialEq, PartialOrd, Debug)]
 pub struct ArmorStandRotations {

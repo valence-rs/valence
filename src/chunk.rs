@@ -194,11 +194,13 @@ impl Chunk {
             blocks_and_biomes,
             block_entities: Vec::new(), // TODO
             trust_edges: true,
-            sky_light_mask: bitvec![u64, _; 1; section_count + 2],
+            // sky_light_mask: bitvec![u64, _; 1; section_count + 2],
+            sky_light_mask: BitVec::new(),
             block_light_mask: BitVec::new(),
             empty_sky_light_mask: BitVec::new(),
             empty_block_light_mask: BitVec::new(),
-            sky_light_arrays: vec![[0xff; 2048]; section_count + 2],
+            // sky_light_arrays: vec![[0xff; 2048]; section_count + 2],
+            sky_light_arrays: Vec::new(),
             block_light_arrays: Vec::new(),
         }
     }

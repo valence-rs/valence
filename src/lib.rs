@@ -1,6 +1,5 @@
 #![forbid(unsafe_code)]
 #![warn(
-    missing_debug_implementations,
     trivial_casts,
     trivial_numeric_casts,
     unused_lifetimes,
@@ -15,7 +14,6 @@ mod byte_angle;
 pub mod chunk;
 pub mod client;
 mod codec;
-pub mod component;
 pub mod config;
 pub mod entity;
 pub mod identifier;
@@ -30,18 +28,18 @@ mod var_long;
 pub mod world;
 
 pub use aabb::Aabb;
+pub use async_trait::async_trait;
 pub use block_pos::BlockPos;
 pub use chunk::{Chunk, ChunkPos, ChunkStore};
 pub use client::{Client, ClientStore};
-pub use config::{BiomeId, DimensionId, ServerConfig};
+pub use config::{Biome, BiomeId, Config, Dimension, DimensionId};
 pub use entity::{Entity, EntityId, EntityStore};
 pub use identifier::Identifier;
+pub use server::{start_server, NewClientData, Server, SharedServer, ShutdownResult};
 pub use text::{Text, TextFormat};
 pub use uuid::Uuid;
 pub use world::{World, WorldId, WorldStore};
 pub use {nalgebra_glm as glm, nbt, uuid};
-
-pub use crate::server::{NewClientData, Server, SharedServer, ShutdownResult};
 
 /// The Minecraft protocol version that this library targets.
 pub const PROTOCOL_VERSION: i32 = 758;

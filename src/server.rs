@@ -1,8 +1,8 @@
+use std::collections::HashSet;
 use std::error::Error;
 use std::iter::FusedIterator;
 use std::net::SocketAddr;
 use std::ops::{Deref, DerefMut};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -27,7 +27,7 @@ use tokio::sync::{oneshot, Semaphore};
 use uuid::Uuid;
 
 use crate::codec::{Decoder, Encoder};
-use crate::config::{Biome, BiomeId, Dimension, DimensionId, Handler, Login, ServerListPing};
+use crate::config::{Biome, BiomeId, Config, Dimension, DimensionId, Login, ServerListPing};
 use crate::packets::handshake::{Handshake, HandshakeNextState};
 use crate::packets::login::{
     self, EncryptionRequest, EncryptionResponse, LoginStart, LoginSuccess, SetCompression,
@@ -38,18 +38,17 @@ use crate::protocol::{BoundedArray, BoundedString};
 use crate::util::valid_username;
 use crate::var_int::VarInt;
 use crate::{
-    ChunkStore, Client, ClientStore, EntityStore, ServerConfig, Ticks, WorldStore,
-    PROTOCOL_VERSION, VERSION_NAME,
+    ChunkStore, Client, ClientStore, EntityStore, Ticks, WorldStore, PROTOCOL_VERSION, VERSION_NAME,
 };
 
 /// Holds the state of a running Minecraft server which is accessible inside the
 /// update loop. To start a server, see [`ServerConfig`].
 ///
 /// Fields of this struct are made public to enable disjoint borrows. For
-/// instance, it is possible to create and delete entities while
-/// having read-only access to world data.
+/// instance, it is possible to mutate the list of entities while simultaneously
+/// reading world data.
 ///
-/// Note the `Deref` and `DerefMut` impls on `Server` are (ab)used to
+/// Note the `Deref` and `DerefMut` impls on this struct are (ab)used to
 /// allow convenient access to the `other` field.
 #[non_exhaustive]
 pub struct Server {
@@ -79,14 +78,16 @@ pub struct Other {
 pub struct SharedServer(Arc<SharedServerInner>);
 
 struct SharedServerInner {
-    handler: Box<dyn Handler>,
+    cfg: Box<dyn Config>,
     address: SocketAddr,
     update_duration: Duration,
     online_mode: bool,
-    max_clients: usize,
-    clientbound_packet_capacity: usize,
-    serverbound_packet_capacity: usize,
+    max_connections: usize,
+    incoming_packet_capacity: usize,
+    outgoing_packet_capacity: usize,
     tokio_handle: Handle,
+    /// Store this here so we don't drop it.
+    _tokio_runtime: Option<Runtime>,
     dimensions: Vec<Dimension>,
     biomes: Vec<Biome>,
     /// The instant the server was started.
@@ -104,10 +105,9 @@ struct SharedServerInner {
     /// For session server requests.
     http_client: HttpClient,
     new_clients_tx: Sender<NewClientMessage>,
-    client_count: AtomicUsize,
 }
 
-/// Contains information about a new player.
+/// Contains information about a new client.
 pub struct NewClientData {
     pub uuid: Uuid,
     pub username: String,
@@ -145,8 +145,8 @@ impl Other {
 }
 
 impl SharedServer {
-    pub fn handler(&self) -> &(impl Handler + ?Sized) {
-        self.0.handler.as_ref()
+    pub fn config(&self) -> &(impl Config + ?Sized) {
+        self.0.cfg.as_ref()
     }
 
     pub fn address(&self) -> SocketAddr {
@@ -161,16 +161,16 @@ impl SharedServer {
         self.0.online_mode
     }
 
-    pub fn max_clients(&self) -> usize {
-        self.0.max_clients
+    pub fn max_connections(&self) -> usize {
+        self.0.max_connections
     }
 
-    pub fn clientbound_packet_capacity(&self) -> usize {
-        self.0.clientbound_packet_capacity
+    pub fn incoming_packet_capacity(&self) -> usize {
+        self.0.incoming_packet_capacity
     }
 
-    pub fn serverbound_packet_capacity(&self) -> usize {
-        self.0.serverbound_packet_capacity
+    pub fn outgoing_packet_capacity(&self) -> usize {
+        self.0.outgoing_packet_capacity
     }
 
     pub fn tokio_handle(&self) -> &Handle {
@@ -191,31 +191,27 @@ impl SharedServer {
 
     /// Returns an iterator over all added dimensions and their associated
     /// [`DimensionId`].
-    pub fn dimensions(&self) -> impl FusedIterator<Item = (&Dimension, DimensionId)> + Clone {
+    pub fn dimensions(&self) -> impl FusedIterator<Item = (DimensionId, &Dimension)> + Clone {
         self.0
             .dimensions
             .iter()
             .enumerate()
-            .map(|(i, d)| (d, DimensionId(i as u16)))
+            .map(|(i, d)| (DimensionId(i as u16), d))
     }
 
     /// Obtains a [`Biome`] by using its corresponding [`BiomeId`].
-    ///
-    /// It is safe but unspecified behavior to call this function using a
-    /// [`BiomeId`] not originating from the configuration used to construct the
-    /// server.
     pub fn biome(&self, id: BiomeId) -> &Biome {
         self.0.biomes.get(id.0 as usize).expect("invalid biome ID")
     }
 
     /// Returns an iterator over all added biomes and their associated
     /// [`BiomeId`].
-    pub fn biomes(&self) -> impl FusedIterator<Item = (&Biome, BiomeId)> + Clone {
+    pub fn biomes(&self) -> impl FusedIterator<Item = (BiomeId, &Biome)> + Clone {
         self.0
             .biomes
             .iter()
             .enumerate()
-            .map(|(i, b)| (b, BiomeId(i as u16)))
+            .map(|(i, b)| (BiomeId(i as u16), b))
     }
 
     /// Returns the instant the server was started.
@@ -235,33 +231,6 @@ impl SharedServer {
     {
         self.0.connection_sema.close();
         *self.0.shutdown_result.lock() = Some(res.into().map_err(|e| e.into()));
-    }
-
-    /// Returns the number of clients past the login stage that are currently
-    /// connected to the server.
-    pub fn client_count(&self) -> usize {
-        self.0.client_count.load(Ordering::SeqCst)
-    }
-
-    /// Increment the client count iff it is below the maximum number of
-    /// clients. Returns true if the client count was incremented, false
-    /// otherwise.
-    fn try_inc_player_count(&self) -> bool {
-        self.0
-            .client_count
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
-                if count < self.0.max_clients {
-                    count.checked_add(1)
-                } else {
-                    None
-                }
-            })
-            .is_ok()
-    }
-
-    pub(crate) fn dec_client_count(&self) {
-        let prev = self.0.client_count.fetch_sub(1, Ordering::SeqCst);
-        assert!(prev != 0);
     }
 }
 
@@ -287,7 +256,108 @@ impl Deref for Other {
     }
 }
 
-pub(crate) fn start_server(config: ServerConfig) -> ShutdownResult {
+/// Consumes the configuration and starts the server.
+///
+/// The function returns when the server has shut down, a runtime error
+/// occurs, or the configuration is invalid.
+pub fn start_server(config: impl Config) -> ShutdownResult {
+    let mut server = setup_server(config).map_err(ShutdownError::from)?;
+
+    let shared = server.shared().clone();
+
+    let _guard = shared.tokio_handle().enter();
+
+    shared.config().init(&mut server);
+
+    tokio::spawn(do_accept_loop(shared));
+
+    do_update_loop(&mut server)
+}
+
+fn setup_server(cfg: impl Config) -> anyhow::Result<Server> {
+    let max_connections = cfg.max_connections();
+    let address = cfg.address();
+    let update_duration = cfg.update_duration();
+
+    ensure!(
+        update_duration != Duration::ZERO,
+        "update duration must be nonzero"
+    );
+
+    let online_mode = cfg.online_mode();
+
+    let incoming_packet_capacity = cfg.incoming_packet_capacity();
+
+    ensure!(
+        incoming_packet_capacity > 0,
+        "serverbound packet capacity must be nonzero"
+    );
+
+    let outgoing_packet_capacity = cfg.outgoing_packet_capacity();
+
+    ensure!(
+        outgoing_packet_capacity > 0,
+        "outgoing packet capacity must be nonzero"
+    );
+
+    let tokio_handle = cfg.tokio_handle();
+    let dimensions = cfg.dimensions();
+
+    ensure!(
+        !dimensions.is_empty(),
+        "at least one dimension must be added"
+    );
+
+    ensure!(
+        dimensions.len() <= u16::MAX as usize,
+        "more than u16::MAX dimensions added"
+    );
+
+    for (i, dim) in dimensions.iter().enumerate() {
+        ensure!(
+            dim.min_y % 16 == 0 && (-2032..=2016).contains(&dim.min_y),
+            "invalid min_y in dimension #{i}",
+        );
+
+        ensure!(
+            dim.height % 16 == 0
+                && (0..=4064).contains(&dim.height)
+                && dim.min_y.saturating_add(dim.height) <= 2032,
+            "invalid height in dimension #{i}",
+        );
+
+        ensure!(
+            (0.0..=1.0).contains(&dim.ambient_light),
+            "ambient_light is out of range in dimension #{i}",
+        );
+
+        if let Some(fixed_time) = dim.fixed_time {
+            assert!(
+                (0..=24_000).contains(&fixed_time),
+                "fixed_time is out of range in dimension #{i}",
+            );
+        }
+    }
+
+    let biomes = cfg.biomes();
+
+    ensure!(!biomes.is_empty(), "at least one biome must be added");
+
+    ensure!(
+        biomes.len() <= u16::MAX as usize,
+        "more than u16::MAX biomes added"
+    );
+
+    let mut names = HashSet::new();
+
+    for biome in biomes.iter() {
+        ensure!(
+            names.insert(biome.name.clone()),
+            "biome \"{}\" already added",
+            biome.name
+        );
+    }
+
     let rsa_key = RsaPrivateKey::new(&mut OsRng, 1024)?;
 
     let public_key_der =
@@ -296,46 +366,39 @@ pub(crate) fn start_server(config: ServerConfig) -> ShutdownResult {
 
     let (new_players_tx, new_players_rx) = flume::bounded(1);
 
-    let rt = if config.tokio_handle.is_none() {
+    let runtime = if tokio_handle.is_none() {
         Some(Runtime::new()?)
     } else {
         None
     };
 
-    let handle = match &rt {
+    let tokio_handle = match &runtime {
         Some(rt) => rt.handle().clone(),
-        None => config.tokio_handle.unwrap(),
+        None => tokio_handle.unwrap(),
     };
 
-    let _guard = handle.enter();
-
-    let connection_sema = Arc::new(Semaphore::new(config.max_clients.saturating_add(64)));
-
-    struct DummyHandler;
-    impl Handler for DummyHandler {}
-
     let shared = SharedServer(Arc::new(SharedServerInner {
-        handler: config.handler.unwrap_or_else(|| Box::new(DummyHandler)),
-        address: config.address,
-        update_duration: config.update_duration,
-        online_mode: config.online_mode,
-        max_clients: config.max_clients,
-        clientbound_packet_capacity: config.clientbound_packet_capacity,
-        serverbound_packet_capacity: config.serverbound_packet_capacity,
-        tokio_handle: handle.clone(),
-        dimensions: config.dimensions,
-        biomes: config.biomes,
+        cfg: Box::new(cfg),
+        address,
+        update_duration,
+        online_mode,
+        max_connections,
+        outgoing_packet_capacity,
+        incoming_packet_capacity,
+        tokio_handle,
+        _tokio_runtime: runtime,
+        dimensions,
+        biomes,
         start_instant: Instant::now(),
-        connection_sema,
+        connection_sema: Arc::new(Semaphore::new(max_connections)),
         shutdown_result: Mutex::new(None),
         rsa_key,
         public_key_der,
         http_client: HttpClient::new(),
         new_clients_tx: new_players_tx,
-        client_count: AtomicUsize::new(0),
     }));
 
-    let mut server = Server {
+    Ok(Server {
         entities: EntityStore::new(),
         clients: ClientStore::new(),
         worlds: WorldStore::new(),
@@ -347,13 +410,7 @@ pub(crate) fn start_server(config: ServerConfig) -> ShutdownResult {
             new_players_rx,
             last_keepalive: Instant::now(),
         },
-    };
-
-    shared.handler().init(&mut server);
-
-    tokio::spawn(do_accept_loop(shared));
-
-    do_update_loop(&mut server)
+    })
 }
 
 fn do_update_loop(server: &mut Server) -> ShutdownResult {
@@ -392,7 +449,7 @@ fn do_update_loop(server: &mut Server) -> ShutdownResult {
             .par_iter_mut()
             .for_each(|(_, chunk)| chunk.apply_modifications());
 
-        shared.handler().update(server);
+        shared.config().update(server);
 
         // Chunks modified this tick can have their changes applied immediately because
         // they have not been observed by clients yet.
@@ -417,8 +474,8 @@ fn do_update_loop(server: &mut Server) -> ShutdownResult {
 }
 
 fn join_player(server: &mut Server, msg: NewClientMessage) {
-    let (clientbound_tx, clientbound_rx) = flume::bounded(server.0.clientbound_packet_capacity);
-    let (serverbound_tx, serverbound_rx) = flume::bounded(server.0.serverbound_packet_capacity);
+    let (clientbound_tx, clientbound_rx) = flume::bounded(server.0.outgoing_packet_capacity);
+    let (serverbound_tx, serverbound_rx) = flume::bounded(server.0.incoming_packet_capacity);
 
     let client_packet_channels: ClientPacketChannels = (serverbound_tx, clientbound_rx);
     let server_packet_channels: ServerPacketChannels = (clientbound_tx, serverbound_rx);
@@ -428,7 +485,7 @@ fn join_player(server: &mut Server, msg: NewClientMessage) {
     let client_backed_entity = match server.entities.create_with_uuid(msg.ncd.uuid) {
         Some(id) => id,
         None => {
-            log::error!(
+            log::warn!(
                 "player '{}' cannot join the server because their UUID ({}) conflicts with an \
                  existing entity",
                 msg.ncd.username,
@@ -438,7 +495,7 @@ fn join_player(server: &mut Server, msg: NewClientMessage) {
         }
     };
 
-    let client_id = server.clients.create(Client::new(
+    server.clients.create(Client::new(
         server_packet_channels,
         client_backed_entity,
         msg.ncd.username,
@@ -468,7 +525,7 @@ async fn do_accept_loop(server: SharedServer) {
                         // Setting TCP_NODELAY to true appears to trade some throughput for improved
                         // latency. Testing is required to determine if this is worth keeping.
                         if let Err(e) = stream.set_nodelay(true) {
-                            log::error!("failed to set TCP nodelay: {e}")
+                            log::error!("failed to set TCP nodelay: {e}");
                         }
 
                         if let Err(e) = handle_connection(server, stream, remote_addr).await {
@@ -522,12 +579,7 @@ async fn handle_status(
 ) -> anyhow::Result<()> {
     c.1.read_packet::<Request>().await?;
 
-    match server
-        .0
-        .handler
-        .server_list_ping(&server, remote_addr)
-        .await
-    {
+    match server.0.cfg.server_list_ping(&server, remote_addr).await {
         ServerListPing::Respond {
             online_players,
             max_players,
@@ -685,14 +737,7 @@ async fn handle_login(
         remote_addr,
     };
 
-    if !server.try_inc_player_count() {
-        let reason = server.0.handler.max_client_message(server, &npd).await;
-        log::info!("Disconnect at login: \"{reason}\"");
-        c.0.write_packet(&login::Disconnect { reason }).await?;
-        return Ok(None);
-    }
-
-    if let Login::Disconnect(reason) = server.0.handler.login(server, &npd).await {
+    if let Login::Disconnect(reason) = server.0.cfg.login(server, &npd).await {
         log::info!("Disconnect at login: \"{reason}\"");
         c.0.write_packet(&login::Disconnect { reason }).await?;
         return Ok(None);
