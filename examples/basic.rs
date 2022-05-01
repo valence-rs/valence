@@ -1,6 +1,5 @@
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
 
 use log::LevelFilter;
 use valence::client::GameMode;
@@ -17,13 +16,11 @@ pub fn main() -> ShutdownResult {
         .init();
 
     valence::start_server(Game {
-        favicon: Arc::from(include_bytes!("favicon.png").as_slice()),
         player_count: AtomicUsize::new(0),
     })
 }
 
 struct Game {
-    favicon: Arc<[u8]>,
     player_count: AtomicUsize,
 }
 
@@ -102,7 +99,7 @@ impl Config for Game {
             online_players: self.player_count.load(Ordering::SeqCst) as i32,
             max_players: MAX_PLAYERS as i32,
             description: "Hello Valence!".color(Color::AQUA),
-            favicon_png: Some(self.favicon.clone()),
+            favicon_png: Some(include_bytes!("favicon.png")),
         }
     }
 

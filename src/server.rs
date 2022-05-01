@@ -67,8 +67,6 @@ pub struct Other {
     tick_counter: Ticks,
     /// The instant the current game tick began.
     tick_start: Instant,
-    /// The time the last keep alive packet was sent to all players.
-    pub(crate) last_keepalive: Instant,
 }
 
 /// A server handle providing the subset of functionality which can be performed
@@ -80,7 +78,7 @@ pub struct SharedServer(Arc<SharedServerInner>);
 struct SharedServerInner {
     cfg: Box<dyn Config>,
     address: SocketAddr,
-    update_duration: Duration,
+    tick_rate: Ticks,
     online_mode: bool,
     max_connections: usize,
     incoming_packet_capacity: usize,
@@ -153,8 +151,8 @@ impl SharedServer {
         self.0.address
     }
 
-    pub fn update_duration(&self) -> Duration {
-        self.0.update_duration
+    pub fn tick_rate(&self) -> Ticks {
+        self.0.tick_rate
     }
 
     pub fn online_mode(&self) -> bool {
@@ -277,12 +275,9 @@ pub fn start_server(config: impl Config) -> ShutdownResult {
 fn setup_server(cfg: impl Config) -> anyhow::Result<Server> {
     let max_connections = cfg.max_connections();
     let address = cfg.address();
-    let update_duration = cfg.update_duration();
+    let tick_rate = cfg.tick_rate();
 
-    ensure!(
-        update_duration != Duration::ZERO,
-        "update duration must be nonzero"
-    );
+    ensure!(tick_rate > 0, "tick rate must be greater than zero");
 
     let online_mode = cfg.online_mode();
 
@@ -380,7 +375,7 @@ fn setup_server(cfg: impl Config) -> anyhow::Result<Server> {
     let shared = SharedServer(Arc::new(SharedServerInner {
         cfg: Box::new(cfg),
         address,
-        update_duration,
+        tick_rate,
         online_mode,
         max_connections,
         outgoing_packet_capacity,
@@ -408,7 +403,6 @@ fn setup_server(cfg: impl Config) -> anyhow::Result<Server> {
             tick_counter: 0,
             tick_start: Instant::now(),
             new_players_rx,
-            last_keepalive: Instant::now(),
         },
     })
 }
@@ -426,21 +420,14 @@ fn do_update_loop(server: &mut Server) -> ShutdownResult {
             join_player(server, msg);
         }
 
-        const KEEPALIVE_FREQ: Duration = Duration::from_secs(8);
-        if server.tick_start().duration_since(server.last_keepalive) >= KEEPALIVE_FREQ {
-            server.last_keepalive = server.tick_start();
-        }
-
-        {
-            server.clients.par_iter_mut().for_each(|(_, client)| {
-                client.update(
-                    &server.entities,
-                    &server.worlds,
-                    &server.chunks,
-                    &server.other,
-                )
-            });
-        }
+        server.clients.par_iter_mut().for_each(|(_, client)| {
+            client.update(
+                &server.entities,
+                &server.worlds,
+                &server.chunks,
+                &server.other,
+            )
+        });
 
         server.entities.update();
 
@@ -451,7 +438,7 @@ fn do_update_loop(server: &mut Server) -> ShutdownResult {
 
         shared.config().update(server);
 
-        // Chunks modified this tick can have their changes applied immediately because
+        // Chunks created this tick can have their changes applied immediately because
         // they have not been observed by clients yet.
         server.chunks.par_iter_mut().for_each(|(_, chunk)| {
             if chunk.created_this_tick() {
@@ -461,14 +448,10 @@ fn do_update_loop(server: &mut Server) -> ShutdownResult {
         });
 
         // Sleep for the remainder of the tick.
-        thread::sleep(
-            server
-                .0
-                .update_duration
-                .saturating_sub(server.tick_start.elapsed()),
-        );
-        server.tick_start = Instant::now();
+        let tick_duration = Duration::from_secs_f64((server.0.tick_rate as f64).recip());
+        thread::sleep(tick_duration.saturating_sub(server.tick_start.elapsed()));
 
+        server.tick_start = Instant::now();
         server.tick_counter += 1;
     }
 }

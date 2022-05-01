@@ -1,13 +1,11 @@
 use std::any::Any;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::panic::{RefUnwindSafe, UnwindSafe};
-use std::sync::Arc;
-use std::time::Duration;
 
 use async_trait::async_trait;
 use tokio::runtime::Handle as TokioHandle;
 
-use crate::{ident, Id, Identifier, NewClientData, Server, SharedServer, Text};
+use crate::{ident, Id, Identifier, NewClientData, Server, SharedServer, Text, Ticks};
 
 /// A trait containing callbacks which are invoked by the running Minecraft
 /// server.
@@ -41,20 +39,19 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
         SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 25565).into()
     }
 
-    /// Called once at startup to get the duration of each game update.
+    /// Called once at startup to get the tick rate, which is the number of game
+    /// updates that should occur in one second.
     ///
-    /// On each game update (a.k.a. tick), the server is expected to update game
-    /// logic and respond to packets from clients. Once this is complete,
-    /// the server will sleep for any remaining time until the full update
-    /// duration has passed.
+    /// On each game update (tick), the server is expected to update game logic
+    /// and respond to packets from clients. Once this is complete, the server
+    /// will sleep for any remaining time until a full tick has passed.
     ///
-    /// The duration must be nonzero.
+    /// The tick rate must be greater than zero.
     ///
     /// # Default Implementation
-    /// Returns 1/20th of a second, which is the same as Minecraft's official
-    /// server.
-    fn update_duration(&self) -> Duration {
-        Duration::from_secs_f64(1.0 / 20.0)
+    /// Returns `20`, which is the same as Minecraft's official server.
+    fn tick_rate(&self) -> Ticks {
+        20
     }
 
     /// Called once at startup to get the "online mode" option, which determines
@@ -200,7 +197,7 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
 
 /// The result of the [`server_list_ping`](Handler::server_list_ping) callback.
 #[derive(Debug)]
-pub enum ServerListPing {
+pub enum ServerListPing<'a> {
     /// Responds to the server list ping with the given information.
     Respond {
         online_players: i32,
@@ -210,7 +207,7 @@ pub enum ServerListPing {
         /// The image must be 64x64 pixels.
         ///
         /// No icon is used if the value is `None`.
-        favicon_png: Option<Arc<[u8]>>,
+        favicon_png: Option<&'a [u8]>,
     },
     /// Ignores the query and disconnects from the client.
     Ignore,

@@ -59,7 +59,6 @@ impl<T> SlotMap<T> {
 
     pub fn insert(&mut self, val: T) -> Key {
         assert!(
-            // -1 so that NULL is always invalid.
             self.count < u32::MAX,
             "SlotMap: too many items inserted"
         );

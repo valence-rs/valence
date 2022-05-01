@@ -27,8 +27,8 @@ use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::var_int::VarInt;
 use crate::world::WorldId;
 use crate::{
-    glm, ident, ChunkPos, ChunkStore, EntityId, EntityStore, Server, SharedServer, Text, Ticks,
-    WorldStore, LIBRARY_NAMESPACE,
+    glm, ident, ChunkPos, ChunkStore, EntityId, EntityStore, Server, Text, Ticks, WorldStore,
+    LIBRARY_NAMESPACE,
 };
 
 pub struct ClientStore {
@@ -386,7 +386,7 @@ impl Client {
         }
 
         // Check if it's time to send another keepalive.
-        if other.last_keepalive == other.tick_start() {
+        if other.current_tick() % (other.tick_rate() * 8) == 0 {
             if self.got_keepalive {
                 let id = rand::random();
                 self.send_packet(KeepAliveClientbound { id });
