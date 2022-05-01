@@ -8,6 +8,7 @@ use bitvec::vec::BitVec;
 use num::Integer;
 use rayon::iter::ParallelIterator;
 
+use crate::block::BlockState;
 use crate::glm::DVec2;
 use crate::packets::play::{
     BlockChange, ChunkDataAndUpdateLight, ChunkDataHeightmaps, ClientPlayPacket, MultiBlockChange,
@@ -81,8 +82,8 @@ pub struct Chunk {
 impl Chunk {
     pub(crate) fn new(section_count: usize) -> Self {
         let sect = ChunkSection {
-            blocks: [0; 4096],
-            biomes: [0; 64],
+            blocks: [BlockState::default(); 4096],
+            biomes: [BiomeId::default(); 64],
             compact_data: Vec::new(),
             modified: true,
         };
@@ -110,15 +111,15 @@ impl Chunk {
         self.sections.len() * 16
     }
 
-    pub fn get_block_state(&self, x: usize, y: usize, z: usize) -> u16 {
+    pub fn get_block_state(&self, x: usize, y: usize, z: usize) -> BlockState {
         if x < 16 && y < self.height() && z < 16 {
             self.sections[y / 16].blocks[x + z * 16 + y % 16 * 16 * 16]
         } else {
-            0
+            BlockState::AIR
         }
     }
 
-    pub fn set_block_state(&mut self, x: usize, y: usize, z: usize, block: u16) {
+    pub fn set_block_state(&mut self, x: usize, y: usize, z: usize, block: BlockState) {
         if x < 16 && y < self.height() && z < 16 {
             let sec = &mut self.sections[y / 16];
             let idx = x + z * 16 + y % 16 * 16 * 16;
@@ -134,7 +135,7 @@ impl Chunk {
 
     pub fn get_biome(&self, x: usize, y: usize, z: usize) -> BiomeId {
         if x < 4 && y < self.height() / 4 && z < 4 {
-            BiomeId(self.sections[y / 4].biomes[x + z * 4 + y % 4 * 4 * 4])
+            self.sections[y / 4].biomes[x + z * 4 + y % 4 * 4 * 4]
         } else {
             BiomeId::default()
         }
@@ -142,7 +143,7 @@ impl Chunk {
 
     pub fn set_biome(&mut self, x: usize, y: usize, z: usize, b: BiomeId) {
         if x < 4 && y < self.height() / 4 && z < 4 {
-            self.sections[y / 4].biomes[x + z * 4 + y % 4 * 4 * 4] = b.0;
+            self.sections[y / 4].biomes[x + z * 4 + y % 4 * 4 * 4] = b;
         }
     }
 
@@ -225,19 +226,30 @@ impl Chunk {
 
                     sect.compact_data.clear();
 
-                    // TODO: consider cave_air and void_air.
-                    let non_air_block_count = sect.blocks.iter().filter(|&&b| b != 0).count();
+                    let non_air_block_count = sect.blocks.iter().filter(|&&b| !b.is_air()).count();
 
                     (non_air_block_count as i16)
                         .encode(&mut sect.compact_data)
                         .unwrap();
 
-                    encode_paletted_container(&sect.blocks, 4, 9, 15, &mut sect.compact_data)
-                        .unwrap();
+                    encode_paletted_container(
+                        sect.blocks.iter().map(|b| b.to_raw()),
+                        4,
+                        9,
+                        15,
+                        &mut sect.compact_data,
+                    )
+                    .unwrap();
                     // TODO: The direct bits per idx changes depending on the number of biomes in
                     // the biome registry.
-                    encode_paletted_container(&sect.biomes, 0, 4, 6, &mut sect.compact_data)
-                        .unwrap();
+                    encode_paletted_container(
+                        sect.biomes.iter().map(|b| b.0),
+                        0,
+                        4,
+                        6,
+                        &mut sect.compact_data,
+                    )
+                    .unwrap();
                 }
             }
 
@@ -295,8 +307,8 @@ impl From<(i32, i32)> for ChunkPos {
 #[derive(Clone)]
 struct ChunkSection {
     /// The blocks in this section, stored in x, z, y order.
-    blocks: [u16; 4096],
-    biomes: [u16; 64],
+    blocks: [BlockState; 4096],
+    biomes: [BiomeId; 64],
     compact_data: Vec<u8>,
     /// If the blocks or biomes were modified.
     modified: bool,
@@ -315,8 +327,9 @@ fn build_heightmap(sections: &[ChunkSection], heightmap: &mut Vec<i64>) {
     for x in 0..16 {
         for z in 0..16 {
             for y in (0..height).rev() {
+                let block = sections[y / 16].blocks[x + z * 16 + y % 16 * 16 * 16];
                 // TODO: is_solid || is_fluid heuristic for motion blocking.
-                if sections[y / 16].blocks[x + z * 16 + y % 16 * 16 * 16] != 0 {
+                if !block.is_air() {
                     let column_height = y as u64;
 
                     let i = x * 16 + z; // TODO: X or Z major?
@@ -331,15 +344,17 @@ fn build_heightmap(sections: &[ChunkSection], heightmap: &mut Vec<i64>) {
 }
 
 fn encode_paletted_container(
-    entries: &[u16],
+    entries: impl ExactSizeIterator<Item = u16> + Clone,
     min_bits_per_idx: usize,
     direct_threshold: usize,
     direct_bits_per_idx: usize,
     w: &mut impl Write,
 ) -> anyhow::Result<()> {
+    let entries_len = entries.len();
+
     let mut palette = Vec::new();
 
-    for &entry in entries {
+    for entry in entries.clone() {
         if !palette.contains(&entry) {
             palette.push(entry);
         }
@@ -362,7 +377,7 @@ fn encode_paletted_container(
 
         VarInt(u64_count as i32).encode(w)?;
 
-        for &entry in entries {
+        for entry in entries {
             let mut val = 0u64;
             for i in 0..idxs_per_u64 {
                 val |= (entry as u64) << (i * direct_bits_per_idx);
@@ -382,7 +397,7 @@ fn encode_paletted_container(
 
         VarInt(u64_count as i32).encode(w)?;
 
-        for &entry in entries {
+        for entry in entries {
             let palette_idx = palette
                 .iter()
                 .position(|&e| e == entry)

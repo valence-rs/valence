@@ -2,6 +2,7 @@ use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
+use valence::block::BlockState;
 use valence::client::GameMode;
 use valence::config::{Config, Login, ServerListPing};
 use valence::text::Color;
@@ -59,7 +60,7 @@ impl Config for Game {
                     for z in 0..16 {
                         for x in 0..16 {
                             for y in 0..50 {
-                                chunk.set_block_state(x, y, z, 1);
+                                chunk.set_block_state(x, y, z, BlockState::STONE);
                             }
                         }
                     }

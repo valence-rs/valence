@@ -58,10 +58,7 @@ impl<T> SlotMap<T> {
     }
 
     pub fn insert(&mut self, val: T) -> Key {
-        assert!(
-            self.count < u32::MAX,
-            "SlotMap: too many items inserted"
-        );
+        assert!(self.count < u32::MAX, "SlotMap: too many items inserted");
 
         if self.next_free_head == self.slots.len() as u32 {
             self.slots.push(Slot {
