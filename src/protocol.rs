@@ -1,13 +1,16 @@
 use std::io::{Read, Write};
 use std::mem;
 
-use anyhow::{anyhow, ensure};
+use anyhow::{anyhow, ensure, Context};
+use arrayvec::ArrayVec;
 use bitvec::prelude::*;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use nalgebra_glm::{Number, TVec};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::var_int::VarInt;
+use crate::EntityId;
 
 /// Trait for types that can be written to the Minecraft protocol.
 pub trait Encode {
@@ -220,6 +223,30 @@ impl<T: Decode> Decode for Option<T> {
     }
 }
 
+impl<T: Encode> Encode for Box<T> {
+    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+        self.as_ref().encode(w)
+    }
+}
+
+impl<T: Decode> Decode for Box<T> {
+    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+        Ok(Box::new(T::decode(r)?))
+    }
+}
+
+impl Encode for Box<str> {
+    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+        encode_string_bounded(self, 0, 32767, w)
+    }
+}
+
+impl Decode for Box<str> {
+    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+        Ok(String::decode(r)?.into_boxed_str())
+    }
+}
+
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct BoundedInt<T, const MIN: i64, const MAX: i64>(pub T);
 
@@ -335,11 +362,25 @@ impl<T: Encode, const N: usize> Encode for [T; N] {
 
 impl<T: Decode, const N: usize> Decode for [T; N] {
     fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
-        let vec = decode_array_bounded(N, N, r)?;
-        match vec.try_into() {
-            Ok(arr) => Ok(arr),
-            Err(_) => unreachable!("array size does not match"),
+        let mut elems = ArrayVec::new();
+        for _ in 0..N {
+            elems.push(T::decode(r)?);
         }
+        elems
+            .into_inner()
+            .map_err(|_| unreachable!("mismatched array size"))
+    }
+}
+
+impl<T: Encode, const N: usize> Encode for TVec<T, N> {
+    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+        encode_array_bounded(self.as_slice(), N, N, w)
+    }
+}
+
+impl<T: Decode + Number, const N: usize> Decode for TVec<T, N> {
+    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+        Ok(<[T; N]>::decode(r)?.into())
     }
 }
 
@@ -456,6 +497,20 @@ impl Decode for ReadToEnd {
 impl Encode for ReadToEnd {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         w.write_all(&self.0).map_err(|e| e.into())
+    }
+}
+
+impl Encode for Option<EntityId> {
+    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+        match self {
+            Some(id) => VarInt(
+                id.to_network_id()
+                    .checked_add(1)
+                    .context("i32::MAX is unrepresentable as an optional VarInt")?,
+            ),
+            None => VarInt(0),
+        }
+        .encode(w)
     }
 }
 

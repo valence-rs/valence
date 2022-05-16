@@ -513,6 +513,7 @@ pub fn build() -> anyhow::Result<()> {
                 }
             }
 
+            /// Converts a `bool` to a `True` or `False` property value.
             pub const fn from_bool(b: bool) -> Self {
                 if b {
                     Self::True
@@ -521,6 +522,8 @@ pub fn build() -> anyhow::Result<()> {
                 }
             }
 
+            /// Convers a `True` or `False` property value to a `bool`.
+            /// Returns `None` if this property value is not `True` or `False`
             pub const fn to_bool(self) -> Option<bool> {
                 match self {
                     Self::True => Some(true),

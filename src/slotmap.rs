@@ -159,7 +159,7 @@ impl<T> SlotMap<T> {
     }
 
     pub fn retain(&mut self, mut f: impl FnMut(Key, &mut T) -> bool) {
-        for (i, slot) in self.slots.iter_mut().enumerate() {
+        for (i, mut slot) in self.slots.iter_mut().enumerate() {
             if let Slot::Occupied { value, version } = &mut slot {
                 let key = Key::new(i as u32, *version);
 

@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::error::Error;
 use std::iter::FusedIterator;
 use std::net::SocketAddr;
-use std::ops::{Deref, DerefMut};
+use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -27,7 +27,7 @@ use tokio::sync::{oneshot, Semaphore};
 use uuid::Uuid;
 
 use crate::codec::{Decoder, Encoder};
-use crate::config::{Biome, BiomeId, Config, Dimension, DimensionId, Login, ServerListPing};
+use crate::config::{Biome, BiomeId, Config, Dimension, DimensionId, ServerListPing};
 use crate::packets::handshake::{Handshake, HandshakeNextState};
 use crate::packets::login::{
     self, EncryptionRequest, EncryptionResponse, LoginStart, LoginSuccess, SetCompression,
@@ -37,45 +37,16 @@ use crate::packets::status::{Ping, Pong, Request, Response};
 use crate::protocol::{BoundedArray, BoundedString};
 use crate::util::valid_username;
 use crate::var_int::VarInt;
-use crate::{
-    ChunkStore, Client, ClientStore, EntityStore, Ticks, WorldStore, PROTOCOL_VERSION, VERSION_NAME,
-};
+use crate::world::Worlds;
+use crate::{Client, ClientMut, Ticks, WorldsMut, PROTOCOL_VERSION, VERSION_NAME};
 
-/// Holds the state of a running Minecraft server which is accessible inside the
-/// update loop. To start a server, see [`ServerConfig`].
-///
-/// Fields of this struct are made public to enable disjoint borrows. For
-/// instance, it is possible to mutate the list of entities while simultaneously
-/// reading world data.
-///
-/// Note the `Deref` and `DerefMut` impls on this struct are (ab)used to
-/// allow convenient access to the `other` field.
-#[non_exhaustive]
-pub struct Server {
-    pub entities: EntityStore,
-    pub clients: ClientStore,
-    pub worlds: WorldStore,
-    pub chunks: ChunkStore,
-    pub other: Other,
-}
-
-pub struct Other {
-    /// The shared portion of the server.
-    shared: SharedServer,
-    new_players_rx: Receiver<NewClientMessage>,
-    /// Incremented on every game tick.
-    tick_counter: Ticks,
-    /// The instant the current game tick began.
-    tick_start: Instant,
-}
-
-/// A server handle providing the subset of functionality which can be performed
-/// outside the update loop. `SharedServer`s are interally refcounted and can be
-/// freely cloned and shared between threads.
+/// A handle to a running Minecraft server containing state which is accessible
+/// outside the update loop. Servers are internally refcounted and can be shared
+/// between threads.
 #[derive(Clone)]
-pub struct SharedServer(Arc<SharedServerInner>);
+pub struct Server(Arc<ServerInner>);
 
-struct SharedServerInner {
+struct ServerInner {
     cfg: Box<dyn Config>,
     address: SocketAddr,
     tick_rate: Ticks,
@@ -90,6 +61,11 @@ struct SharedServerInner {
     biomes: Vec<Biome>,
     /// The instant the server was started.
     start_instant: Instant,
+    /// Receiver for new clients past the login stage.
+    new_clients_rx: Receiver<NewClientMessage>,
+    new_clients_tx: Sender<NewClientMessage>,
+    /// Incremented on every game tick.
+    tick_counter: AtomicI64,
     /// A semaphore used to limit the number of simultaneous connections to the
     /// server. Closing this semaphore stops new connections.
     connection_sema: Arc<Semaphore>,
@@ -102,7 +78,6 @@ struct SharedServerInner {
     public_key_der: Box<[u8]>,
     /// For session server requests.
     http_client: HttpClient,
-    new_clients_tx: Sender<NewClientMessage>,
 }
 
 /// Contains information about a new client.
@@ -114,7 +89,7 @@ pub struct NewClientData {
 
 struct NewClientMessage {
     ncd: NewClientData,
-    reply: oneshot::Sender<anyhow::Result<ClientPacketChannels>>,
+    reply: oneshot::Sender<ClientPacketChannels>,
 }
 
 /// The result type returned from [`ServerConfig::start`] after the server is
@@ -125,24 +100,7 @@ pub type ShutdownError = Box<dyn Error + Send + Sync + 'static>;
 pub(crate) type ClientPacketChannels = (Sender<ServerPlayPacket>, Receiver<ClientPlayPacket>);
 pub(crate) type ServerPacketChannels = (Sender<ClientPlayPacket>, Receiver<ServerPlayPacket>);
 
-impl Other {
-    /// Returns a reference to a [`SharedServer`].
-    pub fn shared(&self) -> &SharedServer {
-        &self.shared
-    }
-
-    /// Returns the number of ticks that have elapsed since the server began.
-    pub fn current_tick(&self) -> Ticks {
-        self.tick_counter
-    }
-
-    /// Returns the instant the current tick began.
-    pub fn tick_start(&self) -> Instant {
-        self.tick_start
-    }
-}
-
-impl SharedServer {
+impl Server {
     pub fn config(&self) -> &(impl Config + ?Sized) {
         self.0.cfg.as_ref()
     }
@@ -203,8 +161,11 @@ impl SharedServer {
     }
 
     /// Returns an iterator over all added biomes and their associated
-    /// [`BiomeId`].
-    pub fn biomes(&self) -> impl FusedIterator<Item = (BiomeId, &Biome)> + Clone {
+    /// [`BiomeId`] in ascending order.
+    pub fn biomes(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (BiomeId, &Biome)> + DoubleEndedIterator + FusedIterator + Clone
+    {
         self.0
             .biomes
             .iter()
@@ -215,6 +176,11 @@ impl SharedServer {
     /// Returns the instant the server was started.
     pub fn start_instant(&self) -> Instant {
         self.0.start_instant
+    }
+
+    /// Returns the number of ticks that have elapsed since the server began.
+    pub fn current_tick(&self) -> Ticks {
+        self.0.tick_counter.load(Ordering::SeqCst)
     }
 
     /// Immediately stops new connections to the server and initiates server
@@ -232,44 +198,23 @@ impl SharedServer {
     }
 }
 
-impl Deref for Server {
-    type Target = Other;
-
-    fn deref(&self) -> &Self::Target {
-        &self.other
-    }
-}
-
-impl DerefMut for Server {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.other
-    }
-}
-
-impl Deref for Other {
-    type Target = SharedServer;
-
-    fn deref(&self) -> &Self::Target {
-        &self.shared
-    }
-}
-
 /// Consumes the configuration and starts the server.
 ///
 /// The function returns when the server has shut down, a runtime error
 /// occurs, or the configuration is invalid.
 pub fn start_server(config: impl Config) -> ShutdownResult {
-    let mut server = setup_server(config).map_err(ShutdownError::from)?;
+    let server = setup_server(config).map_err(ShutdownError::from)?;
 
-    let shared = server.shared().clone();
+    let _guard = server.tokio_handle().enter();
 
-    let _guard = shared.tokio_handle().enter();
+    let mut worlds = Worlds::new(server.clone());
+    let mut worlds_mut = WorldsMut::new(&mut worlds);
 
-    shared.config().init(&mut server);
+    server.config().init(&server, worlds_mut.reborrow());
 
-    tokio::spawn(do_accept_loop(shared));
+    tokio::spawn(do_accept_loop(server.clone()));
 
-    do_update_loop(&mut server)
+    do_update_loop(server, worlds_mut)
 }
 
 fn setup_server(cfg: impl Config) -> anyhow::Result<Server> {
@@ -359,7 +304,7 @@ fn setup_server(cfg: impl Config) -> anyhow::Result<Server> {
         rsa_der::public_key_to_der(&rsa_key.n().to_bytes_be(), &rsa_key.e().to_bytes_be())
             .into_boxed_slice();
 
-    let (new_players_tx, new_players_rx) = flume::bounded(1);
+    let (new_clients_tx, new_clients_rx) = flume::bounded(1);
 
     let runtime = if tokio_handle.is_none() {
         Some(Runtime::new()?)
@@ -372,123 +317,125 @@ fn setup_server(cfg: impl Config) -> anyhow::Result<Server> {
         None => tokio_handle.unwrap(),
     };
 
-    let shared = SharedServer(Arc::new(SharedServerInner {
+    let server = ServerInner {
         cfg: Box::new(cfg),
         address,
         tick_rate,
         online_mode,
         max_connections,
-        outgoing_packet_capacity,
         incoming_packet_capacity,
+        outgoing_packet_capacity,
         tokio_handle,
         _tokio_runtime: runtime,
         dimensions,
         biomes,
         start_instant: Instant::now(),
+        new_clients_rx,
+        new_clients_tx,
+        tick_counter: AtomicI64::new(0),
         connection_sema: Arc::new(Semaphore::new(max_connections)),
         shutdown_result: Mutex::new(None),
         rsa_key,
         public_key_der,
         http_client: HttpClient::new(),
-        new_clients_tx: new_players_tx,
-    }));
+    };
 
-    Ok(Server {
-        entities: EntityStore::new(),
-        clients: ClientStore::new(),
-        worlds: WorldStore::new(),
-        chunks: ChunkStore::new(),
-        other: Other {
-            shared: shared.clone(),
-            tick_counter: 0,
-            tick_start: Instant::now(),
-            new_players_rx,
-        },
-    })
+    Ok(Server(Arc::new(server)))
 }
 
-fn do_update_loop(server: &mut Server) -> ShutdownResult {
-    server.tick_start = Instant::now();
-    let shared = server.shared().clone();
+fn do_update_loop(server: Server, mut worlds: WorldsMut) -> ShutdownResult {
+    let mut tick_start = Instant::now();
 
     loop {
         if let Some(res) = server.0.shutdown_result.lock().take() {
             return res;
         }
 
-        while let Ok(msg) = server.new_players_rx.try_recv() {
-            join_player(server, msg);
+        while let Ok(msg) = server.0.new_clients_rx.try_recv() {
+            join_player(&server, worlds.reborrow(), msg);
         }
 
-        server.clients.par_iter_mut().for_each(|(_, client)| {
-            client.update(
-                &server.entities,
-                &server.worlds,
-                &server.chunks,
-                &server.other,
-            )
-        });
+        server.config().update(&server, worlds.reborrow());
 
-        server.entities.update();
+        worlds.par_iter_mut().for_each(|(_, mut world)| {
+            world.chunks.par_iter_mut().for_each(|(_, mut chunk)| {
+                if chunk.created_tick() == server.current_tick() {
+                    // Chunks created this tick can have their changes applied immediately because
+                    // they have not been observed by clients yet. Clients will not have to be sent
+                    // the block change packet in this case.
+                    chunk.apply_modifications();
+                }
+            });
 
-        server
-            .chunks
-            .par_iter_mut()
-            .for_each(|(_, chunk)| chunk.apply_modifications());
+            world.clients.par_iter_mut().for_each(|(_, mut client)| {
+                client.update(&server, &world.entities, &world.chunks, world.dimension);
+            });
 
-        shared.config().update(server);
+            world.entities.update();
 
-        // Chunks created this tick can have their changes applied immediately because
-        // they have not been observed by clients yet.
-        server.chunks.par_iter_mut().for_each(|(_, chunk)| {
-            if chunk.created_this_tick() {
-                chunk.clear_created_this_tick();
+            world.chunks.par_iter_mut().for_each(|(_, mut chunk)| {
                 chunk.apply_modifications();
-            }
+            });
         });
 
         // Sleep for the remainder of the tick.
         let tick_duration = Duration::from_secs_f64((server.0.tick_rate as f64).recip());
-        thread::sleep(tick_duration.saturating_sub(server.tick_start.elapsed()));
+        thread::sleep(tick_duration.saturating_sub(tick_start.elapsed()));
 
-        server.tick_start = Instant::now();
-        server.tick_counter += 1;
+        tick_start = Instant::now();
+        server.0.tick_counter.fetch_add(1, Ordering::SeqCst);
     }
 }
 
-fn join_player(server: &mut Server, msg: NewClientMessage) {
+fn join_player(server: &Server, mut worlds: WorldsMut, msg: NewClientMessage) {
     let (clientbound_tx, clientbound_rx) = flume::bounded(server.0.outgoing_packet_capacity);
     let (serverbound_tx, serverbound_rx) = flume::bounded(server.0.incoming_packet_capacity);
 
     let client_packet_channels: ClientPacketChannels = (serverbound_tx, clientbound_rx);
     let server_packet_channels: ServerPacketChannels = (clientbound_tx, serverbound_rx);
 
-    let _ = msg.reply.send(Ok(client_packet_channels));
+    let _ = msg.reply.send(client_packet_channels);
 
-    let client_backed_entity = match server.entities.create_with_uuid(msg.ncd.uuid) {
-        Some(id) => id,
-        None => {
-            log::warn!(
-                "player '{}' cannot join the server because their UUID ({}) conflicts with an \
-                 existing entity",
-                msg.ncd.username,
-                msg.ncd.uuid
-            );
-            return;
-        }
-    };
-
-    server.clients.create(Client::new(
+    let mut client = Client::new(
         server_packet_channels,
-        client_backed_entity,
         msg.ncd.username,
+        msg.ncd.uuid,
         server,
-    ));
+    );
+    let mut client_mut = ClientMut::new(&mut client);
+
+    match server
+        .0
+        .cfg
+        .join(server, client_mut.reborrow(), worlds.reborrow())
+    {
+        Ok(world_id) => {
+            if let Some(mut world) = worlds.get_mut(world_id) {
+                if world.entities.get_with_uuid(client.uuid()).is_none() {
+                    world.clients.create(client);
+                } else {
+                    log::warn!(
+                        "client '{}' cannot join the server because their UUID ({}) conflicts \
+                         with an existing entity",
+                        client.username(),
+                        client.uuid()
+                    );
+                }
+            } else {
+                log::warn!(
+                    "client '{}' cannot join the server because the WorldId returned by \
+                     Config::join is invalid.",
+                    client.username()
+                );
+            }
+        }
+        Err(errmsg) => client_mut.disconnect(errmsg),
+    }
 }
 
 type Codec = (Encoder<OwnedWriteHalf>, Decoder<OwnedReadHalf>);
 
-async fn do_accept_loop(server: SharedServer) {
+async fn do_accept_loop(server: Server) {
     log::trace!("entering accept loop");
 
     let listener = match TcpListener::bind(server.0.address).await {
@@ -528,7 +475,7 @@ async fn do_accept_loop(server: SharedServer) {
 }
 
 async fn handle_connection(
-    server: SharedServer,
+    server: Server,
     stream: TcpStream,
     remote_addr: SocketAddr,
 ) -> anyhow::Result<()> {
@@ -556,7 +503,7 @@ async fn handle_connection(
 }
 
 async fn handle_status(
-    server: SharedServer,
+    server: Server,
     c: &mut Codec,
     remote_addr: SocketAddr,
 ) -> anyhow::Result<()> {
@@ -607,7 +554,7 @@ async fn handle_status(
 
 /// Handle the login process and return the new player's data if successful.
 async fn handle_login(
-    server: &SharedServer,
+    server: &Server,
     c: &mut Codec,
     remote_addr: SocketAddr,
 ) -> anyhow::Result<Option<NewClientData>> {
@@ -720,7 +667,7 @@ async fn handle_login(
         remote_addr,
     };
 
-    if let Login::Disconnect(reason) = server.0.cfg.login(server, &npd).await {
+    if let Err(reason) = server.0.cfg.login(server, &npd).await {
         log::info!("Disconnect at login: \"{reason}\"");
         c.0.write_packet(&login::Disconnect { reason }).await?;
         return Ok(None);
@@ -735,7 +682,7 @@ async fn handle_login(
     Ok(Some(npd))
 }
 
-async fn handle_play(server: &SharedServer, c: Codec, ncd: NewClientData) -> anyhow::Result<()> {
+async fn handle_play(server: &Server, c: Codec, ncd: NewClientData) -> anyhow::Result<()> {
     let (reply_tx, reply_rx) = oneshot::channel();
 
     server
@@ -748,7 +695,7 @@ async fn handle_play(server: &SharedServer, c: Codec, ncd: NewClientData) -> any
         .await?;
 
     let (packet_tx, packet_rx) = match reply_rx.await {
-        Ok(res) => res?,
+        Ok(res) => res,
         Err(_) => return Ok(()), // Server closed
     };
 

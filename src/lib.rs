@@ -4,7 +4,7 @@
     trivial_numeric_casts,
     unused_lifetimes,
     unused_import_braces,
-    missing_docs
+    // missing_docs
 )]
 
 mod aabb;
@@ -30,15 +30,15 @@ pub mod world;
 pub use aabb::Aabb;
 pub use async_trait::async_trait;
 pub use block_pos::BlockPos;
-pub use chunk::{Chunk, ChunkPos, ChunkStore};
-pub use client::{Client, ClientStore};
+pub use chunk::{Chunk, ChunkPos, Chunks, ChunksMut};
+pub use client::{Client, ClientMut, Clients, ClientsMut};
 pub use config::{Biome, BiomeId, Config, Dimension, DimensionId};
-pub use entity::{Entity, EntityId, EntityStore};
+pub use entity::{Entities, EntitiesMut, Entity, EntityId};
 pub use identifier::Identifier;
-pub use server::{start_server, NewClientData, Server, SharedServer, ShutdownResult};
+pub use server::{start_server, NewClientData, Server, ShutdownResult};
 pub use text::{Text, TextFormat};
 pub use uuid::Uuid;
-pub use world::{World, WorldId, WorldStore};
+pub use world::{WorldId, WorldMut, WorldRef, Worlds, WorldsMut};
 pub use {nalgebra_glm as glm, nbt, uuid};
 
 /// The Minecraft protocol version that this library targets.
@@ -55,18 +55,3 @@ const LIBRARY_NAMESPACE: &str = "valence";
 /// The duration of a game update depends on the current configuration, which
 /// may or may not be the same as Minecraft's standard 20 ticks/second.
 pub type Ticks = i64;
-
-/// Types such as [`EntityId`], [`WorldId`], and [`ChunkId`] which can be used
-/// as indices into an array.
-///
-/// Every ID is either valid or invalid. Valid IDs point to living values. For
-/// instance, a valid [`EntityId`] points to a living entity on the server. When
-/// that entity is deleted, the corresponding [`EntityId`] becomes invalid.
-pub trait Id: Copy + Send + Sync + PartialEq + Eq {
-    /// Returns the index of this ID.
-    ///
-    /// For all IDs `a` and `b`, `a == b` implies `a.idx() == b.idx()`. If
-    /// both `a` and `b` are currently valid, then `a != b` implies `a.idx() !=
-    /// b.idx()`.
-    fn idx(self) -> usize;
-}

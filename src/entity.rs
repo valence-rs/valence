@@ -4,77 +4,44 @@ pub mod types;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::iter::FusedIterator;
+use std::ops::Deref;
 
+use bitfield_struct::bitfield;
 use rayon::iter::ParallelIterator;
 use uuid::Uuid;
 
+use crate::byte_angle::ByteAngle;
 use crate::chunk::ChunkPos;
-use crate::glm::DVec3;
+use crate::glm::{DVec3, I16Vec3, Vec3};
+use crate::packets::play::{
+    ClientPlayPacket, EntityMetadata, SpawnEntity, SpawnExperienceOrb, SpawnLivingEntity,
+    SpawnPainting, SpawnPlayer,
+};
+use crate::protocol::ReadToEnd;
 use crate::slotmap::{Key, SlotMap};
-use crate::{Aabb, Id, WorldId};
+use crate::var_int::VarInt;
+use crate::{Aabb, WorldId};
 
-pub struct EntityStore {
+pub struct Entities {
     sm: SlotMap<Entity>,
     uuid_to_entity: HashMap<Uuid, EntityId>,
-    /// Maps chunk positions to the set of all entities with bounding volumes
-    /// intersecting that chunk.
-    partition: HashMap<(WorldId, ChunkPos), Vec<EntityId>>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub struct EntityId(Key);
+pub struct EntitiesMut<'a>(&'a mut Entities);
 
-impl Id for EntityId {
-    fn idx(self) -> usize {
-        self.0.index() as usize
-    }
-}
+impl<'a> Deref for EntitiesMut<'a> {
+    type Target = Entities;
 
-impl EntityId {
-    pub(crate) fn to_network_id(self) -> i32 {
-        // TODO: is ID 0 reserved?
-        self.0.index() as i32
+    fn deref(&self) -> &Self::Target {
+        self.0
     }
 }
 
-pub struct Entity {
-    data: EntityData,
-    old_type: EntityType,
-    new_position: DVec3,
-    old_position: DVec3,
-    new_world: Option<WorldId>,
-    old_world: Option<WorldId>,
-    uuid: Uuid,
-}
-
-impl Entity {
-    pub fn data(&self) -> &EntityData {
-        &self.data
-    }
-
-    pub fn typ(&self) -> EntityType {
-        self.data.typ()
-    }
-
-    /// Changes the type of this entity.
-    pub fn change_type(&mut self, new_type: EntityType) {
-        todo!(); // TODO
-    }
-
-    fn hitbox(&self) -> Aabb<f64, 3> {
-        // TODO
-        Aabb::default()
-    }
-}
-
-pub use types::{EntityData, EntityType};
-
-impl EntityStore {
+impl Entities {
     pub(crate) fn new() -> Self {
         Self {
             sm: SlotMap::new(),
             uuid_to_entity: HashMap::new(),
-            partition: HashMap::new(),
         }
     }
 
@@ -83,11 +50,38 @@ impl EntityStore {
         self.sm.count()
     }
 
-    /// Spawns a new entity with the default data. The new entity'd [`EntityId`]
+    /// Gets the [`EntityId`] of the entity with the given UUID in an efficient
+    /// manner.
+    ///
+    /// Returns `None` if there is no entity with the provided UUID. Returns
+    /// `Some` otherwise.
+    pub fn get_with_uuid(&self, uuid: Uuid) -> Option<EntityId> {
+        self.uuid_to_entity.get(&uuid).cloned()
+    }
+
+    pub fn get(&self, entity: EntityId) -> Option<&Entity> {
+        self.sm.get(entity.0)
+    }
+
+    pub fn iter(&self) -> impl FusedIterator<Item = (EntityId, &Entity)> + Clone + '_ {
+        self.sm.iter().map(|(k, v)| (EntityId(k), v))
+    }
+
+    pub fn par_iter(&self) -> impl ParallelIterator<Item = (EntityId, &Entity)> + Clone + '_ {
+        self.sm.par_iter().map(|(k, v)| (EntityId(k), v))
+    }
+}
+
+impl<'a> EntitiesMut<'a> {
+    pub(crate) fn new(entities: &'a mut Entities) -> Self {
+        Self(entities)
+    }
+
+    /// Spawns a new entity with the default data. The new entity's [`EntityId`]
     /// is returned.
     ///
     /// To actually see the new entity, set its position to somewhere nearby and
-    /// [change its type](EntityData::change_type) to something visible.
+    /// [set its type](EntityData::set_type) to something visible.
     pub fn create(&mut self) -> EntityId {
         loop {
             let uuid = Uuid::from_bytes(rand::random());
@@ -100,19 +94,22 @@ impl EntityStore {
     /// Like [`create`](Entities::create), but requires specifying the new
     /// entity's UUID. This is useful for deserialization.
     ///
-    /// The provided UUID must not conflict with an existing entity UUID. If it
-    /// does, `None` is returned and the entity is not spawned.
+    /// The provided UUID must not conflict with an existing entity UUID in this
+    /// world. If it does, `None` is returned and the entity is not spawned.
     pub fn create_with_uuid(&mut self, uuid: Uuid) -> Option<EntityId> {
-        match self.uuid_to_entity.entry(uuid) {
+        match self.0.uuid_to_entity.entry(uuid) {
             Entry::Occupied(_) => None,
             Entry::Vacant(ve) => {
-                let entity = EntityId(self.sm.insert(Entity {
-                    data: EntityData::Marker(types::Marker::new()),
-                    old_type: EntityType::Marker,
+                let entity = EntityId(self.0.sm.insert(Entity {
+                    flags: EntityFlags(0),
+                    meta: EntityMeta::new(EntityType::Marker),
                     new_position: DVec3::default(),
                     old_position: DVec3::default(),
-                    new_world: None,
-                    old_world: None,
+                    yaw: 0.0,
+                    pitch: 0.0,
+                    head_yaw: 0.0,
+                    head_pitch: 0.0,
+                    velocity: Vec3::default(),
                     uuid,
                 }));
 
@@ -125,18 +122,10 @@ impl EntityStore {
         }
     }
 
-    /// Gets the [`EntityId`] of the entity with the given UUID in an efficient
-    /// manner.
-    ///
-    /// Returns `None` if there is no entity with the provided UUID. Returns
-    /// `Some` otherwise.
-    pub fn get_with_uuid(&self, uuid: Uuid) -> Option<EntityId> {
-        self.uuid_to_entity.get(&uuid).cloned()
-    }
-
     pub fn delete(&mut self, entity: EntityId) -> bool {
-        if let Some(e) = self.sm.remove(entity.0) {
-            self.uuid_to_entity
+        if let Some(e) = self.0.sm.remove(entity.0) {
+            self.0
+                .uuid_to_entity
                 .remove(&e.uuid)
                 .expect("UUID should have been in UUID map");
 
@@ -147,197 +136,466 @@ impl EntityStore {
         }
     }
 
-    pub fn retain(&mut self, mut f: impl FnMut(EntityId, &mut Entity) -> bool) {
-        self.sm.retain(|k, v| f(EntityId(k), v))
+    pub fn retain(&mut self, mut f: impl FnMut(EntityId, EntityMut) -> bool) {
+        // TODO
+        self.0.sm.retain(|k, v| f(EntityId(k), EntityMut(v)))
     }
 
-    pub fn get(&self, entity: EntityId) -> Option<&Entity> {
-        self.sm.get(entity.0)
+    pub fn get_mut(&mut self, entity: EntityId) -> Option<EntityMut> {
+        self.0.sm.get_mut(entity.0).map(EntityMut)
     }
 
-    pub fn get_mut(&mut self, entity: EntityId) -> Option<&mut Entity> {
-        self.sm.get_mut(entity.0)
+    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (EntityId, EntityMut)> + '_ {
+        self.0
+            .sm
+            .iter_mut()
+            .map(|(k, v)| (EntityId(k), EntityMut(v)))
     }
 
-    pub fn iter(&self) -> impl FusedIterator<Item = (EntityId, &Entity)> + Clone + '_ {
-        self.sm.iter().map(|(k, v)| (EntityId(k), v))
-    }
-
-    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (EntityId, &mut Entity)> + '_ {
-        self.sm.iter_mut().map(|(k, v)| (EntityId(k), v))
-    }
-
-    pub fn par_iter(&self) -> impl ParallelIterator<Item = (EntityId, &Entity)> + Clone + '_ {
-        self.sm.par_iter().map(|(k, v)| (EntityId(k), v))
-    }
-
-    pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (EntityId, &mut Entity)> + '_ {
-        self.sm.par_iter_mut().map(|(k, v)| (EntityId(k), v))
-    }
-
-    pub(crate) fn from_network_id(&self, network_id: i32) -> Option<EntityId> {
-        self.sm.key_at_index(network_id as usize).map(EntityId)
-    }
-
-    fn partition_insert(&mut self, entity: EntityId, world: WorldId, aabb: Aabb<f64, 3>) {
-        let min_corner = ChunkPos::from_xz(aabb.min().xz());
-        let max_corner = ChunkPos::from_xz(aabb.max().xz());
-
-        for z in min_corner.z..=max_corner.z {
-            for x in min_corner.x..=max_corner.x {
-                self.partition_insert_at(entity, world, ChunkPos { x, z })
-            }
-        }
-    }
-
-    fn partition_insert_at(&mut self, entity: EntityId, world: WorldId, pos: ChunkPos) {
-        match self.partition.entry((world, pos)) {
-            Entry::Occupied(mut oe) => {
-                debug_assert!(
-                    !oe.get_mut().contains(&entity),
-                    "spatial partition: entity already present"
-                );
-                oe.get_mut().push(entity);
-            }
-            Entry::Vacant(ve) => {
-                ve.insert(vec![entity]);
-            }
-        }
-    }
-
-    fn partition_remove(&mut self, entity: EntityId, world: WorldId, aabb: Aabb<f64, 3>) {
-        let min_corner = ChunkPos::from_xz(aabb.min().xz());
-        let max_corner = ChunkPos::from_xz(aabb.max().xz());
-
-        for z in min_corner.z..=max_corner.z {
-            for x in min_corner.x..=max_corner.x {
-                self.partition_remove_at(entity, world, ChunkPos::new(x, z));
-            }
-        }
-    }
-
-    fn partition_remove_at(&mut self, entity: EntityId, world: WorldId, pos: ChunkPos) {
-        let errmsg = "spatial partition: entity removal failed";
-        match self.partition.entry((world, pos)) {
-            Entry::Occupied(mut oe) => {
-                let v = oe.get_mut();
-                let idx = v.iter().position(|e| *e == entity).expect(errmsg);
-                v.swap_remove(idx);
-
-                if v.is_empty() {
-                    oe.remove();
-                }
-            }
-            Entry::Vacant(_) => panic!("{errmsg}"),
-        }
-    }
-
-    fn partition_modify(
-        &mut self,
-        entity: EntityId,
-        old_world: WorldId,
-        old_aabb: Aabb<f64, 3>,
-        new_world: WorldId,
-        new_aabb: Aabb<f64, 3>,
-    ) {
-        if old_world != new_world {
-            self.partition_remove(entity, old_world, old_aabb);
-            self.partition_insert(entity, new_world, new_aabb);
-        } else {
-            let old_min_corner = ChunkPos::from_xz(old_aabb.min().xz());
-            let old_max_corner = ChunkPos::from_xz(old_aabb.max().xz());
-            let new_min_corner = ChunkPos::from_xz(new_aabb.min().xz());
-            let new_max_corner = ChunkPos::from_xz(new_aabb.max().xz());
-
-            for z in new_min_corner.z..=new_max_corner.z {
-                for x in new_min_corner.x..=new_max_corner.x {
-                    if x < old_min_corner.x
-                        || x > old_max_corner.x
-                        || z < old_min_corner.z
-                        || z > old_max_corner.z
-                    {
-                        self.partition_insert_at(entity, old_world, ChunkPos::new(x, z));
-                    }
-                }
-            }
-
-            for z in old_min_corner.z..=old_max_corner.z {
-                for x in old_min_corner.x..=old_max_corner.x {
-                    if x < new_min_corner.x
-                        || x > new_max_corner.x
-                        || z < new_min_corner.z
-                        || z > new_max_corner.z
-                    {
-                        self.partition_remove_at(entity, old_world, ChunkPos::new(x, z))
-                    }
-                }
-            }
-        }
-    }
-
-    /// Returns an iterator over all entities with bounding volumes intersecting
-    /// the given AABB in an arbitrary order.
-    pub fn intersecting_aabb(
-        &self,
-        world: WorldId,
-        aabb: Aabb<f64, 3>,
-    ) -> impl FusedIterator<Item = EntityId> + '_ {
-        let min_corner = ChunkPos::from_xz(aabb.min().xz());
-        let max_corner = ChunkPos::from_xz(aabb.max().xz());
-        (min_corner.z..=max_corner.z).flat_map(move |z| {
-            (min_corner.x..=max_corner.x).flat_map(move |x| {
-                self.partition
-                    .get(&(world, ChunkPos::new(x, z)))
-                    .into_iter()
-                    .flat_map(move |v| {
-                        v.iter().cloned().filter(move |&e| {
-                            self.get(e)
-                                .expect("spatial partition contains deleted entity")
-                                .hitbox()
-                                .collides_with_aabb(&aabb)
-                        })
-                    })
-            })
-        })
+    pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (EntityId, EntityMut)> + '_ {
+        self.0
+            .sm
+            .par_iter_mut()
+            .map(|(k, v)| (EntityId(k), EntityMut(v)))
     }
 
     pub(crate) fn update(&mut self) {
         for (_, e) in self.iter_mut() {
-            e.old_position = e.new_position;
-            e.old_world = e.new_world;
-
-            // TODO: update entity old_type.
-            // TODO: clear changed bits in metadata.
+            e.0.old_position = e.new_position;
+            e.0.meta.clear_modifications();
+            e.0.flags = EntityFlags(0);
         }
     }
 }
 
-//#[cfg(test)]
-//mod tests {
-//    use appearance::Player;
-//
-//    use super::*;
-//    use crate::glm;
-//
-//    // TODO: better test: spawn a bunch of random entities, spawn a random
-// AABB,    // assert collides_with_aabb consistency.
-//
-//    #[test]
-//    fn space_partition() {
-//        let mut entities = EntityStore::new();
-//
-//        let ids = [(16.0, 16.0, 16.0), (8.0, 8.0, 8.0), (10.0, 50.0, 10.0)]
-//            .into_iter()
-//            .map(|(x, y, z)| entities.create(Player::new(glm::vec3(x, y, z),
-// WorldId::NULL)))            .collect::<Vec<_>>();
-//
-//        let outside = *ids.last().unwrap();
-//
-//        assert!(entities
-//            .intersecting_aabb(
-//                WorldId::NULL,
-//                Aabb::new(glm::vec3(8.0, 8.0, 8.0), glm::vec3(16.0, 16.0,
-// 16.0)),            )
-//            .all(|id| ids.contains(&id) && id != outside));
-//    }
-//}
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct EntityId(Key);
+
+impl EntityId {
+    pub(crate) fn to_network_id(self) -> i32 {
+        // TODO: is ID 0 reserved?
+        self.0.index() as i32
+    }
+}
+
+pub struct Entity {
+    flags: EntityFlags,
+    meta: EntityMeta,
+    new_position: DVec3,
+    old_position: DVec3,
+    yaw: f32,
+    pitch: f32,
+    head_yaw: f32,
+    head_pitch: f32,
+    velocity: Vec3,
+    uuid: Uuid,
+}
+
+pub struct EntityMut<'a>(&'a mut Entity);
+
+impl<'a> Deref for EntityMut<'a> {
+    type Target = Entity;
+
+    fn deref(&self) -> &Self::Target {
+        self.0
+    }
+}
+
+/// Contains a bit for certain fields in [`Entity`] to track if they have been
+/// modified.
+#[bitfield(u8)]
+pub(crate) struct EntityFlags {
+    meta_modified: bool,
+    yaw_or_pitch_modified: bool,
+    head_yaw_modified: bool,
+    head_pitch_modified: bool,
+    velocity_modified: bool,
+    #[bits(3)]
+    _pad: u8,
+}
+
+impl Entity {
+    pub(crate) fn flags(&self) -> EntityFlags {
+        self.flags
+    }
+
+    /// Returns a reference to this entity's [`EntityMeta`].
+    pub fn meta(&self) -> &EntityMeta {
+        &self.meta
+    }
+
+    /// Returns the [`EntityType`] of this entity.
+    pub fn typ(&self) -> EntityType {
+        self.meta.typ()
+    }
+
+    /// Returns the position of this entity in the world it inhabits.
+    pub fn position(&self) -> DVec3 {
+        self.new_position
+    }
+
+    /// Returns the position of this entity as it existed at the end of the
+    /// previous tick.
+    pub fn old_position(&self) -> DVec3 {
+        self.old_position
+    }
+
+    /// Gets the yaw of this entity (in degrees).
+    pub fn yaw(&self) -> f32 {
+        self.yaw
+    }
+
+    /// Gets the pitch of this entity (in degrees).
+    pub fn pitch(&self) -> f32 {
+        self.pitch
+    }
+
+    /// Gets the head yaw of this entity (in degrees).
+    pub fn head_yaw(&self) -> f32 {
+        self.head_yaw
+    }
+
+    /// Gets the head pitch of this entity (in degrees).
+    pub fn head_pitch(&self) -> f32 {
+        self.head_pitch
+    }
+
+    /// Gets the velocity of this entity in meters per second.
+    pub fn velocity(&self) -> Vec3 {
+        self.velocity
+    }
+
+    /// Gets the metadata packet to send to clients after this entity has been
+    /// spawned.
+    ///
+    /// Is `None` if there is no initial metadata.
+    pub(crate) fn initial_metadata_packet(&self, this_id: EntityId) -> Option<EntityMetadata> {
+        self.meta.initial_metadata().map(|meta| EntityMetadata {
+            entity_id: VarInt(this_id.to_network_id()),
+            metadata: ReadToEnd(meta),
+        })
+    }
+
+    /// Gets the metadata packet to send to clients when the entity is modified.
+    ///
+    /// Is `None` if this entity's metadata has not been modified.
+    pub(crate) fn updated_metadata_packet(&self, this_id: EntityId) -> Option<EntityMetadata> {
+        self.meta.updated_metadata().map(|meta| EntityMetadata {
+            entity_id: VarInt(this_id.to_network_id()),
+            metadata: ReadToEnd(meta),
+        })
+    }
+
+    pub(crate) fn spawn_packet(&self, this_id: EntityId) -> Option<EntitySpawnPacket> {
+        use EntityMeta::*;
+        match &self.meta {
+            Marker(_) => None,
+            ExperienceOrb(_) => Some(EntitySpawnPacket::SpawnExperienceOrb(SpawnExperienceOrb {
+                entity_id: VarInt(this_id.to_network_id()),
+                position: self.new_position,
+                count: 0, // TODO
+            })),
+            Painting(_) => todo!(),
+            Player(_) => todo!(),
+            AreaEffectCloud(_)
+            | Arrow(_)
+            | Boat(_)
+            | DragonFireball(_)
+            | EndCrystal(_)
+            | EvokerFangs(_)
+            | EyeOfEnder(_)
+            | FallingBlock(_)
+            | FireworkRocket(_)
+            | GlowItemFrame(_)
+            | Item(_)
+            | ItemFrame(_)
+            | Fireball(_)
+            | LeashKnot(_)
+            | LightningBolt(_)
+            | LlamaSpit(_)
+            | Minecart(_)
+            | ChestMinecart(_)
+            | CommandBlockMinecart(_)
+            | FurnaceMinecart(_)
+            | HopperMinecart(_)
+            | SpawnerMinecart(_)
+            | TntMinecart(_)
+            | Tnt(_)
+            | ShulkerBullet(_)
+            | SmallFireball(_)
+            | Snowball(_)
+            | SpectralArrow(_)
+            | Egg(_)
+            | EnderPearl(_)
+            | ExperienceBottle(_)
+            | Potion(_)
+            | Trident(_)
+            | WitherSkull(_)
+            | FishingBobber(_) => Some(EntitySpawnPacket::SpawnEntity(SpawnEntity {
+                entity_id: VarInt(this_id.to_network_id()),
+                object_uuid: self.uuid,
+                typ: VarInt(self.typ() as i32),
+                position: self.new_position,
+                pitch: ByteAngle::from_degrees(self.pitch),
+                yaw: ByteAngle::from_degrees(self.yaw),
+                data: 1, // TODO
+                velocity: velocity_to_packet_units(self.velocity),
+            })),
+
+            ArmorStand(_) | Axolotl(_) | Bat(_) | Bee(_) | Blaze(_) | Cat(_) | CaveSpider(_)
+            | Chicken(_) | Cod(_) | Cow(_) | Creeper(_) | Dolphin(_) | Donkey(_) | Drowned(_)
+            | ElderGuardian(_) | EnderDragon(_) | Enderman(_) | Endermite(_) | Evoker(_)
+            | Fox(_) | Ghast(_) | Giant(_) | GlowSquid(_) | Goat(_) | Guardian(_) | Hoglin(_)
+            | Horse(_) | Husk(_) | Illusioner(_) | IronGolem(_) | Llama(_) | MagmaCube(_)
+            | Mule(_) | Mooshroom(_) | Ocelot(_) | Panda(_) | Parrot(_) | Phantom(_) | Pig(_)
+            | Piglin(_) | PiglinBrute(_) | Pillager(_) | PolarBear(_) | Pufferfish(_)
+            | Rabbit(_) | Ravager(_) | Salmon(_) | Sheep(_) | Shulker(_) | Silverfish(_)
+            | Skeleton(_) | SkeletonHorse(_) | Slime(_) | SnowGolem(_) | Spider(_) | Squid(_)
+            | Stray(_) | Strider(_) | TraderLlama(_) | TropicalFish(_) | Turtle(_) | Vex(_)
+            | Villager(_) | Vindicator(_) | WanderingTrader(_) | Witch(_) | Wither(_)
+            | WitherSkeleton(_) | Wolf(_) | Zoglin(_) | Zombie(_) | ZombieHorse(_)
+            | ZombieVillager(_) | ZombifiedPiglin(_) => {
+                Some(EntitySpawnPacket::SpawnLivingEntity(SpawnLivingEntity {
+                    entity_id: VarInt(this_id.to_network_id()),
+                    entity_uuid: self.uuid,
+                    typ: VarInt(self.typ() as i32),
+                    position: self.new_position,
+                    yaw: ByteAngle::from_degrees(self.yaw),
+                    pitch: ByteAngle::from_degrees(self.pitch),
+                    head_pitch: ByteAngle::from_degrees(self.head_pitch),
+                    velocity: velocity_to_packet_units(self.velocity),
+                }))
+            }
+        }
+    }
+
+    pub fn hitbox(&self) -> Aabb<f64, 3> {
+        let dims = match &self.meta {
+            EntityMeta::AreaEffectCloud(e) => [
+                e.get_radius() as f64 * 2.0,
+                0.5,
+                e.get_radius() as f64 * 2.0,
+            ],
+            EntityMeta::ArmorStand(e) => {
+                if e.get_marker() {
+                    [0.0, 0.0, 0.0]
+                } else if e.get_small() {
+                    [0.5, 0.9875, 0.5]
+                } else {
+                    [0.5, 1.975, 0.5]
+                }
+            }
+            EntityMeta::Arrow(_) => [0.5, 0.5, 0.5],
+            EntityMeta::Axolotl(_) => [1.3, 0.6, 1.3],
+            EntityMeta::Bat(_) => [0.5, 0.9, 0.5],
+            EntityMeta::Bee(_) => [0.7, 0.6, 0.7], // TODO: baby size?
+            EntityMeta::Blaze(_) => [0.6, 1.8, 0.6],
+            EntityMeta::Boat(_) => [1.375, 0.5625, 1.375],
+            EntityMeta::Cat(_) => [0.6, 0.7, 0.6],
+            EntityMeta::CaveSpider(_) => [0.7, 0.5, 0.7],
+            EntityMeta::Chicken(_) => [0.4, 0.7, 0.4], // TODO: baby size?
+            EntityMeta::Cod(_) => [0.5, 0.3, 0.5],
+            EntityMeta::Cow(_) => [0.9, 1.4, 0.9], // TODO: baby size?
+            EntityMeta::Creeper(_) => [0.6, 1.7, 0.6],
+            EntityMeta::Dolphin(_) => [0.9, 0.6, 0.9],
+            EntityMeta::Donkey(_) => [1.5, 1.39648, 1.5], // TODO: baby size?
+            EntityMeta::DragonFireball(_) => [1.0, 1.0, 1.0],
+            EntityMeta::Drowned(_) => [0.6, 1.95, 0.6], // TODO: baby size?
+            EntityMeta::ElderGuardian(_) => [1.9975, 1.9975, 1.9975],
+            EntityMeta::EndCrystal(_) => [2.0, 2.0, 2.0],
+            EntityMeta::EnderDragon(_) => [16.0, 8.0, 16.0],
+            EntityMeta::Enderman(_) => [0.6, 2.9, 0.6],
+            EntityMeta::Endermite(_) => [0.4, 0.3, 0.4],
+            EntityMeta::Evoker(_) => [0.6, 1.95, 0.6],
+            EntityMeta::EvokerFangs(_) => [0.5, 0.8, 0.5],
+            EntityMeta::ExperienceOrb(_) => [0.5, 0.5, 0.5],
+            EntityMeta::EyeOfEnder(_) => [0.25, 0.25, 0.25],
+            EntityMeta::FallingBlock(_) => [0.98, 0.98, 0.98],
+            EntityMeta::FireworkRocket(_) => [0.25, 0.25, 0.25],
+            EntityMeta::Fox(_) => [0.6, 0.7, 0.6], // TODO: baby size?
+            EntityMeta::Ghast(_) => [4.0, 4.0, 4.0],
+            EntityMeta::Giant(_) => [3.6, 12.0, 3.6],
+            EntityMeta::GlowItemFrame(_) => todo!("account for rotation"),
+            EntityMeta::GlowSquid(_) => [0.8, 0.8, 0.8],
+            EntityMeta::Goat(e) => [1.3, 0.9, 1.3], // TODO: baby size?
+            EntityMeta::Guardian(_) => [0.85, 0.85, 0.85],
+            EntityMeta::Hoglin(_) => [1.39648, 1.4, 1.39648], // TODO: baby size?
+            EntityMeta::Horse(_) => [1.39648, 1.6, 1.39648],  // TODO: baby size?
+            EntityMeta::Husk(_) => [0.6, 1.95, 0.6],          // TODO: baby size?
+            EntityMeta::Illusioner(_) => [0.6, 1.95, 0.6],
+            EntityMeta::IronGolem(_) => [1.4, 2.7, 1.4],
+            EntityMeta::Item(_) => [0.25, 0.25, 0.25],
+            EntityMeta::ItemFrame(_) => todo!("account for rotation"),
+            EntityMeta::Fireball(_) => [1.0, 1.0, 1.0],
+            EntityMeta::LeashKnot(_) => [0.375, 0.5, 0.375],
+            EntityMeta::LightningBolt(_) => [0.0, 0.0, 0.0],
+            EntityMeta::Llama(_) => [0.9, 1.87, 0.9], // TODO: baby size?
+            EntityMeta::LlamaSpit(_) => [0.25, 0.25, 0.25],
+            EntityMeta::MagmaCube(e) => {
+                let s = e.get_size() as f64 * 0.51000005;
+                [s, s, s]
+            }
+            EntityMeta::Marker(_) => [0.0, 0.0, 0.0],
+            EntityMeta::Minecart(_) => [0.98, 0.7, 0.98],
+            EntityMeta::ChestMinecart(_) => [0.98, 0.7, 0.98],
+            EntityMeta::CommandBlockMinecart(_) => [0.98, 0.7, 0.98],
+            EntityMeta::FurnaceMinecart(_) => [0.98, 0.7, 0.98],
+            EntityMeta::HopperMinecart(_) => [0.98, 0.7, 0.98],
+            EntityMeta::SpawnerMinecart(_) => [0.98, 0.7, 0.98],
+            EntityMeta::TntMinecart(_) => [0.98, 0.7, 0.98],
+            EntityMeta::Mule(_) => [1.39648, 1.6, 1.39648], // TODO: baby size?
+            EntityMeta::Mooshroom(_) => [0.9, 1.4, 0.9],    // TODO: baby size?
+            EntityMeta::Ocelot(_) => [0.6, 0.7, 0.6],       // TODO: baby size?
+            EntityMeta::Painting(_) => todo!("account for rotation and type"),
+            EntityMeta::Panda(_) => [0.6, 0.7, 0.6], // TODO: baby size?
+            EntityMeta::Parrot(_) => [0.5, 0.9, 0.5],
+            EntityMeta::Phantom(_) => [0.9, 0.5, 0.9],
+            EntityMeta::Pig(_) => [0.9, 0.9, 0.9], // TODO: baby size?
+            EntityMeta::Piglin(_) => [0.6, 1.95, 0.6], // TODO: baby size?
+            EntityMeta::PiglinBrute(_) => [0.6, 1.95, 0.6],
+            EntityMeta::Pillager(_) => [0.6, 1.95, 0.6],
+            EntityMeta::PolarBear(_) => [1.4, 1.4, 1.4], // TODO: baby size?
+            EntityMeta::Tnt(_) => [0.98, 0.98, 0.98],
+            EntityMeta::Pufferfish(_) => [0.7, 0.7, 0.7],
+            EntityMeta::Rabbit(_) => [0.4, 0.5, 0.4], // TODO: baby size?
+            EntityMeta::Ravager(_) => [1.95, 2.2, 1.95],
+            EntityMeta::Salmon(_) => [0.7, 0.4, 0.7],
+            EntityMeta::Sheep(_) => [0.9, 1.3, 0.9], // TODO: baby size?
+            EntityMeta::Shulker(_) => [1.0, 1.0, 1.0], // TODO: how is height calculated?
+            EntityMeta::ShulkerBullet(_) => [0.3125, 0.3125, 0.3125],
+            EntityMeta::Silverfish(_) => [0.4, 0.3, 0.4],
+            EntityMeta::Skeleton(_) => [0.6, 1.99, 0.6],
+            EntityMeta::SkeletonHorse(_) => [1.39648, 1.6, 1.39648], // TODO: baby size?
+            EntityMeta::Slime(e) => {
+                let s = 0.51000005 * e.get_size() as f64;
+                [s, s, s]
+            }
+            EntityMeta::SmallFireball(_) => [0.3125, 0.3125, 0.3125],
+            EntityMeta::SnowGolem(_) => [0.7, 1.9, 0.7],
+            EntityMeta::Snowball(_) => [0.25, 0.25, 0.25],
+            EntityMeta::SpectralArrow(_) => [0.5, 0.5, 0.5],
+            EntityMeta::Spider(_) => [1.4, 0.9, 1.4],
+            EntityMeta::Squid(_) => [0.8, 0.8, 0.8],
+            EntityMeta::Stray(_) => [0.6, 1.99, 0.6],
+            EntityMeta::Strider(_) => [0.9, 1.7, 0.9], // TODO: baby size?
+            EntityMeta::Egg(_) => [0.25, 0.25, 0.25],
+            EntityMeta::EnderPearl(_) => [0.25, 0.25, 0.25],
+            EntityMeta::ExperienceBottle(_) => [0.25, 0.25, 0.25],
+            EntityMeta::Potion(_) => [0.25, 0.25, 0.25],
+            EntityMeta::Trident(_) => [0.5, 0.5, 0.5],
+            EntityMeta::TraderLlama(_) => [0.9, 1.87, 0.9],
+            EntityMeta::TropicalFish(_) => [0.5, 0.4, 0.5],
+            EntityMeta::Turtle(_) => [1.2, 0.4, 1.2], // TODO: baby size?
+            EntityMeta::Vex(_) => [0.4, 0.8, 0.4],
+            EntityMeta::Villager(_) => [0.6, 1.95, 0.6], // TODO: baby size?
+            EntityMeta::Vindicator(_) => [0.6, 1.95, 0.6],
+            EntityMeta::WanderingTrader(_) => [0.6, 1.95, 0.6],
+            EntityMeta::Witch(_) => [0.6, 1.95, 0.6],
+            EntityMeta::Wither(_) => [0.9, 3.5, 0.9],
+            EntityMeta::WitherSkeleton(_) => [0.7, 2.4, 0.7],
+            EntityMeta::WitherSkull(_) => [0.3125, 0.3125, 0.3125],
+            EntityMeta::Wolf(_) => [0.6, 0.85, 0.6], // TODO: baby size?
+            EntityMeta::Zoglin(_) => [1.39648, 1.4, 1.39648], // TODO: baby size?
+            EntityMeta::Zombie(_) => [0.6, 1.95, 0.6], // TODO: baby size?
+            EntityMeta::ZombieHorse(_) => [1.39648, 1.6, 1.39648], // TODO: baby size?
+            EntityMeta::ZombieVillager(_) => [0.6, 1.95, 0.6], // TODO: baby size?
+            EntityMeta::ZombifiedPiglin(_) => [0.6, 1.95, 0.6], // TODO: baby size?
+            EntityMeta::Player(_) => [0.6, 1.8, 0.6], // TODO: changes depending on the pose.
+            EntityMeta::FishingBobber(_) => [0.25, 0.25, 0.25],
+        };
+
+        Aabb::from_bottom_and_dimensions(self.new_position, dims)
+    }
+}
+
+fn velocity_to_packet_units(vel: Vec3) -> I16Vec3 {
+    // The saturating cast to i16 is desirable.
+    vel.map(|v| (v * 400.0) as i16)
+}
+
+impl<'a> EntityMut<'a> {
+    // TODO: exposing &mut EntityMeta is unsound?
+    /// Returns a mutable reference to this entity's [`EntityMeta`].
+    ///
+    /// **NOTE:** Never call [`std::mem::swap`] on the returned reference or any
+    /// part of `EntityMeta` as this would break invariants within the
+    /// library.
+    pub fn meta_mut(&mut self) -> &mut EntityMeta {
+        &mut self.0.meta
+    }
+
+    /// Changes the [`EntityType`] of this entity to the provided type.
+    ///
+    /// All metadata of this entity is reset to the default values.
+    pub fn set_type(&mut self, typ: EntityType) {
+        self.0.meta = EntityMeta::new(typ);
+        // All metadata is lost, so we must mark it as modified unconditionally.
+        self.0.flags.set_meta_modified(true);
+    }
+
+    /// Sets the position of this entity in the world it inhabits.
+    pub fn set_position(&mut self, pos: impl Into<DVec3>) {
+        self.0.new_position = pos.into();
+    }
+
+    /// Sets the yaw of this entity (in degrees).
+    pub fn set_yaw(&mut self, yaw: f32) {
+        self.0.yaw = yaw;
+        if ByteAngle::from_degrees(self.yaw) != ByteAngle::from_degrees(yaw) {
+            self.0.flags.set_yaw_or_pitch_modified(true);
+        }
+    }
+
+    /// Sets the pitch of this entity (in degrees).
+    pub fn set_pitch(&mut self, pitch: f32) {
+        self.0.pitch = pitch;
+        if ByteAngle::from_degrees(self.pitch) != ByteAngle::from_degrees(pitch) {
+            self.0.flags.set_yaw_or_pitch_modified(true);
+        }
+    }
+
+    /// Sets the head yaw of this entity (in degrees).
+    pub fn set_head_yaw(&mut self, head_yaw: f32) {
+        self.0.head_yaw = head_yaw;
+        if ByteAngle::from_degrees(self.head_yaw) != ByteAngle::from_degrees(head_yaw) {
+            self.0.flags.set_head_yaw_modified(true);
+        }
+    }
+
+    /// Sets the head pitch of this entity (in degrees).
+    pub fn set_head_pitch(&mut self, head_pitch: f32) {
+        self.0.head_pitch = head_pitch;
+        if ByteAngle::from_degrees(self.head_pitch) != ByteAngle::from_degrees(head_pitch) {
+            self.0.flags.set_head_pitch_modified(true);
+        }
+    }
+
+    pub fn set_velocity(&mut self, velocity: Vec3) {
+        self.0.velocity = velocity;
+        if velocity_to_packet_units(self.velocity) != velocity_to_packet_units(velocity) {
+            self.0.flags.set_velocity_modified(true);
+        }
+    }
+}
+
+pub(crate) enum EntitySpawnPacket {
+    SpawnEntity(SpawnEntity),
+    SpawnExperienceOrb(SpawnExperienceOrb),
+    SpawnLivingEntity(SpawnLivingEntity),
+    SpawnPainting(SpawnPainting),
+    SpawnPlayer(SpawnPlayer),
+}
+
+impl From<EntitySpawnPacket> for ClientPlayPacket {
+    fn from(pkt: EntitySpawnPacket) -> Self {
+        match pkt {
+            EntitySpawnPacket::SpawnEntity(pkt) => pkt.into(),
+            EntitySpawnPacket::SpawnExperienceOrb(pkt) => pkt.into(),
+            EntitySpawnPacket::SpawnLivingEntity(pkt) => pkt.into(),
+            EntitySpawnPacket::SpawnPainting(pkt) => pkt.into(),
+            EntitySpawnPacket::SpawnPlayer(pkt) => pkt.into(),
+        }
+    }
+}
+
+pub use types::{EntityMeta, EntityType};

@@ -1,9 +1,16 @@
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 
-use crate::glm::{self, Number, RealNumber, TVec};
+use num::cast::AsPrimitive;
 
-/// An Axis-aligned bounding box in an arbitrary dimension.
+use crate::glm::{self, Number, RealNumber, TVec, TVec3};
+
+/// An Axis-aligned bounding box in an arbitrary dimension, defined by its
+/// minimum and maximum corners.
+///
+/// This type maintains the invariant that `min <= max` componentwise.
+///
+/// The generic type `T` can be an integer, which is useful for AABBs on grids.
 #[derive(Clone, Copy, Debug)]
 pub struct Aabb<T, const D: usize> {
     min: TVec<T, D>,
@@ -20,7 +27,8 @@ impl<T: Number, const D: usize> Aabb<T, D> {
         }
     }
 
-    pub fn point(pos: TVec<T, D>) -> Self {
+    pub fn point(pos: impl Into<TVec<T, D>>) -> Self {
+        let pos = pos.into();
         Self { min: pos, max: pos }
     }
 
@@ -36,6 +44,24 @@ impl<T: Number, const D: usize> Aabb<T, D> {
         self.max - self.min
     }
 
+    /// Moves this AABB by some vector.
+    pub fn translate(&self, v: impl Into<TVec<T, D>>) -> Self {
+        let v = v.into();
+        Self {
+            min: self.min + v,
+            max: self.max + v,
+        }
+    }
+
+    /// Calculates the AABB union, which is the smallest AABB completely
+    /// encompassing both AABBs.
+    pub fn union(&self, other: Self) -> Self {
+        Self {
+            min: glm::min2(&self.min, &other.min),
+            max: glm::max2(&self.max, &other.max),
+        }
+    }
+
     pub fn collides_with_aabb(&self, other: &Self) -> bool {
         let l = glm::less_than_equal(&self.min, &other.max);
         let r = glm::greater_than_equal(&self.max, &other.min);
@@ -43,28 +69,68 @@ impl<T: Number, const D: usize> Aabb<T, D> {
     }
 }
 
+impl<T: Number, const D: usize> Aabb<T, D>
+where
+    i32: AsPrimitive<T>,
+{
+    /// Returns the center (centroid) of this AABB.
+    pub fn center(&self) -> TVec<T, D> {
+        (self.min + self.max).map(|c| c / 2.as_())
+    }
+}
+
 impl<T: RealNumber, const D: usize> Aabb<T, D> {
     /// Construct an AABB from a center (centroid) and the dimensions of the box
     /// along each axis.
-    pub fn from_center_and_dimensions(center: TVec<T, D>, dims: TVec<T, D>) -> Self {
-        let half = dims * T::from_subset(&0.5);
+    pub fn from_center_and_dimensions(
+        center: impl Into<TVec<T, D>>,
+        dims: impl Into<TVec<T, D>>,
+    ) -> Self {
+        let half = dims.into() * T::from_subset(&0.5);
+        let center = center.into();
         Self {
             min: center - half,
             max: center + half,
         }
     }
 
-    pub fn center(&self) -> TVec<T, D> {
-        // TODO: distribute multiplication to avoid intermediate overflow?
-        (self.min + self.max) * T::from_subset(&0.5)
+    pub fn collides_with_sphere(
+        &self,
+        center: impl Into<TVec<T, D>>,
+        radius: impl Into<T>,
+    ) -> bool {
+        self.distance_to_point(center.into()) <= radius.into()
     }
 
-    pub fn collides_with_sphere(&self, center: TVec<T, D>, radius: T) -> bool {
-        self.distance_to_point(center) <= radius
-    }
-
-    pub fn distance_to_point(&self, p: TVec<T, D>) -> T {
+    pub fn distance_to_point(&self, p: impl Into<TVec<T, D>>) -> T {
+        let p = p.into();
         glm::distance(&p, &glm::clamp_vec(&p, &self.min, &self.max))
+    }
+}
+
+impl<T: Number> Aabb<T, 3>
+where
+    i32: AsPrimitive<T>,
+{
+    pub fn surface_area(&self) -> T {
+        let d = self.dimensions();
+        (d.x * d.y + d.y * d.z + d.z * d.x) * 2.as_()
+    }
+}
+
+impl<T: RealNumber> Aabb<T, 3> {
+    /// Constructs an AABB from a position and the dimensions of the box along
+    /// each axis. The position is the center of the bottom face of the AABB.
+    pub fn from_bottom_and_dimensions(
+        bottom: impl Into<TVec3<T>>,
+        dims: impl Into<TVec3<T>>,
+    ) -> Self {
+        let dims = dims.into();
+        Self::from_center_and_dimensions(bottom, dims).translate([
+            T::from_subset(&0.0),
+            dims.y * T::from_subset(&0.5),
+            T::from_subset(&0.0),
+        ])
     }
 }
 

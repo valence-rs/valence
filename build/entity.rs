@@ -41,12 +41,81 @@ enum Type {
     Nbt,
     Particle,
     VillagerData,
-    OptVarInt,
     Pose,
     // ==== Specialized ==== //
     OptEntityId,
     BoatVariant,
     MainHand,
+}
+
+impl Type {
+    pub fn default_expr(&self) -> TokenStream {
+        match self {
+            Type::BitFields(bfs) => {
+                let mut default = 0;
+                for bf in *bfs {
+                    default = (bf.default as u8) << bf.offset;
+                }
+                quote! { #default }
+            }
+            Type::Byte(d) => quote! { #d },
+            Type::VarInt(d) => quote! { VarInt(#d) },
+            Type::Float(d) => quote! { #d },
+            Type::String(d) => quote! { #d.into() },
+            Type::Text => quote! { Default::default() },
+            Type::OptText(d) => match d {
+                Some(d) => quote! { Some(Box::new(Text::from(#d))) },
+                None => quote! { None },
+            },
+            Type::Slot => quote! { () }, // TODO
+            Type::Bool(d) => quote! { #d },
+            Type::ArmorStandRotations(x, y, z) => {
+                quote! { ArmorStandRotations::new(#x, #y, #z) }
+            }
+            Type::BlockPos(x, y, z) => quote! { BlockPos::new(#x, #y, #z) },
+            Type::OptBlockPos(d) => match d {
+                Some((x, y, z)) => quote! { Some(BlockPos::new(#x, #y, #z)) },
+                None => quote! { None },
+            },
+            Type::Direction => quote! { Direction::Down },
+            Type::OptUuid => quote! { None },
+            Type::BlockState => quote! { BlockState::AIR },
+            Type::Nbt => quote! { nbt::Blob::new() },
+            Type::Particle => quote! { () }, // TODO
+            Type::VillagerData => quote! { VillagerData::default() },
+            Type::Pose => quote! { Pose::default() },
+            Type::OptEntityId => quote! { None },
+            Type::BoatVariant => quote! { BoatVariant::default() },
+            Type::MainHand => quote! { MainHand::default() },
+        }
+    }
+
+    pub fn type_id(&self) -> i32 {
+        match self {
+            Type::BitFields(_) => 0,
+            Type::Byte(_) => 0,
+            Type::VarInt(_) => 1,
+            Type::Float(_) => 2,
+            Type::String(_) => 3,
+            Type::Text => 4,
+            Type::OptText(_) => 5,
+            Type::Slot => 6,
+            Type::Bool(_) => 7,
+            Type::ArmorStandRotations(_, _, _) => 8,
+            Type::BlockPos(_, _, _) => 9,
+            Type::OptBlockPos(_) => 10,
+            Type::Direction => 11,
+            Type::OptUuid => 12,
+            Type::BlockState => 13,
+            Type::Nbt => 14,
+            Type::Particle => 15,
+            Type::VillagerData => 16,
+            Type::Pose => 18,
+            Type::OptEntityId => 17,
+            Type::BoatVariant => 1,
+            Type::MainHand => 0,
+        }
+    }
 }
 
 struct BitField {
@@ -60,7 +129,7 @@ const BASE_ENTITY: Class = Class {
     inherit: None,
     fields: &[
         Field {
-            name: "base_entity_bits",
+            name: "base_entity_flags",
             typ: Type::BitFields(&[
                 BitField {
                     name: "on_fire",
@@ -135,7 +204,7 @@ const ABSTRACT_ARROW: Class = Class {
     inherit: Some(&BASE_ENTITY),
     fields: &[
         Field {
-            name: "abstract_arrow_bits",
+            name: "abstract_arrow_flags",
             typ: Type::BitFields(&[
                 BitField {
                     name: "critical",
@@ -161,7 +230,7 @@ const LIVING_ENTITY: Class = Class {
     inherit: Some(&BASE_ENTITY),
     fields: &[
         Field {
-            name: "living_entity_bits",
+            name: "living_entity_flags",
             typ: Type::BitFields(&[
                 BitField {
                     name: "hand_active",
@@ -211,7 +280,7 @@ const MOB: Class = Class {
     name: "mob",
     inherit: Some(&LIVING_ENTITY),
     fields: &[Field {
-        name: "mob_bits",
+        name: "mob_flags",
         typ: Type::BitFields(&[
             BitField {
                 name: "ai_disabled",
@@ -279,7 +348,7 @@ const ABSTRACT_HORSE: Class = Class {
     inherit: Some(&ANIMAL),
     fields: &[
         Field {
-            name: "horse_bits",
+            name: "horse_flags",
             typ: Type::BitFields(&[
                 BitField {
                     name: "tame",
@@ -339,7 +408,7 @@ const TAMEABLE_ANIMAL: Class = Class {
     name: "tameable_animal",
     inherit: Some(&ANIMAL),
     fields: &[Field {
-        name: "tameable_animal_bits",
+        name: "tameable_animal_flags",
         typ: Type::BitFields(&[
             BitField {
                 name: "sitting",
@@ -435,7 +504,7 @@ const SPIDER: Class = Class {
     name: "spider",
     inherit: Some(&MONSTER),
     fields: &[Field {
-        name: "spider_bits",
+        name: "spider_flags",
         typ: Type::BitFields(&[BitField {
             name: "climbing",
             offset: 0,
@@ -843,7 +912,7 @@ const ENTITIES: &[Class] = &[
         inherit: Some(&LIVING_ENTITY),
         fields: &[
             Field {
-                name: "armor_stand_bits",
+                name: "armor_stand_flags",
                 typ: Type::BitFields(&[
                     BitField {
                         name: "small",
@@ -851,7 +920,7 @@ const ENTITIES: &[Class] = &[
                         default: false,
                     },
                     BitField {
-                        name: "has_arms",
+                        name: "arms",
                         offset: 1,
                         default: false,
                     },
@@ -861,7 +930,7 @@ const ENTITIES: &[Class] = &[
                         default: false,
                     },
                     BitField {
-                        name: "is_marker",
+                        name: "marker",
                         offset: 3,
                         default: false,
                     },
@@ -897,7 +966,7 @@ const ENTITIES: &[Class] = &[
         name: "bat",
         inherit: Some(&AMBIENT_CREATURE),
         fields: &[Field {
-            name: "bat_bits",
+            name: "bat_flags",
             typ: Type::BitFields(&[BitField {
                 name: "hanging",
                 offset: 0,
@@ -1034,7 +1103,7 @@ const ENTITIES: &[Class] = &[
         inherit: Some(&ANIMAL),
         fields: &[
             Field {
-                name: "bee_bits",
+                name: "bee_flags",
                 typ: Type::BitFields(&[
                     BitField {
                         name: "angry",
@@ -1068,7 +1137,7 @@ const ENTITIES: &[Class] = &[
                 typ: Type::VarInt(0), // TODO: 0 for red, 1 for snow
             },
             Field {
-                name: "fox_bits",
+                name: "fox_flags",
                 typ: Type::BitFields(&[
                     BitField {
                         name: "sitting",
@@ -1151,7 +1220,7 @@ const ENTITIES: &[Class] = &[
                 typ: Type::Byte(0),
             },
             Field {
-                name: "panda_bits",
+                name: "panda_flags",
                 typ: Type::BitFields(&[
                     BitField {
                         name: "sneezing",
@@ -1355,7 +1424,7 @@ const ENTITIES: &[Class] = &[
         name: "iron_golem",
         inherit: Some(&ABSTRACT_GOLEM),
         fields: &[Field {
-            name: "iron_golem_bits",
+            name: "iron_golem_flags",
             typ: Type::BitFields(&[BitField {
                 name: "player_created",
                 offset: 0,
@@ -1367,7 +1436,7 @@ const ENTITIES: &[Class] = &[
         name: "snow_golem",
         inherit: Some(&ABSTRACT_GOLEM),
         fields: &[Field {
-            name: "snow_golem_bits",
+            name: "snow_golem_flags",
             typ: Type::BitFields(&[BitField {
                 name: "pumpkin_hat",
                 offset: 4,
@@ -1430,7 +1499,7 @@ const ENTITIES: &[Class] = &[
         name: "blaze",
         inherit: Some(&MONSTER),
         fields: &[Field {
-            name: "blaze_bits",
+            name: "blaze_flags",
             typ: Type::BitFields(&[BitField {
                 name: "blaze_on_fire", // TODO: better name for this?
                 offset: 0,
@@ -1522,7 +1591,7 @@ const ENTITIES: &[Class] = &[
         name: "vex",
         inherit: Some(&MONSTER),
         fields: &[Field {
-            name: "vex_bits",
+            name: "vex_flags",
             typ: Type::BitFields(&[BitField {
                 name: "attacking",
                 offset: 0,
@@ -1665,7 +1734,10 @@ const ENTITIES: &[Class] = &[
     Class {
         name: "magma_cube",
         inherit: Some(&MOB),
-        fields: &[], // TODO: what are the fields?
+        fields: &[Field {
+            name: "size",
+            typ: Type::VarInt(1),
+        }],
     },
     Class {
         name: "llama_spit",
@@ -1777,6 +1849,49 @@ pub fn build() -> anyhow::Result<()> {
         .map(|c| ident(c.name.to_pascal_case()))
         .collect::<Vec<_>>();
 
+    /*
+    let set_type_arms = entities.iter().map(|&entity| {
+        let entity_name = ident(entity.name.to_pascal_case());
+
+        let mut old_fields = Vec::new();
+        collect_class_fields(entity, &mut old_fields);
+
+        let new_type_arms = entities.iter().map(|&new_entity| {
+            let new_entity_name = ident(new_entity.name.to_pascal_case());
+
+            let mut new_fields = Vec::new();
+            collect_class_fields(new_entity, &mut new_fields);
+
+            let assign_fields = new_fields
+                .iter()
+                .cloned()
+                .filter(|&new_field| old_fields.iter().any(|&f| f.name == new_field.name))
+                .map(|new_field| {
+                    let name = ident(new_field.name.to_snake_case());
+                    quote! {
+                        new.#name = old.#name;
+                    }
+                });
+
+            quote! {
+                EntityType::#new_entity_name => {
+                    let mut new = #new_entity_name::new();
+
+                    #(#assign_fields)*
+
+                    *self = Self::#new_entity_name(new);
+                }
+            }
+        });
+
+        quote! {
+            Self::#entity_name(old) => match new_type {
+                #(#new_type_arms)*
+            },
+        }
+    });
+    */
+
     let entity_structs = entities.iter().map(|&class| {
        let mut fields = Vec::new();
        collect_class_fields(class, &mut fields);
@@ -1787,7 +1902,7 @@ pub fn build() -> anyhow::Result<()> {
            let typ = match f.typ {
                Type::BitFields(_) => quote! { u8 },
                Type::Byte(_) => quote! { u8 },
-               Type::VarInt(_) => quote! { i32 },
+               Type::VarInt(_) => quote! { VarInt },
                Type::Float(_) => quote! { f32 },
                Type::String(_) => quote! { Box<str> },
                Type::Text => quote! { Box<Text> },
@@ -1803,7 +1918,6 @@ pub fn build() -> anyhow::Result<()> {
                Type::Nbt => quote! { nbt::Blob },
                Type::Particle => quote! { () }, // TODO
                Type::VillagerData => quote! { VillagerData },
-               Type::OptVarInt => quote! { OptVarInt },
                Type::Pose => quote! { Pose },
                Type::OptEntityId => quote! { Option<EntityId> },
                Type::BoatVariant => quote! { BoatVariant },
@@ -1816,46 +1930,7 @@ pub fn build() -> anyhow::Result<()> {
 
        let constructor_fields = fields.iter().map(|field| {
            let name = ident(field.name.to_snake_case());
-           let val = match field.typ {
-               Type::BitFields(bfs) => {
-                   let mut default = 0;
-                   for bf in bfs {
-                       default = (bf.default as u8) << bf.offset;
-                   }
-                   quote! { #default }
-               }
-               Type::Byte(d) => quote! { #d },
-               Type::VarInt(d) => quote! { #d },
-               Type::Float(d) => quote! { #d },
-               Type::String(d) => quote! { #d.into() },
-               Type::Text => quote! { Default::default() },
-               Type::OptText(d) => match d {
-                   Some(d) => quote! { Some(Box::new(Text::from(#d))) },
-                   None => quote! { None },
-               },
-               Type::Slot => quote! { () }, // TODO
-               Type::Bool(d) => quote! { #d },
-               Type::ArmorStandRotations(x, y, z) => {
-                   quote! { ArmorStandRotations::new(#x, #y, #z) }
-               }
-               Type::BlockPos(x, y, z) => quote! { BlockPos::new(#x, #y, #z) },
-               Type::OptBlockPos(d) => match d {
-                   Some((x, y, z)) => quote! { Some(BlockPos::new(#x, #y, #z)) },
-                   None => quote! { None },
-               },
-               Type::Direction => quote! { Direction::Down },
-               Type::OptUuid => quote! { None },
-               Type::BlockState => quote! { BlockState::AIR },
-               Type::Nbt => quote! { nbt::Blob::new() },
-               Type::Particle => quote! { () }, // TODO
-               Type::VillagerData => quote! { VillagerData::default() },
-               Type::OptVarInt => quote! { 0 },
-               Type::Pose => quote! { Pose::default() },
-               Type::OptEntityId => quote! { None },
-               Type::BoatVariant => quote! { BoatVariant::default() },
-               Type::MainHand => quote! { MainHand::default() },
-           };
-
+           let val = field.typ.default_expr();
            quote! {
                #name: #val,
            }
@@ -1881,7 +1956,7 @@ pub fn build() -> anyhow::Result<()> {
 
                     pub fn #setter_name(&mut self, #name: #type_name) {
                         if self.#name != #name {
-                            self.modified_bits |= 1 << #field_offset;
+                            self.modified_flags |= 1 << #field_offset;
                         }
 
                         self.#name = #name;
@@ -1892,9 +1967,6 @@ pub fn build() -> anyhow::Result<()> {
                     Type::BitFields(bfs) => bfs
                         .iter()
                         .map(|bf| {
-                            if bf.name.to_snake_case().is_empty() {
-                                eprintln!("{}", field.name);
-                            }
                             let bit_name = ident(bf.name.to_snake_case());
 
                             let getter_name = ident(format!("get_{}", bit_name.to_string()));
@@ -1908,19 +1980,28 @@ pub fn build() -> anyhow::Result<()> {
                                 }
 
                                 pub fn #setter_name(&mut self, #bit_name: bool) {
-                                    let orig = self.#getter_name();
-
-                                    self.#name = (self.#name & !(1 << #offset)) | ((#bit_name as u8) << #offset);
-
-                                    if orig != self.#getter_name() {
-                                        self.modified_bits |= 1 << #field_offset;
+                                    if self.#getter_name() != #bit_name {
+                                        self.#name = (self.#name & !(1 << #offset)) | ((#bit_name as u8) << #offset);
+                                        self.modified_flags |= 1 << #field_offset;
                                     }
                                 }
                             }
                         })
                         .collect(),
                     Type::Byte(_) => standard_getter_setter(quote!(u8)),
-                    Type::VarInt(_) => standard_getter_setter(quote!(i32)),
+                    Type::VarInt(_) => quote! {
+                        pub fn #getter_name(&self) -> i32 {
+                            self.#name.0
+                        }
+
+                        pub fn #setter_name(&mut self, #name: i32) {
+                            if self.#name.0 != #name {
+                                self.modified_flags |= 1 << #field_offset;
+                            }
+
+                            self.#name = VarInt(#name);
+                        }
+                    },
                     Type::Float(_) => standard_getter_setter(quote!(f32)),
                     Type::String(_) => quote! {
                         pub fn #getter_name(&self) -> &str {
@@ -1931,7 +2012,7 @@ pub fn build() -> anyhow::Result<()> {
                             let #name = #name.into();
 
                             if self.#name != #name {
-                                self.modified_bits |= 1 << #field_offset;
+                                self.modified_flags |= 1 << #field_offset;
                             }
 
                             self.#name = #name;
@@ -1946,7 +2027,7 @@ pub fn build() -> anyhow::Result<()> {
                             let #name = Box::new(#name.into());
 
                             if self.#name != #name {
-                                self.modified_bits |= 1 << #field_offset;
+                                self.modified_flags |= 1 << #field_offset;
                             }
 
                             self.#name = #name;
@@ -1961,7 +2042,7 @@ pub fn build() -> anyhow::Result<()> {
                             let #name = #name.map(|x| Box::new(x.into()));
 
                             if self.#name != #name {
-                                self.modified_bits |= 1 << #field_offset;
+                                self.modified_flags |= 1 << #field_offset;
                             }
 
                             self.#name = #name;
@@ -1982,7 +2063,7 @@ pub fn build() -> anyhow::Result<()> {
 
                         pub fn #setter_name(&mut self, #name: nbt::Blob) {
                             if self.#name != #name {
-                                self.modified_bits |= 1 << #field_offset;
+                                self.modified_flags |= 1 << #field_offset;
                             }
 
                             self.#name = #name;
@@ -1990,21 +2071,8 @@ pub fn build() -> anyhow::Result<()> {
                     },
                     Type::Particle => quote! {}, // TODO
                     Type::VillagerData => standard_getter_setter(quote!(VillagerData)),
-                    Type::OptVarInt => quote! {
-                        pub fn #getter_name(&self) -> i32 {
-                            self.#name.0
-                        }
-
-                        pub fn #setter_name(&mut self, #name: i32) {
-                            if self.#name.0 != #name {
-                                self.modified_bits |= 1 << #field_offset;
-                            }
-
-                            self.#name = OptVarInt(#name);
-                        }
-                    },
                     Type::Pose => standard_getter_setter(quote!(Pose)),
-                    Type::OptEntityId => quote! {}, // TODO
+                    Type::OptEntityId => standard_getter_setter(quote!(Option<EntityId>)),
                     Type::BoatVariant => standard_getter_setter(quote!(BoatVariant)),
                     Type::MainHand => standard_getter_setter(quote!(MainHand)),
                 }
@@ -2014,14 +2082,14 @@ pub fn build() -> anyhow::Result<()> {
         quote! {
             pub struct #name {
                 /// Contains a set bit for each modified field.
-                modified_bits: u32,
+                modified_flags: u32,
                 #(#struct_fields)*
             }
 
             impl #name {
                 pub(super) fn new() -> Self {
                     Self {
-                        modified_bits: 0,
+                        modified_flags: 0,
                         #(#constructor_fields)*
                     }
                 }
@@ -2031,23 +2099,64 @@ pub fn build() -> anyhow::Result<()> {
         }
     });
 
-    let finished = quote! {
-        pub enum EntityData {
-            #(#entity_type_variants(#entity_type_variants),)*
-        }
+    let initial_metadata_arms = entities.iter().map(|&entity| {
+        let name = ident(entity.name.to_pascal_case());
+        let mut fields = Vec::new();
+        collect_class_fields(entity, &mut fields);
 
-        impl EntityData {
-            pub(super) fn new() -> Self {
-                Self::Marker(Marker::new())
-            }
-
-            pub fn typ(&self) -> EntityType {
-                match self {
-                    #(Self::#entity_type_variants(_) => EntityType::#entity_type_variants,)*
+        let check_fields = fields.into_iter().enumerate().map(|(idx, f)| {
+            let name = ident(f.name.to_snake_case());
+            let default = f.typ.default_expr();
+            let index: u8 = idx.try_into().unwrap();
+            let type_id = f.typ.type_id();
+            quote! {
+                if m.#name != #default {
+                    data.push(#index);
+                    VarInt(#type_id).encode(&mut data).unwrap();
+                    m.#name.encode(&mut data).unwrap();
                 }
             }
-        }
+        });
 
+        quote! {
+            Self::#name(m) => {
+                #(#check_fields)*
+            }
+        }
+    });
+
+    let updated_metadata_arms = entities.iter().map(|&entity| {
+        let name = ident(entity.name.to_pascal_case());
+        let mut fields = Vec::new();
+        collect_class_fields(entity, &mut fields);
+
+        let update_fields = fields.into_iter().enumerate().map(|(idx, f)| {
+            let name = ident(f.name.to_snake_case());
+            let u8_index: u8 = idx.try_into().unwrap();
+            let u32_index = idx as u32;
+            let type_id = f.typ.type_id();
+            quote! {
+                if (m.modified_flags >> #u32_index) & 1 == 1 {
+                    data.push(#u8_index);
+                    VarInt(#type_id).encode(&mut data).unwrap();
+                    m.#name.encode(&mut data).unwrap();
+                }
+            }
+        });
+
+        quote! {
+            Self::#name(m) => {
+                if m.modified_flags == 0 {
+                    return None;
+                }
+
+                #(#update_fields)*
+            }
+        }
+    });
+
+    let finished = quote! {
+        /// Identifies a type of entity, such as `chicken`, `zombie` or `item`.
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
         pub enum EntityType {
             #(#entity_type_variants,)*
@@ -2060,6 +2169,64 @@ pub fn build() -> anyhow::Result<()> {
         }
 
         #(#entity_structs)*
+
+        /// An enum encoding the type of n entity along with its metadata.
+        ///
+        /// Metadata encompases most of an entity's state, except for some
+        /// basic pieces of information such as position and rotation.
+        pub enum EntityMeta {
+            #(#entity_type_variants(#entity_type_variants),)*
+        }
+
+        impl EntityMeta {
+            pub(super) fn new(typ: EntityType) -> Self {
+                match typ {
+                    #(EntityType::#entity_type_variants => Self::#entity_type_variants(#entity_type_variants::new()),)*
+                }
+            }
+
+            pub(super) fn typ(&self) -> EntityType {
+                match self {
+                    #(Self::#entity_type_variants(_) => EntityType::#entity_type_variants,)*
+                }
+            }
+
+            pub(super) fn initial_metadata(&self) -> Option<Vec<u8>> {
+                let mut data = Vec::new();
+
+                match self {
+                    #(#initial_metadata_arms)*
+                }
+
+                if data.is_empty() {
+                    None
+                } else {
+                    data.push(0xff);
+                    Some(data)
+                }
+            }
+
+            pub(super) fn updated_metadata(&self) -> Option<Vec<u8>> {
+                let mut data = Vec::new();
+
+                match self {
+                    #(#updated_metadata_arms)*
+                }
+
+                if data.is_empty() {
+                    None
+                } else {
+                    data.push(0xff);
+                    Some(data)
+                }
+            }
+
+            pub(super) fn clear_modifications(&mut self) {
+                match self {
+                    #(Self::#entity_type_variants(m) => m.modified_flags = 0,)*
+                }
+            }
+        }
     };
 
     write_to_out_path("entity.rs", &finished.to_string())

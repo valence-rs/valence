@@ -16,8 +16,9 @@ use uuid::Uuid;
 
 use crate::block_pos::BlockPos;
 use crate::byte_angle::ByteAngle;
+use crate::glm::{DVec3, I16Vec3, Vec3};
 use crate::identifier::Identifier;
-use crate::protocol::{BoundedArray, BoundedString, Decode, Encode, Nbt, ReadToEnd};
+use crate::protocol::{BoundedArray, BoundedInt, BoundedString, Decode, Encode, Nbt, ReadToEnd};
 use crate::var_int::VarInt;
 use crate::var_long::VarLong;
 use crate::Text;
@@ -311,13 +312,13 @@ macro_rules! def_bitfield {
             }
         }
 
-        impl Encode for $name {
+        impl $crate::protocol::Encode for $name {
             fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
                 self.0.encode(w)
             }
         }
 
-        impl Decode for $name {
+        impl $crate::protocol::Decode for $name {
             fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
                 <$inner_ty>::decode(r).map(Self)
             }
@@ -436,7 +437,6 @@ pub mod login {
 /// Packets and types used during the play state.
 pub mod play {
     use super::*;
-    use crate::protocol::BoundedInt;
 
     // ==== Clientbound ====
 
@@ -444,26 +444,19 @@ pub mod play {
         SpawnEntity 0x00 {
             entity_id: VarInt,
             object_uuid: Uuid,
-            typ: VarInt, // TODO: entity type enum
-            x: f64,
-            y: f64,
-            z: f64,
+            typ: VarInt,
+            position: DVec3,
             pitch: ByteAngle,
             yaw: ByteAngle,
             data: i32,
-            // TODO: entity velocity unit?
-            velocity_x: i16,
-            velocity_y: i16,
-            velocity_z: i16,
+            velocity: I16Vec3,
         }
     }
 
     def_struct! {
         SpawnExperienceOrb 0x01 {
             entity_id: VarInt,
-            x: f64,
-            y: f64,
-            z: f64,
+            position: DVec3,
             count: i16,
         }
     }
@@ -472,17 +465,12 @@ pub mod play {
         SpawnLivingEntity 0x02 {
             entity_id: VarInt,
             entity_uuid: Uuid,
-            typ: VarInt, // TODO: entity type enum
-            x: f64,
-            y: f64,
-            z: f64,
+            typ: VarInt,
+            position: DVec3,
             yaw: ByteAngle,
             pitch: ByteAngle,
             head_pitch: ByteAngle,
-            // TODO: entity velocity unit?
-            velocity_x: i16,
-            velocity_y: i16,
-            velocity_z: i16,
+            velocity: I16Vec3,
         }
     }
 
@@ -490,7 +478,7 @@ pub mod play {
         SpawnPainting 0x03 {
             entity_id: VarInt,
             entity_uuid: Uuid,
-            motive: VarInt, // TODO: painting ID enum
+            variant: VarInt, // TODO: painting ID enum
             location: BlockPos,
             direction: PaintingDirection,
         }
@@ -509,9 +497,7 @@ pub mod play {
         SpawnPlayer 0x04 {
             entity_id: VarInt,
             player_uuid: Uuid,
-            x: f64,
-            y: f64,
-            z: f64,
+            position: DVec3,
             yaw: ByteAngle,
             pitch: ByteAngle,
         }
@@ -980,9 +966,7 @@ pub mod play {
 
     def_struct! {
         PlayerPositionAndLook 0x38 {
-            x: f64,
-            y: f64,
-            z: f64,
+            position: DVec3,
             yaw: f32,
             pitch: f32,
             flags: PlayerPositionAndLookFlags,
@@ -998,6 +982,12 @@ pub mod play {
             z = 2,
             y_rot = 3,
             x_rot = 4,
+        }
+    }
+
+    def_struct! {
+        DestroyEntities 0x3a {
+            entities: Vec<VarInt>,
         }
     }
 
@@ -1032,6 +1022,13 @@ pub mod play {
         SpawnPosition 0x4b {
             location: BlockPos,
             angle: f32,
+        }
+    }
+
+    def_struct! {
+        EntityMetadata 0x4d {
+            entity_id: VarInt,
+            metadata: ReadToEnd,
         }
     }
 
@@ -1119,11 +1116,13 @@ pub mod play {
         ChunkDataAndUpdateLight,
         JoinGame,
         PlayerPositionAndLook,
+        DestroyEntities,
         MultiBlockChange,
         HeldItemChangeClientbound,
         UpdateViewPosition,
         UpdateViewDistance,
         SpawnPosition,
+        EntityMetadata,
         TimeUpdate,
     }
 
@@ -1291,9 +1290,7 @@ pub mod play {
 
     def_struct! {
         InteractAtData {
-            target_x: f32,
-            target_y: f32,
-            target_z: f32,
+            target: Vec3,
             hand: Hand,
         }
     }
@@ -1320,25 +1317,15 @@ pub mod play {
 
     def_struct! {
         PlayerPosition 0x11 {
-            /// Absolute position
-            x: f64,
-            /// Y position of the player's feet, normally 1.62 blocks below head.
-            feet_y: f64,
-            /// Absolute position
-            z: f64,
-            /// True if the client is on the ground, false otherwise.
+            position: DVec3,
             on_ground: bool,
         }
     }
 
     def_struct! {
         PlayerPositionAndRotation 0x12 {
-            /// Absolute position
-            x: f64,
-            /// Y position of the player's feet, normally 1.62 blocks below head.
-            feet_y: f64,
-            /// Absolute position
-            z: f64,
+            // Absolute position
+            position: DVec3,
             /// Absolute rotation on X axis in degrees.
             yaw: f32,
             /// Absolute rotation on Y axis in degrees.
@@ -1366,11 +1353,7 @@ pub mod play {
     def_struct! {
         VehicleMoveServerbound 0x15 {
             /// Absolute position
-            x: f64,
-            /// Absolute position
-            y: f64,
-            /// Absolute position
-            z: f64,
+            position: DVec3,
             /// Degrees
             yaw: f32,
             /// Degrees
@@ -1608,12 +1591,8 @@ pub mod play {
             action: StructureBlockAction,
             mode: StructureBlockMode,
             name: String,
-            offset_x: BoundedInt<i8, -32, 32>,
-            offset_y: BoundedInt<i8, -32, 32>,
-            offset_z: BoundedInt<i8, -32, 32>,
-            size_x: BoundedInt<i8, 0, 32>,
-            size_y: BoundedInt<i8, 0, 32>,
-            size_z: BoundedInt<i8, 0, 32>,
+            offset_xyz: [BoundedInt<i8, -32, 32>; 3],
+            size_xyz: [BoundedInt<i8, 0, 32>; 3],
             mirror: StructureBlockMirror,
             rotation: StructureBlockRotation,
             metadata: String,
@@ -1669,10 +1648,7 @@ pub mod play {
     def_struct! {
         UpdateSign 0x2b {
             location: BlockPos,
-            line_1: BoundedString<0, 384>,
-            line_2: BoundedString<0, 384>,
-            line_3: BoundedString<0, 384>,
-            line_4: BoundedString<0, 384>,
+            lines: [BoundedString<0, 384>; 4],
         }
     }
 
@@ -1693,9 +1669,7 @@ pub mod play {
             hand: Hand,
             location: BlockPos,
             face: BlockFace,
-            cursor_pos_x: f32,
-            cursor_pos_y: f32,
-            cursor_pos_z: f32,
+            cursor_pos: Vec3,
             head_inside_block: bool,
         }
     }

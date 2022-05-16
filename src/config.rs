@@ -5,15 +5,17 @@ use std::panic::{RefUnwindSafe, UnwindSafe};
 use async_trait::async_trait;
 use tokio::runtime::Handle as TokioHandle;
 
-use crate::{ident, Id, Identifier, NewClientData, Server, SharedServer, Text, Ticks};
+use crate::client::ClientMut;
+use crate::{ident, Identifier, NewClientData, Server, Text, Ticks, WorldId, WorldsMut};
 
 /// A trait containing callbacks which are invoked by the running Minecraft
 /// server.
 ///
 /// The config is used from multiple threads and must therefore implement
 /// `Send` and `Sync`. From within a single thread, methods are never invoked
-/// recursively. In other words, a mutex can always be aquired at the beginning
-/// of a method and released at the end without risk of deadlocking.
+/// recursively by the library. In other words, a mutex can be aquired at
+/// the beginning of a method and released at the end without risk of
+/// deadlocking.
 ///
 /// This trait uses the [async_trait](https://docs.rs/async-trait/latest/async_trait/) attribute macro.
 /// This will be removed once `impl Trait` in return position in traits is
@@ -47,6 +49,9 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// will sleep for any remaining time until a full tick has passed.
     ///
     /// The tick rate must be greater than zero.
+    ///
+    /// Note that the official Minecraft client only processes packets at 20hz,
+    /// so there is little benefit to a tick rate higher than 20.
     ///
     /// # Default Implementation
     /// Returns `20`, which is the same as Minecraft's official server.
@@ -140,6 +145,45 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
         vec![Biome::default()]
     }
 
+    /// Called when the server receives a Server List Ping query.
+    /// Data for the response can be provided or the query can be ignored.
+    ///
+    /// This method is called from within a tokio runtime.
+    ///
+    /// # Default Implementation
+    /// The query is ignored.
+    async fn server_list_ping(&self, server: &Server, remote_addr: SocketAddr) -> ServerListPing {
+        ServerListPing::Ignore
+    }
+
+    /// Called asynchronously for each client after successful authentication
+    /// (if online mode is enabled) to determine if they can continue to join
+    /// the server. On success, [`Config::join`] is called with the new
+    /// client. If this method returns with `Err(reason)`, then the client is
+    /// immediately disconnected with the given reason.
+    ///
+    /// This method is the appropriate place to perform asynchronous
+    /// operations such as database queries which may take some time to
+    /// complete. If you need access to the worlds on the server and don't need
+    /// async, see [`Config::join`].
+    ///
+    /// This method is called from within a tokio runtime.
+    ///
+    /// # Default Implementation
+    /// The client is allowed to join unconditionally.
+    async fn login(&self, server: &Server, ncd: &NewClientData) -> Result<(), Text> {
+        Ok(())
+    }
+
+    /// Called after a successful [`Config::login`] to determine what world the
+    /// new client should join. If this method returns with `Err(reason)`, then
+    /// the client is immediately disconnected with the given reason.
+    ///
+    /// If the returned [`WorldId`] is invalid, then the client is disconnected.
+    ///
+    /// This method is called from within a tokio runtime.
+    fn join(&self, server: &Server, client: ClientMut, worlds: WorldsMut) -> Result<WorldId, Text>;
+
     /// Called after the server is created, but prior to accepting connections
     /// and entering the update loop.
     ///
@@ -147,10 +191,7 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// no connections to the server will be made until this function returns.
     ///
     /// This method is called from within a tokio runtime.
-    ///
-    /// # Default Implementation
-    /// The default implementation does nothing.
-    fn init(&self, server: &mut Server) {}
+    fn init(&self, server: &Server, worlds: WorldsMut) {}
 
     /// Called once at the beginning of every server update (also known as
     /// a "tick").
@@ -162,37 +203,7 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     ///
     /// # Default Implementation
     /// The default implementation does nothing.
-    fn update(&self, server: &mut Server) {}
-
-    /// Called when the server receives a Server List Ping query.
-    /// Data for the response can be provided or the query can be ignored.
-    ///
-    /// This method is called from within a tokio runtime.
-    ///
-    /// # Default Implementation
-    /// The query is ignored.
-    async fn server_list_ping(
-        &self,
-        server: &SharedServer,
-        remote_addr: SocketAddr,
-    ) -> ServerListPing {
-        ServerListPing::Ignore
-    }
-
-    /// Called asynchronously for each client after successful authentication
-    /// (if online mode is enabled) to determine if they are allowed to join the
-    /// server. On success, a client-backed entity is spawned.
-    ///
-    /// This function is the appropriate place to perform
-    /// player count checks, whitelist checks, database queries, etc.
-    ///
-    /// This method is called from within a tokio runtime.
-    ///
-    /// # Default Implementation
-    /// The client is allowed to join unconditionally.
-    async fn login(&self, server: &SharedServer, ncd: &NewClientData) -> Login {
-        Login::Join
-    }
+    fn update(&self, server: &Server, worlds: WorldsMut);
 }
 
 /// The result of the [`server_list_ping`](Handler::server_list_ping) callback.
@@ -213,25 +224,14 @@ pub enum ServerListPing<'a> {
     Ignore,
 }
 
-/// The result of the [`login`](Handler::login) callback.
-#[derive(Debug)]
-pub enum Login {
-    /// The client may join the server.
-    Join,
-    /// The client may not join the server and will be disconnected with the
-    /// provided reason.
-    Disconnect(Text),
-}
-
 /// A handle to a particular [`Dimension`] on the server.
 ///
 /// Dimension IDs must only be used on servers from which they originate.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct DimensionId(pub(crate) u16);
 
-/// All dimension IDs are valid.
-impl Id for DimensionId {
-    fn idx(self) -> usize {
+impl DimensionId {
+    pub fn to_index(self) -> usize {
         self.0 as usize
     }
 }
@@ -313,9 +313,8 @@ pub enum DimensionEffects {
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct BiomeId(pub(crate) u16);
 
-/// All Biome IDs are valid.
-impl Id for BiomeId {
-    fn idx(self) -> usize {
+impl BiomeId {
+    pub fn to_index(self) -> usize {
         self.0 as usize
     }
 }

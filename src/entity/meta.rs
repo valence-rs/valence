@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+
 use std::io::Write;
 
 use anyhow::Context;
@@ -10,26 +12,25 @@ use crate::Text;
 
 #[derive(Clone, Copy, Default, PartialEq, PartialOrd, Debug)]
 pub struct ArmorStandRotations {
-    pub x_degrees: f32,
-    pub y_degrees: f32,
-    pub z_degrees: f32,
+    /// Rotation on the X axis in degrees.
+    pub x: f32,
+    /// Rotation on the Y axis in degrees.
+    pub y: f32,
+    /// Rotation on the Z axis in degrees.
+    pub z: f32,
 }
 
 impl ArmorStandRotations {
-    pub fn new(x_degrees: f32, y_degrees: f32, z_degrees: f32) -> Self {
-        Self {
-            x_degrees,
-            y_degrees,
-            z_degrees,
-        }
+    pub fn new(x: f32, y: f32, z: f32) -> Self {
+        Self { x, y, z }
     }
 }
 
 impl Encode for ArmorStandRotations {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        self.x_degrees.encode(w)?;
-        self.y_degrees.encode(w)?;
-        self.z_degrees.encode(w)
+        self.x.encode(w)?;
+        self.y.encode(w)?;
+        self.z.encode(w)
     }
 }
 
@@ -126,22 +127,6 @@ impl Default for VillagerProfession {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-struct OptVarInt(Option<i32>);
-
-impl Encode for OptVarInt {
-    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        match self.0 {
-            Some(n) => VarInt(
-                n.checked_add(1)
-                    .context("i32::MAX is unrepresentable as an optional VarInt")?,
-            )
-            .encode(w),
-            None => VarInt(0).encode(w),
-        }
-    }
-}
-
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub enum Pose {
     Standing,
@@ -166,6 +151,7 @@ impl Encode for Pose {
     }
 }
 
+/// The main hand of a player.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub enum MainHand {
     Left,

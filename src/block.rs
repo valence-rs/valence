@@ -1,4 +1,4 @@
-#![allow(clippy::all)]
+#![allow(clippy::all, missing_docs)]
 
 use std::fmt;
 use std::io::{Read, Write};

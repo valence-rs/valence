@@ -1,12 +1,14 @@
 // TODO: https://github.com/rust-lang/rust/issues/88581 for div_ceil
 
+use std::collections::HashMap;
 use std::io::Write;
 use std::iter::FusedIterator;
+use std::ops::Deref;
 
 use bitvec::bitvec;
 use bitvec::vec::BitVec;
 use num::Integer;
-use rayon::iter::ParallelIterator;
+use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::block::BlockState;
 use crate::glm::DVec2;
@@ -14,73 +16,99 @@ use crate::packets::play::{
     BlockChange, ChunkDataAndUpdateLight, ChunkDataHeightmaps, ClientPlayPacket, MultiBlockChange,
 };
 use crate::protocol::{Encode, Nbt};
-use crate::slotmap::{Key, SlotMap};
 use crate::var_int::VarInt;
-use crate::BiomeId;
+use crate::{BiomeId, Server, Ticks};
 
-pub struct ChunkStore {
-    sm: SlotMap<Chunk>,
+pub struct Chunks {
+    chunks: HashMap<ChunkPos, Chunk>,
+    server: Server,
+    section_count: u32,
 }
 
-impl ChunkStore {
-    pub(crate) fn new() -> Self {
-        Self { sm: SlotMap::new() }
+impl Chunks {
+    pub(crate) fn new(server: Server, section_count: u32) -> Self {
+        Self {
+            chunks: HashMap::new(),
+            server,
+            section_count,
+        }
     }
 
     pub fn count(&self) -> usize {
-        self.sm.count()
+        self.chunks.len()
     }
 
-    pub fn create(&mut self, section_count: usize) -> ChunkId {
-        ChunkId(self.sm.insert(Chunk::new(section_count)))
-    }
-
-    pub fn delete(&mut self, chunk: ChunkId) -> bool {
-        self.sm.remove(chunk.0).is_some()
-    }
-
-    pub fn get(&self, chunk: ChunkId) -> Option<&Chunk> {
-        self.sm.get(chunk.0)
-    }
-
-    pub fn get_mut(&mut self, chunk: ChunkId) -> Option<&mut Chunk> {
-        self.sm.get_mut(chunk.0)
+    pub fn get(&self, pos: ChunkPos) -> Option<&Chunk> {
+        self.chunks.get(&pos)
     }
 
     pub fn clear(&mut self) {
-        self.sm.clear();
+        self.chunks.clear();
     }
 
-    pub fn iter(&self) -> impl FusedIterator<Item = (ChunkId, &Chunk)> + Clone + '_ {
-        self.sm.iter().map(|(k, v)| (ChunkId(k), v))
+    pub fn iter(&self) -> impl FusedIterator<Item = (ChunkPos, &Chunk)> + Clone + '_ {
+        self.chunks.iter().map(|(&pos, chunk)| (pos, chunk))
     }
 
-    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (ChunkId, &mut Chunk)> + '_ {
-        self.sm.iter_mut().map(|(k, v)| (ChunkId(k), v))
-    }
-
-    pub fn par_iter(&self) -> impl ParallelIterator<Item = (ChunkId, &Chunk)> + Clone + '_ {
-        self.sm.par_iter().map(|(k, v)| (ChunkId(k), v))
-    }
-
-    pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (ChunkId, &mut Chunk)> + '_ {
-        self.sm.par_iter_mut().map(|(k, v)| (ChunkId(k), v))
+    pub fn par_iter(&self) -> impl ParallelIterator<Item = (ChunkPos, &Chunk)> + Clone + '_ {
+        self.chunks.par_iter().map(|(&pos, chunk)| (pos, chunk))
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub struct ChunkId(Key);
+impl<'a> ChunksMut<'a> {
+    pub(crate) fn new(chunks: &'a mut Chunks) -> Self {
+        Self(chunks)
+    }
+
+    pub fn create(&mut self, pos: ChunkPos) -> bool {
+        let chunk = Chunk::new(self.section_count, self.server.current_tick());
+        self.0.chunks.insert(pos, chunk).is_none()
+    }
+
+    pub fn delete(&mut self, pos: ChunkPos) -> bool {
+        self.0.chunks.remove(&pos).is_some()
+    }
+
+    pub fn get_mut(&mut self, pos: ChunkPos) -> Option<ChunkMut> {
+        self.0.chunks.get_mut(&pos).map(ChunkMut)
+    }
+
+    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (ChunkPos, ChunkMut)> + '_ {
+        self.0
+            .chunks
+            .iter_mut()
+            .map(|(&pos, chunk)| (pos, ChunkMut(chunk)))
+    }
+
+    pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (ChunkPos, ChunkMut)> + '_ {
+        self.0
+            .chunks
+            .par_iter_mut()
+            .map(|(&pos, chunk)| (pos, ChunkMut(chunk)))
+    }
+}
+
+pub struct ChunksMut<'a>(&'a mut Chunks);
+
+impl<'a> Deref for ChunksMut<'a> {
+    type Target = Chunks;
+
+    fn deref(&self) -> &Self::Target {
+        self.0
+    }
+}
 
 pub struct Chunk {
     sections: Box<[ChunkSection]>,
     // TODO block_entities: HashMap<u32, BlockEntity>,
+    /// The MOTION_BLOCKING heightmap
     heightmap: Vec<i64>,
     modified: bool,
-    created_this_tick: bool,
+    created_tick: Ticks,
 }
 
 impl Chunk {
-    pub(crate) fn new(section_count: usize) -> Self {
+    pub(crate) fn new(section_count: u32, current_tick: Ticks) -> Self {
         let sect = ChunkSection {
             blocks: [BlockState::default(); 4096],
             biomes: [BiomeId::default(); 64],
@@ -89,22 +117,18 @@ impl Chunk {
         };
 
         let mut chunk = Self {
-            sections: vec![sect; section_count].into(),
+            sections: vec![sect; section_count as usize].into(),
             heightmap: Vec::new(),
             modified: true,
-            created_this_tick: true,
+            created_tick: current_tick,
         };
 
-        chunk.apply_modifications();
+        ChunkMut(&mut chunk).apply_modifications();
         chunk
     }
 
-    pub fn created_this_tick(&self) -> bool {
-        self.created_this_tick
-    }
-
-    pub(crate) fn clear_created_this_tick(&mut self) {
-        self.created_this_tick = false;
+    pub fn created_tick(&self) -> Ticks {
+        self.created_tick
     }
 
     pub fn height(&self) -> usize {
@@ -119,20 +143,6 @@ impl Chunk {
         }
     }
 
-    pub fn set_block_state(&mut self, x: usize, y: usize, z: usize, block: BlockState) {
-        if x < 16 && y < self.height() && z < 16 {
-            let sec = &mut self.sections[y / 16];
-            let idx = x + z * 16 + y % 16 * 16 * 16;
-            if block != sec.blocks[idx] {
-                sec.blocks[idx] = block;
-                // TODO: set the modified bit.
-                sec.modified = true;
-                self.modified = true;
-                // TODO: update block entity if b could have block entity data.
-            }
-        }
-    }
-
     pub fn get_biome(&self, x: usize, y: usize, z: usize) -> BiomeId {
         if x < 4 && y < self.height() / 4 && z < 4 {
             self.sections[y / 4].biomes[x + z * 4 + y % 4 * 4 * 4]
@@ -141,57 +151,21 @@ impl Chunk {
         }
     }
 
-    pub fn set_biome(&mut self, x: usize, y: usize, z: usize, b: BiomeId) {
-        if x < 4 && y < self.height() / 4 && z < 4 {
-            self.sections[y / 4].biomes[x + z * 4 + y % 4 * 4 * 4] = b;
-        }
-    }
-
-    /// Gets the chunk data packet with the given number of sections for this
-    /// chunk. This does not include unapplied changes.
-    pub(crate) fn chunk_data_packet(
-        &self,
-        pos: ChunkPos,
-        section_count: usize,
-    ) -> ChunkDataAndUpdateLight {
+    /// Gets the chunk data packet for this chunk with the given position. This
+    /// does not include unapplied changes.
+    pub(crate) fn chunk_data_packet(&self, pos: ChunkPos) -> ChunkDataAndUpdateLight {
         let mut blocks_and_biomes = Vec::new();
 
-        for i in 0..section_count {
-            match self.sections.get(i) {
-                Some(sect) => {
-                    blocks_and_biomes.extend_from_slice(&sect.compact_data);
-                }
-                None => {
-                    // Extra chunk sections are encoded as empty with the default biome.
-
-                    // non air block count
-                    0i16.encode(&mut blocks_and_biomes).unwrap();
-                    // blocks
-                    encode_paletted_container_single(0, &mut blocks_and_biomes).unwrap();
-                    // biomes
-                    encode_paletted_container_single(0, &mut blocks_and_biomes).unwrap();
-                }
-            }
+        for sect in self.sections.iter() {
+            blocks_and_biomes.extend_from_slice(&sect.compact_data);
         }
-
-        let motion_blocking = if section_count == self.sections.len() {
-            self.heightmap.clone()
-        } else {
-            // This is bad for two reasons:
-            // - Rebuilding the heightmap from scratch is slow.
-            // - The new heightmap is subtly wrong because we are building it from blocks
-            //   with the modifications applied already.
-            // But you shouldn't be using chunks with heights different than the dimensions
-            // they're residing in anyway, so whatever.
-            let mut heightmap = Vec::new();
-            build_heightmap(&self.sections, &mut heightmap);
-            heightmap
-        };
 
         ChunkDataAndUpdateLight {
             chunk_x: pos.x,
             chunk_z: pos.z,
-            heightmaps: Nbt(ChunkDataHeightmaps { motion_blocking }),
+            heightmaps: Nbt(ChunkDataHeightmaps {
+                motion_blocking: self.heightmap.clone(),
+            }),
             blocks_and_biomes,
             block_entities: Vec::new(), // TODO
             trust_edges: true,
@@ -215,12 +189,44 @@ impl Chunk {
         // TODO
         None
     }
+}
+
+pub struct ChunkMut<'a>(&'a mut Chunk);
+
+impl<'a> Deref for ChunkMut<'a> {
+    type Target = Chunk;
+
+    fn deref(&self) -> &Self::Target {
+        self.0
+    }
+}
+
+impl<'a> ChunkMut<'a> {
+    pub fn set_block_state(&mut self, x: usize, y: usize, z: usize, block: BlockState) {
+        if x < 16 && y < self.height() && z < 16 {
+            let sec = &mut self.0.sections[y / 16];
+            let idx = x + z * 16 + y % 16 * 16 * 16;
+            if block != sec.blocks[idx] {
+                sec.blocks[idx] = block;
+                // TODO: set the modified bit.
+                sec.modified = true;
+                self.0.modified = true;
+                // TODO: update block entity if b could have block entity data.
+            }
+        }
+    }
+
+    pub fn set_biome(&mut self, x: usize, y: usize, z: usize, b: BiomeId) {
+        if x < 4 && y < self.height() / 4 && z < 4 {
+            self.0.sections[y / 4].biomes[x + z * 4 + y % 4 * 4 * 4] = b;
+        }
+    }
 
     pub(crate) fn apply_modifications(&mut self) {
         if self.modified {
-            self.modified = false;
+            self.0.modified = false;
 
-            for sect in self.sections.iter_mut() {
+            for sect in self.0.sections.iter_mut() {
                 if sect.modified {
                     sect.modified = false;
 
@@ -253,7 +259,7 @@ impl Chunk {
                 }
             }
 
-            build_heightmap(&self.sections, &mut self.heightmap);
+            build_heightmap(&self.0.sections, &mut self.0.heightmap);
         }
     }
 }
@@ -300,6 +306,24 @@ impl ChunkPos {
 impl From<(i32, i32)> for ChunkPos {
     fn from((x, z): (i32, i32)) -> Self {
         ChunkPos { x, z }
+    }
+}
+
+impl Into<(i32, i32)> for ChunkPos {
+    fn into(self) -> (i32, i32) {
+        (self.x, self.z)
+    }
+}
+
+impl From<[i32; 2]> for ChunkPos {
+    fn from([x, z]: [i32; 2]) -> Self {
+        (x, z).into()
+    }
+}
+
+impl Into<[i32; 2]> for ChunkPos {
+    fn into(self) -> [i32; 2] {
+        [self.x, self.z]
     }
 }
 

@@ -4,15 +4,16 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use log::LevelFilter;
 use valence::block::BlockState;
 use valence::client::GameMode;
-use valence::config::{Config, Login, ServerListPing};
+use valence::config::{Config, ServerListPing};
 use valence::text::Color;
 use valence::{
-    async_trait, DimensionId, NewClientData, Server, SharedServer, ShutdownResult, TextFormat,
+    async_trait, ChunkPos, ClientMut, DimensionId, Server, ShutdownResult, Text,
+    TextFormat, WorldId, WorldsMut,
 };
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()
-        .filter_level(LevelFilter::Trace)
+        .filter_module("valence", LevelFilter::Trace)
         .parse_default_env()
         .init();
 
@@ -39,63 +40,7 @@ impl Config for Game {
         false
     }
 
-    fn init(&self, server: &mut Server) {
-        let world_id = server.worlds.create(DimensionId::default());
-        let world = server.worlds.get_mut(world_id).unwrap();
-
-        let chunk_radius = 5;
-
-        for z in -chunk_radius..chunk_radius {
-            for x in -chunk_radius..chunk_radius {
-                let chunk_id = server.chunks.create(384);
-                let chunk = server.chunks.get_mut(chunk_id).unwrap();
-
-                // Chunks are only visible to clients if all adjacent chunks are loaded.
-                // This will make the perimiter chunks contain only air.
-                if x != -chunk_radius
-                    && x != chunk_radius - 1
-                    && z != -chunk_radius
-                    && z != chunk_radius - 1
-                {
-                    for z in 0..16 {
-                        for x in 0..16 {
-                            for y in 0..50 {
-                                chunk.set_block_state(x, y, z, BlockState::STONE);
-                            }
-                        }
-                    }
-                }
-
-                world.chunks_mut().insert((x, z).into(), chunk_id);
-            }
-        }
-    }
-
-    fn update(&self, server: &mut Server) {
-        let world_id = server.worlds.iter().next().unwrap().0;
-
-        server.clients.retain(|_, client| {
-            if client.created_tick() == server.other.current_tick() {
-                client.set_world(Some(world_id));
-                client.set_game_mode(GameMode::Creative);
-                client.teleport([0.0, 200.0, 0.0], 0.0, 0.0);
-            }
-
-            if client.is_disconnected() {
-                server.entities.delete(client.entity());
-                self.player_count.fetch_sub(1, Ordering::SeqCst);
-                false
-            } else {
-                true
-            }
-        });
-    }
-
-    async fn server_list_ping(
-        &self,
-        _server: &SharedServer,
-        _remote_addr: SocketAddr,
-    ) -> ServerListPing {
+    async fn server_list_ping(&self, _server: &Server, _remote_addr: SocketAddr) -> ServerListPing {
         ServerListPing::Respond {
             online_players: self.player_count.load(Ordering::SeqCst) as i32,
             max_players: MAX_PLAYERS as i32,
@@ -104,17 +49,65 @@ impl Config for Game {
         }
     }
 
-    async fn login(&self, _server: &SharedServer, _ncd: &NewClientData) -> Login {
-        let res = self
+    fn join(
+        &self,
+        _server: &Server,
+        _client: ClientMut,
+        worlds: WorldsMut,
+    ) -> Result<WorldId, Text> {
+        if let Ok(_) = self
             .player_count
             .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
                 (count < MAX_PLAYERS).then(|| count + 1)
-            });
-
-        if res.is_ok() {
-            Login::Join
+            })
+        {
+            Ok(worlds.iter().next().unwrap().0)
         } else {
-            Login::Disconnect("The server is full!".into())
+            Err("The server is full!".into())
         }
+    }
+
+    fn init(&self, _server: &Server, mut worlds: WorldsMut) {
+        let world_id = worlds.create(DimensionId::default());
+        let mut world = worlds.get_mut(world_id).unwrap();
+
+        let size = 5;
+        for z in -size..size {
+            for x in -size..size {
+                let pos = ChunkPos::new(x, z);
+                world.chunks.create(pos);
+                let mut chunk = world.chunks.get_mut(pos).unwrap();
+
+                // Chunks are only visible to clients if all adjacent chunks are loaded.
+                // This will make the perimiter chunks contain only air.
+                if x != -size && x != size - 1 && z != -size && z != size - 1 {
+                    for z in 0..16 {
+                        for x in 0..16 {
+                            for y in 0..50 {
+                                chunk.set_block_state(x, y, z, BlockState::STONE);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn update(&self, server: &Server, mut worlds: WorldsMut) {
+        let mut world = worlds.iter_mut().next().unwrap().1;
+
+        world.clients.retain(|_, mut client| {
+            if client.created_tick() == server.current_tick() {
+                client.set_game_mode(GameMode::Creative);
+                client.teleport([0.0, 200.0, 0.0], 0.0, 0.0);
+            }
+
+            if client.is_disconnected() {
+                self.player_count.fetch_sub(1, Ordering::SeqCst);
+                false
+            } else {
+                true
+            }
+        });
     }
 }

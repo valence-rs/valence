@@ -47,6 +47,18 @@ impl Decode for BlockPos {
     }
 }
 
+impl From<(i32, i32, i32)> for BlockPos {
+    fn from((x, y, z): (i32, i32, i32)) -> Self {
+        BlockPos::new(x, y, z)
+    }
+}
+
+impl From<[i32; 3]> for BlockPos {
+    fn from([x, y, z]: [i32; 3]) -> Self {
+        BlockPos::new(x, y, z)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
