@@ -3,9 +3,9 @@ use std::iter::FusedIterator;
 use std::ops::Deref;
 
 use flume::{Receiver, Sender, TrySendError};
-use glm::DVec3;
 use rayon::iter::ParallelIterator;
 use uuid::Uuid;
+use vek::Vec3;
 
 use crate::block_pos::BlockPos;
 use crate::config::{
@@ -26,9 +26,7 @@ use crate::server::ServerPacketChannels;
 use crate::slotmap::{Key, SlotMap};
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::var_int::VarInt;
-use crate::{
-    glm, ident, ChunkPos, Chunks, Entities, EntityId, Server, Text, Ticks, LIBRARY_NAMESPACE,
-};
+use crate::{ident, ChunkPos, Chunks, Entities, EntityId, Server, Text, Ticks, LIBRARY_NAMESPACE};
 
 pub struct Clients {
     sm: SlotMap<Client>,
@@ -117,8 +115,8 @@ pub struct Client {
     username: String,
     uuid: Uuid,
     on_ground: bool,
-    new_position: DVec3,
-    old_position: DVec3,
+    new_position: Vec3<f64>,
+    old_position: Vec3<f64>,
     /// Measured in degrees
     yaw: f32,
     /// Measured in degrees
@@ -181,8 +179,8 @@ impl Client {
             username,
             uuid,
             on_ground: false,
-            new_position: DVec3::default(),
-            old_position: DVec3::default(),
+            new_position: Vec3::default(),
+            old_position: Vec3::default(),
             yaw: 0.0,
             pitch: 0.0,
             teleported_this_tick: false,
@@ -216,7 +214,7 @@ impl Client {
         self.uuid
     }
 
-    pub fn position(&self) -> DVec3 {
+    pub fn position(&self) -> Vec3<f64> {
         self.new_position
     }
 
@@ -262,7 +260,7 @@ impl<'a> ClientMut<'a> {
         ClientMut(self.0)
     }
 
-    pub fn teleport(&mut self, pos: impl Into<DVec3>, yaw: f32, pitch: f32) {
+    pub fn teleport(&mut self, pos: impl Into<Vec3<f64>>, yaw: f32, pitch: f32) {
         self.0.new_position = pos.into();
         self.0.yaw = yaw;
         self.0.pitch = pitch;
@@ -425,7 +423,10 @@ impl<'a> ClientMut<'a> {
             .map_or(2, |s| s.view_distance)
             .min(self.new_max_view_distance);
 
-        let center = ChunkPos::from_xz(self.0.new_position.xz());
+        let center = ChunkPos::new(
+            (self.new_position.x / 16.0) as i32,
+            (self.new_position.z / 16.0) as i32,
+        );
 
         // Send the update view position packet if the client changes the chunk section
         // they're in.
@@ -483,20 +484,19 @@ impl<'a> ClientMut<'a> {
 
         // This is done after the chunks are loaded so that the "downloading terrain"
         // screen is closed at the appropriate time.
-        
-        // TODO: temporarily broken
-        // if self.0.teleported_this_tick {
-        //     self.0.teleported_this_tick = false;
 
-        //     self.send_packet(dbg!(PlayerPositionAndLook {
-        //         position: self.new_position,
-        //         yaw: self.yaw,
-        //         pitch: self.pitch,
-        //         flags: PlayerPositionAndLookFlags::new(false, false, false, false, false),
-        //         teleport_id: VarInt((self.teleport_id_counter - 1) as i32),
-        //         dismount_vehicle: false,
-        //     }));
-        // }
+        if self.0.teleported_this_tick {
+            self.0.teleported_this_tick = false;
+
+            self.send_packet(PlayerPositionAndLook {
+                position: self.new_position,
+                yaw: self.yaw,
+                pitch: self.pitch,
+                flags: PlayerPositionAndLookFlags::new(false, false, false, false, false),
+                teleport_id: VarInt((self.teleport_id_counter - 1) as i32),
+                dismount_vehicle: false,
+            });
+        }
 
         let mut entities_to_unload = Vec::new();
 
@@ -504,9 +504,7 @@ impl<'a> ClientMut<'a> {
         // longer visible.
         self.0.loaded_entities.retain(|&id| {
             if let Some(entity) = entities.get(id) {
-                if glm::distance(&self.0.new_position, &entity.position())
-                    <= view_dist as f64 * 16.0
-                {
+                if self.0.new_position.distance(entity.position()) <= view_dist as f64 * 16.0 {
                     todo!("update entity");
                     return true;
                 }
@@ -524,7 +522,7 @@ impl<'a> ClientMut<'a> {
 
         // Spawn new entities within the view distance.
         for (id, entity) in entities.iter() {
-            if glm::distance(&self.position(), &entity.position()) <= view_dist as f64 * 16.0
+            if self.position().distance(entity.position()) <= view_dist as f64 * 16.0
                 && entity.typ() != EntityType::Marker
                 && self.0.loaded_entities.insert(id)
             {
@@ -548,7 +546,7 @@ impl<'a> ClientMut<'a> {
 
         fn handle_movement_packet(
             client: &mut Client,
-            new_position: DVec3,
+            new_position: Vec3<f64>,
             new_yaw: f32,
             new_pitch: f32,
             new_on_ground: bool,
@@ -556,8 +554,8 @@ impl<'a> ClientMut<'a> {
             if client.pending_teleports == 0 {
                 let event = Event::Movement {
                     position: client.new_position,
-                    yaw_degrees: client.yaw,
-                    pitch_degrees: client.pitch,
+                    yaw: client.yaw,
+                    pitch: client.pitch,
                     on_ground: client.on_ground,
                 };
 
@@ -693,9 +691,9 @@ pub enum Event {
     /// The client has moved. The values in this variant are the previous
     /// position and look.
     Movement {
-        position: DVec3,
-        yaw_degrees: f32,
-        pitch_degrees: f32,
+        position: Vec3<f64>,
+        yaw: f32,
+        pitch: f32,
         on_ground: bool,
     },
 }

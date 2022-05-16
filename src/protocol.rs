@@ -5,9 +5,9 @@ use anyhow::{anyhow, ensure, Context};
 use arrayvec::ArrayVec;
 use bitvec::prelude::*;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use nalgebra_glm::{Number, TVec};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use vek::{Vec2, Vec3, Vec4};
 
 use crate::var_int::VarInt;
 use crate::EntityId;
@@ -372,15 +372,50 @@ impl<T: Decode, const N: usize> Decode for [T; N] {
     }
 }
 
-impl<T: Encode, const N: usize> Encode for TVec<T, N> {
+impl<T: Encode> Encode for Vec2<T> {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        encode_array_bounded(self.as_slice(), N, N, w)
+        self.x.encode(w)?;
+        self.y.encode(w)
     }
 }
 
-impl<T: Decode + Number, const N: usize> Decode for TVec<T, N> {
+impl<T: Encode> Encode for Vec3<T> {
+    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+        self.x.encode(w)?;
+        self.y.encode(w)?;
+        self.z.encode(w)
+    }
+}
+
+impl<T: Encode> Encode for Vec4<T> {
+    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+        self.x.encode(w)?;
+        self.y.encode(w)?;
+        self.z.encode(w)?;
+        self.w.encode(w)
+    }
+}
+
+impl<T: Decode> Decode for Vec2<T> {
     fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
-        Ok(<[T; N]>::decode(r)?.into())
+        Ok(Vec2::new(T::decode(r)?, T::decode(r)?))
+    }
+}
+
+impl<T: Decode> Decode for Vec3<T> {
+    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+        Ok(Vec3::new(T::decode(r)?, T::decode(r)?, T::decode(r)?))
+    }
+}
+
+impl<T: Decode> Decode for Vec4<T> {
+    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+        Ok(Vec4::new(
+            T::decode(r)?,
+            T::decode(r)?,
+            T::decode(r)?,
+            T::decode(r)?,
+        ))
     }
 }
 

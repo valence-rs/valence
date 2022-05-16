@@ -9,18 +9,17 @@ use std::ops::Deref;
 use bitfield_struct::bitfield;
 use rayon::iter::ParallelIterator;
 use uuid::Uuid;
+use vek::{Aabb, Vec3};
 
 use crate::byte_angle::ByteAngle;
-use crate::chunk::ChunkPos;
-use crate::glm::{DVec3, I16Vec3, Vec3};
 use crate::packets::play::{
     ClientPlayPacket, EntityMetadata, SpawnEntity, SpawnExperienceOrb, SpawnLivingEntity,
     SpawnPainting, SpawnPlayer,
 };
 use crate::protocol::ReadToEnd;
 use crate::slotmap::{Key, SlotMap};
+use crate::util::aabb_from_bottom_and_size;
 use crate::var_int::VarInt;
-use crate::{Aabb, WorldId};
 
 pub struct Entities {
     sm: SlotMap<Entity>,
@@ -103,8 +102,8 @@ impl<'a> EntitiesMut<'a> {
                 let entity = EntityId(self.0.sm.insert(Entity {
                     flags: EntityFlags(0),
                     meta: EntityMeta::new(EntityType::Marker),
-                    new_position: DVec3::default(),
-                    old_position: DVec3::default(),
+                    new_position: Vec3::default(),
+                    old_position: Vec3::default(),
                     yaw: 0.0,
                     pitch: 0.0,
                     head_yaw: 0.0,
@@ -181,13 +180,13 @@ impl EntityId {
 pub struct Entity {
     flags: EntityFlags,
     meta: EntityMeta,
-    new_position: DVec3,
-    old_position: DVec3,
+    new_position: Vec3<f64>,
+    old_position: Vec3<f64>,
     yaw: f32,
     pitch: f32,
     head_yaw: f32,
     head_pitch: f32,
-    velocity: Vec3,
+    velocity: Vec3<f32>,
     uuid: Uuid,
 }
 
@@ -230,13 +229,13 @@ impl Entity {
     }
 
     /// Returns the position of this entity in the world it inhabits.
-    pub fn position(&self) -> DVec3 {
+    pub fn position(&self) -> Vec3<f64> {
         self.new_position
     }
 
     /// Returns the position of this entity as it existed at the end of the
     /// previous tick.
-    pub fn old_position(&self) -> DVec3 {
+    pub fn old_position(&self) -> Vec3<f64> {
         self.old_position
     }
 
@@ -261,7 +260,7 @@ impl Entity {
     }
 
     /// Gets the velocity of this entity in meters per second.
-    pub fn velocity(&self) -> Vec3 {
+    pub fn velocity(&self) -> Vec3<f32> {
         self.velocity
     }
 
@@ -369,7 +368,7 @@ impl Entity {
         }
     }
 
-    pub fn hitbox(&self) -> Aabb<f64, 3> {
+    pub fn hitbox(&self) -> Aabb<f64> {
         let dims = match &self.meta {
             EntityMeta::AreaEffectCloud(e) => [
                 e.get_radius() as f64 * 2.0,
@@ -504,13 +503,13 @@ impl Entity {
             EntityMeta::FishingBobber(_) => [0.25, 0.25, 0.25],
         };
 
-        Aabb::from_bottom_and_dimensions(self.new_position, dims)
+        aabb_from_bottom_and_size(self.new_position, dims.into())
     }
 }
 
-fn velocity_to_packet_units(vel: Vec3) -> I16Vec3 {
+fn velocity_to_packet_units(vel: Vec3<f32>) -> Vec3<i16> {
     // The saturating cast to i16 is desirable.
-    vel.map(|v| (v * 400.0) as i16)
+    (vel * 400.0).as_()
 }
 
 impl<'a> EntityMut<'a> {
@@ -534,7 +533,7 @@ impl<'a> EntityMut<'a> {
     }
 
     /// Sets the position of this entity in the world it inhabits.
-    pub fn set_position(&mut self, pos: impl Into<DVec3>) {
+    pub fn set_position(&mut self, pos: impl Into<Vec3<f64>>) {
         self.0.new_position = pos.into();
     }
 
@@ -570,9 +569,10 @@ impl<'a> EntityMut<'a> {
         }
     }
 
-    pub fn set_velocity(&mut self, velocity: Vec3) {
-        self.0.velocity = velocity;
-        if velocity_to_packet_units(self.velocity) != velocity_to_packet_units(velocity) {
+    pub fn set_velocity(&mut self, velocity: impl Into<Vec3<f32>>) {
+        let new_vel = velocity.into();
+        self.0.velocity = new_vel;
+        if velocity_to_packet_units(self.velocity) != velocity_to_packet_units(new_vel) {
             self.0.flags.set_velocity_modified(true);
         }
     }

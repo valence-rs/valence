@@ -13,10 +13,10 @@ use num::{One, Zero};
 use paste::paste;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use vek::{Vec2, Vec3};
 
 use crate::block_pos::BlockPos;
 use crate::byte_angle::ByteAngle;
-use crate::glm::{DVec3, I16Vec3, Vec3};
 use crate::identifier::Identifier;
 use crate::protocol::{BoundedArray, BoundedInt, BoundedString, Decode, Encode, Nbt, ReadToEnd};
 use crate::var_int::VarInt;
@@ -445,18 +445,18 @@ pub mod play {
             entity_id: VarInt,
             object_uuid: Uuid,
             typ: VarInt,
-            position: DVec3,
+            position: Vec3<f64>,
             pitch: ByteAngle,
             yaw: ByteAngle,
             data: i32,
-            velocity: I16Vec3,
+            velocity: Vec3<i16>,
         }
     }
 
     def_struct! {
         SpawnExperienceOrb 0x01 {
             entity_id: VarInt,
-            position: DVec3,
+            position: Vec3<f64>,
             count: i16,
         }
     }
@@ -466,11 +466,11 @@ pub mod play {
             entity_id: VarInt,
             entity_uuid: Uuid,
             typ: VarInt,
-            position: DVec3,
+            position: Vec3<f64>,
             yaw: ByteAngle,
             pitch: ByteAngle,
             head_pitch: ByteAngle,
-            velocity: I16Vec3,
+            velocity: Vec3<i16>,
         }
     }
 
@@ -497,7 +497,7 @@ pub mod play {
         SpawnPlayer 0x04 {
             entity_id: VarInt,
             player_uuid: Uuid,
-            position: DVec3,
+            position: Vec3<f64>,
             yaw: ByteAngle,
             pitch: ByteAngle,
         }
@@ -966,7 +966,7 @@ pub mod play {
 
     def_struct! {
         PlayerPositionAndLook 0x38 {
-            position: DVec3,
+            position: Vec3<f64>,
             yaw: f32,
             pitch: f32,
             flags: PlayerPositionAndLookFlags,
@@ -1290,7 +1290,7 @@ pub mod play {
 
     def_struct! {
         InteractAtData {
-            target: Vec3,
+            target: Vec3<f64>,
             hand: Hand,
         }
     }
@@ -1317,7 +1317,7 @@ pub mod play {
 
     def_struct! {
         PlayerPosition 0x11 {
-            position: DVec3,
+            position: Vec3<f64>,
             on_ground: bool,
         }
     }
@@ -1325,7 +1325,7 @@ pub mod play {
     def_struct! {
         PlayerPositionAndRotation 0x12 {
             // Absolute position
-            position: DVec3,
+            position: Vec3<f64>,
             /// Absolute rotation on X axis in degrees.
             yaw: f32,
             /// Absolute rotation on Y axis in degrees.
@@ -1353,7 +1353,7 @@ pub mod play {
     def_struct! {
         VehicleMoveServerbound 0x15 {
             /// Absolute position
-            position: DVec3,
+            position: Vec3<f64>,
             /// Degrees
             yaw: f32,
             /// Degrees
@@ -1669,7 +1669,7 @@ pub mod play {
             hand: Hand,
             location: BlockPos,
             face: BlockFace,
-            cursor_pos: Vec3,
+            cursor_pos: Vec3<f64>,
             head_inside_block: bool,
         }
     }

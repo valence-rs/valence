@@ -5,13 +5,12 @@ use std::io::Write;
 use std::iter::FusedIterator;
 use std::ops::Deref;
 
-use bitvec::bitvec;
 use bitvec::vec::BitVec;
 use num::Integer;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
+use vek::Vec2;
 
 use crate::block::BlockState;
-use crate::glm::DVec2;
 use crate::packets::play::{
     BlockChange, ChunkDataAndUpdateLight, ChunkDataHeightmaps, ClientPlayPacket, MultiBlockChange,
 };
@@ -291,15 +290,6 @@ pub struct ChunkPos {
 impl ChunkPos {
     pub const fn new(x: i32, z: i32) -> Self {
         Self { x, z }
-    }
-
-    /// Returns the chunk position of the chunk that the given coordinates are
-    /// contained within.
-    pub fn from_xz(xz: DVec2) -> Self {
-        Self {
-            x: (xz.x / 16.0) as i32,
-            z: (xz.y / 16.0) as i32,
-        }
     }
 }
 

@@ -7,7 +7,6 @@
     // missing_docs
 )]
 
-mod aabb;
 pub mod block;
 mod block_pos;
 mod byte_angle;
@@ -27,7 +26,6 @@ mod var_int;
 mod var_long;
 pub mod world;
 
-pub use aabb::Aabb;
 pub use async_trait::async_trait;
 pub use block_pos::BlockPos;
 pub use chunk::{Chunk, ChunkPos, Chunks, ChunksMut};
@@ -39,7 +37,7 @@ pub use server::{start_server, NewClientData, Server, ShutdownResult};
 pub use text::{Text, TextFormat};
 pub use uuid::Uuid;
 pub use world::{WorldId, WorldMut, WorldRef, Worlds, WorldsMut};
-pub use {nalgebra_glm as glm, nbt, uuid};
+pub use {nbt, uuid, vek};
 
 /// The Minecraft protocol version that this library targets.
 pub const PROTOCOL_VERSION: i32 = 758;
