@@ -505,7 +505,9 @@ impl<'a> ClientMut<'a> {
         self.0.loaded_entities.retain(|&id| {
             if let Some(entity) = entities.get(id) {
                 if self.0.new_position.distance(entity.position()) <= view_dist as f64 * 16.0 {
-                    todo!("update entity");
+                    if let Some(meta) = entity.updated_metadata_packet(id) {
+                        send_packet(&mut self.0.send, meta);
+                    }
                     return true;
                 }
             }

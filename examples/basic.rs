@@ -7,8 +7,8 @@ use valence::client::GameMode;
 use valence::config::{Config, ServerListPing};
 use valence::text::Color;
 use valence::{
-    async_trait, ChunkPos, ClientMut, DimensionId, Server, ShutdownResult, Text, TextFormat,
-    WorldId, WorldsMut,
+    async_trait, ChunkPos, ClientMut, DimensionId, EntityType, Server, ShutdownResult, Text,
+    TextFormat, WorldId, WorldsMut,
 };
 
 pub fn main() -> ShutdownResult {
@@ -83,14 +83,38 @@ impl Config for Game {
                 if x != -size && x != size - 1 && z != -size && z != size - 1 {
                     for z in 0..16 {
                         for x in 0..16 {
-                            for y in 0..50 {
-                                chunk.set_block_state(x, y, z, BlockState::STONE);
+                            let block_x = pos.x * 16 + x as i32;
+                            let block_z = pos.z * 16 + z as i32;
+
+                            let height = 50.0
+                                + ((block_x as f64 / 10.0).cos() + (block_z as f64 / 10.0).sin())
+                                    * 7.0;
+
+                            for y in 0..height.round() as usize {
+                                let states = [
+                                    BlockState::ACACIA_PLANKS,
+                                    BlockState::SLIME_BLOCK,
+                                    BlockState::IRON_BLOCK,
+                                    BlockState::SEA_LANTERN,
+                                    BlockState::STONE,
+                                    BlockState::DIRT,
+                                    BlockState::PRISMARINE_BRICKS,
+                                    BlockState::DIAMOND_ORE,
+                                ];
+
+                                chunk.set_block_state(x, y, z, states[y % states.len()]);
                             }
                         }
                     }
                 }
             }
         }
+
+        let entity_id = world.entities.create();
+        let mut entity = world.entities.get_mut(entity_id).unwrap();
+
+        entity.set_type(EntityType::Cow);
+        entity.set_position([0.0, 50.0, 0.0]);
     }
 
     fn update(&self, server: &Server, mut worlds: WorldsMut) {

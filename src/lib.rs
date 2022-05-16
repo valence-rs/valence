@@ -31,7 +31,7 @@ pub use block_pos::BlockPos;
 pub use chunk::{Chunk, ChunkPos, Chunks, ChunksMut};
 pub use client::{Client, ClientMut, Clients, ClientsMut};
 pub use config::{Biome, BiomeId, Config, Dimension, DimensionId};
-pub use entity::{Entities, EntitiesMut, Entity, EntityId};
+pub use entity::{Entities, EntitiesMut, Entity, EntityId, EntityType};
 pub use identifier::Identifier;
 pub use server::{start_server, NewClientData, Server, ShutdownResult};
 pub use text::{Text, TextFormat};

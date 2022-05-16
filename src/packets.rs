@@ -18,7 +18,7 @@ use vek::{Vec2, Vec3};
 use crate::block_pos::BlockPos;
 use crate::byte_angle::ByteAngle;
 use crate::identifier::Identifier;
-use crate::protocol::{BoundedArray, BoundedInt, BoundedString, Decode, Encode, Nbt, ReadToEnd};
+use crate::protocol::{BoundedArray, BoundedInt, BoundedString, Decode, Encode, Nbt, RawBytes};
 use crate::var_int::VarInt;
 use crate::var_long::VarLong;
 use crate::Text;
@@ -1028,7 +1028,7 @@ pub mod play {
     def_struct! {
         EntityMetadata 0x4d {
             entity_id: VarInt,
-            metadata: ReadToEnd,
+            metadata: RawBytes,
         }
     }
 
@@ -1246,7 +1246,7 @@ pub mod play {
     def_struct! {
         PluginMessageServerbound 0x0a {
             channel: Identifier,
-            data: ReadToEnd,
+            data: RawBytes,
         }
     }
 

@@ -519,17 +519,17 @@ impl Decode for BitBox<u64> {
 /// `Vec<u8>`. When encoding, the data is inserted into the packet with no
 /// length prefix.
 #[derive(Clone, Debug)]
-pub struct ReadToEnd(pub Vec<u8>);
+pub struct RawBytes(pub Vec<u8>);
 
-impl Decode for ReadToEnd {
+impl Decode for RawBytes {
     fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
         let mut buf = Vec::new();
         r.read_to_end(&mut buf)?;
-        Ok(ReadToEnd(buf))
+        Ok(RawBytes(buf))
     }
 }
 
-impl Encode for ReadToEnd {
+impl Encode for RawBytes {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         w.write_all(&self.0).map_err(|e| e.into())
     }

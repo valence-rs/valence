@@ -59,9 +59,9 @@ impl<'a> ChunksMut<'a> {
         Self(chunks)
     }
 
-    pub fn create(&mut self, pos: ChunkPos) -> bool {
+    pub fn create(&mut self, pos: impl Into<ChunkPos>) -> bool {
         let chunk = Chunk::new(self.section_count, self.server.current_tick());
-        self.0.chunks.insert(pos, chunk).is_none()
+        self.0.chunks.insert(pos.into(), chunk).is_none()
     }
 
     pub fn delete(&mut self, pos: ChunkPos) -> bool {
@@ -358,14 +358,12 @@ fn build_heightmap(sections: &[ChunkSection], heightmap: &mut Vec<i64>) {
 }
 
 fn encode_paletted_container(
-    entries: impl ExactSizeIterator<Item = u16> + Clone,
+    mut entries: impl ExactSizeIterator<Item = u16> + Clone,
     min_bits_per_idx: usize,
     direct_threshold: usize,
     direct_bits_per_idx: usize,
     w: &mut impl Write,
 ) -> anyhow::Result<()> {
-    let entries_len = entries.len();
-
     let mut palette = Vec::new();
 
     for entry in entries.clone() {
@@ -391,10 +389,12 @@ fn encode_paletted_container(
 
         VarInt(u64_count as i32).encode(w)?;
 
-        for entry in entries {
+        for _ in 0..idxs_per_u64 {
             let mut val = 0u64;
             for i in 0..idxs_per_u64 {
-                val |= (entry as u64) << (i * direct_bits_per_idx);
+                if let Some(entry) = entries.next() {
+                    val |= (entry as u64) << (i * direct_bits_per_idx);
+                }
             }
             val.encode(w)?;
         }
@@ -411,28 +411,22 @@ fn encode_paletted_container(
 
         VarInt(u64_count as i32).encode(w)?;
 
-        for entry in entries {
-            let palette_idx = palette
-                .iter()
-                .position(|&e| e == entry)
-                .expect("entry should be in the palette") as u64;
-
+        for _ in 0..u64_count {
             let mut val = 0u64;
             for i in 0..idxs_per_u64 {
-                val |= palette_idx << (i * bits_per_idx);
+                if let Some(entry) = entries.next() {
+                    let palette_idx = palette
+                        .iter()
+                        .position(|&e| e == entry)
+                        .expect("entry should be in the palette") as u64;
+                    
+                    val |= palette_idx << (i * bits_per_idx);
+                }    
             }
             val.encode(w)?;
         }
     }
 
-    Ok(())
-}
-
-/// Encode a paletted container where all values are the same.
-fn encode_paletted_container_single(entry: u16, w: &mut impl Write) -> anyhow::Result<()> {
-    0u8.encode(w)?; // bits per idx
-    VarInt(entry as i32).encode(w)?; // single value
-    VarInt(0).encode(w)?; // data array length
     Ok(())
 }
 

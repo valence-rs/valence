@@ -16,7 +16,7 @@ use crate::packets::play::{
     ClientPlayPacket, EntityMetadata, SpawnEntity, SpawnExperienceOrb, SpawnLivingEntity,
     SpawnPainting, SpawnPlayer,
 };
-use crate::protocol::ReadToEnd;
+use crate::protocol::RawBytes;
 use crate::slotmap::{Key, SlotMap};
 use crate::util::aabb_from_bottom_and_size;
 use crate::var_int::VarInt;
@@ -172,8 +172,8 @@ pub struct EntityId(Key);
 
 impl EntityId {
     pub(crate) fn to_network_id(self) -> i32 {
-        // TODO: is ID 0 reserved?
-        self.0.index() as i32
+        // ID 0 is reserved for clients.
+        self.0.index() as i32 + 1
     }
 }
 
@@ -271,7 +271,7 @@ impl Entity {
     pub(crate) fn initial_metadata_packet(&self, this_id: EntityId) -> Option<EntityMetadata> {
         self.meta.initial_metadata().map(|meta| EntityMetadata {
             entity_id: VarInt(this_id.to_network_id()),
-            metadata: ReadToEnd(meta),
+            metadata: RawBytes(meta),
         })
     }
 
@@ -281,7 +281,7 @@ impl Entity {
     pub(crate) fn updated_metadata_packet(&self, this_id: EntityId) -> Option<EntityMetadata> {
         self.meta.updated_metadata().map(|meta| EntityMetadata {
             entity_id: VarInt(this_id.to_network_id()),
-            metadata: ReadToEnd(meta),
+            metadata: RawBytes(meta),
         })
     }
 
