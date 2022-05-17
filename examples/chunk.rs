@@ -109,12 +109,6 @@ impl Config for Game {
                 }
             }
         }
-
-        let entity_id = world.entities.create();
-        let mut entity = world.entities.get_mut(entity_id).unwrap();
-
-        entity.set_type(EntityType::Cow);
-        entity.set_position([0.0, 50.0, 0.0]);
     }
 
     fn update(&self, server: &Server, mut worlds: WorldsMut) {

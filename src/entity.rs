@@ -162,7 +162,10 @@ impl<'a> EntitiesMut<'a> {
         for (_, e) in self.iter_mut() {
             e.0.old_position = e.new_position;
             e.0.meta.clear_modifications();
+
+            let on_ground = e.0.flags.on_ground();
             e.0.flags = EntityFlags(0);
+            e.0.flags.set_on_ground(on_ground);
         }
     }
 }
@@ -204,11 +207,12 @@ impl<'a> Deref for EntityMut<'a> {
 /// modified.
 #[bitfield(u8)]
 pub(crate) struct EntityFlags {
-    meta_modified: bool,
-    yaw_or_pitch_modified: bool,
-    head_yaw_modified: bool,
-    head_pitch_modified: bool,
-    velocity_modified: bool,
+    /// When the type of this entity changes.
+    pub type_modified: bool,
+    pub yaw_or_pitch_modified: bool,
+    pub head_yaw_modified: bool,
+    pub velocity_modified: bool,
+    pub on_ground: bool,
     #[bits(3)]
     _pad: u8,
 }
@@ -254,14 +258,13 @@ impl Entity {
         self.head_yaw
     }
 
-    /// Gets the head pitch of this entity (in degrees).
-    pub fn head_pitch(&self) -> f32 {
-        self.head_pitch
-    }
-
     /// Gets the velocity of this entity in meters per second.
     pub fn velocity(&self) -> Vec3<f32> {
         self.velocity
+    }
+
+    pub fn on_ground(&self) -> bool {
+        self.flags.on_ground()
     }
 
     /// Gets the metadata packet to send to clients after this entity has been
@@ -361,7 +364,7 @@ impl Entity {
                     position: self.new_position,
                     yaw: ByteAngle::from_degrees(self.yaw),
                     pitch: ByteAngle::from_degrees(self.pitch),
-                    head_pitch: ByteAngle::from_degrees(self.head_pitch),
+                    head_yaw: ByteAngle::from_degrees(self.head_yaw),
                     velocity: velocity_to_packet_units(self.velocity),
                 }))
             }
@@ -507,7 +510,7 @@ impl Entity {
     }
 }
 
-fn velocity_to_packet_units(vel: Vec3<f32>) -> Vec3<i16> {
+pub(crate) fn velocity_to_packet_units(vel: Vec3<f32>) -> Vec3<i16> {
     // The saturating cast to i16 is desirable.
     (vel * 400.0).as_()
 }
@@ -528,8 +531,8 @@ impl<'a> EntityMut<'a> {
     /// All metadata of this entity is reset to the default values.
     pub fn set_type(&mut self, typ: EntityType) {
         self.0.meta = EntityMeta::new(typ);
-        // All metadata is lost, so we must mark it as modified unconditionally.
-        self.0.flags.set_meta_modified(true);
+        // All metadata is lost so we must mark it as modified unconditionally.
+        self.0.flags.set_type_modified(true);
     }
 
     /// Sets the position of this entity in the world it inhabits.
@@ -539,42 +542,39 @@ impl<'a> EntityMut<'a> {
 
     /// Sets the yaw of this entity (in degrees).
     pub fn set_yaw(&mut self, yaw: f32) {
-        self.0.yaw = yaw;
-        if ByteAngle::from_degrees(self.yaw) != ByteAngle::from_degrees(yaw) {
+        if self.0.yaw != yaw {
+            self.0.yaw = yaw;
             self.0.flags.set_yaw_or_pitch_modified(true);
         }
     }
 
     /// Sets the pitch of this entity (in degrees).
     pub fn set_pitch(&mut self, pitch: f32) {
-        self.0.pitch = pitch;
-        if ByteAngle::from_degrees(self.pitch) != ByteAngle::from_degrees(pitch) {
+        if self.0.pitch != pitch {
+            self.0.pitch = pitch;
             self.0.flags.set_yaw_or_pitch_modified(true);
         }
     }
 
     /// Sets the head yaw of this entity (in degrees).
     pub fn set_head_yaw(&mut self, head_yaw: f32) {
-        self.0.head_yaw = head_yaw;
-        if ByteAngle::from_degrees(self.head_yaw) != ByteAngle::from_degrees(head_yaw) {
+        if self.0.head_yaw != head_yaw {
+            self.0.head_yaw = head_yaw;
             self.0.flags.set_head_yaw_modified(true);
-        }
-    }
-
-    /// Sets the head pitch of this entity (in degrees).
-    pub fn set_head_pitch(&mut self, head_pitch: f32) {
-        self.0.head_pitch = head_pitch;
-        if ByteAngle::from_degrees(self.head_pitch) != ByteAngle::from_degrees(head_pitch) {
-            self.0.flags.set_head_pitch_modified(true);
         }
     }
 
     pub fn set_velocity(&mut self, velocity: impl Into<Vec3<f32>>) {
         let new_vel = velocity.into();
-        self.0.velocity = new_vel;
-        if velocity_to_packet_units(self.velocity) != velocity_to_packet_units(new_vel) {
+
+        if self.0.velocity != new_vel {
+            self.0.velocity = new_vel;
             self.0.flags.set_velocity_modified(true);
         }
+    }
+
+    pub fn set_on_ground(&mut self, on_ground: bool) {
+        self.0.flags.set_on_ground(on_ground);
     }
 }
 

@@ -36,7 +36,7 @@ pub use identifier::Identifier;
 pub use server::{start_server, NewClientData, Server, ShutdownResult};
 pub use text::{Text, TextFormat};
 pub use uuid::Uuid;
-pub use world::{WorldId, WorldMut, WorldRef, Worlds, WorldsMut};
+pub use world::{WorldId, WorldMeta, WorldMetaMut, WorldMut, WorldRef, Worlds, WorldsMut};
 pub use {nbt, uuid, vek};
 
 /// The Minecraft protocol version that this library targets.

@@ -13,7 +13,7 @@ use num::{One, Zero};
 use paste::paste;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use vek::{Vec2, Vec3};
+use vek::Vec3;
 
 use crate::block_pos::BlockPos;
 use crate::byte_angle::ByteAngle;
@@ -469,7 +469,7 @@ pub mod play {
             position: Vec3<f64>,
             yaw: ByteAngle,
             pitch: ByteAngle,
-            head_pitch: ByteAngle,
+            head_yaw: ByteAngle,
             velocity: Vec3<i16>,
         }
     }
@@ -965,6 +965,33 @@ pub mod play {
     }
 
     def_struct! {
+        EntityPosition 0x29 {
+            entity_id: VarInt,
+            delta: Vec3<i16>,
+            on_ground: bool,
+        }
+    }
+
+    def_struct! {
+        EntityPositionAndRotation 0x2a {
+            entity_id: VarInt,
+            delta: Vec3<i16>,
+            yaw: ByteAngle,
+            pitch: ByteAngle,
+            on_ground: bool,
+        }
+    }
+
+    def_struct! {
+        EntityRotation 0x2b {
+            entity_id: VarInt,
+            yaw: ByteAngle,
+            pitch: ByteAngle,
+            on_ground: bool,
+        }
+    }
+
+    def_struct! {
         PlayerPositionAndLook 0x38 {
             position: Vec3<f64>,
             yaw: f32,
@@ -988,6 +1015,13 @@ pub mod play {
     def_struct! {
         DestroyEntities 0x3a {
             entities: Vec<VarInt>,
+        }
+    }
+
+    def_struct! {
+        EntityHeadLook 0x3e {
+            entity_id: VarInt,
+            head_yaw: ByteAngle,
         }
     }
 
@@ -1033,6 +1067,13 @@ pub mod play {
     }
 
     def_struct! {
+        EntityVelocity 0x4f {
+            entity_id: VarInt,
+            velocity: Vec3<i16>,
+        }
+    }
+
+    def_struct! {
         TimeUpdate 0x59 {
             /// The age of the world in 1/20ths of a second.
             world_age: i64,
@@ -1040,6 +1081,16 @@ pub mod play {
             /// The value should be in the range \[0, 24000].
             /// 6000 is noon, 12000 is sunset, and 18000 is midnight.
             time_of_day: i64,
+        }
+    }
+
+    def_struct! {
+        EntityTeleport 0x62 {
+            entity_id: VarInt,
+            position: Vec3<f64>,
+            yaw: ByteAngle,
+            pitch: ByteAngle,
+            on_ground: bool,
         }
     }
 
@@ -1115,14 +1166,20 @@ pub mod play {
         KeepAliveClientbound,
         ChunkDataAndUpdateLight,
         JoinGame,
+        EntityPosition,
+        EntityPositionAndRotation,
+        EntityRotation,
         PlayerPositionAndLook,
         DestroyEntities,
+        EntityHeadLook,
         MultiBlockChange,
         HeldItemChangeClientbound,
         UpdateViewPosition,
         UpdateViewDistance,
         SpawnPosition,
         EntityMetadata,
+        EntityVelocity,
+        EntityTeleport,
         TimeUpdate,
     }
 

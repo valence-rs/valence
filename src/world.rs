@@ -1,15 +1,11 @@
-use std::collections::{HashMap, HashSet};
 use std::iter::FusedIterator;
 use std::ops::Deref;
 
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::ParallelIterator;
 
-use crate::chunk::ChunkPos;
 use crate::config::DimensionId;
 use crate::slotmap::{Key, SlotMap};
-use crate::{
-    Chunks, ChunksMut, Clients, ClientsMut, Entities, EntitiesMut, Entity, EntityId, Server,
-};
+use crate::{Chunks, ChunksMut, Clients, ClientsMut, Entities, EntitiesMut, Server};
 
 pub struct Worlds {
     sm: SlotMap<World>,
@@ -67,7 +63,10 @@ impl<'a> WorldsMut<'a> {
                 self.server.clone(),
                 (self.server.dimension(dim).height / 16) as u32,
             ),
-            dimension: dim,
+            meta: WorldMeta {
+                dimension: dim,
+                is_flat: false,
+            },
         }))
     }
 
@@ -123,7 +122,7 @@ pub(crate) struct World {
     clients: Clients,
     entities: Entities,
     chunks: Chunks,
-    dimension: DimensionId,
+    meta: WorldMeta,
 }
 
 /// A bag of immutable references to the components of a world.
@@ -131,7 +130,7 @@ pub struct WorldRef<'a> {
     pub clients: &'a Clients,
     pub entities: &'a Entities,
     pub chunks: &'a Chunks,
-    pub dimension: DimensionId,
+    pub meta: &'a WorldMeta,
 }
 
 impl<'a> WorldRef<'a> {
@@ -140,7 +139,7 @@ impl<'a> WorldRef<'a> {
             clients: &w.clients,
             entities: &w.entities,
             chunks: &w.chunks,
-            dimension: w.dimension,
+            meta: &w.meta,
         }
     }
 }
@@ -150,7 +149,7 @@ pub struct WorldMut<'a> {
     pub clients: ClientsMut<'a>,
     pub entities: EntitiesMut<'a>,
     pub chunks: ChunksMut<'a>,
-    pub dimension: DimensionId,
+    pub meta: WorldMetaMut<'a>,
 }
 
 impl<'a> WorldMut<'a> {
@@ -159,7 +158,7 @@ impl<'a> WorldMut<'a> {
             clients: ClientsMut::new(&mut w.clients),
             entities: EntitiesMut::new(&mut w.entities),
             chunks: ChunksMut::new(&mut w.chunks),
-            dimension: w.dimension,
+            meta: WorldMetaMut(&mut w.meta),
         }
     }
 
@@ -168,7 +167,38 @@ impl<'a> WorldMut<'a> {
             clients: &self.clients,
             entities: &self.entities,
             chunks: &self.chunks,
-            dimension: self.dimension,
+            meta: &self.meta,
         }
+    }
+}
+
+pub struct WorldMeta {
+    dimension: DimensionId,
+    is_flat: bool,
+}
+
+impl WorldMeta {
+    pub fn dimension(&self) -> DimensionId {
+        self.dimension
+    }
+
+    pub fn is_flat(&self) -> bool {
+        self.is_flat
+    }
+}
+
+pub struct WorldMetaMut<'a>(&'a mut WorldMeta);
+
+impl<'a> Deref for WorldMetaMut<'a> {
+    type Target = WorldMeta;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'a> WorldMetaMut<'a> {
+    pub fn set_flat(&mut self, flat: bool) {
+        self.0.is_flat = flat;
     }
 }

@@ -368,7 +368,12 @@ fn do_update_loop(server: Server, mut worlds: WorldsMut) -> ShutdownResult {
             });
 
             world.clients.par_iter_mut().for_each(|(_, mut client)| {
-                client.update(&server, &world.entities, &world.chunks, world.dimension);
+                client.update(
+                    &server,
+                    &world.entities,
+                    &world.chunks,
+                    &world.meta,
+                );
             });
 
             world.entities.update();

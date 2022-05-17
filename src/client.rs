@@ -8,25 +8,29 @@ use uuid::Uuid;
 use vek::Vec3;
 
 use crate::block_pos::BlockPos;
+use crate::byte_angle::ByteAngle;
 use crate::config::{
     Biome, BiomeGrassColorModifier, BiomePrecipitation, Dimension, DimensionEffects, DimensionId,
 };
-use crate::entity::EntityType;
+use crate::entity::{velocity_to_packet_units, EntityType};
 pub use crate::packets::play::GameMode;
 use crate::packets::play::{
     Biome as BiomeRegistryBiome, BiomeAdditionsSound, BiomeEffects, BiomeMoodSound, BiomeMusic,
     BiomeParticle, BiomeParticleOptions, BiomeProperty, BiomeRegistry, ChangeGameState,
     ChangeGameStateReason, ClientPlayPacket, DestroyEntities, DimensionCodec, DimensionType,
-    DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, JoinGame, KeepAliveClientbound,
-    PlayerPositionAndLook, PlayerPositionAndLookFlags, ServerPlayPacket, SpawnPosition,
-    UnloadChunk, UpdateViewDistance, UpdateViewPosition,
+    DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, EntityHeadLook, EntityPosition,
+    EntityPositionAndRotation, EntityRotation, EntityTeleport, EntityVelocity, JoinGame,
+    KeepAliveClientbound, PlayerPositionAndLook, PlayerPositionAndLookFlags, ServerPlayPacket,
+    SpawnPosition, UnloadChunk, UpdateViewDistance, UpdateViewPosition,
 };
 use crate::protocol::{BoundedInt, Nbt};
 use crate::server::ServerPacketChannels;
 use crate::slotmap::{Key, SlotMap};
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::var_int::VarInt;
-use crate::{ident, ChunkPos, Chunks, Entities, EntityId, Server, Text, Ticks, LIBRARY_NAMESPACE};
+use crate::{
+    ident, ChunkPos, Chunks, Entities, EntityId, Server, Text, Ticks, WorldMeta, LIBRARY_NAMESPACE,
+};
 
 pub struct Clients {
     sm: SlotMap<Client>,
@@ -328,7 +332,7 @@ impl<'a> ClientMut<'a> {
         server: &Server,
         entities: &Entities,
         chunks: &Chunks,
-        dimension_id: DimensionId,
+        meta: &WorldMeta,
     ) {
         self.0.events.clear();
 
@@ -347,11 +351,13 @@ impl<'a> ClientMut<'a> {
             return;
         }
 
-        let dimension = server.dimension(dimension_id);
+        let dimension = server.dimension(meta.dimension());
+
+        let current_tick = server.current_tick();
 
         // Send the join game packet and other initial packets. We defer this until now
         // so that the user can set the client's location, game mode, etc.
-        if self.created_tick == server.current_tick() {
+        if self.created_tick == current_tick {
             self.send_packet(JoinGame {
                 entity_id: 0,       // EntityId 0 is reserved for clients.
                 is_hardcore: false, // TODO
@@ -363,7 +369,7 @@ impl<'a> ClientMut<'a> {
                     .collect(),
                 dimension_codec: Nbt(make_dimension_codec(server)),
                 dimension: Nbt(to_dimension_registry_item(dimension)),
-                dimension_name: ident!("{LIBRARY_NAMESPACE}:dimension_{}", dimension_id.0),
+                dimension_name: ident!("{LIBRARY_NAMESPACE}:dimension_{}", meta.dimension().0),
                 hashed_seed: 0,
                 max_players: VarInt(0),
                 view_distance: BoundedInt(VarInt(self.new_max_view_distance as i32)),
@@ -396,7 +402,7 @@ impl<'a> ClientMut<'a> {
         // Update view distance fog on the client if necessary.
         if self.0.old_max_view_distance != self.0.new_max_view_distance {
             self.0.old_max_view_distance = self.0.new_max_view_distance;
-            if self.0.created_tick != server.current_tick() {
+            if self.0.created_tick != current_tick {
                 self.send_packet(UpdateViewDistance {
                     view_distance: BoundedInt(VarInt(self.0.new_max_view_distance as i32)),
                 })
@@ -404,7 +410,7 @@ impl<'a> ClientMut<'a> {
         }
 
         // Check if it's time to send another keepalive.
-        if server.current_tick() % (server.tick_rate() * 8) == 0 {
+        if current_tick % (server.tick_rate() * 8) == 0 {
             if self.0.got_keepalive {
                 let id = rand::random();
                 self.send_packet(KeepAliveClientbound { id });
@@ -451,7 +457,7 @@ impl<'a> ClientMut<'a> {
 
             if let Some(chunk) = chunks.get(pos) {
                 if is_chunk_in_view_distance(center, pos, view_dist + cache)
-                    && chunk.created_tick() != server.current_tick()
+                    && chunk.created_tick() != current_tick
                 {
                     if let Some(pkt) = chunk.block_change_packet(pos) {
                         send_packet(&mut self.0.send, pkt);
@@ -484,7 +490,6 @@ impl<'a> ClientMut<'a> {
 
         // This is done after the chunks are loaded so that the "downloading terrain"
         // screen is closed at the appropriate time.
-
         if self.0.teleported_this_tick {
             self.0.teleported_this_tick = false;
 
@@ -504,10 +509,90 @@ impl<'a> ClientMut<'a> {
         // longer visible.
         self.0.loaded_entities.retain(|&id| {
             if let Some(entity) = entities.get(id) {
-                if self.0.new_position.distance(entity.position()) <= view_dist as f64 * 16.0 {
+                debug_assert!(entity.typ() != EntityType::Marker);
+                if self.0.new_position.distance(entity.position()) <= view_dist as f64 * 16.0
+                    && !entity.flags().type_modified()
+                {
                     if let Some(meta) = entity.updated_metadata_packet(id) {
                         send_packet(&mut self.0.send, meta);
                     }
+
+                    let position_delta = entity.position() - entity.old_position();
+                    let needs_teleport = position_delta.map(f64::abs).reduce_partial_max() >= 8.0;
+                    let flags = entity.flags();
+
+                    if entity.position() != entity.old_position()
+                        && !needs_teleport
+                        && flags.yaw_or_pitch_modified()
+                    {
+                        send_packet(
+                            &mut self.0.send,
+                            EntityPositionAndRotation {
+                                entity_id: VarInt(id.to_network_id()),
+                                delta: (position_delta * 4096.0).as_(),
+                                yaw: ByteAngle::from_degrees(entity.yaw()),
+                                pitch: ByteAngle::from_degrees(entity.pitch()),
+                                on_ground: entity.on_ground(),
+                            },
+                        );
+                    } else {
+                        if entity.position() != entity.old_position() && !needs_teleport {
+                            send_packet(
+                                &mut self.0.send,
+                                EntityPosition {
+                                    entity_id: VarInt(id.to_network_id()),
+                                    delta: (position_delta * 4096.0).as_(),
+                                    on_ground: entity.on_ground(),
+                                },
+                            );
+                        }
+
+                        if flags.yaw_or_pitch_modified() {
+                            send_packet(
+                                &mut self.0.send,
+                                EntityRotation {
+                                    entity_id: VarInt(id.to_network_id()),
+                                    yaw: ByteAngle::from_degrees(entity.yaw()),
+                                    pitch: ByteAngle::from_degrees(entity.pitch()),
+                                    on_ground: entity.on_ground(),
+                                },
+                            );
+                        }
+                    }
+
+                    if needs_teleport {
+                        send_packet(
+                            &mut self.0.send,
+                            EntityTeleport {
+                                entity_id: VarInt(id.to_network_id()),
+                                position: entity.position(),
+                                yaw: ByteAngle::from_degrees(entity.yaw()),
+                                pitch: ByteAngle::from_degrees(entity.pitch()),
+                                on_ground: entity.on_ground(),
+                            },
+                        );
+                    }
+
+                    if flags.velocity_modified() {
+                        send_packet(
+                            &mut self.0.send,
+                            EntityVelocity {
+                                entity_id: VarInt(id.to_network_id()),
+                                velocity: velocity_to_packet_units(entity.velocity()),
+                            },
+                        );
+                    }
+
+                    if flags.head_yaw_modified() {
+                        send_packet(
+                            &mut self.0.send,
+                            EntityHeadLook {
+                                entity_id: VarInt(id.to_network_id()),
+                                head_yaw: ByteAngle::from_degrees(entity.head_yaw()),
+                            },
+                        )
+                    }
+
                     return true;
                 }
             }
@@ -523,6 +608,7 @@ impl<'a> ClientMut<'a> {
         }
 
         // Spawn new entities within the view distance.
+        // TODO: use BVH
         for (id, entity) in entities.iter() {
             if self.position().distance(entity.position()) <= view_dist as f64 * 16.0
                 && entity.typ() != EntityType::Marker

@@ -418,10 +418,11 @@ fn encode_paletted_container(
                     let palette_idx = palette
                         .iter()
                         .position(|&e| e == entry)
-                        .expect("entry should be in the palette") as u64;
-                    
+                        .expect("entry should be in the palette")
+                        as u64;
+
                     val |= palette_idx << (i * bits_per_idx);
-                }    
+                }
             }
             val.encode(w)?;
         }
