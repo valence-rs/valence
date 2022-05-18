@@ -1,15 +1,18 @@
+use std::f64::consts::TAU;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Mutex;
 
 use log::LevelFilter;
-use valence::block::BlockState;
 use valence::client::GameMode;
 use valence::config::{Config, ServerListPing};
 use valence::text::Color;
+use valence::util::to_yaw_and_pitch;
 use valence::{
-    async_trait, ChunkPos, ClientMut, DimensionId, EntityType, Server, ShutdownResult, Text,
+    async_trait, ClientMut, DimensionId, EntityId, EntityType, Server, ShutdownResult, Text,
     TextFormat, WorldId, WorldsMut,
 };
+use vek::{Mat3, Vec3};
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()
@@ -19,11 +22,13 @@ pub fn main() -> ShutdownResult {
 
     valence::start_server(Game {
         player_count: AtomicUsize::new(0),
+        cows: Mutex::new(Vec::new()),
     })
 }
 
 struct Game {
     player_count: AtomicUsize,
+    cows: Mutex<Vec<EntityId>>,
 }
 
 const MAX_PLAYERS: usize = 10;
@@ -68,8 +73,7 @@ impl Config for Game {
     }
 
     fn init(&self, _server: &Server, mut worlds: WorldsMut) {
-        let world_id = worlds.create(DimensionId::default());
-        let mut world = worlds.get_mut(world_id).unwrap();
+        let mut world = worlds.create(DimensionId::default()).1;
         world.meta.set_flat(true);
 
         let size = 5;
@@ -79,13 +83,11 @@ impl Config for Game {
             }
         }
 
-        let entity_id = world.entities.create();
-        let mut entity = world.entities.get_mut(entity_id).unwrap();
-
-        entity.set_type(EntityType::Cow);
-        entity.set_position([0.0, 100.0, 0.0]);
-        //entity.set_yaw(30.0);
-        //entity.set_pitch(0.0);
+        self.cows.lock().unwrap().extend((0..200).map(|_| {
+            let (id, mut e) = world.entities.create();
+            e.set_type(EntityType::Cow);
+            id
+        }));
     }
 
     fn update(&self, server: &Server, mut worlds: WorldsMut) {
@@ -105,15 +107,54 @@ impl Config for Game {
             }
         });
 
-        for (_, mut e) in world.entities.iter_mut() {
-            let time = server.current_tick() as f64 / server.tick_rate() as f64;
+        let time = server.current_tick() as f64 / server.tick_rate() as f64;
 
-            if e.typ() == EntityType::Cow {
-                e.set_position(e.position() + [0.0, 0.0, 0.02]);
-                let yaw = (time % 1.0 * 360.0) as f32;
-                e.set_yaw(yaw);
-                e.set_head_yaw(yaw);
-            }
+        let rot = Mat3::rotation_x(time * TAU * 0.1)
+            .rotated_y(time * TAU * 0.2)
+            .rotated_z(time * TAU * 0.3);
+
+        let cows = self.cows.lock().unwrap();
+        let cow_count = cows.len();
+
+        let radius = 6.0 + ((time * TAU / 2.5).sin() + 1.0) / 2.0 * 10.0;
+
+        // TODO: use eye position.
+        let player_pos = world
+            .clients
+            .iter()
+            .next()
+            .map(|c| c.1.position())
+            .unwrap_or_default();
+
+        for (cow_id, p) in cows.iter().cloned().zip(fibonacci_spiral(cow_count)) {
+            let mut cow = world.entities.get_mut(cow_id).expect("missing cow");
+            let rotated = p * rot;
+            let transformed = rotated * radius + [0.0, 100.0, 0.0];
+
+            let yaw = f32::atan2(rotated.z as f32, rotated.x as f32).to_degrees() - 90.0;
+            let (looking_yaw, looking_pitch) =
+                to_yaw_and_pitch((player_pos - transformed).normalized());
+
+            cow.set_position(transformed);
+            cow.set_yaw(yaw);
+            cow.set_pitch(looking_pitch);
+            cow.set_head_yaw(looking_yaw);
         }
     }
+}
+
+/// Distributes N points on the surface of a unit sphere.
+fn fibonacci_spiral(n: usize) -> impl Iterator<Item = Vec3<f64>> {
+    (0..n).map(move |i| {
+        let golden_ratio = (1.0 + 5_f64.sqrt()) / 2.0;
+
+        // Map to unit square
+        let x = i as f64 / golden_ratio % 1.0;
+        let y = i as f64 / n as f64;
+
+        // Map from unit square to unit sphere.
+        let theta = x * TAU;
+        let phi = (1.0 - 2.0 * y).acos();
+        Vec3::new(theta.cos() * phi.sin(), theta.sin() * phi.sin(), phi.cos())
+    })
 }

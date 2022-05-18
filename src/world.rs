@@ -55,8 +55,8 @@ impl<'a> WorldsMut<'a> {
         WorldsMut(self.0)
     }
 
-    pub fn create(&mut self, dim: DimensionId) -> WorldId {
-        WorldId(self.0.sm.insert(World {
+    pub fn create(&mut self, dim: DimensionId) -> (WorldId, WorldMut) {
+        let (id, world) = self.0.sm.insert(World {
             clients: Clients::new(),
             entities: Entities::new(),
             chunks: Chunks::new(
@@ -67,7 +67,9 @@ impl<'a> WorldsMut<'a> {
                 dimension: dim,
                 is_flat: false,
             },
-        }))
+        });
+
+        (WorldId(id), WorldMut::new(world))
     }
 
     /// Deletes a world from the server. Any [`WorldId`] referring to the

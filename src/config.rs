@@ -98,7 +98,7 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// An unspecified value is returned that should be adequate in most
     /// situations.
     fn outgoing_packet_capacity(&self) -> usize {
-        128
+        512
     }
 
     /// Called once at startup to get a handle to the tokio runtime the server

@@ -68,7 +68,7 @@ impl Config for Game {
     }
 
     fn init(&self, _server: &Server, mut worlds: WorldsMut) {
-        let world_id = worlds.create(DimensionId::default());
+        let world_id = worlds.create(DimensionId::default()).0;
         let mut world = worlds.get_mut(world_id).unwrap();
 
         let size = 5;

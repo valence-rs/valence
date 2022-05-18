@@ -77,8 +77,9 @@ impl<'a> ClientsMut<'a> {
         ClientsMut(self.0)
     }
 
-    pub(crate) fn create(&mut self, client: Client) -> ClientId {
-        ClientId(self.0.sm.insert(client))
+    pub(crate) fn create(&mut self, client: Client) -> (ClientId, ClientMut) {
+        let (id, client) = self.0.sm.insert(client);
+        (ClientId(id), ClientMut(client))
     }
 
     pub fn delete(&mut self, client: ClientId) -> bool {

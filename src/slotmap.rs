@@ -76,11 +76,11 @@ impl<T> SlotMap<T> {
         self.count as usize
     }
 
-    pub fn insert(&mut self, val: T) -> Key {
+    pub fn insert(&mut self, val: T) -> (Key, &mut T) {
         self.insert_with(|_| val)
     }
 
-    pub fn insert_with(&mut self, f: impl FnOnce(Key) -> T) -> Key {
+    pub fn insert_with(&mut self, f: impl FnOnce(Key) -> T) -> (Key, &mut T) {
         assert!(self.count < u32::MAX, "SlotMap: too many items inserted");
 
         if self.next_free_head == self.slots.len() as u32 {
@@ -93,7 +93,12 @@ impl<T> SlotMap<T> {
                 value: f(key),
                 version: key.version(),
             });
-            key
+            
+            let value = match self.slots.last_mut() {
+                Some(Slot::Occupied { value, .. }) => value,
+                _ => unreachable!(),
+            };
+            (key, value)
         } else {
             let slot = &mut self.slots[self.next_free_head as usize];
 
@@ -109,9 +114,15 @@ impl<T> SlotMap<T> {
                 version: key.version(),
             };
 
+            let value = match slot {
+                Slot::Occupied { value, .. } => value,
+                Slot::Free { .. } => unreachable!(),
+            };
+
             self.next_free_head = next_free;
             self.count += 1;
-            key
+
+            (key, value)
         }
     }
 
@@ -234,14 +245,14 @@ mod tests {
     fn insert_remove() {
         let mut sm = SlotMap::new();
 
-        let k0 = sm.insert(10);
-        let k1 = sm.insert(20);
-        let k2 = sm.insert(30);
+        let k0 = sm.insert(10).0;
+        let k1 = sm.insert(20).0;
+        let k2 = sm.insert(30).0;
 
         assert_eq!(sm.remove(k1), Some(20));
         assert_eq!(sm.get(k1), None);
         assert_eq!(sm.get(k2), Some(&30));
-        let k3 = sm.insert(40);
+        let k3 = sm.insert(40).0;
         assert_eq!(sm.get(k0), Some(&10));
         assert_eq!(sm.get_mut(k3), Some(&mut 40));
         assert_eq!(sm.remove(k0), Some(10));
@@ -254,9 +265,9 @@ mod tests {
     fn retain() {
         let mut sm = SlotMap::new();
 
-        let k0 = sm.insert(10);
-        let k1 = sm.insert(20);
-        let k2 = sm.insert(30);
+        let k0 = sm.insert(10).0;
+        let k1 = sm.insert(20).0;
+        let k2 = sm.insert(30).0;
 
         sm.retain(|k, _| k == k1);
 

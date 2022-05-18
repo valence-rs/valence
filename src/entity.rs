@@ -81,13 +81,9 @@ impl<'a> EntitiesMut<'a> {
     ///
     /// To actually see the new entity, set its position to somewhere nearby and
     /// [set its type](EntityData::set_type) to something visible.
-    pub fn create(&mut self) -> EntityId {
-        loop {
-            let uuid = Uuid::from_bytes(rand::random());
-            if let Some(entity) = self.create_with_uuid(uuid) {
-                return entity;
-            }
-        }
+    pub fn create(&mut self) -> (EntityId, EntityMut) {
+        self.create_with_uuid(Uuid::from_bytes(rand::random()))
+            .expect("UUID collision")
     }
 
     /// Like [`create`](Entities::create), but requires specifying the new
@@ -95,11 +91,11 @@ impl<'a> EntitiesMut<'a> {
     ///
     /// The provided UUID must not conflict with an existing entity UUID in this
     /// world. If it does, `None` is returned and the entity is not spawned.
-    pub fn create_with_uuid(&mut self, uuid: Uuid) -> Option<EntityId> {
+    pub fn create_with_uuid(&mut self, uuid: Uuid) -> Option<(EntityId, EntityMut)> {
         match self.0.uuid_to_entity.entry(uuid) {
             Entry::Occupied(_) => None,
             Entry::Vacant(ve) => {
-                let entity = EntityId(self.0.sm.insert(Entity {
+                let (id, entity) = self.0.sm.insert(Entity {
                     flags: EntityFlags(0),
                     meta: EntityMeta::new(EntityType::Marker),
                     new_position: Vec3::default(),
@@ -107,16 +103,15 @@ impl<'a> EntitiesMut<'a> {
                     yaw: 0.0,
                     pitch: 0.0,
                     head_yaw: 0.0,
-                    head_pitch: 0.0,
                     velocity: Vec3::default(),
                     uuid,
-                }));
+                });
 
-                ve.insert(entity);
+                ve.insert(EntityId(id));
 
                 // TODO: insert into partition.
 
-                Some(entity)
+                Some((EntityId(id), EntityMut(entity)))
             }
         }
     }
@@ -188,7 +183,6 @@ pub struct Entity {
     yaw: f32,
     pitch: f32,
     head_yaw: f32,
-    head_pitch: f32,
     velocity: Vec3<f32>,
     uuid: Uuid,
 }
