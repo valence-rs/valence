@@ -3,9 +3,8 @@ use std::ops::Deref;
 
 use rayon::iter::ParallelIterator;
 
-use crate::config::DimensionId;
 use crate::slotmap::{Key, SlotMap};
-use crate::{Chunks, ChunksMut, Clients, ClientsMut, Entities, EntitiesMut, Server};
+use crate::{Chunks, ChunksMut, Clients, ClientsMut, DimensionId, Entities, EntitiesMut, Server};
 
 pub struct Worlds {
     sm: SlotMap<World>,

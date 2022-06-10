@@ -8,11 +8,10 @@ use std::ops::Deref;
 use bitvec::vec::BitVec;
 use num::Integer;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
-use vek::Vec2;
 
 use crate::block::BlockState;
-use crate::packets::play::{
-    BlockChange, ChunkDataAndUpdateLight, ChunkDataHeightmaps, ClientPlayPacket, MultiBlockChange,
+use crate::packets::play::s2c::{
+    BlockChange, ChunkDataAndUpdateLight, ChunkDataHeightmaps, MultiBlockChange, S2cPlayPacket,
 };
 use crate::protocol::{Encode, Nbt};
 use crate::var_int::VarInt;
@@ -269,7 +268,7 @@ pub(crate) enum BlockChangePacket {
     Multi(MultiBlockChange),
 }
 
-impl From<BlockChangePacket> for ClientPlayPacket {
+impl From<BlockChangePacket> for S2cPlayPacket {
     fn from(p: BlockChangePacket) -> Self {
         match p {
             BlockChangePacket::Single(p) => p.into(),

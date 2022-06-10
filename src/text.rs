@@ -9,7 +9,7 @@ use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::protocol::{BoundedString, Decode, Encode};
-use crate::Identifier;
+use crate::Ident;
 
 /// Represents formatted text in Minecraft's JSON text format.
 ///
@@ -308,14 +308,14 @@ enum ClickEvent {
 enum HoverEvent {
     ShowText(Box<Text>),
     ShowItem {
-        id: Identifier,
+        id: Ident,
         count: Option<i32>,
         // TODO: tag
     },
     ShowEntity {
         name: Box<Text>,
         #[serde(rename = "type")]
-        typ: Identifier,
+        typ: Ident,
         // TODO: id (hyphenated entity UUID as a string)
     },
 }

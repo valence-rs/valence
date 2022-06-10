@@ -17,7 +17,7 @@ use crate::protocol::{encode_string_bounded, BoundedString, Decode, Encode};
 ///
 /// The entire identifier must match the regex `([a-z0-9_-]+:)?[a-z0-9_\/.-]+`.
 #[derive(Clone, Eq)]
-pub struct Identifier {
+pub struct Ident {
     ident: Cow<'static, AsciiStr>,
     /// The index of the ':' character in the string.
     /// If there is no namespace then it is `usize::MAX`.
@@ -33,12 +33,12 @@ pub struct ParseError {
     src: Cow<'static, str>,
 }
 
-impl Identifier {
+impl Ident {
     /// Parses a new identifier from a string.
     ///
     /// The string must match the regex `([a-z0-9_-]+:)?[a-z0-9_\/.-]+`.
     /// If not, an error is returned.
-    pub fn new(str: impl Into<Cow<'static, str>>) -> Result<Identifier, ParseError> {
+    pub fn new(str: impl Into<Cow<'static, str>>) -> Result<Ident, ParseError> {
         #![allow(bindings_with_variant_name)]
 
         let cow = match str.into() {
@@ -125,55 +125,55 @@ impl ParseError {
     }
 }
 
-impl std::fmt::Debug for Identifier {
+impl std::fmt::Debug for Ident {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_tuple("Identifier").field(&self.as_str()).finish()
     }
 }
 
-impl FromStr for Identifier {
+impl FromStr for Ident {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Identifier::new(s.to_string())
+        Ident::new(s.to_string())
     }
 }
 
-impl From<Identifier> for String {
-    fn from(id: Identifier) -> Self {
+impl From<Ident> for String {
+    fn from(id: Ident) -> Self {
         id.ident.into_owned().into()
     }
 }
 
-impl From<Identifier> for Cow<'static, str> {
-    fn from(id: Identifier) -> Self {
+impl From<Ident> for Cow<'static, str> {
+    fn from(id: Ident) -> Self {
         ascii_cow_to_str_cow(id.ident)
     }
 }
 
-impl AsRef<str> for Identifier {
+impl AsRef<str> for Ident {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl TryFrom<String> for Identifier {
+impl TryFrom<String> for Ident {
     type Error = ParseError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        Identifier::new(value)
+        Ident::new(value)
     }
 }
 
-impl TryFrom<&'static str> for Identifier {
+impl TryFrom<&'static str> for Ident {
     type Error = ParseError;
 
     fn try_from(value: &'static str) -> Result<Self, Self::Error> {
-        Identifier::new(value)
+        Ident::new(value)
     }
 }
 
-impl std::fmt::Display for Identifier {
+impl std::fmt::Display for Ident {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.as_str())
     }
@@ -181,40 +181,40 @@ impl std::fmt::Display for Identifier {
 
 /// Equality for identifiers respects the fact that "minecraft:apple" and
 /// "apple" have the same meaning.
-impl PartialEq for Identifier {
+impl PartialEq for Ident {
     fn eq(&self, other: &Self) -> bool {
         self.namespace().unwrap_or("minecraft") == other.namespace().unwrap_or("minecraft")
             && self.name() == other.name()
     }
 }
 
-impl std::hash::Hash for Identifier {
+impl std::hash::Hash for Ident {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.namespace().unwrap_or("minecraft").hash(state);
         self.name().hash(state);
     }
 }
 
-impl Encode for Identifier {
+impl Encode for Ident {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         encode_string_bounded(self.as_str(), 0, 32767, w)
     }
 }
 
-impl Decode for Identifier {
+impl Decode for Ident {
     fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
         let string = BoundedString::<0, 32767>::decode(r)?.0;
-        Ok(Identifier::new(string)?)
+        Ok(Ident::new(string)?)
     }
 }
 
-impl Serialize for Identifier {
+impl Serialize for Ident {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         self.as_str().serialize(serializer)
     }
 }
 
-impl<'de> Deserialize<'de> for Identifier {
+impl<'de> Deserialize<'de> for Ident {
     fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         deserializer.deserialize_str(IdentifierVisitor)
     }
@@ -224,18 +224,18 @@ impl<'de> Deserialize<'de> for Identifier {
 struct IdentifierVisitor;
 
 impl<'de> Visitor<'de> for IdentifierVisitor {
-    type Value = Identifier;
+    type Value = Ident;
 
     fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "a valid Minecraft identifier")
     }
 
     fn visit_str<E: serde::de::Error>(self, s: &str) -> Result<Self::Value, E> {
-        Identifier::from_str(s).map_err(E::custom)
+        Ident::from_str(s).map_err(E::custom)
     }
 
     fn visit_string<E: serde::de::Error>(self, s: String) -> Result<Self::Value, E> {
-        Identifier::new(s).map_err(E::custom)
+        Ident::new(s).map_err(E::custom)
     }
 }
 
@@ -249,8 +249,8 @@ macro_rules! ident {
         let errmsg = "invalid identifier in `ident` macro";
         #[allow(clippy::redundant_closure_call)]
         (|args: ::std::fmt::Arguments| match args.as_str() {
-            Some(s) => $crate::Identifier::new(s).expect(errmsg),
-            None => $crate::Identifier::new(args.to_string()).expect(errmsg),
+            Some(s) => $crate::Ident::new(s).expect(errmsg),
+            None => $crate::Ident::new(args.to_string()).expect(errmsg),
         })(format_args!($($arg)*))
     }}
 }

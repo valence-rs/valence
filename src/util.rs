@@ -54,8 +54,9 @@ where
     aabb
 }
 
-/// Takes a normalized direction vector and returns a (yaw, pitch) tuple in degrees.
-/// 
+/// Takes a normalized direction vector and returns a (yaw, pitch) tuple in
+/// degrees.
+///
 /// This function is the inverse of [`from_yaw_and_pitch`].
 pub fn to_yaw_and_pitch(d: Vec3<f64>) -> (f32, f32) {
     debug_assert!(d.is_normalized(), "the given vector should be normalized");
@@ -65,8 +66,9 @@ pub fn to_yaw_and_pitch(d: Vec3<f64>) -> (f32, f32) {
     (yaw, pitch)
 }
 
-/// Takes yaw and pitch angles (in degrees) and returns a normalized direction vector.
-/// 
+/// Takes yaw and pitch angles (in degrees) and returns a normalized direction
+/// vector.
+///
 /// This function is the inverse of [`to_yaw_and_pitch`].
 pub fn from_yaw_and_pitch(yaw: f32, pitch: f32) -> Vec3<f64> {
     todo!()

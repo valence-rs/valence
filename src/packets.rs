@@ -17,11 +17,10 @@ use vek::Vec3;
 
 use crate::block_pos::BlockPos;
 use crate::byte_angle::ByteAngle;
-use crate::identifier::Identifier;
 use crate::protocol::{BoundedArray, BoundedInt, BoundedString, Decode, Encode, Nbt, RawBytes};
 use crate::var_int::VarInt;
 use crate::var_long::VarLong;
-use crate::Text;
+use crate::{Ident, Text};
 
 /// Trait for types that can be written to the Minecraft protocol as a complete
 /// packet.
@@ -353,1413 +352,1418 @@ pub mod handshake {
 
 /// Packets and types used during the status state.
 pub mod status {
-    use super::*;
+    pub mod s2c {
+        use super::super::*;
 
-    // ==== Clientbound ====
+        def_struct! {
+            Response 0x00 {
+                json_response: String
+            }
+        }
 
-    def_struct! {
-        Response 0x00 {
-            json_response: String
+        def_struct! {
+            Pong 0x01 {
+                /// Should be the same as the payload from [`Ping`].
+                payload: u64
+            }
         }
     }
 
-    def_struct! {
-        Pong 0x01 {
-            /// Should be the same as the payload from [`Ping`].
-            payload: u64
+    pub mod c2s {
+        use super::super::*;
+
+        def_struct! {
+            Request 0x00 {}
         }
-    }
 
-    // ==== Serverbound ====
-
-    def_struct! {
-        Request 0x00 {}
-    }
-
-    def_struct! {
-        Ping 0x01 {
-            payload: u64
+        def_struct! {
+            Ping 0x01 {
+                payload: u64
+            }
         }
     }
 }
 
 /// Packets and types used during the play state.
 pub mod login {
-    use super::*;
+    pub mod s2c {
+        use super::super::*;
 
-    // ==== Clientbound ====
+        def_struct! {
+            Disconnect 0x00 {
+                reason: Text,
+            }
+        }
 
-    def_struct! {
-        Disconnect 0x00 {
-            reason: Text,
+        def_struct! {
+            EncryptionRequest 0x01 {
+                /// Currently unused
+                server_id: BoundedString<0, 20>,
+                /// The RSA public key
+                public_key: Vec<u8>,
+                verify_token: BoundedArray<u8, 16, 16>,
+            }
+        }
+
+        def_struct! {
+            LoginSuccess 0x02 {
+                uuid: Uuid,
+                username: BoundedString<3, 16>,
+            }
+        }
+
+        def_struct! {
+            SetCompression 0x03 {
+                threshold: VarInt
+            }
         }
     }
 
-    def_struct! {
-        EncryptionRequest 0x01 {
-            /// Currently unused
-            server_id: BoundedString<0, 20>,
-            /// The RSA public key
-            public_key: Vec<u8>,
-            verify_token: BoundedArray<u8, 16, 16>,
+    pub mod c2s {
+        use super::super::*;
+
+        def_struct! {
+            LoginStart 0x00 {
+                username: BoundedString<3, 16>,
+            }
         }
-    }
 
-    def_struct! {
-        LoginSuccess 0x02 {
-            uuid: Uuid,
-            username: BoundedString<3, 16>,
-        }
-    }
-
-    def_struct! {
-        SetCompression 0x03 {
-            threshold: VarInt
-        }
-    }
-
-    // ==== Serverbound ====
-
-    def_struct! {
-        LoginStart 0x00 {
-            username: BoundedString<3, 16>,
-        }
-    }
-
-    def_struct! {
-        EncryptionResponse 0x01 {
-            shared_secret: BoundedArray<u8, 16, 128>,
-            verify_token: BoundedArray<u8, 16, 128>,
+        def_struct! {
+            EncryptionResponse 0x01 {
+                shared_secret: BoundedArray<u8, 16, 128>,
+                verify_token: BoundedArray<u8, 16, 128>,
+            }
         }
     }
 }
 
 /// Packets and types used during the play state.
 pub mod play {
-    use super::*;
-
-    // ==== Clientbound ====
-
-    def_struct! {
-        SpawnEntity 0x00 {
-            entity_id: VarInt,
-            object_uuid: Uuid,
-            typ: VarInt,
-            position: Vec3<f64>,
-            pitch: ByteAngle,
-            yaw: ByteAngle,
-            data: i32,
-            velocity: Vec3<i16>,
-        }
-    }
-
-    def_struct! {
-        SpawnExperienceOrb 0x01 {
-            entity_id: VarInt,
-            position: Vec3<f64>,
-            count: i16,
-        }
-    }
-
-    def_struct! {
-        SpawnLivingEntity 0x02 {
-            entity_id: VarInt,
-            entity_uuid: Uuid,
-            typ: VarInt,
-            position: Vec3<f64>,
-            yaw: ByteAngle,
-            pitch: ByteAngle,
-            head_yaw: ByteAngle,
-            velocity: Vec3<i16>,
-        }
-    }
-
-    def_struct! {
-        SpawnPainting 0x03 {
-            entity_id: VarInt,
-            entity_uuid: Uuid,
-            variant: VarInt, // TODO: painting ID enum
-            location: BlockPos,
-            direction: PaintingDirection,
-        }
-    }
-
-    def_enum! {
-        PaintingDirection: u8 {
-            South = 0,
-            West = 1,
-            North = 2,
-            East = 3,
-        }
-    }
-
-    def_struct! {
-        SpawnPlayer 0x04 {
-            entity_id: VarInt,
-            player_uuid: Uuid,
-            position: Vec3<f64>,
-            yaw: ByteAngle,
-            pitch: ByteAngle,
-        }
-    }
-
-    def_struct! {
-        SculkVibrationSignal 0x05 {
-            source_position: BlockPos,
-            destination_identifier: Identifier, // TODO: destination codec type?
-            destination: BlockPos, // TODO: this type varies depending on destination_identifier
-            arrival_ticks: VarInt,
-        }
-    }
-
-    def_struct! {
-        EntityAnimation 0x06 {
-            entity_id: VarInt,
-            animation: Animation,
-        }
-    }
-
-    def_enum! {
-        Animation: u8 {
-            SwingMainArm = 0,
-            TakeDamage = 1,
-            LeaveBed = 2,
-            SwingOffhand = 3,
-            CriticalEffect = 4,
-            MagicCriticalEffect = 5,
-        }
-    }
-
-    def_struct! {
-        AcknoledgePlayerDigging 0x08 {
-            location: BlockPos,
-            block: VarInt, // TODO: block state ID type.
-            status: VarInt, // TODO: VarInt enum here.
-            sucessful: bool,
-        }
-    }
-
-    def_struct! {
-        BlockBreakAnimation 0x09 {
-            entity_id: VarInt,
-            location: BlockPos,
-            destroy_stage: BoundedInt<u8, 0, 10>,
-        }
-    }
-
-    def_struct! {
-        BlockEntityData 0x0a {
-            location: BlockPos,
-            typ: VarInt, // TODO: use enum here
-            data: nbt::Blob,
-        }
-    }
-
-    def_struct! {
-        BlockAction 0x0b {
-            location: BlockPos,
-            action_id: u8,
-            action_param: u8,
-            block_type: VarInt,
-        }
-    }
-
-    def_struct! {
-        BlockChange 0x0c {
-            location: BlockPos,
-            block_id: VarInt,
-        }
-    }
-
-    def_struct! {
-        BossBar 0x0d {
-            uuid: Uuid,
-            action: BossBarAction,
-        }
-    }
-
-    def_enum! {
-        BossBarAction: VarInt {
-            Add: BossBarActionAdd = 0,
-        }
-    }
-
-    def_struct! {
-        BossBarActionAdd {
-            title: Text,
-            health: f32,
-            color: BossBarColor,
-            division: BossBarDivision,
-            /// TODO: bitmask
-            flags: u8,
-        }
-    }
-
-    def_enum! {
-        BossBarColor: VarInt {
-            Pink = 0,
-            Blue = 1,
-            Red = 2,
-            Green = 3,
-            Yellow = 4,
-            Purple = 5,
-            White = 6,
-        }
-    }
-
-    def_enum! {
-        BossBarDivision: VarInt {
-            NoDivision = 0,
-            SixNotches = 1,
-            TenNotches = 2,
-            TwelveNotches = 3,
-            TwentyNotches = 4,
-        }
-    }
-
-    def_struct! {
-        ServerDifficulty 0x0e {
-            difficulty: Difficulty,
-            locked: bool,
-        }
-    }
-
-    def_enum! {
-        Difficulty: u8 {
-            Peaceful = 0,
-            Easy = 1,
-            Normal = 2,
-            Hard = 3,
-        }
-    }
-
-    def_struct! {
-        ChatMessageClientbound 0x0f {
-            message: Text,
-            position: ChatMessagePosition,
-            sender: Uuid,
-        }
-    }
-
-    def_enum! {
-        ChatMessagePosition: u8 {
-            Chat = 0,
-            SystemMessage = 1,
-            GameInfo = 2,
-        }
-    }
-
-    def_struct! {
-        ClearTitles 0x10 {
-            reset: bool,
-        }
-    }
-
-    def_struct! {
-        TabComplete 0x11 {
-            id: VarInt,
-            start: VarInt,
-            length: VarInt,
-            matches: Vec<TabCompleteMatch>,
-        }
-    }
-
-    def_struct! {
-        TabCompleteMatch {
-            value: String,
-            tooltip: TabCompleteTooltip,
-        }
-    }
-
-    def_enum! {
-        TabCompleteTooltip: u8 {
-            NoTooltip = 0,
-            Tooltip: Text = 1,
-        }
-    }
-
-    def_struct! {
-        WindowProperty 0x15 {
-            // TODO: use enums
-            window_id: u8,
-            property: i16,
-            value: i16,
-        }
-    }
-
-    def_struct! {
-        SetCooldown 0x17 {
-            item_id: VarInt,
-            cooldown_ticks: VarInt,
-        }
-    }
-
-    def_struct! {
-        Disconnect 0x1a {
-            reason: Text,
-        }
-    }
-
-    def_struct! {
-        EntityStatus 0x1b {
-            entity_id: i32,
-            /// TODO: enum
-            entity_status: u8,
-        }
-    }
-
-    def_struct! {
-        UnloadChunk 0x1d {
-            chunk_x: i32,
-            chunk_z: i32
-        }
-    }
-
-    def_struct! {
-        ChangeGameState 0x1e {
-            reason: ChangeGameStateReason,
-            value: f32,
-        }
-    }
-
-    def_enum! {
-        ChangeGameStateReason: u8 {
-            NoRespawnBlockAvailable = 0,
-            EndRaining = 1,
-            BeginRaining = 2,
-            ChangeGameMode = 3,
-            WinGame = 4,
-            DemoEvent = 5,
-            ArrowHitPlayer = 6,
-            RainLevelChange = 7,
-            ThunderLevelChange = 8,
-            PlayPufferfishStingSound = 9,
-            PlayElderGuardianMobAppearance = 10,
-            EnableRespawnScreen = 11,
-        }
-    }
-
-    def_struct! {
-        OpenHorseWindow 0x1f {
-            window_id: u8,
-            slot_count: VarInt,
-            entity_id: i32,
-        }
-    }
-
-    def_struct! {
-        InitializeWorldBorder 0x20 {
-            x: f64,
-            z: f64,
-            old_diameter: f64,
-            new_diameter: f64,
-            speed: VarLong,
-            portal_teleport_boundary: VarInt,
-            warning_blocks: VarInt,
-            warning_time: VarInt,
-        }
-    }
-
-    def_struct! {
-        KeepAliveClientbound 0x21 {
-            id: i64,
-        }
-    }
-
-    def_struct! {
-        ChunkDataAndUpdateLight 0x22 {
-            chunk_x: i32,
-            chunk_z: i32,
-            heightmaps: Nbt<ChunkDataHeightmaps>,
-            blocks_and_biomes: Vec<u8>,
-            block_entities: Vec<ChunkDataBlockEntity>,
-            trust_edges: bool,
-            sky_light_mask: BitVec<u64>,
-            block_light_mask: BitVec<u64>,
-            empty_sky_light_mask: BitVec<u64>,
-            empty_block_light_mask: BitVec<u64>,
-            sky_light_arrays: Vec<[u8; 2048]>,
-            block_light_arrays: Vec<[u8; 2048]>,
-        }
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct ChunkDataHeightmaps {
-        #[serde(rename = "MOTION_BLOCKING", serialize_with = "nbt::i64_array")]
-        pub motion_blocking: Vec<i64>,
-    }
-
-    def_struct! {
-        ChunkDataBlockEntity {
-            packed_xz: i8,
-            y: i16,
-            typ: VarInt,
-            data: nbt::Blob,
-        }
-    }
-
-    def_struct! {
-        JoinGame 0x26 {
-            /// Entity ID of the joining player
-            entity_id: i32,
-            is_hardcore: bool,
-            gamemode: GameMode,
-            /// The previous gamemode for the purpose of the F3+F4 gamemode switcher. (TODO: verify)
-            /// Is `-1` if there was no previous gamemode.
-            previous_gamemode: GameMode,
-            dimension_names: Vec<Identifier>,
-            dimension_codec: Nbt<DimensionCodec>,
-            /// The specification of the dimension being spawned into.
-            dimension: Nbt<DimensionType>,
-            /// The identifier of the dimension being spawned into.
-            dimension_name: Identifier,
-            /// Hash of the world's seed used for client biome noise.
-            hashed_seed: i64,
-            /// No longer used by the client.
-            max_players: VarInt,
-            view_distance: BoundedInt<VarInt, 2, 32>,
-            simulation_distance: VarInt,
-            /// If reduced debug info should be shown on the F3 screen.
-            reduced_debug_info: bool,
-            /// If player respawns should be instant or not.
-            enable_respawn_screen: bool,
-            is_debug: bool,
-            /// If this is a superflat world.
-            /// Superflat worlds have different void fog and horizon levels.
-            is_flat: bool,
-        }
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct DimensionCodec {
-        #[serde(rename = "minecraft:dimension_type")]
-        pub dimension_type_registry: DimensionTypeRegistry,
-        #[serde(rename = "minecraft:worldgen/biome")]
-        pub biome_registry: BiomeRegistry,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct DimensionTypeRegistry {
-        #[serde(rename = "type")]
-        pub typ: Identifier,
-        pub value: Vec<DimensionTypeRegistryEntry>,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct DimensionTypeRegistryEntry {
-        pub name: Identifier,
-        pub id: i32,
-        pub element: DimensionType,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct DimensionType {
-        pub piglin_safe: bool,
-        pub natural: bool,
-        pub ambient_light: f32,
-        pub fixed_time: Option<i64>,
-        pub infiniburn: String, // TODO: tag type?
-        pub respawn_anchor_works: bool,
-        pub has_skylight: bool,
-        pub bed_works: bool,
-        pub effects: Identifier,
-        pub has_raids: bool,
-        pub min_y: i32,
-        pub height: i32,
-        pub logical_height: i32,
-        pub coordinate_scale: f64,
-        pub ultrawarm: bool,
-        pub has_ceiling: bool,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct BiomeRegistry {
-        #[serde(rename = "type")]
-        pub typ: Identifier,
-        pub value: Vec<Biome>,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct Biome {
-        pub name: Identifier,
-        pub id: i32,
-        pub element: BiomeProperty,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct BiomeProperty {
-        pub precipitation: String,
-        pub depth: f32,
-        pub temperature: f32,
-        pub scale: f32,
-        pub downfall: f32,
-        pub category: String,
-        pub temperature_modifier: Option<String>,
-        pub effects: BiomeEffects,
-        pub particle: Option<BiomeParticle>,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct BiomeEffects {
-        pub sky_color: i32,
-        pub water_fog_color: i32,
-        pub fog_color: i32,
-        pub water_color: i32,
-        pub foliage_color: Option<i32>,
-        pub grass_color: Option<i32>,
-        pub grass_color_modifier: Option<String>,
-        pub music: Option<BiomeMusic>,
-        pub ambient_sound: Option<Identifier>,
-        pub additions_sound: Option<BiomeAdditionsSound>,
-        pub mood_sound: Option<BiomeMoodSound>,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct BiomeMusic {
-        pub replace_current_music: bool,
-        pub sound: Identifier,
-        pub max_delay: i32,
-        pub min_delay: i32,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct BiomeAdditionsSound {
-        pub sound: Identifier,
-        pub tick_chance: f64,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct BiomeMoodSound {
-        pub sound: Identifier,
-        pub tick_delay: i32,
-        pub offset: f64,
-        pub block_search_extent: i32,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct BiomeParticle {
-        pub probability: f32,
-        pub options: BiomeParticleOptions,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct BiomeParticleOptions {
-        #[serde(rename = "type")]
-        pub typ: Identifier,
-    }
-
-    def_enum! {
-        #[derive(Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-        GameMode: u8 {
-            Survival = 0,
-            Creative = 1,
-            Adventure = 2,
-            Spectator = 3,
-        }
-    }
-
-    impl Default for GameMode {
-        fn default() -> Self {
-            GameMode::Survival
-        }
-    }
-
-    def_struct! {
-        EntityPosition 0x29 {
-            entity_id: VarInt,
-            delta: Vec3<i16>,
-            on_ground: bool,
-        }
-    }
-
-    def_struct! {
-        EntityPositionAndRotation 0x2a {
-            entity_id: VarInt,
-            delta: Vec3<i16>,
-            yaw: ByteAngle,
-            pitch: ByteAngle,
-            on_ground: bool,
-        }
-    }
-
-    def_struct! {
-        EntityRotation 0x2b {
-            entity_id: VarInt,
-            yaw: ByteAngle,
-            pitch: ByteAngle,
-            on_ground: bool,
-        }
-    }
-
-    def_struct! {
-        PlayerPositionAndLook 0x38 {
-            position: Vec3<f64>,
-            yaw: f32,
-            pitch: f32,
-            flags: PlayerPositionAndLookFlags,
-            teleport_id: VarInt,
-            dismount_vehicle: bool,
-        }
-    }
-
-    def_bitfield! {
-        PlayerPositionAndLookFlags: u8 {
-            x = 0,
-            y = 1,
-            z = 2,
-            y_rot = 3,
-            x_rot = 4,
-        }
-    }
-
-    def_struct! {
-        DestroyEntities 0x3a {
-            entities: Vec<VarInt>,
-        }
-    }
-
-    def_struct! {
-        EntityHeadLook 0x3e {
-            entity_id: VarInt,
-            head_yaw: ByteAngle,
-        }
-    }
-
-    def_struct! {
-        MultiBlockChange 0x3f {
-            chunk_section_position: u64,
-            invert_trust_edges: bool,
-            blocks: Vec<u64>,
-        }
-    }
-
-    def_struct! {
-        HeldItemChangeClientbound 0x48 {
-            slot: BoundedInt<u8, 0, 9>,
-        }
-    }
-
-    def_struct! {
-        UpdateViewPosition 0x49 {
-            chunk_x: VarInt,
-            chunk_z: VarInt,
-        }
-    }
-
-    def_struct! {
-        UpdateViewDistance 0x4a {
-            view_distance: BoundedInt<VarInt, 2, 32>,
-        }
-    }
-
-    def_struct! {
-        SpawnPosition 0x4b {
-            location: BlockPos,
-            angle: f32,
-        }
-    }
-
-    def_struct! {
-        EntityMetadata 0x4d {
-            entity_id: VarInt,
-            metadata: RawBytes,
-        }
-    }
-
-    def_struct! {
-        EntityVelocity 0x4f {
-            entity_id: VarInt,
-            velocity: Vec3<i16>,
-        }
-    }
-
-    def_struct! {
-        TimeUpdate 0x59 {
-            /// The age of the world in 1/20ths of a second.
-            world_age: i64,
-            /// The current time of day in 1/20ths of a second.
-            /// The value should be in the range \[0, 24000].
-            /// 6000 is noon, 12000 is sunset, and 18000 is midnight.
-            time_of_day: i64,
-        }
-    }
-
-    def_struct! {
-        EntityTeleport 0x62 {
-            entity_id: VarInt,
-            position: Vec3<f64>,
-            yaw: ByteAngle,
-            pitch: ByteAngle,
-            on_ground: bool,
-        }
-    }
-
-    macro_rules! def_client_play_packet_enum {
-        {
-            $($packet:ident),* $(,)?
-        } => {
-            /// An enum of all clientbound play packets.
-            #[derive(Clone, Debug)]
-            pub enum ClientPlayPacket {
-                $($packet($packet)),*
+    pub mod s2c {
+        use super::super::*;
+
+        def_struct! {
+            SpawnEntity 0x00 {
+                entity_id: VarInt,
+                object_uuid: Uuid,
+                typ: VarInt,
+                position: Vec3<f64>,
+                pitch: ByteAngle,
+                yaw: ByteAngle,
+                data: i32,
+                velocity: Vec3<i16>,
             }
+        }
 
-            impl private::Sealed for ClientPlayPacket {}
+        def_struct! {
+            SpawnExperienceOrb 0x01 {
+                entity_id: VarInt,
+                position: Vec3<f64>,
+                count: i16,
+            }
+        }
 
-            $(
-                impl From<$packet> for ClientPlayPacket {
-                    fn from(p: $packet) -> ClientPlayPacket {
-                        ClientPlayPacket::$packet(p)
+        def_struct! {
+            SpawnLivingEntity 0x02 {
+                entity_id: VarInt,
+                entity_uuid: Uuid,
+                typ: VarInt,
+                position: Vec3<f64>,
+                yaw: ByteAngle,
+                pitch: ByteAngle,
+                head_yaw: ByteAngle,
+                velocity: Vec3<i16>,
+            }
+        }
+
+        def_struct! {
+            SpawnPainting 0x03 {
+                entity_id: VarInt,
+                entity_uuid: Uuid,
+                variant: VarInt, // TODO: painting ID enum
+                location: BlockPos,
+                direction: PaintingDirection,
+            }
+        }
+
+        def_enum! {
+            PaintingDirection: u8 {
+                South = 0,
+                West = 1,
+                North = 2,
+                East = 3,
+            }
+        }
+
+        def_struct! {
+            SpawnPlayer 0x04 {
+                entity_id: VarInt,
+                player_uuid: Uuid,
+                position: Vec3<f64>,
+                yaw: ByteAngle,
+                pitch: ByteAngle,
+            }
+        }
+
+        def_struct! {
+            SculkVibrationSignal 0x05 {
+                source_position: BlockPos,
+                destination_identifier: Ident, // TODO: destination codec type?
+                destination: BlockPos, // TODO: this type varies depending on destination_identifier
+                arrival_ticks: VarInt,
+            }
+        }
+
+        def_struct! {
+            EntityAnimation 0x06 {
+                entity_id: VarInt,
+                animation: Animation,
+            }
+        }
+
+        def_enum! {
+            Animation: u8 {
+                SwingMainArm = 0,
+                TakeDamage = 1,
+                LeaveBed = 2,
+                SwingOffhand = 3,
+                CriticalEffect = 4,
+                MagicCriticalEffect = 5,
+            }
+        }
+
+        def_struct! {
+            AcknoledgePlayerDigging 0x08 {
+                location: BlockPos,
+                block: VarInt, // TODO: block state ID type.
+                status: VarInt, // TODO: VarInt enum here.
+                sucessful: bool,
+            }
+        }
+
+        def_struct! {
+            BlockBreakAnimation 0x09 {
+                entity_id: VarInt,
+                location: BlockPos,
+                destroy_stage: BoundedInt<u8, 0, 10>,
+            }
+        }
+
+        def_struct! {
+            BlockEntityData 0x0a {
+                location: BlockPos,
+                typ: VarInt, // TODO: use enum here
+                data: nbt::Blob,
+            }
+        }
+
+        def_struct! {
+            BlockAction 0x0b {
+                location: BlockPos,
+                action_id: u8,
+                action_param: u8,
+                block_type: VarInt,
+            }
+        }
+
+        def_struct! {
+            BlockChange 0x0c {
+                location: BlockPos,
+                block_id: VarInt,
+            }
+        }
+
+        def_struct! {
+            BossBar 0x0d {
+                uuid: Uuid,
+                action: BossBarAction,
+            }
+        }
+
+        def_enum! {
+            BossBarAction: VarInt {
+                Add: BossBarActionAdd = 0,
+            }
+        }
+
+        def_struct! {
+            BossBarActionAdd {
+                title: Text,
+                health: f32,
+                color: BossBarColor,
+                division: BossBarDivision,
+                /// TODO: bitmask
+                flags: u8,
+            }
+        }
+
+        def_enum! {
+            BossBarColor: VarInt {
+                Pink = 0,
+                Blue = 1,
+                Red = 2,
+                Green = 3,
+                Yellow = 4,
+                Purple = 5,
+                White = 6,
+            }
+        }
+
+        def_enum! {
+            BossBarDivision: VarInt {
+                NoDivision = 0,
+                SixNotches = 1,
+                TenNotches = 2,
+                TwelveNotches = 3,
+                TwentyNotches = 4,
+            }
+        }
+
+        def_struct! {
+            ServerDifficulty 0x0e {
+                difficulty: Difficulty,
+                locked: bool,
+            }
+        }
+
+        def_enum! {
+            Difficulty: u8 {
+                Peaceful = 0,
+                Easy = 1,
+                Normal = 2,
+                Hard = 3,
+            }
+        }
+
+        def_struct! {
+            ChatMessageClientbound 0x0f {
+                message: Text,
+                position: ChatMessagePosition,
+                sender: Uuid,
+            }
+        }
+
+        def_enum! {
+            ChatMessagePosition: u8 {
+                Chat = 0,
+                SystemMessage = 1,
+                GameInfo = 2,
+            }
+        }
+
+        def_struct! {
+            ClearTitles 0x10 {
+                reset: bool,
+            }
+        }
+
+        def_struct! {
+            TabComplete 0x11 {
+                id: VarInt,
+                start: VarInt,
+                length: VarInt,
+                matches: Vec<TabCompleteMatch>,
+            }
+        }
+
+        def_struct! {
+            TabCompleteMatch {
+                value: String,
+                tooltip: TabCompleteTooltip,
+            }
+        }
+
+        def_enum! {
+            TabCompleteTooltip: u8 {
+                NoTooltip = 0,
+                Tooltip: Text = 1,
+            }
+        }
+
+        def_struct! {
+            WindowProperty 0x15 {
+                // TODO: use enums
+                window_id: u8,
+                property: i16,
+                value: i16,
+            }
+        }
+
+        def_struct! {
+            SetCooldown 0x17 {
+                item_id: VarInt,
+                cooldown_ticks: VarInt,
+            }
+        }
+
+        def_struct! {
+            Disconnect 0x1a {
+                reason: Text,
+            }
+        }
+
+        def_struct! {
+            EntityStatus 0x1b {
+                entity_id: i32,
+                /// TODO: enum
+                entity_status: u8,
+            }
+        }
+
+        def_struct! {
+            UnloadChunk 0x1d {
+                chunk_x: i32,
+                chunk_z: i32
+            }
+        }
+
+        def_struct! {
+            ChangeGameState 0x1e {
+                reason: ChangeGameStateReason,
+                value: f32,
+            }
+        }
+
+        def_enum! {
+            ChangeGameStateReason: u8 {
+                NoRespawnBlockAvailable = 0,
+                EndRaining = 1,
+                BeginRaining = 2,
+                ChangeGameMode = 3,
+                WinGame = 4,
+                DemoEvent = 5,
+                ArrowHitPlayer = 6,
+                RainLevelChange = 7,
+                ThunderLevelChange = 8,
+                PlayPufferfishStingSound = 9,
+                PlayElderGuardianMobAppearance = 10,
+                EnableRespawnScreen = 11,
+            }
+        }
+
+        def_struct! {
+            OpenHorseWindow 0x1f {
+                window_id: u8,
+                slot_count: VarInt,
+                entity_id: i32,
+            }
+        }
+
+        def_struct! {
+            InitializeWorldBorder 0x20 {
+                x: f64,
+                z: f64,
+                old_diameter: f64,
+                new_diameter: f64,
+                speed: VarLong,
+                portal_teleport_boundary: VarInt,
+                warning_blocks: VarInt,
+                warning_time: VarInt,
+            }
+        }
+
+        def_struct! {
+            KeepAliveClientbound 0x21 {
+                id: i64,
+            }
+        }
+
+        def_struct! {
+            ChunkDataAndUpdateLight 0x22 {
+                chunk_x: i32,
+                chunk_z: i32,
+                heightmaps: Nbt<ChunkDataHeightmaps>,
+                blocks_and_biomes: Vec<u8>,
+                block_entities: Vec<ChunkDataBlockEntity>,
+                trust_edges: bool,
+                sky_light_mask: BitVec<u64>,
+                block_light_mask: BitVec<u64>,
+                empty_sky_light_mask: BitVec<u64>,
+                empty_block_light_mask: BitVec<u64>,
+                sky_light_arrays: Vec<[u8; 2048]>,
+                block_light_arrays: Vec<[u8; 2048]>,
+            }
+        }
+
+        #[derive(Clone, Debug, Serialize, Deserialize)]
+        pub struct ChunkDataHeightmaps {
+            #[serde(rename = "MOTION_BLOCKING", serialize_with = "nbt::i64_array")]
+            pub motion_blocking: Vec<i64>,
+        }
+
+        def_struct! {
+            ChunkDataBlockEntity {
+                packed_xz: i8,
+                y: i16,
+                typ: VarInt,
+                data: nbt::Blob,
+            }
+        }
+
+        def_struct! {
+            JoinGame 0x26 {
+                /// Entity ID of the joining player
+                entity_id: i32,
+                is_hardcore: bool,
+                gamemode: GameMode,
+                /// The previous gamemode for the purpose of the F3+F4 gamemode switcher. (TODO: verify)
+                /// Is `-1` if there was no previous gamemode.
+                previous_gamemode: GameMode,
+                dimension_names: Vec<Ident>,
+                dimension_codec: Nbt<DimensionCodec>,
+                /// The specification of the dimension being spawned into.
+                dimension: Nbt<DimensionType>,
+                /// The identifier of the dimension being spawned into.
+                dimension_name: Ident,
+                /// Hash of the world's seed used for client biome noise.
+                hashed_seed: i64,
+                /// No longer used by the client.
+                max_players: VarInt,
+                view_distance: BoundedInt<VarInt, 2, 32>,
+                simulation_distance: VarInt,
+                /// If reduced debug info should be shown on the F3 screen.
+                reduced_debug_info: bool,
+                /// If player respawns should be instant or not.
+                enable_respawn_screen: bool,
+                is_debug: bool,
+                /// If this is a superflat world.
+                /// Superflat worlds have different void fog and horizon levels.
+                is_flat: bool,
+            }
+        }
+
+        #[derive(Clone, Debug, Serialize, Deserialize)]
+        pub struct DimensionCodec {
+            #[serde(rename = "minecraft:dimension_type")]
+            pub dimension_type_registry: DimensionTypeRegistry,
+            #[serde(rename = "minecraft:worldgen/biome")]
+            pub biome_registry: BiomeRegistry,
+        }
+
+        #[derive(Clone, Debug, Serialize, Deserialize)]
+        pub struct DimensionTypeRegistry {
+            #[serde(rename = "type")]
+            pub typ: Ident,
+            pub value: Vec<DimensionTypeRegistryEntry>,
+        }
+
+        #[derive(Clone, Debug, Serialize, Deserialize)]
+        pub struct DimensionTypeRegistryEntry {
+            pub name: Ident,
+            pub id: i32,
+            pub element: DimensionType,
+        }
+
+        #[derive(Clone, Debug, Serialize, Deserialize)]
+        pub struct DimensionType {
+            pub piglin_safe: bool,
+            pub natural: bool,
+            pub ambient_light: f32,
+            pub fixed_time: Option<i64>,
+            pub infiniburn: String, // TODO: tag type?
+            pub respawn_anchor_works: bool,
+            pub has_skylight: bool,
+            pub bed_works: bool,
+            pub effects: Ident,
+            pub has_raids: bool,
+            pub min_y: i32,
+            pub height: i32,
+            pub logical_height: i32,
+            pub coordinate_scale: f64,
+            pub ultrawarm: bool,
+            pub has_ceiling: bool,
+        }
+
+        #[derive(Clone, Debug, Serialize, Deserialize)]
+        pub struct BiomeRegistry {
+            #[serde(rename = "type")]
+            pub typ: Ident,
+            pub value: Vec<Biome>,
+        }
+
+        #[derive(Clone, Debug, Serialize, Deserialize)]
+        pub struct Biome {
+            pub name: Ident,
+            pub id: i32,
+            pub element: BiomeProperty,
+        }
+
+        #[derive(Clone, Debug, Serialize, Deserialize)]
+        pub struct BiomeProperty {
+            pub precipitation: String,
+            pub depth: f32,
+            pub temperature: f32,
+            pub scale: f32,
+            pub downfall: f32,
+            pub category: String,
+            pub temperature_modifier: Option<String>,
+            pub effects: BiomeEffects,
+            pub particle: Option<BiomeParticle>,
+        }
+
+        #[derive(Clone, Debug, Serialize, Deserialize)]
+        pub struct BiomeEffects {
+            pub sky_color: i32,
+            pub water_fog_color: i32,
+            pub fog_color: i32,
+            pub water_color: i32,
+            pub foliage_color: Option<i32>,
+            pub grass_color: Option<i32>,
+            pub grass_color_modifier: Option<String>,
+            pub music: Option<BiomeMusic>,
+            pub ambient_sound: Option<Ident>,
+            pub additions_sound: Option<BiomeAdditionsSound>,
+            pub mood_sound: Option<BiomeMoodSound>,
+        }
+
+        #[derive(Clone, Debug, Serialize, Deserialize)]
+        pub struct BiomeMusic {
+            pub replace_current_music: bool,
+            pub sound: Ident,
+            pub max_delay: i32,
+            pub min_delay: i32,
+        }
+
+        #[derive(Clone, Debug, Serialize, Deserialize)]
+        pub struct BiomeAdditionsSound {
+            pub sound: Ident,
+            pub tick_chance: f64,
+        }
+
+        #[derive(Clone, Debug, Serialize, Deserialize)]
+        pub struct BiomeMoodSound {
+            pub sound: Ident,
+            pub tick_delay: i32,
+            pub offset: f64,
+            pub block_search_extent: i32,
+        }
+
+        #[derive(Clone, Debug, Serialize, Deserialize)]
+        pub struct BiomeParticle {
+            pub probability: f32,
+            pub options: BiomeParticleOptions,
+        }
+
+        #[derive(Clone, Debug, Serialize, Deserialize)]
+        pub struct BiomeParticleOptions {
+            #[serde(rename = "type")]
+            pub typ: Ident,
+        }
+
+        def_enum! {
+            #[derive(Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+            GameMode: u8 {
+                Survival = 0,
+                Creative = 1,
+                Adventure = 2,
+                Spectator = 3,
+            }
+        }
+
+        impl Default for GameMode {
+            fn default() -> Self {
+                GameMode::Survival
+            }
+        }
+
+        def_struct! {
+            EntityPosition 0x29 {
+                entity_id: VarInt,
+                delta: Vec3<i16>,
+                on_ground: bool,
+            }
+        }
+
+        def_struct! {
+            EntityPositionAndRotation 0x2a {
+                entity_id: VarInt,
+                delta: Vec3<i16>,
+                yaw: ByteAngle,
+                pitch: ByteAngle,
+                on_ground: bool,
+            }
+        }
+
+        def_struct! {
+            EntityRotation 0x2b {
+                entity_id: VarInt,
+                yaw: ByteAngle,
+                pitch: ByteAngle,
+                on_ground: bool,
+            }
+        }
+
+        def_struct! {
+            PlayerPositionAndLook 0x38 {
+                position: Vec3<f64>,
+                yaw: f32,
+                pitch: f32,
+                flags: PlayerPositionAndLookFlags,
+                teleport_id: VarInt,
+                dismount_vehicle: bool,
+            }
+        }
+
+        def_bitfield! {
+            PlayerPositionAndLookFlags: u8 {
+                x = 0,
+                y = 1,
+                z = 2,
+                y_rot = 3,
+                x_rot = 4,
+            }
+        }
+
+        def_struct! {
+            DestroyEntities 0x3a {
+                entities: Vec<VarInt>,
+            }
+        }
+
+        def_struct! {
+            EntityHeadLook 0x3e {
+                entity_id: VarInt,
+                head_yaw: ByteAngle,
+            }
+        }
+
+        def_struct! {
+            MultiBlockChange 0x3f {
+                chunk_section_position: u64,
+                invert_trust_edges: bool,
+                blocks: Vec<u64>,
+            }
+        }
+
+        def_struct! {
+            HeldItemChangeClientbound 0x48 {
+                slot: BoundedInt<u8, 0, 9>,
+            }
+        }
+
+        def_struct! {
+            UpdateViewPosition 0x49 {
+                chunk_x: VarInt,
+                chunk_z: VarInt,
+            }
+        }
+
+        def_struct! {
+            UpdateViewDistance 0x4a {
+                view_distance: BoundedInt<VarInt, 2, 32>,
+            }
+        }
+
+        def_struct! {
+            SpawnPosition 0x4b {
+                location: BlockPos,
+                angle: f32,
+            }
+        }
+
+        def_struct! {
+            EntityMetadata 0x4d {
+                entity_id: VarInt,
+                metadata: RawBytes,
+            }
+        }
+
+        def_struct! {
+            EntityVelocity 0x4f {
+                entity_id: VarInt,
+                velocity: Vec3<i16>,
+            }
+        }
+
+        def_struct! {
+            TimeUpdate 0x59 {
+                /// The age of the world in 1/20ths of a second.
+                world_age: i64,
+                /// The current time of day in 1/20ths of a second.
+                /// The value should be in the range \[0, 24000].
+                /// 6000 is noon, 12000 is sunset, and 18000 is midnight.
+                time_of_day: i64,
+            }
+        }
+
+        def_struct! {
+            EntityTeleport 0x62 {
+                entity_id: VarInt,
+                position: Vec3<f64>,
+                yaw: ByteAngle,
+                pitch: ByteAngle,
+                on_ground: bool,
+            }
+        }
+
+        macro_rules! def_s2c_play_packet_enum {
+            {
+                $($packet:ident),* $(,)?
+            } => {
+                /// An enum of all s2c play packets.
+                #[derive(Clone, Debug)]
+                pub enum S2cPlayPacket {
+                    $($packet($packet)),*
+                }
+
+                impl private::Sealed for S2cPlayPacket {}
+
+                $(
+                    impl From<$packet> for S2cPlayPacket {
+                        fn from(p: $packet) -> S2cPlayPacket {
+                            S2cPlayPacket::$packet(p)
+                        }
+                    }
+                )*
+
+                impl EncodePacket for S2cPlayPacket {
+                    fn encode_packet(&self, w: &mut impl Write) -> anyhow::Result<()> {
+                        match self {
+                            $(
+                                Self::$packet(p) => {
+                                    VarInt($packet::PACKET_ID)
+                                        .encode(w)
+                                        .context(concat!("failed to write s2c play packet ID for `", stringify!($packet), "`"))?;
+                                    p.encode(w)
+                                }
+                            )*
+                        }
                     }
                 }
-            )*
 
-            impl EncodePacket for ClientPlayPacket {
-                fn encode_packet(&self, w: &mut impl Write) -> anyhow::Result<()> {
-                    match self {
+                #[cfg(test)]
+                #[test]
+                fn test_s2c_play_packet_order() {
+                    let ids = [
                         $(
-                            Self::$packet(p) => {
-                                VarInt($packet::PACKET_ID)
-                                    .encode(w)
-                                    .context(concat!("failed to write play packet ID for `", stringify!($packet), "`"))?;
-                                p.encode(w)
-                            }
+                            (stringify!($packet), $packet::PACKET_ID),
                         )*
+                    ];
+
+                    if let Some(w) = ids.windows(2).find(|w| w[0].1 >= w[1].1) {
+                        panic!("the {} and {} variants of the s2c play packet enum are not properly sorted by their packet ID", w[0].0, w[1].0);
                     }
                 }
             }
+        }
 
-            #[cfg(test)]
-            #[test]
-            fn test_client_play_packet_order() {
-                let ids = [
-                    $(
-                        (stringify!($packet), $packet::PACKET_ID),
-                    )*
-                ];
+        def_s2c_play_packet_enum! {
+            SpawnEntity,
+            SpawnExperienceOrb,
+            SpawnLivingEntity,
+            SpawnPainting,
+            SpawnPlayer,
+            SculkVibrationSignal,
+            EntityAnimation,
+            AcknoledgePlayerDigging,
+            BlockBreakAnimation,
+            BlockEntityData,
+            BlockAction,
+            BlockChange,
+            BossBar,
+            Disconnect,
+            EntityStatus,
+            UnloadChunk,
+            ChangeGameState,
+            KeepAliveClientbound,
+            ChunkDataAndUpdateLight,
+            JoinGame,
+            EntityPosition,
+            EntityPositionAndRotation,
+            EntityRotation,
+            PlayerPositionAndLook,
+            DestroyEntities,
+            EntityHeadLook,
+            MultiBlockChange,
+            HeldItemChangeClientbound,
+            UpdateViewPosition,
+            UpdateViewDistance,
+            SpawnPosition,
+            EntityMetadata,
+            EntityVelocity,
+            EntityTeleport,
+            TimeUpdate,
+        }
+    }
 
-                if let Some(w) = ids.windows(2).find(|w| w[0].1 >= w[1].1) {
-                    panic!("the {} and {} variants of the client play packet enum are not properly sorted by their packet ID", w[0].0, w[1].0);
-                }
+    pub mod c2s {
+        use super::super::*;
+
+        def_struct! {
+            TeleportConfirm 0x00 {
+                teleport_id: VarInt
             }
         }
-    }
-
-    def_client_play_packet_enum! {
-        SpawnEntity,
-        SpawnExperienceOrb,
-        SpawnLivingEntity,
-        SpawnPainting,
-        SpawnPlayer,
-        SculkVibrationSignal,
-        EntityAnimation,
-        AcknoledgePlayerDigging,
-        BlockBreakAnimation,
-        BlockEntityData,
-        BlockAction,
-        BlockChange,
-        BossBar,
-        Disconnect,
-        EntityStatus,
-        UnloadChunk,
-        ChangeGameState,
-        KeepAliveClientbound,
-        ChunkDataAndUpdateLight,
-        JoinGame,
-        EntityPosition,
-        EntityPositionAndRotation,
-        EntityRotation,
-        PlayerPositionAndLook,
-        DestroyEntities,
-        EntityHeadLook,
-        MultiBlockChange,
-        HeldItemChangeClientbound,
-        UpdateViewPosition,
-        UpdateViewDistance,
-        SpawnPosition,
-        EntityMetadata,
-        EntityVelocity,
-        EntityTeleport,
-        TimeUpdate,
-    }
-
-    // ==== Serverbound ====
-
-    def_struct! {
-        TeleportConfirm 0x00 {
-            teleport_id: VarInt
-        }
-    }
-
-    def_struct! {
-        QueryBlockNbt 0x01 {
-            transaction_id: VarInt,
-            location: BlockPos,
-        }
-    }
-
-    def_enum! {
-        SetDifficulty 0x02: i8 {
-            Peaceful = 0,
-            Easy = 1,
-            Normal = 2,
-            Hard = 3,
-        }
-    }
-
-    def_struct! {
-        ChatMessageServerbound 0x03 {
-            message: BoundedString<0, 256>
-        }
-    }
-
-    def_enum! {
-        ClientStatus 0x04: VarInt {
-            /// Sent when ready to complete login and ready to respawn after death.
-            PerformRespawn = 0,
-            /// Sent when the statistics menu is opened.
-            RequestStatus = 1,
-        }
-    }
-
-    def_struct! {
-        ClientSettings 0x05 {
-            /// e.g. en_US
-            locale: BoundedString<0, 16>,
-            /// Client-side render distance in chunks.
-            view_distance: BoundedInt<u8, 2, 32>,
-            chat_mode: ChatMode,
-            chat_colors: bool,
-            displayed_skin_parts: DisplayedSkinParts,
-            main_hand: MainHand,
-            /// Currently always false
-            enable_text_filtering: bool,
-            /// False if the client should not show up in the hover preview.
-            allow_server_listings: bool,
-        }
-    }
-
-    def_enum! {
-        #[derive(Copy, PartialEq, Eq)]
-        ChatMode: VarInt {
-            Enabled = 0,
-            CommandsOnly = 1,
-            Hidden = 2,
+
+        def_struct! {
+            QueryBlockNbt 0x01 {
+                transaction_id: VarInt,
+                location: BlockPos,
+            }
+        }
+
+        def_enum! {
+            SetDifficulty 0x02: i8 {
+                Peaceful = 0,
+                Easy = 1,
+                Normal = 2,
+                Hard = 3,
+            }
+        }
+
+        def_struct! {
+            ChatMessageServerbound 0x03 {
+                message: BoundedString<0, 256>
+            }
+        }
+
+        def_enum! {
+            ClientStatus 0x04: VarInt {
+                /// Sent when ready to complete login and ready to respawn after death.
+                PerformRespawn = 0,
+                /// Sent when the statistics menu is opened.
+                RequestStatus = 1,
+            }
+        }
+
+        def_struct! {
+            ClientSettings 0x05 {
+                /// e.g. en_US
+                locale: BoundedString<0, 16>,
+                /// Client-side render distance in chunks.
+                view_distance: BoundedInt<u8, 2, 32>,
+                chat_mode: ChatMode,
+                chat_colors: bool,
+                displayed_skin_parts: DisplayedSkinParts,
+                main_hand: MainHand,
+                /// Currently always false
+                enable_text_filtering: bool,
+                /// False if the client should not show up in the hover preview.
+                allow_server_listings: bool,
+            }
+        }
+
+        def_enum! {
+            #[derive(Copy, PartialEq, Eq)]
+            ChatMode: VarInt {
+                Enabled = 0,
+                CommandsOnly = 1,
+                Hidden = 2,
+            }
+        }
+
+        def_bitfield! {
+            DisplayedSkinParts: u8 {
+                cape = 0,
+                jacket = 1,
+                left_sleeve = 2,
+                right_sleeve = 3,
+                left_pants_leg = 4,
+                right_pants_leg = 5,
+                hat = 6,
+            }
+        }
+
+        def_enum! {
+            #[derive(Copy, PartialEq, Eq)]
+            MainHand: VarInt {
+                Left = 0,
+                Right = 1,
+            }
+        }
+
+        def_struct! {
+            TabCompleteServerbound 0x06 {
+                transaction_id: VarInt,
+                /// Text behind the cursor without the '/'.
+                text: BoundedString<0, 32500>
+            }
+        }
+
+        def_struct! {
+            ClickWindowButton 0x07 {
+                window_id: i8,
+                button_id: i8,
+            }
+        }
+
+        def_struct! {
+            ClickWindow 0x08 {
+                window_id: u8,
+                state_id: VarInt,
+                slot: i16,
+                button: i8,
+                mode: VarInt, // TODO: enum
+                // TODO
+            }
         }
-    }
 
-    def_bitfield! {
-        DisplayedSkinParts: u8 {
-            cape = 0,
-            jacket = 1,
-            left_sleeve = 2,
-            right_sleeve = 3,
-            left_pants_leg = 4,
-            right_pants_leg = 5,
-            hat = 6,
-        }
-    }
+        def_struct! {
+            CloseWindow 0x09 {
+                window_id: u8,
+            }
+        }
 
-    def_enum! {
-        #[derive(Copy, PartialEq, Eq)]
-        MainHand: VarInt {
-            Left = 0,
-            Right = 1,
+        def_struct! {
+            PluginMessageServerbound 0x0a {
+                channel: Ident,
+                data: RawBytes,
+            }
         }
-    }
 
-    def_struct! {
-        TabCompleteServerbound 0x06 {
-            transaction_id: VarInt,
-            /// Text behind the cursor without the '/'.
-            text: BoundedString<0, 32500>
+        def_struct! {
+            EditBook 0x0b {
+                hand: Hand,
+                entries: Vec<String>,
+                title: Option<String>,
+            }
         }
-    }
 
-    def_struct! {
-        ClickWindowButton 0x07 {
-            window_id: i8,
-            button_id: i8,
+        def_enum! {
+            Hand: VarInt {
+                Main = 0,
+                Off = 1,
+            }
         }
-    }
 
-    def_struct! {
-        ClickWindow 0x08 {
-            window_id: u8,
-            state_id: VarInt,
-            slot: i16,
-            button: i8,
-            mode: VarInt, // TODO: enum
-            // TODO
+        def_struct! {
+            QueryEntityNbt 0x0c {
+                transaction_id: VarInt,
+                entity_id: VarInt,
+            }
         }
-    }
 
-    def_struct! {
-        CloseWindow 0x09 {
-            window_id: u8,
-        }
-    }
+        def_struct! {
+            InteractEntity 0x0d {
+                entity_id: VarInt,
+                typ: InteractType,
+                sneaking: bool,
+            }
+        }
 
-    def_struct! {
-        PluginMessageServerbound 0x0a {
-            channel: Identifier,
-            data: RawBytes,
-        }
-    }
+        def_enum! {
+            InteractType: VarInt {
+                Interact: Hand = 0,
+                Attack = 1,
+                InteractAt: InteractAtData = 2
+            }
+        }
 
-    def_struct! {
-        EditBook 0x0b {
-            hand: Hand,
-            entries: Vec<String>,
-            title: Option<String>,
-        }
-    }
-
-    def_enum! {
-        Hand: VarInt {
-            Main = 0,
-            Off = 1,
+        def_struct! {
+            InteractAtData {
+                target: Vec3<f64>,
+                hand: Hand,
+            }
         }
-    }
-
-    def_struct! {
-        QueryEntityNbt 0x0c {
-            transaction_id: VarInt,
-            entity_id: VarInt,
+
+        def_struct! {
+            GenerateStructure 0x0e {
+                location: BlockPos,
+                levels: VarInt,
+                keep_jigsaws: bool,
+            }
         }
-    }
-
-    def_struct! {
-        InteractEntity 0x0d {
-            entity_id: VarInt,
-            typ: InteractType,
-            sneaking: bool,
+
+        def_struct! {
+            KeepAliveServerbound 0x0f {
+                id: i64,
+            }
         }
-    }
-
-    def_enum! {
-        InteractType: VarInt {
-            Interact: Hand = 0,
-            Attack = 1,
-            InteractAt: InteractAtData = 2
+
+        def_struct! {
+            LockDifficulty 0x10 {
+                locked: bool
+            }
         }
-    }
 
-    def_struct! {
-        InteractAtData {
-            target: Vec3<f64>,
-            hand: Hand,
+        def_struct! {
+            PlayerPosition 0x11 {
+                position: Vec3<f64>,
+                on_ground: bool,
+            }
+        }
+
+        def_struct! {
+            PlayerPositionAndRotation 0x12 {
+                // Absolute position
+                position: Vec3<f64>,
+                /// Absolute rotation on X axis in degrees.
+                yaw: f32,
+                /// Absolute rotation on Y axis in degrees.
+                pitch: f32,
+                on_ground: bool,
+            }
+        }
+
+        def_struct! {
+            PlayerRotation 0x13 {
+                /// Absolute rotation on X axis in degrees.
+                yaw: f32,
+                /// Absolute rotation on Y axis in degrees.
+                pitch: f32,
+                on_ground: bool,
+            }
+        }
+
+        def_struct! {
+            PlayerMovement 0x14 {
+                on_ground: bool
+            }
+        }
+
+        def_struct! {
+            VehicleMoveServerbound 0x15 {
+                /// Absolute position
+                position: Vec3<f64>,
+                /// Degrees
+                yaw: f32,
+                /// Degrees
+                pitch: f32,
+            }
+        }
+
+        def_struct! {
+            SteerBoat 0x16 {
+                left_paddle_turning: bool,
+                right_paddle_turning: bool,
+            }
+        }
+
+        def_struct! {
+            PickItem 0x17 {
+                slot_to_use: VarInt,
+            }
+        }
+
+        def_struct! {
+            CraftRecipeRequest 0x18 {
+                window_id: i8,
+                recipe: Ident,
+                make_all: bool,
+            }
+        }
+
+        def_enum! {
+            PlayerAbilitiesServerbound 0x19: i8 {
+                NotFlying = 0,
+                Flying = 0b10,
+            }
+        }
+
+        def_struct! {
+            PlayerDigging 0x1a {
+                status: DiggingStatus,
+                location: BlockPos,
+                face: BlockFace,
+            }
+        }
+
+        def_enum! {
+            DiggingStatus: VarInt {
+                StartedDigging = 0,
+                CancelledDigging = 1,
+                FinishedDigging = 2,
+                DropItemStack = 3,
+                DropItem = 4,
+                ShootArrowOrFinishEating = 5,
+                SwapItemInHand = 6,
+            }
+        }
+
+        def_enum! {
+            BlockFace: i8 {
+                /// -Y
+                Bottom = 0,
+                /// +Y
+                Top = 1,
+                /// -Z
+                North = 2,
+                /// +Z
+                South = 3,
+                /// -X
+                West = 4,
+                /// +X
+                East = 5,
+            }
+        }
+
+        def_struct! {
+            EntityAction 0x1b {
+                entity_id: VarInt,
+                action_id: EntityActionId,
+                jump_boost: BoundedInt<VarInt, 0, 100>,
+            }
+        }
+
+        def_enum! {
+            EntityActionId: VarInt {
+                StartSneaking = 0,
+                StopSneaking = 1,
+                LeaveBed = 2,
+                StartSprinting = 3,
+                StopSprinting = 4,
+                StartJumpWithHorse = 5,
+                StopJumpWithHorse = 6,
+                OpenHorseInventory = 7,
+                StartFlyingWithElytra = 8,
+            }
+        }
+
+        def_struct! {
+            SteerVehicle 0x1c {
+                sideways: f32,
+                forward: f32,
+                flags: SteerVehicleFlags,
+            }
+        }
+
+        def_bitfield! {
+            SteerVehicleFlags: u8 {
+                jump = 0,
+                unmount = 1,
+            }
         }
-    }
+
+        def_struct! {
+            Pong 0x1d {
+                id: i32,
+            }
+        }
 
-    def_struct! {
-        GenerateStructure 0x0e {
-            location: BlockPos,
-            levels: VarInt,
-            keep_jigsaws: bool,
+        def_struct! {
+            SetRecipeBookState 0x1e {
+                book_id: RecipeBookId,
+                book_open: bool,
+                filter_active: bool,
+            }
         }
-    }
+
+        def_enum! {
+            RecipeBookId: VarInt {
+                Crafting = 0,
+                Furnace = 1,
+                BlastFurnace = 2,
+                Smoker = 3,
+            }
+        }
 
-    def_struct! {
-        KeepAliveServerbound 0x0f {
-            id: i64,
-        }
-    }
-
-    def_struct! {
-        LockDifficulty 0x10 {
-            locked: bool
-        }
-    }
-
-    def_struct! {
-        PlayerPosition 0x11 {
-            position: Vec3<f64>,
-            on_ground: bool,
-        }
-    }
-
-    def_struct! {
-        PlayerPositionAndRotation 0x12 {
-            // Absolute position
-            position: Vec3<f64>,
-            /// Absolute rotation on X axis in degrees.
-            yaw: f32,
-            /// Absolute rotation on Y axis in degrees.
-            pitch: f32,
-            on_ground: bool,
-        }
-    }
-
-    def_struct! {
-        PlayerRotation 0x13 {
-            /// Absolute rotation on X axis in degrees.
-            yaw: f32,
-            /// Absolute rotation on Y axis in degrees.
-            pitch: f32,
-            on_ground: bool,
-        }
-    }
-
-    def_struct! {
-        PlayerMovement 0x14 {
-            on_ground: bool
-        }
-    }
-
-    def_struct! {
-        VehicleMoveServerbound 0x15 {
-            /// Absolute position
-            position: Vec3<f64>,
-            /// Degrees
-            yaw: f32,
-            /// Degrees
-            pitch: f32,
-        }
-    }
-
-    def_struct! {
-        SteerBoat 0x16 {
-            left_paddle_turning: bool,
-            right_paddle_turning: bool,
-        }
-    }
-
-    def_struct! {
-        PickItem 0x17 {
-            slot_to_use: VarInt,
-        }
-    }
-
-    def_struct! {
-        CraftRecipeRequest 0x18 {
-            window_id: i8,
-            recipe: Identifier,
-            make_all: bool,
-        }
-    }
-
-    def_enum! {
-        PlayerAbilitiesServerbound 0x19: i8 {
-            NotFlying = 0,
-            Flying = 0b10,
-        }
-    }
-
-    def_struct! {
-        PlayerDigging 0x1a {
-            status: DiggingStatus,
-            location: BlockPos,
-            face: BlockFace,
-        }
-    }
-
-    def_enum! {
-        DiggingStatus: VarInt {
-            StartedDigging = 0,
-            CancelledDigging = 1,
-            FinishedDigging = 2,
-            DropItemStack = 3,
-            DropItem = 4,
-            ShootArrowOrFinishEating = 5,
-            SwapItemInHand = 6,
-        }
-    }
-
-    def_enum! {
-        BlockFace: i8 {
-            /// -Y
-            Bottom = 0,
-            /// +Y
-            Top = 1,
-            /// -Z
-            North = 2,
-            /// +Z
-            South = 3,
-            /// -X
-            West = 4,
-            /// +X
-            East = 5,
-        }
-    }
-
-    def_struct! {
-        EntityAction 0x1b {
-            entity_id: VarInt,
-            action_id: EntityActionId,
-            jump_boost: BoundedInt<VarInt, 0, 100>,
-        }
-    }
-
-    def_enum! {
-        EntityActionId: VarInt {
-            StartSneaking = 0,
-            StopSneaking = 1,
-            LeaveBed = 2,
-            StartSprinting = 3,
-            StopSprinting = 4,
-            StartJumpWithHorse = 5,
-            StopJumpWithHorse = 6,
-            OpenHorseInventory = 7,
-            StartFlyingWithElytra = 8,
-        }
-    }
-
-    def_struct! {
-        SteerVehicle 0x1c {
-            sideways: f32,
-            forward: f32,
-            flags: SteerVehicleFlags,
-        }
-    }
-
-    def_bitfield! {
-        SteerVehicleFlags: u8 {
-            jump = 0,
-            unmount = 1,
-        }
-    }
-
-    def_struct! {
-        Pong 0x1d {
-            id: i32,
-        }
-    }
-
-    def_struct! {
-        SetRecipeBookState 0x1e {
-            book_id: RecipeBookId,
-            book_open: bool,
-            filter_active: bool,
-        }
-    }
-
-    def_enum! {
-        RecipeBookId: VarInt {
-            Crafting = 0,
-            Furnace = 1,
-            BlastFurnace = 2,
-            Smoker = 3,
-        }
-    }
-
-    def_struct! {
-        SetDisplayedRecipe 0x1f {
-            recipe_id: Identifier,
-        }
-    }
-
-    def_struct! {
-        NameItem 0x20 {
-            item_name: BoundedString<0, 50>,
-        }
-    }
-
-    def_enum! {
-        ResourcePackStatus 0x21: VarInt {
-            SuccessfullyLoaded = 0,
-            Declined = 1,
-            FailedDownload = 2,
-            Accepted = 3,
-        }
-    }
-
-    def_enum! {
-        AdvancementTab 0x22: VarInt {
-            OpenedTab: Identifier = 0,
-            ClosedScreen = 1,
-        }
-    }
-
-    def_struct! {
-        SelectTrade 0x23 {
-            selected_slot: VarInt,
-        }
-    }
-
-    def_struct! {
-        SetBeaconEffect 0x24 {
-            // TODO: potion ids?
-            primary_effect: VarInt,
-            secondary_effect: VarInt,
-        }
-    }
-
-    def_struct! {
-        HeldItemChangeServerbound 0x25 {
-            slot: BoundedInt<i16, 0, 8>,
-        }
-    }
-
-    def_struct! {
-        UpdateCommandBlock 0x26 {
-            location: BlockPos,
-            command: String,
-            mode: CommandBlockMode,
-            flags: CommandBlockFlags,
-        }
-    }
-
-    def_enum! {
-        CommandBlockMode: VarInt {
-            Sequence = 0,
-            Auto = 1,
-            Redstone = 2,
-        }
-    }
-
-    def_bitfield! {
-        CommandBlockFlags: i8 {
-            track_output = 0,
-            is_conditional = 1,
-            automatic = 2,
-        }
-    }
-
-    def_struct! {
-        UpdateCommandBlockMinecart 0x27 {
-            entity_id: VarInt,
-            command: String,
-            track_output: bool,
-        }
-    }
-
-    def_struct! {
-        CreativeInventoryAction 0x28 {
-            slot: i16,
-            // TODO: clicked_item: Slot,
-        }
-    }
-
-    def_struct! {
-        UpdateJigsawBlock 0x29 {
-            location: BlockPos,
-            name: Identifier,
-            target: Identifier,
-            pool: Identifier,
-            final_state: String,
-            joint_type: String,
-        }
-    }
-
-    def_struct! {
-        UpdateStructureBlock 0x2a {
-            location: BlockPos,
-            action: StructureBlockAction,
-            mode: StructureBlockMode,
-            name: String,
-            offset_xyz: [BoundedInt<i8, -32, 32>; 3],
-            size_xyz: [BoundedInt<i8, 0, 32>; 3],
-            mirror: StructureBlockMirror,
-            rotation: StructureBlockRotation,
-            metadata: String,
-            integrity: f32, // TODO: bounded float between 0 and 1.
-            seed: VarLong,
-            flags: StructureBlockFlags,
-        }
-    }
-
-    def_enum! {
-        StructureBlockAction: VarInt {
-            UpdateData = 0,
-            SaveStructure = 1,
-            LoadStructure = 2,
-            DetectSize = 3,
-        }
-    }
-
-    def_enum! {
-        StructureBlockMode: VarInt {
-            Save = 0,
-            Load = 1,
-            Corner = 2,
-            Data = 3,
-        }
-    }
-
-    def_enum! {
-        StructureBlockMirror: VarInt {
-            None = 0,
-            LeftRight = 1,
-            FrontBack = 2,
-        }
-    }
-
-    def_enum! {
-        StructureBlockRotation: VarInt {
-            None = 0,
-            Clockwise90 = 1,
-            Clockwise180 = 2,
-            Counterclockwise90 = 3,
-        }
-    }
-
-    def_bitfield! {
-        StructureBlockFlags: i8 {
-            ignore_entities = 0,
-            show_air = 1,
-            show_bounding_box = 2,
-        }
-    }
-
-    def_struct! {
-        UpdateSign 0x2b {
-            location: BlockPos,
-            lines: [BoundedString<0, 384>; 4],
-        }
-    }
-
-    def_struct! {
-        PlayerArmSwing 0x2c {
-            hand: Hand,
-        }
-    }
-
-    def_struct! {
-        Spectate 0x2d {
-            target: Uuid,
-        }
-    }
-
-    def_struct! {
-        PlayerBlockPlacement 0x2e {
-            hand: Hand,
-            location: BlockPos,
-            face: BlockFace,
-            cursor_pos: Vec3<f64>,
-            head_inside_block: bool,
-        }
-    }
-
-    def_struct! {
-        UseItem 0x2f {
-            hand: Hand,
-        }
-    }
-
-    macro_rules! def_server_play_packet_enum {
+        def_struct! {
+            SetDisplayedRecipe 0x1f {
+                recipe_id: Ident,
+            }
+        }
+
+        def_struct! {
+            NameItem 0x20 {
+                item_name: BoundedString<0, 50>,
+            }
+        }
+
+        def_enum! {
+            ResourcePackStatus 0x21: VarInt {
+                SuccessfullyLoaded = 0,
+                Declined = 1,
+                FailedDownload = 2,
+                Accepted = 3,
+            }
+        }
+
+        def_enum! {
+            AdvancementTab 0x22: VarInt {
+                OpenedTab: Ident = 0,
+                ClosedScreen = 1,
+            }
+        }
+
+        def_struct! {
+            SelectTrade 0x23 {
+                selected_slot: VarInt,
+            }
+        }
+
+        def_struct! {
+            SetBeaconEffect 0x24 {
+                // TODO: potion ids?
+                primary_effect: VarInt,
+                secondary_effect: VarInt,
+            }
+        }
+
+        def_struct! {
+            HeldItemChangeServerbound 0x25 {
+                slot: BoundedInt<i16, 0, 8>,
+            }
+        }
+
+        def_struct! {
+            UpdateCommandBlock 0x26 {
+                location: BlockPos,
+                command: String,
+                mode: CommandBlockMode,
+                flags: CommandBlockFlags,
+            }
+        }
+
+        def_enum! {
+            CommandBlockMode: VarInt {
+                Sequence = 0,
+                Auto = 1,
+                Redstone = 2,
+            }
+        }
+
+        def_bitfield! {
+            CommandBlockFlags: i8 {
+                track_output = 0,
+                is_conditional = 1,
+                automatic = 2,
+            }
+        }
+
+        def_struct! {
+            UpdateCommandBlockMinecart 0x27 {
+                entity_id: VarInt,
+                command: String,
+                track_output: bool,
+            }
+        }
+
+        def_struct! {
+            CreativeInventoryAction 0x28 {
+                slot: i16,
+                // TODO: clicked_item: Slot,
+            }
+        }
+
+        def_struct! {
+            UpdateJigsawBlock 0x29 {
+                location: BlockPos,
+                name: Ident,
+                target: Ident,
+                pool: Ident,
+                final_state: String,
+                joint_type: String,
+            }
+        }
+
+        def_struct! {
+            UpdateStructureBlock 0x2a {
+                location: BlockPos,
+                action: StructureBlockAction,
+                mode: StructureBlockMode,
+                name: String,
+                offset_xyz: [BoundedInt<i8, -32, 32>; 3],
+                size_xyz: [BoundedInt<i8, 0, 32>; 3],
+                mirror: StructureBlockMirror,
+                rotation: StructureBlockRotation,
+                metadata: String,
+                integrity: f32, // TODO: bounded float between 0 and 1.
+                seed: VarLong,
+                flags: StructureBlockFlags,
+            }
+        }
+
+        def_enum! {
+            StructureBlockAction: VarInt {
+                UpdateData = 0,
+                SaveStructure = 1,
+                LoadStructure = 2,
+                DetectSize = 3,
+            }
+        }
+
+        def_enum! {
+            StructureBlockMode: VarInt {
+                Save = 0,
+                Load = 1,
+                Corner = 2,
+                Data = 3,
+            }
+        }
+
+        def_enum! {
+            StructureBlockMirror: VarInt {
+                None = 0,
+                LeftRight = 1,
+                FrontBack = 2,
+            }
+        }
+
+        def_enum! {
+            StructureBlockRotation: VarInt {
+                None = 0,
+                Clockwise90 = 1,
+                Clockwise180 = 2,
+                Counterclockwise90 = 3,
+            }
+        }
+
+        def_bitfield! {
+            StructureBlockFlags: i8 {
+                ignore_entities = 0,
+                show_air = 1,
+                show_bounding_box = 2,
+            }
+        }
+
+        def_struct! {
+            UpdateSign 0x2b {
+                location: BlockPos,
+                lines: [BoundedString<0, 384>; 4],
+            }
+        }
+
+        def_struct! {
+            PlayerArmSwing 0x2c {
+                hand: Hand,
+            }
+        }
+
+        def_struct! {
+            Spectate 0x2d {
+                target: Uuid,
+            }
+        }
+
+        def_struct! {
+            PlayerBlockPlacement 0x2e {
+                hand: Hand,
+                location: BlockPos,
+                face: BlockFace,
+                cursor_pos: Vec3<f64>,
+                head_inside_block: bool,
+            }
+        }
+
+        def_struct! {
+            UseItem 0x2f {
+                hand: Hand,
+            }
+        }
+
+        macro_rules! def_c2s_play_packet_enum {
         {
             $($packet:ident),* $(,)?
         } => {
-            /// An enum of all serverbound play packets.
+            /// An enum of all client-to-server play packets.
             #[derive(Clone, Debug)]
-            pub enum ServerPlayPacket {
+            pub enum C2sPlayPacket {
                 $($packet($packet)),*
             }
 
-            impl private::Sealed for ServerPlayPacket {}
+            impl private::Sealed for C2sPlayPacket {}
 
-            impl DecodePacket for ServerPlayPacket {
-                fn decode_packet(r: &mut impl Read) -> anyhow::Result<ServerPlayPacket> {
-                    let packet_id = VarInt::decode(r).context("failed to read play packet ID")?.0;
+            impl DecodePacket for C2sPlayPacket {
+                fn decode_packet(r: &mut impl Read) -> anyhow::Result<C2sPlayPacket> {
+                    let packet_id = VarInt::decode(r).context("failed to read c2s play packet ID")?.0;
                     match packet_id {
                         $(
                             $packet::PACKET_ID => {
                                 let pkt = $packet::decode(r)?;
-                                Ok(ServerPlayPacket::$packet(pkt))
+                                Ok(C2sPlayPacket::$packet(pkt))
                             }
                         )*
-                        id => bail!("unknown play packet ID {:#04x}", id)
+                        id => bail!("unknown c2s play packet ID {:#04x}", id)
                     }
                 }
             }
@@ -1767,7 +1771,7 @@ pub mod play {
 
             #[cfg(test)]
             #[test]
-            fn test_server_play_packet_order() {
+            fn test_c2s_play_packet_order() {
                 let ids = [
                     $(
                         (stringify!($packet), $packet::PACKET_ID),
@@ -1775,61 +1779,62 @@ pub mod play {
                 ];
 
                 if let Some(w) = ids.windows(2).find(|w| w[0].1 >= w[1].1) {
-                    panic!("the {} and {} variants of the server play packet enum are not properly sorted by their packet ID", w[0].0, w[1].0);
+                    panic!("the {} and {} variants of the c2s play packet enum are not properly sorted by their packet ID", w[0].0, w[1].0);
                 }
             }
         }
     }
 
-    def_server_play_packet_enum! {
-        TeleportConfirm,
-        QueryBlockNbt,
-        SetDifficulty,
-        ChatMessageServerbound,
-        ClientStatus,
-        ClientSettings,
-        TabCompleteServerbound,
-        ClickWindowButton,
-        ClickWindow,
-        CloseWindow,
-        PluginMessageServerbound,
-        EditBook,
-        QueryEntityNbt,
-        InteractEntity,
-        GenerateStructure,
-        KeepAliveServerbound,
-        LockDifficulty,
-        PlayerPosition,
-        PlayerPositionAndRotation,
-        PlayerRotation,
-        PlayerMovement,
-        VehicleMoveServerbound,
-        SteerBoat,
-        PickItem,
-        CraftRecipeRequest,
-        PlayerAbilitiesServerbound,
-        PlayerDigging,
-        EntityAction,
-        SteerVehicle,
-        Pong,
-        SetRecipeBookState,
-        SetDisplayedRecipe,
-        NameItem,
-        ResourcePackStatus,
-        AdvancementTab,
-        SelectTrade,
-        SetBeaconEffect,
-        HeldItemChangeServerbound,
-        UpdateCommandBlock,
-        UpdateCommandBlockMinecart,
-        CreativeInventoryAction,
-        UpdateJigsawBlock,
-        UpdateStructureBlock,
-        UpdateSign,
-        PlayerArmSwing,
-        Spectate,
-        PlayerBlockPlacement,
-        UseItem,
+        def_c2s_play_packet_enum! {
+            TeleportConfirm,
+            QueryBlockNbt,
+            SetDifficulty,
+            ChatMessageServerbound,
+            ClientStatus,
+            ClientSettings,
+            TabCompleteServerbound,
+            ClickWindowButton,
+            ClickWindow,
+            CloseWindow,
+            PluginMessageServerbound,
+            EditBook,
+            QueryEntityNbt,
+            InteractEntity,
+            GenerateStructure,
+            KeepAliveServerbound,
+            LockDifficulty,
+            PlayerPosition,
+            PlayerPositionAndRotation,
+            PlayerRotation,
+            PlayerMovement,
+            VehicleMoveServerbound,
+            SteerBoat,
+            PickItem,
+            CraftRecipeRequest,
+            PlayerAbilitiesServerbound,
+            PlayerDigging,
+            EntityAction,
+            SteerVehicle,
+            Pong,
+            SetRecipeBookState,
+            SetDisplayedRecipe,
+            NameItem,
+            ResourcePackStatus,
+            AdvancementTab,
+            SelectTrade,
+            SetBeaconEffect,
+            HeldItemChangeServerbound,
+            UpdateCommandBlock,
+            UpdateCommandBlockMinecart,
+            CreativeInventoryAction,
+            UpdateJigsawBlock,
+            UpdateStructureBlock,
+            UpdateSign,
+            PlayerArmSwing,
+            Spectate,
+            PlayerBlockPlacement,
+            UseItem,
+        }
     }
 }
 

@@ -11,9 +11,9 @@ impl ByteAngle {
         ByteAngle((f.rem_euclid(360.0) / 360.0 * 256.0).round() as u8)
     }
 
-    pub fn to_degrees(self) -> f32 {
-        self.0 as f32 / 256.0 * 360.0
-    }
+    // pub fn to_degrees(self) -> f32 {
+    //     self.0 as f32 / 256.0 * 360.0
+    // }
 }
 
 impl Encode for ByteAngle {

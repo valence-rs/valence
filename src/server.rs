@@ -27,18 +27,23 @@ use tokio::sync::{oneshot, Semaphore};
 use uuid::Uuid;
 
 use crate::codec::{Decoder, Encoder};
-use crate::config::{Biome, BiomeId, Config, Dimension, DimensionId, ServerListPing};
+use crate::config::{Config, ServerListPing};
 use crate::packets::handshake::{Handshake, HandshakeNextState};
-use crate::packets::login::{
-    self, EncryptionRequest, EncryptionResponse, LoginStart, LoginSuccess, SetCompression,
-};
-use crate::packets::play::{ClientPlayPacket, ServerPlayPacket};
-use crate::packets::status::{Ping, Pong, Request, Response};
+use crate::packets::login;
+use crate::packets::login::c2s::{EncryptionResponse, LoginStart};
+use crate::packets::login::s2c::{EncryptionRequest, LoginSuccess, SetCompression};
+use crate::packets::play::c2s::C2sPlayPacket;
+use crate::packets::play::s2c::S2cPlayPacket;
+use crate::packets::status::c2s::{Ping, Request};
+use crate::packets::status::s2c::{Pong, Response};
 use crate::protocol::{BoundedArray, BoundedString};
 use crate::util::valid_username;
 use crate::var_int::VarInt;
 use crate::world::Worlds;
-use crate::{Client, ClientMut, Ticks, WorldsMut, PROTOCOL_VERSION, VERSION_NAME};
+use crate::{
+    Biome, BiomeId, Client, ClientMut, Dimension, DimensionId, Ticks, WorldsMut, PROTOCOL_VERSION,
+    VERSION_NAME,
+};
 
 /// A handle to a running Minecraft server containing state which is accessible
 /// outside the update loop. Servers are internally refcounted and can be shared
@@ -89,7 +94,7 @@ pub struct NewClientData {
 
 struct NewClientMessage {
     ncd: NewClientData,
-    reply: oneshot::Sender<ClientPacketChannels>,
+    reply: oneshot::Sender<S2cPacketChannels>,
 }
 
 /// The result type returned from [`ServerConfig::start`] after the server is
@@ -97,8 +102,8 @@ struct NewClientMessage {
 pub type ShutdownResult = Result<(), ShutdownError>;
 pub type ShutdownError = Box<dyn Error + Send + Sync + 'static>;
 
-pub(crate) type ClientPacketChannels = (Sender<ServerPlayPacket>, Receiver<ClientPlayPacket>);
-pub(crate) type ServerPacketChannels = (Sender<ClientPlayPacket>, Receiver<ServerPlayPacket>);
+pub(crate) type S2cPacketChannels = (Sender<C2sPlayPacket>, Receiver<S2cPlayPacket>);
+pub(crate) type C2sPacketChannels = (Sender<S2cPlayPacket>, Receiver<C2sPlayPacket>);
 
 impl Server {
     pub fn config(&self) -> &(impl Config + ?Sized) {
@@ -368,12 +373,7 @@ fn do_update_loop(server: Server, mut worlds: WorldsMut) -> ShutdownResult {
             });
 
             world.clients.par_iter_mut().for_each(|(_, mut client)| {
-                client.update(
-                    &server,
-                    &world.entities,
-                    &world.chunks,
-                    &world.meta,
-                );
+                client.update(&server, &world.entities, &world.chunks, &world.meta);
             });
 
             world.entities.update();
@@ -396,8 +396,8 @@ fn join_player(server: &Server, mut worlds: WorldsMut, msg: NewClientMessage) {
     let (clientbound_tx, clientbound_rx) = flume::bounded(server.0.outgoing_packet_capacity);
     let (serverbound_tx, serverbound_rx) = flume::bounded(server.0.incoming_packet_capacity);
 
-    let client_packet_channels: ClientPacketChannels = (serverbound_tx, clientbound_rx);
-    let server_packet_channels: ServerPacketChannels = (clientbound_tx, serverbound_rx);
+    let client_packet_channels: S2cPacketChannels = (serverbound_tx, clientbound_rx);
+    let server_packet_channels: C2sPacketChannels = (clientbound_tx, serverbound_rx);
 
     let _ = msg.reply.send(client_packet_channels);
 
@@ -674,7 +674,7 @@ async fn handle_login(
 
     if let Err(reason) = server.0.cfg.login(server, &npd).await {
         log::info!("Disconnect at login: \"{reason}\"");
-        c.0.write_packet(&login::Disconnect { reason }).await?;
+        c.0.write_packet(&login::s2c::Disconnect { reason }).await?;
         return Ok(None);
     }
 

@@ -7,24 +7,24 @@ use rayon::iter::ParallelIterator;
 use uuid::Uuid;
 use vek::Vec3;
 
+use crate::biome::{Biome, BiomeGrassColorModifier, BiomePrecipitation};
 use crate::block_pos::BlockPos;
 use crate::byte_angle::ByteAngle;
-use crate::config::{
-    Biome, BiomeGrassColorModifier, BiomePrecipitation, Dimension, DimensionEffects, DimensionId,
-};
+use crate::dimension::{Dimension, DimensionEffects};
 use crate::entity::{velocity_to_packet_units, EntityType};
-pub use crate::packets::play::GameMode;
-use crate::packets::play::{
+use crate::packets::play::c2s::C2sPlayPacket;
+pub use crate::packets::play::s2c::GameMode;
+use crate::packets::play::s2c::{
     Biome as BiomeRegistryBiome, BiomeAdditionsSound, BiomeEffects, BiomeMoodSound, BiomeMusic,
     BiomeParticle, BiomeParticleOptions, BiomeProperty, BiomeRegistry, ChangeGameState,
-    ChangeGameStateReason, ClientPlayPacket, DestroyEntities, DimensionCodec, DimensionType,
-    DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, EntityHeadLook, EntityPosition,
+    ChangeGameStateReason, DestroyEntities, DimensionCodec, DimensionType, DimensionTypeRegistry,
+    DimensionTypeRegistryEntry, Disconnect, EntityHeadLook, EntityPosition,
     EntityPositionAndRotation, EntityRotation, EntityTeleport, EntityVelocity, JoinGame,
-    KeepAliveClientbound, PlayerPositionAndLook, PlayerPositionAndLookFlags, ServerPlayPacket,
+    KeepAliveClientbound, PlayerPositionAndLook, PlayerPositionAndLookFlags, S2cPlayPacket,
     SpawnPosition, UnloadChunk, UpdateViewDistance, UpdateViewPosition,
 };
 use crate::protocol::{BoundedInt, Nbt};
-use crate::server::ServerPacketChannels;
+use crate::server::C2sPacketChannels;
 use crate::slotmap::{Key, SlotMap};
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::var_int::VarInt;
@@ -113,8 +113,8 @@ pub struct ClientId(Key);
 /// Represents a client connected to the server after logging in.
 pub struct Client {
     /// Setting this to `None` disconnects the client.
-    send: Option<Sender<ClientPlayPacket>>,
-    recv: Receiver<ServerPlayPacket>,
+    send: Option<Sender<S2cPlayPacket>>,
+    recv: Receiver<C2sPlayPacket>,
     /// The tick this client was created.
     created_tick: Ticks,
     username: String,
@@ -170,7 +170,7 @@ impl<'a> Deref for ClientMut<'a> {
 
 impl Client {
     pub(crate) fn new(
-        packet_channels: ServerPacketChannels,
+        packet_channels: C2sPacketChannels,
         username: String,
         uuid: Uuid,
         server: &Server,
@@ -301,7 +301,7 @@ impl<'a> ClientMut<'a> {
 
     /// Attempts to enqueue a play packet to be sent to this client. The client
     /// is disconnected if the clientbound packet buffer is full.
-    pub(crate) fn send_packet(&mut self, packet: impl Into<ClientPlayPacket>) {
+    pub(crate) fn send_packet(&mut self, packet: impl Into<S2cPlayPacket>) {
         send_packet(&mut self.0.send, packet);
     }
 
@@ -630,7 +630,7 @@ impl<'a> ClientMut<'a> {
         self.0.old_position = self.0.new_position;
     }
 
-    fn handle_serverbound_packet(&mut self, pkt: ServerPlayPacket) {
+    fn handle_serverbound_packet(&mut self, pkt: C2sPlayPacket) {
         let client = &mut self.0;
 
         fn handle_movement_packet(
@@ -658,7 +658,7 @@ impl<'a> ClientMut<'a> {
         }
 
         match pkt {
-            ServerPlayPacket::TeleportConfirm(p) => {
+            C2sPlayPacket::TeleportConfirm(p) => {
                 if client.pending_teleports == 0 {
                     self.disconnect("Unexpected teleport confirmation");
                     return;
@@ -677,11 +677,11 @@ impl<'a> ClientMut<'a> {
                     ));
                 }
             }
-            ServerPlayPacket::QueryBlockNbt(_) => {}
-            ServerPlayPacket::SetDifficulty(_) => {}
-            ServerPlayPacket::ChatMessageServerbound(_) => {}
-            ServerPlayPacket::ClientStatus(_) => {}
-            ServerPlayPacket::ClientSettings(p) => {
+            C2sPlayPacket::QueryBlockNbt(_) => {}
+            C2sPlayPacket::SetDifficulty(_) => {}
+            C2sPlayPacket::ChatMessageServerbound(_) => {}
+            C2sPlayPacket::ClientStatus(_) => {}
+            C2sPlayPacket::ClientSettings(p) => {
                 let old = client.settings.replace(Settings {
                     locale: p.locale.0,
                     view_distance: p.view_distance.0,
@@ -694,16 +694,16 @@ impl<'a> ClientMut<'a> {
 
                 client.events.push(Event::SettingsChanged(old));
             }
-            ServerPlayPacket::TabCompleteServerbound(_) => {}
-            ServerPlayPacket::ClickWindowButton(_) => {}
-            ServerPlayPacket::ClickWindow(_) => {}
-            ServerPlayPacket::CloseWindow(_) => {}
-            ServerPlayPacket::PluginMessageServerbound(_) => {}
-            ServerPlayPacket::EditBook(_) => {}
-            ServerPlayPacket::QueryEntityNbt(_) => {}
-            ServerPlayPacket::InteractEntity(_) => {}
-            ServerPlayPacket::GenerateStructure(_) => {}
-            ServerPlayPacket::KeepAliveServerbound(p) => {
+            C2sPlayPacket::TabCompleteServerbound(_) => {}
+            C2sPlayPacket::ClickWindowButton(_) => {}
+            C2sPlayPacket::ClickWindow(_) => {}
+            C2sPlayPacket::CloseWindow(_) => {}
+            C2sPlayPacket::PluginMessageServerbound(_) => {}
+            C2sPlayPacket::EditBook(_) => {}
+            C2sPlayPacket::QueryEntityNbt(_) => {}
+            C2sPlayPacket::InteractEntity(_) => {}
+            C2sPlayPacket::GenerateStructure(_) => {}
+            C2sPlayPacket::KeepAliveServerbound(p) => {
                 let last_keepalive_id = client.last_keepalive_id;
                 if client.got_keepalive {
                     self.disconnect("Unexpected keepalive");
@@ -716,51 +716,51 @@ impl<'a> ClientMut<'a> {
                     client.got_keepalive = true;
                 }
             }
-            ServerPlayPacket::LockDifficulty(_) => {}
-            ServerPlayPacket::PlayerPosition(p) => {
+            C2sPlayPacket::LockDifficulty(_) => {}
+            C2sPlayPacket::PlayerPosition(p) => {
                 handle_movement_packet(client, p.position, client.yaw, client.pitch, p.on_ground)
             }
-            ServerPlayPacket::PlayerPositionAndRotation(p) => {
+            C2sPlayPacket::PlayerPositionAndRotation(p) => {
                 handle_movement_packet(client, p.position, p.yaw, p.pitch, p.on_ground)
             }
-            ServerPlayPacket::PlayerRotation(p) => {
+            C2sPlayPacket::PlayerRotation(p) => {
                 handle_movement_packet(client, client.new_position, p.yaw, p.pitch, p.on_ground)
             }
 
-            ServerPlayPacket::PlayerMovement(p) => handle_movement_packet(
+            C2sPlayPacket::PlayerMovement(p) => handle_movement_packet(
                 client,
                 client.new_position,
                 client.yaw,
                 client.pitch,
                 p.on_ground,
             ),
-            ServerPlayPacket::VehicleMoveServerbound(_) => {}
-            ServerPlayPacket::SteerBoat(_) => {}
-            ServerPlayPacket::PickItem(_) => {}
-            ServerPlayPacket::CraftRecipeRequest(_) => {}
-            ServerPlayPacket::PlayerAbilitiesServerbound(_) => {}
-            ServerPlayPacket::PlayerDigging(_) => {}
-            ServerPlayPacket::EntityAction(_) => {}
-            ServerPlayPacket::SteerVehicle(_) => {}
-            ServerPlayPacket::Pong(_) => {}
-            ServerPlayPacket::SetRecipeBookState(_) => {}
-            ServerPlayPacket::SetDisplayedRecipe(_) => {}
-            ServerPlayPacket::NameItem(_) => {}
-            ServerPlayPacket::ResourcePackStatus(_) => {}
-            ServerPlayPacket::AdvancementTab(_) => {}
-            ServerPlayPacket::SelectTrade(_) => {}
-            ServerPlayPacket::SetBeaconEffect(_) => {}
-            ServerPlayPacket::HeldItemChangeServerbound(_) => {}
-            ServerPlayPacket::UpdateCommandBlock(_) => {}
-            ServerPlayPacket::UpdateCommandBlockMinecart(_) => {}
-            ServerPlayPacket::CreativeInventoryAction(_) => {}
-            ServerPlayPacket::UpdateJigsawBlock(_) => {}
-            ServerPlayPacket::UpdateStructureBlock(_) => {}
-            ServerPlayPacket::UpdateSign(_) => {}
-            ServerPlayPacket::PlayerArmSwing(_) => {}
-            ServerPlayPacket::Spectate(_) => {}
-            ServerPlayPacket::PlayerBlockPlacement(_) => {}
-            ServerPlayPacket::UseItem(_) => {}
+            C2sPlayPacket::VehicleMoveServerbound(_) => {}
+            C2sPlayPacket::SteerBoat(_) => {}
+            C2sPlayPacket::PickItem(_) => {}
+            C2sPlayPacket::CraftRecipeRequest(_) => {}
+            C2sPlayPacket::PlayerAbilitiesServerbound(_) => {}
+            C2sPlayPacket::PlayerDigging(_) => {}
+            C2sPlayPacket::EntityAction(_) => {}
+            C2sPlayPacket::SteerVehicle(_) => {}
+            C2sPlayPacket::Pong(_) => {}
+            C2sPlayPacket::SetRecipeBookState(_) => {}
+            C2sPlayPacket::SetDisplayedRecipe(_) => {}
+            C2sPlayPacket::NameItem(_) => {}
+            C2sPlayPacket::ResourcePackStatus(_) => {}
+            C2sPlayPacket::AdvancementTab(_) => {}
+            C2sPlayPacket::SelectTrade(_) => {}
+            C2sPlayPacket::SetBeaconEffect(_) => {}
+            C2sPlayPacket::HeldItemChangeServerbound(_) => {}
+            C2sPlayPacket::UpdateCommandBlock(_) => {}
+            C2sPlayPacket::UpdateCommandBlockMinecart(_) => {}
+            C2sPlayPacket::CreativeInventoryAction(_) => {}
+            C2sPlayPacket::UpdateJigsawBlock(_) => {}
+            C2sPlayPacket::UpdateStructureBlock(_) => {}
+            C2sPlayPacket::UpdateSign(_) => {}
+            C2sPlayPacket::PlayerArmSwing(_) => {}
+            C2sPlayPacket::Spectate(_) => {}
+            C2sPlayPacket::PlayerBlockPlacement(_) => {}
+            C2sPlayPacket::UseItem(_) => {}
         }
     }
 }
@@ -803,9 +803,9 @@ pub struct Settings {
     pub allow_server_listings: bool,
 }
 
-pub use crate::packets::play::{ChatMode, DisplayedSkinParts, MainHand};
+pub use crate::packets::play::c2s::{ChatMode, DisplayedSkinParts, MainHand};
 
-fn send_packet(send_opt: &mut Option<Sender<ClientPlayPacket>>, pkt: impl Into<ClientPlayPacket>) {
+fn send_packet(send_opt: &mut Option<Sender<S2cPlayPacket>>, pkt: impl Into<S2cPlayPacket>) {
     if let Some(send) = send_opt {
         match send.try_send(pkt.into()) {
             Err(TrySendError::Full(_)) => {

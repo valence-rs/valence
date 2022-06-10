@@ -12,8 +12,8 @@ use uuid::Uuid;
 use vek::{Aabb, Vec3};
 
 use crate::byte_angle::ByteAngle;
-use crate::packets::play::{
-    ClientPlayPacket, EntityMetadata, SpawnEntity, SpawnExperienceOrb, SpawnLivingEntity,
+use crate::packets::play::s2c::{
+    EntityMetadata, S2cPlayPacket, SpawnEntity, SpawnExperienceOrb, SpawnLivingEntity,
     SpawnPainting, SpawnPlayer,
 };
 use crate::protocol::RawBytes;
@@ -580,7 +580,7 @@ pub(crate) enum EntitySpawnPacket {
     SpawnPlayer(SpawnPlayer),
 }
 
-impl From<EntitySpawnPacket> for ClientPlayPacket {
+impl From<EntitySpawnPacket> for S2cPlayPacket {
     fn from(pkt: EntitySpawnPacket) -> Self {
         match pkt {
             EntitySpawnPacket::SpawnEntity(pkt) => pkt.into(),

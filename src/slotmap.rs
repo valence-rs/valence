@@ -93,7 +93,7 @@ impl<T> SlotMap<T> {
                 value: f(key),
                 version: key.version(),
             });
-            
+
             let value = match self.slots.last_mut() {
                 Some(Slot::Occupied { value, .. }) => value,
                 _ => unreachable!(),

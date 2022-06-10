@@ -7,6 +7,7 @@
     // missing_docs
 )]
 
+pub mod biome;
 pub mod block;
 mod block_pos;
 mod byte_angle;
@@ -14,8 +15,9 @@ pub mod chunk;
 pub mod client;
 mod codec;
 pub mod config;
+pub mod dimension;
 pub mod entity;
-pub mod identifier;
+pub mod ident;
 mod packets;
 mod protocol;
 pub mod server;
@@ -27,12 +29,14 @@ mod var_long;
 pub mod world;
 
 pub use async_trait::async_trait;
+pub use biome::{Biome, BiomeId};
 pub use block_pos::BlockPos;
 pub use chunk::{Chunk, ChunkPos, Chunks, ChunksMut};
 pub use client::{Client, ClientMut, Clients, ClientsMut};
-pub use config::{Biome, BiomeId, Config, Dimension, DimensionId};
+pub use config::Config;
+pub use dimension::{Dimension, DimensionId};
 pub use entity::{Entities, EntitiesMut, Entity, EntityId, EntityType};
-pub use identifier::Identifier;
+pub use ident::Ident;
 pub use server::{start_server, NewClientData, Server, ShutdownResult};
 pub use text::{Text, TextFormat};
 pub use uuid::Uuid;
