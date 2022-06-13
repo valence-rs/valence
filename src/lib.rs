@@ -10,6 +10,7 @@
 pub mod biome;
 pub mod block;
 mod block_pos;
+mod bvh;
 mod byte_angle;
 pub mod chunk;
 pub mod client;
