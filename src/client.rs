@@ -29,7 +29,8 @@ use crate::slotmap::{Key, SlotMap};
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::var_int::VarInt;
 use crate::{
-    ident, ChunkPos, Chunks, Entities, EntityId, Server, Text, Ticks, WorldMeta, LIBRARY_NAMESPACE,
+    ident, ChunkPos, Chunks, Entities, EntityId, Server, SpatialIndex, Text, Ticks, WorldMeta,
+    LIBRARY_NAMESPACE,
 };
 
 pub struct Clients {
@@ -332,6 +333,7 @@ impl<'a> ClientMut<'a> {
         &mut self,
         server: &Server,
         entities: &Entities,
+        spatial_index: &SpatialIndex,
         chunks: &Chunks,
         meta: &WorldMeta,
     ) {
@@ -608,24 +610,33 @@ impl<'a> ClientMut<'a> {
             });
         }
 
+        
         // Spawn new entities within the view distance.
-        // TODO: use BVH
-        for (id, entity) in entities.iter() {
-            if self.position().distance(entity.position()) <= view_dist as f64 * 16.0
-                && entity.typ() != EntityType::Marker
-                && self.0.loaded_entities.insert(id)
-            {
-                self.send_packet(
-                    entity
-                        .spawn_packet(id)
-                        .expect("should not be a marker entity"),
-                );
-
-                if let Some(meta) = entity.initial_metadata_packet(id) {
-                    self.send_packet(meta);
+        let pos = self.position();
+        spatial_index.query::<_, _, ()>(
+            |bb| {
+                bb.projected_point(pos)
+                    .distance(pos)
+                    <= view_dist as f64 * 16.0
+            },
+            |id, _| {
+                if self.0.loaded_entities.insert(id) {
+                    let entity = entities.get(id).unwrap();
+                    if entity.typ() != EntityType::Marker {
+                        self.send_packet(
+                            entity
+                                .spawn_packet(id)
+                                .expect("should not be a marker entity"),
+                        );
+        
+                        if let Some(meta) = entity.initial_metadata_packet(id) {
+                            self.send_packet(meta);
+                        }
+                    }
                 }
-            }
-        }
+                None
+            },
+        );
 
         self.0.old_position = self.0.new_position;
     }
