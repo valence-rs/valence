@@ -372,6 +372,8 @@ fn do_update_loop(server: Server, mut worlds: WorldsMut) -> ShutdownResult {
                 }
             });
 
+            world.spatial_index.update(world.entities.reborrow());
+
             world.clients.par_iter_mut().for_each(|(_, mut client)| {
                 client.update(&server, &world.entities, &world.chunks, &world.meta);
             });

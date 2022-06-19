@@ -1,9 +1,6 @@
-//! Like the `slotmap` crate, but uses no unsafe code and has rayon support.
-
 use std::iter::FusedIterator;
 use std::mem;
-use std::num::{NonZeroU32, NonZeroU64};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::num::NonZeroU32;
 
 use rayon::iter::{
     IndexedParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator,
@@ -16,34 +13,30 @@ pub struct SlotMap<T> {
     next_free_head: u32,
     /// The number of occupied slots.
     count: u32,
+    /// Version counter.
+    version: NonZeroU32,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct Key {
     index: u32,
-    // Split the u64 version into two u32 fields so that the key is 12 bytes on 64 bit systems.
-    version_high: NonZeroU32,
-    version_low: u32,
+    version: NonZeroU32,
 }
 
 impl Key {
-    fn new(index: u32, version: NonZeroU64) -> Self {
-        Self {
-            index,
-            version_high: NonZeroU32::new((version.get() >> 32) as u32)
-                .expect("versions <= 0x00000000ffffffff are illegal"),
-            version_low: version.get() as u32,
-        }
+    pub fn new(index: u32, version: NonZeroU32) -> Self {
+        Self { index, version }
     }
 
-    fn new_unique(index: u32) -> Self {
-        static NEXT: AtomicU64 = AtomicU64::new(u64::MAX);
+    fn new_unique(index: u32, version: &mut NonZeroU32) -> Self {
+        *version = NonZeroU32::new(version.get().wrapping_add(1)).unwrap_or_else(|| {
+            log::warn!("slotmap version overflow");
+            ONE
+        });
 
-        let version = NEXT.fetch_sub(1, Ordering::SeqCst);
         Self {
             index,
-            version_high: ((version >> 32) as u32).try_into().unwrap(),
-            version_low: version as u32,
+            version: *version,
         }
     }
 
@@ -51,15 +44,19 @@ impl Key {
         self.index
     }
 
-    pub fn version(self) -> NonZeroU64 {
-        let n = (self.version_high.get() as u64) << 32 | self.version_low as u64;
-        NonZeroU64::new(n).expect("version should be nonzero")
+    pub fn version(self) -> NonZeroU32 {
+        self.version
     }
 }
 
+const ONE: NonZeroU32 = match NonZeroU32::new(1) {
+    Some(n) => n,
+    None => unreachable!(),
+};
+
 #[derive(Clone, Debug)]
 enum Slot<T> {
-    Occupied { value: T, version: NonZeroU64 },
+    Occupied { value: T, version: NonZeroU32 },
     Free { next_free: u32 },
 }
 
@@ -69,10 +66,11 @@ impl<T> SlotMap<T> {
             slots: Vec::new(),
             next_free_head: 0,
             count: 0,
+            version: ONE,
         }
     }
 
-    pub fn count(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.count as usize
     }
 
@@ -87,7 +85,7 @@ impl<T> SlotMap<T> {
             self.count += 1;
             self.next_free_head += 1;
 
-            let key = Key::new_unique(self.next_free_head - 1);
+            let key = Key::new_unique(self.next_free_head - 1, &mut self.version);
 
             self.slots.push(Slot::Occupied {
                 value: f(key),
@@ -107,7 +105,7 @@ impl<T> SlotMap<T> {
                 Slot::Free { next_free } => *next_free,
             };
 
-            let key = Key::new_unique(self.next_free_head);
+            let key = Key::new_unique(self.next_free_head, &mut self.version);
 
             *slot = Slot::Occupied {
                 value: f(key),
@@ -258,7 +256,7 @@ mod tests {
         assert_eq!(sm.remove(k0), Some(10));
 
         sm.clear();
-        assert_eq!(sm.count(), 0);
+        assert_eq!(sm.len(), 0);
     }
 
     #[test]
@@ -272,15 +270,9 @@ mod tests {
         sm.retain(|k, _| k == k1);
 
         assert_eq!(sm.get(k1), Some(&20));
-        assert_eq!(sm.count(), 1);
+        assert_eq!(sm.len(), 1);
 
         assert_eq!(sm.get(k0), None);
         assert_eq!(sm.get(k2), None);
-    }
-
-    #[test]
-    #[should_panic]
-    fn bad_key() {
-        let _ = Key::new(0, NonZeroU64::new(0x00000000ffffffff).unwrap());
     }
 }

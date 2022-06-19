@@ -7,7 +7,7 @@ use valence::client::GameMode;
 use valence::config::{Config, ServerListPing};
 use valence::text::Color;
 use valence::{
-    async_trait, ChunkPos, ClientMut, DimensionId, EntityType, Server, ShutdownResult, Text,
+    async_trait, ChunkPos, ClientMut, DimensionId, Server, ShutdownResult, Text,
     TextFormat, WorldId, WorldsMut,
 };
 

@@ -4,6 +4,7 @@ pub mod types;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::iter::FusedIterator;
+use std::num::NonZeroU32;
 use std::ops::Deref;
 
 use bitfield_struct::bitfield;
@@ -24,6 +25,7 @@ use crate::var_int::VarInt;
 pub struct Entities {
     sm: SlotMap<Entity>,
     uuid_to_entity: HashMap<Uuid, EntityId>,
+    network_id_to_entity: HashMap<NonZeroU32, u32>,
 }
 
 pub struct EntitiesMut<'a>(&'a mut Entities);
@@ -41,12 +43,13 @@ impl Entities {
         Self {
             sm: SlotMap::new(),
             uuid_to_entity: HashMap::new(),
+            network_id_to_entity: HashMap::new(),
         }
     }
 
     /// Returns the number of live entities.
-    pub fn count(&self) -> usize {
-        self.sm.count()
+    pub fn len(&self) -> usize {
+        self.sm.len()
     }
 
     /// Gets the [`EntityId`] of the entity with the given UUID in an efficient
@@ -76,6 +79,10 @@ impl<'a> EntitiesMut<'a> {
         Self(entities)
     }
 
+    pub fn reborrow(&mut self) -> EntitiesMut {
+        EntitiesMut(self.0)
+    }
+
     /// Spawns a new entity with the default data. The new entity's [`EntityId`]
     /// is returned.
     ///
@@ -87,7 +94,7 @@ impl<'a> EntitiesMut<'a> {
     }
 
     /// Like [`create`](Entities::create), but requires specifying the new
-    /// entity's UUID. This is useful for deserialization.
+    /// entity's UUID.
     ///
     /// The provided UUID must not conflict with an existing entity UUID in this
     /// world. If it does, `None` is returned and the entity is not spawned.
@@ -95,7 +102,7 @@ impl<'a> EntitiesMut<'a> {
         match self.0.uuid_to_entity.entry(uuid) {
             Entry::Occupied(_) => None,
             Entry::Vacant(ve) => {
-                let (id, entity) = self.0.sm.insert(Entity {
+                let (k, e) = self.0.sm.insert(Entity {
                     flags: EntityFlags(0),
                     meta: EntityMeta::new(EntityType::Marker),
                     new_position: Vec3::default(),
@@ -107,11 +114,9 @@ impl<'a> EntitiesMut<'a> {
                     uuid,
                 });
 
-                ve.insert(EntityId(id));
+                ve.insert(EntityId(k));
 
-                // TODO: insert into partition.
-
-                Some((EntityId(id), EntityMut(entity)))
+                Some((EntityId(k), EntityMut(e)))
             }
         }
     }
@@ -123,7 +128,11 @@ impl<'a> EntitiesMut<'a> {
                 .remove(&e.uuid)
                 .expect("UUID should have been in UUID map");
 
-            // TODO: remove entity from partition.
+            self.0
+                .network_id_to_entity
+                .remove(&entity.0.version())
+                .expect("network ID should have been in the network ID map");
+
             true
         } else {
             false
@@ -131,8 +140,23 @@ impl<'a> EntitiesMut<'a> {
     }
 
     pub fn retain(&mut self, mut f: impl FnMut(EntityId, EntityMut) -> bool) {
-        // TODO
-        self.0.sm.retain(|k, v| f(EntityId(k), EntityMut(v)))
+        self.0.sm.retain(|k, v| {
+            if f(EntityId(k), EntityMut(v)) {
+                true
+            } else {
+                self.0
+                    .uuid_to_entity
+                    .remove(&v.uuid)
+                    .expect("UUID should have been in UUID map");
+
+                self.0
+                    .network_id_to_entity
+                    .remove(&k.version())
+                    .expect("network ID should have been in the network ID map");
+
+                false
+            }
+        });
     }
 
     pub fn get_mut(&mut self, entity: EntityId) -> Option<EntityMut> {
@@ -170,8 +194,7 @@ pub struct EntityId(Key);
 
 impl EntityId {
     pub(crate) fn to_network_id(self) -> i32 {
-        // ID 0 is reserved for clients.
-        self.0.index() as i32 + 1
+        self.0.version().get() as i32
     }
 }
 

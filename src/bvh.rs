@@ -2,7 +2,7 @@ use std::mem;
 
 use approx::relative_eq;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use vek::Aabr;
+use vek::Aabb;
 
 #[derive(Clone)]
 pub struct Bvh<T> {
@@ -11,19 +11,27 @@ pub struct Bvh<T> {
     root: NodeIdx,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum TraverseStep<T> {
+    Miss,
+    Hit,
+    Return(T),
+}
+
 #[derive(Clone)]
 struct InternalNode {
-    bb: Aabr<f32>,
+    bb: Aabb<f64>,
     left: NodeIdx,
     right: NodeIdx,
 }
 
 #[derive(Clone)]
 struct LeafNode<T> {
-    bb: Aabr<f32>,
+    bb: Aabb<f64>,
     id: T,
 }
 
+// TODO: we could use usize here to store more elements.
 type NodeIdx = u32;
 
 impl<T: Send + Sync> Bvh<T> {
@@ -35,7 +43,7 @@ impl<T: Send + Sync> Bvh<T> {
         }
     }
 
-    pub fn build(&mut self, leaves: impl IntoIterator<Item = (T, Aabr<f32>)>) {
+    pub fn build(&mut self, leaves: impl IntoIterator<Item = (T, Aabb<f64>)>) {
         self.leaf_nodes.clear();
         self.internal_nodes.clear();
 
@@ -52,7 +60,7 @@ impl<T: Send + Sync> Bvh<T> {
         self.internal_nodes.resize(
             leaf_count - 1,
             InternalNode {
-                bb: Aabr::default(),
+                bb: Aabb::default(),
                 left: NodeIdx::MAX,
                 right: NodeIdx::MAX,
             },
@@ -71,7 +79,7 @@ impl<T: Send + Sync> Bvh<T> {
             .leaf_nodes
             .par_iter()
             .map(|l| l.bb)
-            .reduce(|| id, Aabr::union);
+            .reduce(|| id, Aabb::union);
 
         self.root = build_rec(
             0,
@@ -85,74 +93,49 @@ impl<T: Send + Sync> Bvh<T> {
         debug_assert_eq!(self.internal_nodes.len(), self.leaf_nodes.len() - 1);
     }
 
-    pub fn find<C, F, U>(&self, mut collides: C, mut find: F) -> Option<U>
+    pub fn traverse<F, U>(&self, mut f: F) -> Option<U>
     where
-        C: FnMut(Aabr<f32>) -> bool,
-        F: FnMut(&T, Aabr<f32>) -> Option<U>,
+        F: FnMut(Option<&T>, Aabb<f64>) -> TraverseStep<U>,
     {
         if !self.leaf_nodes.is_empty() {
-            self.find_rec(self.root, &mut collides, &mut find)
+            self.traverse_rec(self.root, &mut f)
         } else {
             None
         }
     }
 
-    fn find_rec<C, F, U>(&self, idx: NodeIdx, collides: &mut C, find: &mut F) -> Option<U>
+    fn traverse_rec<F, U>(&self, idx: NodeIdx, f: &mut F) -> Option<U>
     where
-        C: FnMut(Aabr<f32>) -> bool,
-        F: FnMut(&T, Aabr<f32>) -> Option<U>,
+        F: FnMut(Option<&T>, Aabb<f64>) -> TraverseStep<U>,
     {
         if idx < self.internal_nodes.len() as NodeIdx {
             let internal = &self.internal_nodes[idx as usize];
 
-            if collides(internal.bb) {
-                if let Some(found) = self.find_rec(internal.left, collides, find) {
-                    return Some(found);
-                }
-
-                if let Some(found) = self.find_rec(internal.right, collides, find) {
-                    return Some(found);
-                }
+            match f(None, internal.bb) {
+                TraverseStep::Miss => None,
+                TraverseStep::Hit => self
+                    .traverse_rec(internal.left, f)
+                    .or_else(|| self.traverse_rec(internal.right, f)),
+                TraverseStep::Return(u) => Some(u),
             }
         } else {
             let leaf = &self.leaf_nodes[(idx - self.internal_nodes.len() as NodeIdx) as usize];
 
-            if collides(leaf.bb) {
-                return find(&leaf.id, leaf.bb);
+            match f(Some(&leaf.id), leaf.bb) {
+                TraverseStep::Miss | TraverseStep::Hit => None,
+                TraverseStep::Return(u) => Some(u),
             }
-        }
-
-        None
-    }
-
-    pub fn visit(&self, mut f: impl FnMut(Aabr<f32>, usize)) {
-        if !self.leaf_nodes.is_empty() {
-            self.visit_rec(self.root, 0, &mut f);
-        }
-    }
-
-    pub fn visit_rec(&self, idx: NodeIdx, depth: usize, f: &mut impl FnMut(Aabr<f32>, usize)) {
-        if idx >= self.internal_nodes.len() as NodeIdx {
-            let leaf = &self.leaf_nodes[(idx - self.internal_nodes.len() as NodeIdx) as usize];
-            f(leaf.bb, depth);
-        } else {
-            let internal = &self.internal_nodes[idx as usize];
-
-            self.visit_rec(internal.left, depth + 1, f);
-            self.visit_rec(internal.right, depth + 1, f);
-
-            f(internal.bb, depth);
         }
     }
 }
 
 fn build_rec<T: Send>(
     idx: NodeIdx,
-    bounds: Aabr<f32>,
+    bounds: Aabb<f64>,
     internal_nodes: &mut [InternalNode],
     leaf_nodes: &mut [LeafNode<T>],
     total_leaf_count: NodeIdx,
-) -> (NodeIdx, Aabr<f32>) {
+) -> (NodeIdx, Aabb<f64>) {
     debug_assert_eq!(leaf_nodes.len() - 1, internal_nodes.len());
 
     if leaf_nodes.len() == 1 {
@@ -163,18 +146,25 @@ fn build_rec<T: Send>(
     debug_assert!(bounds.is_valid());
     let dims = bounds.max - bounds.min;
 
-    let (mut split, bounds_left, bounds_right) = if dims.x >= dims.y {
+    let (mut split, bounds_left, bounds_right) = if dims.x >= dims.y && dims.x >= dims.z {
         let mid = middle(bounds.min.x, bounds.max.x);
         let [bounds_left, bounds_right] = bounds.split_at_x(mid);
 
         let p = partition(leaf_nodes, |l| middle(l.bb.min.x, l.bb.max.x) <= mid);
 
         (p, bounds_left, bounds_right)
-    } else {
+    } else if dims.y >= dims.x && dims.y >= dims.z {
         let mid = middle(bounds.min.y, bounds.max.y);
         let [bounds_left, bounds_right] = bounds.split_at_y(mid);
 
         let p = partition(leaf_nodes, |l| middle(l.bb.min.y, l.bb.max.y) <= mid);
+
+        (p, bounds_left, bounds_right)
+    } else {
+        let mid = middle(bounds.min.z, bounds.max.z);
+        let [bounds_left, bounds_right] = bounds.split_at_z(mid);
+
+        let p = partition(leaf_nodes, |l| middle(l.bb.min.z, l.bb.max.z) <= mid);
 
         (p, bounds_left, bounds_right)
     };
@@ -262,7 +252,7 @@ fn partition<T>(s: &mut [T], mut pred: impl FnMut(&T) -> bool) -> usize {
     true_count
 }
 
-fn middle(a: f32, b: f32) -> f32 {
+fn middle(a: f64, b: f64) -> f64 {
     (a + b) / 2.0
 }
 
@@ -280,11 +270,11 @@ mod tests {
     fn empty() {
         let mut bvh = Bvh::new();
 
-        bvh.find(|_| false, |_, _| Some(()));
+        bvh.traverse(|_, _| TraverseStep::Return(()));
         bvh.build([]);
 
-        bvh.build([(5, Aabr::default())]);
-        bvh.find(|_| false, |_, _| Some(()));
+        bvh.build([(5, Aabb::default())]);
+        bvh.traverse(|_, _| TraverseStep::Return(()));
     }
 
     #[test]
@@ -292,13 +282,13 @@ mod tests {
         let mut bvh = Bvh::new();
 
         bvh.build([
-            ((), Aabr::default()),
-            ((), Aabr::default()),
-            ((), Aabr::default()),
-            ((), Aabr::default()),
-            ((), Aabr::new_empty(5.0.into())),
+            ((), Aabb::default()),
+            ((), Aabb::default()),
+            ((), Aabb::default()),
+            ((), Aabb::default()),
+            ((), Aabb::new_empty(5.0.into())),
         ]);
 
-        bvh.find(|_| false, |_, _| Some(()));
+        bvh.traverse(|_, _| TraverseStep::Return(()));
     }
 }

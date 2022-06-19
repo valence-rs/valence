@@ -52,7 +52,7 @@ impl Clients {
     }
 
     pub fn count(&self) -> usize {
-        self.sm.count()
+        self.sm.len()
     }
 
     pub fn get(&self, client: ClientId) -> Option<&Client> {

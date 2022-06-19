@@ -4,7 +4,10 @@ use std::ops::Deref;
 use rayon::iter::ParallelIterator;
 
 use crate::slotmap::{Key, SlotMap};
-use crate::{Chunks, ChunksMut, Clients, ClientsMut, DimensionId, Entities, EntitiesMut, Server};
+use crate::{
+    Chunks, ChunksMut, Clients, ClientsMut, DimensionId, Entities, EntitiesMut, Server,
+    SpatialIndex, SpatialIndexMut,
+};
 
 pub struct Worlds {
     sm: SlotMap<World>,
@@ -33,7 +36,7 @@ impl Worlds {
     }
 
     pub fn count(&self) -> usize {
-        self.sm.count()
+        self.sm.len()
     }
 
     pub fn get(&self, world: WorldId) -> Option<WorldRef> {
@@ -58,6 +61,7 @@ impl<'a> WorldsMut<'a> {
         let (id, world) = self.0.sm.insert(World {
             clients: Clients::new(),
             entities: Entities::new(),
+            spatial_index: SpatialIndex::new(),
             chunks: Chunks::new(
                 self.server.clone(),
                 (self.server.dimension(dim).height / 16) as u32,
@@ -122,6 +126,7 @@ impl<'a> WorldsMut<'a> {
 pub(crate) struct World {
     clients: Clients,
     entities: Entities,
+    spatial_index: SpatialIndex,
     chunks: Chunks,
     meta: WorldMeta,
 }
@@ -130,6 +135,7 @@ pub(crate) struct World {
 pub struct WorldRef<'a> {
     pub clients: &'a Clients,
     pub entities: &'a Entities,
+    pub spatial_index: &'a SpatialIndex,
     pub chunks: &'a Chunks,
     pub meta: &'a WorldMeta,
 }
@@ -139,6 +145,7 @@ impl<'a> WorldRef<'a> {
         Self {
             clients: &w.clients,
             entities: &w.entities,
+            spatial_index: &w.spatial_index,
             chunks: &w.chunks,
             meta: &w.meta,
         }
@@ -149,6 +156,7 @@ impl<'a> WorldRef<'a> {
 pub struct WorldMut<'a> {
     pub clients: ClientsMut<'a>,
     pub entities: EntitiesMut<'a>,
+    pub spatial_index: SpatialIndexMut<'a>,
     pub chunks: ChunksMut<'a>,
     pub meta: WorldMetaMut<'a>,
 }
@@ -158,6 +166,7 @@ impl<'a> WorldMut<'a> {
         WorldMut {
             clients: ClientsMut::new(&mut w.clients),
             entities: EntitiesMut::new(&mut w.entities),
+            spatial_index: SpatialIndexMut::new(&mut w.spatial_index),
             chunks: ChunksMut::new(&mut w.chunks),
             meta: WorldMetaMut(&mut w.meta),
         }
@@ -167,6 +176,7 @@ impl<'a> WorldMut<'a> {
         WorldRef {
             clients: &self.clients,
             entities: &self.entities,
+            spatial_index: &self.spatial_index,
             chunks: &self.chunks,
             meta: &self.meta,
         }

@@ -2,7 +2,7 @@ use std::iter::FusedIterator;
 
 use num::cast::AsPrimitive;
 use num::Float;
-use vek::{Aabb, Extent3, Vec3};
+use vek::{Aabb, Vec3};
 
 use crate::ChunkPos;
 

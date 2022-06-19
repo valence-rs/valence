@@ -1133,7 +1133,7 @@ pub mod play {
 
                 #[cfg(test)]
                 #[test]
-                fn test_s2c_play_packet_order() {
+                fn s2c_play_packet_order() {
                     let ids = [
                         $(
                             (stringify!($packet), $packet::PACKET_ID),
@@ -1141,7 +1141,13 @@ pub mod play {
                     ];
 
                     if let Some(w) = ids.windows(2).find(|w| w[0].1 >= w[1].1) {
-                        panic!("the {} and {} variants of the s2c play packet enum are not properly sorted by their packet ID", w[0].0, w[1].0);
+                        panic!(
+                            "the {} (ID {:#x}) and {} (ID {:#x}) variants of the s2c play packet enum are not properly sorted by their packet ID",
+                            w[0].0,
+                            w[0].1,
+                            w[1].0,
+                            w[1].1
+                        );
                     }
                 }
             }
@@ -1181,8 +1187,8 @@ pub mod play {
             SpawnPosition,
             EntityMetadata,
             EntityVelocity,
-            EntityTeleport,
             TimeUpdate,
+            EntityTeleport,
         }
     }
 
@@ -1771,7 +1777,7 @@ pub mod play {
 
             #[cfg(test)]
             #[test]
-            fn test_c2s_play_packet_order() {
+            fn c2s_play_packet_order() {
                 let ids = [
                     $(
                         (stringify!($packet), $packet::PACKET_ID),
@@ -1779,7 +1785,13 @@ pub mod play {
                 ];
 
                 if let Some(w) = ids.windows(2).find(|w| w[0].1 >= w[1].1) {
-                    panic!("the {} and {} variants of the c2s play packet enum are not properly sorted by their packet ID", w[0].0, w[1].0);
+                    panic!(
+                        "the {} (ID {:#x}) and {} (ID {:#x}) variants of the c2s play packet enum are not properly sorted by their packet ID",
+                        w[0].0,
+                        w[0].1,
+                        w[1].0,
+                        w[1].1
+                    );
                 }
             }
         }
