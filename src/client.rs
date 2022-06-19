@@ -248,6 +248,14 @@ impl Client {
         &self.events
     }
 
+    /// The current view distance of this client measured in chunks.
+    pub fn view_distance(&self) -> u8 {
+        self.settings
+            .as_ref()
+            .map_or(2, |s| s.view_distance)
+            .min(self.max_view_distance())
+    }
+
     pub fn max_view_distance(&self) -> u8 {
         self.new_max_view_distance
     }
@@ -424,13 +432,7 @@ impl<'a> ClientMut<'a> {
             }
         }
 
-        // The actual view distance.
-        let view_dist = self
-            .0
-            .settings
-            .as_ref()
-            .map_or(2, |s| s.view_distance)
-            .min(self.new_max_view_distance);
+        let view_dist = self.view_distance();
 
         let center = ChunkPos::new(
             (self.new_position.x / 16.0) as i32,
@@ -610,15 +612,10 @@ impl<'a> ClientMut<'a> {
             });
         }
 
-        
         // Spawn new entities within the view distance.
         let pos = self.position();
         spatial_index.query::<_, _, ()>(
-            |bb| {
-                bb.projected_point(pos)
-                    .distance(pos)
-                    <= view_dist as f64 * 16.0
-            },
+            |bb| bb.projected_point(pos).distance(pos) <= view_dist as f64 * 16.0,
             |id, _| {
                 if self.0.loaded_entities.insert(id) {
                     let entity = entities.get(id).unwrap();
@@ -628,7 +625,7 @@ impl<'a> ClientMut<'a> {
                                 .spawn_packet(id)
                                 .expect("should not be a marker entity"),
                         );
-        
+
                         if let Some(meta) = entity.initial_metadata_packet(id) {
                             self.send_packet(meta);
                         }

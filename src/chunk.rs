@@ -290,6 +290,10 @@ impl ChunkPos {
     pub const fn new(x: i32, z: i32) -> Self {
         Self { x, z }
     }
+
+    pub fn at(x: f64, z: f64) -> Self {
+        Self::new((x / 16.0) as i32, (z / 16.0) as i32)
+    }
 }
 
 impl From<(i32, i32)> for ChunkPos {

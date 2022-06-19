@@ -50,6 +50,7 @@ features = ["rustls-tls", "json"]
 
 [dev-dependencies]
 env_logger = "0.9"
+noise = "0.7"
 
 [build-dependencies]
 anyhow = "1"
