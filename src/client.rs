@@ -29,8 +29,8 @@ use crate::slotmap::{Key, SlotMap};
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::var_int::VarInt;
 use crate::{
-    ident, ChunkPos, Chunks, Entities, EntityId, Server, SpatialIndex, Text, Ticks, WorldMeta,
-    LIBRARY_NAMESPACE,
+    ident, ChunkPos, Chunks, DimensionId, Entities, EntityId, Server, SpatialIndex, Text, Ticks,
+    WorldMeta, LIBRARY_NAMESPACE,
 };
 
 pub struct Clients {
@@ -140,6 +140,7 @@ pub struct Client {
     spawn_position_yaw: f32,
     /// If spawn_position or spawn_position_yaw were modified this tick.
     modified_spawn_position: bool,
+    death_location: Option<(DimensionId, BlockPos)>,
     events: Vec<Event>,
     /// The ID of the last keepalive sent.
     last_keepalive_id: i64,
@@ -195,6 +196,7 @@ impl Client {
             spawn_position: BlockPos::default(),
             spawn_position_yaw: 0.0,
             modified_spawn_position: true,
+            death_location: None,
             events: Vec::new(),
             last_keepalive_id: 0,
             got_keepalive: true,
@@ -230,6 +232,20 @@ impl Client {
 
     pub fn pitch(&self) -> f32 {
         self.pitch
+    }
+
+    /// Gets the spawn position. The client will see regular compasses point at
+    /// the returned position.
+    pub fn spawn_position(&self) -> BlockPos {
+        self.spawn_position
+    }
+
+    /// Gets the last death location. The client will see recovery compasses
+    /// point at the returned position. If the client's current dimension
+    /// differs from the returned dimension or the location is `None` then the
+    /// compass will spin randomly.
+    pub fn death_location(&self) -> Option<(DimensionId, BlockPos)> {
+        self.death_location
     }
 
     pub fn game_mode(&self) -> GameMode {
@@ -298,7 +314,8 @@ impl<'a> ClientMut<'a> {
         self.0.new_game_mode = new_game_mode;
     }
 
-    /// Changes the point at which compasses point at.
+    /// Sets the spawn position. The client will see regular compasses point at
+    /// the provided position.
     pub fn set_spawn_position(&mut self, pos: impl Into<BlockPos>, yaw_degrees: f32) {
         let pos = pos.into();
         if pos != self.0.spawn_position || yaw_degrees != self.0.spawn_position_yaw {
@@ -306,6 +323,17 @@ impl<'a> ClientMut<'a> {
             self.0.spawn_position_yaw = yaw_degrees;
             self.0.modified_spawn_position = true;
         }
+    }
+
+    /// Sets the last death location. The client will see recovery compasses
+    /// point at the provided position. If the client's current dimension
+    /// differs from the provided dimension or the location is `None` then the
+    /// compass will spin randomly.
+    ///
+    /// Changes to the last death location take effect when the client
+    /// (re)spawns.
+    pub fn set_death_location(&mut self, location: Option<(DimensionId, BlockPos)>) {
+        self.0.death_location = location;
     }
 
     /// Attempts to enqueue a play packet to be sent to this client. The client
@@ -390,7 +418,9 @@ impl<'a> ClientMut<'a> {
                 enable_respawn_screen: false,
                 is_debug: false,
                 is_flat: meta.is_flat(),
-                last_death_location: None, // TODO
+                last_death_location: self
+                    .death_location
+                    .map(|(id, pos)| (ident!("{LIBRARY_NAMESPACE}:dimension_{}", id.0), pos)),
             });
 
             self.teleport(self.position(), self.yaw(), self.pitch());

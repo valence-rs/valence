@@ -85,7 +85,8 @@ impl Config for Game {
     }
 
     fn init(&self, _server: &Server, mut worlds: WorldsMut) {
-        worlds.create(DimensionId::default());
+        let (_, mut world) = worlds.create(DimensionId::default());
+        world.meta.set_flat(true);
     }
 
     fn update(&self, server: &Server, mut worlds: WorldsMut) {
