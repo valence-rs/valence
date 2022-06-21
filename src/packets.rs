@@ -1461,6 +1461,7 @@ pub mod play {
                 status: DiggingStatus,
                 location: BlockPos,
                 face: BlockFace,
+                sequence: VarInt,
             }
         }
 
