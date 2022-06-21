@@ -102,6 +102,7 @@ impl Config for Game {
 
             if client.created_tick() == server.current_tick() {
                 client.set_game_mode(GameMode::Creative);
+                client.set_max_view_distance(32);
                 client.teleport([0.0, 200.0, 0.0], 0.0, 0.0);
             }
 
@@ -192,7 +193,15 @@ fn terrain_column(
 
     if has_terrain_at(g, x, y, z) {
         let gravel_height = WATER_HEIGHT
-            - (noise01(&g.gravel_noise, [x, y, z].map(|a| a as f64 / 10.0)) * 6.0).round() as i64;
+            - 1
+            - (fbm(
+                &g.gravel_noise,
+                [x, y, z].map(|a| a as f64 / 10.0),
+                3,
+                2.0,
+                0.5,
+            ) * 6.0)
+            .floor() as i64;
 
         if *in_terrain {
             if *depth > 0 {
@@ -237,8 +246,8 @@ fn has_terrain_at(g: &Game, x: i64, y: i64, z: i64) -> bool {
         noise01(&g.hilly_noise, [x, y, z].map(|a| a as f64 / 400.0)).powi(2),
     );
 
-    let lower = 10.0 + 150.0 * hilly;
-    let upper = lower + 100.0 * hilly;
+    let lower = 15.0 + 75.0 * hilly;
+    let upper = lower + 125.0 * hilly;
 
     if y as f64 <= lower {
         return true;
@@ -246,7 +255,7 @@ fn has_terrain_at(g: &Game, x: i64, y: i64, z: i64) -> bool {
         return false;
     }
 
-    let density = 1.0 - lerpstep(lower, upper, y as f64);
+    let density = (1.0 - lerpstep(lower, upper, y as f64)).sqrt();
 
     let n = fbm(
         &g.density_noise,
