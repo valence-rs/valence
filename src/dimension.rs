@@ -51,6 +51,8 @@ pub struct Dimension {
     // TODO: The following fields should be added if they can affect the
     // appearance of the dimension to clients.
     // * infiniburn
+    // * monster_spawn_light_level
+    // * monster_spawn_block_light_level
     // * respawn_anchor_works
     // * has_skylight
     // * bed_works

@@ -2,13 +2,8 @@
 
 use std::io::Write;
 
-use anyhow::Context;
-use uuid::Uuid;
-
-use crate::block_pos::BlockPos;
 use crate::protocol::Encode;
 use crate::var_int::VarInt;
-use crate::Text;
 
 #[derive(Clone, Copy, Default, PartialEq, PartialOrd, Debug)]
 pub struct ArmorStandRotations {
@@ -137,6 +132,12 @@ pub enum Pose {
     Sneaking,
     LongJumping,
     Dying,
+    Croaking,
+    UsingTongue,
+    Roaring,
+    Sniffing,
+    Emerging,
+    Digging,
 }
 
 impl Default for Pose {
@@ -187,6 +188,69 @@ impl Default for BoatVariant {
 }
 
 impl Encode for BoatVariant {
+    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+        VarInt(*self as i32).encode(w)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum CatVariant {
+    Tabby,
+    Black,
+    Red,
+    Siamese,
+    BritishShorthair,
+    Calico,
+    Persian,
+    Ragdoll,
+    White,
+    Jellie,
+    AllBlack,
+}
+
+impl Default for CatVariant {
+    fn default() -> Self {
+        CatVariant::Black
+    }
+}
+
+impl Encode for CatVariant {
+    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+        VarInt(*self as i32).encode(w)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum FrogVariant {
+    Temperate,
+    Warm,
+    Cold,
+}
+
+impl Default for FrogVariant {
+    fn default() -> Self {
+        FrogVariant::Temperate
+    }
+}
+
+impl Encode for FrogVariant {
+    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+        VarInt(*self as i32).encode(w)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum PaintingVariant {
+    Default, // TODO
+}
+
+impl Default for PaintingVariant {
+    fn default() -> Self {
+        PaintingVariant::Default
+    }
+}
+
+impl Encode for PaintingVariant {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         VarInt(*self as i32).encode(w)
     }

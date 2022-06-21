@@ -17,11 +17,11 @@ pub use crate::packets::play::s2c::GameMode;
 use crate::packets::play::s2c::{
     Biome as BiomeRegistryBiome, BiomeAdditionsSound, BiomeEffects, BiomeMoodSound, BiomeMusic,
     BiomeParticle, BiomeParticleOptions, BiomeProperty, BiomeRegistry, ChangeGameState,
-    ChangeGameStateReason, DestroyEntities, DimensionCodec, DimensionType, DimensionTypeRegistry,
+    ChangeGameStateReason, ChatTypeRegistry, DestroyEntities, DimensionType, DimensionTypeRegistry,
     DimensionTypeRegistryEntry, Disconnect, EntityHeadLook, EntityPosition,
     EntityPositionAndRotation, EntityRotation, EntityTeleport, EntityVelocity, JoinGame,
-    KeepAliveClientbound, PlayerPositionAndLook, PlayerPositionAndLookFlags, S2cPlayPacket,
-    SpawnPosition, UnloadChunk, UpdateViewDistance, UpdateViewPosition,
+    KeepAliveClientbound, PlayerPositionAndLook, PlayerPositionAndLookFlags, RegistryCodec,
+    S2cPlayPacket, SpawnPosition, UnloadChunk, UpdateViewDistance, UpdateViewPosition,
 };
 use crate::protocol::{BoundedInt, Nbt};
 use crate::server::C2sPacketChannels;
@@ -378,17 +378,21 @@ impl<'a> ClientMut<'a> {
                     .dimensions()
                     .map(|(id, _)| ident!("{LIBRARY_NAMESPACE}:dimension_{}", id.0))
                     .collect(),
-                dimension_codec: Nbt(make_dimension_codec(server)),
-                dimension: Nbt(to_dimension_registry_item(dimension)),
+                registry_codec: Nbt(make_dimension_codec(server)),
+                dimension_type_name: ident!(
+                    "{LIBRARY_NAMESPACE}:dimension_type_{}",
+                    meta.dimension().0
+                ),
                 dimension_name: ident!("{LIBRARY_NAMESPACE}:dimension_{}", meta.dimension().0),
                 hashed_seed: 0,
                 max_players: VarInt(0),
                 view_distance: BoundedInt(VarInt(self.new_max_view_distance as i32)),
                 simulation_distance: VarInt(16),
-                reduced_debug_info: false,
-                enable_respawn_screen: false, // TODO
-                is_debug: false,
-                is_flat: false, // TODO
+                reduced_debug_info: false, // TODO
+                enable_respawn_screen: false,
+                is_debug: false, // TODO
+                is_flat: false,
+                last_death_location: None, // TODO
             });
 
             self.teleport(self.position(), self.yaw(), self.pitch());
@@ -688,6 +692,7 @@ impl<'a> ClientMut<'a> {
             C2sPlayPacket::QueryBlockNbt(_) => {}
             C2sPlayPacket::SetDifficulty(_) => {}
             C2sPlayPacket::ChatMessageServerbound(_) => {}
+            C2sPlayPacket::ChatPreview(_) => {}
             C2sPlayPacket::ClientStatus(_) => {}
             C2sPlayPacket::ClientSettings(p) => {
                 let old = client.settings.replace(Settings {
@@ -704,7 +709,6 @@ impl<'a> ClientMut<'a> {
             }
             C2sPlayPacket::TabCompleteServerbound(_) => {}
             C2sPlayPacket::ClickWindowButton(_) => {}
-            C2sPlayPacket::ClickWindow(_) => {}
             C2sPlayPacket::CloseWindow(_) => {}
             C2sPlayPacket::PluginMessageServerbound(_) => {}
             C2sPlayPacket::EditBook(_) => {}
@@ -828,7 +832,7 @@ fn send_packet(send_opt: &mut Option<Sender<S2cPlayPacket>>, pkt: impl Into<S2cP
     }
 }
 
-fn make_dimension_codec(server: &Server) -> DimensionCodec {
+fn make_dimension_codec(server: &Server) -> RegistryCodec {
     let mut dims = Vec::new();
     for (id, dim) in server.dimensions() {
         let id = id.0 as i32;
@@ -854,7 +858,7 @@ fn make_dimension_codec(server: &Server) -> DimensionCodec {
         biomes.push(to_biome_registry_item(&biome, 0));
     }
 
-    DimensionCodec {
+    RegistryCodec {
         dimension_type_registry: DimensionTypeRegistry {
             typ: ident!("dimension_type"),
             value: dims,
@@ -863,12 +867,19 @@ fn make_dimension_codec(server: &Server) -> DimensionCodec {
             typ: ident!("worldgen/biome"),
             value: biomes,
         },
+        chat_type_registry: ChatTypeRegistry {
+            typ: ident!("chat_type"),
+            value: Vec::new(),
+        },
     }
 }
 
 fn to_dimension_registry_item(dim: &Dimension) -> DimensionType {
     DimensionType {
         piglin_safe: true,
+        has_raids: true,
+        monster_spawn_light_level: 0,
+        monster_spawn_block_light_limit: 0,
         natural: dim.natural,
         ambient_light: dim.ambient_light,
         fixed_time: dim.fixed_time.map(|t| t as i64),
@@ -881,7 +892,6 @@ fn to_dimension_registry_item(dim: &Dimension) -> DimensionType {
             DimensionEffects::TheNether => ident!("the_nether"),
             DimensionEffects::TheEnd => ident!("the_end"),
         },
-        has_raids: true,
         min_y: dim.min_y,
         height: dim.height,
         logical_height: dim.height,

@@ -5,7 +5,8 @@ use anyhow::{anyhow, ensure, Context};
 use arrayvec::ArrayVec;
 use bitvec::prelude::*;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use serde::{Deserialize, Serialize};
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use uuid::Uuid;
 use vek::{Vec2, Vec3, Vec4};
 
@@ -34,6 +35,19 @@ impl Encode for () {
 impl Decode for () {
     fn decode(_r: &mut impl Read) -> anyhow::Result<Self> {
         Ok(())
+    }
+}
+
+impl<T: Encode, U: Encode> Encode for (T, U) {
+    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+        self.0.encode(w)?;
+        self.1.encode(w)
+    }
+}
+
+impl<T: Decode, U: Decode> Decode for (T, U) {
+    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+        Ok((T::decode(r)?, U::decode(r)?))
     }
 }
 
@@ -477,16 +491,13 @@ pub struct Nbt<T>(pub T);
 
 impl<T: Serialize> Encode for Nbt<T> {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        let mut enc = nbt::ser::Encoder::new(w, None);
-        self.0.serialize(&mut enc)?;
-        Ok(())
+        Ok(nbt::to_writer(w, &self.0, None)?)
     }
 }
 
-impl<'a, T: Deserialize<'a>> Decode for Nbt<T> {
+impl<T: DeserializeOwned> Decode for Nbt<T> {
     fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
-        let mut dec = nbt::de::Decoder::new(r);
-        Ok(Nbt(Deserialize::deserialize(&mut dec)?))
+        Ok(Self(nbt::from_reader(r)?))
     }
 }
 

@@ -41,9 +41,14 @@ enum Type {
     Nbt,
     Particle,
     VillagerData,
-    Pose,
-    // ==== Specialized ==== //
+    /// Also known as OptVarInt
     OptEntityId,
+    Pose,
+    CatVariant,
+    FrogVariant,
+    OptGlobalPosition,
+    PaintingVariant,
+    // ==== Specialized ==== //
     BoatVariant,
     MainHand,
 }
@@ -83,8 +88,12 @@ impl Type {
             Type::Nbt => quote! { nbt::Blob::new() },
             Type::Particle => quote! { () }, // TODO
             Type::VillagerData => quote! { VillagerData::default() },
-            Type::Pose => quote! { Pose::default() },
             Type::OptEntityId => quote! { None },
+            Type::Pose => quote! { Pose::default() },
+            Type::CatVariant => quote! { CatVariant::default() },
+            Type::FrogVariant => quote! { FrogVariant::default() },
+            Type::OptGlobalPosition => quote! { () }, // TODO
+            Type::PaintingVariant => quote! { PaintingVariant::default() },
             Type::BoatVariant => quote! { BoatVariant::default() },
             Type::MainHand => quote! { MainHand::default() },
         }
@@ -110,8 +119,12 @@ impl Type {
             Type::Nbt => 14,
             Type::Particle => 15,
             Type::VillagerData => 16,
-            Type::Pose => 18,
             Type::OptEntityId => 17,
+            Type::Pose => 18,
+            Type::CatVariant => 19,
+            Type::FrogVariant => 20,
+            Type::OptGlobalPosition => 21,
+            Type::PaintingVariant => 22,
             Type::BoatVariant => 1,
             Type::MainHand => 0,
         }
@@ -221,6 +234,56 @@ const ABSTRACT_ARROW: Class = Class {
         Field {
             name: "piercing_level",
             typ: Type::Byte(0),
+        },
+    ],
+};
+
+const ITEM_FRAME: Class = Class {
+    name: "item_frame",
+    inherit: Some(&BASE_ENTITY),
+    fields: &[
+        Field {
+            name: "item",
+            typ: Type::Slot,
+        },
+        Field {
+            name: "rotation",
+            typ: Type::VarInt(0), // TODO: Direction enum?
+        },
+    ],
+};
+
+const BOAT: Class = Class {
+    name: "boat",
+    inherit: Some(&BASE_ENTITY),
+    fields: &[
+        Field {
+            name: "last_hit_ticks",
+            typ: Type::VarInt(0),
+        },
+        Field {
+            name: "forward_direction",
+            typ: Type::VarInt(1), // TODO: direction enum?
+        },
+        Field {
+            name: "damage_taken",
+            typ: Type::Float(0.0),
+        },
+        Field {
+            name: "typ",
+            typ: Type::BoatVariant,
+        },
+        Field {
+            name: "left_paddle_turning",
+            typ: Type::Bool(false),
+        },
+        Field {
+            name: "right_paddle_turning",
+            typ: Type::Bool(false),
+        },
+        Field {
+            name: "splash_timer",
+            typ: Type::VarInt(0),
         },
     ],
 };
@@ -567,6 +630,11 @@ const ABSTRACT_MINECART_CONTAINER: Class = Class {
 
 const ENTITIES: &[Class] = &[
     Class {
+        name: "allay",
+        inherit: Some(&PATHFINDER_MOB),
+        fields: &[], // TODO: fields?
+    },
+    Class {
         // TODO: how is this defined?
         name: "leash_knot",
         inherit: None,
@@ -580,11 +648,6 @@ const ENTITIES: &[Class] = &[
     },
     Class {
         name: "experience_orb",
-        inherit: None,
-        fields: &[],
-    },
-    Class {
-        name: "painting",
         inherit: None,
         fields: &[],
     },
@@ -717,39 +780,21 @@ const ENTITIES: &[Class] = &[
             },
         ],
     },
+    BOAT,
     Class {
-        name: "boat",
-        inherit: Some(&BASE_ENTITY),
-        fields: &[
-            Field {
-                name: "last_hit_ticks",
-                typ: Type::VarInt(0),
-            },
-            Field {
-                name: "forward_direction",
-                typ: Type::VarInt(1), // TODO: direction enum?
-            },
-            Field {
-                name: "damage_taken",
-                typ: Type::Float(0.0),
-            },
-            Field {
-                name: "typ",
-                typ: Type::BoatVariant,
-            },
-            Field {
-                name: "left_paddle_turning",
-                typ: Type::Bool(false),
-            },
-            Field {
-                name: "right_paddle_turning",
-                typ: Type::Bool(false),
-            },
-            Field {
-                name: "splash_timer",
-                typ: Type::VarInt(0),
-            },
-        ],
+        name: "chest_boat",
+        inherit: Some(&BOAT),
+        fields: &[],
+    },
+    Class {
+        name: "tadpole",
+        inherit: Some(&ABSTRACT_FISH),
+        fields: &[],
+    },
+    Class {
+        name: "warden",
+        inherit: Some(&MONSTER),
+        fields: &[], // TODO: warden anger
     },
     Class {
         name: "end_crystal",
@@ -812,34 +857,19 @@ const ENTITIES: &[Class] = &[
             },
         ],
     },
+    ITEM_FRAME,
     Class {
-        name: "item_frame",
-        inherit: Some(&BASE_ENTITY),
-        fields: &[
-            Field {
-                name: "item",
-                typ: Type::Slot,
-            },
-            Field {
-                name: "rotation",
-                typ: Type::VarInt(0), // TODO: Direction enum?
-            },
-        ],
+        name: "glow_item_frame",
+        inherit: Some(&ITEM_FRAME),
+        fields: &[],
     },
     Class {
-        // TODO: How is glow item frame defined? This is a guess.
-        name: "glow_item_frame",
+        name: "painting",
         inherit: Some(&BASE_ENTITY),
-        fields: &[
-            Field {
-                name: "item",
-                typ: Type::Slot,
-            },
-            Field {
-                name: "rotation",
-                typ: Type::VarInt(0), // TODO: Direction enum?
-            },
-        ],
+        fields: &[Field {
+            name: "variant",
+            typ: Type::PaintingVariant,
+        }],
     },
     Class {
         name: "player",
@@ -905,6 +935,10 @@ const ENTITIES: &[Class] = &[
                 name: "right_shoulder_entity_data",
                 typ: Type::Nbt,
             },
+            Field {
+                name: "global_position",
+                typ: Type::OptGlobalPosition,
+            }
         ],
     },
     Class {
@@ -1188,6 +1222,20 @@ const ENTITIES: &[Class] = &[
         ],
     },
     Class {
+        name: "frog",
+        inherit: Some(&ANIMAL),
+        fields: &[
+            Field {
+                name: "variant",
+                typ: Type::FrogVariant,
+            },
+            Field {
+                name: "tongue_target",
+                typ: Type::VarInt(0),
+            }
+        ],
+    },
+    Class {
         name: "ocelot",
         inherit: Some(&ANIMAL),
         fields: &[Field {
@@ -1339,7 +1387,20 @@ const ENTITIES: &[Class] = &[
     Class {
         name: "goat",
         inherit: Some(&ANIMAL),
-        fields: &[], // TODO: What are the goat fields?
+        fields: &[
+            Field {
+                name: "screaming",
+                typ: Type::Bool(false),
+            },
+            Field {
+                name: "left_horn",
+                typ: Type::Bool(true),
+            },
+            Field {
+                name: "right_horn",
+                typ: Type::Bool(true),
+            }
+        ],
     },
     Class {
         name: "strider",
@@ -1365,7 +1426,7 @@ const ENTITIES: &[Class] = &[
         fields: &[
             Field {
                 name: "variant",
-                typ: Type::VarInt(1), // TODO: cat variant enum.
+                typ: Type::CatVariant,
             },
             Field {
                 name: "lying",
@@ -1849,49 +1910,6 @@ pub fn build() -> anyhow::Result<()> {
         .map(|c| ident(c.name.to_pascal_case()))
         .collect::<Vec<_>>();
 
-    /*
-    let set_type_arms = entities.iter().map(|&entity| {
-        let entity_name = ident(entity.name.to_pascal_case());
-
-        let mut old_fields = Vec::new();
-        collect_class_fields(entity, &mut old_fields);
-
-        let new_type_arms = entities.iter().map(|&new_entity| {
-            let new_entity_name = ident(new_entity.name.to_pascal_case());
-
-            let mut new_fields = Vec::new();
-            collect_class_fields(new_entity, &mut new_fields);
-
-            let assign_fields = new_fields
-                .iter()
-                .cloned()
-                .filter(|&new_field| old_fields.iter().any(|&f| f.name == new_field.name))
-                .map(|new_field| {
-                    let name = ident(new_field.name.to_snake_case());
-                    quote! {
-                        new.#name = old.#name;
-                    }
-                });
-
-            quote! {
-                EntityType::#new_entity_name => {
-                    let mut new = #new_entity_name::new();
-
-                    #(#assign_fields)*
-
-                    *self = Self::#new_entity_name(new);
-                }
-            }
-        });
-
-        quote! {
-            Self::#entity_name(old) => match new_type {
-                #(#new_type_arms)*
-            },
-        }
-    });
-    */
-
     let entity_structs = entities.iter().map(|&class| {
        let mut fields = Vec::new();
        collect_class_fields(class, &mut fields);
@@ -1918,8 +1936,12 @@ pub fn build() -> anyhow::Result<()> {
                Type::Nbt => quote! { nbt::Blob },
                Type::Particle => quote! { () }, // TODO
                Type::VillagerData => quote! { VillagerData },
-               Type::Pose => quote! { Pose },
                Type::OptEntityId => quote! { Option<EntityId> },
+               Type::Pose => quote! { Pose },
+               Type::CatVariant => quote! { CatVariant },
+               Type::FrogVariant => quote! { FrogVariant },
+               Type::OptGlobalPosition => quote! { () }, // TODO
+               Type::PaintingVariant => quote! { PaintingVariant },
                Type::BoatVariant => quote! { BoatVariant },
                Type::MainHand => quote! { MainHand },
            };
@@ -2071,8 +2093,12 @@ pub fn build() -> anyhow::Result<()> {
                     },
                     Type::Particle => quote! {}, // TODO
                     Type::VillagerData => standard_getter_setter(quote!(VillagerData)),
-                    Type::Pose => standard_getter_setter(quote!(Pose)),
                     Type::OptEntityId => standard_getter_setter(quote!(Option<EntityId>)),
+                    Type::Pose => standard_getter_setter(quote!(Pose)),
+                    Type::CatVariant => standard_getter_setter(quote!(CatVariant)),
+                    Type::FrogVariant => standard_getter_setter(quote!(FrogVariant)),
+                    Type::OptGlobalPosition => quote! {}, // TODO
+                    Type::PaintingVariant => standard_getter_setter(quote!(PaintingVariant)),
                     Type::BoatVariant => standard_getter_setter(quote!(BoatVariant)),
                     Type::MainHand => standard_getter_setter(quote!(MainHand)),
                 }

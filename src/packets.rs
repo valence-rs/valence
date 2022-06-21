@@ -2,7 +2,7 @@
 //!
 //! See <https://wiki.vg/Protocol> for up to date protocol information.
 
-#![allow(dead_code)] // TODO: remove this
+#![allow(dead_code)]
 
 use std::fmt;
 use std::io::{Read, Write};
@@ -409,6 +409,7 @@ pub mod login {
             LoginSuccess 0x02 {
                 uuid: Uuid,
                 username: BoundedString<3, 16>,
+                null_byte: u8, // TODO: Why is this needed?
             }
         }
 
@@ -425,6 +426,15 @@ pub mod login {
         def_struct! {
             LoginStart 0x00 {
                 username: BoundedString<3, 16>,
+                sig_data: Option<LoginStartSignatureData>,
+            }
+        }
+
+        def_struct! {
+            LoginStartSignatureData {
+                timestamp: i64,
+                public_key: Vec<u8>,
+                signature: Vec<u8>,
             }
         }
 
@@ -450,7 +460,8 @@ pub mod play {
                 position: Vec3<f64>,
                 pitch: ByteAngle,
                 yaw: ByteAngle,
-                data: i32,
+                head_yaw: ByteAngle,
+                data: VarInt,
                 velocity: Vec3<i16>,
             }
         }
@@ -460,29 +471,6 @@ pub mod play {
                 entity_id: VarInt,
                 position: Vec3<f64>,
                 count: i16,
-            }
-        }
-
-        def_struct! {
-            SpawnLivingEntity 0x02 {
-                entity_id: VarInt,
-                entity_uuid: Uuid,
-                typ: VarInt,
-                position: Vec3<f64>,
-                yaw: ByteAngle,
-                pitch: ByteAngle,
-                head_yaw: ByteAngle,
-                velocity: Vec3<i16>,
-            }
-        }
-
-        def_struct! {
-            SpawnPainting 0x03 {
-                entity_id: VarInt,
-                entity_uuid: Uuid,
-                variant: VarInt, // TODO: painting ID enum
-                location: BlockPos,
-                direction: PaintingDirection,
             }
         }
 
@@ -496,7 +484,7 @@ pub mod play {
         }
 
         def_struct! {
-            SpawnPlayer 0x04 {
+            SpawnPlayer 0x02 {
                 entity_id: VarInt,
                 player_uuid: Uuid,
                 position: Vec3<f64>,
@@ -506,16 +494,7 @@ pub mod play {
         }
 
         def_struct! {
-            SculkVibrationSignal 0x05 {
-                source_position: BlockPos,
-                destination_identifier: Ident, // TODO: destination codec type?
-                destination: BlockPos, // TODO: this type varies depending on destination_identifier
-                arrival_ticks: VarInt,
-            }
-        }
-
-        def_struct! {
-            EntityAnimation 0x06 {
+            EntityAnimation 0x03 {
                 entity_id: VarInt,
                 animation: Animation,
             }
@@ -533,16 +512,13 @@ pub mod play {
         }
 
         def_struct! {
-            AcknoledgePlayerDigging 0x08 {
-                location: BlockPos,
-                block: VarInt, // TODO: block state ID type.
-                status: VarInt, // TODO: VarInt enum here.
-                sucessful: bool,
+            AcknoledgeBlockChanges 0x05 {
+                sequence: VarInt,
             }
         }
 
         def_struct! {
-            BlockBreakAnimation 0x09 {
+            BlockBreakAnimation 0x06 {
                 entity_id: VarInt,
                 location: BlockPos,
                 destroy_stage: BoundedInt<u8, 0, 10>,
@@ -550,7 +526,7 @@ pub mod play {
         }
 
         def_struct! {
-            BlockEntityData 0x0a {
+            BlockEntityData 0x07 {
                 location: BlockPos,
                 typ: VarInt, // TODO: use enum here
                 data: nbt::Blob,
@@ -558,23 +534,24 @@ pub mod play {
         }
 
         def_struct! {
-            BlockAction 0x0b {
+            BlockAction 0x08 {
                 location: BlockPos,
                 action_id: u8,
                 action_param: u8,
                 block_type: VarInt,
+                // TODO: sequence?
             }
         }
 
         def_struct! {
-            BlockChange 0x0c {
+            BlockChange 0x09 {
                 location: BlockPos,
                 block_id: VarInt,
             }
         }
 
         def_struct! {
-            BossBar 0x0d {
+            BossBar 0x0a {
                 uuid: Uuid,
                 action: BossBarAction,
             }
@@ -583,6 +560,7 @@ pub mod play {
         def_enum! {
             BossBarAction: VarInt {
                 Add: BossBarActionAdd = 0,
+                // TODO
             }
         }
 
@@ -620,7 +598,7 @@ pub mod play {
         }
 
         def_struct! {
-            ServerDifficulty 0x0e {
+            ServerDifficulty 0x0b {
                 difficulty: Difficulty,
                 locked: bool,
             }
@@ -636,29 +614,35 @@ pub mod play {
         }
 
         def_struct! {
-            ChatMessageClientbound 0x0f {
+            ChatMessageClientbound 0x30 {
                 message: Text,
-                position: ChatMessagePosition,
+                typ: ChatMessageType,
                 sender: Uuid,
+                // TODO more fields
             }
         }
 
         def_enum! {
-            ChatMessagePosition: u8 {
+            ChatMessageType: VarInt {
                 Chat = 0,
                 SystemMessage = 1,
                 GameInfo = 2,
+                SayCommand = 3,
+                MsgCommand = 4,
+                TeamMsgCommand = 5,
+                EmoteCommand = 6,
+                TellrawCommand = 7,
             }
         }
 
         def_struct! {
-            ClearTitles 0x10 {
+            ClearTitles 0x0d {
                 reset: bool,
             }
         }
 
         def_struct! {
-            TabComplete 0x11 {
+            TabComplete 0x0e {
                 id: VarInt,
                 start: VarInt,
                 length: VarInt,
@@ -681,7 +665,7 @@ pub mod play {
         }
 
         def_struct! {
-            WindowProperty 0x15 {
+            WindowProperty 0x12 {
                 // TODO: use enums
                 window_id: u8,
                 property: i16,
@@ -690,20 +674,20 @@ pub mod play {
         }
 
         def_struct! {
-            SetCooldown 0x17 {
+            SetCooldown 0x14 {
                 item_id: VarInt,
                 cooldown_ticks: VarInt,
             }
         }
 
         def_struct! {
-            Disconnect 0x1a {
+            Disconnect 0x17 {
                 reason: Text,
             }
         }
 
         def_struct! {
-            EntityStatus 0x1b {
+            EntityStatus 0x18 {
                 entity_id: i32,
                 /// TODO: enum
                 entity_status: u8,
@@ -711,14 +695,14 @@ pub mod play {
         }
 
         def_struct! {
-            UnloadChunk 0x1d {
+            UnloadChunk 0x1a {
                 chunk_x: i32,
                 chunk_z: i32
             }
         }
 
         def_struct! {
-            ChangeGameState 0x1e {
+            ChangeGameState 0x1b {
                 reason: ChangeGameStateReason,
                 value: f32,
             }
@@ -742,7 +726,7 @@ pub mod play {
         }
 
         def_struct! {
-            OpenHorseWindow 0x1f {
+            OpenHorseWindow 0x1c {
                 window_id: u8,
                 slot_count: VarInt,
                 entity_id: i32,
@@ -750,7 +734,7 @@ pub mod play {
         }
 
         def_struct! {
-            InitializeWorldBorder 0x20 {
+            InitializeWorldBorder 0x1d {
                 x: f64,
                 z: f64,
                 old_diameter: f64,
@@ -763,13 +747,13 @@ pub mod play {
         }
 
         def_struct! {
-            KeepAliveClientbound 0x21 {
+            KeepAliveClientbound 0x1e {
                 id: i64,
             }
         }
 
         def_struct! {
-            ChunkDataAndUpdateLight 0x22 {
+            ChunkDataAndUpdateLight 0x1f {
                 chunk_x: i32,
                 chunk_z: i32,
                 heightmaps: Nbt<ChunkDataHeightmaps>,
@@ -801,19 +785,17 @@ pub mod play {
         }
 
         def_struct! {
-            JoinGame 0x26 {
+            JoinGame 0x23 {
                 /// Entity ID of the joining player
                 entity_id: i32,
                 is_hardcore: bool,
                 gamemode: GameMode,
-                /// The previous gamemode for the purpose of the F3+F4 gamemode switcher. (TODO: verify)
-                /// Is `-1` if there was no previous gamemode.
                 previous_gamemode: GameMode,
                 dimension_names: Vec<Ident>,
-                dimension_codec: Nbt<DimensionCodec>,
-                /// The specification of the dimension being spawned into.
-                dimension: Nbt<DimensionType>,
-                /// The identifier of the dimension being spawned into.
+                registry_codec: Nbt<RegistryCodec>,
+                /// The name of the dimension type being spawned into.
+                dimension_type_name: Ident,
+                /// The name of the dimension being spawned into.
                 dimension_name: Ident,
                 /// Hash of the world's seed used for client biome noise.
                 hashed_seed: i64,
@@ -829,15 +811,18 @@ pub mod play {
                 /// If this is a superflat world.
                 /// Superflat worlds have different void fog and horizon levels.
                 is_flat: bool,
+                last_death_location: Option<(Ident, BlockPos)>,
             }
         }
 
         #[derive(Clone, Debug, Serialize, Deserialize)]
-        pub struct DimensionCodec {
+        pub struct RegistryCodec {
             #[serde(rename = "minecraft:dimension_type")]
             pub dimension_type_registry: DimensionTypeRegistry,
             #[serde(rename = "minecraft:worldgen/biome")]
             pub biome_registry: BiomeRegistry,
+            #[serde(rename = "minecraft:chat_type")]
+            pub chat_type_registry: ChatTypeRegistry,
         }
 
         #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -857,6 +842,9 @@ pub mod play {
         #[derive(Clone, Debug, Serialize, Deserialize)]
         pub struct DimensionType {
             pub piglin_safe: bool,
+            pub has_raids: bool,
+            pub monster_spawn_light_level: i32,
+            pub monster_spawn_block_light_limit: i32,
             pub natural: bool,
             pub ambient_light: f32,
             pub fixed_time: Option<i64>,
@@ -865,7 +853,6 @@ pub mod play {
             pub has_skylight: bool,
             pub bed_works: bool,
             pub effects: Ident,
-            pub has_raids: bool,
             pub min_y: i32,
             pub height: i32,
             pub logical_height: i32,
@@ -950,6 +937,18 @@ pub mod play {
             pub typ: Ident,
         }
 
+        #[derive(Clone, Debug, Serialize, Deserialize)]
+        pub struct ChatTypeRegistry {
+            #[serde(rename = "type")]
+            pub typ: Ident,
+            pub value: Vec<ChatTypeRegistryEntry>,
+        }
+
+        #[derive(Clone, Debug, Serialize, Deserialize)]
+        pub struct ChatTypeRegistryEntry {
+            // TODO
+        }
+
         def_enum! {
             #[derive(Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
             GameMode: u8 {
@@ -967,7 +966,7 @@ pub mod play {
         }
 
         def_struct! {
-            EntityPosition 0x29 {
+            EntityPosition 0x26 {
                 entity_id: VarInt,
                 delta: Vec3<i16>,
                 on_ground: bool,
@@ -975,7 +974,7 @@ pub mod play {
         }
 
         def_struct! {
-            EntityPositionAndRotation 0x2a {
+            EntityPositionAndRotation 0x27 {
                 entity_id: VarInt,
                 delta: Vec3<i16>,
                 yaw: ByteAngle,
@@ -985,7 +984,7 @@ pub mod play {
         }
 
         def_struct! {
-            EntityRotation 0x2b {
+            EntityRotation 0x28 {
                 entity_id: VarInt,
                 yaw: ByteAngle,
                 pitch: ByteAngle,
@@ -994,7 +993,7 @@ pub mod play {
         }
 
         def_struct! {
-            PlayerPositionAndLook 0x38 {
+            PlayerPositionAndLook 0x36 {
                 position: Vec3<f64>,
                 yaw: f32,
                 pitch: f32,
@@ -1015,20 +1014,20 @@ pub mod play {
         }
 
         def_struct! {
-            DestroyEntities 0x3a {
+            DestroyEntities 0x38 {
                 entities: Vec<VarInt>,
             }
         }
 
         def_struct! {
-            EntityHeadLook 0x3e {
+            EntityHeadLook 0x3c {
                 entity_id: VarInt,
                 head_yaw: ByteAngle,
             }
         }
 
         def_struct! {
-            MultiBlockChange 0x3f {
+            MultiBlockChange 0x3d {
                 chunk_section_position: u64,
                 invert_trust_edges: bool,
                 blocks: Vec<u64>,
@@ -1036,26 +1035,26 @@ pub mod play {
         }
 
         def_struct! {
-            HeldItemChangeClientbound 0x48 {
+            HeldItemChangeClientbound 0x47 {
                 slot: BoundedInt<u8, 0, 9>,
             }
         }
 
         def_struct! {
-            UpdateViewPosition 0x49 {
+            UpdateViewPosition 0x48 {
                 chunk_x: VarInt,
                 chunk_z: VarInt,
             }
         }
 
         def_struct! {
-            UpdateViewDistance 0x4a {
+            UpdateViewDistance 0x49 {
                 view_distance: BoundedInt<VarInt, 2, 32>,
             }
         }
 
         def_struct! {
-            SpawnPosition 0x4b {
+            SpawnPosition 0x4a {
                 location: BlockPos,
                 angle: f32,
             }
@@ -1087,7 +1086,7 @@ pub mod play {
         }
 
         def_struct! {
-            EntityTeleport 0x62 {
+            EntityTeleport 0x63 {
                 entity_id: VarInt,
                 position: Vec3<f64>,
                 yaw: ByteAngle,
@@ -1156,12 +1155,9 @@ pub mod play {
         def_s2c_play_packet_enum! {
             SpawnEntity,
             SpawnExperienceOrb,
-            SpawnLivingEntity,
-            SpawnPainting,
             SpawnPlayer,
-            SculkVibrationSignal,
             EntityAnimation,
-            AcknoledgePlayerDigging,
+            AcknoledgeBlockChanges,
             BlockBreakAnimation,
             BlockEntityData,
             BlockAction,
@@ -1218,13 +1214,28 @@ pub mod play {
         }
 
         def_struct! {
-            ChatMessageServerbound 0x03 {
+            ChatCommand 0x03 {
+                command: String, // TODO: bounded?
+                // TODO: timestamp, arg signatures
+                signed_preview: bool,
+            }
+        }
+
+        def_struct! {
+            ChatMessageServerbound 0x04 {
                 message: BoundedString<0, 256>
             }
         }
 
+        def_struct! {
+            ChatPreview 0x05 {
+                query: i32, // TODO: is this an i32 or a varint?
+                message: BoundedString<0, 256>,
+            }
+        }
+
         def_enum! {
-            ClientStatus 0x04: VarInt {
+            ClientStatus 0x06: VarInt {
                 /// Sent when ready to complete login and ready to respawn after death.
                 PerformRespawn = 0,
                 /// Sent when the statistics menu is opened.
@@ -1233,7 +1244,7 @@ pub mod play {
         }
 
         def_struct! {
-            ClientSettings 0x05 {
+            ClientSettings 0x07 {
                 /// e.g. en_US
                 locale: BoundedString<0, 16>,
                 /// Client-side render distance in chunks.
@@ -1279,7 +1290,7 @@ pub mod play {
         }
 
         def_struct! {
-            TabCompleteServerbound 0x06 {
+            TabCompleteServerbound 0x08 {
                 transaction_id: VarInt,
                 /// Text behind the cursor without the '/'.
                 text: BoundedString<0, 32500>
@@ -1287,60 +1298,42 @@ pub mod play {
         }
 
         def_struct! {
-            ClickWindowButton 0x07 {
+            ClickWindowButton 0x09 {
                 window_id: i8,
                 button_id: i8,
             }
         }
 
         def_struct! {
-            ClickWindow 0x08 {
-                window_id: u8,
-                state_id: VarInt,
-                slot: i16,
-                button: i8,
-                mode: VarInt, // TODO: enum
-                // TODO
-            }
-        }
-
-        def_struct! {
-            CloseWindow 0x09 {
+            CloseWindow 0x0b {
                 window_id: u8,
             }
         }
 
         def_struct! {
-            PluginMessageServerbound 0x0a {
+            PluginMessageServerbound 0x0c {
                 channel: Ident,
                 data: RawBytes,
             }
         }
 
         def_struct! {
-            EditBook 0x0b {
-                hand: Hand,
+            EditBook 0x0d {
+                slot: VarInt,
                 entries: Vec<String>,
                 title: Option<String>,
             }
         }
 
-        def_enum! {
-            Hand: VarInt {
-                Main = 0,
-                Off = 1,
-            }
-        }
-
         def_struct! {
-            QueryEntityNbt 0x0c {
+            QueryEntityNbt 0x0e {
                 transaction_id: VarInt,
                 entity_id: VarInt,
             }
         }
 
         def_struct! {
-            InteractEntity 0x0d {
+            InteractEntity 0x0f {
                 entity_id: VarInt,
                 typ: InteractType,
                 sneaking: bool,
@@ -1362,8 +1355,15 @@ pub mod play {
             }
         }
 
+        def_enum! {
+            Hand: VarInt {
+                Main = 0,
+                Off = 1,
+            }
+        }
+
         def_struct! {
-            GenerateStructure 0x0e {
+            GenerateStructure 0x10 {
                 location: BlockPos,
                 levels: VarInt,
                 keep_jigsaws: bool,
@@ -1371,26 +1371,26 @@ pub mod play {
         }
 
         def_struct! {
-            KeepAliveServerbound 0x0f {
+            KeepAliveServerbound 0x11 {
                 id: i64,
             }
         }
 
         def_struct! {
-            LockDifficulty 0x10 {
+            LockDifficulty 0x12 {
                 locked: bool
             }
         }
 
         def_struct! {
-            PlayerPosition 0x11 {
+            PlayerPosition 0x13 {
                 position: Vec3<f64>,
                 on_ground: bool,
             }
         }
 
         def_struct! {
-            PlayerPositionAndRotation 0x12 {
+            PlayerPositionAndRotation 0x14 {
                 // Absolute position
                 position: Vec3<f64>,
                 /// Absolute rotation on X axis in degrees.
@@ -1402,7 +1402,7 @@ pub mod play {
         }
 
         def_struct! {
-            PlayerRotation 0x13 {
+            PlayerRotation 0x15 {
                 /// Absolute rotation on X axis in degrees.
                 yaw: f32,
                 /// Absolute rotation on Y axis in degrees.
@@ -1412,13 +1412,13 @@ pub mod play {
         }
 
         def_struct! {
-            PlayerMovement 0x14 {
+            PlayerMovement 0x16 {
                 on_ground: bool
             }
         }
 
         def_struct! {
-            VehicleMoveServerbound 0x15 {
+            VehicleMoveServerbound 0x17 {
                 /// Absolute position
                 position: Vec3<f64>,
                 /// Degrees
@@ -1429,20 +1429,20 @@ pub mod play {
         }
 
         def_struct! {
-            SteerBoat 0x16 {
+            SteerBoat 0x18 {
                 left_paddle_turning: bool,
                 right_paddle_turning: bool,
             }
         }
 
         def_struct! {
-            PickItem 0x17 {
+            PickItem 0x19 {
                 slot_to_use: VarInt,
             }
         }
 
         def_struct! {
-            CraftRecipeRequest 0x18 {
+            CraftRecipeRequest 0x1a {
                 window_id: i8,
                 recipe: Ident,
                 make_all: bool,
@@ -1450,14 +1450,14 @@ pub mod play {
         }
 
         def_enum! {
-            PlayerAbilitiesServerbound 0x19: i8 {
+            PlayerAbilitiesServerbound 0x1b: i8 {
                 NotFlying = 0,
                 Flying = 0b10,
             }
         }
 
         def_struct! {
-            PlayerDigging 0x1a {
+            PlayerDigging 0x1c {
                 status: DiggingStatus,
                 location: BlockPos,
                 face: BlockFace,
@@ -1494,7 +1494,7 @@ pub mod play {
         }
 
         def_struct! {
-            EntityAction 0x1b {
+            EntityAction 0x1d {
                 entity_id: VarInt,
                 action_id: EntityActionId,
                 jump_boost: BoundedInt<VarInt, 0, 100>,
@@ -1516,7 +1516,7 @@ pub mod play {
         }
 
         def_struct! {
-            SteerVehicle 0x1c {
+            SteerVehicle 0x1e {
                 sideways: f32,
                 forward: f32,
                 flags: SteerVehicleFlags,
@@ -1531,13 +1531,13 @@ pub mod play {
         }
 
         def_struct! {
-            Pong 0x1d {
+            Pong 0x1f {
                 id: i32,
             }
         }
 
         def_struct! {
-            SetRecipeBookState 0x1e {
+            SetRecipeBookState 0x20 {
                 book_id: RecipeBookId,
                 book_open: bool,
                 filter_active: bool,
@@ -1554,19 +1554,19 @@ pub mod play {
         }
 
         def_struct! {
-            SetDisplayedRecipe 0x1f {
+            SetDisplayedRecipe 0x21 {
                 recipe_id: Ident,
             }
         }
 
         def_struct! {
-            NameItem 0x20 {
+            NameItem 0x22 {
                 item_name: BoundedString<0, 50>,
             }
         }
 
         def_enum! {
-            ResourcePackStatus 0x21: VarInt {
+            ResourcePackStatus 0x23: VarInt {
                 SuccessfullyLoaded = 0,
                 Declined = 1,
                 FailedDownload = 2,
@@ -1575,34 +1575,34 @@ pub mod play {
         }
 
         def_enum! {
-            AdvancementTab 0x22: VarInt {
+            AdvancementTab 0x24: VarInt {
                 OpenedTab: Ident = 0,
                 ClosedScreen = 1,
             }
         }
 
         def_struct! {
-            SelectTrade 0x23 {
+            SelectTrade 0x25 {
                 selected_slot: VarInt,
             }
         }
 
         def_struct! {
-            SetBeaconEffect 0x24 {
-                // TODO: potion ids?
-                primary_effect: VarInt,
-                secondary_effect: VarInt,
+            SetBeaconEffect 0x26 {
+                // TODO: potion ids
+                primary_effect: Option<VarInt>,
+                secondary_effect: Option<VarInt>,
             }
         }
 
         def_struct! {
-            HeldItemChangeServerbound 0x25 {
+            HeldItemChangeServerbound 0x27 {
                 slot: BoundedInt<i16, 0, 8>,
             }
         }
 
         def_struct! {
-            UpdateCommandBlock 0x26 {
+            UpdateCommandBlock 0x28 {
                 location: BlockPos,
                 command: String,
                 mode: CommandBlockMode,
@@ -1627,7 +1627,7 @@ pub mod play {
         }
 
         def_struct! {
-            UpdateCommandBlockMinecart 0x27 {
+            UpdateCommandBlockMinecart 0x29 {
                 entity_id: VarInt,
                 command: String,
                 track_output: bool,
@@ -1635,14 +1635,14 @@ pub mod play {
         }
 
         def_struct! {
-            CreativeInventoryAction 0x28 {
+            CreativeInventoryAction 0x2a {
                 slot: i16,
                 // TODO: clicked_item: Slot,
             }
         }
 
         def_struct! {
-            UpdateJigsawBlock 0x29 {
+            UpdateJigsawBlock 0x2b {
                 location: BlockPos,
                 name: Ident,
                 target: Ident,
@@ -1653,7 +1653,7 @@ pub mod play {
         }
 
         def_struct! {
-            UpdateStructureBlock 0x2a {
+            UpdateStructureBlock 0x2c {
                 location: BlockPos,
                 action: StructureBlockAction,
                 mode: StructureBlockMode,
@@ -1713,37 +1713,39 @@ pub mod play {
         }
 
         def_struct! {
-            UpdateSign 0x2b {
+            UpdateSign 0x2d {
                 location: BlockPos,
                 lines: [BoundedString<0, 384>; 4],
             }
         }
 
         def_struct! {
-            PlayerArmSwing 0x2c {
+            PlayerArmSwing 0x2e {
                 hand: Hand,
             }
         }
 
         def_struct! {
-            Spectate 0x2d {
+            Spectate 0x2f {
                 target: Uuid,
             }
         }
 
         def_struct! {
-            PlayerBlockPlacement 0x2e {
+            PlayerBlockPlacement 0x30 {
                 hand: Hand,
                 location: BlockPos,
                 face: BlockFace,
                 cursor_pos: Vec3<f64>,
                 head_inside_block: bool,
+                sequence: VarInt,
             }
         }
 
         def_struct! {
-            UseItem 0x2f {
+            UseItem 0x31 {
                 hand: Hand,
+                sequence: VarInt,
             }
         }
 
@@ -1802,11 +1804,11 @@ pub mod play {
             QueryBlockNbt,
             SetDifficulty,
             ChatMessageServerbound,
+            ChatPreview,
             ClientStatus,
             ClientSettings,
             TabCompleteServerbound,
             ClickWindowButton,
-            ClickWindow,
             CloseWindow,
             PluginMessageServerbound,
             EditBook,

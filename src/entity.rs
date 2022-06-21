@@ -14,8 +14,7 @@ use vek::{Aabb, Vec3};
 
 use crate::byte_angle::ByteAngle;
 use crate::packets::play::s2c::{
-    EntityMetadata, S2cPlayPacket, SpawnEntity, SpawnExperienceOrb, SpawnLivingEntity,
-    SpawnPainting, SpawnPlayer,
+    EntityMetadata, S2cPlayPacket, SpawnEntity, SpawnExperienceOrb, SpawnPlayer,
 };
 use crate::protocol::RawBytes;
 use crate::slotmap::{Key, SlotMap};
@@ -306,90 +305,43 @@ impl Entity {
     }
 
     pub(crate) fn spawn_packet(&self, this_id: EntityId) -> Option<EntitySpawnPacket> {
-        use EntityMeta::*;
         match &self.meta {
-            Marker(_) => None,
-            ExperienceOrb(_) => Some(EntitySpawnPacket::SpawnExperienceOrb(SpawnExperienceOrb {
+            EntityMeta::Marker(_) => None,
+            EntityMeta::ExperienceOrb(_) => {
+                Some(EntitySpawnPacket::SpawnExperienceOrb(SpawnExperienceOrb {
+                    entity_id: VarInt(this_id.to_network_id()),
+                    position: self.new_position,
+                    count: 0, // TODO
+                }))
+            }
+            EntityMeta::Player(_) => Some(EntitySpawnPacket::SpawnPlayer(SpawnPlayer {
                 entity_id: VarInt(this_id.to_network_id()),
+                player_uuid: self.uuid,
                 position: self.new_position,
-                count: 0, // TODO
+                yaw: ByteAngle::from_degrees(self.yaw),
+                pitch: ByteAngle::from_degrees(self.pitch),
             })),
-            Painting(_) => todo!(),
-            Player(_) => todo!(),
-            AreaEffectCloud(_)
-            | Arrow(_)
-            | Boat(_)
-            | DragonFireball(_)
-            | EndCrystal(_)
-            | EvokerFangs(_)
-            | EyeOfEnder(_)
-            | FallingBlock(_)
-            | FireworkRocket(_)
-            | GlowItemFrame(_)
-            | Item(_)
-            | ItemFrame(_)
-            | Fireball(_)
-            | LeashKnot(_)
-            | LightningBolt(_)
-            | LlamaSpit(_)
-            | Minecart(_)
-            | ChestMinecart(_)
-            | CommandBlockMinecart(_)
-            | FurnaceMinecart(_)
-            | HopperMinecart(_)
-            | SpawnerMinecart(_)
-            | TntMinecart(_)
-            | Tnt(_)
-            | ShulkerBullet(_)
-            | SmallFireball(_)
-            | Snowball(_)
-            | SpectralArrow(_)
-            | Egg(_)
-            | EnderPearl(_)
-            | ExperienceBottle(_)
-            | Potion(_)
-            | Trident(_)
-            | WitherSkull(_)
-            | FishingBobber(_) => Some(EntitySpawnPacket::SpawnEntity(SpawnEntity {
+            _ => Some(EntitySpawnPacket::SpawnEntity(SpawnEntity {
                 entity_id: VarInt(this_id.to_network_id()),
                 object_uuid: self.uuid,
                 typ: VarInt(self.typ() as i32),
                 position: self.new_position,
                 pitch: ByteAngle::from_degrees(self.pitch),
                 yaw: ByteAngle::from_degrees(self.yaw),
-                data: 1, // TODO
+                head_yaw: ByteAngle::from_degrees(self.head_yaw),
+                data: VarInt(1), // TODO
                 velocity: velocity_to_packet_units(self.velocity),
             })),
-
-            ArmorStand(_) | Axolotl(_) | Bat(_) | Bee(_) | Blaze(_) | Cat(_) | CaveSpider(_)
-            | Chicken(_) | Cod(_) | Cow(_) | Creeper(_) | Dolphin(_) | Donkey(_) | Drowned(_)
-            | ElderGuardian(_) | EnderDragon(_) | Enderman(_) | Endermite(_) | Evoker(_)
-            | Fox(_) | Ghast(_) | Giant(_) | GlowSquid(_) | Goat(_) | Guardian(_) | Hoglin(_)
-            | Horse(_) | Husk(_) | Illusioner(_) | IronGolem(_) | Llama(_) | MagmaCube(_)
-            | Mule(_) | Mooshroom(_) | Ocelot(_) | Panda(_) | Parrot(_) | Phantom(_) | Pig(_)
-            | Piglin(_) | PiglinBrute(_) | Pillager(_) | PolarBear(_) | Pufferfish(_)
-            | Rabbit(_) | Ravager(_) | Salmon(_) | Sheep(_) | Shulker(_) | Silverfish(_)
-            | Skeleton(_) | SkeletonHorse(_) | Slime(_) | SnowGolem(_) | Spider(_) | Squid(_)
-            | Stray(_) | Strider(_) | TraderLlama(_) | TropicalFish(_) | Turtle(_) | Vex(_)
-            | Villager(_) | Vindicator(_) | WanderingTrader(_) | Witch(_) | Wither(_)
-            | WitherSkeleton(_) | Wolf(_) | Zoglin(_) | Zombie(_) | ZombieHorse(_)
-            | ZombieVillager(_) | ZombifiedPiglin(_) => {
-                Some(EntitySpawnPacket::SpawnLivingEntity(SpawnLivingEntity {
-                    entity_id: VarInt(this_id.to_network_id()),
-                    entity_uuid: self.uuid,
-                    typ: VarInt(self.typ() as i32),
-                    position: self.new_position,
-                    yaw: ByteAngle::from_degrees(self.yaw),
-                    pitch: ByteAngle::from_degrees(self.pitch),
-                    head_yaw: ByteAngle::from_degrees(self.head_yaw),
-                    velocity: velocity_to_packet_units(self.velocity),
-                }))
-            }
         }
     }
 
     pub fn hitbox(&self) -> Aabb<f64> {
         let dims = match &self.meta {
+            EntityMeta::Allay(_) => [0.6, 0.35, 0.6],
+            EntityMeta::ChestBoat(_) => [1.375, 0.5625, 1.375],
+            EntityMeta::Frog(_) => [0.5, 0.5, 0.5],
+            EntityMeta::Tadpole(_) => [0.4, 0.3, 0.4],
+            EntityMeta::Warden(_) => [0.9, 2.9, 0.9],
             EntityMeta::AreaEffectCloud(e) => [
                 e.get_radius() as f64 * 2.0,
                 0.5,
@@ -598,8 +550,6 @@ impl<'a> EntityMut<'a> {
 pub(crate) enum EntitySpawnPacket {
     SpawnEntity(SpawnEntity),
     SpawnExperienceOrb(SpawnExperienceOrb),
-    SpawnLivingEntity(SpawnLivingEntity),
-    SpawnPainting(SpawnPainting),
     SpawnPlayer(SpawnPlayer),
 }
 
@@ -608,8 +558,6 @@ impl From<EntitySpawnPacket> for S2cPlayPacket {
         match pkt {
             EntitySpawnPacket::SpawnEntity(pkt) => pkt.into(),
             EntitySpawnPacket::SpawnExperienceOrb(pkt) => pkt.into(),
-            EntitySpawnPacket::SpawnLivingEntity(pkt) => pkt.into(),
-            EntitySpawnPacket::SpawnPainting(pkt) => pkt.into(),
             EntitySpawnPacket::SpawnPlayer(pkt) => pkt.into(),
         }
     }

@@ -47,9 +47,9 @@ pub use world::{WorldId, WorldMeta, WorldMetaMut, WorldMut, WorldRef, Worlds, Wo
 pub use {nbt, uuid, vek};
 
 /// The Minecraft protocol version that this library targets.
-pub const PROTOCOL_VERSION: i32 = 758;
+pub const PROTOCOL_VERSION: i32 = 759;
 /// The name of the Minecraft version that this library targets.
-pub const VERSION_NAME: &str = "1.18.2";
+pub const VERSION_NAME: &str = "1.19";
 
 /// The namespace for this library used internally for namespaced identifiers.
 const LIBRARY_NAMESPACE: &str = "valence";

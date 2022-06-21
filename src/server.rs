@@ -573,6 +573,7 @@ async fn handle_login(
 ) -> anyhow::Result<Option<NewClientData>> {
     let LoginStart {
         username: BoundedString(username),
+        sig_data: _, // TODO
     } = c.1.read_packet().await?;
 
     ensure!(valid_username(&username), "invalid username '{username}'");
@@ -596,23 +597,23 @@ async fn handle_login(
             .0
             .rsa_key
             .decrypt(PaddingScheme::PKCS1v15Encrypt, &encrypted_shared_secret)
-            .context("Failed to decrypt shared secret")?;
+            .context("failed to decrypt shared secret")?;
 
         let new_verify_token = server
             .0
             .rsa_key
             .decrypt(PaddingScheme::PKCS1v15Encrypt, &encrypted_verify_token)
-            .context("Failed to decrypt verify token")?;
+            .context("failed to decrypt verify token")?;
 
         ensure!(
             verify_token.as_slice() == new_verify_token,
-            "Verify tokens do not match"
+            "verify tokens do not match"
         );
 
         let crypt_key: [u8; 16] = shared_secret
             .as_slice()
             .try_into()
-            .context("Shared secret has the wrong length")?;
+            .context("shared secret has the wrong length")?;
 
         c.0.enable_encryption(&crypt_key);
         c.1.enable_encryption(&crypt_key);
@@ -689,6 +690,7 @@ async fn handle_login(
     c.0.write_packet(&LoginSuccess {
         uuid: npd.uuid,
         username: npd.username.clone().into(),
+        null_byte: 0,
     })
     .await?;
 
