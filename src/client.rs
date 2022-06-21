@@ -362,8 +362,6 @@ impl<'a> ClientMut<'a> {
             return;
         }
 
-        let dimension = server.dimension(meta.dimension());
-
         let current_tick = server.current_tick();
 
         // Send the join game packet and other initial packets. We defer this until now
@@ -390,8 +388,8 @@ impl<'a> ClientMut<'a> {
                 simulation_distance: VarInt(16),
                 reduced_debug_info: false, // TODO
                 enable_respawn_screen: false,
-                is_debug: false, // TODO
-                is_flat: false,
+                is_debug: false,
+                is_flat: meta.is_flat(),
                 last_death_location: None, // TODO
             });
 
