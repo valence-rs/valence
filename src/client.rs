@@ -485,6 +485,8 @@ impl<'a> ClientMut<'a> {
             }
         }
 
+        let dimension = server.dimension(meta.dimension());
+
         // Update existing chunks and unload those outside the view distance. Chunks
         // that have been overwritten also need to be unloaded.
         self.0.loaded_chunks.retain(|&pos| {
@@ -496,9 +498,9 @@ impl<'a> ClientMut<'a> {
                 if is_chunk_in_view_distance(center, pos, view_dist + cache)
                     && chunk.created_tick() != current_tick
                 {
-                    if let Some(pkt) = chunk.block_change_packet(pos) {
-                        send_packet(&mut self.0.send, pkt);
-                    }
+                    chunk.block_change_packets(pos, dimension.min_y, |pkt| {
+                        send_packet(&mut self.0.send, pkt)
+                    });
                     return true;
                 }
             }
@@ -518,9 +520,7 @@ impl<'a> ClientMut<'a> {
             if let Some(chunk) = chunks.get(pos) {
                 if self.0.loaded_chunks.insert(pos) {
                     self.send_packet(chunk.chunk_data_packet(pos));
-                    if let Some(pkt) = chunk.block_change_packet(pos) {
-                        self.send_packet(pkt);
-                    }
+                    chunk.block_change_packets(pos, dimension.min_y, |pkt| self.send_packet(pkt));
                 }
             }
         }

@@ -1028,9 +1028,9 @@ pub mod play {
 
         def_struct! {
             MultiBlockChange 0x3d {
-                chunk_section_position: u64,
+                chunk_section_position: i64,
                 invert_trust_edges: bool,
-                blocks: Vec<u64>,
+                blocks: Vec<VarLong>,
             }
         }
 

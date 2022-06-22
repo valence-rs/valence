@@ -938,7 +938,7 @@ const ENTITIES: &[Class] = &[
             Field {
                 name: "global_position",
                 typ: Type::OptGlobalPosition,
-            }
+            },
         ],
     },
     Class {
@@ -1232,7 +1232,7 @@ const ENTITIES: &[Class] = &[
             Field {
                 name: "tongue_target",
                 typ: Type::VarInt(0),
-            }
+            },
         ],
     },
     Class {
@@ -1399,7 +1399,7 @@ const ENTITIES: &[Class] = &[
             Field {
                 name: "right_horn",
                 typ: Type::Bool(true),
-            }
+            },
         ],
     },
     Class {

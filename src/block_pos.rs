@@ -53,9 +53,21 @@ impl From<(i32, i32, i32)> for BlockPos {
     }
 }
 
+impl From<BlockPos> for (i32, i32, i32) {
+    fn from(pos: BlockPos) -> Self {
+        (pos.x, pos.y, pos.z)
+    }
+}
+
 impl From<[i32; 3]> for BlockPos {
     fn from([x, y, z]: [i32; 3]) -> Self {
         BlockPos::new(x, y, z)
+    }
+}
+
+impl From<BlockPos> for [i32; 3] {
+    fn from(pos: BlockPos) -> Self {
+        [pos.x, pos.y, pos.z]
     }
 }
 

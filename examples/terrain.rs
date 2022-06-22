@@ -201,7 +201,7 @@ fn terrain_column(
                 2.0,
                 0.5,
             ) * 6.0)
-            .floor() as i64;
+                .floor() as i64;
 
         if *in_terrain {
             if *depth > 0 {

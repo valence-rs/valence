@@ -62,10 +62,7 @@ impl<'a> WorldsMut<'a> {
             clients: Clients::new(),
             entities: Entities::new(),
             spatial_index: SpatialIndex::new(),
-            chunks: Chunks::new(
-                self.server.clone(),
-                (self.server.dimension(dim).height / 16) as u32,
-            ),
+            chunks: Chunks::new(self.server.clone(), dim),
             meta: WorldMeta {
                 dimension: dim,
                 is_flat: false,

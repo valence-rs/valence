@@ -330,11 +330,21 @@ pub fn build() -> anyhow::Result<()> {
                 }
             }
 
+            pub(crate) const fn from_raw_unchecked(id: u16) -> Self {
+                debug_assert!(Self::from_raw(id).is_some());
+                Self(id)
+            }
+
             /// Converts this block state to its underlying raw block state ID.
             ///
             /// The original block state can be recovered with [`BlockState::from_raw`].
             pub const fn to_raw(self) -> u16 {
                 self.0
+            }
+
+            /// Returns the maximum block state ID.
+            pub const fn max_raw() -> u16 {
+                #max_block_state
             }
 
             /// Gets the value of the property with the given name from this block.
