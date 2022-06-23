@@ -434,12 +434,12 @@ pub mod login {
         def_struct! {
             LoginStart 0x00 {
                 username: BoundedString<3, 16>,
-                sig_data: Option<LoginStartSignatureData>,
+                sig_data: Option<SignatureData>,
             }
         }
 
         def_struct! {
-            LoginStartSignatureData {
+            SignatureData {
                 timestamp: i64,
                 public_key: Vec<u8>,
                 signature: Vec<u8>,
@@ -472,6 +472,8 @@ pub mod login {
 /// Packets and types used during the play state.
 pub mod play {
     pub mod s2c {
+        use crate::packets::login::{s2c::Property, c2s::SignatureData};
+
         use super::super::*;
 
         def_struct! {
@@ -632,28 +634,6 @@ pub mod play {
                 Easy = 1,
                 Normal = 2,
                 Hard = 3,
-            }
-        }
-
-        def_struct! {
-            ChatMessageClientbound 0x30 {
-                message: Text,
-                typ: ChatMessageType,
-                sender: Uuid,
-                // TODO more fields
-            }
-        }
-
-        def_enum! {
-            ChatMessageType: VarInt {
-                Chat = 0,
-                SystemMessage = 1,
-                GameInfo = 2,
-                SayCommand = 3,
-                MsgCommand = 4,
-                TeamMsgCommand = 5,
-                EmoteCommand = 6,
-                TellrawCommand = 7,
             }
         }
 
@@ -1011,6 +991,50 @@ pub mod play {
                 yaw: ByteAngle,
                 pitch: ByteAngle,
                 on_ground: bool,
+            }
+        }
+
+        def_struct! {
+            ChatMessageClientbound 0x30 {
+                message: Text,
+                typ: ChatMessageType,
+                sender: Uuid,
+                // TODO more fields
+            }
+        }
+
+        def_enum! {
+            ChatMessageType: VarInt {
+                Chat = 0,
+                SystemMessage = 1,
+                GameInfo = 2,
+                SayCommand = 3,
+                MsgCommand = 4,
+                TeamMsgCommand = 5,
+                EmoteCommand = 6,
+                TellrawCommand = 7,
+            }
+        }
+
+        def_enum! {
+            PlayerInfo 0x34: VarInt {
+                AddPlayer: Vec<PlayerInfoAddPlayer> = 0,
+                UpdateGameMode: Vec<(Uuid, GameMode)> = 1,
+                UpdateLatency: Vec<(Uuid, VarInt)> = 2,
+                UpdateDisplayName: Vec<(Uuid, Option<Text>)> = 3,
+                RemovePlayer: Vec<Uuid> = 4,
+            }
+        }
+
+        def_struct! {
+            PlayerInfoAddPlayer {
+                uuid: Uuid,
+                username: BoundedString<3, 16>,
+                properties: Vec<Property>,
+                game_mode: GameMode,
+                ping: VarInt,
+                display_name: Option<Text>,
+                sig_data: Option<SignatureData>,
             }
         }
 

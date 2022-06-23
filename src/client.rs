@@ -156,8 +156,6 @@ pub struct Client {
     new_game_mode: GameMode,
     old_game_mode: GameMode,
     settings: Option<Settings>,
-    // TODO: latency
-    // TODO: time, weather
 }
 
 pub struct ClientMut<'a>(&'a mut Client);

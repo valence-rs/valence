@@ -183,6 +183,7 @@ impl<'a> WorldMut<'a> {
 pub struct WorldMeta {
     dimension: DimensionId,
     is_flat: bool,
+    // TODO: time, weather
 }
 
 impl WorldMeta {
