@@ -719,6 +719,7 @@ impl<'a> ClientMut<'a> {
             }
             C2sPlayPacket::QueryBlockNbt(_) => {}
             C2sPlayPacket::SetDifficulty(_) => {}
+            C2sPlayPacket::ChatCommand(_) => {}
             C2sPlayPacket::ChatMessageServerbound(_) => {}
             C2sPlayPacket::ChatPreview(_) => {}
             C2sPlayPacket::ClientStatus(_) => {}

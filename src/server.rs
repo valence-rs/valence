@@ -30,7 +30,7 @@ use crate::codec::{Decoder, Encoder};
 use crate::config::{Config, ServerListPing};
 use crate::packets::handshake::{Handshake, HandshakeNextState};
 use crate::packets::login;
-use crate::packets::login::c2s::{EncryptionResponse, LoginStart};
+use crate::packets::login::c2s::{EncryptionResponse, LoginStart, VerifyTokenOrMsgSig};
 use crate::packets::login::s2c::{EncryptionRequest, LoginSuccess, SetCompression};
 use crate::packets::play::c2s::C2sPlayPacket;
 use crate::packets::play::s2c::S2cPlayPacket;
@@ -578,19 +578,19 @@ async fn handle_login(
 
     ensure!(valid_username(&username), "invalid username '{username}'");
 
-    let (uuid, skin_blob) = if server.0.online_mode {
-        let verify_token: [u8; 16] = rand::random();
+    let (uuid, _skin_blob) = if server.0.online_mode {
+        let my_verify_token: [u8; 16] = rand::random();
 
         c.0.write_packet(&EncryptionRequest {
             server_id: Default::default(), // Always empty
             public_key: server.0.public_key_der.to_vec(),
-            verify_token: verify_token.to_vec().into(),
+            verify_token: my_verify_token.to_vec().into(),
         })
         .await?;
 
         let EncryptionResponse {
             shared_secret: BoundedArray(encrypted_shared_secret),
-            verify_token: BoundedArray(encrypted_verify_token),
+            token_or_sig,
         } = c.1.read_packet().await?;
 
         let shared_secret = server
@@ -599,16 +599,22 @@ async fn handle_login(
             .decrypt(PaddingScheme::PKCS1v15Encrypt, &encrypted_shared_secret)
             .context("failed to decrypt shared secret")?;
 
-        let new_verify_token = server
-            .0
-            .rsa_key
-            .decrypt(PaddingScheme::PKCS1v15Encrypt, &encrypted_verify_token)
-            .context("failed to decrypt verify token")?;
+        let _opt_signature = match token_or_sig {
+            VerifyTokenOrMsgSig::VerifyToken(BoundedArray(encrypted_verify_token)) => {
+                let verify_token = server
+                    .0
+                    .rsa_key
+                    .decrypt(PaddingScheme::PKCS1v15Encrypt, &encrypted_verify_token)
+                    .context("failed to decrypt verify token")?;
 
-        ensure!(
-            verify_token.as_slice() == new_verify_token,
-            "verify tokens do not match"
-        );
+                ensure!(
+                    my_verify_token.as_slice() == verify_token,
+                    "verify tokens do not match"
+                );
+                None
+            }
+            VerifyTokenOrMsgSig::MsgSig(sig) => Some(sig),
+        };
 
         let crypt_key: [u8; 16] = shared_secret
             .as_slice()
@@ -690,7 +696,7 @@ async fn handle_login(
     c.0.write_packet(&LoginSuccess {
         uuid: npd.uuid,
         username: npd.username.clone().into(),
-        null_byte: 0,
+        properties: Vec::new(),
     })
     .await?;
 

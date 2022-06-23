@@ -409,7 +409,15 @@ pub mod login {
             LoginSuccess 0x02 {
                 uuid: Uuid,
                 username: BoundedString<3, 16>,
-                null_byte: u8, // TODO: Why is this needed?
+                properties: Vec<Property>,
+            }
+        }
+
+        def_struct! {
+            Property {
+                name: String,
+                value: String,
+                signature: Option<String>,
             }
         }
 
@@ -441,7 +449,21 @@ pub mod login {
         def_struct! {
             EncryptionResponse 0x01 {
                 shared_secret: BoundedArray<u8, 16, 128>,
-                verify_token: BoundedArray<u8, 16, 128>,
+                token_or_sig: VerifyTokenOrMsgSig,
+            }
+        }
+
+        def_enum! {
+            VerifyTokenOrMsgSig: u8 {
+                VerifyToken: BoundedArray<u8, 16, 128> = 1,
+                MsgSig: MessageSignature = 0,
+            }
+        }
+
+        def_struct! {
+            MessageSignature {
+                salt: u64,
+                sig: Vec<u8>, // TODO: bounds?
             }
         }
     }
@@ -1224,6 +1246,7 @@ pub mod play {
         def_struct! {
             ChatMessageServerbound 0x04 {
                 message: BoundedString<0, 256>
+                // TODO: 
             }
         }
 
@@ -1804,6 +1827,7 @@ pub mod play {
             TeleportConfirm,
             QueryBlockNbt,
             SetDifficulty,
+            ChatCommand,
             ChatMessageServerbound,
             ChatPreview,
             ClientStatus,
