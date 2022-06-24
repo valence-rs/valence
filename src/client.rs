@@ -1,7 +1,10 @@
+/// Contains the [`Event`] enum and related data types.
+mod event;
 use std::collections::HashSet;
 use std::iter::FusedIterator;
 use std::ops::Deref;
 
+pub use event::*;
 use flume::{Receiver, Sender, TrySendError};
 use rayon::iter::ParallelIterator;
 use uuid::Uuid;
@@ -12,16 +15,15 @@ use crate::block_pos::BlockPos;
 use crate::byte_angle::ByteAngle;
 use crate::dimension::{Dimension, DimensionEffects};
 use crate::entity::{velocity_to_packet_units, EntityType};
-use crate::packets::play::c2s::C2sPlayPacket;
-pub use crate::packets::play::s2c::GameMode;
+use crate::packets::play::c2s::{C2sPlayPacket, DiggingStatus};
 use crate::packets::play::s2c::{
-    Biome as BiomeRegistryBiome, BiomeAdditionsSound, BiomeEffects, BiomeMoodSound, BiomeMusic,
-    BiomeParticle, BiomeParticleOptions, BiomeProperty, BiomeRegistry, ChangeGameState,
-    ChangeGameStateReason, ChatTypeRegistry, DestroyEntities, DimensionType, DimensionTypeRegistry,
-    DimensionTypeRegistryEntry, Disconnect, EntityHeadLook, EntityPosition,
-    EntityPositionAndRotation, EntityRotation, EntityTeleport, EntityVelocity, JoinGame,
-    KeepAliveClientbound, PlayerPositionAndLook, PlayerPositionAndLookFlags, RegistryCodec,
-    S2cPlayPacket, SpawnPosition, UnloadChunk, UpdateViewDistance, UpdateViewPosition,
+    AcknowledgeBlockChanges, Biome as BiomeRegistryBiome, BiomeAdditionsSound, BiomeEffects,
+    BiomeMoodSound, BiomeMusic, BiomeParticle, BiomeParticleOptions, BiomeProperty, BiomeRegistry,
+    ChangeGameState, ChangeGameStateReason, ChatTypeRegistry, DestroyEntities, DimensionType,
+    DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, EntityHeadLook, EntityPosition,
+    EntityPositionAndRotation, EntityRotation, EntityTeleport, EntityVelocity, JoinGame, KeepAlive,
+    PlayerPositionAndLook, PlayerPositionAndLookFlags, RegistryCodec, S2cPlayPacket, SpawnPosition,
+    UnloadChunk, UpdateViewDistance, UpdateViewPosition,
 };
 use crate::protocol::{BoundedInt, Nbt};
 use crate::server::C2sPacketChannels;
@@ -156,6 +158,9 @@ pub struct Client {
     new_game_mode: GameMode,
     old_game_mode: GameMode,
     settings: Option<Settings>,
+    dug_blocks: Vec<i32>,
+    // /// The metadata for the client's own player entity.
+    // player_meta: Player,
 }
 
 pub struct ClientMut<'a>(&'a mut Client);
@@ -205,6 +210,7 @@ impl Client {
             new_game_mode: GameMode::Survival,
             old_game_mode: GameMode::Survival,
             settings: None,
+            dug_blocks: Vec::new(),
         }
     }
 
@@ -258,7 +264,7 @@ impl Client {
         self.send.is_none()
     }
 
-    pub fn events(&self) -> &[Event] {
+    pub fn events(&self) -> &Vec<Event> {
         &self.events
     }
 
@@ -288,8 +294,13 @@ impl<'a> ClientMut<'a> {
         ClientMut(self.0)
     }
 
+    pub fn events_mut(&mut self) -> &mut Vec<Event> {
+        &mut self.0.events
+    }
+
     pub fn teleport(&mut self, pos: impl Into<Vec3<f64>>, yaw: f32, pitch: f32) {
         self.0.new_position = pos.into();
+
         self.0.yaw = yaw;
         self.0.pitch = pitch;
 
@@ -363,6 +374,215 @@ impl<'a> ClientMut<'a> {
         self.0.new_max_view_distance = dist.clamp(2, 32);
     }
 
+    pub(crate) fn handle_serverbound_packets(&mut self, entities: &Entities) {
+        self.0.events.clear();
+        for _ in 0..self.recv.len() {
+            self.handle_serverbound_packet(entities, self.recv.try_recv().unwrap());
+        }
+    }
+
+    fn handle_serverbound_packet(&mut self, entities: &Entities, pkt: C2sPlayPacket) {
+        let client = &mut self.0;
+
+        fn handle_movement_packet(
+            client: &mut Client,
+            _vehicle: bool,
+            new_position: Vec3<f64>,
+            new_yaw: f32,
+            new_pitch: f32,
+            new_on_ground: bool,
+        ) {
+            if client.pending_teleports == 0 {
+                // TODO: validate movement using swept AABB collision with the blocks.
+                // TODO: validate that the client is actually inside/outside the vehicle?
+                let event = Event::Movement {
+                    position: client.new_position,
+                    yaw: client.yaw,
+                    pitch: client.pitch,
+                    on_ground: client.on_ground,
+                };
+
+                client.new_position = new_position;
+                client.yaw = new_yaw;
+                client.pitch = new_pitch;
+                client.on_ground = new_on_ground;
+
+                client.events.push(event);
+            }
+        }
+
+        match pkt {
+            C2sPlayPacket::TeleportConfirm(p) => {
+                if client.pending_teleports == 0 {
+                    self.disconnect("Unexpected teleport confirmation");
+                    return;
+                }
+
+                let got = p.teleport_id.0 as u32;
+                let expected = client
+                    .teleport_id_counter
+                    .wrapping_sub(client.pending_teleports);
+
+                if got == expected {
+                    client.pending_teleports -= 1;
+                } else {
+                    self.disconnect(format!(
+                        "Unexpected teleport ID (expected {expected}, got {got})"
+                    ));
+                }
+            }
+            C2sPlayPacket::QueryBlockNbt(_) => {}
+            C2sPlayPacket::SetDifficulty(_) => {}
+            C2sPlayPacket::ChatCommand(_) => {}
+            C2sPlayPacket::ChatMessage(_) => {}
+            C2sPlayPacket::ChatPreview(_) => {}
+            C2sPlayPacket::ClientStatus(_) => {}
+            C2sPlayPacket::ClientSettings(p) => {
+                let old = client.settings.replace(Settings {
+                    locale: p.locale.0,
+                    view_distance: p.view_distance.0,
+                    chat_mode: p.chat_mode,
+                    chat_colors: p.chat_colors,
+                    main_hand: p.main_hand,
+                    displayed_skin_parts: p.displayed_skin_parts,
+                    allow_server_listings: p.allow_server_listings,
+                });
+
+                client.events.push(Event::SettingsChanged(old));
+            }
+            C2sPlayPacket::TabComplete(_) => {}
+            C2sPlayPacket::ClickWindowButton(_) => {}
+            C2sPlayPacket::CloseWindow(_) => {}
+            C2sPlayPacket::PluginMessage(_) => {}
+            C2sPlayPacket::EditBook(_) => {}
+            C2sPlayPacket::QueryEntityNbt(_) => {}
+            C2sPlayPacket::InteractEntity(p) => {
+                if let Some(id) = entities.get_with_network_id(p.entity_id.0) {
+                    // TODO: verify that the client has line of sight to the targeted entity and
+                    // that the distance is <=4 blocks.
+
+                    use crate::packets::play::c2s::InteractType;
+                    client.events.push(Event::InteractWithEntity {
+                        id,
+                        sneaking: p.sneaking,
+                        typ: match p.typ {
+                            InteractType::Interact(hand) => InteractWithEntity::Interact(hand),
+                            InteractType::Attack => InteractWithEntity::Attack,
+                            InteractType::InteractAt((target, hand)) => {
+                                InteractWithEntity::InteractAt { target, hand }
+                            }
+                        },
+                    });
+                }
+            }
+            C2sPlayPacket::GenerateStructure(_) => {}
+            C2sPlayPacket::KeepAlive(p) => {
+                let last_keepalive_id = client.last_keepalive_id;
+                if client.got_keepalive {
+                    self.disconnect("Unexpected keepalive");
+                } else if p.id != last_keepalive_id {
+                    self.disconnect(format!(
+                        "Keepalive ids don't match (expected {}, got {})",
+                        last_keepalive_id, p.id
+                    ));
+                } else {
+                    client.got_keepalive = true;
+                }
+            }
+            C2sPlayPacket::LockDifficulty(_) => {}
+            C2sPlayPacket::PlayerPosition(p) => handle_movement_packet(
+                client,
+                false,
+                p.position,
+                client.yaw,
+                client.pitch,
+                p.on_ground,
+            ),
+            C2sPlayPacket::PlayerPositionAndRotation(p) => {
+                handle_movement_packet(client, false, p.position, p.yaw, p.pitch, p.on_ground)
+            }
+            C2sPlayPacket::PlayerRotation(p) => handle_movement_packet(
+                client,
+                false,
+                client.new_position,
+                p.yaw,
+                p.pitch,
+                p.on_ground,
+            ),
+            C2sPlayPacket::PlayerMovement(p) => handle_movement_packet(
+                client,
+                false,
+                client.new_position,
+                client.yaw,
+                client.pitch,
+                p.on_ground,
+            ),
+            C2sPlayPacket::VehicleMove(p) => {
+                handle_movement_packet(client, true, p.position, p.yaw, p.pitch, client.on_ground);
+            }
+            C2sPlayPacket::SteerBoat(p) => {
+                client.events.push(Event::SteerBoat {
+                    left_paddle_turning: p.left_paddle_turning,
+                    right_paddle_turning: p.right_paddle_turning,
+                });
+            }
+            C2sPlayPacket::PickItem(_) => {}
+            C2sPlayPacket::CraftRecipeRequest(_) => {}
+            C2sPlayPacket::PlayerAbilities(_) => {}
+            C2sPlayPacket::PlayerDigging(p) => {
+                // TODO: verify dug block is within the correct distance from the client.
+                // TODO: verify that the broken block is allowed to be broken?
+
+                if p.sequence.0 != 0 {
+                    client.dug_blocks.push(p.sequence.0);
+                }
+
+                client.events.push(match p.status {
+                    DiggingStatus::StartedDigging => Event::Digging(Digging {
+                        status: event::DiggingStatus::Start,
+                        position: p.location,
+                        face: p.face,
+                    }),
+                    DiggingStatus::CancelledDigging => Event::Digging(Digging {
+                        status: event::DiggingStatus::Cancel,
+                        position: p.location,
+                        face: p.face,
+                    }),
+                    DiggingStatus::FinishedDigging => Event::Digging(Digging {
+                        status: event::DiggingStatus::Finish,
+                        position: p.location,
+                        face: p.face,
+                    }),
+                    DiggingStatus::DropItemStack => return,
+                    DiggingStatus::DropItem => return,
+                    DiggingStatus::ShootArrowOrFinishEating => return,
+                    DiggingStatus::SwapItemInHand => return,
+                });
+            }
+            C2sPlayPacket::EntityAction(_) => {}
+            C2sPlayPacket::SteerVehicle(_) => {}
+            C2sPlayPacket::Pong(_) => {}
+            C2sPlayPacket::SetRecipeBookState(_) => {}
+            C2sPlayPacket::SetDisplayedRecipe(_) => {}
+            C2sPlayPacket::NameItem(_) => {}
+            C2sPlayPacket::ResourcePackStatus(_) => {}
+            C2sPlayPacket::AdvancementTab(_) => {}
+            C2sPlayPacket::SelectTrade(_) => {}
+            C2sPlayPacket::SetBeaconEffect(_) => {}
+            C2sPlayPacket::HeldItemChange(_) => {}
+            C2sPlayPacket::UpdateCommandBlock(_) => {}
+            C2sPlayPacket::UpdateCommandBlockMinecart(_) => {}
+            C2sPlayPacket::CreativeInventoryAction(_) => {}
+            C2sPlayPacket::UpdateJigsawBlock(_) => {}
+            C2sPlayPacket::UpdateStructureBlock(_) => {}
+            C2sPlayPacket::UpdateSign(_) => {}
+            C2sPlayPacket::PlayerArmSwing(_) => {}
+            C2sPlayPacket::Spectate(_) => {}
+            C2sPlayPacket::PlayerBlockPlacement(_) => {}
+            C2sPlayPacket::UseItem(_) => {}
+        }
+    }
+
     pub(crate) fn update(
         &mut self,
         server: &Server,
@@ -371,18 +591,7 @@ impl<'a> ClientMut<'a> {
         chunks: &Chunks,
         meta: &WorldMeta,
     ) {
-        self.0.events.clear();
-
-        if self.is_disconnected() {
-            return;
-        }
-
-        for _ in 0..self.recv.len() {
-            self.handle_serverbound_packet(self.recv.try_recv().unwrap());
-        }
-
         // Mark the client as disconnected when appropriate.
-        // We do this check after handling serverbound packets so that none are lost.
         if self.recv.is_disconnected() || self.send.as_ref().map_or(true, |s| s.is_disconnected()) {
             self.0.send = None;
             return;
@@ -454,7 +663,7 @@ impl<'a> ClientMut<'a> {
         if current_tick % (server.tick_rate() * 8) == 0 {
             if self.0.got_keepalive {
                 let id = rand::random();
-                self.send_packet(KeepAliveClientbound { id });
+                self.send_packet(KeepAlive { id });
                 self.0.last_keepalive_id = id;
                 self.0.got_keepalive = false;
             } else {
@@ -464,16 +673,13 @@ impl<'a> ClientMut<'a> {
 
         let view_dist = self.view_distance();
 
-        let center = ChunkPos::new(
-            (self.new_position.x / 16.0) as i32,
-            (self.new_position.z / 16.0) as i32,
-        );
+        let center = ChunkPos::at(self.new_position.x, self.new_position.z);
 
         // Send the update view position packet if the client changes the chunk section
         // they're in.
         {
-            let old_section = self.0.old_position.map(|n| (n / 16.0) as i32);
-            let new_section = self.0.new_position.map(|n| (n / 16.0) as i32);
+            let old_section = self.0.old_position.map(|n| (n / 16.0).floor() as i32);
+            let new_section = self.0.new_position.map(|n| (n / 16.0).floor() as i32);
 
             if old_section != new_section {
                 self.send_packet(UpdateViewPosition {
@@ -521,6 +727,16 @@ impl<'a> ClientMut<'a> {
                     chunk.block_change_packets(pos, dimension.min_y, |pkt| self.send_packet(pkt));
                 }
             }
+        }
+
+        // Acknowledge broken blocks.
+        for seq in self.0.dug_blocks.drain(..) {
+            send_packet(
+                &mut self.0.send,
+                AcknowledgeBlockChanges {
+                    sequence: VarInt(seq),
+                },
+            )
         }
 
         // This is done after the chunks are loaded so that the "downloading terrain"
@@ -667,141 +883,6 @@ impl<'a> ClientMut<'a> {
 
         self.0.old_position = self.0.new_position;
     }
-
-    fn handle_serverbound_packet(&mut self, pkt: C2sPlayPacket) {
-        let client = &mut self.0;
-
-        fn handle_movement_packet(
-            client: &mut Client,
-            new_position: Vec3<f64>,
-            new_yaw: f32,
-            new_pitch: f32,
-            new_on_ground: bool,
-        ) {
-            if client.pending_teleports == 0 {
-                let event = Event::Movement {
-                    position: client.new_position,
-                    yaw: client.yaw,
-                    pitch: client.pitch,
-                    on_ground: client.on_ground,
-                };
-
-                client.new_position = new_position;
-                client.yaw = new_yaw;
-                client.pitch = new_pitch;
-                client.on_ground = new_on_ground;
-
-                client.events.push(event);
-            }
-        }
-
-        match pkt {
-            C2sPlayPacket::TeleportConfirm(p) => {
-                if client.pending_teleports == 0 {
-                    self.disconnect("Unexpected teleport confirmation");
-                    return;
-                }
-
-                let got = p.teleport_id.0 as u32;
-                let expected = client
-                    .teleport_id_counter
-                    .wrapping_sub(client.pending_teleports);
-
-                if got == expected {
-                    client.pending_teleports -= 1;
-                } else {
-                    self.disconnect(format!(
-                        "Unexpected teleport ID (expected {expected}, got {got})"
-                    ));
-                }
-            }
-            C2sPlayPacket::QueryBlockNbt(_) => {}
-            C2sPlayPacket::SetDifficulty(_) => {}
-            C2sPlayPacket::ChatCommand(_) => {}
-            C2sPlayPacket::ChatMessageServerbound(_) => {}
-            C2sPlayPacket::ChatPreview(_) => {}
-            C2sPlayPacket::ClientStatus(_) => {}
-            C2sPlayPacket::ClientSettings(p) => {
-                let old = client.settings.replace(Settings {
-                    locale: p.locale.0,
-                    view_distance: p.view_distance.0,
-                    chat_mode: p.chat_mode,
-                    chat_colors: p.chat_colors,
-                    main_hand: p.main_hand,
-                    displayed_skin_parts: p.displayed_skin_parts,
-                    allow_server_listings: p.allow_server_listings,
-                });
-
-                client.events.push(Event::SettingsChanged(old));
-            }
-            C2sPlayPacket::TabCompleteServerbound(_) => {}
-            C2sPlayPacket::ClickWindowButton(_) => {}
-            C2sPlayPacket::CloseWindow(_) => {}
-            C2sPlayPacket::PluginMessageServerbound(_) => {}
-            C2sPlayPacket::EditBook(_) => {}
-            C2sPlayPacket::QueryEntityNbt(_) => {}
-            C2sPlayPacket::InteractEntity(_) => {}
-            C2sPlayPacket::GenerateStructure(_) => {}
-            C2sPlayPacket::KeepAliveServerbound(p) => {
-                let last_keepalive_id = client.last_keepalive_id;
-                if client.got_keepalive {
-                    self.disconnect("Unexpected keepalive");
-                } else if p.id != last_keepalive_id {
-                    self.disconnect(format!(
-                        "Keepalive ids don't match (expected {}, got {})",
-                        last_keepalive_id, p.id
-                    ));
-                } else {
-                    client.got_keepalive = true;
-                }
-            }
-            C2sPlayPacket::LockDifficulty(_) => {}
-            C2sPlayPacket::PlayerPosition(p) => {
-                handle_movement_packet(client, p.position, client.yaw, client.pitch, p.on_ground)
-            }
-            C2sPlayPacket::PlayerPositionAndRotation(p) => {
-                handle_movement_packet(client, p.position, p.yaw, p.pitch, p.on_ground)
-            }
-            C2sPlayPacket::PlayerRotation(p) => {
-                handle_movement_packet(client, client.new_position, p.yaw, p.pitch, p.on_ground)
-            }
-
-            C2sPlayPacket::PlayerMovement(p) => handle_movement_packet(
-                client,
-                client.new_position,
-                client.yaw,
-                client.pitch,
-                p.on_ground,
-            ),
-            C2sPlayPacket::VehicleMoveServerbound(_) => {}
-            C2sPlayPacket::SteerBoat(_) => {}
-            C2sPlayPacket::PickItem(_) => {}
-            C2sPlayPacket::CraftRecipeRequest(_) => {}
-            C2sPlayPacket::PlayerAbilitiesServerbound(_) => {}
-            C2sPlayPacket::PlayerDigging(_) => {}
-            C2sPlayPacket::EntityAction(_) => {}
-            C2sPlayPacket::SteerVehicle(_) => {}
-            C2sPlayPacket::Pong(_) => {}
-            C2sPlayPacket::SetRecipeBookState(_) => {}
-            C2sPlayPacket::SetDisplayedRecipe(_) => {}
-            C2sPlayPacket::NameItem(_) => {}
-            C2sPlayPacket::ResourcePackStatus(_) => {}
-            C2sPlayPacket::AdvancementTab(_) => {}
-            C2sPlayPacket::SelectTrade(_) => {}
-            C2sPlayPacket::SetBeaconEffect(_) => {}
-            C2sPlayPacket::HeldItemChangeServerbound(_) => {}
-            C2sPlayPacket::UpdateCommandBlock(_) => {}
-            C2sPlayPacket::UpdateCommandBlockMinecart(_) => {}
-            C2sPlayPacket::CreativeInventoryAction(_) => {}
-            C2sPlayPacket::UpdateJigsawBlock(_) => {}
-            C2sPlayPacket::UpdateStructureBlock(_) => {}
-            C2sPlayPacket::UpdateSign(_) => {}
-            C2sPlayPacket::PlayerArmSwing(_) => {}
-            C2sPlayPacket::Spectate(_) => {}
-            C2sPlayPacket::PlayerBlockPlacement(_) => {}
-            C2sPlayPacket::UseItem(_) => {}
-        }
-    }
 }
 
 impl Drop for Client {
@@ -809,40 +890,6 @@ impl Drop for Client {
         log::trace!("Dropping client '{}'", self.username);
     }
 }
-
-#[derive(Debug)]
-pub enum Event {
-    /// Settings were changed. The value in this variant is the previous client
-    /// settings.
-    SettingsChanged(Option<Settings>),
-
-    /// The client has moved. The values in this variant are the previous
-    /// position and look.
-    Movement {
-        position: Vec3<f64>,
-        yaw: f32,
-        pitch: f32,
-        on_ground: bool,
-    },
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub struct Settings {
-    /// e.g. en_US
-    pub locale: String,
-    /// The client side render distance, in chunks.
-    ///
-    /// The value is always in `2..=32`.
-    pub view_distance: u8,
-    pub chat_mode: ChatMode,
-    /// `true` if the client has chat colors enabled, `false` otherwise.
-    pub chat_colors: bool,
-    pub main_hand: MainHand,
-    pub displayed_skin_parts: DisplayedSkinParts,
-    pub allow_server_listings: bool,
-}
-
-pub use crate::packets::play::c2s::{ChatMode, DisplayedSkinParts, MainHand};
 
 fn send_packet(send_opt: &mut Option<Sender<S2cPlayPacket>>, pkt: impl Into<S2cPlayPacket>) {
     if let Some(send) = send_opt {

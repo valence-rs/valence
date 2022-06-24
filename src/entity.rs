@@ -64,6 +64,12 @@ impl Entities {
         self.sm.get(entity.0)
     }
 
+    pub(crate) fn get_with_network_id(&self, network_id: i32) -> Option<EntityId> {
+        let version = NonZeroU32::new(network_id as u32)?;
+        let index = *self.network_id_to_entity.get(&version)?;
+        Some(EntityId(Key::new(index, version)))
+    }
+
     pub fn iter(&self) -> impl FusedIterator<Item = (EntityId, &Entity)> + Clone + '_ {
         self.sm.iter().map(|(k, v)| (EntityId(k), v))
     }

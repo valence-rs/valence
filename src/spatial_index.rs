@@ -47,6 +47,8 @@ impl SpatialIndex {
         })
     }
 
+    // TODO: accept predicate here. Might want to skip invisible entities, for
+    // instance.
     pub fn raycast(&self, origin: Vec3<f64>, direction: Vec3<f64>) -> Option<RaycastHit> {
         debug_assert!(
             direction.is_normalized(),

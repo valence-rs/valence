@@ -472,9 +472,9 @@ pub mod login {
 /// Packets and types used during the play state.
 pub mod play {
     pub mod s2c {
-        use crate::packets::login::{s2c::Property, c2s::SignatureData};
-
         use super::super::*;
+        use crate::packets::login::c2s::SignatureData;
+        use crate::packets::login::s2c::Property;
 
         def_struct! {
             SpawnEntity 0x00 {
@@ -536,7 +536,7 @@ pub mod play {
         }
 
         def_struct! {
-            AcknoledgeBlockChanges 0x05 {
+            AcknowledgeBlockChanges 0x05 {
                 sequence: VarInt,
             }
         }
@@ -749,7 +749,7 @@ pub mod play {
         }
 
         def_struct! {
-            KeepAliveClientbound 0x1e {
+            KeepAlive 0x1e {
                 id: i64,
             }
         }
@@ -995,7 +995,7 @@ pub mod play {
         }
 
         def_struct! {
-            ChatMessageClientbound 0x30 {
+            ChatMessage 0x30 {
                 message: Text,
                 typ: ChatMessageType,
                 sender: Uuid,
@@ -1081,7 +1081,7 @@ pub mod play {
         }
 
         def_struct! {
-            HeldItemChangeClientbound 0x47 {
+            HeldItemChange 0x47 {
                 slot: BoundedInt<u8, 0, 9>,
             }
         }
@@ -1203,7 +1203,7 @@ pub mod play {
             SpawnExperienceOrb,
             SpawnPlayer,
             EntityAnimation,
-            AcknoledgeBlockChanges,
+            AcknowledgeBlockChanges,
             BlockBreakAnimation,
             BlockEntityData,
             BlockAction,
@@ -1213,7 +1213,7 @@ pub mod play {
             EntityStatus,
             UnloadChunk,
             ChangeGameState,
-            KeepAliveClientbound,
+            KeepAlive,
             ChunkDataAndUpdateLight,
             JoinGame,
             EntityPosition,
@@ -1223,7 +1223,7 @@ pub mod play {
             DestroyEntities,
             EntityHeadLook,
             MultiBlockChange,
-            HeldItemChangeClientbound,
+            HeldItemChange,
             UpdateViewPosition,
             UpdateViewDistance,
             SpawnPosition,
@@ -1268,9 +1268,9 @@ pub mod play {
         }
 
         def_struct! {
-            ChatMessageServerbound 0x04 {
+            ChatMessage 0x04 {
                 message: BoundedString<0, 256>
-                // TODO: 
+                // TODO:
             }
         }
 
@@ -1337,7 +1337,7 @@ pub mod play {
         }
 
         def_struct! {
-            TabCompleteServerbound 0x08 {
+            TabComplete 0x08 {
                 transaction_id: VarInt,
                 /// Text behind the cursor without the '/'.
                 text: BoundedString<0, 32500>
@@ -1358,7 +1358,7 @@ pub mod play {
         }
 
         def_struct! {
-            PluginMessageServerbound 0x0c {
+            PluginMessage 0x0c {
                 channel: Ident,
                 data: RawBytes,
             }
@@ -1391,18 +1391,12 @@ pub mod play {
             InteractType: VarInt {
                 Interact: Hand = 0,
                 Attack = 1,
-                InteractAt: InteractAtData = 2
-            }
-        }
-
-        def_struct! {
-            InteractAtData {
-                target: Vec3<f64>,
-                hand: Hand,
+                InteractAt: (Vec3<f32>, Hand) = 2
             }
         }
 
         def_enum! {
+            #[derive(Copy, PartialEq, Eq)]
             Hand: VarInt {
                 Main = 0,
                 Off = 1,
@@ -1418,7 +1412,7 @@ pub mod play {
         }
 
         def_struct! {
-            KeepAliveServerbound 0x11 {
+            KeepAlive 0x11 {
                 id: i64,
             }
         }
@@ -1465,7 +1459,7 @@ pub mod play {
         }
 
         def_struct! {
-            VehicleMoveServerbound 0x17 {
+            VehicleMove 0x17 {
                 /// Absolute position
                 position: Vec3<f64>,
                 /// Degrees
@@ -1497,7 +1491,7 @@ pub mod play {
         }
 
         def_enum! {
-            PlayerAbilitiesServerbound 0x1b: i8 {
+            PlayerAbilities 0x1b: i8 {
                 NotFlying = 0,
                 Flying = 0b10,
             }
@@ -1525,6 +1519,7 @@ pub mod play {
         }
 
         def_enum! {
+            #[derive(Copy, PartialEq, Eq)]
             BlockFace: i8 {
                 /// -Y
                 Bottom = 0,
@@ -1644,7 +1639,7 @@ pub mod play {
         }
 
         def_struct! {
-            HeldItemChangeServerbound 0x27 {
+            HeldItemChange 0x27 {
                 slot: BoundedInt<i16, 0, 8>,
             }
         }
@@ -1784,7 +1779,7 @@ pub mod play {
                 hand: Hand,
                 location: BlockPos,
                 face: BlockFace,
-                cursor_pos: Vec3<f64>,
+                cursor_pos: Vec3<f32>,
                 head_inside_block: bool,
                 sequence: VarInt,
             }
@@ -1852,29 +1847,29 @@ pub mod play {
             QueryBlockNbt,
             SetDifficulty,
             ChatCommand,
-            ChatMessageServerbound,
+            ChatMessage,
             ChatPreview,
             ClientStatus,
             ClientSettings,
-            TabCompleteServerbound,
+            TabComplete,
             ClickWindowButton,
             CloseWindow,
-            PluginMessageServerbound,
+            PluginMessage,
             EditBook,
             QueryEntityNbt,
             InteractEntity,
             GenerateStructure,
-            KeepAliveServerbound,
+            KeepAlive,
             LockDifficulty,
             PlayerPosition,
             PlayerPositionAndRotation,
             PlayerRotation,
             PlayerMovement,
-            VehicleMoveServerbound,
+            VehicleMove,
             SteerBoat,
             PickItem,
             CraftRecipeRequest,
-            PlayerAbilitiesServerbound,
+            PlayerAbilities,
             PlayerDigging,
             EntityAction,
             SteerVehicle,
@@ -1886,7 +1881,7 @@ pub mod play {
             AdvancementTab,
             SelectTrade,
             SetBeaconEffect,
-            HeldItemChangeServerbound,
+            HeldItemChange,
             UpdateCommandBlock,
             UpdateCommandBlockMinecart,
             CreativeInventoryAction,

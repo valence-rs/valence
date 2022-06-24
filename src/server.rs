@@ -360,6 +360,13 @@ fn do_update_loop(server: Server, mut worlds: WorldsMut) -> ShutdownResult {
             join_player(&server, worlds.reborrow(), msg);
         }
 
+        // Get serverbound packets first so they are not dealt with a tick late.
+        worlds.par_iter_mut().for_each(|(_, mut world)| {
+            world.clients.par_iter_mut().for_each(|(_, mut client)| {
+                client.handle_serverbound_packets(&world.entities);
+            });
+        });
+
         server.config().update(&server, worlds.reborrow());
 
         worlds.par_iter_mut().for_each(|(_, mut world)| {

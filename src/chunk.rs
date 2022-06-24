@@ -55,7 +55,7 @@ impl Chunks {
 
     pub fn get_block_state(&self, pos: impl Into<BlockPos>) -> Option<BlockState> {
         let pos = pos.into();
-        let chunk_pos = ChunkPos::new(pos.x / 16, pos.z / 16);
+        let chunk_pos = ChunkPos::from(pos);
 
         let chunk = self.get(chunk_pos)?;
 
@@ -78,6 +78,10 @@ impl Chunks {
 impl<'a> ChunksMut<'a> {
     pub(crate) fn new(chunks: &'a mut Chunks) -> Self {
         Self(chunks)
+    }
+
+    pub fn reborrow(&mut self) -> ChunksMut {
+        ChunksMut(self.0)
     }
 
     pub fn create(&mut self, pos: impl Into<ChunkPos>) -> bool {
@@ -110,7 +114,7 @@ impl<'a> ChunksMut<'a> {
 
     pub fn set_block_state(&mut self, pos: impl Into<BlockPos>, block: BlockState) -> bool {
         let pos = pos.into();
-        let chunk_pos = ChunkPos::new(pos.x / 16, pos.z / 16);
+        let chunk_pos = ChunkPos::from(pos);
 
         if let Some(chunk) = self.0.chunks.get_mut(&chunk_pos) {
             let min_y = self.0.server.dimension(self.0.dimension).min_y;
@@ -269,7 +273,7 @@ impl Chunk {
 
                 let chunk_section_position = (pos.x as i64) << 42
                     | (pos.z as i64 & 0x3fffff) << 20
-                    | (sect_y as i64) & 0xfffff;
+                    | (sect_y as i64 + min_y.div_euclid(16) as i64) & 0xfffff;
 
                 packet(BlockChangePacket::Multi(MultiBlockChange {
                     chunk_section_position,
@@ -401,7 +405,7 @@ impl ChunkPos {
     }
 
     pub fn at(x: f64, z: f64) -> Self {
-        Self::new((x / 16.0) as i32, (z / 16.0) as i32)
+        Self::new((x / 16.0).floor() as i32, (z / 16.0).floor() as i32)
     }
 }
 
@@ -426,6 +430,12 @@ impl From<[i32; 2]> for ChunkPos {
 impl Into<[i32; 2]> for ChunkPos {
     fn into(self) -> [i32; 2] {
         [self.x, self.z]
+    }
+}
+
+impl From<BlockPos> for ChunkPos {
+    fn from(pos: BlockPos) -> Self {
+        Self::new(pos.x.div_euclid(16), pos.z.div_euclid(16))
     }
 }
 

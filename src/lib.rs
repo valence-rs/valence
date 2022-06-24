@@ -32,6 +32,7 @@ pub mod world;
 
 pub use async_trait::async_trait;
 pub use biome::{Biome, BiomeId};
+pub use block::BlockState;
 pub use block_pos::BlockPos;
 pub use chunk::{Chunk, ChunkPos, Chunks, ChunksMut};
 pub use client::{Client, ClientMut, Clients, ClientsMut};
