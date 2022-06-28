@@ -1132,6 +1132,13 @@ pub mod play {
         }
 
         def_struct! {
+            PlayerListHeaderFooter 0x60 {
+                header: Text,
+                footer: Text,
+            }
+        }
+
+        def_struct! {
             EntityTeleport 0x63 {
                 entity_id: VarInt,
                 position: Vec3<f64>,
@@ -1219,6 +1226,8 @@ pub mod play {
             EntityPosition,
             EntityPositionAndRotation,
             EntityRotation,
+            ChatMessage,
+            PlayerInfo,
             PlayerPositionAndLook,
             DestroyEntities,
             EntityHeadLook,
@@ -1230,6 +1239,7 @@ pub mod play {
             EntityMetadata,
             EntityVelocity,
             TimeUpdate,
+            PlayerListHeaderFooter,
             EntityTeleport,
         }
     }

@@ -394,7 +394,7 @@ impl Entity {
             EntityMeta::Giant(_) => [3.6, 12.0, 3.6],
             EntityMeta::GlowItemFrame(_) => todo!("account for rotation"),
             EntityMeta::GlowSquid(_) => [0.8, 0.8, 0.8],
-            EntityMeta::Goat(e) => [1.3, 0.9, 1.3], // TODO: baby size?
+            EntityMeta::Goat(_) => [1.3, 0.9, 1.3], // TODO: baby size?
             EntityMeta::Guardian(_) => [0.85, 0.85, 0.85],
             EntityMeta::Hoglin(_) => [1.39648, 1.4, 1.39648], // TODO: baby size?
             EntityMeta::Horse(_) => [1.39648, 1.6, 1.39648],  // TODO: baby size?

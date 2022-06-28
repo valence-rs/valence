@@ -630,13 +630,20 @@ impl<'a> ClientMut<'a> {
                     .map(|(id, pos)| (ident!("{LIBRARY_NAMESPACE}:dimension_{}", id.0), pos)),
             });
 
+            meta.player_list()
+                .initial_packets(|pkt| self.send_packet(pkt));
+
             self.teleport(self.position(), self.yaw(), self.pitch());
-        } else if self.0.old_game_mode != self.0.new_game_mode {
-            self.0.old_game_mode = self.0.new_game_mode;
-            self.send_packet(ChangeGameState {
-                reason: ChangeGameStateReason::ChangeGameMode,
-                value: self.0.new_game_mode as i32 as f32,
-            });
+        } else {
+            if self.0.old_game_mode != self.0.new_game_mode {
+                self.0.old_game_mode = self.0.new_game_mode;
+                self.send_packet(ChangeGameState {
+                    reason: ChangeGameStateReason::ChangeGameMode,
+                    value: self.0.new_game_mode as i32 as f32,
+                });
+            }
+
+            meta.player_list().packets(|pkt| self.send_packet(pkt));
         }
 
         // Update the players spawn position (compass position)

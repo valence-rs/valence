@@ -54,7 +54,7 @@ impl Config for Game {
 
     fn online_mode(&self) -> bool {
         // You'll want this to be true on real servers.
-        false
+        true
     }
 
     async fn server_list_ping(&self, _server: &Server, _remote_addr: SocketAddr) -> ServerListPing {
@@ -104,6 +104,16 @@ impl Config for Game {
                 client.set_game_mode(GameMode::Creative);
                 client.set_max_view_distance(32);
                 client.teleport([0.0, 200.0, 0.0], 0.0, 0.0);
+
+                world.meta.player_list_mut().add_player(
+                    client.uuid(),
+                    client.username().to_string(),
+                    None,
+                    None,
+                    GameMode::Creative,
+                    0,
+                    None,
+                );
             }
 
             let dist = client.view_distance();

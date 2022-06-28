@@ -36,6 +36,7 @@ use crate::packets::play::c2s::C2sPlayPacket;
 use crate::packets::play::s2c::S2cPlayPacket;
 use crate::packets::status::c2s::{Ping, Request};
 use crate::packets::status::s2c::{Pong, Response};
+use crate::player_list::PlayerTextures;
 use crate::protocol::{BoundedArray, BoundedString};
 use crate::util::valid_username;
 use crate::var_int::VarInt;
@@ -396,6 +397,8 @@ fn do_update_loop(server: Server, mut worlds: WorldsMut) -> ShutdownResult {
             world.chunks.par_iter_mut().for_each(|(_, mut chunk)| {
                 chunk.apply_modifications();
             });
+
+            world.meta.update();
         });
 
         // Sleep for the remainder of the tick.
@@ -585,7 +588,7 @@ async fn handle_login(
 
     ensure!(valid_username(&username), "invalid username '{username}'");
 
-    let (uuid, _skin_blob) = if server.0.online_mode {
+    let (uuid, textures) = if server.0.online_mode {
         let my_verify_token: [u8; 16] = rand::random();
 
         c.0.write_packet(&EncryptionRequest {
@@ -666,12 +669,12 @@ async fn handle_login(
 
         let uuid = Uuid::parse_str(&data.id).context("failed to parse player's UUID")?;
 
-        let skin_blob = match data.properties.iter().find(|p| p.name == "textures") {
-            Some(p) => base64::decode(&p.value).context("failed to parse skin blob")?,
+        let textures = match data.properties.into_iter().find(|p| p.name == "textures") {
+            Some(p) => decode_textures(p.value).context("failed to decode skin blob")?,
             None => bail!("failed to find skin blob in auth response"),
         };
 
-        (uuid, Some(skin_blob))
+        (uuid, Some(textures))
     } else {
         // Derive the player's UUID from a hash of their username.
         let uuid = Uuid::from_slice(&Sha256::digest(&username)[..16]).unwrap();
@@ -708,6 +711,17 @@ async fn handle_login(
     .await?;
 
     Ok(Some(npd))
+}
+
+fn decode_textures(encoded: String) -> anyhow::Result<PlayerTextures> {
+    #[derive(Debug, Deserialize)]
+    struct Textures {
+        textures: PlayerTextures,
+    }
+
+    let bytes = base64::decode(encoded)?;
+    let textures: Textures = serde_json::from_slice(&bytes)?;
+    Ok(textures.textures)
 }
 
 async fn handle_play(server: &Server, c: Codec, ncd: NewClientData) -> anyhow::Result<()> {

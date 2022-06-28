@@ -3,6 +3,7 @@ use std::ops::Deref;
 
 use rayon::iter::ParallelIterator;
 
+use crate::player_list::{PlayerList, PlayerListMut};
 use crate::slotmap::{Key, SlotMap};
 use crate::{
     Chunks, ChunksMut, Clients, ClientsMut, DimensionId, Entities, EntitiesMut, Server,
@@ -66,6 +67,7 @@ impl<'a> WorldsMut<'a> {
             meta: WorldMeta {
                 dimension: dim,
                 is_flat: false,
+                player_list: PlayerList::new(),
             },
         });
 
@@ -183,6 +185,7 @@ impl<'a> WorldMut<'a> {
 pub struct WorldMeta {
     dimension: DimensionId,
     is_flat: bool,
+    player_list: PlayerList,
     // TODO: time, weather
 }
 
@@ -193,6 +196,10 @@ impl WorldMeta {
 
     pub fn is_flat(&self) -> bool {
         self.is_flat
+    }
+
+    pub fn player_list(&self) -> &PlayerList {
+        &self.player_list
     }
 }
 
@@ -209,5 +216,13 @@ impl<'a> Deref for WorldMetaMut<'a> {
 impl<'a> WorldMetaMut<'a> {
     pub fn set_flat(&mut self, flat: bool) {
         self.0.is_flat = flat;
+    }
+
+    pub fn player_list_mut(&mut self) -> PlayerListMut {
+        PlayerListMut(&mut self.0.player_list)
+    }
+
+    pub(crate) fn update(&mut self) {
+        self.player_list_mut().update();
     }
 }
