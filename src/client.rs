@@ -836,6 +836,8 @@ impl Client {
                     metadata: RawBytes(data),
                 });
             }
+
+            self.player_meta.clear_modifications();
         }
 
         // Spawn new entities within the view distance.
