@@ -9,8 +9,8 @@ use valence::config::{Config, ServerListPing};
 use valence::text::Color;
 use valence::util::to_yaw_and_pitch;
 use valence::{
-    async_trait, ClientMut, DimensionId, EntityId, EntityType, Server, ShutdownResult, Text,
-    TextFormat, WorldId, WorldsMut,
+    async_trait, DimensionId, EntityId, EntityType, Server, ShutdownResult, Text,
+    TextFormat, WorldId, Worlds, Client,
 };
 use vek::{Mat3, Vec3};
 
@@ -57,8 +57,8 @@ impl Config for Game {
     fn join(
         &self,
         _server: &Server,
-        _client: ClientMut,
-        worlds: WorldsMut,
+        _client: &mut Client,
+        worlds: &mut Worlds,
     ) -> Result<WorldId, Text> {
         if let Ok(_) = self
             .player_count
@@ -72,8 +72,8 @@ impl Config for Game {
         }
     }
 
-    fn init(&self, _server: &Server, mut worlds: WorldsMut) {
-        let mut world = worlds.create(DimensionId::default()).1;
+    fn init(&self, _server: &Server, worlds: &mut Worlds) {
+        let world = worlds.create(DimensionId::default()).1;
         world.meta.set_flat(true);
 
         let size = 5;
@@ -84,16 +84,16 @@ impl Config for Game {
         }
 
         self.cows.lock().unwrap().extend((0..200).map(|_| {
-            let (id, mut e) = world.entities.create();
+            let (id, e) = world.entities.create();
             e.set_type(EntityType::Cow);
             id
         }));
     }
 
-    fn update(&self, server: &Server, mut worlds: WorldsMut) {
-        let mut world = worlds.iter_mut().next().unwrap().1;
+    fn update(&self, server: &Server, worlds: &mut Worlds) {
+        let world = worlds.iter_mut().next().unwrap().1;
 
-        world.clients.retain(|_, mut client| {
+        world.clients.retain(|_, client| {
             if client.created_tick() == server.current_tick() {
                 client.set_game_mode(GameMode::Creative);
                 client.teleport([0.0, 200.0, 0.0], 0.0, 0.0);
@@ -136,7 +136,7 @@ impl Config for Game {
             .unwrap_or_default();
 
         for (cow_id, p) in cows.iter().cloned().zip(fibonacci_spiral(cow_count)) {
-            let mut cow = world.entities.get_mut(cow_id).expect("missing cow");
+            let cow = world.entities.get_mut(cow_id).expect("missing cow");
             let rotated = p * rot;
             let transformed = rotated * radius + [0.0, 100.0, 0.0];
 

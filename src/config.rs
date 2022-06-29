@@ -5,8 +5,7 @@ use std::panic::{RefUnwindSafe, UnwindSafe};
 use async_trait::async_trait;
 use tokio::runtime::Handle as TokioHandle;
 
-use crate::client::ClientMut;
-use crate::{Biome, Dimension, NewClientData, Server, Text, Ticks, WorldId, WorldsMut};
+use crate::{Biome, Client, Dimension, NewClientData, Server, Text, Ticks, WorldId, Worlds};
 
 /// A trait containing callbacks which are invoked by the running Minecraft
 /// server.
@@ -182,7 +181,12 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// If the returned [`WorldId`] is invalid, then the client is disconnected.
     ///
     /// This method is called from within a tokio runtime.
-    fn join(&self, server: &Server, client: ClientMut, worlds: WorldsMut) -> Result<WorldId, Text>;
+    fn join(
+        &self,
+        server: &Server,
+        client: &mut Client,
+        worlds: &mut Worlds,
+    ) -> Result<WorldId, Text>;
 
     /// Called after the server is created, but prior to accepting connections
     /// and entering the update loop.
@@ -191,7 +195,7 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// no connections to the server will be made until this function returns.
     ///
     /// This method is called from within a tokio runtime.
-    fn init(&self, server: &Server, worlds: WorldsMut) {}
+    fn init(&self, server: &Server, worlds: &mut Worlds) {}
 
     /// Called once at the beginning of every server update (also known as
     /// a "tick").
@@ -203,7 +207,7 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     ///
     /// # Default Implementation
     /// The default implementation does nothing.
-    fn update(&self, server: &Server, worlds: WorldsMut);
+    fn update(&self, server: &Server, worlds: &mut Worlds);
 }
 
 /// The result of the [`server_list_ping`](Handler::server_list_ping) callback.

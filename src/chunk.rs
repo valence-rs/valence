@@ -3,7 +3,6 @@
 use std::collections::HashMap;
 use std::io::Write;
 use std::iter::FusedIterator;
-use std::ops::Deref;
 
 use bitvec::vec::BitVec;
 use num::Integer;
@@ -33,12 +32,26 @@ impl Chunks {
         }
     }
 
+    pub fn create(&mut self, pos: impl Into<ChunkPos>) -> bool {
+        let section_count = (self.server.dimension(self.dimension).height / 16) as u32;
+        let chunk = Chunk::new(section_count, self.server.current_tick());
+        self.chunks.insert(pos.into(), chunk).is_none()
+    }
+
+    pub fn delete(&mut self, pos: ChunkPos) -> bool {
+        self.chunks.remove(&pos).is_some()
+    }
+
     pub fn count(&self) -> usize {
         self.chunks.len()
     }
 
     pub fn get(&self, pos: impl Into<ChunkPos>) -> Option<&Chunk> {
         self.chunks.get(&pos.into())
+    }
+
+    pub fn get_mut(&mut self, pos: impl Into<ChunkPos>) -> Option<&mut Chunk> {
+        self.chunks.get_mut(&pos.into())
     }
 
     pub fn clear(&mut self) {
@@ -49,8 +62,16 @@ impl Chunks {
         self.chunks.iter().map(|(&pos, chunk)| (pos, chunk))
     }
 
+    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (ChunkPos, &mut Chunk)> + '_ {
+        self.chunks.iter_mut().map(|(&pos, chunk)| (pos, chunk))
+    }
+
     pub fn par_iter(&self) -> impl ParallelIterator<Item = (ChunkPos, &Chunk)> + Clone + '_ {
         self.chunks.par_iter().map(|(&pos, chunk)| (pos, chunk))
+    }
+
+    pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (ChunkPos, &mut Chunk)> + '_ {
+        self.chunks.par_iter_mut().map(|(&pos, chunk)| (pos, chunk))
     }
 
     pub fn get_block_state(&self, pos: impl Into<BlockPos>) -> Option<BlockState> {
@@ -73,55 +94,17 @@ impl Chunks {
             None
         }
     }
-}
-
-impl<'a> ChunksMut<'a> {
-    pub(crate) fn new(chunks: &'a mut Chunks) -> Self {
-        Self(chunks)
-    }
-
-    pub fn reborrow(&mut self) -> ChunksMut {
-        ChunksMut(self.0)
-    }
-
-    pub fn create(&mut self, pos: impl Into<ChunkPos>) -> bool {
-        let section_count = (self.server.dimension(self.dimension).height / 16) as u32;
-        let chunk = Chunk::new(section_count, self.server.current_tick());
-        self.0.chunks.insert(pos.into(), chunk).is_none()
-    }
-
-    pub fn delete(&mut self, pos: ChunkPos) -> bool {
-        self.0.chunks.remove(&pos).is_some()
-    }
-
-    pub fn get_mut(&mut self, pos: impl Into<ChunkPos>) -> Option<ChunkMut> {
-        self.0.chunks.get_mut(&pos.into()).map(ChunkMut)
-    }
-
-    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (ChunkPos, ChunkMut)> + '_ {
-        self.0
-            .chunks
-            .iter_mut()
-            .map(|(&pos, chunk)| (pos, ChunkMut(chunk)))
-    }
-
-    pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (ChunkPos, ChunkMut)> + '_ {
-        self.0
-            .chunks
-            .par_iter_mut()
-            .map(|(&pos, chunk)| (pos, ChunkMut(chunk)))
-    }
 
     pub fn set_block_state(&mut self, pos: impl Into<BlockPos>, block: BlockState) -> bool {
         let pos = pos.into();
         let chunk_pos = ChunkPos::from(pos);
 
-        if let Some(chunk) = self.0.chunks.get_mut(&chunk_pos) {
-            let min_y = self.0.server.dimension(self.0.dimension).min_y;
+        if let Some(chunk) = self.chunks.get_mut(&chunk_pos) {
+            let min_y = self.server.dimension(self.dimension).min_y;
 
             if let Some(y) = pos.y.checked_sub(min_y).and_then(|y| y.try_into().ok()) {
                 if y < chunk.height() {
-                    ChunkMut(chunk).set_block_state(
+                    chunk.set_block_state(
                         pos.x.rem_euclid(16) as usize,
                         y,
                         pos.z.rem_euclid(16) as usize,
@@ -133,16 +116,6 @@ impl<'a> ChunksMut<'a> {
         }
 
         false
-    }
-}
-
-pub struct ChunksMut<'a>(&'a mut Chunks);
-
-impl<'a> Deref for ChunksMut<'a> {
-    type Target = Chunks;
-
-    fn deref(&self) -> &Self::Target {
-        self.0
     }
 }
 
@@ -169,7 +142,7 @@ impl Chunk {
             created_tick: current_tick,
         };
 
-        ChunkMut(&mut chunk).apply_modifications();
+        chunk.apply_modifications();
         chunk
     }
 
@@ -191,12 +164,42 @@ impl Chunk {
         }
     }
 
+    pub fn set_block_state(&mut self, x: usize, y: usize, z: usize, block: BlockState) {
+        assert!(
+            x < 16 && y < self.height() && z < 16,
+            "the chunk block coordinates must be within bounds"
+        );
+
+        let sect = &mut self.sections[y / 16];
+        let idx = x + z * 16 + y % 16 * 16 * 16;
+
+        if block.to_raw() != sect.blocks[idx] & BLOCK_STATE_MASK {
+            if sect.blocks[idx] & !BLOCK_STATE_MASK == 0 {
+                sect.modified_count += 1;
+            }
+            sect.blocks[idx] = block.to_raw() | !BLOCK_STATE_MASK;
+
+            // TODO: if the block type was modified and the old block type
+            // could be a block entity, then the block entity at this
+            // position must be cleared.
+        }
+    }
+
     pub fn get_biome(&self, x: usize, y: usize, z: usize) -> BiomeId {
         if x < 4 && y < self.height() / 4 && z < 4 {
             self.sections[y / 4].biomes[x + z * 4 + y % 4 * 4 * 4]
         } else {
             BiomeId::default()
         }
+    }
+
+    pub fn set_biome(&mut self, x: usize, y: usize, z: usize, b: BiomeId) {
+        assert!(
+            x < 4 && y < self.height() / 4 && z < 4,
+            "the chunk biome coordinates must be within bounds"
+        );
+
+        self.sections[y / 4].biomes[x + z * 4 + y % 4 * 4 * 4] = b;
     }
 
     /// Gets the chunk data packet for this chunk with the given position. This
@@ -283,53 +286,11 @@ impl Chunk {
             }
         }
     }
-}
-
-pub struct ChunkMut<'a>(&'a mut Chunk);
-
-impl<'a> Deref for ChunkMut<'a> {
-    type Target = Chunk;
-
-    fn deref(&self) -> &Self::Target {
-        self.0
-    }
-}
-
-impl<'a> ChunkMut<'a> {
-    pub fn set_block_state(&mut self, x: usize, y: usize, z: usize, block: BlockState) {
-        assert!(
-            x < 16 && y < self.height() && z < 16,
-            "the chunk block coordinates must be within bounds"
-        );
-
-        let sect = &mut self.0.sections[y / 16];
-        let idx = x + z * 16 + y % 16 * 16 * 16;
-
-        if block.to_raw() != sect.blocks[idx] & BLOCK_STATE_MASK {
-            if sect.blocks[idx] & !BLOCK_STATE_MASK == 0 {
-                sect.modified_count += 1;
-            }
-            sect.blocks[idx] = block.to_raw() | !BLOCK_STATE_MASK;
-
-            // TODO: if the block type was modified and the old block type
-            // could be a block entity, then the block entity at this
-            // position must be cleared.
-        }
-    }
-
-    pub fn set_biome(&mut self, x: usize, y: usize, z: usize, b: BiomeId) {
-        assert!(
-            x < 4 && y < self.height() / 4 && z < 4,
-            "the chunk biome coordinates must be within bounds"
-        );
-
-        self.0.sections[y / 4].biomes[x + z * 4 + y % 4 * 4 * 4] = b;
-    }
 
     pub(crate) fn apply_modifications(&mut self) {
         let mut any_modified = false;
 
-        for sect in self.0.sections.iter_mut() {
+        for sect in self.sections.iter_mut() {
             if sect.modified_count > 0 {
                 sect.modified_count = 0;
                 any_modified = true;
@@ -370,7 +331,7 @@ impl<'a> ChunkMut<'a> {
         }
 
         if any_modified {
-            build_heightmap(&self.0.sections, &mut self.0.heightmap);
+            build_heightmap(&self.sections, &mut self.heightmap);
         }
     }
 }
@@ -530,7 +491,6 @@ mod tests {
     #[test]
     fn set_get() {
         let mut chunk = Chunk::new(16, 0);
-        let mut chunk = ChunkMut(&mut chunk);
 
         chunk.set_block_state(1, 2, 3, BlockState::CAKE);
         assert_eq!(chunk.get_block_state(1, 2, 3), BlockState::CAKE);
@@ -543,7 +503,6 @@ mod tests {
     #[should_panic]
     fn block_state_oob() {
         let mut chunk = Chunk::new(16, 0);
-        let mut chunk = ChunkMut(&mut chunk);
 
         chunk.set_block_state(16, 0, 0, BlockState::CAKE);
     }
@@ -552,7 +511,6 @@ mod tests {
     #[should_panic]
     fn biome_oob() {
         let mut chunk = Chunk::new(16, 0);
-        let mut chunk = ChunkMut(&mut chunk);
 
         chunk.set_biome(4, 0, 0, BiomeId(0));
     }

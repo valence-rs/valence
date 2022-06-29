@@ -11,8 +11,8 @@ use valence::config::{Config, ServerListPing};
 use valence::text::Color;
 use valence::util::chunks_in_view_distance;
 use valence::{
-    async_trait, ChunkPos, ClientMut, DimensionId, Server, ShutdownResult, Text, TextFormat,
-    WorldId, WorldsMut,
+    async_trait, ChunkPos, Client, DimensionId, Server, ShutdownResult, Text, TextFormat, WorldId,
+    Worlds,
 };
 use vek::Lerp;
 
@@ -69,8 +69,8 @@ impl Config for Game {
     fn join(
         &self,
         _server: &Server,
-        _client: ClientMut,
-        worlds: WorldsMut,
+        _client: &mut Client,
+        worlds: &mut Worlds,
     ) -> Result<WorldId, Text> {
         if let Ok(_) = self
             .player_count
@@ -84,17 +84,17 @@ impl Config for Game {
         }
     }
 
-    fn init(&self, _server: &Server, mut worlds: WorldsMut) {
-        let (_, mut world) = worlds.create(DimensionId::default());
+    fn init(&self, _server: &Server, worlds: &mut Worlds) {
+        let (_, world) = worlds.create(DimensionId::default());
         world.meta.set_flat(true);
     }
 
-    fn update(&self, server: &Server, mut worlds: WorldsMut) {
-        let mut world = worlds.iter_mut().next().unwrap().1;
+    fn update(&self, server: &Server, worlds: &mut Worlds) {
+        let world = worlds.iter_mut().next().unwrap().1;
 
         let mut chunks_to_unload = HashSet::<_>::from_iter(world.chunks.iter().map(|t| t.0));
 
-        world.clients.retain(|_, mut client| {
+        world.clients.retain(|_, client| {
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
                 return false;
@@ -132,7 +132,7 @@ impl Config for Game {
             world.chunks.delete(pos);
         }
 
-        world.chunks.par_iter_mut().for_each(|(pos, mut chunk)| {
+        world.chunks.par_iter_mut().for_each(|(pos, chunk)| {
             if chunk.created_tick() == server.current_tick() {
                 for z in 0..16 {
                     for x in 0..16 {

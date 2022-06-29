@@ -5,10 +5,10 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::iter::FusedIterator;
 use std::num::NonZeroU32;
-use std::ops::Deref;
 
 use bitfield_struct::bitfield;
 use rayon::iter::ParallelIterator;
+pub use types::{EntityMeta, EntityType};
 use uuid::Uuid;
 use vek::{Aabb, Vec3};
 
@@ -27,16 +27,6 @@ pub struct Entities {
     network_id_to_entity: HashMap<NonZeroU32, u32>,
 }
 
-pub struct EntitiesMut<'a>(&'a mut Entities);
-
-impl<'a> Deref for EntitiesMut<'a> {
-    type Target = Entities;
-
-    fn deref(&self) -> &Self::Target {
-        self.0
-    }
-}
-
 impl Entities {
     pub(crate) fn new() -> Self {
         Self {
@@ -46,8 +36,80 @@ impl Entities {
         }
     }
 
+    /// Spawns a new entity with the default data. The new entity's [`EntityId`]
+    /// is returned.
+    ///
+    /// To actually see the new entity, set its position to somewhere nearby and
+    /// [set its type](EntityData::set_type) to something visible.
+    pub fn create(&mut self) -> (EntityId, &mut Entity) {
+        self.create_with_uuid(Uuid::from_bytes(rand::random()))
+            .expect("UUID collision")
+    }
+
+    /// Like [`create`](Entities::create), but requires specifying the new
+    /// entity's UUID.
+    ///
+    /// The provided UUID must not conflict with an existing entity UUID in this
+    /// world. If it does, `None` is returned and the entity is not spawned.
+    pub fn create_with_uuid(&mut self, uuid: Uuid) -> Option<(EntityId, &mut Entity)> {
+        match self.uuid_to_entity.entry(uuid) {
+            Entry::Occupied(_) => None,
+            Entry::Vacant(ve) => {
+                let (k, e) = self.sm.insert(Entity {
+                    flags: EntityFlags(0),
+                    meta: EntityMeta::new(EntityType::Marker),
+                    new_position: Vec3::default(),
+                    old_position: Vec3::default(),
+                    yaw: 0.0,
+                    pitch: 0.0,
+                    head_yaw: 0.0,
+                    velocity: Vec3::default(),
+                    uuid,
+                });
+
+                ve.insert(EntityId(k));
+
+                Some((EntityId(k), e))
+            }
+        }
+    }
+
+    pub fn delete(&mut self, entity: EntityId) -> bool {
+        if let Some(e) = self.sm.remove(entity.0) {
+            self.uuid_to_entity
+                .remove(&e.uuid)
+                .expect("UUID should have been in UUID map");
+
+            self.network_id_to_entity
+                .remove(&entity.0.version())
+                .expect("network ID should have been in the network ID map");
+
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn retain(&mut self, mut f: impl FnMut(EntityId, &mut Entity) -> bool) {
+        self.sm.retain(|k, v| {
+            if f(EntityId(k), v) {
+                true
+            } else {
+                self.uuid_to_entity
+                    .remove(&v.uuid)
+                    .expect("UUID should have been in UUID map");
+
+                self.network_id_to_entity
+                    .remove(&k.version())
+                    .expect("network ID should have been in the network ID map");
+
+                false
+            }
+        });
+    }
+
     /// Returns the number of live entities.
-    pub fn len(&self) -> usize {
+    pub fn count(&self) -> usize {
         self.sm.len()
     }
 
@@ -64,6 +126,10 @@ impl Entities {
         self.sm.get(entity.0)
     }
 
+    pub fn get_mut(&mut self, entity: EntityId) -> Option<&mut Entity> {
+        self.sm.get_mut(entity.0)
+    }
+
     pub(crate) fn get_with_network_id(&self, network_id: i32) -> Option<EntityId> {
         let version = NonZeroU32::new(network_id as u32)?;
         let index = *self.network_id_to_entity.get(&version)?;
@@ -74,122 +140,26 @@ impl Entities {
         self.sm.iter().map(|(k, v)| (EntityId(k), v))
     }
 
+    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (EntityId, &mut Entity)> + '_ {
+        self.sm.iter_mut().map(|(k, v)| (EntityId(k), v))
+    }
+
     pub fn par_iter(&self) -> impl ParallelIterator<Item = (EntityId, &Entity)> + Clone + '_ {
         self.sm.par_iter().map(|(k, v)| (EntityId(k), v))
     }
-}
 
-impl<'a> EntitiesMut<'a> {
-    pub(crate) fn new(entities: &'a mut Entities) -> Self {
-        Self(entities)
-    }
-
-    pub fn reborrow(&mut self) -> EntitiesMut {
-        EntitiesMut(self.0)
-    }
-
-    /// Spawns a new entity with the default data. The new entity's [`EntityId`]
-    /// is returned.
-    ///
-    /// To actually see the new entity, set its position to somewhere nearby and
-    /// [set its type](EntityData::set_type) to something visible.
-    pub fn create(&mut self) -> (EntityId, EntityMut) {
-        self.create_with_uuid(Uuid::from_bytes(rand::random()))
-            .expect("UUID collision")
-    }
-
-    /// Like [`create`](Entities::create), but requires specifying the new
-    /// entity's UUID.
-    ///
-    /// The provided UUID must not conflict with an existing entity UUID in this
-    /// world. If it does, `None` is returned and the entity is not spawned.
-    pub fn create_with_uuid(&mut self, uuid: Uuid) -> Option<(EntityId, EntityMut)> {
-        match self.0.uuid_to_entity.entry(uuid) {
-            Entry::Occupied(_) => None,
-            Entry::Vacant(ve) => {
-                let (k, e) = self.0.sm.insert(Entity {
-                    flags: EntityFlags(0),
-                    meta: EntityMeta::new(EntityType::Marker),
-                    new_position: Vec3::default(),
-                    old_position: Vec3::default(),
-                    yaw: 0.0,
-                    pitch: 0.0,
-                    head_yaw: 0.0,
-                    velocity: Vec3::default(),
-                    uuid,
-                });
-
-                ve.insert(EntityId(k));
-
-                Some((EntityId(k), EntityMut(e)))
-            }
-        }
-    }
-
-    pub fn delete(&mut self, entity: EntityId) -> bool {
-        if let Some(e) = self.0.sm.remove(entity.0) {
-            self.0
-                .uuid_to_entity
-                .remove(&e.uuid)
-                .expect("UUID should have been in UUID map");
-
-            self.0
-                .network_id_to_entity
-                .remove(&entity.0.version())
-                .expect("network ID should have been in the network ID map");
-
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn retain(&mut self, mut f: impl FnMut(EntityId, EntityMut) -> bool) {
-        self.0.sm.retain(|k, v| {
-            if f(EntityId(k), EntityMut(v)) {
-                true
-            } else {
-                self.0
-                    .uuid_to_entity
-                    .remove(&v.uuid)
-                    .expect("UUID should have been in UUID map");
-
-                self.0
-                    .network_id_to_entity
-                    .remove(&k.version())
-                    .expect("network ID should have been in the network ID map");
-
-                false
-            }
-        });
-    }
-
-    pub fn get_mut(&mut self, entity: EntityId) -> Option<EntityMut> {
-        self.0.sm.get_mut(entity.0).map(EntityMut)
-    }
-
-    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (EntityId, EntityMut)> + '_ {
-        self.0
-            .sm
-            .iter_mut()
-            .map(|(k, v)| (EntityId(k), EntityMut(v)))
-    }
-
-    pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (EntityId, EntityMut)> + '_ {
-        self.0
-            .sm
-            .par_iter_mut()
-            .map(|(k, v)| (EntityId(k), EntityMut(v)))
+    pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (EntityId, &mut Entity)> + '_ {
+        self.sm.par_iter_mut().map(|(k, v)| (EntityId(k), v))
     }
 
     pub(crate) fn update(&mut self) {
         for (_, e) in self.iter_mut() {
-            e.0.old_position = e.new_position;
-            e.0.meta.clear_modifications();
+            e.old_position = e.new_position;
+            e.meta.clear_modifications();
 
-            let on_ground = e.0.flags.on_ground();
-            e.0.flags = EntityFlags(0);
-            e.0.flags.set_on_ground(on_ground);
+            let on_ground = e.flags.on_ground();
+            e.flags = EntityFlags(0);
+            e.flags.set_on_ground(on_ground);
         }
     }
 }
@@ -213,16 +183,6 @@ pub struct Entity {
     head_yaw: f32,
     velocity: Vec3<f32>,
     uuid: Uuid,
-}
-
-pub struct EntityMut<'a>(&'a mut Entity);
-
-impl<'a> Deref for EntityMut<'a> {
-    type Target = Entity;
-
-    fn deref(&self) -> &Self::Target {
-        self.0
-    }
 }
 
 /// Contains a bit for certain fields in [`Entity`] to track if they have been
@@ -249,14 +209,33 @@ impl Entity {
         &self.meta
     }
 
+    /// Returns a mutable reference to this entity's [`EntityMeta`].
+    pub fn meta_mut(&mut self) -> &mut EntityMeta {
+        &mut self.meta
+    }
+
     /// Returns the [`EntityType`] of this entity.
     pub fn typ(&self) -> EntityType {
         self.meta.typ()
     }
 
+    /// Changes the [`EntityType`] of this entity to the provided type.
+    ///
+    /// All metadata of this entity is reset to the default values.
+    pub fn set_type(&mut self, typ: EntityType) {
+        self.meta = EntityMeta::new(typ);
+        // All metadata is lost so we must mark it as modified unconditionally.
+        self.flags.set_type_modified(true);
+    }
+
     /// Returns the position of this entity in the world it inhabits.
     pub fn position(&self) -> Vec3<f64> {
         self.new_position
+    }
+
+    /// Sets the position of this entity in the world it inhabits.
+    pub fn set_position(&mut self, pos: impl Into<Vec3<f64>>) {
+        self.new_position = pos.into();
     }
 
     /// Returns the position of this entity as it existed at the end of the
@@ -270,9 +249,25 @@ impl Entity {
         self.yaw
     }
 
+    /// Sets the yaw of this entity (in degrees).
+    pub fn set_yaw(&mut self, yaw: f32) {
+        if self.yaw != yaw {
+            self.yaw = yaw;
+            self.flags.set_yaw_or_pitch_modified(true);
+        }
+    }
+
     /// Gets the pitch of this entity (in degrees).
     pub fn pitch(&self) -> f32 {
         self.pitch
+    }
+
+    /// Sets the pitch of this entity (in degrees).
+    pub fn set_pitch(&mut self, pitch: f32) {
+        if self.pitch != pitch {
+            self.pitch = pitch;
+            self.flags.set_yaw_or_pitch_modified(true);
+        }
     }
 
     /// Gets the head yaw of this entity (in degrees).
@@ -280,13 +275,34 @@ impl Entity {
         self.head_yaw
     }
 
+    /// Sets the head yaw of this entity (in degrees).
+    pub fn set_head_yaw(&mut self, head_yaw: f32) {
+        if self.head_yaw != head_yaw {
+            self.head_yaw = head_yaw;
+            self.flags.set_head_yaw_modified(true);
+        }
+    }
+
     /// Gets the velocity of this entity in meters per second.
     pub fn velocity(&self) -> Vec3<f32> {
         self.velocity
     }
 
+    pub fn set_velocity(&mut self, velocity: impl Into<Vec3<f32>>) {
+        let new_vel = velocity.into();
+
+        if self.velocity != new_vel {
+            self.velocity = new_vel;
+            self.flags.set_velocity_modified(true);
+        }
+    }
+
     pub fn on_ground(&self) -> bool {
         self.flags.on_ground()
+    }
+
+    pub fn set_on_ground(&mut self, on_ground: bool) {
+        self.flags.set_on_ground(on_ground);
     }
 
     /// Gets the metadata packet to send to clients after this entity has been
@@ -490,69 +506,6 @@ pub(crate) fn velocity_to_packet_units(vel: Vec3<f32>) -> Vec3<i16> {
     (vel * 400.0).as_()
 }
 
-impl<'a> EntityMut<'a> {
-    // TODO: exposing &mut EntityMeta is unsound?
-    /// Returns a mutable reference to this entity's [`EntityMeta`].
-    ///
-    /// **NOTE:** Never call [`std::mem::swap`] on the returned reference or any
-    /// part of `EntityMeta` as this would break invariants within the
-    /// library.
-    pub fn meta_mut(&mut self) -> &mut EntityMeta {
-        &mut self.0.meta
-    }
-
-    /// Changes the [`EntityType`] of this entity to the provided type.
-    ///
-    /// All metadata of this entity is reset to the default values.
-    pub fn set_type(&mut self, typ: EntityType) {
-        self.0.meta = EntityMeta::new(typ);
-        // All metadata is lost so we must mark it as modified unconditionally.
-        self.0.flags.set_type_modified(true);
-    }
-
-    /// Sets the position of this entity in the world it inhabits.
-    pub fn set_position(&mut self, pos: impl Into<Vec3<f64>>) {
-        self.0.new_position = pos.into();
-    }
-
-    /// Sets the yaw of this entity (in degrees).
-    pub fn set_yaw(&mut self, yaw: f32) {
-        if self.0.yaw != yaw {
-            self.0.yaw = yaw;
-            self.0.flags.set_yaw_or_pitch_modified(true);
-        }
-    }
-
-    /// Sets the pitch of this entity (in degrees).
-    pub fn set_pitch(&mut self, pitch: f32) {
-        if self.0.pitch != pitch {
-            self.0.pitch = pitch;
-            self.0.flags.set_yaw_or_pitch_modified(true);
-        }
-    }
-
-    /// Sets the head yaw of this entity (in degrees).
-    pub fn set_head_yaw(&mut self, head_yaw: f32) {
-        if self.0.head_yaw != head_yaw {
-            self.0.head_yaw = head_yaw;
-            self.0.flags.set_head_yaw_modified(true);
-        }
-    }
-
-    pub fn set_velocity(&mut self, velocity: impl Into<Vec3<f32>>) {
-        let new_vel = velocity.into();
-
-        if self.0.velocity != new_vel {
-            self.0.velocity = new_vel;
-            self.0.flags.set_velocity_modified(true);
-        }
-    }
-
-    pub fn set_on_ground(&mut self, on_ground: bool) {
-        self.0.flags.set_on_ground(on_ground);
-    }
-}
-
 pub(crate) enum EntitySpawnPacket {
     SpawnEntity(SpawnEntity),
     SpawnExperienceOrb(SpawnExperienceOrb),
@@ -568,5 +521,3 @@ impl From<EntitySpawnPacket> for S2cPlayPacket {
         }
     }
 }
-
-pub use types::{EntityMeta, EntityType};

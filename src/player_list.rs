@@ -1,6 +1,5 @@
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
-use std::ops::Deref;
 
 use bitfield_struct::bitfield;
 use uuid::Uuid;
@@ -33,16 +32,89 @@ impl PlayerList {
         }
     }
 
+    pub fn insert(
+        &mut self,
+        uuid: Uuid,
+        username: impl Into<String>,
+        textures: Option<SignedPlayerTextures>,
+        game_mode: GameMode,
+        ping: i32,
+        display_name: impl Into<Option<Text>>,
+    ) {
+        match self.entries.entry(uuid) {
+            Entry::Occupied(mut oe) => {
+                let e = oe.get_mut();
+                let username = username.into();
+
+                if e.username() != username || e.textures != textures {
+                    self.removed.insert(*oe.key());
+
+                    oe.insert(PlayerListEntry {
+                        username,
+                        textures,
+                        game_mode,
+                        ping,
+                        display_name: display_name.into(),
+                        flags: EntryFlags::new().with_created_this_tick(true),
+                    });
+                } else {
+                    e.set_game_mode(game_mode);
+                    e.set_ping(ping);
+                    e.set_display_name(display_name);
+                }
+            }
+            Entry::Vacant(ve) => {
+                ve.insert(PlayerListEntry {
+                    username: username.into(),
+                    textures,
+                    game_mode,
+                    ping,
+                    display_name: display_name.into(),
+                    flags: EntryFlags::new().with_created_this_tick(true),
+                });
+            }
+        }
+    }
+
+    pub fn remove(&mut self, uuid: Uuid) -> bool {
+        if self.entries.remove(&uuid).is_some() {
+            self.removed.insert(uuid);
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn header(&self) -> &Text {
         &self.header
+    }
+
+    pub fn set_header(&mut self, header: impl Into<Text>) {
+        let header = header.into();
+        if self.header != header {
+            self.header = header;
+            self.modified_header_or_footer = true;
+        }
     }
 
     pub fn footer(&self) -> &Text {
         &self.footer
     }
 
+    pub fn set_footer(&mut self, footer: impl Into<Text>) {
+        let footer = footer.into();
+        if self.footer != footer {
+            self.footer = footer;
+            self.modified_header_or_footer = true;
+        }
+    }
+
     pub fn entries(&self) -> impl Iterator<Item = (Uuid, &PlayerListEntry)> + '_ {
         self.entries.iter().map(|(k, v)| (*k, v))
+    }
+
+    pub fn entries_mut(&mut self) -> impl Iterator<Item = (Uuid, &mut PlayerListEntry)> + '_ {
+        self.entries.iter_mut().map(|(k, v)| (*k, v))
     }
 
     pub(crate) fn initial_packets(&self, mut packet: impl FnMut(S2cPlayPacket)) {
@@ -158,105 +230,13 @@ impl PlayerList {
             );
         }
     }
-}
-
-pub struct PlayerListMut<'a>(pub(crate) &'a mut PlayerList);
-
-impl<'a> Deref for PlayerListMut<'a> {
-    type Target = PlayerList;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<'a> PlayerListMut<'a> {
-    pub fn reborrow(&mut self) -> PlayerListMut {
-        PlayerListMut(self.0)
-    }
-
-    pub fn insert(
-        &mut self,
-        uuid: Uuid,
-        username: impl Into<String>,
-        textures: Option<SignedPlayerTextures>,
-        game_mode: GameMode,
-        ping: i32,
-        display_name: impl Into<Option<Text>>,
-    ) {
-        match self.0.entries.entry(uuid) {
-            Entry::Occupied(mut oe) => {
-                let mut e = PlayerListEntryMut(oe.get_mut());
-                let username = username.into();
-
-                if e.username() != username || e.textures != textures {
-                    self.0.removed.insert(*oe.key());
-
-                    oe.insert(PlayerListEntry {
-                        username,
-                        textures,
-                        game_mode,
-                        ping,
-                        display_name: display_name.into(),
-                        flags: EntryFlags::new().with_created_this_tick(true),
-                    });
-                } else {
-                    e.set_game_mode(game_mode);
-                    e.set_ping(ping);
-                    e.set_display_name(display_name);
-                }
-            }
-            Entry::Vacant(ve) => {
-                ve.insert(PlayerListEntry {
-                    username: username.into(),
-                    textures,
-                    game_mode,
-                    ping,
-                    display_name: display_name.into(),
-                    flags: EntryFlags::new().with_created_this_tick(true),
-                });
-            }
-        }
-    }
-
-    pub fn remove(&mut self, uuid: Uuid) -> bool {
-        if self.0.entries.remove(&uuid).is_some() {
-            self.0.removed.insert(uuid);
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn set_header(&mut self, header: impl Into<Text>) {
-        let header = header.into();
-        if self.0.header != header {
-            self.0.header = header;
-            self.0.modified_header_or_footer = true;
-        }
-    }
-
-    pub fn set_footer(&mut self, footer: impl Into<Text>) {
-        let footer = footer.into();
-        if self.0.footer != footer {
-            self.0.footer = footer;
-            self.0.modified_header_or_footer = true;
-        }
-    }
-
-    pub fn entries_mut(&mut self) -> impl Iterator<Item = (Uuid, PlayerListEntryMut)> + '_ {
-        self.0
-            .entries
-            .iter_mut()
-            .map(|(k, v)| (*k, PlayerListEntryMut(v)))
-    }
 
     pub(crate) fn update(&mut self) {
-        for e in self.0.entries.values_mut() {
+        for e in self.entries.values_mut() {
             e.flags = EntryFlags(0);
         }
-        self.0.removed.clear();
-        self.0.modified_header_or_footer = false;
+        self.removed.clear();
+        self.modified_header_or_footer = false;
     }
 }
 
@@ -282,49 +262,33 @@ impl PlayerListEntry {
         self.game_mode
     }
 
+    pub fn set_game_mode(&mut self, game_mode: GameMode) {
+        if self.game_mode != game_mode {
+            self.game_mode = game_mode;
+            self.flags.set_modified_game_mode(true);
+        }
+    }
+
     pub fn ping(&self) -> i32 {
         self.ping
+    }
+
+    pub fn set_ping(&mut self, ping: i32) {
+        if self.ping != ping {
+            self.ping = ping;
+            self.flags.set_modified_ping(true);
+        }
     }
 
     pub fn display_name(&self) -> Option<&Text> {
         self.display_name.as_ref()
     }
-}
-
-pub struct PlayerListEntryMut<'a>(&'a mut PlayerListEntry);
-
-impl<'a> Deref for PlayerListEntryMut<'a> {
-    type Target = PlayerListEntry;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<'a> PlayerListEntryMut<'a> {
-    pub fn reborrow(&mut self) -> PlayerListEntryMut {
-        PlayerListEntryMut(self.0)
-    }
-
-    pub fn set_game_mode(&mut self, game_mode: GameMode) {
-        if self.0.game_mode != game_mode {
-            self.0.game_mode = game_mode;
-            self.0.flags.set_modified_game_mode(true);
-        }
-    }
-
-    pub fn set_ping(&mut self, ping: i32) {
-        if self.0.ping != ping {
-            self.0.ping = ping;
-            self.0.flags.set_modified_ping(true);
-        }
-    }
 
     pub fn set_display_name(&mut self, display_name: impl Into<Option<Text>>) {
         let display_name = display_name.into();
-        if self.0.display_name != display_name {
-            self.0.display_name = display_name;
-            self.0.flags.set_modified_display_name(true);
+        if self.display_name != display_name {
+            self.display_name = display_name;
+            self.flags.set_modified_display_name(true);
         }
     }
 }

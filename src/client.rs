@@ -2,7 +2,6 @@
 mod event;
 use std::collections::HashSet;
 use std::iter::FusedIterator;
-use std::ops::Deref;
 
 pub use event::*;
 use flume::{Receiver, Sender, TrySendError};
@@ -40,19 +39,22 @@ pub struct Clients {
     sm: SlotMap<Client>,
 }
 
-pub struct ClientsMut<'a>(&'a mut Clients);
-
-impl<'a> Deref for ClientsMut<'a> {
-    type Target = Clients;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
 impl Clients {
     pub(crate) fn new() -> Self {
         Self { sm: SlotMap::new() }
+    }
+
+    pub(crate) fn create(&mut self, client: Client) -> (ClientId, &mut Client) {
+        let (id, client) = self.sm.insert(client);
+        (ClientId(id), client)
+    }
+
+    pub fn delete(&mut self, client: ClientId) -> bool {
+        self.sm.remove(client.0).is_some()
+    }
+
+    pub fn retain(&mut self, mut f: impl FnMut(ClientId, &mut Client) -> bool) {
+        self.sm.retain(|k, v| f(ClientId(k), v))
     }
 
     pub fn count(&self) -> usize {
@@ -63,55 +65,27 @@ impl Clients {
         self.sm.get(client.0)
     }
 
+    pub fn get_mut(&mut self, client: ClientId) -> Option<&mut Client> {
+        self.sm.get_mut(client.0)
+    }
+
     pub fn iter(&self) -> impl FusedIterator<Item = (ClientId, &Client)> + Clone + '_ {
         self.sm.iter().map(|(k, v)| (ClientId(k), v))
+    }
+
+    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (ClientId, &mut Client)> + '_ {
+        self.sm.iter_mut().map(|(k, v)| (ClientId(k), v))
     }
 
     pub fn par_iter(&self) -> impl ParallelIterator<Item = (ClientId, &Client)> + Clone + '_ {
         self.sm.par_iter().map(|(k, v)| (ClientId(k), v))
     }
-}
 
-impl<'a> ClientsMut<'a> {
-    pub(crate) fn new(c: &'a mut Clients) -> Self {
-        Self(c)
-    }
-
-    pub fn reborrow(&mut self) -> ClientsMut {
-        ClientsMut(self.0)
-    }
-
-    pub(crate) fn create(&mut self, client: Client) -> (ClientId, ClientMut) {
-        let (id, client) = self.0.sm.insert(client);
-        (ClientId(id), ClientMut(client))
-    }
-
-    pub fn delete(&mut self, client: ClientId) -> bool {
-        self.0.sm.remove(client.0).is_some()
-    }
-
-    pub fn retain(&mut self, mut f: impl FnMut(ClientId, ClientMut) -> bool) {
-        self.0.sm.retain(|k, v| f(ClientId(k), ClientMut(v)))
-    }
-
-    pub fn get_mut(&mut self, client: ClientId) -> Option<ClientMut> {
-        self.0.sm.get_mut(client.0).map(ClientMut)
-    }
-
-    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (ClientId, ClientMut)> + '_ {
-        self.0
-            .sm
-            .iter_mut()
-            .map(|(k, v)| (ClientId(k), ClientMut(v)))
-    }
-
-    pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (ClientId, ClientMut)> + '_ {
-        self.0
-            .sm
-            .par_iter_mut()
-            .map(|(k, v)| (ClientId(k), ClientMut(v)))
+    pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (ClientId, &mut Client)> + '_ {
+        self.sm.par_iter_mut().map(|(k, v)| (ClientId(k), v))
     }
 }
+
 pub struct ClientId(Key);
 
 /// Represents a client connected to the server after logging in.
@@ -163,16 +137,6 @@ pub struct Client {
     dug_blocks: Vec<i32>,
     // /// The metadata for the client's own player entity.
     // player_meta: Player,
-}
-
-pub struct ClientMut<'a>(&'a mut Client);
-
-impl<'a> Deref for ClientMut<'a> {
-    type Target = Client;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
 }
 
 impl Client {
@@ -236,6 +200,27 @@ impl Client {
         self.new_position
     }
 
+    pub fn teleport(&mut self, pos: impl Into<Vec3<f64>>, yaw: f32, pitch: f32) {
+        self.new_position = pos.into();
+
+        self.yaw = yaw;
+        self.pitch = pitch;
+
+        if !self.teleported_this_tick {
+            self.teleported_this_tick = true;
+
+            self.pending_teleports = match self.pending_teleports.checked_add(1) {
+                Some(n) => n,
+                None => {
+                    self.disconnect("Too many pending teleports");
+                    return;
+                }
+            };
+
+            self.teleport_id_counter = self.teleport_id_counter.wrapping_add(1);
+        }
+    }
+
     pub fn yaw(&self) -> f32 {
         self.yaw
     }
@@ -250,6 +235,17 @@ impl Client {
         self.spawn_position
     }
 
+    /// Sets the spawn position. The client will see regular compasses point at
+    /// the provided position.
+    pub fn set_spawn_position(&mut self, pos: impl Into<BlockPos>, yaw_degrees: f32) {
+        let pos = pos.into();
+        if pos != self.spawn_position || yaw_degrees != self.spawn_position_yaw {
+            self.spawn_position = pos;
+            self.spawn_position_yaw = yaw_degrees;
+            self.modified_spawn_position = true;
+        }
+    }
+
     /// Gets the last death location. The client will see recovery compasses
     /// point at the returned position. If the client's current dimension
     /// differs from the returned dimension or the location is `None` then the
@@ -258,8 +254,23 @@ impl Client {
         self.death_location
     }
 
+    /// Sets the last death location. The client will see recovery compasses
+    /// point at the provided position. If the client's current dimension
+    /// differs from the provided dimension or the location is `None` then the
+    /// compass will spin randomly.
+    ///
+    /// Changes to the last death location take effect when the client
+    /// (re)spawns.
+    pub fn set_death_location(&mut self, location: Option<(DimensionId, BlockPos)>) {
+        self.death_location = location;
+    }
+
     pub fn game_mode(&self) -> GameMode {
         self.new_game_mode
+    }
+
+    pub fn set_game_mode(&mut self, new_game_mode: GameMode) {
+        self.new_game_mode = new_game_mode;
     }
 
     pub fn on_ground(&self) -> bool {
@@ -274,6 +285,10 @@ impl Client {
         &self.events
     }
 
+    pub fn events_mut(&mut self) -> &mut Vec<Event> {
+        &mut self.events
+    }
+
     /// The current view distance of this client measured in chunks.
     pub fn view_distance(&self) -> u8 {
         self.settings
@@ -286,110 +301,47 @@ impl Client {
         self.new_max_view_distance
     }
 
+    /// The new view distance is clamped to `2..=32`.
+    pub fn set_max_view_distance(&mut self, dist: u8) {
+        self.new_max_view_distance = dist.clamp(2, 32);
+    }
+
     pub fn settings(&self) -> Option<&Settings> {
         self.settings.as_ref()
     }
-}
 
-impl<'a> ClientMut<'a> {
-    pub(crate) fn new(client: &'a mut Client) -> Self {
-        Self(client)
-    }
+    pub fn disconnect(&mut self, reason: impl Into<Text>) {
+        if self.send.is_some() {
+            let txt = reason.into();
+            log::info!("disconnecting client '{}': \"{txt}\"", self.username);
 
-    pub fn reborrow(&mut self) -> ClientMut {
-        ClientMut(self.0)
-    }
+            self.send_packet(Disconnect { reason: txt });
 
-    pub fn events_mut(&mut self) -> &mut Vec<Event> {
-        &mut self.0.events
-    }
-
-    pub fn teleport(&mut self, pos: impl Into<Vec3<f64>>, yaw: f32, pitch: f32) {
-        self.0.new_position = pos.into();
-
-        self.0.yaw = yaw;
-        self.0.pitch = pitch;
-
-        if !self.teleported_this_tick {
-            self.0.teleported_this_tick = true;
-
-            self.0.pending_teleports = match self.0.pending_teleports.checked_add(1) {
-                Some(n) => n,
-                None => {
-                    self.disconnect("Too many pending teleports");
-                    return;
-                }
-            };
-
-            self.0.teleport_id_counter = self.0.teleport_id_counter.wrapping_add(1);
+            self.send = None;
         }
     }
 
-    pub fn set_game_mode(&mut self, new_game_mode: GameMode) {
-        self.0.new_game_mode = new_game_mode;
-    }
-
-    /// Sets the spawn position. The client will see regular compasses point at
-    /// the provided position.
-    pub fn set_spawn_position(&mut self, pos: impl Into<BlockPos>, yaw_degrees: f32) {
-        let pos = pos.into();
-        if pos != self.0.spawn_position || yaw_degrees != self.0.spawn_position_yaw {
-            self.0.spawn_position = pos;
-            self.0.spawn_position_yaw = yaw_degrees;
-            self.0.modified_spawn_position = true;
+    pub fn disconnect_no_reason(&mut self) {
+        if self.send.is_some() {
+            log::info!("disconnecting client '{}' (no reason)", self.username);
+            self.send = None;
         }
-    }
-
-    /// Sets the last death location. The client will see recovery compasses
-    /// point at the provided position. If the client's current dimension
-    /// differs from the provided dimension or the location is `None` then the
-    /// compass will spin randomly.
-    ///
-    /// Changes to the last death location take effect when the client
-    /// (re)spawns.
-    pub fn set_death_location(&mut self, location: Option<(DimensionId, BlockPos)>) {
-        self.0.death_location = location;
     }
 
     /// Attempts to enqueue a play packet to be sent to this client. The client
     /// is disconnected if the clientbound packet buffer is full.
     pub(crate) fn send_packet(&mut self, packet: impl Into<S2cPlayPacket>) {
-        send_packet(&mut self.0.send, packet);
-    }
-
-    pub fn disconnect(&mut self, reason: impl Into<Text>) {
-        if self.0.send.is_some() {
-            let txt = reason.into();
-            log::info!("disconnecting client '{}': \"{txt}\"", self.0.username);
-
-            self.send_packet(Disconnect { reason: txt });
-
-            self.0.send = None;
-        }
-    }
-
-    pub fn disconnect_no_reason(&mut self) {
-        if self.0.send.is_some() {
-            log::info!("disconnecting client '{}' (no reason)", self.0.username);
-            self.0.send = None;
-        }
-    }
-
-    /// The new view distance is clamped to `2..=32`.
-    pub fn set_max_view_distance(&mut self, dist: u8) {
-        self.0.new_max_view_distance = dist.clamp(2, 32);
+        send_packet(&mut self.send, packet);
     }
 
     pub(crate) fn handle_serverbound_packets(&mut self, entities: &Entities) {
-        self.0.events.clear();
+        self.events.clear();
         for _ in 0..self.recv.len() {
             self.handle_serverbound_packet(entities, self.recv.try_recv().unwrap());
         }
     }
 
     fn handle_serverbound_packet(&mut self, entities: &Entities, pkt: C2sPlayPacket) {
-        let client = &mut self.0;
-
         fn handle_movement_packet(
             client: &mut Client,
             _vehicle: bool,
@@ -419,18 +371,18 @@ impl<'a> ClientMut<'a> {
 
         match pkt {
             C2sPlayPacket::TeleportConfirm(p) => {
-                if client.pending_teleports == 0 {
+                if self.pending_teleports == 0 {
                     self.disconnect("Unexpected teleport confirmation");
                     return;
                 }
 
                 let got = p.teleport_id.0 as u32;
-                let expected = client
+                let expected = self
                     .teleport_id_counter
-                    .wrapping_sub(client.pending_teleports);
+                    .wrapping_sub(self.pending_teleports);
 
                 if got == expected {
-                    client.pending_teleports -= 1;
+                    self.pending_teleports -= 1;
                 } else {
                     self.disconnect(format!(
                         "Unexpected teleport ID (expected {expected}, got {got})"
@@ -444,7 +396,7 @@ impl<'a> ClientMut<'a> {
             C2sPlayPacket::ChatPreview(_) => {}
             C2sPlayPacket::ClientStatus(_) => {}
             C2sPlayPacket::ClientSettings(p) => {
-                let old = client.settings.replace(Settings {
+                let old = self.settings.replace(Settings {
                     locale: p.locale.0,
                     view_distance: p.view_distance.0,
                     chat_mode: p.chat_mode,
@@ -454,7 +406,7 @@ impl<'a> ClientMut<'a> {
                     allow_server_listings: p.allow_server_listings,
                 });
 
-                client.events.push(Event::SettingsChanged(old));
+                self.events.push(Event::SettingsChanged(old));
             }
             C2sPlayPacket::TabComplete(_) => {}
             C2sPlayPacket::ClickWindowButton(_) => {}
@@ -468,7 +420,7 @@ impl<'a> ClientMut<'a> {
                     // that the distance is <=4 blocks.
 
                     use crate::packets::play::c2s::InteractType;
-                    client.events.push(Event::InteractWithEntity {
+                    self.events.push(Event::InteractWithEntity {
                         id,
                         sneaking: p.sneaking,
                         typ: match p.typ {
@@ -483,8 +435,8 @@ impl<'a> ClientMut<'a> {
             }
             C2sPlayPacket::GenerateStructure(_) => {}
             C2sPlayPacket::KeepAlive(p) => {
-                let last_keepalive_id = client.last_keepalive_id;
-                if client.got_keepalive {
+                let last_keepalive_id = self.last_keepalive_id;
+                if self.got_keepalive {
                     self.disconnect("Unexpected keepalive");
                 } else if p.id != last_keepalive_id {
                     self.disconnect(format!(
@@ -492,42 +444,32 @@ impl<'a> ClientMut<'a> {
                         last_keepalive_id, p.id
                     ));
                 } else {
-                    client.got_keepalive = true;
+                    self.got_keepalive = true;
                 }
             }
             C2sPlayPacket::LockDifficulty(_) => {}
-            C2sPlayPacket::PlayerPosition(p) => handle_movement_packet(
-                client,
-                false,
-                p.position,
-                client.yaw,
-                client.pitch,
-                p.on_ground,
-            ),
-            C2sPlayPacket::PlayerPositionAndRotation(p) => {
-                handle_movement_packet(client, false, p.position, p.yaw, p.pitch, p.on_ground)
+            C2sPlayPacket::PlayerPosition(p) => {
+                handle_movement_packet(self, false, p.position, self.yaw, self.pitch, p.on_ground)
             }
-            C2sPlayPacket::PlayerRotation(p) => handle_movement_packet(
-                client,
-                false,
-                client.new_position,
-                p.yaw,
-                p.pitch,
-                p.on_ground,
-            ),
+            C2sPlayPacket::PlayerPositionAndRotation(p) => {
+                handle_movement_packet(self, false, p.position, p.yaw, p.pitch, p.on_ground)
+            }
+            C2sPlayPacket::PlayerRotation(p) => {
+                handle_movement_packet(self, false, self.new_position, p.yaw, p.pitch, p.on_ground)
+            }
             C2sPlayPacket::PlayerMovement(p) => handle_movement_packet(
-                client,
+                self,
                 false,
-                client.new_position,
-                client.yaw,
-                client.pitch,
+                self.new_position,
+                self.yaw,
+                self.pitch,
                 p.on_ground,
             ),
             C2sPlayPacket::VehicleMove(p) => {
-                handle_movement_packet(client, true, p.position, p.yaw, p.pitch, client.on_ground);
+                handle_movement_packet(self, true, p.position, p.yaw, p.pitch, self.on_ground);
             }
             C2sPlayPacket::SteerBoat(p) => {
-                client.events.push(Event::SteerBoat {
+                self.events.push(Event::SteerBoat {
                     left_paddle_turning: p.left_paddle_turning,
                     right_paddle_turning: p.right_paddle_turning,
                 });
@@ -540,10 +482,10 @@ impl<'a> ClientMut<'a> {
                 // TODO: verify that the broken block is allowed to be broken?
 
                 if p.sequence.0 != 0 {
-                    client.dug_blocks.push(p.sequence.0);
+                    self.dug_blocks.push(p.sequence.0);
                 }
 
-                client.events.push(match p.status {
+                self.events.push(match p.status {
                     DiggingStatus::StartedDigging => Event::Digging(Digging {
                         status: event::DiggingStatus::Start,
                         position: p.location,
@@ -599,7 +541,7 @@ impl<'a> ClientMut<'a> {
     ) {
         // Mark the client as disconnected when appropriate.
         if self.recv.is_disconnected() || self.send.as_ref().map_or(true, |s| s.is_disconnected()) {
-            self.0.send = None;
+            self.send = None;
             return;
         }
 
@@ -641,11 +583,11 @@ impl<'a> ClientMut<'a> {
 
             self.teleport(self.position(), self.yaw(), self.pitch());
         } else {
-            if self.0.old_game_mode != self.0.new_game_mode {
-                self.0.old_game_mode = self.0.new_game_mode;
+            if self.old_game_mode != self.new_game_mode {
+                self.old_game_mode = self.new_game_mode;
                 self.send_packet(ChangeGameState {
                     reason: ChangeGameStateReason::ChangeGameMode,
-                    value: self.0.new_game_mode as i32 as f32,
+                    value: self.new_game_mode as i32 as f32,
                 });
             }
 
@@ -653,8 +595,8 @@ impl<'a> ClientMut<'a> {
         }
 
         // Update the players spawn position (compass position)
-        if self.0.modified_spawn_position {
-            self.0.modified_spawn_position = false;
+        if self.modified_spawn_position {
+            self.modified_spawn_position = false;
 
             self.send_packet(SpawnPosition {
                 location: self.spawn_position,
@@ -663,22 +605,22 @@ impl<'a> ClientMut<'a> {
         }
 
         // Update view distance fog on the client if necessary.
-        if self.0.old_max_view_distance != self.0.new_max_view_distance {
-            self.0.old_max_view_distance = self.0.new_max_view_distance;
-            if self.0.created_tick != current_tick {
+        if self.old_max_view_distance != self.new_max_view_distance {
+            self.old_max_view_distance = self.new_max_view_distance;
+            if self.created_tick != current_tick {
                 self.send_packet(UpdateViewDistance {
-                    view_distance: BoundedInt(VarInt(self.0.new_max_view_distance as i32)),
+                    view_distance: BoundedInt(VarInt(self.new_max_view_distance as i32)),
                 })
             }
         }
 
         // Check if it's time to send another keepalive.
         if current_tick % (server.tick_rate() * 8) == 0 {
-            if self.0.got_keepalive {
+            if self.got_keepalive {
                 let id = rand::random();
                 self.send_packet(KeepAlive { id });
-                self.0.last_keepalive_id = id;
-                self.0.got_keepalive = false;
+                self.last_keepalive_id = id;
+                self.got_keepalive = false;
             } else {
                 self.disconnect("Timed out (no keepalive response)");
             }
@@ -691,8 +633,8 @@ impl<'a> ClientMut<'a> {
         // Send the update view position packet if the client changes the chunk section
         // they're in.
         {
-            let old_section = self.0.old_position.map(|n| (n / 16.0).floor() as i32);
-            let new_section = self.0.new_position.map(|n| (n / 16.0).floor() as i32);
+            let old_section = self.old_position.map(|n| (n / 16.0).floor() as i32);
+            let new_section = self.new_position.map(|n| (n / 16.0).floor() as i32);
 
             if old_section != new_section {
                 self.send_packet(UpdateViewPosition {
@@ -706,7 +648,7 @@ impl<'a> ClientMut<'a> {
 
         // Update existing chunks and unload those outside the view distance. Chunks
         // that have been overwritten also need to be unloaded.
-        self.0.loaded_chunks.retain(|&pos| {
+        self.loaded_chunks.retain(|&pos| {
             // The cache stops chunk data packets from needing to be sent when a player
             // moves to an adjacent chunk and back to the original.
             let cache = 2;
@@ -716,14 +658,14 @@ impl<'a> ClientMut<'a> {
                     && chunk.created_tick() != current_tick
                 {
                     chunk.block_change_packets(pos, dimension.min_y, |pkt| {
-                        send_packet(&mut self.0.send, pkt)
+                        send_packet(&mut self.send, pkt)
                     });
                     return true;
                 }
             }
 
             send_packet(
-                &mut self.0.send,
+                &mut self.send,
                 UnloadChunk {
                     chunk_x: pos.x,
                     chunk_z: pos.z,
@@ -735,7 +677,7 @@ impl<'a> ClientMut<'a> {
         // Load new chunks within the view distance
         for pos in chunks_in_view_distance(center, view_dist) {
             if let Some(chunk) = chunks.get(pos) {
-                if self.0.loaded_chunks.insert(pos) {
+                if self.loaded_chunks.insert(pos) {
                     self.send_packet(chunk.chunk_data_packet(pos));
                     chunk.block_change_packets(pos, dimension.min_y, |pkt| self.send_packet(pkt));
                 }
@@ -743,9 +685,9 @@ impl<'a> ClientMut<'a> {
         }
 
         // Acknowledge broken blocks.
-        for seq in self.0.dug_blocks.drain(..) {
+        for seq in self.dug_blocks.drain(..) {
             send_packet(
-                &mut self.0.send,
+                &mut self.send,
                 AcknowledgeBlockChanges {
                     sequence: VarInt(seq),
                 },
@@ -754,8 +696,8 @@ impl<'a> ClientMut<'a> {
 
         // This is done after the chunks are loaded so that the "downloading terrain"
         // screen is closed at the appropriate time.
-        if self.0.teleported_this_tick {
-            self.0.teleported_this_tick = false;
+        if self.teleported_this_tick {
+            self.teleported_this_tick = false;
 
             self.send_packet(PlayerPositionAndLook {
                 position: self.new_position,
@@ -771,14 +713,14 @@ impl<'a> ClientMut<'a> {
 
         // Update all entities that are visible and unload entities that are no
         // longer visible.
-        self.0.loaded_entities.retain(|&id| {
+        self.loaded_entities.retain(|&id| {
             if let Some(entity) = entities.get(id) {
                 debug_assert!(entity.typ() != EntityType::Marker);
-                if self.0.new_position.distance(entity.position()) <= view_dist as f64 * 16.0
+                if self.new_position.distance(entity.position()) <= view_dist as f64 * 16.0
                     && !entity.flags().type_modified()
                 {
                     if let Some(meta) = entity.updated_metadata_packet(id) {
-                        send_packet(&mut self.0.send, meta);
+                        send_packet(&mut self.send, meta);
                     }
 
                     let position_delta = entity.position() - entity.old_position();
@@ -790,7 +732,7 @@ impl<'a> ClientMut<'a> {
                         && flags.yaw_or_pitch_modified()
                     {
                         send_packet(
-                            &mut self.0.send,
+                            &mut self.send,
                             EntityPositionAndRotation {
                                 entity_id: VarInt(id.to_network_id()),
                                 delta: (position_delta * 4096.0).as_(),
@@ -802,7 +744,7 @@ impl<'a> ClientMut<'a> {
                     } else {
                         if entity.position() != entity.old_position() && !needs_teleport {
                             send_packet(
-                                &mut self.0.send,
+                                &mut self.send,
                                 EntityPosition {
                                     entity_id: VarInt(id.to_network_id()),
                                     delta: (position_delta * 4096.0).as_(),
@@ -813,7 +755,7 @@ impl<'a> ClientMut<'a> {
 
                         if flags.yaw_or_pitch_modified() {
                             send_packet(
-                                &mut self.0.send,
+                                &mut self.send,
                                 EntityRotation {
                                     entity_id: VarInt(id.to_network_id()),
                                     yaw: ByteAngle::from_degrees(entity.yaw()),
@@ -826,7 +768,7 @@ impl<'a> ClientMut<'a> {
 
                     if needs_teleport {
                         send_packet(
-                            &mut self.0.send,
+                            &mut self.send,
                             EntityTeleport {
                                 entity_id: VarInt(id.to_network_id()),
                                 position: entity.position(),
@@ -839,7 +781,7 @@ impl<'a> ClientMut<'a> {
 
                     if flags.velocity_modified() {
                         send_packet(
-                            &mut self.0.send,
+                            &mut self.send,
                             EntityVelocity {
                                 entity_id: VarInt(id.to_network_id()),
                                 velocity: velocity_to_packet_units(entity.velocity()),
@@ -849,7 +791,7 @@ impl<'a> ClientMut<'a> {
 
                     if flags.head_yaw_modified() {
                         send_packet(
-                            &mut self.0.send,
+                            &mut self.send,
                             EntityHeadLook {
                                 entity_id: VarInt(id.to_network_id()),
                                 head_yaw: ByteAngle::from_degrees(entity.head_yaw()),
@@ -876,7 +818,7 @@ impl<'a> ClientMut<'a> {
         spatial_index.query::<_, _, ()>(
             |bb| bb.projected_point(pos).distance(pos) <= view_dist as f64 * 16.0,
             |id, _| {
-                if self.0.loaded_entities.insert(id) {
+                if self.loaded_entities.insert(id) {
                     let entity = entities.get(id).unwrap();
                     if entity.typ() != EntityType::Marker {
                         self.send_packet(
@@ -894,13 +836,7 @@ impl<'a> ClientMut<'a> {
             },
         );
 
-        self.0.old_position = self.0.new_position;
-    }
-}
-
-impl Drop for Client {
-    fn drop(&mut self) {
-        log::trace!("Dropping client '{}'", self.username);
+        self.old_position = self.new_position;
     }
 }
 

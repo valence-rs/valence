@@ -42,8 +42,7 @@ use crate::util::valid_username;
 use crate::var_int::VarInt;
 use crate::world::Worlds;
 use crate::{
-    Biome, BiomeId, Client, ClientMut, Dimension, DimensionId, Ticks, WorldsMut, PROTOCOL_VERSION,
-    VERSION_NAME,
+    Biome, BiomeId, Client, Dimension, DimensionId, Ticks, PROTOCOL_VERSION, VERSION_NAME,
 };
 
 /// A handle to a running Minecraft server containing state which is accessible
@@ -215,13 +214,12 @@ pub fn start_server(config: impl Config) -> ShutdownResult {
     let _guard = server.tokio_handle().enter();
 
     let mut worlds = Worlds::new(server.clone());
-    let mut worlds_mut = WorldsMut::new(&mut worlds);
 
-    server.config().init(&server, worlds_mut.reborrow());
+    server.config().init(&server, &mut worlds);
 
     tokio::spawn(do_accept_loop(server.clone()));
 
-    do_update_loop(server, worlds_mut)
+    do_update_loop(server, &mut worlds)
 }
 
 fn setup_server(cfg: impl Config) -> anyhow::Result<Server> {
@@ -350,7 +348,7 @@ fn setup_server(cfg: impl Config) -> anyhow::Result<Server> {
     Ok(Server(Arc::new(server)))
 }
 
-fn do_update_loop(server: Server, mut worlds: WorldsMut) -> ShutdownResult {
+fn do_update_loop(server: Server, worlds: &mut Worlds) -> ShutdownResult {
     let mut tick_start = Instant::now();
 
     loop {
@@ -359,20 +357,20 @@ fn do_update_loop(server: Server, mut worlds: WorldsMut) -> ShutdownResult {
         }
 
         while let Ok(msg) = server.0.new_clients_rx.try_recv() {
-            join_player(&server, worlds.reborrow(), msg);
+            join_player(&server, worlds, msg);
         }
 
         // Get serverbound packets first so they are not dealt with a tick late.
-        worlds.par_iter_mut().for_each(|(_, mut world)| {
-            world.clients.par_iter_mut().for_each(|(_, mut client)| {
+        worlds.par_iter_mut().for_each(|(_, world)| {
+            world.clients.par_iter_mut().for_each(|(_, client)| {
                 client.handle_serverbound_packets(&world.entities);
             });
         });
 
-        server.config().update(&server, worlds.reborrow());
+        server.config().update(&server, worlds);
 
-        worlds.par_iter_mut().for_each(|(_, mut world)| {
-            world.chunks.par_iter_mut().for_each(|(_, mut chunk)| {
+        worlds.par_iter_mut().for_each(|(_, world)| {
+            world.chunks.par_iter_mut().for_each(|(_, chunk)| {
                 if chunk.created_tick() == server.current_tick() {
                     // Chunks created this tick can have their changes applied immediately because
                     // they have not been observed by clients yet. Clients will not have to be sent
@@ -381,9 +379,9 @@ fn do_update_loop(server: Server, mut worlds: WorldsMut) -> ShutdownResult {
                 }
             });
 
-            world.spatial_index.update(world.entities.reborrow());
+            world.spatial_index.update(&world.entities);
 
-            world.clients.par_iter_mut().for_each(|(_, mut client)| {
+            world.clients.par_iter_mut().for_each(|(_, client)| {
                 client.update(
                     &server,
                     &world.entities,
@@ -395,7 +393,7 @@ fn do_update_loop(server: Server, mut worlds: WorldsMut) -> ShutdownResult {
 
             world.entities.update();
 
-            world.chunks.par_iter_mut().for_each(|(_, mut chunk)| {
+            world.chunks.par_iter_mut().for_each(|(_, chunk)| {
                 chunk.apply_modifications();
             });
 
@@ -411,7 +409,7 @@ fn do_update_loop(server: Server, mut worlds: WorldsMut) -> ShutdownResult {
     }
 }
 
-fn join_player(server: &Server, mut worlds: WorldsMut, msg: NewClientMessage) {
+fn join_player(server: &Server, worlds: &mut Worlds, msg: NewClientMessage) {
     let (clientbound_tx, clientbound_rx) = flume::bounded(server.0.outgoing_packet_capacity);
     let (serverbound_tx, serverbound_rx) = flume::bounded(server.0.incoming_packet_capacity);
 
@@ -421,15 +419,10 @@ fn join_player(server: &Server, mut worlds: WorldsMut, msg: NewClientMessage) {
     let _ = msg.reply.send(s2c_packet_channels);
 
     let mut client = Client::new(c2s_packet_channels, server, msg.ncd);
-    let mut client_mut = ClientMut::new(&mut client);
 
-    match server
-        .0
-        .cfg
-        .join(server, client_mut.reborrow(), worlds.reborrow())
-    {
+    match server.0.cfg.join(server, &mut client, worlds) {
         Ok(world_id) => {
-            if let Some(mut world) = worlds.get_mut(world_id) {
+            if let Some(world) = worlds.get_mut(world_id) {
                 if world.entities.get_with_uuid(client.uuid()).is_none() {
                     world.clients.create(client);
                 } else {
@@ -448,7 +441,7 @@ fn join_player(server: &Server, mut worlds: WorldsMut, msg: NewClientMessage) {
                 );
             }
         }
-        Err(errmsg) => client_mut.disconnect(errmsg),
+        Err(errmsg) => client.disconnect(errmsg),
     }
 }
 

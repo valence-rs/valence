@@ -1,23 +1,11 @@
-use std::ops::Deref;
-
 use vek::{Aabb, Vec3};
 
 use crate::bvh::Bvh;
 pub use crate::bvh::TraverseStep;
-use crate::{EntitiesMut, EntityId};
+use crate::{Entities, EntityId};
 
 pub struct SpatialIndex {
     bvh: Bvh<EntityId>,
-}
-
-pub struct SpatialIndexMut<'a>(&'a mut SpatialIndex);
-
-impl<'a> Deref for SpatialIndexMut<'a> {
-    type Target = SpatialIndex;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
 }
 
 impl SpatialIndex {
@@ -107,16 +95,9 @@ impl SpatialIndex {
             },
         )
     }
-}
 
-impl<'a> SpatialIndexMut<'a> {
-    pub(crate) fn new(si: &'a mut SpatialIndex) -> Self {
-        Self(si)
-    }
-
-    pub(crate) fn update(&mut self, entities: EntitiesMut) {
-        self.0
-            .bvh
+    pub(crate) fn update(&mut self, entities: &Entities) {
+        self.bvh
             .build(entities.iter().map(|(id, e)| (id, e.hitbox())))
     }
 }
