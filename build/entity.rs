@@ -2105,6 +2105,34 @@ pub fn build() -> anyhow::Result<()> {
             })
             .collect::<TokenStream>();
 
+        let initial_metadata_fields = fields.iter().enumerate().map(|(idx, f)| {
+            let name = ident(f.name.to_snake_case());
+            let default = f.typ.default_expr();
+            let index: u8 = idx.try_into().unwrap();
+            let type_id = f.typ.type_id();
+            quote! {
+                if self.#name != #default {
+                    data.push(#index);
+                    VarInt(#type_id).encode(data).unwrap();
+                    self.#name.encode(data).unwrap();
+                }
+            }
+        }).collect::<TokenStream>();
+
+        let updated_metadata_fields = fields.iter().enumerate().map(|(idx, f)| {
+            let name = ident(f.name.to_snake_case());
+            let u8_index: u8 = idx.try_into().unwrap();
+            let u32_index = idx as u32;
+            let type_id = f.typ.type_id();
+            quote! {
+                if (self.modified_flags >> #u32_index) & 1 == 1 {
+                    data.push(#u8_index);
+                    VarInt(#type_id).encode(data).unwrap();
+                    self.#name.encode(data).unwrap();
+                }
+            }
+        }).collect::<TokenStream>();
+
         quote! {
             pub struct #name {
                 /// Contains a set bit for each modified field.
@@ -2113,7 +2141,7 @@ pub fn build() -> anyhow::Result<()> {
             }
 
             impl #name {
-                pub(super) fn new() -> Self {
+                pub(crate) fn new() -> Self {
                     Self {
                         modified_flags: 0,
                         #(#constructor_fields)*
@@ -2121,62 +2149,22 @@ pub fn build() -> anyhow::Result<()> {
                 }
 
                 #getter_setters
-            }
-        }
-    });
 
-    let initial_metadata_arms = entities.iter().map(|&entity| {
-        let name = ident(entity.name.to_pascal_case());
-        let mut fields = Vec::new();
-        collect_class_fields(entity, &mut fields);
-
-        let check_fields = fields.into_iter().enumerate().map(|(idx, f)| {
-            let name = ident(f.name.to_snake_case());
-            let default = f.typ.default_expr();
-            let index: u8 = idx.try_into().unwrap();
-            let type_id = f.typ.type_id();
-            quote! {
-                if m.#name != #default {
-                    data.push(#index);
-                    VarInt(#type_id).encode(&mut data).unwrap();
-                    m.#name.encode(&mut data).unwrap();
-                }
-            }
-        });
-
-        quote! {
-            Self::#name(m) => {
-                #(#check_fields)*
-            }
-        }
-    });
-
-    let updated_metadata_arms = entities.iter().map(|&entity| {
-        let name = ident(entity.name.to_pascal_case());
-        let mut fields = Vec::new();
-        collect_class_fields(entity, &mut fields);
-
-        let update_fields = fields.into_iter().enumerate().map(|(idx, f)| {
-            let name = ident(f.name.to_snake_case());
-            let u8_index: u8 = idx.try_into().unwrap();
-            let u32_index = idx as u32;
-            let type_id = f.typ.type_id();
-            quote! {
-                if (m.modified_flags >> #u32_index) & 1 == 1 {
-                    data.push(#u8_index);
-                    VarInt(#type_id).encode(&mut data).unwrap();
-                    m.#name.encode(&mut data).unwrap();
-                }
-            }
-        });
-
-        quote! {
-            Self::#name(m) => {
-                if m.modified_flags == 0 {
-                    return None;
+                pub(crate) fn initial_metadata(&self, data: &mut Vec<u8>) {
+                    #initial_metadata_fields
                 }
 
-                #(#update_fields)*
+                pub(crate) fn updated_metadata(&self, data: &mut Vec<u8>) {
+                    if self.modified_flags == 0 {
+                        return;
+                    }
+
+                    #updated_metadata_fields
+                }
+
+                pub(crate) fn clear_modifications(&mut self) {
+                    self.modified_flags = 0;
+                }
             }
         }
     });
@@ -2221,7 +2209,7 @@ pub fn build() -> anyhow::Result<()> {
                 let mut data = Vec::new();
 
                 match self {
-                    #(#initial_metadata_arms)*
+                    #(Self::#entity_type_variants(e) => e.initial_metadata(&mut data),)*
                 }
 
                 if data.is_empty() {
@@ -2236,7 +2224,7 @@ pub fn build() -> anyhow::Result<()> {
                 let mut data = Vec::new();
 
                 match self {
-                    #(#updated_metadata_arms)*
+                    #(Self::#entity_type_variants(e) => e.updated_metadata(&mut data),)*
                 }
 
                 if data.is_empty() {
@@ -2249,7 +2237,7 @@ pub fn build() -> anyhow::Result<()> {
 
             pub(super) fn clear_modifications(&mut self) {
                 match self {
-                    #(Self::#entity_type_variants(m) => m.modified_flags = 0,)*
+                    #(Self::#entity_type_variants(e) => e.clear_modifications(),)*
                 }
             }
         }

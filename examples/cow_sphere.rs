@@ -9,8 +9,8 @@ use valence::config::{Config, ServerListPing};
 use valence::text::Color;
 use valence::util::to_yaw_and_pitch;
 use valence::{
-    async_trait, DimensionId, EntityId, EntityType, Server, ShutdownResult, Text,
-    TextFormat, WorldId, Worlds, Client,
+    async_trait, Client, DimensionId, EntityId, EntityType, Server, ShutdownResult, Text,
+    TextFormat, WorldId, Worlds,
 };
 use vek::{Mat3, Vec3};
 

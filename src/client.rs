@@ -13,19 +13,20 @@ use crate::biome::{Biome, BiomeGrassColorModifier, BiomePrecipitation};
 use crate::block_pos::BlockPos;
 use crate::byte_angle::ByteAngle;
 use crate::dimension::{Dimension, DimensionEffects};
+use crate::entity::types::Player;
 use crate::entity::{velocity_to_packet_units, EntityType};
 use crate::packets::play::c2s::{C2sPlayPacket, DiggingStatus};
 use crate::packets::play::s2c::{
     AcknowledgeBlockChanges, Biome as BiomeRegistryBiome, BiomeAdditionsSound, BiomeEffects,
     BiomeMoodSound, BiomeMusic, BiomeParticle, BiomeParticleOptions, BiomeProperty, BiomeRegistry,
     ChangeGameState, ChangeGameStateReason, ChatTypeRegistry, DestroyEntities, DimensionType,
-    DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, EntityHeadLook, EntityPosition,
-    EntityPositionAndRotation, EntityRotation, EntityTeleport, EntityVelocity, JoinGame, KeepAlive,
-    PlayerPositionAndLook, PlayerPositionAndLookFlags, RegistryCodec, S2cPlayPacket, SpawnPosition,
-    UnloadChunk, UpdateViewDistance, UpdateViewPosition,
+    DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, EntityHeadLook, EntityMetadata,
+    EntityPosition, EntityPositionAndRotation, EntityRotation, EntityTeleport, EntityVelocity,
+    JoinGame, KeepAlive, PlayerPositionAndLook, PlayerPositionAndLookFlags, RegistryCodec,
+    S2cPlayPacket, SpawnPosition, UnloadChunk, UpdateViewDistance, UpdateViewPosition,
 };
 use crate::player_textures::SignedPlayerTextures;
-use crate::protocol::{BoundedInt, Nbt};
+use crate::protocol::{BoundedInt, Nbt, RawBytes};
 use crate::server::C2sPacketChannels;
 use crate::slotmap::{Key, SlotMap};
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
@@ -135,8 +136,8 @@ pub struct Client {
     old_game_mode: GameMode,
     settings: Option<Settings>,
     dug_blocks: Vec<i32>,
-    // /// The metadata for the client's own player entity.
-    // player_meta: Player,
+    /// The metadata for the client's own player entity.
+    player_meta: Player,
 }
 
 impl Client {
@@ -177,6 +178,7 @@ impl Client {
             old_game_mode: GameMode::Survival,
             settings: None,
             dug_blocks: Vec::new(),
+            player_meta: Player::new(),
         }
     }
 
@@ -326,6 +328,14 @@ impl Client {
             log::info!("disconnecting client '{}' (no reason)", self.username);
             self.send = None;
         }
+    }
+
+    pub fn meta(&self) -> &Player {
+        &self.player_meta
+    }
+
+    pub fn meta_mut(&mut self) -> &mut Player {
+        &mut self.player_meta
     }
 
     /// Attempts to enqueue a play packet to be sent to this client. The client
@@ -811,6 +821,21 @@ impl Client {
             self.send_packet(DestroyEntities {
                 entities: entities_to_unload,
             });
+        }
+
+        // Update the client's own player metadata.
+        {
+            let mut data = Vec::new();
+            self.player_meta.updated_metadata(&mut data);
+
+            if !data.is_empty() {
+                data.push(0xff);
+
+                self.send_packet(EntityMetadata {
+                    entity_id: VarInt(0),
+                    metadata: RawBytes(data),
+                });
+            }
         }
 
         // Spawn new entities within the view distance.
