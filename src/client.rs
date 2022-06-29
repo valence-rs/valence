@@ -25,14 +25,15 @@ use crate::packets::play::s2c::{
     PlayerPositionAndLook, PlayerPositionAndLookFlags, RegistryCodec, S2cPlayPacket, SpawnPosition,
     UnloadChunk, UpdateViewDistance, UpdateViewPosition,
 };
+use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::{BoundedInt, Nbt};
 use crate::server::C2sPacketChannels;
 use crate::slotmap::{Key, SlotMap};
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::var_int::VarInt;
 use crate::{
-    ident, ChunkPos, Chunks, DimensionId, Entities, EntityId, Server, SpatialIndex, Text, Ticks,
-    WorldMeta, LIBRARY_NAMESPACE,
+    ident, ChunkPos, Chunks, DimensionId, Entities, EntityId, NewClientData, Server, SpatialIndex,
+    Text, Ticks, WorldMeta, LIBRARY_NAMESPACE,
 };
 
 pub struct Clients {
@@ -120,8 +121,9 @@ pub struct Client {
     recv: Receiver<C2sPlayPacket>,
     /// The tick this client was created.
     created_tick: Ticks,
-    username: String,
     uuid: Uuid,
+    username: String,
+    textures: Option<SignedPlayerTextures>,
     on_ground: bool,
     new_position: Vec3<f64>,
     old_position: Vec3<f64>,
@@ -176,9 +178,8 @@ impl<'a> Deref for ClientMut<'a> {
 impl Client {
     pub(crate) fn new(
         packet_channels: C2sPacketChannels,
-        username: String,
-        uuid: Uuid,
         server: &Server,
+        ncd: NewClientData,
     ) -> Self {
         let (send, recv) = packet_channels;
 
@@ -186,8 +187,9 @@ impl Client {
             send: Some(send),
             recv,
             created_tick: server.current_tick(),
-            username,
-            uuid,
+            uuid: ncd.uuid,
+            username: ncd.username,
+            textures: ncd.textures,
             on_ground: false,
             new_position: Vec3::default(),
             old_position: Vec3::default(),
@@ -218,12 +220,16 @@ impl Client {
         self.created_tick
     }
 
+    pub fn uuid(&self) -> Uuid {
+        self.uuid
+    }
+
     pub fn username(&self) -> &str {
         &self.username
     }
 
-    pub fn uuid(&self) -> Uuid {
-        self.uuid
+    pub fn textures(&self) -> Option<&SignedPlayerTextures> {
+        self.textures.as_ref()
     }
 
     pub fn position(&self) -> Vec3<f64> {
@@ -602,6 +608,9 @@ impl<'a> ClientMut<'a> {
         // Send the join game packet and other initial packets. We defer this until now
         // so that the user can set the client's location, game mode, etc.
         if self.created_tick == current_tick {
+            meta.player_list()
+                .initial_packets(|pkt| self.send_packet(pkt));
+
             self.send_packet(JoinGame {
                 entity_id: 0,       // EntityId 0 is reserved for clients.
                 is_hardcore: false, // TODO
@@ -621,7 +630,7 @@ impl<'a> ClientMut<'a> {
                 max_players: VarInt(0),
                 view_distance: BoundedInt(VarInt(self.new_max_view_distance as i32)),
                 simulation_distance: VarInt(16),
-                reduced_debug_info: false, // TODO
+                reduced_debug_info: false,
                 enable_respawn_screen: false,
                 is_debug: false,
                 is_flat: meta.is_flat(),
@@ -629,9 +638,6 @@ impl<'a> ClientMut<'a> {
                     .death_location
                     .map(|(id, pos)| (ident!("{LIBRARY_NAMESPACE}:dimension_{}", id.0), pos)),
             });
-
-            meta.player_list()
-                .initial_packets(|pkt| self.send_packet(pkt));
 
             self.teleport(self.position(), self.yaw(), self.pitch());
         } else {

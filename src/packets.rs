@@ -329,6 +329,16 @@ mod private {
     pub trait Sealed {}
 }
 
+def_struct! {
+    #[derive(PartialEq, Serialize, Deserialize)]
+    Property {
+        name: String,
+        value: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        signature: Option<String>
+    }
+}
+
 /// Packets and types used during the handshaking state.
 pub mod handshake {
     use super::*;
@@ -414,14 +424,6 @@ pub mod login {
         }
 
         def_struct! {
-            Property {
-                name: String,
-                value: String,
-                signature: Option<String>,
-            }
-        }
-
-        def_struct! {
             SetCompression 0x03 {
                 threshold: VarInt
             }
@@ -474,7 +476,6 @@ pub mod play {
     pub mod s2c {
         use super::super::*;
         use crate::packets::login::c2s::SignatureData;
-        use crate::packets::login::s2c::Property;
 
         def_struct! {
             SpawnEntity 0x00 {

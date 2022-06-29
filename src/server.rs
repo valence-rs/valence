@@ -29,14 +29,14 @@ use uuid::Uuid;
 use crate::codec::{Decoder, Encoder};
 use crate::config::{Config, ServerListPing};
 use crate::packets::handshake::{Handshake, HandshakeNextState};
-use crate::packets::login;
 use crate::packets::login::c2s::{EncryptionResponse, LoginStart, VerifyTokenOrMsgSig};
 use crate::packets::login::s2c::{EncryptionRequest, LoginSuccess, SetCompression};
 use crate::packets::play::c2s::C2sPlayPacket;
 use crate::packets::play::s2c::S2cPlayPacket;
 use crate::packets::status::c2s::{Ping, Request};
 use crate::packets::status::s2c::{Pong, Response};
-use crate::player_list::PlayerTextures;
+use crate::packets::{login, Property};
+use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::{BoundedArray, BoundedString};
 use crate::util::valid_username;
 use crate::var_int::VarInt;
@@ -90,6 +90,7 @@ struct ServerInner {
 pub struct NewClientData {
     pub uuid: Uuid,
     pub username: String,
+    pub textures: Option<SignedPlayerTextures>,
     pub remote_addr: SocketAddr,
 }
 
@@ -414,17 +415,12 @@ fn join_player(server: &Server, mut worlds: WorldsMut, msg: NewClientMessage) {
     let (clientbound_tx, clientbound_rx) = flume::bounded(server.0.outgoing_packet_capacity);
     let (serverbound_tx, serverbound_rx) = flume::bounded(server.0.incoming_packet_capacity);
 
-    let client_packet_channels: S2cPacketChannels = (serverbound_tx, clientbound_rx);
-    let server_packet_channels: C2sPacketChannels = (clientbound_tx, serverbound_rx);
+    let s2c_packet_channels: S2cPacketChannels = (serverbound_tx, clientbound_rx);
+    let c2s_packet_channels: C2sPacketChannels = (clientbound_tx, serverbound_rx);
 
-    let _ = msg.reply.send(client_packet_channels);
+    let _ = msg.reply.send(s2c_packet_channels);
 
-    let mut client = Client::new(
-        server_packet_channels,
-        msg.ncd.username,
-        msg.ncd.uuid,
-        server,
-    );
+    let mut client = Client::new(c2s_packet_channels, server, msg.ncd);
     let mut client_mut = ClientMut::new(&mut client);
 
     match server
@@ -641,12 +637,6 @@ async fn handle_login(
             properties: Vec<Property>,
         }
 
-        #[derive(Debug, Deserialize)]
-        struct Property {
-            name: String,
-            value: String,
-        }
-
         let hash = Sha1::new()
             .chain(&shared_secret)
             .chain(&server.0.public_key_der)
@@ -670,8 +660,11 @@ async fn handle_login(
         let uuid = Uuid::parse_str(&data.id).context("failed to parse player's UUID")?;
 
         let textures = match data.properties.into_iter().find(|p| p.name == "textures") {
-            Some(p) => decode_textures(p.value).context("failed to decode skin blob")?,
-            None => bail!("failed to find skin blob in auth response"),
+            Some(p) => SignedPlayerTextures::from_base64(
+                p.value,
+                p.signature.context("missing signature for textures")?,
+            )?,
+            None => bail!("failed to find textures in auth response"),
         };
 
         (uuid, Some(textures))
@@ -694,6 +687,7 @@ async fn handle_login(
     let npd = NewClientData {
         uuid,
         username,
+        textures,
         remote_addr,
     };
 
@@ -711,17 +705,6 @@ async fn handle_login(
     .await?;
 
     Ok(Some(npd))
-}
-
-fn decode_textures(encoded: String) -> anyhow::Result<PlayerTextures> {
-    #[derive(Debug, Deserialize)]
-    struct Textures {
-        textures: PlayerTextures,
-    }
-
-    let bytes = base64::decode(encoded)?;
-    let textures: Textures = serde_json::from_slice(&bytes)?;
-    Ok(textures.textures)
 }
 
 async fn handle_play(server: &Server, c: Codec, ncd: NewClientData) -> anyhow::Result<()> {

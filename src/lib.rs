@@ -31,6 +31,7 @@ pub mod util;
 mod var_int;
 mod var_long;
 pub mod world;
+pub mod player_textures;
 
 pub use async_trait::async_trait;
 pub use biome::{Biome, BiomeId};

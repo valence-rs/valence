@@ -3,15 +3,14 @@ use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
 
 use bitfield_struct::bitfield;
-use serde::{Deserialize, Serialize};
-use url::Url;
 use uuid::Uuid;
 
 use crate::client::GameMode;
-use crate::packets::login::s2c::Property;
 use crate::packets::play::s2c::{
     PlayerInfo, PlayerInfoAddPlayer, PlayerListHeaderFooter, S2cPlayPacket,
 };
+use crate::packets::Property;
+use crate::player_textures::SignedPlayerTextures;
 use crate::var_int::VarInt;
 use crate::Text;
 
@@ -55,16 +54,11 @@ impl PlayerList {
                 username: e.username.clone().into(),
                 properties: {
                     let mut properties = Vec::new();
-                    if e.skin().is_some() || e.cape().is_some() {
-                        let textures = PlayerTextures {
-                            skin: e.skin().cloned().map(TextureUrl::new),
-                            cape: e.cape().cloned().map(TextureUrl::new),
-                        };
-
+                    if let Some(textures) = &e.textures {
                         properties.push(Property {
                             name: "textures".into(),
-                            value: base64::encode(serde_json::to_string(&textures).unwrap()),
-                            signature: None,
+                            value: base64::encode(textures.payload()),
+                            signature: Some(base64::encode(textures.signature())),
                         });
                     }
                     properties
@@ -104,16 +98,11 @@ impl PlayerList {
         for (&uuid, e) in self.entries.iter() {
             if e.flags.created_this_tick() {
                 let mut properties = Vec::new();
-                if e.skin().is_some() || e.cape().is_some() {
-                    let textures = PlayerTextures {
-                        skin: e.skin().cloned().map(TextureUrl::new),
-                        cape: e.cape().cloned().map(TextureUrl::new),
-                    };
-
+                if let Some(textures) = &e.textures {
                     properties.push(Property {
                         name: "textures".into(),
-                        value: base64::encode(serde_json::to_string(&textures).unwrap()),
-                        signature: None,
+                        value: base64::encode(textures.payload()),
+                        signature: Some(base64::encode(textures.signature())),
                     });
                 }
 
@@ -186,51 +175,41 @@ impl<'a> PlayerListMut<'a> {
         PlayerListMut(self.0)
     }
 
-    pub fn add_player(
+    pub fn insert(
         &mut self,
         uuid: Uuid,
         username: impl Into<String>,
-        skin: Option<Url>,
-        cape: Option<Url>,
+        textures: Option<SignedPlayerTextures>,
         game_mode: GameMode,
         ping: i32,
         display_name: impl Into<Option<Text>>,
     ) {
         match self.0.entries.entry(uuid) {
             Entry::Occupied(mut oe) => {
-                let mut entry = PlayerListEntryMut(oe.get_mut());
+                let mut e = PlayerListEntryMut(oe.get_mut());
                 let username = username.into();
 
-                if entry.username() != username
-                    || entry.skin() != skin.as_ref()
-                    || entry.cape() != cape.as_ref()
-                {
+                if e.username() != username || e.textures != textures {
                     self.0.removed.insert(*oe.key());
 
                     oe.insert(PlayerListEntry {
                         username,
-                        textures: PlayerTextures {
-                            skin: skin.map(TextureUrl::new),
-                            cape: cape.map(TextureUrl::new),
-                        },
+                        textures,
                         game_mode,
                         ping,
                         display_name: display_name.into(),
                         flags: EntryFlags::new().with_created_this_tick(true),
                     });
                 } else {
-                    entry.set_game_mode(game_mode);
-                    entry.set_ping(ping);
-                    entry.set_display_name(display_name);
+                    e.set_game_mode(game_mode);
+                    e.set_ping(ping);
+                    e.set_display_name(display_name);
                 }
             }
             Entry::Vacant(ve) => {
                 ve.insert(PlayerListEntry {
                     username: username.into(),
-                    textures: PlayerTextures {
-                        skin: skin.map(TextureUrl::new),
-                        cape: cape.map(TextureUrl::new),
-                    },
+                    textures,
                     game_mode,
                     ping,
                     display_name: display_name.into(),
@@ -240,7 +219,7 @@ impl<'a> PlayerListMut<'a> {
         }
     }
 
-    pub fn remove_player(&mut self, uuid: Uuid) -> bool {
+    pub fn remove(&mut self, uuid: Uuid) -> bool {
         if self.0.entries.remove(&uuid).is_some() {
             self.0.removed.insert(uuid);
             true
@@ -283,7 +262,7 @@ impl<'a> PlayerListMut<'a> {
 
 pub struct PlayerListEntry {
     username: String,
-    textures: PlayerTextures,
+    textures: Option<SignedPlayerTextures>,
     game_mode: GameMode,
     ping: i32,
     display_name: Option<Text>,
@@ -295,12 +274,8 @@ impl PlayerListEntry {
         &self.username
     }
 
-    pub fn skin(&self) -> Option<&Url> {
-        self.textures.skin.as_ref().map(|t| &t.url)
-    }
-
-    pub fn cape(&self) -> Option<&Url> {
-        self.textures.cape.as_ref().map(|t| &t.url)
+    pub fn textures(&self) -> Option<&SignedPlayerTextures> {
+        self.textures.as_ref()
     }
 
     pub fn game_mode(&self) -> GameMode {
@@ -362,24 +337,4 @@ struct EntryFlags {
     modified_display_name: bool,
     #[bits(4)]
     _pad: u8,
-}
-
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "UPPERCASE")]
-pub(crate) struct PlayerTextures {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    skin: Option<TextureUrl>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    cape: Option<TextureUrl>,
-}
-
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-struct TextureUrl {
-    url: Url,
-}
-
-impl TextureUrl {
-    fn new(url: Url) -> Self {
-        Self { url }
-    }
 }

@@ -97,6 +97,15 @@ impl Config for Game {
             if client.created_tick() == server.current_tick() {
                 client.set_game_mode(GameMode::Creative);
                 client.teleport([0.0, 200.0, 0.0], 0.0, 0.0);
+
+                world.meta.player_list_mut().insert(
+                    client.uuid(),
+                    client.username().to_string(),
+                    client.textures().cloned(),
+                    client.game_mode(),
+                    0,
+                    None,
+                );
             }
 
             if client.is_disconnected() {
