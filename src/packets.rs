@@ -1005,6 +1005,7 @@ pub mod play {
         }
 
         def_enum! {
+            #[derive(Copy, PartialEq, Eq)]
             ChatMessageType: VarInt {
                 Chat = 0,
                 SystemMessage = 1,
@@ -1014,6 +1015,12 @@ pub mod play {
                 TeamMsgCommand = 5,
                 EmoteCommand = 6,
                 TellrawCommand = 7,
+            }
+        }
+
+        impl Default for ChatMessageType {
+            fn default() -> Self {
+                ChatMessageType::Chat
             }
         }
 
@@ -1133,6 +1140,13 @@ pub mod play {
         }
 
         def_struct! {
+            SystemChatMessage 0x5f {
+                chat: Text,
+                typ: ChatMessageType,
+            }
+        }
+
+        def_struct! {
             PlayerListHeaderFooter 0x60 {
                 header: Text,
                 footer: Text,
@@ -1240,6 +1254,7 @@ pub mod play {
             EntityMetadata,
             EntityVelocity,
             TimeUpdate,
+            SystemChatMessage,
             PlayerListHeaderFooter,
             EntityTeleport,
         }
@@ -1280,8 +1295,11 @@ pub mod play {
 
         def_struct! {
             ChatMessage 0x04 {
-                message: BoundedString<0, 256>
-                // TODO:
+                message: BoundedString<0, 256>,
+                timestamp: u64,
+                salt: u64,
+                signature: Vec<u8>,
+                signed_preview: bool,
             }
         }
 

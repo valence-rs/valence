@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use vek::Vec3;
 
 use crate::packets::play::c2s::BlockFace;
@@ -7,6 +9,10 @@ use crate::{BlockPos, EntityId};
 
 #[derive(Debug)]
 pub enum Event {
+    ChatMessage {
+        message: String,
+        timestamp: Duration,
+    },
     /// Settings were changed. The value in this variant is the previous client
     /// settings.
     SettingsChanged(Option<Settings>),

@@ -2,6 +2,7 @@
 mod event;
 use std::collections::HashSet;
 use std::iter::FusedIterator;
+use std::time::Duration;
 
 pub use event::*;
 use flume::{Receiver, Sender, TrySendError};
@@ -16,6 +17,7 @@ use crate::dimension::{Dimension, DimensionEffects};
 use crate::entity::types::Player;
 use crate::entity::{velocity_to_packet_units, EntityType};
 use crate::packets::play::c2s::{C2sPlayPacket, DiggingStatus};
+pub use crate::packets::play::s2c::ChatMessageType;
 use crate::packets::play::s2c::{
     AcknowledgeBlockChanges, Biome as BiomeRegistryBiome, BiomeAdditionsSound, BiomeEffects,
     BiomeMoodSound, BiomeMusic, BiomeParticle, BiomeParticleOptions, BiomeProperty, BiomeRegistry,
@@ -23,7 +25,8 @@ use crate::packets::play::s2c::{
     DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, EntityHeadLook, EntityMetadata,
     EntityPosition, EntityPositionAndRotation, EntityRotation, EntityTeleport, EntityVelocity,
     JoinGame, KeepAlive, PlayerPositionAndLook, PlayerPositionAndLookFlags, RegistryCodec,
-    S2cPlayPacket, SpawnPosition, UnloadChunk, UpdateViewDistance, UpdateViewPosition,
+    S2cPlayPacket, SpawnPosition, SystemChatMessage, UnloadChunk, UpdateViewDistance,
+    UpdateViewPosition,
 };
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::{BoundedInt, Nbt, RawBytes};
@@ -136,6 +139,7 @@ pub struct Client {
     old_game_mode: GameMode,
     settings: Option<Settings>,
     dug_blocks: Vec<i32>,
+    msgs_to_send: Vec<(Text, ChatMessageType)>,
     /// The metadata for the client's own player entity.
     player_meta: Player,
 }
@@ -178,6 +182,7 @@ impl Client {
             old_game_mode: GameMode::Survival,
             settings: None,
             dug_blocks: Vec::new(),
+            msgs_to_send: Vec::new(),
             player_meta: Player::new(),
         }
     }
@@ -196,6 +201,10 @@ impl Client {
 
     pub fn textures(&self) -> Option<&SignedPlayerTextures> {
         self.textures.as_ref()
+    }
+
+    pub fn send_message(&mut self, msg: impl Into<Text>, typ: ChatMessageType) {
+        self.msgs_to_send.push((msg.into(), typ));
     }
 
     pub fn position(&self) -> Vec3<f64> {
@@ -402,7 +411,10 @@ impl Client {
             C2sPlayPacket::QueryBlockNbt(_) => {}
             C2sPlayPacket::SetDifficulty(_) => {}
             C2sPlayPacket::ChatCommand(_) => {}
-            C2sPlayPacket::ChatMessage(_) => {}
+            C2sPlayPacket::ChatMessage(p) => self.events.push(Event::ChatMessage {
+                message: p.message.0,
+                timestamp: Duration::from_millis(p.timestamp),
+            }),
             C2sPlayPacket::ChatPreview(_) => {}
             C2sPlayPacket::ClientStatus(_) => {}
             C2sPlayPacket::ClientSettings(p) => {
@@ -719,6 +731,11 @@ impl Client {
             });
         }
 
+        for (msg, typ) in self.msgs_to_send.drain(..) {
+            // TODO: wont work without proper chat registry.
+            send_packet(&mut self.send, SystemChatMessage { chat: msg, typ });
+        }
+
         let mut entities_to_unload = Vec::new();
 
         // Update all entities that are visible and unload entities that are no
@@ -824,21 +841,18 @@ impl Client {
         }
 
         // Update the client's own player metadata.
-        {
-            let mut data = Vec::new();
-            self.player_meta.updated_metadata(&mut data);
+        let mut data = Vec::new();
+        self.player_meta.updated_metadata(&mut data);
 
-            if !data.is_empty() {
-                data.push(0xff);
+        if !data.is_empty() {
+            data.push(0xff);
 
-                self.send_packet(EntityMetadata {
-                    entity_id: VarInt(0),
-                    metadata: RawBytes(data),
-                });
-            }
-
-            self.player_meta.clear_modifications();
+            self.send_packet(EntityMetadata {
+                entity_id: VarInt(0),
+                metadata: RawBytes(data),
+            });
         }
+        self.player_meta.clear_modifications();
 
         // Spawn new entities within the view distance.
         let pos = self.position();
