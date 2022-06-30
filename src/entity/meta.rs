@@ -79,10 +79,11 @@ impl Encode for VillagerData {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub enum VillagerType {
     Desert,
     Jungle,
+    #[default]
     Plains,
     Savanna,
     Snow,
@@ -90,14 +91,9 @@ pub enum VillagerType {
     Taiga,
 }
 
-impl Default for VillagerType {
-    fn default() -> Self {
-        Self::Plains
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub enum VillagerProfession {
+    #[default]
     None,
     Armorer,
     Butcher,
@@ -115,14 +111,9 @@ pub enum VillagerProfession {
     Weaponsmith,
 }
 
-impl Default for VillagerProfession {
-    fn default() -> Self {
-        Self::None
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub enum Pose {
+    #[default]
     Standing,
     FallFlying,
     Sleeping,
@@ -139,12 +130,6 @@ pub enum Pose {
     Digging,
 }
 
-impl Default for Pose {
-    fn default() -> Self {
-        Self::Standing
-    }
-}
-
 impl Encode for Pose {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         VarInt(*self as i32).encode(w)
@@ -152,16 +137,11 @@ impl Encode for Pose {
 }
 
 /// The main hand of a player.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub enum MainHand {
     Left,
+    #[default]
     Right,
-}
-
-impl Default for MainHand {
-    fn default() -> Self {
-        Self::Right
-    }
 }
 
 impl Encode for MainHand {
@@ -170,8 +150,9 @@ impl Encode for MainHand {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub enum BoatVariant {
+    #[default]
     Oak,
     Spruce,
     Birch,
@@ -180,21 +161,16 @@ pub enum BoatVariant {
     DarkOak,
 }
 
-impl Default for BoatVariant {
-    fn default() -> Self {
-        Self::Oak
-    }
-}
-
 impl Encode for BoatVariant {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         VarInt(*self as i32).encode(w)
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub enum CatVariant {
     Tabby,
+    #[default]
     Black,
     Red,
     Siamese,
@@ -207,29 +183,18 @@ pub enum CatVariant {
     AllBlack,
 }
 
-impl Default for CatVariant {
-    fn default() -> Self {
-        CatVariant::Black
-    }
-}
-
 impl Encode for CatVariant {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         VarInt(*self as i32).encode(w)
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub enum FrogVariant {
+    #[default]
     Temperate,
     Warm,
     Cold,
-}
-
-impl Default for FrogVariant {
-    fn default() -> Self {
-        FrogVariant::Temperate
-    }
 }
 
 impl Encode for FrogVariant {
@@ -238,15 +203,10 @@ impl Encode for FrogVariant {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub enum PaintingVariant {
+    #[default]
     Default, // TODO
-}
-
-impl Default for PaintingVariant {
-    fn default() -> Self {
-        PaintingVariant::Default
-    }
 }
 
 impl Encode for PaintingVariant {

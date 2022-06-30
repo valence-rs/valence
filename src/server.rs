@@ -3,14 +3,13 @@ use std::error::Error;
 use std::iter::FusedIterator;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicI64, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
 use anyhow::{bail, ensure, Context};
 use flume::{Receiver, Sender};
 use num::BigInt;
-use parking_lot::Mutex;
 use rand::rngs::OsRng;
 use rayon::iter::ParallelIterator;
 use reqwest::Client as HttpClient;
@@ -199,7 +198,7 @@ impl Server {
         E: Into<Box<dyn Error + Send + Sync + 'static>>,
     {
         self.0.connection_sema.close();
-        *self.0.shutdown_result.lock() = Some(res.into().map_err(|e| e.into()));
+        *self.0.shutdown_result.lock().unwrap() = Some(res.into().map_err(|e| e.into()));
     }
 }
 
@@ -351,7 +350,7 @@ fn do_update_loop(server: Server, worlds: &mut Worlds) -> ShutdownResult {
     let mut tick_start = Instant::now();
 
     loop {
-        if let Some(res) = server.0.shutdown_result.lock().take() {
+        if let Some(res) = server.0.shutdown_result.lock().unwrap().take() {
             return res;
         }
 

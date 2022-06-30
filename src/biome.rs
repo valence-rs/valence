@@ -61,17 +61,12 @@ impl Default for Biome {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub enum BiomePrecipitation {
+    #[default]
     Rain,
     Snow,
     None,
-}
-
-impl Default for BiomePrecipitation {
-    fn default() -> Self {
-        Self::Rain
-    }
 }
 
 /// Minecraft handles grass colors for swamps and dark oak forests in a special

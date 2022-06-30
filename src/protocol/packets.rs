@@ -944,18 +944,13 @@ pub mod play {
         }
 
         def_enum! {
-            #[derive(Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+            #[derive(Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
             GameMode: u8 {
+                #[default]
                 Survival = 0,
                 Creative = 1,
                 Adventure = 2,
                 Spectator = 3,
-            }
-        }
-
-        impl Default for GameMode {
-            fn default() -> Self {
-                GameMode::Survival
             }
         }
 
@@ -996,8 +991,9 @@ pub mod play {
         }
 
         def_enum! {
-            #[derive(Copy, PartialEq, Eq)]
+            #[derive(Copy, PartialEq, Eq, Default)]
             ChatMessageType: VarInt {
+                #[default]
                 Chat = 0,
                 SystemMessage = 1,
                 GameInfo = 2,
@@ -1006,12 +1002,6 @@ pub mod play {
                 TeamMsgCommand = 5,
                 EmoteCommand = 6,
                 TellrawCommand = 7,
-            }
-        }
-
-        impl Default for ChatMessageType {
-            fn default() -> Self {
-                ChatMessageType::Chat
             }
         }
 
