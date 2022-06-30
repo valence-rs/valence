@@ -7,7 +7,7 @@ use uuid::Uuid;
 use crate::client::GameMode;
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::play::s2c::{
-    PlayerInfo, PlayerInfoAddPlayer, PlayerListHeaderFooter, S2cPlayPacket,
+    PlayerInfo, PlayerInfoAddPlayer, S2cPlayPacket, TabList,
 };
 use crate::protocol::packets::Property;
 use crate::protocol::VarInt;
@@ -148,7 +148,7 @@ impl PlayerList {
 
         if self.header != Text::default() || self.footer != Text::default() {
             packet(
-                PlayerListHeaderFooter {
+                TabList {
                     header: self.header.clone(),
                     footer: self.footer.clone(),
                 }
@@ -222,7 +222,7 @@ impl PlayerList {
 
         if self.modified_header_or_footer {
             packet(
-                PlayerListHeaderFooter {
+                TabList {
                     header: self.header.clone(),
                     footer: self.footer.clone(),
                 }

@@ -6,7 +6,7 @@ use log::LevelFilter;
 use noise::{NoiseFn, Seedable, SuperSimplex};
 use rayon::iter::ParallelIterator;
 use valence::block::{BlockState, PropName, PropValue};
-use valence::client::{ChatMessageType, GameMode};
+use valence::client::{GameMode, PlayerChatType};
 use valence::config::{Config, ServerListPing};
 use valence::text::Color;
 use valence::util::chunks_in_view_distance;
@@ -114,7 +114,7 @@ impl Config for Game {
                     None,
                 );
 
-                client.send_message("welcome!", ChatMessageType::Chat);
+                client.send_message("welcome!", PlayerChatType::Chat);
             }
 
             let dist = client.view_distance();

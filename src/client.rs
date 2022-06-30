@@ -16,16 +16,16 @@ use crate::entity::types::Player;
 use crate::entity::{velocity_to_packet_units, EntityType};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::play::c2s::{C2sPlayPacket, DiggingStatus, InteractType};
-pub use crate::protocol::packets::play::s2c::ChatMessageType;
+pub use crate::protocol::packets::play::s2c::PlayerChatType;
 use crate::protocol::packets::play::s2c::{
-    AcknowledgeBlockChanges, Biome as BiomeRegistryBiome, BiomeAdditionsSound, BiomeEffects,
-    BiomeMoodSound, BiomeMusic, BiomeParticle, BiomeParticleOptions, BiomeProperty, BiomeRegistry,
-    ChangeGameState, ChangeGameStateReason, ChatTypeRegistry, DestroyEntities, DimensionType,
-    DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, EntityHeadLook, EntityMetadata,
-    EntityPosition, EntityPositionAndRotation, EntityRotation, EntityTeleport, EntityVelocity,
-    JoinGame, KeepAlive, PlayerPositionAndLook, PlayerPositionAndLookFlags, RegistryCodec,
-    S2cPlayPacket, SpawnPosition, SystemChatMessage, UnloadChunk, UpdateViewDistance,
-    UpdateViewPosition,
+    Biome as BiomeRegistryBiome, BiomeAdditionsSound, BiomeEffects, BiomeMoodSound, BiomeMusic,
+    BiomeParticle, BiomeParticleOptions, BiomeProperty, BiomeRegistry, BlockChangeAck,
+    ChatTypeRegistry, DimensionType, DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect,
+    ForgetLevelChunk, GameEvent, GameEventReason, KeepAlive, Login, MoveEntityPosition,
+    MoveEntityPositionAndRotation, MoveEntityRotation, PlayerPosition, PlayerPositionFlags,
+    RegistryCodec, RemoveEntities, RotateHead, S2cPlayPacket, SetChunkCacheCenter,
+    SetChunkCacheRadius, SetEntityMetadata, SetEntityMotion, SpawnPosition, SystemChat,
+    TeleportEntity,
 };
 use crate::protocol::{BoundedInt, ByteAngle, Nbt, RawBytes, VarInt};
 use crate::server::C2sPacketChannels;
@@ -136,7 +136,7 @@ pub struct Client {
     old_game_mode: GameMode,
     settings: Option<Settings>,
     dug_blocks: Vec<i32>,
-    msgs_to_send: Vec<(Text, ChatMessageType)>,
+    msgs_to_send: Vec<(Text, PlayerChatType)>,
     /// The metadata for the client's own player entity.
     player_meta: Player,
 }
@@ -200,7 +200,7 @@ impl Client {
         self.textures.as_ref()
     }
 
-    pub fn send_message(&mut self, msg: impl Into<Text>, typ: ChatMessageType) {
+    pub fn send_message(&mut self, msg: impl Into<Text>, typ: PlayerChatType) {
         self.msgs_to_send.push((msg.into(), typ));
     }
 
@@ -386,7 +386,7 @@ impl Client {
         }
 
         match pkt {
-            C2sPlayPacket::TeleportConfirm(p) => {
+            C2sPlayPacket::AcceptTeleportation(p) => {
                 if self.pending_teleports == 0 {
                     self.disconnect("Unexpected teleport confirmation");
                     return;
@@ -405,16 +405,16 @@ impl Client {
                     ));
                 }
             }
-            C2sPlayPacket::QueryBlockNbt(_) => {}
-            C2sPlayPacket::SetDifficulty(_) => {}
+            C2sPlayPacket::BlockEntityTagQuery(_) => {}
+            C2sPlayPacket::ChangeDifficulty(_) => {}
             C2sPlayPacket::ChatCommand(_) => {}
-            C2sPlayPacket::ChatMessage(p) => self.events.push(Event::ChatMessage {
+            C2sPlayPacket::Chat(p) => self.events.push(Event::ChatMessage {
                 message: p.message.0,
                 timestamp: Duration::from_millis(p.timestamp),
             }),
             C2sPlayPacket::ChatPreview(_) => {}
-            C2sPlayPacket::ClientStatus(_) => {}
-            C2sPlayPacket::ClientSettings(p) => {
+            C2sPlayPacket::ClientCommand(_) => {}
+            C2sPlayPacket::ClientInformation(p) => {
                 let old = self.settings.replace(Settings {
                     locale: p.locale.0,
                     view_distance: p.view_distance.0,
@@ -427,13 +427,13 @@ impl Client {
 
                 self.events.push(Event::SettingsChanged(old));
             }
-            C2sPlayPacket::TabComplete(_) => {}
-            C2sPlayPacket::ClickWindowButton(_) => {}
-            C2sPlayPacket::CloseWindow(_) => {}
-            C2sPlayPacket::PluginMessage(_) => {}
+            C2sPlayPacket::CommandSuggestion(_) => {}
+            C2sPlayPacket::ContainerButtonClick(_) => {}
+            C2sPlayPacket::ContainerClose(_) => {}
+            C2sPlayPacket::CustomPayload(_) => {}
             C2sPlayPacket::EditBook(_) => {}
-            C2sPlayPacket::QueryEntityNbt(_) => {}
-            C2sPlayPacket::InteractEntity(p) => {
+            C2sPlayPacket::EntityTagQuery(_) => {}
+            C2sPlayPacket::Interact(p) => {
                 if let Some(id) = entities.get_with_network_id(p.entity_id.0) {
                     // TODO: verify that the client has line of sight to the targeted entity and
                     // that the distance is <=4 blocks.
@@ -451,7 +451,7 @@ impl Client {
                     });
                 }
             }
-            C2sPlayPacket::GenerateStructure(_) => {}
+            C2sPlayPacket::JigsawGenerate(_) => {}
             C2sPlayPacket::KeepAlive(p) => {
                 let last_keepalive_id = self.last_keepalive_id;
                 if self.got_keepalive {
@@ -466,16 +466,16 @@ impl Client {
                 }
             }
             C2sPlayPacket::LockDifficulty(_) => {}
-            C2sPlayPacket::PlayerPosition(p) => {
+            C2sPlayPacket::MovePlayerPosition(p) => {
                 handle_movement_packet(self, false, p.position, self.yaw, self.pitch, p.on_ground)
             }
-            C2sPlayPacket::PlayerPositionAndRotation(p) => {
+            C2sPlayPacket::MovePlayerPositionAndRotation(p) => {
                 handle_movement_packet(self, false, p.position, p.yaw, p.pitch, p.on_ground)
             }
-            C2sPlayPacket::PlayerRotation(p) => {
+            C2sPlayPacket::MovePlayerRotation(p) => {
                 handle_movement_packet(self, false, self.new_position, p.yaw, p.pitch, p.on_ground)
             }
-            C2sPlayPacket::PlayerMovement(p) => handle_movement_packet(
+            C2sPlayPacket::MovePlayerStatusOnly(p) => handle_movement_packet(
                 self,
                 false,
                 self.new_position,
@@ -483,19 +483,19 @@ impl Client {
                 self.pitch,
                 p.on_ground,
             ),
-            C2sPlayPacket::VehicleMove(p) => {
+            C2sPlayPacket::MoveVehicle(p) => {
                 handle_movement_packet(self, true, p.position, p.yaw, p.pitch, self.on_ground);
             }
-            C2sPlayPacket::SteerBoat(p) => {
+            C2sPlayPacket::PaddleBoat(p) => {
                 self.events.push(Event::SteerBoat {
                     left_paddle_turning: p.left_paddle_turning,
                     right_paddle_turning: p.right_paddle_turning,
                 });
             }
             C2sPlayPacket::PickItem(_) => {}
-            C2sPlayPacket::CraftRecipeRequest(_) => {}
+            C2sPlayPacket::PlaceRecipe(_) => {}
             C2sPlayPacket::PlayerAbilities(_) => {}
-            C2sPlayPacket::PlayerDigging(p) => {
+            C2sPlayPacket::PlayerAction(p) => {
                 // TODO: verify dug block is within the correct distance from the client.
                 // TODO: verify that the broken block is allowed to be broken?
 
@@ -525,26 +525,26 @@ impl Client {
                     DiggingStatus::SwapItemInHand => return,
                 });
             }
-            C2sPlayPacket::EntityAction(_) => {}
-            C2sPlayPacket::SteerVehicle(_) => {}
+            C2sPlayPacket::PlayerCommand(_) => {}
+            C2sPlayPacket::PlayerInput(_) => {}
             C2sPlayPacket::Pong(_) => {}
-            C2sPlayPacket::SetRecipeBookState(_) => {}
-            C2sPlayPacket::SetDisplayedRecipe(_) => {}
-            C2sPlayPacket::NameItem(_) => {}
-            C2sPlayPacket::ResourcePackStatus(_) => {}
-            C2sPlayPacket::AdvancementTab(_) => {}
+            C2sPlayPacket::RecipeBookChangeSettings(_) => {}
+            C2sPlayPacket::RecipeBookSeenRecipe(_) => {}
+            C2sPlayPacket::RenameItem(_) => {}
+            C2sPlayPacket::ResourcePack(_) => {}
+            C2sPlayPacket::SeenAdvancements(_) => {}
             C2sPlayPacket::SelectTrade(_) => {}
-            C2sPlayPacket::SetBeaconEffect(_) => {}
-            C2sPlayPacket::HeldItemChange(_) => {}
-            C2sPlayPacket::UpdateCommandBlock(_) => {}
-            C2sPlayPacket::UpdateCommandBlockMinecart(_) => {}
-            C2sPlayPacket::CreativeInventoryAction(_) => {}
-            C2sPlayPacket::UpdateJigsawBlock(_) => {}
-            C2sPlayPacket::UpdateStructureBlock(_) => {}
-            C2sPlayPacket::UpdateSign(_) => {}
-            C2sPlayPacket::PlayerArmSwing(_) => {}
-            C2sPlayPacket::Spectate(_) => {}
-            C2sPlayPacket::PlayerBlockPlacement(_) => {}
+            C2sPlayPacket::SetBeacon(_) => {}
+            C2sPlayPacket::SetCarriedItem(_) => {}
+            C2sPlayPacket::SetCommandBlock(_) => {}
+            C2sPlayPacket::SetCommandBlockMinecart(_) => {}
+            C2sPlayPacket::SetCreativeModeSlot(_) => {}
+            C2sPlayPacket::SetJigsawBlock(_) => {}
+            C2sPlayPacket::SetStructureBlock(_) => {}
+            C2sPlayPacket::SignUpdate(_) => {}
+            C2sPlayPacket::Swing(_) => {}
+            C2sPlayPacket::TeleportToEntity(_) => {}
+            C2sPlayPacket::UseItemOn(_) => {}
             C2sPlayPacket::UseItem(_) => {}
         }
     }
@@ -571,7 +571,7 @@ impl Client {
             meta.player_list()
                 .initial_packets(|pkt| self.send_packet(pkt));
 
-            self.send_packet(JoinGame {
+            self.send_packet(Login {
                 entity_id: 0,       // EntityId 0 is reserved for clients.
                 is_hardcore: false, // TODO
                 gamemode: self.new_game_mode,
@@ -603,8 +603,8 @@ impl Client {
         } else {
             if self.old_game_mode != self.new_game_mode {
                 self.old_game_mode = self.new_game_mode;
-                self.send_packet(ChangeGameState {
-                    reason: ChangeGameStateReason::ChangeGameMode,
+                self.send_packet(GameEvent {
+                    reason: GameEventReason::ChangeGameMode,
                     value: self.new_game_mode as i32 as f32,
                 });
             }
@@ -626,7 +626,7 @@ impl Client {
         if self.old_max_view_distance != self.new_max_view_distance {
             self.old_max_view_distance = self.new_max_view_distance;
             if self.created_tick != current_tick {
-                self.send_packet(UpdateViewDistance {
+                self.send_packet(SetChunkCacheRadius {
                     view_distance: BoundedInt(VarInt(self.new_max_view_distance as i32)),
                 })
             }
@@ -655,7 +655,7 @@ impl Client {
             let new_section = self.new_position.map(|n| (n / 16.0).floor() as i32);
 
             if old_section != new_section {
-                self.send_packet(UpdateViewPosition {
+                self.send_packet(SetChunkCacheCenter {
                     chunk_x: VarInt(new_section.x),
                     chunk_z: VarInt(new_section.z),
                 })
@@ -684,7 +684,7 @@ impl Client {
 
             send_packet(
                 &mut self.send,
-                UnloadChunk {
+                ForgetLevelChunk {
                     chunk_x: pos.x,
                     chunk_z: pos.z,
                 },
@@ -706,7 +706,7 @@ impl Client {
         for seq in self.dug_blocks.drain(..) {
             send_packet(
                 &mut self.send,
-                AcknowledgeBlockChanges {
+                BlockChangeAck {
                     sequence: VarInt(seq),
                 },
             )
@@ -717,11 +717,11 @@ impl Client {
         if self.teleported_this_tick {
             self.teleported_this_tick = false;
 
-            self.send_packet(PlayerPositionAndLook {
+            self.send_packet(PlayerPosition {
                 position: self.new_position,
                 yaw: self.yaw,
                 pitch: self.pitch,
-                flags: PlayerPositionAndLookFlags::new(false, false, false, false, false),
+                flags: PlayerPositionFlags::new(false, false, false, false, false),
                 teleport_id: VarInt((self.teleport_id_counter - 1) as i32),
                 dismount_vehicle: false,
             });
@@ -729,7 +729,7 @@ impl Client {
 
         for (msg, typ) in self.msgs_to_send.drain(..) {
             // TODO: wont work without proper chat registry.
-            send_packet(&mut self.send, SystemChatMessage { chat: msg, typ });
+            send_packet(&mut self.send, SystemChat { chat: msg, typ });
         }
 
         let mut entities_to_unload = Vec::new();
@@ -756,7 +756,7 @@ impl Client {
                     {
                         send_packet(
                             &mut self.send,
-                            EntityPositionAndRotation {
+                            MoveEntityPositionAndRotation {
                                 entity_id: VarInt(id.to_network_id()),
                                 delta: (position_delta * 4096.0).as_(),
                                 yaw: ByteAngle::from_degrees(entity.yaw()),
@@ -768,7 +768,7 @@ impl Client {
                         if entity.position() != entity.old_position() && !needs_teleport {
                             send_packet(
                                 &mut self.send,
-                                EntityPosition {
+                                MoveEntityPosition {
                                     entity_id: VarInt(id.to_network_id()),
                                     delta: (position_delta * 4096.0).as_(),
                                     on_ground: entity.on_ground(),
@@ -779,7 +779,7 @@ impl Client {
                         if flags.yaw_or_pitch_modified() {
                             send_packet(
                                 &mut self.send,
-                                EntityRotation {
+                                MoveEntityRotation {
                                     entity_id: VarInt(id.to_network_id()),
                                     yaw: ByteAngle::from_degrees(entity.yaw()),
                                     pitch: ByteAngle::from_degrees(entity.pitch()),
@@ -792,7 +792,7 @@ impl Client {
                     if needs_teleport {
                         send_packet(
                             &mut self.send,
-                            EntityTeleport {
+                            TeleportEntity {
                                 entity_id: VarInt(id.to_network_id()),
                                 position: entity.position(),
                                 yaw: ByteAngle::from_degrees(entity.yaw()),
@@ -805,7 +805,7 @@ impl Client {
                     if flags.velocity_modified() {
                         send_packet(
                             &mut self.send,
-                            EntityVelocity {
+                            SetEntityMotion {
                                 entity_id: VarInt(id.to_network_id()),
                                 velocity: velocity_to_packet_units(entity.velocity()),
                             },
@@ -815,7 +815,7 @@ impl Client {
                     if flags.head_yaw_modified() {
                         send_packet(
                             &mut self.send,
-                            EntityHeadLook {
+                            RotateHead {
                                 entity_id: VarInt(id.to_network_id()),
                                 head_yaw: ByteAngle::from_degrees(entity.head_yaw()),
                             },
@@ -831,7 +831,7 @@ impl Client {
         });
 
         if !entities_to_unload.is_empty() {
-            self.send_packet(DestroyEntities {
+            self.send_packet(RemoveEntities {
                 entities: entities_to_unload,
             });
         }
@@ -843,7 +843,7 @@ impl Client {
         if !data.is_empty() {
             data.push(0xff);
 
-            self.send_packet(EntityMetadata {
+            self.send_packet(SetEntityMetadata {
                 entity_id: VarInt(0),
                 metadata: RawBytes(data),
             });

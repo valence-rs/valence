@@ -33,8 +33,8 @@ use crate::protocol::packets::login::c2s::{EncryptionResponse, LoginStart, Verif
 use crate::protocol::packets::login::s2c::{EncryptionRequest, LoginSuccess, SetCompression};
 use crate::protocol::packets::play::c2s::C2sPlayPacket;
 use crate::protocol::packets::play::s2c::S2cPlayPacket;
-use crate::protocol::packets::status::c2s::{Ping, Request};
-use crate::protocol::packets::status::s2c::{Pong, Response};
+use crate::protocol::packets::status::c2s::{PingRequest, StatusRequest};
+use crate::protocol::packets::status::s2c::{PongResponse, Response};
 use crate::protocol::packets::{login, Property};
 use crate::protocol::{BoundedArray, BoundedString, VarInt};
 use crate::util::valid_username;
@@ -517,7 +517,7 @@ async fn handle_status(
     c: &mut Codec,
     remote_addr: SocketAddr,
 ) -> anyhow::Result<()> {
-    c.1.read_packet::<Request>().await?;
+    c.1.read_packet::<StatusRequest>().await?;
 
     match server.0.cfg.server_list_ping(&server, remote_addr).await {
         ServerListPing::Respond {
@@ -555,9 +555,9 @@ async fn handle_status(
         ServerListPing::Ignore => return Ok(()),
     }
 
-    let Ping { payload } = c.1.read_packet().await?;
+    let PingRequest { payload } = c.1.read_packet().await?;
 
-    c.0.write_packet(&Pong { payload }).await?;
+    c.0.write_packet(&PongResponse { payload }).await?;
 
     Ok(())
 }

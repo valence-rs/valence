@@ -372,7 +372,7 @@ pub mod status {
         }
 
         def_struct! {
-            Pong 0x01 {
+            PongResponse 0x01 {
                 /// Should be the same as the payload from [`Ping`].
                 payload: u64
             }
@@ -383,11 +383,11 @@ pub mod status {
         use super::super::*;
 
         def_struct! {
-            Request 0x00 {}
+            StatusRequest 0x00 {}
         }
 
         def_struct! {
-            Ping 0x01 {
+            PingRequest 0x01 {
                 payload: u64
             }
         }
@@ -469,7 +469,7 @@ pub mod play {
         use super::super::*;
 
         def_struct! {
-            SpawnEntity 0x00 {
+            AddEntity 0x00 {
                 entity_id: VarInt,
                 object_uuid: Uuid,
                 typ: VarInt,
@@ -483,24 +483,15 @@ pub mod play {
         }
 
         def_struct! {
-            SpawnExperienceOrb 0x01 {
+            AddExperienceOrb 0x01 {
                 entity_id: VarInt,
                 position: Vec3<f64>,
                 count: i16,
             }
         }
 
-        def_enum! {
-            PaintingDirection: u8 {
-                South = 0,
-                West = 1,
-                North = 2,
-                East = 3,
-            }
-        }
-
         def_struct! {
-            SpawnPlayer 0x02 {
+            AddPlayer 0x02 {
                 entity_id: VarInt,
                 player_uuid: Uuid,
                 position: Vec3<f64>,
@@ -510,7 +501,7 @@ pub mod play {
         }
 
         def_struct! {
-            EntityAnimation 0x03 {
+            Animate 0x03 {
                 entity_id: VarInt,
                 animation: Animation,
             }
@@ -528,13 +519,13 @@ pub mod play {
         }
 
         def_struct! {
-            AcknowledgeBlockChanges 0x05 {
+            BlockChangeAck 0x05 {
                 sequence: VarInt,
             }
         }
 
         def_struct! {
-            BlockBreakAnimation 0x06 {
+            BlockDestruction 0x06 {
                 entity_id: VarInt,
                 location: BlockPos,
                 destroy_stage: BoundedInt<u8, 0, 10>,
@@ -550,49 +541,48 @@ pub mod play {
         }
 
         def_struct! {
-            BlockAction 0x08 {
+            BlockEvent 0x08 {
                 location: BlockPos,
                 action_id: u8,
                 action_param: u8,
-                block_type: VarInt,
-                // TODO: sequence?
+                block_type: VarInt, // TODO: use BlockType type.
             }
         }
 
         def_struct! {
-            BlockChange 0x09 {
+            BlockUpdate 0x09 {
                 location: BlockPos,
                 block_id: VarInt,
             }
         }
 
         def_struct! {
-            BossBar 0x0a {
+            BossEvent 0x0a {
                 uuid: Uuid,
-                action: BossBarAction,
+                action: BossEventAction,
             }
         }
 
         def_enum! {
-            BossBarAction: VarInt {
-                Add: BossBarActionAdd = 0,
+            BossEventAction: VarInt {
+                Add: BossEventActionAdd = 0,
                 // TODO
             }
         }
 
         def_struct! {
-            BossBarActionAdd {
+            BossEventActionAdd {
                 title: Text,
                 health: f32,
-                color: BossBarColor,
-                division: BossBarDivision,
+                color: BossEventColor,
+                division: BossEventDivision,
                 /// TODO: bitmask
                 flags: u8,
             }
         }
 
         def_enum! {
-            BossBarColor: VarInt {
+            BossEventColor: VarInt {
                 Pink = 0,
                 Blue = 1,
                 Red = 2,
@@ -604,7 +594,7 @@ pub mod play {
         }
 
         def_enum! {
-            BossBarDivision: VarInt {
+            BossEventDivision: VarInt {
                 NoDivision = 0,
                 SixNotches = 1,
                 TenNotches = 2,
@@ -614,7 +604,7 @@ pub mod play {
         }
 
         def_struct! {
-            ServerDifficulty 0x0b {
+            ChangeDifficulty 0x0b {
                 difficulty: Difficulty,
                 locked: bool,
             }
@@ -630,58 +620,13 @@ pub mod play {
         }
 
         def_struct! {
-            ClearTitles 0x0d {
-                reset: bool,
-            }
-        }
-
-        def_struct! {
-            TabComplete 0x0e {
-                id: VarInt,
-                start: VarInt,
-                length: VarInt,
-                matches: Vec<TabCompleteMatch>,
-            }
-        }
-
-        def_struct! {
-            TabCompleteMatch {
-                value: String,
-                tooltip: TabCompleteTooltip,
-            }
-        }
-
-        def_enum! {
-            TabCompleteTooltip: u8 {
-                NoTooltip = 0,
-                Tooltip: Text = 1,
-            }
-        }
-
-        def_struct! {
-            WindowProperty 0x12 {
-                // TODO: use enums
-                window_id: u8,
-                property: i16,
-                value: i16,
-            }
-        }
-
-        def_struct! {
-            SetCooldown 0x14 {
-                item_id: VarInt,
-                cooldown_ticks: VarInt,
-            }
-        }
-
-        def_struct! {
             Disconnect 0x17 {
                 reason: Text,
             }
         }
 
         def_struct! {
-            EntityStatus 0x18 {
+            EntityEvent 0x18 {
                 entity_id: i32,
                 /// TODO: enum
                 entity_status: u8,
@@ -689,21 +634,21 @@ pub mod play {
         }
 
         def_struct! {
-            UnloadChunk 0x1a {
+            ForgetLevelChunk 0x1a {
                 chunk_x: i32,
                 chunk_z: i32
             }
         }
 
         def_struct! {
-            ChangeGameState 0x1b {
-                reason: ChangeGameStateReason,
+            GameEvent 0x1b {
+                reason: GameEventReason,
                 value: f32,
             }
         }
 
         def_enum! {
-            ChangeGameStateReason: u8 {
+            GameEventReason: u8 {
                 NoRespawnBlockAvailable = 0,
                 EndRaining = 1,
                 BeginRaining = 2,
@@ -716,14 +661,6 @@ pub mod play {
                 PlayPufferfishStingSound = 9,
                 PlayElderGuardianMobAppearance = 10,
                 EnableRespawnScreen = 11,
-            }
-        }
-
-        def_struct! {
-            OpenHorseWindow 0x1c {
-                window_id: u8,
-                slot_count: VarInt,
-                entity_id: i32,
             }
         }
 
@@ -747,12 +684,12 @@ pub mod play {
         }
 
         def_struct! {
-            ChunkDataAndUpdateLight 0x1f {
+            LevelChunkWithLight 0x1f {
                 chunk_x: i32,
                 chunk_z: i32,
-                heightmaps: Nbt<ChunkDataHeightmaps>,
+                heightmaps: Nbt<LevelChunkHeightmaps>,
                 blocks_and_biomes: Vec<u8>,
-                block_entities: Vec<ChunkDataBlockEntity>,
+                block_entities: Vec<LevelChunkBlockEntity>,
                 trust_edges: bool,
                 sky_light_mask: BitVec<u64>,
                 block_light_mask: BitVec<u64>,
@@ -764,13 +701,13 @@ pub mod play {
         }
 
         #[derive(Clone, Debug, Serialize, Deserialize)]
-        pub struct ChunkDataHeightmaps {
+        pub struct LevelChunkHeightmaps {
             #[serde(rename = "MOTION_BLOCKING", serialize_with = "nbt::i64_array")]
             pub motion_blocking: Vec<i64>,
         }
 
         def_struct! {
-            ChunkDataBlockEntity {
+            LevelChunkBlockEntity {
                 packed_xz: i8,
                 y: i16,
                 typ: VarInt,
@@ -779,7 +716,7 @@ pub mod play {
         }
 
         def_struct! {
-            JoinGame 0x23 {
+            Login 0x23 {
                 /// Entity ID of the joining player
                 entity_id: i32,
                 is_hardcore: bool,
@@ -955,7 +892,7 @@ pub mod play {
         }
 
         def_struct! {
-            EntityPosition 0x26 {
+            MoveEntityPosition 0x26 {
                 entity_id: VarInt,
                 delta: Vec3<i16>,
                 on_ground: bool,
@@ -963,7 +900,7 @@ pub mod play {
         }
 
         def_struct! {
-            EntityPositionAndRotation 0x27 {
+            MoveEntityPositionAndRotation 0x27 {
                 entity_id: VarInt,
                 delta: Vec3<i16>,
                 yaw: ByteAngle,
@@ -973,7 +910,7 @@ pub mod play {
         }
 
         def_struct! {
-            EntityRotation 0x28 {
+            MoveEntityRotation 0x28 {
                 entity_id: VarInt,
                 yaw: ByteAngle,
                 pitch: ByteAngle,
@@ -982,9 +919,9 @@ pub mod play {
         }
 
         def_struct! {
-            ChatMessage 0x30 {
+            PlayerChat 0x30 {
                 message: Text,
-                typ: ChatMessageType,
+                typ: PlayerChatType,
                 sender: Uuid,
                 // TODO more fields
             }
@@ -992,7 +929,7 @@ pub mod play {
 
         def_enum! {
             #[derive(Copy, PartialEq, Eq, Default)]
-            ChatMessageType: VarInt {
+            PlayerChatType: VarInt {
                 #[default]
                 Chat = 0,
                 SystemMessage = 1,
@@ -1028,18 +965,18 @@ pub mod play {
         }
 
         def_struct! {
-            PlayerPositionAndLook 0x36 {
+            PlayerPosition 0x36 {
                 position: Vec3<f64>,
                 yaw: f32,
                 pitch: f32,
-                flags: PlayerPositionAndLookFlags,
+                flags: PlayerPositionFlags,
                 teleport_id: VarInt,
                 dismount_vehicle: bool,
             }
         }
 
         def_bitfield! {
-            PlayerPositionAndLookFlags: u8 {
+            PlayerPositionFlags: u8 {
                 x = 0,
                 y = 1,
                 z = 2,
@@ -1049,20 +986,20 @@ pub mod play {
         }
 
         def_struct! {
-            DestroyEntities 0x38 {
+            RemoveEntities 0x38 {
                 entities: Vec<VarInt>,
             }
         }
 
         def_struct! {
-            EntityHeadLook 0x3c {
+            RotateHead 0x3c {
                 entity_id: VarInt,
                 head_yaw: ByteAngle,
             }
         }
 
         def_struct! {
-            MultiBlockChange 0x3d {
+            SectionBlocksUpdate 0x3d {
                 chunk_section_position: i64,
                 invert_trust_edges: bool,
                 blocks: Vec<VarLong>,
@@ -1070,20 +1007,20 @@ pub mod play {
         }
 
         def_struct! {
-            HeldItemChange 0x47 {
+            SetCarriedItem 0x47 {
                 slot: BoundedInt<u8, 0, 9>,
             }
         }
 
         def_struct! {
-            UpdateViewPosition 0x48 {
+            SetChunkCacheCenter 0x48 {
                 chunk_x: VarInt,
                 chunk_z: VarInt,
             }
         }
 
         def_struct! {
-            UpdateViewDistance 0x49 {
+            SetChunkCacheRadius 0x49 {
                 view_distance: BoundedInt<VarInt, 2, 32>,
             }
         }
@@ -1096,21 +1033,21 @@ pub mod play {
         }
 
         def_struct! {
-            EntityMetadata 0x4d {
+            SetEntityMetadata 0x4d {
                 entity_id: VarInt,
                 metadata: RawBytes,
             }
         }
 
         def_struct! {
-            EntityVelocity 0x4f {
+            SetEntityMotion 0x4f {
                 entity_id: VarInt,
                 velocity: Vec3<i16>,
             }
         }
 
         def_struct! {
-            TimeUpdate 0x59 {
+            SetTime 0x59 {
                 /// The age of the world in 1/20ths of a second.
                 world_age: i64,
                 /// The current time of day in 1/20ths of a second.
@@ -1121,21 +1058,21 @@ pub mod play {
         }
 
         def_struct! {
-            SystemChatMessage 0x5f {
+            SystemChat 0x5f {
                 chat: Text,
-                typ: ChatMessageType,
+                typ: PlayerChatType,
             }
         }
 
         def_struct! {
-            PlayerListHeaderFooter 0x60 {
+            TabList 0x60 {
                 header: Text,
                 footer: Text,
             }
         }
 
         def_struct! {
-            EntityTeleport 0x63 {
+            TeleportEntity 0x63 {
                 entity_id: VarInt,
                 position: Vec3<f64>,
                 yaw: ByteAngle,
@@ -1200,42 +1137,42 @@ pub mod play {
         }
 
         def_s2c_play_packet_enum! {
-            SpawnEntity,
-            SpawnExperienceOrb,
-            SpawnPlayer,
-            EntityAnimation,
-            AcknowledgeBlockChanges,
-            BlockBreakAnimation,
+            AddEntity,
+            AddExperienceOrb,
+            AddPlayer,
+            Animate,
+            BlockChangeAck,
+            BlockDestruction,
             BlockEntityData,
-            BlockAction,
-            BlockChange,
-            BossBar,
+            BlockEvent,
+            BlockUpdate,
+            BossEvent,
             Disconnect,
-            EntityStatus,
-            UnloadChunk,
-            ChangeGameState,
+            EntityEvent,
+            ForgetLevelChunk,
+            GameEvent,
             KeepAlive,
-            ChunkDataAndUpdateLight,
-            JoinGame,
-            EntityPosition,
-            EntityPositionAndRotation,
-            EntityRotation,
-            ChatMessage,
+            LevelChunkWithLight,
+            Login,
+            MoveEntityPosition,
+            MoveEntityPositionAndRotation,
+            MoveEntityRotation,
+            PlayerChat,
             PlayerInfo,
-            PlayerPositionAndLook,
-            DestroyEntities,
-            EntityHeadLook,
-            MultiBlockChange,
-            HeldItemChange,
-            UpdateViewPosition,
-            UpdateViewDistance,
+            PlayerPosition,
+            RemoveEntities,
+            RotateHead,
+            SectionBlocksUpdate,
+            SetCarriedItem,
+            SetChunkCacheCenter,
+            SetChunkCacheRadius,
             SpawnPosition,
-            EntityMetadata,
-            EntityVelocity,
-            TimeUpdate,
-            SystemChatMessage,
-            PlayerListHeaderFooter,
-            EntityTeleport,
+            SetEntityMetadata,
+            SetEntityMotion,
+            SetTime,
+            SystemChat,
+            TabList,
+            TeleportEntity,
         }
     }
 
@@ -1243,20 +1180,20 @@ pub mod play {
         use super::super::*;
 
         def_struct! {
-            TeleportConfirm 0x00 {
+            AcceptTeleportation 0x00 {
                 teleport_id: VarInt
             }
         }
 
         def_struct! {
-            QueryBlockNbt 0x01 {
+            BlockEntityTagQuery 0x01 {
                 transaction_id: VarInt,
                 location: BlockPos,
             }
         }
 
         def_enum! {
-            SetDifficulty 0x02: i8 {
+            ChangeDifficulty 0x02: i8 {
                 Peaceful = 0,
                 Easy = 1,
                 Normal = 2,
@@ -1273,7 +1210,7 @@ pub mod play {
         }
 
         def_struct! {
-            ChatMessage 0x04 {
+            Chat 0x04 {
                 message: BoundedString<0, 256>,
                 timestamp: u64,
                 salt: u64,
@@ -1290,7 +1227,7 @@ pub mod play {
         }
 
         def_enum! {
-            ClientStatus 0x06: VarInt {
+            ClientCommand 0x06: VarInt {
                 /// Sent when ready to complete login and ready to respawn after death.
                 PerformRespawn = 0,
                 /// Sent when the statistics menu is opened.
@@ -1299,7 +1236,7 @@ pub mod play {
         }
 
         def_struct! {
-            ClientSettings 0x07 {
+            ClientInformation 0x07 {
                 /// e.g. en_US
                 locale: BoundedString<0, 16>,
                 /// Client-side render distance in chunks.
@@ -1345,7 +1282,7 @@ pub mod play {
         }
 
         def_struct! {
-            TabComplete 0x08 {
+            CommandSuggestion 0x08 {
                 transaction_id: VarInt,
                 /// Text behind the cursor without the '/'.
                 text: BoundedString<0, 32500>
@@ -1353,20 +1290,20 @@ pub mod play {
         }
 
         def_struct! {
-            ClickWindowButton 0x09 {
+            ContainerButtonClick 0x09 {
                 window_id: i8,
                 button_id: i8,
             }
         }
 
         def_struct! {
-            CloseWindow 0x0b {
+            ContainerClose 0x0b {
                 window_id: u8,
             }
         }
 
         def_struct! {
-            PluginMessage 0x0c {
+            CustomPayload 0x0c {
                 channel: Ident,
                 data: RawBytes,
             }
@@ -1381,14 +1318,14 @@ pub mod play {
         }
 
         def_struct! {
-            QueryEntityNbt 0x0e {
+            EntityTagQuery 0x0e {
                 transaction_id: VarInt,
                 entity_id: VarInt,
             }
         }
 
         def_struct! {
-            InteractEntity 0x0f {
+            Interact 0x0f {
                 entity_id: VarInt,
                 typ: InteractType,
                 sneaking: bool,
@@ -1412,7 +1349,7 @@ pub mod play {
         }
 
         def_struct! {
-            GenerateStructure 0x10 {
+            JigsawGenerate 0x10 {
                 location: BlockPos,
                 levels: VarInt,
                 keep_jigsaws: bool,
@@ -1432,14 +1369,14 @@ pub mod play {
         }
 
         def_struct! {
-            PlayerPosition 0x13 {
+            MovePlayerPosition 0x13 {
                 position: Vec3<f64>,
                 on_ground: bool,
             }
         }
 
         def_struct! {
-            PlayerPositionAndRotation 0x14 {
+            MovePlayerPositionAndRotation 0x14 {
                 // Absolute position
                 position: Vec3<f64>,
                 /// Absolute rotation on X axis in degrees.
@@ -1451,7 +1388,7 @@ pub mod play {
         }
 
         def_struct! {
-            PlayerRotation 0x15 {
+            MovePlayerRotation 0x15 {
                 /// Absolute rotation on X axis in degrees.
                 yaw: f32,
                 /// Absolute rotation on Y axis in degrees.
@@ -1461,13 +1398,13 @@ pub mod play {
         }
 
         def_struct! {
-            PlayerMovement 0x16 {
+            MovePlayerStatusOnly 0x16 {
                 on_ground: bool
             }
         }
 
         def_struct! {
-            VehicleMove 0x17 {
+            MoveVehicle 0x17 {
                 /// Absolute position
                 position: Vec3<f64>,
                 /// Degrees
@@ -1478,7 +1415,7 @@ pub mod play {
         }
 
         def_struct! {
-            SteerBoat 0x18 {
+            PaddleBoat 0x18 {
                 left_paddle_turning: bool,
                 right_paddle_turning: bool,
             }
@@ -1491,7 +1428,7 @@ pub mod play {
         }
 
         def_struct! {
-            CraftRecipeRequest 0x1a {
+            PlaceRecipe 0x1a {
                 window_id: i8,
                 recipe: Ident,
                 make_all: bool,
@@ -1506,7 +1443,7 @@ pub mod play {
         }
 
         def_struct! {
-            PlayerDigging 0x1c {
+            PlayerAction 0x1c {
                 status: DiggingStatus,
                 location: BlockPos,
                 face: BlockFace,
@@ -1545,15 +1482,15 @@ pub mod play {
         }
 
         def_struct! {
-            EntityAction 0x1d {
+            PlayerCommand 0x1d {
                 entity_id: VarInt,
-                action_id: EntityActionId,
+                action_id: PlayerCommandId,
                 jump_boost: BoundedInt<VarInt, 0, 100>,
             }
         }
 
         def_enum! {
-            EntityActionId: VarInt {
+            PlayerCommandId: VarInt {
                 StartSneaking = 0,
                 StopSneaking = 1,
                 LeaveBed = 2,
@@ -1567,15 +1504,15 @@ pub mod play {
         }
 
         def_struct! {
-            SteerVehicle 0x1e {
+            PlayerInput 0x1e {
                 sideways: f32,
                 forward: f32,
-                flags: SteerVehicleFlags,
+                flags: PlayerInputFlags,
             }
         }
 
         def_bitfield! {
-            SteerVehicleFlags: u8 {
+            PlayerInputFlags: u8 {
                 jump = 0,
                 unmount = 1,
             }
@@ -1588,7 +1525,7 @@ pub mod play {
         }
 
         def_struct! {
-            SetRecipeBookState 0x20 {
+            RecipeBookChangeSettings 0x20 {
                 book_id: RecipeBookId,
                 book_open: bool,
                 filter_active: bool,
@@ -1605,19 +1542,19 @@ pub mod play {
         }
 
         def_struct! {
-            SetDisplayedRecipe 0x21 {
+            RecipeBookSeenRecipe 0x21 {
                 recipe_id: Ident,
             }
         }
 
         def_struct! {
-            NameItem 0x22 {
+            RenameItem 0x22 {
                 item_name: BoundedString<0, 50>,
             }
         }
 
         def_enum! {
-            ResourcePackStatus 0x23: VarInt {
+            ResourcePack 0x23: VarInt {
                 SuccessfullyLoaded = 0,
                 Declined = 1,
                 FailedDownload = 2,
@@ -1626,7 +1563,7 @@ pub mod play {
         }
 
         def_enum! {
-            AdvancementTab 0x24: VarInt {
+            SeenAdvancements 0x24: VarInt {
                 OpenedTab: Ident = 0,
                 ClosedScreen = 1,
             }
@@ -1639,7 +1576,7 @@ pub mod play {
         }
 
         def_struct! {
-            SetBeaconEffect 0x26 {
+            SetBeacon 0x26 {
                 // TODO: potion ids
                 primary_effect: Option<VarInt>,
                 secondary_effect: Option<VarInt>,
@@ -1647,13 +1584,13 @@ pub mod play {
         }
 
         def_struct! {
-            HeldItemChange 0x27 {
+            SetCarriedItem 0x27 {
                 slot: BoundedInt<i16, 0, 8>,
             }
         }
 
         def_struct! {
-            UpdateCommandBlock 0x28 {
+            SetCommandBlock 0x28 {
                 location: BlockPos,
                 command: String,
                 mode: CommandBlockMode,
@@ -1678,7 +1615,7 @@ pub mod play {
         }
 
         def_struct! {
-            UpdateCommandBlockMinecart 0x29 {
+            SetCommandBlockMinecart 0x29 {
                 entity_id: VarInt,
                 command: String,
                 track_output: bool,
@@ -1686,14 +1623,14 @@ pub mod play {
         }
 
         def_struct! {
-            CreativeInventoryAction 0x2a {
+            SetCreativeModeSlot 0x2a {
                 slot: i16,
                 // TODO: clicked_item: Slot,
             }
         }
 
         def_struct! {
-            UpdateJigsawBlock 0x2b {
+            SetJigsawBlock 0x2b {
                 location: BlockPos,
                 name: Ident,
                 target: Ident,
@@ -1704,7 +1641,7 @@ pub mod play {
         }
 
         def_struct! {
-            UpdateStructureBlock 0x2c {
+            SetStructureBlock 0x2c {
                 location: BlockPos,
                 action: StructureBlockAction,
                 mode: StructureBlockMode,
@@ -1764,26 +1701,26 @@ pub mod play {
         }
 
         def_struct! {
-            UpdateSign 0x2d {
+            SignUpdate 0x2d {
                 location: BlockPos,
                 lines: [BoundedString<0, 384>; 4],
             }
         }
 
         def_struct! {
-            PlayerArmSwing 0x2e {
+            Swing 0x2e {
                 hand: Hand,
             }
         }
 
         def_struct! {
-            Spectate 0x2f {
+            TeleportToEntity 0x2f {
                 target: Uuid,
             }
         }
 
         def_struct! {
-            PlayerBlockPlacement 0x30 {
+            UseItemOn 0x30 {
                 hand: Hand,
                 location: BlockPos,
                 face: BlockFace,
@@ -1849,54 +1786,54 @@ pub mod play {
     }
 
         def_c2s_play_packet_enum! {
-            TeleportConfirm,
-            QueryBlockNbt,
-            SetDifficulty,
+            AcceptTeleportation,
+            BlockEntityTagQuery,
+            ChangeDifficulty,
             ChatCommand,
-            ChatMessage,
+            Chat,
             ChatPreview,
-            ClientStatus,
-            ClientSettings,
-            TabComplete,
-            ClickWindowButton,
-            CloseWindow,
-            PluginMessage,
+            ClientCommand,
+            ClientInformation,
+            CommandSuggestion,
+            ContainerButtonClick,
+            ContainerClose,
+            CustomPayload,
             EditBook,
-            QueryEntityNbt,
-            InteractEntity,
-            GenerateStructure,
+            EntityTagQuery,
+            Interact,
+            JigsawGenerate,
             KeepAlive,
             LockDifficulty,
-            PlayerPosition,
-            PlayerPositionAndRotation,
-            PlayerRotation,
-            PlayerMovement,
-            VehicleMove,
-            SteerBoat,
+            MovePlayerPosition,
+            MovePlayerPositionAndRotation,
+            MovePlayerRotation,
+            MovePlayerStatusOnly,
+            MoveVehicle,
+            PaddleBoat,
             PickItem,
-            CraftRecipeRequest,
+            PlaceRecipe,
             PlayerAbilities,
-            PlayerDigging,
-            EntityAction,
-            SteerVehicle,
+            PlayerAction,
+            PlayerCommand,
+            PlayerInput,
             Pong,
-            SetRecipeBookState,
-            SetDisplayedRecipe,
-            NameItem,
-            ResourcePackStatus,
-            AdvancementTab,
+            RecipeBookChangeSettings,
+            RecipeBookSeenRecipe,
+            RenameItem,
+            ResourcePack,
+            SeenAdvancements,
             SelectTrade,
-            SetBeaconEffect,
-            HeldItemChange,
-            UpdateCommandBlock,
-            UpdateCommandBlockMinecart,
-            CreativeInventoryAction,
-            UpdateJigsawBlock,
-            UpdateStructureBlock,
-            UpdateSign,
-            PlayerArmSwing,
-            Spectate,
-            PlayerBlockPlacement,
+            SetBeacon,
+            SetCarriedItem,
+            SetCommandBlock,
+            SetCommandBlockMinecart,
+            SetCreativeModeSlot,
+            SetJigsawBlock,
+            SetStructureBlock,
+            SignUpdate,
+            Swing,
+            TeleportToEntity,
+            UseItemOn,
             UseItem,
         }
     }

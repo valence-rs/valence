@@ -13,7 +13,7 @@ use uuid::Uuid;
 use vek::{Aabb, Vec3};
 
 use crate::protocol::packets::play::s2c::{
-    EntityMetadata, S2cPlayPacket, SpawnEntity, SpawnExperienceOrb, SpawnPlayer,
+    AddEntity, AddExperienceOrb, AddPlayer, S2cPlayPacket, SetEntityMetadata,
 };
 use crate::protocol::{ByteAngle, RawBytes, VarInt};
 use crate::slotmap::{Key, SlotMap};
@@ -307,8 +307,8 @@ impl Entity {
     /// spawned.
     ///
     /// Is `None` if there is no initial metadata.
-    pub(crate) fn initial_metadata_packet(&self, this_id: EntityId) -> Option<EntityMetadata> {
-        self.meta.initial_metadata().map(|meta| EntityMetadata {
+    pub(crate) fn initial_metadata_packet(&self, this_id: EntityId) -> Option<SetEntityMetadata> {
+        self.meta.initial_metadata().map(|meta| SetEntityMetadata {
             entity_id: VarInt(this_id.to_network_id()),
             metadata: RawBytes(meta),
         })
@@ -317,8 +317,8 @@ impl Entity {
     /// Gets the metadata packet to send to clients when the entity is modified.
     ///
     /// Is `None` if this entity's metadata has not been modified.
-    pub(crate) fn updated_metadata_packet(&self, this_id: EntityId) -> Option<EntityMetadata> {
-        self.meta.updated_metadata().map(|meta| EntityMetadata {
+    pub(crate) fn updated_metadata_packet(&self, this_id: EntityId) -> Option<SetEntityMetadata> {
+        self.meta.updated_metadata().map(|meta| SetEntityMetadata {
             entity_id: VarInt(this_id.to_network_id()),
             metadata: RawBytes(meta),
         })
@@ -328,20 +328,20 @@ impl Entity {
         match &self.meta {
             EntityMeta::Marker(_) => None,
             EntityMeta::ExperienceOrb(_) => {
-                Some(EntitySpawnPacket::SpawnExperienceOrb(SpawnExperienceOrb {
+                Some(EntitySpawnPacket::SpawnExperienceOrb(AddExperienceOrb {
                     entity_id: VarInt(this_id.to_network_id()),
                     position: self.new_position,
                     count: 0, // TODO
                 }))
             }
-            EntityMeta::Player(_) => Some(EntitySpawnPacket::SpawnPlayer(SpawnPlayer {
+            EntityMeta::Player(_) => Some(EntitySpawnPacket::SpawnPlayer(AddPlayer {
                 entity_id: VarInt(this_id.to_network_id()),
                 player_uuid: self.uuid,
                 position: self.new_position,
                 yaw: ByteAngle::from_degrees(self.yaw),
                 pitch: ByteAngle::from_degrees(self.pitch),
             })),
-            _ => Some(EntitySpawnPacket::SpawnEntity(SpawnEntity {
+            _ => Some(EntitySpawnPacket::SpawnEntity(AddEntity {
                 entity_id: VarInt(this_id.to_network_id()),
                 object_uuid: self.uuid,
                 typ: VarInt(self.typ() as i32),
@@ -505,9 +505,9 @@ pub(crate) fn velocity_to_packet_units(vel: Vec3<f32>) -> Vec3<i16> {
 }
 
 pub(crate) enum EntitySpawnPacket {
-    SpawnEntity(SpawnEntity),
-    SpawnExperienceOrb(SpawnExperienceOrb),
-    SpawnPlayer(SpawnPlayer),
+    SpawnEntity(AddEntity),
+    SpawnExperienceOrb(AddExperienceOrb),
+    SpawnPlayer(AddPlayer),
 }
 
 impl From<EntitySpawnPacket> for S2cPlayPacket {

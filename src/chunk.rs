@@ -10,7 +10,7 @@ use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelI
 
 use crate::block::BlockState;
 use crate::protocol::packets::play::s2c::{
-    BlockChange, ChunkDataAndUpdateLight, ChunkDataHeightmaps, MultiBlockChange, S2cPlayPacket,
+    BlockUpdate, LevelChunkHeightmaps, LevelChunkWithLight, S2cPlayPacket, SectionBlocksUpdate,
 };
 use crate::protocol::{Encode, Nbt, VarInt, VarLong};
 use crate::{BiomeId, BlockPos, ChunkPos, DimensionId, Server, Ticks};
@@ -202,17 +202,17 @@ impl Chunk {
 
     /// Gets the chunk data packet for this chunk with the given position. This
     /// does not include unapplied changes.
-    pub(crate) fn chunk_data_packet(&self, pos: ChunkPos) -> ChunkDataAndUpdateLight {
+    pub(crate) fn chunk_data_packet(&self, pos: ChunkPos) -> LevelChunkWithLight {
         let mut blocks_and_biomes = Vec::new();
 
         for sect in self.sections.iter() {
             blocks_and_biomes.extend_from_slice(&sect.compact_data);
         }
 
-        ChunkDataAndUpdateLight {
+        LevelChunkWithLight {
             chunk_x: pos.x,
             chunk_z: pos.z,
-            heightmaps: Nbt(ChunkDataHeightmaps {
+            heightmaps: Nbt(LevelChunkHeightmaps {
                 motion_blocking: self.heightmap.clone(),
             }),
             blocks_and_biomes,
@@ -250,7 +250,7 @@ impl Chunk {
                 let global_y = sect_y as i32 * 16 + (idx / (16 * 16)) as i32 + min_y;
                 let global_z = pos.z * 16 + (idx / 16 % 16) as i32;
 
-                packet(BlockChangePacket::Single(BlockChange {
+                packet(BlockChangePacket::Single(BlockUpdate {
                     location: BlockPos::new(global_x, global_y, global_z),
                     block_id: VarInt((block & BLOCK_STATE_MASK).into()),
                 }));
@@ -276,7 +276,7 @@ impl Chunk {
                     | (pos.z as i64 & 0x3fffff) << 20
                     | (sect_y as i64 + min_y.div_euclid(16) as i64) & 0xfffff;
 
-                packet(BlockChangePacket::Multi(MultiBlockChange {
+                packet(BlockChangePacket::Multi(SectionBlocksUpdate {
                     chunk_section_position,
                     invert_trust_edges: false,
                     blocks,
@@ -336,8 +336,8 @@ impl Chunk {
 
 #[derive(Clone, Debug)]
 pub(crate) enum BlockChangePacket {
-    Single(BlockChange),
-    Multi(MultiBlockChange),
+    Single(BlockUpdate),
+    Multi(SectionBlocksUpdate),
 }
 
 impl From<BlockChangePacket> for S2cPlayPacket {
