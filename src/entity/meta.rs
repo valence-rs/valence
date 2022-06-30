@@ -2,8 +2,7 @@
 
 use std::io::Write;
 
-use crate::protocol::Encode;
-use crate::var_int::VarInt;
+use crate::protocol::{Encode, VarInt};
 
 #[derive(Clone, Copy, Default, PartialEq, PartialOrd, Debug)]
 pub struct ArmorStandRotations {

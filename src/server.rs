@@ -26,20 +26,19 @@ use tokio::runtime::{Handle, Runtime};
 use tokio::sync::{oneshot, Semaphore};
 use uuid::Uuid;
 
-use crate::codec::{Decoder, Encoder};
 use crate::config::{Config, ServerListPing};
-use crate::packets::handshake::{Handshake, HandshakeNextState};
-use crate::packets::login::c2s::{EncryptionResponse, LoginStart, VerifyTokenOrMsgSig};
-use crate::packets::login::s2c::{EncryptionRequest, LoginSuccess, SetCompression};
-use crate::packets::play::c2s::C2sPlayPacket;
-use crate::packets::play::s2c::S2cPlayPacket;
-use crate::packets::status::c2s::{Ping, Request};
-use crate::packets::status::s2c::{Pong, Response};
-use crate::packets::{login, Property};
 use crate::player_textures::SignedPlayerTextures;
-use crate::protocol::{BoundedArray, BoundedString};
+use crate::protocol::codec::{Decoder, Encoder};
+use crate::protocol::packets::handshake::{Handshake, HandshakeNextState};
+use crate::protocol::packets::login::c2s::{EncryptionResponse, LoginStart, VerifyTokenOrMsgSig};
+use crate::protocol::packets::login::s2c::{EncryptionRequest, LoginSuccess, SetCompression};
+use crate::protocol::packets::play::c2s::C2sPlayPacket;
+use crate::protocol::packets::play::s2c::S2cPlayPacket;
+use crate::protocol::packets::status::c2s::{Ping, Request};
+use crate::protocol::packets::status::s2c::{Pong, Response};
+use crate::protocol::packets::{login, Property};
+use crate::protocol::{BoundedArray, BoundedString, VarInt};
 use crate::util::valid_username;
-use crate::var_int::VarInt;
 use crate::world::Worlds;
 use crate::{
     Biome, BiomeId, Client, Dimension, DimensionId, Ticks, PROTOCOL_VERSION, VERSION_NAME,

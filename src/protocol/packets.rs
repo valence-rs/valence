@@ -16,10 +16,10 @@ use uuid::Uuid;
 use vek::Vec3;
 
 use crate::block_pos::BlockPos;
-use crate::byte_angle::ByteAngle;
-use crate::protocol::{BoundedArray, BoundedInt, BoundedString, Decode, Encode, Nbt, RawBytes};
-use crate::var_int::VarInt;
-use crate::var_long::VarLong;
+use crate::protocol::{
+    BoundedArray, BoundedInt, BoundedString, ByteAngle, Decode, Encode, Nbt, RawBytes, VarInt,
+    VarLong,
+};
 use crate::{Ident, Text};
 
 /// Trait for types that can be written to the Minecraft protocol as a complete
@@ -27,7 +27,7 @@ use crate::{Ident, Text};
 ///
 /// A complete packet is one that starts with a `VarInt` packet ID, followed by
 /// the body of the packet.
-pub trait EncodePacket: fmt::Debug + private::Sealed {
+pub trait EncodePacket: fmt::Debug {
     /// Writes a packet to the Minecraft protocol, including its packet ID.
     fn encode_packet(&self, w: &mut impl Write) -> anyhow::Result<()>;
 }
@@ -37,7 +37,7 @@ pub trait EncodePacket: fmt::Debug + private::Sealed {
 ///
 /// A complete packet is one that starts with a `VarInt` packet ID, followed by
 /// the body of the packet.
-pub trait DecodePacket: Sized + fmt::Debug + private::Sealed {
+pub trait DecodePacket: Sized + fmt::Debug {
     /// Reads a packet from the Minecraft protocol, including its packet ID.
     fn decode_packet(r: &mut impl Read) -> anyhow::Result<Self>;
 }
@@ -94,8 +94,6 @@ macro_rules! def_struct {
         }
 
         $(
-            impl private::Sealed for $name {}
-
             impl EncodePacket for $name {
                 fn encode_packet(&self, w: &mut impl Write) -> anyhow::Result<()> {
                     VarInt($id)
@@ -206,8 +204,6 @@ macro_rules! def_enum {
         }
 
         $(
-            impl private::Sealed for $name {}
-
             impl EncodePacket for $name {
                 fn encode_packet(&self, w: &mut impl Write) -> anyhow::Result<()> {
                     VarInt($id)
@@ -325,10 +321,6 @@ macro_rules! def_bitfield {
     }
 }
 
-mod private {
-    pub trait Sealed {}
-}
-
 def_struct! {
     #[derive(PartialEq, Serialize, Deserialize)]
     Property {
@@ -336,6 +328,14 @@ def_struct! {
         value: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         signature: Option<String>
+    }
+}
+
+def_struct! {
+    SignatureData {
+        timestamp: u64,
+        public_key: Vec<u8>,
+        signature: Vec<u8>,
     }
 }
 
@@ -441,14 +441,6 @@ pub mod login {
         }
 
         def_struct! {
-            SignatureData {
-                timestamp: i64,
-                public_key: Vec<u8>,
-                signature: Vec<u8>,
-            }
-        }
-
-        def_struct! {
             EncryptionResponse 0x01 {
                 shared_secret: BoundedArray<u8, 16, 128>,
                 token_or_sig: VerifyTokenOrMsgSig,
@@ -475,7 +467,6 @@ pub mod login {
 pub mod play {
     pub mod s2c {
         use super::super::*;
-        use crate::packets::login::c2s::SignatureData;
 
         def_struct! {
             SpawnEntity 0x00 {
@@ -1173,8 +1164,6 @@ pub mod play {
                     $($packet($packet)),*
                 }
 
-                impl private::Sealed for S2cPlayPacket {}
-
                 $(
                     impl From<$packet> for S2cPlayPacket {
                         fn from(p: $packet) -> S2cPlayPacket {
@@ -1831,8 +1820,6 @@ pub mod play {
                 $($packet($packet)),*
             }
 
-            impl private::Sealed for C2sPlayPacket {}
-
             impl DecodePacket for C2sPlayPacket {
                 fn decode_packet(r: &mut impl Read) -> anyhow::Result<C2sPlayPacket> {
                     let packet_id = VarInt::decode(r).context("failed to read c2s play packet ID")?.0;
@@ -1926,7 +1913,7 @@ pub mod play {
 }
 
 #[cfg(test)]
-pub mod test {
+pub(crate) mod test {
     use super::*;
 
     def_struct! {

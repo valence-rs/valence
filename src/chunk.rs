@@ -9,12 +9,10 @@ use num::Integer;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::block::BlockState;
-use crate::packets::play::s2c::{
+use crate::protocol::packets::play::s2c::{
     BlockChange, ChunkDataAndUpdateLight, ChunkDataHeightmaps, MultiBlockChange, S2cPlayPacket,
 };
-use crate::protocol::{Encode, Nbt};
-use crate::var_int::VarInt;
-use crate::var_long::VarLong;
+use crate::protocol::{Encode, Nbt, VarInt, VarLong};
 use crate::{BiomeId, BlockPos, ChunkPos, DimensionId, Server, Ticks};
 
 pub struct Chunks {

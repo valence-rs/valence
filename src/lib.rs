@@ -11,26 +11,24 @@ pub mod biome;
 pub mod block;
 mod block_pos;
 mod bvh;
-mod byte_angle;
 pub mod chunk;
 mod chunk_pos;
 pub mod client;
-mod codec;
 pub mod config;
 pub mod dimension;
 pub mod entity;
 pub mod ident;
-mod packets;
 mod player_list;
 pub mod player_textures;
+#[cfg(not(feature = "protocol"))]
 mod protocol;
+#[cfg(feature = "protocol")]
+pub mod protocol;
 pub mod server;
 mod slotmap;
-pub mod spatial_index;
+mod spatial_index;
 pub mod text;
 pub mod util;
-mod var_int;
-mod var_long;
 pub mod world;
 
 pub use async_trait::async_trait;

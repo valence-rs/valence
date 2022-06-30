@@ -1,16 +1,24 @@
+mod byte_angle;
+pub mod codec;
+pub mod packets;
+mod var_int;
+mod var_long;
+
 use std::io::{Read, Write};
 use std::mem;
 
 use anyhow::{anyhow, ensure, Context};
 use arrayvec::ArrayVec;
 use bitvec::prelude::*;
+pub use byte_angle::ByteAngle;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use uuid::Uuid;
+pub use var_int::VarInt;
+pub use var_long::VarLong;
 use vek::{Vec2, Vec3, Vec4};
 
-use crate::var_int::VarInt;
 use crate::EntityId;
 
 /// Trait for types that can be written to the Minecraft protocol.
@@ -18,7 +26,7 @@ pub trait Encode {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()>;
 }
 
-/// Trait for types that can be constructed from the Minecraft protocol.
+/// Trait for types that can be read from the Minecraft protocol.
 pub trait Decode: Sized {
     fn decode(r: &mut impl Read) -> anyhow::Result<Self>;
 }

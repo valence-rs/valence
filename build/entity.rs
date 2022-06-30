@@ -2150,11 +2150,11 @@ pub fn build() -> anyhow::Result<()> {
 
                 #getter_setters
 
-                pub(crate) fn initial_metadata(&self, data: &mut Vec<u8>) {
+                pub(crate) fn initial_metadata(&self, #[allow(unused)] data: &mut Vec<u8>) {
                     #initial_metadata_fields
                 }
 
-                pub(crate) fn updated_metadata(&self, data: &mut Vec<u8>) {
+                pub(crate) fn updated_metadata(&self, #[allow(unused)] data: &mut Vec<u8>) {
                     if self.modified_flags == 0 {
                         return;
                     }

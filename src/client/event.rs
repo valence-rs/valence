@@ -2,9 +2,9 @@ use std::time::Duration;
 
 use vek::Vec3;
 
-use crate::packets::play::c2s::BlockFace;
-pub use crate::packets::play::c2s::{ChatMode, DisplayedSkinParts, Hand, MainHand};
-pub use crate::packets::play::s2c::GameMode;
+use crate::protocol::packets::play::c2s::BlockFace;
+pub use crate::protocol::packets::play::c2s::{ChatMode, DisplayedSkinParts, Hand, MainHand};
+pub use crate::protocol::packets::play::s2c::GameMode;
 use crate::{BlockPos, EntityId};
 
 #[derive(Debug)]

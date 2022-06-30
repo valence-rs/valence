@@ -60,3 +60,7 @@ proc-macro2 = "1"
 quote = "1"
 serde = {version = "1", features = ["derive"]}
 serde_json = "1"
+
+[features]
+# Exposes the raw protocol API
+protocol = []

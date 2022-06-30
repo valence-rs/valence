@@ -5,8 +5,7 @@ use std::io::{Read, Write};
 
 use anyhow::Context;
 
-use crate::protocol::{Decode, Encode};
-use crate::var_int::VarInt;
+use crate::protocol::{Decode, Encode, VarInt};
 
 include!(concat!(env!("OUT_DIR"), "/block.rs"));
 

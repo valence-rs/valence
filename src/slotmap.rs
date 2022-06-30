@@ -40,6 +40,7 @@ impl Key {
         }
     }
 
+    #[allow(unused)]
     pub fn index(self) -> u32 {
         self.index
     }
@@ -161,6 +162,7 @@ impl<T> SlotMap<T> {
         }
     }
 
+    #[allow(unused)]
     pub fn clear(&mut self) {
         self.slots.clear();
         self.next_free_head = 0;

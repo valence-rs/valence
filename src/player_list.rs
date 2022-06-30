@@ -5,12 +5,12 @@ use bitfield_struct::bitfield;
 use uuid::Uuid;
 
 use crate::client::GameMode;
-use crate::packets::play::s2c::{
+use crate::player_textures::SignedPlayerTextures;
+use crate::protocol::packets::play::s2c::{
     PlayerInfo, PlayerInfoAddPlayer, PlayerListHeaderFooter, S2cPlayPacket,
 };
-use crate::packets::Property;
-use crate::player_textures::SignedPlayerTextures;
-use crate::var_int::VarInt;
+use crate::protocol::packets::Property;
+use crate::protocol::VarInt;
 use crate::Text;
 
 pub struct PlayerList {

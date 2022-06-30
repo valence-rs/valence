@@ -12,14 +12,12 @@ pub use types::{EntityMeta, EntityType};
 use uuid::Uuid;
 use vek::{Aabb, Vec3};
 
-use crate::byte_angle::ByteAngle;
-use crate::packets::play::s2c::{
+use crate::protocol::packets::play::s2c::{
     EntityMetadata, S2cPlayPacket, SpawnEntity, SpawnExperienceOrb, SpawnPlayer,
 };
-use crate::protocol::RawBytes;
+use crate::protocol::{ByteAngle, RawBytes, VarInt};
 use crate::slotmap::{Key, SlotMap};
 use crate::util::aabb_from_bottom_and_size;
-use crate::var_int::VarInt;
 
 pub struct Entities {
     sm: SlotMap<Entity>,

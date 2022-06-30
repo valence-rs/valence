@@ -11,14 +11,13 @@ use uuid::Uuid;
 use vek::Vec3;
 
 use crate::biome::{Biome, BiomeGrassColorModifier, BiomePrecipitation};
-use crate::block_pos::BlockPos;
-use crate::byte_angle::ByteAngle;
 use crate::dimension::{Dimension, DimensionEffects};
 use crate::entity::types::Player;
 use crate::entity::{velocity_to_packet_units, EntityType};
-use crate::packets::play::c2s::{C2sPlayPacket, DiggingStatus};
-pub use crate::packets::play::s2c::ChatMessageType;
-use crate::packets::play::s2c::{
+use crate::player_textures::SignedPlayerTextures;
+use crate::protocol::packets::play::c2s::{C2sPlayPacket, DiggingStatus, InteractType};
+pub use crate::protocol::packets::play::s2c::ChatMessageType;
+use crate::protocol::packets::play::s2c::{
     AcknowledgeBlockChanges, Biome as BiomeRegistryBiome, BiomeAdditionsSound, BiomeEffects,
     BiomeMoodSound, BiomeMusic, BiomeParticle, BiomeParticleOptions, BiomeProperty, BiomeRegistry,
     ChangeGameState, ChangeGameStateReason, ChatTypeRegistry, DestroyEntities, DimensionType,
@@ -28,15 +27,13 @@ use crate::packets::play::s2c::{
     S2cPlayPacket, SpawnPosition, SystemChatMessage, UnloadChunk, UpdateViewDistance,
     UpdateViewPosition,
 };
-use crate::player_textures::SignedPlayerTextures;
-use crate::protocol::{BoundedInt, Nbt, RawBytes};
+use crate::protocol::{BoundedInt, ByteAngle, Nbt, RawBytes, VarInt};
 use crate::server::C2sPacketChannels;
 use crate::slotmap::{Key, SlotMap};
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
-use crate::var_int::VarInt;
 use crate::{
-    ident, ChunkPos, Chunks, DimensionId, Entities, EntityId, NewClientData, Server, SpatialIndex,
-    Text, Ticks, WorldMeta, LIBRARY_NAMESPACE,
+    ident, BlockPos, ChunkPos, Chunks, DimensionId, Entities, EntityId, NewClientData, Server,
+    SpatialIndex, Text, Ticks, WorldMeta, LIBRARY_NAMESPACE,
 };
 
 pub struct Clients {
@@ -441,7 +438,6 @@ impl Client {
                     // TODO: verify that the client has line of sight to the targeted entity and
                     // that the distance is <=4 blocks.
 
-                    use crate::packets::play::c2s::InteractType;
                     self.events.push(Event::InteractWithEntity {
                         id,
                         sneaking: p.sneaking,
