@@ -99,6 +99,10 @@ impl<W: AsyncWrite + Unpin> Encoder<W> {
     pub fn enable_compression(&mut self, threshold: u32) {
         self.compression_threshold = Some(threshold);
     }
+
+    pub fn into_inner(self) -> W {
+        self.write
+    }
 }
 
 pub struct Decoder<R> {
@@ -221,6 +225,10 @@ impl<R: AsyncRead + Unpin> Decoder<R> {
 
     pub fn enable_compression(&mut self, threshold: u32) {
         self.compression_threshold = Some(threshold);
+    }
+
+    pub fn into_inner(self) -> R {
+        self.read
     }
 }
 

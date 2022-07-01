@@ -1,0 +1,12 @@
+[package]
+name = "packet-inspector"
+version = "0.1.0"
+edition = "2021"
+description = "A simple Minecraft proxy for inspecting packets."
+
+[dependencies]
+valence = { path = "..", features = ["protocol"] }
+clap = { version = "3.2.8", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
+chrono = "0.4.19"

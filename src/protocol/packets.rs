@@ -321,6 +321,66 @@ macro_rules! def_bitfield {
     }
 }
 
+macro_rules! def_packet_group {
+    (
+        $(#[$attrs:meta])*
+        $group_name:ident {
+            $($packet:ident),* $(,)?
+        }
+    ) => {
+        #[derive(Clone, Debug)]
+        $(#[$attrs])*
+        pub enum $group_name {
+            $($packet($packet)),*
+        }
+
+        $(
+            impl From<$packet> for $group_name {
+                fn from(p: $packet) -> Self {
+                    Self::$packet(p)
+                }
+            }
+        )*
+
+        impl DecodePacket for $group_name {
+            fn decode_packet(r: &mut impl Read) -> anyhow::Result<Self> {
+                let packet_id = VarInt::decode(r)
+                    .context(concat!("failed to read ", stringify!($group_name), " packet ID"))?.0;
+
+                match packet_id {
+                    $(
+                        $packet::PACKET_ID => {
+                            let pkt = $packet::decode(r)?;
+                            Ok(Self::$packet(pkt))
+                        }
+                    )*
+                    id => bail!(concat!("unknown ", stringify!($group_name), " packet ID {:#04x}"), id),
+                }
+            }
+        }
+
+        impl EncodePacket for $group_name {
+            fn encode_packet(&self, w: &mut impl Write) -> anyhow::Result<()> {
+                match self {
+                    $(
+                        Self::$packet(pkt) => {
+                            VarInt($packet::PACKET_ID)
+                                .encode(w)
+                                .context(concat!(
+                                    "failed to write ",
+                                    stringify!($group_name),
+                                    " packet ID for ",
+                                    stringify!($packet_name)
+                                ))?;
+                            pkt.encode(w)
+                        }
+                    )*
+                }
+            }
+        }
+    }
+}
+
 def_struct! {
     #[derive(PartialEq, Serialize, Deserialize)]
     Property {
@@ -366,7 +426,7 @@ pub mod status {
         use super::super::*;
 
         def_struct! {
-            Response 0x00 {
+            StatusResponse 0x00 {
                 json_response: String
             }
         }
@@ -428,6 +488,24 @@ pub mod login {
                 threshold: VarInt
             }
         }
+
+        def_struct! {
+            LoginPluginRequest 0x04 {
+                message_id: VarInt,
+                channel: Ident,
+                data: RawBytes,
+            }
+        }
+
+        def_packet_group! {
+            S2cLoginPacket {
+                Disconnect,
+                EncryptionRequest,
+                LoginSuccess,
+                SetCompression,
+                LoginPluginRequest,
+            }
+        }
     }
 
     pub mod c2s {
@@ -458,6 +536,21 @@ pub mod login {
             MessageSignature {
                 salt: u64,
                 sig: Vec<u8>, // TODO: bounds?
+            }
+        }
+
+        def_struct! {
+            LoginPluginResponse 0x02 {
+                message_id: VarInt,
+                data: Option<RawBytes>,
+            }
+        }
+
+        def_packet_group! {
+            C2sLoginPacket {
+                LoginStart,
+                EncryptionResponse,
+                LoginPluginResponse,
             }
         }
     }
@@ -1081,98 +1174,45 @@ pub mod play {
             }
         }
 
-        macro_rules! def_s2c_play_packet_enum {
-            {
-                $($packet:ident),* $(,)?
-            } => {
-                /// An enum of all s2c play packets.
-                #[derive(Clone, Debug)]
-                pub enum S2cPlayPacket {
-                    $($packet($packet)),*
-                }
-
-                $(
-                    impl From<$packet> for S2cPlayPacket {
-                        fn from(p: $packet) -> S2cPlayPacket {
-                            S2cPlayPacket::$packet(p)
-                        }
-                    }
-                )*
-
-                impl EncodePacket for S2cPlayPacket {
-                    fn encode_packet(&self, w: &mut impl Write) -> anyhow::Result<()> {
-                        match self {
-                            $(
-                                Self::$packet(p) => {
-                                    VarInt($packet::PACKET_ID)
-                                        .encode(w)
-                                        .context(concat!("failed to write s2c play packet ID for `", stringify!($packet), "`"))?;
-                                    p.encode(w)
-                                }
-                            )*
-                        }
-                    }
-                }
-
-                #[cfg(test)]
-                #[test]
-                fn s2c_play_packet_order() {
-                    let ids = [
-                        $(
-                            (stringify!($packet), $packet::PACKET_ID),
-                        )*
-                    ];
-
-                    if let Some(w) = ids.windows(2).find(|w| w[0].1 >= w[1].1) {
-                        panic!(
-                            "the {} (ID {:#x}) and {} (ID {:#x}) variants of the s2c play packet enum are not properly sorted by their packet ID",
-                            w[0].0,
-                            w[0].1,
-                            w[1].0,
-                            w[1].1
-                        );
-                    }
-                }
+        def_packet_group! {
+            S2cPlayPacket {
+                AddEntity,
+                AddExperienceOrb,
+                AddPlayer,
+                Animate,
+                BlockChangeAck,
+                BlockDestruction,
+                BlockEntityData,
+                BlockEvent,
+                BlockUpdate,
+                BossEvent,
+                Disconnect,
+                EntityEvent,
+                ForgetLevelChunk,
+                GameEvent,
+                KeepAlive,
+                LevelChunkWithLight,
+                Login,
+                MoveEntityPosition,
+                MoveEntityPositionAndRotation,
+                MoveEntityRotation,
+                PlayerChat,
+                PlayerInfo,
+                PlayerPosition,
+                RemoveEntities,
+                RotateHead,
+                SectionBlocksUpdate,
+                SetCarriedItem,
+                SetChunkCacheCenter,
+                SetChunkCacheRadius,
+                SpawnPosition,
+                SetEntityMetadata,
+                SetEntityMotion,
+                SetTime,
+                SystemChat,
+                TabList,
+                TeleportEntity,
             }
-        }
-
-        def_s2c_play_packet_enum! {
-            AddEntity,
-            AddExperienceOrb,
-            AddPlayer,
-            Animate,
-            BlockChangeAck,
-            BlockDestruction,
-            BlockEntityData,
-            BlockEvent,
-            BlockUpdate,
-            BossEvent,
-            Disconnect,
-            EntityEvent,
-            ForgetLevelChunk,
-            GameEvent,
-            KeepAlive,
-            LevelChunkWithLight,
-            Login,
-            MoveEntityPosition,
-            MoveEntityPositionAndRotation,
-            MoveEntityRotation,
-            PlayerChat,
-            PlayerInfo,
-            PlayerPosition,
-            RemoveEntities,
-            RotateHead,
-            SectionBlocksUpdate,
-            SetCarriedItem,
-            SetChunkCacheCenter,
-            SetChunkCacheRadius,
-            SpawnPosition,
-            SetEntityMetadata,
-            SetEntityMotion,
-            SetTime,
-            SystemChat,
-            TabList,
-            TeleportEntity,
         }
     }
 
@@ -1737,104 +1777,58 @@ pub mod play {
             }
         }
 
-        macro_rules! def_c2s_play_packet_enum {
-        {
-            $($packet:ident),* $(,)?
-        } => {
-            /// An enum of all client-to-server play packets.
-            #[derive(Clone, Debug)]
-            pub enum C2sPlayPacket {
-                $($packet($packet)),*
+        def_packet_group! {
+            C2sPlayPacket {
+                AcceptTeleportation,
+                BlockEntityTagQuery,
+                ChangeDifficulty,
+                ChatCommand,
+                Chat,
+                ChatPreview,
+                ClientCommand,
+                ClientInformation,
+                CommandSuggestion,
+                ContainerButtonClick,
+                ContainerClose,
+                CustomPayload,
+                EditBook,
+                EntityTagQuery,
+                Interact,
+                JigsawGenerate,
+                KeepAlive,
+                LockDifficulty,
+                MovePlayerPosition,
+                MovePlayerPositionAndRotation,
+                MovePlayerRotation,
+                MovePlayerStatusOnly,
+                MoveVehicle,
+                PaddleBoat,
+                PickItem,
+                PlaceRecipe,
+                PlayerAbilities,
+                PlayerAction,
+                PlayerCommand,
+                PlayerInput,
+                Pong,
+                RecipeBookChangeSettings,
+                RecipeBookSeenRecipe,
+                RenameItem,
+                ResourcePack,
+                SeenAdvancements,
+                SelectTrade,
+                SetBeacon,
+                SetCarriedItem,
+                SetCommandBlock,
+                SetCommandBlockMinecart,
+                SetCreativeModeSlot,
+                SetJigsawBlock,
+                SetStructureBlock,
+                SignUpdate,
+                Swing,
+                TeleportToEntity,
+                UseItemOn,
+                UseItem,
             }
-
-            impl DecodePacket for C2sPlayPacket {
-                fn decode_packet(r: &mut impl Read) -> anyhow::Result<C2sPlayPacket> {
-                    let packet_id = VarInt::decode(r).context("failed to read c2s play packet ID")?.0;
-                    match packet_id {
-                        $(
-                            $packet::PACKET_ID => {
-                                let pkt = $packet::decode(r)?;
-                                Ok(C2sPlayPacket::$packet(pkt))
-                            }
-                        )*
-                        id => bail!("unknown c2s play packet ID {:#04x}", id)
-                    }
-                }
-            }
-
-
-            #[cfg(test)]
-            #[test]
-            fn c2s_play_packet_order() {
-                let ids = [
-                    $(
-                        (stringify!($packet), $packet::PACKET_ID),
-                    )*
-                ];
-
-                if let Some(w) = ids.windows(2).find(|w| w[0].1 >= w[1].1) {
-                    panic!(
-                        "the {} (ID {:#x}) and {} (ID {:#x}) variants of the c2s play packet enum are not properly sorted by their packet ID",
-                        w[0].0,
-                        w[0].1,
-                        w[1].0,
-                        w[1].1
-                    );
-                }
-            }
-        }
-    }
-
-        def_c2s_play_packet_enum! {
-            AcceptTeleportation,
-            BlockEntityTagQuery,
-            ChangeDifficulty,
-            ChatCommand,
-            Chat,
-            ChatPreview,
-            ClientCommand,
-            ClientInformation,
-            CommandSuggestion,
-            ContainerButtonClick,
-            ContainerClose,
-            CustomPayload,
-            EditBook,
-            EntityTagQuery,
-            Interact,
-            JigsawGenerate,
-            KeepAlive,
-            LockDifficulty,
-            MovePlayerPosition,
-            MovePlayerPositionAndRotation,
-            MovePlayerRotation,
-            MovePlayerStatusOnly,
-            MoveVehicle,
-            PaddleBoat,
-            PickItem,
-            PlaceRecipe,
-            PlayerAbilities,
-            PlayerAction,
-            PlayerCommand,
-            PlayerInput,
-            Pong,
-            RecipeBookChangeSettings,
-            RecipeBookSeenRecipe,
-            RenameItem,
-            ResourcePack,
-            SeenAdvancements,
-            SelectTrade,
-            SetBeacon,
-            SetCarriedItem,
-            SetCommandBlock,
-            SetCommandBlockMinecart,
-            SetCreativeModeSlot,
-            SetJigsawBlock,
-            SetStructureBlock,
-            SignUpdate,
-            Swing,
-            TeleportToEntity,
-            UseItemOn,
-            UseItem,
         }
     }
 }

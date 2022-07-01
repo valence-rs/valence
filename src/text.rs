@@ -275,8 +275,13 @@ pub trait TextFormat: Into<Text> {
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 enum TextContent {
-    Text { text: Cow<'static, str> },
-    // TODO: translate
+    Text {
+        text: Cow<'static, str>,
+    },
+    Translate {
+        translate: Cow<'static, str>,
+        // TODO: 'with' field
+    },
     // TODO: score
     // TODO: entity names
     // TODO: keybind
@@ -320,11 +325,20 @@ enum HoverEvent {
     },
 }
 
+#[allow(clippy::self_named_constructors)]
 impl Text {
     pub fn text(plain: impl Into<Cow<'static, str>>) -> Self {
-        #![allow(clippy::self_named_constructors)]
         Self {
             content: TextContent::Text { text: plain.into() },
+            ..Self::default()
+        }
+    }
+
+    pub fn translate(key: impl Into<Cow<'static, str>>) -> Self {
+        Self {
+            content: TextContent::Translate {
+                translate: key.into(),
+            },
             ..Self::default()
         }
     }

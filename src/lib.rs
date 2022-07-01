@@ -21,6 +21,7 @@ pub mod ident;
 mod player_list;
 pub mod player_textures;
 #[cfg(not(feature = "protocol"))]
+#[allow(unused)]
 mod protocol;
 #[cfg(feature = "protocol")]
 pub mod protocol;

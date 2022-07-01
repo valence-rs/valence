@@ -34,7 +34,7 @@ use crate::protocol::packets::login::s2c::{EncryptionRequest, LoginSuccess, SetC
 use crate::protocol::packets::play::c2s::C2sPlayPacket;
 use crate::protocol::packets::play::s2c::S2cPlayPacket;
 use crate::protocol::packets::status::c2s::{PingRequest, StatusRequest};
-use crate::protocol::packets::status::s2c::{PongResponse, Response};
+use crate::protocol::packets::status::s2c::{PongResponse, StatusResponse};
 use crate::protocol::packets::{login, Property};
 use crate::protocol::{BoundedArray, BoundedString, VarInt};
 use crate::util::valid_username;
@@ -547,7 +547,7 @@ async fn handle_status(
                     .insert("favicon".to_string(), Value::String(buf));
             }
 
-            c.0.write_packet(&Response {
+            c.0.write_packet(&StatusResponse {
                 json_response: json.to_string(),
             })
             .await?;
