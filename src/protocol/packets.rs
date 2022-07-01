@@ -264,8 +264,7 @@ macro_rules! def_bitfield {
             ),* $(,)?
         }
     ) => {
-        // TODO: custom Debug impl.
-        #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+        #[derive(Clone, Copy, PartialEq, Eq)]
         $(#[$struct_attrs])*
         pub struct $name($inner_ty);
 
@@ -307,6 +306,18 @@ macro_rules! def_bitfield {
             }
         }
 
+        impl fmt::Debug for $name {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                let mut s = f.debug_struct(stringify!($name));
+                paste! {
+                    $(
+                        s.field(stringify!($bit), &self. [<get_ $bit:snake>]());
+                    )*
+                }
+                s.finish()
+            }
+        }
+
         impl $crate::protocol::Encode for $name {
             fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
                 self.0.encode(w)
@@ -328,7 +339,7 @@ macro_rules! def_packet_group {
             $($packet:ident),* $(,)?
         }
     ) => {
-        #[derive(Clone, Debug)]
+        #[derive(Clone)]
         $(#[$attrs])*
         pub enum $group_name {
             $($packet($packet)),*
@@ -376,6 +387,18 @@ macro_rules! def_packet_group {
                         }
                     )*
                 }
+            }
+        }
+
+        impl fmt::Debug for $group_name {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                let mut t = f.debug_tuple(stringify!($group_name));
+                match self {
+                    $(
+                        Self::$packet(pkt) => t.field(pkt),
+                    )*
+                };
+                t.finish()
             }
         }
     }

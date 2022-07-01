@@ -2,10 +2,10 @@ use std::error::Error;
 use std::fmt;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use anyhow::bail;
-use chrono::{Utc, DateTime};
+use chrono::{DateTime, Utc};
 use clap::Parser;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
