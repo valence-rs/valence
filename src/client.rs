@@ -1,6 +1,6 @@
 /// Contains the [`Event`] enum and related data types.
 mod event;
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 use std::iter::FusedIterator;
 use std::time::Duration;
 
@@ -119,7 +119,7 @@ pub struct Client {
     /// If spawn_position or spawn_position_yaw were modified this tick.
     modified_spawn_position: bool,
     death_location: Option<(DimensionId, BlockPos)>,
-    events: Vec<Event>,
+    events: VecDeque<Event>,
     /// The ID of the last keepalive sent.
     last_keepalive_id: i64,
     /// If the last sent keepalive got a response.
@@ -167,7 +167,7 @@ impl Client {
             spawn_position_yaw: 0.0,
             modified_spawn_position: true,
             death_location: None,
-            events: Vec::new(),
+            events: VecDeque::new(),
             last_keepalive_id: 0,
             got_keepalive: true,
             new_max_view_distance: 16,
@@ -289,12 +289,8 @@ impl Client {
         self.send.is_none()
     }
 
-    pub fn events(&self) -> &Vec<Event> {
-        &self.events
-    }
-
-    pub fn events_mut(&mut self) -> &mut Vec<Event> {
-        &mut self.events
+    pub fn pop_event(&mut self) -> Option<Event> {
+        self.events.pop_front()
     }
 
     /// The current view distance of this client measured in chunks.
@@ -381,7 +377,7 @@ impl Client {
                 client.pitch = new_pitch;
                 client.on_ground = new_on_ground;
 
-                client.events.push(event);
+                client.events.push_back(event);
             }
         }
 
@@ -408,7 +404,7 @@ impl Client {
             C2sPlayPacket::BlockEntityTagQuery(_) => {}
             C2sPlayPacket::ChangeDifficulty(_) => {}
             C2sPlayPacket::ChatCommand(_) => {}
-            C2sPlayPacket::Chat(p) => self.events.push(Event::ChatMessage {
+            C2sPlayPacket::Chat(p) => self.events.push_back(Event::ChatMessage {
                 message: p.message.0,
                 timestamp: Duration::from_millis(p.timestamp),
             }),
@@ -425,7 +421,7 @@ impl Client {
                     allow_server_listings: p.allow_server_listings,
                 });
 
-                self.events.push(Event::SettingsChanged(old));
+                self.events.push_back(Event::SettingsChanged(old));
             }
             C2sPlayPacket::CommandSuggestion(_) => {}
             C2sPlayPacket::ContainerButtonClick(_) => {}
@@ -438,7 +434,7 @@ impl Client {
                     // TODO: verify that the client has line of sight to the targeted entity and
                     // that the distance is <=4 blocks.
 
-                    self.events.push(Event::InteractWithEntity {
+                    self.events.push_back(Event::InteractWithEntity {
                         id,
                         sneaking: p.sneaking,
                         typ: match p.typ {
@@ -487,7 +483,7 @@ impl Client {
                 handle_movement_packet(self, true, p.position, p.yaw, p.pitch, self.on_ground);
             }
             C2sPlayPacket::PaddleBoat(p) => {
-                self.events.push(Event::SteerBoat {
+                self.events.push_back(Event::SteerBoat {
                     left_paddle_turning: p.left_paddle_turning,
                     right_paddle_turning: p.right_paddle_turning,
                 });
@@ -503,7 +499,7 @@ impl Client {
                     self.dug_blocks.push(p.sequence.0);
                 }
 
-                self.events.push(match p.status {
+                self.events.push_back(match p.status {
                     DiggingStatus::StartedDigging => Event::Digging(Digging {
                         status: event::DiggingStatus::Start,
                         position: p.location,

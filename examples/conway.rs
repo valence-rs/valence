@@ -98,14 +98,16 @@ impl Config for Game {
     fn update(&self, server: &Server, worlds: &mut Worlds) {
         let world = worlds.iter_mut().next().unwrap().1;
 
+        let spawn_pos = [
+            SIZE_X as f64 / 2.0,
+            BOARD_Y as f64 + 1.0,
+            SIZE_Z as f64 / 2.0,
+        ];
+
         world.clients.retain(|_, client| {
             if client.created_tick() == server.current_tick() {
                 client.set_game_mode(GameMode::Survival);
-                let spawn_pos = [
-                    SIZE_X as f64 / 2.0,
-                    BOARD_Y as f64 + 1.0,
-                    SIZE_Z as f64 / 2.0,
-                ];
+
                 client.teleport(spawn_pos, 0.0, 0.0);
 
                 world.meta.player_list_mut().insert(
@@ -132,16 +134,24 @@ impl Config for Game {
         let State { board, board_buf } = &mut *self.state.lock().unwrap();
 
         for (_, client) in world.clients.iter_mut() {
-            for event in client.events_mut().drain(..) {
-                if let Event::Digging(e) = event {
-                    let pos = e.position;
+            while let Some(event) = client.pop_event() {
+                match event {
+                    Event::Digging(e) => {
+                        let pos = e.position;
 
-                    if (0..SIZE_X as i32).contains(&pos.x)
-                        && (0..SIZE_Z as i32).contains(&pos.z)
-                        && pos.y == BOARD_Y
-                    {
-                        board[pos.x as usize + pos.z as usize * SIZE_X] = true;
+                        if (0..SIZE_X as i32).contains(&pos.x)
+                            && (0..SIZE_Z as i32).contains(&pos.z)
+                            && pos.y == BOARD_Y
+                        {
+                            board[pos.x as usize + pos.z as usize * SIZE_X] = true;
+                        }
                     }
+                    Event::Movement { position, .. } => {
+                        if position.y <= 0.0 {
+                            client.teleport(spawn_pos, 0.0, 0.0);
+                        }
+                    }
+                    _ => {}
                 }
             }
         }
@@ -191,9 +201,9 @@ impl Config for Game {
 
                         if cell_x < SIZE_X && cell_z < SIZE_Z {
                             let b = if board[cell_x + cell_z * SIZE_X] {
-                                BlockState::WHITE_WOOL
+                                BlockState::GRASS_BLOCK
                             } else {
-                                BlockState::BLACK_WOOL
+                                BlockState::DIRT
                             };
                             chunk.set_block_state(x, (BOARD_Y - min_y) as usize, z, b);
                         }
