@@ -993,7 +993,23 @@ pub mod play {
 
         #[derive(Clone, Debug, Serialize, Deserialize)]
         pub struct ChatTypeRegistryEntry {
-            // TODO
+            pub name: Ident,
+            pub id: i32,
+            pub element: ChatType,
+        }
+
+        #[derive(Clone, Debug, Serialize, Deserialize)]
+        pub struct ChatType {
+            pub chat: ChatTypeChat,
+            pub narration: ChatTypeNarration,
+        }
+
+        #[derive(Clone, Debug, Serialize, Deserialize)]
+        pub struct ChatTypeChat {}
+
+        #[derive(Clone, Debug, Serialize, Deserialize)]
+        pub struct ChatTypeNarration {
+            pub priority: String,
         }
 
         def_enum! {
@@ -1037,24 +1053,10 @@ pub mod play {
         def_struct! {
             PlayerChat 0x30 {
                 message: Text,
-                typ: PlayerChatType,
+                /// Index into the chat type registry
+                typ: VarInt,
                 sender: Uuid,
                 // TODO more fields
-            }
-        }
-
-        def_enum! {
-            #[derive(Copy, PartialEq, Eq, Default)]
-            PlayerChatType: VarInt {
-                #[default]
-                Chat = 0,
-                SystemMessage = 1,
-                GameInfo = 2,
-                SayCommand = 3,
-                MsgCommand = 4,
-                TeamMsgCommand = 5,
-                EmoteCommand = 6,
-                TellrawCommand = 7,
             }
         }
 
@@ -1176,7 +1178,8 @@ pub mod play {
         def_struct! {
             SystemChat 0x5f {
                 chat: Text,
-                typ: PlayerChatType,
+                /// Index into the chat type registry.
+                typ: VarInt,
             }
         }
 

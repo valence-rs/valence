@@ -16,16 +16,15 @@ use crate::entity::types::Player;
 use crate::entity::{velocity_to_packet_units, EntityType};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::play::c2s::{C2sPlayPacket, DiggingStatus, InteractType};
-pub use crate::protocol::packets::play::s2c::PlayerChatType;
 use crate::protocol::packets::play::s2c::{
     Biome as BiomeRegistryBiome, BiomeAdditionsSound, BiomeEffects, BiomeMoodSound, BiomeMusic,
-    BiomeParticle, BiomeParticleOptions, BiomeProperty, BiomeRegistry, BlockChangeAck,
-    ChatTypeRegistry, DimensionType, DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect,
-    ForgetLevelChunk, GameEvent, GameEventReason, KeepAlive, Login, MoveEntityPosition,
-    MoveEntityPositionAndRotation, MoveEntityRotation, PlayerPosition, PlayerPositionFlags,
-    RegistryCodec, RemoveEntities, RotateHead, S2cPlayPacket, SetChunkCacheCenter,
-    SetChunkCacheRadius, SetEntityMetadata, SetEntityMotion, SpawnPosition, SystemChat,
-    TeleportEntity,
+    BiomeParticle, BiomeParticleOptions, BiomeProperty, BiomeRegistry, BlockChangeAck, ChatType,
+    ChatTypeChat, ChatTypeNarration, ChatTypeRegistry, ChatTypeRegistryEntry, DimensionType,
+    DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, ForgetLevelChunk, GameEvent,
+    GameEventReason, KeepAlive, Login, MoveEntityPosition, MoveEntityPositionAndRotation,
+    MoveEntityRotation, PlayerPosition, PlayerPositionFlags, RegistryCodec, RemoveEntities,
+    RotateHead, S2cPlayPacket, SetChunkCacheCenter, SetChunkCacheRadius, SetEntityMetadata,
+    SetEntityMotion, SpawnPosition, SystemChat, TeleportEntity,
 };
 use crate::protocol::{BoundedInt, ByteAngle, Nbt, RawBytes, VarInt};
 use crate::server::C2sPacketChannels;
@@ -136,7 +135,7 @@ pub struct Client {
     old_game_mode: GameMode,
     settings: Option<Settings>,
     dug_blocks: Vec<i32>,
-    msgs_to_send: Vec<(Text, PlayerChatType)>,
+    msgs_to_send: Vec<Text>,
     /// The metadata for the client's own player entity.
     player_meta: Player,
 }
@@ -200,8 +199,9 @@ impl Client {
         self.textures.as_ref()
     }
 
-    pub fn send_message(&mut self, msg: impl Into<Text>, typ: PlayerChatType) {
-        self.msgs_to_send.push((msg.into(), typ));
+    /// Sends a system message to the player.
+    pub fn send_message(&mut self, msg: impl Into<Text>) {
+        self.msgs_to_send.push(msg.into());
     }
 
     pub fn position(&self) -> Vec3<f64> {
@@ -727,9 +727,14 @@ impl Client {
             });
         }
 
-        for (msg, typ) in self.msgs_to_send.drain(..) {
-            // TODO: wont work without proper chat registry.
-            send_packet(&mut self.send, SystemChat { chat: msg, typ });
+        for msg in self.msgs_to_send.drain(..) {
+            send_packet(
+                &mut self.send,
+                SystemChat {
+                    chat: msg,
+                    typ: VarInt(0),
+                },
+            );
         }
 
         let mut entities_to_unload = Vec::new();
@@ -917,7 +922,7 @@ fn make_dimension_codec(server: &Server) -> RegistryCodec {
         assert_eq!(biome.name, ident!("plains"));
         biomes.push(to_biome_registry_item(&biome, 0));
     }
-
+    
     RegistryCodec {
         dimension_type_registry: DimensionTypeRegistry {
             typ: ident!("dimension_type"),
@@ -929,7 +934,16 @@ fn make_dimension_codec(server: &Server) -> RegistryCodec {
         },
         chat_type_registry: ChatTypeRegistry {
             typ: ident!("chat_type"),
-            value: Vec::new(),
+            value: vec![ChatTypeRegistryEntry {
+                name: ident!("system"),
+                id: 0,
+                element: ChatType {
+                    chat: ChatTypeChat {},
+                    narration: ChatTypeNarration {
+                        priority: "system".to_string(),
+                    },
+                },
+            }],
         },
     }
 }
