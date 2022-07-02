@@ -220,7 +220,8 @@ impl Client {
             self.pending_teleports = match self.pending_teleports.checked_add(1) {
                 Some(n) => n,
                 None => {
-                    self.disconnect("Too many pending teleports");
+                    log::warn!("too many pending teleports for {}", self.username());
+                    self.disconnect_no_reason();
                     return;
                 }
             };
@@ -384,7 +385,8 @@ impl Client {
         match pkt {
             C2sPlayPacket::AcceptTeleportation(p) => {
                 if self.pending_teleports == 0 {
-                    self.disconnect("Unexpected teleport confirmation");
+                    log::warn!("unexpected teleport confirmation from {}", self.username());
+                    self.disconnect_no_reason();
                     return;
                 }
 
@@ -396,9 +398,12 @@ impl Client {
                 if got == expected {
                     self.pending_teleports -= 1;
                 } else {
-                    self.disconnect(format!(
-                        "Unexpected teleport ID (expected {expected}, got {got})"
-                    ));
+                    log::warn!(
+                        "unexpected teleport ID from {} (expected {expected}, got {got})",
+                        self.username()
+                    );
+                    self.disconnect_no_reason();
+                    return;
                 }
             }
             C2sPlayPacket::BlockEntityTagQuery(_) => {}
@@ -916,9 +921,9 @@ fn make_dimension_codec(server: &Server) -> RegistryCodec {
     if !biomes.iter().any(|b| b.name == ident!("plains")) {
         let biome = Biome::default();
         assert_eq!(biome.name, ident!("plains"));
-        biomes.push(to_biome_registry_item(&biome, 0));
+        biomes.push(to_biome_registry_item(&biome, biomes.len() as i32));
     }
-    
+
     RegistryCodec {
         dimension_type_registry: DimensionTypeRegistry {
             typ: ident!("dimension_type"),
@@ -994,7 +999,7 @@ fn to_biome_registry_item(biome: &Biome, id: i32) -> BiomeRegistryBiome {
                 fog_color: biome.fog_color as i32,
                 water_color: biome.water_color as i32,
                 foliage_color: biome.foliage_color.map(|x| x as i32),
-                grass_color: None,
+                grass_color: biome.grass_color.map(|x| x as i32),
                 grass_color_modifier: match biome.grass_color_modifier {
                     BiomeGrassColorModifier::Swamp => Some("swamp".into()),
                     BiomeGrassColorModifier::DarkForest => Some("dark_forest".into()),

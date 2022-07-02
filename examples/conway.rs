@@ -10,8 +10,8 @@ use valence::client::{Event, GameMode};
 use valence::config::{Config, ServerListPing};
 use valence::text::Color;
 use valence::{
-    async_trait, BlockState, Client, DimensionId, Server, ShutdownResult, Text, TextFormat,
-    WorldId, Worlds,
+    async_trait, ident, Biome, BlockState, Client, Dimension, DimensionId, Server, ShutdownResult,
+    Text, TextFormat, WorldId, Worlds,
 };
 
 pub fn main() -> ShutdownResult {
@@ -55,6 +55,21 @@ impl Config for Game {
     fn online_mode(&self) -> bool {
         // You'll want this to be true on real servers.
         false
+    }
+
+    fn biomes(&self) -> Vec<Biome> {
+        vec![Biome {
+            name: ident!("valence:default_biome"),
+            grass_color: Some(0x00ff00),
+            ..Biome::default()
+        }]
+    }
+
+    fn dimensions(&self) -> Vec<Dimension> {
+        vec![Dimension {
+            fixed_time: Some(6000),
+            ..Dimension::default()
+        }]
     }
 
     async fn server_list_ping(&self, _server: &Server, _remote_addr: SocketAddr) -> ServerListPing {
@@ -148,7 +163,7 @@ impl Config for Game {
                     }
                     Event::Movement { position, .. } => {
                         if position.y <= 0.0 {
-                            client.teleport(spawn_pos, 0.0, 0.0);
+                            client.teleport(spawn_pos, client.pitch(), client.yaw());
                         }
                     }
                     _ => {}

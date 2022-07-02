@@ -24,6 +24,7 @@ pub struct Biome {
     pub fog_color: u32,
     pub water_color: u32,
     pub foliage_color: Option<u32>,
+    pub grass_color: Option<u32>,
     pub grass_color_modifier: BiomeGrassColorModifier,
     pub music: Option<BiomeMusic>,
     pub ambient_sound: Option<Ident>,
@@ -38,7 +39,6 @@ pub struct Biome {
     // * downfall: f32
     // * category
     // * temperature_modifier
-    // * grass_color (misleading name?)
 }
 
 impl Default for Biome {
@@ -51,6 +51,7 @@ impl Default for Biome {
             fog_color: 12638463,
             water_color: 4159204,
             foliage_color: None,
+            grass_color: None,
             grass_color_modifier: BiomeGrassColorModifier::None,
             music: None,
             ambient_sound: None,
@@ -71,17 +72,12 @@ pub enum BiomePrecipitation {
 
 /// Minecraft handles grass colors for swamps and dark oak forests in a special
 /// way.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub enum BiomeGrassColorModifier {
     Swamp,
     DarkForest,
+    #[default]
     None,
-}
-
-impl Default for BiomeGrassColorModifier {
-    fn default() -> Self {
-        Self::None
-    }
 }
 
 #[derive(Clone, Debug)]
