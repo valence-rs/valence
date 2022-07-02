@@ -1,6 +1,7 @@
 use std::io::{Read, Write};
 
 use anyhow::bail;
+use vek::Vec3;
 
 use crate::protocol::{Decode, Encode};
 
@@ -14,6 +15,10 @@ pub struct BlockPos {
 impl BlockPos {
     pub const fn new(x: i32, y: i32, z: i32) -> Self {
         Self { x, y, z }
+    }
+
+    pub fn at(pos: impl Into<Vec3<f64>>) -> Self {
+        pos.into().floor().as_::<i32>().into()
     }
 }
 
@@ -68,6 +73,18 @@ impl From<[i32; 3]> for BlockPos {
 impl From<BlockPos> for [i32; 3] {
     fn from(pos: BlockPos) -> Self {
         [pos.x, pos.y, pos.z]
+    }
+}
+
+impl From<Vec3<i32>> for BlockPos {
+    fn from(pos: Vec3<i32>) -> Self {
+        Self::new(pos.x, pos.y, pos.z)
+    }
+}
+
+impl From<BlockPos> for Vec3<i32> {
+    fn from(pos: BlockPos) -> Self {
+        Vec3::new(pos.x, pos.y, pos.z)
     }
 }
 
