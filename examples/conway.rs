@@ -163,7 +163,7 @@ impl Config for Game {
                     }
                     Event::Movement { position, .. } => {
                         if position.y <= 0.0 {
-                            client.teleport(spawn_pos, client.pitch(), client.yaw());
+                            client.teleport(spawn_pos, client.yaw(), client.pitch());
                         }
                     }
                     _ => {}

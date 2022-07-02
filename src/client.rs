@@ -328,7 +328,7 @@ impl Client {
 
     pub fn disconnect_no_reason(&mut self) {
         if self.send.is_some() {
-            log::info!("disconnecting client '{}' (no reason)", self.username);
+            log::info!("disconnecting client '{}'", self.username);
             self.send = None;
         }
     }
@@ -456,12 +456,16 @@ impl Client {
             C2sPlayPacket::KeepAlive(p) => {
                 let last_keepalive_id = self.last_keepalive_id;
                 if self.got_keepalive {
-                    self.disconnect("Unexpected keepalive");
+                    log::warn!("unexpected keepalive from player {}", self.username());
+                    self.disconnect_no_reason();
                 } else if p.id != last_keepalive_id {
-                    self.disconnect(format!(
-                        "Keepalive ids don't match (expected {}, got {})",
-                        last_keepalive_id, p.id
-                    ));
+                    log::warn!(
+                        "keepalive ids for player {} don't match (expected {}, got {})",
+                        self.username(),
+                        last_keepalive_id,
+                        p.id
+                    );
+                    self.disconnect_no_reason();
                 } else {
                     self.got_keepalive = true;
                 }
@@ -610,7 +614,7 @@ impl Client {
                 });
             }
 
-            meta.player_list().packets(|pkt| self.send_packet(pkt));
+            meta.player_list().diff_packets(|pkt| self.send_packet(pkt));
         }
 
         // Update the players spawn position (compass position)
@@ -641,7 +645,11 @@ impl Client {
                 self.last_keepalive_id = id;
                 self.got_keepalive = false;
             } else {
-                self.disconnect("Timed out (no keepalive response)");
+                log::warn!(
+                    "player {} timed out (no keepalive response)",
+                    self.username()
+                );
+                self.disconnect_no_reason();
             }
         }
 

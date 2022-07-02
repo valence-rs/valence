@@ -157,7 +157,7 @@ impl PlayerList {
         }
     }
 
-    pub(crate) fn packets(&self, mut packet: impl FnMut(S2cPlayPacket)) {
+    pub(crate) fn diff_packets(&self, mut packet: impl FnMut(S2cPlayPacket)) {
         if !self.removed.is_empty() {
             packet(PlayerInfo::RemovePlayer(self.removed.iter().cloned().collect()).into());
         }
