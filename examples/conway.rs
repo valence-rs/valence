@@ -10,8 +10,8 @@ use valence::client::{Event, GameMode};
 use valence::config::{Config, ServerListPing};
 use valence::text::Color;
 use valence::{
-    async_trait, ident, Biome, BlockState, Client, Dimension, DimensionId, Server, ShutdownResult,
-    Text, TextFormat, WorldId, Worlds,
+    async_trait, ident, Biome, BlockState, Dimension, DimensionId, Server, SharedServer,
+    ShutdownResult, TextFormat,
 };
 
 pub fn main() -> ShutdownResult {
@@ -57,6 +57,13 @@ impl Config for Game {
         false
     }
 
+    fn dimensions(&self) -> Vec<Dimension> {
+        vec![Dimension {
+            fixed_time: Some(6000),
+            ..Dimension::default()
+        }]
+    }
+
     fn biomes(&self) -> Vec<Biome> {
         vec![Biome {
             name: ident!("valence:default_biome"),
@@ -65,14 +72,11 @@ impl Config for Game {
         }]
     }
 
-    fn dimensions(&self) -> Vec<Dimension> {
-        vec![Dimension {
-            fixed_time: Some(6000),
-            ..Dimension::default()
-        }]
-    }
-
-    async fn server_list_ping(&self, _server: &Server, _remote_addr: SocketAddr) -> ServerListPing {
+    async fn server_list_ping(
+        &self,
+        _server: &SharedServer,
+        _remote_addr: SocketAddr,
+    ) -> ServerListPing {
         ServerListPing::Respond {
             online_players: self.player_count.load(Ordering::SeqCst) as i32,
             max_players: MAX_PLAYERS as i32,
@@ -81,26 +85,8 @@ impl Config for Game {
         }
     }
 
-    fn join(
-        &self,
-        _server: &Server,
-        _client: &mut Client,
-        worlds: &mut Worlds,
-    ) -> Result<WorldId, Text> {
-        if let Ok(_) = self
-            .player_count
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
-                (count < MAX_PLAYERS).then(|| count + 1)
-            })
-        {
-            Ok(worlds.iter().next().unwrap().0)
-        } else {
-            Err("The server is full!".into())
-        }
-    }
-
-    fn init(&self, _server: &Server, worlds: &mut Worlds) {
-        let world = worlds.create(DimensionId::default()).1;
+    fn init(&self, server: &mut Server) {
+        let world = server.worlds.create(DimensionId::default()).1;
         world.meta.set_flat(true);
 
         for chunk_z in -2..Integer::div_ceil(&(SIZE_X as i32), &16) + 2 {
@@ -110,8 +96,8 @@ impl Config for Game {
         }
     }
 
-    fn update(&self, server: &Server, worlds: &mut Worlds) {
-        let world = worlds.iter_mut().next().unwrap().1;
+    fn update(&self, server: &mut Server) {
+        let (world_id, world) = server.worlds.iter_mut().next().unwrap();
 
         let spawn_pos = [
             SIZE_X as f64 / 2.0,
@@ -119,10 +105,21 @@ impl Config for Game {
             SIZE_Z as f64 / 2.0,
         ];
 
-        world.clients.retain(|_, client| {
-            if client.created_tick() == server.current_tick() {
-                client.set_game_mode(GameMode::Survival);
+        server.clients.retain(|_, client| {
+            if client.created_tick() == server.shared.current_tick() {
+                if self
+                    .player_count
+                    .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
+                        (count < MAX_PLAYERS).then_some(count + 1)
+                    })
+                    .is_err()
+                {
+                    client.disconnect("The server is full!".color(Color::RED));
+                    return false;
+                }
 
+                client.set_world(world_id);
+                client.set_game_mode(GameMode::Survival);
                 client.teleport(spawn_pos, 0.0, 0.0);
 
                 world.meta.player_list_mut().insert(
@@ -148,7 +145,7 @@ impl Config for Game {
 
         let State { board, board_buf } = &mut *self.state.lock().unwrap();
 
-        for (_, client) in world.clients.iter_mut() {
+        for (_, client) in server.clients.iter_mut() {
             while let Some(event) = client.pop_event() {
                 match event {
                     Event::Digging(e) => {
@@ -171,7 +168,7 @@ impl Config for Game {
             }
         }
 
-        if server.current_tick() % 4 != 0 {
+        if server.shared.current_tick() % 4 != 0 {
             return;
         }
 
@@ -201,7 +198,7 @@ impl Config for Game {
 
         mem::swap(board, board_buf);
 
-        let min_y = server.dimensions().next().unwrap().1.min_y;
+        let min_y = server.shared.dimensions().next().unwrap().1.min_y;
 
         for chunk_x in 0..Integer::div_ceil(&SIZE_X, &16) {
             for chunk_z in 0..Integer::div_ceil(&SIZE_Z, &16) {

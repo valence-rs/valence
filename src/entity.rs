@@ -18,6 +18,7 @@ use crate::protocol::packets::play::s2c::{
 use crate::protocol::{ByteAngle, RawBytes, VarInt};
 use crate::slotmap::{Key, SlotMap};
 use crate::util::aabb_from_bottom_and_size;
+use crate::WorldId;
 
 pub struct Entities {
     sm: SlotMap<Entity>,
@@ -56,6 +57,7 @@ impl Entities {
                 let (k, e) = self.sm.insert(Entity {
                     flags: EntityFlags(0),
                     meta: EntityMeta::new(EntityType::Marker),
+                    world: None,
                     new_position: Vec3::default(),
                     old_position: Vec3::default(),
                     yaw: 0.0,
@@ -174,6 +176,7 @@ impl EntityId {
 pub struct Entity {
     flags: EntityFlags,
     meta: EntityMeta,
+    world: Option<WorldId>,
     new_position: Vec3<f64>,
     old_position: Vec3<f64>,
     yaw: f32,
@@ -224,6 +227,14 @@ impl Entity {
         self.meta = EntityMeta::new(typ);
         // All metadata is lost so we must mark it as modified unconditionally.
         self.flags.set_type_modified(true);
+    }
+
+    pub fn world(&self) -> Option<WorldId> {
+        self.world
+    }
+
+    pub fn set_world(&mut self, world: impl Into<Option<WorldId>>) {
+        self.world = world.into();
     }
 
     /// Returns the position of this entity in the world it inhabits.

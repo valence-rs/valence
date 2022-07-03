@@ -2,7 +2,7 @@ use vek::{Aabb, Vec3};
 
 use crate::bvh::Bvh;
 pub use crate::bvh::TraverseStep;
-use crate::{Entities, EntityId};
+use crate::{Entities, EntityId, WorldId};
 
 pub struct SpatialIndex {
     bvh: Bvh<EntityId>,
@@ -96,9 +96,13 @@ impl SpatialIndex {
         )
     }
 
-    pub(crate) fn update(&mut self, entities: &Entities) {
-        self.bvh
-            .build(entities.iter().map(|(id, e)| (id, e.hitbox())))
+    pub(crate) fn update(&mut self, entities: &Entities, id: WorldId) {
+        self.bvh.build(
+            entities
+                .iter()
+                .filter(|(_, e)| e.world() == Some(id))
+                .map(|(id, e)| (id, e.hitbox())),
+        )
     }
 }
 

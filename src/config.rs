@@ -5,7 +5,7 @@ use std::panic::{RefUnwindSafe, UnwindSafe};
 use async_trait::async_trait;
 use tokio::runtime::Handle as TokioHandle;
 
-use crate::{Biome, Client, Dimension, NewClientData, Server, Text, Ticks, WorldId, Worlds};
+use crate::{Biome, Dimension, NewClientData, Server, SharedServer, Text, Ticks};
 
 /// A trait containing callbacks which are invoked by the running Minecraft
 /// server.
@@ -151,7 +151,11 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     ///
     /// # Default Implementation
     /// The query is ignored.
-    async fn server_list_ping(&self, server: &Server, remote_addr: SocketAddr) -> ServerListPing {
+    async fn server_list_ping(
+        &self,
+        shared: &SharedServer,
+        remote_addr: SocketAddr,
+    ) -> ServerListPing {
         ServerListPing::Ignore
     }
 
@@ -163,30 +167,15 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     ///
     /// This method is the appropriate place to perform asynchronous
     /// operations such as database queries which may take some time to
-    /// complete. If you need access to the worlds on the server and don't need
-    /// async, see [`Config::join`].
+    /// complete.
     ///
     /// This method is called from within a tokio runtime.
     ///
     /// # Default Implementation
     /// The client is allowed to join unconditionally.
-    async fn login(&self, server: &Server, ncd: &NewClientData) -> Result<(), Text> {
+    async fn login(&self, shared: &SharedServer, ncd: &NewClientData) -> Result<(), Text> {
         Ok(())
     }
-
-    /// Called after a successful [`Config::login`] to determine what world the
-    /// new client should join. If this method returns with `Err(reason)`, then
-    /// the client is immediately disconnected with the given reason.
-    ///
-    /// If the returned [`WorldId`] is invalid, then the client is disconnected.
-    ///
-    /// This method is called from within a tokio runtime.
-    fn join(
-        &self,
-        server: &Server,
-        client: &mut Client,
-        worlds: &mut Worlds,
-    ) -> Result<WorldId, Text>;
 
     /// Called after the server is created, but prior to accepting connections
     /// and entering the update loop.
@@ -195,7 +184,7 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// no connections to the server will be made until this function returns.
     ///
     /// This method is called from within a tokio runtime.
-    fn init(&self, server: &Server, worlds: &mut Worlds) {}
+    fn init(&self, server: &mut Server) {}
 
     /// Called once at the beginning of every server update (also known as
     /// a "tick").
@@ -207,7 +196,7 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     ///
     /// # Default Implementation
     /// The default implementation does nothing.
-    fn update(&self, server: &Server, worlds: &mut Worlds);
+    fn update(&self, server: &mut Server);
 }
 
 /// The result of the [`server_list_ping`](Handler::server_list_ping) callback.

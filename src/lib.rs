@@ -43,7 +43,7 @@ pub use config::Config;
 pub use dimension::{Dimension, DimensionId};
 pub use entity::{Entities, Entity, EntityId, EntityType};
 pub use ident::Ident;
-pub use server::{start_server, NewClientData, Server, ShutdownResult};
+pub use server::{start_server, NewClientData, Server, SharedServer, ShutdownResult};
 pub use spatial_index::SpatialIndex;
 pub use text::{Text, TextFormat};
 pub use uuid::Uuid;

@@ -13,16 +13,16 @@ use crate::protocol::packets::play::s2c::{
     BlockUpdate, LevelChunkHeightmaps, LevelChunkWithLight, S2cPlayPacket, SectionBlocksUpdate,
 };
 use crate::protocol::{Encode, Nbt, VarInt, VarLong};
-use crate::{BiomeId, BlockPos, ChunkPos, DimensionId, Server, Ticks};
+use crate::{BiomeId, BlockPos, ChunkPos, DimensionId, SharedServer, Ticks};
 
 pub struct Chunks {
     chunks: HashMap<ChunkPos, Chunk>,
-    server: Server,
+    server: SharedServer,
     dimension: DimensionId,
 }
 
 impl Chunks {
-    pub(crate) fn new(server: Server, dimension: DimensionId) -> Self {
+    pub(crate) fn new(server: SharedServer, dimension: DimensionId) -> Self {
         Self {
             chunks: HashMap::new(),
             server,

@@ -4,18 +4,18 @@ use rayon::iter::ParallelIterator;
 
 use crate::player_list::PlayerList;
 use crate::slotmap::{Key, SlotMap};
-use crate::{Chunks, Clients, DimensionId, Entities, Server, SpatialIndex};
+use crate::{Chunks, DimensionId, SharedServer, SpatialIndex};
 
 pub struct Worlds {
     sm: SlotMap<World>,
-    server: Server,
+    server: SharedServer,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct WorldId(Key);
 
 impl Worlds {
-    pub(crate) fn new(server: Server) -> Self {
+    pub(crate) fn new(server: SharedServer) -> Self {
         Self {
             sm: SlotMap::new(),
             server,
@@ -24,8 +24,6 @@ impl Worlds {
 
     pub fn create(&mut self, dim: DimensionId) -> (WorldId, &mut World) {
         let (id, world) = self.sm.insert(World {
-            clients: Clients::new(),
-            entities: Entities::new(),
             spatial_index: SpatialIndex::new(),
             chunks: Chunks::new(self.server.clone(), dim),
             meta: WorldMeta {
@@ -81,8 +79,6 @@ impl Worlds {
 }
 
 pub struct World {
-    pub clients: Clients,
-    pub entities: Entities,
     pub spatial_index: SpatialIndex,
     pub chunks: Chunks,
     pub meta: WorldMeta,

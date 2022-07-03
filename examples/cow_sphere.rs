@@ -9,8 +9,8 @@ use valence::config::{Config, ServerListPing};
 use valence::text::Color;
 use valence::util::to_yaw_and_pitch;
 use valence::{
-    async_trait, Client, DimensionId, EntityId, EntityType, Server, ShutdownResult, Text,
-    TextFormat, WorldId, Worlds,
+    async_trait, DimensionId, EntityId, EntityType, Server, SharedServer, ShutdownResult,
+    TextFormat,
 };
 use vek::{Mat3, Vec3};
 
@@ -45,7 +45,11 @@ impl Config for Game {
         false
     }
 
-    async fn server_list_ping(&self, _server: &Server, _remote_addr: SocketAddr) -> ServerListPing {
+    async fn server_list_ping(
+        &self,
+        _server: &SharedServer,
+        _remote_addr: SocketAddr,
+    ) -> ServerListPing {
         ServerListPing::Respond {
             online_players: self.player_count.load(Ordering::SeqCst) as i32,
             max_players: MAX_PLAYERS as i32,
@@ -54,26 +58,8 @@ impl Config for Game {
         }
     }
 
-    fn join(
-        &self,
-        _server: &Server,
-        _client: &mut Client,
-        worlds: &mut Worlds,
-    ) -> Result<WorldId, Text> {
-        if let Ok(_) = self
-            .player_count
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
-                (count < MAX_PLAYERS).then(|| count + 1)
-            })
-        {
-            Ok(worlds.iter().next().unwrap().0)
-        } else {
-            Err("The server is full!".into())
-        }
-    }
-
-    fn init(&self, _server: &Server, worlds: &mut Worlds) {
-        let world = worlds.create(DimensionId::default()).1;
+    fn init(&self, server: &mut Server) {
+        let (world_id, world) = server.worlds.create(DimensionId::default());
         world.meta.set_flat(true);
 
         let size = 5;
@@ -84,17 +70,30 @@ impl Config for Game {
         }
 
         self.cows.lock().unwrap().extend((0..200).map(|_| {
-            let (id, e) = world.entities.create();
+            let (id, e) = server.entities.create();
+            e.set_world(world_id);
             e.set_type(EntityType::Cow);
             id
         }));
     }
 
-    fn update(&self, server: &Server, worlds: &mut Worlds) {
-        let world = worlds.iter_mut().next().unwrap().1;
+    fn update(&self, server: &mut Server) {
+        let (world_id, world) = server.worlds.iter_mut().next().unwrap();
 
-        world.clients.retain(|_, client| {
-            if client.created_tick() == server.current_tick() {
+        server.clients.retain(|_, client| {
+            if client.created_tick() == server.shared.current_tick() {
+                if self
+                    .player_count
+                    .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
+                        (count < MAX_PLAYERS).then_some(count + 1)
+                    })
+                    .is_err()
+                {
+                    client.disconnect("The server is full!".color(Color::RED));
+                    return false;
+                }
+
+                client.set_world(world_id);
                 client.set_game_mode(GameMode::Creative);
                 client.teleport([0.0, 200.0, 0.0], 0.0, 0.0);
 
@@ -116,7 +115,7 @@ impl Config for Game {
             }
         });
 
-        let time = server.current_tick() as f64 / server.tick_rate() as f64;
+        let time = server.shared.current_tick() as f64 / server.shared.tick_rate() as f64;
 
         let rot = Mat3::rotation_x(time * TAU * 0.1)
             .rotated_y(time * TAU * 0.2)
@@ -128,7 +127,7 @@ impl Config for Game {
         let radius = 6.0 + ((time * TAU / 2.5).sin() + 1.0) / 2.0 * 10.0;
 
         // TODO: use eye position.
-        let player_pos = world
+        let player_pos = server
             .clients
             .iter()
             .next()
@@ -136,7 +135,7 @@ impl Config for Game {
             .unwrap_or_default();
 
         for (cow_id, p) in cows.iter().cloned().zip(fibonacci_spiral(cow_count)) {
-            let cow = world.entities.get_mut(cow_id).expect("missing cow");
+            let cow = server.entities.get_mut(cow_id).expect("missing cow");
             let rotated = p * rot;
             let transformed = rotated * radius + [0.0, 100.0, 0.0];
 

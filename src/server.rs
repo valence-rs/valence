@@ -40,16 +40,24 @@ use crate::protocol::{BoundedArray, BoundedString, VarInt};
 use crate::util::valid_username;
 use crate::world::Worlds;
 use crate::{
-    Biome, BiomeId, Client, Dimension, DimensionId, Ticks, PROTOCOL_VERSION, VERSION_NAME,
+    Biome, BiomeId, Client, Clients, Dimension, DimensionId, Entities, Ticks, PROTOCOL_VERSION,
+    VERSION_NAME,
 };
+
+pub struct Server {
+    pub shared: SharedServer,
+    pub clients: Clients,
+    pub entities: Entities,
+    pub worlds: Worlds,
+}
 
 /// A handle to a running Minecraft server containing state which is accessible
 /// outside the update loop. Servers are internally refcounted and can be shared
 /// between threads.
 #[derive(Clone)]
-pub struct Server(Arc<ServerInner>);
+pub struct SharedServer(Arc<SharedServerInner>);
 
-struct ServerInner {
+struct SharedServerInner {
     cfg: Box<dyn Config>,
     address: SocketAddr,
     tick_rate: Ticks,
@@ -104,7 +112,7 @@ pub type ShutdownError = Box<dyn Error + Send + Sync + 'static>;
 pub(crate) type S2cPacketChannels = (Sender<C2sPlayPacket>, Receiver<S2cPlayPacket>);
 pub(crate) type C2sPacketChannels = (Sender<S2cPlayPacket>, Receiver<C2sPlayPacket>);
 
-impl Server {
+impl SharedServer {
     pub fn config(&self) -> &(impl Config + ?Sized) {
         self.0.cfg.as_ref()
     }
@@ -207,20 +215,25 @@ impl Server {
 /// The function returns when the server has shut down, a runtime error
 /// occurs, or the configuration is invalid.
 pub fn start_server(config: impl Config) -> ShutdownResult {
-    let server = setup_server(config).map_err(ShutdownError::from)?;
+    let shared = setup_server(config).map_err(ShutdownError::from)?;
 
-    let _guard = server.tokio_handle().enter();
+    let _guard = shared.tokio_handle().enter();
 
-    let mut worlds = Worlds::new(server.clone());
+    let mut server = Server {
+        shared: shared.clone(),
+        clients: Clients::new(),
+        entities: Entities::new(),
+        worlds: Worlds::new(shared.clone()),
+    };
 
-    server.config().init(&server, &mut worlds);
+    shared.config().init(&mut server);
 
-    tokio::spawn(do_accept_loop(server.clone()));
+    tokio::spawn(do_accept_loop(shared));
 
-    do_update_loop(server, &mut worlds)
+    do_update_loop(&mut server)
 }
 
-fn setup_server(cfg: impl Config) -> anyhow::Result<Server> {
+fn setup_server(cfg: impl Config) -> anyhow::Result<SharedServer> {
     let max_connections = cfg.max_connections();
     let address = cfg.address();
     let tick_rate = cfg.tick_rate();
@@ -320,7 +333,7 @@ fn setup_server(cfg: impl Config) -> anyhow::Result<Server> {
         None => tokio_handle.unwrap(),
     };
 
-    let server = ServerInner {
+    let server = SharedServerInner {
         cfg: Box::new(cfg),
         address,
         tick_rate,
@@ -343,33 +356,32 @@ fn setup_server(cfg: impl Config) -> anyhow::Result<Server> {
         http_client: HttpClient::new(),
     };
 
-    Ok(Server(Arc::new(server)))
+    Ok(SharedServer(Arc::new(server)))
 }
 
-fn do_update_loop(server: Server, worlds: &mut Worlds) -> ShutdownResult {
+fn do_update_loop(server: &mut Server) -> ShutdownResult {
     let mut tick_start = Instant::now();
 
+    let shared = server.shared.clone();
     loop {
-        if let Some(res) = server.0.shutdown_result.lock().unwrap().take() {
+        if let Some(res) = shared.0.shutdown_result.lock().unwrap().take() {
             return res;
         }
 
-        while let Ok(msg) = server.0.new_clients_rx.try_recv() {
-            join_player(&server, worlds, msg);
+        while let Ok(msg) = shared.0.new_clients_rx.try_recv() {
+            join_player(server, msg);
         }
 
         // Get serverbound packets first so they are not dealt with a tick late.
-        worlds.par_iter_mut().for_each(|(_, world)| {
-            world.clients.par_iter_mut().for_each(|(_, client)| {
-                client.handle_serverbound_packets(&world.entities);
-            });
+        server.clients.par_iter_mut().for_each(|(_, client)| {
+            client.handle_serverbound_packets(&server.entities);
         });
 
-        server.config().update(&server, worlds);
+        shared.config().update(server);
 
-        worlds.par_iter_mut().for_each(|(_, world)| {
+        server.worlds.par_iter_mut().for_each(|(id, world)| {
             world.chunks.par_iter_mut().for_each(|(_, chunk)| {
-                if chunk.created_tick() == server.current_tick() {
+                if chunk.created_tick() == shared.current_tick() {
                     // Chunks created this tick can have their changes applied immediately because
                     // they have not been observed by clients yet. Clients will not have to be sent
                     // the block change packet in this case.
@@ -377,20 +389,16 @@ fn do_update_loop(server: Server, worlds: &mut Worlds) -> ShutdownResult {
                 }
             });
 
-            world.spatial_index.update(&world.entities);
+            world.spatial_index.update(&server.entities, id);
+        });
 
-            world.clients.par_iter_mut().for_each(|(_, client)| {
-                client.update(
-                    &server,
-                    &world.entities,
-                    &world.spatial_index,
-                    &world.chunks,
-                    &world.meta,
-                );
-            });
+        server.clients.par_iter_mut().for_each(|(_, client)| {
+            client.update(&shared, &server.entities, &server.worlds);
+        });
 
-            world.entities.update();
+        server.entities.update();
 
+        server.worlds.par_iter_mut().for_each(|(_, world)| {
             world.chunks.par_iter_mut().for_each(|(_, chunk)| {
                 chunk.apply_modifications();
             });
@@ -399,53 +407,43 @@ fn do_update_loop(server: Server, worlds: &mut Worlds) -> ShutdownResult {
         });
 
         // Sleep for the remainder of the tick.
-        let tick_duration = Duration::from_secs_f64((server.0.tick_rate as f64).recip());
+        let tick_duration = Duration::from_secs_f64((shared.0.tick_rate as f64).recip());
         thread::sleep(tick_duration.saturating_sub(tick_start.elapsed()));
 
         tick_start = Instant::now();
-        server.0.tick_counter.fetch_add(1, Ordering::SeqCst);
+        shared.0.tick_counter.fetch_add(1, Ordering::SeqCst);
     }
 }
 
-fn join_player(server: &Server, worlds: &mut Worlds, msg: NewClientMessage) {
-    let (clientbound_tx, clientbound_rx) = flume::bounded(server.0.outgoing_packet_capacity);
-    let (serverbound_tx, serverbound_rx) = flume::bounded(server.0.incoming_packet_capacity);
+fn join_player(server: &mut Server, msg: NewClientMessage) {
+    let (clientbound_tx, clientbound_rx) = flume::bounded(server.shared.0.outgoing_packet_capacity);
+    let (serverbound_tx, serverbound_rx) = flume::bounded(server.shared.0.incoming_packet_capacity);
 
     let s2c_packet_channels: S2cPacketChannels = (serverbound_tx, clientbound_rx);
     let c2s_packet_channels: C2sPacketChannels = (clientbound_tx, serverbound_rx);
 
     let _ = msg.reply.send(s2c_packet_channels);
 
-    let mut client = Client::new(c2s_packet_channels, server, msg.ncd);
+    let client = Client::new(c2s_packet_channels, &server.shared, msg.ncd);
 
-    match server.0.cfg.join(server, &mut client, worlds) {
-        Ok(world_id) => {
-            if let Some(world) = worlds.get_mut(world_id) {
-                if world.entities.get_with_uuid(client.uuid()).is_none() {
-                    world.clients.create(client);
-                } else {
-                    log::warn!(
-                        "client '{}' cannot join the server because their UUID ({}) conflicts \
-                         with an existing entity",
-                        client.username(),
-                        client.uuid()
-                    );
-                }
-            } else {
-                log::warn!(
-                    "client '{}' cannot join the server because the WorldId returned by \
-                     Config::join is invalid.",
-                    client.username()
-                );
-            }
-        }
-        Err(errmsg) => client.disconnect(errmsg),
+    if server.entities.get_with_uuid(client.uuid()).is_none() {
+        server.clients.insert(client);
+    } else {
+        log::warn!(
+            "client '{}' cannot join the server because their UUID ({}) conflicts with an \
+             existing entity",
+            client.username(),
+            client.uuid()
+        );
     }
 }
 
-type Codec = (Encoder<OwnedWriteHalf>, Decoder<OwnedReadHalf>);
+struct Codec {
+    enc: Encoder<OwnedWriteHalf>,
+    dec: Decoder<OwnedReadHalf>,
+}
 
-async fn do_accept_loop(server: Server) {
+async fn do_accept_loop(server: SharedServer) {
     log::trace!("entering accept loop");
 
     let listener = match TcpListener::bind(server.0.address).await {
@@ -485,18 +483,21 @@ async fn do_accept_loop(server: Server) {
 }
 
 async fn handle_connection(
-    server: Server,
+    server: SharedServer,
     stream: TcpStream,
     remote_addr: SocketAddr,
 ) -> anyhow::Result<()> {
     let timeout = Duration::from_secs(10);
 
     let (read, write) = stream.into_split();
-    let mut c: Codec = (Encoder::new(write, timeout), Decoder::new(read, timeout));
+    let mut c = Codec {
+        enc: Encoder::new(write, timeout),
+        dec: Decoder::new(read, timeout),
+    };
 
     // TODO: peek stream for 0xFE legacy ping
 
-    match c.1.read_packet::<Handshake>().await?.next_state {
+    match c.dec.read_packet::<Handshake>().await?.next_state {
         HandshakeNextState::Status => handle_status(server, &mut c, remote_addr)
             .await
             .context("error during status"),
@@ -513,11 +514,11 @@ async fn handle_connection(
 }
 
 async fn handle_status(
-    server: Server,
+    server: SharedServer,
     c: &mut Codec,
     remote_addr: SocketAddr,
 ) -> anyhow::Result<()> {
-    c.1.read_packet::<StatusRequest>().await?;
+    c.dec.read_packet::<StatusRequest>().await?;
 
     match server.0.cfg.server_list_ping(&server, remote_addr).await {
         ServerListPing::Respond {
@@ -547,48 +548,50 @@ async fn handle_status(
                     .insert("favicon".to_string(), Value::String(buf));
             }
 
-            c.0.write_packet(&StatusResponse {
-                json_response: json.to_string(),
-            })
-            .await?;
+            c.enc
+                .write_packet(&StatusResponse {
+                    json_response: json.to_string(),
+                })
+                .await?;
         }
         ServerListPing::Ignore => return Ok(()),
     }
 
-    let PingRequest { payload } = c.1.read_packet().await?;
+    let PingRequest { payload } = c.dec.read_packet().await?;
 
-    c.0.write_packet(&PongResponse { payload }).await?;
+    c.enc.write_packet(&PongResponse { payload }).await?;
 
     Ok(())
 }
 
 /// Handle the login process and return the new player's data if successful.
 async fn handle_login(
-    server: &Server,
+    server: &SharedServer,
     c: &mut Codec,
     remote_addr: SocketAddr,
 ) -> anyhow::Result<Option<NewClientData>> {
     let LoginStart {
         username: BoundedString(username),
         sig_data: _, // TODO
-    } = c.1.read_packet().await?;
+    } = c.dec.read_packet().await?;
 
     ensure!(valid_username(&username), "invalid username '{username}'");
 
     let (uuid, textures) = if server.0.online_mode {
         let my_verify_token: [u8; 16] = rand::random();
 
-        c.0.write_packet(&EncryptionRequest {
-            server_id: Default::default(), // Always empty
-            public_key: server.0.public_key_der.to_vec(),
-            verify_token: my_verify_token.to_vec().into(),
-        })
-        .await?;
+        c.enc
+            .write_packet(&EncryptionRequest {
+                server_id: Default::default(), // Always empty
+                public_key: server.0.public_key_der.to_vec(),
+                verify_token: my_verify_token.to_vec().into(),
+            })
+            .await?;
 
         let EncryptionResponse {
             shared_secret: BoundedArray(encrypted_shared_secret),
             token_or_sig,
-        } = c.1.read_packet().await?;
+        } = c.dec.read_packet().await?;
 
         let shared_secret = server
             .0
@@ -618,8 +621,8 @@ async fn handle_login(
             .try_into()
             .context("shared secret has the wrong length")?;
 
-        c.0.enable_encryption(&crypt_key);
-        c.1.enable_encryption(&crypt_key);
+        c.enc.enable_encryption(&crypt_key);
+        c.dec.enable_encryption(&crypt_key);
 
         #[derive(Debug, Deserialize)]
         struct AuthResponse {
@@ -667,13 +670,14 @@ async fn handle_login(
     };
 
     let compression_threshold = 256;
-    c.0.write_packet(&SetCompression {
-        threshold: VarInt(compression_threshold as i32),
-    })
-    .await?;
+    c.enc
+        .write_packet(&SetCompression {
+            threshold: VarInt(compression_threshold as i32),
+        })
+        .await?;
 
-    c.0.enable_compression(compression_threshold);
-    c.1.enable_compression(compression_threshold);
+    c.enc.enable_compression(compression_threshold);
+    c.dec.enable_compression(compression_threshold);
 
     let npd = NewClientData {
         uuid,
@@ -684,21 +688,24 @@ async fn handle_login(
 
     if let Err(reason) = server.0.cfg.login(server, &npd).await {
         log::info!("Disconnect at login: \"{reason}\"");
-        c.0.write_packet(&login::s2c::Disconnect { reason }).await?;
+        c.enc
+            .write_packet(&login::s2c::Disconnect { reason })
+            .await?;
         return Ok(None);
     }
 
-    c.0.write_packet(&LoginSuccess {
-        uuid: npd.uuid,
-        username: npd.username.clone().into(),
-        properties: Vec::new(),
-    })
-    .await?;
+    c.enc
+        .write_packet(&LoginSuccess {
+            uuid: npd.uuid,
+            username: npd.username.clone().into(),
+            properties: Vec::new(),
+        })
+        .await?;
 
     Ok(Some(npd))
 }
 
-async fn handle_play(server: &Server, c: Codec, ncd: NewClientData) -> anyhow::Result<()> {
+async fn handle_play(server: &SharedServer, c: Codec, ncd: NewClientData) -> anyhow::Result<()> {
     let (reply_tx, reply_rx) = oneshot::channel();
 
     server
@@ -715,11 +722,11 @@ async fn handle_play(server: &Server, c: Codec, ncd: NewClientData) -> anyhow::R
         Err(_) => return Ok(()), // Server closed
     };
 
-    let (mut encoder, mut decoder) = c;
+    let Codec { mut enc, mut dec } = c;
 
     tokio::spawn(async move {
         while let Ok(pkt) = packet_rx.recv_async().await {
-            if let Err(e) = encoder.write_packet(&pkt).await {
+            if let Err(e) = enc.write_packet(&pkt).await {
                 log::debug!("error while sending play packet: {e:#}");
                 break;
             }
@@ -727,7 +734,7 @@ async fn handle_play(server: &Server, c: Codec, ncd: NewClientData) -> anyhow::R
     });
 
     loop {
-        let pkt = decoder.read_packet().await?;
+        let pkt = dec.read_packet().await?;
         if packet_tx.send_async(pkt).await.is_err() {
             break;
         }

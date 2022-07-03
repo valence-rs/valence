@@ -11,8 +11,7 @@ use valence::config::{Config, ServerListPing};
 use valence::text::Color;
 use valence::util::chunks_in_view_distance;
 use valence::{
-    async_trait, ChunkPos, Client, DimensionId, Server, ShutdownResult, Text, TextFormat, WorldId,
-    Worlds,
+    async_trait, ChunkPos, DimensionId, Server, SharedServer, ShutdownResult, TextFormat,
 };
 use vek::Lerp;
 
@@ -57,7 +56,11 @@ impl Config for Game {
         false
     }
 
-    async fn server_list_ping(&self, _server: &Server, _remote_addr: SocketAddr) -> ServerListPing {
+    async fn server_list_ping(
+        &self,
+        _server: &SharedServer,
+        _remote_addr: SocketAddr,
+    ) -> ServerListPing {
         ServerListPing::Respond {
             online_players: self.player_count.load(Ordering::SeqCst) as i32,
             max_players: MAX_PLAYERS as i32,
@@ -66,41 +69,35 @@ impl Config for Game {
         }
     }
 
-    fn join(
-        &self,
-        _server: &Server,
-        _client: &mut Client,
-        worlds: &mut Worlds,
-    ) -> Result<WorldId, Text> {
-        if let Ok(_) = self
-            .player_count
-            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
-                (count < MAX_PLAYERS).then(|| count + 1)
-            })
-        {
-            Ok(worlds.iter().next().unwrap().0)
-        } else {
-            Err("The server is full!".into())
-        }
-    }
-
-    fn init(&self, _server: &Server, worlds: &mut Worlds) {
-        let (_, world) = worlds.create(DimensionId::default());
+    fn init(&self, server: &mut Server) {
+        let (_, world) = server.worlds.create(DimensionId::default());
         world.meta.set_flat(true);
     }
 
-    fn update(&self, server: &Server, worlds: &mut Worlds) {
-        let world = worlds.iter_mut().next().unwrap().1;
+    fn update(&self, server: &mut Server) {
+        let (world_id, world) = server.worlds.iter_mut().next().unwrap();
 
         let mut chunks_to_unload = HashSet::<_>::from_iter(world.chunks.iter().map(|t| t.0));
 
-        world.clients.retain(|_, client| {
+        server.clients.retain(|_, client| {
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
                 return false;
             }
 
-            if client.created_tick() == server.current_tick() {
+            if client.created_tick() == server.shared.current_tick() {
+                if self
+                    .player_count
+                    .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
+                        (count < MAX_PLAYERS).then_some(count + 1)
+                    })
+                    .is_err()
+                {
+                    client.disconnect("The server is full!".color(Color::RED));
+                    return false;
+                }
+
+                client.set_world(world_id);
                 client.set_game_mode(GameMode::Creative);
                 client.set_max_view_distance(32);
                 client.teleport([0.0, 200.0, 0.0], 0.0, 0.0);
@@ -115,6 +112,10 @@ impl Config for Game {
                 );
 
                 client.send_message("Welcome to the terrain example!".italic());
+                client.send_message(
+                    "This demonstrates how to create infinite procedurally generated terrain."
+                        .italic(),
+                );
             }
 
             let dist = client.view_distance();
@@ -135,53 +136,54 @@ impl Config for Game {
         }
 
         world.chunks.par_iter_mut().for_each(|(pos, chunk)| {
-            if chunk.created_tick() == server.current_tick() {
-                for z in 0..16 {
-                    for x in 0..16 {
-                        let block_x = x as i64 + pos.x as i64 * 16;
-                        let block_z = z as i64 + pos.z as i64 * 16;
+            if chunk.created_tick() != server.shared.current_tick() {
+                return;
+            }
 
-                        let mut in_terrain = false;
-                        let mut depth = 0;
+            for z in 0..16 {
+                for x in 0..16 {
+                    let block_x = x as i64 + pos.x as i64 * 16;
+                    let block_z = z as i64 + pos.z as i64 * 16;
 
-                        for y in (0..chunk.height()).rev() {
-                            let b = terrain_column(
-                                self,
-                                block_x,
-                                y as i64,
-                                block_z,
-                                &mut in_terrain,
-                                &mut depth,
+                    let mut in_terrain = false;
+                    let mut depth = 0;
+
+                    for y in (0..chunk.height()).rev() {
+                        let b = terrain_column(
+                            self,
+                            block_x,
+                            y as i64,
+                            block_z,
+                            &mut in_terrain,
+                            &mut depth,
+                        );
+                        chunk.set_block_state(x, y, z, b);
+                    }
+
+                    // Add grass
+                    for y in (0..chunk.height()).rev() {
+                        if chunk.get_block_state(x, y, z).is_air()
+                            && chunk.get_block_state(x, y - 1, z) == BlockState::GRASS_BLOCK
+                        {
+                            let density = fbm(
+                                &self.grass_noise,
+                                [block_x, y as i64, block_z].map(|a| a as f64 / 5.0),
+                                4,
+                                2.0,
+                                0.7,
                             );
-                            chunk.set_block_state(x, y, z, b);
-                        }
 
-                        // Add grass
-                        for y in (0..chunk.height()).rev() {
-                            if chunk.get_block_state(x, y, z).is_air()
-                                && chunk.get_block_state(x, y - 1, z) == BlockState::GRASS_BLOCK
-                            {
-                                let density = fbm(
-                                    &self.grass_noise,
-                                    [block_x, y as i64, block_z].map(|a| a as f64 / 5.0),
-                                    4,
-                                    2.0,
-                                    0.7,
-                                );
+                            if density > 0.55 {
+                                if density > 0.7 && chunk.get_block_state(x, y + 1, z).is_air() {
+                                    let upper = BlockState::TALL_GRASS
+                                        .set(PropName::Half, PropValue::Upper);
+                                    let lower = BlockState::TALL_GRASS
+                                        .set(PropName::Half, PropValue::Lower);
 
-                                if density > 0.55 {
-                                    if density > 0.7 && chunk.get_block_state(x, y + 1, z).is_air()
-                                    {
-                                        let upper = BlockState::TALL_GRASS
-                                            .set(PropName::Half, PropValue::Upper);
-                                        let lower = BlockState::TALL_GRASS
-                                            .set(PropName::Half, PropValue::Lower);
-
-                                        chunk.set_block_state(x, y + 1, z, upper);
-                                        chunk.set_block_state(x, y, z, lower);
-                                    } else {
-                                        chunk.set_block_state(x, y, z, BlockState::GRASS);
-                                    }
+                                    chunk.set_block_state(x, y + 1, z, upper);
+                                    chunk.set_block_state(x, y, z, lower);
+                                } else {
+                                    chunk.set_block_state(x, y, z, BlockState::GRASS);
                                 }
                             }
                         }
@@ -257,8 +259,8 @@ fn has_terrain_at(g: &Game, x: i64, y: i64, z: i64) -> bool {
         noise01(&g.hilly_noise, [x, y, z].map(|a| a as f64 / 400.0)).powi(2),
     );
 
-    let lower = 15.0 + 75.0 * hilly;
-    let upper = lower + 125.0 * hilly;
+    let lower = 15.0 + 100.0 * hilly;
+    let upper = lower + 100.0 * hilly;
 
     if y as f64 <= lower {
         return true;
@@ -266,7 +268,7 @@ fn has_terrain_at(g: &Game, x: i64, y: i64, z: i64) -> bool {
         return false;
     }
 
-    let density = (1.0 - lerpstep(lower, upper, y as f64)).sqrt();
+    let density = 1.0 - lerpstep(lower, upper, y as f64);
 
     let n = fbm(
         &g.density_noise,

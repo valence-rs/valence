@@ -31,8 +31,8 @@ use crate::server::C2sPacketChannels;
 use crate::slotmap::{Key, SlotMap};
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::{
-    ident, BlockPos, ChunkPos, Chunks, DimensionId, Entities, EntityId, NewClientData, Server,
-    SpatialIndex, Text, Ticks, WorldMeta, LIBRARY_NAMESPACE,
+    ident, BlockPos, ChunkPos, DimensionId, Entities, EntityId, NewClientData, SharedServer, Text,
+    Ticks, WorldId, Worlds, LIBRARY_NAMESPACE,
 };
 
 pub struct Clients {
@@ -44,7 +44,7 @@ impl Clients {
         Self { sm: SlotMap::new() }
     }
 
-    pub(crate) fn create(&mut self, client: Client) -> (ClientId, &mut Client) {
+    pub(crate) fn insert(&mut self, client: Client) -> (ClientId, &mut Client) {
         let (id, client) = self.sm.insert(client);
         (ClientId(id), client)
     }
@@ -98,6 +98,8 @@ pub struct Client {
     uuid: Uuid,
     username: String,
     textures: Option<SignedPlayerTextures>,
+    new_world: Option<WorldId>,
+    old_world: Option<WorldId>,
     on_ground: bool,
     new_position: Vec3<f64>,
     old_position: Vec3<f64>,
@@ -143,7 +145,7 @@ pub struct Client {
 impl Client {
     pub(crate) fn new(
         packet_channels: C2sPacketChannels,
-        server: &Server,
+        server: &SharedServer,
         ncd: NewClientData,
     ) -> Self {
         let (send, recv) = packet_channels;
@@ -155,6 +157,8 @@ impl Client {
             uuid: ncd.uuid,
             username: ncd.username,
             textures: ncd.textures,
+            new_world: None,
+            old_world: None,
             on_ground: false,
             new_position: Vec3::default(),
             old_position: Vec3::default(),
@@ -197,6 +201,14 @@ impl Client {
 
     pub fn textures(&self) -> Option<&SignedPlayerTextures> {
         self.textures.as_ref()
+    }
+
+    pub fn world(&self) -> Option<WorldId> {
+        self.new_world
+    }
+
+    pub fn set_world(&mut self, world: WorldId) {
+        self.new_world = Some(world);
     }
 
     /// Sends a system message to the player.
@@ -554,26 +566,33 @@ impl Client {
         }
     }
 
-    pub(crate) fn update(
-        &mut self,
-        server: &Server,
-        entities: &Entities,
-        spatial_index: &SpatialIndex,
-        chunks: &Chunks,
-        meta: &WorldMeta,
-    ) {
+    pub(crate) fn update(&mut self, shared: &SharedServer, entities: &Entities, worlds: &Worlds) {
         // Mark the client as disconnected when appropriate.
         if self.recv.is_disconnected() || self.send.as_ref().map_or(true, |s| s.is_disconnected()) {
             self.send = None;
             return;
         }
 
-        let current_tick = server.current_tick();
+        let world = match self.new_world.and_then(|id| worlds.get(id)) {
+            Some(world) => world,
+            None => {
+                log::warn!(
+                    "client {} is in an invalid world and must be disconnected",
+                    self.username()
+                );
+                self.disconnect_no_reason();
+                return;
+            }
+        };
+
+        let current_tick = shared.current_tick();
 
         // Send the join game packet and other initial packets. We defer this until now
         // so that the user can set the client's location, game mode, etc.
         if self.created_tick == current_tick {
-            meta.player_list()
+            world
+                .meta
+                .player_list()
                 .initial_packets(|pkt| self.send_packet(pkt));
 
             self.send_packet(Login {
@@ -581,16 +600,19 @@ impl Client {
                 is_hardcore: false, // TODO
                 gamemode: self.new_game_mode,
                 previous_gamemode: self.old_game_mode,
-                dimension_names: server
+                dimension_names: shared
                     .dimensions()
                     .map(|(id, _)| ident!("{LIBRARY_NAMESPACE}:dimension_{}", id.0))
                     .collect(),
-                registry_codec: Nbt(make_dimension_codec(server)),
+                registry_codec: Nbt(make_dimension_codec(shared)),
                 dimension_type_name: ident!(
                     "{LIBRARY_NAMESPACE}:dimension_type_{}",
-                    meta.dimension().0
+                    world.meta.dimension().0
                 ),
-                dimension_name: ident!("{LIBRARY_NAMESPACE}:dimension_{}", meta.dimension().0),
+                dimension_name: ident!(
+                    "{LIBRARY_NAMESPACE}:dimension_{}",
+                    world.meta.dimension().0
+                ),
                 hashed_seed: 0,
                 max_players: VarInt(0),
                 view_distance: BoundedInt(VarInt(self.new_max_view_distance as i32)),
@@ -598,7 +620,7 @@ impl Client {
                 reduced_debug_info: false,
                 enable_respawn_screen: false,
                 is_debug: false,
-                is_flat: meta.is_flat(),
+                is_flat: world.meta.is_flat(),
                 last_death_location: self
                     .death_location
                     .map(|(id, pos)| (ident!("{LIBRARY_NAMESPACE}:dimension_{}", id.0), pos)),
@@ -606,6 +628,13 @@ impl Client {
 
             self.teleport(self.position(), self.yaw(), self.pitch());
         } else {
+            if self.new_world != self.old_world {
+                self.loaded_entities.clear();
+                self.loaded_chunks.clear();
+
+                todo!("send respawn packet");
+            }
+
             if self.old_game_mode != self.new_game_mode {
                 self.old_game_mode = self.new_game_mode;
                 self.send_packet(GameEvent {
@@ -614,7 +643,10 @@ impl Client {
                 });
             }
 
-            meta.player_list().diff_packets(|pkt| self.send_packet(pkt));
+            world
+                .meta
+                .player_list()
+                .diff_packets(|pkt| self.send_packet(pkt));
         }
 
         // Update the players spawn position (compass position)
@@ -638,7 +670,7 @@ impl Client {
         }
 
         // Check if it's time to send another keepalive.
-        if current_tick % (server.tick_rate() * 8) == 0 {
+        if current_tick % (shared.tick_rate() * 8) == 0 {
             if self.got_keepalive {
                 let id = rand::random();
                 self.send_packet(KeepAlive { id });
@@ -671,7 +703,7 @@ impl Client {
             }
         }
 
-        let dimension = server.dimension(meta.dimension());
+        let dimension = shared.dimension(world.meta.dimension());
 
         // Update existing chunks and unload those outside the view distance. Chunks
         // that have been overwritten also need to be unloaded.
@@ -680,7 +712,7 @@ impl Client {
             // moves to an adjacent chunk and back to the original.
             let cache = 2;
 
-            if let Some(chunk) = chunks.get(pos) {
+            if let Some(chunk) = world.chunks.get(pos) {
                 if is_chunk_in_view_distance(center, pos, view_dist + cache)
                     && chunk.created_tick() != current_tick
                 {
@@ -703,7 +735,7 @@ impl Client {
 
         // Load new chunks within the view distance
         for pos in chunks_in_view_distance(center, view_dist) {
-            if let Some(chunk) = chunks.get(pos) {
+            if let Some(chunk) = world.chunks.get(pos) {
                 if self.loaded_chunks.insert(pos) {
                     self.send_packet(chunk.chunk_data_packet(pos));
                     chunk.block_change_packets(pos, dimension.min_y, |pkt| self.send_packet(pkt));
@@ -866,7 +898,7 @@ impl Client {
 
         // Spawn new entities within the view distance.
         let pos = self.position();
-        spatial_index.query::<_, _, ()>(
+        world.spatial_index.query::<_, _, ()>(
             |bb| bb.projected_point(pos).distance(pos) <= view_dist as f64 * 16.0,
             |id, _| {
                 if self.loaded_entities.insert(id) {
@@ -888,6 +920,7 @@ impl Client {
         );
 
         self.old_position = self.new_position;
+        self.old_world = self.new_world;
     }
 }
 
@@ -906,9 +939,9 @@ fn send_packet(send_opt: &mut Option<Sender<S2cPlayPacket>>, pkt: impl Into<S2cP
     }
 }
 
-fn make_dimension_codec(server: &Server) -> RegistryCodec {
+fn make_dimension_codec(shared: &SharedServer) -> RegistryCodec {
     let mut dims = Vec::new();
-    for (id, dim) in server.dimensions() {
+    for (id, dim) in shared.dimensions() {
         let id = id.0 as i32;
         dims.push(DimensionTypeRegistryEntry {
             name: ident!("{LIBRARY_NAMESPACE}:dimension_type_{id}"),
@@ -918,7 +951,7 @@ fn make_dimension_codec(server: &Server) -> RegistryCodec {
     }
 
     let mut biomes = Vec::new();
-    for (id, biome) in server.biomes() {
+    for (id, biome) in shared.biomes() {
         biomes.push(to_biome_registry_item(biome, id.0 as i32));
     }
 
