@@ -7,7 +7,7 @@ use std::sync::Mutex;
 use log::LevelFilter;
 use num::Integer;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
-use valence::client::{ClientId, Event, GameMode};
+use valence::client::{ClientId, ClientEvent, GameMode, EntityEvent};
 use valence::config::{Config, ServerListPing};
 use valence::text::Color;
 use valence::{
@@ -169,7 +169,7 @@ impl Config for Game {
                 .unwrap();
             while let Some(event) = client.pop_event() {
                 match event {
-                    Event::Digging(e) => {
+                    ClientEvent::Digging(e) => {
                         let pos = e.position;
 
                         if (0..SIZE_X as i32).contains(&pos.x)
@@ -179,7 +179,7 @@ impl Config for Game {
                             board[pos.x as usize + pos.z as usize * SIZE_X] = true;
                         }
                     }
-                    Event::Movement { .. } => {
+                    ClientEvent::Movement { .. } => {
                         if client.position().y <= 0.0 {
                             client.teleport(spawn_pos, client.yaw(), client.pitch());
                         }

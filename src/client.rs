@@ -16,15 +16,17 @@ use crate::entity::types::Player;
 use crate::entity::{velocity_to_packet_units, EntityType};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::play::c2s::{C2sPlayPacket, DiggingStatus, InteractType};
+pub use crate::protocol::packets::play::s2c::EntityEventStatus as EntityEvent;
 use crate::protocol::packets::play::s2c::{
     Biome as BiomeRegistryBiome, BiomeAdditionsSound, BiomeEffects, BiomeMoodSound, BiomeMusic,
     BiomeParticle, BiomeParticleOptions, BiomeProperty, BiomeRegistry, BlockChangeAck, ChatType,
     ChatTypeChat, ChatTypeNarration, ChatTypeRegistry, ChatTypeRegistryEntry, DimensionType,
-    DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, ForgetLevelChunk, GameEvent,
-    GameEventReason, KeepAlive, Login, MoveEntityPosition, MoveEntityPositionAndRotation,
-    MoveEntityRotation, PlayerPosition, PlayerPositionFlags, RegistryCodec, RemoveEntities,
-    Respawn, RotateHead, S2cPlayPacket, SetChunkCacheCenter, SetChunkCacheRadius,
-    SetEntityMetadata, SetEntityMotion, SpawnPosition, SystemChat, TeleportEntity,
+    DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect,
+    EntityEvent as EntityEventPacket, ForgetLevelChunk, GameEvent, GameEventReason, KeepAlive,
+    Login, MoveEntityPosition, MoveEntityPositionAndRotation, MoveEntityRotation, PlayerPosition,
+    PlayerPositionFlags, RegistryCodec, RemoveEntities, Respawn, RotateHead, S2cPlayPacket,
+    SetChunkCacheCenter, SetChunkCacheRadius, SetEntityMetadata, SetEntityMotion, SpawnPosition,
+    SystemChat, TeleportEntity,
 };
 use crate::protocol::{BoundedInt, ByteAngle, Nbt, RawBytes, VarInt};
 use crate::server::C2sPacketChannels;
@@ -126,7 +128,7 @@ pub struct Client {
     /// If spawn_position or spawn_position_yaw were modified this tick.
     modified_spawn_position: bool,
     death_location: Option<(DimensionId, BlockPos)>,
-    events: VecDeque<Event>,
+    events: VecDeque<ClientEvent>,
     /// The ID of the last keepalive sent.
     last_keepalive_id: i64,
     /// If the last sent keepalive got a response.
@@ -143,6 +145,7 @@ pub struct Client {
     settings: Option<Settings>,
     dug_blocks: Vec<i32>,
     msgs_to_send: Vec<Text>,
+    entity_events: Vec<(Option<EntityId>, EntityEvent)>,
     /// The metadata for the client's own player entity.
     player_meta: Player,
 }
@@ -188,6 +191,7 @@ impl Client {
             settings: None,
             dug_blocks: Vec::new(),
             msgs_to_send: Vec::new(),
+            entity_events: Vec::new(),
             player_meta: Player::new(),
         }
     }
@@ -308,8 +312,12 @@ impl Client {
         self.send.is_none()
     }
 
-    pub fn pop_event(&mut self) -> Option<Event> {
+    pub fn pop_event(&mut self) -> Option<ClientEvent> {
         self.events.pop_front()
+    }
+
+    pub fn push_entity_event(&mut self, target: Option<EntityId>, event: EntityEvent) {
+        self.entity_events.push((target, event));
     }
 
     /// The current view distance of this client measured in chunks.
@@ -384,7 +392,7 @@ impl Client {
             if client.pending_teleports == 0 {
                 // TODO: validate movement using swept AABB collision with the blocks.
                 // TODO: validate that the client is actually inside/outside the vehicle?
-                let event = Event::Movement {
+                let event = ClientEvent::Movement {
                     position: client.new_position,
                     yaw: client.yaw,
                     pitch: client.pitch,
@@ -427,7 +435,7 @@ impl Client {
             C2sPlayPacket::BlockEntityTagQuery(_) => {}
             C2sPlayPacket::ChangeDifficulty(_) => {}
             C2sPlayPacket::ChatCommand(_) => {}
-            C2sPlayPacket::Chat(p) => self.events.push_back(Event::ChatMessage {
+            C2sPlayPacket::Chat(p) => self.events.push_back(ClientEvent::ChatMessage {
                 message: p.message.0,
                 timestamp: Duration::from_millis(p.timestamp),
             }),
@@ -444,7 +452,7 @@ impl Client {
                     allow_server_listings: p.allow_server_listings,
                 });
 
-                self.events.push_back(Event::SettingsChanged(old));
+                self.events.push_back(ClientEvent::SettingsChanged(old));
             }
             C2sPlayPacket::CommandSuggestion(_) => {}
             C2sPlayPacket::ContainerButtonClick(_) => {}
@@ -457,7 +465,7 @@ impl Client {
                     // TODO: verify that the client has line of sight to the targeted entity and
                     // that the distance is <=4 blocks.
 
-                    self.events.push_back(Event::InteractWithEntity {
+                    self.events.push_back(ClientEvent::InteractWithEntity {
                         id,
                         sneaking: p.sneaking,
                         typ: match p.typ {
@@ -510,7 +518,7 @@ impl Client {
                 handle_movement_packet(self, true, p.position, p.yaw, p.pitch, self.on_ground);
             }
             C2sPlayPacket::PaddleBoat(p) => {
-                self.events.push_back(Event::SteerBoat {
+                self.events.push_back(ClientEvent::SteerBoat {
                     left_paddle_turning: p.left_paddle_turning,
                     right_paddle_turning: p.right_paddle_turning,
                 });
@@ -527,17 +535,17 @@ impl Client {
                 }
 
                 self.events.push_back(match p.status {
-                    DiggingStatus::StartedDigging => Event::Digging(Digging {
+                    DiggingStatus::StartedDigging => ClientEvent::Digging(Digging {
                         status: event::DiggingStatus::Start,
                         position: p.location,
                         face: p.face,
                     }),
-                    DiggingStatus::CancelledDigging => Event::Digging(Digging {
+                    DiggingStatus::CancelledDigging => ClientEvent::Digging(Digging {
                         status: event::DiggingStatus::Cancel,
                         position: p.location,
                         face: p.face,
                     }),
-                    DiggingStatus::FinishedDigging => Event::Digging(Digging {
+                    DiggingStatus::FinishedDigging => ClientEvent::Digging(Digging {
                         status: event::DiggingStatus::Finish,
                         position: p.location,
                         face: p.face,
@@ -565,7 +573,7 @@ impl Client {
             C2sPlayPacket::SetJigsawBlock(_) => {}
             C2sPlayPacket::SetStructureBlock(_) => {}
             C2sPlayPacket::SignUpdate(_) => {}
-            C2sPlayPacket::Swing(p) => self.events.push_back(Event::ArmSwing(p.hand)),
+            C2sPlayPacket::Swing(p) => self.events.push_back(ClientEvent::ArmSwing(p.hand)),
             C2sPlayPacket::TeleportToEntity(_) => {}
             C2sPlayPacket::UseItemOn(_) => {}
             C2sPlayPacket::UseItem(_) => {}
@@ -963,6 +971,28 @@ impl Client {
                 None
             },
         );
+
+        for (target, event) in self.entity_events.drain(..) {
+            if let Some(target) = target {
+                if self.loaded_entities.contains(&target) {
+                    send_packet(
+                        &mut self.send,
+                        EntityEventPacket {
+                            entity_id: target.to_network_id(),
+                            entity_status: event,
+                        },
+                    )
+                }
+            } else {
+                send_packet(
+                    &mut self.send,
+                    EntityEventPacket {
+                        entity_id: 0,
+                        entity_status: event,
+                    },
+                );
+            }
+        }
 
         self.old_position = self.new_position;
         self.spawn = false;

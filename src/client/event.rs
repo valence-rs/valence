@@ -8,7 +8,7 @@ pub use crate::protocol::packets::play::s2c::GameMode;
 use crate::{BlockPos, EntityId};
 
 #[derive(Debug)]
-pub enum Event {
+pub enum ClientEvent {
     ChatMessage {
         message: String,
         timestamp: Duration,
