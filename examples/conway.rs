@@ -118,7 +118,7 @@ impl Config for Game {
                     return false;
                 }
 
-                client.set_world(world_id);
+                client.spawn(world_id);
                 client.set_game_mode(GameMode::Survival);
                 client.teleport(spawn_pos, 0.0, 0.0);
 

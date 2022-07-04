@@ -103,8 +103,8 @@ pub struct Client {
     uuid: Uuid,
     username: String,
     textures: Option<SignedPlayerTextures>,
-    new_world: WorldId,
-    old_world: WorldId,
+    world: WorldId,
+    spawn: bool,
     on_ground: bool,
     new_position: Vec3<f64>,
     old_position: Vec3<f64>,
@@ -162,8 +162,8 @@ impl Client {
             uuid: ncd.uuid,
             username: ncd.username,
             textures: ncd.textures,
-            new_world: WorldId::default(),
-            old_world: WorldId::default(),
+            world: WorldId::default(),
+            spawn: false,
             on_ground: false,
             new_position: Vec3::default(),
             old_position: Vec3::default(),
@@ -209,11 +209,12 @@ impl Client {
     }
 
     pub fn world(&self) -> WorldId {
-        self.new_world
+        self.world
     }
 
-    pub fn set_world(&mut self, world: WorldId) {
-        self.new_world = world;
+    pub fn spawn(&mut self, world: WorldId) {
+        self.world = world;
+        self.spawn = true;
     }
 
     /// Sends a system message to the player.
@@ -578,7 +579,7 @@ impl Client {
             return;
         }
 
-        let world = match worlds.get(self.new_world) {
+        let world = match worlds.get(self.world) {
             Some(world) => world,
             None => {
                 log::warn!(
@@ -600,15 +601,19 @@ impl Client {
                 .player_list()
                 .initial_packets(|pkt| self.send_packet(pkt));
 
+            let mut dimension_names: Vec<_> = shared
+                .dimensions()
+                .map(|(id, _)| ident!("{LIBRARY_NAMESPACE}:dimension_{}", id.0))
+                .collect();
+
+            dimension_names.push(ident!("{LIBRARY_NAMESPACE}:dummy_dimension"));
+
             self.send_packet(Login {
                 entity_id: 0,       // EntityId 0 is reserved for clients.
                 is_hardcore: false, // TODO
                 gamemode: self.new_game_mode,
                 previous_gamemode: self.old_game_mode,
-                dimension_names: shared
-                    .dimensions()
-                    .map(|(id, _)| ident!("{LIBRARY_NAMESPACE}:dimension_{}", id.0))
-                    .collect(),
+                dimension_names,
                 registry_codec: Nbt(make_dimension_codec(shared)),
                 dimension_type_name: ident!(
                     "{LIBRARY_NAMESPACE}:dimension_type_{}",
@@ -633,24 +638,24 @@ impl Client {
 
             self.teleport(self.position(), self.yaw(), self.pitch());
         } else {
-            if self.new_world != self.old_world {
+            if self.spawn {
                 self.loaded_entities.clear();
                 self.loaded_chunks.clear();
 
                 // TODO: clear player list.
 
-                // // Client bug workaround: send the client to a dummy dimension first.
-                // self.send_packet(Respawn {
-                //     dimension_type_name: ident!("{LIBRARY_NAMESPACE}:dimension_type_0"),
-                //     dimension_name: ident!("{LIBRARY_NAMESPACE}:dummy_dimension"),
-                //     hashed_seed: 0,
-                //     game_mode: self.game_mode(),
-                //     previous_game_mode: self.game_mode(),
-                //     is_debug: false,
-                //     is_flat: false,
-                //     copy_metadata: true,
-                //     last_death_location: None,
-                // });
+                // Client bug workaround: send the client to a dummy dimension first.
+                self.send_packet(Respawn {
+                    dimension_type_name: ident!("{LIBRARY_NAMESPACE}:dimension_type_0"),
+                    dimension_name: ident!("{LIBRARY_NAMESPACE}:dummy_dimension"),
+                    hashed_seed: 0,
+                    game_mode: self.game_mode(),
+                    previous_game_mode: self.game_mode(),
+                    is_debug: false,
+                    is_flat: false,
+                    copy_metadata: true,
+                    last_death_location: None,
+                });
 
                 self.send_packet(Respawn {
                     dimension_type_name: ident!(
@@ -960,7 +965,7 @@ impl Client {
         );
 
         self.old_position = self.new_position;
-        self.old_world = self.new_world;
+        self.spawn = false;
     }
 }
 

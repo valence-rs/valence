@@ -97,7 +97,7 @@ impl Config for Game {
                     return false;
                 }
 
-                client.set_world(world_id);
+                client.spawn(world_id);
                 client.set_game_mode(GameMode::Creative);
                 client.set_max_view_distance(32);
                 client.teleport([0.0, 200.0, 0.0], 0.0, 0.0);
