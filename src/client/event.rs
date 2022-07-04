@@ -24,6 +24,7 @@ pub enum Event {
         pitch: f32,
         on_ground: bool,
     },
+    ArmSwing(Hand),
     InteractWithEntity {
         /// The ID of the entity being interacted with.
         id: EntityId,

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::mem;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -6,12 +7,12 @@ use std::sync::Mutex;
 use log::LevelFilter;
 use num::Integer;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
-use valence::client::{Event, GameMode};
+use valence::client::{ClientId, Event, GameMode};
 use valence::config::{Config, ServerListPing};
 use valence::text::Color;
 use valence::{
-    async_trait, ident, Biome, BlockState, Dimension, DimensionId, Server, SharedServer,
-    ShutdownResult, TextFormat,
+    async_trait, ident, Biome, BlockState, Dimension, DimensionId, EntityId, EntityType, Server,
+    SharedServer, ShutdownResult, TextFormat,
 };
 
 pub fn main() -> ShutdownResult {
@@ -23,6 +24,7 @@ pub fn main() -> ShutdownResult {
     valence::start_server(Game {
         player_count: AtomicUsize::new(0),
         state: Mutex::new(State {
+            player_entities: HashMap::new(),
             board: vec![false; SIZE_X * SIZE_Z].into_boxed_slice(),
             board_buf: vec![false; SIZE_X * SIZE_Z].into_boxed_slice(),
         }),
@@ -35,6 +37,7 @@ struct Game {
 }
 
 struct State {
+    player_entities: HashMap<ClientId, EntityId>,
     board: Box<[bool]>,
     board_buf: Box<[bool]>,
 }
@@ -105,8 +108,20 @@ impl Config for Game {
             SIZE_Z as f64 / 2.0,
         ];
 
-        server.clients.retain(|_, client| {
+        let State {
+            player_entities,
+            board,
+            board_buf,
+        } = &mut *self.state.lock().unwrap();
+
+        server.clients.retain(|client_id, client| {
             if client.created_tick() == server.shared.current_tick() {
+                if client.is_disconnected() {
+                    self.player_count.fetch_sub(1, Ordering::SeqCst);
+                    player_entities.remove(&client_id);
+                    return false;
+                }
+
                 if self
                     .player_count
                     .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
@@ -131,21 +146,27 @@ impl Config for Game {
                     None,
                 );
 
+                player_entities.insert(
+                    client_id,
+                    server
+                        .entities
+                        .create_with_uuid(client.uuid(), EntityType::Player)
+                        .unwrap()
+                        .0,
+                );
+
                 client.send_message("Welcome to Conway's game of life in Minecraft!".italic());
                 client.send_message("Hold the left mouse button to bring blocks to life.".italic());
             }
 
-            if client.is_disconnected() {
-                self.player_count.fetch_sub(1, Ordering::SeqCst);
-                false
-            } else {
-                true
-            }
+            true
         });
 
-        let State { board, board_buf } = &mut *self.state.lock().unwrap();
-
-        for (_, client) in server.clients.iter_mut() {
+        for (client_id, client) in server.clients.iter_mut() {
+            let player = server
+                .entities
+                .get_mut(player_entities[&client_id])
+                .unwrap();
             while let Some(event) = client.pop_event() {
                 match event {
                     Event::Digging(e) => {
@@ -158,10 +179,17 @@ impl Config for Game {
                             board[pos.x as usize + pos.z as usize * SIZE_X] = true;
                         }
                     }
-                    Event::Movement { position, .. } => {
-                        if position.y <= 0.0 {
+                    Event::Movement { .. } => {
+                        if client.position().y <= 0.0 {
                             client.teleport(spawn_pos, client.yaw(), client.pitch());
                         }
+
+                        player.set_world(client.world());
+                        player.set_position(client.position());
+                        player.set_yaw(client.yaw());
+                        player.set_head_yaw(client.yaw());
+                        player.set_pitch(client.pitch());
+                        player.set_on_ground(client.on_ground());
                     }
                     _ => {}
                 }

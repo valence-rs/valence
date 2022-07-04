@@ -37,11 +37,8 @@ impl Entities {
 
     /// Spawns a new entity with the default data. The new entity's [`EntityId`]
     /// is returned.
-    ///
-    /// To actually see the new entity, set its position to somewhere nearby and
-    /// [set its type](EntityData::set_type) to something visible.
-    pub fn create(&mut self) -> (EntityId, &mut Entity) {
-        self.create_with_uuid(Uuid::from_bytes(rand::random()))
+    pub fn create(&mut self, typ: EntityType) -> (EntityId, &mut Entity) {
+        self.create_with_uuid(Uuid::from_bytes(rand::random()), typ)
             .expect("UUID collision")
     }
 
@@ -50,13 +47,17 @@ impl Entities {
     ///
     /// The provided UUID must not conflict with an existing entity UUID in this
     /// world. If it does, `None` is returned and the entity is not spawned.
-    pub fn create_with_uuid(&mut self, uuid: Uuid) -> Option<(EntityId, &mut Entity)> {
+    pub fn create_with_uuid(
+        &mut self,
+        uuid: Uuid,
+        typ: EntityType,
+    ) -> Option<(EntityId, &mut Entity)> {
         match self.uuid_to_entity.entry(uuid) {
             Entry::Occupied(_) => None,
             Entry::Vacant(ve) => {
                 let (k, e) = self.sm.insert(Entity {
                     flags: EntityFlags(0),
-                    meta: EntityMeta::new(EntityType::Marker),
+                    meta: EntityMeta::new(typ),
                     world: None,
                     new_position: Vec3::default(),
                     old_position: Vec3::default(),
@@ -220,15 +221,6 @@ impl Entity {
     /// Returns the [`EntityType`] of this entity.
     pub fn typ(&self) -> EntityType {
         self.meta.typ()
-    }
-
-    /// Changes the [`EntityType`] of this entity to the provided type.
-    ///
-    /// All metadata of this entity is reset to the default values.
-    pub fn set_type(&mut self, typ: EntityType) {
-        self.meta = EntityMeta::new(typ);
-        // All metadata is lost so we must mark it as modified unconditionally.
-        self.flags.set_type_modified(true);
     }
 
     pub fn world(&self) -> Option<WorldId> {

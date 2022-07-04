@@ -565,7 +565,7 @@ impl Client {
             C2sPlayPacket::SetJigsawBlock(_) => {}
             C2sPlayPacket::SetStructureBlock(_) => {}
             C2sPlayPacket::SignUpdate(_) => {}
-            C2sPlayPacket::Swing(_) => {}
+            C2sPlayPacket::Swing(p) => self.events.push_back(Event::ArmSwing(p.hand)),
             C2sPlayPacket::TeleportToEntity(_) => {}
             C2sPlayPacket::UseItemOn(_) => {}
             C2sPlayPacket::UseItem(_) => {}

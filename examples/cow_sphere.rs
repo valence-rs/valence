@@ -70,9 +70,8 @@ impl Config for Game {
         }
 
         self.cows.lock().unwrap().extend((0..200).map(|_| {
-            let (id, e) = server.entities.create();
+            let (id, e) = server.entities.create(EntityType::Cow);
             e.set_world(world_id);
-            e.set_type(EntityType::Cow);
             id
         }));
     }
