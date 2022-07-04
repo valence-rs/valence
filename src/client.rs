@@ -23,8 +23,8 @@ use crate::protocol::packets::play::s2c::{
     DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, ForgetLevelChunk, GameEvent,
     GameEventReason, KeepAlive, Login, MoveEntityPosition, MoveEntityPositionAndRotation,
     MoveEntityRotation, PlayerPosition, PlayerPositionFlags, RegistryCodec, RemoveEntities,
-    RotateHead, S2cPlayPacket, SetChunkCacheCenter, SetChunkCacheRadius, SetEntityMetadata,
-    SetEntityMotion, SpawnPosition, SystemChat, TeleportEntity,
+    Respawn, RotateHead, S2cPlayPacket, SetChunkCacheCenter, SetChunkCacheRadius,
+    SetEntityMetadata, SetEntityMotion, SpawnPosition, SystemChat, TeleportEntity,
 };
 use crate::protocol::{BoundedInt, ByteAngle, Nbt, RawBytes, VarInt};
 use crate::server::C2sPacketChannels;
@@ -632,7 +632,42 @@ impl Client {
                 self.loaded_entities.clear();
                 self.loaded_chunks.clear();
 
-                todo!("send respawn packet");
+                // TODO: clear player list.
+
+                // // Client bug workaround: send the client to a dummy dimension first.
+                // self.send_packet(Respawn {
+                //     dimension_type_name: ident!("{LIBRARY_NAMESPACE}:dimension_type_0"),
+                //     dimension_name: ident!("{LIBRARY_NAMESPACE}:dummy_dimension"),
+                //     hashed_seed: 0,
+                //     game_mode: self.game_mode(),
+                //     previous_game_mode: self.game_mode(),
+                //     is_debug: false,
+                //     is_flat: false,
+                //     copy_metadata: true,
+                //     last_death_location: None,
+                // });
+
+                self.send_packet(Respawn {
+                    dimension_type_name: ident!(
+                        "{LIBRARY_NAMESPACE}:dimension_type_{}",
+                        world.meta.dimension().0
+                    ),
+                    dimension_name: ident!(
+                        "{LIBRARY_NAMESPACE}:dimension_{}",
+                        world.meta.dimension().0
+                    ),
+                    hashed_seed: 0,
+                    game_mode: self.game_mode(),
+                    previous_game_mode: self.game_mode(),
+                    is_debug: false,
+                    is_flat: world.meta.is_flat(),
+                    copy_metadata: true,
+                    last_death_location: self
+                        .death_location
+                        .map(|(id, pos)| (ident!("{LIBRARY_NAMESPACE}:dimension_{}", id.0), pos)),
+                });
+
+                self.teleport(self.position(), self.yaw(), self.pitch());
             }
 
             if self.old_game_mode != self.new_game_mode {

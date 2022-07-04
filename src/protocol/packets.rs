@@ -1110,6 +1110,20 @@ pub mod play {
         }
 
         def_struct! {
+            Respawn 0x3b {
+                dimension_type_name: Ident,
+                dimension_name: Ident,
+                hashed_seed: u64,
+                game_mode: GameMode,
+                previous_game_mode: GameMode,
+                is_debug: bool,
+                is_flat: bool,
+                copy_metadata: bool,
+                last_death_location: Option<(Ident, BlockPos)>,
+            }
+        }
+
+        def_struct! {
             RotateHead 0x3c {
                 entity_id: VarInt,
                 head_yaw: ByteAngle,
@@ -1226,6 +1240,7 @@ pub mod play {
                 PlayerInfo,
                 PlayerPosition,
                 RemoveEntities,
+                Respawn,
                 RotateHead,
                 SectionBlocksUpdate,
                 SetCarriedItem,

@@ -1,6 +1,7 @@
 // TODO: https://github.com/rust-lang/rust/issues/88581 for div_ceil
 
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::io::Write;
 use std::iter::FusedIterator;
 
@@ -30,10 +31,17 @@ impl Chunks {
         }
     }
 
-    pub fn create(&mut self, pos: impl Into<ChunkPos>) -> bool {
+    pub fn create(&mut self, pos: impl Into<ChunkPos>) -> &mut Chunk {
         let section_count = (self.server.dimension(self.dimension).height / 16) as u32;
         let chunk = Chunk::new(section_count, self.server.current_tick());
-        self.chunks.insert(pos.into(), chunk).is_none()
+
+        match self.chunks.entry(pos.into()) {
+            Entry::Occupied(mut oe) => {
+                oe.insert(chunk);
+                oe.into_mut()
+            },
+            Entry::Vacant(ve) => ve.insert(chunk),
+        }
     }
 
     pub fn delete(&mut self, pos: ChunkPos) -> bool {
