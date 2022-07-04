@@ -145,7 +145,7 @@ pub struct Client {
     settings: Option<Settings>,
     dug_blocks: Vec<i32>,
     msgs_to_send: Vec<Text>,
-    entity_events: Vec<(Option<EntityId>, EntityEvent)>,
+    entity_events: Vec<EntityEvent>,
     /// The metadata for the client's own player entity.
     player_meta: Player,
 }
@@ -316,8 +316,8 @@ impl Client {
         self.events.pop_front()
     }
 
-    pub fn push_entity_event(&mut self, target: Option<EntityId>, event: EntityEvent) {
-        self.entity_events.push((target, event));
+    pub fn push_entity_event(&mut self, event: EntityEvent) {
+        self.entity_events.push(event);
     }
 
     /// The current view distance of this client measured in chunks.
@@ -838,9 +838,7 @@ impl Client {
         self.loaded_entities.retain(|&id| {
             if let Some(entity) = entities.get(id) {
                 debug_assert!(entity.typ() != EntityType::Marker);
-                if self.new_position.distance(entity.position()) <= view_dist as f64 * 16.0
-                    && !entity.flags().type_modified()
-                {
+                if self.new_position.distance(entity.position()) <= view_dist as f64 * 16.0 {
                     if let Some(meta) = entity.updated_metadata_packet(id) {
                         send_packet(&mut self.send, meta);
                     }
@@ -921,6 +919,16 @@ impl Client {
                         )
                     }
 
+                    for &e in entity.events() {
+                        send_packet(
+                            &mut self.send,
+                            EntityEventPacket {
+                                entity_id: id.to_network_id(),
+                                entity_status: e,
+                            },
+                        );
+                    }
+
                     return true;
                 }
             }
@@ -954,44 +962,41 @@ impl Client {
         world.spatial_index.query::<_, _, ()>(
             |bb| bb.projected_point(pos).distance(pos) <= view_dist as f64 * 16.0,
             |id, _| {
-                if self.loaded_entities.insert(id) {
-                    let entity = entities.get(id).unwrap();
-                    if entity.typ() != EntityType::Marker {
-                        self.send_packet(
-                            entity
-                                .spawn_packet(id)
-                                .expect("should not be a marker entity"),
-                        );
+                let entity = entities.get(id).unwrap();
+                if entity.typ() != EntityType::Marker && self.loaded_entities.insert(id) {
+                    self.send_packet(
+                        entity
+                            .spawn_packet(id)
+                            .expect("should not be a marker entity"),
+                    );
 
-                        if let Some(meta) = entity.initial_metadata_packet(id) {
-                            self.send_packet(meta);
-                        }
+                    if let Some(meta) = entity.initial_metadata_packet(id) {
+                        self.send_packet(meta);
+                    }
+
+                    for &e in entity.events() {
+                        send_packet(
+                            &mut self.send,
+                            EntityEventPacket {
+                                entity_id: id.to_network_id(),
+                                entity_status: e,
+                            },
+                        );
                     }
                 }
                 None
             },
         );
 
-        for (target, event) in self.entity_events.drain(..) {
-            if let Some(target) = target {
-                if self.loaded_entities.contains(&target) {
-                    send_packet(
-                        &mut self.send,
-                        EntityEventPacket {
-                            entity_id: target.to_network_id(),
-                            entity_status: event,
-                        },
-                    )
-                }
-            } else {
-                send_packet(
-                    &mut self.send,
-                    EntityEventPacket {
-                        entity_id: 0,
-                        entity_status: event,
-                    },
-                );
-            }
+        // Send entity events for the client's own player entity.
+        for event in self.entity_events.drain(..) {
+            send_packet(
+                &mut self.send,
+                EntityEventPacket {
+                    entity_id: 0,
+                    entity_status: event,
+                },
+            );
         }
 
         self.old_position = self.new_position;

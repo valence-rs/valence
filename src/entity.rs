@@ -12,6 +12,7 @@ pub use types::{EntityMeta, EntityType};
 use uuid::Uuid;
 use vek::{Aabb, Vec3};
 
+pub use crate::protocol::packets::play::s2c::EntityEventStatus as EntityEvent;
 use crate::protocol::packets::play::s2c::{
     AddEntity, AddExperienceOrb, AddPlayer, S2cPlayPacket, SetEntityMetadata,
 };
@@ -66,6 +67,7 @@ impl Entities {
                     head_yaw: 0.0,
                     velocity: Vec3::default(),
                     uuid,
+                    events: Vec::new(),
                 });
 
                 ve.insert(EntityId(k));
@@ -157,10 +159,11 @@ impl Entities {
         for (_, e) in self.iter_mut() {
             e.old_position = e.new_position;
             e.meta.clear_modifications();
+            e.events.clear();
 
-            let on_ground = e.flags.on_ground();
-            e.flags = EntityFlags(0);
-            e.flags.set_on_ground(on_ground);
+            e.flags.set_yaw_or_pitch_modified(false);
+            e.flags.set_head_yaw_modified(false);
+            e.flags.set_velocity_modified(false);
         }
     }
 }
@@ -187,19 +190,18 @@ pub struct Entity {
     head_yaw: f32,
     velocity: Vec3<f32>,
     uuid: Uuid,
+    events: Vec<EntityEvent>,
 }
 
 /// Contains a bit for certain fields in [`Entity`] to track if they have been
 /// modified.
 #[bitfield(u8)]
 pub(crate) struct EntityFlags {
-    /// When the type of this entity changes.
-    pub type_modified: bool,
     pub yaw_or_pitch_modified: bool,
     pub head_yaw_modified: bool,
     pub velocity_modified: bool,
     pub on_ground: bool,
-    #[bits(3)]
+    #[bits(4)]
     _pad: u8,
 }
 
@@ -308,56 +310,12 @@ impl Entity {
         self.flags.set_on_ground(on_ground);
     }
 
-    /// Gets the metadata packet to send to clients after this entity has been
-    /// spawned.
-    ///
-    /// Is `None` if there is no initial metadata.
-    pub(crate) fn initial_metadata_packet(&self, this_id: EntityId) -> Option<SetEntityMetadata> {
-        self.meta.initial_metadata().map(|meta| SetEntityMetadata {
-            entity_id: VarInt(this_id.to_network_id()),
-            metadata: RawBytes(meta),
-        })
+    pub fn push_event(&mut self, event: EntityEvent) {
+        self.events.push(event);
     }
 
-    /// Gets the metadata packet to send to clients when the entity is modified.
-    ///
-    /// Is `None` if this entity's metadata has not been modified.
-    pub(crate) fn updated_metadata_packet(&self, this_id: EntityId) -> Option<SetEntityMetadata> {
-        self.meta.updated_metadata().map(|meta| SetEntityMetadata {
-            entity_id: VarInt(this_id.to_network_id()),
-            metadata: RawBytes(meta),
-        })
-    }
-
-    pub(crate) fn spawn_packet(&self, this_id: EntityId) -> Option<EntitySpawnPacket> {
-        match &self.meta {
-            EntityMeta::Marker(_) => None,
-            EntityMeta::ExperienceOrb(_) => {
-                Some(EntitySpawnPacket::SpawnExperienceOrb(AddExperienceOrb {
-                    entity_id: VarInt(this_id.to_network_id()),
-                    position: self.new_position,
-                    count: 0, // TODO
-                }))
-            }
-            EntityMeta::Player(_) => Some(EntitySpawnPacket::SpawnPlayer(AddPlayer {
-                entity_id: VarInt(this_id.to_network_id()),
-                player_uuid: self.uuid,
-                position: self.new_position,
-                yaw: ByteAngle::from_degrees(self.yaw),
-                pitch: ByteAngle::from_degrees(self.pitch),
-            })),
-            _ => Some(EntitySpawnPacket::SpawnEntity(AddEntity {
-                entity_id: VarInt(this_id.to_network_id()),
-                object_uuid: self.uuid,
-                typ: VarInt(self.typ() as i32),
-                position: self.new_position,
-                pitch: ByteAngle::from_degrees(self.pitch),
-                yaw: ByteAngle::from_degrees(self.yaw),
-                head_yaw: ByteAngle::from_degrees(self.head_yaw),
-                data: VarInt(1), // TODO
-                velocity: velocity_to_packet_units(self.velocity),
-            })),
-        }
+    pub(crate) fn events(&self) -> &[EntityEvent] {
+        &self.events
     }
 
     pub fn hitbox(&self) -> Aabb<f64> {
@@ -501,6 +459,58 @@ impl Entity {
         };
 
         aabb_from_bottom_and_size(self.new_position, dims.into())
+    }
+
+    /// Gets the metadata packet to send to clients after this entity has been
+    /// spawned.
+    ///
+    /// Is `None` if there is no initial metadata.
+    pub(crate) fn initial_metadata_packet(&self, this_id: EntityId) -> Option<SetEntityMetadata> {
+        self.meta.initial_metadata().map(|meta| SetEntityMetadata {
+            entity_id: VarInt(this_id.to_network_id()),
+            metadata: RawBytes(meta),
+        })
+    }
+
+    /// Gets the metadata packet to send to clients when the entity is modified.
+    ///
+    /// Is `None` if this entity's metadata has not been modified.
+    pub(crate) fn updated_metadata_packet(&self, this_id: EntityId) -> Option<SetEntityMetadata> {
+        self.meta.updated_metadata().map(|meta| SetEntityMetadata {
+            entity_id: VarInt(this_id.to_network_id()),
+            metadata: RawBytes(meta),
+        })
+    }
+
+    pub(crate) fn spawn_packet(&self, this_id: EntityId) -> Option<EntitySpawnPacket> {
+        match &self.meta {
+            EntityMeta::Marker(_) => None,
+            EntityMeta::ExperienceOrb(_) => {
+                Some(EntitySpawnPacket::SpawnExperienceOrb(AddExperienceOrb {
+                    entity_id: VarInt(this_id.to_network_id()),
+                    position: self.new_position,
+                    count: 0, // TODO
+                }))
+            }
+            EntityMeta::Player(_) => Some(EntitySpawnPacket::SpawnPlayer(AddPlayer {
+                entity_id: VarInt(this_id.to_network_id()),
+                player_uuid: self.uuid,
+                position: self.new_position,
+                yaw: ByteAngle::from_degrees(self.yaw),
+                pitch: ByteAngle::from_degrees(self.pitch),
+            })),
+            _ => Some(EntitySpawnPacket::SpawnEntity(AddEntity {
+                entity_id: VarInt(this_id.to_network_id()),
+                object_uuid: self.uuid,
+                typ: VarInt(self.typ() as i32),
+                position: self.new_position,
+                pitch: ByteAngle::from_degrees(self.pitch),
+                yaw: ByteAngle::from_degrees(self.yaw),
+                head_yaw: ByteAngle::from_degrees(self.head_yaw),
+                data: VarInt(1), // TODO
+                velocity: velocity_to_packet_units(self.velocity),
+            })),
+        }
     }
 }
 

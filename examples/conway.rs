@@ -7,7 +7,7 @@ use std::sync::Mutex;
 use log::LevelFilter;
 use num::Integer;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
-use valence::client::{ClientId, ClientEvent, GameMode, EntityEvent};
+use valence::client::{ClientId, ClientEvent, GameMode};
 use valence::config::{Config, ServerListPing};
 use valence::text::Color;
 use valence::{
