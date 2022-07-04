@@ -426,16 +426,7 @@ fn join_player(server: &mut Server, msg: NewClientMessage) {
 
     let client = Client::new(c2s_packet_channels, &server.shared, msg.ncd);
 
-    if server.entities.get_with_uuid(client.uuid()).is_none() {
-        server.clients.insert(client);
-    } else {
-        log::warn!(
-            "client '{}' cannot join the server because their UUID ({}) conflicts with an \
-             existing entity",
-            client.username(),
-            client.uuid()
-        );
-    }
+    server.clients.insert(client);
 }
 
 struct Codec {

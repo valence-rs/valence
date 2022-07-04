@@ -310,6 +310,10 @@ impl Entity {
         self.flags.set_on_ground(on_ground);
     }
 
+    pub fn uuid(&self) -> Uuid {
+        self.uuid
+    }
+
     pub fn push_event(&mut self, event: EntityEvent) {
         self.events.push(event);
     }

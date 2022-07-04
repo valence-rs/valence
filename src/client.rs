@@ -962,8 +962,13 @@ impl Client {
         world.spatial_index.query::<_, _, ()>(
             |bb| bb.projected_point(pos).distance(pos) <= view_dist as f64 * 16.0,
             |id, _| {
-                let entity = entities.get(id).unwrap();
-                if entity.typ() != EntityType::Marker && self.loaded_entities.insert(id) {
+                let entity = entities
+                    .get(id)
+                    .expect("entities in spatial index should be valid");
+                if entity.typ() != EntityType::Marker
+                    && entity.uuid() != self.uuid
+                    && self.loaded_entities.insert(id)
+                {
                     self.send_packet(
                         entity
                             .spawn_packet(id)
