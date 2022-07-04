@@ -11,8 +11,12 @@ pub struct Worlds {
     server: SharedServer,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub struct WorldId(Key);
+
+impl WorldId {
+    pub const NULL: Self = Self(Key::NULL);
+}
 
 impl Worlds {
     pub(crate) fn new(server: SharedServer) -> Self {

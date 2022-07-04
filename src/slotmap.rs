@@ -24,6 +24,22 @@ pub struct Key {
 }
 
 impl Key {
+    pub const NULL: Self = Self {
+        index: u32::MAX,
+        version: match NonZeroU32::new(u32::MAX) {
+            Some(n) => n,
+            None => unreachable!(),
+        },
+    };
+}
+
+impl Default for Key {
+    fn default() -> Self {
+        Self::NULL
+    }
+}
+
+impl Key {
     pub fn new(index: u32, version: NonZeroU32) -> Self {
         Self { index, version }
     }

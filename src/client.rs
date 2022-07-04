@@ -86,7 +86,12 @@ impl Clients {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub struct ClientId(Key);
+
+impl ClientId {
+    pub const NULL: Self = Self(Key::NULL);
+}
 
 /// Represents a client connected to the server after logging in.
 pub struct Client {
@@ -98,8 +103,8 @@ pub struct Client {
     uuid: Uuid,
     username: String,
     textures: Option<SignedPlayerTextures>,
-    new_world: Option<WorldId>,
-    old_world: Option<WorldId>,
+    new_world: WorldId,
+    old_world: WorldId,
     on_ground: bool,
     new_position: Vec3<f64>,
     old_position: Vec3<f64>,
@@ -157,8 +162,8 @@ impl Client {
             uuid: ncd.uuid,
             username: ncd.username,
             textures: ncd.textures,
-            new_world: None,
-            old_world: None,
+            new_world: WorldId::default(),
+            old_world: WorldId::default(),
             on_ground: false,
             new_position: Vec3::default(),
             old_position: Vec3::default(),
@@ -203,12 +208,12 @@ impl Client {
         self.textures.as_ref()
     }
 
-    pub fn world(&self) -> Option<WorldId> {
+    pub fn world(&self) -> WorldId {
         self.new_world
     }
 
     pub fn set_world(&mut self, world: WorldId) {
-        self.new_world = Some(world);
+        self.new_world = world;
     }
 
     /// Sends a system message to the player.
@@ -573,7 +578,7 @@ impl Client {
             return;
         }
 
-        let world = match self.new_world.and_then(|id| worlds.get(id)) {
+        let world = match worlds.get(self.new_world) {
             Some(world) => world,
             None => {
                 log::warn!(

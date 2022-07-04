@@ -164,10 +164,12 @@ impl Entities {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub struct EntityId(Key);
 
 impl EntityId {
+    pub const NULL: Self = Self(Key::NULL);
+
     pub(crate) fn to_network_id(self) -> i32 {
         self.0.version().get() as i32
     }
