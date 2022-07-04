@@ -56,7 +56,6 @@ impl Key {
         }
     }
 
-    #[allow(unused)]
     pub fn index(self) -> u32 {
         self.index
     }

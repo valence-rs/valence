@@ -9,8 +9,8 @@ use num::Integer;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 use valence::client::{ClientEvent, ClientId, GameMode};
 use valence::config::{Config, ServerListPing};
-use valence::entity::EntityMeta;
 use valence::entity::meta::Pose;
+use valence::entity::EntityMeta;
 use valence::text::Color;
 use valence::{
     async_trait, ident, Biome, BlockState, Dimension, DimensionId, EntityId, EntityType, Server,
@@ -118,12 +118,6 @@ impl Config for Game {
 
         server.clients.retain(|client_id, client| {
             if client.created_tick() == server.shared.current_tick() {
-                if client.is_disconnected() {
-                    self.player_count.fetch_sub(1, Ordering::SeqCst);
-                    player_entities.remove(&client_id);
-                    return false;
-                }
-
                 if self
                     .player_count
                     .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
@@ -159,6 +153,14 @@ impl Config for Game {
 
                 client.send_message("Welcome to Conway's game of life in Minecraft!".italic());
                 client.send_message("Hold the left mouse button to bring blocks to life.".italic());
+            }
+
+            if client.is_disconnected() {
+                self.player_count.fetch_sub(1, Ordering::SeqCst);
+                let id = player_entities.remove(&client_id).unwrap();
+                server.entities.delete(id);
+                world.meta.player_list_mut().remove(client.uuid());
+                return false;
             }
 
             true

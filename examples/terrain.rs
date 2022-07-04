@@ -80,11 +80,6 @@ impl Config for Game {
         let mut chunks_to_unload = HashSet::<_>::from_iter(world.chunks.iter().map(|t| t.0));
 
         server.clients.retain(|_, client| {
-            if client.is_disconnected() {
-                self.player_count.fetch_sub(1, Ordering::SeqCst);
-                return false;
-            }
-
             if client.created_tick() == server.shared.current_tick() {
                 if self
                     .player_count
@@ -116,6 +111,12 @@ impl Config for Game {
                     "This demonstrates how to create infinite procedurally generated terrain."
                         .italic(),
                 );
+            }
+
+            if client.is_disconnected() {
+                self.player_count.fetch_sub(1, Ordering::SeqCst);
+                world.meta.player_list_mut().remove(client.uuid());
+                return false;
             }
 
             let dist = client.view_distance();

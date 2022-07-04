@@ -108,6 +108,7 @@ impl Config for Game {
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
+                world.meta.player_list_mut().remove(client.uuid());
                 false
             } else {
                 true

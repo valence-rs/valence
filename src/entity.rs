@@ -12,7 +12,7 @@ pub use types::{EntityMeta, EntityType};
 use uuid::Uuid;
 use vek::{Aabb, Vec3};
 
-pub use crate::protocol::packets::play::s2c::EntityEvent as EntityEvent;
+pub use crate::protocol::packets::play::s2c::EntityEvent;
 use crate::protocol::packets::play::s2c::{
     AddEntity, AddExperienceOrb, AddPlayer, S2cPlayPacket, SetEntityMetadata,
 };
@@ -69,6 +69,9 @@ impl Entities {
                     uuid,
                     events: Vec::new(),
                 });
+
+                // TODO check for overflowing version?
+                self.network_id_to_entity.insert(k.version(), k.index());
 
                 ve.insert(EntityId(k));
 
