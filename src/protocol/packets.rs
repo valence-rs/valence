@@ -742,15 +742,15 @@ pub mod play {
         }
 
         def_struct! {
-            EntityEvent 0x18 {
+            DoEntityEvent 0x18 {
                 entity_id: i32,
-                entity_status: EntityEventStatus,
+                entity_status: EntityEvent,
             }
         }
 
         def_enum! {
             #[derive(Copy, PartialEq, Eq)]
-            EntityEventStatus: u8 {
+            EntityEvent: u8 {
                 Jump = 1,
                 Hurt = 2,
                 Death = 3,
@@ -1294,7 +1294,7 @@ pub mod play {
                 BlockUpdate,
                 BossEvent,
                 Disconnect,
-                EntityEvent,
+                DoEntityEvent,
                 ForgetLevelChunk,
                 GameEvent,
                 KeepAlive,

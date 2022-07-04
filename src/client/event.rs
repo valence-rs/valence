@@ -24,6 +24,15 @@ pub enum ClientEvent {
         pitch: f32,
         on_ground: bool,
     },
+    StartSneaking,
+    StopSneaking,
+    StartSprinting,
+    StopSprinting, 
+    StartJumpWithHorse(u8),
+    StopJumpWithHorse,
+    LeaveBed,
+    OpenHorseInventory,
+    StartFlyingWithElytra,
     ArmSwing(Hand),
     InteractWithEntity {
         /// The ID of the entity being interacted with.

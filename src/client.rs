@@ -4,6 +4,7 @@ use std::collections::{HashSet, VecDeque};
 use std::iter::FusedIterator;
 use std::time::Duration;
 
+use bitfield_struct::bitfield;
 pub use event::*;
 use flume::{Receiver, Sender, TrySendError};
 use rayon::iter::ParallelIterator;
@@ -15,18 +16,20 @@ use crate::dimension::{Dimension, DimensionEffects};
 use crate::entity::types::Player;
 use crate::entity::{velocity_to_packet_units, EntityType};
 use crate::player_textures::SignedPlayerTextures;
-use crate::protocol::packets::play::c2s::{C2sPlayPacket, DiggingStatus, InteractType};
-pub use crate::protocol::packets::play::s2c::EntityEventStatus as EntityEvent;
+use crate::protocol::packets::play::c2s::{
+    C2sPlayPacket, DiggingStatus, InteractType, PlayerCommandId,
+};
+pub use crate::protocol::packets::play::s2c::EntityEvent;
 use crate::protocol::packets::play::s2c::{
     Biome as BiomeRegistryBiome, BiomeAdditionsSound, BiomeEffects, BiomeMoodSound, BiomeMusic,
     BiomeParticle, BiomeParticleOptions, BiomeProperty, BiomeRegistry, BlockChangeAck, ChatType,
     ChatTypeChat, ChatTypeNarration, ChatTypeRegistry, ChatTypeRegistryEntry, DimensionType,
-    DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect,
-    EntityEvent as EntityEventPacket, ForgetLevelChunk, GameEvent, GameEventReason, KeepAlive,
-    Login, MoveEntityPosition, MoveEntityPositionAndRotation, MoveEntityRotation, PlayerPosition,
-    PlayerPositionFlags, RegistryCodec, RemoveEntities, Respawn, RotateHead, S2cPlayPacket,
-    SetChunkCacheCenter, SetChunkCacheRadius, SetEntityMetadata, SetEntityMotion, SpawnPosition,
-    SystemChat, TeleportEntity,
+    DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, DoEntityEvent, ForgetLevelChunk,
+    GameEvent, GameEventReason, KeepAlive, Login, MoveEntityPosition,
+    MoveEntityPositionAndRotation, MoveEntityRotation, PlayerPosition, PlayerPositionFlags,
+    RegistryCodec, RemoveEntities, Respawn, RotateHead, S2cPlayPacket, SetChunkCacheCenter,
+    SetChunkCacheRadius, SetEntityMetadata, SetEntityMotion, SpawnPosition, SystemChat,
+    TeleportEntity,
 };
 use crate::protocol::{BoundedInt, ByteAngle, Nbt, RawBytes, VarInt};
 use crate::server::C2sPacketChannels;
@@ -106,17 +109,12 @@ pub struct Client {
     username: String,
     textures: Option<SignedPlayerTextures>,
     world: WorldId,
-    spawn: bool,
-    on_ground: bool,
     new_position: Vec3<f64>,
     old_position: Vec3<f64>,
     /// Measured in degrees
     yaw: f32,
     /// Measured in degrees
     pitch: f32,
-    /// If any of position, yaw, or pitch were modified by the
-    /// user this tick.
-    teleported_this_tick: bool,
     /// Counts up as teleports are made.
     teleport_id_counter: u32,
     /// The number of pending client teleports that have yet to receive a
@@ -125,14 +123,10 @@ pub struct Client {
     pending_teleports: u32,
     spawn_position: BlockPos,
     spawn_position_yaw: f32,
-    /// If spawn_position or spawn_position_yaw were modified this tick.
-    modified_spawn_position: bool,
     death_location: Option<(DimensionId, BlockPos)>,
     events: VecDeque<ClientEvent>,
     /// The ID of the last keepalive sent.
     last_keepalive_id: i64,
-    /// If the last sent keepalive got a response.
-    got_keepalive: bool,
     new_max_view_distance: u8,
     old_max_view_distance: u8,
     /// Entities that were visible to this client at the end of the last tick.
@@ -146,8 +140,25 @@ pub struct Client {
     dug_blocks: Vec<i32>,
     msgs_to_send: Vec<Text>,
     entity_events: Vec<EntityEvent>,
+    flags: ClientFlags,
     /// The metadata for the client's own player entity.
     player_meta: Player,
+}
+
+#[bitfield(u8)]
+pub(crate) struct ClientFlags {
+    spawn: bool,
+    sneaking: bool,
+    sprinting: bool,
+    jumping_with_horse: bool,
+    on_ground: bool,
+    /// If any of position, yaw, or pitch were modified by the
+    /// user this tick.
+    teleported_this_tick: bool,
+    /// If spawn_position or spawn_position_yaw were modified this tick.
+    modified_spawn_position: bool,
+    /// If the last sent keepalive got a response.
+    got_keepalive: bool,
 }
 
 impl Client {
@@ -166,22 +177,17 @@ impl Client {
             username: ncd.username,
             textures: ncd.textures,
             world: WorldId::default(),
-            spawn: false,
-            on_ground: false,
             new_position: Vec3::default(),
             old_position: Vec3::default(),
             yaw: 0.0,
             pitch: 0.0,
-            teleported_this_tick: false,
             teleport_id_counter: 0,
             pending_teleports: 0,
             spawn_position: BlockPos::default(),
             spawn_position_yaw: 0.0,
-            modified_spawn_position: true,
             death_location: None,
             events: VecDeque::new(),
             last_keepalive_id: 0,
-            got_keepalive: true,
             new_max_view_distance: 16,
             old_max_view_distance: 0,
             loaded_entities: HashSet::new(),
@@ -192,6 +198,9 @@ impl Client {
             dug_blocks: Vec::new(),
             msgs_to_send: Vec::new(),
             entity_events: Vec::new(),
+            flags: ClientFlags::new()
+                .with_modified_spawn_position(true)
+                .with_got_keepalive(true),
             player_meta: Player::new(),
         }
     }
@@ -218,7 +227,7 @@ impl Client {
 
     pub fn spawn(&mut self, world: WorldId) {
         self.world = world;
-        self.spawn = true;
+        self.flags.set_spawn(true);
     }
 
     /// Sends a system message to the player.
@@ -236,8 +245,8 @@ impl Client {
         self.yaw = yaw;
         self.pitch = pitch;
 
-        if !self.teleported_this_tick {
-            self.teleported_this_tick = true;
+        if !self.flags.teleported_this_tick() {
+            self.flags.set_teleported_this_tick(true);
 
             self.pending_teleports = match self.pending_teleports.checked_add(1) {
                 Some(n) => n,
@@ -273,7 +282,7 @@ impl Client {
         if pos != self.spawn_position || yaw_degrees != self.spawn_position_yaw {
             self.spawn_position = pos;
             self.spawn_position_yaw = yaw_degrees;
-            self.modified_spawn_position = true;
+            self.flags.set_modified_spawn_position(true);
         }
     }
 
@@ -305,7 +314,7 @@ impl Client {
     }
 
     pub fn on_ground(&self) -> bool {
-        self.on_ground
+        self.flags.on_ground()
     }
 
     pub fn is_disconnected(&self) -> bool {
@@ -396,13 +405,13 @@ impl Client {
                     position: client.new_position,
                     yaw: client.yaw,
                     pitch: client.pitch,
-                    on_ground: client.on_ground,
+                    on_ground: client.flags.on_ground(),
                 };
 
                 client.new_position = new_position;
                 client.yaw = new_yaw;
                 client.pitch = new_pitch;
-                client.on_ground = new_on_ground;
+                client.flags.set_on_ground(new_on_ground);
 
                 client.events.push_back(event);
             }
@@ -481,7 +490,7 @@ impl Client {
             C2sPlayPacket::JigsawGenerate(_) => {}
             C2sPlayPacket::KeepAlive(p) => {
                 let last_keepalive_id = self.last_keepalive_id;
-                if self.got_keepalive {
+                if self.flags.got_keepalive() {
                     log::warn!("unexpected keepalive from player {}", self.username());
                     self.disconnect_no_reason();
                 } else if p.id != last_keepalive_id {
@@ -493,7 +502,7 @@ impl Client {
                     );
                     self.disconnect_no_reason();
                 } else {
-                    self.got_keepalive = true;
+                    self.flags.set_got_keepalive(true);
                 }
             }
             C2sPlayPacket::LockDifficulty(_) => {}
@@ -515,7 +524,14 @@ impl Client {
                 p.on_ground,
             ),
             C2sPlayPacket::MoveVehicle(p) => {
-                handle_movement_packet(self, true, p.position, p.yaw, p.pitch, self.on_ground);
+                handle_movement_packet(
+                    self,
+                    true,
+                    p.position,
+                    p.yaw,
+                    p.pitch,
+                    self.flags.on_ground(),
+                );
             }
             C2sPlayPacket::PaddleBoat(p) => {
                 self.events.push_back(ClientEvent::SteerBoat {
@@ -556,7 +572,43 @@ impl Client {
                     DiggingStatus::SwapItemInHand => return,
                 });
             }
-            C2sPlayPacket::PlayerCommand(_) => {}
+            C2sPlayPacket::PlayerCommand(e) => {
+                // TODO: validate:
+                // - Can't sprint and sneak at the same time
+                // - Can't leave bed while not in a bed.
+                // - Can't jump with a horse if not on a horse
+                // - Can't open horse inventory if not on a horse.
+                // - Can't fly with elytra if not wearing an elytra.
+                self.events.push_back(match e.action_id {
+                    PlayerCommandId::StartSneaking => {
+                        self.flags.set_sneaking(true);
+                        ClientEvent::StartSneaking
+                    }
+                    PlayerCommandId::StopSneaking => {
+                        self.flags.set_sneaking(false);
+                        ClientEvent::StopSneaking
+                    }
+                    PlayerCommandId::LeaveBed => ClientEvent::LeaveBed,
+                    PlayerCommandId::StartSprinting => {
+                        self.flags.set_sprinting(true);
+                        ClientEvent::StartSprinting
+                    }
+                    PlayerCommandId::StopSprinting => {
+                        self.flags.set_sprinting(false);
+                        ClientEvent::StopSprinting
+                    }
+                    PlayerCommandId::StartJumpWithHorse => {
+                        self.flags.set_jumping_with_horse(true);
+                        ClientEvent::StartJumpWithHorse(e.jump_boost.0 .0 as u8)
+                    }
+                    PlayerCommandId::StopJumpWithHorse => {
+                        self.flags.set_jumping_with_horse(false);
+                        ClientEvent::StopJumpWithHorse
+                    }
+                    PlayerCommandId::OpenHorseInventory => ClientEvent::OpenHorseInventory,
+                    PlayerCommandId::StartFlyingWithElytra => ClientEvent::StartFlyingWithElytra,
+                });
+            }
             C2sPlayPacket::PlayerInput(_) => {}
             C2sPlayPacket::Pong(_) => {}
             C2sPlayPacket::RecipeBookChangeSettings(_) => {}
@@ -646,7 +698,7 @@ impl Client {
 
             self.teleport(self.position(), self.yaw(), self.pitch());
         } else {
-            if self.spawn {
+            if self.flags.spawn() {
                 self.loaded_entities.clear();
                 self.loaded_chunks.clear();
 
@@ -703,8 +755,8 @@ impl Client {
         }
 
         // Update the players spawn position (compass position)
-        if self.modified_spawn_position {
-            self.modified_spawn_position = false;
+        if self.flags.modified_spawn_position() {
+            self.flags.set_modified_spawn_position(false);
 
             self.send_packet(SpawnPosition {
                 location: self.spawn_position,
@@ -724,11 +776,11 @@ impl Client {
 
         // Check if it's time to send another keepalive.
         if current_tick % (shared.tick_rate() * 8) == 0 {
-            if self.got_keepalive {
+            if self.flags.got_keepalive() {
                 let id = rand::random();
                 self.send_packet(KeepAlive { id });
                 self.last_keepalive_id = id;
-                self.got_keepalive = false;
+                self.flags.set_got_keepalive(false);
             } else {
                 log::warn!(
                     "player {} timed out (no keepalive response)",
@@ -808,8 +860,8 @@ impl Client {
 
         // This is done after the chunks are loaded so that the "downloading terrain"
         // screen is closed at the appropriate time.
-        if self.teleported_this_tick {
-            self.teleported_this_tick = false;
+        if self.flags.teleported_this_tick() {
+            self.flags.set_teleported_this_tick(false);
 
             self.send_packet(PlayerPosition {
                 position: self.new_position,
@@ -922,7 +974,7 @@ impl Client {
                     for &e in entity.events() {
                         send_packet(
                             &mut self.send,
-                            EntityEventPacket {
+                            DoEntityEvent {
                                 entity_id: id.to_network_id(),
                                 entity_status: e,
                             },
@@ -982,7 +1034,7 @@ impl Client {
                     for &e in entity.events() {
                         send_packet(
                             &mut self.send,
-                            EntityEventPacket {
+                            DoEntityEvent {
                                 entity_id: id.to_network_id(),
                                 entity_status: e,
                             },
@@ -997,7 +1049,7 @@ impl Client {
         for event in self.entity_events.drain(..) {
             send_packet(
                 &mut self.send,
-                EntityEventPacket {
+                DoEntityEvent {
                     entity_id: 0,
                     entity_status: event,
                 },
@@ -1005,7 +1057,7 @@ impl Client {
         }
 
         self.old_position = self.new_position;
-        self.spawn = false;
+        self.flags.set_spawn(false);
     }
 }
 

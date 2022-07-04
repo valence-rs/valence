@@ -12,7 +12,7 @@ pub use types::{EntityMeta, EntityType};
 use uuid::Uuid;
 use vek::{Aabb, Vec3};
 
-pub use crate::protocol::packets::play::s2c::EntityEventStatus as EntityEvent;
+pub use crate::protocol::packets::play::s2c::EntityEvent as EntityEvent;
 use crate::protocol::packets::play::s2c::{
     AddEntity, AddExperienceOrb, AddPlayer, S2cPlayPacket, SetEntityMetadata,
 };
@@ -39,7 +39,7 @@ impl Entities {
     /// Spawns a new entity with the default data. The new entity's [`EntityId`]
     /// is returned.
     pub fn create(&mut self, typ: EntityType) -> (EntityId, &mut Entity) {
-        self.create_with_uuid(Uuid::from_bytes(rand::random()), typ)
+        self.create_with_uuid(typ, Uuid::from_bytes(rand::random()))
             .expect("UUID collision")
     }
 
@@ -50,8 +50,8 @@ impl Entities {
     /// world. If it does, `None` is returned and the entity is not spawned.
     pub fn create_with_uuid(
         &mut self,
-        uuid: Uuid,
         typ: EntityType,
+        uuid: Uuid,
     ) -> Option<(EntityId, &mut Entity)> {
         match self.uuid_to_entity.entry(uuid) {
             Entry::Occupied(_) => None,
