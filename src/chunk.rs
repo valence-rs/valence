@@ -1,7 +1,7 @@
 // TODO: https://github.com/rust-lang/rust/issues/88581 for div_ceil
 
-use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+use std::collections::HashMap;
 use std::io::Write;
 use std::iter::FusedIterator;
 
@@ -39,7 +39,7 @@ impl Chunks {
             Entry::Occupied(mut oe) => {
                 oe.insert(chunk);
                 oe.into_mut()
-            },
+            }
             Entry::Vacant(ve) => ve.insert(chunk),
         }
     }

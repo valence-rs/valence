@@ -27,7 +27,7 @@ pub enum ClientEvent {
     StartSneaking,
     StopSneaking,
     StartSprinting,
-    StopSprinting, 
+    StopSprinting,
     StartJumpWithHorse(u8),
     StopJumpWithHorse,
     LeaveBed,

@@ -227,6 +227,10 @@ impl<R: AsyncRead + Unpin> Decoder<R> {
         self.compression_threshold = Some(threshold);
     }
 
+    pub fn packet_buf(&self) -> &[u8] {
+        &self.buf
+    }
+
     pub fn into_inner(self) -> R {
         self.read
     }
