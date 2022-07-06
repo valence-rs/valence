@@ -13,31 +13,30 @@ use vek::Vec3;
 
 use crate::biome::{Biome, BiomeGrassColorModifier, BiomePrecipitation};
 use crate::dimension::{Dimension, DimensionEffects};
-use crate::entity::types::Player;
+use crate::entity::data::Player;
 use crate::entity::{velocity_to_packet_units, EntityType};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::play::c2s::{
     C2sPlayPacket, DiggingStatus, InteractType, PlayerCommandId,
 };
-pub use crate::protocol::packets::play::s2c::EntityEvent;
 use crate::protocol::packets::play::s2c::{
-    Biome as BiomeRegistryBiome, BiomeAdditionsSound, BiomeEffects, BiomeMoodSound, BiomeMusic,
-    BiomeParticle, BiomeParticleOptions, BiomeProperty, BiomeRegistry, BlockChangeAck, ChatType,
-    ChatTypeChat, ChatTypeNarration, ChatTypeRegistry, ChatTypeRegistryEntry, DimensionType,
-    DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, DoEntityEvent, ForgetLevelChunk,
-    GameEvent, GameEventReason, KeepAlive, Login, MoveEntityPosition,
+    Animate, Biome as BiomeRegistryBiome, BiomeAdditionsSound, BiomeEffects, BiomeMoodSound,
+    BiomeMusic, BiomeParticle, BiomeParticleOptions, BiomeProperty, BiomeRegistry, BlockChangeAck,
+    ChatType, ChatTypeChat, ChatTypeNarration, ChatTypeRegistry, ChatTypeRegistryEntry,
+    DimensionType, DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, EntityEvent,
+    ForgetLevelChunk, GameEvent, GameEventReason, KeepAlive, Login, MoveEntityPosition,
     MoveEntityPositionAndRotation, MoveEntityRotation, PlayerPosition, PlayerPositionFlags,
     RegistryCodec, RemoveEntities, Respawn, RotateHead, S2cPlayPacket, SetChunkCacheCenter,
     SetChunkCacheRadius, SetEntityMetadata, SetEntityMotion, SpawnPosition, SystemChat,
-    TeleportEntity,
+    TeleportEntity, ENTITY_EVENT_MAX_BOUND,
 };
 use crate::protocol::{BoundedInt, ByteAngle, Nbt, RawBytes, VarInt};
 use crate::server::C2sPacketChannels;
 use crate::slotmap::{Key, SlotMap};
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::{
-    ident, BlockPos, ChunkPos, DimensionId, Entities, EntityId, NewClientData, SharedServer, Text,
-    Ticks, WorldId, Worlds, LIBRARY_NAMESPACE,
+    ident, BlockPos, ChunkPos, DimensionId, Entities, Entity, EntityId, NewClientData,
+    SharedServer, Text, Ticks, WorldId, Worlds, LIBRARY_NAMESPACE,
 };
 
 pub struct Clients {
@@ -101,7 +100,7 @@ impl ClientId {
 /// Represents a client connected to the server after logging in.
 pub struct Client {
     /// Setting this to `None` disconnects the client.
-    send: Option<Sender<S2cPlayPacket>>,
+    send: SendOpt,
     recv: Receiver<C2sPlayPacket>,
     /// The tick this client was created.
     created_tick: Ticks,
@@ -139,10 +138,9 @@ pub struct Client {
     settings: Option<Settings>,
     dug_blocks: Vec<i32>,
     msgs_to_send: Vec<Text>,
-    entity_events: Vec<EntityEvent>,
     flags: ClientFlags,
-    /// The metadata for the client's own player entity.
-    player_meta: Player,
+    /// The data for the client's own player entity.
+    player_data: Player,
 }
 
 #[bitfield(u8)]
@@ -197,11 +195,10 @@ impl Client {
             settings: None,
             dug_blocks: Vec::new(),
             msgs_to_send: Vec::new(),
-            entity_events: Vec::new(),
             flags: ClientFlags::new()
                 .with_modified_spawn_position(true)
                 .with_got_keepalive(true),
-            player_meta: Player::new(),
+            player_data: Player::new(),
         }
     }
 
@@ -325,10 +322,6 @@ impl Client {
         self.events.pop_front()
     }
 
-    pub fn push_entity_event(&mut self, event: EntityEvent) {
-        self.entity_events.push(event);
-    }
-
     /// The current view distance of this client measured in chunks.
     pub fn view_distance(&self) -> u8 {
         self.settings
@@ -368,12 +361,12 @@ impl Client {
         }
     }
 
-    pub fn meta(&self) -> &Player {
-        &self.player_meta
+    pub fn data(&self) -> &Player {
+        &self.player_data
     }
 
-    pub fn meta_mut(&mut self) -> &mut Player {
-        &mut self.player_meta
+    pub fn data_mut(&mut self) -> &mut Player {
+        &mut self.player_data
     }
 
     /// Attempts to enqueue a play packet to be sent to this client. The client
@@ -971,15 +964,7 @@ impl Client {
                         )
                     }
 
-                    for &e in entity.events() {
-                        send_packet(
-                            &mut self.send,
-                            DoEntityEvent {
-                                entity_id: id.to_network_id(),
-                                entity_status: e,
-                            },
-                        );
-                    }
+                    send_entity_events(&mut self.send, id, entity);
 
                     return true;
                 }
@@ -997,7 +982,7 @@ impl Client {
 
         // Update the client's own player metadata.
         let mut data = Vec::new();
-        self.player_meta.updated_metadata(&mut data);
+        self.player_data.updated_metadata(&mut data);
 
         if !data.is_empty() {
             data.push(0xff);
@@ -1007,7 +992,7 @@ impl Client {
                 metadata: RawBytes(data),
             });
         }
-        self.player_meta.clear_modifications();
+        self.player_data.clear_modifications();
 
         // Spawn new entities within the view distance.
         let pos = self.position();
@@ -1031,29 +1016,24 @@ impl Client {
                         self.send_packet(meta);
                     }
 
-                    for &e in entity.events() {
-                        send_packet(
-                            &mut self.send,
-                            DoEntityEvent {
-                                entity_id: id.to_network_id(),
-                                entity_status: e,
-                            },
-                        );
-                    }
+                    send_entity_events(&mut self.send, id, entity);
                 }
                 None
             },
         );
 
-        // Send entity events for the client's own player entity.
-        for event in self.entity_events.drain(..) {
-            send_packet(
-                &mut self.send,
-                DoEntityEvent {
-                    entity_id: 0,
-                    entity_status: event,
-                },
-            );
+        for &code in self.player_data.event_codes() {
+            if code <= ENTITY_EVENT_MAX_BOUND as u8 {
+                send_packet(
+                    &mut self.send,
+                    EntityEvent {
+                        entity_id: 0,
+                        entity_status: BoundedInt(code),
+                    },
+                );
+            }
+            // Don't bother sending animations since it shouldn't be visible to
+            // the client.
         }
 
         self.old_position = self.new_position;
@@ -1061,7 +1041,9 @@ impl Client {
     }
 }
 
-fn send_packet(send_opt: &mut Option<Sender<S2cPlayPacket>>, pkt: impl Into<S2cPlayPacket>) {
+type SendOpt = Option<Sender<S2cPlayPacket>>;
+
+fn send_packet(send_opt: &mut SendOpt, pkt: impl Into<S2cPlayPacket>) {
     if let Some(send) = send_opt {
         match send.try_send(pkt.into()) {
             Err(TrySendError::Full(_)) => {
@@ -1072,6 +1054,28 @@ fn send_packet(send_opt: &mut Option<Sender<S2cPlayPacket>>, pkt: impl Into<S2cP
                 *send_opt = None;
             }
             Ok(_) => {}
+        }
+    }
+}
+
+fn send_entity_events(send_opt: &mut SendOpt, id: EntityId, entity: &Entity) {
+    for &code in entity.data().event_codes() {
+        if code <= ENTITY_EVENT_MAX_BOUND as u8 {
+            send_packet(
+                send_opt,
+                EntityEvent {
+                    entity_id: id.to_network_id(),
+                    entity_status: BoundedInt(code),
+                },
+            );
+        } else {
+            send_packet(
+                send_opt,
+                Animate {
+                    entity_id: VarInt(id.to_network_id()),
+                    animation: BoundedInt(code - ENTITY_EVENT_MAX_BOUND as u8 - 1),
+                },
+            )
         }
     }
 }

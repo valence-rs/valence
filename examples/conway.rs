@@ -10,7 +10,7 @@ use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelI
 use valence::client::{ClientEvent, ClientId, GameMode};
 use valence::config::{Config, ServerListPing};
 use valence::entity::meta::Pose;
-use valence::entity::EntityMeta;
+use valence::entity::EntityData;
 use valence::text::Color;
 use valence::{
     async_trait, ident, Biome, BlockState, Dimension, DimensionId, EntityId, EntityType, Server,
@@ -197,30 +197,30 @@ impl Config for Game {
                         player.set_on_ground(client.on_ground());
                     }
                     ClientEvent::StartSneaking => {
-                        if let EntityMeta::Player(e) = player.meta_mut() {
+                        if let EntityData::Player(e) = player.data_mut() {
                             e.set_crouching(true);
                             e.set_pose(Pose::Sneaking);
                         }
                     }
                     ClientEvent::StopSneaking => {
-                        if let EntityMeta::Player(e) = player.meta_mut() {
+                        if let EntityData::Player(e) = player.data_mut() {
                             e.set_pose(Pose::Standing);
                             e.set_crouching(false);
                         }
                     }
                     ClientEvent::StartSprinting => {
-                        if let EntityMeta::Player(e) = player.meta_mut() {
+                        if let EntityData::Player(e) = player.data_mut() {
                             e.set_sprinting(true);
                         }
                     }
                     ClientEvent::StopSprinting => {
-                        if let EntityMeta::Player(e) = player.meta_mut() {
+                        if let EntityData::Player(e) = player.data_mut() {
                             e.set_sprinting(false);
                         }
                     }
                     ClientEvent::ArmSwing(_) => {
-                        if let EntityMeta::Player(_) = player.meta_mut() {
-                            // TODO: swing arm.
+                        if let EntityData::Player(e) = player.data_mut() {
+                            e.trigger_swing_main_arm();
                         }
                     }
                     _ => {}

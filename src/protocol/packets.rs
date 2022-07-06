@@ -619,18 +619,7 @@ pub mod play {
         def_struct! {
             Animate 0x03 {
                 entity_id: VarInt,
-                animation: Animation,
-            }
-        }
-
-        def_enum! {
-            Animation: u8 {
-                SwingMainArm = 0,
-                TakeDamage = 1,
-                LeaveBed = 2,
-                SwingOffhand = 3,
-                CriticalEffect = 4,
-                MagicCriticalEffect = 5,
+                animation: BoundedInt<u8, 0, 5>,
             }
         }
 
@@ -741,78 +730,12 @@ pub mod play {
             }
         }
 
-        def_struct! {
-            DoEntityEvent 0x18 {
-                entity_id: i32,
-                entity_status: EntityEvent,
-            }
-        }
+        pub const ENTITY_EVENT_MAX_BOUND: i64 = 62;
 
-        def_enum! {
-            #[derive(Copy, PartialEq, Eq)]
-            EntityEvent: u8 {
-                Jump = 1,
-                Hurt = 2,
-                Death = 3,
-                StartAttacking = 4,
-                StopAttacking = 5,
-                TamingFailed = 6,
-                TamingSucceeded = 7,
-                ShakeWetness = 8,
-                UseItemComplete = 9,
-                EatGrass = 10,
-                OfferFlower = 11,
-                LoveHearts = 12,
-                VillagerAngry = 13,
-                VillagerHappy = 14,
-                WitchHatMagic = 15,
-                ZombieConverting = 16,
-                FireworksExplode = 17,
-                InLoveHearts = 18,
-                SquidAnimSynch = 19,
-                SilverfishMergeAnim = 20,
-                GuardianAttackSound = 21,
-                ReducedDebugInfo = 22,
-                FullDebugInfo = 23,
-                PermissionLevelAll = 24,
-                PermissionLevelModerators = 25,
-                PermissionLevelGamemasters = 26,
-                PermissionLevelAdmins = 27,
-                PermissionLevelOwners = 28,
-                AttackBlocked = 29,
-                ShieldDisabled = 30,
-                FishingRodReelIn = 31,
-                ArmorstandWobble = 32,
-                Thorned = 33,
-                StopOfferFlower = 34,
-                TalismanActivate = 35,
-                Drowned = 36,
-                Burned = 37,
-                DolphinLookingForTreasure = 38,
-                RavagerStunned = 39,
-                TrustingFailed = 40,
-                TrustingSucceeded = 41,
-                VillagerSweat = 42,
-                BadOmenTriggered = 43,
-                Poked = 44,
-                FoxEat = 45,
-                Teleport = 46,
-                MainhandBreak = 47,
-                OffhandBreak = 48,
-                HeadBreak = 49,
-                ChestBreak = 50,
-                LegsBreak = 51,
-                FeetBreak = 52,
-                HoneySlide = 53,
-                HoneyJump = 54,
-                SwapHands = 55,
-                CancelShakeWetness = 56,
-                Frozen = 57,
-                StartRam = 58,
-                EndRam = 59,
-                Poof = 60,
-                TendrilsShiver = 61,
-                SonicCharge = 62,
+        def_struct! {
+            EntityEvent 0x18 {
+                entity_id: i32,
+                entity_status: BoundedInt<u8, 1, ENTITY_EVENT_MAX_BOUND>,
             }
         }
 
@@ -1294,7 +1217,7 @@ pub mod play {
                 BlockUpdate,
                 BossEvent,
                 Disconnect,
-                DoEntityEvent,
+                EntityEvent,
                 ForgetLevelChunk,
                 GameEvent,
                 KeepAlive,

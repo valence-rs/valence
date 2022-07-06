@@ -272,6 +272,16 @@ impl Decode for Box<str> {
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct BoundedInt<T, const MIN: i64, const MAX: i64>(pub T);
 
+impl<T, const MIN: i64, const MAX: i64> BoundedInt<T, MIN, MAX> {
+    pub const fn min_bound(&self) -> i64 {
+        MIN
+    }
+
+    pub const fn max_bound(&self) -> i64 {
+        MAX
+    }
+}
+
 impl<T, const MIN: i64, const MAX: i64> From<T> for BoundedInt<T, MIN, MAX> {
     fn from(t: T) -> Self {
         Self(t)
@@ -333,6 +343,16 @@ impl Decode for String {
 /// When encoded and decoded, the string is VarInt prefixed.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash, Debug)]
 pub struct BoundedString<const MIN: usize, const MAX: usize>(pub String);
+
+impl<const MIN: usize, const MAX: usize> BoundedString<MIN, MAX> {
+    pub const fn min_bound(&self) -> usize {
+        MIN
+    }
+
+    pub const fn max_bound(&self) -> usize {
+        MAX
+    }
+}
 
 impl<const MIN: usize, const MAX: usize> Encode for BoundedString<MIN, MAX> {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {

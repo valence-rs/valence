@@ -1,4 +1,4 @@
-//! See: <https://wiki.vg/Entity_metadata>
+//! See: <https://wiki.vg/Entity_metadata> and <https://wiki.vg/Entity_statuses>
 
 use std::collections::{BTreeMap, HashMap};
 
@@ -14,11 +14,125 @@ struct Class {
     name: &'static str,
     inherit: Option<&'static Class>,
     fields: &'static [Field],
+    events: &'static [Event],
+}
+
+impl Class {
+    pub fn collect_fields(&self, fields: &mut Vec<&'static Field>) {
+        if let Some(parent) = self.inherit {
+            parent.collect_fields(fields);
+        }
+        fields.extend(self.fields);
+    }
+
+    pub fn collect_events(&self, events: &mut Vec<Event>) {
+        if let Some(parent) = self.inherit {
+            parent.collect_events(events);
+        }
+        events.extend(self.events);
+    }
 }
 
 struct Field {
     name: &'static str,
     typ: Type,
+}
+
+macro_rules! def_events {
+    (
+        $(
+            $variant:ident $(= $val:expr)?
+        ),* $(,)?
+    ) => {
+        #[derive(Clone, Copy, PartialEq, Eq)]
+        #[allow(dead_code)]
+        enum Event {
+            $($variant $(= $val)*,)*
+        }
+
+        impl Event {
+            pub fn snake_case_name(self) -> String {
+                match self {
+                    $(
+                        Self::$variant => stringify!($variant).to_snake_case(),
+                    )*
+                }
+            }
+        }
+    }
+}
+
+def_events! {
+    // Entity events
+    Jump = 1,
+    Hurt,
+    Death,
+    StartAttacking,
+    StopAttacking,
+    TamingFailed,
+    TamingSucceeded,
+    ShakeWetness,
+    UseItemComplete,
+    EatGrass,
+    OfferFlower,
+    LoveHearts,
+    VillagerAngry,
+    VillagerHappy,
+    WitchHatMagic,
+    ZombieConverting,
+    FireworksExplode,
+    InLoveHearts,
+    SquidAnimSynch,
+    SilverfishMergeAnim,
+    GuardianAttackSound,
+    ReducedDebugInfo,
+    FullDebugInfo,
+    PermissionLevelAll,
+    PermissionLevelModerators,
+    PermissionLevelGamemasters,
+    PermissionLevelAdmins,
+    PermissionLevelOwners,
+    AttackBlocked,
+    ShieldDisabled,
+    FishingRodReelIn,
+    ArmorstandWobble,
+    Thorned,
+    StopOfferFlower,
+    TalismanActivate,
+    Drowned,
+    Burned,
+    DolphinLookingForTreasure,
+    RavagerStunned,
+    TrustingFailed,
+    TrustingSucceeded,
+    VillagerSweat,
+    BadOmenTriggered,
+    Poked,
+    FoxEat,
+    Teleport,
+    MainhandBreak,
+    OffhandBreak,
+    HeadBreak,
+    ChestBreak,
+    LegsBreak,
+    FeetBreak,
+    HoneySlide,
+    HoneyJump,
+    SwapHands,
+    CancelShakeWetness,
+    Frozen,
+    StartRam,
+    EndRam,
+    Poof,
+    TendrilsShiver,
+    SonicCharge,
+    // Animations
+    SwingMainArm,
+    TakeDamage,
+    LeaveBed,
+    SwingOffhand,
+    CriticalEffect,
+    MagicCriticalEffect,
 }
 
 /// Each variant contains the default value for the field.
@@ -210,6 +324,7 @@ const BASE_ENTITY: Class = Class {
             typ: Type::VarInt(0),
         },
     ],
+    events: &[],
 };
 
 const ABSTRACT_ARROW: Class = Class {
@@ -236,6 +351,7 @@ const ABSTRACT_ARROW: Class = Class {
             typ: Type::Byte(0),
         },
     ],
+    events: &[],
 };
 
 const ITEM_FRAME: Class = Class {
@@ -251,6 +367,7 @@ const ITEM_FRAME: Class = Class {
             typ: Type::VarInt(0), // TODO: Direction enum?
         },
     ],
+    events: &[],
 };
 
 const BOAT: Class = Class {
@@ -286,6 +403,7 @@ const BOAT: Class = Class {
             typ: Type::VarInt(0),
         },
     ],
+    events: &[],
 };
 
 const LIVING_ENTITY: Class = Class {
@@ -337,6 +455,7 @@ const LIVING_ENTITY: Class = Class {
             typ: Type::OptBlockPos(None),
         },
     ],
+    events: &[],
 };
 
 const MOB: Class = Class {
@@ -362,24 +481,28 @@ const MOB: Class = Class {
             },
         ]),
     }],
+    events: &[],
 };
 
 const AMBIENT_CREATURE: Class = Class {
     name: "ambient_creature",
     inherit: Some(&MOB),
     fields: &[],
+    events: &[],
 };
 
 const PATHFINDER_MOB: Class = Class {
     name: "pathfinder_mob",
     inherit: Some(&MOB),
     fields: &[],
+    events: &[],
 };
 
 const WATER_ANIMAL: Class = Class {
     name: "water_animal",
     inherit: Some(&PATHFINDER_MOB),
     fields: &[],
+    events: &[],
 };
 
 const ABSTRACT_FISH: Class = Class {
@@ -389,6 +512,7 @@ const ABSTRACT_FISH: Class = Class {
         name: "from_bucket",
         typ: Type::Bool(false),
     }],
+    events: &[],
 };
 
 const AGEABLE_MOB: Class = Class {
@@ -398,12 +522,14 @@ const AGEABLE_MOB: Class = Class {
         name: "is_baby",
         typ: Type::Bool(false),
     }],
+    events: &[],
 };
 
 const ANIMAL: Class = Class {
     name: "animal",
     inherit: Some(&PATHFINDER_MOB),
     fields: &[],
+    events: &[],
 };
 
 const ABSTRACT_HORSE: Class = Class {
@@ -450,6 +576,7 @@ const ABSTRACT_HORSE: Class = Class {
             typ: Type::OptUuid,
         },
     ],
+    events: &[],
 };
 
 const CHESTED_HORSE: Class = Class {
@@ -459,12 +586,14 @@ const CHESTED_HORSE: Class = Class {
         name: "has_chest",
         typ: Type::Bool(false),
     }],
+    events: &[],
 };
 
 const COW: Class = Class {
     name: "cow",
     inherit: Some(&ANIMAL),
     fields: &[],
+    events: &[],
 };
 
 const TAMEABLE_ANIMAL: Class = Class {
@@ -485,6 +614,7 @@ const TAMEABLE_ANIMAL: Class = Class {
             },
         ]),
     }],
+    events: &[],
 };
 
 const ABSTRACT_VILLAGER: Class = Class {
@@ -494,18 +624,21 @@ const ABSTRACT_VILLAGER: Class = Class {
         name: "head_shake_timer",
         typ: Type::VarInt(0),
     }],
+    events: &[],
 };
 
 const ABSTRACT_GOLEM: Class = Class {
     name: "abstract_golem",
     inherit: Some(&PATHFINDER_MOB),
     fields: &[],
+    events: &[],
 };
 
 const MONSTER: Class = Class {
     name: "monster",
     inherit: Some(&PATHFINDER_MOB),
     fields: &[],
+    events: &[],
 };
 
 const BASE_PIGLIN: Class = Class {
@@ -515,6 +648,7 @@ const BASE_PIGLIN: Class = Class {
         name: "zombification_immune",
         typ: Type::Bool(false),
     }],
+    events: &[],
 };
 
 const GUARDIAN: Class = Class {
@@ -530,6 +664,7 @@ const GUARDIAN: Class = Class {
             typ: Type::OptEntityId,
         },
     ],
+    events: &[],
 };
 
 const RAIDER: Class = Class {
@@ -539,12 +674,14 @@ const RAIDER: Class = Class {
         name: "celebrating",
         typ: Type::Bool(false),
     }],
+    events: &[],
 };
 
 const ABSTRACT_ILLAGER: Class = Class {
     name: "abstract_illager",
     inherit: Some(&RAIDER),
     fields: &[],
+    events: &[],
 };
 
 const SPELLCASTER_ILLAGER: Class = Class {
@@ -555,12 +692,14 @@ const SPELLCASTER_ILLAGER: Class = Class {
         typ: Type::Byte(0), /* TODO: Spell (0: none, 1: summon vex, 2: attack, 3: wololo, 4:
                              * disappear, 5: blindness) */
     }],
+    events: &[],
 };
 
 const ABSTRACT_SKELETON: Class = Class {
     name: "abstract_skeleton",
     inherit: Some(&MONSTER),
     fields: &[],
+    events: &[],
 };
 
 const SPIDER: Class = Class {
@@ -574,6 +713,7 @@ const SPIDER: Class = Class {
             default: false,
         }]),
     }],
+    events: &[],
 };
 
 const ZOMBIE: Class = Class {
@@ -583,12 +723,14 @@ const ZOMBIE: Class = Class {
         name: "baby",
         typ: Type::Bool(false),
     }],
+    events: &[],
 };
 
 const FLYING: Class = Class {
     name: "flying",
     inherit: Some(&MOB),
     fields: &[],
+    events: &[],
 };
 
 const ABSTRACT_MINECART: Class = Class {
@@ -620,12 +762,14 @@ const ABSTRACT_MINECART: Class = Class {
             typ: Type::Bool(false),
         },
     ],
+    events: &[],
 };
 
 const ABSTRACT_MINECART_CONTAINER: Class = Class {
     name: "abstract_minecart_container",
     inherit: Some(&ABSTRACT_MINECART),
     fields: &[],
+    events: &[],
 };
 
 const ENTITIES: &[Class] = &[
@@ -633,33 +777,39 @@ const ENTITIES: &[Class] = &[
         name: "allay",
         inherit: Some(&PATHFINDER_MOB),
         fields: &[], // TODO: fields?
+        events: &[],
     },
     Class {
         // TODO: how is this defined?
         name: "leash_knot",
         inherit: None,
         fields: &[],
+        events: &[],
     },
     Class {
         // TODO: how is this defined?
         name: "lightning_bolt",
         inherit: None,
         fields: &[],
+        events: &[],
     },
     Class {
         name: "experience_orb",
         inherit: None,
         fields: &[],
+        events: &[],
     },
     Class {
         name: "marker",
         inherit: None,
         fields: &[],
+        events: &[],
     },
     Class {
         name: "item",
         inherit: Some(&BASE_ENTITY),
         fields: &[], // TODO: what are the fields?
+        events: &[],
     },
     Class {
         name: "egg",
@@ -668,6 +818,7 @@ const ENTITIES: &[Class] = &[
             name: "item",
             typ: Type::Slot,
         }],
+        events: &[],
     },
     Class {
         name: "ender_pearl",
@@ -676,6 +827,7 @@ const ENTITIES: &[Class] = &[
             name: "item",
             typ: Type::Slot,
         }],
+        events: &[],
     },
     Class {
         name: "experience_bottle",
@@ -684,6 +836,7 @@ const ENTITIES: &[Class] = &[
             name: "item",
             typ: Type::Slot,
         }],
+        events: &[],
     },
     Class {
         name: "potion",
@@ -692,6 +845,7 @@ const ENTITIES: &[Class] = &[
             name: "potion",
             typ: Type::Slot,
         }],
+        events: &[],
     },
     Class {
         name: "snowball",
@@ -700,6 +854,7 @@ const ENTITIES: &[Class] = &[
             name: "item",
             typ: Type::Slot,
         }],
+        events: &[],
     },
     Class {
         name: "eye_of_ender",
@@ -708,6 +863,7 @@ const ENTITIES: &[Class] = &[
             name: "item",
             typ: Type::Slot,
         }],
+        events: &[],
     },
     Class {
         name: "falling_block",
@@ -716,6 +872,7 @@ const ENTITIES: &[Class] = &[
             name: "spawn_position",
             typ: Type::BlockPos(0, 0, 0),
         }],
+        events: &[],
     },
     Class {
         name: "area_effect_cloud",
@@ -738,6 +895,7 @@ const ENTITIES: &[Class] = &[
                 typ: Type::Particle,
             },
         ],
+        events: &[],
     },
     Class {
         name: "fishing_bobber",
@@ -752,6 +910,7 @@ const ENTITIES: &[Class] = &[
                 typ: Type::Bool(false),
             },
         ],
+        events: &[],
     },
     Class {
         name: "arrow",
@@ -760,11 +919,13 @@ const ENTITIES: &[Class] = &[
             name: "color",
             typ: Type::VarInt(-1), // TODO: custom type
         }],
+        events: &[],
     },
     Class {
         name: "spectral_arrow",
         inherit: Some(&ABSTRACT_ARROW),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "trident",
@@ -779,22 +940,26 @@ const ENTITIES: &[Class] = &[
                 typ: Type::Bool(false),
             },
         ],
+        events: &[],
     },
     BOAT,
     Class {
         name: "chest_boat",
         inherit: Some(&BOAT),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "tadpole",
         inherit: Some(&ABSTRACT_FISH),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "warden",
         inherit: Some(&MONSTER),
         fields: &[], // TODO: warden anger
+        events: &[],
     },
     Class {
         name: "end_crystal",
@@ -809,11 +974,13 @@ const ENTITIES: &[Class] = &[
                 typ: Type::Bool(true),
             },
         ],
+        events: &[],
     },
     Class {
         name: "dragon_fireball",
         inherit: Some(&BASE_ENTITY),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "small_fireball",
@@ -822,6 +989,7 @@ const ENTITIES: &[Class] = &[
             name: "item",
             typ: Type::Slot,
         }],
+        events: &[],
     },
     Class {
         name: "fireball",
@@ -830,6 +998,7 @@ const ENTITIES: &[Class] = &[
             name: "item",
             typ: Type::Slot,
         }],
+        events: &[],
     },
     Class {
         name: "wither_skull",
@@ -838,6 +1007,7 @@ const ENTITIES: &[Class] = &[
             name: "invulnerable",
             typ: Type::Bool(false),
         }],
+        events: &[],
     },
     Class {
         name: "firework_rocket",
@@ -856,12 +1026,14 @@ const ENTITIES: &[Class] = &[
                 typ: Type::Bool(false),
             },
         ],
+        events: &[],
     },
     ITEM_FRAME,
     Class {
         name: "glow_item_frame",
         inherit: Some(&ITEM_FRAME),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "painting",
@@ -870,6 +1042,7 @@ const ENTITIES: &[Class] = &[
             name: "variant",
             typ: Type::PaintingVariant,
         }],
+        events: &[],
     },
     Class {
         name: "player",
@@ -940,6 +1113,14 @@ const ENTITIES: &[Class] = &[
                 typ: Type::OptGlobalPosition,
             },
         ],
+        events: &[
+            Event::SwingMainArm,
+            Event::TakeDamage,
+            Event::LeaveBed,
+            Event::SwingOffhand,
+            Event::CriticalEffect,
+            Event::MagicCriticalEffect,
+        ],
     },
     Class {
         name: "armor_stand",
@@ -995,6 +1176,7 @@ const ENTITIES: &[Class] = &[
                 typ: Type::ArmorStandRotations(1.0, 0.0, 1.0),
             },
         ],
+        events: &[],
     },
     Class {
         name: "bat",
@@ -1007,17 +1189,20 @@ const ENTITIES: &[Class] = &[
                 default: false,
             }]),
         }],
+        events: &[],
     },
     Class {
         name: "squid",
         inherit: Some(&WATER_ANIMAL),
         fields: &[],
+        events: &[],
     },
     Class {
         // TODO: How is glow squid defined? This is a guess.
         name: "glow_squid",
         inherit: Some(&WATER_ANIMAL),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "dolphin",
@@ -1036,11 +1221,13 @@ const ENTITIES: &[Class] = &[
                 typ: Type::VarInt(2400),
             },
         ],
+        events: &[],
     },
     Class {
         name: "cod",
         inherit: Some(&ABSTRACT_FISH),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "pufferfish",
@@ -1049,11 +1236,13 @@ const ENTITIES: &[Class] = &[
             name: "puff_state",
             typ: Type::VarInt(0), // TODO: PuffState in the range [0, 2]. (Bounded int?)
         }],
+        events: &[],
     },
     Class {
         name: "salmon",
         inherit: Some(&ABSTRACT_FISH),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "tropical_fish",
@@ -1062,6 +1251,7 @@ const ENTITIES: &[Class] = &[
             name: "variant",
             typ: Type::VarInt(0), // TODO: TropicalFishVariant enum
         }],
+        events: &[],
     },
     Class {
         name: "horse",
@@ -1070,21 +1260,25 @@ const ENTITIES: &[Class] = &[
             name: "variant",
             typ: Type::VarInt(0), // TODO: HorseVariant enum
         }],
+        events: &[],
     },
     Class {
         name: "zombie_horse",
         inherit: Some(&ABSTRACT_HORSE),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "skeleton_horse",
         inherit: Some(&ABSTRACT_HORSE),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "donkey",
         inherit: Some(&CHESTED_HORSE),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "llama",
@@ -1103,16 +1297,19 @@ const ENTITIES: &[Class] = &[
                 typ: Type::VarInt(0), // TODO: Llama variant enum.
             },
         ],
+        events: &[],
     },
     Class {
         name: "trader_llama",
         inherit: None, // TODO: really?
         fields: &[],
+        events: &[],
     },
     Class {
         name: "mule",
         inherit: Some(&CHESTED_HORSE),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "axolotl",
@@ -1131,6 +1328,7 @@ const ENTITIES: &[Class] = &[
                 typ: Type::Bool(false),
             },
         ],
+        events: &[],
     },
     Class {
         name: "bee",
@@ -1161,6 +1359,7 @@ const ENTITIES: &[Class] = &[
                 typ: Type::VarInt(0),
             },
         ],
+        events: &[],
     },
     Class {
         name: "fox",
@@ -1220,6 +1419,7 @@ const ENTITIES: &[Class] = &[
                 typ: Type::OptUuid,
             },
         ],
+        events: &[],
     },
     Class {
         name: "frog",
@@ -1234,6 +1434,7 @@ const ENTITIES: &[Class] = &[
                 typ: Type::VarInt(0),
             },
         ],
+        events: &[],
     },
     Class {
         name: "ocelot",
@@ -1242,6 +1443,7 @@ const ENTITIES: &[Class] = &[
             name: "trusting",
             typ: Type::Bool(false),
         }],
+        events: &[],
     },
     Class {
         name: "panda",
@@ -1293,6 +1495,7 @@ const ENTITIES: &[Class] = &[
                 ]),
             },
         ],
+        events: &[],
     },
     Class {
         name: "pig",
@@ -1307,6 +1510,7 @@ const ENTITIES: &[Class] = &[
                 typ: Type::VarInt(0),
             },
         ],
+        events: &[],
     },
     Class {
         name: "rabbit",
@@ -1315,6 +1519,7 @@ const ENTITIES: &[Class] = &[
             name: "variant",
             typ: Type::VarInt(0), // TODO: rabbit variant enum.
         }],
+        events: &[],
     },
     Class {
         name: "turtle",
@@ -1345,6 +1550,7 @@ const ENTITIES: &[Class] = &[
                 typ: Type::Bool(false),
             },
         ],
+        events: &[],
     },
     Class {
         name: "polar_bear",
@@ -1353,11 +1559,13 @@ const ENTITIES: &[Class] = &[
             name: "standing_up",
             typ: Type::Bool(true),
         }],
+        events: &[],
     },
     Class {
         name: "chicken",
         inherit: Some(&ANIMAL),
         fields: &[],
+        events: &[],
     },
     COW,
     Class {
@@ -1367,6 +1575,7 @@ const ENTITIES: &[Class] = &[
             name: "zombification_immune",
             typ: Type::Bool(false),
         }],
+        events: &[],
     },
     Class {
         name: "mooshroom",
@@ -1375,6 +1584,7 @@ const ENTITIES: &[Class] = &[
             name: "variant",
             typ: Type::String("red"), // TODO: "red" or "brown" enum.
         }],
+        events: &[],
     },
     Class {
         name: "sheep",
@@ -1383,6 +1593,7 @@ const ENTITIES: &[Class] = &[
             name: "sheep_state",
             typ: Type::Byte(0), // TODO: sheep state type.
         }],
+        events: &[],
     },
     Class {
         name: "goat",
@@ -1401,6 +1612,7 @@ const ENTITIES: &[Class] = &[
                 typ: Type::Bool(true),
             },
         ],
+        events: &[],
     },
     Class {
         name: "strider",
@@ -1419,6 +1631,7 @@ const ENTITIES: &[Class] = &[
                 typ: Type::Bool(false),
             },
         ],
+        events: &[],
     },
     Class {
         name: "cat",
@@ -1441,6 +1654,7 @@ const ENTITIES: &[Class] = &[
                 typ: Type::VarInt(14), // TODO: dye color enum.
             },
         ],
+        events: &[],
     },
     Class {
         name: "wolf",
@@ -1459,6 +1673,7 @@ const ENTITIES: &[Class] = &[
                 typ: Type::VarInt(0),
             },
         ],
+        events: &[],
     },
     Class {
         name: "parrot",
@@ -1467,6 +1682,7 @@ const ENTITIES: &[Class] = &[
             name: "variant",
             typ: Type::VarInt(0), // TODO: parrot variant enum.
         }],
+        events: &[],
     },
     Class {
         name: "villager",
@@ -1475,11 +1691,13 @@ const ENTITIES: &[Class] = &[
             name: "villager_data",
             typ: Type::VillagerData,
         }],
+        events: &[],
     },
     Class {
         name: "wandering_trader",
         inherit: Some(&ABSTRACT_VILLAGER),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "iron_golem",
@@ -1492,6 +1710,7 @@ const ENTITIES: &[Class] = &[
                 default: false,
             }]),
         }],
+        events: &[],
     },
     Class {
         name: "snow_golem",
@@ -1504,6 +1723,7 @@ const ENTITIES: &[Class] = &[
                 default: true,
             }]),
         }],
+        events: &[],
     },
     Class {
         name: "shulker",
@@ -1526,12 +1746,14 @@ const ENTITIES: &[Class] = &[
                 typ: Type::Byte(10), // TODO: dye color enum
             },
         ],
+        events: &[],
     },
     Class {
         // TODO: how is this defined?
         name: "shulker_bullet",
         inherit: Some(&BASE_ENTITY),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "piglin",
@@ -1550,11 +1772,13 @@ const ENTITIES: &[Class] = &[
                 typ: Type::Bool(false),
             },
         ],
+        events: &[],
     },
     Class {
         name: "piglin_brute",
         inherit: Some(&BASE_PIGLIN),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "blaze",
@@ -1567,6 +1791,7 @@ const ENTITIES: &[Class] = &[
                 default: false,
             }]),
         }],
+        events: &[],
     },
     Class {
         name: "creeper",
@@ -1585,32 +1810,38 @@ const ENTITIES: &[Class] = &[
                 typ: Type::Bool(false),
             },
         ],
+        events: &[],
     },
     Class {
         name: "endermite",
         inherit: Some(&MONSTER),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "giant",
         inherit: Some(&MONSTER),
         fields: &[],
+        events: &[],
     },
     GUARDIAN,
     Class {
         name: "elder_guardian",
         inherit: Some(&GUARDIAN),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "silverfish",
         inherit: Some(&MONSTER),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "vindicator",
         inherit: Some(&ABSTRACT_ILLAGER),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "pillager",
@@ -1619,26 +1850,31 @@ const ENTITIES: &[Class] = &[
             name: "charging",
             typ: Type::Bool(false),
         }],
+        events: &[],
     },
     Class {
         name: "evoker",
         inherit: Some(&SPELLCASTER_ILLAGER),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "illusioner",
         inherit: Some(&SPELLCASTER_ILLAGER),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "ravager",
         inherit: Some(&RAIDER),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "evoker_fangs",
         inherit: Some(&BASE_ENTITY),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "witch",
@@ -1647,6 +1883,7 @@ const ENTITIES: &[Class] = &[
             name: "drinking_potion",
             typ: Type::Bool(false),
         }],
+        events: &[],
     },
     Class {
         name: "vex",
@@ -1659,27 +1896,32 @@ const ENTITIES: &[Class] = &[
                 default: false,
             }]),
         }],
+        events: &[],
     },
     Class {
         name: "skeleton",
         inherit: Some(&ABSTRACT_SKELETON),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "wither_skeleton",
         inherit: Some(&ABSTRACT_SKELETON),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "stray",
         inherit: Some(&ABSTRACT_SKELETON),
         fields: &[],
+        events: &[],
     },
     SPIDER,
     Class {
         name: "cave_spider",
         inherit: Some(&SPIDER), // TODO: does cave_spider inherit from spider?
         fields: &[],
+        events: &[],
     },
     Class {
         name: "wither",
@@ -1703,6 +1945,7 @@ const ENTITIES: &[Class] = &[
                 typ: Type::VarInt(0),
             },
         ],
+        events: &[],
     },
     Class {
         name: "zoglin",
@@ -1711,6 +1954,7 @@ const ENTITIES: &[Class] = &[
             name: "baby",
             typ: Type::Bool(false),
         }],
+        events: &[],
     },
     ZOMBIE,
     Class {
@@ -1726,21 +1970,25 @@ const ENTITIES: &[Class] = &[
                 typ: Type::VillagerData,
             },
         ],
+        events: &[],
     },
     Class {
         name: "husk",
         inherit: Some(&ZOMBIE),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "drowned",
         inherit: Some(&ZOMBIE),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "zombified_piglin",
         inherit: Some(&ZOMBIE),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "enderman",
@@ -1759,6 +2007,7 @@ const ENTITIES: &[Class] = &[
                 typ: Type::Bool(false),
             },
         ],
+        events: &[],
     },
     Class {
         name: "ender_dragon",
@@ -1767,6 +2016,7 @@ const ENTITIES: &[Class] = &[
             name: "phase",
             typ: Type::VarInt(10), // TODO: dragon phase enum
         }],
+        events: &[],
     },
     Class {
         name: "ghast",
@@ -1775,6 +2025,7 @@ const ENTITIES: &[Class] = &[
             name: "attacking",
             typ: Type::Bool(false),
         }],
+        events: &[],
     },
     Class {
         name: "phantom",
@@ -1783,6 +2034,7 @@ const ENTITIES: &[Class] = &[
             name: "size",
             typ: Type::VarInt(0),
         }],
+        events: &[],
     },
     Class {
         name: "slime",
@@ -1791,6 +2043,7 @@ const ENTITIES: &[Class] = &[
             name: "size",
             typ: Type::VarInt(1), // TODO: bounds?
         }],
+        events: &[],
     },
     Class {
         name: "magma_cube",
@@ -1799,26 +2052,31 @@ const ENTITIES: &[Class] = &[
             name: "size",
             typ: Type::VarInt(1),
         }],
+        events: &[],
     },
     Class {
         name: "llama_spit",
         inherit: Some(&BASE_ENTITY),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "minecart",
         inherit: Some(&ABSTRACT_MINECART),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "hopper_minecart",
         inherit: Some(&ABSTRACT_MINECART_CONTAINER),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "chest_minecart",
         inherit: Some(&ABSTRACT_MINECART_CONTAINER),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "furnace_minecart",
@@ -1827,16 +2085,19 @@ const ENTITIES: &[Class] = &[
             name: "has_fuel",
             typ: Type::Bool(false),
         }],
+        events: &[],
     },
     Class {
         name: "tnt_minecart",
         inherit: Some(&ABSTRACT_MINECART),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "spawner_minecart",
         inherit: Some(&ABSTRACT_MINECART),
         fields: &[],
+        events: &[],
     },
     Class {
         name: "command_block_minecart",
@@ -1851,6 +2112,7 @@ const ENTITIES: &[Class] = &[
                 typ: Type::Text,
             },
         ],
+        events: &[],
     },
     Class {
         name: "tnt",
@@ -1859,6 +2121,7 @@ const ENTITIES: &[Class] = &[
             name: "fuse_timer",
             typ: Type::VarInt(80),
         }],
+        events: &[],
     },
 ];
 
@@ -1912,7 +2175,7 @@ pub fn build() -> anyhow::Result<()> {
 
     let entity_structs = entities.iter().map(|&class| {
        let mut fields = Vec::new();
-       collect_class_fields(class, &mut fields);
+       class.collect_fields(&mut fields);
 
        let name = ident(class.name.to_pascal_case());
        let struct_fields = fields.iter().map(|&f| {
@@ -2105,6 +2368,19 @@ pub fn build() -> anyhow::Result<()> {
             })
             .collect::<TokenStream>();
 
+        let mut events = Vec::new();
+        class.collect_events(&mut events);
+        
+        let trigger_methods = events.into_iter().map(|event| {
+            let name = ident("trigger_".to_owned() + &event.snake_case_name());
+            let code = event as u8;
+            quote! {
+                pub fn #name(&mut self) {
+                    self.events.push(#code);
+                }
+            }
+        }).collect::<TokenStream>();
+
         let initial_metadata_fields = fields.iter().enumerate().map(|(idx, f)| {
             let name = ident(f.name.to_snake_case());
             let default = f.typ.default_expr();
@@ -2135,7 +2411,8 @@ pub fn build() -> anyhow::Result<()> {
 
         quote! {
             pub struct #name {
-                /// Contains a set bit for each modified field.
+                events: Vec<u8>,
+                /// Contains a set bit for each modified metadata field.
                 modified_flags: u32,
                 #(#struct_fields)*
             }
@@ -2143,12 +2420,15 @@ pub fn build() -> anyhow::Result<()> {
             impl #name {
                 pub(crate) fn new() -> Self {
                     Self {
+                        events: Vec::new(),
                         modified_flags: 0,
                         #(#constructor_fields)*
                     }
                 }
 
                 #getter_setters
+
+                #trigger_methods
 
                 pub(crate) fn initial_metadata(&self, #[allow(unused)] data: &mut Vec<u8>) {
                     #initial_metadata_fields
@@ -2162,7 +2442,12 @@ pub fn build() -> anyhow::Result<()> {
                     #updated_metadata_fields
                 }
 
+                pub(crate) fn event_codes(&self) -> &[u8] {
+                    &self.events
+                }
+
                 pub(crate) fn clear_modifications(&mut self) {
+                    self.events.clear();
                     self.modified_flags = 0;
                 }
             }
@@ -2184,15 +2469,12 @@ pub fn build() -> anyhow::Result<()> {
 
         #(#entity_structs)*
 
-        /// An enum encoding the type of n entity along with its metadata.
-        ///
-        /// Metadata encompases most of an entity's state, except for some
-        /// basic pieces of information such as position and rotation.
-        pub enum EntityMeta {
+        /// An enum encoding the type of an entity along with any data specific to that entity type.
+        pub enum EntityData {
             #(#entity_type_variants(#entity_type_variants),)*
         }
 
-        impl EntityMeta {
+        impl EntityData {
             pub(super) fn new(typ: EntityType) -> Self {
                 match typ {
                     #(EntityType::#entity_type_variants => Self::#entity_type_variants(#entity_type_variants::new()),)*
@@ -2235,6 +2517,12 @@ pub fn build() -> anyhow::Result<()> {
                 }
             }
 
+            pub(crate) fn event_codes(&self) -> &[u8] {
+                match self {
+                    #(Self::#entity_type_variants(e) => e.event_codes(),)*
+                }
+            }
+
             pub(super) fn clear_modifications(&mut self) {
                 match self {
                     #(Self::#entity_type_variants(e) => e.clear_modifications(),)*
@@ -2244,11 +2532,4 @@ pub fn build() -> anyhow::Result<()> {
     };
 
     write_to_out_path("entity.rs", &finished.to_string())
-}
-
-fn collect_class_fields(class: &Class, fields: &mut Vec<&'static Field>) {
-    if let Some(parent) = class.inherit {
-        collect_class_fields(parent, fields);
-    }
-    fields.extend(class.fields);
 }
