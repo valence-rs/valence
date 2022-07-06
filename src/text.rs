@@ -81,6 +81,21 @@ pub struct Text {
     extra: Vec<Text>,
 }
 
+impl Text {
+    pub fn is_empty(&self) -> bool {
+        for extra in &self.extra {
+            if !extra.is_empty() {
+                return false;
+            }
+        }
+
+        match &self.content {
+            TextContent::Text { text } => text.is_empty(),
+            TextContent::Translate { translate } => translate.is_empty(),
+        }
+    }
+}
+
 /// Provides the methods necessary for working with [`Text`] objects.
 ///
 /// This trait exists to allow using `Into<Text>` types without having to first
@@ -538,5 +553,14 @@ mod tests {
         assert_eq!(color_from_str("#00000000"), None);
         assert_eq!(color_from_str("#000000"), Some(Color::BLACK));
         assert_eq!(color_from_str("#"), None);
+    }
+
+    #[test]
+    fn empty() {
+        assert!("".into_text().is_empty());
+
+        let txt = "".into_text() + Text::translate("") + ("".italic().color(Color::RED) + "");
+        assert!(txt.is_empty());
+        assert!(txt.to_plain().is_empty());
     }
 }

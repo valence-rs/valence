@@ -725,6 +725,12 @@ pub mod play {
         }
 
         def_struct! {
+            ClearTitles 0x0d {
+                reset: bool,
+            }
+        }
+
+        def_struct! {
             Disconnect 0x17 {
                 reason: Text,
             }
@@ -1169,6 +1175,12 @@ pub mod play {
         }
 
         def_struct! {
+            SetSubtitleText 0x58 {
+                subtitle_text: Text,
+            }
+        }
+
+        def_struct! {
             SetTime 0x59 {
                 /// The age of the world in 1/20ths of a second.
                 world_age: i64,
@@ -1176,6 +1188,24 @@ pub mod play {
                 /// The value should be in the range \[0, 24000].
                 /// 6000 is noon, 12000 is sunset, and 18000 is midnight.
                 time_of_day: i64,
+            }
+        }
+
+        def_struct! {
+            SetTitleText 0x5a {
+                text: Text,
+            }
+        }
+
+        def_struct! {
+            #[derive(Copy, PartialEq, Eq)]
+            SetTitleAnimationTimes 0x5b {
+                /// Ticks to spend fading in.
+                fade_in: u32,
+                /// Ticks to keep the title displayed.
+                stay: u32,
+                /// Ticks to spend fading out.
+                fade_out: u32,
             }
         }
 
@@ -1216,6 +1246,7 @@ pub mod play {
                 BlockEvent,
                 BlockUpdate,
                 BossEvent,
+                ClearTitles,
                 Disconnect,
                 EntityEvent,
                 ForgetLevelChunk,
@@ -1239,7 +1270,10 @@ pub mod play {
                 SpawnPosition,
                 SetEntityMetadata,
                 SetEntityMotion,
+                SetSubtitleText,
                 SetTime,
+                SetTitleText,
+                SetTitleAnimationTimes,
                 SystemChat,
                 TabList,
                 TeleportEntity,

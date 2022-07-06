@@ -19,16 +19,17 @@ use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::play::c2s::{
     C2sPlayPacket, DiggingStatus, InteractKind, PlayerCommandId,
 };
+pub use crate::protocol::packets::play::s2c::SetTitleAnimationTimes as TitleAnimationTimes;
 use crate::protocol::packets::play::s2c::{
     Animate, Biome as BiomeRegistryBiome, BiomeAdditionsSound, BiomeEffects, BiomeMoodSound,
     BiomeMusic, BiomeParticle, BiomeParticleOptions, BiomeProperty, BiomeRegistry, BlockChangeAck,
     ChatType, ChatTypeChat, ChatTypeNarration, ChatTypeRegistry, ChatTypeRegistryEntry,
-    DimensionType, DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, EntityEvent,
-    ForgetLevelChunk, GameEvent, GameEventReason, KeepAlive, Login, MoveEntityPosition,
-    MoveEntityPositionAndRotation, MoveEntityRotation, PlayerPosition, PlayerPositionFlags,
-    RegistryCodec, RemoveEntities, Respawn, RotateHead, S2cPlayPacket, SetChunkCacheCenter,
-    SetChunkCacheRadius, SetEntityMetadata, SetEntityMotion, SpawnPosition, SystemChat,
-    TeleportEntity, ENTITY_EVENT_MAX_BOUND,
+    ClearTitles, DimensionType, DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect,
+    EntityEvent, ForgetLevelChunk, GameEvent, GameEventReason, KeepAlive, Login,
+    MoveEntityPosition, MoveEntityPositionAndRotation, MoveEntityRotation, PlayerPosition,
+    PlayerPositionFlags, RegistryCodec, RemoveEntities, Respawn, RotateHead, S2cPlayPacket,
+    SetChunkCacheCenter, SetChunkCacheRadius, SetEntityMetadata, SetEntityMotion, SetSubtitleText,
+    SetTitleText, SpawnPosition, SystemChat, TeleportEntity, ENTITY_EVENT_MAX_BOUND,
 };
 use crate::protocol::{BoundedInt, ByteAngle, Nbt, RawBytes, VarInt};
 use crate::server::C2sPacketChannels;
@@ -308,6 +309,32 @@ impl Client {
 
     pub fn set_game_mode(&mut self, new_game_mode: GameMode) {
         self.new_game_mode = new_game_mode;
+    }
+
+    pub fn set_title(
+        &mut self,
+        title: impl Into<Text>,
+        subtitle: impl Into<Text>,
+        animation: impl Into<Option<TitleAnimationTimes>>,
+    ) {
+        let title = title.into();
+        let subtitle = subtitle.into();
+
+        self.send_packet(SetTitleText { text: title });
+
+        if !subtitle.is_empty() {
+            self.send_packet(SetSubtitleText {
+                subtitle_text: subtitle,
+            });
+        }
+
+        if let Some(anim) = animation.into() {
+            self.send_packet(anim);
+        }
+    }
+
+    pub fn clear_title(&mut self) {
+        self.send_packet(ClearTitles { reset: true });
     }
 
     pub fn on_ground(&self) -> bool {
