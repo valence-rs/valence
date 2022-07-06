@@ -144,7 +144,7 @@ pub struct Client {
     player_data: Player,
 }
 
-#[bitfield(u8)]
+#[bitfield(u16)]
 pub(crate) struct ClientFlags {
     spawn: bool,
     sneaking: bool,
@@ -158,6 +158,9 @@ pub(crate) struct ClientFlags {
     modified_spawn_position: bool,
     /// If the last sent keepalive got a response.
     got_keepalive: bool,
+    hardcore: bool,
+    #[bits(7)]
+    _pad: u8
 }
 
 impl Client {
@@ -364,6 +367,15 @@ impl Client {
     /// The new view distance is clamped to `2..=32`.
     pub fn set_max_view_distance(&mut self, dist: u8) {
         self.new_max_view_distance = dist.clamp(2, 32);
+    }
+
+    /// Must be set on the same tick the client joins the game.
+    pub fn set_hardcore(&mut self, hardcore: bool) {
+        self.flags.set_hardcore(hardcore);
+    }
+
+    pub fn is_hardcore(&mut self) -> bool {
+        self.flags.hardcore()
     }
 
     pub fn settings(&self) -> Option<&Settings> {
@@ -689,8 +701,8 @@ impl Client {
             dimension_names.push(ident!("{LIBRARY_NAMESPACE}:dummy_dimension"));
 
             self.send_packet(Login {
-                entity_id: 0,       // EntityId 0 is reserved for clients.
-                is_hardcore: false, // TODO
+                entity_id: 0, // EntityId 0 is reserved for clients.
+                is_hardcore: self.flags.hardcore(),
                 gamemode: self.new_game_mode,
                 previous_gamemode: self.old_game_mode,
                 dimension_names,
