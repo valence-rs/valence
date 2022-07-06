@@ -7,7 +7,7 @@ use std::sync::Mutex;
 use log::LevelFilter;
 use num::Integer;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
-use valence::client::{ClientEvent, ClientId, GameMode};
+use valence::client::{ClientEvent, ClientId, GameMode, Hand};
 use valence::config::{Config, ServerListPing};
 use valence::entity::meta::Pose;
 use valence::entity::EntityData;
@@ -218,9 +218,12 @@ impl Config for Game {
                             e.set_sprinting(false);
                         }
                     }
-                    ClientEvent::ArmSwing(_) => {
+                    ClientEvent::ArmSwing(hand) => {
                         if let EntityData::Player(e) = player.data_mut() {
-                            e.trigger_swing_main_arm();
+                            match hand {
+                                Hand::Main => e.trigger_swing_main_arm(),
+                                Hand::Off => e.trigger_swing_offhand(),
+                            }
                         }
                     }
                     _ => {}

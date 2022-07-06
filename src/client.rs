@@ -1207,7 +1207,9 @@ fn to_biome_registry_item(biome: &Biome, id: i32) -> BiomeRegistryBiome {
             },
             particle: biome.particle.as_ref().map(|p| BiomeParticle {
                 probability: p.probability,
-                options: BiomeParticleOptions { kind: p.kind.clone() },
+                options: BiomeParticleOptions {
+                    kind: p.kind.clone(),
+                },
             }),
         },
     }
