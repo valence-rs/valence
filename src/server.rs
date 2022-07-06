@@ -4,7 +4,7 @@ use std::iter::FusedIterator;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
-use std::thread;
+use std::{thread, io};
 use std::time::{Duration, Instant};
 
 use anyhow::{bail, ensure, Context};
@@ -451,13 +451,16 @@ async fn do_accept_loop(server: SharedServer) {
                 Ok((stream, remote_addr)) => {
                     let server = server.clone();
                     tokio::spawn(async move {
-                        // Setting TCP_NODELAY to true appears to trade some throughput for improved
-                        // latency. Testing is required to determine if this is worth keeping.
                         if let Err(e) = stream.set_nodelay(true) {
-                            log::error!("failed to set TCP nodelay: {e}");
+                            log::error!("failed to set TCP_NODELAY: {e}");
                         }
 
                         if let Err(e) = handle_connection(server, stream, remote_addr).await {
+                            if let Some(e) = e.downcast_ref::<io::Error>() {
+                                if e.kind() == io::ErrorKind::UnexpectedEof {
+                                    return;
+                                }
+                            }
                             log::debug!("connection to {remote_addr} ended: {e:#}");
                         }
                         drop(permit);
