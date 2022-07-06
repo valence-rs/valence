@@ -9,7 +9,7 @@ use valence::config::{Config, ServerListPing};
 use valence::text::Color;
 use valence::util::to_yaw_and_pitch;
 use valence::{
-    async_trait, DimensionId, EntityId, EntityType, Server, SharedServer, ShutdownResult,
+    async_trait, DimensionId, EntityId, EntityKind, Server, SharedServer, ShutdownResult,
     TextFormat,
 };
 use vek::{Mat3, Vec3};
@@ -70,7 +70,7 @@ impl Config for Game {
         }
 
         self.cows.lock().unwrap().extend((0..200).map(|_| {
-            let (id, e) = server.entities.create(EntityType::Cow);
+            let (id, e) = server.entities.create(EntityKind::Cow);
             e.set_world(world_id);
             id
         }));
@@ -98,7 +98,7 @@ impl Config for Game {
 
                 world.meta.player_list_mut().insert(
                     client.uuid(),
-                    client.username().to_string(),
+                    client.username().to_owned(),
                     client.textures().cloned(),
                     client.game_mode(),
                     0,

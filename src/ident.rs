@@ -135,7 +135,7 @@ impl FromStr for Ident {
     type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ident::new(s.to_string())
+        Ident::new(s.to_owned())
     }
 }
 

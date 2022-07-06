@@ -46,15 +46,15 @@ impl Encode for Direction {
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct VillagerData {
-    pub typ: VillagerType,
+    pub kind: VillagerKind,
     pub profession: VillagerProfession,
     pub level: i32,
 }
 
 impl VillagerData {
-    pub const fn new(typ: VillagerType, profession: VillagerProfession, level: i32) -> Self {
+    pub const fn new(kind: VillagerKind, profession: VillagerProfession, level: i32) -> Self {
         Self {
-            typ,
+            kind,
             profession,
             level,
         }
@@ -64,7 +64,7 @@ impl VillagerData {
 impl Default for VillagerData {
     fn default() -> Self {
         Self {
-            typ: Default::default(),
+            kind: Default::default(),
             profession: Default::default(),
             level: 1,
         }
@@ -73,14 +73,14 @@ impl Default for VillagerData {
 
 impl Encode for VillagerData {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        VarInt(self.typ as i32).encode(w)?;
+        VarInt(self.kind as i32).encode(w)?;
         VarInt(self.profession as i32).encode(w)?;
         VarInt(self.level).encode(w)
     }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
-pub enum VillagerType {
+pub enum VillagerKind {
     Desert,
     Jungle,
     #[default]
@@ -151,7 +151,7 @@ impl Encode for MainHand {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
-pub enum BoatVariant {
+pub enum BoatKind {
     #[default]
     Oak,
     Spruce,
@@ -161,14 +161,14 @@ pub enum BoatVariant {
     DarkOak,
 }
 
-impl Encode for BoatVariant {
+impl Encode for BoatKind {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         VarInt(*self as i32).encode(w)
     }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
-pub enum CatVariant {
+pub enum CatKind {
     Tabby,
     #[default]
     Black,
@@ -183,33 +183,33 @@ pub enum CatVariant {
     AllBlack,
 }
 
-impl Encode for CatVariant {
+impl Encode for CatKind {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         VarInt(*self as i32).encode(w)
     }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
-pub enum FrogVariant {
+pub enum FrogKind {
     #[default]
     Temperate,
     Warm,
     Cold,
 }
 
-impl Encode for FrogVariant {
+impl Encode for FrogKind {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         VarInt(*self as i32).encode(w)
     }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
-pub enum PaintingVariant {
+pub enum PaintingKind {
     #[default]
     Default, // TODO
 }
 
-impl Encode for PaintingVariant {
+impl Encode for PaintingKind {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         VarInt(*self as i32).encode(w)
     }

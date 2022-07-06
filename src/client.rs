@@ -14,10 +14,10 @@ use vek::Vec3;
 use crate::biome::{Biome, BiomeGrassColorModifier, BiomePrecipitation};
 use crate::dimension::{Dimension, DimensionEffects};
 use crate::entity::data::Player;
-use crate::entity::{velocity_to_packet_units, EntityType};
+use crate::entity::{velocity_to_packet_units, EntityKind};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::play::c2s::{
-    C2sPlayPacket, DiggingStatus, InteractType, PlayerCommandId,
+    C2sPlayPacket, DiggingStatus, InteractKind, PlayerCommandId,
 };
 use crate::protocol::packets::play::s2c::{
     Animate, Biome as BiomeRegistryBiome, BiomeAdditionsSound, BiomeEffects, BiomeMoodSound,
@@ -470,10 +470,10 @@ impl Client {
                     self.events.push_back(ClientEvent::InteractWithEntity {
                         id,
                         sneaking: p.sneaking,
-                        typ: match p.typ {
-                            InteractType::Interact(hand) => InteractWithEntity::Interact(hand),
-                            InteractType::Attack => InteractWithEntity::Attack,
-                            InteractType::InteractAt((target, hand)) => {
+                        kind: match p.kind {
+                            InteractKind::Interact(hand) => InteractWithEntity::Interact(hand),
+                            InteractKind::Attack => InteractWithEntity::Attack,
+                            InteractKind::InteractAt((target, hand)) => {
                                 InteractWithEntity::InteractAt { target, hand }
                             }
                         },
@@ -871,7 +871,7 @@ impl Client {
                 &mut self.send,
                 SystemChat {
                     chat: msg,
-                    typ: VarInt(0),
+                    kind: VarInt(0),
                 },
             );
         }
@@ -882,7 +882,7 @@ impl Client {
         // longer visible.
         self.loaded_entities.retain(|&id| {
             if let Some(entity) = entities.get(id) {
-                debug_assert!(entity.typ() != EntityType::Marker);
+                debug_assert!(entity.kind() != EntityKind::Marker);
                 if self.new_position.distance(entity.position()) <= view_dist as f64 * 16.0 {
                     if let Some(meta) = entity.updated_metadata_packet(id) {
                         send_packet(&mut self.send, meta);
@@ -1002,7 +1002,7 @@ impl Client {
                 let entity = entities
                     .get(id)
                     .expect("entities in spatial index should be valid");
-                if entity.typ() != EntityType::Marker
+                if entity.kind() != EntityKind::Marker
                     && entity.uuid() != self.uuid
                     && self.loaded_entities.insert(id)
                 {
@@ -1108,22 +1108,22 @@ fn make_dimension_codec(shared: &SharedServer) -> RegistryCodec {
 
     RegistryCodec {
         dimension_type_registry: DimensionTypeRegistry {
-            typ: ident!("dimension_type"),
+            kind: ident!("dimension_type"),
             value: dims,
         },
         biome_registry: BiomeRegistry {
-            typ: ident!("worldgen/biome"),
+            kind: ident!("worldgen/biome"),
             value: biomes,
         },
         chat_type_registry: ChatTypeRegistry {
-            typ: ident!("chat_type"),
+            kind: ident!("chat_type"),
             value: vec![ChatTypeRegistryEntry {
                 name: ident!("system"),
                 id: 0,
                 element: ChatType {
                     chat: ChatTypeChat {},
                     narration: ChatTypeNarration {
-                        priority: "system".to_string(),
+                        priority: "system".to_owned(),
                     },
                 },
             }],
@@ -1207,7 +1207,7 @@ fn to_biome_registry_item(biome: &Biome, id: i32) -> BiomeRegistryBiome {
             },
             particle: biome.particle.as_ref().map(|p| BiomeParticle {
                 probability: p.probability,
-                options: BiomeParticleOptions { typ: p.typ.clone() },
+                options: BiomeParticleOptions { kind: p.kind.clone() },
             }),
         },
     }

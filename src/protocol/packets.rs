@@ -588,7 +588,7 @@ pub mod play {
             AddEntity 0x00 {
                 entity_id: VarInt,
                 object_uuid: Uuid,
-                typ: VarInt,
+                kind: VarInt,
                 position: Vec3<f64>,
                 pitch: ByteAngle,
                 yaw: ByteAngle,
@@ -640,7 +640,7 @@ pub mod play {
         def_struct! {
             BlockEntityData 0x07 {
                 location: BlockPos,
-                typ: VarInt, // TODO: use enum here
+                kind: VarInt, // TODO: use enum here
                 data: nbt::Blob,
             }
         }
@@ -816,7 +816,7 @@ pub mod play {
             LevelChunkBlockEntity {
                 packed_xz: i8,
                 y: i16,
-                typ: VarInt,
+                kind: VarInt,
                 data: nbt::Blob,
             }
         }
@@ -865,7 +865,7 @@ pub mod play {
         #[derive(Clone, Debug, Serialize, Deserialize)]
         pub struct DimensionTypeRegistry {
             #[serde(rename = "type")]
-            pub typ: Ident,
+            pub kind: Ident,
             pub value: Vec<DimensionTypeRegistryEntry>,
         }
 
@@ -901,7 +901,7 @@ pub mod play {
         #[derive(Clone, Debug, Serialize, Deserialize)]
         pub struct BiomeRegistry {
             #[serde(rename = "type")]
-            pub typ: Ident,
+            pub kind: Ident,
             pub value: Vec<Biome>,
         }
 
@@ -971,13 +971,13 @@ pub mod play {
         #[derive(Clone, Debug, Serialize, Deserialize)]
         pub struct BiomeParticleOptions {
             #[serde(rename = "type")]
-            pub typ: Ident,
+            pub kind: Ident,
         }
 
         #[derive(Clone, Debug, Serialize, Deserialize)]
         pub struct ChatTypeRegistry {
             #[serde(rename = "type")]
-            pub typ: Ident,
+            pub kind: Ident,
             pub value: Vec<ChatTypeRegistryEntry>,
         }
 
@@ -1044,7 +1044,7 @@ pub mod play {
             PlayerChat 0x30 {
                 message: Text,
                 /// Index into the chat type registry
-                typ: VarInt,
+                kind: VarInt,
                 sender: Uuid,
                 // TODO more fields
             }
@@ -1183,7 +1183,7 @@ pub mod play {
             SystemChat 0x5f {
                 chat: Text,
                 /// Index into the chat type registry.
-                typ: VarInt,
+                kind: VarInt,
             }
         }
 
@@ -1398,13 +1398,13 @@ pub mod play {
         def_struct! {
             Interact 0x0f {
                 entity_id: VarInt,
-                typ: InteractType,
+                kind: InteractKind,
                 sneaking: bool,
             }
         }
 
         def_enum! {
-            InteractType: VarInt {
+            InteractKind: VarInt {
                 Interact: Hand = 0,
                 Attack = 1,
                 InteractAt: (Vec3<f32>, Hand) = 2

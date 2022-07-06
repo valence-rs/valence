@@ -99,7 +99,7 @@ impl Config for Game {
 
                 world.meta.player_list_mut().insert(
                     client.uuid(),
-                    client.username().to_string(),
+                    client.username().to_owned(),
                     client.textures().cloned(),
                     client.game_mode(),
                     0,

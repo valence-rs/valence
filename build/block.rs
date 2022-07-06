@@ -14,14 +14,14 @@ pub fn build() -> anyhow::Result<()> {
 
     let max_block_state = blocks.iter().map(|b| b.max_state_id).max().unwrap();
 
-    let state_to_type = blocks
+    let state_to_kind = blocks
         .iter()
         .map(|b| {
             let min = b.min_state_id;
             let max = b.max_state_id;
             let name = ident(b.name.to_pascal_case());
             quote! {
-                #min..=#max => BlockType::#name,
+                #min..=#max => BlockKind::#name,
             }
         })
         .collect::<TokenStream>();
@@ -65,7 +65,7 @@ pub fn build() -> anyhow::Result<()> {
                 .collect::<TokenStream>();
 
             quote! {
-                BlockType::#block_type_name => match name {
+                BlockKind::#block_type_name => match name {
                     #arms
                     _ => None,
                 },
@@ -119,7 +119,7 @@ pub fn build() -> anyhow::Result<()> {
                 .collect::<TokenStream>();
 
             quote! {
-                BlockType::#block_type_name => match name {
+                BlockKind::#block_type_name => match name {
                     #arms
                     _ => self,
                 },
@@ -140,7 +140,7 @@ pub fn build() -> anyhow::Result<()> {
             let filter_light = b.filter_light as u8;
 
             quote! {
-                BlockType::#type_name => #filter_light,
+                BlockKind::#type_name => #filter_light,
             }
         })
         .collect::<TokenStream>();
@@ -158,45 +158,45 @@ pub fn build() -> anyhow::Result<()> {
         })
         .collect::<TokenStream>();
 
-    let type_to_state = blocks
+    let kind_to_state = blocks
         .iter()
         .map(|b| {
-            let typ = ident(b.name.to_pascal_case());
+            let kind = ident(b.name.to_pascal_case());
             let state = ident(b.name.to_shouty_snake_case());
             quote! {
-                BlockType::#typ => BlockState::#state,
+                BlockKind::#kind => BlockState::#state,
             }
         })
         .collect::<TokenStream>();
 
-    let block_type_variants = blocks
+    let block_kind_variants = blocks
         .iter()
         .map(|b| ident(b.name.to_pascal_case()))
         .collect::<Vec<_>>();
 
-    let block_type_from_str_arms = blocks
+    let block_kind_from_str_arms = blocks
         .iter()
         .map(|b| {
             let name = &b.name;
             let name_ident = ident(name.to_pascal_case());
             quote! {
-                #name => Some(BlockType::#name_ident),
+                #name => Some(BlockKind::#name_ident),
             }
         })
         .collect::<TokenStream>();
 
-    let block_type_to_str_arms = blocks
+    let block_kind_to_str_arms = blocks
         .iter()
         .map(|b| {
             let name = &b.name;
             let name_ident = ident(name.to_pascal_case());
             quote! {
-                BlockType::#name_ident => #name,
+                BlockKind::#name_ident => #name,
             }
         })
         .collect::<TokenStream>();
 
-    let block_type_props_arms = blocks
+    let block_kind_props_arms = blocks
         .iter()
         .filter(|&b| !b.props.is_empty())
         .map(|b| {
@@ -209,7 +209,7 @@ pub fn build() -> anyhow::Result<()> {
         })
         .collect::<TokenStream>();
 
-    let block_type_count = blocks.len();
+    let block_kind_count = blocks.len();
 
     let prop_names = blocks
         .iter()
@@ -305,16 +305,16 @@ pub fn build() -> anyhow::Result<()> {
 
         impl BlockState {
             /// Returns the default block state for a given block type.
-            pub const fn from_type(typ: BlockType) -> Self {
-                match typ {
-                    #type_to_state
+            pub const fn from_kind(kind: BlockKind) -> Self {
+                match kind {
+                    #kind_to_state
                 }
             }
 
-            /// Returns the [`BlockType`] of this block state.
-            pub const fn to_type(self) -> BlockType {
+            /// Returns the [`BlockKind`] of this block state.
+            pub const fn to_kind(self) -> BlockKind {
                 match self.0 {
-                    #state_to_type
+                    #state_to_kind
                     _ => unreachable!(),
                 }
             }
@@ -351,7 +351,7 @@ pub fn build() -> anyhow::Result<()> {
             ///
             /// If this block does not have the property, then `None` is returned.
             pub const fn get(self, name: PropName) -> Option<PropValue> {
-                match self.to_type() {
+                match self.to_kind() {
                     #get_arms
                     _ => None
                 }
@@ -363,7 +363,7 @@ pub fn build() -> anyhow::Result<()> {
             /// then the orginal block is returned unchanged.
             #[must_use]
             pub const fn set(self, name: PropName, val: PropValue) -> Self {
-                match self.to_type() {
+                match self.to_kind() {
                     #set_arms
                     _ => self,
                 }
@@ -372,27 +372,27 @@ pub fn build() -> anyhow::Result<()> {
             /// If this block is `air`, `cave_air` or `void_air`.
             pub const fn is_air(self) -> bool {
                 matches!(
-                    self.to_type(),
-                    BlockType::Air | BlockType::CaveAir | BlockType::VoidAir
+                    self.to_kind(),
+                    BlockKind::Air | BlockKind::CaveAir | BlockKind::VoidAir
                 )
             }
 
             /// Is the block visually transparent?
             pub const fn is_transparent(self) -> bool {
-                matches!(self.to_type(), #(BlockType::#is_transparent_types)|*)
+                matches!(self.to_kind(), #(BlockKind::#is_transparent_types)|*)
             }
 
             // TODO: is_solid
 
             /// If this block is water or lava.
             pub const fn is_liquid(self) -> bool {
-                matches!(self.to_type(), BlockType::Water | BlockType::Lava)
+                matches!(self.to_kind(), BlockKind::Water | BlockKind::Lava)
             }
 
             /// Returns the amount of light that is normally filtered by this block.
             /// The returned value is in `0..=15`.
             pub const fn filter_light(self) -> u8 {
-                match self.to_type() {
+                match self.to_kind() {
                     #filter_light_arms
                 }
             }
@@ -402,17 +402,17 @@ pub fn build() -> anyhow::Result<()> {
 
         /// An enumeration of all block types.
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-        pub enum BlockType {
-            #(#block_type_variants,)*
+        pub enum BlockKind {
+            #(#block_kind_variants,)*
         }
 
-        impl BlockType {
+        impl BlockKind {
             /// Construct a block type from its snake_case name.
             ///
             /// Returns `None` if the given name is not valid.
-            pub fn from_str(name: &str) -> Option<BlockType> {
+            pub fn from_str(name: &str) -> Option<BlockKind> {
                 match name {
-                    #block_type_from_str_arms
+                    #block_kind_from_str_arms
                     _ => None
                 }
             }
@@ -420,29 +420,29 @@ pub fn build() -> anyhow::Result<()> {
             /// Get the snake_case name of this block type.
             pub const fn to_str(self) -> &'static str {
                 match self {
-                    #block_type_to_str_arms
+                    #block_kind_to_str_arms
                 }
             }
 
             /// Returns the default block state for a given block type.
             pub const fn to_state(self) -> BlockState {
-                BlockState::from_type(self)
+                BlockState::from_kind(self)
             }
 
             /// Returns a slice of all properties this block type has.
             pub const fn props(self) -> &'static [PropName] {
                 match self {
-                    #block_type_props_arms
+                    #block_kind_props_arms
                     _ => &[],
                 }
             }
 
             /// An array of all block types.
-            pub const ALL: [Self; #block_type_count] = [#(Self::#block_type_variants,)*];
+            pub const ALL: [Self; #block_kind_count] = [#(Self::#block_kind_variants,)*];
         }
 
         /// The default block type is `air`.
-        impl Default for BlockType {
+        impl Default for BlockKind {
             fn default() -> Self {
                 Self::Air
             }
@@ -626,7 +626,7 @@ fn parse_blocks_json() -> anyhow::Result<Vec<Block>> {
                     vals: match &s {
                         State::Enum { values, .. } => values.clone(),
                         State::Int { values, .. } => values.clone(),
-                        State::Bool { .. } => vec!["true".to_string(), "false".to_string()],
+                        State::Bool { .. } => vec!["true".to_owned(), "false".to_owned()],
                     },
                 })
                 .collect(),

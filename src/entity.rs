@@ -7,7 +7,7 @@ use std::iter::FusedIterator;
 use std::num::NonZeroU32;
 
 use bitfield_struct::bitfield;
-pub use data::{EntityData, EntityType};
+pub use data::{EntityData, EntityKind};
 use rayon::iter::ParallelIterator;
 use uuid::Uuid;
 use vek::{Aabb, Vec3};
@@ -37,8 +37,8 @@ impl Entities {
 
     /// Spawns a new entity with the default data. The new entity's [`EntityId`]
     /// is returned.
-    pub fn create(&mut self, typ: EntityType) -> (EntityId, &mut Entity) {
-        self.create_with_uuid(typ, Uuid::from_bytes(rand::random()))
+    pub fn create(&mut self, kind: EntityKind) -> (EntityId, &mut Entity) {
+        self.create_with_uuid(kind, Uuid::from_bytes(rand::random()))
             .expect("UUID collision")
     }
 
@@ -49,7 +49,7 @@ impl Entities {
     /// world. If it does, `None` is returned and the entity is not spawned.
     pub fn create_with_uuid(
         &mut self,
-        typ: EntityType,
+        kind: EntityKind,
         uuid: Uuid,
     ) -> Option<(EntityId, &mut Entity)> {
         match self.uuid_to_entity.entry(uuid) {
@@ -57,7 +57,7 @@ impl Entities {
             Entry::Vacant(ve) => {
                 let (k, e) = self.sm.insert(Entity {
                     flags: EntityFlags(0),
-                    data: EntityData::new(typ),
+                    data: EntityData::new(kind),
                     world: None,
                     new_position: Vec3::default(),
                     old_position: Vec3::default(),
@@ -219,9 +219,9 @@ impl Entity {
         &mut self.data
     }
 
-    /// Returns the [`EntityType`] of this entity.
-    pub fn typ(&self) -> EntityType {
-        self.data.typ()
+    /// Returns the [`EntityKind`] of this entity.
+    pub fn kind(&self) -> EntityKind {
+        self.data.kind()
     }
 
     pub fn world(&self) -> Option<WorldId> {
@@ -497,7 +497,7 @@ impl Entity {
             _ => Some(EntitySpawnPacket::SpawnEntity(AddEntity {
                 entity_id: VarInt(this_id.to_network_id()),
                 object_uuid: self.uuid,
-                typ: VarInt(self.typ() as i32),
+                kind: VarInt(self.kind() as i32),
                 position: self.new_position,
                 pitch: ByteAngle::from_degrees(self.pitch),
                 yaw: ByteAngle::from_degrees(self.yaw),

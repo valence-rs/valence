@@ -158,12 +158,12 @@ enum Type {
     /// Also known as OptVarInt
     OptEntityId,
     Pose,
-    CatVariant,
-    FrogVariant,
+    CatKind,
+    FrogKind,
     OptGlobalPosition,
-    PaintingVariant,
+    PaintingKind,
     // ==== Specialized ==== //
-    BoatVariant,
+    BoatKind,
     MainHand,
 }
 
@@ -204,11 +204,11 @@ impl Type {
             Type::VillagerData => quote! { VillagerData::default() },
             Type::OptEntityId => quote! { None },
             Type::Pose => quote! { Pose::default() },
-            Type::CatVariant => quote! { CatVariant::default() },
-            Type::FrogVariant => quote! { FrogVariant::default() },
+            Type::CatKind => quote! { CatKind::default() },
+            Type::FrogKind => quote! { FrogKind::default() },
             Type::OptGlobalPosition => quote! { () }, // TODO
-            Type::PaintingVariant => quote! { PaintingVariant::default() },
-            Type::BoatVariant => quote! { BoatVariant::default() },
+            Type::PaintingKind => quote! { PaintingKind::default() },
+            Type::BoatKind => quote! { BoatKind::default() },
             Type::MainHand => quote! { MainHand::default() },
         }
     }
@@ -235,11 +235,11 @@ impl Type {
             Type::VillagerData => 16,
             Type::OptEntityId => 17,
             Type::Pose => 18,
-            Type::CatVariant => 19,
-            Type::FrogVariant => 20,
+            Type::CatKind => 19,
+            Type::FrogKind => 20,
             Type::OptGlobalPosition => 21,
-            Type::PaintingVariant => 22,
-            Type::BoatVariant => 1,
+            Type::PaintingKind => 22,
+            Type::BoatKind => 1,
             Type::MainHand => 0,
         }
     }
@@ -387,8 +387,8 @@ const BOAT: Class = Class {
             typ: Type::Float(0.0),
         },
         Field {
-            name: "typ",
-            typ: Type::BoatVariant,
+            name: "kind",
+            typ: Type::BoatKind,
         },
         Field {
             name: "left_paddle_turning",
@@ -1040,7 +1040,7 @@ const ENTITIES: &[Class] = &[
         inherit: Some(&BASE_ENTITY),
         fields: &[Field {
             name: "variant",
-            typ: Type::PaintingVariant,
+            typ: Type::PaintingKind,
         }],
         events: &[],
     },
@@ -1427,7 +1427,7 @@ const ENTITIES: &[Class] = &[
         fields: &[
             Field {
                 name: "variant",
-                typ: Type::FrogVariant,
+                typ: Type::FrogKind,
             },
             Field {
                 name: "tongue_target",
@@ -1639,7 +1639,7 @@ const ENTITIES: &[Class] = &[
         fields: &[
             Field {
                 name: "variant",
-                typ: Type::CatVariant,
+                typ: Type::CatKind,
             },
             Field {
                 name: "lying",
@@ -2168,7 +2168,7 @@ pub fn build() -> anyhow::Result<()> {
         }
     }
 
-    let entity_type_variants = entities
+    let entity_kind_variants = entities
         .iter()
         .map(|c| ident(c.name.to_pascal_case()))
         .collect::<Vec<_>>();
@@ -2201,11 +2201,11 @@ pub fn build() -> anyhow::Result<()> {
                Type::VillagerData => quote! { VillagerData },
                Type::OptEntityId => quote! { Option<EntityId> },
                Type::Pose => quote! { Pose },
-               Type::CatVariant => quote! { CatVariant },
-               Type::FrogVariant => quote! { FrogVariant },
+               Type::CatKind => quote! { CatKind },
+               Type::FrogKind => quote! { FrogKind },
                Type::OptGlobalPosition => quote! { () }, // TODO
-               Type::PaintingVariant => quote! { PaintingVariant },
-               Type::BoatVariant => quote! { BoatVariant },
+               Type::PaintingKind => quote! { PaintingKind },
+               Type::BoatKind => quote! { BoatKind },
                Type::MainHand => quote! { MainHand },
            };
            quote! {
@@ -2358,11 +2358,11 @@ pub fn build() -> anyhow::Result<()> {
                     Type::VillagerData => standard_getter_setter(quote!(VillagerData)),
                     Type::OptEntityId => standard_getter_setter(quote!(Option<EntityId>)),
                     Type::Pose => standard_getter_setter(quote!(Pose)),
-                    Type::CatVariant => standard_getter_setter(quote!(CatVariant)),
-                    Type::FrogVariant => standard_getter_setter(quote!(FrogVariant)),
+                    Type::CatKind => standard_getter_setter(quote!(CatKind)),
+                    Type::FrogKind => standard_getter_setter(quote!(FrogKind)),
                     Type::OptGlobalPosition => quote! {}, // TODO
-                    Type::PaintingVariant => standard_getter_setter(quote!(PaintingVariant)),
-                    Type::BoatVariant => standard_getter_setter(quote!(BoatVariant)),
+                    Type::PaintingKind => standard_getter_setter(quote!(PaintingKind)),
+                    Type::BoatKind => standard_getter_setter(quote!(BoatKind)),
                     Type::MainHand => standard_getter_setter(quote!(MainHand)),
                 }
             })
@@ -2457,11 +2457,11 @@ pub fn build() -> anyhow::Result<()> {
     let finished = quote! {
         /// Identifies a type of entity, such as `chicken`, `zombie` or `item`.
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-        pub enum EntityType {
-            #(#entity_type_variants,)*
+        pub enum EntityKind {
+            #(#entity_kind_variants,)*
         }
 
-        impl Default for EntityType {
+        impl Default for EntityKind {
             fn default() -> Self {
                 Self::Marker
             }
@@ -2471,19 +2471,19 @@ pub fn build() -> anyhow::Result<()> {
 
         /// An enum encoding the type of an entity along with any data specific to that entity type.
         pub enum EntityData {
-            #(#entity_type_variants(#entity_type_variants),)*
+            #(#entity_kind_variants(#entity_kind_variants),)*
         }
 
         impl EntityData {
-            pub(super) fn new(typ: EntityType) -> Self {
-                match typ {
-                    #(EntityType::#entity_type_variants => Self::#entity_type_variants(#entity_type_variants::new()),)*
+            pub(super) fn new(kind: EntityKind) -> Self {
+                match kind {
+                    #(EntityKind::#entity_kind_variants => Self::#entity_kind_variants(#entity_kind_variants::new()),)*
                 }
             }
 
-            pub(super) fn typ(&self) -> EntityType {
+            pub(super) fn kind(&self) -> EntityKind {
                 match self {
-                    #(Self::#entity_type_variants(_) => EntityType::#entity_type_variants,)*
+                    #(Self::#entity_kind_variants(_) => EntityKind::#entity_kind_variants,)*
                 }
             }
 
@@ -2491,7 +2491,7 @@ pub fn build() -> anyhow::Result<()> {
                 let mut data = Vec::new();
 
                 match self {
-                    #(Self::#entity_type_variants(e) => e.initial_metadata(&mut data),)*
+                    #(Self::#entity_kind_variants(e) => e.initial_metadata(&mut data),)*
                 }
 
                 if data.is_empty() {
@@ -2506,7 +2506,7 @@ pub fn build() -> anyhow::Result<()> {
                 let mut data = Vec::new();
 
                 match self {
-                    #(Self::#entity_type_variants(e) => e.updated_metadata(&mut data),)*
+                    #(Self::#entity_kind_variants(e) => e.updated_metadata(&mut data),)*
                 }
 
                 if data.is_empty() {
@@ -2519,13 +2519,13 @@ pub fn build() -> anyhow::Result<()> {
 
             pub(crate) fn event_codes(&self) -> &[u8] {
                 match self {
-                    #(Self::#entity_type_variants(e) => e.event_codes(),)*
+                    #(Self::#entity_kind_variants(e) => e.event_codes(),)*
                 }
             }
 
             pub(super) fn clear_modifications(&mut self) {
                 match self {
-                    #(Self::#entity_type_variants(e) => e.clear_modifications(),)*
+                    #(Self::#entity_kind_variants(e) => e.clear_modifications(),)*
                 }
             }
         }

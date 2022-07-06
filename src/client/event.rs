@@ -40,7 +40,7 @@ pub enum ClientEvent {
         /// If the client was sneaking during the interaction.
         sneaking: bool,
         /// The type of interaction that occurred.
-        typ: InteractWithEntity,
+        kind: InteractWithEntity,
     },
     SteerBoat {
         left_paddle_turning: bool,

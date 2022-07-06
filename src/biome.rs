@@ -105,5 +105,5 @@ pub struct BiomeMoodSound {
 #[derive(Clone, Debug)]
 pub struct BiomeParticle {
     pub probability: f32,
-    pub typ: Ident,
+    pub kind: Ident,
 }

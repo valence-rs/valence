@@ -13,7 +13,7 @@ use valence::entity::meta::Pose;
 use valence::entity::EntityData;
 use valence::text::Color;
 use valence::{
-    async_trait, ident, Biome, BlockState, Dimension, DimensionId, EntityId, EntityType, Server,
+    async_trait, ident, Biome, BlockState, Dimension, DimensionId, EntityId, EntityKind, Server,
     SharedServer, ShutdownResult, TextFormat,
 };
 
@@ -135,7 +135,7 @@ impl Config for Game {
 
                 world.meta.player_list_mut().insert(
                     client.uuid(),
-                    client.username().to_string(),
+                    client.username().to_owned(),
                     client.textures().cloned(),
                     client.game_mode(),
                     0,
@@ -146,7 +146,7 @@ impl Config for Game {
                     client_id,
                     server
                         .entities
-                        .create_with_uuid(EntityType::Player, client.uuid())
+                        .create_with_uuid(EntityKind::Player, client.uuid())
                         .unwrap()
                         .0,
                 );

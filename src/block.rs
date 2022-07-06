@@ -11,15 +11,15 @@ include!(concat!(env!("OUT_DIR"), "/block.rs"));
 
 impl fmt::Debug for BlockState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let typ = self.to_type();
+        let kind = self.to_kind();
 
-        write!(f, "{}", typ.to_str())?;
+        write!(f, "{}", kind.to_str())?;
 
-        let props = typ.props();
+        let props = kind.props();
 
         if !props.is_empty() {
             let mut list = f.debug_list();
-            for &p in typ.props() {
+            for &p in kind.props() {
                 struct KeyVal<'a>(&'a str, &'a str);
 
                 impl<'a> fmt::Debug for KeyVal<'a> {
@@ -58,10 +58,10 @@ mod tests {
 
     #[test]
     fn get_set_consistency() {
-        for typ in BlockType::ALL {
-            let block = typ.to_state();
+        for kind in BlockKind::ALL {
+            let block = kind.to_state();
 
-            for &prop in typ.props() {
+            for &prop in kind.props() {
                 let new_block = block.set(prop, block.get(prop).unwrap());
                 assert_eq!(new_block, block);
             }

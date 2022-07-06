@@ -320,7 +320,7 @@ enum HoverEvent {
     ShowEntity {
         name: Box<Text>,
         #[serde(rename = "type")]
-        typ: Ident,
+        kind: Ident,
         // TODO: id (hyphenated entity UUID as a string)
     },
 }

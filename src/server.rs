@@ -532,11 +532,11 @@ async fn handle_status(
             });
 
             if let Some(data) = favicon_png {
-                let mut buf = "data:image/png;base64,".to_string();
+                let mut buf = "data:image/png;base64,".to_owned();
                 base64::encode_config_buf(data, base64::STANDARD, &mut buf);
                 json.as_object_mut()
                     .unwrap()
-                    .insert("favicon".to_string(), Value::String(buf));
+                    .insert("favicon".to_owned(), Value::String(buf));
             }
 
             c.enc

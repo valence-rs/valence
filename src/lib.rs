@@ -41,7 +41,7 @@ pub use chunk_pos::ChunkPos;
 pub use client::{Client, Clients};
 pub use config::Config;
 pub use dimension::{Dimension, DimensionId};
-pub use entity::{Entities, Entity, EntityId, EntityType};
+pub use entity::{Entities, Entity, EntityId, EntityKind};
 pub use ident::Ident;
 pub use server::{start_server, NewClientData, Server, SharedServer, ShutdownResult};
 pub use spatial_index::SpatialIndex;
