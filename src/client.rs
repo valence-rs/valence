@@ -160,7 +160,7 @@ pub(crate) struct ClientFlags {
     got_keepalive: bool,
     hardcore: bool,
     #[bits(7)]
-    _pad: u8
+    _pad: u8,
 }
 
 impl Client {
@@ -233,6 +233,8 @@ impl Client {
 
     /// Sends a system message to the player.
     pub fn send_message(&mut self, msg: impl Into<Text>) {
+        // We buffer messages because weird things happen if we send them before the
+        // login packet.
         self.msgs_to_send.push(msg.into());
     }
 
@@ -410,6 +412,12 @@ impl Client {
 
     /// Attempts to enqueue a play packet to be sent to this client. The client
     /// is disconnected if the clientbound packet buffer is full.
+    #[cfg(feature = "protocol")]
+    pub fn send_packet(&mut self, packet: impl Into<S2cPlayPacket>) {
+        send_packet(&mut self.send, packet);
+    }
+
+    #[cfg(not(feature = "protocol"))]
     pub(crate) fn send_packet(&mut self, packet: impl Into<S2cPlayPacket>) {
         send_packet(&mut self.send, packet);
     }
