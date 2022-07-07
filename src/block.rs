@@ -1,6 +1,6 @@
 #![allow(clippy::all, missing_docs)]
 
-use std::fmt;
+use std::fmt::{self, Display};
 use std::io::{Read, Write};
 
 use anyhow::Context;
@@ -11,30 +11,40 @@ use crate::protocol::{Decode, Encode, VarInt};
 include!(concat!(env!("OUT_DIR"), "/block.rs"));
 
 impl fmt::Debug for BlockState {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt_block_state(*self, f)
+    }
+}
+
+impl Display for BlockState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let kind = self.to_kind();
+        fmt_block_state(*self, f)
+    }
+}
 
-        write!(f, "{}", kind.to_str())?;
+fn fmt_block_state(bs: BlockState, f: &mut fmt::Formatter) -> fmt::Result {
+    let kind = bs.to_kind();
 
-        let props = kind.props();
+    write!(f, "{}", kind.to_str())?;
 
-        if !props.is_empty() {
-            let mut list = f.debug_list();
-            for &p in kind.props() {
-                struct KeyVal<'a>(&'a str, &'a str);
+    let props = kind.props();
 
-                impl<'a> fmt::Debug for KeyVal<'a> {
-                    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                        write!(f, "{}={}", self.0, self.1)
-                    }
+    if !props.is_empty() {
+        let mut list = f.debug_list();
+        for &p in kind.props() {
+            struct KeyVal<'a>(&'a str, &'a str);
+
+            impl<'a> fmt::Debug for KeyVal<'a> {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    write!(f, "{}={}", self.0, self.1)
                 }
-
-                list.entry(&KeyVal(p.to_str(), self.get(p).unwrap().to_str()));
             }
-            list.finish()
-        } else {
-            Ok(())
+
+            list.entry(&KeyVal(p.to_str(), bs.get(p).unwrap().to_str()));
         }
+        list.finish()
+    } else {
+        Ok(())
     }
 }
 
