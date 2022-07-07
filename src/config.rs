@@ -5,7 +5,11 @@ use std::panic::{RefUnwindSafe, UnwindSafe};
 use async_trait::async_trait;
 use tokio::runtime::Handle as TokioHandle;
 
-use crate::{Biome, Dimension, NewClientData, Server, SharedServer, Text, Ticks};
+use crate::biome::Biome;
+use crate::dimension::Dimension;
+use crate::server::{NewClientData, Server, SharedServer};
+use crate::text::Text;
+use crate::Ticks;
 
 /// A trait containing callbacks which are invoked by the running Minecraft
 /// server.

@@ -2,7 +2,8 @@ use vek::{Aabb, Vec3};
 
 use crate::bvh::Bvh;
 pub use crate::bvh::TraverseStep;
-use crate::{Entities, EntityId, WorldId};
+use crate::entity::{Entities, EntityId};
+use crate::world::WorldId;
 
 pub struct SpatialIndex {
     bvh: Bvh<EntityId>,

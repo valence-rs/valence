@@ -1,4 +1,4 @@
-use crate::BlockPos;
+use crate::block::BlockPos;
 
 /// The X and Z position of a chunk in a world.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]

@@ -19,7 +19,7 @@ pub use var_int::VarInt;
 pub use var_long::VarLong;
 use vek::{Vec2, Vec3, Vec4};
 
-use crate::EntityId;
+use crate::entity::EntityId;
 
 /// Trait for types that can be written to the Minecraft protocol.
 pub trait Encode {

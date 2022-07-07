@@ -16,11 +16,12 @@ use uuid::Uuid;
 use vek::Vec3;
 
 use crate::block_pos::BlockPos;
+use crate::ident::Ident;
 use crate::protocol::{
     BoundedArray, BoundedInt, BoundedString, ByteAngle, Decode, Encode, Nbt, RawBytes, VarInt,
     VarLong,
 };
-use crate::{Ident, Text};
+use crate::text::Text;
 
 /// Trait for types that can be written to the Minecraft protocol as a complete
 /// packet.

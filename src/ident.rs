@@ -249,8 +249,8 @@ macro_rules! ident {
         let errmsg = "invalid identifier in `ident` macro";
         #[allow(clippy::redundant_closure_call)]
         (|args: ::std::fmt::Arguments| match args.as_str() {
-            Some(s) => $crate::Ident::new(s).expect(errmsg),
-            None => $crate::Ident::new(args.to_string()).expect(errmsg),
+            Some(s) => $crate::ident::Ident::new(s).expect(errmsg),
+            None => $crate::ident::Ident::new(args.to_string()).expect(errmsg),
         })(format_args!($($arg)*))
     }}
 }

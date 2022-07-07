@@ -5,14 +5,15 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use log::LevelFilter;
 use noise::{NoiseFn, Seedable, SuperSimplex};
 use rayon::iter::ParallelIterator;
+use valence::async_trait;
 use valence::block::{BlockState, PropName, PropValue};
+use valence::chunk::ChunkPos;
 use valence::client::GameMode;
 use valence::config::{Config, ServerListPing};
-use valence::text::Color;
+use valence::dimension::DimensionId;
+use valence::server::{Server, SharedServer, ShutdownResult};
+use valence::text::{Color, TextFormat};
 use valence::util::chunks_in_view_distance;
-use valence::{
-    async_trait, ChunkPos, DimensionId, Server, SharedServer, ShutdownResult, TextFormat,
-};
 use vek::Lerp;
 
 pub fn main() -> ShutdownResult {

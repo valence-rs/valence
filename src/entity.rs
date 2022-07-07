@@ -18,7 +18,7 @@ use crate::protocol::packets::play::s2c::{
 use crate::protocol::{ByteAngle, RawBytes, VarInt};
 use crate::slotmap::{Key, SlotMap};
 use crate::util::aabb_from_bottom_and_size;
-use crate::WorldId;
+use crate::world::WorldId;
 
 pub struct Entities {
     sm: SlotMap<Entity>,

@@ -7,15 +7,16 @@ use std::sync::Mutex;
 use log::LevelFilter;
 use num::Integer;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
+use valence::biome::Biome;
+use valence::block::BlockState;
 use valence::client::{ClientEvent, ClientId, GameMode, Hand};
 use valence::config::{Config, ServerListPing};
+use valence::dimension::{Dimension, DimensionId};
 use valence::entity::meta::Pose;
-use valence::entity::EntityData;
-use valence::text::Color;
-use valence::{
-    async_trait, ident, Biome, BlockState, Dimension, DimensionId, EntityId, EntityKind, Server,
-    SharedServer, ShutdownResult, TextFormat,
-};
+use valence::entity::{EntityData, EntityId, EntityKind};
+use valence::server::{Server, SharedServer, ShutdownResult};
+use valence::text::{Color, TextFormat};
+use valence::{async_trait, ident};
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()

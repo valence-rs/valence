@@ -9,12 +9,17 @@ use bitvec::vec::BitVec;
 use num::Integer;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 
+use crate::biome::BiomeId;
 use crate::block::BlockState;
+use crate::block_pos::BlockPos;
+pub use crate::chunk_pos::ChunkPos;
+use crate::dimension::DimensionId;
 use crate::protocol::packets::play::s2c::{
     BlockUpdate, LevelChunkHeightmaps, LevelChunkWithLight, S2cPlayPacket, SectionBlocksUpdate,
 };
 use crate::protocol::{Encode, Nbt, VarInt, VarLong};
-use crate::{BiomeId, BlockPos, ChunkPos, DimensionId, SharedServer, Ticks};
+use crate::server::SharedServer;
+use crate::Ticks;
 
 pub struct Chunks {
     chunks: HashMap<ChunkPos, Chunk>,

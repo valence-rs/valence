@@ -1,4 +1,5 @@
-use crate::{ident, Ident};
+use crate::ident;
+use crate::ident::Ident;
 
 /// Identifies a particular [`Biome`].
 ///

@@ -4,8 +4,8 @@ use std::iter::FusedIterator;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
-use std::{thread, io};
 use std::time::{Duration, Instant};
+use std::{io, thread};
 
 use anyhow::{bail, ensure, Context};
 use flume::{Receiver, Sender};
@@ -25,7 +25,11 @@ use tokio::runtime::{Handle, Runtime};
 use tokio::sync::{oneshot, Semaphore};
 use uuid::Uuid;
 
+use crate::biome::{Biome, BiomeId};
+use crate::client::{Client, Clients};
 use crate::config::{Config, ServerListPing};
+use crate::dimension::{Dimension, DimensionId};
+use crate::entity::Entities;
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::codec::{Decoder, Encoder};
 use crate::protocol::packets::handshake::{Handshake, HandshakeNextState};
@@ -39,10 +43,7 @@ use crate::protocol::packets::{login, Property};
 use crate::protocol::{BoundedArray, BoundedString, VarInt};
 use crate::util::valid_username;
 use crate::world::Worlds;
-use crate::{
-    Biome, BiomeId, Client, Clients, Dimension, DimensionId, Entities, Ticks, PROTOCOL_VERSION,
-    VERSION_NAME,
-};
+use crate::{Ticks, PROTOCOL_VERSION, VERSION_NAME};
 
 pub struct Server {
     pub shared: SharedServer,

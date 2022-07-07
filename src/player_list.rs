@@ -11,7 +11,7 @@ use crate::protocol::packets::play::s2c::{
 };
 use crate::protocol::packets::Property;
 use crate::protocol::VarInt;
-use crate::Text;
+use crate::text::Text;
 
 pub struct PlayerList {
     entries: HashMap<Uuid, PlayerListEntry>,

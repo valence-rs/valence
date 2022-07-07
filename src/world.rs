@@ -2,9 +2,12 @@ use std::iter::FusedIterator;
 
 use rayon::iter::ParallelIterator;
 
+use crate::chunk::Chunks;
+use crate::dimension::DimensionId;
 use crate::player_list::PlayerList;
+use crate::server::SharedServer;
 use crate::slotmap::{Key, SlotMap};
-use crate::{Chunks, DimensionId, SharedServer, SpatialIndex};
+use crate::SpatialIndex;
 
 pub struct Worlds {
     sm: SlotMap<World>,

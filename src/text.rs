@@ -8,8 +8,8 @@ use std::io::{Read, Write};
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+use crate::ident::Ident;
 use crate::protocol::{BoundedString, Decode, Encode};
-use crate::Ident;
 
 /// Represents formatted text in Minecraft's JSON text format.
 ///

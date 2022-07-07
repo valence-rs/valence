@@ -12,9 +12,11 @@ use uuid::Uuid;
 use vek::Vec3;
 
 use crate::biome::{Biome, BiomeGrassColorModifier, BiomePrecipitation};
-use crate::dimension::{Dimension, DimensionEffects};
+use crate::block_pos::BlockPos;
+use crate::chunk_pos::ChunkPos;
+use crate::dimension::{Dimension, DimensionEffects, DimensionId};
 use crate::entity::data::Player;
-use crate::entity::{velocity_to_packet_units, EntityKind};
+use crate::entity::{velocity_to_packet_units, Entities, Entity, EntityId, EntityKind};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::play::c2s::{
     C2sPlayPacket, DiggingStatus, InteractKind, PlayerCommandId,
@@ -32,13 +34,12 @@ use crate::protocol::packets::play::s2c::{
     SetTitleText, SpawnPosition, SystemChat, TeleportEntity, ENTITY_EVENT_MAX_BOUND,
 };
 use crate::protocol::{BoundedInt, ByteAngle, Nbt, RawBytes, VarInt};
-use crate::server::C2sPacketChannels;
+use crate::server::{C2sPacketChannels, NewClientData, SharedServer};
 use crate::slotmap::{Key, SlotMap};
+use crate::text::Text;
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
-use crate::{
-    ident, BlockPos, ChunkPos, DimensionId, Entities, Entity, EntityId, NewClientData,
-    SharedServer, Text, Ticks, WorldId, Worlds, LIBRARY_NAMESPACE,
-};
+use crate::world::{WorldId, Worlds};
+use crate::{ident, Ticks, LIBRARY_NAMESPACE};
 
 pub struct Clients {
     sm: SlotMap<Client>,

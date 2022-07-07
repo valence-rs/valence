@@ -4,14 +4,14 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 
 use log::LevelFilter;
+use valence::async_trait;
 use valence::client::GameMode;
 use valence::config::{Config, ServerListPing};
-use valence::text::Color;
+use valence::dimension::DimensionId;
+use valence::entity::{EntityId, EntityKind};
+use valence::server::{Server, SharedServer, ShutdownResult};
+use valence::text::{Color, TextFormat};
 use valence::util::to_yaw_and_pitch;
-use valence::{
-    async_trait, DimensionId, EntityId, EntityKind, Server, SharedServer, ShutdownResult,
-    TextFormat,
-};
 use vek::{Mat3, Vec3};
 
 pub fn main() -> ShutdownResult {

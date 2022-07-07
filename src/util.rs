@@ -4,7 +4,7 @@ use num::cast::AsPrimitive;
 use num::Float;
 use vek::{Aabb, Vec3};
 
-use crate::ChunkPos;
+use crate::chunk_pos::ChunkPos;
 
 /// Returns true if the given string meets the criteria for a valid Minecraft
 /// username.
