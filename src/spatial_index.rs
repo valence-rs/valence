@@ -1,3 +1,5 @@
+//! Efficient spatial entity queries.
+
 use vek::{Aabb, Vec3};
 
 use crate::bvh::Bvh;
@@ -5,6 +7,14 @@ pub use crate::bvh::TraverseStep;
 use crate::entity::{Entities, EntityId};
 use crate::world::WorldId;
 
+/// A data structure for fast spatial queries on entity [hitboxes]. This is used
+/// to accelerate tasks such as collision detection and ray tracing.
+///
+/// The spatial index is only updated at the end of each tick. Any modification
+/// to an entity that would change its hitbox is not reflected in the spatial
+/// index until the end of the tick.
+///
+/// [hitboxes]: crate::entity::Entity::hitbox
 pub struct SpatialIndex {
     bvh: Bvh<EntityId>,
 }
@@ -14,13 +24,46 @@ impl SpatialIndex {
         Self { bvh: Bvh::new() }
     }
 
-    pub fn traverse<F, T>(&self, mut f: F) -> Option<T>
-    where
-        F: FnMut(Option<EntityId>, Aabb<f64>) -> TraverseStep<T>,
-    {
-        self.bvh.traverse(|e, bb| f(e.cloned(), bb))
+    #[doc(hidden)]
+    #[deprecated = "This is for documentation tests only"]
+    pub fn example_new() -> Self {
+        println!("Don't call me!");
+        Self::new()
     }
 
+    /// Invokes `f` with every entity in the spatial index considered
+    /// colliding according to `collides`.
+    ///
+    /// `collides` takes an AABB and returns whether or not a collision
+    /// occurred with the given AABB.
+    ///
+    /// `f` is called with the entity ID and hitbox of all colliding entities.
+    /// If `f` returns with `Some(x)`, then `query` exits early with
+    /// `Some(x)`. If `f` never returns with `Some`, then query returns `None`.
+    ///
+    /// # Examples
+    ///
+    /// Visit all entities intersecting a 10x10x10 cube centered at the origin.
+    ///
+    /// ```
+    /// # #[allow(deprecated)]
+    /// # let si = valence::spatial_index::SpatialIndex::example_new();
+    /// use valence::vek::*;
+    ///
+    /// let cube = Aabb {
+    ///     min: Vec3::new(-5.0, -5.0, -5.0),
+    ///     max: Vec3::new(5.0, 5.0, 5.0),
+    /// };
+    ///
+    /// let collides = |aabb: Aabb<f64>| aabb.collides_with_aabb(cube);
+    /// let f = |id, _| -> Option<()> {
+    ///     println!("Found entity: {id:?}");
+    ///     None
+    /// };
+    ///
+    /// // Assume `si` is the spatial index
+    /// si.query(collides, f);
+    /// ```
     pub fn query<C, F, T>(&self, mut collides: C, mut f: F) -> Option<T>
     where
         C: FnMut(Aabb<f64>) -> bool,
@@ -97,11 +140,22 @@ impl SpatialIndex {
         )
     }
 
+    /// Explores the spatial index according to `f`.
+    ///
+    /// This is a low-level function that should only be used if the other
+    /// methods on this type are too restrictive.
+    pub fn traverse<F, T>(&self, mut f: F) -> Option<T>
+    where
+        F: FnMut(Option<EntityId>, Aabb<f64>) -> TraverseStep<T>,
+    {
+        self.bvh.traverse(|e, bb| f(e.cloned(), bb))
+    }
+
     pub(crate) fn update(&mut self, entities: &Entities, id: WorldId) {
         self.bvh.build(
             entities
                 .iter()
-                .filter(|(_, e)| e.world() == Some(id))
+                .filter(|(_, e)| e.world() == id)
                 .map(|(id, e)| (id, e.hitbox())),
         )
     }
@@ -113,7 +167,7 @@ impl SpatialIndex {
 pub struct RaycastHit {
     /// The [`EntityId`] of the entity that was hit by the ray.
     pub entity: EntityId,
-    /// The bounding box of the entity that was hit.
+    /// The bounding box (hitbox) of the entity that was hit.
     pub bb: Aabb<f64>,
     /// The distance from the ray origin to the closest intersection point.
     /// If the origin of the ray is inside the bounding box, then this will be

@@ -4,50 +4,76 @@ use vek::Vec3;
 
 use crate::block_pos::BlockPos;
 use crate::entity::EntityId;
-use crate::protocol::packets::play::c2s::BlockFace;
-pub use crate::protocol::packets::play::c2s::{ChatMode, DisplayedSkinParts, Hand, MainHand};
-pub use crate::protocol::packets::play::s2c::GameMode;
+use crate::protocol_inner::packets::play::c2s::BlockFace;
+pub use crate::protocol_inner::packets::play::c2s::{ChatMode, DisplayedSkinParts, Hand, MainHand};
+pub use crate::protocol_inner::packets::play::s2c::GameMode;
 
+/// Represents an action performed by a client.
+///
+/// Client events can be obtained from
+/// [`pop_event`](crate::client::Client::pop_event).
 #[derive(Debug)]
-pub enum ClientEvent {
+pub enum Event {
+    /// A regular message was sent to the chat.
     ChatMessage {
+        /// The content of the message
         message: String,
+        /// The time the message was sent.
         timestamp: Duration,
     },
-    /// Settings were changed. The value in this variant is the previous client
-    /// settings.
+    /// Settings were changed. The value in this variant is the _previous_
+    /// client settings.
     SettingsChanged(Option<Settings>),
-    /// The client has moved. The values in this
+    /// The client moved. The values in this
     /// variant are the _previous_ position and look.
     Movement {
+        /// Absolute coordinates of the previous position.
         position: Vec3<f64>,
+        /// The previous yaw (in degrees).
         yaw: f32,
+        /// The previous pitch (in degrees).
         pitch: f32,
+        /// If the client was previously on the ground.
         on_ground: bool,
     },
     StartSneaking,
     StopSneaking,
     StartSprinting,
     StopSprinting,
-    StartJumpWithHorse(u8),
+    /// A jump while on a horse started.
+    StartJumpWithHorse {
+        /// The power of the horse jump.
+        jump_boost: u8,
+    },
+    /// A jump while on a horse stopped.
     StopJumpWithHorse,
+    /// The client left a bed.
     LeaveBed,
+    /// The inventory was opened while on a horse.
     OpenHorseInventory,
     StartFlyingWithElytra,
     ArmSwing(Hand),
+    /// Left or right click interaction with an entity's hitbox.
     InteractWithEntity {
         /// The ID of the entity being interacted with.
         id: EntityId,
         /// If the client was sneaking during the interaction.
         sneaking: bool,
-        /// The type of interaction that occurred.
-        kind: InteractWithEntity,
+        /// The kind of interaction that occurred.
+        kind: InteractWithEntityKind,
     },
     SteerBoat {
         left_paddle_turning: bool,
         right_paddle_turning: bool,
     },
-    Digging(Digging),
+    Digging {
+        /// The kind of digging event this is.
+        status: DiggingStatus,
+        /// The position of the block being broken.
+        position: BlockPos,
+        /// The face of the block being broken.
+        face: BlockFace,
+    },
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -67,22 +93,18 @@ pub struct Settings {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub enum InteractWithEntity {
+pub enum InteractWithEntityKind {
     Interact(Hand),
     InteractAt { target: Vec3<f32>, hand: Hand },
     Attack,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct Digging {
-    pub status: DiggingStatus,
-    pub position: BlockPos,
-    pub face: BlockFace,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum DiggingStatus {
+    /// The client started digging a block.
     Start,
+    /// The client stopped digging a block before it was fully broken.
     Cancel,
+    /// The client finished digging a block successfully.
     Finish,
 }

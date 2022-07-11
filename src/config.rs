@@ -15,14 +15,15 @@ use crate::Ticks;
 /// server.
 ///
 /// The config is used from multiple threads and must therefore implement
-/// `Send` and `Sync`. From within a single thread, methods are never invoked
-/// recursively by the library. In other words, a mutex can be aquired at
-/// the beginning of a method and released at the end without risk of
+/// [`Send`] and [`Sync`]. From within a single thread, methods are never
+/// invoked recursively by the library. In other words, a mutex can be aquired
+/// at the beginning of a method and released at the end without risk of
 /// deadlocking.
 ///
-/// This trait uses the [async_trait](https://docs.rs/async-trait/latest/async_trait/) attribute macro.
-/// This will be removed once `impl Trait` in return position in traits is
-/// available in stable rust.
+/// This trait uses the [async_trait] attribute macro. It is exported at the
+/// root of this crate.
+///
+/// [async_trait]: https://docs.rs/async-trait/latest/async_trait/
 #[async_trait]
 #[allow(unused_variables)]
 pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
@@ -39,6 +40,7 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// be bound to.
     ///
     /// # Default Implementation
+    ///
     /// Returns `127.0.0.1:25565`.
     fn address(&self) -> SocketAddr {
         SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 25565).into()
@@ -57,6 +59,7 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// so there is little benefit to a tick rate higher than 20.
     ///
     /// # Default Implementation
+    ///
     /// Returns `20`, which is the same as Minecraft's official server.
     fn tick_rate(&self) -> Ticks {
         20
@@ -73,6 +76,7 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// internet.
     ///
     /// # Default Implementation
+    ///
     /// Returns `true`.
     fn online_mode(&self) -> bool {
         true
@@ -85,6 +89,7 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// potential memory usage.
     ///
     /// # Default Implementation
+    ///
     /// An unspecified value is returned that should be adequate in most
     /// situations.
     fn incoming_packet_capacity(&self) -> usize {
@@ -98,6 +103,7 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// but increases potential memory usage.
     ///
     /// # Default Implementation
+    ///
     /// An unspecified value is returned that should be adequate in most
     /// situations.
     fn outgoing_packet_capacity(&self) -> usize {
@@ -111,6 +117,7 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// runtime.
     ///
     /// # Default Implementation
+    ///
     /// Returns `None`.
     fn tokio_handle(&self) -> Option<TokioHandle> {
         None
@@ -119,14 +126,15 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// Called once at startup to get the list of [`Dimension`]s usable on the
     /// server.
     ///
-    /// The dimensions traversed by [`Server::dimensions`] will be in the same
-    /// order as the `Vec` returned by this function.
+    /// The dimensions returned by [`SharedServer::dimensions`] will be in the
+    /// same order as the `Vec` returned by this function.
     ///
-    /// The number of elements in the returned `Vec` must be in \[1, u16::MAX].
+    /// The number of elements in the returned `Vec` must be in `1..=u16::MAX`.
     /// Additionally, the documented requirements on the fields of [`Dimension`]
     /// must be met.
     ///
     /// # Default Implementation
+    ///
     /// Returns `vec![Dimension::default()]`.
     fn dimensions(&self) -> Vec<Dimension> {
         vec![Dimension::default()]
@@ -135,14 +143,15 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// Called once at startup to get the list of [`Biome`]s usable on the
     /// server.
     ///
-    /// The biomes traversed by [`Server::biomes`] will be in the same
+    /// The biomes returned by [`SharedServer::biomes`] will be in the same
     /// order as the `Vec` returned by this function.
     ///
-    /// The number of elements in the returned `Vec` must be in \[1, u16::MAX].
+    /// The number of elements in the returned `Vec` must be in `1..=u16::MAX`.
     /// Additionally, the documented requirements on the fields of [`Biome`]
     /// must be met.
     ///
     /// # Default Implementation
+    ///
     /// Returns `vec![Dimension::default()]`.
     fn biomes(&self) -> Vec<Biome> {
         vec![Biome::default()]
@@ -154,6 +163,7 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// This method is called from within a tokio runtime.
     ///
     /// # Default Implementation
+    ///
     /// The query is ignored.
     async fn server_list_ping(
         &self,
@@ -164,10 +174,10 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     }
 
     /// Called asynchronously for each client after successful authentication
-    /// (if online mode is enabled) to determine if they can continue to join
-    /// the server. On success, [`Config::join`] is called with the new
-    /// client. If this method returns with `Err(reason)`, then the client is
-    /// immediately disconnected with the given reason.
+    /// (if online mode is enabled) to determine if they can join
+    /// the server. On success, the new client is added to the server's
+    /// [`Clients`]. If this method returns with `Err(reason)`, then the
+    /// client is immediately disconnected with the given reason.
     ///
     /// This method is the appropriate place to perform asynchronous
     /// operations such as database queries which may take some time to
@@ -176,7 +186,10 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// This method is called from within a tokio runtime.
     ///
     /// # Default Implementation
+    ///
     /// The client is allowed to join unconditionally.
+    ///
+    /// [`Clients`]: crate::client::Clients
     async fn login(&self, shared: &SharedServer, ncd: &NewClientData) -> Result<(), Text> {
         Ok(())
     }
@@ -191,25 +204,29 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     fn init(&self, server: &mut Server) {}
 
     /// Called once at the beginning of every server update (also known as
-    /// a "tick").
+    /// "tick"). This is likely where the majority of your code will be.
     ///
-    /// The frequency of server updates can be configured by `update_duration`
-    /// in [`ServerConfig`].
+    /// The frequency of ticks can be configured by [`Self::tick_rate`].
     ///
     /// This method is called from within a tokio runtime.
     ///
     /// # Default Implementation
+    ///
     /// The default implementation does nothing.
     fn update(&self, server: &mut Server);
 }
 
-/// The result of the [`server_list_ping`](Handler::server_list_ping) callback.
+/// The result of the [`server_list_ping`](Config::server_list_ping) callback.
 #[derive(Debug)]
 pub enum ServerListPing<'a> {
     /// Responds to the server list ping with the given information.
     Respond {
+        /// Displayed as the number of players on the server.
         online_players: i32,
+        /// Displayed as the maximum number of players allowed on the server at
+        /// a time.
         max_players: i32,
+        /// A description of the server.
         description: Text,
         /// The server's icon as the bytes of a PNG image.
         /// The image must be 64x64 pixels.

@@ -7,15 +7,15 @@ use serde::de::Visitor;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::protocol::{encode_string_bounded, BoundedString, Decode, Encode};
+use crate::protocol_inner::{encode_string_bounded, BoundedString, Decode, Encode};
 
 /// An identifier is a string split into a "namespace" part and a "name" part.
 /// For instance `minecraft:apple` and `apple` are both valid identifiers.
 ///
 /// If the namespace part is left off (the part before and including the colon)
-/// the namespace is considered to be "minecraft".
+/// the namespace is considered to be "minecraft" for the purposes of equality.
 ///
-/// The entire identifier must match the regex `([a-z0-9_-]+:)?[a-z0-9_\/.-]+`.
+/// The identifier must match the regex `^([a-z0-9_-]+:)?[a-z0-9_\/.-]+$`.
 #[derive(Clone, Eq)]
 pub struct Ident {
     ident: Cow<'static, AsciiStr>,
@@ -239,10 +239,26 @@ impl<'de> Visitor<'de> for IdentifierVisitor {
     }
 }
 
-/// Convenience macro for constructing an identifier from a format string.
+/// Convenience macro for constructing an [`Ident`] from a format string.
 ///
-/// The macro will panic if the formatted string is not a valid
+/// The arguments to this macro are forwarded to [`std::format_args`].
+///
+/// # Panics
+///
+/// The macro will cause a panic if the formatted string is not a valid
 /// identifier.
+///
+/// # Examples
+///
+/// ```
+/// use valence::ident;
+///
+/// let namespace = "my_namespace";
+/// let apple = ident!("{namespace}:apple");
+///
+/// assert_eq!(apple.namespace(), Some("my_namespace"));
+/// assert_eq!(apple.name(), "apple");
+/// ```
 #[macro_export]
 macro_rules! ident {
     ($($arg:tt)*) => {{

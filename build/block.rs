@@ -400,16 +400,16 @@ pub fn build() -> anyhow::Result<()> {
             #default_block_states
         }
 
-        /// An enumeration of all block types.
+        /// An enumeration of all block kinds.
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
         pub enum BlockKind {
             #(#block_kind_variants,)*
         }
 
         impl BlockKind {
-            /// Construct a block type from its snake_case name.
+            /// Construct a block kind from its snake_case name.
             ///
-            /// Returns `None` if the given name is not valid.
+            /// Returns `None` if the name is invalid.
             pub fn from_str(name: &str) -> Option<BlockKind> {
                 match name {
                     #block_kind_from_str_arms
@@ -417,19 +417,19 @@ pub fn build() -> anyhow::Result<()> {
                 }
             }
 
-            /// Get the snake_case name of this block type.
+            /// Get the snake_case name of this block kind.
             pub const fn to_str(self) -> &'static str {
                 match self {
                     #block_kind_to_str_arms
                 }
             }
 
-            /// Returns the default block state for a given block type.
+            /// Returns the default block state for a given block kind.
             pub const fn to_state(self) -> BlockState {
                 BlockState::from_kind(self)
             }
 
-            /// Returns a slice of all properties this block type has.
+            /// Returns a slice of all properties this block kind has.
             pub const fn props(self) -> &'static [PropName] {
                 match self {
                     #block_kind_props_arms
@@ -437,11 +437,11 @@ pub fn build() -> anyhow::Result<()> {
                 }
             }
 
-            /// An array of all block types.
+            /// An array of all block kinds.
             pub const ALL: [Self; #block_kind_count] = [#(Self::#block_kind_variants,)*];
         }
 
-        /// The default block type is `air`.
+        /// The default block kind is `air`.
         impl Default for BlockKind {
             fn default() -> Self {
                 Self::Air

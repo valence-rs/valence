@@ -31,30 +31,42 @@ use crate::config::{Config, ServerListPing};
 use crate::dimension::{Dimension, DimensionId};
 use crate::entity::Entities;
 use crate::player_textures::SignedPlayerTextures;
-use crate::protocol::codec::{Decoder, Encoder};
-use crate::protocol::packets::handshake::{Handshake, HandshakeNextState};
-use crate::protocol::packets::login::c2s::{EncryptionResponse, LoginStart, VerifyTokenOrMsgSig};
-use crate::protocol::packets::login::s2c::{EncryptionRequest, LoginSuccess, SetCompression};
-use crate::protocol::packets::play::c2s::C2sPlayPacket;
-use crate::protocol::packets::play::s2c::S2cPlayPacket;
-use crate::protocol::packets::status::c2s::{PingRequest, StatusRequest};
-use crate::protocol::packets::status::s2c::{PongResponse, StatusResponse};
-use crate::protocol::packets::{login, Property};
-use crate::protocol::{BoundedArray, BoundedString, VarInt};
+use crate::protocol_inner::codec::{Decoder, Encoder};
+use crate::protocol_inner::packets::handshake::{Handshake, HandshakeNextState};
+use crate::protocol_inner::packets::login::c2s::{
+    EncryptionResponse, LoginStart, VerifyTokenOrMsgSig,
+};
+use crate::protocol_inner::packets::login::s2c::{EncryptionRequest, LoginSuccess, SetCompression};
+use crate::protocol_inner::packets::play::c2s::C2sPlayPacket;
+use crate::protocol_inner::packets::play::s2c::S2cPlayPacket;
+use crate::protocol_inner::packets::status::c2s::{PingRequest, StatusRequest};
+use crate::protocol_inner::packets::status::s2c::{PongResponse, StatusResponse};
+use crate::protocol_inner::packets::{login, Property};
+use crate::protocol_inner::{BoundedArray, BoundedString, VarInt};
 use crate::util::valid_username;
 use crate::world::Worlds;
 use crate::{Ticks, PROTOCOL_VERSION, VERSION_NAME};
 
+/// Contains the entire state of a running Minecraft server, accessible from
+/// within the [update](crate::config::Config::update) loop.
 pub struct Server {
+    /// A handle to this server's [`SharedServer`].
     pub shared: SharedServer,
+    /// All of the clients in the server.
     pub clients: Clients,
+    /// All of entities in the server.
     pub entities: Entities,
+    /// All of the worlds in the server.
     pub worlds: Worlds,
 }
 
-/// A handle to a running Minecraft server containing state which is accessible
-/// outside the update loop. Servers are internally refcounted and can be shared
-/// between threads.
+/// A handle to a Minecraft server containing the subset of functionality which
+/// is accessible outside the [update][update] loop.
+///
+/// `SharedServer`s are internally refcounted and can
+/// be shared between threads.
+///
+/// [update]: crate::config::Config::update
 #[derive(Clone)]
 pub struct SharedServer(Arc<SharedServerInner>);
 
@@ -105,43 +117,49 @@ struct NewClientMessage {
     reply: oneshot::Sender<S2cPacketChannels>,
 }
 
-/// The result type returned from [`ServerConfig::start`] after the server is
-/// shut down.
-pub type ShutdownResult = Result<(), ShutdownError>;
-pub type ShutdownError = Box<dyn Error + Send + Sync + 'static>;
+/// The result type returned from [`start_server`].
+pub type ShutdownResult = Result<(), Box<dyn Error + Send + Sync + 'static>>;
 
 pub(crate) type S2cPacketChannels = (Sender<C2sPlayPacket>, Receiver<S2cPlayPacket>);
 pub(crate) type C2sPacketChannels = (Sender<S2cPlayPacket>, Receiver<C2sPlayPacket>);
 
 impl SharedServer {
+    /// Gets a reference to the config object used to start the server.
     pub fn config(&self) -> &(impl Config + ?Sized) {
         self.0.cfg.as_ref()
     }
 
+    /// Gets the socket address this server is bound to.
     pub fn address(&self) -> SocketAddr {
         self.0.address
     }
 
+    /// Gets the configured tick rate of this server.
     pub fn tick_rate(&self) -> Ticks {
         self.0.tick_rate
     }
 
+    /// Gets whether online mode is enabled on this server.
     pub fn online_mode(&self) -> bool {
         self.0.online_mode
     }
 
+    /// Gets the maximum number of connections allowed to the server at once.
     pub fn max_connections(&self) -> usize {
         self.0.max_connections
     }
 
+    /// Gets the configured incoming packet capacity.
     pub fn incoming_packet_capacity(&self) -> usize {
         self.0.incoming_packet_capacity
     }
 
+    /// Gets the configured outgoing incoming packet capacity.
     pub fn outgoing_packet_capacity(&self) -> usize {
         self.0.outgoing_packet_capacity
     }
 
+    /// Gets a handle to the tokio instance this server is using.
     pub fn tokio_handle(&self) -> &Handle {
         &self.0.tokio_handle
     }
@@ -197,7 +215,7 @@ impl SharedServer {
     }
 
     /// Immediately stops new connections to the server and initiates server
-    /// shutdown. The given result is returned through [`ServerConfig::start`].
+    /// shutdown. The given result is returned through [`start_server`].
     ///
     /// You may want to disconnect all players with a message prior to calling
     /// this function.
@@ -213,10 +231,10 @@ impl SharedServer {
 
 /// Consumes the configuration and starts the server.
 ///
-/// The function returns when the server has shut down, a runtime error
+/// The function returns once the server has shut down, a runtime error
 /// occurs, or the configuration is invalid.
 pub fn start_server(config: impl Config) -> ShutdownResult {
-    let shared = setup_server(config).map_err(ShutdownError::from)?;
+    let shared = setup_server(config).map_err(Box::<dyn Error + Send + Sync + 'static>::from)?;
 
     let _guard = shared.tokio_handle().enter();
 
@@ -462,7 +480,7 @@ async fn do_accept_loop(server: SharedServer) {
                                     return;
                                 }
                             }
-                            log::debug!("connection to {remote_addr} ended: {e:#}");
+                            log::error!("connection to {remote_addr} ended: {e:#}");
                         }
                         drop(permit);
                     });

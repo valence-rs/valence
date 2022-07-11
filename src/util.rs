@@ -1,3 +1,5 @@
+//! Miscellaneous utilities.
+
 use std::iter::FusedIterator;
 
 use num::cast::AsPrimitive;
@@ -8,6 +10,20 @@ use crate::chunk_pos::ChunkPos;
 
 /// Returns true if the given string meets the criteria for a valid Minecraft
 /// username.
+///
+/// Usernames are valid if they match the regex `^[a-zA-Z0-9_]{3,16}$`.
+///
+/// # Examples
+/// 
+/// ```
+/// use valence::util::valid_username;
+///
+/// assert!(valid_username("00a"));
+/// assert!(valid_username("jeb_"));
+///
+/// assert!(!valid_username("notavalidusername"));
+/// assert!(!valid_username("NotValid!"))
+/// ```
 pub fn valid_username(s: &str) -> bool {
     (3..=16).contains(&s.len())
         && s.chars()
@@ -16,6 +32,8 @@ pub fn valid_username(s: &str) -> bool {
 
 const EXTRA_RADIUS: i32 = 3;
 
+/// Returns an iterator over all chunk positions within a view distance,
+/// centered on a particular chunk position.
 pub fn chunks_in_view_distance(
     center: ChunkPos,
     distance: u8,
@@ -26,8 +44,8 @@ pub fn chunks_in_view_distance(
         .filter(move |&p| is_chunk_in_view_distance(center, p, distance))
 }
 
-pub fn is_chunk_in_view_distance(center: ChunkPos, other: ChunkPos, distance: u8) -> bool {
-    (center.x as f64 - other.x as f64).powi(2) + (center.z as f64 - other.z as f64).powi(2)
+pub fn is_chunk_in_view_distance(p0: ChunkPos, p1: ChunkPos, distance: u8) -> bool {
+    (p0.x as f64 - p1.x as f64).powi(2) + (p0.z as f64 - p1.z as f64).powi(2)
         <= (distance as f64 + EXTRA_RADIUS as f64).powi(2)
 }
 
@@ -54,10 +72,10 @@ where
     aabb
 }
 
-/// Takes a normalized direction vector and returns a (yaw, pitch) tuple in
+/// Takes a normalized direction vector and returns a `(yaw, pitch)` tuple in
 /// degrees.
 ///
-/// This function is the inverse of [`from_yaw_and_pitch`].
+// /// This function is the inverse of [`from_yaw_and_pitch`].
 pub fn to_yaw_and_pitch(d: Vec3<f64>) -> (f32, f32) {
     debug_assert!(d.is_normalized(), "the given vector should be normalized");
 

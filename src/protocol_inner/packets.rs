@@ -1,8 +1,6 @@
-//! Contains packet definitions and some types contained within them.
+//! Packet definitions and some types contained within them.
 //!
-//! See <https://wiki.vg/Protocol> for up to date protocol information.
-
-#![allow(dead_code)]
+//! See <https://wiki.vg/Protocol> for more packet documentation.
 
 use std::fmt;
 use std::io::{Read, Write};
@@ -17,7 +15,7 @@ use vek::Vec3;
 
 use crate::block_pos::BlockPos;
 use crate::ident::Ident;
-use crate::protocol::{
+use crate::protocol_inner::{
     BoundedArray, BoundedInt, BoundedString, ByteAngle, Decode, Encode, Nbt, RawBytes, VarInt,
     VarLong,
 };
@@ -319,13 +317,13 @@ macro_rules! def_bitfield {
             }
         }
 
-        impl $crate::protocol::Encode for $name {
+        impl Encode for $name {
             fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
                 self.0.encode(w)
             }
         }
 
-        impl $crate::protocol::Decode for $name {
+        impl Decode for $name {
             fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
                 <$inner_ty>::decode(r).map(Self)
             }
@@ -457,7 +455,7 @@ pub mod status {
 
         def_struct! {
             PongResponse 0x01 {
-                /// Should be the same as the payload from [`Ping`].
+                /// Should be the same as the payload from ping.
                 payload: u64
             }
         }

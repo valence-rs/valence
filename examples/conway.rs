@@ -9,10 +9,10 @@ use num::Integer;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 use valence::biome::Biome;
 use valence::block::BlockState;
-use valence::client::{ClientEvent, ClientId, GameMode, Hand};
+use valence::client::{Event, ClientId, GameMode, Hand};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
-use valence::entity::meta::Pose;
+use valence::entity::data::Pose;
 use valence::entity::{EntityData, EntityId, EntityKind};
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
@@ -175,17 +175,15 @@ impl Config for Game {
 
             while let Some(event) = client.pop_event() {
                 match event {
-                    ClientEvent::Digging(e) => {
-                        let pos = e.position;
-
-                        if (0..SIZE_X as i32).contains(&pos.x)
-                            && (0..SIZE_Z as i32).contains(&pos.z)
-                            && pos.y == BOARD_Y
+                    Event::Digging { position, .. } => {
+                        if (0..SIZE_X as i32).contains(&position.x)
+                            && (0..SIZE_Z as i32).contains(&position.z)
+                            && position.y == BOARD_Y
                         {
-                            board[pos.x as usize + pos.z as usize * SIZE_X] = true;
+                            board[position.x as usize + position.z as usize * SIZE_X] = true;
                         }
                     }
-                    ClientEvent::Movement { .. } => {
+                    Event::Movement { .. } => {
                         if client.position().y <= 0.0 {
                             client.teleport(spawn_pos, client.yaw(), client.pitch());
                         }
@@ -197,29 +195,29 @@ impl Config for Game {
                         player.set_pitch(client.pitch());
                         player.set_on_ground(client.on_ground());
                     }
-                    ClientEvent::StartSneaking => {
+                    Event::StartSneaking => {
                         if let EntityData::Player(e) = player.data_mut() {
                             e.set_crouching(true);
                             e.set_pose(Pose::Sneaking);
                         }
                     }
-                    ClientEvent::StopSneaking => {
+                    Event::StopSneaking => {
                         if let EntityData::Player(e) = player.data_mut() {
                             e.set_pose(Pose::Standing);
                             e.set_crouching(false);
                         }
                     }
-                    ClientEvent::StartSprinting => {
+                    Event::StartSprinting => {
                         if let EntityData::Player(e) = player.data_mut() {
                             e.set_sprinting(true);
                         }
                     }
-                    ClientEvent::StopSprinting => {
+                    Event::StopSprinting => {
                         if let EntityData::Player(e) = player.data_mut() {
                             e.set_sprinting(false);
                         }
                     }
-                    ClientEvent::ArmSwing(hand) => {
+                    Event::ArmSwing(hand) => {
                         if let EntityData::Player(e) = player.data_mut() {
                             match hand {
                                 Hand::Main => e.trigger_swing_main_arm(),

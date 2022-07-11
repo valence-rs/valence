@@ -11,29 +11,28 @@ use rayon::iter::ParallelIterator;
 use uuid::Uuid;
 use vek::Vec3;
 
-use crate::biome::{Biome, BiomeGrassColorModifier, BiomePrecipitation};
+use crate::biome::Biome;
 use crate::block_pos::BlockPos;
 use crate::chunk_pos::ChunkPos;
-use crate::dimension::{Dimension, DimensionEffects, DimensionId};
-use crate::entity::data::Player;
+use crate::dimension::DimensionId;
+use crate::entity::types::Player;
 use crate::entity::{velocity_to_packet_units, Entities, Entity, EntityId, EntityKind};
 use crate::player_textures::SignedPlayerTextures;
-use crate::protocol::packets::play::c2s::{
+use crate::protocol_inner::packets::play::c2s::{
     C2sPlayPacket, DiggingStatus, InteractKind, PlayerCommandId,
 };
-pub use crate::protocol::packets::play::s2c::SetTitleAnimationTimes as TitleAnimationTimes;
-use crate::protocol::packets::play::s2c::{
-    Animate, Biome as BiomeRegistryBiome, BiomeAdditionsSound, BiomeEffects, BiomeMoodSound,
-    BiomeMusic, BiomeParticle, BiomeParticleOptions, BiomeProperty, BiomeRegistry, BlockChangeAck,
-    ChatType, ChatTypeChat, ChatTypeNarration, ChatTypeRegistry, ChatTypeRegistryEntry,
-    ClearTitles, DimensionType, DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect,
-    EntityEvent, ForgetLevelChunk, GameEvent, GameEventReason, KeepAlive, Login,
-    MoveEntityPosition, MoveEntityPositionAndRotation, MoveEntityRotation, PlayerPosition,
-    PlayerPositionFlags, RegistryCodec, RemoveEntities, Respawn, RotateHead, S2cPlayPacket,
-    SetChunkCacheCenter, SetChunkCacheRadius, SetEntityMetadata, SetEntityMotion, SetSubtitleText,
-    SetTitleText, SpawnPosition, SystemChat, TeleportEntity, ENTITY_EVENT_MAX_BOUND,
+pub use crate::protocol_inner::packets::play::s2c::SetTitleAnimationTimes as TitleAnimationTimes;
+use crate::protocol_inner::packets::play::s2c::{
+    Animate, BiomeRegistry, BlockChangeAck, ChatType, ChatTypeChat, ChatTypeNarration,
+    ChatTypeRegistry, ChatTypeRegistryEntry, ClearTitles, DimensionTypeRegistry,
+    DimensionTypeRegistryEntry, Disconnect, EntityEvent, ForgetLevelChunk, GameEvent,
+    GameEventReason, KeepAlive, Login, MoveEntityPosition, MoveEntityPositionAndRotation,
+    MoveEntityRotation, PlayerPosition, PlayerPositionFlags, RegistryCodec, RemoveEntities,
+    Respawn, RotateHead, S2cPlayPacket, SetChunkCacheCenter, SetChunkCacheRadius,
+    SetEntityMetadata, SetEntityMotion, SetSubtitleText, SetTitleText, SpawnPosition, SystemChat,
+    TeleportEntity, ENTITY_EVENT_MAX_BOUND,
 };
-use crate::protocol::{BoundedInt, ByteAngle, Nbt, RawBytes, VarInt};
+use crate::protocol_inner::{BoundedInt, ByteAngle, Nbt, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, SharedServer};
 use crate::slotmap::{Key, SlotMap};
 use crate::text::Text;
@@ -41,6 +40,11 @@ use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::world::{WorldId, Worlds};
 use crate::{ident, Ticks, LIBRARY_NAMESPACE};
 
+/// A container for all [`Client`]s on a [`Server`](crate::server::Server).
+///
+/// New clients are automatically inserted into this container but
+/// are not automatically deleted. It is your responsibility to delete them once
+/// they disconnect. This can be checked with [`Client::is_disconnected`].
 pub struct Clients {
     sm: SlotMap<Client>,
 }
@@ -55,51 +59,103 @@ impl Clients {
         (ClientId(id), client)
     }
 
+    /// Removes a client from the server.
+    ///
+    /// If the given client ID is valid, `true` is returned and the client is
+    /// deleted. Otherwise, `false` is returned and the function has no effect.
     pub fn delete(&mut self, client: ClientId) -> bool {
         self.sm.remove(client.0).is_some()
     }
 
+    /// Deletes all clients from the server (as if by [`Self::delete`]) for
+    /// which `f` returns `true`.
+    ///
+    /// All clients are visited in an unspecified order.
     pub fn retain(&mut self, mut f: impl FnMut(ClientId, &mut Client) -> bool) {
         self.sm.retain(|k, v| f(ClientId(k), v))
     }
 
+    /// Returns the number of clients on the server. This includes clients
+    /// which may be disconnected.
     pub fn count(&self) -> usize {
         self.sm.len()
     }
 
+    /// Returns a shared reference to the client with the given ID. If
+    /// the ID is invalid, then `None` is returned.
     pub fn get(&self, client: ClientId) -> Option<&Client> {
         self.sm.get(client.0)
     }
 
+    /// Returns an exclusive reference to the client with the given ID. If the
+    /// ID is invalid, then `None` is returned.
     pub fn get_mut(&mut self, client: ClientId) -> Option<&mut Client> {
         self.sm.get_mut(client.0)
     }
 
+    /// Returns an immutable iterator over all clients on the server in an
+    /// unspecified order.
     pub fn iter(&self) -> impl FusedIterator<Item = (ClientId, &Client)> + Clone + '_ {
         self.sm.iter().map(|(k, v)| (ClientId(k), v))
     }
 
+    /// Returns a mutable iterator over all clients on the server in an
+    /// unspecified order.
     pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (ClientId, &mut Client)> + '_ {
         self.sm.iter_mut().map(|(k, v)| (ClientId(k), v))
     }
 
+    /// Returns a parallel immutable iterator over all clients on the server in
+    /// an unspecified order.
     pub fn par_iter(&self) -> impl ParallelIterator<Item = (ClientId, &Client)> + Clone + '_ {
         self.sm.par_iter().map(|(k, v)| (ClientId(k), v))
     }
 
+    /// Returns a parallel mutable iterator over all clients on the server in an
+    /// unspecified order.
     pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (ClientId, &mut Client)> + '_ {
         self.sm.par_iter_mut().map(|(k, v)| (ClientId(k), v))
     }
 }
 
+/// A key for a [`Client`] on the server.
+///
+/// Client IDs are either _valid_ or _invalid_. Valid client IDs point to
+/// clients that have not been deleted, while invalid IDs point to those that
+/// have. Once an ID becomes invalid, it will never become valid again.
+///
+/// The [`Ord`] instance on this type is correct but otherwise unspecified. This
+/// is useful for storing IDs in containers such as
+/// [`BTreeMap`](std::collections::BTreeMap).
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub struct ClientId(Key);
 
 impl ClientId {
+    /// The value of the default client ID which is always invalid.
     pub const NULL: Self = Self(Key::NULL);
 }
 
-/// Represents a client connected to the server after logging in.
+/// Represents a remote connection to a client after successfully logging in.
+///
+/// Much like an [`Entity`], clients posess a location, rotation, and UUID.
+/// Clients are handled separately from entities and are partially
+/// controlled by the library.
+///
+/// By default, clients have no influence over the worlds they reside in. They
+/// cannot break blocks, hurt entities, or see other clients. Interactions with
+/// the server must be handled explicitly with [`Self::pop_event`].
+///
+/// Additionally, clients posess [`Player`] entity data which is only visible to
+/// themselves. This can be accessed with [`Self::player`] and
+/// [`Self::player_mut`].
+///
+/// # The Difference Between a "Client" and a "Player"
+///
+/// Normally in Minecraft, players and clients are one and the same. Players are
+/// simply a special type of entity which is backed by a remote connection.
+///
+/// In Valence however, clients and players have been decoupled. This separation
+/// was done primarily to enable multithreaded client updates.
 pub struct Client {
     /// Setting this to `None` disconnects the client.
     send: SendOpt,
@@ -125,7 +181,7 @@ pub struct Client {
     spawn_position: BlockPos,
     spawn_position_yaw: f32,
     death_location: Option<(DimensionId, BlockPos)>,
-    events: VecDeque<ClientEvent>,
+    events: VecDeque<Event>,
     /// The ID of the last keepalive sent.
     last_keepalive_id: i64,
     new_max_view_distance: u8,
@@ -207,42 +263,58 @@ impl Client {
         }
     }
 
+    /// Gets the tick that this client was created.
     pub fn created_tick(&self) -> Ticks {
         self.created_tick
     }
 
+    /// Gets the client's UUID.
     pub fn uuid(&self) -> Uuid {
         self.uuid
     }
 
+    /// Gets the username of this client, which is always valid.
     pub fn username(&self) -> &str {
         &self.username
     }
 
+    /// Gets the player textures of this client. If the client does not have
+    /// a skin, then `None` is returned.
     pub fn textures(&self) -> Option<&SignedPlayerTextures> {
         self.textures.as_ref()
     }
 
+    /// Gets the world this client is located in.
     pub fn world(&self) -> WorldId {
         self.world
     }
 
+    /// Changes the world this client is located in.
+    ///
+    /// The given [`WorldId`] must be valid. Otherwise, the client is
+    /// disconnected.
     pub fn spawn(&mut self, world: WorldId) {
         self.world = world;
         self.flags.set_spawn(true);
     }
 
-    /// Sends a system message to the player.
+    /// Sends a system message to the player which is visible in the chat.
     pub fn send_message(&mut self, msg: impl Into<Text>) {
         // We buffer messages because weird things happen if we send them before the
         // login packet.
         self.msgs_to_send.push(msg.into());
     }
 
+    /// Gets the absolute position of this client in the world it is located
+    /// in.
     pub fn position(&self) -> Vec3<f64> {
         self.new_position
     }
 
+    /// Changes the position and rotation of this client in the world it is
+    /// located in.
+    ///
+    /// If you want to change the client's world, use [`Self::spawn`].
     pub fn teleport(&mut self, pos: impl Into<Vec3<f64>>, yaw: f32, pitch: f32) {
         self.new_position = pos.into();
 
@@ -265,22 +337,24 @@ impl Client {
         }
     }
 
+    /// Gets this client's yaw.
     pub fn yaw(&self) -> f32 {
         self.yaw
     }
 
+    /// Gets this client's pitch.
     pub fn pitch(&self) -> f32 {
         self.pitch
     }
 
-    /// Gets the spawn position. The client will see regular compasses point at
-    /// the returned position.
+    /// Gets the spawn position. The client will see `minecraft:compass` items
+    /// point at the returned position.
     pub fn spawn_position(&self) -> BlockPos {
         self.spawn_position
     }
 
-    /// Sets the spawn position. The client will see regular compasses point at
-    /// the provided position.
+    /// Sets the spawn position. The client will see `minecraft:compass` items
+    /// point at the provided position.
     pub fn set_spawn_position(&mut self, pos: impl Into<BlockPos>, yaw_degrees: f32) {
         let pos = pos.into();
         if pos != self.spawn_position || yaw_degrees != self.spawn_position_yaw {
@@ -290,18 +364,20 @@ impl Client {
         }
     }
 
-    /// Gets the last death location. The client will see recovery compasses
-    /// point at the returned position. If the client's current dimension
-    /// differs from the returned dimension or the location is `None` then the
-    /// compass will spin randomly.
+    /// Gets the last death location of this client. The client will see
+    /// `minecraft:recovery_compass` items point at the returned position.
+    /// If the client's current dimension differs from the returned
+    /// dimension or the location is `None` then the compass will spin
+    /// randomly.
     pub fn death_location(&self) -> Option<(DimensionId, BlockPos)> {
         self.death_location
     }
 
-    /// Sets the last death location. The client will see recovery compasses
-    /// point at the provided position. If the client's current dimension
-    /// differs from the provided dimension or the location is `None` then the
-    /// compass will spin randomly.
+    /// Sets the last death location. The client will see
+    /// `minecraft:recovery_compass` items point at the provided position.
+    /// If the client's current dimension differs from the provided
+    /// dimension or the location is `None` then the compass will spin
+    /// randomly.
     ///
     /// Changes to the last death location take effect when the client
     /// (re)spawns.
@@ -309,14 +385,22 @@ impl Client {
         self.death_location = location;
     }
 
+    /// Gets the client's game mode.
     pub fn game_mode(&self) -> GameMode {
         self.new_game_mode
     }
 
-    pub fn set_game_mode(&mut self, new_game_mode: GameMode) {
-        self.new_game_mode = new_game_mode;
+    /// Sets the client's game mode.
+    pub fn set_game_mode(&mut self, game_mode: GameMode) {
+        self.new_game_mode = game_mode;
     }
 
+    /// Sets the title this client sees.
+    ///
+    /// A title is a large piece of text displayed in the center of the screen
+    /// which may also include a subtitle underneath it. The title
+    /// can be configured to fade in and out using the
+    /// [`TitleAnimationTimes`] struct.
     pub fn set_title(
         &mut self,
         title: impl Into<Text>,
@@ -339,19 +423,30 @@ impl Client {
         }
     }
 
+    /// Removes the current title from the client's screen.
     pub fn clear_title(&mut self) {
         self.send_packet(ClearTitles { reset: true });
     }
 
+    /// Gets if the client is on the ground, as determined by the client.
     pub fn on_ground(&self) -> bool {
         self.flags.on_ground()
     }
 
+    /// Gets whether or not the client is connected to the server.
+    ///
+    /// A disconnected client object will never become reconnected. It is your
+    /// responsibility to remove disconnected clients from the [`Clients`]
+    /// container.
     pub fn is_disconnected(&self) -> bool {
         self.send.is_none()
     }
 
-    pub fn pop_event(&mut self) -> Option<ClientEvent> {
+    /// Removes an [`Event`] from the queue.
+    ///
+    /// Any remaining client events not popped are deleted at the end of the
+    /// current tick.
+    pub fn pop_event(&mut self) -> Option<Event> {
         self.events.pop_front()
     }
 
@@ -363,28 +458,44 @@ impl Client {
             .min(self.max_view_distance())
     }
 
+    /// Gets the maximum view distance. The client will not be able to see
+    /// chunks and entities past this distance.
+    ///
+    /// The value returned is measured in chunks.
     pub fn max_view_distance(&self) -> u8 {
         self.new_max_view_distance
     }
 
-    /// The new view distance is clamped to `2..=32`.
+    /// Sets the maximum view distance. The client will not be able to see
+    /// chunks and entities past this distance.
+    ///
+    /// The new view distance is measured in chunks and is clamped to `2..=32`.
     pub fn set_max_view_distance(&mut self, dist: u8) {
         self.new_max_view_distance = dist.clamp(2, 32);
     }
 
-    /// Must be set on the same tick the client joins the game.
+    /// Enables hardcore mode. This changes the design of the client's hearts.
+    ///
+    /// To have any visible effect, this function must be called on the same
+    /// tick the client joins the server.
     pub fn set_hardcore(&mut self, hardcore: bool) {
         self.flags.set_hardcore(hardcore);
     }
 
+    /// Gets if hardcore mode is enabled.
     pub fn is_hardcore(&mut self) -> bool {
         self.flags.hardcore()
     }
 
+    /// Gets the client's current settings.
     pub fn settings(&self) -> Option<&Settings> {
         self.settings.as_ref()
     }
 
+    /// Disconnects this client from the server with the provided reason. This
+    /// has no effect if the client is already disconnected.
+    ///
+    /// All future calls to [`Self::is_disconnected`] will return `true`.
     pub fn disconnect(&mut self, reason: impl Into<Text>) {
         if self.send.is_some() {
             let txt = reason.into();
@@ -396,6 +507,8 @@ impl Client {
         }
     }
 
+    /// Like [`Self::disconnect`], but no reason for the disconnect is
+    /// displayed.
     pub fn disconnect_no_reason(&mut self) {
         if self.send.is_some() {
             log::info!("disconnecting client '{}'", self.username);
@@ -403,11 +516,15 @@ impl Client {
         }
     }
 
-    pub fn data(&self) -> &Player {
+    /// Returns an immutable reference to the client's own [`Player`] data.
+    pub fn player(&self) -> &Player {
         &self.player_data
     }
 
-    pub fn data_mut(&mut self) -> &mut Player {
+    /// Returns a mutable reference to the client's own [`Player`] data.
+    ///
+    /// Changes made to this data is only visible to this client.
+    pub fn player_mut(&mut self) -> &mut Player {
         &mut self.player_data
     }
 
@@ -442,7 +559,7 @@ impl Client {
             if client.pending_teleports == 0 {
                 // TODO: validate movement using swept AABB collision with the blocks.
                 // TODO: validate that the client is actually inside/outside the vehicle?
-                let event = ClientEvent::Movement {
+                let event = Event::Movement {
                     position: client.new_position,
                     yaw: client.yaw,
                     pitch: client.pitch,
@@ -485,7 +602,7 @@ impl Client {
             C2sPlayPacket::BlockEntityTagQuery(_) => {}
             C2sPlayPacket::ChangeDifficulty(_) => {}
             C2sPlayPacket::ChatCommand(_) => {}
-            C2sPlayPacket::Chat(p) => self.events.push_back(ClientEvent::ChatMessage {
+            C2sPlayPacket::Chat(p) => self.events.push_back(Event::ChatMessage {
                 message: p.message.0,
                 timestamp: Duration::from_millis(p.timestamp),
             }),
@@ -502,7 +619,7 @@ impl Client {
                     allow_server_listings: p.allow_server_listings,
                 });
 
-                self.events.push_back(ClientEvent::SettingsChanged(old));
+                self.events.push_back(Event::SettingsChanged(old));
             }
             C2sPlayPacket::CommandSuggestion(_) => {}
             C2sPlayPacket::ContainerButtonClick(_) => {}
@@ -515,14 +632,14 @@ impl Client {
                     // TODO: verify that the client has line of sight to the targeted entity and
                     // that the distance is <=4 blocks.
 
-                    self.events.push_back(ClientEvent::InteractWithEntity {
+                    self.events.push_back(Event::InteractWithEntity {
                         id,
                         sneaking: p.sneaking,
                         kind: match p.kind {
-                            InteractKind::Interact(hand) => InteractWithEntity::Interact(hand),
-                            InteractKind::Attack => InteractWithEntity::Attack,
+                            InteractKind::Interact(hand) => InteractWithEntityKind::Interact(hand),
+                            InteractKind::Attack => InteractWithEntityKind::Attack,
                             InteractKind::InteractAt((target, hand)) => {
-                                InteractWithEntity::InteractAt { target, hand }
+                                InteractWithEntityKind::InteractAt { target, hand }
                             }
                         },
                     });
@@ -575,7 +692,7 @@ impl Client {
                 );
             }
             C2sPlayPacket::PaddleBoat(p) => {
-                self.events.push_back(ClientEvent::SteerBoat {
+                self.events.push_back(Event::SteerBoat {
                     left_paddle_turning: p.left_paddle_turning,
                     right_paddle_turning: p.right_paddle_turning,
                 });
@@ -592,21 +709,21 @@ impl Client {
                 }
 
                 self.events.push_back(match p.status {
-                    DiggingStatus::StartedDigging => ClientEvent::Digging(Digging {
+                    DiggingStatus::StartedDigging => Event::Digging {
                         status: event::DiggingStatus::Start,
                         position: p.location,
                         face: p.face,
-                    }),
-                    DiggingStatus::CancelledDigging => ClientEvent::Digging(Digging {
+                    },
+                    DiggingStatus::CancelledDigging => Event::Digging {
                         status: event::DiggingStatus::Cancel,
                         position: p.location,
                         face: p.face,
-                    }),
-                    DiggingStatus::FinishedDigging => ClientEvent::Digging(Digging {
+                    },
+                    DiggingStatus::FinishedDigging => Event::Digging {
                         status: event::DiggingStatus::Finish,
                         position: p.location,
                         face: p.face,
-                    }),
+                    },
                     DiggingStatus::DropItemStack => return,
                     DiggingStatus::DropItem => return,
                     DiggingStatus::ShootArrowOrFinishEating => return,
@@ -623,31 +740,33 @@ impl Client {
                 self.events.push_back(match e.action_id {
                     PlayerCommandId::StartSneaking => {
                         self.flags.set_sneaking(true);
-                        ClientEvent::StartSneaking
+                        Event::StartSneaking
                     }
                     PlayerCommandId::StopSneaking => {
                         self.flags.set_sneaking(false);
-                        ClientEvent::StopSneaking
+                        Event::StopSneaking
                     }
-                    PlayerCommandId::LeaveBed => ClientEvent::LeaveBed,
+                    PlayerCommandId::LeaveBed => Event::LeaveBed,
                     PlayerCommandId::StartSprinting => {
                         self.flags.set_sprinting(true);
-                        ClientEvent::StartSprinting
+                        Event::StartSprinting
                     }
                     PlayerCommandId::StopSprinting => {
                         self.flags.set_sprinting(false);
-                        ClientEvent::StopSprinting
+                        Event::StopSprinting
                     }
                     PlayerCommandId::StartJumpWithHorse => {
                         self.flags.set_jumping_with_horse(true);
-                        ClientEvent::StartJumpWithHorse(e.jump_boost.0 .0 as u8)
+                        Event::StartJumpWithHorse {
+                            jump_boost: e.jump_boost.0 .0 as u8,
+                        }
                     }
                     PlayerCommandId::StopJumpWithHorse => {
                         self.flags.set_jumping_with_horse(false);
-                        ClientEvent::StopJumpWithHorse
+                        Event::StopJumpWithHorse
                     }
-                    PlayerCommandId::OpenHorseInventory => ClientEvent::OpenHorseInventory,
-                    PlayerCommandId::StartFlyingWithElytra => ClientEvent::StartFlyingWithElytra,
+                    PlayerCommandId::OpenHorseInventory => Event::OpenHorseInventory,
+                    PlayerCommandId::StartFlyingWithElytra => Event::StartFlyingWithElytra,
                 });
             }
             C2sPlayPacket::PlayerInput(_) => {}
@@ -666,7 +785,7 @@ impl Client {
             C2sPlayPacket::SetJigsawBlock(_) => {}
             C2sPlayPacket::SetStructureBlock(_) => {}
             C2sPlayPacket::SignUpdate(_) => {}
-            C2sPlayPacket::Swing(p) => self.events.push_back(ClientEvent::ArmSwing(p.hand)),
+            C2sPlayPacket::Swing(p) => self.events.push_back(Event::ArmSwing(p.hand)),
             C2sPlayPacket::TeleportToEntity(_) => {}
             C2sPlayPacket::UseItemOn(_) => {}
             C2sPlayPacket::UseItem(_) => {}
@@ -715,7 +834,7 @@ impl Client {
                 gamemode: self.new_game_mode,
                 previous_gamemode: self.old_game_mode,
                 dimension_names,
-                registry_codec: Nbt(make_dimension_codec(shared)),
+                registry_codec: Nbt(make_registry_codec(shared)),
                 dimension_type_name: ident!(
                     "{LIBRARY_NAMESPACE}:dimension_type_{}",
                     world.meta.dimension().0
@@ -1128,21 +1247,21 @@ fn send_entity_events(send_opt: &mut SendOpt, id: EntityId, entity: &Entity) {
     }
 }
 
-fn make_dimension_codec(shared: &SharedServer) -> RegistryCodec {
+fn make_registry_codec(shared: &SharedServer) -> RegistryCodec {
     let mut dims = Vec::new();
     for (id, dim) in shared.dimensions() {
         let id = id.0 as i32;
         dims.push(DimensionTypeRegistryEntry {
             name: ident!("{LIBRARY_NAMESPACE}:dimension_type_{id}"),
             id,
-            element: to_dimension_registry_item(dim),
+            element: dim.to_dimension_registry_item(),
         })
     }
 
-    let mut biomes = Vec::new();
-    for (id, biome) in shared.biomes() {
-        biomes.push(to_biome_registry_item(biome, id.0 as i32));
-    }
+    let mut biomes: Vec<_> = shared
+        .biomes()
+        .map(|(id, biome)| biome.to_biome_registry_item(id.0 as i32))
+        .collect();
 
     // The client needs a biome named "minecraft:plains" in the registry to
     // connect. This is probably a bug.
@@ -1151,7 +1270,7 @@ fn make_dimension_codec(shared: &SharedServer) -> RegistryCodec {
     if !biomes.iter().any(|b| b.name == ident!("plains")) {
         let biome = Biome::default();
         assert_eq!(biome.name, ident!("plains"));
-        biomes.push(to_biome_registry_item(&biome, biomes.len() as i32));
+        biomes.push(biome.to_biome_registry_item(biomes.len() as i32));
     }
 
     RegistryCodec {
@@ -1171,94 +1290,10 @@ fn make_dimension_codec(shared: &SharedServer) -> RegistryCodec {
                 element: ChatType {
                     chat: ChatTypeChat {},
                     narration: ChatTypeNarration {
-                        priority: "system".to_owned(),
+                        priority: "system".into(),
                     },
                 },
             }],
-        },
-    }
-}
-
-fn to_dimension_registry_item(dim: &Dimension) -> DimensionType {
-    DimensionType {
-        piglin_safe: true,
-        has_raids: true,
-        monster_spawn_light_level: 0,
-        monster_spawn_block_light_limit: 0,
-        natural: dim.natural,
-        ambient_light: dim.ambient_light,
-        fixed_time: dim.fixed_time.map(|t| t as i64),
-        infiniburn: "#minecraft:infiniburn_overworld".into(),
-        respawn_anchor_works: true,
-        has_skylight: true,
-        bed_works: true,
-        effects: match dim.effects {
-            DimensionEffects::Overworld => ident!("overworld"),
-            DimensionEffects::TheNether => ident!("the_nether"),
-            DimensionEffects::TheEnd => ident!("the_end"),
-        },
-        min_y: dim.min_y,
-        height: dim.height,
-        logical_height: dim.height,
-        coordinate_scale: 1.0,
-        ultrawarm: false,
-        has_ceiling: false,
-    }
-}
-
-fn to_biome_registry_item(biome: &Biome, id: i32) -> BiomeRegistryBiome {
-    BiomeRegistryBiome {
-        name: biome.name.clone(),
-        id,
-        element: BiomeProperty {
-            precipitation: match biome.precipitation {
-                BiomePrecipitation::Rain => "rain",
-                BiomePrecipitation::Snow => "snow",
-                BiomePrecipitation::None => "none",
-            }
-            .into(),
-            depth: 0.125,
-            temperature: 0.8,
-            scale: 0.05,
-            downfall: 0.4,
-            category: "none".into(),
-            temperature_modifier: None,
-            effects: BiomeEffects {
-                sky_color: biome.sky_color as i32,
-                water_fog_color: biome.water_fog_color as i32,
-                fog_color: biome.fog_color as i32,
-                water_color: biome.water_color as i32,
-                foliage_color: biome.foliage_color.map(|x| x as i32),
-                grass_color: biome.grass_color.map(|x| x as i32),
-                grass_color_modifier: match biome.grass_color_modifier {
-                    BiomeGrassColorModifier::Swamp => Some("swamp".into()),
-                    BiomeGrassColorModifier::DarkForest => Some("dark_forest".into()),
-                    BiomeGrassColorModifier::None => None,
-                },
-                music: biome.music.as_ref().map(|bm| BiomeMusic {
-                    replace_current_music: bm.replace_current_music,
-                    sound: bm.sound.clone(),
-                    max_delay: bm.max_delay,
-                    min_delay: bm.min_delay,
-                }),
-                ambient_sound: biome.ambient_sound.clone(),
-                additions_sound: biome.additions_sound.as_ref().map(|a| BiomeAdditionsSound {
-                    sound: a.sound.clone(),
-                    tick_chance: a.tick_chance,
-                }),
-                mood_sound: biome.mood_sound.as_ref().map(|m| BiomeMoodSound {
-                    sound: m.sound.clone(),
-                    tick_delay: m.tick_delay,
-                    offset: m.offset,
-                    block_search_extent: m.block_search_extent,
-                }),
-            },
-            particle: biome.particle.as_ref().map(|p| BiomeParticle {
-                probability: p.probability,
-                options: BiomeParticleOptions {
-                    kind: p.kind.clone(),
-                },
-            }),
         },
     }
 }

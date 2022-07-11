@@ -3,8 +3,9 @@ use std::io::{Read, Write};
 use anyhow::bail;
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use crate::protocol::{Decode, Encode};
+use crate::protocol_inner::{Decode, Encode};
 
+/// An `i64` encoded with variable length.
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct VarLong(pub(crate) i64);
 

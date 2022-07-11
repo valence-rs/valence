@@ -6,7 +6,7 @@ use std::io::{Read, Write};
 use anyhow::Context;
 
 pub use crate::block_pos::BlockPos;
-use crate::protocol::{Decode, Encode, VarInt};
+use crate::protocol_inner::{Decode, Encode, VarInt};
 
 include!(concat!(env!("OUT_DIR"), "/block.rs"));
 
@@ -17,7 +17,7 @@ impl fmt::Debug for BlockState {
 }
 
 impl Display for BlockState {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt_block_state(*self, f)
     }
 }
@@ -35,7 +35,7 @@ fn fmt_block_state(bs: BlockState, f: &mut fmt::Formatter) -> fmt::Result {
             struct KeyVal<'a>(&'a str, &'a str);
 
             impl<'a> fmt::Debug for KeyVal<'a> {
-                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                     write!(f, "{}={}", self.0, self.1)
                 }
             }

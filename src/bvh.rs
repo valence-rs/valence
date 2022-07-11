@@ -1,3 +1,8 @@
+//! The [bounding volume hierarchy][bvh] contained in the [`SpatialIndex`]
+//!
+//! [bvh]: https://en.wikipedia.org/wiki/Bounding_volume_hierarchy
+//! [`SpatialIndex`]: crate::spatial_index::SpatialIndex
+
 use std::mem;
 
 use approx::relative_eq;

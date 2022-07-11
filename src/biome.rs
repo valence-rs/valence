@@ -1,19 +1,23 @@
+//! Biome definitions.
+
 use crate::ident;
 use crate::ident::Ident;
+use crate::protocol_inner::packets::play::s2c::Biome as BiomeRegistryBiome;
 
-/// Identifies a particular [`Biome`].
+/// Identifies a particular [`Biome`] on the server.
 ///
-/// Biome IDs are always valid and are cheap to copy and store.
+/// The default biome ID refers to the first biome added in the server's
+/// [configuration](crate::config::Config).
+///
+/// To obtain biome IDs for other biomes, call
+/// [`biomes`](crate::server::SharedServer::biomes).
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct BiomeId(pub(crate) u16);
 
-impl BiomeId {
-    pub fn to_index(self) -> usize {
-        self.0 as usize
-    }
-}
-
 /// Contains the configuration for a biome.
+///
+/// Biomes are registered once at startup through
+/// [`biomes`](crate::config::Config::biomes).
 #[derive(Clone, Debug)]
 pub struct Biome {
     /// The unique name for this biome. The name can be
@@ -40,6 +44,70 @@ pub struct Biome {
     // * downfall: f32
     // * category
     // * temperature_modifier
+}
+
+impl Biome {
+    pub(crate) fn to_biome_registry_item(&self, id: i32) -> BiomeRegistryBiome {
+        use crate::protocol_inner::packets::play::s2c::{
+            BiomeAdditionsSound, BiomeEffects, BiomeMoodSound, BiomeMusic, BiomeParticle,
+            BiomeParticleOptions, BiomeProperty,
+        };
+
+        BiomeRegistryBiome {
+            name: self.name.clone(),
+            id,
+            element: BiomeProperty {
+                precipitation: match self.precipitation {
+                    BiomePrecipitation::Rain => "rain",
+                    BiomePrecipitation::Snow => "snow",
+                    BiomePrecipitation::None => "none",
+                }
+                .into(),
+                depth: 0.125,
+                temperature: 0.8,
+                scale: 0.05,
+                downfall: 0.4,
+                category: "none".into(),
+                temperature_modifier: None,
+                effects: BiomeEffects {
+                    sky_color: self.sky_color as i32,
+                    water_fog_color: self.water_fog_color as i32,
+                    fog_color: self.fog_color as i32,
+                    water_color: self.water_color as i32,
+                    foliage_color: self.foliage_color.map(|x| x as i32),
+                    grass_color: self.grass_color.map(|x| x as i32),
+                    grass_color_modifier: match self.grass_color_modifier {
+                        BiomeGrassColorModifier::Swamp => Some("swamp".into()),
+                        BiomeGrassColorModifier::DarkForest => Some("dark_forest".into()),
+                        BiomeGrassColorModifier::None => None,
+                    },
+                    music: self.music.as_ref().map(|bm| BiomeMusic {
+                        replace_current_music: bm.replace_current_music,
+                        sound: bm.sound.clone(),
+                        max_delay: bm.max_delay,
+                        min_delay: bm.min_delay,
+                    }),
+                    ambient_sound: self.ambient_sound.clone(),
+                    additions_sound: self.additions_sound.as_ref().map(|a| BiomeAdditionsSound {
+                        sound: a.sound.clone(),
+                        tick_chance: a.tick_chance,
+                    }),
+                    mood_sound: self.mood_sound.as_ref().map(|m| BiomeMoodSound {
+                        sound: m.sound.clone(),
+                        tick_delay: m.tick_delay,
+                        offset: m.offset,
+                        block_search_extent: m.block_search_extent,
+                    }),
+                },
+                particle: self.particle.as_ref().map(|p| BiomeParticle {
+                    probability: p.probability,
+                    options: BiomeParticleOptions {
+                        kind: p.kind.clone(),
+                    },
+                }),
+            },
+        }
+    }
 }
 
 impl Default for Biome {

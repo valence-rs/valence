@@ -1,7 +1,13 @@
+//! Player skins and capes.
+
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+/// Contains URLs to the skin and cape of a player.
+///
+/// This data has been cryptographically signed to ensure it will not be altered
+/// by the server.
 #[derive(Clone, PartialEq, Debug)]
 pub struct SignedPlayerTextures {
     payload: Box<[u8]>,
@@ -9,14 +15,15 @@ pub struct SignedPlayerTextures {
 }
 
 impl SignedPlayerTextures {
-    pub fn payload(&self) -> &[u8] {
+    pub(crate) fn payload(&self) -> &[u8] {
         &self.payload
     }
 
-    pub fn signature(&self) -> &[u8] {
+    pub(crate) fn signature(&self) -> &[u8] {
         &self.signature
     }
 
+    /// Gets the unsigned texture URLs.
     pub fn to_textures(&self) -> PlayerTextures {
         self.to_textures_fallible()
             .expect("payload should have been validated earlier")
@@ -49,9 +56,14 @@ impl SignedPlayerTextures {
     }
 }
 
+/// Contains URLs to the skin and cape of a player.
 #[derive(Clone, PartialEq, Default, Debug)]
 pub struct PlayerTextures {
+    /// A URL to the skin of a player. Is `None` if the player does not have a
+    /// skin.
     pub skin: Option<Url>,
+    /// A URL to the cape of a player. Is `None` if the player does not have a
+    /// cape.
     pub cape: Option<Url>,
 }
 
@@ -63,7 +75,7 @@ impl From<SignedPlayerTextures> for PlayerTextures {
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
-pub struct PlayerTexturesPayload {
+struct PlayerTexturesPayload {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     skin: Option<TextureUrl>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

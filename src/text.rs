@@ -1,6 +1,3 @@
-// TODO: Documentation.
-// TODO: make fields of Text public?
-
 use std::borrow::Cow;
 use std::fmt;
 use std::io::{Read, Write};
@@ -9,19 +6,22 @@ use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::ident::Ident;
-use crate::protocol::{BoundedString, Decode, Encode};
+use crate::protocol_inner::{BoundedString, Decode, Encode};
 
 /// Represents formatted text in Minecraft's JSON text format.
 ///
 /// Text is used in various places such as chat, window titles,
 /// disconnect messages, written books, signs, and more.
 ///
-/// For more information, see the relevant [Minecraft wiki article](https://minecraft.fandom.com/wiki/Raw_JSON_text_format).
+/// For more information, see the relevant [Minecraft Wiki article].
 ///
 /// Note that the current `Deserialize` implementation on this type recognizes
 /// only a subset of the full JSON chat component format.
 ///
-/// ## Example
+/// [Minecraft Wiki article]: https://minecraft.fandom.com/wiki/Raw_JSON_text_format
+///
+/// # Examples
+///
 /// With [`TextFormat`] in scope, you can write the following:
 /// ```
 /// use valence::text::{Color, Text, TextFormat};
@@ -82,6 +82,8 @@ pub struct Text {
 }
 
 impl Text {
+    /// Returns `true` if the text contains no characters. Returns `false`
+    /// otherwise.
     pub fn is_empty(&self) -> bool {
         for extra in &self.extra {
             if !extra.is_empty() {
@@ -99,7 +101,7 @@ impl Text {
 /// Provides the methods necessary for working with [`Text`] objects.
 ///
 /// This trait exists to allow using `Into<Text>` types without having to first
-/// convert the type into [`Text`]. It is automatically implemented for all
+/// convert the type into [`Text`]. A blanket implementation exists for all
 /// `Into<Text>` types, including [`Text`] itself.
 pub trait TextFormat: Into<Text> {
     fn into_text(self) -> Text {
@@ -366,8 +368,9 @@ impl Text {
     }
 
     pub fn write_plain(&self, w: &mut impl fmt::Write) -> fmt::Result {
-        if let TextContent::Text { text } = &self.content {
-            w.write_str(text.as_ref())?;
+        match &self.content {
+            TextContent::Text { text } => w.write_str(text.as_ref())?,
+            TextContent::Translate { translate } => w.write_str(translate.as_ref())?,
         }
 
         for child in &self.extra {
@@ -376,8 +379,6 @@ impl Text {
 
         Ok(())
     }
-
-    // TODO: getters
 }
 
 impl<T: Into<Text>> TextFormat for T {}

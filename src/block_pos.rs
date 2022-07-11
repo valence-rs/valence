@@ -3,8 +3,9 @@ use std::io::{Read, Write};
 use anyhow::bail;
 use vek::Vec3;
 
-use crate::protocol::{Decode, Encode};
+use crate::protocol_inner::{Decode, Encode};
 
+/// Represents an absolute block position in a world.
 #[derive(Clone, Copy, Default, PartialEq, Eq, Hash, Debug)]
 pub struct BlockPos {
     pub x: i32,
@@ -13,10 +14,12 @@ pub struct BlockPos {
 }
 
 impl BlockPos {
+    /// Constructs a new block position.
     pub const fn new(x: i32, y: i32, z: i32) -> Self {
         Self { x, y, z }
     }
 
+    /// Returns the block position a point is contained within.
     pub fn at(pos: impl Into<Vec3<f64>>) -> Self {
         pos.into().floor().as_::<i32>().into()
     }

@@ -21,12 +21,12 @@ use vek::{Vec2, Vec3, Vec4};
 
 use crate::entity::EntityId;
 
-/// Trait for types that can be written to the Minecraft protocol.
+/// Types that can be written to the Minecraft protocol.
 pub trait Encode {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()>;
 }
 
-/// Trait for types that can be read from the Minecraft protocol.
+/// Types that can be read from the Minecraft protocol.
 pub trait Decode: Sized {
     fn decode(r: &mut impl Read) -> anyhow::Result<Self>;
 }

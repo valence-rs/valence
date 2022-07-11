@@ -1,17 +1,18 @@
-/// A handle to a particular [`Dimension`] on the server.
+use crate::ident;
+use crate::protocol_inner::packets::play::s2c::DimensionType;
+
+/// Identifies a particular [`Dimension`] on the server.
 ///
-/// Dimension IDs must only be used on servers from which they originate.
+/// The default dimension ID refers to the first dimension added in the server's
+/// [configuration](crate::config::Config).
+///
+/// To obtain dimension IDs for other dimensions, call
+/// [`dimensions`](crate::server::SharedServer::dimensions).
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct DimensionId(pub(crate) u16);
 
-impl DimensionId {
-    pub fn to_index(self) -> usize {
-        self.0 as usize
-    }
-}
-
 /// The default dimension ID corresponds to the first element in the `Vec`
-/// returned by [`Config::dimensions`].
+/// returned by [`crate::config::Config::dimensions`].
 impl Default for DimensionId {
     fn default() -> Self {
         Self(0)
@@ -20,14 +21,19 @@ impl Default for DimensionId {
 
 /// Contains the configuration for a dimension type.
 ///
-/// In Minecraft, "dimension" and "dimension type" are two different concepts.
+/// On creation, each [`World`] in Valence is assigned a dimension. The
+/// dimension determines certain properties of the world such as its height and
+/// ambient lighting.
+///
+/// In Minecraft, "dimension" and "dimension type" are two distinct concepts.
 /// For instance, the Overworld and Nether are dimensions, each with
 /// their own dimension type. A dimension in this library is analogous to a
-/// [`World`](crate::World) while [`Dimension`] represents a
-/// dimension type.
+/// [`World`] while [`Dimension`] represents a dimension type.
+///
+/// [`World`]: crate::world::World
 #[derive(Clone, Debug)]
 pub struct Dimension {
-    /// When false, compases will spin randomly.
+    /// When false, compasses will spin randomly.
     pub natural: bool,
     /// Must be between 0.0 and 1.0.
     pub ambient_light: f32,
@@ -63,21 +69,52 @@ pub struct Dimension {
     // * has_ceiling
 }
 
+impl Dimension {
+    pub(crate) fn to_dimension_registry_item(&self) -> DimensionType {
+        DimensionType {
+            piglin_safe: true,
+            has_raids: true,
+            monster_spawn_light_level: 0,
+            monster_spawn_block_light_limit: 0,
+            natural: self.natural,
+            ambient_light: self.ambient_light,
+            fixed_time: self.fixed_time.map(|t| t as i64),
+            infiniburn: "#minecraft:infiniburn_overworld".into(),
+            respawn_anchor_works: true,
+            has_skylight: true,
+            bed_works: true,
+            effects: match self.effects {
+                DimensionEffects::Overworld => ident!("overworld"),
+                DimensionEffects::TheNether => ident!("the_nether"),
+                DimensionEffects::TheEnd => ident!("the_end"),
+            },
+            min_y: self.min_y,
+            height: self.height,
+            logical_height: self.height,
+            coordinate_scale: 1.0,
+            ultrawarm: false,
+            has_ceiling: false,
+        }
+    }
+}
+
 impl Default for Dimension {
     fn default() -> Self {
         Self {
             natural: true,
             ambient_light: 1.0,
             fixed_time: None,
-            effects: DimensionEffects::Overworld,
+            effects: DimensionEffects::default(),
             min_y: -64,
             height: 384,
         }
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+/// Determines what skybox/fog effects to use in dimensions.
+#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
 pub enum DimensionEffects {
+    #[default]
     Overworld,
     TheNether,
     TheEnd,

@@ -1,12 +1,11 @@
-// TODO: use derive_more?
-
 use std::io::{Read, Write};
 
 use anyhow::bail;
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use crate::protocol::{Decode, Encode};
+use crate::protocol_inner::{Decode, Encode};
 
+/// An `i32` encoded with variable length.
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct VarInt(pub i32);
 

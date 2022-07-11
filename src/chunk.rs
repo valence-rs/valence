@@ -14,13 +14,14 @@ use crate::block::BlockState;
 use crate::block_pos::BlockPos;
 pub use crate::chunk_pos::ChunkPos;
 use crate::dimension::DimensionId;
-use crate::protocol::packets::play::s2c::{
+use crate::protocol_inner::packets::play::s2c::{
     BlockUpdate, LevelChunkHeightmaps, LevelChunkWithLight, S2cPlayPacket, SectionBlocksUpdate,
 };
-use crate::protocol::{Encode, Nbt, VarInt, VarLong};
+use crate::protocol_inner::{Encode, Nbt, VarInt, VarLong};
 use crate::server::SharedServer;
 use crate::Ticks;
 
+/// A container for all [`Chunks`]s in a [`World`](crate::world::World).
 pub struct Chunks {
     chunks: HashMap<ChunkPos, Chunk>,
     server: SharedServer,
@@ -36,6 +37,16 @@ impl Chunks {
         }
     }
 
+    /// Creates an empty chunk at the provided position and returns a mutable
+    /// refernce to it.
+    ///
+    /// If a chunk at the position already exists, then the old chunk
+    /// is overwritten.
+    ///
+    /// **Note**: For the vanilla Minecraft client to see a chunk, all chunks
+    /// adjacent to it must also be loaded. It is also important that clients
+    /// are not spawned within unloaded chunks via
+    /// [`spawn`](crate::client::Client::spawn).
     pub fn create(&mut self, pos: impl Into<ChunkPos>) -> &mut Chunk {
         let section_count = (self.server.dimension(self.dimension).height / 16) as u32;
         let chunk = Chunk::new(section_count, self.server.current_tick());
@@ -49,42 +60,69 @@ impl Chunks {
         }
     }
 
-    pub fn delete(&mut self, pos: ChunkPos) -> bool {
-        self.chunks.remove(&pos).is_some()
+    /// Removes a chunk at the provided position.
+    ///
+    /// If a chunk exists at the position, then it is deleted and `true` is
+    /// returned. Otherwise, `false` is returned.
+    pub fn delete(&mut self, pos: impl Into<ChunkPos>) -> bool {
+        self.chunks.remove(&pos.into()).is_some()
     }
 
+    /// Returns the number of loaded chunks.
     pub fn count(&self) -> usize {
         self.chunks.len()
     }
 
+    /// Gets a shared reference to the chunk at the provided position.
+    ///
+    /// If there is no chunk at the position, then `None` is returned.
     pub fn get(&self, pos: impl Into<ChunkPos>) -> Option<&Chunk> {
         self.chunks.get(&pos.into())
     }
 
+    /// Gets an exclusive reference to the chunk at the provided position.
+    ///
+    /// If there is no chunk at the position, then `None` is returned.
     pub fn get_mut(&mut self, pos: impl Into<ChunkPos>) -> Option<&mut Chunk> {
         self.chunks.get_mut(&pos.into())
     }
 
+    /// Deletes all chunks.
     pub fn clear(&mut self) {
         self.chunks.clear();
     }
 
+    /// Returns an immutable iterator over all chunks in the world in an
+    /// unspecified order.
     pub fn iter(&self) -> impl FusedIterator<Item = (ChunkPos, &Chunk)> + Clone + '_ {
         self.chunks.iter().map(|(&pos, chunk)| (pos, chunk))
     }
 
+    /// Returns a mutable iterator over all chunks in the world in an
+    /// unspecified order.
     pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (ChunkPos, &mut Chunk)> + '_ {
         self.chunks.iter_mut().map(|(&pos, chunk)| (pos, chunk))
     }
 
+    /// Returns a parallel immutable iterator over all chunks in the world in an
+    /// unspecified order.
     pub fn par_iter(&self) -> impl ParallelIterator<Item = (ChunkPos, &Chunk)> + Clone + '_ {
         self.chunks.par_iter().map(|(&pos, chunk)| (pos, chunk))
     }
 
+    /// Returns a parallel mutable iterator over all chunks in the world in an
+    /// unspecified order.
     pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (ChunkPos, &mut Chunk)> + '_ {
         self.chunks.par_iter_mut().map(|(&pos, chunk)| (pos, chunk))
     }
 
+    /// Gets the block state at a position.
+    ///
+    /// If the position is not inside of a chunk, then `None` is returned.
+    ///
+    /// Note: if you need to get a large number of blocks, it may be more
+    /// efficient to read from the chunks directly with
+    /// [`Chunk::get_block_state`].
     pub fn get_block_state(&self, pos: impl Into<BlockPos>) -> Option<BlockState> {
         let pos = pos.into();
         let chunk_pos = ChunkPos::from(pos);
@@ -106,6 +144,14 @@ impl Chunks {
         }
     }
 
+    /// Sets the block state at a position.
+    ///
+    /// If the position is inside of a chunk, then `true` is returned.
+    /// Otherwise, `false` is returned.
+    ///
+    /// Note: if you need to set a large number of blocks, it may be more
+    /// efficient write to the chunks directly with
+    /// [`Chunk::set_block_state`].
     pub fn set_block_state(&mut self, pos: impl Into<BlockPos>, block: BlockState) -> bool {
         let pos = pos.into();
         let chunk_pos = ChunkPos::from(pos);
@@ -130,6 +176,11 @@ impl Chunks {
     }
 }
 
+/// A chunk is a 16x16-block segment of a world with a height determined by the
+/// [`Dimension`](crate::dimension::Dimension) of the world.
+///
+/// In addition to blocks, chunks also contain [biomes](crate::biome::Biome).
+/// Every 4x4x4 segment of blocks in a chunk corresponds to a biome.
 pub struct Chunk {
     sections: Box<[ChunkSection]>,
     // TODO block_entities: HashMap<u32, BlockEntity>,

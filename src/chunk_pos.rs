@@ -10,10 +10,13 @@ pub struct ChunkPos {
 }
 
 impl ChunkPos {
+    /// Constructs a new chunk position.
     pub const fn new(x: i32, z: i32) -> Self {
         Self { x, z }
     }
 
+    /// Takes an absolute position and returns the chunk position
+    /// containing the point.
     pub fn at(x: f64, z: f64) -> Self {
         Self::new((x / 16.0).floor() as i32, (z / 16.0).floor() as i32)
     }

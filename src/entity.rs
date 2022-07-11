@@ -1,5 +1,5 @@
 pub mod data;
-pub mod meta;
+pub mod types;
 
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -7,19 +7,29 @@ use std::iter::FusedIterator;
 use std::num::NonZeroU32;
 
 use bitfield_struct::bitfield;
-pub use data::{EntityData, EntityKind};
 use rayon::iter::ParallelIterator;
+pub use types::{EntityData, EntityKind};
 use uuid::Uuid;
 use vek::{Aabb, Vec3};
 
-use crate::protocol::packets::play::s2c::{
+use crate::protocol_inner::packets::play::s2c::{
     AddEntity, AddExperienceOrb, AddPlayer, S2cPlayPacket, SetEntityMetadata,
 };
-use crate::protocol::{ByteAngle, RawBytes, VarInt};
+use crate::protocol_inner::{ByteAngle, RawBytes, VarInt};
 use crate::slotmap::{Key, SlotMap};
 use crate::util::aabb_from_bottom_and_size;
 use crate::world::WorldId;
 
+/// A container for all [`Entity`]s on a [`Server`](crate::server::Server).
+///
+/// # Spawning Player Entities
+///
+/// [`Player`] entities are treated specially by the client. For the player
+/// entity to be visible to clients, the player's UUID must be added to the
+/// [`PlayerList`] _before_ being loaded by the client.
+///
+/// [`Player`]: crate::entity::types::Player
+/// [`PlayerList`]: crate::player_list::PlayerList
 pub struct Entities {
     sm: SlotMap<Entity>,
     uuid_to_entity: HashMap<Uuid, EntityId>,
@@ -35,18 +45,18 @@ impl Entities {
         }
     }
 
-    /// Spawns a new entity with the default data. The new entity's [`EntityId`]
-    /// is returned.
+    /// Spawns a new entity with a random UUID. A reference to the entity along
+    /// with its ID is returned.
     pub fn create(&mut self, kind: EntityKind) -> (EntityId, &mut Entity) {
         self.create_with_uuid(kind, Uuid::from_bytes(rand::random()))
             .expect("UUID collision")
     }
 
-    /// Like [`create`](Entities::create), but requires specifying the new
+    /// Like [`Self::create`], but requires specifying the new
     /// entity's UUID.
     ///
-    /// The provided UUID must not conflict with an existing entity UUID in this
-    /// world. If it does, `None` is returned and the entity is not spawned.
+    /// The provided UUID must not conflict with an existing entity UUID. If it
+    /// does, `None` is returned and the entity is not spawned.
     pub fn create_with_uuid(
         &mut self,
         kind: EntityKind,
@@ -58,7 +68,7 @@ impl Entities {
                 let (k, e) = self.sm.insert(Entity {
                     flags: EntityFlags(0),
                     data: EntityData::new(kind),
-                    world: None,
+                    world: WorldId::NULL,
                     new_position: Vec3::default(),
                     old_position: Vec3::default(),
                     yaw: 0.0,
@@ -78,6 +88,10 @@ impl Entities {
         }
     }
 
+    /// Removes an entity from the server.
+    ///
+    /// If the given entity ID is valid, `true` is returned and the entity is
+    /// deleted. Otherwise, `false` is returned and the function has no effect.
     pub fn delete(&mut self, entity: EntityId) -> bool {
         if let Some(e) = self.sm.remove(entity.0) {
             self.uuid_to_entity
@@ -94,6 +108,9 @@ impl Entities {
         }
     }
 
+    /// Removes all entities from the server for which `f` returns `true`.
+    ///
+    /// All entities are visited in an unspecified order.
     pub fn retain(&mut self, mut f: impl FnMut(EntityId, &mut Entity) -> bool) {
         self.sm.retain(|k, v| {
             if f(EntityId(k), v) {
@@ -112,7 +129,7 @@ impl Entities {
         });
     }
 
-    /// Returns the number of live entities.
+    /// Returns the number of entities in this container.
     pub fn count(&self) -> usize {
         self.sm.len()
     }
@@ -120,16 +137,21 @@ impl Entities {
     /// Gets the [`EntityId`] of the entity with the given UUID in an efficient
     /// manner.
     ///
-    /// Returns `None` if there is no entity with the provided UUID. Returns
-    /// `Some` otherwise.
+    /// If there is no entity with the UUID, `None` is returned.
     pub fn get_with_uuid(&self, uuid: Uuid) -> Option<EntityId> {
         self.uuid_to_entity.get(&uuid).cloned()
     }
 
+    /// Gets a shared reference to the entity with the given [`EntityId`].
+    ///
+    /// If the ID is invalid, `None` is returned.
     pub fn get(&self, entity: EntityId) -> Option<&Entity> {
         self.sm.get(entity.0)
     }
 
+    /// Gets an exclusive reference to the entity with the given [`EntityId`].
+    ///
+    /// If the ID is invalid, `None` is returned.
     pub fn get_mut(&mut self, entity: EntityId) -> Option<&mut Entity> {
         self.sm.get_mut(entity.0)
     }
@@ -140,18 +162,26 @@ impl Entities {
         Some(EntityId(Key::new(index, version)))
     }
 
+    /// Returns an immutable iterator over all entities on the server in an
+    /// unspecified order.
     pub fn iter(&self) -> impl FusedIterator<Item = (EntityId, &Entity)> + Clone + '_ {
         self.sm.iter().map(|(k, v)| (EntityId(k), v))
     }
 
+    /// Returns a mutable iterator over all entities on the server in an
+    /// unspecified order.
     pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (EntityId, &mut Entity)> + '_ {
         self.sm.iter_mut().map(|(k, v)| (EntityId(k), v))
     }
 
+    /// Returns a parallel immutable iterator over all entities on the server in
+    /// an unspecified order.
     pub fn par_iter(&self) -> impl ParallelIterator<Item = (EntityId, &Entity)> + Clone + '_ {
         self.sm.par_iter().map(|(k, v)| (EntityId(k), v))
     }
 
+    /// Returns a parallel mutable iterator over all clients on the server in an
+    /// unspecified order.
     pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (EntityId, &mut Entity)> + '_ {
         self.sm.par_iter_mut().map(|(k, v)| (EntityId(k), v))
     }
@@ -168,10 +198,20 @@ impl Entities {
     }
 }
 
+/// A key for an [`Entity`] on the server.
+///
+/// Entity IDs are either _valid_ or _invalid_. Valid entity IDs point to
+/// entities that have not been deleted, while invalid IDs point to those that
+/// have. Once an ID becomes invalid, it will never become valid again.
+///
+/// The [`Ord`] instance on this type is correct but otherwise unspecified. This
+/// is useful for storing IDs in containers such as
+/// [`BTreeMap`](std::collections::BTreeMap).
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub struct EntityId(Key);
 
 impl EntityId {
+    /// The value of the default entity ID which is always invalid.
     pub const NULL: Self = Self(Key::NULL);
 
     pub(crate) fn to_network_id(self) -> i32 {
@@ -179,10 +219,19 @@ impl EntityId {
     }
 }
 
+/// Represents an entity on the server.
+///
+/// In essence, an entity is anything in a world that isn't a block or client.
+/// Entities include paintings, falling blocks, zombies, fireballs, and more.
+///
+/// Every entity has common state which is accessible directly from
+/// this struct. This includes position, rotation, velocity, UUID, and hitbox.
+/// To access data that is not common to every kind of entity, see
+/// [`Self::data`].
 pub struct Entity {
     flags: EntityFlags,
     data: EntityData,
-    world: Option<WorldId>,
+    world: WorldId,
     new_position: Vec3<f64>,
     old_position: Vec3<f64>,
     yaw: f32,
@@ -192,8 +241,6 @@ pub struct Entity {
     uuid: Uuid,
 }
 
-/// Contains a bit for certain fields in [`Entity`] to track if they have been
-/// modified.
 #[bitfield(u8)]
 pub(crate) struct EntityFlags {
     pub yaw_or_pitch_modified: bool,
@@ -209,51 +256,64 @@ impl Entity {
         self.flags
     }
 
-    /// Returns a reference to this entity's [`EntityData`].
+    /// Gets a reference to this entity's [`EntityData`].
     pub fn data(&self) -> &EntityData {
         &self.data
     }
 
-    /// Returns a mutable reference to this entity's [`EntityData`].
+    /// Gets a mutable reference to this entity's
+    /// [`EntityData`].
     pub fn data_mut(&mut self) -> &mut EntityData {
         &mut self.data
     }
 
-    /// Returns the [`EntityKind`] of this entity.
+    /// Gets the [`EntityKind`] of this entity.
     pub fn kind(&self) -> EntityKind {
         self.data.kind()
     }
 
-    pub fn world(&self) -> Option<WorldId> {
+    /// Gets the [`WorldId`](crate::world::WorldId) of the world this entity is
+    /// located in.
+    ///
+    /// By default, entities are located in
+    /// [`WorldId::NULL`](crate::world::WorldId::NULL).
+    pub fn world(&self) -> WorldId {
         self.world
     }
 
-    pub fn set_world(&mut self, world: impl Into<Option<WorldId>>) {
-        self.world = world.into();
+    /// Sets the world this entity is located in.
+    pub fn set_world(&mut self, world: WorldId) {
+        self.world = world;
     }
 
-    /// Returns the position of this entity in the world it inhabits.
+    /// Gets the position of this entity in the world it inhabits.
+    ///
+    /// The position of an entity is located on the botton of its
+    /// hitbox and not the center.
     pub fn position(&self) -> Vec3<f64> {
         self.new_position
     }
 
     /// Sets the position of this entity in the world it inhabits.
+    ///
+    /// The position of an entity is located on the botton of its
+    /// hitbox and not the center.
     pub fn set_position(&mut self, pos: impl Into<Vec3<f64>>) {
         self.new_position = pos.into();
     }
 
     /// Returns the position of this entity as it existed at the end of the
     /// previous tick.
-    pub fn old_position(&self) -> Vec3<f64> {
+    pub(crate) fn old_position(&self) -> Vec3<f64> {
         self.old_position
     }
 
-    /// Gets the yaw of this entity (in degrees).
+    /// Gets the yaw of this entity in degrees.
     pub fn yaw(&self) -> f32 {
         self.yaw
     }
 
-    /// Sets the yaw of this entity (in degrees).
+    /// Sets the yaw of this entity in degrees.
     pub fn set_yaw(&mut self, yaw: f32) {
         if self.yaw != yaw {
             self.yaw = yaw;
@@ -261,12 +321,12 @@ impl Entity {
         }
     }
 
-    /// Gets the pitch of this entity (in degrees).
+    /// Gets the pitch of this entity in degrees.
     pub fn pitch(&self) -> f32 {
         self.pitch
     }
 
-    /// Sets the pitch of this entity (in degrees).
+    /// Sets the pitch of this entity in degrees.
     pub fn set_pitch(&mut self, pitch: f32) {
         if self.pitch != pitch {
             self.pitch = pitch;
@@ -274,12 +334,12 @@ impl Entity {
         }
     }
 
-    /// Gets the head yaw of this entity (in degrees).
+    /// Gets the head yaw of this entity in degrees.
     pub fn head_yaw(&self) -> f32 {
         self.head_yaw
     }
 
-    /// Sets the head yaw of this entity (in degrees).
+    /// Sets the head yaw of this entity in degrees.
     pub fn set_head_yaw(&mut self, head_yaw: f32) {
         if self.head_yaw != head_yaw {
             self.head_yaw = head_yaw;
@@ -292,6 +352,7 @@ impl Entity {
         self.velocity
     }
 
+    /// Sets the velocity of this entity in meters per second.
     pub fn set_velocity(&mut self, velocity: impl Into<Vec3<f32>>) {
         let new_vel = velocity.into();
 
@@ -301,18 +362,30 @@ impl Entity {
         }
     }
 
+    /// Gets the value of the "on ground" flag.
     pub fn on_ground(&self) -> bool {
         self.flags.on_ground()
     }
 
+    /// Sets the value of the "on ground" flag.
     pub fn set_on_ground(&mut self, on_ground: bool) {
         self.flags.set_on_ground(on_ground);
     }
 
+    /// Gets the UUID of this entity.
     pub fn uuid(&self) -> Uuid {
         self.uuid
     }
 
+    /// Returns the hitbox of this entity.
+    ///
+    /// The hitbox describes the space that an entity occupies. Clients interact
+    /// with this space to create an [interact event].
+    ///
+    /// The hitbox of an entity is determined by its position, entity type, and
+    /// other state specific to that type.
+    ///
+    /// [interact event]: crate::client::Event::InteractWithEntity
     pub fn hitbox(&self) -> Aabb<f64> {
         let dims = match &self.data {
             EntityData::Allay(_) => [0.6, 0.35, 0.6],
