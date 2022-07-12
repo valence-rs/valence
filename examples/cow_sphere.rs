@@ -54,7 +54,7 @@ impl Config for Game {
             online_players: self.player_count.load(Ordering::SeqCst) as i32,
             max_players: MAX_PLAYERS as i32,
             description: "Hello Valence!".color(Color::AQUA),
-            favicon_png: Some(include_bytes!("favicon.png")),
+            favicon_png: Some(include_bytes!("../assets/favicon.png")),
         }
     }
 
