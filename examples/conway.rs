@@ -9,7 +9,7 @@ use num::Integer;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 use valence::biome::Biome;
 use valence::block::BlockState;
-use valence::client::{ClientId, Event, GameMode, Hand};
+use valence::client::{ClientId, Event, Hand};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::data::Pose;
@@ -131,7 +131,6 @@ impl Config for Game {
                 }
 
                 client.spawn(world_id);
-                client.set_game_mode(GameMode::Survival);
                 client.teleport(spawn_pos, 0.0, 0.0);
 
                 world.meta.player_list_mut().insert(

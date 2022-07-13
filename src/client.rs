@@ -30,7 +30,7 @@ use crate::protocol_inner::packets::play::s2c::{
     MoveEntityRotation, PlayerPosition, PlayerPositionFlags, RegistryCodec, RemoveEntities,
     Respawn, RotateHead, S2cPlayPacket, SetChunkCacheCenter, SetChunkCacheRadius,
     SetEntityMetadata, SetEntityMotion, SetSubtitleText, SetTitleText, SpawnPosition, SystemChat,
-    TeleportEntity, ENTITY_EVENT_MAX_BOUND,
+    TeleportEntity, UpdateAttributes, UpdateAttributesProperty, ENTITY_EVENT_MAX_BOUND,
 };
 use crate::protocol_inner::{BoundedInt, ByteAngle, Nbt, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, SharedServer};
@@ -195,7 +195,10 @@ pub struct Client {
     old_game_mode: GameMode,
     settings: Option<Settings>,
     dug_blocks: Vec<i32>,
+    /// Should be sent after login packet.
     msgs_to_send: Vec<Text>,
+    attack_speed: f64,
+    movement_speed: f64,
     flags: ClientFlags,
     /// The data for the client's own player entity.
     player_data: Player,
@@ -216,7 +219,9 @@ pub(crate) struct ClientFlags {
     /// If the last sent keepalive got a response.
     got_keepalive: bool,
     hardcore: bool,
-    #[bits(7)]
+    attack_speed_modified: bool,
+    movement_speed_modified: bool,
+    #[bits(5)]
     _pad: u8,
 }
 
@@ -256,6 +261,8 @@ impl Client {
             settings: None,
             dug_blocks: Vec::new(),
             msgs_to_send: Vec::new(),
+            attack_speed: 4.0,
+            movement_speed: 0.7,
             flags: ClientFlags::new()
                 .with_modified_spawn_position(true)
                 .with_got_keepalive(true),
@@ -420,6 +427,32 @@ impl Client {
 
         if let Some(anim) = animation.into() {
             self.send_packet(anim);
+        }
+    }
+
+    /// Gets the attack cooldown speed.
+    pub fn attack_speed(&self) -> f64 {
+        self.attack_speed
+    }
+
+    /// Sets the attack cooldown speed.
+    pub fn set_attack_speed(&mut self, speed: f64) {
+        if self.attack_speed != speed {
+            self.attack_speed = speed;
+            self.flags.set_attack_speed_modified(true);
+        }
+    }
+
+    /// Gets the speed at which the client can run on the ground.
+    pub fn movement_speed(&self) -> f64 {
+        self.movement_speed
+    }
+
+    /// Sets the speed at which the client can run on the ground.
+    pub fn set_movement_speed(&mut self, speed: f64) {
+        if self.movement_speed != speed {
+            self.movement_speed = speed;
+            self.flags.set_movement_speed_modified(true);
         }
     }
 
@@ -912,6 +945,33 @@ impl Client {
                 .meta
                 .player_list()
                 .diff_packets(|pkt| self.send_packet(pkt));
+        }
+
+        // Set player attributes
+        if self.flags.attack_speed_modified() {
+            self.flags.set_attack_speed_modified(false);
+
+            self.send_packet(UpdateAttributes {
+                entity_id: VarInt(0),
+                properties: vec![UpdateAttributesProperty {
+                    key: ident!("generic.attack_speed"),
+                    value: self.attack_speed,
+                    modifiers: Vec::new(),
+                }],
+            });
+        }
+
+        if self.flags.movement_speed_modified() {
+            self.flags.set_movement_speed_modified(false);
+
+            self.send_packet(UpdateAttributes {
+                entity_id: VarInt(0),
+                properties: vec![UpdateAttributesProperty {
+                    key: ident!("generic.movement_speed"),
+                    value: self.movement_speed,
+                    modifiers: Vec::new(),
+                }],
+            });
         }
 
         // Update the players spawn position (compass position)

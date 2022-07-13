@@ -1233,6 +1233,29 @@ pub mod play {
             }
         }
 
+        def_struct! {
+            UpdateAttributes 0x65 {
+                entity_id: VarInt,
+                properties: Vec<UpdateAttributesProperty>,
+            }
+        }
+
+        def_struct! {
+            UpdateAttributesProperty {
+                key: Ident,
+                value: f64,
+                modifiers: Vec<UpdateAttributesModifiers>
+            }
+        }
+
+        def_struct! {
+            UpdateAttributesModifiers {
+                uuid: Uuid,
+                amount: f64,
+                operation: u8,
+            }
+        }
+
         def_packet_group! {
             S2cPlayPacket {
                 AddEntity,
@@ -1276,6 +1299,7 @@ pub mod play {
                 SystemChat,
                 TabList,
                 TeleportEntity,
+                UpdateAttributes,
             }
         }
     }
