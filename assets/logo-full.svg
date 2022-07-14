@@ -2,9 +2,9 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   width="700mm"
+   width="670mm"
    height="200mm"
-   viewBox="0 0 700 200"
+   viewBox="0 0 670 200"
    version="1.1"
    id="svg5"
    xml:space="preserve"
@@ -26,8 +26,8 @@
      inkscape:document-units="mm"
      showgrid="false"
      inkscape:zoom="0.45254834"
-     inkscape:cx="1482.7145"
-     inkscape:cy="527.01552"
+     inkscape:cx="1257.3242"
+     inkscape:cy="489.45048"
      inkscape:window-width="1920"
      inkscape:window-height="1060"
      inkscape:window-x="1920"
@@ -52,10 +52,10 @@
          offset="1"
          id="stop11876" /></linearGradient><inkscape:perspective
        sodipodi:type="inkscape:persp3d"
-       inkscape:vp_x="-177.68437 : -15.176447 : 1"
+       inkscape:vp_x="-177.68436 : -15.176447 : 1"
        inkscape:vp_y="0 : 1000 : 0"
-       inkscape:vp_z="563.90486 : -42.378941 : 1"
-       inkscape:persp3d-origin="172.31563 : -48.50978 : 1"
+       inkscape:vp_z="563.90484 : -42.378941 : 1"
+       inkscape:persp3d-origin="172.31562 : -48.50978 : 1"
        id="perspective3834" /><linearGradient
        id="linearGradient3772"
        inkscape:swatch="solid"><stop
@@ -99,7 +99,7 @@
        inkscape:collect="always"
        xlink:href="#linearGradient3772"
        id="linearGradient3774"
-       x1="786.69837"
+       x1="786.69836"
        y1="187.15251"
        x2="1723.9618"
        y2="187.15251"
@@ -109,7 +109,7 @@
        id="linearGradient12217"
        x1="235.21494"
        y1="151.99426"
-       x2="657.79751"
+       x2="657.79749"
        y2="151.99426"
        gradientUnits="userSpaceOnUse" /></defs><g
      inkscape:label="Layer 1"
@@ -145,13 +145,13 @@
            ry="15.182654" /><circle
            style="fill:#ff9a00;fill-opacity:1;stroke:none;stroke-width:16.7706;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="circle3138"
-           cx="33.879227"
-           cy="147.66481"
+           cx="29.619656"
+           cy="139.88565"
            r="15.182655" /><circle
            style="fill:#ff9a00;fill-opacity:1;stroke:none;stroke-width:16.7706;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="circle3140"
-           cx="165.9294"
-           cy="147.66481"
+           cx="170.74466"
+           cy="139.88565"
            r="15.182655" /><circle
            style="fill:none;fill-opacity:1;stroke:#ff9a00;stroke-width:10;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
            id="path3220"
