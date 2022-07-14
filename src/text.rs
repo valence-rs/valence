@@ -397,6 +397,12 @@ impl<T: Into<Text>> std::ops::AddAssign<T> for Text {
     }
 }
 
+impl From<char> for Text {
+    fn from(c: char) -> Self {
+        Text::text(String::from(c))
+    }
+}
+
 impl From<String> for Text {
     fn from(s: String) -> Self {
         Text::text(s)

@@ -527,7 +527,7 @@ const AGEABLE_MOB: Class = Class {
 
 const ANIMAL: Class = Class {
     name: "animal",
-    inherit: Some(&PATHFINDER_MOB),
+    inherit: Some(&AGEABLE_MOB),
     fields: &[],
     events: &[],
 };

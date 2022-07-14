@@ -1,7 +1,6 @@
-use std::f64::consts::TAU;
+use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Mutex;
 
 use log::LevelFilter;
 use valence::async_trait;
@@ -9,11 +8,11 @@ use valence::block::{BlockPos, BlockState};
 use valence::client::GameMode;
 use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
-use valence::entity::{EntityId, EntityKind};
+use valence::entity::{EntityData, EntityKind};
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
-use valence::util::to_yaw_and_pitch;
-use vek::{Mat3, Vec3};
+use valence::util::from_yaw_and_pitch;
+use vek::Vec3;
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()
@@ -23,18 +22,18 @@ pub fn main() -> ShutdownResult {
 
     valence::start_server(Game {
         player_count: AtomicUsize::new(0),
-        cows: Mutex::new(Vec::new()),
     })
 }
 
 struct Game {
     player_count: AtomicUsize,
-    cows: Mutex<Vec<EntityId>>,
 }
 
 const MAX_PLAYERS: usize = 10;
 
-const SPAWN_POS: BlockPos = BlockPos::new(0, 100, -35);
+const SPAWN_POS: BlockPos = BlockPos::new(0, 100, -8);
+
+const PLAYER_EYE_HEIGHT: f64 = 1.6;
 
 #[async_trait]
 impl Config for Game {
@@ -74,15 +73,27 @@ impl Config for Game {
 
         world.chunks.set_block_state(SPAWN_POS, BlockState::BEDROCK);
 
-        self.cows.lock().unwrap().extend((0..200).map(|_| {
-            let (id, e) = server.entities.create(EntityKind::Cow);
-            e.set_world(world_id);
-            id
-        }));
+        const SHEEP_COUNT: usize = 10;
+        for i in 0..SHEEP_COUNT {
+            let offset = (i as f64 - (SHEEP_COUNT - 1) as f64 / 2.0) * 1.25;
+
+            let (_, sheep) = server.entities.create(EntityKind::Sheep);
+            sheep.set_world(world_id);
+            sheep.set_position([offset + 0.5, SPAWN_POS.y as f64 + 1.0, 0.0]);
+            sheep.set_yaw(180.0);
+            sheep.set_head_yaw(180.0);
+
+            if let EntityData::Sheep(sheep) = sheep.data_mut() {
+                // Shear the sheep.
+                sheep.set_sheep_state(0b1_0000);
+            }
+        }
     }
 
     fn update(&self, server: &mut Server) {
         let (world_id, world) = server.worlds.iter_mut().next().unwrap();
+
+        let mut hit_entities = HashSet::new();
 
         server.clients.retain(|_, client| {
             if client.created_tick() == server.shared.current_tick() {
@@ -117,67 +128,45 @@ impl Config for Game {
                     0,
                     None,
                 );
+
+                client.send_message(
+                    "Look at a sheep to change its ".italic()
+                        + "color".italic().color(Color::GREEN)
+                        + ".",
+                )
             }
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
                 world.meta.player_list_mut().remove(client.uuid());
-                false
-            } else {
-                true
+                return false;
             }
+
+            let client_pos = client.position();
+
+            let origin = Vec3::new(client_pos.x, client_pos.y + PLAYER_EYE_HEIGHT, client_pos.z);
+            let direction = from_yaw_and_pitch(client.yaw() as f64, client.pitch() as f64);
+
+            if let Some(hit) = world.spatial_index.raycast(origin, direction, |hit| {
+                server
+                    .entities
+                    .get(hit.entity)
+                    .map_or(false, |e| e.kind() == EntityKind::Sheep)
+            }) {
+                hit_entities.insert(hit.entity);
+            }
+
+            true
         });
 
-        let time = server.shared.current_tick() as f64 / server.shared.tick_rate() as f64;
-
-        let rot = Mat3::rotation_x(time * TAU * 0.1)
-            .rotated_y(time * TAU * 0.2)
-            .rotated_z(time * TAU * 0.3);
-
-        let cows = self.cows.lock().unwrap();
-        let cow_count = cows.len();
-
-        let radius = 6.0 + ((time * TAU / 2.5).sin() + 1.0) / 2.0 * 10.0;
-
-        let player_pos = server
-            .clients
-            .iter()
-            .next()
-            .map(|c| c.1.position())
-            .unwrap_or_default();
-
-        // TODO: hardcoded eye pos.
-        let eye_pos = Vec3::new(player_pos.x, player_pos.y + 1.6, player_pos.z);
-
-        for (cow_id, p) in cows.iter().cloned().zip(fibonacci_spiral(cow_count)) {
-            let cow = server.entities.get_mut(cow_id).expect("missing cow");
-            let rotated = p * rot;
-            let transformed = rotated * radius + [0.5, SPAWN_POS.y as f64 + 1.0, 0.5];
-
-            let yaw = f32::atan2(rotated.z as f32, rotated.x as f32).to_degrees() - 90.0;
-            let (looking_yaw, looking_pitch) =
-                to_yaw_and_pitch((eye_pos - transformed).normalized());
-
-            cow.set_position(transformed);
-            cow.set_yaw(yaw);
-            cow.set_pitch(looking_pitch as f32);
-            cow.set_head_yaw(looking_yaw as f32);
+        for (id, e) in server.entities.iter_mut() {
+            if let EntityData::Sheep(sheep) = e.data_mut() {
+                if hit_entities.contains(&id) {
+                    sheep.set_sheep_state(5);
+                } else {
+                    sheep.set_sheep_state(0);
+                }
+            }
         }
     }
-}
-
-/// Distributes N points on the surface of a unit sphere.
-fn fibonacci_spiral(n: usize) -> impl Iterator<Item = Vec3<f64>> {
-    (0..n).map(move |i| {
-        let golden_ratio = (1.0 + 5_f64.sqrt()) / 2.0;
-
-        // Map to unit square
-        let x = i as f64 / golden_ratio % 1.0;
-        let y = i as f64 / n as f64;
-
-        // Map from unit square to unit sphere.
-        let theta = x * TAU;
-        let phi = (1.0 - 2.0 * y).acos();
-        Vec3::new(theta.cos() * phi.sin(), theta.sin() * phi.sin(), phi.cos())
-    })
 }

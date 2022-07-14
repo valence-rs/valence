@@ -1,10 +1,13 @@
 //! Efficient spatial entity queries.
 
+use std::iter::FusedIterator;
+
+use rayon::iter::{IndexedParallelIterator, ParallelIterator};
 use vek::{Aabb, Vec3};
 
-use crate::bvh::Bvh;
-pub use crate::bvh::TraverseStep;
+use crate::bvh::{Bvh, Node};
 use crate::entity::{Entities, EntityId};
+use crate::util::ray_box_intersect;
 use crate::world::WorldId;
 
 /// A data structure for fast spatial queries on entity [hitboxes]. This is used
@@ -25,9 +28,9 @@ impl SpatialIndex {
     }
 
     #[doc(hidden)]
-    #[deprecated = "This is for documentation tests only"]
+    #[deprecated = "This is for documentation tests only!"]
     pub fn example_new() -> Self {
-        println!("Don't call me!");
+        dbg!("Don't call me from outside tests!");
         Self::new()
     }
 
@@ -69,86 +72,157 @@ impl SpatialIndex {
         C: FnMut(Aabb<f64>) -> bool,
         F: FnMut(EntityId, Aabb<f64>) -> Option<T>,
     {
-        self.traverse(|e, bb| {
-            if collides(bb) {
-                e.and_then(|id| f(id, bb))
-                    .map_or(TraverseStep::Hit, TraverseStep::Return)
-            } else {
-                TraverseStep::Miss
-            }
-        })
-    }
+        fn query_rec<C, F, T>(node: Node<EntityId>, collides: &mut C, f: &mut F) -> Option<T>
+        where
+            C: FnMut(Aabb<f64>) -> bool,
+            F: FnMut(EntityId, Aabb<f64>) -> Option<T>,
+        {
+            match node {
+                Node::Internal(int) => {
+                    let (bb, left, right) = int.split();
 
-    // TODO: accept predicate here. Might want to skip invisible entities, for
-    // instance.
-    pub fn raycast(&self, origin: Vec3<f64>, direction: Vec3<f64>) -> Option<RaycastHit> {
-        debug_assert!(
-            direction.is_normalized(),
-            "the ray direction must be normalized"
-        );
-
-        let mut hit: Option<RaycastHit> = None;
-
-        self.traverse::<_, ()>(|entity, bb| {
-            if let Some((near, far)) = ray_box_intersection(origin, direction, bb) {
-                if hit.as_ref().map_or(true, |hit| near < hit.near) {
-                    if let Some(entity) = entity {
-                        hit = Some(RaycastHit {
-                            entity,
-                            bb,
-                            near,
-                            far,
-                        });
+                    if collides(bb) {
+                        query_rec(left, collides, f).or_else(|| query_rec(right, collides, f))
+                    } else {
+                        None
                     }
-                    TraverseStep::Hit
-                } else {
-                    // Do not explore subtrees that cannot produce an intersection closer than the
-                    // closest we've seen so far.
-                    TraverseStep::Miss
                 }
-            } else {
-                TraverseStep::Miss
+                Node::Leaf { data, bb } => {
+                    if collides(bb) {
+                        f(*data, bb)
+                    } else {
+                        None
+                    }
+                }
             }
-        });
+        }
 
-        hit
+        query_rec(self.bvh.traverse()?, &mut collides, &mut f)
     }
 
-    pub fn raycast_all<F, T>(&self, origin: Vec3<f64>, direction: Vec3<f64>, mut f: F) -> Option<T>
+    /// Casts a ray defined by `origin` and `direction` through entity hitboxes
+    /// and returns the closest intersection for which `f` returns `true`.
+    ///
+    /// `f` is a predicate which can be used to filter intersections. For
+    /// instance, if a ray is shot from a player's eye position, you probably
+    /// don't want the ray to intersect with the player's own hitbox.
+    ///
+    /// If no intersections are found or if `f` never returns `true` then `None`
+    /// is returned. Additionally, the given ray direction must be
+    /// normalized.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #[allow(deprecated)]
+    /// # let si = valence::spatial_index::SpatialIndex::example_new();
+    /// use valence::vek::*;
+    ///
+    /// let origin = Vec3::new(0.0, 0.0, 0.0);
+    /// let direction = Vec3::new(1.0, 1.0, 1.0).normalized();
+    ///
+    /// // Assume `si` is the spatial index.
+    /// if let Some(hit) = si.raycast(origin, direction, |_| true) {
+    ///     println!("Raycast hit! {hit:?}");
+    /// }
+    /// ```
+    pub fn raycast<F>(
+        &self,
+        origin: Vec3<f64>,
+        direction: Vec3<f64>,
+        mut f: F,
+    ) -> Option<RaycastHit>
     where
-        F: FnMut(RaycastHit) -> Option<T>,
+        F: FnMut(&RaycastHit) -> bool,
     {
-        debug_assert!(
-            direction.is_normalized(),
-            "the ray direction must be normalized"
-        );
+        fn raycast_rec(
+            node: Node<EntityId>,
+            hit: &mut Option<RaycastHit>,
+            near: f64,
+            far: f64,
+            origin: Vec3<f64>,
+            direction: Vec3<f64>,
+            f: &mut impl FnMut(&RaycastHit) -> bool,
+        ) {
+            if let Some(hit) = hit {
+                if hit.near <= near {
+                    return;
+                }
+            }
 
-        self.traverse(
-            |entity, bb| match (ray_box_intersection(origin, direction, bb), entity) {
-                (Some((near, far)), Some(entity)) => {
-                    let hit = RaycastHit {
-                        entity,
+            match node {
+                Node::Internal(int) => {
+                    let (_, left, right) = int.split();
+
+                    let int_left = ray_box_intersect(origin, direction, left.bb());
+                    let int_right = ray_box_intersect(origin, direction, right.bb());
+
+                    match (int_left, int_right) {
+                        (Some((near_left, far_left)), Some((near_right, far_right))) => {
+                            // Explore closest subtree first.
+                            if near_left < near_right {
+                                raycast_rec(left, hit, near_left, far_left, origin, direction, f);
+                                raycast_rec(
+                                    right, hit, near_right, far_right, origin, direction, f,
+                                );
+                            } else {
+                                raycast_rec(
+                                    right, hit, near_right, far_right, origin, direction, f,
+                                );
+                                raycast_rec(left, hit, near_left, far_left, origin, direction, f);
+                            }
+                        }
+                        (Some((near, far)), None) => {
+                            raycast_rec(left, hit, near, far, origin, direction, f)
+                        }
+                        (None, Some((near, far))) => {
+                            raycast_rec(right, hit, near, far, origin, direction, f)
+                        }
+                        (None, None) => {}
+                    }
+                }
+                Node::Leaf { data, bb } => {
+                    let this_hit = RaycastHit {
+                        entity: *data,
                         bb,
                         near,
                         far,
                     };
-                    f(hit).map_or(TraverseStep::Hit, TraverseStep::Return)
+
+                    if f(&this_hit) {
+                        *hit = Some(this_hit);
+                    }
                 }
-                (Some(_), None) => TraverseStep::Hit,
-                (None, _) => TraverseStep::Miss,
-            },
-        )
+            }
+        }
+
+        debug_assert!(
+            direction.is_normalized(),
+            "the ray direction must be normalized"
+        );
+
+        let root = self.bvh.traverse()?;
+        let (near, far) = ray_box_intersect(origin, direction, root.bb())?;
+
+        let mut hit = None;
+        raycast_rec(root, &mut hit, near, far, origin, direction, &mut f);
+        hit
     }
 
-    /// Explores the spatial index according to `f`.
-    ///
-    /// This is a low-level function that should only be used if the other
-    /// methods on this type are too restrictive.
-    pub fn traverse<F, T>(&self, mut f: F) -> Option<T>
-    where
-        F: FnMut(Option<EntityId>, Aabb<f64>) -> TraverseStep<T>,
-    {
-        self.bvh.traverse(|e, bb| f(e.cloned(), bb))
+    /// Returns an iterator over all entities and their hitboxes in
+    /// an unspecified order.
+    pub fn iter(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (EntityId, Aabb<f64>)> + FusedIterator + Clone + '_ {
+        self.bvh.iter().map(|(&id, bb)| (id, bb))
+    }
+
+    /// Returns a parallel iterator over all entities and their
+    /// hitboxes in an unspecified order.
+    pub fn par_iter(
+        &self,
+    ) -> impl IndexedParallelIterator<Item = (EntityId, Aabb<f64>)> + Clone + '_ {
+        self.bvh.par_iter().map(|(&id, bb)| (id, bb))
     }
 
     pub(crate) fn update(&mut self, entities: &Entities, id: WorldId) {
@@ -162,8 +236,8 @@ impl SpatialIndex {
 }
 
 /// Represents an intersection between a ray and an entity's axis-aligned
-/// bounding box.
-#[derive(Clone, Copy, PartialEq)]
+/// bounding box (hitbox).
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct RaycastHit {
     /// The [`EntityId`] of the entity that was hit by the ray.
     pub entity: EntityId,
@@ -176,76 +250,4 @@ pub struct RaycastHit {
     /// The distance from the ray origin to the second intersection point. This
     /// represents the point at which the ray exits the bounding box.
     pub far: f64,
-}
-
-fn ray_box_intersection(ro: Vec3<f64>, rd: Vec3<f64>, bb: Aabb<f64>) -> Option<(f64, f64)> {
-    let mut near = -f64::INFINITY;
-    let mut far = f64::INFINITY;
-
-    for i in 0..3 {
-        // Rust's definition of min and max properly handle the NaNs that these
-        // computations might produce.
-        let t0 = (bb.min[i] - ro[i]) / rd[i];
-        let t1 = (bb.max[i] - ro[i]) / rd[i];
-
-        near = near.max(t0.min(t1));
-        far = far.min(t0.max(t1));
-    }
-
-    if near <= far && far >= 0.0 {
-        Some((near.max(0.0), far))
-    } else {
-        None
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn ray_box_edge_cases() {
-        let bb = Aabb {
-            min: Vec3::new(0.0, 0.0, 0.0),
-            max: Vec3::new(1.0, 1.0, 1.0),
-        };
-
-        let ros = [
-            // On a corner
-            Vec3::new(0.0, 0.0, 0.0),
-            // Outside
-            Vec3::new(-0.5, 0.5, -0.5),
-            // In the center
-            Vec3::new(0.5, 0.5, 0.5),
-            // On an edge
-            Vec3::new(0.0, 0.5, 0.0),
-            // On a face
-            Vec3::new(0.0, 0.5, 0.5),
-            // Outside slabs
-            Vec3::new(-2.0, -2.0, -2.0),
-        ];
-
-        let rds = [
-            Vec3::new(1.0, 0.0, 0.0),
-            Vec3::new(-1.0, 0.0, 0.0),
-            Vec3::new(0.0, 1.0, 0.0),
-            Vec3::new(0.0, -1.0, 0.0),
-            Vec3::new(0.0, 0.0, 1.0),
-            Vec3::new(0.0, 0.0, -1.0),
-        ];
-
-        assert!(rds.iter().all(|d| d.is_normalized()));
-
-        for ro in ros {
-            for rd in rds {
-                if let Some((near, far)) = ray_box_intersection(ro, rd, bb) {
-                    assert!(near.is_finite());
-                    assert!(far.is_finite());
-                    assert!(near <= far);
-                    assert!(near >= 0.0);
-                    assert!(far >= 0.0);
-                }
-            }
-        }
-    }
 }

@@ -3,10 +3,13 @@
 //! [bvh]: https://en.wikipedia.org/wiki/Bounding_volume_hierarchy
 //! [`SpatialIndex`]: crate::spatial_index::SpatialIndex
 
+use std::iter::FusedIterator;
 use std::mem;
 
 use approx::relative_eq;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{
+    IndexedParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator,
+};
 use vek::Aabb;
 
 #[derive(Clone)]
@@ -14,13 +17,6 @@ pub struct Bvh<T> {
     internal_nodes: Vec<InternalNode>,
     leaf_nodes: Vec<LeafNode<T>>,
     root: NodeIdx,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum TraverseStep<T> {
-    Miss,
-    Hit,
-    Return(T),
 }
 
 #[derive(Clone)]
@@ -33,7 +29,7 @@ struct InternalNode {
 #[derive(Clone)]
 struct LeafNode<T> {
     bb: Aabb<f64>,
-    id: T,
+    data: T,
 }
 
 // TODO: we could use usize here to store more elements.
@@ -53,7 +49,7 @@ impl<T: Send + Sync> Bvh<T> {
         self.internal_nodes.clear();
 
         self.leaf_nodes
-            .extend(leaves.into_iter().map(|(id, bb)| LeafNode { bb, id }));
+            .extend(leaves.into_iter().map(|(id, bb)| LeafNode { bb, data: id }));
 
         let leaf_count = self.leaf_nodes.len();
 
@@ -98,39 +94,87 @@ impl<T: Send + Sync> Bvh<T> {
         debug_assert_eq!(self.internal_nodes.len(), self.leaf_nodes.len() - 1);
     }
 
-    pub fn traverse<F, U>(&self, mut f: F) -> Option<U>
-    where
-        F: FnMut(Option<&T>, Aabb<f64>) -> TraverseStep<U>,
-    {
+    pub fn traverse(&self) -> Option<Node<T>> {
         if !self.leaf_nodes.is_empty() {
-            self.traverse_rec(self.root, &mut f)
+            Some(Node::from_idx(self, self.root))
         } else {
             None
         }
     }
 
-    fn traverse_rec<F, U>(&self, idx: NodeIdx, f: &mut F) -> Option<U>
-    where
-        F: FnMut(Option<&T>, Aabb<f64>) -> TraverseStep<U>,
-    {
-        if idx < self.internal_nodes.len() as NodeIdx {
-            let internal = &self.internal_nodes[idx as usize];
+    pub fn iter(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (&T, Aabb<f64>)> + FusedIterator + Clone + '_ {
+        self.leaf_nodes.iter().map(|leaf| (&leaf.data, leaf.bb))
+    }
 
-            match f(None, internal.bb) {
-                TraverseStep::Miss => None,
-                TraverseStep::Hit => self
-                    .traverse_rec(internal.left, f)
-                    .or_else(|| self.traverse_rec(internal.right, f)),
-                TraverseStep::Return(u) => Some(u),
-            }
+    #[allow(dead_code)]
+    pub fn iter_mut(
+        &mut self,
+    ) -> impl ExactSizeIterator<Item = (&mut T, Aabb<f64>)> + FusedIterator + '_ {
+        self.leaf_nodes
+            .iter_mut()
+            .map(|leaf| (&mut leaf.data, leaf.bb))
+    }
+
+    pub fn par_iter(&self) -> impl IndexedParallelIterator<Item = (&T, Aabb<f64>)> + Clone + '_ {
+        self.leaf_nodes.par_iter().map(|leaf| (&leaf.data, leaf.bb))
+    }
+
+    #[allow(dead_code)]
+    pub fn par_iter_mut(
+        &mut self,
+    ) -> impl IndexedParallelIterator<Item = (&mut T, Aabb<f64>)> + '_ {
+        self.leaf_nodes
+            .par_iter_mut()
+            .map(|leaf| (&mut leaf.data, leaf.bb))
+    }
+}
+
+pub enum Node<'a, T> {
+    Internal(Internal<'a, T>),
+    Leaf { data: &'a T, bb: Aabb<f64> },
+}
+
+impl<'a, T> Node<'a, T> {
+    fn from_idx(bvh: &'a Bvh<T>, idx: NodeIdx) -> Self {
+        if idx < bvh.internal_nodes.len() as NodeIdx {
+            Self::Internal(Internal { bvh, idx })
         } else {
-            let leaf = &self.leaf_nodes[(idx - self.internal_nodes.len() as NodeIdx) as usize];
-
-            match f(Some(&leaf.id), leaf.bb) {
-                TraverseStep::Miss | TraverseStep::Hit => None,
-                TraverseStep::Return(u) => Some(u),
+            let leaf = &bvh.leaf_nodes[(idx - bvh.internal_nodes.len() as NodeIdx) as usize];
+            Self::Leaf {
+                data: &leaf.data,
+                bb: leaf.bb,
             }
         }
+    }
+
+    pub fn bb(&self) -> Aabb<f64> {
+        match self {
+            Node::Internal(int) => int.bb(),
+            Node::Leaf { bb, .. } => *bb,
+        }
+    }
+}
+
+pub struct Internal<'a, T> {
+    bvh: &'a Bvh<T>,
+    idx: NodeIdx,
+}
+
+impl<'a, T> Internal<'a, T> {
+    pub fn split(self) -> (Aabb<f64>, Node<'a, T>, Node<'a, T>) {
+        let internal = &self.bvh.internal_nodes[self.idx as usize];
+
+        let bb = internal.bb;
+        let left = Node::from_idx(self.bvh, internal.left);
+        let right = Node::from_idx(self.bvh, internal.right);
+
+        (bb, left, right)
+    }
+
+    pub fn bb(&self) -> Aabb<f64> {
+        self.bvh.internal_nodes[self.idx as usize].bb
     }
 }
 
@@ -264,36 +308,5 @@ fn middle(a: f64, b: f64) -> f64 {
 impl<T: Send + Sync> Default for Bvh<T> {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn empty() {
-        let mut bvh = Bvh::new();
-
-        bvh.traverse(|_, _| TraverseStep::Return(()));
-        bvh.build([]);
-
-        bvh.build([(5, Aabb::default())]);
-        bvh.traverse(|_, _| TraverseStep::Return(()));
-    }
-
-    #[test]
-    fn overlapping() {
-        let mut bvh = Bvh::new();
-
-        bvh.build([
-            ((), Aabb::default()),
-            ((), Aabb::default()),
-            ((), Aabb::default()),
-            ((), Aabb::default()),
-            ((), Aabb::new_empty(5.0.into())),
-        ]);
-
-        bvh.traverse(|_, _| TraverseStep::Return(()));
     }
 }

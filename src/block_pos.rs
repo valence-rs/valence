@@ -32,10 +32,7 @@ impl Encode for BlockPos {
                 let (x, y, z) = (self.x as u64, self.y as u64, self.z as u64);
                 (x << 38 | z << 38 >> 26 | y & 0xfff).encode(w)
             }
-            _ => bail!(
-                "block position {:?} is out of range",
-                (self.x, self.y, self.z)
-            ),
+            _ => bail!("out of range: {self:?}"),
         }
     }
 }
