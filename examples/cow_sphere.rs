@@ -5,6 +5,7 @@ use std::sync::Mutex;
 
 use log::LevelFilter;
 use valence::async_trait;
+use valence::block::{BlockPos, BlockState};
 use valence::client::GameMode;
 use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
@@ -32,6 +33,8 @@ struct Game {
 }
 
 const MAX_PLAYERS: usize = 10;
+
+const SPAWN_POS: BlockPos = BlockPos::new(0, 99, -35);
 
 #[async_trait]
 impl Config for Game {
@@ -69,6 +72,8 @@ impl Config for Game {
             }
         }
 
+        world.chunks.set_block_state(SPAWN_POS, BlockState::BEDROCK);
+
         self.cows.lock().unwrap().extend((0..200).map(|_| {
             let (id, e) = server.entities.create(EntityKind::Cow);
             e.set_world(world_id);
@@ -94,7 +99,15 @@ impl Config for Game {
 
                 client.spawn(world_id);
                 client.set_game_mode(GameMode::Creative);
-                client.teleport([0.0, 200.0, 0.0], 0.0, 0.0);
+                client.teleport(
+                    [
+                        SPAWN_POS.x as f64 + 0.5,
+                        SPAWN_POS.y as f64 + 1.0,
+                        SPAWN_POS.z as f64 + 0.5,
+                    ],
+                    0.0,
+                    0.0,
+                );
 
                 world.meta.player_list_mut().insert(
                     client.uuid(),
@@ -137,7 +150,7 @@ impl Config for Game {
         for (cow_id, p) in cows.iter().cloned().zip(fibonacci_spiral(cow_count)) {
             let cow = server.entities.get_mut(cow_id).expect("missing cow");
             let rotated = p * rot;
-            let transformed = rotated * radius + [0.0, 100.0, 0.0];
+            let transformed = rotated * radius + [0.5, 100.0, 0.5];
 
             let yaw = f32::atan2(rotated.z as f32, rotated.x as f32).to_degrees() - 90.0;
             let (looking_yaw, looking_pitch) =
