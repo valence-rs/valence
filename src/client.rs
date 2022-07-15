@@ -346,6 +346,13 @@ impl Client {
         }
     }
 
+    pub fn set_velocity(&mut self, velocity: impl Into<Vec3<f32>>) {
+        self.send_packet(SetEntityMotion {
+            entity_id: VarInt(0),
+            velocity: velocity_to_packet_units(velocity.into()),
+        });
+    }
+
     /// Gets this client's yaw.
     pub fn yaw(&self) -> f32 {
         self.yaw
@@ -1081,6 +1088,8 @@ impl Client {
             )
         }
 
+        // Teleport the player.
+        //
         // This is done after the chunks are loaded so that the "downloading terrain"
         // screen is closed at the appropriate time.
         if self.flags.teleported_this_tick() {
@@ -1096,6 +1105,7 @@ impl Client {
             });
         }
 
+        // Send chat messages.
         for msg in self.msgs_to_send.drain(..) {
             send_packet(
                 &mut self.send,
@@ -1262,8 +1272,8 @@ impl Client {
                     },
                 );
             }
-            // Don't bother sending animations since it shouldn't be visible to
-            // the client.
+            // Don't bother sending animations for self since it shouldn't have
+            // any effect.
         }
 
         self.old_position = self.new_position;
