@@ -22,7 +22,7 @@ use crate::chunk_pos::ChunkPos;
 /// assert!(valid_username("jeb_"));
 ///
 /// assert!(!valid_username("notavalidusername"));
-/// assert!(!valid_username("NotValid!"))
+/// assert!(!valid_username("NotValid!"));
 /// ```
 pub fn valid_username(s: &str) -> bool {
     (3..=16).contains(&s.len())
@@ -44,6 +44,8 @@ pub fn chunks_in_view_distance(
         .filter(move |&p| is_chunk_in_view_distance(center, p, distance))
 }
 
+/// Checks if two chunks are within a view distance of each other such that a
+/// client standing in one chunk would be able to see the other.
 pub fn is_chunk_in_view_distance(p0: ChunkPos, p1: ChunkPos, distance: u8) -> bool {
     (p0.x as f64 - p1.x as f64).powi(2) + (p0.z as f64 - p1.z as f64).powi(2)
         <= (distance as f64 + EXTRA_RADIUS as f64).powi(2)

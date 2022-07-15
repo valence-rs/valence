@@ -1,3 +1,5 @@
+//! Blocks and related types.
+
 #![allow(clippy::all, missing_docs)]
 
 use std::fmt::{self, Display};

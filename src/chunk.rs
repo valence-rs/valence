@@ -1,3 +1,5 @@
+//! Chunks and related types.
+
 // TODO: https://github.com/rust-lang/rust/issues/88581 for div_ceil
 
 use std::collections::hash_map::Entry;

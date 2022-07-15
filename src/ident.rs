@@ -1,3 +1,5 @@
+//! Namespaced identifiers.
+
 use std::borrow::Cow;
 use std::io::{Read, Write};
 use std::str::FromStr;
@@ -27,7 +29,9 @@ pub struct Ident {
     colon_idx: usize,
 }
 
-#[derive(Clone, Error, PartialEq, Eq, Debug)]
+/// The error type which is created when an [`Ident`] cannot be parsed from a
+/// string.
+#[derive(Clone, Debug, Error)]
 #[error("invalid identifier \"{src}\"")]
 pub struct ParseError {
     src: Cow<'static, str>,
@@ -36,8 +40,7 @@ pub struct ParseError {
 impl Ident {
     /// Parses a new identifier from a string.
     ///
-    /// The string must match the regex `([a-z0-9_-]+:)?[a-z0-9_\/.-]+`.
-    /// If not, an error is returned.
+    /// An error is returned if the string is not a valid identifier.
     pub fn new(str: impl Into<Cow<'static, str>>) -> Result<Ident, ParseError> {
         #![allow(bindings_with_variant_name)]
 
@@ -106,7 +109,7 @@ impl Ident {
         }
     }
 
-    /// Returns the identifier as a `str`.
+    /// Returns the original string as a `str`.
     pub fn as_str(&self) -> &str {
         self.ident.as_str()
     }
@@ -120,6 +123,7 @@ fn ascii_cow_to_str_cow(cow: Cow<AsciiStr>) -> Cow<str> {
 }
 
 impl ParseError {
+    /// Gets the string that caused the parse error.
     pub fn into_source(self) -> Cow<'static, str> {
         self.src
     }

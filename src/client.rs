@@ -1,3 +1,5 @@
+//! Connections to the server after logging in.
+
 /// Contains the [`Event`] enum and related data types.
 mod event;
 use std::collections::{HashSet, VecDeque};
@@ -118,7 +120,7 @@ impl Clients {
     }
 }
 
-/// A key for a [`Client`] on the server.
+/// An identifier for a [`Client`] on the server.
 ///
 /// Client IDs are either _valid_ or _invalid_. Valid client IDs point to
 /// clients that have not been deleted, while invalid IDs point to those that
@@ -138,8 +140,8 @@ impl ClientId {
 /// Represents a remote connection to a client after successfully logging in.
 ///
 /// Much like an [`Entity`], clients posess a location, rotation, and UUID.
-/// Clients are handled separately from entities and are partially
-/// controlled by the library.
+/// However, clients are handled separately from entities and are partially
+/// managed by the library.
 ///
 /// By default, clients have no influence over the worlds they reside in. They
 /// cannot break blocks, hurt entities, or see other clients. Interactions with
@@ -475,9 +477,11 @@ impl Client {
         self.send.is_none()
     }
 
-    /// Removes an [`Event`] from the queue.
+    /// Removes an [`Event`] from the event queue.
     ///
-    /// Any remaining client events not popped are deleted at the end of the
+    /// If there are no remaining events, `None` is returned.
+    ///
+    /// Any remaining client events are deleted at the end of the
     /// current tick.
     pub fn pop_event(&mut self) -> Option<Event> {
         self.events.pop_front()
@@ -629,7 +633,6 @@ impl Client {
                         self.username()
                     );
                     self.disconnect_no_reason();
-                    return;
                 }
             }
             C2sPlayPacket::BlockEntityTagQuery(_) => {}

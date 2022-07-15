@@ -1,3 +1,5 @@
+//! Formatted text.
+
 use std::borrow::Cow;
 use std::fmt;
 use std::io::{Read, Write};
@@ -104,6 +106,7 @@ impl Text {
 /// convert the type into [`Text`]. A blanket implementation exists for all
 /// `Into<Text>` types, including [`Text`] itself.
 pub trait TextFormat: Into<Text> {
+    /// Converts this type into a [`Text`] object.
     fn into_text(self) -> Text {
         self.into()
     }
@@ -305,10 +308,14 @@ enum TextContent {
     // TODO: nbt
 }
 
+/// Text color
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct Color {
+    /// Red channel
     pub r: u8,
+    /// Green channel
     pub g: u8,
+    /// Blue channel
     pub b: u8,
 }
 
@@ -344,6 +351,7 @@ enum HoverEvent {
 
 #[allow(clippy::self_named_constructors)]
 impl Text {
+    /// Constructs a new plain text object.
     pub fn text(plain: impl Into<Cow<'static, str>>) -> Self {
         Self {
             content: TextContent::Text { text: plain.into() },
@@ -351,6 +359,7 @@ impl Text {
         }
     }
 
+    /// Create translated text based on the given translation key.
     pub fn translate(key: impl Into<Cow<'static, str>>) -> Self {
         Self {
             content: TextContent::Translate {
@@ -360,6 +369,7 @@ impl Text {
         }
     }
 
+    /// Gets this text object as plain text without any formatting.
     pub fn to_plain(&self) -> String {
         let mut res = String::new();
         self.write_plain(&mut res)
@@ -367,6 +377,7 @@ impl Text {
         res
     }
 
+    /// Writes this text object as plain text to the provided writer.
     pub fn write_plain(&self, w: &mut impl fmt::Write) -> fmt::Result {
         match &self.content {
             TextContent::Text { text } => w.write_str(text.as_ref())?,
@@ -458,6 +469,7 @@ impl Default for TextContent {
     }
 }
 
+#[allow(missing_docs)]
 impl Color {
     pub const AQUA: Color = Color::new(85, 255, 255);
     pub const BLACK: Color = Color::new(0, 0, 0);
@@ -476,6 +488,7 @@ impl Color {
     pub const WHITE: Color = Color::new(255, 255, 255);
     pub const YELLOW: Color = Color::new(255, 255, 85);
 
+    /// Constructs a new color from red, green, and blue components.
     pub const fn new(r: u8, g: u8, b: u8) -> Self {
         Self { r, g, b }
     }

@@ -1,3 +1,5 @@
+//! The player list (tab list).
+
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 
@@ -297,6 +299,7 @@ impl PlayerListEntry {
         &self.username
     }
 
+    /// Gets the player textures for this entry.
     pub fn textures(&self) -> Option<&SignedPlayerTextures> {
         self.textures.as_ref()
     }

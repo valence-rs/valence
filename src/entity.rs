@@ -1,3 +1,5 @@
+//! Dynamic actors in a world.
+
 pub mod data;
 pub mod types;
 
@@ -198,7 +200,7 @@ impl Entities {
     }
 }
 
-/// A key for an [`Entity`] on the server.
+/// An identifier for an [`Entity`] on the server.
 ///
 /// Entity IDs are either _valid_ or _invalid_. Valid entity IDs point to
 /// entities that have not been deleted, while invalid IDs point to those that
@@ -554,20 +556,20 @@ impl Entity {
         match &self.data {
             EntityData::Marker(_) => None,
             EntityData::ExperienceOrb(_) => {
-                Some(EntitySpawnPacket::SpawnExperienceOrb(AddExperienceOrb {
+                Some(EntitySpawnPacket::ExperienceOrb(AddExperienceOrb {
                     entity_id: VarInt(this_id.to_network_id()),
                     position: self.new_position,
                     count: 0, // TODO
                 }))
             }
-            EntityData::Player(_) => Some(EntitySpawnPacket::SpawnPlayer(AddPlayer {
+            EntityData::Player(_) => Some(EntitySpawnPacket::Player(AddPlayer {
                 entity_id: VarInt(this_id.to_network_id()),
                 player_uuid: self.uuid,
                 position: self.new_position,
                 yaw: ByteAngle::from_degrees(self.yaw),
                 pitch: ByteAngle::from_degrees(self.pitch),
             })),
-            _ => Some(EntitySpawnPacket::SpawnEntity(AddEntity {
+            _ => Some(EntitySpawnPacket::Entity(AddEntity {
                 entity_id: VarInt(this_id.to_network_id()),
                 object_uuid: self.uuid,
                 kind: VarInt(self.kind() as i32),
@@ -588,17 +590,17 @@ pub(crate) fn velocity_to_packet_units(vel: Vec3<f32>) -> Vec3<i16> {
 }
 
 pub(crate) enum EntitySpawnPacket {
-    SpawnEntity(AddEntity),
-    SpawnExperienceOrb(AddExperienceOrb),
-    SpawnPlayer(AddPlayer),
+    Entity(AddEntity),
+    ExperienceOrb(AddExperienceOrb),
+    Player(AddPlayer),
 }
 
 impl From<EntitySpawnPacket> for S2cPlayPacket {
     fn from(pkt: EntitySpawnPacket) -> Self {
         match pkt {
-            EntitySpawnPacket::SpawnEntity(pkt) => pkt.into(),
-            EntitySpawnPacket::SpawnExperienceOrb(pkt) => pkt.into(),
-            EntitySpawnPacket::SpawnPlayer(pkt) => pkt.into(),
+            EntitySpawnPacket::Entity(pkt) => pkt.into(),
+            EntitySpawnPacket::ExperienceOrb(pkt) => pkt.into(),
+            EntitySpawnPacket::Player(pkt) => pkt.into(),
         }
     }
 }

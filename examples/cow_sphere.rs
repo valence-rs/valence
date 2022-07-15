@@ -149,6 +149,7 @@ impl Config for Game {
         // TODO: hardcoded eye pos.
         let eye_pos = Vec3::new(player_pos.x, player_pos.y + 1.6, player_pos.z);
 
+        #[allow(clippy::significant_drop_in_scrutinee)]
         for (cow_id, p) in cows.iter().cloned().zip(fibonacci_spiral(cow_count)) {
             let cow = server.entities.get_mut(cow_id).expect("missing cow");
             let rotated = p * rot;

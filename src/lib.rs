@@ -1,4 +1,4 @@
-//! A Rust framework for building efficient Minecraft servers.
+//! A Rust framework for building Minecraft servers.
 //!
 //! Valence is a Rust library which provides the necessary abstractions over
 //! Minecraft's protocol to build servers. Very few assumptions about the
@@ -34,8 +34,8 @@
 //!
 //! **You must not call [`mem::swap`] on these references (or any other
 //! function that would move their location in memory).** Doing so breaks
-//! invariants within the library and the resulting behavior is unspecified.
-//! These types should be considered pinned in memory.
+//! invariants within the library and the resulting behavior is safe but
+//! unspecified. These types should be considered [pinned](std::pin).
 //!
 //! Preventing this illegal behavior using Rust's type system was considered too
 //! cumbersome, so a note has been left here instead.
@@ -107,6 +107,11 @@
     unused_lifetimes,
     unused_import_braces
 )]
+#![allow(
+    clippy::derive_partial_eq_without_eq,
+    clippy::unusual_byte_groupings,
+    clippy::comparison_chain
+)]
 
 pub mod biome;
 pub mod block;
@@ -130,13 +135,21 @@ pub mod text;
 pub mod util;
 pub mod world;
 
+/// Provides low-level access to the Minecraft protocol.
 #[cfg(feature = "protocol")]
 pub mod protocol {
     pub use crate::protocol_inner::*;
 }
 
+/// Used on [`Config`](config::Config) to allow for async methods in traits.
+///
+/// For more information see the [async_trait] crate.
+///
+/// [async_trait]: https://docs.rs/async-trait/latest/async_trait/
 pub use async_trait::async_trait;
+#[doc(inline)]
 pub use server::start_server;
+#[doc(inline)]
 pub use {nbt, uuid, vek};
 
 /// The Minecraft protocol version this library currently targets.
@@ -157,7 +170,3 @@ const LIBRARY_NAMESPACE: &str = "valence";
 /// The duration of a game update depends on the current configuration, which
 /// may or may not be the same as Minecraft's standard 20 ticks/second.
 pub type Ticks = i64;
-
-/// Whatever dude
-#[cfg(feature = "whatever")]
-pub type Whatever = i64;

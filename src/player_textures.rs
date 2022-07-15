@@ -8,7 +8,7 @@ use url::Url;
 ///
 /// This data has been cryptographically signed to ensure it will not be altered
 /// by the server.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct SignedPlayerTextures {
     payload: Box<[u8]>,
     signature: Box<[u8]>,
@@ -57,7 +57,7 @@ impl SignedPlayerTextures {
 }
 
 /// Contains URLs to the skin and cape of a player.
-#[derive(Clone, PartialEq, Default, Debug)]
+#[derive(Clone, PartialEq, Eq, Default, Debug)]
 pub struct PlayerTextures {
     /// A URL to the skin of a player. Is `None` if the player does not have a
     /// skin.
@@ -82,7 +82,7 @@ struct PlayerTexturesPayload {
     cape: Option<TextureUrl>,
 }
 
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 struct TextureUrl {
     url: Url,
 }

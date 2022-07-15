@@ -1,4 +1,4 @@
-//! Biome definitions.
+//! Biome configuration and identification.
 
 use crate::ident;
 use crate::ident::Ident;

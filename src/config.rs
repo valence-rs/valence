@@ -1,3 +1,5 @@
+//! Configuration for the server.
+
 use std::any::Any;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::panic::{RefUnwindSafe, UnwindSafe};

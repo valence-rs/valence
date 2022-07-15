@@ -2160,7 +2160,7 @@ pub fn build() -> anyhow::Result<()> {
 
     let mut all_classes = BTreeMap::new();
     for mut class in entities.iter().cloned() {
-        while let None = all_classes.insert(class.name, class) {
+        while all_classes.insert(class.name, class).is_none() {
             match class.inherit {
                 Some(parent) => class = parent,
                 None => break,
@@ -2227,8 +2227,8 @@ pub fn build() -> anyhow::Result<()> {
             .enumerate()
             .map(|(field_offset, field)| {
                 let name = ident(field.name.to_snake_case());
-                let getter_name = ident(format!("get_{}", name.to_string()));
-                let setter_name = ident(format!("set_{}", name.to_string()));
+                let getter_name = ident(format!("get_{name}"));
+                let setter_name = ident(format!("set_{name}"));
 
                 let field_offset = field_offset as u32;
 
@@ -2254,8 +2254,8 @@ pub fn build() -> anyhow::Result<()> {
                         .map(|bf| {
                             let bit_name = ident(bf.name.to_snake_case());
 
-                            let getter_name = ident(format!("get_{}", bit_name.to_string()));
-                            let setter_name = ident(format!("set_{}", bit_name.to_string()));
+                            let getter_name = ident(format!("get_{bit_name}"));
+                            let setter_name = ident(format!("set_{bit_name}"));
 
                             let offset = bf.offset;
 

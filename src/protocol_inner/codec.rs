@@ -1,3 +1,5 @@
+/// Reading and writing whole packets.
+
 use std::io::Read;
 use std::time::Duration;
 
@@ -296,7 +298,7 @@ mod tests {
 
     async fn send_test_packet(w: &mut Encoder<TcpStream>) {
         w.write_packet(&TestPacket {
-            first: "abcdefghijklmnopqrstuvwxyz".to_string().into(),
+            first: "abcdefghijklmnopqrstuvwxyz".into(),
             second: vec![0x1234, 0xabcd],
             third: 0x1122334455667788,
         })

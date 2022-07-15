@@ -1,4 +1,4 @@
-//! Packet definitions and some types contained within them.
+//! Packet definitions and related types.
 //!
 //! See <https://wiki.vg/Protocol> for more packet documentation.
 

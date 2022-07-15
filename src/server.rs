@@ -1,3 +1,5 @@
+//! The heart of the server.
+
 use std::collections::HashSet;
 use std::error::Error;
 use std::iter::FusedIterator;
@@ -106,9 +108,14 @@ struct SharedServerInner {
 
 /// Contains information about a new client.
 pub struct NewClientData {
+    /// The UUID of the new client.
     pub uuid: Uuid,
+    /// The username of the new client.
     pub username: String,
+    /// The new client's player textures. May be `None` if the client does not
+    /// have a skin or cape.
     pub textures: Option<SignedPlayerTextures>,
+    /// The remote address of the new client.
     pub remote_addr: SocketAddr,
 }
 
@@ -232,7 +239,7 @@ impl SharedServer {
 /// Consumes the configuration and starts the server.
 ///
 /// The function returns once the server has shut down, a runtime error
-/// occurs, or the configuration is invalid.
+/// occurs, or the configuration is found to be invalid.
 pub fn start_server(config: impl Config) -> ShutdownResult {
     let shared = setup_server(config).map_err(Box::<dyn Error + Send + Sync + 'static>::from)?;
 

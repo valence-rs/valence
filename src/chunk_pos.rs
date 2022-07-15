@@ -28,9 +28,9 @@ impl From<(i32, i32)> for ChunkPos {
     }
 }
 
-impl Into<(i32, i32)> for ChunkPos {
-    fn into(self) -> (i32, i32) {
-        (self.x, self.z)
+impl From<ChunkPos> for (i32, i32) {
+    fn from(pos: ChunkPos) -> Self {
+        (pos.x, pos.z)
     }
 }
 
@@ -40,9 +40,9 @@ impl From<[i32; 2]> for ChunkPos {
     }
 }
 
-impl Into<[i32; 2]> for ChunkPos {
-    fn into(self) -> [i32; 2] {
-        [self.x, self.z]
+impl From<ChunkPos> for [i32; 2] {
+    fn from(pos: ChunkPos) -> Self {
+        [pos.x, pos.z]
     }
 }
 

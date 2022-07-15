@@ -1,3 +1,5 @@
+//! Dimension configuration and identification.
+
 use crate::ident;
 use crate::protocol_inner::packets::play::s2c::DimensionType;
 

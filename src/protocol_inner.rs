@@ -269,6 +269,11 @@ impl Decode for Box<str> {
     }
 }
 
+/// An integer with a minimum and maximum value known at compile time. `T` is
+/// the underlying integer type.
+///
+/// If the value is not in bounds, an error is generated while
+/// encoding or decoding.
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct BoundedInt<T, const MIN: i64, const MAX: i64>(pub T);
 
@@ -320,8 +325,6 @@ where
     }
 }
 
-// TODO: bounded float?
-
 impl Encode for String {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         encode_string_bounded(self, 0, 32767, w)
@@ -335,12 +338,11 @@ impl Decode for String {
 }
 
 /// A string with a minimum and maximum character length known at compile time.
+///
 /// If the string is not in bounds, an error is generated while
-/// encoding/decoding.
+/// encoding or decoding.
 ///
 /// Note that the length is a count of the characters in the string, not bytes.
-///
-/// When encoded and decoded, the string is VarInt prefixed.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash, Debug)]
 pub struct BoundedString<const MIN: usize, const MAX: usize>(pub String);
 
@@ -462,10 +464,9 @@ impl<T: Decode> Decode for Vec4<T> {
 }
 
 /// An array with a minimum and maximum character length known at compile time.
-/// If the array is not in bounds, an error is generated while
-/// encoding/decoding.
 ///
-/// When encoding/decoding, the array is VarInt prefixed.
+/// If the array is not in bounds, an error is generated while
+/// encoding or decoding.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash, Debug)]
 pub struct BoundedArray<T, const MIN: usize = 0, const MAX: usize = { usize::MAX }>(pub Vec<T>);
 

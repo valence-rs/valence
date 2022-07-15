@@ -1,3 +1,5 @@
+//! A space on a server for objects to occupy.
+
 use std::iter::FusedIterator;
 
 use rayon::iter::ParallelIterator;
@@ -9,12 +11,13 @@ use crate::server::SharedServer;
 use crate::slotmap::{Key, SlotMap};
 use crate::spatial_index::SpatialIndex;
 
+/// A container for all [`World`]s on a [`Server`](crate::server::Server).
 pub struct Worlds {
     sm: SlotMap<World>,
     server: SharedServer,
 }
 
-/// A key for a [`World`] on the server.
+/// An identifier for a [`World`] on the server.
 ///
 /// World IDs are either _valid_ or _invalid_. Valid world IDs point to
 /// worlds that have not been deleted, while invalid IDs point to those that
