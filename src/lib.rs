@@ -52,17 +52,23 @@
 //! use valence::server::{Server, ShutdownResult};
 //!
 //! pub fn main() -> ShutdownResult {
-//!     valence::start_server(Game)
+//!     valence::start_server(Game, ())
 //! }
 //!
 //! struct Game;
 //!
 //! impl Config for Game {
+//!     type ChunkData = ();
+//!     type ClientData = ();
+//!     type EntityData = ();
+//!     type ServerData = ();
+//!     type WorldData = ();
+//!
 //!     fn max_connections(&self) -> usize {
 //!         256
 //!     }
 //!
-//!     fn update(&self, server: &mut Server) {
+//!     fn update(&self, server: &mut Server<Self>) {
 //!         server.clients.retain(|_, client| {
 //!             if client.created_tick() == server.shared.current_tick() {
 //!                 println!("{} joined!", client.username());

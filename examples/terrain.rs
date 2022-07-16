@@ -24,14 +24,17 @@ pub fn main() -> ShutdownResult {
 
     let seed = rand::random();
 
-    valence::start_server(Game {
-        player_count: AtomicUsize::new(0),
-        density_noise: SuperSimplex::new().set_seed(seed),
-        hilly_noise: SuperSimplex::new().set_seed(seed.wrapping_add(1)),
-        stone_noise: SuperSimplex::new().set_seed(seed.wrapping_add(2)),
-        gravel_noise: SuperSimplex::new().set_seed(seed.wrapping_add(3)),
-        grass_noise: SuperSimplex::new().set_seed(seed.wrapping_add(4)),
-    })
+    valence::start_server(
+        Game {
+            player_count: AtomicUsize::new(0),
+            density_noise: SuperSimplex::new().set_seed(seed),
+            hilly_noise: SuperSimplex::new().set_seed(seed.wrapping_add(1)),
+            stone_noise: SuperSimplex::new().set_seed(seed.wrapping_add(2)),
+            gravel_noise: SuperSimplex::new().set_seed(seed.wrapping_add(3)),
+            grass_noise: SuperSimplex::new().set_seed(seed.wrapping_add(4)),
+        },
+        (),
+    )
 }
 
 struct Game {
@@ -47,6 +50,12 @@ const MAX_PLAYERS: usize = 10;
 
 #[async_trait]
 impl Config for Game {
+    type ChunkData = ();
+    type ClientData = ();
+    type EntityData = ();
+    type ServerData = ();
+    type WorldData = ();
+
     fn max_connections(&self) -> usize {
         // We want status pings to be successful even if the server is full.
         MAX_PLAYERS + 64
@@ -59,7 +68,7 @@ impl Config for Game {
 
     async fn server_list_ping(
         &self,
-        _server: &SharedServer,
+        _server: &SharedServer<Self>,
         _remote_addr: SocketAddr,
     ) -> ServerListPing {
         ServerListPing::Respond {
@@ -70,12 +79,12 @@ impl Config for Game {
         }
     }
 
-    fn init(&self, server: &mut Server) {
-        let (_, world) = server.worlds.create(DimensionId::default());
+    fn init(&self, server: &mut Server<Self>) {
+        let (_, world) = server.worlds.create(DimensionId::default(), ());
         world.meta.set_flat(true);
     }
 
-    fn update(&self, server: &mut Server) {
+    fn update(&self, server: &mut Server<Self>) {
         let (world_id, world) = server.worlds.iter_mut().next().unwrap();
 
         let mut chunks_to_unload = HashSet::<_>::from_iter(world.chunks.iter().map(|t| t.0));
@@ -126,7 +135,7 @@ impl Config for Game {
             for pos in chunks_in_view_distance(ChunkPos::at(p.x, p.z), dist) {
                 chunks_to_unload.remove(&pos);
                 if world.chunks.get(pos).is_none() {
-                    world.chunks.create(pos);
+                    world.chunks.create(pos, ());
                 }
             }
 

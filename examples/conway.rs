@@ -1,19 +1,17 @@
-use std::collections::HashMap;
 use std::mem;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Mutex;
 
 use log::LevelFilter;
 use num::Integer;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 use valence::biome::Biome;
 use valence::block::BlockState;
-use valence::client::{ClientId, Event, Hand};
+use valence::client::{Event, Hand};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
-use valence::entity::data::Pose;
-use valence::entity::{EntityData, EntityId, EntityKind};
+use valence::entity::state::Pose;
+use valence::entity::{EntityId, EntityKind, EntityState};
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 use valence::{async_trait, ident};
@@ -24,25 +22,30 @@ pub fn main() -> ShutdownResult {
         .parse_default_env()
         .init();
 
-    valence::start_server(Game {
-        player_count: AtomicUsize::new(0),
-        state: Mutex::new(State {
-            player_entities: HashMap::new(),
+    valence::start_server(
+        Game {
+            player_count: AtomicUsize::new(0),
+        },
+        ServerData {
             board: vec![false; SIZE_X * SIZE_Z].into_boxed_slice(),
             board_buf: vec![false; SIZE_X * SIZE_Z].into_boxed_slice(),
-        }),
-    })
+        },
+    )
 }
 
 struct Game {
     player_count: AtomicUsize,
-    state: Mutex<State>,
 }
 
-struct State {
-    player_entities: HashMap<ClientId, EntityId>,
+struct ServerData {
     board: Box<[bool]>,
     board_buf: Box<[bool]>,
+}
+
+#[derive(Default)]
+struct ClientData {
+    /// The client's player entity.
+    player: EntityId,
 }
 
 const MAX_PLAYERS: usize = 10;
@@ -53,6 +56,12 @@ const BOARD_Y: i32 = 50;
 
 #[async_trait]
 impl Config for Game {
+    type ChunkData = ();
+    type ClientData = ClientData;
+    type EntityData = ();
+    type ServerData = ServerData;
+    type WorldData = ();
+
     fn max_connections(&self) -> usize {
         // We want status pings to be successful even if the server is full.
         MAX_PLAYERS + 64
@@ -80,7 +89,7 @@ impl Config for Game {
 
     async fn server_list_ping(
         &self,
-        _server: &SharedServer,
+        _server: &SharedServer<Self>,
         _remote_addr: SocketAddr,
     ) -> ServerListPing {
         ServerListPing::Respond {
@@ -91,18 +100,18 @@ impl Config for Game {
         }
     }
 
-    fn init(&self, server: &mut Server) {
-        let world = server.worlds.create(DimensionId::default()).1;
+    fn init(&self, server: &mut Server<Self>) {
+        let world = server.worlds.create(DimensionId::default(), ()).1;
         world.meta.set_flat(true);
 
         for chunk_z in -2..Integer::div_ceil(&(SIZE_X as i32), &16) + 2 {
             for chunk_x in -2..Integer::div_ceil(&(SIZE_Z as i32), &16) + 2 {
-                world.chunks.create((chunk_x as i32, chunk_z as i32));
+                world.chunks.create((chunk_x as i32, chunk_z as i32), ());
             }
         }
     }
 
-    fn update(&self, server: &mut Server) {
+    fn update(&self, server: &mut Server<Self>) {
         let (world_id, world) = server.worlds.iter_mut().next().unwrap();
 
         let spawn_pos = [
@@ -111,13 +120,7 @@ impl Config for Game {
             SIZE_Z as f64 / 2.0,
         ];
 
-        let State {
-            player_entities,
-            board,
-            board_buf,
-        } = &mut *self.state.lock().unwrap();
-
-        server.clients.retain(|client_id, client| {
+        server.clients.retain(|_, client| {
             if client.created_tick() == server.shared.current_tick() {
                 if self
                     .player_count
@@ -142,14 +145,13 @@ impl Config for Game {
                     None,
                 );
 
-                player_entities.insert(
-                    client_id,
-                    server
-                        .entities
-                        .create_with_uuid(EntityKind::Player, client.uuid())
-                        .unwrap()
-                        .0,
-                );
+                let player_id = server
+                    .entities
+                    .create_with_uuid(EntityKind::Player, client.uuid(), ())
+                    .unwrap()
+                    .0;
+
+                client.data = ClientData { player: player_id };
 
                 client.send_message("Welcome to Conway's game of life in Minecraft!".italic());
                 client.send_message("Hold the left mouse button to bring blocks to life.".italic());
@@ -157,8 +159,7 @@ impl Config for Game {
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
-                let id = player_entities.remove(&client_id).unwrap();
-                server.entities.delete(id);
+                server.entities.delete(client.data.player);
                 world.meta.player_list_mut().remove(client.uuid());
                 return false;
             }
@@ -166,11 +167,8 @@ impl Config for Game {
             true
         });
 
-        for (client_id, client) in server.clients.iter_mut() {
-            let player = server
-                .entities
-                .get_mut(player_entities[&client_id])
-                .unwrap();
+        for (_, client) in server.clients.iter_mut() {
+            let player = server.entities.get_mut(client.data.player).unwrap();
 
             while let Some(event) = client.pop_event() {
                 match event {
@@ -179,7 +177,8 @@ impl Config for Game {
                             && (0..SIZE_Z as i32).contains(&position.z)
                             && position.y == BOARD_Y
                         {
-                            board[position.x as usize + position.z as usize * SIZE_X] = true;
+                            server.data.board[position.x as usize + position.z as usize * SIZE_X] =
+                                true;
                         }
                     }
                     Event::Movement { .. } => {
@@ -195,29 +194,29 @@ impl Config for Game {
                         player.set_on_ground(client.on_ground());
                     }
                     Event::StartSneaking => {
-                        if let EntityData::Player(e) = player.data_mut() {
+                        if let EntityState::Player(e) = &mut player.state {
                             e.set_crouching(true);
                             e.set_pose(Pose::Sneaking);
                         }
                     }
                     Event::StopSneaking => {
-                        if let EntityData::Player(e) = player.data_mut() {
+                        if let EntityState::Player(e) = &mut player.state {
                             e.set_pose(Pose::Standing);
                             e.set_crouching(false);
                         }
                     }
                     Event::StartSprinting => {
-                        if let EntityData::Player(e) = player.data_mut() {
+                        if let EntityState::Player(e) = &mut player.state {
                             e.set_sprinting(true);
                         }
                     }
                     Event::StopSprinting => {
-                        if let EntityData::Player(e) = player.data_mut() {
+                        if let EntityState::Player(e) = &mut player.state {
                             e.set_sprinting(false);
                         }
                     }
                     Event::ArmSwing(hand) => {
-                        if let EntityData::Player(e) = player.data_mut() {
+                        if let EntityState::Player(e) = &mut player.state {
                             match hand {
                                 Hand::Main => e.trigger_swing_main_arm(),
                                 Hand::Off => e.trigger_swing_offhand(),
@@ -233,31 +232,36 @@ impl Config for Game {
             return;
         }
 
-        board_buf.par_iter_mut().enumerate().for_each(|(i, cell)| {
-            let cx = (i % SIZE_X) as i32;
-            let cz = (i / SIZE_Z) as i32;
+        server
+            .data
+            .board_buf
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(i, cell)| {
+                let cx = (i % SIZE_X) as i32;
+                let cz = (i / SIZE_Z) as i32;
 
-            let mut live_count = 0;
-            for z in cz - 1..=cz + 1 {
-                for x in cx - 1..=cx + 1 {
-                    if !(x == cx && z == cz) {
-                        let i = x.rem_euclid(SIZE_X as i32) as usize
-                            + z.rem_euclid(SIZE_Z as i32) as usize * SIZE_X;
-                        if board[i] {
-                            live_count += 1;
+                let mut live_count = 0;
+                for z in cz - 1..=cz + 1 {
+                    for x in cx - 1..=cx + 1 {
+                        if !(x == cx && z == cz) {
+                            let i = x.rem_euclid(SIZE_X as i32) as usize
+                                + z.rem_euclid(SIZE_Z as i32) as usize * SIZE_X;
+                            if server.data.board[i] {
+                                live_count += 1;
+                            }
                         }
                     }
                 }
-            }
 
-            if board[cx as usize + cz as usize * SIZE_X] {
-                *cell = (2..=3).contains(&live_count);
-            } else {
-                *cell = live_count == 3;
-            }
-        });
+                if server.data.board[cx as usize + cz as usize * SIZE_X] {
+                    *cell = (2..=3).contains(&live_count);
+                } else {
+                    *cell = live_count == 3;
+                }
+            });
 
-        mem::swap(board, board_buf);
+        mem::swap(&mut server.data.board, &mut server.data.board_buf);
 
         let min_y = server.shared.dimensions().next().unwrap().1.min_y;
 
@@ -273,7 +277,7 @@ impl Config for Game {
                         let cell_z = chunk_z * 16 + z;
 
                         if cell_x < SIZE_X && cell_z < SIZE_Z {
-                            let b = if board[cell_x + cell_z * SIZE_X] {
+                            let b = if server.data.board[cell_x + cell_z * SIZE_X] {
                                 BlockState::GRASS_BLOCK
                             } else {
                                 BlockState::DIRT

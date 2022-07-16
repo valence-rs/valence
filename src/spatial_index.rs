@@ -6,6 +6,7 @@ use rayon::iter::{IndexedParallelIterator, ParallelIterator};
 use vek::{Aabb, Vec3};
 
 use crate::bvh::{Bvh, Node};
+use crate::config::Config;
 use crate::entity::{Entities, EntityId};
 use crate::util::ray_box_intersect;
 use crate::world::WorldId;
@@ -225,7 +226,7 @@ impl SpatialIndex {
         self.bvh.par_iter().map(|(&id, bb)| (id, bb))
     }
 
-    pub(crate) fn update(&mut self, entities: &Entities, id: WorldId) {
+    pub(crate) fn update<C: Config>(&mut self, entities: &Entities<C>, id: WorldId) {
         self.bvh.build(
             entities
                 .iter()

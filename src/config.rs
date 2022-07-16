@@ -1,6 +1,5 @@
 //! Configuration for the server.
 
-use std::any::Any;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::panic::{RefUnwindSafe, UnwindSafe};
 
@@ -13,14 +12,7 @@ use crate::server::{NewClientData, Server, SharedServer};
 use crate::text::Text;
 use crate::Ticks;
 
-/// A trait containing callbacks which are invoked by the running Minecraft
-/// server.
-///
-/// The config is used from multiple threads and must therefore implement
-/// [`Send`] and [`Sync`]. From within a single thread, methods are never
-/// invoked recursively by the library. In other words, a mutex can be aquired
-/// at the beginning of a method and released at the end without risk of
-/// deadlocking.
+/// A trait for the configuration of a server.
 ///
 /// This trait uses the [async_trait] attribute macro. It is exported at the
 /// root of this crate.
@@ -28,10 +20,21 @@ use crate::Ticks;
 /// [async_trait]: https://docs.rs/async-trait/latest/async_trait/
 #[async_trait]
 #[allow(unused_variables)]
-pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
-    /// Called once at startup to get the maximum number of connections allowed
-    /// to the server. Note that this includes all connections, not just those
-    /// past the login stage.
+pub trait Config: 'static + Sized + Send + Sync + UnwindSafe + RefUnwindSafe {
+    /// Custom data to store with the [`Server`].
+    type ServerData: Send + Sync;
+    /// Custom data to store with every [`Client`](crate::client::Client).
+    type ClientData: Default + Send + Sync;
+    /// Custom data to store with every [`Entity`](crate::entity::Entity).
+    type EntityData: Send + Sync;
+    /// Custom data to store with every [`World`](crate::world::World).
+    type WorldData: Send + Sync;
+    /// Custom data to store with every [`Chunk`](crate::chunk::Chunk).
+    type ChunkData: Send + Sync;
+
+    /// Called once at startup to get the maximum number of simultaneous
+    /// connections allowed to the server. This includes all
+    /// connections, not just those past the login stage.
     ///
     /// You will want this value to be somewhere above the maximum number of
     /// players, since status pings should still succeed even when the server is
@@ -169,7 +172,7 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// The query is ignored.
     async fn server_list_ping(
         &self,
-        shared: &SharedServer,
+        shared: &SharedServer<Self>,
         remote_addr: SocketAddr,
     ) -> ServerListPing {
         ServerListPing::Ignore
@@ -192,7 +195,7 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// The client is allowed to join unconditionally.
     ///
     /// [`Clients`]: crate::client::Clients
-    async fn login(&self, shared: &SharedServer, ncd: &NewClientData) -> Result<(), Text> {
+    async fn login(&self, shared: &SharedServer<Self>, ncd: &NewClientData) -> Result<(), Text> {
         Ok(())
     }
 
@@ -203,7 +206,7 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// no connections to the server will be made until this function returns.
     ///
     /// This method is called from within a tokio runtime.
-    fn init(&self, server: &mut Server) {}
+    fn init(&self, server: &mut Server<Self>) {}
 
     /// Called once at the beginning of every server update (also known as
     /// "tick"). This is likely where the majority of your code will be.
@@ -215,7 +218,7 @@ pub trait Config: Any + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// # Default Implementation
     ///
     /// The default implementation does nothing.
-    fn update(&self, server: &mut Server);
+    fn update(&self, server: &mut Server<Self>);
 }
 
 /// The result of the [`server_list_ping`](Config::server_list_ping) callback.

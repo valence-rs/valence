@@ -2470,11 +2470,11 @@ pub fn build() -> anyhow::Result<()> {
         #(#entity_structs)*
 
         /// An enum encoding the type of an entity along with any data specific to that entity type.
-        pub enum EntityData {
+        pub enum EntityState {
             #(#entity_kind_variants(#entity_kind_variants),)*
         }
 
-        impl EntityData {
+        impl EntityState {
             pub(super) fn new(kind: EntityKind) -> Self {
                 match kind {
                     #(EntityKind::#entity_kind_variants => Self::#entity_kind_variants(#entity_kind_variants::new()),)*

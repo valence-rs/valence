@@ -16,6 +16,7 @@ use vek::Vec3;
 use crate::biome::Biome;
 use crate::block_pos::BlockPos;
 use crate::chunk_pos::ChunkPos;
+use crate::config::Config;
 use crate::dimension::DimensionId;
 use crate::entity::types::Player;
 use crate::entity::{velocity_to_packet_units, Entities, Entity, EntityId, EntityKind};
@@ -47,16 +48,16 @@ use crate::{ident, Ticks, LIBRARY_NAMESPACE};
 /// New clients are automatically inserted into this container but
 /// are not automatically deleted. It is your responsibility to delete them once
 /// they disconnect. This can be checked with [`Client::is_disconnected`].
-pub struct Clients {
-    sm: SlotMap<Client>,
+pub struct Clients<C: Config> {
+    sm: SlotMap<Client<C>>,
 }
 
-impl Clients {
+impl<C: Config> Clients<C> {
     pub(crate) fn new() -> Self {
         Self { sm: SlotMap::new() }
     }
 
-    pub(crate) fn insert(&mut self, client: Client) -> (ClientId, &mut Client) {
+    pub(crate) fn insert(&mut self, client: Client<C>) -> (ClientId, &mut Client<C>) {
         let (id, client) = self.sm.insert(client);
         (ClientId(id), client)
     }
@@ -73,7 +74,7 @@ impl Clients {
     /// which `f` returns `true`.
     ///
     /// All clients are visited in an unspecified order.
-    pub fn retain(&mut self, mut f: impl FnMut(ClientId, &mut Client) -> bool) {
+    pub fn retain(&mut self, mut f: impl FnMut(ClientId, &mut Client<C>) -> bool) {
         self.sm.retain(|k, v| f(ClientId(k), v))
     }
 
@@ -85,37 +86,39 @@ impl Clients {
 
     /// Returns a shared reference to the client with the given ID. If
     /// the ID is invalid, then `None` is returned.
-    pub fn get(&self, client: ClientId) -> Option<&Client> {
+    pub fn get(&self, client: ClientId) -> Option<&Client<C>> {
         self.sm.get(client.0)
     }
 
     /// Returns an exclusive reference to the client with the given ID. If the
     /// ID is invalid, then `None` is returned.
-    pub fn get_mut(&mut self, client: ClientId) -> Option<&mut Client> {
+    pub fn get_mut(&mut self, client: ClientId) -> Option<&mut Client<C>> {
         self.sm.get_mut(client.0)
     }
 
     /// Returns an immutable iterator over all clients on the server in an
     /// unspecified order.
-    pub fn iter(&self) -> impl FusedIterator<Item = (ClientId, &Client)> + Clone + '_ {
+    pub fn iter(&self) -> impl FusedIterator<Item = (ClientId, &Client<C>)> + Clone + '_ {
         self.sm.iter().map(|(k, v)| (ClientId(k), v))
     }
 
     /// Returns a mutable iterator over all clients on the server in an
     /// unspecified order.
-    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (ClientId, &mut Client)> + '_ {
+    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (ClientId, &mut Client<C>)> + '_ {
         self.sm.iter_mut().map(|(k, v)| (ClientId(k), v))
     }
 
     /// Returns a parallel immutable iterator over all clients on the server in
     /// an unspecified order.
-    pub fn par_iter(&self) -> impl ParallelIterator<Item = (ClientId, &Client)> + Clone + '_ {
+    pub fn par_iter(&self) -> impl ParallelIterator<Item = (ClientId, &Client<C>)> + Clone + '_ {
         self.sm.par_iter().map(|(k, v)| (ClientId(k), v))
     }
 
     /// Returns a parallel mutable iterator over all clients on the server in an
     /// unspecified order.
-    pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (ClientId, &mut Client)> + '_ {
+    pub fn par_iter_mut(
+        &mut self,
+    ) -> impl ParallelIterator<Item = (ClientId, &mut Client<C>)> + '_ {
         self.sm.par_iter_mut().map(|(k, v)| (ClientId(k), v))
     }
 }
@@ -158,7 +161,9 @@ impl ClientId {
 ///
 /// In Valence however, clients and players have been decoupled. This separation
 /// was done primarily to enable multithreaded client updates.
-pub struct Client {
+pub struct Client<C: Config> {
+    /// Custom data.
+    pub data: C::ClientData,
     /// Setting this to `None` disconnects the client.
     send: SendOpt,
     recv: Receiver<C2sPlayPacket>,
@@ -227,15 +232,17 @@ pub(crate) struct ClientFlags {
     _pad: u8,
 }
 
-impl Client {
+impl<C: Config> Client<C> {
     pub(crate) fn new(
         packet_channels: C2sPacketChannels,
-        server: &SharedServer,
+        server: &SharedServer<C>,
         ncd: NewClientData,
+        data: C::ClientData,
     ) -> Self {
         let (send, recv) = packet_channels;
 
         Self {
+            data,
             send: Some(send),
             recv,
             created_tick: server.current_tick(),
@@ -584,16 +591,16 @@ impl Client {
         send_packet(&mut self.send, packet);
     }
 
-    pub(crate) fn handle_serverbound_packets(&mut self, entities: &Entities) {
+    pub(crate) fn handle_serverbound_packets(&mut self, entities: &Entities<C>) {
         self.events.clear();
         for _ in 0..self.recv.len() {
             self.handle_serverbound_packet(entities, self.recv.try_recv().unwrap());
         }
     }
 
-    fn handle_serverbound_packet(&mut self, entities: &Entities, pkt: C2sPlayPacket) {
-        fn handle_movement_packet(
-            client: &mut Client,
+    fn handle_serverbound_packet(&mut self, entities: &Entities<C>, pkt: C2sPlayPacket) {
+        fn handle_movement_packet<C: Config>(
+            client: &mut Client<C>,
             _vehicle: bool,
             new_position: Vec3<f64>,
             new_yaw: f32,
@@ -835,7 +842,12 @@ impl Client {
         }
     }
 
-    pub(crate) fn update(&mut self, shared: &SharedServer, entities: &Entities, worlds: &Worlds) {
+    pub(crate) fn update(
+        &mut self,
+        shared: &SharedServer<C>,
+        entities: &Entities<C>,
+        worlds: &Worlds<C>,
+    ) {
         // Mark the client as disconnected when appropriate.
         if self.recv.is_disconnected() || self.send.as_ref().map_or(true, |s| s.is_disconnected()) {
             self.send = None;
@@ -1298,8 +1310,8 @@ fn send_packet(send_opt: &mut SendOpt, pkt: impl Into<S2cPlayPacket>) {
     }
 }
 
-fn send_entity_events(send_opt: &mut SendOpt, id: EntityId, entity: &Entity) {
-    for &code in entity.data().event_codes() {
+fn send_entity_events<C: Config>(send_opt: &mut SendOpt, id: EntityId, entity: &Entity<C>) {
+    for &code in entity.state.event_codes() {
         if code <= ENTITY_EVENT_MAX_BOUND as u8 {
             send_packet(
                 send_opt,
@@ -1320,7 +1332,7 @@ fn send_entity_events(send_opt: &mut SendOpt, id: EntityId, entity: &Entity) {
     }
 }
 
-fn make_registry_codec(shared: &SharedServer) -> RegistryCodec {
+fn make_registry_codec<C: Config>(shared: &SharedServer<C>) -> RegistryCodec {
     let mut dims = Vec::new();
     for (id, dim) in shared.dimensions() {
         let id = id.0 as i32;

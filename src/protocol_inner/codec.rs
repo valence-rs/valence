@@ -1,5 +1,4 @@
 /// Reading and writing whole packets.
-
 use std::io::Read;
 use std::time::Duration;
 

@@ -15,6 +15,7 @@ use crate::biome::BiomeId;
 use crate::block::BlockState;
 use crate::block_pos::BlockPos;
 pub use crate::chunk_pos::ChunkPos;
+use crate::config::Config;
 use crate::dimension::DimensionId;
 use crate::protocol_inner::packets::play::s2c::{
     BlockUpdate, LevelChunkHeightmaps, LevelChunkWithLight, S2cPlayPacket, SectionBlocksUpdate,
@@ -24,14 +25,14 @@ use crate::server::SharedServer;
 use crate::Ticks;
 
 /// A container for all [`Chunks`]s in a [`World`](crate::world::World).
-pub struct Chunks {
-    chunks: HashMap<ChunkPos, Chunk>,
-    server: SharedServer,
+pub struct Chunks<C: Config> {
+    chunks: HashMap<ChunkPos, Chunk<C>>,
+    server: SharedServer<C>,
     dimension: DimensionId,
 }
 
-impl Chunks {
-    pub(crate) fn new(server: SharedServer, dimension: DimensionId) -> Self {
+impl<C: Config> Chunks<C> {
+    pub(crate) fn new(server: SharedServer<C>, dimension: DimensionId) -> Self {
         Self {
             chunks: HashMap::new(),
             server,
@@ -49,9 +50,9 @@ impl Chunks {
     /// adjacent to it must also be loaded. It is also important that clients
     /// are not spawned within unloaded chunks via
     /// [`spawn`](crate::client::Client::spawn).
-    pub fn create(&mut self, pos: impl Into<ChunkPos>) -> &mut Chunk {
+    pub fn create(&mut self, pos: impl Into<ChunkPos>, data: C::ChunkData) -> &mut Chunk<C> {
         let section_count = (self.server.dimension(self.dimension).height / 16) as u32;
-        let chunk = Chunk::new(section_count, self.server.current_tick());
+        let chunk = Chunk::new(section_count, self.server.current_tick(), data);
 
         match self.chunks.entry(pos.into()) {
             Entry::Occupied(mut oe) => {
@@ -78,14 +79,14 @@ impl Chunks {
     /// Gets a shared reference to the chunk at the provided position.
     ///
     /// If there is no chunk at the position, then `None` is returned.
-    pub fn get(&self, pos: impl Into<ChunkPos>) -> Option<&Chunk> {
+    pub fn get(&self, pos: impl Into<ChunkPos>) -> Option<&Chunk<C>> {
         self.chunks.get(&pos.into())
     }
 
     /// Gets an exclusive reference to the chunk at the provided position.
     ///
     /// If there is no chunk at the position, then `None` is returned.
-    pub fn get_mut(&mut self, pos: impl Into<ChunkPos>) -> Option<&mut Chunk> {
+    pub fn get_mut(&mut self, pos: impl Into<ChunkPos>) -> Option<&mut Chunk<C>> {
         self.chunks.get_mut(&pos.into())
     }
 
@@ -96,25 +97,25 @@ impl Chunks {
 
     /// Returns an immutable iterator over all chunks in the world in an
     /// unspecified order.
-    pub fn iter(&self) -> impl FusedIterator<Item = (ChunkPos, &Chunk)> + Clone + '_ {
+    pub fn iter(&self) -> impl FusedIterator<Item = (ChunkPos, &Chunk<C>)> + Clone + '_ {
         self.chunks.iter().map(|(&pos, chunk)| (pos, chunk))
     }
 
     /// Returns a mutable iterator over all chunks in the world in an
     /// unspecified order.
-    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (ChunkPos, &mut Chunk)> + '_ {
+    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (ChunkPos, &mut Chunk<C>)> + '_ {
         self.chunks.iter_mut().map(|(&pos, chunk)| (pos, chunk))
     }
 
     /// Returns a parallel immutable iterator over all chunks in the world in an
     /// unspecified order.
-    pub fn par_iter(&self) -> impl ParallelIterator<Item = (ChunkPos, &Chunk)> + Clone + '_ {
+    pub fn par_iter(&self) -> impl ParallelIterator<Item = (ChunkPos, &Chunk<C>)> + Clone + '_ {
         self.chunks.par_iter().map(|(&pos, chunk)| (pos, chunk))
     }
 
     /// Returns a parallel mutable iterator over all chunks in the world in an
     /// unspecified order.
-    pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (ChunkPos, &mut Chunk)> + '_ {
+    pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (ChunkPos, &mut Chunk<C>)> + '_ {
         self.chunks.par_iter_mut().map(|(&pos, chunk)| (pos, chunk))
     }
 
@@ -183,7 +184,9 @@ impl Chunks {
 ///
 /// In addition to blocks, chunks also contain [biomes](crate::biome::Biome).
 /// Every 4x4x4 segment of blocks in a chunk corresponds to a biome.
-pub struct Chunk {
+pub struct Chunk<C: Config> {
+    /// Custom data.
+    pub data: C::ChunkData,
     sections: Box<[ChunkSection]>,
     // TODO block_entities: HashMap<u32, BlockEntity>,
     /// The MOTION_BLOCKING heightmap
@@ -191,8 +194,8 @@ pub struct Chunk {
     created_tick: Ticks,
 }
 
-impl Chunk {
-    pub(crate) fn new(section_count: u32, current_tick: Ticks) -> Self {
+impl<C: Config> Chunk<C> {
+    pub(crate) fn new(section_count: u32, current_tick: Ticks, data: C::ChunkData) -> Self {
         let sect = ChunkSection {
             blocks: [BlockState::AIR.to_raw(); 4096],
             modified_count: 1, // Must be >0 so the chunk is initialized.
@@ -201,6 +204,7 @@ impl Chunk {
         };
 
         let mut chunk = Self {
+            data,
             sections: vec![sect; section_count as usize].into(),
             heightmap: Vec::new(),
             created_tick: current_tick,
@@ -546,36 +550,4 @@ fn encode_paletted_container(
 /// Calculates the log base 2 rounded up.
 fn log2_ceil(n: usize) -> usize {
     n.next_power_of_two().trailing_zeros() as usize
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn set_get() {
-        let mut chunk = Chunk::new(16, 0);
-
-        chunk.set_block_state(1, 2, 3, BlockState::CAKE);
-        assert_eq!(chunk.get_block_state(1, 2, 3), BlockState::CAKE);
-
-        chunk.set_biome(1, 2, 3, BiomeId(7));
-        assert_eq!(chunk.get_biome(1, 2, 3), BiomeId(7));
-    }
-
-    #[test]
-    #[should_panic]
-    fn block_state_oob() {
-        let mut chunk = Chunk::new(16, 0);
-
-        chunk.set_block_state(16, 0, 0, BlockState::CAKE);
-    }
-
-    #[test]
-    #[should_panic]
-    fn biome_oob() {
-        let mut chunk = Chunk::new(16, 0);
-
-        chunk.set_biome(4, 0, 0, BiomeId(0));
-    }
 }

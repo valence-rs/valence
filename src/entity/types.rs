@@ -3,7 +3,7 @@
 #![allow(clippy::all, missing_docs)]
 
 use crate::block::{BlockPos, BlockState};
-use crate::entity::data::*;
+use crate::entity::state::*;
 use crate::entity::EntityId;
 use crate::protocol_inner::{Encode, VarInt};
 use crate::text::Text;

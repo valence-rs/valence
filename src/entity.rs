@@ -1,6 +1,6 @@
 //! Dynamic actors in a world.
 
-pub mod data;
+pub mod state;
 pub mod types;
 
 use std::collections::hash_map::Entry;
@@ -10,10 +10,11 @@ use std::num::NonZeroU32;
 
 use bitfield_struct::bitfield;
 use rayon::iter::ParallelIterator;
-pub use types::{EntityData, EntityKind};
+pub use types::{EntityKind, EntityState};
 use uuid::Uuid;
 use vek::{Aabb, Vec3};
 
+use crate::config::Config;
 use crate::protocol_inner::packets::play::s2c::{
     AddEntity, AddExperienceOrb, AddPlayer, S2cPlayPacket, SetEntityMetadata,
 };
@@ -32,13 +33,13 @@ use crate::world::WorldId;
 ///
 /// [`Player`]: crate::entity::types::Player
 /// [`PlayerList`]: crate::player_list::PlayerList
-pub struct Entities {
-    sm: SlotMap<Entity>,
+pub struct Entities<C: Config> {
+    sm: SlotMap<Entity<C>>,
     uuid_to_entity: HashMap<Uuid, EntityId>,
     network_id_to_entity: HashMap<NonZeroU32, u32>,
 }
 
-impl Entities {
+impl<C: Config> Entities<C> {
     pub(crate) fn new() -> Self {
         Self {
             sm: SlotMap::new(),
@@ -49,8 +50,8 @@ impl Entities {
 
     /// Spawns a new entity with a random UUID. A reference to the entity along
     /// with its ID is returned.
-    pub fn create(&mut self, kind: EntityKind) -> (EntityId, &mut Entity) {
-        self.create_with_uuid(kind, Uuid::from_bytes(rand::random()))
+    pub fn create(&mut self, kind: EntityKind, data: C::EntityData) -> (EntityId, &mut Entity<C>) {
+        self.create_with_uuid(kind, Uuid::from_bytes(rand::random()), data)
             .expect("UUID collision")
     }
 
@@ -63,13 +64,15 @@ impl Entities {
         &mut self,
         kind: EntityKind,
         uuid: Uuid,
-    ) -> Option<(EntityId, &mut Entity)> {
+        data: C::EntityData,
+    ) -> Option<(EntityId, &mut Entity<C>)> {
         match self.uuid_to_entity.entry(uuid) {
             Entry::Occupied(_) => None,
             Entry::Vacant(ve) => {
                 let (k, e) = self.sm.insert(Entity {
+                    data,
+                    state: EntityState::new(kind),
                     flags: EntityFlags(0),
-                    data: EntityData::new(kind),
                     world: WorldId::NULL,
                     new_position: Vec3::default(),
                     old_position: Vec3::default(),
@@ -113,7 +116,7 @@ impl Entities {
     /// Removes all entities from the server for which `f` returns `true`.
     ///
     /// All entities are visited in an unspecified order.
-    pub fn retain(&mut self, mut f: impl FnMut(EntityId, &mut Entity) -> bool) {
+    pub fn retain(&mut self, mut f: impl FnMut(EntityId, &mut Entity<C>) -> bool) {
         self.sm.retain(|k, v| {
             if f(EntityId(k), v) {
                 true
@@ -147,14 +150,14 @@ impl Entities {
     /// Gets a shared reference to the entity with the given [`EntityId`].
     ///
     /// If the ID is invalid, `None` is returned.
-    pub fn get(&self, entity: EntityId) -> Option<&Entity> {
+    pub fn get(&self, entity: EntityId) -> Option<&Entity<C>> {
         self.sm.get(entity.0)
     }
 
     /// Gets an exclusive reference to the entity with the given [`EntityId`].
     ///
     /// If the ID is invalid, `None` is returned.
-    pub fn get_mut(&mut self, entity: EntityId) -> Option<&mut Entity> {
+    pub fn get_mut(&mut self, entity: EntityId) -> Option<&mut Entity<C>> {
         self.sm.get_mut(entity.0)
     }
 
@@ -166,32 +169,34 @@ impl Entities {
 
     /// Returns an immutable iterator over all entities on the server in an
     /// unspecified order.
-    pub fn iter(&self) -> impl FusedIterator<Item = (EntityId, &Entity)> + Clone + '_ {
+    pub fn iter(&self) -> impl FusedIterator<Item = (EntityId, &Entity<C>)> + Clone + '_ {
         self.sm.iter().map(|(k, v)| (EntityId(k), v))
     }
 
     /// Returns a mutable iterator over all entities on the server in an
     /// unspecified order.
-    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (EntityId, &mut Entity)> + '_ {
+    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (EntityId, &mut Entity<C>)> + '_ {
         self.sm.iter_mut().map(|(k, v)| (EntityId(k), v))
     }
 
     /// Returns a parallel immutable iterator over all entities on the server in
     /// an unspecified order.
-    pub fn par_iter(&self) -> impl ParallelIterator<Item = (EntityId, &Entity)> + Clone + '_ {
+    pub fn par_iter(&self) -> impl ParallelIterator<Item = (EntityId, &Entity<C>)> + Clone + '_ {
         self.sm.par_iter().map(|(k, v)| (EntityId(k), v))
     }
 
     /// Returns a parallel mutable iterator over all clients on the server in an
     /// unspecified order.
-    pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (EntityId, &mut Entity)> + '_ {
+    pub fn par_iter_mut(
+        &mut self,
+    ) -> impl ParallelIterator<Item = (EntityId, &mut Entity<C>)> + '_ {
         self.sm.par_iter_mut().map(|(k, v)| (EntityId(k), v))
     }
 
     pub(crate) fn update(&mut self) {
         for (_, e) in self.iter_mut() {
             e.old_position = e.new_position;
-            e.data.clear_modifications();
+            e.state.clear_modifications();
 
             e.flags.set_yaw_or_pitch_modified(false);
             e.flags.set_head_yaw_modified(false);
@@ -230,9 +235,12 @@ impl EntityId {
 /// this struct. This includes position, rotation, velocity, UUID, and hitbox.
 /// To access data that is not common to every kind of entity, see
 /// [`Self::data`].
-pub struct Entity {
+pub struct Entity<C: Config> {
+    /// Custom data.
+    pub data: C::EntityData,
+    /// Kind-specific state for this entity.
+    pub state: EntityState,
     flags: EntityFlags,
-    data: EntityData,
     world: WorldId,
     new_position: Vec3<f64>,
     old_position: Vec3<f64>,
@@ -253,25 +261,14 @@ pub(crate) struct EntityFlags {
     _pad: u8,
 }
 
-impl Entity {
+impl<C: Config> Entity<C> {
     pub(crate) fn flags(&self) -> EntityFlags {
         self.flags
     }
 
-    /// Gets a reference to this entity's [`EntityData`].
-    pub fn data(&self) -> &EntityData {
-        &self.data
-    }
-
-    /// Gets a mutable reference to this entity's
-    /// [`EntityData`].
-    pub fn data_mut(&mut self) -> &mut EntityData {
-        &mut self.data
-    }
-
     /// Gets the [`EntityKind`] of this entity.
     pub fn kind(&self) -> EntityKind {
-        self.data.kind()
+        self.state.kind()
     }
 
     /// Gets the [`WorldId`](crate::world::WorldId) of the world this entity is
@@ -389,18 +386,18 @@ impl Entity {
     ///
     /// [interact event]: crate::client::Event::InteractWithEntity
     pub fn hitbox(&self) -> Aabb<f64> {
-        let dims = match &self.data {
-            EntityData::Allay(_) => [0.6, 0.35, 0.6],
-            EntityData::ChestBoat(_) => [1.375, 0.5625, 1.375],
-            EntityData::Frog(_) => [0.5, 0.5, 0.5],
-            EntityData::Tadpole(_) => [0.4, 0.3, 0.4],
-            EntityData::Warden(_) => [0.9, 2.9, 0.9],
-            EntityData::AreaEffectCloud(e) => [
+        let dims = match &self.state {
+            EntityState::Allay(_) => [0.6, 0.35, 0.6],
+            EntityState::ChestBoat(_) => [1.375, 0.5625, 1.375],
+            EntityState::Frog(_) => [0.5, 0.5, 0.5],
+            EntityState::Tadpole(_) => [0.4, 0.3, 0.4],
+            EntityState::Warden(_) => [0.9, 2.9, 0.9],
+            EntityState::AreaEffectCloud(e) => [
                 e.get_radius() as f64 * 2.0,
                 0.5,
                 e.get_radius() as f64 * 2.0,
             ],
-            EntityData::ArmorStand(e) => {
+            EntityState::ArmorStand(e) => {
                 if e.get_marker() {
                     [0.0, 0.0, 0.0]
                 } else if e.get_small() {
@@ -409,123 +406,123 @@ impl Entity {
                     [0.5, 1.975, 0.5]
                 }
             }
-            EntityData::Arrow(_) => [0.5, 0.5, 0.5],
-            EntityData::Axolotl(_) => [1.3, 0.6, 1.3],
-            EntityData::Bat(_) => [0.5, 0.9, 0.5],
-            EntityData::Bee(_) => [0.7, 0.6, 0.7], // TODO: baby size?
-            EntityData::Blaze(_) => [0.6, 1.8, 0.6],
-            EntityData::Boat(_) => [1.375, 0.5625, 1.375],
-            EntityData::Cat(_) => [0.6, 0.7, 0.6],
-            EntityData::CaveSpider(_) => [0.7, 0.5, 0.7],
-            EntityData::Chicken(_) => [0.4, 0.7, 0.4], // TODO: baby size?
-            EntityData::Cod(_) => [0.5, 0.3, 0.5],
-            EntityData::Cow(_) => [0.9, 1.4, 0.9], // TODO: baby size?
-            EntityData::Creeper(_) => [0.6, 1.7, 0.6],
-            EntityData::Dolphin(_) => [0.9, 0.6, 0.9],
-            EntityData::Donkey(_) => [1.5, 1.39648, 1.5], // TODO: baby size?
-            EntityData::DragonFireball(_) => [1.0, 1.0, 1.0],
-            EntityData::Drowned(_) => [0.6, 1.95, 0.6], // TODO: baby size?
-            EntityData::ElderGuardian(_) => [1.9975, 1.9975, 1.9975],
-            EntityData::EndCrystal(_) => [2.0, 2.0, 2.0],
-            EntityData::EnderDragon(_) => [16.0, 8.0, 16.0],
-            EntityData::Enderman(_) => [0.6, 2.9, 0.6],
-            EntityData::Endermite(_) => [0.4, 0.3, 0.4],
-            EntityData::Evoker(_) => [0.6, 1.95, 0.6],
-            EntityData::EvokerFangs(_) => [0.5, 0.8, 0.5],
-            EntityData::ExperienceOrb(_) => [0.5, 0.5, 0.5],
-            EntityData::EyeOfEnder(_) => [0.25, 0.25, 0.25],
-            EntityData::FallingBlock(_) => [0.98, 0.98, 0.98],
-            EntityData::FireworkRocket(_) => [0.25, 0.25, 0.25],
-            EntityData::Fox(_) => [0.6, 0.7, 0.6], // TODO: baby size?
-            EntityData::Ghast(_) => [4.0, 4.0, 4.0],
-            EntityData::Giant(_) => [3.6, 12.0, 3.6],
-            EntityData::GlowItemFrame(_) => todo!("account for rotation"),
-            EntityData::GlowSquid(_) => [0.8, 0.8, 0.8],
-            EntityData::Goat(_) => [1.3, 0.9, 1.3], // TODO: baby size?
-            EntityData::Guardian(_) => [0.85, 0.85, 0.85],
-            EntityData::Hoglin(_) => [1.39648, 1.4, 1.39648], // TODO: baby size?
-            EntityData::Horse(_) => [1.39648, 1.6, 1.39648],  // TODO: baby size?
-            EntityData::Husk(_) => [0.6, 1.95, 0.6],          // TODO: baby size?
-            EntityData::Illusioner(_) => [0.6, 1.95, 0.6],
-            EntityData::IronGolem(_) => [1.4, 2.7, 1.4],
-            EntityData::Item(_) => [0.25, 0.25, 0.25],
-            EntityData::ItemFrame(_) => todo!("account for rotation"),
-            EntityData::Fireball(_) => [1.0, 1.0, 1.0],
-            EntityData::LeashKnot(_) => [0.375, 0.5, 0.375],
-            EntityData::LightningBolt(_) => [0.0, 0.0, 0.0],
-            EntityData::Llama(_) => [0.9, 1.87, 0.9], // TODO: baby size?
-            EntityData::LlamaSpit(_) => [0.25, 0.25, 0.25],
-            EntityData::MagmaCube(e) => {
+            EntityState::Arrow(_) => [0.5, 0.5, 0.5],
+            EntityState::Axolotl(_) => [1.3, 0.6, 1.3],
+            EntityState::Bat(_) => [0.5, 0.9, 0.5],
+            EntityState::Bee(_) => [0.7, 0.6, 0.7], // TODO: baby size?
+            EntityState::Blaze(_) => [0.6, 1.8, 0.6],
+            EntityState::Boat(_) => [1.375, 0.5625, 1.375],
+            EntityState::Cat(_) => [0.6, 0.7, 0.6],
+            EntityState::CaveSpider(_) => [0.7, 0.5, 0.7],
+            EntityState::Chicken(_) => [0.4, 0.7, 0.4], // TODO: baby size?
+            EntityState::Cod(_) => [0.5, 0.3, 0.5],
+            EntityState::Cow(_) => [0.9, 1.4, 0.9], // TODO: baby size?
+            EntityState::Creeper(_) => [0.6, 1.7, 0.6],
+            EntityState::Dolphin(_) => [0.9, 0.6, 0.9],
+            EntityState::Donkey(_) => [1.5, 1.39648, 1.5], // TODO: baby size?
+            EntityState::DragonFireball(_) => [1.0, 1.0, 1.0],
+            EntityState::Drowned(_) => [0.6, 1.95, 0.6], // TODO: baby size?
+            EntityState::ElderGuardian(_) => [1.9975, 1.9975, 1.9975],
+            EntityState::EndCrystal(_) => [2.0, 2.0, 2.0],
+            EntityState::EnderDragon(_) => [16.0, 8.0, 16.0],
+            EntityState::Enderman(_) => [0.6, 2.9, 0.6],
+            EntityState::Endermite(_) => [0.4, 0.3, 0.4],
+            EntityState::Evoker(_) => [0.6, 1.95, 0.6],
+            EntityState::EvokerFangs(_) => [0.5, 0.8, 0.5],
+            EntityState::ExperienceOrb(_) => [0.5, 0.5, 0.5],
+            EntityState::EyeOfEnder(_) => [0.25, 0.25, 0.25],
+            EntityState::FallingBlock(_) => [0.98, 0.98, 0.98],
+            EntityState::FireworkRocket(_) => [0.25, 0.25, 0.25],
+            EntityState::Fox(_) => [0.6, 0.7, 0.6], // TODO: baby size?
+            EntityState::Ghast(_) => [4.0, 4.0, 4.0],
+            EntityState::Giant(_) => [3.6, 12.0, 3.6],
+            EntityState::GlowItemFrame(_) => todo!("account for rotation"),
+            EntityState::GlowSquid(_) => [0.8, 0.8, 0.8],
+            EntityState::Goat(_) => [1.3, 0.9, 1.3], // TODO: baby size?
+            EntityState::Guardian(_) => [0.85, 0.85, 0.85],
+            EntityState::Hoglin(_) => [1.39648, 1.4, 1.39648], // TODO: baby size?
+            EntityState::Horse(_) => [1.39648, 1.6, 1.39648],  // TODO: baby size?
+            EntityState::Husk(_) => [0.6, 1.95, 0.6],          // TODO: baby size?
+            EntityState::Illusioner(_) => [0.6, 1.95, 0.6],
+            EntityState::IronGolem(_) => [1.4, 2.7, 1.4],
+            EntityState::Item(_) => [0.25, 0.25, 0.25],
+            EntityState::ItemFrame(_) => todo!("account for rotation"),
+            EntityState::Fireball(_) => [1.0, 1.0, 1.0],
+            EntityState::LeashKnot(_) => [0.375, 0.5, 0.375],
+            EntityState::LightningBolt(_) => [0.0, 0.0, 0.0],
+            EntityState::Llama(_) => [0.9, 1.87, 0.9], // TODO: baby size?
+            EntityState::LlamaSpit(_) => [0.25, 0.25, 0.25],
+            EntityState::MagmaCube(e) => {
                 let s = e.get_size() as f64 * 0.51000005;
                 [s, s, s]
             }
-            EntityData::Marker(_) => [0.0, 0.0, 0.0],
-            EntityData::Minecart(_) => [0.98, 0.7, 0.98],
-            EntityData::ChestMinecart(_) => [0.98, 0.7, 0.98],
-            EntityData::CommandBlockMinecart(_) => [0.98, 0.7, 0.98],
-            EntityData::FurnaceMinecart(_) => [0.98, 0.7, 0.98],
-            EntityData::HopperMinecart(_) => [0.98, 0.7, 0.98],
-            EntityData::SpawnerMinecart(_) => [0.98, 0.7, 0.98],
-            EntityData::TntMinecart(_) => [0.98, 0.7, 0.98],
-            EntityData::Mule(_) => [1.39648, 1.6, 1.39648], // TODO: baby size?
-            EntityData::Mooshroom(_) => [0.9, 1.4, 0.9],    // TODO: baby size?
-            EntityData::Ocelot(_) => [0.6, 0.7, 0.6],       // TODO: baby size?
-            EntityData::Painting(_) => todo!("account for rotation and type"),
-            EntityData::Panda(_) => [0.6, 0.7, 0.6], // TODO: baby size?
-            EntityData::Parrot(_) => [0.5, 0.9, 0.5],
-            EntityData::Phantom(_) => [0.9, 0.5, 0.9],
-            EntityData::Pig(_) => [0.9, 0.9, 0.9], // TODO: baby size?
-            EntityData::Piglin(_) => [0.6, 1.95, 0.6], // TODO: baby size?
-            EntityData::PiglinBrute(_) => [0.6, 1.95, 0.6],
-            EntityData::Pillager(_) => [0.6, 1.95, 0.6],
-            EntityData::PolarBear(_) => [1.4, 1.4, 1.4], // TODO: baby size?
-            EntityData::Tnt(_) => [0.98, 0.98, 0.98],
-            EntityData::Pufferfish(_) => [0.7, 0.7, 0.7],
-            EntityData::Rabbit(_) => [0.4, 0.5, 0.4], // TODO: baby size?
-            EntityData::Ravager(_) => [1.95, 2.2, 1.95],
-            EntityData::Salmon(_) => [0.7, 0.4, 0.7],
-            EntityData::Sheep(_) => [0.9, 1.3, 0.9], // TODO: baby size?
-            EntityData::Shulker(_) => [1.0, 1.0, 1.0], // TODO: how is height calculated?
-            EntityData::ShulkerBullet(_) => [0.3125, 0.3125, 0.3125],
-            EntityData::Silverfish(_) => [0.4, 0.3, 0.4],
-            EntityData::Skeleton(_) => [0.6, 1.99, 0.6],
-            EntityData::SkeletonHorse(_) => [1.39648, 1.6, 1.39648], // TODO: baby size?
-            EntityData::Slime(e) => {
+            EntityState::Marker(_) => [0.0, 0.0, 0.0],
+            EntityState::Minecart(_) => [0.98, 0.7, 0.98],
+            EntityState::ChestMinecart(_) => [0.98, 0.7, 0.98],
+            EntityState::CommandBlockMinecart(_) => [0.98, 0.7, 0.98],
+            EntityState::FurnaceMinecart(_) => [0.98, 0.7, 0.98],
+            EntityState::HopperMinecart(_) => [0.98, 0.7, 0.98],
+            EntityState::SpawnerMinecart(_) => [0.98, 0.7, 0.98],
+            EntityState::TntMinecart(_) => [0.98, 0.7, 0.98],
+            EntityState::Mule(_) => [1.39648, 1.6, 1.39648], // TODO: baby size?
+            EntityState::Mooshroom(_) => [0.9, 1.4, 0.9],    // TODO: baby size?
+            EntityState::Ocelot(_) => [0.6, 0.7, 0.6],       // TODO: baby size?
+            EntityState::Painting(_) => todo!("account for rotation and type"),
+            EntityState::Panda(_) => [0.6, 0.7, 0.6], // TODO: baby size?
+            EntityState::Parrot(_) => [0.5, 0.9, 0.5],
+            EntityState::Phantom(_) => [0.9, 0.5, 0.9],
+            EntityState::Pig(_) => [0.9, 0.9, 0.9], // TODO: baby size?
+            EntityState::Piglin(_) => [0.6, 1.95, 0.6], // TODO: baby size?
+            EntityState::PiglinBrute(_) => [0.6, 1.95, 0.6],
+            EntityState::Pillager(_) => [0.6, 1.95, 0.6],
+            EntityState::PolarBear(_) => [1.4, 1.4, 1.4], // TODO: baby size?
+            EntityState::Tnt(_) => [0.98, 0.98, 0.98],
+            EntityState::Pufferfish(_) => [0.7, 0.7, 0.7],
+            EntityState::Rabbit(_) => [0.4, 0.5, 0.4], // TODO: baby size?
+            EntityState::Ravager(_) => [1.95, 2.2, 1.95],
+            EntityState::Salmon(_) => [0.7, 0.4, 0.7],
+            EntityState::Sheep(_) => [0.9, 1.3, 0.9], // TODO: baby size?
+            EntityState::Shulker(_) => [1.0, 1.0, 1.0], // TODO: how is height calculated?
+            EntityState::ShulkerBullet(_) => [0.3125, 0.3125, 0.3125],
+            EntityState::Silverfish(_) => [0.4, 0.3, 0.4],
+            EntityState::Skeleton(_) => [0.6, 1.99, 0.6],
+            EntityState::SkeletonHorse(_) => [1.39648, 1.6, 1.39648], // TODO: baby size?
+            EntityState::Slime(e) => {
                 let s = 0.51000005 * e.get_size() as f64;
                 [s, s, s]
             }
-            EntityData::SmallFireball(_) => [0.3125, 0.3125, 0.3125],
-            EntityData::SnowGolem(_) => [0.7, 1.9, 0.7],
-            EntityData::Snowball(_) => [0.25, 0.25, 0.25],
-            EntityData::SpectralArrow(_) => [0.5, 0.5, 0.5],
-            EntityData::Spider(_) => [1.4, 0.9, 1.4],
-            EntityData::Squid(_) => [0.8, 0.8, 0.8],
-            EntityData::Stray(_) => [0.6, 1.99, 0.6],
-            EntityData::Strider(_) => [0.9, 1.7, 0.9], // TODO: baby size?
-            EntityData::Egg(_) => [0.25, 0.25, 0.25],
-            EntityData::EnderPearl(_) => [0.25, 0.25, 0.25],
-            EntityData::ExperienceBottle(_) => [0.25, 0.25, 0.25],
-            EntityData::Potion(_) => [0.25, 0.25, 0.25],
-            EntityData::Trident(_) => [0.5, 0.5, 0.5],
-            EntityData::TraderLlama(_) => [0.9, 1.87, 0.9],
-            EntityData::TropicalFish(_) => [0.5, 0.4, 0.5],
-            EntityData::Turtle(_) => [1.2, 0.4, 1.2], // TODO: baby size?
-            EntityData::Vex(_) => [0.4, 0.8, 0.4],
-            EntityData::Villager(_) => [0.6, 1.95, 0.6], // TODO: baby size?
-            EntityData::Vindicator(_) => [0.6, 1.95, 0.6],
-            EntityData::WanderingTrader(_) => [0.6, 1.95, 0.6],
-            EntityData::Witch(_) => [0.6, 1.95, 0.6],
-            EntityData::Wither(_) => [0.9, 3.5, 0.9],
-            EntityData::WitherSkeleton(_) => [0.7, 2.4, 0.7],
-            EntityData::WitherSkull(_) => [0.3125, 0.3125, 0.3125],
-            EntityData::Wolf(_) => [0.6, 0.85, 0.6], // TODO: baby size?
-            EntityData::Zoglin(_) => [1.39648, 1.4, 1.39648], // TODO: baby size?
-            EntityData::Zombie(_) => [0.6, 1.95, 0.6], // TODO: baby size?
-            EntityData::ZombieHorse(_) => [1.39648, 1.6, 1.39648], // TODO: baby size?
-            EntityData::ZombieVillager(_) => [0.6, 1.95, 0.6], // TODO: baby size?
-            EntityData::ZombifiedPiglin(_) => [0.6, 1.95, 0.6], // TODO: baby size?
-            EntityData::Player(_) => [0.6, 1.8, 0.6], // TODO: changes depending on the pose.
-            EntityData::FishingBobber(_) => [0.25, 0.25, 0.25],
+            EntityState::SmallFireball(_) => [0.3125, 0.3125, 0.3125],
+            EntityState::SnowGolem(_) => [0.7, 1.9, 0.7],
+            EntityState::Snowball(_) => [0.25, 0.25, 0.25],
+            EntityState::SpectralArrow(_) => [0.5, 0.5, 0.5],
+            EntityState::Spider(_) => [1.4, 0.9, 1.4],
+            EntityState::Squid(_) => [0.8, 0.8, 0.8],
+            EntityState::Stray(_) => [0.6, 1.99, 0.6],
+            EntityState::Strider(_) => [0.9, 1.7, 0.9], // TODO: baby size?
+            EntityState::Egg(_) => [0.25, 0.25, 0.25],
+            EntityState::EnderPearl(_) => [0.25, 0.25, 0.25],
+            EntityState::ExperienceBottle(_) => [0.25, 0.25, 0.25],
+            EntityState::Potion(_) => [0.25, 0.25, 0.25],
+            EntityState::Trident(_) => [0.5, 0.5, 0.5],
+            EntityState::TraderLlama(_) => [0.9, 1.87, 0.9],
+            EntityState::TropicalFish(_) => [0.5, 0.4, 0.5],
+            EntityState::Turtle(_) => [1.2, 0.4, 1.2], // TODO: baby size?
+            EntityState::Vex(_) => [0.4, 0.8, 0.4],
+            EntityState::Villager(_) => [0.6, 1.95, 0.6], // TODO: baby size?
+            EntityState::Vindicator(_) => [0.6, 1.95, 0.6],
+            EntityState::WanderingTrader(_) => [0.6, 1.95, 0.6],
+            EntityState::Witch(_) => [0.6, 1.95, 0.6],
+            EntityState::Wither(_) => [0.9, 3.5, 0.9],
+            EntityState::WitherSkeleton(_) => [0.7, 2.4, 0.7],
+            EntityState::WitherSkull(_) => [0.3125, 0.3125, 0.3125],
+            EntityState::Wolf(_) => [0.6, 0.85, 0.6], // TODO: baby size?
+            EntityState::Zoglin(_) => [1.39648, 1.4, 1.39648], // TODO: baby size?
+            EntityState::Zombie(_) => [0.6, 1.95, 0.6], // TODO: baby size?
+            EntityState::ZombieHorse(_) => [1.39648, 1.6, 1.39648], // TODO: baby size?
+            EntityState::ZombieVillager(_) => [0.6, 1.95, 0.6], // TODO: baby size?
+            EntityState::ZombifiedPiglin(_) => [0.6, 1.95, 0.6], // TODO: baby size?
+            EntityState::Player(_) => [0.6, 1.8, 0.6], // TODO: changes depending on the pose.
+            EntityState::FishingBobber(_) => [0.25, 0.25, 0.25],
         };
 
         aabb_from_bottom_and_size(self.new_position, dims.into())
@@ -536,7 +533,7 @@ impl Entity {
     ///
     /// Is `None` if there is no initial metadata.
     pub(crate) fn initial_metadata_packet(&self, this_id: EntityId) -> Option<SetEntityMetadata> {
-        self.data.initial_metadata().map(|meta| SetEntityMetadata {
+        self.state.initial_metadata().map(|meta| SetEntityMetadata {
             entity_id: VarInt(this_id.to_network_id()),
             metadata: RawBytes(meta),
         })
@@ -546,23 +543,23 @@ impl Entity {
     ///
     /// Is `None` if this entity's metadata has not been modified.
     pub(crate) fn updated_metadata_packet(&self, this_id: EntityId) -> Option<SetEntityMetadata> {
-        self.data.updated_metadata().map(|meta| SetEntityMetadata {
+        self.state.updated_metadata().map(|meta| SetEntityMetadata {
             entity_id: VarInt(this_id.to_network_id()),
             metadata: RawBytes(meta),
         })
     }
 
     pub(crate) fn spawn_packet(&self, this_id: EntityId) -> Option<EntitySpawnPacket> {
-        match &self.data {
-            EntityData::Marker(_) => None,
-            EntityData::ExperienceOrb(_) => {
+        match &self.state {
+            EntityState::Marker(_) => None,
+            EntityState::ExperienceOrb(_) => {
                 Some(EntitySpawnPacket::ExperienceOrb(AddExperienceOrb {
                     entity_id: VarInt(this_id.to_network_id()),
                     position: self.new_position,
                     count: 0, // TODO
                 }))
             }
-            EntityData::Player(_) => Some(EntitySpawnPacket::Player(AddPlayer {
+            EntityState::Player(_) => Some(EntitySpawnPacket::Player(AddPlayer {
                 entity_id: VarInt(this_id.to_network_id()),
                 player_uuid: self.uuid,
                 position: self.new_position,

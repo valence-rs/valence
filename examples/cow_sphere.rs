@@ -1,7 +1,6 @@
 use std::f64::consts::TAU;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Mutex;
 
 use log::LevelFilter;
 use valence::async_trait;
@@ -21,23 +20,34 @@ pub fn main() -> ShutdownResult {
         .parse_default_env()
         .init();
 
-    valence::start_server(Game {
-        player_count: AtomicUsize::new(0),
-        cows: Mutex::new(Vec::new()),
-    })
+    valence::start_server(
+        Game {
+            player_count: AtomicUsize::new(0),
+        },
+        ServerData { cows: Vec::new() },
+    )
 }
 
 struct Game {
     player_count: AtomicUsize,
-    cows: Mutex<Vec<EntityId>>,
+}
+
+struct ServerData {
+    cows: Vec<EntityId>,
 }
 
 const MAX_PLAYERS: usize = 10;
 
-const SPAWN_POS: BlockPos = BlockPos::new(0, 100, -35);
+const SPAWN_POS: BlockPos = BlockPos::new(0, 100, -25);
 
 #[async_trait]
 impl Config for Game {
+    type ChunkData = ();
+    type ClientData = ();
+    type EntityData = ();
+    type ServerData = ServerData;
+    type WorldData = ();
+
     fn max_connections(&self) -> usize {
         // We want status pings to be successful even if the server is full.
         MAX_PLAYERS + 64
@@ -50,7 +60,7 @@ impl Config for Game {
 
     async fn server_list_ping(
         &self,
-        _server: &SharedServer,
+        _server: &SharedServer<Self>,
         _remote_addr: SocketAddr,
     ) -> ServerListPing {
         ServerListPing::Respond {
@@ -61,27 +71,27 @@ impl Config for Game {
         }
     }
 
-    fn init(&self, server: &mut Server) {
-        let (world_id, world) = server.worlds.create(DimensionId::default());
+    fn init(&self, server: &mut Server<Self>) {
+        let (world_id, world) = server.worlds.create(DimensionId::default(), ());
         world.meta.set_flat(true);
 
         let size = 5;
         for z in -size..size {
             for x in -size..size {
-                world.chunks.create([x, z]);
+                world.chunks.create([x, z], ());
             }
         }
 
         world.chunks.set_block_state(SPAWN_POS, BlockState::BEDROCK);
 
-        self.cows.lock().unwrap().extend((0..200).map(|_| {
-            let (id, e) = server.entities.create(EntityKind::Cow);
+        server.data.cows.extend((0..200).map(|_| {
+            let (id, e) = server.entities.create(EntityKind::Cow, ());
             e.set_world(world_id);
             id
         }));
     }
 
-    fn update(&self, server: &mut Server) {
+    fn update(&self, server: &mut Server<Self>) {
         let (world_id, world) = server.worlds.iter_mut().next().unwrap();
 
         server.clients.retain(|_, client| {
@@ -122,10 +132,10 @@ impl Config for Game {
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
                 world.meta.player_list_mut().remove(client.uuid());
-                false
-            } else {
-                true
+                return false;
             }
+
+            true
         });
 
         let time = server.shared.current_tick() as f64 / server.shared.tick_rate() as f64;
@@ -133,9 +143,6 @@ impl Config for Game {
         let rot = Mat3::rotation_x(time * TAU * 0.1)
             .rotated_y(time * TAU * 0.2)
             .rotated_z(time * TAU * 0.3);
-
-        let cows = self.cows.lock().unwrap();
-        let cow_count = cows.len();
 
         let radius = 6.0 + ((time * TAU / 2.5).sin() + 1.0) / 2.0 * 10.0;
 
@@ -149,11 +156,16 @@ impl Config for Game {
         // TODO: hardcoded eye pos.
         let eye_pos = Vec3::new(player_pos.x, player_pos.y + 1.6, player_pos.z);
 
-        #[allow(clippy::significant_drop_in_scrutinee)]
-        for (cow_id, p) in cows.iter().cloned().zip(fibonacci_spiral(cow_count)) {
+        for (cow_id, p) in server
+            .data
+            .cows
+            .iter()
+            .cloned()
+            .zip(fibonacci_spiral(server.data.cows.len()))
+        {
             let cow = server.entities.get_mut(cow_id).expect("missing cow");
             let rotated = p * rot;
-            let transformed = rotated * radius + [0.5, SPAWN_POS.y as f64 + 1.0, 0.5];
+            let transformed = rotated * radius + [0.5, SPAWN_POS.y as f64 + 2.0, 0.5];
 
             let yaw = f32::atan2(rotated.z as f32, rotated.x as f32).to_degrees() - 90.0;
             let (looking_yaw, looking_pitch) =

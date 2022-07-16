@@ -51,15 +51,17 @@ use crate::{Ticks, PROTOCOL_VERSION, VERSION_NAME};
 
 /// Contains the entire state of a running Minecraft server, accessible from
 /// within the [update](crate::config::Config::update) loop.
-pub struct Server {
+pub struct Server<C: Config> {
+    /// Custom data.
+    pub data: C::ServerData,
     /// A handle to this server's [`SharedServer`].
-    pub shared: SharedServer,
+    pub shared: SharedServer<C>,
     /// All of the clients in the server.
-    pub clients: Clients,
+    pub clients: Clients<C>,
     /// All of entities in the server.
-    pub entities: Entities,
+    pub entities: Entities<C>,
     /// All of the worlds in the server.
-    pub worlds: Worlds,
+    pub worlds: Worlds<C>,
 }
 
 /// A handle to a Minecraft server containing the subset of functionality which
@@ -69,11 +71,17 @@ pub struct Server {
 /// be shared between threads.
 ///
 /// [update]: crate::config::Config::update
-#[derive(Clone)]
-pub struct SharedServer(Arc<SharedServerInner>);
 
-struct SharedServerInner {
-    cfg: Box<dyn Config>,
+pub struct SharedServer<C: Config>(Arc<SharedServerInner<C>>);
+
+impl<C: Config> Clone for SharedServer<C> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+struct SharedServerInner<C: Config> {
+    cfg: C,
     address: SocketAddr,
     tick_rate: Ticks,
     online_mode: bool,
@@ -130,10 +138,10 @@ pub type ShutdownResult = Result<(), Box<dyn Error + Send + Sync + 'static>>;
 pub(crate) type S2cPacketChannels = (Sender<C2sPlayPacket>, Receiver<S2cPlayPacket>);
 pub(crate) type C2sPacketChannels = (Sender<S2cPlayPacket>, Receiver<C2sPlayPacket>);
 
-impl SharedServer {
+impl<C: Config> SharedServer<C> {
     /// Gets a reference to the config object used to start the server.
-    pub fn config(&self) -> &(impl Config + ?Sized) {
-        self.0.cfg.as_ref()
+    pub fn config(&self) -> &C {
+        &self.0.cfg
     }
 
     /// Gets the socket address this server is bound to.
@@ -240,12 +248,13 @@ impl SharedServer {
 ///
 /// The function returns once the server has shut down, a runtime error
 /// occurs, or the configuration is found to be invalid.
-pub fn start_server(config: impl Config) -> ShutdownResult {
+pub fn start_server<C: Config>(config: C, data: C::ServerData) -> ShutdownResult {
     let shared = setup_server(config).map_err(Box::<dyn Error + Send + Sync + 'static>::from)?;
 
     let _guard = shared.tokio_handle().enter();
 
     let mut server = Server {
+        data,
         shared: shared.clone(),
         clients: Clients::new(),
         entities: Entities::new(),
@@ -259,7 +268,7 @@ pub fn start_server(config: impl Config) -> ShutdownResult {
     do_update_loop(&mut server)
 }
 
-fn setup_server(cfg: impl Config) -> anyhow::Result<SharedServer> {
+fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
     let max_connections = cfg.max_connections();
     let address = cfg.address();
     let tick_rate = cfg.tick_rate();
@@ -360,7 +369,7 @@ fn setup_server(cfg: impl Config) -> anyhow::Result<SharedServer> {
     };
 
     let server = SharedServerInner {
-        cfg: Box::new(cfg),
+        cfg,
         address,
         tick_rate,
         online_mode,
@@ -385,7 +394,7 @@ fn setup_server(cfg: impl Config) -> anyhow::Result<SharedServer> {
     Ok(SharedServer(Arc::new(server)))
 }
 
-fn do_update_loop(server: &mut Server) -> ShutdownResult {
+fn do_update_loop<C: Config>(server: &mut Server<C>) -> ShutdownResult {
     let mut tick_start = Instant::now();
 
     let shared = server.shared.clone();
@@ -441,7 +450,7 @@ fn do_update_loop(server: &mut Server) -> ShutdownResult {
     }
 }
 
-fn join_player(server: &mut Server, msg: NewClientMessage) {
+fn join_player<C: Config>(server: &mut Server<C>, msg: NewClientMessage) {
     let (clientbound_tx, clientbound_rx) = flume::bounded(server.shared.0.outgoing_packet_capacity);
     let (serverbound_tx, serverbound_rx) = flume::bounded(server.shared.0.incoming_packet_capacity);
 
@@ -450,7 +459,12 @@ fn join_player(server: &mut Server, msg: NewClientMessage) {
 
     let _ = msg.reply.send(s2c_packet_channels);
 
-    let client = Client::new(c2s_packet_channels, &server.shared, msg.ncd);
+    let client = Client::new(
+        c2s_packet_channels,
+        &server.shared,
+        msg.ncd,
+        C::ClientData::default(),
+    );
 
     server.clients.insert(client);
 }
@@ -460,7 +474,7 @@ struct Codec {
     dec: Decoder<OwnedReadHalf>,
 }
 
-async fn do_accept_loop(server: SharedServer) {
+async fn do_accept_loop<C: Config>(server: SharedServer<C>) {
     log::trace!("entering accept loop");
 
     let listener = match TcpListener::bind(server.0.address).await {
@@ -502,8 +516,8 @@ async fn do_accept_loop(server: SharedServer) {
     }
 }
 
-async fn handle_connection(
-    server: SharedServer,
+async fn handle_connection<C: Config>(
+    server: SharedServer<C>,
     stream: TcpStream,
     remote_addr: SocketAddr,
 ) -> anyhow::Result<()> {
@@ -533,8 +547,8 @@ async fn handle_connection(
     }
 }
 
-async fn handle_status(
-    server: SharedServer,
+async fn handle_status<C: Config>(
+    server: SharedServer<C>,
     c: &mut Codec,
     remote_addr: SocketAddr,
 ) -> anyhow::Result<()> {
@@ -585,8 +599,8 @@ async fn handle_status(
 }
 
 /// Handle the login process and return the new player's data if successful.
-async fn handle_login(
-    server: &SharedServer,
+async fn handle_login<C: Config>(
+    server: &SharedServer<C>,
     c: &mut Codec,
     remote_addr: SocketAddr,
 ) -> anyhow::Result<Option<NewClientData>> {
@@ -725,7 +739,11 @@ async fn handle_login(
     Ok(Some(npd))
 }
 
-async fn handle_play(server: &SharedServer, c: Codec, ncd: NewClientData) -> anyhow::Result<()> {
+async fn handle_play<C: Config>(
+    server: &SharedServer<C>,
+    c: Codec,
+    ncd: NewClientData,
+) -> anyhow::Result<()> {
     let (reply_tx, reply_rx) = oneshot::channel();
 
     server
