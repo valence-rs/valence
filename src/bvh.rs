@@ -6,7 +6,7 @@
 use std::iter::FusedIterator;
 use std::mem;
 
-use approx::relative_eq;
+use approx::abs_diff_eq;
 use rayon::iter::{
     IndexedParallelIterator, IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator,
 };
@@ -180,7 +180,7 @@ impl<'a, T> Internal<'a, T> {
 
 fn build_rec<T: Send>(
     idx: NodeIdx,
-    bounds: Aabb<f64>,
+    mut bounds: Aabb<f64>,
     internal_nodes: &mut [InternalNode],
     leaf_nodes: &mut [LeafNode<T>],
     total_leaf_count: NodeIdx,
@@ -192,91 +192,91 @@ fn build_rec<T: Send>(
         return (total_leaf_count - 1 + idx, leaf_nodes[0].bb);
     }
 
-    debug_assert!(bounds.is_valid());
-    let dims = bounds.max - bounds.min;
+    loop {
+        debug_assert!(bounds.is_valid());
+        let dims = bounds.max - bounds.min;
 
-    let (mut split, bounds_left, bounds_right) = if dims.x >= dims.y && dims.x >= dims.z {
-        let mid = middle(bounds.min.x, bounds.max.x);
-        let [bounds_left, bounds_right] = bounds.split_at_x(mid);
+        let (mut split, bounds_left, bounds_right) = if dims.x >= dims.y && dims.x >= dims.z {
+            let mid = middle(bounds.min.x, bounds.max.x);
+            let [bounds_left, bounds_right] = bounds.split_at_x(mid);
 
-        let p = partition(leaf_nodes, |l| middle(l.bb.min.x, l.bb.max.x) <= mid);
+            let p = partition(leaf_nodes, |l| middle(l.bb.min.x, l.bb.max.x) <= mid);
 
-        (p, bounds_left, bounds_right)
-    } else if dims.y >= dims.x && dims.y >= dims.z {
-        let mid = middle(bounds.min.y, bounds.max.y);
-        let [bounds_left, bounds_right] = bounds.split_at_y(mid);
+            (p, bounds_left, bounds_right)
+        } else if dims.y >= dims.x && dims.y >= dims.z {
+            let mid = middle(bounds.min.y, bounds.max.y);
+            let [bounds_left, bounds_right] = bounds.split_at_y(mid);
 
-        let p = partition(leaf_nodes, |l| middle(l.bb.min.y, l.bb.max.y) <= mid);
+            let p = partition(leaf_nodes, |l| middle(l.bb.min.y, l.bb.max.y) <= mid);
 
-        (p, bounds_left, bounds_right)
-    } else {
-        let mid = middle(bounds.min.z, bounds.max.z);
-        let [bounds_left, bounds_right] = bounds.split_at_z(mid);
-
-        let p = partition(leaf_nodes, |l| middle(l.bb.min.z, l.bb.max.z) <= mid);
-
-        (p, bounds_left, bounds_right)
-    };
-
-    // Check if one of the halves is empty. (We can't have empty nodes)
-    // Also take care to handle the edge case of overlapping points.
-    if split == 0 {
-        if relative_eq!(bounds_right.min, bounds_right.max) {
-            split += 1;
+            (p, bounds_left, bounds_right)
         } else {
-            return build_rec(
-                idx,
-                bounds_right,
-                internal_nodes,
-                leaf_nodes,
-                total_leaf_count,
-            );
+            let mid = middle(bounds.min.z, bounds.max.z);
+            let [bounds_left, bounds_right] = bounds.split_at_z(mid);
+
+            let p = partition(leaf_nodes, |l| middle(l.bb.min.z, l.bb.max.z) <= mid);
+
+            (p, bounds_left, bounds_right)
+        };
+
+        // Check if one of the halves is empty. (We can't have empty nodes)
+        // Also take care to handle the edge case of overlapping points.
+        if split == 0 {
+            if abs_diff_eq!(
+                bounds_right.min,
+                bounds_right.max,
+                epsilon = f64::EPSILON * 100.0
+            ) {
+                split += 1;
+            } else {
+                bounds = bounds_right;
+                continue;
+            }
+        } else if split == leaf_nodes.len() {
+            if abs_diff_eq!(
+                bounds_left.min,
+                bounds_left.max,
+                epsilon = f64::EPSILON * 100.0
+            ) {
+                split -= 1;
+            } else {
+                bounds = bounds_left;
+                continue;
+            }
         }
-    } else if split == leaf_nodes.len() {
-        if relative_eq!(bounds_left.min, bounds_left.max) {
-            split -= 1;
-        } else {
-            return build_rec(
-                idx,
-                bounds_left,
-                internal_nodes,
-                leaf_nodes,
-                total_leaf_count,
-            );
-        }
+
+        let (leaves_left, leaves_right) = leaf_nodes.split_at_mut(split);
+
+        let (internal_left, internal_right) = internal_nodes.split_at_mut(split);
+        let (internal, internal_left) = internal_left.split_last_mut().unwrap();
+
+        let ((left, bounds_left), (right, bounds_right)) = rayon::join(
+            || {
+                build_rec(
+                    idx,
+                    bounds_left,
+                    internal_left,
+                    leaves_left,
+                    total_leaf_count,
+                )
+            },
+            || {
+                build_rec(
+                    idx + split as NodeIdx,
+                    bounds_right,
+                    internal_right,
+                    leaves_right,
+                    total_leaf_count,
+                )
+            },
+        );
+
+        internal.bb = bounds_left.union(bounds_right);
+        internal.left = left;
+        internal.right = right;
+
+        break (idx + split as NodeIdx - 1, internal.bb);
     }
-
-    let (leaves_left, leaves_right) = leaf_nodes.split_at_mut(split);
-
-    let (internal_left, internal_right) = internal_nodes.split_at_mut(split);
-    let (internal, internal_left) = internal_left.split_last_mut().unwrap();
-
-    let ((left, bounds_left), (right, bounds_right)) = rayon::join(
-        || {
-            build_rec(
-                idx,
-                bounds_left,
-                internal_left,
-                leaves_left,
-                total_leaf_count,
-            )
-        },
-        || {
-            build_rec(
-                idx + split as NodeIdx,
-                bounds_right,
-                internal_right,
-                leaves_right,
-                total_leaf_count,
-            )
-        },
-    );
-
-    internal.bb = bounds_left.union(bounds_right);
-    internal.left = left;
-    internal.right = right;
-
-    (idx + split as NodeIdx - 1, internal.bb)
 }
 
 fn partition<T>(s: &mut [T], mut pred: impl FnMut(&T) -> bool) -> usize {
