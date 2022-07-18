@@ -455,7 +455,7 @@ const LIVING_ENTITY: Class = Class {
             typ: Type::OptBlockPos(None),
         },
     ],
-    events: &[],
+    events: &[Event::Hurt],
 };
 
 const MOB: Class = Class {

@@ -10,7 +10,7 @@ use crate::biome::Biome;
 use crate::dimension::Dimension;
 use crate::server::{NewClientData, Server, SharedServer};
 use crate::text::Text;
-use crate::Ticks;
+use crate::{Ticks, STANDARD_TPS};
 
 /// A trait for the configuration of a server.
 ///
@@ -65,9 +65,9 @@ pub trait Config: 'static + Sized + Send + Sync + UnwindSafe + RefUnwindSafe {
     ///
     /// # Default Implementation
     ///
-    /// Returns `20`, which is the same as Minecraft's official server.
+    /// Returns [`STANDARD_TPS`].
     fn tick_rate(&self) -> Ticks {
-        20
+        STANDARD_TPS
     }
 
     /// Called once at startup to get the "online mode" option, which determines

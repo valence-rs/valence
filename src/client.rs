@@ -41,7 +41,7 @@ use crate::slotmap::{Key, SlotMap};
 use crate::text::Text;
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::world::{WorldId, Worlds};
-use crate::{ident, Ticks, LIBRARY_NAMESPACE};
+use crate::{ident, Ticks, LIBRARY_NAMESPACE, STANDARD_TPS};
 
 /// A container for all [`Client`]s on a [`Server`](crate::server::Server).
 ///
@@ -175,6 +175,8 @@ pub struct Client<C: Config> {
     world: WorldId,
     new_position: Vec3<f64>,
     old_position: Vec3<f64>,
+    /// Measured in m/s.
+    velocity: Vec3<f32>,
     /// Measured in degrees
     yaw: f32,
     /// Measured in degrees
@@ -228,7 +230,8 @@ pub(crate) struct ClientFlags {
     hardcore: bool,
     attack_speed_modified: bool,
     movement_speed_modified: bool,
-    #[bits(5)]
+    velocity_modified: bool,
+    #[bits(4)]
     _pad: u8,
 }
 
@@ -252,6 +255,7 @@ impl<C: Config> Client<C> {
             world: WorldId::default(),
             new_position: Vec3::default(),
             old_position: Vec3::default(),
+            velocity: Vec3::default(),
             yaw: 0.0,
             pitch: 0.0,
             teleport_id_counter: 0,
@@ -294,6 +298,16 @@ impl<C: Config> Client<C> {
         &self.username
     }
 
+    /// Returns the sneaking state of this client.
+    pub fn is_sneaking(&self) -> bool {
+        self.flags.sneaking()
+    }
+
+    /// Returns the sprinting state of this client.
+    pub fn is_sprinting(&self) -> bool {
+        self.flags.sprinting()
+    }
+
     /// Gets the player textures of this client. If the client does not have
     /// a skin, then `None` is returned.
     pub fn textures(&self) -> Option<&SignedPlayerTextures> {
@@ -333,9 +347,9 @@ impl<C: Config> Client<C> {
     /// If you want to change the client's world, use [`Self::spawn`].
     pub fn teleport(&mut self, pos: impl Into<Vec3<f64>>, yaw: f32, pitch: f32) {
         self.new_position = pos.into();
-
         self.yaw = yaw;
         self.pitch = pitch;
+        self.velocity = Vec3::default();
 
         if !self.flags.teleported_this_tick() {
             self.flags.set_teleported_this_tick(true);
@@ -353,11 +367,18 @@ impl<C: Config> Client<C> {
         }
     }
 
+    /// Gets the velocity of this client in m/s.
+    ///
+    /// The velocity of a client is derived from their current and previous
+    /// position.
+    pub fn velocity(&self) -> Vec3<f32> {
+        self.velocity
+    }
+
+    /// Sets the client's velocity in m/s.
     pub fn set_velocity(&mut self, velocity: impl Into<Vec3<f32>>) {
-        self.send_packet(SetEntityMotion {
-            entity_id: VarInt(0),
-            velocity: velocity_to_packet_units(velocity.into()),
-        });
+        self.velocity = velocity.into();
+        self.flags.set_velocity_modified(true);
     }
 
     /// Gets this client's yaw.
@@ -610,14 +631,25 @@ impl<C: Config> Client<C> {
             if client.pending_teleports == 0 {
                 // TODO: validate movement using swept AABB collision with the blocks.
                 // TODO: validate that the client is actually inside/outside the vehicle?
+
+                // Movement packets should be coming in at a rate of STANDARD_TPS.
+                let new_velocity = (new_position - client.new_position).as_() * STANDARD_TPS as f32;
+
                 let event = Event::Movement {
-                    position: client.new_position,
-                    yaw: client.yaw,
-                    pitch: client.pitch,
-                    on_ground: client.flags.on_ground(),
+                    old_position: client.new_position,
+                    old_velocity: client.velocity,
+                    old_yaw: client.yaw,
+                    old_pitch: client.pitch,
+                    old_on_ground: client.flags.on_ground(),
+                    new_position,
+                    new_velocity,
+                    new_yaw,
+                    new_pitch,
+                    new_on_ground,
                 };
 
                 client.new_position = new_position;
+                client.velocity = new_velocity;
                 client.yaw = new_yaw;
                 client.pitch = new_pitch;
                 client.flags.set_on_ground(new_on_ground);
@@ -787,21 +819,34 @@ impl<C: Config> Client<C> {
                 // - Can't jump with a horse if not on a horse
                 // - Can't open horse inventory if not on a horse.
                 // - Can't fly with elytra if not wearing an elytra.
+                // - Can't jump with horse while already jumping & vice versa?
                 self.events.push_back(match e.action_id {
                     PlayerCommandId::StartSneaking => {
+                        if self.flags.sneaking() {
+                            return;
+                        }
                         self.flags.set_sneaking(true);
                         Event::StartSneaking
                     }
                     PlayerCommandId::StopSneaking => {
+                        if !self.flags.sneaking() {
+                            return;
+                        }
                         self.flags.set_sneaking(false);
                         Event::StopSneaking
                     }
                     PlayerCommandId::LeaveBed => Event::LeaveBed,
                     PlayerCommandId::StartSprinting => {
+                        if self.flags.sprinting() {
+                            return;
+                        }
                         self.flags.set_sprinting(true);
                         Event::StartSprinting
                     }
                     PlayerCommandId::StopSprinting => {
+                        if !self.flags.sprinting() {
+                            return;
+                        }
                         self.flags.set_sprinting(false);
                         Event::StopSprinting
                     }
@@ -914,6 +959,7 @@ impl<C: Config> Client<C> {
             self.teleport(self.position(), self.yaw(), self.pitch());
         } else {
             if self.flags.spawn() {
+                self.flags.set_spawn(false);
                 self.loaded_entities.clear();
                 self.loaded_chunks.clear();
 
@@ -1117,6 +1163,17 @@ impl<C: Config> Client<C> {
             });
         }
 
+        // Set velocity. Do this after teleporting since teleporting sets velocity to
+        // zero.
+        if self.flags.velocity_modified() {
+            self.flags.set_velocity_modified(false);
+
+            self.send_packet(SetEntityMotion {
+                entity_id: VarInt(0),
+                velocity: velocity_to_packet_units(self.velocity),
+            });
+        }
+
         // Send chat messages.
         for msg in self.msgs_to_send.drain(..) {
             send_packet(
@@ -1244,7 +1301,6 @@ impl<C: Config> Client<C> {
                 metadata: RawBytes(data),
             });
         }
-        self.player_data.clear_modifications();
 
         // Spawn new entities within the view distance.
         let pos = self.position();
@@ -1253,7 +1309,7 @@ impl<C: Config> Client<C> {
             |id, _| {
                 let entity = entities
                     .get(id)
-                    .expect("entities in spatial index should be valid");
+                    .expect("entity IDs in spatial index should be valid at this point");
                 if entity.kind() != EntityKind::Marker
                     && entity.uuid() != self.uuid
                     && self.loaded_entities.insert(id)
@@ -1288,8 +1344,8 @@ impl<C: Config> Client<C> {
             // any effect.
         }
 
+        self.player_data.clear_modifications();
         self.old_position = self.new_position;
-        self.flags.set_spawn(false);
     }
 }
 

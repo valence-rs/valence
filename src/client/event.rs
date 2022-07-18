@@ -24,17 +24,28 @@ pub enum Event {
     /// Settings were changed. The value in this variant is the _previous_
     /// client settings.
     SettingsChanged(Option<Settings>),
-    /// The client moved. The values in this
-    /// variant are the _previous_ position and look.
+    /// The client moved.
     Movement {
         /// Absolute coordinates of the previous position.
-        position: Vec3<f64>,
+        old_position: Vec3<f64>,
+        /// Previous velocity in m/s.
+        old_velocity: Vec3<f32>,
         /// The previous yaw (in degrees).
-        yaw: f32,
+        old_yaw: f32,
         /// The previous pitch (in degrees).
-        pitch: f32,
+        old_pitch: f32,
         /// If the client was previously on the ground.
-        on_ground: bool,
+        old_on_ground: bool,
+        /// Absolute coodinates of the new position.
+        new_position: Vec3<f64>,
+        /// New velocity in m/s.
+        new_velocity: Vec3<f32>,
+        /// The new yaw (in degrees).
+        new_yaw: f32,
+        /// The new pitch (in degrees).
+        new_pitch: f32,
+        /// If the client is now on the ground.
+        new_on_ground: bool,
     },
     StartSneaking,
     StopSneaking,

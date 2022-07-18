@@ -145,13 +145,11 @@ impl Config for Game {
                     None,
                 );
 
-                let player_id = server
+                client.data.player = server
                     .entities
                     .create_with_uuid(EntityKind::Player, client.uuid(), ())
                     .unwrap()
                     .0;
-
-                client.data = ClientData { player: player_id };
 
                 client.send_message("Welcome to Conway's game of life in Minecraft!".italic());
                 client.send_message("Hold the left mouse button to bring blocks to life.".italic());
@@ -164,11 +162,11 @@ impl Config for Game {
                 return false;
             }
 
-            true
-        });
-
-        for (_, client) in server.clients.iter_mut() {
             let player = server.entities.get_mut(client.data.player).unwrap();
+
+            if client.position().y <= 0.0 {
+                client.teleport(spawn_pos, client.yaw(), client.pitch());
+            }
 
             while let Some(event) = client.pop_event() {
                 match event {
@@ -179,40 +177,6 @@ impl Config for Game {
                         {
                             server.data.board[position.x as usize + position.z as usize * SIZE_X] =
                                 true;
-                        }
-                    }
-                    Event::Movement { .. } => {
-                        if client.position().y <= 0.0 {
-                            client.teleport(spawn_pos, client.yaw(), client.pitch());
-                        }
-
-                        player.set_world(client.world());
-                        player.set_position(client.position());
-                        player.set_yaw(client.yaw());
-                        player.set_head_yaw(client.yaw());
-                        player.set_pitch(client.pitch());
-                        player.set_on_ground(client.on_ground());
-                    }
-                    Event::StartSneaking => {
-                        if let EntityState::Player(e) = &mut player.state {
-                            e.set_crouching(true);
-                            e.set_pose(Pose::Sneaking);
-                        }
-                    }
-                    Event::StopSneaking => {
-                        if let EntityState::Player(e) = &mut player.state {
-                            e.set_pose(Pose::Standing);
-                            e.set_crouching(false);
-                        }
-                    }
-                    Event::StartSprinting => {
-                        if let EntityState::Player(e) = &mut player.state {
-                            e.set_sprinting(true);
-                        }
-                    }
-                    Event::StopSprinting => {
-                        if let EntityState::Player(e) = &mut player.state {
-                            e.set_sprinting(false);
                         }
                     }
                     Event::ArmSwing(hand) => {
@@ -226,7 +190,26 @@ impl Config for Game {
                     _ => {}
                 }
             }
-        }
+
+            player.set_world(client.world());
+            player.set_position(client.position());
+            player.set_yaw(client.yaw());
+            player.set_head_yaw(client.yaw());
+            player.set_pitch(client.pitch());
+            player.set_on_ground(client.on_ground());
+
+            if let EntityState::Player(player) = &mut player.state {
+                if client.is_sneaking() {
+                    player.set_pose(Pose::Sneaking);
+                } else {
+                    player.set_pose(Pose::Standing);
+                }
+
+                player.set_sprinting(client.is_sprinting());
+            }
+
+            true
+        });
 
         if server.shared.current_tick() % 4 != 0 {
             return;

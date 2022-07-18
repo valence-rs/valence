@@ -22,6 +22,7 @@ use crate::protocol_inner::{ByteAngle, RawBytes, VarInt};
 use crate::slotmap::{Key, SlotMap};
 use crate::util::aabb_from_bottom_and_size;
 use crate::world::WorldId;
+use crate::STANDARD_TPS;
 
 /// A container for all [`Entity`]s on a [`Server`](crate::server::Server).
 ///
@@ -583,7 +584,7 @@ impl<C: Config> Entity<C> {
 
 pub(crate) fn velocity_to_packet_units(vel: Vec3<f32>) -> Vec3<i16> {
     // The saturating cast to i16 is desirable.
-    (vel * 400.0).as_()
+    (8000.0 / STANDARD_TPS as f32 * vel).as_()
 }
 
 pub(crate) enum EntitySpawnPacket {

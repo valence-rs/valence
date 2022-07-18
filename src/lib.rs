@@ -168,11 +168,15 @@ pub const VERSION_NAME: &str = "1.19";
 /// [identifiers](crate::ident::Ident).
 ///
 /// You should avoid using this namespace in your own identifiers.
-const LIBRARY_NAMESPACE: &str = "valence";
+pub const LIBRARY_NAMESPACE: &str = "valence";
 
 /// A discrete unit of time where 1 tick is the duration of a
 /// single game update.
 ///
-/// The duration of a game update depends on the current configuration, which
-/// may or may not be the same as Minecraft's standard 20 ticks/second.
+/// The duration of a game update on a Valence server depends on the current
+/// configuration. In some contexts, "ticks" refer to the configured tick rate
+/// while others refer to Minecraft's [standard TPS](STANDARD_TPS).
 pub type Ticks = i64;
+
+/// Minecraft's standard ticks per second (TPS).
+pub const STANDARD_TPS: Ticks = 20;
