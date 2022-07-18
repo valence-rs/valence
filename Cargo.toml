@@ -28,17 +28,20 @@ num = "0.4"
 paste = "1"
 rand = "0.8"
 rayon = "1"
-rsa = "0.5"
+rsa = "0.6"
 rsa-der = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha1 = "0.10"
 sha2 = "0.10"
 thiserror = "1"
-tokio = { version = "1", features = ["full"] }
 url = { version = "2.2.2", features = ["serde"] }
 uuid = "1"
 vek = "0.15"
+
+[dependencies.tokio]
+version = "1"
+features = ["macros", "rt-multi-thread", "net", "io-util", "sync", "time"]
 
 [dependencies.reqwest]
 version = "0.11"
@@ -61,7 +64,6 @@ rayon = "1"
 num = "0.4"
 
 [features]
-# Exposes the raw protocol API
 protocol = []
 
 [workspace]
