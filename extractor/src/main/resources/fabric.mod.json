@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "valence_extractor",
+  "version": "${version}",
+  "name": "Valence Extractor",
+  "description": "Extracts Minecraft data for use in Valence",
+  "authors": [
+    "Valence Project Authors"
+  ],
+  "contact": {
+    "homepage": "https://github.com/rj00a/valence",
+    "sources": "https://github.com/rj00a/valence"
+  },
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "dev._00a.valence_extractor.Extractor"
+    ]
+  },
+  "mixins": [],
+  "depends": {
+    "fabricloader": ">=0.14.6",
+    "minecraft": "~1.19",
+    "java": ">=17"
+  },
+  "suggests": {
+    "another-mod": "*"
+  }
+}
