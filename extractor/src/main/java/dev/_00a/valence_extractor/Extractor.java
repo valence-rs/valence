@@ -2,6 +2,10 @@ package dev._00a.valence_extractor;
 
 import com.google.gson.*;
 import net.fabricmc.api.ModInitializer;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.data.TrackedData;
+import net.minecraft.entity.data.TrackedDataHandlerRegistry;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.registry.Registry;
 import net.minecraft.world.EmptyBlockView;
@@ -10,10 +14,13 @@ import org.slf4j.LoggerFactory;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.ParameterizedType;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashSet;
+import java.util.Locale;
 
 public class Extractor implements ModInitializer {
     public static final String MOD_ID = "valence_extractor";
@@ -27,7 +34,7 @@ public class Extractor implements ModInitializer {
 
         try {
             outputDirectory = Files.createDirectories(Paths.get("valence_extractor_output"));
-            gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+            gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().serializeNulls().create();
 
             extractBlocks();
             extractEntities();
@@ -102,13 +109,59 @@ public class Extractor implements ModInitializer {
         writeJsonFile("blocks.json", blocksJson);
     }
 
-    void extractEntities() throws IOException {
+    @SuppressWarnings("unchecked")
+    void extractEntities() throws IOException, IllegalAccessException {
         var entitiesJson = new JsonArray();
-        for (var entity : Registry.ENTITY_TYPE) {
-            var entityJson = new JsonObject();
-            entityJson.addProperty("translation_key", entity.getTranslationKey());
+        var entityClasses = new HashSet<Class<? extends Entity>>();
 
-            entitiesJson.add(entityJson);
+        for (var f : EntityType.class.getFields()) {
+            if (f.getType().equals(EntityType.class)) {
+                var entityType = (EntityType<?>) f.get(null);
+                var entityClass = (Class<? extends Entity>) ((ParameterizedType) f.getGenericType()).getActualTypeArguments()[0];
+
+                var entityJson = new JsonObject();
+                while (entityClasses.add(entityClass)) {
+                    entityJson.addProperty("class", entityClass.getSimpleName());
+
+                    if (entityType != null) {
+                        entityJson.addProperty("translation_key", entityType.getTranslationKey());
+                    } else {
+                        entityJson.add("translation_key", null);
+                    }
+
+                    var fieldsJson = new JsonArray();
+                    for (var entityField : entityClass.getDeclaredFields()) {
+                        if (entityField.getType().equals(TrackedData.class)) {
+                            entityField.setAccessible(true);
+
+                            var data = (TrackedData<? extends Entity>) entityField.get(null);
+
+                            var fieldJson = new JsonObject();
+                            fieldJson.addProperty("name", entityField.getName().toLowerCase(Locale.ROOT));
+                            fieldJson.addProperty("index", data.getId());
+                            fieldJson.addProperty("type_id", TrackedDataHandlerRegistry.getId(data.getType()));
+
+                            fieldsJson.add(fieldJson);
+                        }
+                    }
+                    entityJson.add("fields", fieldsJson);
+
+                    var parent = entityClass.getSuperclass();
+                    if (parent == null || !Entity.class.isAssignableFrom(parent)) {
+                        entityJson.add("parent", null);
+                        break;
+                    }
+
+                    entityJson.addProperty("parent", parent.getSimpleName());
+
+                    entityClass = (Class<? extends Entity>) parent;
+                    entityType = null;
+                }
+
+                if (entityJson.size() > 0) {
+                    entitiesJson.add(entityJson);
+                }
+            }
         }
 
         writeJsonFile("entities.json", entitiesJson);
