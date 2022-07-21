@@ -5,6 +5,7 @@ import net.fabricmc.api.ModInitializer;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityPose;
+import net.minecraft.entity.EntityStatuses;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.data.TrackedData;
@@ -135,6 +136,7 @@ public class Extractor implements ModInitializer {
 
             extractBlocks();
             extractEntities();
+            extractEntityStatuses();
         } catch (Throwable e) {
             LOGGER.error("Extraction failed", e);
             System.exit(1);
@@ -267,6 +269,23 @@ public class Extractor implements ModInitializer {
         }
 
         writeJsonFile("entities.json", entitiesJson);
+    }
+
+    private void extractEntityStatuses() throws IllegalAccessException, IOException {
+        var statusesJson = new JsonObject();
+
+        for (var field : EntityStatuses.class.getDeclaredFields()) {
+            if (field.canAccess(null) && field.get(null) instanceof Byte code) {
+                if (field.getName().equals("field_30030")) {
+                    // TODO: temp
+                    statusesJson.addProperty("stop_attack", code);
+                } else {
+                    statusesJson.addProperty(field.getName().toLowerCase(Locale.ROOT), code);
+                }
+            }
+        }
+
+        writeJsonFile("entity_statuses.json", statusesJson);
     }
 
     private void writeJsonFile(String fileName, JsonElement element) throws IOException {
