@@ -2,9 +2,7 @@ package dev._00a.valence_extractor;
 
 import com.google.gson.*;
 import net.fabricmc.api.ModInitializer;
-import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EntityStatuses;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.data.DataTracker;
@@ -13,11 +11,9 @@ import net.minecraft.entity.data.TrackedDataHandlerRegistry;
 import net.minecraft.entity.passive.CatVariant;
 import net.minecraft.entity.passive.FrogVariant;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
 import net.minecraft.particle.ParticleEffect;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.EulerAngle;
 import net.minecraft.util.math.GlobalPos;
 import net.minecraft.util.registry.Registry;
@@ -34,7 +30,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.OptionalInt;
 
 public class Extractor implements ModInitializer {
     public static final String MOD_ID = "valence_extractor";
@@ -42,45 +41,85 @@ public class Extractor implements ModInitializer {
     private Gson gson;
     private Path outputDirectory;
 
-    private static JsonElement trackedDataToJson(Object data) {
-        if (data instanceof BlockPos bp) {
+    private static TD2JResult trackedDataToJson(TrackedData<?> data, DataTracker tracker) {
+        final var handler = data.getType();
+        final var val = tracker.get(data);
+
+        if (handler == TrackedDataHandlerRegistry.BYTE) {
+            return new TD2JResult("byte", new JsonPrimitive((Byte) val));
+        } else if (handler == TrackedDataHandlerRegistry.INTEGER) {
+            return new TD2JResult("integer", new JsonPrimitive((Integer) val));
+        } else if (handler == TrackedDataHandlerRegistry.FLOAT) {
+            return new TD2JResult("float", new JsonPrimitive((Float) val));
+        } else if (handler == TrackedDataHandlerRegistry.STRING) {
+            return new TD2JResult("string", new JsonPrimitive((String) val));
+        } else if (handler == TrackedDataHandlerRegistry.TEXT_COMPONENT) {
+            // TODO: return text as json element.
+            return new TD2JResult("text_component", new JsonPrimitive(((Text) val).getString()));
+        } else if (handler == TrackedDataHandlerRegistry.OPTIONAL_TEXT_COMPONENT) {
+            var res = ((Optional<?>) val).map(o -> (JsonElement) new JsonPrimitive(((Text) o).getString())).orElse(JsonNull.INSTANCE);
+            return new TD2JResult("optional_text_component", res);
+        } else if (handler == TrackedDataHandlerRegistry.ITEM_STACK) {
+            // TODO
+            return new TD2JResult("item_stack", new JsonPrimitive(((ItemStack) val).toString()));
+        } else if (handler == TrackedDataHandlerRegistry.BOOLEAN) {
+            return new TD2JResult("boolean", new JsonPrimitive((Boolean) val));
+        } else if (handler == TrackedDataHandlerRegistry.ROTATION) {
+            var json = new JsonObject();
+            var ea = (EulerAngle) val;
+            json.addProperty("pitch", ea.getPitch());
+            json.addProperty("yaw", ea.getYaw());
+            json.addProperty("roll", ea.getRoll());
+            return new TD2JResult("rotation", json);
+        } else if (handler == TrackedDataHandlerRegistry.BLOCK_POS) {
+            var bp = (BlockPos) val;
             var json = new JsonObject();
             json.addProperty("x", bp.getX());
             json.addProperty("y", bp.getY());
             json.addProperty("z", bp.getZ());
-            return json;
-        } else if (data instanceof Boolean b) {
-            return new JsonPrimitive(b);
-        } else if (data instanceof Byte b) {
-            return new JsonPrimitive(b);
-        } else if (data instanceof CatVariant cv) {
-            return new JsonPrimitive(Registry.CAT_VARIANT.getId(cv).getPath());
-        } else if (data instanceof EntityPose ep) {
-            return new JsonPrimitive(ep.toString());
-        } else if (data instanceof Direction d) {
-            return new JsonPrimitive(d.toString());
-        } else if (data instanceof Float f) {
-            return new JsonPrimitive(f);
-        } else if (data instanceof FrogVariant fv) {
-            return new JsonPrimitive(Registry.FROG_VARIANT.getId(fv).getPath());
-        } else if (data instanceof Integer i) {
-            return new JsonPrimitive(i);
-        } else if (data instanceof ItemStack is) {
-            // TODO
-            return new JsonPrimitive(is.toString());
-        } else if (data instanceof NbtCompound nbt) {
+            return new TD2JResult("block_pos", json);
+        } else if (handler == TrackedDataHandlerRegistry.OPTIONAL_BLOCK_POS) {
+            return new TD2JResult("optional_block_pos", ((Optional<?>) val).map(o -> {
+                var bp = (BlockPos) o;
+                var json = new JsonObject();
+                json.addProperty("x", bp.getX());
+                json.addProperty("y", bp.getY());
+                json.addProperty("z", bp.getZ());
+                return (JsonElement) json;
+            }).orElse(JsonNull.INSTANCE));
+        } else if (handler == TrackedDataHandlerRegistry.FACING) {
+            return new TD2JResult("facing", new JsonPrimitive(val.toString()));
+        } else if (handler == TrackedDataHandlerRegistry.OPTIONAL_UUID) {
+            var res = ((Optional<?>) val).map(o -> (JsonElement) new JsonPrimitive(o.toString())).orElse(JsonNull.INSTANCE);
+            return new TD2JResult("optional_uuid", res);
+        } else if (handler == TrackedDataHandlerRegistry.OPTIONAL_BLOCK_STATE) {
+            // TODO: get raw block state ID.
+            var res = ((Optional<?>) val).map(o -> (JsonElement) new JsonPrimitive(o.toString())).orElse(JsonNull.INSTANCE);
+            return new TD2JResult("optional_block_state", res);
+        } else if (handler == TrackedDataHandlerRegistry.NBT_COMPOUND) {
             // TODO: base64 binary representation or SNBT?
-            return new JsonPrimitive(nbt.toString());
-        } else if (data instanceof Optional<?> opt) {
-            var inner = opt.orElse(null);
-            if (inner == null) {
-                return null;
-            } else if (inner instanceof BlockPos) {
-                return Extractor.trackedDataToJson(inner);
-            } else if (inner instanceof BlockState bs) {
-                // TODO: get raw block state ID.
-                return new JsonPrimitive(bs.toString());
-            } else if (inner instanceof GlobalPos gp) {
+            return new TD2JResult("nbt_compound", new JsonPrimitive(val.toString()));
+        } else if (handler == TrackedDataHandlerRegistry.PARTICLE) {
+            return new TD2JResult("particle", new JsonPrimitive(((ParticleEffect) val).asString()));
+        } else if (handler == TrackedDataHandlerRegistry.VILLAGER_DATA) {
+            var vd = (VillagerData) val;
+            var json = new JsonObject();
+            json.addProperty("type", vd.getType().toString());
+            json.addProperty("profession", vd.getProfession().toString());
+            json.addProperty("level", vd.getLevel());
+            return new TD2JResult("villager_data", json);
+        } else if (handler == TrackedDataHandlerRegistry.OPTIONAL_INT) {
+            var opt = (OptionalInt) val;
+            return new TD2JResult("optional_int", opt.isPresent() ? new JsonPrimitive(opt.getAsInt()) : JsonNull.INSTANCE);
+        } else if (handler == TrackedDataHandlerRegistry.ENTITY_POSE) {
+            return new TD2JResult("entity_pose", new JsonPrimitive(val.toString()));
+        } else if (handler == TrackedDataHandlerRegistry.CAT_VARIANT) {
+            return new TD2JResult("cat_variant", new JsonPrimitive(Registry.CAT_VARIANT.getId((CatVariant) val).getPath()));
+        } else if (handler == TrackedDataHandlerRegistry.FROG_VARIANT) {
+            return new TD2JResult("frog_variant", new JsonPrimitive(Registry.FROG_VARIANT.getId((FrogVariant) val).getPath()));
+        } else if (handler == TrackedDataHandlerRegistry.OPTIONAL_GLOBAL_POS) {
+            return new TD2JResult("optional_global_pos", ((Optional<?>) val).map(o -> {
+                var gp = (GlobalPos) o;
                 var json = new JsonObject();
                 json.addProperty("dimension", gp.getDimension().getValue().toString());
 
@@ -90,40 +129,14 @@ public class Extractor implements ModInitializer {
                 posJson.addProperty("z", gp.getPos().getZ());
 
                 json.add("position", posJson);
-                return json;
-            } else if (inner instanceof Text) {
-                return Extractor.trackedDataToJson(inner);
-            } else if (inner instanceof UUID uuid) {
-                return new JsonPrimitive(uuid.toString());
-            } else {
-                throw new IllegalArgumentException("Unknown tracked optional type " + inner.getClass().getName());
-            }
-        } else if (data instanceof OptionalInt oi) {
-            return oi.isPresent() ? new JsonPrimitive(oi.getAsInt()) : null;
-        } else if (data instanceof RegistryEntry<?> re) {
-            return new JsonPrimitive(re.getKey().map(k -> k.getValue().getPath()).orElse(""));
-        } else if (data instanceof ParticleEffect pe) {
-            return new JsonPrimitive(pe.asString());
-        } else if (data instanceof EulerAngle ea) {
-            var json = new JsonObject();
-            json.addProperty("yaw", ea.getYaw());
-            json.addProperty("pitch", ea.getPitch());
-            json.addProperty("roll", ea.getRoll());
-            return json;
-        } else if (data instanceof String s) {
-            return new JsonPrimitive(s);
-        } else if (data instanceof Text t) {
-            // TODO: return text as json element.
-            return new JsonPrimitive(t.getString());
-        } else if (data instanceof VillagerData vd) {
-            var json = new JsonObject();
-            json.addProperty("level", vd.getLevel());
-            json.addProperty("type", vd.getType().toString());
-            json.addProperty("profession", vd.getProfession().toString());
-            return json;
+                return (JsonElement) json;
+            }).orElse(JsonNull.INSTANCE));
+        } else if (handler == TrackedDataHandlerRegistry.PAINTING_VARIANT) {
+            var variant = ((RegistryEntry<?>) val).getKey().map(k -> k.getValue().getPath()).orElse("");
+            return new TD2JResult("painting_variant", new JsonPrimitive(variant));
+        } else {
+            throw new IllegalArgumentException("Unexpected tracked data type " + handler);
         }
-
-        throw new IllegalArgumentException("Unexpected tracked type " + data.getClass().getName());
     }
 
     @Override
@@ -243,10 +256,11 @@ public class Extractor implements ModInitializer {
                             var fieldJson = new JsonObject();
                             fieldJson.addProperty("name", entityField.getName().toLowerCase(Locale.ROOT));
                             fieldJson.addProperty("index", data.getId());
-                            fieldJson.addProperty("type_id", TrackedDataHandlerRegistry.getId(data.getType()));
 
                             var dataTracker = (DataTracker) dataTrackerField.get(entityInstance);
-                            fieldJson.add("default_value", Extractor.trackedDataToJson(dataTracker.get(data)));
+                            var res = Extractor.trackedDataToJson(data, dataTracker);
+                            fieldJson.addProperty("type", res.type_name);
+                            fieldJson.add("default_value", res.data);
 
                             fieldsJson.add(fieldJson);
                         }
@@ -294,5 +308,8 @@ public class Extractor implements ModInitializer {
         gson.toJson(element, fileWriter);
         fileWriter.close();
         LOGGER.info("Wrote " + out.toAbsolutePath());
+    }
+
+    private record TD2JResult(String type_name, JsonElement data) {
     }
 }
