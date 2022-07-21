@@ -2,12 +2,26 @@ package dev._00a.valence_extractor;
 
 import com.google.gson.*;
 import net.fabricmc.api.ModInitializer;
+import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EntityType;
+import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.data.TrackedData;
 import net.minecraft.entity.data.TrackedDataHandlerRegistry;
+import net.minecraft.entity.passive.CatVariant;
+import net.minecraft.entity.passive.FrogVariant;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.particle.ParticleEffect;
+import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.EulerAngle;
+import net.minecraft.util.math.GlobalPos;
 import net.minecraft.util.registry.Registry;
+import net.minecraft.util.registry.RegistryEntry;
+import net.minecraft.village.VillagerData;
 import net.minecraft.world.EmptyBlockView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,14 +33,97 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashSet;
-import java.util.Locale;
+import java.util.*;
 
 public class Extractor implements ModInitializer {
     public static final String MOD_ID = "valence_extractor";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     private Gson gson;
     private Path outputDirectory;
+
+    private static JsonElement trackedDataToJson(Object data) {
+        if (data instanceof BlockPos bp) {
+            var json = new JsonObject();
+            json.addProperty("x", bp.getX());
+            json.addProperty("y", bp.getY());
+            json.addProperty("z", bp.getZ());
+            return json;
+        } else if (data instanceof Boolean b) {
+            return new JsonPrimitive(b);
+        } else if (data instanceof Byte b) {
+            return new JsonPrimitive(b);
+        } else if (data instanceof CatVariant cv) {
+            return new JsonPrimitive(Registry.CAT_VARIANT.getId(cv).getPath());
+        } else if (data instanceof EntityPose ep) {
+            return new JsonPrimitive(ep.toString());
+        } else if (data instanceof Direction d) {
+            return new JsonPrimitive(d.toString());
+        } else if (data instanceof Float f) {
+            return new JsonPrimitive(f);
+        } else if (data instanceof FrogVariant fv) {
+            return new JsonPrimitive(Registry.FROG_VARIANT.getId(fv).getPath());
+        } else if (data instanceof Integer i) {
+            return new JsonPrimitive(i);
+        } else if (data instanceof ItemStack is) {
+            // TODO
+            return new JsonPrimitive(is.toString());
+        } else if (data instanceof NbtCompound nbt) {
+            // TODO: base64 binary representation or SNBT?
+            return new JsonPrimitive(nbt.toString());
+        } else if (data instanceof Optional<?> opt) {
+            var inner = opt.orElse(null);
+            if (inner == null) {
+                return null;
+            } else if (inner instanceof BlockPos) {
+                return Extractor.trackedDataToJson(inner);
+            } else if (inner instanceof BlockState bs) {
+                // TODO: get raw block state ID.
+                return new JsonPrimitive(bs.toString());
+            } else if (inner instanceof GlobalPos gp) {
+                var json = new JsonObject();
+                json.addProperty("dimension", gp.getDimension().getValue().toString());
+
+                var posJson = new JsonObject();
+                posJson.addProperty("x", gp.getPos().getX());
+                posJson.addProperty("y", gp.getPos().getY());
+                posJson.addProperty("z", gp.getPos().getZ());
+
+                json.add("position", posJson);
+                return json;
+            } else if (inner instanceof Text) {
+                return Extractor.trackedDataToJson(inner);
+            } else if (inner instanceof UUID uuid) {
+                return new JsonPrimitive(uuid.toString());
+            } else {
+                throw new IllegalArgumentException("Unknown tracked optional type " + inner.getClass().getName());
+            }
+        } else if (data instanceof OptionalInt oi) {
+            return oi.isPresent() ? new JsonPrimitive(oi.getAsInt()) : null;
+        } else if (data instanceof RegistryEntry<?> re) {
+            return new JsonPrimitive(re.getKey().map(k -> k.getValue().getPath()).orElse(""));
+        } else if (data instanceof ParticleEffect pe) {
+            return new JsonPrimitive(pe.asString());
+        } else if (data instanceof EulerAngle ea) {
+            var json = new JsonObject();
+            json.addProperty("yaw", ea.getYaw());
+            json.addProperty("pitch", ea.getPitch());
+            json.addProperty("roll", ea.getRoll());
+            return json;
+        } else if (data instanceof String s) {
+            return new JsonPrimitive(s);
+        } else if (data instanceof Text t) {
+            // TODO: return text as json element.
+            return new JsonPrimitive(t.getString());
+        } else if (data instanceof VillagerData vd) {
+            var json = new JsonObject();
+            json.addProperty("level", vd.getLevel());
+            json.addProperty("type", vd.getType().toString());
+            json.addProperty("profession", vd.getProfession().toString());
+            return json;
+        }
+
+        throw new IllegalArgumentException("Unexpected tracked type " + data.getClass().getName());
+    }
 
     @Override
     public void onInitialize() {
@@ -43,11 +140,11 @@ public class Extractor implements ModInitializer {
             System.exit(1);
         }
 
-        LOGGER.info("Extractor finished successfully");
+        LOGGER.info("Extractor finished successfully.");
         System.exit(0);
     }
 
-    void extractBlocks() throws IOException {
+    private void extractBlocks() throws IOException {
         var blocksJson = new JsonArray();
         var stateIdCounter = 0;
 
@@ -110,36 +207,44 @@ public class Extractor implements ModInitializer {
     }
 
     @SuppressWarnings("unchecked")
-    void extractEntities() throws IOException, IllegalAccessException {
-        var entitiesJson = new JsonArray();
-        var entityClasses = new HashSet<Class<? extends Entity>>();
+    private void extractEntities() throws IOException, IllegalAccessException, NoSuchFieldException {
+        final var entitiesJson = new JsonArray();
+        final var entityClasses = new HashSet<Class<? extends Entity>>();
+
+        final var dummyWorld = DummyWorld.INSTANCE;
 
         for (var f : EntityType.class.getFields()) {
             if (f.getType().equals(EntityType.class)) {
                 var entityType = (EntityType<?>) f.get(null);
                 var entityClass = (Class<? extends Entity>) ((ParameterizedType) f.getGenericType()).getActualTypeArguments()[0];
 
-                var entityJson = new JsonObject();
-                while (entityClasses.add(entityClass)) {
-                    entityJson.addProperty("class", entityClass.getSimpleName());
+                // While we can use the tracked data registry and reflection to get the tracked fields on entities, we won't know what their default values are because they are assigned in the entity's constructor.
+                // To obtain this, we create a dummy world to spawn the entities into and then read the data tracker field from the base entity class.
+                // We also handle player entities specially since they cannot be spawned with EntityType#create.
+                final var entityInstance = entityType.equals(EntityType.PLAYER) ? DummyPlayerEntity.INSTANCE : entityType.create(dummyWorld);
 
-                    if (entityType != null) {
-                        entityJson.addProperty("translation_key", entityType.getTranslationKey());
-                    } else {
-                        entityJson.add("translation_key", null);
-                    }
+                var dataTrackerField = Entity.class.getDeclaredField("dataTracker");
+                dataTrackerField.setAccessible(true);
+
+                while (entityClasses.add(entityClass)) {
+                    var entityJson = new JsonObject();
+                    entityJson.addProperty("class", entityClass.getSimpleName());
+                    entityJson.add("translation_key", entityType != null ? new JsonPrimitive(entityType.getTranslationKey()) : null);
 
                     var fieldsJson = new JsonArray();
                     for (var entityField : entityClass.getDeclaredFields()) {
                         if (entityField.getType().equals(TrackedData.class)) {
                             entityField.setAccessible(true);
 
-                            var data = (TrackedData<? extends Entity>) entityField.get(null);
+                            var data = (TrackedData<?>) entityField.get(null);
 
                             var fieldJson = new JsonObject();
                             fieldJson.addProperty("name", entityField.getName().toLowerCase(Locale.ROOT));
                             fieldJson.addProperty("index", data.getId());
                             fieldJson.addProperty("type_id", TrackedDataHandlerRegistry.getId(data.getType()));
+
+                            var dataTracker = (DataTracker) dataTrackerField.get(entityInstance);
+                            fieldJson.add("default_value", Extractor.trackedDataToJson(dataTracker.get(data)));
 
                             fieldsJson.add(fieldJson);
                         }
@@ -156,9 +261,6 @@ public class Extractor implements ModInitializer {
 
                     entityClass = (Class<? extends Entity>) parent;
                     entityType = null;
-                }
-
-                if (entityJson.size() > 0) {
                     entitiesJson.add(entityJson);
                 }
             }
@@ -167,7 +269,7 @@ public class Extractor implements ModInitializer {
         writeJsonFile("entities.json", entitiesJson);
     }
 
-    void writeJsonFile(String fileName, JsonElement element) throws IOException {
+    private void writeJsonFile(String fileName, JsonElement element) throws IOException {
         var out = outputDirectory.resolve(fileName);
         var fileWriter = new FileWriter(out.toFile(), StandardCharsets.UTF_8);
         gson.toJson(element, fileWriter);
