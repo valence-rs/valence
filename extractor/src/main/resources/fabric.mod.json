@@ -14,7 +14,7 @@
   "environment": "*",
   "entrypoints": {
     "main": [
-      "dev._00a.valence_extractor.Extractor"
+      "dev._00a.valence_extractor.Main"
     ]
   },
   "mixins": [],

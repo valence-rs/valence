@@ -13,7 +13,7 @@ public class DummyPlayerEntity extends PlayerEntity {
     public static final DummyPlayerEntity INSTANCE;
 
     static {
-        INSTANCE = Util.magicallyInstantiate(DummyPlayerEntity.class);
+        INSTANCE = Main.magicallyInstantiate(DummyPlayerEntity.class);
 
         try {
             var dataTrackerField = Entity.class.getDeclaredField("dataTracker");

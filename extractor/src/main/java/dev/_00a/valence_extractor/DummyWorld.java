@@ -38,7 +38,7 @@ public class DummyWorld extends World {
     public static final DummyWorld INSTANCE;
 
     static {
-        INSTANCE = Util.magicallyInstantiate(DummyWorld.class);
+        INSTANCE = Main.magicallyInstantiate(DummyWorld.class);
 
         try {
             var randomField = World.class.getDeclaredField("random");
