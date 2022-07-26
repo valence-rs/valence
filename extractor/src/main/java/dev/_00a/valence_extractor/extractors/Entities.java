@@ -21,6 +21,7 @@ import net.minecraft.util.math.GlobalPos;
 import net.minecraft.util.registry.Registry;
 import net.minecraft.util.registry.RegistryEntry;
 import net.minecraft.village.VillagerData;
+import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.ParameterizedType;
 import java.util.*;
@@ -31,12 +32,12 @@ public class Entities implements Main.Extractor {
             bits(
                     "flags",
                     bit("on_fire", 0),
-                    bit("crouching", 1),
+                    bit("sneaking", 1),
                     bit("sprinting", 3),
                     bit("swimming", 4),
                     bit("invisible", 5),
                     bit("glowing", 6),
-                    bit("elytra_flying", 7)
+                    bit("fall_flying", 7)
             ),
             bits(
                     "projectile_flags",
@@ -253,73 +254,78 @@ public class Entities implements Main.Extractor {
     @Override
     @SuppressWarnings("unchecked")
     public JsonElement extract() throws IllegalAccessException, NoSuchFieldException {
-        final var entitiesJson = new JsonObject();
-        final var entityClasses = new HashSet<Class<? extends Entity>>();
 
-        final var dummyWorld = DummyWorld.INSTANCE;
-
+        final var entityClassToType = new HashMap<Class<? extends Entity>, EntityType<?>>();
         for (var f : EntityType.class.getFields()) {
             if (f.getType().equals(EntityType.class)) {
-                var entityType = (EntityType<?>) f.get(null);
                 var entityClass = (Class<? extends Entity>) ((ParameterizedType) f.getGenericType()).getActualTypeArguments()[0];
+                var entityType = (EntityType<?>) f.get(null);
 
-                // While we can use the tracked data registry and reflection to get the tracked fields on entities, we won't know what their default values are because they are assigned in the entity's constructor.
-                // To obtain this, we create a dummy world to spawn the entities into and then read the data tracker field from the base entity class.
-                // We also handle player entities specially since they cannot be spawned with EntityType#create.
-                final var entityInstance = entityType.equals(EntityType.PLAYER) ? DummyPlayerEntity.INSTANCE : entityType.create(dummyWorld);
+                entityClassToType.put(entityClass, entityType);
+            }
+        }
 
-                var dataTrackerField = Entity.class.getDeclaredField("dataTracker");
-                dataTrackerField.setAccessible(true);
+        final var dataTrackerField = Entity.class.getDeclaredField("dataTracker");
+        dataTrackerField.setAccessible(true);
 
-                while (entityClasses.add(entityClass)) {
-                    var entityJson = new JsonObject();
+        var entitiesJson = new JsonObject();
 
-                    entityJson.add("translation_key", entityType != null ? new JsonPrimitive(entityType.getTranslationKey()) : null);
+        for (var entry : entityClassToType.entrySet()) {
+            var entityClass = entry.getKey();
+            @Nullable var entityType = entry.getValue();
+            assert entityType != null;
 
-                    var fieldsJson = new JsonArray();
-                    for (var entityField : entityClass.getDeclaredFields()) {
-                        if (entityField.getType().equals(TrackedData.class)) {
-                            entityField.setAccessible(true);
+            // While we can use the tracked data registry and reflection to get the tracked fields on entities, we won't know what their default values are because they are assigned in the entity's constructor.
+            // To obtain this, we create a dummy world to spawn the entities into and read the data tracker field from the base entity class.
+            // We also handle player entities specially since they cannot be spawned with EntityType#create.
+            final var entityInstance = entityType.equals(EntityType.PLAYER) ? DummyPlayerEntity.INSTANCE : entityType.create(DummyWorld.INSTANCE);
+            final var dataTracker = (DataTracker) dataTrackerField.get(entityInstance);
 
-                            var data = (TrackedData<?>) entityField.get(null);
+            while (entitiesJson.get(entityClass.getSimpleName()) == null) {
+                var entityJson = new JsonObject();
 
-                            var fieldJson = new JsonObject();
-                            var fieldName = entityField.getName().toLowerCase(Locale.ROOT);
-                            fieldJson.addProperty("name", fieldName);
-                            fieldJson.addProperty("index", data.getId());
+                var parent = entityClass.getSuperclass();
+                var hasParent = parent != null && Entity.class.isAssignableFrom(parent);
+                entityJson.addProperty("parent", hasParent ? parent.getSimpleName() : null);
 
-                            var dataTracker = (DataTracker) dataTrackerField.get(entityInstance);
-                            var res = Entities.trackedDataToJson(data, dataTracker);
-                            fieldJson.addProperty("type", res.left());
-                            fieldJson.add("default_value", res.right());
+                entityJson.add("translation_key", entityType != null ? new JsonPrimitive(entityType.getTranslationKey()) : null);
 
-                            var bitsJson = new JsonArray();
-                            for (var bit : BIT_FIELDS.getOrDefault(fieldName, new Bit[]{})) {
-                                var bitJson = new JsonObject();
-                                bitJson.addProperty("name", bit.name);
-                                bitJson.addProperty("index", bit.index);
-                                bitsJson.add(bitJson);
-                            }
-                            fieldJson.add("bits", bitsJson);
+                var fieldsJson = new JsonArray();
+                for (var entityField : entityClass.getDeclaredFields()) {
+                    if (entityField.getType().equals(TrackedData.class)) {
+                        entityField.setAccessible(true);
 
-                            fieldsJson.add(fieldJson);
+                        var trackedData = (TrackedData<?>) entityField.get(null);
+
+                        var fieldJson = new JsonObject();
+                        var fieldName = entityField.getName().toLowerCase(Locale.ROOT);
+                        fieldJson.addProperty("name", fieldName);
+                        fieldJson.addProperty("index", trackedData.getId());
+
+                        var data = Entities.trackedDataToJson(trackedData, dataTracker);
+                        fieldJson.addProperty("type", data.left());
+                        fieldJson.add("default_value", data.right());
+
+                        var bitsJson = new JsonArray();
+                        for (var bit : BIT_FIELDS.getOrDefault(fieldName, new Bit[]{})) {
+                            var bitJson = new JsonObject();
+                            bitJson.addProperty("name", bit.name);
+                            bitJson.addProperty("index", bit.index);
+                            bitsJson.add(bitJson);
                         }
+                        fieldJson.add("bits", bitsJson);
+
+                        fieldsJson.add(fieldJson);
                     }
-                    entityJson.add("fields", fieldsJson);
-
-                    var parent = entityClass.getSuperclass();
-                    if (parent == null || !Entity.class.isAssignableFrom(parent)) {
-                        entityJson.add("parent", null);
-                        entitiesJson.add(entityClass.getSimpleName(), entityJson);
-                        break;
-                    }
-
-                    entityJson.addProperty("parent", parent.getSimpleName());
-                    entitiesJson.add(entityClass.getSimpleName(), entityJson);
-
-                    entityClass = (Class<? extends Entity>) parent;
-                    entityType = null;
                 }
+                entityJson.add("fields", fieldsJson);
+
+                entitiesJson.add(entityClass.getSimpleName(), entityJson);
+
+                if (!hasParent) break;
+
+                entityClass = (Class<? extends Entity>) parent;
+                entityType = entityClassToType.get(entityClass);
             }
         }
 
