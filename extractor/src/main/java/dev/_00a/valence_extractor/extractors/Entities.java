@@ -6,6 +6,7 @@ import dev._00a.valence_extractor.DummyWorld;
 import dev._00a.valence_extractor.Main;
 import dev._00a.valence_extractor.Main.Pair;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.data.DataTracker;
 import net.minecraft.entity.data.TrackedData;
@@ -199,19 +200,22 @@ public class Entities implements Main.Extractor {
             // TODO: base64 binary representation or SNBT?
             return new Pair<>("nbt_compound", new JsonPrimitive(val.toString()));
         } else if (handler == TrackedDataHandlerRegistry.PARTICLE) {
-            return new Pair<>("particle", new JsonPrimitive(((ParticleEffect) val).asString()));
+            var id = Registry.PARTICLE_TYPE.getId(((ParticleEffect) val).getType());
+            return new Pair<>("particle", new JsonPrimitive(id.getPath()));
         } else if (handler == TrackedDataHandlerRegistry.VILLAGER_DATA) {
             var vd = (VillagerData) val;
             var json = new JsonObject();
-            json.addProperty("type", vd.getType().toString());
-            json.addProperty("profession", vd.getProfession().toString());
+            var type = Registry.VILLAGER_TYPE.getId(vd.getType()).getPath();
+            var profession = Registry.VILLAGER_PROFESSION.getId(vd.getProfession()).getPath();
+            json.addProperty("type", type);
+            json.addProperty("profession", profession);
             json.addProperty("level", vd.getLevel());
             return new Pair<>("villager_data", json);
         } else if (handler == TrackedDataHandlerRegistry.OPTIONAL_INT) {
             var opt = (OptionalInt) val;
             return new Pair<>("optional_int", opt.isPresent() ? new JsonPrimitive(opt.getAsInt()) : JsonNull.INSTANCE);
         } else if (handler == TrackedDataHandlerRegistry.ENTITY_POSE) {
-            return new Pair<>("entity_pose", new JsonPrimitive(val.toString()));
+            return new Pair<>("entity_pose", new JsonPrimitive(((EntityPose) val).name().toLowerCase(Locale.ROOT)));
         } else if (handler == TrackedDataHandlerRegistry.CAT_VARIANT) {
             return new Pair<>("cat_variant", new JsonPrimitive(Registry.CAT_VARIANT.getId((CatVariant) val).getPath()));
         } else if (handler == TrackedDataHandlerRegistry.FROG_VARIANT) {
@@ -322,7 +326,9 @@ public class Entities implements Main.Extractor {
 
                 entitiesJson.add(entityClass.getSimpleName(), entityJson);
 
-                if (!hasParent) break;
+                if (!hasParent) {
+                    break;
+                }
 
                 entityClass = (Class<? extends Entity>) parent;
                 entityType = entityClassToType.get(entityClass);
