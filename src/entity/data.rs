@@ -1,35 +1,63 @@
-//! Types used in [`EntityData`](crate::entity::EntityData).
+//! Primitive types used in getters and setters on entities.
 
-use std::io::Write;
+use std::io::{Read, Write};
 
-use crate::protocol_inner::{Encode, VarInt};
+use crate::protocol_inner::{Decode, Encode, VarInt};
 
-#[derive(Clone, Copy, Default, PartialEq, PartialOrd, Debug)]
-pub struct ArmorStandRotations {
-    /// Rotation on the X axis in degrees.
-    pub x: f32,
-    /// Rotation on the Y axis in degrees.
-    pub y: f32,
-    /// Rotation on the Z axis in degrees.
-    pub z: f32,
-}
+/// Represents an optional `u32` value excluding [`u32::MAX`].
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
+pub struct OptionalInt(u32);
 
-impl ArmorStandRotations {
-    pub fn new(x: f32, y: f32, z: f32) -> Self {
-        Self { x, y, z }
+impl OptionalInt {
+    /// Returns `None` iff `n` is Some(u32::MAX).
+    pub fn new(n: impl Into<Option<u32>>) -> Option<Self> {
+        match n.into() {
+            None => Some(Self(0)),
+            Some(u32::MAX) => None,
+            Some(n) => Some(Self(n + 1)),
+        }
+    }
+
+    pub fn get(self) -> Option<u32> {
+        self.0.checked_sub(1)
     }
 }
 
-impl Encode for ArmorStandRotations {
+impl Encode for OptionalInt {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        self.x.encode(w)?;
-        self.y.encode(w)?;
-        self.z.encode(w)
+        VarInt(self.0 as i32).encode(w)
+    }
+}
+
+impl Decode for OptionalInt {
+    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+        Ok(Self(VarInt::decode(r)?.0 as u32))
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
+pub struct EulerAngle {
+    pub pitch: f32,
+    pub yaw: f32,
+    pub roll: f32,
+}
+
+impl EulerAngle {
+    pub fn new(pitch: f32, yaw: f32, roll: f32) -> Self {
+        Self { pitch, yaw, roll }
+    }
+}
+
+impl Encode for EulerAngle {
+    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+        self.pitch.encode(w)?;
+        self.yaw.encode(w)?;
+        self.roll.encode(w)
     }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub enum Direction {
+pub enum Facing {
     Down,
     Up,
     North,
@@ -38,7 +66,7 @@ pub enum Direction {
     East,
 }
 
-impl Encode for Direction {
+impl Encode for Facing {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         VarInt(*self as i32).encode(w)
     }
@@ -206,10 +234,22 @@ impl Encode for FrogKind {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub enum PaintingKind {
     #[default]
-    Default, // TODO
+    Kebab, // TODO
 }
 
 impl Encode for PaintingKind {
+    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+        VarInt(*self as i32).encode(w)
+    }
+}
+
+// TODO
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum Particle {
+    EntityEffect = 21,
+}
+
+impl Encode for Particle {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         VarInt(*self as i32).encode(w)
     }

@@ -7,9 +7,9 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use serde::Deserialize;
 
-use crate::{ident, write_to_out_path};
+use crate::ident;
 
-pub fn build() -> anyhow::Result<()> {
+pub fn build() -> anyhow::Result<TokenStream> {
     let blocks = parse_blocks_json()?;
 
     let max_block_state = blocks.iter().map(|b| b.max_state_id).max().unwrap();
@@ -297,7 +297,7 @@ pub fn build() -> anyhow::Result<()> {
 
     let property_name_count = prop_values.len();
 
-    let finished = quote! {
+    Ok(quote! {
         /// Represents the state of a block, not including block entity data such as
         /// the text on a sign, the design on a banner, or the content of a spawner.
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
@@ -551,9 +551,7 @@ pub fn build() -> anyhow::Result<()> {
                 Self::from_bool(b)
             }
         }
-    };
-
-    write_to_out_path("block.rs", &finished.to_string())
+    })
 }
 
 struct Block {

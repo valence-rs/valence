@@ -22,6 +22,12 @@ public class EntityData implements Main.Extractor {
     public JsonElement extract() throws Exception {
         var dataJson = new JsonObject();
 
+        var typesJson = new JsonObject();
+        for (var type : Registry.ENTITY_TYPE) {
+            typesJson.addProperty(Registry.ENTITY_TYPE.getId(type).getPath(), Registry.ENTITY_TYPE.getRawId(type));
+        }
+        dataJson.add("types", typesJson);
+
         var statusesJson = new JsonObject();
         for (var field : EntityStatuses.class.getDeclaredFields()) {
             if (field.canAccess(null) && field.get(null) instanceof Byte code) {

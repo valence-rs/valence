@@ -7,35 +7,38 @@ use proc_macro2::{Ident, Span};
 
 mod block;
 mod entity;
+mod entity_event;
 
 pub fn main() -> anyhow::Result<()> {
-    for file in ["blocks.json", "entities.json"] {
-        println!("cargo:rerun-if-changed=data/{file}");
-    }
+    let generators = [
+        (entity::build as fn() -> _, "entity.rs"),
+        (entity_event::build, "entity_event.rs"),
+        (block::build, "block.rs"),
+    ];
 
-    block::build()?;
-    entity::build()?;
+    let out_dir = env::var_os("OUT_DIR").context("can't get OUT_DIR env var")?;
+
+    for (g, file_name) in generators {
+        println!("cargo:rerun-if-changed=extracted/{file_name}");
+
+        let path = Path::new(&out_dir).join(file_name);
+        let code = g()?.to_string();
+        fs::write(&path, &code)?;
+
+        // Format the output for debugging purposes.
+        // Doesn't matter if rustfmt is unavailable.
+        let _ = Command::new("rustfmt").arg(path).output();
+    }
 
     Ok(())
 }
 
 fn ident(s: impl AsRef<str>) -> Ident {
     let s = s.as_ref().trim();
-    if s.starts_with(char::is_numeric) {
-        Ident::new(&format!("_{s}"), Span::call_site())
-    } else {
-        Ident::new(s, Span::call_site())
+
+    match s.as_bytes() {
+        // TODO: check for the other rust keywords.
+        [b'0'..=b'9', ..] | b"type" => Ident::new(&format!("_{s}"), Span::call_site()),
+        _ => Ident::new(s, Span::call_site()),
     }
-}
-
-fn write_to_out_path(file_name: impl AsRef<str>, content: impl AsRef<str>) -> anyhow::Result<()> {
-    let out_dir = env::var_os("OUT_DIR").context("can't get OUT_DIR env var")?;
-    let path = Path::new(&out_dir).join(file_name.as_ref());
-
-    fs::write(&path, &content.as_ref())?;
-
-    // Format the output for debugging purposes.
-    // Doesn't matter if rustfmt is unavailable.
-    let _ = Command::new("rustfmt").arg(path).output();
-    Ok(())
 }

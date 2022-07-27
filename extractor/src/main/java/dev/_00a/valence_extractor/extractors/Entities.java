@@ -290,9 +290,16 @@ public class Entities implements Main.Extractor {
 
                 var parent = entityClass.getSuperclass();
                 var hasParent = parent != null && Entity.class.isAssignableFrom(parent);
-                entityJson.addProperty("parent", hasParent ? parent.getSimpleName() : null);
 
-                entityJson.add("translation_key", entityType != null ? new JsonPrimitive(entityType.getTranslationKey()) : null);
+                if (hasParent) {
+                    entityJson.addProperty("parent", parent.getSimpleName());
+                }
+
+                if (entityType != null) {
+                    entityJson.addProperty("type", Registry.ENTITY_TYPE.getId(entityType).getPath());
+
+                    entityJson.add("translation_key", new JsonPrimitive(entityType.getTranslationKey()));
+                }
 
                 var fieldsJson = new JsonArray();
                 for (var entityField : entityClass.getDeclaredFields()) {

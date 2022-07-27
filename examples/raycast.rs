@@ -7,7 +7,7 @@ use valence::block::{BlockPos, BlockState};
 use valence::client::GameMode;
 use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
-use valence::entity::{EntityKind, EntityState};
+use valence::entity::{EntityEnum, EntityKind};
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::spatial_index::RaycastHit;
 use valence::text::{Color, TextFormat};
@@ -166,11 +166,12 @@ impl Config for Game {
         });
 
         for (_, e) in server.entities.iter_mut() {
-            if let EntityState::Sheep(sheep) = &mut e.state {
-                if e.data {
-                    sheep.set_sheep_state(5);
+            let intersected = e.data;
+            if let EntityEnum::Sheep(sheep) = &mut e.view_mut() {
+                if intersected {
+                    sheep.set_color(5);
                 } else {
-                    sheep.set_sheep_state(0);
+                    sheep.set_color(0);
                 }
             }
             e.data = false;

@@ -1,7 +1,5 @@
 //! Connections to the server after logging in.
 
-/// Contains the [`Event`] enum and related data types.
-mod event;
 use std::collections::{HashSet, VecDeque};
 use std::iter::FusedIterator;
 use std::time::Duration;
@@ -18,8 +16,11 @@ use crate::block_pos::BlockPos;
 use crate::chunk_pos::ChunkPos;
 use crate::config::Config;
 use crate::dimension::DimensionId;
-use crate::entity::types::Player;
-use crate::entity::{velocity_to_packet_units, Entities, Entity, EntityId, EntityKind};
+use crate::entity::kinds::Player;
+use crate::entity::{
+    velocity_to_packet_units, Entities, EntityId, EntityKind, Event as EntityEvent,
+    StatusOrAnimation,
+};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol_inner::packets::play::c2s::{
     C2sPlayPacket, DiggingStatus, InteractKind, PlayerCommandId,
@@ -28,12 +29,12 @@ pub use crate::protocol_inner::packets::play::s2c::SetTitleAnimationTimes as Tit
 use crate::protocol_inner::packets::play::s2c::{
     Animate, BiomeRegistry, BlockChangeAck, ChatType, ChatTypeChat, ChatTypeNarration,
     ChatTypeRegistry, ChatTypeRegistryEntry, ClearTitles, DimensionTypeRegistry,
-    DimensionTypeRegistryEntry, Disconnect, EntityEvent, ForgetLevelChunk, GameEvent,
+    DimensionTypeRegistryEntry, Disconnect, EntityStatus, ForgetLevelChunk, GameEvent,
     GameEventReason, KeepAlive, Login, MoveEntityPosition, MoveEntityPositionAndRotation,
     MoveEntityRotation, PlayerPosition, PlayerPositionFlags, RegistryCodec, RemoveEntities,
     Respawn, RotateHead, S2cPlayPacket, SetChunkCacheCenter, SetChunkCacheRadius,
     SetEntityMetadata, SetEntityMotion, SetSubtitleText, SetTitleText, SpawnPosition, SystemChat,
-    TeleportEntity, UpdateAttributes, UpdateAttributesProperty, ENTITY_EVENT_MAX_BOUND,
+    TeleportEntity, UpdateAttributes, UpdateAttributesProperty,
 };
 use crate::protocol_inner::{BoundedInt, ByteAngle, Nbt, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, SharedServer};
@@ -42,6 +43,9 @@ use crate::text::Text;
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::world::{WorldId, Worlds};
 use crate::{ident, Ticks, LIBRARY_NAMESPACE, STANDARD_TPS};
+
+/// Contains the [`Event`] enum and related data types.
+mod event;
 
 /// A container for all [`Client`]s on a [`Server`](crate::server::Server).
 ///
@@ -211,6 +215,7 @@ pub struct Client<C: Config> {
     flags: ClientFlags,
     /// The data for the client's own player entity.
     player_data: Player,
+    entity_events: Vec<EntityEvent>,
 }
 
 #[bitfield(u16)]
@@ -280,6 +285,7 @@ impl<C: Config> Client<C> {
                 .with_modified_spawn_position(true)
                 .with_got_keepalive(true),
             player_data: Player::new(),
+            entity_events: Vec::new(),
         }
     }
 
@@ -520,6 +526,10 @@ impl<C: Config> Client<C> {
     /// current tick.
     pub fn pop_event(&mut self) -> Option<Event> {
         self.events.pop_front()
+    }
+
+    pub fn trigger_entity_event(&mut self, event: EntityEvent) {
+        self.entity_events.push(event);
     }
 
     /// The current view distance of this client measured in chunks.
@@ -1193,7 +1203,7 @@ impl<C: Config> Client<C> {
             if let Some(entity) = entities.get(id) {
                 debug_assert!(entity.kind() != EntityKind::Marker);
                 if self.new_position.distance(entity.position()) <= view_dist as f64 * 16.0 {
-                    if let Some(meta) = entity.updated_metadata_packet(id) {
+                    if let Some(meta) = entity.updated_tracked_data_packet(id) {
                         send_packet(&mut self.send, meta);
                     }
 
@@ -1273,7 +1283,7 @@ impl<C: Config> Client<C> {
                         )
                     }
 
-                    send_entity_events(&mut self.send, id, entity);
+                    send_entity_events(&mut self.send, id.to_network_id(), entity.events());
 
                     return true;
                 }
@@ -1291,7 +1301,7 @@ impl<C: Config> Client<C> {
 
         // Update the client's own player metadata.
         let mut data = Vec::new();
-        self.player_data.updated_metadata(&mut data);
+        self.player_data.updated_tracked_data(&mut data);
 
         if !data.is_empty() {
             data.push(0xff);
@@ -1320,29 +1330,18 @@ impl<C: Config> Client<C> {
                             .expect("should not be a marker entity"),
                     );
 
-                    if let Some(meta) = entity.initial_metadata_packet(id) {
+                    if let Some(meta) = entity.initial_tracked_data_packet(id) {
                         self.send_packet(meta);
                     }
 
-                    send_entity_events(&mut self.send, id, entity);
+                    send_entity_events(&mut self.send, id.to_network_id(), entity.events());
                 }
                 None
             },
         );
 
-        for &code in self.player_data.event_codes() {
-            if code <= ENTITY_EVENT_MAX_BOUND as u8 {
-                send_packet(
-                    &mut self.send,
-                    EntityEvent {
-                        entity_id: 0,
-                        entity_status: BoundedInt(code),
-                    },
-                );
-            }
-            // Don't bother sending animations for self since it shouldn't have
-            // any effect.
-        }
+        send_entity_events(&mut self.send, 0, &self.entity_events);
+        self.entity_events.clear();
 
         self.player_data.clear_modifications();
         self.old_position = self.new_position;
@@ -1366,24 +1365,23 @@ fn send_packet(send_opt: &mut SendOpt, pkt: impl Into<S2cPlayPacket>) {
     }
 }
 
-fn send_entity_events<C: Config>(send_opt: &mut SendOpt, id: EntityId, entity: &Entity<C>) {
-    for &code in entity.state.event_codes() {
-        if code <= ENTITY_EVENT_MAX_BOUND as u8 {
-            send_packet(
+fn send_entity_events(send_opt: &mut SendOpt, entity_id: i32, events: &[EntityEvent]) {
+    for &event in events {
+        match event.status_or_animation() {
+            StatusOrAnimation::Status(code) => send_packet(
                 send_opt,
-                EntityEvent {
-                    entity_id: id.to_network_id(),
-                    entity_status: BoundedInt(code),
+                EntityStatus {
+                    entity_id,
+                    entity_status: code,
                 },
-            );
-        } else {
-            send_packet(
+            ),
+            StatusOrAnimation::Animation(code) => send_packet(
                 send_opt,
                 Animate {
-                    entity_id: VarInt(id.to_network_id()),
-                    animation: BoundedInt(code - ENTITY_EVENT_MAX_BOUND as u8 - 1),
+                    entity_id: VarInt(entity_id),
+                    animation: code,
                 },
-            )
+            ),
         }
     }
 }

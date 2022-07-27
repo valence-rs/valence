@@ -618,7 +618,7 @@ pub mod play {
         def_struct! {
             Animate 0x03 {
                 entity_id: VarInt,
-                animation: BoundedInt<u8, 0, 5>,
+                animation: u8,
             }
         }
 
@@ -735,12 +735,10 @@ pub mod play {
             }
         }
 
-        pub const ENTITY_EVENT_MAX_BOUND: i64 = 62;
-
         def_struct! {
-            EntityEvent 0x18 {
+            EntityStatus 0x18 {
                 entity_id: i32,
-                entity_status: BoundedInt<u8, 1, ENTITY_EVENT_MAX_BOUND>,
+                entity_status: u8,
             }
         }
 
@@ -1270,7 +1268,7 @@ pub mod play {
                 BossEvent,
                 ClearTitles,
                 Disconnect,
-                EntityEvent,
+                EntityStatus,
                 ForgetLevelChunk,
                 GameEvent,
                 KeepAlive,

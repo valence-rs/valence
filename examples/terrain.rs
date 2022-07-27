@@ -117,10 +117,8 @@ impl Config for Game {
                 );
 
                 client.send_message("Welcome to the terrain example!".italic());
-                client.send_message(
-                    "This demonstrates how to create infinite procedurally generated terrain."
-                        .italic(),
-                );
+                client
+                    .send_message("Explore this infinite procedurally generated terrain.".italic());
             }
 
             if client.is_disconnected() {

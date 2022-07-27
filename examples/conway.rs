@@ -10,8 +10,8 @@ use valence::block::BlockState;
 use valence::client::{Event, Hand};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
-use valence::entity::state::Pose;
-use valence::entity::{EntityId, EntityKind, EntityState};
+use valence::entity::data::Pose;
+use valence::entity::{EntityEnum, EntityId, EntityKind, Event as EntityEvent};
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 use valence::{async_trait, ident};
@@ -179,14 +179,10 @@ impl Config for Game {
                                 true;
                         }
                     }
-                    Event::ArmSwing(hand) => {
-                        if let EntityState::Player(e) = &mut player.state {
-                            match hand {
-                                Hand::Main => e.trigger_swing_main_arm(),
-                                Hand::Off => e.trigger_swing_offhand(),
-                            }
-                        }
-                    }
+                    Event::ArmSwing(hand) => match hand {
+                        Hand::Main => player.trigger_event(EntityEvent::SwingMainHand),
+                        Hand::Off => player.trigger_event(EntityEvent::SwingOffHand),
+                    },
                     _ => {}
                 }
             }
@@ -198,7 +194,7 @@ impl Config for Game {
             player.set_pitch(client.pitch());
             player.set_on_ground(client.on_ground());
 
-            if let EntityState::Player(player) = &mut player.state {
+            if let EntityEnum::Player(player) = player.view_mut() {
                 if client.is_sneaking() {
                     player.set_pose(Pose::Sneaking);
                 } else {

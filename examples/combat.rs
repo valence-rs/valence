@@ -3,12 +3,11 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
 use valence::block::{BlockPos, BlockState};
-use valence::client::Event::{self};
-use valence::client::{ClientId, GameMode, Hand, InteractWithEntityKind};
+use valence::client::{ClientId, Event, GameMode, Hand, InteractWithEntityKind};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
-use valence::entity::state::Pose;
-use valence::entity::{EntityId, EntityKind, EntityState};
+use valence::entity::data::Pose;
+use valence::entity::{EntityEnum, EntityId, EntityKind, Event as EntityEvent};
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 use valence::{async_trait, Ticks};
@@ -37,7 +36,7 @@ struct ClientData {
     /// The client's player entity.
     player: EntityId,
     /// The extra knockback on the first hit while sprinting.
-    has_extra_knockback: bool,
+    extra_knockback: bool,
 }
 
 #[derive(Default)]
@@ -67,7 +66,6 @@ impl Config for Game {
     }
 
     fn online_mode(&self) -> bool {
-        // You'll want this to be true on real servers.
         false
     }
 
@@ -160,7 +158,7 @@ impl Config for Game {
                     .unwrap();
 
                 client.data.player = player_id;
-                client.data.has_extra_knockback = true;
+                client.data.extra_knockback = true;
 
                 player.data.client = client_id;
                 player.data.last_attack_time = 0;
@@ -181,7 +179,7 @@ impl Config for Game {
             while let Some(event) = client.pop_event() {
                 match event {
                     Event::StartSprinting => {
-                        client.data.has_extra_knockback = true;
+                        client.data.extra_knockback = true;
                     }
                     Event::InteractWithEntity {
                         id,
@@ -195,21 +193,18 @@ impl Config for Game {
                             {
                                 target.data.attacked = true;
                                 target.data.attacker_pos = client.position();
-                                target.data.extra_knockback = client.data.has_extra_knockback;
+                                target.data.extra_knockback = client.data.extra_knockback;
                                 target.data.last_attack_time = current_tick;
 
-                                client.data.has_extra_knockback = false;
+                                client.data.extra_knockback = false;
                             }
                         }
                     }
                     Event::ArmSwing(hand) => {
                         let player = server.entities.get_mut(client.data.player).unwrap();
-
-                        if let EntityState::Player(e) = &mut player.state {
-                            match hand {
-                                Hand::Main => e.trigger_swing_main_arm(),
-                                Hand::Off => e.trigger_swing_offhand(),
-                            }
+                        match hand {
+                            Hand::Main => player.trigger_event(EntityEvent::SwingMainHand),
+                            Hand::Off => player.trigger_event(EntityEvent::SwingOffHand),
                         }
                     }
                     _ => (),
@@ -237,7 +232,7 @@ impl Config for Game {
             player.set_pitch(client.pitch());
             player.set_on_ground(client.on_ground());
 
-            if let EntityState::Player(player) = &mut player.state {
+            if let EntityEnum::Player(player) = player.view_mut() {
                 if client.is_sneaking() {
                     player.set_pose(Pose::Sneaking);
                 } else {
@@ -266,12 +261,10 @@ impl Config for Game {
 
                 victim.set_velocity(victim.velocity() / 2.0 + vel.as_());
 
-                if let EntityState::Player(e) = &mut e.state {
-                    e.trigger_take_damage();
-                    e.trigger_hurt();
-                }
-                victim.player_mut().trigger_take_damage();
-                victim.player_mut().trigger_hurt();
+                e.trigger_event(EntityEvent::DamageFromGenericSource);
+                e.trigger_event(EntityEvent::Damage);
+                victim.trigger_entity_event(EntityEvent::DamageFromGenericSource);
+                victim.trigger_entity_event(EntityEvent::Damage);
             }
         }
     }
