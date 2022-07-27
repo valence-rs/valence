@@ -4,9 +4,12 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev._00a.valence_extractor.Main;
 import net.minecraft.entity.EntityPose;
+import net.minecraft.entity.EntityStatuses;
+import net.minecraft.network.packet.s2c.play.EntityAnimationS2CPacket;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.registry.Registry;
 
+import java.lang.reflect.Modifier;
 import java.util.Locale;
 
 public class EntityData implements Main.Extractor {
@@ -20,7 +23,7 @@ public class EntityData implements Main.Extractor {
         var dataJson = new JsonObject();
 
         var statusesJson = new JsonObject();
-        for (var field : net.minecraft.entity.EntityStatuses.class.getDeclaredFields()) {
+        for (var field : EntityStatuses.class.getDeclaredFields()) {
             if (field.canAccess(null) && field.get(null) instanceof Byte code) {
                 if (field.getName().equals("field_30030")) {
                     statusesJson.addProperty("stop_attack", code);
@@ -30,6 +33,15 @@ public class EntityData implements Main.Extractor {
             }
         }
         dataJson.add("statuses", statusesJson);
+
+        var animationsJson = new JsonObject();
+        for (var field : EntityAnimationS2CPacket.class.getDeclaredFields()) {
+            field.setAccessible(true);
+            if (Modifier.isStatic(field.getModifiers()) && field.canAccess(null) && field.get(null) instanceof Integer i) {
+                animationsJson.addProperty(field.getName().toLowerCase(Locale.ROOT), i);
+            }
+        }
+        dataJson.add("animations", animationsJson);
 
         var villagerTypesJson = new JsonObject();
         for (var type : Registry.VILLAGER_TYPE) {
