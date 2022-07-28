@@ -2426,7 +2426,7 @@
         "type": "villager_data",
         "default_value": {
           "type": "plains",
-          "profession": "mason",
+          "profession": "none",
           "level": 1
         },
         "bits": []

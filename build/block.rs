@@ -1,5 +1,3 @@
-// TODO: can't match on str in const fn.
-
 use std::collections::BTreeSet;
 
 use heck::{ToPascalCase, ToShoutySnakeCase};
@@ -9,17 +7,70 @@ use serde::Deserialize;
 
 use crate::ident;
 
+#[derive(Deserialize, Clone, Debug)]
+struct TopLevel {
+    blocks: Vec<Block>,
+    collision_shapes: Vec<CollisionShape>,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+struct Block {
+    id: u16,
+    translation_key: String,
+    name: String,
+    properties: Vec<Property>,
+    default_state_id: u16,
+    states: Vec<State>,
+}
+
+impl Block {
+    pub fn min_state_id(&self) -> u16 {
+        self.states.iter().map(|s| s.id).min().unwrap()
+    }
+
+    pub fn max_state_id(&self) -> u16 {
+        self.states.iter().map(|s| s.id).max().unwrap()
+    }
+}
+
+#[derive(Deserialize, Clone, Debug)]
+struct Property {
+    name: String,
+    values: Vec<String>,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+struct State {
+    id: u16,
+    luminance: u8,
+    opaque: bool,
+    collision_shapes: Vec<u16>,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+struct CollisionShape {
+    min_x: f64,
+    min_y: f64,
+    min_z: f64,
+    max_x: f64,
+    max_y: f64,
+    max_z: f64,
+}
+
 pub fn build() -> anyhow::Result<TokenStream> {
-    let blocks = parse_blocks_json()?;
+    let TopLevel {
+        blocks,
+        collision_shapes,
+    } = serde_json::from_str(include_str!("../extracted/blocks.json"))?;
 
-    let max_block_state = blocks.iter().map(|b| b.max_state_id).max().unwrap();
+    let max_state_id = blocks.iter().map(|b| b.max_state_id()).max().unwrap();
 
-    let state_to_kind = blocks
+    let state_to_kind_arms = blocks
         .iter()
         .map(|b| {
-            let min = b.min_state_id;
-            let max = b.max_state_id;
-            let name = ident(b.name.to_pascal_case());
+            let min = b.min_state_id();
+            let max = b.max_state_id();
+            let name = ident(&b.name.to_pascal_case());
             quote! {
                 #min..=#max => BlockKind::#name,
             }
@@ -28,26 +79,27 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
     let get_arms = blocks
         .iter()
-        .filter(|&b| !b.props.is_empty())
+        .filter(|&b| !b.properties.is_empty())
         .map(|b| {
-            let block_type_name = ident(b.name.to_pascal_case());
+            let block_kind_name = ident(b.name.to_pascal_case());
 
             let arms = b
-                .props
+                .properties
                 .iter()
                 .map(|p| {
                     let prop_name = ident(p.name.to_pascal_case());
-                    let min_state_id = b.min_state_id;
+                    let min_state_id = b.min_state_id();
                     let product: u16 = b
-                        .props
+                        .properties
                         .iter()
+                        .rev()
                         .take_while(|&other| p.name != other.name)
-                        .map(|p| p.vals.len() as u16)
+                        .map(|p| p.values.len() as u16)
                         .product();
 
-                    let values_count = p.vals.len() as u16;
+                    let values_count = p.values.len() as u16;
 
-                    let arms = p.vals.iter().enumerate().map(|(i, v)| {
+                    let arms = p.values.iter().enumerate().map(|(i, v)| {
                         let value_idx = i as u16;
                         let value_name = ident(v.to_pascal_case());
                         quote! {
@@ -65,7 +117,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 .collect::<TokenStream>();
 
             quote! {
-                BlockKind::#block_type_name => match name {
+                BlockKind::#block_kind_name => match name {
                     #arms
                     _ => None,
                 },
@@ -75,27 +127,28 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
     let set_arms = blocks
         .iter()
-        .filter(|&b| !b.props.is_empty())
+        .filter(|&b| !b.properties.is_empty())
         .map(|b| {
-            let block_type_name = ident(b.name.to_pascal_case());
+            let block_kind_name = ident(b.name.to_pascal_case());
 
             let arms = b
-                .props
+                .properties
                 .iter()
                 .map(|p| {
                     let prop_name = ident(p.name.to_pascal_case());
-                    let min_state_id = b.min_state_id;
+                    let min_state_id = b.min_state_id();
                     let product: u16 = b
-                        .props
+                        .properties
                         .iter()
+                        .rev()
                         .take_while(|&other| p.name != other.name)
-                        .map(|p| p.vals.len() as u16)
+                        .map(|p| p.values.len() as u16)
                         .product();
 
-                    let values_count = p.vals.len() as u16;
+                    let values_count = p.values.len() as u16;
 
                     let arms = p
-                        .vals
+                        .values
                         .iter()
                         .enumerate()
                         .map(|(i, v)| {
@@ -119,28 +172,10 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 .collect::<TokenStream>();
 
             quote! {
-                BlockKind::#block_type_name => match name {
+                BlockKind::#block_kind_name => match name {
                     #arms
                     _ => self,
                 },
-            }
-        })
-        .collect::<TokenStream>();
-
-    let is_transparent_types = blocks
-        .iter()
-        .filter(|&b| b.transparent)
-        .map(|b| ident(b.name.to_pascal_case()));
-
-    let filter_light_arms = blocks
-        .iter()
-        .map(|b| {
-            let type_name = ident(b.name.to_pascal_case());
-            assert!(b.filter_light <= 15);
-            let filter_light = b.filter_light as u8;
-
-            quote! {
-                BlockKind::#type_name => #filter_light,
             }
         })
         .collect::<TokenStream>();
@@ -149,7 +184,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .map(|b| {
             let name = ident(b.name.to_shouty_snake_case());
-            let state = b.default_state;
+            let state = b.default_state_id;
             let doc = format!("The default block state for `{}`.", b.name);
             quote! {
                 #[doc = #doc]
@@ -158,7 +193,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         })
         .collect::<TokenStream>();
 
-    let kind_to_state = blocks
+    let kind_to_state_arms = blocks
         .iter()
         .map(|b| {
             let kind = ident(b.name.to_pascal_case());
@@ -198,10 +233,10 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
     let block_kind_props_arms = blocks
         .iter()
-        .filter(|&b| !b.props.is_empty())
+        .filter(|&b| !b.properties.is_empty())
         .map(|b| {
             let name = ident(b.name.to_pascal_case());
-            let prop_names = b.props.iter().map(|p| ident(p.name.to_pascal_case()));
+            let prop_names = b.properties.iter().map(|p| ident(p.name.to_pascal_case()));
 
             quote! {
                 Self::#name => &[#(PropName::#prop_names,)*],
@@ -213,7 +248,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
     let prop_names = blocks
         .iter()
-        .flat_map(|b| b.props.iter().map(|p| &p.name))
+        .flat_map(|b| b.properties.iter().map(|p| p.name.as_str()))
         .collect::<BTreeSet<_>>();
 
     let prop_name_variants = prop_names
@@ -245,7 +280,8 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
     let prop_values = blocks
         .iter()
-        .flat_map(|b| b.props.iter().flat_map(|p| &p.vals))
+        .flat_map(|b| b.properties.iter().flat_map(|p| &p.values))
+        .map(|s| s.as_str())
         .collect::<BTreeSet<_>>();
 
     let prop_value_variants = prop_values
@@ -295,10 +331,10 @@ pub fn build() -> anyhow::Result<TokenStream> {
         })
         .collect::<TokenStream>();
 
-    let property_name_count = prop_values.len();
+    let prop_value_count = prop_values.len();
 
     Ok(quote! {
-        /// Represents the state of a block, not including block entity data such as
+        /// Represents the state of a block. This does not include block entity data such as
         /// the text on a sign, the design on a banner, or the content of a spawner.
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
         pub struct BlockState(u16);
@@ -307,14 +343,14 @@ pub fn build() -> anyhow::Result<TokenStream> {
             /// Returns the default block state for a given block type.
             pub const fn from_kind(kind: BlockKind) -> Self {
                 match kind {
-                    #kind_to_state
+                    #kind_to_state_arms
                 }
             }
 
             /// Returns the [`BlockKind`] of this block state.
             pub const fn to_kind(self) -> BlockKind {
                 match self.0 {
-                    #state_to_kind
+                    #state_to_kind_arms
                     _ => unreachable!(),
                 }
             }
@@ -323,7 +359,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             ///
             /// If the given ID is invalid, `None` is returned.
             pub const fn from_raw(id: u16) -> Option<Self> {
-                if id <= #max_block_state {
+                if id <= #max_state_id {
                     Some(Self(id))
                 } else {
                     None
@@ -344,7 +380,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
             /// Returns the maximum block state ID.
             pub const fn max_raw() -> u16 {
-                #max_block_state
+                #max_state_id
             }
 
             /// Gets the value of the property with the given name from this block.
@@ -357,10 +393,10 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Sets the value of a propery on this block, returning the modified block.
+            /// Sets the value of a property on this block, returning the modified block.
             ///
             /// If this block does not have the given property or the property value is invalid,
-            /// then the orginal block is returned unchanged.
+            /// then the original block is returned unchanged.
             #[must_use]
             pub const fn set(self, name: PropName, val: PropValue) -> Self {
                 match self.to_kind() {
@@ -377,24 +413,11 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 )
             }
 
-            /// Is the block visually transparent?
-            pub const fn is_transparent(self) -> bool {
-                matches!(self.to_kind(), #(BlockKind::#is_transparent_types)|*)
-            }
-
             // TODO: is_solid
 
             /// If this block is water or lava.
             pub const fn is_liquid(self) -> bool {
                 matches!(self.to_kind(), BlockKind::Water | BlockKind::Lava)
-            }
-
-            /// Returns the amount of light that is normally filtered by this block.
-            /// The returned value is in `0..=15`.
-            pub const fn filter_light(self) -> u8 {
-                match self.to_kind() {
-                    #filter_light_arms
-                }
             }
 
             #default_block_states
@@ -461,6 +484,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             ///
             /// Returns `None` if the given name is not valid.
             pub fn from_str(name: &str) -> Option<Self> {
+                // TODO: match on str in const fn.
                 match name {
                     #prop_name_from_str_arms
                     _ => None,
@@ -532,7 +556,8 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Convers a `True` or `False` property value to a `bool`.
+            /// Converts a `True` or `False` property value to a `bool`.
+            ///
             /// Returns `None` if this property value is not `True` or `False`
             pub const fn to_bool(self) -> Option<bool> {
                 match self {
@@ -543,7 +568,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }
 
             /// An array of all property values.
-            pub const ALL: [Self; #property_name_count] = [#(Self::#prop_value_variants,)*];
+            pub const ALL: [Self; #prop_value_count] = [#(Self::#prop_value_variants,)*];
         }
 
         impl From<bool> for PropValue {
@@ -552,82 +577,4 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }
         }
     })
-}
-
-struct Block {
-    name: String,
-    default_state: u16,
-    min_state_id: u16,
-    max_state_id: u16,
-    transparent: bool,
-    filter_light: u8,
-    /// Order of elements in this vec is significant.
-    props: Vec<Prop>,
-}
-
-struct Prop {
-    name: String,
-    vals: Vec<String>,
-}
-
-fn parse_blocks_json() -> anyhow::Result<Vec<Block>> {
-    #[derive(Clone, PartialEq, Debug, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    struct JsonBlock {
-        id: u16,
-        name: String,
-        display_name: String,
-        hardness: f64,
-        resistance: f64,
-        stack_size: u32,
-        diggable: bool,
-        material: String,
-        transparent: bool,
-        emit_light: u8,
-        filter_light: u8,
-        default_state: u16,
-        min_state_id: u16,
-        max_state_id: u16,
-        states: Vec<State>,
-        bounding_box: String,
-    }
-
-    #[derive(Clone, PartialEq, Debug, Deserialize)]
-    #[serde(tag = "type", rename_all = "camelCase")]
-    enum State {
-        Enum { name: String, values: Vec<String> },
-        Int { name: String, values: Vec<String> },
-        Bool { name: String },
-    }
-
-    let blocks: Vec<JsonBlock> = serde_json::from_str(include_str!("../data/blocks.json"))?;
-
-    Ok(blocks
-        .into_iter()
-        .map(|b| Block {
-            name: b.name,
-            default_state: b.default_state,
-            min_state_id: b.min_state_id,
-            max_state_id: b.max_state_id,
-            transparent: b.transparent,
-            filter_light: b.filter_light,
-            props: b
-                .states
-                .into_iter()
-                .rev()
-                .map(|s| Prop {
-                    name: match &s {
-                        State::Enum { name, .. } => name.clone(),
-                        State::Int { name, .. } => name.clone(),
-                        State::Bool { name } => name.clone(),
-                    },
-                    vals: match &s {
-                        State::Enum { values, .. } => values.clone(),
-                        State::Int { values, .. } => values.clone(),
-                        State::Bool { .. } => vec!["true".to_owned(), "false".to_owned()],
-                    },
-                })
-                .collect(),
-        })
-        .collect())
 }

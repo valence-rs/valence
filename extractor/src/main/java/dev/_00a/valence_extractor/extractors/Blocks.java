@@ -9,6 +9,7 @@ import net.minecraft.util.registry.Registry;
 import net.minecraft.world.EmptyBlockView;
 
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Objects;
 
 public class Blocks implements Main.Extractor {
@@ -45,7 +46,7 @@ public class Blocks implements Main.Extractor {
 
                 var valuesJson = new JsonArray();
                 for (var value : prop.getValues()) {
-                    valuesJson.add(value.toString());
+                    valuesJson.add(value.toString().toLowerCase(Locale.ROOT));
                 }
                 propJson.add("values", valuesJson);
 

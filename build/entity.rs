@@ -506,7 +506,6 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
 fn collect_all_fields<'a>(entity_name: &str, entities: &'a Entities) -> Vec<&'a Field> {
     fn rec<'a>(entity_name: &str, entities: &'a Entities, fields: &mut Vec<&'a Field>) {
-        dbg!(entity_name);
         let e = &entities[entity_name];
         fields.extend(&e.fields);
 
