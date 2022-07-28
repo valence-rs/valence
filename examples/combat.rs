@@ -32,7 +32,7 @@ struct Game {
 }
 
 #[derive(Default)]
-struct ClientData {
+struct ClientState {
     /// The client's player entity.
     player: EntityId,
     /// The extra knockback on the first hit while sprinting.
@@ -40,7 +40,7 @@ struct ClientData {
 }
 
 #[derive(Default)]
-struct EntityData {
+struct EntityState {
     client: ClientId,
     attacked: bool,
     attacker_pos: Vec3<f64>,
@@ -54,11 +54,11 @@ const SPAWN_POS: BlockPos = BlockPos::new(0, 20, 0);
 
 #[async_trait]
 impl Config for Game {
-    type ChunkData = ();
-    type ClientData = ClientData;
-    type EntityData = EntityData;
-    type ServerData = ();
-    type WorldData = ();
+    type ChunkState = ();
+    type ClientState = ClientState;
+    type EntityState = EntityState;
+    type ServerState = ();
+    type WorldState = ();
 
     fn max_connections(&self) -> usize {
         // We want status pings to be successful even if the server is full.
@@ -154,14 +154,14 @@ impl Config for Game {
 
                 let (player_id, player) = server
                     .entities
-                    .create_with_uuid(EntityKind::Player, client.uuid(), EntityData::default())
+                    .create_with_uuid(EntityKind::Player, client.uuid(), EntityState::default())
                     .unwrap();
 
-                client.data.player = player_id;
-                client.data.extra_knockback = true;
+                client.state.player = player_id;
+                client.state.extra_knockback = true;
 
-                player.data.client = client_id;
-                player.data.last_attack_time = 0;
+                player.state.client = client_id;
+                player.state.last_attack_time = 0;
 
                 client.send_message("Welcome to the arena.".italic());
                 if self.player_count.load(Ordering::SeqCst) <= 1 {
@@ -171,7 +171,7 @@ impl Config for Game {
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.delete(client.data.player);
+                server.entities.delete(client.state.player);
                 world.meta.player_list_mut().remove(client.uuid());
                 return false;
             }
@@ -179,7 +179,7 @@ impl Config for Game {
             while let Some(event) = client.pop_event() {
                 match event {
                     Event::StartSprinting => {
-                        client.data.extra_knockback = true;
+                        client.state.extra_knockback = true;
                     }
                     Event::InteractWithEntity {
                         id,
@@ -187,21 +187,21 @@ impl Config for Game {
                         ..
                     } => {
                         if let Some(target) = server.entities.get_mut(id) {
-                            if !target.data.attacked
-                                && current_tick - target.data.last_attack_time >= 10
-                                && id != client.data.player
+                            if !target.state.attacked
+                                && current_tick - target.state.last_attack_time >= 10
+                                && id != client.state.player
                             {
-                                target.data.attacked = true;
-                                target.data.attacker_pos = client.position();
-                                target.data.extra_knockback = client.data.extra_knockback;
-                                target.data.last_attack_time = current_tick;
+                                target.state.attacked = true;
+                                target.state.attacker_pos = client.position();
+                                target.state.extra_knockback = client.state.extra_knockback;
+                                target.state.last_attack_time = current_tick;
 
-                                client.data.extra_knockback = false;
+                                client.state.extra_knockback = false;
                             }
                         }
                     }
                     Event::ArmSwing(hand) => {
-                        let player = server.entities.get_mut(client.data.player).unwrap();
+                        let player = server.entities.get_mut(client.state.player).unwrap();
                         match hand {
                             Hand::Main => player.trigger_event(EntityEvent::SwingMainHand),
                             Hand::Off => player.trigger_event(EntityEvent::SwingOffHand),
@@ -223,7 +223,7 @@ impl Config for Game {
                 );
             }
 
-            let player = server.entities.get_mut(client.data.player).unwrap();
+            let player = server.entities.get_mut(client.state.player).unwrap();
 
             player.set_world(client.world());
             player.set_position(client.position());
@@ -246,14 +246,14 @@ impl Config for Game {
         });
 
         for (_, e) in server.entities.iter_mut() {
-            if e.data.attacked {
-                e.data.attacked = false;
-                let victim = server.clients.get_mut(e.data.client).unwrap();
+            if e.state.attacked {
+                e.state.attacked = false;
+                let victim = server.clients.get_mut(e.state.client).unwrap();
 
-                let mut vel = (victim.position() - e.data.attacker_pos).normalized();
+                let mut vel = (victim.position() - e.state.attacker_pos).normalized();
 
-                let knockback_xz = if e.data.extra_knockback { 18.0 } else { 8.0 };
-                let knockback_y = if e.data.extra_knockback { 8.432 } else { 6.432 };
+                let knockback_xz = if e.state.extra_knockback { 18.0 } else { 8.0 };
+                let knockback_y = if e.state.extra_knockback { 8.432 } else { 6.432 };
 
                 vel.x *= knockback_xz;
                 vel.y = knockback_y;

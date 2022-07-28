@@ -53,7 +53,7 @@ impl<C: Config> Entities<C> {
 
     /// Spawns a new entity with a random UUID. A reference to the entity along
     /// with its ID is returned.
-    pub fn create(&mut self, kind: EntityKind, data: C::EntityData) -> (EntityId, &mut Entity<C>) {
+    pub fn create(&mut self, kind: EntityKind, data: C::EntityState) -> (EntityId, &mut Entity<C>) {
         self.create_with_uuid(kind, Uuid::from_bytes(rand::random()), data)
             .expect("UUID collision")
     }
@@ -67,13 +67,13 @@ impl<C: Config> Entities<C> {
         &mut self,
         kind: EntityKind,
         uuid: Uuid,
-        data: C::EntityData,
+        data: C::EntityState,
     ) -> Option<(EntityId, &mut Entity<C>)> {
         match self.uuid_to_entity.entry(uuid) {
             Entry::Occupied(_) => None,
             Entry::Vacant(ve) => {
                 let (k, e) = self.sm.insert(Entity {
-                    data,
+                    state: data,
                     variants: EntityEnum::new(kind),
                     events: Vec::new(),
                     flags: EntityFlags(0),
@@ -242,7 +242,7 @@ impl EntityId {
 /// [`Self::data`].
 pub struct Entity<C: Config> {
     /// Custom data.
-    pub data: C::EntityData,
+    pub state: C::EntityState,
     variants: EntityEnum,
     flags: EntityFlags,
     events: Vec<Event>,

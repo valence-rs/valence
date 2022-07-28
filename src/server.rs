@@ -52,8 +52,8 @@ use crate::{Ticks, PROTOCOL_VERSION, VERSION_NAME};
 /// Contains the entire state of a running Minecraft server, accessible from
 /// within the [update](crate::config::Config::update) loop.
 pub struct Server<C: Config> {
-    /// Custom data.
-    pub data: C::ServerData,
+    /// Custom state.
+    pub state: C::ServerState,
     /// A handle to this server's [`SharedServer`].
     pub shared: SharedServer<C>,
     /// All of the clients in the server.
@@ -248,13 +248,13 @@ impl<C: Config> SharedServer<C> {
 ///
 /// The function returns once the server has shut down, a runtime error
 /// occurs, or the configuration is found to be invalid.
-pub fn start_server<C: Config>(config: C, data: C::ServerData) -> ShutdownResult {
+pub fn start_server<C: Config>(config: C, data: C::ServerState) -> ShutdownResult {
     let shared = setup_server(config).map_err(Box::<dyn Error + Send + Sync + 'static>::from)?;
 
     let _guard = shared.tokio_handle().enter();
 
     let mut server = Server {
-        data,
+        state: data,
         shared: shared.clone(),
         clients: Clients::new(),
         entities: Entities::new(),
@@ -463,7 +463,7 @@ fn join_player<C: Config>(server: &mut Server<C>, msg: NewClientMessage) {
         c2s_packet_channels,
         &server.shared,
         msg.ncd,
-        C::ClientData::default(),
+        C::ClientState::default(),
     );
 
     server.clients.insert(client);

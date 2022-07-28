@@ -45,9 +45,9 @@ impl<C: Config> Worlds<C> {
 
     /// Creates a new world on the server with the provided dimension. A
     /// reference to the world along with its ID is returned.
-    pub fn create(&mut self, dim: DimensionId, data: C::WorldData) -> (WorldId, &mut World<C>) {
+    pub fn create(&mut self, dim: DimensionId, data: C::WorldState) -> (WorldId, &mut World<C>) {
         let (id, world) = self.sm.insert(World {
-            data,
+            state: data,
             spatial_index: SpatialIndex::new(),
             chunks: Chunks::new(self.server.clone(), dim),
             meta: WorldMeta {
@@ -121,8 +121,8 @@ impl<C: Config> Worlds<C> {
 
 /// A space for chunks, entities, and clients to occupy.
 pub struct World<C: Config> {
-    /// Custom data.
-    pub data: C::WorldData,
+    /// Custom state.
+    pub state: C::WorldState,
     /// Contains all of the entities in this world.
     pub spatial_index: SpatialIndex,
     /// All of the chunks in this world.

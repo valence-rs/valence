@@ -50,7 +50,7 @@ impl<C: Config> Chunks<C> {
     /// adjacent to it must also be loaded. It is also important that clients
     /// are not spawned within unloaded chunks via
     /// [`spawn`](crate::client::Client::spawn).
-    pub fn create(&mut self, pos: impl Into<ChunkPos>, data: C::ChunkData) -> &mut Chunk<C> {
+    pub fn create(&mut self, pos: impl Into<ChunkPos>, data: C::ChunkState) -> &mut Chunk<C> {
         let section_count = (self.server.dimension(self.dimension).height / 16) as u32;
         let chunk = Chunk::new(section_count, self.server.current_tick(), data);
 
@@ -185,8 +185,8 @@ impl<C: Config> Chunks<C> {
 /// In addition to blocks, chunks also contain [biomes](crate::biome::Biome).
 /// Every 4x4x4 segment of blocks in a chunk corresponds to a biome.
 pub struct Chunk<C: Config> {
-    /// Custom data.
-    pub data: C::ChunkData,
+    /// Custom state.
+    pub state: C::ChunkState,
     sections: Box<[ChunkSection]>,
     // TODO block_entities: HashMap<u32, BlockEntity>,
     /// The MOTION_BLOCKING heightmap
@@ -195,7 +195,7 @@ pub struct Chunk<C: Config> {
 }
 
 impl<C: Config> Chunk<C> {
-    pub(crate) fn new(section_count: u32, current_tick: Ticks, data: C::ChunkData) -> Self {
+    pub(crate) fn new(section_count: u32, current_tick: Ticks, data: C::ChunkState) -> Self {
         let sect = ChunkSection {
             blocks: [BlockState::AIR.to_raw(); 4096],
             modified_count: 1, // Must be >0 so the chunk is initialized.
@@ -204,7 +204,7 @@ impl<C: Config> Chunk<C> {
         };
 
         let mut chunk = Self {
-            data,
+            state: data,
             sections: vec![sect; section_count as usize].into(),
             heightmap: Vec::new(),
             created_tick: current_tick,

@@ -166,8 +166,8 @@ impl ClientId {
 /// In Valence however, clients and players have been decoupled. This separation
 /// was done primarily to enable multithreaded client updates.
 pub struct Client<C: Config> {
-    /// Custom data.
-    pub data: C::ClientData,
+    /// Custom state.
+    pub state: C::ClientState,
     /// Setting this to `None` disconnects the client.
     send: SendOpt,
     recv: Receiver<C2sPlayPacket>,
@@ -245,12 +245,12 @@ impl<C: Config> Client<C> {
         packet_channels: C2sPacketChannels,
         server: &SharedServer<C>,
         ncd: NewClientData,
-        data: C::ClientData,
+        data: C::ClientState,
     ) -> Self {
         let (send, recv) = packet_channels;
 
         Self {
-            data,
+            state: data,
             send: Some(send),
             recv,
             created_tick: server.current_tick(),

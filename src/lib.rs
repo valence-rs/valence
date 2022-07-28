@@ -58,11 +58,11 @@
 //! struct Game;
 //!
 //! impl Config for Game {
-//!     type ChunkData = ();
-//!     type ClientData = ();
-//!     type EntityData = ();
-//!     type ServerData = ();
-//!     type WorldData = ();
+//!     type ChunkState = ();
+//!     type ClientState = ();
+//!     type EntityState = ();
+//!     type ServerState = ();
+//!     type WorldState = ();
 //!
 //!     fn max_connections(&self) -> usize {
 //!         256

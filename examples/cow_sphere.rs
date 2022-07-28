@@ -24,7 +24,7 @@ pub fn main() -> ShutdownResult {
         Game {
             player_count: AtomicUsize::new(0),
         },
-        ServerData { cows: Vec::new() },
+        ServerState { cows: Vec::new() },
     )
 }
 
@@ -32,7 +32,7 @@ struct Game {
     player_count: AtomicUsize,
 }
 
-struct ServerData {
+struct ServerState {
     cows: Vec<EntityId>,
 }
 
@@ -42,11 +42,11 @@ const SPAWN_POS: BlockPos = BlockPos::new(0, 100, -25);
 
 #[async_trait]
 impl Config for Game {
-    type ChunkData = ();
-    type ClientData = ();
-    type EntityData = ();
-    type ServerData = ServerData;
-    type WorldData = ();
+    type ChunkState = ();
+    type ClientState = ();
+    type EntityState = ();
+    type ServerState = ServerState;
+    type WorldState = ();
 
     fn max_connections(&self) -> usize {
         // We want status pings to be successful even if the server is full.
@@ -84,7 +84,7 @@ impl Config for Game {
 
         world.chunks.set_block_state(SPAWN_POS, BlockState::BEDROCK);
 
-        server.data.cows.extend((0..200).map(|_| {
+        server.state.cows.extend((0..200).map(|_| {
             let (id, e) = server.entities.create(EntityKind::Cow, ());
             e.set_world(world_id);
             id
@@ -157,11 +157,11 @@ impl Config for Game {
         let eye_pos = Vec3::new(player_pos.x, player_pos.y + 1.6, player_pos.z);
 
         for (cow_id, p) in server
-            .data
+            .state
             .cows
             .iter()
             .cloned()
-            .zip(fibonacci_spiral(server.data.cows.len()))
+            .zip(fibonacci_spiral(server.state.cows.len()))
         {
             let cow = server.entities.get_mut(cow_id).expect("missing cow");
             let rotated = p * rot;

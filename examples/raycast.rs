@@ -40,12 +40,12 @@ const PLAYER_EYE_HEIGHT: f64 = 1.6;
 
 #[async_trait]
 impl Config for Game {
-    type ChunkData = ();
-    type ClientData = ();
+    type ChunkState = ();
+    type ClientState = ();
     /// `true` for entities that have been intersected with.
-    type EntityData = bool;
-    type ServerData = ();
-    type WorldData = ();
+    type EntityState = bool;
+    type ServerState = ();
+    type WorldState = ();
 
     fn max_connections(&self) -> usize {
         // We want status pings to be successful even if the server is full.
@@ -158,7 +158,7 @@ impl Config for Game {
 
             if let Some(hit) = world.spatial_index.raycast(origin, direction, only_sheep) {
                 if let Some(e) = server.entities.get_mut(hit.entity) {
-                    e.data = true;
+                    e.state = true;
                 }
             }
 
@@ -166,7 +166,7 @@ impl Config for Game {
         });
 
         for (_, e) in server.entities.iter_mut() {
-            let intersected = e.data;
+            let intersected = e.state;
             if let EntityEnum::Sheep(sheep) = &mut e.view_mut() {
                 if intersected {
                     sheep.set_color(5);
@@ -174,7 +174,7 @@ impl Config for Game {
                     sheep.set_color(0);
                 }
             }
-            e.data = false;
+            e.state = false;
         }
     }
 }

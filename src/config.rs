@@ -21,16 +21,16 @@ use crate::{Ticks, STANDARD_TPS};
 #[async_trait]
 #[allow(unused_variables)]
 pub trait Config: 'static + Sized + Send + Sync + UnwindSafe + RefUnwindSafe {
-    /// Custom data to store with the [`Server`].
-    type ServerData: Send + Sync;
-    /// Custom data to store with every [`Client`](crate::client::Client).
-    type ClientData: Default + Send + Sync;
-    /// Custom data to store with every [`Entity`](crate::entity::Entity).
-    type EntityData: Send + Sync;
-    /// Custom data to store with every [`World`](crate::world::World).
-    type WorldData: Send + Sync;
-    /// Custom data to store with every [`Chunk`](crate::chunk::Chunk).
-    type ChunkData: Send + Sync;
+    /// Custom state to store with the [`Server`].
+    type ServerState: Send + Sync;
+    /// Custom state to store with every [`Client`](crate::client::Client).
+    type ClientState: Default + Send + Sync;
+    /// Custom state to store with every [`Entity`](crate::entity::Entity).
+    type EntityState: Send + Sync;
+    /// Custom state to store with every [`World`](crate::world::World).
+    type WorldState: Send + Sync;
+    /// Custom state to store with every [`Chunk`](crate::chunk::Chunk).
+    type ChunkState: Send + Sync;
 
     /// Called once at startup to get the maximum number of simultaneous
     /// connections allowed to the server. This includes all

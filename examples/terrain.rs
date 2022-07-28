@@ -50,11 +50,11 @@ const MAX_PLAYERS: usize = 10;
 
 #[async_trait]
 impl Config for Game {
-    type ChunkData = ();
-    type ClientData = ();
-    type EntityData = ();
-    type ServerData = ();
-    type WorldData = ();
+    type ChunkState = ();
+    type ClientState = ();
+    type EntityState = ();
+    type ServerState = ();
+    type WorldState = ();
 
     fn max_connections(&self) -> usize {
         // We want status pings to be successful even if the server is full.
