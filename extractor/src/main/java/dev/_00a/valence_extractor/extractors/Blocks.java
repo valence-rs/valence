@@ -8,6 +8,9 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.registry.Registry;
 import net.minecraft.world.EmptyBlockView;
 
+import java.util.LinkedHashMap;
+import java.util.Objects;
+
 public class Blocks implements Main.Extractor {
     public Blocks() {
     }
@@ -19,12 +22,17 @@ public class Blocks implements Main.Extractor {
 
     @Override
     public JsonElement extract() {
+        var topLevelJson = new JsonObject();
+
         var blocksJson = new JsonArray();
         var stateIdCounter = 0;
 
+        var collisionShapes = new LinkedHashMap<CollisionShape, Integer>();
+
         for (var block : Registry.BLOCK) {
             var blockJson = new JsonObject();
-//            blockJson.addProperty("id", Registry.BLOCK.getRawId(block));
+            blockJson.addProperty("id", Registry.BLOCK.getRawId(block));
+            blockJson.addProperty("name", Registry.BLOCK.getId(block).getPath());
             blockJson.addProperty("translation_key", block.getTranslationKey());
 //            blockJson.addProperty("min_state_id", stateIdCounter);
 //            blockJson.addProperty("max_state_id", stateIdCounter + block.getStateManager().getStates().size() - 1);
@@ -57,18 +65,15 @@ public class Blocks implements Main.Extractor {
                     blockJson.addProperty("default_state_id", id);
                 }
 
-                var collisionShapesJson = new JsonArray();
+                var collisionShapeIdxsJson = new JsonArray();
                 for (var box : state.getCollisionShape(EmptyBlockView.INSTANCE, BlockPos.ORIGIN).getBoundingBoxes()) {
-                    var boxJson = new JsonObject();
-                    boxJson.addProperty("min_x", box.minX);
-                    boxJson.addProperty("min_y", box.minY);
-                    boxJson.addProperty("min_z", box.minZ);
-                    boxJson.addProperty("max_x", box.maxX);
-                    boxJson.addProperty("max_y", box.maxY);
-                    boxJson.addProperty("max_z", box.maxZ);
-                    collisionShapesJson.add(boxJson);
+                    var cs = new CollisionShape(box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ);
+
+                    var idx = collisionShapes.putIfAbsent(cs, collisionShapes.size());
+                    collisionShapeIdxsJson.add(Objects.requireNonNullElseGet(idx, () -> collisionShapes.size() - 1));
                 }
-                stateJson.add("collision_shapes", collisionShapesJson);
+
+                stateJson.add("collision_shapes", collisionShapeIdxsJson);
 
                 statesJson.add(stateJson);
             }
@@ -76,6 +81,25 @@ public class Blocks implements Main.Extractor {
 
             blocksJson.add(blockJson);
         }
-        return blocksJson;
+
+        var collisionShapesJson = new JsonArray();
+        for (var shape : collisionShapes.keySet()) {
+            var collisionShapeJson = new JsonObject();
+            collisionShapeJson.addProperty("min_x", shape.minX);
+            collisionShapeJson.addProperty("min_y", shape.minY);
+            collisionShapeJson.addProperty("min_z", shape.minZ);
+            collisionShapeJson.addProperty("max_x", shape.maxX);
+            collisionShapeJson.addProperty("max_y", shape.maxY);
+            collisionShapeJson.addProperty("max_z", shape.maxZ);
+            collisionShapesJson.add(collisionShapeJson);
+        }
+
+        topLevelJson.add("collision_shapes", collisionShapesJson);
+        topLevelJson.add("blocks", blocksJson);
+
+        return topLevelJson;
+    }
+
+    private record CollisionShape(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
     }
 }
