@@ -34,16 +34,16 @@ use crate::dimension::{Dimension, DimensionId};
 use crate::entity::Entities;
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol_inner::codec::{Decoder, Encoder};
-use crate::protocol_inner::packets::handshake::{Handshake, HandshakeNextState};
-use crate::protocol_inner::packets::login::c2s::{
+use crate::protocol_inner::packets::c2s::handshake::{Handshake, HandshakeNextState};
+use crate::protocol_inner::packets::c2s::login::{
     EncryptionResponse, LoginStart, VerifyTokenOrMsgSig,
 };
-use crate::protocol_inner::packets::login::s2c::{EncryptionRequest, LoginSuccess, LoginCompression};
-use crate::protocol_inner::packets::play::c2s::C2sPlayPacket;
-use crate::protocol_inner::packets::play::s2c::S2cPlayPacket;
-use crate::protocol_inner::packets::status::c2s::{QueryPing, QueryRequest};
-use crate::protocol_inner::packets::status::s2c::{QueryPong, QueryResponse};
-use crate::protocol_inner::packets::{login, Property};
+use crate::protocol_inner::packets::c2s::play::C2sPlayPacket;
+use crate::protocol_inner::packets::c2s::status::{QueryPing, QueryRequest};
+use crate::protocol_inner::packets::s2c::login::{EncryptionRequest, LoginCompression, LoginDisconnect, LoginSuccess};
+use crate::protocol_inner::packets::s2c::play::S2cPlayPacket;
+use crate::protocol_inner::packets::s2c::status::{QueryPong, QueryResponse};
+use crate::protocol_inner::packets::Property;
 use crate::protocol_inner::{BoundedArray, BoundedString, VarInt};
 use crate::util::valid_username;
 use crate::world::Worlds;
@@ -723,7 +723,7 @@ async fn handle_login<C: Config>(
     if let Err(reason) = server.0.cfg.login(server, &npd).await {
         log::info!("Disconnect at login: \"{reason}\"");
         c.enc
-            .write_packet(&login::s2c::LoginDisconnect { reason })
+            .write_packet(&LoginDisconnect { reason })
             .await?;
         return Ok(None);
     }

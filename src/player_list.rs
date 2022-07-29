@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::client::GameMode;
 use crate::player_textures::SignedPlayerTextures;
-use crate::protocol_inner::packets::play::s2c::{
+use crate::protocol_inner::packets::s2c::play::{
     PlayerListAddPlayer, PlayerListHeaderFooter, S2cPlayPacket, UpdatePlayerList,
 };
 use crate::protocol_inner::packets::Property;

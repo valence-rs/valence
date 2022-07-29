@@ -175,8 +175,8 @@ impl Config for Game {
                             && (0..SIZE_Z as i32).contains(&position.z)
                             && position.y == BOARD_Y
                         {
-                            server.state.board[position.x as usize + position.z as usize * SIZE_X] =
-                                true;
+                            server.state.board
+                                [position.x as usize + position.z as usize * SIZE_X] = true;
                         }
                     }
                     Event::ArmSwing(hand) => match hand {

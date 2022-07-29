@@ -22,19 +22,19 @@ use crate::entity::{
     StatusOrAnimation,
 };
 use crate::player_textures::SignedPlayerTextures;
-use crate::protocol_inner::packets::play::c2s::{
+use crate::protocol_inner::packets::c2s::play::{
     C2sPlayPacket, DiggingStatus, InteractKind, PlayerCommandId,
 };
-pub use crate::protocol_inner::packets::play::s2c::TitleAnimationTimes as TitleAnimationTimes;
-use crate::protocol_inner::packets::play::s2c::{
-    EntityAnimation, BiomeRegistry, PlayerActionResponse, ChatType, ChatTypeChat, ChatTypeNarration,
-    ChatTypeRegistry, ChatTypeRegistryEntry, ClearTitles, DimensionTypeRegistry,
-    DimensionTypeRegistryEntry, Disconnect, EntityStatus, UnloadChunk, GameStateChange,
-    GameStateChangeReason, KeepAlive, GameJoin, MoveRelative, RotateAndMoveRelative,
-    Rotate, PlayerPositionLook, PlayerPositionLookFlags, RegistryCodec, EntitiesDestroy,
-    PlayerRespawn, EntitySetHeadYaw, S2cPlayPacket, ChunkRenderDistanceCenter, ChunkLoadDistance,
-    EntityTrackerUpdate, EntityVelocityUpdate, UpdateSubtitle, UpdateTitle, PlayerSpawnPosition, GameMessage,
-    EntityPosition, EntityAttributes, EntityAttributesProperty,
+pub use crate::protocol_inner::packets::s2c::play::TitleAnimationTimes;
+use crate::protocol_inner::packets::s2c::play::{
+    BiomeRegistry, ChatType, ChatTypeChat, ChatTypeNarration, ChatTypeRegistry,
+    ChatTypeRegistryEntry, ChunkLoadDistance, ChunkRenderDistanceCenter, ClearTitles,
+    DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, EntitiesDestroy,
+    EntityAnimation, EntityAttributes, EntityAttributesProperty, EntityPosition, EntitySetHeadYaw,
+    EntityStatus, EntityTrackerUpdate, EntityVelocityUpdate, GameJoin, GameMessage,
+    GameStateChange, GameStateChangeReason, KeepAlive, MoveRelative, PlayerActionResponse,
+    PlayerPositionLook, PlayerPositionLookFlags, PlayerRespawn, PlayerSpawnPosition, RegistryCodec,
+    Rotate, RotateAndMoveRelative, S2cPlayPacket, UnloadChunk, UpdateSubtitle, UpdateTitle,
 };
 use crate::protocol_inner::{BoundedInt, ByteAngle, Nbt, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, SharedServer};

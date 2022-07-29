@@ -2,7 +2,7 @@
 
 use crate::ident;
 use crate::ident::Ident;
-use crate::protocol_inner::packets::play::s2c::Biome as BiomeRegistryBiome;
+use crate::protocol_inner::packets::s2c::play::Biome as BiomeRegistryBiome;
 
 /// Identifies a particular [`Biome`] on the server.
 ///
@@ -48,7 +48,7 @@ pub struct Biome {
 
 impl Biome {
     pub(crate) fn to_biome_registry_item(&self, id: i32) -> BiomeRegistryBiome {
-        use crate::protocol_inner::packets::play::s2c::{
+        use crate::protocol_inner::packets::s2c::play::{
             BiomeAdditionsSound, BiomeEffects, BiomeMoodSound, BiomeMusic, BiomeParticle,
             BiomeParticleOptions, BiomeProperty,
         };

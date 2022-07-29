@@ -253,7 +253,11 @@ impl Config for Game {
                 let mut vel = (victim.position() - e.state.attacker_pos).normalized();
 
                 let knockback_xz = if e.state.extra_knockback { 18.0 } else { 8.0 };
-                let knockback_y = if e.state.extra_knockback { 8.432 } else { 6.432 };
+                let knockback_y = if e.state.extra_knockback {
+                    8.432
+                } else {
+                    6.432
+                };
 
                 vel.x *= knockback_xz;
                 vel.y = knockback_y;

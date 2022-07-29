@@ -17,8 +17,8 @@ use crate::block_pos::BlockPos;
 pub use crate::chunk_pos::ChunkPos;
 use crate::config::Config;
 use crate::dimension::DimensionId;
-use crate::protocol_inner::packets::play::s2c::{
-    BlockUpdate, ChunkDataHeightmaps, ChunkData, S2cPlayPacket, ChunkSectionUpdate,
+use crate::protocol_inner::packets::s2c::play::{
+    BlockUpdate, ChunkData, ChunkDataHeightmaps, ChunkSectionUpdate, S2cPlayPacket,
 };
 use crate::protocol_inner::{Encode, Nbt, VarInt, VarLong};
 use crate::server::SharedServer;

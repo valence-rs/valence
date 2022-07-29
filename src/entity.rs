@@ -12,8 +12,8 @@ use uuid::Uuid;
 use vek::{Aabb, Vec3};
 
 use crate::config::Config;
-use crate::protocol_inner::packets::play::s2c::{
-    EntitySpawn, ExperienceOrbSpawn, PlayerSpawn, S2cPlayPacket, EntityTrackerUpdate,
+use crate::protocol_inner::packets::s2c::play::{
+    EntitySpawn, EntityTrackerUpdate, ExperienceOrbSpawn, PlayerSpawn, S2cPlayPacket,
 };
 use crate::protocol_inner::{ByteAngle, RawBytes, VarInt};
 use crate::slotmap::{Key, SlotMap};
