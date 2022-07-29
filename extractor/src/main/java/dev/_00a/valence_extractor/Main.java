@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import dev._00a.valence_extractor.extractors.Blocks;
 import dev._00a.valence_extractor.extractors.Entities;
 import dev._00a.valence_extractor.extractors.EntityData;
+import dev._00a.valence_extractor.extractors.Packets;
 import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +40,7 @@ public class Main implements ModInitializer {
     public void onInitialize() {
         LOGGER.info("Starting extractors...");
 
-        var extractors = new Extractor[]{new Blocks(), new Entities(), new EntityData(),};
+        var extractors = new Extractor[]{new Blocks(), new Entities(), new EntityData(), new Packets()};
 
         Path outputDirectory;
         try {
