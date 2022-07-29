@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::client::GameMode;
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol_inner::packets::play::s2c::{
-    PlayerInfo, PlayerInfoAddPlayer, S2cPlayPacket, TabList,
+    PlayerListAddPlayer, PlayerListHeaderFooter, S2cPlayPacket, UpdatePlayerList,
 };
 use crate::protocol_inner::packets::Property;
 use crate::protocol_inner::VarInt;
@@ -164,7 +164,7 @@ impl PlayerList {
         let add_player: Vec<_> = self
             .entries
             .iter()
-            .map(|(&uuid, e)| PlayerInfoAddPlayer {
+            .map(|(&uuid, e)| PlayerListAddPlayer {
                 uuid,
                 username: e.username.clone().into(),
                 properties: {
@@ -186,12 +186,12 @@ impl PlayerList {
             .collect();
 
         if !add_player.is_empty() {
-            packet(PlayerInfo::AddPlayer(add_player).into());
+            packet(UpdatePlayerList::AddPlayer(add_player).into());
         }
 
         if self.header != Text::default() || self.footer != Text::default() {
             packet(
-                TabList {
+                PlayerListHeaderFooter {
                     header: self.header.clone(),
                     footer: self.footer.clone(),
                 }
@@ -202,7 +202,7 @@ impl PlayerList {
 
     pub(crate) fn diff_packets(&self, mut packet: impl FnMut(S2cPlayPacket)) {
         if !self.removed.is_empty() {
-            packet(PlayerInfo::RemovePlayer(self.removed.iter().cloned().collect()).into());
+            packet(UpdatePlayerList::RemovePlayer(self.removed.iter().cloned().collect()).into());
         }
 
         let mut add_player = Vec::new();
@@ -221,7 +221,7 @@ impl PlayerList {
                     });
                 }
 
-                add_player.push(PlayerInfoAddPlayer {
+                add_player.push(PlayerListAddPlayer {
                     uuid,
                     username: e.username.clone().into(),
                     properties,
@@ -248,24 +248,24 @@ impl PlayerList {
         }
 
         if !add_player.is_empty() {
-            packet(PlayerInfo::AddPlayer(add_player).into());
+            packet(UpdatePlayerList::AddPlayer(add_player).into());
         }
 
         if !game_mode.is_empty() {
-            packet(PlayerInfo::UpdateGameMode(game_mode).into());
+            packet(UpdatePlayerList::UpdateGameMode(game_mode).into());
         }
 
         if !ping.is_empty() {
-            packet(PlayerInfo::UpdateLatency(ping).into());
+            packet(UpdatePlayerList::UpdateLatency(ping).into());
         }
 
         if !display_name.is_empty() {
-            packet(PlayerInfo::UpdateDisplayName(display_name).into());
+            packet(UpdatePlayerList::UpdateDisplayName(display_name).into());
         }
 
         if self.modified_header_or_footer {
             packet(
-                TabList {
+                PlayerListHeaderFooter {
                     header: self.header.clone(),
                     footer: self.footer.clone(),
                 }

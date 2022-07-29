@@ -25,16 +25,16 @@ use crate::player_textures::SignedPlayerTextures;
 use crate::protocol_inner::packets::play::c2s::{
     C2sPlayPacket, DiggingStatus, InteractKind, PlayerCommandId,
 };
-pub use crate::protocol_inner::packets::play::s2c::SetTitleAnimationTimes as TitleAnimationTimes;
+pub use crate::protocol_inner::packets::play::s2c::TitleAnimationTimes as TitleAnimationTimes;
 use crate::protocol_inner::packets::play::s2c::{
-    Animate, BiomeRegistry, BlockChangeAck, ChatType, ChatTypeChat, ChatTypeNarration,
+    EntityAnimation, BiomeRegistry, PlayerActionResponse, ChatType, ChatTypeChat, ChatTypeNarration,
     ChatTypeRegistry, ChatTypeRegistryEntry, ClearTitles, DimensionTypeRegistry,
-    DimensionTypeRegistryEntry, Disconnect, EntityStatus, ForgetLevelChunk, GameEvent,
-    GameEventReason, KeepAlive, Login, MoveEntityPosition, MoveEntityPositionAndRotation,
-    MoveEntityRotation, PlayerPosition, PlayerPositionFlags, RegistryCodec, RemoveEntities,
-    Respawn, RotateHead, S2cPlayPacket, SetChunkCacheCenter, SetChunkCacheRadius,
-    SetEntityMetadata, SetEntityMotion, SetSubtitleText, SetTitleText, SpawnPosition, SystemChat,
-    TeleportEntity, UpdateAttributes, UpdateAttributesProperty,
+    DimensionTypeRegistryEntry, Disconnect, EntityStatus, UnloadChunk, GameStateChange,
+    GameStateChangeReason, KeepAlive, GameJoin, MoveRelative, RotateAndMoveRelative,
+    Rotate, PlayerPositionLook, PlayerPositionLookFlags, RegistryCodec, EntitiesDestroy,
+    PlayerRespawn, EntitySetHeadYaw, S2cPlayPacket, ChunkRenderDistanceCenter, ChunkLoadDistance,
+    EntityTrackerUpdate, EntityVelocityUpdate, UpdateSubtitle, UpdateTitle, PlayerSpawnPosition, GameMessage,
+    EntityPosition, EntityAttributes, EntityAttributesProperty,
 };
 use crate::protocol_inner::{BoundedInt, ByteAngle, Nbt, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, SharedServer};
@@ -460,10 +460,10 @@ impl<C: Config> Client<C> {
         let title = title.into();
         let subtitle = subtitle.into();
 
-        self.send_packet(SetTitleText { text: title });
+        self.send_packet(UpdateTitle { text: title });
 
         if !subtitle.is_empty() {
-            self.send_packet(SetSubtitleText {
+            self.send_packet(UpdateSubtitle {
                 subtitle_text: subtitle,
             });
         }
@@ -565,7 +565,7 @@ impl<C: Config> Client<C> {
     }
 
     /// Gets if hardcore mode is enabled.
-    pub fn is_hardcore(&mut self) -> bool {
+    pub fn is_hardcore(&self) -> bool {
         self.flags.hardcore()
     }
 
@@ -669,7 +669,7 @@ impl<C: Config> Client<C> {
         }
 
         match pkt {
-            C2sPlayPacket::AcceptTeleportation(p) => {
+            C2sPlayPacket::TeleportConfirm(p) => {
                 if self.pending_teleports == 0 {
                     log::warn!("unexpected teleport confirmation from {}", self.username());
                     self.disconnect_no_reason();
@@ -691,16 +691,16 @@ impl<C: Config> Client<C> {
                     self.disconnect_no_reason();
                 }
             }
-            C2sPlayPacket::BlockEntityTagQuery(_) => {}
-            C2sPlayPacket::ChangeDifficulty(_) => {}
-            C2sPlayPacket::ChatCommand(_) => {}
-            C2sPlayPacket::Chat(p) => self.events.push_back(Event::ChatMessage {
+            C2sPlayPacket::QueryBlockNbt(_) => {}
+            C2sPlayPacket::UpdateDifficulty(_) => {}
+            C2sPlayPacket::CommandExecution(_) => {}
+            C2sPlayPacket::ChatMessage(p) => self.events.push_back(Event::ChatMessage {
                 message: p.message.0,
                 timestamp: Duration::from_millis(p.timestamp),
             }),
-            C2sPlayPacket::ChatPreview(_) => {}
-            C2sPlayPacket::ClientCommand(_) => {}
-            C2sPlayPacket::ClientInformation(p) => {
+            C2sPlayPacket::RequestChatPreview(_) => {}
+            C2sPlayPacket::ClientStatus(_) => {}
+            C2sPlayPacket::ClientSettings(p) => {
                 let old = self.settings.replace(Settings {
                     locale: p.locale.0,
                     view_distance: p.view_distance.0,
@@ -713,13 +713,14 @@ impl<C: Config> Client<C> {
 
                 self.events.push_back(Event::SettingsChanged(old));
             }
-            C2sPlayPacket::CommandSuggestion(_) => {}
-            C2sPlayPacket::ContainerButtonClick(_) => {}
-            C2sPlayPacket::ContainerClose(_) => {}
+            C2sPlayPacket::RequestCommandCompletion(_) => {}
+            C2sPlayPacket::ButtonClick(_) => {}
+            C2sPlayPacket::ClickSlot(_) => {}
+            C2sPlayPacket::CloseHandledScreen(_) => {}
             C2sPlayPacket::CustomPayload(_) => {}
-            C2sPlayPacket::EditBook(_) => {}
-            C2sPlayPacket::EntityTagQuery(_) => {}
-            C2sPlayPacket::Interact(p) => {
+            C2sPlayPacket::BookUpdate(_) => {}
+            C2sPlayPacket::QueryEntityNbt(_) => {}
+            C2sPlayPacket::PlayerInteractEntity(p) => {
                 if let Some(id) = entities.get_with_network_id(p.entity_id.0) {
                     // TODO: verify that the client has line of sight to the targeted entity and
                     // that the distance is <=4 blocks.
@@ -755,7 +756,7 @@ impl<C: Config> Client<C> {
                     self.flags.set_got_keepalive(true);
                 }
             }
-            C2sPlayPacket::LockDifficulty(_) => {}
+            C2sPlayPacket::UpdateDifficultyLock(_) => {}
             C2sPlayPacket::MovePlayerPosition(p) => {
                 handle_movement_packet(self, false, p.position, self.yaw, self.pitch, p.on_ground)
             }
@@ -765,7 +766,7 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::MovePlayerRotation(p) => {
                 handle_movement_packet(self, false, self.new_position, p.yaw, p.pitch, p.on_ground)
             }
-            C2sPlayPacket::MovePlayerStatusOnly(p) => handle_movement_packet(
+            C2sPlayPacket::MovePlayerOnGround(p) => handle_movement_packet(
                 self,
                 false,
                 self.new_position,
@@ -783,15 +784,15 @@ impl<C: Config> Client<C> {
                     self.flags.on_ground(),
                 );
             }
-            C2sPlayPacket::PaddleBoat(p) => {
+            C2sPlayPacket::BoatPaddleState(p) => {
                 self.events.push_back(Event::SteerBoat {
                     left_paddle_turning: p.left_paddle_turning,
                     right_paddle_turning: p.right_paddle_turning,
                 });
             }
-            C2sPlayPacket::PickItem(_) => {}
-            C2sPlayPacket::PlaceRecipe(_) => {}
-            C2sPlayPacket::PlayerAbilities(_) => {}
+            C2sPlayPacket::PickFromInventory(_) => {}
+            C2sPlayPacket::CraftRequest(_) => {}
+            C2sPlayPacket::UpdatePlayerAbilities(_) => {}
             C2sPlayPacket::PlayerAction(p) => {
                 // TODO: verify dug block is within the correct distance from the client.
                 // TODO: verify that the broken block is allowed to be broken?
@@ -875,25 +876,25 @@ impl<C: Config> Client<C> {
                 });
             }
             C2sPlayPacket::PlayerInput(_) => {}
-            C2sPlayPacket::Pong(_) => {}
+            C2sPlayPacket::PlayPong(_) => {}
             C2sPlayPacket::RecipeBookChangeSettings(_) => {}
             C2sPlayPacket::RecipeBookSeenRecipe(_) => {}
             C2sPlayPacket::RenameItem(_) => {}
-            C2sPlayPacket::ResourcePack(_) => {}
-            C2sPlayPacket::SeenAdvancements(_) => {}
-            C2sPlayPacket::SelectTrade(_) => {}
-            C2sPlayPacket::SetBeacon(_) => {}
-            C2sPlayPacket::SetCarriedItem(_) => {}
-            C2sPlayPacket::SetCommandBlock(_) => {}
-            C2sPlayPacket::SetCommandBlockMinecart(_) => {}
-            C2sPlayPacket::SetCreativeModeSlot(_) => {}
-            C2sPlayPacket::SetJigsawBlock(_) => {}
-            C2sPlayPacket::SetStructureBlock(_) => {}
-            C2sPlayPacket::SignUpdate(_) => {}
-            C2sPlayPacket::Swing(p) => self.events.push_back(Event::ArmSwing(p.hand)),
-            C2sPlayPacket::TeleportToEntity(_) => {}
-            C2sPlayPacket::UseItemOn(_) => {}
-            C2sPlayPacket::UseItem(_) => {}
+            C2sPlayPacket::ResourcePackStatus(_) => {}
+            C2sPlayPacket::AdvancementTab(_) => {}
+            C2sPlayPacket::SelectMerchantTrade(_) => {}
+            C2sPlayPacket::UpdateBeacon(_) => {}
+            C2sPlayPacket::UpdateSelectedSlot(_) => {}
+            C2sPlayPacket::UpdateCommandBlock(_) => {}
+            C2sPlayPacket::UpdateCommandBlockMinecart(_) => {}
+            C2sPlayPacket::UpdateCreativeModeSlot(_) => {}
+            C2sPlayPacket::UpdateJigsaw(_) => {}
+            C2sPlayPacket::UpdateStructureBlock(_) => {}
+            C2sPlayPacket::UpdateSign(_) => {}
+            C2sPlayPacket::HandSwing(p) => self.events.push_back(Event::ArmSwing(p.hand)),
+            C2sPlayPacket::SpectatorTeleport(_) => {}
+            C2sPlayPacket::PlayerInteractBlock(_) => {}
+            C2sPlayPacket::PlayerInteractItem(_) => {}
         }
     }
 
@@ -938,7 +939,7 @@ impl<C: Config> Client<C> {
 
             dimension_names.push(ident!("{LIBRARY_NAMESPACE}:dummy_dimension"));
 
-            self.send_packet(Login {
+            self.send_packet(GameJoin {
                 entity_id: 0, // EntityId 0 is reserved for clients.
                 is_hardcore: self.flags.hardcore(),
                 gamemode: self.new_game_mode,
@@ -976,7 +977,7 @@ impl<C: Config> Client<C> {
                 // TODO: clear player list.
 
                 // Client bug workaround: send the client to a dummy dimension first.
-                self.send_packet(Respawn {
+                self.send_packet(PlayerRespawn {
                     dimension_type_name: ident!("{LIBRARY_NAMESPACE}:dimension_type_0"),
                     dimension_name: ident!("{LIBRARY_NAMESPACE}:dummy_dimension"),
                     hashed_seed: 0,
@@ -988,7 +989,7 @@ impl<C: Config> Client<C> {
                     last_death_location: None,
                 });
 
-                self.send_packet(Respawn {
+                self.send_packet(PlayerRespawn {
                     dimension_type_name: ident!(
                         "{LIBRARY_NAMESPACE}:dimension_type_{}",
                         world.meta.dimension().0
@@ -1013,8 +1014,8 @@ impl<C: Config> Client<C> {
 
             if self.old_game_mode != self.new_game_mode {
                 self.old_game_mode = self.new_game_mode;
-                self.send_packet(GameEvent {
-                    reason: GameEventReason::ChangeGameMode,
+                self.send_packet(GameStateChange {
+                    reason: GameStateChangeReason::ChangeGameMode,
                     value: self.new_game_mode as i32 as f32,
                 });
             }
@@ -1029,9 +1030,9 @@ impl<C: Config> Client<C> {
         if self.flags.attack_speed_modified() {
             self.flags.set_attack_speed_modified(false);
 
-            self.send_packet(UpdateAttributes {
+            self.send_packet(EntityAttributes {
                 entity_id: VarInt(0),
-                properties: vec![UpdateAttributesProperty {
+                properties: vec![EntityAttributesProperty {
                     key: ident!("generic.attack_speed"),
                     value: self.attack_speed,
                     modifiers: Vec::new(),
@@ -1042,9 +1043,9 @@ impl<C: Config> Client<C> {
         if self.flags.movement_speed_modified() {
             self.flags.set_movement_speed_modified(false);
 
-            self.send_packet(UpdateAttributes {
+            self.send_packet(EntityAttributes {
                 entity_id: VarInt(0),
-                properties: vec![UpdateAttributesProperty {
+                properties: vec![EntityAttributesProperty {
                     key: ident!("generic.movement_speed"),
                     value: self.movement_speed,
                     modifiers: Vec::new(),
@@ -1056,7 +1057,7 @@ impl<C: Config> Client<C> {
         if self.flags.modified_spawn_position() {
             self.flags.set_modified_spawn_position(false);
 
-            self.send_packet(SpawnPosition {
+            self.send_packet(PlayerSpawnPosition {
                 location: self.spawn_position,
                 angle: self.spawn_position_yaw,
             })
@@ -1066,7 +1067,7 @@ impl<C: Config> Client<C> {
         if self.old_max_view_distance != self.new_max_view_distance {
             self.old_max_view_distance = self.new_max_view_distance;
             if self.created_tick != current_tick {
-                self.send_packet(SetChunkCacheRadius {
+                self.send_packet(ChunkLoadDistance {
                     view_distance: BoundedInt(VarInt(self.new_max_view_distance as i32)),
                 })
             }
@@ -1099,7 +1100,7 @@ impl<C: Config> Client<C> {
             let new_section = self.new_position.map(|n| (n / 16.0).floor() as i32);
 
             if old_section != new_section {
-                self.send_packet(SetChunkCacheCenter {
+                self.send_packet(ChunkRenderDistanceCenter {
                     chunk_x: VarInt(new_section.x),
                     chunk_z: VarInt(new_section.z),
                 })
@@ -1128,7 +1129,7 @@ impl<C: Config> Client<C> {
 
             send_packet(
                 &mut self.send,
-                ForgetLevelChunk {
+                UnloadChunk {
                     chunk_x: pos.x,
                     chunk_z: pos.z,
                 },
@@ -1150,7 +1151,7 @@ impl<C: Config> Client<C> {
         for seq in self.dug_blocks.drain(..) {
             send_packet(
                 &mut self.send,
-                BlockChangeAck {
+                PlayerActionResponse {
                     sequence: VarInt(seq),
                 },
             )
@@ -1163,11 +1164,11 @@ impl<C: Config> Client<C> {
         if self.flags.teleported_this_tick() {
             self.flags.set_teleported_this_tick(false);
 
-            self.send_packet(PlayerPosition {
+            self.send_packet(PlayerPositionLook {
                 position: self.new_position,
                 yaw: self.yaw,
                 pitch: self.pitch,
-                flags: PlayerPositionFlags::new(false, false, false, false, false),
+                flags: PlayerPositionLookFlags::new(false, false, false, false, false),
                 teleport_id: VarInt((self.teleport_id_counter - 1) as i32),
                 dismount_vehicle: false,
             });
@@ -1178,7 +1179,7 @@ impl<C: Config> Client<C> {
         if self.flags.velocity_modified() {
             self.flags.set_velocity_modified(false);
 
-            self.send_packet(SetEntityMotion {
+            self.send_packet(EntityVelocityUpdate {
                 entity_id: VarInt(0),
                 velocity: velocity_to_packet_units(self.velocity),
             });
@@ -1188,7 +1189,7 @@ impl<C: Config> Client<C> {
         for msg in self.msgs_to_send.drain(..) {
             send_packet(
                 &mut self.send,
-                SystemChat {
+                GameMessage {
                     chat: msg,
                     kind: VarInt(0),
                 },
@@ -1217,7 +1218,7 @@ impl<C: Config> Client<C> {
                     {
                         send_packet(
                             &mut self.send,
-                            MoveEntityPositionAndRotation {
+                            RotateAndMoveRelative {
                                 entity_id: VarInt(id.to_network_id()),
                                 delta: (position_delta * 4096.0).as_(),
                                 yaw: ByteAngle::from_degrees(entity.yaw()),
@@ -1229,7 +1230,7 @@ impl<C: Config> Client<C> {
                         if entity.position() != entity.old_position() && !needs_teleport {
                             send_packet(
                                 &mut self.send,
-                                MoveEntityPosition {
+                                MoveRelative {
                                     entity_id: VarInt(id.to_network_id()),
                                     delta: (position_delta * 4096.0).as_(),
                                     on_ground: entity.on_ground(),
@@ -1240,7 +1241,7 @@ impl<C: Config> Client<C> {
                         if flags.yaw_or_pitch_modified() {
                             send_packet(
                                 &mut self.send,
-                                MoveEntityRotation {
+                                Rotate {
                                     entity_id: VarInt(id.to_network_id()),
                                     yaw: ByteAngle::from_degrees(entity.yaw()),
                                     pitch: ByteAngle::from_degrees(entity.pitch()),
@@ -1253,7 +1254,7 @@ impl<C: Config> Client<C> {
                     if needs_teleport {
                         send_packet(
                             &mut self.send,
-                            TeleportEntity {
+                            EntityPosition {
                                 entity_id: VarInt(id.to_network_id()),
                                 position: entity.position(),
                                 yaw: ByteAngle::from_degrees(entity.yaw()),
@@ -1266,7 +1267,7 @@ impl<C: Config> Client<C> {
                     if flags.velocity_modified() {
                         send_packet(
                             &mut self.send,
-                            SetEntityMotion {
+                            EntityVelocityUpdate {
                                 entity_id: VarInt(id.to_network_id()),
                                 velocity: velocity_to_packet_units(entity.velocity()),
                             },
@@ -1276,7 +1277,7 @@ impl<C: Config> Client<C> {
                     if flags.head_yaw_modified() {
                         send_packet(
                             &mut self.send,
-                            RotateHead {
+                            EntitySetHeadYaw {
                                 entity_id: VarInt(id.to_network_id()),
                                 head_yaw: ByteAngle::from_degrees(entity.head_yaw()),
                             },
@@ -1294,7 +1295,7 @@ impl<C: Config> Client<C> {
         });
 
         if !entities_to_unload.is_empty() {
-            self.send_packet(RemoveEntities {
+            self.send_packet(EntitiesDestroy {
                 entities: entities_to_unload,
             });
         }
@@ -1306,7 +1307,7 @@ impl<C: Config> Client<C> {
         if !data.is_empty() {
             data.push(0xff);
 
-            self.send_packet(SetEntityMetadata {
+            self.send_packet(EntityTrackerUpdate {
                 entity_id: VarInt(0),
                 metadata: RawBytes(data),
             });
@@ -1377,7 +1378,7 @@ fn send_entity_events(send_opt: &mut SendOpt, entity_id: i32, events: &[EntityEv
             ),
             StatusOrAnimation::Animation(code) => send_packet(
                 send_opt,
-                Animate {
+                EntityAnimation {
                     entity_id: VarInt(entity_id),
                     animation: code,
                 },

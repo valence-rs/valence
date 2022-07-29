@@ -38,11 +38,11 @@ use crate::protocol_inner::packets::handshake::{Handshake, HandshakeNextState};
 use crate::protocol_inner::packets::login::c2s::{
     EncryptionResponse, LoginStart, VerifyTokenOrMsgSig,
 };
-use crate::protocol_inner::packets::login::s2c::{EncryptionRequest, LoginSuccess, SetCompression};
+use crate::protocol_inner::packets::login::s2c::{EncryptionRequest, LoginSuccess, LoginCompression};
 use crate::protocol_inner::packets::play::c2s::C2sPlayPacket;
 use crate::protocol_inner::packets::play::s2c::S2cPlayPacket;
-use crate::protocol_inner::packets::status::c2s::{PingRequest, StatusRequest};
-use crate::protocol_inner::packets::status::s2c::{PongResponse, StatusResponse};
+use crate::protocol_inner::packets::status::c2s::{QueryPing, QueryRequest};
+use crate::protocol_inner::packets::status::s2c::{QueryPong, QueryResponse};
 use crate::protocol_inner::packets::{login, Property};
 use crate::protocol_inner::{BoundedArray, BoundedString, VarInt};
 use crate::util::valid_username;
@@ -552,7 +552,7 @@ async fn handle_status<C: Config>(
     c: &mut Codec,
     remote_addr: SocketAddr,
 ) -> anyhow::Result<()> {
-    c.dec.read_packet::<StatusRequest>().await?;
+    c.dec.read_packet::<QueryRequest>().await?;
 
     match server.0.cfg.server_list_ping(&server, remote_addr).await {
         ServerListPing::Respond {
@@ -583,7 +583,7 @@ async fn handle_status<C: Config>(
             }
 
             c.enc
-                .write_packet(&StatusResponse {
+                .write_packet(&QueryResponse {
                     json_response: json.to_string(),
                 })
                 .await?;
@@ -591,9 +591,9 @@ async fn handle_status<C: Config>(
         ServerListPing::Ignore => return Ok(()),
     }
 
-    let PingRequest { payload } = c.dec.read_packet().await?;
+    let QueryPing { payload } = c.dec.read_packet().await?;
 
-    c.enc.write_packet(&PongResponse { payload }).await?;
+    c.enc.write_packet(&QueryPong { payload }).await?;
 
     Ok(())
 }
@@ -705,7 +705,7 @@ async fn handle_login<C: Config>(
 
     let compression_threshold = 256;
     c.enc
-        .write_packet(&SetCompression {
+        .write_packet(&LoginCompression {
             threshold: VarInt(compression_threshold as i32),
         })
         .await?;
@@ -723,7 +723,7 @@ async fn handle_login<C: Config>(
     if let Err(reason) = server.0.cfg.login(server, &npd).await {
         log::info!("Disconnect at login: \"{reason}\"");
         c.enc
-            .write_packet(&login::s2c::Disconnect { reason })
+            .write_packet(&login::s2c::LoginDisconnect { reason })
             .await?;
         return Ok(None);
     }

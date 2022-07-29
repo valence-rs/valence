@@ -18,8 +18,8 @@ use valence::protocol::packets::login::c2s::{EncryptionResponse, LoginStart};
 use valence::protocol::packets::login::s2c::{LoginSuccess, S2cLoginPacket};
 use valence::protocol::packets::play::c2s::C2sPlayPacket;
 use valence::protocol::packets::play::s2c::S2cPlayPacket;
-use valence::protocol::packets::status::c2s::{PingRequest, StatusRequest};
-use valence::protocol::packets::status::s2c::{PongResponse, StatusResponse};
+use valence::protocol::packets::status::c2s::{QueryPing, QueryRequest};
+use valence::protocol::packets::status::s2c::{QueryPong, QueryResponse};
 use valence::protocol::packets::{DecodePacket, EncodePacket};
 use valence::protocol::{Encode, VarInt};
 
@@ -121,14 +121,14 @@ async fn handle_connection(client: TcpStream, cli: Cli) -> anyhow::Result<()> {
 
     match handshake.next_state {
         HandshakeNextState::Status => {
-            cli.rw_packet::<StatusRequest>(&mut client_read, &mut server_write)
+            cli.rw_packet::<QueryRequest>(&mut client_read, &mut server_write)
                 .await?;
-            cli.rw_packet::<StatusResponse>(&mut server_read, &mut client_write)
+            cli.rw_packet::<QueryResponse>(&mut server_read, &mut client_write)
                 .await?;
 
-            cli.rw_packet::<PingRequest>(&mut client_read, &mut server_write)
+            cli.rw_packet::<QueryPing>(&mut client_read, &mut server_write)
                 .await?;
-            cli.rw_packet::<PongResponse>(&mut server_read, &mut client_write)
+            cli.rw_packet::<QueryPong>(&mut server_read, &mut client_write)
                 .await?;
         }
         HandshakeNextState::Login => {
@@ -150,7 +150,7 @@ async fn handle_connection(client: TcpStream, cli: Cli) -> anyhow::Result<()> {
                         s2c = passthrough(server_read.into_inner(), client_write) => s2c,
                     };
                 }
-                S2cLoginPacket::SetCompression(pkt) => {
+                S2cLoginPacket::LoginCompression(pkt) => {
                     let threshold = pkt.threshold.0 as u32;
                     client_read.enable_compression(threshold);
                     server_read.enable_compression(threshold);
@@ -159,7 +159,7 @@ async fn handle_connection(client: TcpStream, cli: Cli) -> anyhow::Result<()> {
                         .await?;
                 }
                 S2cLoginPacket::LoginSuccess(_) => {}
-                S2cLoginPacket::Disconnect(_) => return Ok(()),
+                S2cLoginPacket::LoginDisconnect(_) => return Ok(()),
                 S2cLoginPacket::LoginPluginRequest(_) => {
                     bail!("got login plugin request. Don't know how to proceed.")
                 }
