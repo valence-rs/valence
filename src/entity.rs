@@ -6,7 +6,7 @@ use std::iter::FusedIterator;
 use std::num::NonZeroU32;
 
 use bitfield_struct::bitfield;
-pub use kinds::{EntityEnum, EntityKind};
+pub use kinds::{TrackedData, EntityKind};
 use rayon::iter::ParallelIterator;
 use uuid::Uuid;
 use vek::{Aabb, Vec3};
@@ -74,7 +74,7 @@ impl<C: Config> Entities<C> {
             Entry::Vacant(ve) => {
                 let (k, e) = self.sm.insert(Entity {
                     state: data,
-                    variants: EntityEnum::new(kind),
+                    variants: TrackedData::new(kind),
                     events: Vec::new(),
                     flags: EntityFlags(0),
                     world: WorldId::NULL,
@@ -243,7 +243,7 @@ impl EntityId {
 pub struct Entity<C: Config> {
     /// Custom data.
     pub state: C::EntityState,
-    variants: EntityEnum,
+    variants: TrackedData,
     flags: EntityFlags,
     events: Vec<Event>,
     world: WorldId,
@@ -271,11 +271,11 @@ impl<C: Config> Entity<C> {
         self.flags
     }
 
-    pub fn view(&self) -> &EntityEnum {
+    pub fn view(&self) -> &TrackedData {
         &self.variants
     }
 
-    pub fn view_mut(&mut self) -> &mut EntityEnum {
+    pub fn view_mut(&mut self) -> &mut TrackedData {
         &mut self.variants
     }
 
@@ -408,17 +408,17 @@ impl<C: Config> Entity<C> {
     /// [interact event]: crate::client::Event::InteractWithEntity
     pub fn hitbox(&self) -> Aabb<f64> {
         let dims = match &self.variants {
-            EntityEnum::Allay(_) => [0.6, 0.35, 0.6],
-            EntityEnum::ChestBoat(_) => [1.375, 0.5625, 1.375],
-            EntityEnum::Frog(_) => [0.5, 0.5, 0.5],
-            EntityEnum::Tadpole(_) => [0.4, 0.3, 0.4],
-            EntityEnum::Warden(_) => [0.9, 2.9, 0.9],
-            EntityEnum::AreaEffectCloud(e) => [
+            TrackedData::Allay(_) => [0.6, 0.35, 0.6],
+            TrackedData::ChestBoat(_) => [1.375, 0.5625, 1.375],
+            TrackedData::Frog(_) => [0.5, 0.5, 0.5],
+            TrackedData::Tadpole(_) => [0.4, 0.3, 0.4],
+            TrackedData::Warden(_) => [0.9, 2.9, 0.9],
+            TrackedData::AreaEffectCloud(e) => [
                 e.get_radius() as f64 * 2.0,
                 0.5,
                 e.get_radius() as f64 * 2.0,
             ],
-            EntityEnum::ArmorStand(e) => {
+            TrackedData::ArmorStand(e) => {
                 if e.get_marker() {
                     [0.0, 0.0, 0.0]
                 } else if e.get_small() {
@@ -427,123 +427,123 @@ impl<C: Config> Entity<C> {
                     [0.5, 1.975, 0.5]
                 }
             }
-            EntityEnum::Arrow(_) => [0.5, 0.5, 0.5],
-            EntityEnum::Axolotl(_) => [1.3, 0.6, 1.3],
-            EntityEnum::Bat(_) => [0.5, 0.9, 0.5],
-            EntityEnum::Bee(_) => [0.7, 0.6, 0.7], // TODO: baby size?
-            EntityEnum::Blaze(_) => [0.6, 1.8, 0.6],
-            EntityEnum::Boat(_) => [1.375, 0.5625, 1.375],
-            EntityEnum::Cat(_) => [0.6, 0.7, 0.6],
-            EntityEnum::CaveSpider(_) => [0.7, 0.5, 0.7],
-            EntityEnum::Chicken(_) => [0.4, 0.7, 0.4], // TODO: baby size?
-            EntityEnum::Cod(_) => [0.5, 0.3, 0.5],
-            EntityEnum::Cow(_) => [0.9, 1.4, 0.9], // TODO: baby size?
-            EntityEnum::Creeper(_) => [0.6, 1.7, 0.6],
-            EntityEnum::Dolphin(_) => [0.9, 0.6, 0.9],
-            EntityEnum::Donkey(_) => [1.5, 1.39648, 1.5], // TODO: baby size?
-            EntityEnum::DragonFireball(_) => [1.0, 1.0, 1.0],
-            EntityEnum::Drowned(_) => [0.6, 1.95, 0.6], // TODO: baby size?
-            EntityEnum::ElderGuardian(_) => [1.9975, 1.9975, 1.9975],
-            EntityEnum::EndCrystal(_) => [2.0, 2.0, 2.0],
-            EntityEnum::EnderDragon(_) => [16.0, 8.0, 16.0],
-            EntityEnum::Enderman(_) => [0.6, 2.9, 0.6],
-            EntityEnum::Endermite(_) => [0.4, 0.3, 0.4],
-            EntityEnum::Evoker(_) => [0.6, 1.95, 0.6],
-            EntityEnum::EvokerFangs(_) => [0.5, 0.8, 0.5],
-            EntityEnum::ExperienceOrb(_) => [0.5, 0.5, 0.5],
-            EntityEnum::EyeOfEnder(_) => [0.25, 0.25, 0.25],
-            EntityEnum::FallingBlock(_) => [0.98, 0.98, 0.98],
-            EntityEnum::FireworkRocket(_) => [0.25, 0.25, 0.25],
-            EntityEnum::Fox(_) => [0.6, 0.7, 0.6], // TODO: baby size?
-            EntityEnum::Ghast(_) => [4.0, 4.0, 4.0],
-            EntityEnum::Giant(_) => [3.6, 12.0, 3.6],
-            EntityEnum::GlowItemFrame(_) => todo!("account for rotation"),
-            EntityEnum::GlowSquid(_) => [0.8, 0.8, 0.8],
-            EntityEnum::Goat(_) => [1.3, 0.9, 1.3], // TODO: baby size?
-            EntityEnum::Guardian(_) => [0.85, 0.85, 0.85],
-            EntityEnum::Hoglin(_) => [1.39648, 1.4, 1.39648], // TODO: baby size?
-            EntityEnum::Horse(_) => [1.39648, 1.6, 1.39648],  // TODO: baby size?
-            EntityEnum::Husk(_) => [0.6, 1.95, 0.6],          // TODO: baby size?
-            EntityEnum::Illusioner(_) => [0.6, 1.95, 0.6],
-            EntityEnum::IronGolem(_) => [1.4, 2.7, 1.4],
-            EntityEnum::Item(_) => [0.25, 0.25, 0.25],
-            EntityEnum::ItemFrame(_) => todo!("account for rotation"),
-            EntityEnum::Fireball(_) => [1.0, 1.0, 1.0],
-            EntityEnum::LeashKnot(_) => [0.375, 0.5, 0.375],
-            EntityEnum::Lightning(_) => [0.0, 0.0, 0.0],
-            EntityEnum::Llama(_) => [0.9, 1.87, 0.9], // TODO: baby size?
-            EntityEnum::LlamaSpit(_) => [0.25, 0.25, 0.25],
-            EntityEnum::MagmaCube(e) => {
+            TrackedData::Arrow(_) => [0.5, 0.5, 0.5],
+            TrackedData::Axolotl(_) => [1.3, 0.6, 1.3],
+            TrackedData::Bat(_) => [0.5, 0.9, 0.5],
+            TrackedData::Bee(_) => [0.7, 0.6, 0.7], // TODO: baby size?
+            TrackedData::Blaze(_) => [0.6, 1.8, 0.6],
+            TrackedData::Boat(_) => [1.375, 0.5625, 1.375],
+            TrackedData::Cat(_) => [0.6, 0.7, 0.6],
+            TrackedData::CaveSpider(_) => [0.7, 0.5, 0.7],
+            TrackedData::Chicken(_) => [0.4, 0.7, 0.4], // TODO: baby size?
+            TrackedData::Cod(_) => [0.5, 0.3, 0.5],
+            TrackedData::Cow(_) => [0.9, 1.4, 0.9], // TODO: baby size?
+            TrackedData::Creeper(_) => [0.6, 1.7, 0.6],
+            TrackedData::Dolphin(_) => [0.9, 0.6, 0.9],
+            TrackedData::Donkey(_) => [1.5, 1.39648, 1.5], // TODO: baby size?
+            TrackedData::DragonFireball(_) => [1.0, 1.0, 1.0],
+            TrackedData::Drowned(_) => [0.6, 1.95, 0.6], // TODO: baby size?
+            TrackedData::ElderGuardian(_) => [1.9975, 1.9975, 1.9975],
+            TrackedData::EndCrystal(_) => [2.0, 2.0, 2.0],
+            TrackedData::EnderDragon(_) => [16.0, 8.0, 16.0],
+            TrackedData::Enderman(_) => [0.6, 2.9, 0.6],
+            TrackedData::Endermite(_) => [0.4, 0.3, 0.4],
+            TrackedData::Evoker(_) => [0.6, 1.95, 0.6],
+            TrackedData::EvokerFangs(_) => [0.5, 0.8, 0.5],
+            TrackedData::ExperienceOrb(_) => [0.5, 0.5, 0.5],
+            TrackedData::EyeOfEnder(_) => [0.25, 0.25, 0.25],
+            TrackedData::FallingBlock(_) => [0.98, 0.98, 0.98],
+            TrackedData::FireworkRocket(_) => [0.25, 0.25, 0.25],
+            TrackedData::Fox(_) => [0.6, 0.7, 0.6], // TODO: baby size?
+            TrackedData::Ghast(_) => [4.0, 4.0, 4.0],
+            TrackedData::Giant(_) => [3.6, 12.0, 3.6],
+            TrackedData::GlowItemFrame(_) => todo!("account for rotation"),
+            TrackedData::GlowSquid(_) => [0.8, 0.8, 0.8],
+            TrackedData::Goat(_) => [1.3, 0.9, 1.3], // TODO: baby size?
+            TrackedData::Guardian(_) => [0.85, 0.85, 0.85],
+            TrackedData::Hoglin(_) => [1.39648, 1.4, 1.39648], // TODO: baby size?
+            TrackedData::Horse(_) => [1.39648, 1.6, 1.39648],  // TODO: baby size?
+            TrackedData::Husk(_) => [0.6, 1.95, 0.6],          // TODO: baby size?
+            TrackedData::Illusioner(_) => [0.6, 1.95, 0.6],
+            TrackedData::IronGolem(_) => [1.4, 2.7, 1.4],
+            TrackedData::Item(_) => [0.25, 0.25, 0.25],
+            TrackedData::ItemFrame(_) => todo!("account for rotation"),
+            TrackedData::Fireball(_) => [1.0, 1.0, 1.0],
+            TrackedData::LeashKnot(_) => [0.375, 0.5, 0.375],
+            TrackedData::Lightning(_) => [0.0, 0.0, 0.0],
+            TrackedData::Llama(_) => [0.9, 1.87, 0.9], // TODO: baby size?
+            TrackedData::LlamaSpit(_) => [0.25, 0.25, 0.25],
+            TrackedData::MagmaCube(e) => {
                 let s = e.get_slime_size() as f64 * 0.51000005;
                 [s, s, s]
             }
-            EntityEnum::Marker(_) => [0.0, 0.0, 0.0],
-            EntityEnum::Minecart(_) => [0.98, 0.7, 0.98],
-            EntityEnum::ChestMinecart(_) => [0.98, 0.7, 0.98],
-            EntityEnum::CommandBlockMinecart(_) => [0.98, 0.7, 0.98],
-            EntityEnum::FurnaceMinecart(_) => [0.98, 0.7, 0.98],
-            EntityEnum::HopperMinecart(_) => [0.98, 0.7, 0.98],
-            EntityEnum::SpawnerMinecart(_) => [0.98, 0.7, 0.98],
-            EntityEnum::TntMinecart(_) => [0.98, 0.7, 0.98],
-            EntityEnum::Mule(_) => [1.39648, 1.6, 1.39648], // TODO: baby size?
-            EntityEnum::Mooshroom(_) => [0.9, 1.4, 0.9],    // TODO: baby size?
-            EntityEnum::Ocelot(_) => [0.6, 0.7, 0.6],       // TODO: baby size?
-            EntityEnum::Painting(_) => todo!("account for rotation and type"),
-            EntityEnum::Panda(_) => [0.6, 0.7, 0.6], // TODO: baby size?
-            EntityEnum::Parrot(_) => [0.5, 0.9, 0.5],
-            EntityEnum::Phantom(_) => [0.9, 0.5, 0.9],
-            EntityEnum::Pig(_) => [0.9, 0.9, 0.9], // TODO: baby size?
-            EntityEnum::Piglin(_) => [0.6, 1.95, 0.6], // TODO: baby size?
-            EntityEnum::PiglinBrute(_) => [0.6, 1.95, 0.6],
-            EntityEnum::Pillager(_) => [0.6, 1.95, 0.6],
-            EntityEnum::PolarBear(_) => [1.4, 1.4, 1.4], // TODO: baby size?
-            EntityEnum::Tnt(_) => [0.98, 0.98, 0.98],
-            EntityEnum::Pufferfish(_) => [0.7, 0.7, 0.7],
-            EntityEnum::Rabbit(_) => [0.4, 0.5, 0.4], // TODO: baby size?
-            EntityEnum::Ravager(_) => [1.95, 2.2, 1.95],
-            EntityEnum::Salmon(_) => [0.7, 0.4, 0.7],
-            EntityEnum::Sheep(_) => [0.9, 1.3, 0.9], // TODO: baby size?
-            EntityEnum::Shulker(_) => [1.0, 1.0, 1.0], // TODO: how is height calculated?
-            EntityEnum::ShulkerBullet(_) => [0.3125, 0.3125, 0.3125],
-            EntityEnum::Silverfish(_) => [0.4, 0.3, 0.4],
-            EntityEnum::Skeleton(_) => [0.6, 1.99, 0.6],
-            EntityEnum::SkeletonHorse(_) => [1.39648, 1.6, 1.39648], // TODO: baby size?
-            EntityEnum::Slime(e) => {
+            TrackedData::Marker(_) => [0.0, 0.0, 0.0],
+            TrackedData::Minecart(_) => [0.98, 0.7, 0.98],
+            TrackedData::ChestMinecart(_) => [0.98, 0.7, 0.98],
+            TrackedData::CommandBlockMinecart(_) => [0.98, 0.7, 0.98],
+            TrackedData::FurnaceMinecart(_) => [0.98, 0.7, 0.98],
+            TrackedData::HopperMinecart(_) => [0.98, 0.7, 0.98],
+            TrackedData::SpawnerMinecart(_) => [0.98, 0.7, 0.98],
+            TrackedData::TntMinecart(_) => [0.98, 0.7, 0.98],
+            TrackedData::Mule(_) => [1.39648, 1.6, 1.39648], // TODO: baby size?
+            TrackedData::Mooshroom(_) => [0.9, 1.4, 0.9],    // TODO: baby size?
+            TrackedData::Ocelot(_) => [0.6, 0.7, 0.6],       // TODO: baby size?
+            TrackedData::Painting(_) => todo!("account for rotation and type"),
+            TrackedData::Panda(_) => [0.6, 0.7, 0.6], // TODO: baby size?
+            TrackedData::Parrot(_) => [0.5, 0.9, 0.5],
+            TrackedData::Phantom(_) => [0.9, 0.5, 0.9],
+            TrackedData::Pig(_) => [0.9, 0.9, 0.9], // TODO: baby size?
+            TrackedData::Piglin(_) => [0.6, 1.95, 0.6], // TODO: baby size?
+            TrackedData::PiglinBrute(_) => [0.6, 1.95, 0.6],
+            TrackedData::Pillager(_) => [0.6, 1.95, 0.6],
+            TrackedData::PolarBear(_) => [1.4, 1.4, 1.4], // TODO: baby size?
+            TrackedData::Tnt(_) => [0.98, 0.98, 0.98],
+            TrackedData::Pufferfish(_) => [0.7, 0.7, 0.7],
+            TrackedData::Rabbit(_) => [0.4, 0.5, 0.4], // TODO: baby size?
+            TrackedData::Ravager(_) => [1.95, 2.2, 1.95],
+            TrackedData::Salmon(_) => [0.7, 0.4, 0.7],
+            TrackedData::Sheep(_) => [0.9, 1.3, 0.9], // TODO: baby size?
+            TrackedData::Shulker(_) => [1.0, 1.0, 1.0], // TODO: how is height calculated?
+            TrackedData::ShulkerBullet(_) => [0.3125, 0.3125, 0.3125],
+            TrackedData::Silverfish(_) => [0.4, 0.3, 0.4],
+            TrackedData::Skeleton(_) => [0.6, 1.99, 0.6],
+            TrackedData::SkeletonHorse(_) => [1.39648, 1.6, 1.39648], // TODO: baby size?
+            TrackedData::Slime(e) => {
                 let s = 0.51000005 * e.get_slime_size() as f64;
                 [s, s, s]
             }
-            EntityEnum::SmallFireball(_) => [0.3125, 0.3125, 0.3125],
-            EntityEnum::SnowGolem(_) => [0.7, 1.9, 0.7],
-            EntityEnum::Snowball(_) => [0.25, 0.25, 0.25],
-            EntityEnum::SpectralArrow(_) => [0.5, 0.5, 0.5],
-            EntityEnum::Spider(_) => [1.4, 0.9, 1.4],
-            EntityEnum::Squid(_) => [0.8, 0.8, 0.8],
-            EntityEnum::Stray(_) => [0.6, 1.99, 0.6],
-            EntityEnum::Strider(_) => [0.9, 1.7, 0.9], // TODO: baby size?
-            EntityEnum::Egg(_) => [0.25, 0.25, 0.25],
-            EntityEnum::EnderPearl(_) => [0.25, 0.25, 0.25],
-            EntityEnum::ExperienceBottle(_) => [0.25, 0.25, 0.25],
-            EntityEnum::Potion(_) => [0.25, 0.25, 0.25],
-            EntityEnum::Trident(_) => [0.5, 0.5, 0.5],
-            EntityEnum::TraderLlama(_) => [0.9, 1.87, 0.9],
-            EntityEnum::TropicalFish(_) => [0.5, 0.4, 0.5],
-            EntityEnum::Turtle(_) => [1.2, 0.4, 1.2], // TODO: baby size?
-            EntityEnum::Vex(_) => [0.4, 0.8, 0.4],
-            EntityEnum::Villager(_) => [0.6, 1.95, 0.6], // TODO: baby size?
-            EntityEnum::Vindicator(_) => [0.6, 1.95, 0.6],
-            EntityEnum::WanderingTrader(_) => [0.6, 1.95, 0.6],
-            EntityEnum::Witch(_) => [0.6, 1.95, 0.6],
-            EntityEnum::Wither(_) => [0.9, 3.5, 0.9],
-            EntityEnum::WitherSkeleton(_) => [0.7, 2.4, 0.7],
-            EntityEnum::WitherSkull(_) => [0.3125, 0.3125, 0.3125],
-            EntityEnum::Wolf(_) => [0.6, 0.85, 0.6], // TODO: baby size?
-            EntityEnum::Zoglin(_) => [1.39648, 1.4, 1.39648], // TODO: baby size?
-            EntityEnum::Zombie(_) => [0.6, 1.95, 0.6], // TODO: baby size?
-            EntityEnum::ZombieHorse(_) => [1.39648, 1.6, 1.39648], // TODO: baby size?
-            EntityEnum::ZombieVillager(_) => [0.6, 1.95, 0.6], // TODO: baby size?
-            EntityEnum::ZombifiedPiglin(_) => [0.6, 1.95, 0.6], // TODO: baby size?
-            EntityEnum::Player(_) => [0.6, 1.8, 0.6], // TODO: changes depending on the pose.
-            EntityEnum::FishingBobber(_) => [0.25, 0.25, 0.25],
+            TrackedData::SmallFireball(_) => [0.3125, 0.3125, 0.3125],
+            TrackedData::SnowGolem(_) => [0.7, 1.9, 0.7],
+            TrackedData::Snowball(_) => [0.25, 0.25, 0.25],
+            TrackedData::SpectralArrow(_) => [0.5, 0.5, 0.5],
+            TrackedData::Spider(_) => [1.4, 0.9, 1.4],
+            TrackedData::Squid(_) => [0.8, 0.8, 0.8],
+            TrackedData::Stray(_) => [0.6, 1.99, 0.6],
+            TrackedData::Strider(_) => [0.9, 1.7, 0.9], // TODO: baby size?
+            TrackedData::Egg(_) => [0.25, 0.25, 0.25],
+            TrackedData::EnderPearl(_) => [0.25, 0.25, 0.25],
+            TrackedData::ExperienceBottle(_) => [0.25, 0.25, 0.25],
+            TrackedData::Potion(_) => [0.25, 0.25, 0.25],
+            TrackedData::Trident(_) => [0.5, 0.5, 0.5],
+            TrackedData::TraderLlama(_) => [0.9, 1.87, 0.9],
+            TrackedData::TropicalFish(_) => [0.5, 0.4, 0.5],
+            TrackedData::Turtle(_) => [1.2, 0.4, 1.2], // TODO: baby size?
+            TrackedData::Vex(_) => [0.4, 0.8, 0.4],
+            TrackedData::Villager(_) => [0.6, 1.95, 0.6], // TODO: baby size?
+            TrackedData::Vindicator(_) => [0.6, 1.95, 0.6],
+            TrackedData::WanderingTrader(_) => [0.6, 1.95, 0.6],
+            TrackedData::Witch(_) => [0.6, 1.95, 0.6],
+            TrackedData::Wither(_) => [0.9, 3.5, 0.9],
+            TrackedData::WitherSkeleton(_) => [0.7, 2.4, 0.7],
+            TrackedData::WitherSkull(_) => [0.3125, 0.3125, 0.3125],
+            TrackedData::Wolf(_) => [0.6, 0.85, 0.6], // TODO: baby size?
+            TrackedData::Zoglin(_) => [1.39648, 1.4, 1.39648], // TODO: baby size?
+            TrackedData::Zombie(_) => [0.6, 1.95, 0.6], // TODO: baby size?
+            TrackedData::ZombieHorse(_) => [1.39648, 1.6, 1.39648], // TODO: baby size?
+            TrackedData::ZombieVillager(_) => [0.6, 1.95, 0.6], // TODO: baby size?
+            TrackedData::ZombifiedPiglin(_) => [0.6, 1.95, 0.6], // TODO: baby size?
+            TrackedData::Player(_) => [0.6, 1.8, 0.6], // TODO: changes depending on the pose.
+            TrackedData::FishingBobber(_) => [0.25, 0.25, 0.25],
         };
 
         aabb_from_bottom_and_size(self.new_position, dims.into())
@@ -583,15 +583,15 @@ impl<C: Config> Entity<C> {
 
     pub(crate) fn spawn_packet(&self, this_id: EntityId) -> Option<EntitySpawnPacket> {
         match &self.variants {
-            EntityEnum::Marker(_) => None,
-            EntityEnum::ExperienceOrb(_) => {
+            TrackedData::Marker(_) => None,
+            TrackedData::ExperienceOrb(_) => {
                 Some(EntitySpawnPacket::ExperienceOrb(ExperienceOrbSpawn {
                     entity_id: VarInt(this_id.to_network_id()),
                     position: self.new_position,
                     count: 0, // TODO
                 }))
             }
-            EntityEnum::Player(_) => Some(EntitySpawnPacket::Player(PlayerSpawn {
+            TrackedData::Player(_) => Some(EntitySpawnPacket::Player(PlayerSpawn {
                 entity_id: VarInt(this_id.to_network_id()),
                 player_uuid: self.uuid,
                 position: self.new_position,

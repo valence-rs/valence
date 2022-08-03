@@ -11,7 +11,7 @@ use valence::client::{Event, Hand};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::data::Pose;
-use valence::entity::{EntityEnum, EntityId, EntityKind, Event as EntityEvent};
+use valence::entity::{TrackedData, EntityId, EntityKind, Event as EntityEvent};
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 use valence::{async_trait, ident};
@@ -194,7 +194,7 @@ impl Config for Game {
             player.set_pitch(client.pitch());
             player.set_on_ground(client.on_ground());
 
-            if let EntityEnum::Player(player) = player.view_mut() {
+            if let TrackedData::Player(player) = player.view_mut() {
                 if client.is_sneaking() {
                     player.set_pose(Pose::Sneaking);
                 } else {

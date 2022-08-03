@@ -357,13 +357,13 @@ pub fn build() -> anyhow::Result<TokenStream> {
             let field_index = field.index;
             let default_expr = field.default_value.default_expr();
             let type_id = field.default_value.type_id();
-            let encodeable = field.default_value.encodable_expr(quote!(self.#field_name));
+            let encodable = field.default_value.encodable_expr(quote!(self.#field_name));
 
             quote! {
                 if self.#field_name != (#default_expr) {
                     data.push(#field_index);
                     VarInt(#type_id).encode(data).unwrap();
-                    #encodeable.encode(data).unwrap();
+                    #encodable.encode(data).unwrap();
                 }
             }
         });
@@ -372,13 +372,13 @@ pub fn build() -> anyhow::Result<TokenStream> {
             let field_name = ident(&field.name);
             let field_index = field.index;
             let type_id = field.default_value.type_id();
-            let encodeable = field.default_value.encodable_expr(quote!(self.#field_name));
+            let encodable = field.default_value.encodable_expr(quote!(self.#field_name));
 
             quote! {
                 if (self.__modified_flags >> #field_index as #modified_flags_type) & 1 == 1 {
                     data.push(#field_index);
                     VarInt(#type_id).encode(data).unwrap();
-                    #encodeable.encode(data).unwrap();
+                    #encodable.encode(data).unwrap();
                 }
             }
         });
@@ -446,11 +446,11 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }
         }
 
-        pub enum EntityEnum {
+        pub enum TrackedData {
             #(#concrete_entity_names(#concrete_entity_names),)*
         }
 
-        impl EntityEnum {
+        impl TrackedData {
             pub(super) fn new(kind: EntityKind) -> Self {
                 match kind {
                     #(EntityKind::#concrete_entity_names => Self::#concrete_entity_names(#concrete_entity_names::new()),)*

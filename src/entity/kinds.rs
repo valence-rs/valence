@@ -1,4 +1,4 @@
-//! Contains the [`EntityEnum`] and the types for each variant.
+//! Contains the [`TrackedData`] and the types for each variant.
 
 #![allow(clippy::all, missing_docs, trivial_numeric_casts)]
 
