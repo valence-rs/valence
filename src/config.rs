@@ -90,7 +90,7 @@ pub trait Config: 'static + Sized + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// Called once at startup to get the capacity of the buffer used to
     /// hold incoming packets.
     ///
-    /// A larger capcity reduces the chance of packet loss but increases
+    /// A larger capacity reduces the chance of packet loss but increases
     /// potential memory usage.
     ///
     /// # Default Implementation
@@ -104,7 +104,7 @@ pub trait Config: 'static + Sized + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// Called once at startup to get the capacity of the buffer used to
     /// hold outgoing packets.
     ///
-    /// A larger capcity reduces the chance of packet loss due to a full buffer
+    /// A larger capacity reduces the chance of packet loss due to a full buffer
     /// but increases potential memory usage.
     ///
     /// # Default Implementation

@@ -14,8 +14,8 @@ use paste::paste;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use vek::Vec3;
-// use {def_bitfield, def_enum, def_struct};
 
+// use {def_bitfield, def_enum, def_struct};
 use crate::block_pos::BlockPos;
 use crate::ident::Ident;
 use crate::protocol_inner::{
@@ -121,8 +121,7 @@ macro_rules! def_struct {
             }
 
             impl $name {
-                #[allow(unused)]
-                const PACKET_ID: i32 = $id;
+                pub const PACKET_ID: i32 = $id;
             }
         )*
 
@@ -231,8 +230,7 @@ macro_rules! def_enum {
             }
 
             impl $name {
-                #[allow(unused)]
-                const PACKET_ID: i32 = $id;
+                pub const PACKET_ID: i32 = $id;
             }
         )*
     }
@@ -289,7 +287,7 @@ macro_rules! def_bitfield {
                 $(
                     #[doc = "Gets the " $bit " bit on this bitfield.\n"]
                     $(#[$bit_attrs])*
-                    pub fn [<get_ $bit:snake>](self) -> bool {
+                    pub fn $bit(self) -> bool {
                         self.0 & <$inner_ty>::one() << <$inner_ty>::from($offset) != <$inner_ty>::zero()
                     }
 
@@ -313,7 +311,7 @@ macro_rules! def_bitfield {
                 let mut s = f.debug_struct(stringify!($name));
                 paste! {
                     $(
-                        s.field(stringify!($bit), &self. [<get_ $bit:snake>]());
+                        s.field(stringify!($bit), &self. $bit());
                     )*
                 }
                 s.finish()

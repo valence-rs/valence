@@ -4,7 +4,7 @@ use std::collections::{HashSet, VecDeque};
 use std::iter::FusedIterator;
 use std::time::Duration;
 
-use bitfield_struct::bitfield;
+pub use bitfield_struct::bitfield;
 pub use event::*;
 use flume::{Receiver, Sender, TrySendError};
 use rayon::iter::ParallelIterator;
@@ -16,10 +16,9 @@ use crate::block_pos::BlockPos;
 use crate::chunk_pos::ChunkPos;
 use crate::config::Config;
 use crate::dimension::DimensionId;
-use crate::entity::kinds::Player;
+use crate::entity::data::Player;
 use crate::entity::{
-    velocity_to_packet_units, Entities, EntityId, EntityKind, Event as EntityEvent,
-    StatusOrAnimation,
+    velocity_to_packet_units, Entities, EntityEvent, EntityId, EntityKind, StatusOrAnimation,
 };
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol_inner::packets::c2s::play::{
@@ -42,9 +41,9 @@ use crate::slotmap::{Key, SlotMap};
 use crate::text::Text;
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::world::{WorldId, Worlds};
-use crate::{ident, Ticks, LIBRARY_NAMESPACE, STANDARD_TPS};
+use crate::{ident, LIBRARY_NAMESPACE};
 
-/// Contains the [`Event`] enum and related data types.
+/// Contains the [`ClientEvent`] enum and related data types.
 mod event;
 
 /// A container for all [`Client`]s on a [`Server`](crate::server::Server).
@@ -62,8 +61,8 @@ impl<C: Config> Clients<C> {
     }
 
     pub(crate) fn insert(&mut self, client: Client<C>) -> (ClientId, &mut Client<C>) {
-        let (id, client) = self.sm.insert(client);
-        (ClientId(id), client)
+        let (k, client) = self.sm.insert(client);
+        (ClientId(k), client)
     }
 
     /// Removes a client from the server.
@@ -74,7 +73,7 @@ impl<C: Config> Clients<C> {
         self.sm.remove(client.0).is_some()
     }
 
-    /// Deletes all clients from the server (as if by [`Self::delete`]) for
+    /// Deletes all clients from the server for
     /// which `f` returns `true`.
     ///
     /// All clients are visited in an unspecified order.
@@ -146,7 +145,7 @@ impl ClientId {
 
 /// Represents a remote connection to a client after successfully logging in.
 ///
-/// Much like an [`Entity`], clients posess a location, rotation, and UUID.
+/// Much like an [`Entity`], clients possess a location, rotation, and UUID.
 /// However, clients are handled separately from entities and are partially
 /// managed by the library.
 ///
@@ -154,30 +153,28 @@ impl ClientId {
 /// cannot break blocks, hurt entities, or see other clients. Interactions with
 /// the server must be handled explicitly with [`Self::pop_event`].
 ///
-/// Additionally, clients posess [`Player`] entity data which is only visible to
-/// themselves. This can be accessed with [`Self::player`] and
+/// Additionally, clients possess [`Player`] entity data which is only visible
+/// to themselves. This can be accessed with [`Self::player`] and
 /// [`Self::player_mut`].
 ///
 /// # The Difference Between a "Client" and a "Player"
 ///
 /// Normally in Minecraft, players and clients are one and the same. Players are
-/// simply a special type of entity which is backed by a remote connection.
+/// simply a subtype of the entity base class backed by a remote connection.
 ///
-/// In Valence however, clients and players have been decoupled. This separation
-/// was done primarily to enable multithreaded client updates.
+/// In Valence however, clients and players are decoupled. This separation
+/// allows for greater flexibility and parallelism.
 pub struct Client<C: Config> {
     /// Custom state.
     pub state: C::ClientState,
     /// Setting this to `None` disconnects the client.
     send: SendOpt,
     recv: Receiver<C2sPlayPacket>,
-    /// The tick this client was created.
-    created_tick: Ticks,
     uuid: Uuid,
     username: String,
     textures: Option<SignedPlayerTextures>,
     world: WorldId,
-    new_position: Vec3<f64>,
+    position: Vec3<f64>,
     old_position: Vec3<f64>,
     /// Measured in m/s.
     velocity: Vec3<f32>,
@@ -185,6 +182,7 @@ pub struct Client<C: Config> {
     yaw: f32,
     /// Measured in degrees
     pitch: f32,
+    view_distance: u8,
     /// Counts up as teleports are made.
     teleport_id_counter: u32,
     /// The number of pending client teleports that have yet to receive a
@@ -194,11 +192,9 @@ pub struct Client<C: Config> {
     spawn_position: BlockPos,
     spawn_position_yaw: f32,
     death_location: Option<(DimensionId, BlockPos)>,
-    events: VecDeque<Event>,
+    events: VecDeque<ClientEvent>,
     /// The ID of the last keepalive sent.
     last_keepalive_id: i64,
-    new_max_view_distance: u8,
-    old_max_view_distance: u8,
     /// Entities that were visible to this client at the end of the last tick.
     /// This is used to determine what entity create/destroy packets should be
     /// sent.
@@ -212,21 +208,15 @@ pub struct Client<C: Config> {
     msgs_to_send: Vec<Text>,
     attack_speed: f64,
     movement_speed: f64,
-    flags: ClientFlags,
+    bits: ClientBits,
     /// The data for the client's own player entity.
     player_data: Player,
     entity_events: Vec<EntityEvent>,
 }
 
 #[bitfield(u16)]
-pub(crate) struct ClientFlags {
+struct ClientBits {
     spawn: bool,
-    sneaking: bool,
-    sprinting: bool,
-    jumping_with_horse: bool,
-    on_ground: bool,
-    /// If any of position, yaw, or pitch were modified by the
-    /// user this tick.
     teleported_this_tick: bool,
     /// If spawn_position or spawn_position_yaw were modified this tick.
     modified_spawn_position: bool,
@@ -236,33 +226,34 @@ pub(crate) struct ClientFlags {
     attack_speed_modified: bool,
     movement_speed_modified: bool,
     velocity_modified: bool,
-    #[bits(4)]
+    created_this_tick: bool,
+    view_distance_modified: bool,
+    #[bits(6)]
     _pad: u8,
 }
 
 impl<C: Config> Client<C> {
     pub(crate) fn new(
         packet_channels: C2sPacketChannels,
-        server: &SharedServer<C>,
         ncd: NewClientData,
-        data: C::ClientState,
+        state: C::ClientState,
     ) -> Self {
         let (send, recv) = packet_channels;
 
         Self {
-            state: data,
+            state,
             send: Some(send),
             recv,
-            created_tick: server.current_tick(),
             uuid: ncd.uuid,
             username: ncd.username,
             textures: ncd.textures,
             world: WorldId::default(),
-            new_position: Vec3::default(),
+            position: Vec3::default(),
             old_position: Vec3::default(),
             velocity: Vec3::default(),
             yaw: 0.0,
             pitch: 0.0,
+            view_distance: 8,
             teleport_id_counter: 0,
             pending_teleports: 0,
             spawn_position: BlockPos::default(),
@@ -270,8 +261,6 @@ impl<C: Config> Client<C> {
             death_location: None,
             events: VecDeque::new(),
             last_keepalive_id: 0,
-            new_max_view_distance: 16,
-            old_max_view_distance: 0,
             loaded_entities: HashSet::new(),
             loaded_chunks: HashSet::new(),
             new_game_mode: GameMode::Survival,
@@ -281,17 +270,18 @@ impl<C: Config> Client<C> {
             msgs_to_send: Vec::new(),
             attack_speed: 4.0,
             movement_speed: 0.7,
-            flags: ClientFlags::new()
+            bits: ClientBits::new()
                 .with_modified_spawn_position(true)
-                .with_got_keepalive(true),
+                .with_got_keepalive(true)
+                .with_created_this_tick(true),
             player_data: Player::new(),
             entity_events: Vec::new(),
         }
     }
 
-    /// Gets the tick that this client was created.
-    pub fn created_tick(&self) -> Ticks {
-        self.created_tick
+    /// If the client joined the game this tick.
+    pub fn created_this_tick(&self) -> bool {
+        self.bits.created_this_tick()
     }
 
     /// Gets the client's UUID.
@@ -302,16 +292,6 @@ impl<C: Config> Client<C> {
     /// Gets the username of this client, which is always valid.
     pub fn username(&self) -> &str {
         &self.username
-    }
-
-    /// Returns the sneaking state of this client.
-    pub fn is_sneaking(&self) -> bool {
-        self.flags.sneaking()
-    }
-
-    /// Returns the sprinting state of this client.
-    pub fn is_sprinting(&self) -> bool {
-        self.flags.sprinting()
     }
 
     /// Gets the player textures of this client. If the client does not have
@@ -325,13 +305,14 @@ impl<C: Config> Client<C> {
         self.world
     }
 
-    /// Changes the world this client is located in.
+    /// Changes the world this client is located in and respawns the client.
+    /// This can be used to respawn the client after death.
     ///
     /// The given [`WorldId`] must be valid. Otherwise, the client is
     /// disconnected.
     pub fn spawn(&mut self, world: WorldId) {
         self.world = world;
-        self.flags.set_spawn(true);
+        self.bits.set_spawn(true);
     }
 
     /// Sends a system message to the player which is visible in the chat.
@@ -344,7 +325,7 @@ impl<C: Config> Client<C> {
     /// Gets the absolute position of this client in the world it is located
     /// in.
     pub fn position(&self) -> Vec3<f64> {
-        self.new_position
+        self.position
     }
 
     /// Changes the position and rotation of this client in the world it is
@@ -352,31 +333,14 @@ impl<C: Config> Client<C> {
     ///
     /// If you want to change the client's world, use [`Self::spawn`].
     pub fn teleport(&mut self, pos: impl Into<Vec3<f64>>, yaw: f32, pitch: f32) {
-        self.new_position = pos.into();
+        self.position = pos.into();
         self.yaw = yaw;
         self.pitch = pitch;
-        self.velocity = Vec3::default();
 
-        if !self.flags.teleported_this_tick() {
-            self.flags.set_teleported_this_tick(true);
-
-            self.pending_teleports = match self.pending_teleports.checked_add(1) {
-                Some(n) => n,
-                None => {
-                    log::warn!("too many pending teleports for {}", self.username());
-                    self.disconnect_no_reason();
-                    return;
-                }
-            };
-
-            self.teleport_id_counter = self.teleport_id_counter.wrapping_add(1);
-        }
+        self.bits.set_teleported_this_tick(true);
     }
 
-    /// Gets the velocity of this client in m/s.
-    ///
-    /// The velocity of a client is derived from their current and previous
-    /// position.
+    /// Gets the most recently set velocity of this client in m/s.
     pub fn velocity(&self) -> Vec3<f32> {
         self.velocity
     }
@@ -384,7 +348,7 @@ impl<C: Config> Client<C> {
     /// Sets the client's velocity in m/s.
     pub fn set_velocity(&mut self, velocity: impl Into<Vec3<f32>>) {
         self.velocity = velocity.into();
-        self.flags.set_velocity_modified(true);
+        self.bits.set_velocity_modified(true);
     }
 
     /// Gets this client's yaw.
@@ -410,12 +374,13 @@ impl<C: Config> Client<C> {
         if pos != self.spawn_position || yaw_degrees != self.spawn_position_yaw {
             self.spawn_position = pos;
             self.spawn_position_yaw = yaw_degrees;
-            self.flags.set_modified_spawn_position(true);
+            self.bits.set_modified_spawn_position(true);
         }
     }
 
     /// Gets the last death location of this client. The client will see
     /// `minecraft:recovery_compass` items point at the returned position.
+    ///
     /// If the client's current dimension differs from the returned
     /// dimension or the location is `None` then the compass will spin
     /// randomly.
@@ -482,7 +447,7 @@ impl<C: Config> Client<C> {
     pub fn set_attack_speed(&mut self, speed: f64) {
         if self.attack_speed != speed {
             self.attack_speed = speed;
-            self.flags.set_attack_speed_modified(true);
+            self.bits.set_attack_speed_modified(true);
         }
     }
 
@@ -495,18 +460,13 @@ impl<C: Config> Client<C> {
     pub fn set_movement_speed(&mut self, speed: f64) {
         if self.movement_speed != speed {
             self.movement_speed = speed;
-            self.flags.set_movement_speed_modified(true);
+            self.bits.set_movement_speed_modified(true);
         }
     }
 
     /// Removes the current title from the client's screen.
     pub fn clear_title(&mut self) {
         self.send_packet(ClearTitles { reset: true });
-    }
-
-    /// Gets if the client is on the ground, as determined by the client.
-    pub fn on_ground(&self) -> bool {
-        self.flags.on_ground()
     }
 
     /// Gets whether or not the client is connected to the server.
@@ -518,42 +478,46 @@ impl<C: Config> Client<C> {
         self.send.is_none()
     }
 
+    pub fn events(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = &ClientEvent> + ExactSizeIterator + FusedIterator + Clone + '_
+    {
+        self.events.iter()
+    }
+
     /// Removes an [`Event`] from the event queue.
     ///
     /// If there are no remaining events, `None` is returned.
     ///
     /// Any remaining client events are deleted at the end of the
     /// current tick.
-    pub fn pop_event(&mut self) -> Option<Event> {
+    pub fn pop_event(&mut self) -> Option<ClientEvent> {
         self.events.pop_front()
     }
 
-    pub fn trigger_entity_event(&mut self, event: EntityEvent) {
+    pub fn push_entity_event(&mut self, event: EntityEvent) {
         self.entity_events.push(event);
     }
 
-    /// The current view distance of this client measured in chunks.
-    pub fn view_distance(&self) -> u8 {
-        self.settings
-            .as_ref()
-            .map_or(2, |s| s.view_distance)
-            .min(self.max_view_distance())
-    }
-
-    /// Gets the maximum view distance. The client will not be able to see
-    /// chunks and entities past this distance.
+    /// The current view distance of this client measured in chunks. The client
+    /// will not be able to see chunks and entities past this distance.
     ///
-    /// The value returned is measured in chunks.
-    pub fn max_view_distance(&self) -> u8 {
-        self.new_max_view_distance
+    /// The result is in `2..=32`.
+    pub fn view_distance(&self) -> u8 {
+        self.view_distance
     }
 
-    /// Sets the maximum view distance. The client will not be able to see
-    /// chunks and entities past this distance.
+    /// Sets the view distance. The client will not be able to see chunks and
+    /// entities past this distance.
     ///
     /// The new view distance is measured in chunks and is clamped to `2..=32`.
-    pub fn set_max_view_distance(&mut self, dist: u8) {
-        self.new_max_view_distance = dist.clamp(2, 32);
+    pub fn set_view_distance(&mut self, dist: u8) {
+        let dist = dist.clamp(2, 32);
+
+        if self.view_distance != dist {
+            self.view_distance = dist;
+            self.bits.set_view_distance_modified(true);
+        }
     }
 
     /// Enables hardcore mode. This changes the design of the client's hearts.
@@ -561,12 +525,12 @@ impl<C: Config> Client<C> {
     /// To have any visible effect, this function must be called on the same
     /// tick the client joins the server.
     pub fn set_hardcore(&mut self, hardcore: bool) {
-        self.flags.set_hardcore(hardcore);
+        self.bits.set_hardcore(hardcore);
     }
 
     /// Gets if hardcore mode is enabled.
     pub fn is_hardcore(&self) -> bool {
-        self.flags.hardcore()
+        self.bits.hardcore()
     }
 
     /// Gets the client's current settings.
@@ -630,44 +594,6 @@ impl<C: Config> Client<C> {
     }
 
     fn handle_serverbound_packet(&mut self, entities: &Entities<C>, pkt: C2sPlayPacket) {
-        fn handle_movement_packet<C: Config>(
-            client: &mut Client<C>,
-            _vehicle: bool,
-            new_position: Vec3<f64>,
-            new_yaw: f32,
-            new_pitch: f32,
-            new_on_ground: bool,
-        ) {
-            if client.pending_teleports == 0 {
-                // TODO: validate movement using swept AABB collision with the blocks.
-                // TODO: validate that the client is actually inside/outside the vehicle?
-
-                // Movement packets should be coming in at a rate of STANDARD_TPS.
-                let new_velocity = (new_position - client.new_position).as_() * STANDARD_TPS as f32;
-
-                let event = Event::Movement {
-                    old_position: client.new_position,
-                    old_velocity: client.velocity,
-                    old_yaw: client.yaw,
-                    old_pitch: client.pitch,
-                    old_on_ground: client.flags.on_ground(),
-                    new_position,
-                    new_velocity,
-                    new_yaw,
-                    new_pitch,
-                    new_on_ground,
-                };
-
-                client.new_position = new_position;
-                client.velocity = new_velocity;
-                client.yaw = new_yaw;
-                client.pitch = new_pitch;
-                client.flags.set_on_ground(new_on_ground);
-
-                client.events.push_back(event);
-            }
-        }
-
         match pkt {
             C2sPlayPacket::TeleportConfirm(p) => {
                 if self.pending_teleports == 0 {
@@ -694,14 +620,14 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::QueryBlockNbt(_) => {}
             C2sPlayPacket::UpdateDifficulty(_) => {}
             C2sPlayPacket::CommandExecution(_) => {}
-            C2sPlayPacket::ChatMessage(p) => self.events.push_back(Event::ChatMessage {
+            C2sPlayPacket::ChatMessage(p) => self.events.push_back(ClientEvent::ChatMessage {
                 message: p.message.0,
                 timestamp: Duration::from_millis(p.timestamp),
             }),
             C2sPlayPacket::RequestChatPreview(_) => {}
             C2sPlayPacket::ClientStatus(_) => {}
             C2sPlayPacket::ClientSettings(p) => {
-                let old = self.settings.replace(Settings {
+                self.events.push_back(ClientEvent::SettingsChanged {
                     locale: p.locale.0,
                     view_distance: p.view_distance.0,
                     chat_mode: p.chat_mode,
@@ -709,9 +635,7 @@ impl<C: Config> Client<C> {
                     main_hand: p.main_hand,
                     displayed_skin_parts: p.displayed_skin_parts,
                     allow_server_listings: p.allow_server_listings,
-                });
-
-                self.events.push_back(Event::SettingsChanged(old));
+                })
             }
             C2sPlayPacket::RequestCommandCompletion(_) => {}
             C2sPlayPacket::ButtonClick(_) => {}
@@ -725,7 +649,7 @@ impl<C: Config> Client<C> {
                     // TODO: verify that the client has line of sight to the targeted entity and
                     // that the distance is <=4 blocks.
 
-                    self.events.push_back(Event::InteractWithEntity {
+                    self.events.push_back(ClientEvent::InteractWithEntity {
                         id,
                         sneaking: p.sneaking,
                         kind: match p.kind {
@@ -741,7 +665,7 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::JigsawGenerate(_) => {}
             C2sPlayPacket::KeepAlive(p) => {
                 let last_keepalive_id = self.last_keepalive_id;
-                if self.flags.got_keepalive() {
+                if self.bits.got_keepalive() {
                     log::warn!("unexpected keepalive from player {}", self.username());
                     self.disconnect_no_reason();
                 } else if p.id != last_keepalive_id {
@@ -753,39 +677,68 @@ impl<C: Config> Client<C> {
                     );
                     self.disconnect_no_reason();
                 } else {
-                    self.flags.set_got_keepalive(true);
+                    self.bits.set_got_keepalive(true);
                 }
             }
             C2sPlayPacket::UpdateDifficultyLock(_) => {}
             C2sPlayPacket::MovePlayerPosition(p) => {
-                handle_movement_packet(self, false, p.position, self.yaw, self.pitch, p.on_ground)
+                if self.pending_teleports == 0 {
+                    self.position = p.position;
+
+                    self.events.push_back(ClientEvent::MovePosition {
+                        position: p.position,
+                        on_ground: p.on_ground,
+                    });
+                }
             }
             C2sPlayPacket::MovePlayerPositionAndRotation(p) => {
-                handle_movement_packet(self, false, p.position, p.yaw, p.pitch, p.on_ground)
+                if self.pending_teleports == 0 {
+                    self.position = p.position;
+                    self.yaw = p.yaw;
+                    self.pitch = p.pitch;
+
+                    self.events.push_back(ClientEvent::MovePositionAndRotation {
+                        position: p.position,
+                        yaw: p.yaw,
+                        pitch: p.pitch,
+                        on_ground: p.on_ground,
+                    });
+                }
             }
             C2sPlayPacket::MovePlayerRotation(p) => {
-                handle_movement_packet(self, false, self.new_position, p.yaw, p.pitch, p.on_ground)
+                if self.pending_teleports == 0 {
+                    self.yaw = p.yaw;
+                    self.pitch = p.pitch;
+
+                    self.events.push_back(ClientEvent::MoveRotation {
+                        yaw: p.yaw,
+                        pitch: p.pitch,
+                        on_ground: p.on_ground,
+                    });
+                }
             }
-            C2sPlayPacket::MovePlayerOnGround(p) => handle_movement_packet(
-                self,
-                false,
-                self.new_position,
-                self.yaw,
-                self.pitch,
-                p.on_ground,
-            ),
+            C2sPlayPacket::MovePlayerOnGround(p) => {
+                if self.pending_teleports == 0 {
+                    self.events.push_back(ClientEvent::MoveOnGround {
+                        on_ground: p.on_ground,
+                    });
+                }
+            }
             C2sPlayPacket::MoveVehicle(p) => {
-                handle_movement_packet(
-                    self,
-                    true,
-                    p.position,
-                    p.yaw,
-                    p.pitch,
-                    self.flags.on_ground(),
-                );
+                if self.pending_teleports == 0 {
+                    self.position = p.position;
+                    self.yaw = p.yaw;
+                    self.pitch = p.pitch;
+
+                    self.events.push_back(ClientEvent::MoveVehicle {
+                        position: p.position,
+                        yaw: p.yaw,
+                        pitch: p.pitch,
+                    });
+                }
             }
             C2sPlayPacket::BoatPaddleState(p) => {
-                self.events.push_back(Event::SteerBoat {
+                self.events.push_back(ClientEvent::SteerBoat {
                     left_paddle_turning: p.left_paddle_turning,
                     right_paddle_turning: p.right_paddle_turning,
                 });
@@ -802,17 +755,17 @@ impl<C: Config> Client<C> {
                 }
 
                 self.events.push_back(match p.status {
-                    DiggingStatus::StartedDigging => Event::Digging {
+                    DiggingStatus::StartedDigging => ClientEvent::Digging {
                         status: event::DiggingStatus::Start,
                         position: p.location,
                         face: p.face,
                     },
-                    DiggingStatus::CancelledDigging => Event::Digging {
+                    DiggingStatus::CancelledDigging => ClientEvent::Digging {
                         status: event::DiggingStatus::Cancel,
                         position: p.location,
                         face: p.face,
                     },
-                    DiggingStatus::FinishedDigging => Event::Digging {
+                    DiggingStatus::FinishedDigging => ClientEvent::Digging {
                         status: event::DiggingStatus::Finish,
                         position: p.location,
                         face: p.face,
@@ -823,56 +776,19 @@ impl<C: Config> Client<C> {
                     DiggingStatus::SwapItemInHand => return,
                 });
             }
-            C2sPlayPacket::PlayerCommand(e) => {
-                // TODO: validate:
-                // - Can't sprint and sneak at the same time
-                // - Can't leave bed while not in a bed.
-                // - Can't jump with a horse if not on a horse
-                // - Can't open horse inventory if not on a horse.
-                // - Can't fly with elytra if not wearing an elytra.
-                // - Can't jump with horse while already jumping & vice versa?
-                self.events.push_back(match e.action_id {
-                    PlayerCommandId::StartSneaking => {
-                        if self.flags.sneaking() {
-                            return;
-                        }
-                        self.flags.set_sneaking(true);
-                        Event::StartSneaking
-                    }
-                    PlayerCommandId::StopSneaking => {
-                        if !self.flags.sneaking() {
-                            return;
-                        }
-                        self.flags.set_sneaking(false);
-                        Event::StopSneaking
-                    }
-                    PlayerCommandId::LeaveBed => Event::LeaveBed,
-                    PlayerCommandId::StartSprinting => {
-                        if self.flags.sprinting() {
-                            return;
-                        }
-                        self.flags.set_sprinting(true);
-                        Event::StartSprinting
-                    }
-                    PlayerCommandId::StopSprinting => {
-                        if !self.flags.sprinting() {
-                            return;
-                        }
-                        self.flags.set_sprinting(false);
-                        Event::StopSprinting
-                    }
-                    PlayerCommandId::StartJumpWithHorse => {
-                        self.flags.set_jumping_with_horse(true);
-                        Event::StartJumpWithHorse {
-                            jump_boost: e.jump_boost.0 .0 as u8,
-                        }
-                    }
-                    PlayerCommandId::StopJumpWithHorse => {
-                        self.flags.set_jumping_with_horse(false);
-                        Event::StopJumpWithHorse
-                    }
-                    PlayerCommandId::OpenHorseInventory => Event::OpenHorseInventory,
-                    PlayerCommandId::StartFlyingWithElytra => Event::StartFlyingWithElytra,
+            C2sPlayPacket::PlayerCommand(c) => {
+                self.events.push_back(match c.action_id {
+                    PlayerCommandId::StartSneaking => ClientEvent::StartSneaking,
+                    PlayerCommandId::StopSneaking => ClientEvent::StopSneaking,
+                    PlayerCommandId::LeaveBed => ClientEvent::LeaveBed,
+                    PlayerCommandId::StartSprinting => ClientEvent::StartSprinting,
+                    PlayerCommandId::StopSprinting => ClientEvent::StopSprinting,
+                    PlayerCommandId::StartJumpWithHorse => ClientEvent::StartJumpWithHorse {
+                        jump_boost: c.jump_boost.0 .0 as u8,
+                    },
+                    PlayerCommandId::StopJumpWithHorse => ClientEvent::StopJumpWithHorse,
+                    PlayerCommandId::OpenHorseInventory => ClientEvent::OpenHorseInventory,
+                    PlayerCommandId::StartFlyingWithElytra => ClientEvent::StartFlyingWithElytra,
                 });
             }
             C2sPlayPacket::PlayerInput(_) => {}
@@ -891,7 +807,7 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::UpdateJigsaw(_) => {}
             C2sPlayPacket::UpdateStructureBlock(_) => {}
             C2sPlayPacket::UpdateSign(_) => {}
-            C2sPlayPacket::HandSwing(p) => self.events.push_back(Event::ArmSwing(p.hand)),
+            C2sPlayPacket::HandSwing(p) => self.events.push_back(ClientEvent::ArmSwing(p.hand)),
             C2sPlayPacket::SpectatorTeleport(_) => {}
             C2sPlayPacket::PlayerInteractBlock(_) => {}
             C2sPlayPacket::PlayerInteractItem(_) => {}
@@ -926,7 +842,7 @@ impl<C: Config> Client<C> {
 
         // Send the join game packet and other initial packets. We defer this until now
         // so that the user can set the client's location, game mode, etc.
-        if self.created_tick == current_tick {
+        if self.created_this_tick() {
             world
                 .meta
                 .player_list()
@@ -941,7 +857,7 @@ impl<C: Config> Client<C> {
 
             self.send_packet(GameJoin {
                 entity_id: 0, // EntityId 0 is reserved for clients.
-                is_hardcore: self.flags.hardcore(),
+                is_hardcore: self.bits.hardcore(),
                 gamemode: self.new_game_mode,
                 previous_gamemode: self.old_game_mode,
                 dimension_names,
@@ -956,7 +872,7 @@ impl<C: Config> Client<C> {
                 ),
                 hashed_seed: 0,
                 max_players: VarInt(0),
-                view_distance: BoundedInt(VarInt(self.new_max_view_distance as i32)),
+                view_distance: BoundedInt(VarInt(self.view_distance() as i32)),
                 simulation_distance: VarInt(16),
                 reduced_debug_info: false,
                 enable_respawn_screen: false,
@@ -969,14 +885,15 @@ impl<C: Config> Client<C> {
 
             self.teleport(self.position(), self.yaw(), self.pitch());
         } else {
-            if self.flags.spawn() {
-                self.flags.set_spawn(false);
+            if self.bits.spawn() {
+                self.bits.set_spawn(false);
                 self.loaded_entities.clear();
                 self.loaded_chunks.clear();
 
                 // TODO: clear player list.
 
                 // Client bug workaround: send the client to a dummy dimension first.
+                // TODO: is there actually a bug?
                 self.send_packet(PlayerRespawn {
                     dimension_type_name: ident!("{LIBRARY_NAMESPACE}:dimension_type_0"),
                     dimension_name: ident!("{LIBRARY_NAMESPACE}:dummy_dimension"),
@@ -1027,8 +944,8 @@ impl<C: Config> Client<C> {
         }
 
         // Set player attributes
-        if self.flags.attack_speed_modified() {
-            self.flags.set_attack_speed_modified(false);
+        if self.bits.attack_speed_modified() {
+            self.bits.set_attack_speed_modified(false);
 
             self.send_packet(EntityAttributes {
                 entity_id: VarInt(0),
@@ -1040,8 +957,8 @@ impl<C: Config> Client<C> {
             });
         }
 
-        if self.flags.movement_speed_modified() {
-            self.flags.set_movement_speed_modified(false);
+        if self.bits.movement_speed_modified() {
+            self.bits.set_movement_speed_modified(false);
 
             self.send_packet(EntityAttributes {
                 entity_id: VarInt(0),
@@ -1054,8 +971,8 @@ impl<C: Config> Client<C> {
         }
 
         // Update the players spawn position (compass position)
-        if self.flags.modified_spawn_position() {
-            self.flags.set_modified_spawn_position(false);
+        if self.bits.modified_spawn_position() {
+            self.bits.set_modified_spawn_position(false);
 
             self.send_packet(PlayerSpawnPosition {
                 location: self.spawn_position,
@@ -1063,23 +980,24 @@ impl<C: Config> Client<C> {
             })
         }
 
-        // Update view distance fog on the client if necessary.
-        if self.old_max_view_distance != self.new_max_view_distance {
-            self.old_max_view_distance = self.new_max_view_distance;
-            if self.created_tick != current_tick {
+        // Update view distance fog on the client.
+        if self.bits.view_distance_modified() {
+            self.bits.set_view_distance_modified(false);
+
+            if !self.created_this_tick() {
                 self.send_packet(ChunkLoadDistance {
-                    view_distance: BoundedInt(VarInt(self.new_max_view_distance as i32)),
-                })
+                    view_distance: BoundedInt(VarInt(self.view_distance() as i32)),
+                });
             }
         }
 
         // Check if it's time to send another keepalive.
         if current_tick % (shared.tick_rate() * 8) == 0 {
-            if self.flags.got_keepalive() {
+            if self.bits.got_keepalive() {
                 let id = rand::random();
                 self.send_packet(KeepAlive { id });
                 self.last_keepalive_id = id;
-                self.flags.set_got_keepalive(false);
+                self.bits.set_got_keepalive(false);
             } else {
                 log::warn!(
                     "player {} timed out (no keepalive response)",
@@ -1091,13 +1009,13 @@ impl<C: Config> Client<C> {
 
         let view_dist = self.view_distance();
 
-        let center = ChunkPos::at(self.new_position.x, self.new_position.z);
+        let center = ChunkPos::at(self.position.x, self.position.z);
 
         // Send the update view position packet if the client changes the chunk section
         // they're in.
         {
             let old_section = self.old_position.map(|n| (n / 16.0).floor() as i32);
-            let new_section = self.new_position.map(|n| (n / 16.0).floor() as i32);
+            let new_section = self.position.map(|n| (n / 16.0).floor() as i32);
 
             if old_section != new_section {
                 self.send_packet(ChunkRenderDistanceCenter {
@@ -1161,23 +1079,33 @@ impl<C: Config> Client<C> {
         //
         // This is done after the chunks are loaded so that the "downloading terrain"
         // screen is closed at the appropriate time.
-        if self.flags.teleported_this_tick() {
-            self.flags.set_teleported_this_tick(false);
+        if self.bits.teleported_this_tick() {
+            self.bits.set_teleported_this_tick(false);
 
             self.send_packet(PlayerPositionLook {
-                position: self.new_position,
+                position: self.position,
                 yaw: self.yaw,
                 pitch: self.pitch,
                 flags: PlayerPositionLookFlags::new(false, false, false, false, false),
-                teleport_id: VarInt((self.teleport_id_counter - 1) as i32),
+                teleport_id: VarInt(self.teleport_id_counter as i32),
                 dismount_vehicle: false,
             });
+
+            self.pending_teleports = self.pending_teleports.wrapping_add(1);
+
+            if self.pending_teleports == 0 {
+                log::warn!("too many pending teleports for {}", self.username());
+                self.disconnect_no_reason();
+                return;
+            }
+
+            self.teleport_id_counter = self.teleport_id_counter.wrapping_add(1);
         }
 
         // Set velocity. Do this after teleporting since teleporting sets velocity to
         // zero.
-        if self.flags.velocity_modified() {
-            self.flags.set_velocity_modified(false);
+        if self.bits.velocity_modified() {
+            self.bits.set_velocity_modified(false);
 
             self.send_packet(EntityVelocityUpdate {
                 entity_id: VarInt(0),
@@ -1203,14 +1131,14 @@ impl<C: Config> Client<C> {
         self.loaded_entities.retain(|&id| {
             if let Some(entity) = entities.get(id) {
                 debug_assert!(entity.kind() != EntityKind::Marker);
-                if self.new_position.distance(entity.position()) <= view_dist as f64 * 16.0 {
+                if self.position.distance(entity.position()) <= view_dist as f64 * 16.0 {
                     if let Some(meta) = entity.updated_tracked_data_packet(id) {
                         send_packet(&mut self.send, meta);
                     }
 
                     let position_delta = entity.position() - entity.old_position();
                     let needs_teleport = position_delta.map(f64::abs).reduce_partial_max() >= 8.0;
-                    let flags = entity.flags();
+                    let flags = entity.bits();
 
                     if entity.position() != entity.old_position()
                         && !needs_teleport
@@ -1345,7 +1273,8 @@ impl<C: Config> Client<C> {
         self.entity_events.clear();
 
         self.player_data.clear_modifications();
-        self.old_position = self.new_position;
+        self.old_position = self.position;
+        self.bits.set_created_this_tick(false);
     }
 }
 

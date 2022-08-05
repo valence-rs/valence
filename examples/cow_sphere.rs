@@ -5,10 +5,11 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use log::LevelFilter;
 use valence::async_trait;
 use valence::block::{BlockPos, BlockState};
-use valence::client::GameMode;
+use valence::client::{Client, ClientEvent, GameMode, Hand};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
-use valence::entity::{EntityId, EntityKind};
+use valence::entity::types::Pose;
+use valence::entity::{Entity, EntityEvent, EntityId, EntityKind, TrackedData};
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 use valence::util::to_yaw_and_pitch;
@@ -43,7 +44,7 @@ const SPAWN_POS: BlockPos = BlockPos::new(0, 100, -25);
 #[async_trait]
 impl Config for Game {
     type ChunkState = ();
-    type ClientState = ();
+    type ClientState = EntityId;
     type EntityState = ();
     type ServerState = ServerState;
     type WorldState = ();
@@ -92,10 +93,10 @@ impl Config for Game {
     }
 
     fn update(&self, server: &mut Server<Self>) {
-        let (world_id, world) = server.worlds.iter_mut().next().unwrap();
+        let (world_id, world) = server.worlds.iter_mut().next().expect("missing world");
 
         server.clients.retain(|_, client| {
-            if client.created_tick() == server.shared.current_tick() {
+            if client.created_this_tick() {
                 if self
                     .player_count
                     .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
@@ -105,6 +106,17 @@ impl Config for Game {
                 {
                     client.disconnect("The server is full!".color(Color::RED));
                     return false;
+                }
+
+                match server
+                    .entities
+                    .create_with_uuid(EntityKind::Player, client.uuid(), ())
+                {
+                    Some((id, _)) => client.state = id,
+                    None => {
+                        client.disconnect("Conflicting UUID");
+                        return false;
+                    }
                 }
 
                 client.spawn(world_id);
@@ -132,8 +144,17 @@ impl Config for Game {
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
                 world.meta.player_list_mut().remove(client.uuid());
+                server.entities.delete(client.state);
+
                 return false;
             }
+
+            let entity = server
+                .entities
+                .get_mut(client.state)
+                .expect("missing player entity");
+
+            while client_event_boilerplate(client, entity).is_some() {}
 
             true
         });
@@ -153,7 +174,7 @@ impl Config for Game {
             .map(|c| c.1.position())
             .unwrap_or_default();
 
-        // TODO: hardcoded eye pos.
+        // TODO: remove hardcoded eye pos.
         let eye_pos = Vec3::new(player_pos.x, player_pos.y + 1.6, player_pos.z);
 
         for (cow_id, p) in server
@@ -193,4 +214,120 @@ fn fibonacci_spiral(n: usize) -> impl Iterator<Item = Vec3<f64>> {
         let phi = (1.0 - 2.0 * y).acos();
         Vec3::new(theta.cos() * phi.sin(), theta.sin() * phi.sin(), phi.cos())
     })
+}
+
+fn client_event_boilerplate(
+    client: &mut Client<Game>,
+    entity: &mut Entity<Game>,
+) -> Option<ClientEvent> {
+    let event = client.pop_event()?;
+
+    match &event {
+        ClientEvent::ChatMessage { .. } => {}
+        ClientEvent::SettingsChanged {
+            view_distance,
+            main_hand,
+            displayed_skin_parts,
+            ..
+        } => {
+            client.set_view_distance(*view_distance);
+
+            let player = client.player_mut();
+
+            player.set_cape(displayed_skin_parts.cape());
+            player.set_jacket(displayed_skin_parts.jacket());
+            player.set_left_sleeve(displayed_skin_parts.left_sleeve());
+            player.set_right_sleeve(displayed_skin_parts.right_sleeve());
+            player.set_left_pants_leg(displayed_skin_parts.left_pants_leg());
+            player.set_right_pants_leg(displayed_skin_parts.right_pants_leg());
+            player.set_hat(displayed_skin_parts.hat());
+            player.set_main_arm(*main_hand as u8);
+
+            if let TrackedData::Player(player) = entity.data_mut() {
+                player.set_cape(displayed_skin_parts.cape());
+                player.set_jacket(displayed_skin_parts.jacket());
+                player.set_left_sleeve(displayed_skin_parts.left_sleeve());
+                player.set_right_sleeve(displayed_skin_parts.right_sleeve());
+                player.set_left_pants_leg(displayed_skin_parts.left_pants_leg());
+                player.set_right_pants_leg(displayed_skin_parts.right_pants_leg());
+                player.set_hat(displayed_skin_parts.hat());
+                player.set_main_arm(*main_hand as u8);
+            }
+        }
+        ClientEvent::MovePosition {
+            position,
+            on_ground,
+        } => {
+            entity.set_position(*position);
+            entity.set_on_ground(*on_ground);
+        }
+        ClientEvent::MovePositionAndRotation {
+            position,
+            yaw,
+            pitch,
+            on_ground,
+        } => {
+            entity.set_position(*position);
+            entity.set_yaw(*yaw);
+            entity.set_head_yaw(*yaw);
+            entity.set_pitch(*pitch);
+            entity.set_on_ground(*on_ground);
+        }
+        ClientEvent::MoveRotation {
+            yaw,
+            pitch,
+            on_ground,
+        } => {
+            entity.set_yaw(*yaw);
+            entity.set_head_yaw(*yaw);
+            entity.set_pitch(*pitch);
+            entity.set_on_ground(*on_ground);
+        }
+        ClientEvent::MoveOnGround { on_ground } => {
+            entity.set_on_ground(*on_ground);
+        }
+        ClientEvent::MoveVehicle { .. } => {}
+        ClientEvent::StartSneaking => {
+            if let TrackedData::Player(player) = entity.data_mut() {
+                if player.get_pose() == Pose::Standing {
+                    player.set_pose(Pose::Sneaking);
+                }
+            }
+        }
+        ClientEvent::StopSneaking => {
+            if let TrackedData::Player(player) = entity.data_mut() {
+                if player.get_pose() == Pose::Sneaking {
+                    player.set_pose(Pose::Standing);
+                }
+            }
+        }
+        ClientEvent::StartSprinting => {
+            if let TrackedData::Player(player) = entity.data_mut() {
+                player.set_sprinting(true);
+            }
+        }
+        ClientEvent::StopSprinting => {
+            if let TrackedData::Player(player) = entity.data_mut() {
+                player.set_sprinting(false);
+            }
+        }
+        ClientEvent::StartJumpWithHorse { .. } => {}
+        ClientEvent::StopJumpWithHorse => {}
+        ClientEvent::LeaveBed => {}
+        ClientEvent::OpenHorseInventory => {}
+        ClientEvent::StartFlyingWithElytra => {}
+        ClientEvent::ArmSwing(hand) => {
+            entity.push_event(match hand {
+                Hand::Main => EntityEvent::SwingMainHand,
+                Hand::Off => EntityEvent::SwingOffHand,
+            });
+        }
+        ClientEvent::InteractWithEntity { .. } => {}
+        ClientEvent::SteerBoat { .. } => {}
+        ClientEvent::Digging { .. } => {}
+    }
+
+    entity.set_world(client.world());
+
+    Some(event)
 }

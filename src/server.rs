@@ -40,7 +40,9 @@ use crate::protocol_inner::packets::c2s::login::{
 };
 use crate::protocol_inner::packets::c2s::play::C2sPlayPacket;
 use crate::protocol_inner::packets::c2s::status::{QueryPing, QueryRequest};
-use crate::protocol_inner::packets::s2c::login::{EncryptionRequest, LoginCompression, LoginDisconnect, LoginSuccess};
+use crate::protocol_inner::packets::s2c::login::{
+    EncryptionRequest, LoginCompression, LoginDisconnect, LoginSuccess,
+};
 use crate::protocol_inner::packets::s2c::play::S2cPlayPacket;
 use crate::protocol_inner::packets::s2c::status::{QueryPong, QueryResponse};
 use crate::protocol_inner::packets::Property;
@@ -459,12 +461,7 @@ fn join_player<C: Config>(server: &mut Server<C>, msg: NewClientMessage) {
 
     let _ = msg.reply.send(s2c_packet_channels);
 
-    let client = Client::new(
-        c2s_packet_channels,
-        &server.shared,
-        msg.ncd,
-        C::ClientState::default(),
-    );
+    let client = Client::new(c2s_packet_channels, msg.ncd, C::ClientState::default());
 
     server.clients.insert(client);
 }
@@ -713,30 +710,28 @@ async fn handle_login<C: Config>(
     c.enc.enable_compression(compression_threshold);
     c.dec.enable_compression(compression_threshold);
 
-    let npd = NewClientData {
+    let ncd = NewClientData {
         uuid,
         username,
         textures,
         remote_addr,
     };
 
-    if let Err(reason) = server.0.cfg.login(server, &npd).await {
+    if let Err(reason) = server.0.cfg.login(server, &ncd).await {
         log::info!("Disconnect at login: \"{reason}\"");
-        c.enc
-            .write_packet(&LoginDisconnect { reason })
-            .await?;
+        c.enc.write_packet(&LoginDisconnect { reason }).await?;
         return Ok(None);
     }
 
     c.enc
         .write_packet(&LoginSuccess {
-            uuid: npd.uuid,
-            username: npd.username.clone().into(),
+            uuid: ncd.uuid,
+            username: ncd.username.clone().into(),
             properties: Vec::new(),
         })
         .await?;
 
-    Ok(Some(npd))
+    Ok(Some(ncd))
 }
 
 async fn handle_play<C: Config>(

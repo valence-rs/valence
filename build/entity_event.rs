@@ -44,11 +44,11 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
     Ok(quote! {
         #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-        pub enum Event {
+        pub enum EntityEvent {
             #(#event_variants,)*
         }
 
-        impl Event {
+        impl EntityEvent {
             pub(crate) fn status_or_animation(self) -> StatusOrAnimation {
                 match self {
                     #(#status_arms)*

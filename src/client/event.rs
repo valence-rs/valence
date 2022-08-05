@@ -13,7 +13,7 @@ pub use crate::protocol_inner::packets::s2c::play::GameMode;
 /// Client events can be obtained from
 /// [`pop_event`](crate::client::Client::pop_event).
 #[derive(Debug)]
-pub enum Event {
+pub enum ClientEvent {
     /// A regular message was sent to the chat.
     ChatMessage {
         /// The content of the message
@@ -21,31 +21,44 @@ pub enum Event {
         /// The time the message was sent.
         timestamp: Duration,
     },
-    /// Settings were changed. The value in this variant is the _previous_
-    /// client settings.
-    SettingsChanged(Option<Settings>),
-    /// The client moved.
-    Movement {
-        /// Absolute coordinates of the previous position.
-        old_position: Vec3<f64>,
-        /// Previous velocity in m/s.
-        old_velocity: Vec3<f32>,
-        /// The previous yaw (in degrees).
-        old_yaw: f32,
-        /// The previous pitch (in degrees).
-        old_pitch: f32,
-        /// If the client was previously on the ground.
-        old_on_ground: bool,
-        /// Absolute coodinates of the new position.
-        new_position: Vec3<f64>,
-        /// New velocity in m/s.
-        new_velocity: Vec3<f32>,
-        /// The new yaw (in degrees).
-        new_yaw: f32,
-        /// The new pitch (in degrees).
-        new_pitch: f32,
-        /// If the client is now on the ground.
-        new_on_ground: bool,
+    /// Settings were changed. This is always sent once after joining by the
+    /// vanilla client.
+    SettingsChanged {
+        /// e.g. en_US
+        locale: String,
+        /// The client side render distance, in chunks.
+        ///
+        /// The value is always in `2..=32`.
+        view_distance: u8,
+        chat_mode: ChatMode,
+        /// `true` if the client has chat colors enabled, `false` otherwise.
+        chat_colors: bool,
+        main_hand: MainHand,
+        displayed_skin_parts: DisplayedSkinParts,
+        allow_server_listings: bool,
+    },
+    MovePosition {
+        position: Vec3<f64>,
+        on_ground: bool,
+    },
+    MovePositionAndRotation {
+        position: Vec3<f64>,
+        yaw: f32,
+        pitch: f32,
+        on_ground: bool,
+    },
+    MoveRotation {
+        yaw: f32,
+        pitch: f32,
+        on_ground: bool,
+    },
+    MoveOnGround {
+        on_ground: bool,
+    },
+    MoveVehicle {
+        position: Vec3<f64>,
+        yaw: f32,
+        pitch: f32,
     },
     StartSneaking,
     StopSneaking,

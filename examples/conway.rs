@@ -7,11 +7,11 @@ use num::Integer;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 use valence::biome::Biome;
 use valence::block::BlockState;
-use valence::client::{Event, Hand};
+use valence::client::{Client, ClientEvent, Hand};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
-use valence::entity::data::Pose;
-use valence::entity::{TrackedData, EntityId, EntityKind, Event as EntityEvent};
+use valence::entity::types::Pose;
+use valence::entity::{Entity, EntityEvent, EntityId, EntityKind, TrackedData};
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 use valence::{async_trait, ident};
@@ -42,12 +42,6 @@ struct ServerState {
     board_buf: Box<[bool]>,
 }
 
-#[derive(Default)]
-struct ClientState {
-    /// The client's player entity.
-    player: EntityId,
-}
-
 const MAX_PLAYERS: usize = 10;
 
 const SIZE_X: usize = 100;
@@ -57,7 +51,7 @@ const BOARD_Y: i32 = 50;
 #[async_trait]
 impl Config for Game {
     type ChunkState = ();
-    type ClientState = ClientState;
+    type ClientState = EntityId;
     type EntityState = ();
     type ServerState = ServerState;
     type WorldState = ();
@@ -121,7 +115,7 @@ impl Config for Game {
         ];
 
         server.clients.retain(|_, client| {
-            if client.created_tick() == server.shared.current_tick() {
+            if client.created_this_tick() {
                 if self
                     .player_count
                     .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
@@ -131,6 +125,17 @@ impl Config for Game {
                 {
                     client.disconnect("The server is full!".color(Color::RED));
                     return false;
+                }
+
+                match server
+                    .entities
+                    .create_with_uuid(EntityKind::Player, client.uuid(), ())
+                {
+                    Some((id, _)) => client.state = id,
+                    None => {
+                        client.disconnect("Conflicting UUID");
+                        return false;
+                    }
                 }
 
                 client.spawn(world_id);
@@ -145,63 +150,33 @@ impl Config for Game {
                     None,
                 );
 
-                client.state.player = server
-                    .entities
-                    .create_with_uuid(EntityKind::Player, client.uuid(), ())
-                    .unwrap()
-                    .0;
-
                 client.send_message("Welcome to Conway's game of life in Minecraft!".italic());
                 client.send_message("Hold the left mouse button to bring blocks to life.".italic());
             }
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.delete(client.state.player);
+                server.entities.delete(client.state);
                 world.meta.player_list_mut().remove(client.uuid());
                 return false;
             }
 
-            let player = server.entities.get_mut(client.state.player).unwrap();
+            let player = server.entities.get_mut(client.state).unwrap();
 
             if client.position().y <= 0.0 {
                 client.teleport(spawn_pos, client.yaw(), client.pitch());
             }
 
-            while let Some(event) = client.pop_event() {
-                match event {
-                    Event::Digging { position, .. } => {
-                        if (0..SIZE_X as i32).contains(&position.x)
-                            && (0..SIZE_Z as i32).contains(&position.z)
-                            && position.y == BOARD_Y
-                        {
-                            server.state.board
-                                [position.x as usize + position.z as usize * SIZE_X] = true;
-                        }
+            while let Some(event) = client_event_boilerplate(client, player) {
+                if let ClientEvent::Digging { position, .. } = event {
+                    if (0..SIZE_X as i32).contains(&position.x)
+                        && (0..SIZE_Z as i32).contains(&position.z)
+                        && position.y == BOARD_Y
+                    {
+                        server.state.board[position.x as usize + position.z as usize * SIZE_X] =
+                            true;
                     }
-                    Event::ArmSwing(hand) => match hand {
-                        Hand::Main => player.trigger_event(EntityEvent::SwingMainHand),
-                        Hand::Off => player.trigger_event(EntityEvent::SwingOffHand),
-                    },
-                    _ => {}
                 }
-            }
-
-            player.set_world(client.world());
-            player.set_position(client.position());
-            player.set_yaw(client.yaw());
-            player.set_head_yaw(client.yaw());
-            player.set_pitch(client.pitch());
-            player.set_on_ground(client.on_ground());
-
-            if let TrackedData::Player(player) = player.view_mut() {
-                if client.is_sneaking() {
-                    player.set_pose(Pose::Sneaking);
-                } else {
-                    player.set_pose(Pose::Standing);
-                }
-
-                player.set_sprinting(client.is_sprinting());
             }
 
             true
@@ -268,4 +243,120 @@ impl Config for Game {
             }
         }
     }
+}
+
+fn client_event_boilerplate(
+    client: &mut Client<Game>,
+    entity: &mut Entity<Game>,
+) -> Option<ClientEvent> {
+    let event = client.pop_event()?;
+
+    match &event {
+        ClientEvent::ChatMessage { .. } => {}
+        ClientEvent::SettingsChanged {
+            view_distance,
+            main_hand,
+            displayed_skin_parts,
+            ..
+        } => {
+            client.set_view_distance(*view_distance);
+
+            let player = client.player_mut();
+
+            player.set_cape(displayed_skin_parts.cape());
+            player.set_jacket(displayed_skin_parts.jacket());
+            player.set_left_sleeve(displayed_skin_parts.left_sleeve());
+            player.set_right_sleeve(displayed_skin_parts.right_sleeve());
+            player.set_left_pants_leg(displayed_skin_parts.left_pants_leg());
+            player.set_right_pants_leg(displayed_skin_parts.right_pants_leg());
+            player.set_hat(displayed_skin_parts.hat());
+            player.set_main_arm(*main_hand as u8);
+
+            if let TrackedData::Player(player) = entity.data_mut() {
+                player.set_cape(displayed_skin_parts.cape());
+                player.set_jacket(displayed_skin_parts.jacket());
+                player.set_left_sleeve(displayed_skin_parts.left_sleeve());
+                player.set_right_sleeve(displayed_skin_parts.right_sleeve());
+                player.set_left_pants_leg(displayed_skin_parts.left_pants_leg());
+                player.set_right_pants_leg(displayed_skin_parts.right_pants_leg());
+                player.set_hat(displayed_skin_parts.hat());
+                player.set_main_arm(*main_hand as u8);
+            }
+        }
+        ClientEvent::MovePosition {
+            position,
+            on_ground,
+        } => {
+            entity.set_position(*position);
+            entity.set_on_ground(*on_ground);
+        }
+        ClientEvent::MovePositionAndRotation {
+            position,
+            yaw,
+            pitch,
+            on_ground,
+        } => {
+            entity.set_position(*position);
+            entity.set_yaw(*yaw);
+            entity.set_head_yaw(*yaw);
+            entity.set_pitch(*pitch);
+            entity.set_on_ground(*on_ground);
+        }
+        ClientEvent::MoveRotation {
+            yaw,
+            pitch,
+            on_ground,
+        } => {
+            entity.set_yaw(*yaw);
+            entity.set_head_yaw(*yaw);
+            entity.set_pitch(*pitch);
+            entity.set_on_ground(*on_ground);
+        }
+        ClientEvent::MoveOnGround { on_ground } => {
+            entity.set_on_ground(*on_ground);
+        }
+        ClientEvent::MoveVehicle { .. } => {}
+        ClientEvent::StartSneaking => {
+            if let TrackedData::Player(player) = entity.data_mut() {
+                if player.get_pose() == Pose::Standing {
+                    player.set_pose(Pose::Sneaking);
+                }
+            }
+        }
+        ClientEvent::StopSneaking => {
+            if let TrackedData::Player(player) = entity.data_mut() {
+                if player.get_pose() == Pose::Sneaking {
+                    player.set_pose(Pose::Standing);
+                }
+            }
+        }
+        ClientEvent::StartSprinting => {
+            if let TrackedData::Player(player) = entity.data_mut() {
+                player.set_sprinting(true);
+            }
+        }
+        ClientEvent::StopSprinting => {
+            if let TrackedData::Player(player) = entity.data_mut() {
+                player.set_sprinting(false);
+            }
+        }
+        ClientEvent::StartJumpWithHorse { .. } => {}
+        ClientEvent::StopJumpWithHorse => {}
+        ClientEvent::LeaveBed => {}
+        ClientEvent::OpenHorseInventory => {}
+        ClientEvent::StartFlyingWithElytra => {}
+        ClientEvent::ArmSwing(hand) => {
+            entity.push_event(match hand {
+                Hand::Main => EntityEvent::SwingMainHand,
+                Hand::Off => EntityEvent::SwingOffHand,
+            });
+        }
+        ClientEvent::InteractWithEntity { .. } => {}
+        ClientEvent::SteerBoat { .. } => {}
+        ClientEvent::Digging { .. } => {}
+    }
+
+    entity.set_world(client.world());
+
+    Some(event)
 }

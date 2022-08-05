@@ -6,7 +6,7 @@ use std::iter::FusedIterator;
 use std::num::NonZeroU32;
 
 use bitfield_struct::bitfield;
-pub use kinds::{TrackedData, EntityKind};
+pub use data::{EntityKind, TrackedData};
 use rayon::iter::ParallelIterator;
 use uuid::Uuid;
 use vek::{Aabb, Vec3};
@@ -22,7 +22,7 @@ use crate::world::WorldId;
 use crate::STANDARD_TPS;
 
 pub mod data;
-pub mod kinds;
+pub mod types;
 
 include!(concat!(env!("OUT_DIR"), "/entity_event.rs"));
 
@@ -76,7 +76,7 @@ impl<C: Config> Entities<C> {
                     state: data,
                     variants: TrackedData::new(kind),
                     events: Vec::new(),
-                    flags: EntityFlags(0),
+                    bits: EntityBits::new(),
                     world: WorldId::NULL,
                     new_position: Vec3::default(),
                     old_position: Vec3::default(),
@@ -203,9 +203,9 @@ impl<C: Config> Entities<C> {
             e.variants.clear_modifications();
             e.events.clear();
 
-            e.flags.set_yaw_or_pitch_modified(false);
-            e.flags.set_head_yaw_modified(false);
-            e.flags.set_velocity_modified(false);
+            e.bits.set_yaw_or_pitch_modified(false);
+            e.bits.set_head_yaw_modified(false);
+            e.bits.set_velocity_modified(false);
         }
     }
 }
@@ -244,8 +244,8 @@ pub struct Entity<C: Config> {
     /// Custom data.
     pub state: C::EntityState,
     variants: TrackedData,
-    flags: EntityFlags,
-    events: Vec<Event>,
+    bits: EntityBits,
+    events: Vec<EntityEvent>,
     world: WorldId,
     new_position: Vec3<f64>,
     old_position: Vec3<f64>,
@@ -257,7 +257,7 @@ pub struct Entity<C: Config> {
 }
 
 #[bitfield(u8)]
-pub(crate) struct EntityFlags {
+pub(crate) struct EntityBits {
     pub yaw_or_pitch_modified: bool,
     pub head_yaw_modified: bool,
     pub velocity_modified: bool,
@@ -267,15 +267,15 @@ pub(crate) struct EntityFlags {
 }
 
 impl<C: Config> Entity<C> {
-    pub(crate) fn flags(&self) -> EntityFlags {
-        self.flags
+    pub(crate) fn bits(&self) -> EntityBits {
+        self.bits
     }
 
-    pub fn view(&self) -> &TrackedData {
+    pub fn data(&self) -> &TrackedData {
         &self.variants
     }
 
-    pub fn view_mut(&mut self) -> &mut TrackedData {
+    pub fn data_mut(&mut self) -> &mut TrackedData {
         &mut self.variants
     }
 
@@ -284,11 +284,11 @@ impl<C: Config> Entity<C> {
         self.variants.kind()
     }
 
-    pub fn trigger_event(&mut self, event: Event) {
+    pub fn push_event(&mut self, event: EntityEvent) {
         self.events.push(event);
     }
 
-    pub(crate) fn events(&self) -> &[Event] {
+    pub(crate) fn events(&self) -> &[EntityEvent] {
         &self.events
     }
 
@@ -337,7 +337,7 @@ impl<C: Config> Entity<C> {
     pub fn set_yaw(&mut self, yaw: f32) {
         if self.yaw != yaw {
             self.yaw = yaw;
-            self.flags.set_yaw_or_pitch_modified(true);
+            self.bits.set_yaw_or_pitch_modified(true);
         }
     }
 
@@ -350,7 +350,7 @@ impl<C: Config> Entity<C> {
     pub fn set_pitch(&mut self, pitch: f32) {
         if self.pitch != pitch {
             self.pitch = pitch;
-            self.flags.set_yaw_or_pitch_modified(true);
+            self.bits.set_yaw_or_pitch_modified(true);
         }
     }
 
@@ -363,7 +363,7 @@ impl<C: Config> Entity<C> {
     pub fn set_head_yaw(&mut self, head_yaw: f32) {
         if self.head_yaw != head_yaw {
             self.head_yaw = head_yaw;
-            self.flags.set_head_yaw_modified(true);
+            self.bits.set_head_yaw_modified(true);
         }
     }
 
@@ -378,18 +378,18 @@ impl<C: Config> Entity<C> {
 
         if self.velocity != new_vel {
             self.velocity = new_vel;
-            self.flags.set_velocity_modified(true);
+            self.bits.set_velocity_modified(true);
         }
     }
 
     /// Gets the value of the "on ground" flag.
     pub fn on_ground(&self) -> bool {
-        self.flags.on_ground()
+        self.bits.on_ground()
     }
 
     /// Sets the value of the "on ground" flag.
     pub fn set_on_ground(&mut self, on_ground: bool) {
-        self.flags.set_on_ground(on_ground);
+        self.bits.set_on_ground(on_ground);
     }
 
     /// Gets the UUID of this entity.
@@ -405,7 +405,7 @@ impl<C: Config> Entity<C> {
     /// The hitbox of an entity is determined by its position, entity type, and
     /// other state specific to that type.
     ///
-    /// [interact event]: crate::client::Event::InteractWithEntity
+    /// [interact event]: crate::client::EntityEvent::InteractWithEntity
     pub fn hitbox(&self) -> Aabb<f64> {
         let dims = match &self.variants {
             TrackedData::Allay(_) => [0.6, 0.35, 0.6],

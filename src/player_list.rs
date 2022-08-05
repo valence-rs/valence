@@ -68,7 +68,7 @@ impl PlayerList {
                         game_mode,
                         ping,
                         display_name: display_name.into(),
-                        flags: EntryFlags::new().with_created_this_tick(true),
+                        bits: EntryBits::new().with_created_this_tick(true),
                     });
                 } else {
                     e.set_game_mode(game_mode);
@@ -84,7 +84,7 @@ impl PlayerList {
                     game_mode,
                     ping,
                     display_name: display_name.into(),
-                    flags: EntryFlags::new().with_created_this_tick(true),
+                    bits: EntryBits::new().with_created_this_tick(true),
                 });
                 true
             }
@@ -211,7 +211,7 @@ impl PlayerList {
         let mut display_name = Vec::new();
 
         for (&uuid, e) in self.entries.iter() {
-            if e.flags.created_this_tick() {
+            if e.bits.created_this_tick() {
                 let mut properties = Vec::new();
                 if let Some(textures) = &e.textures {
                     properties.push(Property {
@@ -234,15 +234,15 @@ impl PlayerList {
                 continue;
             }
 
-            if e.flags.modified_game_mode() {
+            if e.bits.modified_game_mode() {
                 game_mode.push((uuid, e.game_mode));
             }
 
-            if e.flags.modified_ping() {
+            if e.bits.modified_ping() {
                 ping.push((uuid, VarInt(e.ping)));
             }
 
-            if e.flags.modified_display_name() {
+            if e.bits.modified_display_name() {
                 display_name.push((uuid, e.display_name.clone()));
             }
         }
@@ -276,7 +276,7 @@ impl PlayerList {
 
     pub(crate) fn update(&mut self) {
         for e in self.entries.values_mut() {
-            e.flags = EntryFlags(0);
+            e.bits = EntryBits::new();
         }
         self.removed.clear();
         self.modified_header_or_footer = false;
@@ -290,7 +290,17 @@ pub struct PlayerListEntry {
     game_mode: GameMode,
     ping: i32,
     display_name: Option<Text>,
-    flags: EntryFlags,
+    bits: EntryBits,
+}
+
+#[bitfield(u8)]
+struct EntryBits {
+    created_this_tick: bool,
+    modified_game_mode: bool,
+    modified_ping: bool,
+    modified_display_name: bool,
+    #[bits(4)]
+    _pad: u8,
 }
 
 impl PlayerListEntry {
@@ -313,7 +323,7 @@ impl PlayerListEntry {
     pub fn set_game_mode(&mut self, game_mode: GameMode) {
         if self.game_mode != game_mode {
             self.game_mode = game_mode;
-            self.flags.set_modified_game_mode(true);
+            self.bits.set_modified_game_mode(true);
         }
     }
 
@@ -326,7 +336,7 @@ impl PlayerListEntry {
     pub fn set_ping(&mut self, ping: i32) {
         if self.ping != ping {
             self.ping = ping;
-            self.flags.set_modified_ping(true);
+            self.bits.set_modified_ping(true);
         }
     }
 
@@ -340,17 +350,7 @@ impl PlayerListEntry {
         let display_name = display_name.into();
         if self.display_name != display_name {
             self.display_name = display_name;
-            self.flags.set_modified_display_name(true);
+            self.bits.set_modified_display_name(true);
         }
     }
-}
-
-#[bitfield(u8)]
-struct EntryFlags {
-    created_this_tick: bool,
-    modified_game_mode: bool,
-    modified_ping: bool,
-    modified_display_name: bool,
-    #[bits(4)]
-    _pad: u8,
 }

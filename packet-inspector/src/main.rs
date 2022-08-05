@@ -13,13 +13,13 @@ use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Semaphore;
 use valence::protocol::codec::Decoder;
-use valence::protocol::packets::handshake::{Handshake, HandshakeNextState};
-use valence::protocol::packets::login::c2s::{EncryptionResponse, LoginStart};
-use valence::protocol::packets::login::s2c::{LoginSuccess, S2cLoginPacket};
+use valence::protocol::packets::c2s::handshake::{Handshake, HandshakeNextState};
+use valence::protocol::packets::c2s::login::{EncryptionResponse, LoginStart};
 use valence::protocol::packets::c2s::play::C2sPlayPacket;
+use valence::protocol::packets::c2s::status::{QueryPing, QueryRequest};
+use valence::protocol::packets::s2c::login::{LoginSuccess, S2cLoginPacket};
 use valence::protocol::packets::s2c::play::S2cPlayPacket;
-use valence::protocol::packets::status::c2s::{QueryPing, QueryRequest};
-use valence::protocol::packets::status::s2c::{QueryPong, QueryResponse};
+use valence::protocol::packets::s2c::status::{QueryPong, QueryResponse};
 use valence::protocol::packets::{DecodePacket, EncodePacket};
 use valence::protocol::{Encode, VarInt};
 

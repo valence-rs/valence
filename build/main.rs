@@ -16,11 +16,13 @@ pub fn main() -> anyhow::Result<()> {
         (block::build, "block.rs"),
     ];
 
+    for (_, file_name) in generators {
+        println!("cargo:rerun-if-changed=extracted/{file_name}");
+    }
+
     let out_dir = env::var_os("OUT_DIR").context("can't get OUT_DIR env var")?;
 
     for (g, file_name) in generators {
-        println!("cargo:rerun-if-changed=extracted/{file_name}");
-
         let path = Path::new(&out_dir).join(file_name);
         let code = g()?.to_string();
         fs::write(&path, &code)?;

@@ -3,15 +3,15 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
 use valence::block::{BlockPos, BlockState};
-use valence::client::{ClientId, Event, GameMode, Hand, InteractWithEntityKind};
+use valence::client::{Client, ClientEvent, ClientId, GameMode, Hand, InteractWithEntityKind};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
-use valence::entity::data::Pose;
-use valence::entity::{TrackedData, EntityId, EntityKind, Event as EntityEvent};
+use valence::entity::types::Pose;
+use valence::entity::{Entity, EntityEvent, EntityId, EntityKind, TrackedData};
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 use valence::{async_trait, Ticks};
-use vek::Vec3;
+use vek::{Vec2, Vec3};
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()
@@ -119,7 +119,7 @@ impl Config for Game {
         let current_tick = server.shared.current_tick();
 
         server.clients.retain(|client_id, client| {
-            if client.created_tick() == current_tick {
+            if client.created_this_tick() {
                 if self
                     .player_count
                     .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
@@ -130,6 +130,23 @@ impl Config for Game {
                     client.disconnect("The server is full!".color(Color::RED));
                     return false;
                 }
+
+                let (player_id, player) = match server.entities.create_with_uuid(
+                    EntityKind::Player,
+                    client.uuid(),
+                    EntityState::default(),
+                ) {
+                    Some(e) => e,
+                    None => {
+                        client.disconnect("Conflicting UUID");
+                        return false;
+                    }
+                };
+
+                player.state.client = client_id;
+
+                client.state.player = player_id;
+                client.state.extra_knockback = true;
 
                 client.spawn(world_id);
                 client.set_game_mode(GameMode::Survival);
@@ -152,17 +169,6 @@ impl Config for Game {
                     None,
                 );
 
-                let (player_id, player) = server
-                    .entities
-                    .create_with_uuid(EntityKind::Player, client.uuid(), EntityState::default())
-                    .unwrap();
-
-                client.state.player = player_id;
-                client.state.extra_knockback = true;
-
-                player.state.client = client_id;
-                player.state.last_attack_time = 0;
-
                 client.send_message("Welcome to the arena.".italic());
                 if self.player_count.load(Ordering::SeqCst) <= 1 {
                     client.send_message("Have another player join the game with you.".italic());
@@ -174,41 +180,6 @@ impl Config for Game {
                 server.entities.delete(client.state.player);
                 world.meta.player_list_mut().remove(client.uuid());
                 return false;
-            }
-
-            while let Some(event) = client.pop_event() {
-                match event {
-                    Event::StartSprinting => {
-                        client.state.extra_knockback = true;
-                    }
-                    Event::InteractWithEntity {
-                        id,
-                        kind: InteractWithEntityKind::Attack,
-                        ..
-                    } => {
-                        if let Some(target) = server.entities.get_mut(id) {
-                            if !target.state.attacked
-                                && current_tick - target.state.last_attack_time >= 10
-                                && id != client.state.player
-                            {
-                                target.state.attacked = true;
-                                target.state.attacker_pos = client.position();
-                                target.state.extra_knockback = client.state.extra_knockback;
-                                target.state.last_attack_time = current_tick;
-
-                                client.state.extra_knockback = false;
-                            }
-                        }
-                    }
-                    Event::ArmSwing(hand) => {
-                        let player = server.entities.get_mut(client.state.player).unwrap();
-                        match hand {
-                            Hand::Main => player.trigger_event(EntityEvent::SwingMainHand),
-                            Hand::Off => player.trigger_event(EntityEvent::SwingOffHand),
-                        }
-                    }
-                    _ => (),
-                }
             }
 
             if client.position().y <= 0.0 {
@@ -223,53 +194,189 @@ impl Config for Game {
                 );
             }
 
-            let player = server.entities.get_mut(client.state.player).unwrap();
+            loop {
+                let player = server
+                    .entities
+                    .get_mut(client.state.player)
+                    .expect("missing player entity");
 
-            player.set_world(client.world());
-            player.set_position(client.position());
-            player.set_yaw(client.yaw());
-            player.set_head_yaw(client.yaw());
-            player.set_pitch(client.pitch());
-            player.set_on_ground(client.on_ground());
+                match client_event_boilerplate(client, player) {
+                    Some(ClientEvent::StartSprinting) => {
+                        client.state.extra_knockback = true;
+                    }
+                    Some(ClientEvent::InteractWithEntity {
+                        id,
+                        kind: InteractWithEntityKind::Attack,
+                        ..
+                    }) => {
+                        if let Some(target) = server.entities.get_mut(id) {
+                            if !target.state.attacked
+                                && current_tick - target.state.last_attack_time >= 10
+                                && id != client.state.player
+                            {
+                                target.state.attacked = true;
+                                target.state.attacker_pos = client.position();
+                                target.state.extra_knockback = client.state.extra_knockback;
+                                target.state.last_attack_time = current_tick;
 
-            if let TrackedData::Player(player) = player.view_mut() {
-                if client.is_sneaking() {
-                    player.set_pose(Pose::Sneaking);
-                } else {
-                    player.set_pose(Pose::Standing);
+                                client.state.extra_knockback = false;
+                            }
+                        }
+                    }
+                    Some(_) => {}
+                    None => break,
                 }
-
-                player.set_sprinting(client.is_sprinting());
             }
 
             true
         });
 
-        for (_, e) in server.entities.iter_mut() {
-            if e.state.attacked {
-                e.state.attacked = false;
-                let victim = server.clients.get_mut(e.state.client).unwrap();
+        for (_, entity) in server.entities.iter_mut() {
+            if entity.state.attacked {
+                entity.state.attacked = false;
+                if let Some(victim) = server.clients.get_mut(entity.state.client) {
+                    let victim_pos = Vec2::new(victim.position().x, victim.position().z);
+                    let attacker_pos =
+                        Vec2::new(entity.state.attacker_pos.x, entity.state.attacker_pos.z);
 
-                let mut vel = (victim.position() - e.state.attacker_pos).normalized();
+                    let dir = (victim_pos - attacker_pos).normalized();
 
-                let knockback_xz = if e.state.extra_knockback { 18.0 } else { 8.0 };
-                let knockback_y = if e.state.extra_knockback {
-                    8.432
-                } else {
-                    6.432
-                };
+                    let knockback_xz = if entity.state.extra_knockback {
+                        18.0
+                    } else {
+                        8.0
+                    };
+                    let knockback_y = if entity.state.extra_knockback {
+                        8.432
+                    } else {
+                        6.432
+                    };
 
-                vel.x *= knockback_xz;
-                vel.y = knockback_y;
-                vel.z *= knockback_xz;
+                    let vel = Vec3::new(dir.x * knockback_xz, knockback_y, dir.y * knockback_xz);
+                    victim.set_velocity(vel.as_());
 
-                victim.set_velocity(victim.velocity() / 2.0 + vel.as_());
-
-                e.trigger_event(EntityEvent::DamageFromGenericSource);
-                e.trigger_event(EntityEvent::Damage);
-                victim.trigger_entity_event(EntityEvent::DamageFromGenericSource);
-                victim.trigger_entity_event(EntityEvent::Damage);
+                    entity.push_event(EntityEvent::DamageFromGenericSource);
+                    entity.push_event(EntityEvent::Damage);
+                    victim.push_entity_event(EntityEvent::DamageFromGenericSource);
+                    victim.push_entity_event(EntityEvent::Damage);
+                }
             }
         }
     }
+}
+
+fn client_event_boilerplate(
+    client: &mut Client<Game>,
+    entity: &mut Entity<Game>,
+) -> Option<ClientEvent> {
+    let event = client.pop_event()?;
+
+    match &event {
+        ClientEvent::ChatMessage { .. } => {}
+        ClientEvent::SettingsChanged {
+            view_distance,
+            main_hand,
+            displayed_skin_parts,
+            ..
+        } => {
+            client.set_view_distance(*view_distance);
+
+            let player = client.player_mut();
+
+            player.set_cape(displayed_skin_parts.cape());
+            player.set_jacket(displayed_skin_parts.jacket());
+            player.set_left_sleeve(displayed_skin_parts.left_sleeve());
+            player.set_right_sleeve(displayed_skin_parts.right_sleeve());
+            player.set_left_pants_leg(displayed_skin_parts.left_pants_leg());
+            player.set_right_pants_leg(displayed_skin_parts.right_pants_leg());
+            player.set_hat(displayed_skin_parts.hat());
+            player.set_main_arm(*main_hand as u8);
+
+            if let TrackedData::Player(player) = entity.data_mut() {
+                player.set_cape(displayed_skin_parts.cape());
+                player.set_jacket(displayed_skin_parts.jacket());
+                player.set_left_sleeve(displayed_skin_parts.left_sleeve());
+                player.set_right_sleeve(displayed_skin_parts.right_sleeve());
+                player.set_left_pants_leg(displayed_skin_parts.left_pants_leg());
+                player.set_right_pants_leg(displayed_skin_parts.right_pants_leg());
+                player.set_hat(displayed_skin_parts.hat());
+                player.set_main_arm(*main_hand as u8);
+            }
+        }
+        ClientEvent::MovePosition {
+            position,
+            on_ground,
+        } => {
+            entity.set_position(*position);
+            entity.set_on_ground(*on_ground);
+        }
+        ClientEvent::MovePositionAndRotation {
+            position,
+            yaw,
+            pitch,
+            on_ground,
+        } => {
+            entity.set_position(*position);
+            entity.set_yaw(*yaw);
+            entity.set_head_yaw(*yaw);
+            entity.set_pitch(*pitch);
+            entity.set_on_ground(*on_ground);
+        }
+        ClientEvent::MoveRotation {
+            yaw,
+            pitch,
+            on_ground,
+        } => {
+            entity.set_yaw(*yaw);
+            entity.set_head_yaw(*yaw);
+            entity.set_pitch(*pitch);
+            entity.set_on_ground(*on_ground);
+        }
+        ClientEvent::MoveOnGround { on_ground } => {
+            entity.set_on_ground(*on_ground);
+        }
+        ClientEvent::MoveVehicle { .. } => {}
+        ClientEvent::StartSneaking => {
+            if let TrackedData::Player(player) = entity.data_mut() {
+                if player.get_pose() == Pose::Standing {
+                    player.set_pose(Pose::Sneaking);
+                }
+            }
+        }
+        ClientEvent::StopSneaking => {
+            if let TrackedData::Player(player) = entity.data_mut() {
+                if player.get_pose() == Pose::Sneaking {
+                    player.set_pose(Pose::Standing);
+                }
+            }
+        }
+        ClientEvent::StartSprinting => {
+            if let TrackedData::Player(player) = entity.data_mut() {
+                player.set_sprinting(true);
+            }
+        }
+        ClientEvent::StopSprinting => {
+            if let TrackedData::Player(player) = entity.data_mut() {
+                player.set_sprinting(false);
+            }
+        }
+        ClientEvent::StartJumpWithHorse { .. } => {}
+        ClientEvent::StopJumpWithHorse => {}
+        ClientEvent::LeaveBed => {}
+        ClientEvent::OpenHorseInventory => {}
+        ClientEvent::StartFlyingWithElytra => {}
+        ClientEvent::ArmSwing(hand) => {
+            entity.push_event(match hand {
+                Hand::Main => EntityEvent::SwingMainHand,
+                Hand::Off => EntityEvent::SwingOffHand,
+            });
+        }
+        ClientEvent::InteractWithEntity { .. } => {}
+        ClientEvent::SteerBoat { .. } => {}
+        ClientEvent::Digging { .. } => {}
+    }
+
+    entity.set_world(client.world());
+
+    Some(event)
 }
