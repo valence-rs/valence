@@ -1,5 +1,5 @@
 {
-  "collision_shapes": [
+  "shapes": [
     {
       "min_x": 0.0,
       "min_y": 0.0,

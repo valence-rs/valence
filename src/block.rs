@@ -4,6 +4,7 @@
 
 use std::fmt::{self, Display};
 use std::io::{Read, Write};
+use std::iter::FusedIterator;
 
 use anyhow::Context;
 

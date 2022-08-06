@@ -10,11 +10,12 @@ use crate::ident;
 #[derive(Deserialize, Clone, Debug)]
 struct TopLevel {
     blocks: Vec<Block>,
-    collision_shapes: Vec<CollisionShape>,
+    shapes: Vec<Shape>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
 struct Block {
+    #[allow(unused)]
     id: u16,
     translation_key: String,
     name: String,
@@ -48,7 +49,7 @@ struct State {
 }
 
 #[derive(Deserialize, Clone, Debug)]
-struct CollisionShape {
+struct Shape {
     min_x: f64,
     min_y: f64,
     min_z: f64,
@@ -58,10 +59,8 @@ struct CollisionShape {
 }
 
 pub fn build() -> anyhow::Result<TokenStream> {
-    let TopLevel {
-        blocks,
-        collision_shapes,
-    } = serde_json::from_str(include_str!("../extracted/blocks.json"))?;
+    let TopLevel { blocks, shapes } =
+        serde_json::from_str(include_str!("../extracted/blocks.json"))?;
 
     let max_state_id = blocks.iter().map(|b| b.max_state_id()).max().unwrap();
 
@@ -74,6 +73,65 @@ pub fn build() -> anyhow::Result<TokenStream> {
             quote! {
                 #min..=#max => BlockKind::#name,
             }
+        })
+        .collect::<TokenStream>();
+
+    let state_to_luminance_arms = blocks
+        .iter()
+        .flat_map(|b| {
+            b.states.iter().filter(|s| s.luminance != 0).map(|s| {
+                let id = s.id;
+                let luminance = s.luminance;
+                quote! {
+                    #id => #luminance,
+                }
+            })
+        })
+        .collect::<TokenStream>();
+
+    let state_to_opaque_arms = blocks
+        .iter()
+        .flat_map(|b| {
+            b.states.iter().filter(|s| !s.opaque).map(|s| {
+                let id = s.id;
+                quote! {
+                    #id => false,
+                }
+            })
+        })
+        .collect::<TokenStream>();
+
+    let shapes = shapes.iter().map(|s| {
+        let min_x = s.min_x;
+        let min_y = s.min_y;
+        let min_z = s.min_z;
+        let max_x = s.max_x;
+        let max_y = s.max_y;
+        let max_z = s.max_z;
+        quote! {
+            [
+                #min_x,
+                #min_y,
+                #min_z,
+                #max_x,
+                #max_y,
+                #max_z,
+            ]
+        }
+    });
+
+    let shape_count = shapes.len();
+
+    let state_to_collision_shapes_arms = blocks
+        .iter()
+        .flat_map(|b| {
+            b.states.iter().map(|s| {
+                let id = s.id;
+                let collision_shapes = &s.collision_shapes;
+                quote! {
+                    #id => &[#(#collision_shapes),*],
+                }
+            })
         })
         .collect::<TokenStream>();
 
@@ -347,14 +405,6 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Returns the [`BlockKind`] of this block state.
-            pub const fn to_kind(self) -> BlockKind {
-                match self.0 {
-                    #state_to_kind_arms
-                    _ => unreachable!(),
-                }
-            }
-
             /// Constructs a block state from a raw block state ID.
             ///
             /// If the given ID is invalid, `None` is returned.
@@ -369,6 +419,14 @@ pub fn build() -> anyhow::Result<TokenStream> {
             pub(crate) const fn from_raw_unchecked(id: u16) -> Self {
                 debug_assert!(Self::from_raw(id).is_some());
                 Self(id)
+            }
+
+            /// Returns the [`BlockKind`] of this block state.
+            pub const fn to_kind(self) -> BlockKind {
+                match self.0 {
+                    #state_to_kind_arms
+                    _ => unreachable!(),
+                }
             }
 
             /// Converts this block state to its underlying raw block state ID.
@@ -418,6 +476,39 @@ pub fn build() -> anyhow::Result<TokenStream> {
             /// If this block is water or lava.
             pub const fn is_liquid(self) -> bool {
                 matches!(self.to_kind(), BlockKind::Water | BlockKind::Lava)
+            }
+
+            pub const fn is_opaque(self) -> bool {
+                match self.0 {
+                    #state_to_opaque_arms
+                    _ => true,
+                }
+            }
+
+            const SHAPES: [[f64; 6]; #shape_count] = [
+                #(#shapes,)*
+            ];
+
+            pub fn collision_shapes(self) -> impl ExactSizeIterator<Item = vek::Aabb<f64>> + FusedIterator + Clone {
+                let shape_idxs: &'static [u16] = match self.0 {
+                    #state_to_collision_shapes_arms
+                    _ => &[],
+                };
+
+                shape_idxs.iter().map(|idx| {
+                    let [min_x, min_y, min_z, max_x, max_y, max_z] = Self::SHAPES[*idx as usize];
+                    vek::Aabb {
+                        min: vek::Vec3::new(min_x, min_y, min_z),
+                        max: vek::Vec3::new(max_x, max_y, max_z),
+                    }
+                })
+            }
+
+            pub const fn luminance(self) -> u8 {
+                match self.0 {
+                    #state_to_luminance_arms
+                    _ => 0,
+                }
             }
 
             #default_block_states

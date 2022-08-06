@@ -28,7 +28,7 @@ public class Blocks implements Main.Extractor {
         var blocksJson = new JsonArray();
         var stateIdCounter = 0;
 
-        var collisionShapes = new LinkedHashMap<CollisionShape, Integer>();
+        var shapes = new LinkedHashMap<Shape, Integer>();
 
         for (var block : Registry.BLOCK) {
             var blockJson = new JsonObject();
@@ -68,10 +68,10 @@ public class Blocks implements Main.Extractor {
 
                 var collisionShapeIdxsJson = new JsonArray();
                 for (var box : state.getCollisionShape(EmptyBlockView.INSTANCE, BlockPos.ORIGIN).getBoundingBoxes()) {
-                    var cs = new CollisionShape(box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ);
+                    var collisionShape = new Shape(box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ);
 
-                    var idx = collisionShapes.putIfAbsent(cs, collisionShapes.size());
-                    collisionShapeIdxsJson.add(Objects.requireNonNullElseGet(idx, () -> collisionShapes.size() - 1));
+                    var idx = shapes.putIfAbsent(collisionShape, shapes.size());
+                    collisionShapeIdxsJson.add(Objects.requireNonNullElseGet(idx, () -> shapes.size() - 1));
                 }
 
                 stateJson.add("collision_shapes", collisionShapeIdxsJson);
@@ -83,24 +83,24 @@ public class Blocks implements Main.Extractor {
             blocksJson.add(blockJson);
         }
 
-        var collisionShapesJson = new JsonArray();
-        for (var shape : collisionShapes.keySet()) {
-            var collisionShapeJson = new JsonObject();
-            collisionShapeJson.addProperty("min_x", shape.minX);
-            collisionShapeJson.addProperty("min_y", shape.minY);
-            collisionShapeJson.addProperty("min_z", shape.minZ);
-            collisionShapeJson.addProperty("max_x", shape.maxX);
-            collisionShapeJson.addProperty("max_y", shape.maxY);
-            collisionShapeJson.addProperty("max_z", shape.maxZ);
-            collisionShapesJson.add(collisionShapeJson);
+        var shapesJson = new JsonArray();
+        for (var shape : shapes.keySet()) {
+            var shapeJson = new JsonObject();
+            shapeJson.addProperty("min_x", shape.minX);
+            shapeJson.addProperty("min_y", shape.minY);
+            shapeJson.addProperty("min_z", shape.minZ);
+            shapeJson.addProperty("max_x", shape.maxX);
+            shapeJson.addProperty("max_y", shape.maxY);
+            shapeJson.addProperty("max_z", shape.maxZ);
+            shapesJson.add(shapeJson);
         }
 
-        topLevelJson.add("collision_shapes", collisionShapesJson);
+        topLevelJson.add("shapes", shapesJson);
         topLevelJson.add("blocks", blocksJson);
 
         return topLevelJson;
     }
 
-    private record CollisionShape(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
+    private record Shape(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
     }
 }
