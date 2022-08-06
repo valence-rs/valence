@@ -1,4 +1,5 @@
-/// Reading and writing whole packets.
+//! Reading and writing whole packets.
+
 use std::io::Read;
 use std::time::Duration;
 
@@ -36,24 +37,22 @@ impl<W: AsyncWrite + Unpin> Encoder<W> {
         }
     }
 
-    pub async fn write_packet(&mut self, packet: &impl EncodePacket) -> anyhow::Result<()> {
-        timeout(self.timeout, self.write_packet_impl(packet)).await?
-    }
-
-    async fn write_packet_impl(&mut self, packet: &impl EncodePacket) -> anyhow::Result<()> {
-        self.buf.clear();
+    /// Queues a packet to be written to the writer.
+    ///
+    /// To write all queued packets, call [`Self::flush`].
+    pub fn queue_packet(&mut self, packet: &(impl EncodePacket + ?Sized)) -> anyhow::Result<()> {
+        let start_len = self.buf.len();
 
         packet.encode_packet(&mut self.buf)?;
 
-        let data_len = self.buf.len();
+        let data_len = self.buf.len() - start_len;
 
         ensure!(data_len <= i32::MAX as usize, "bad packet data length");
 
         if let Some(threshold) = self.compression_threshold {
             if data_len >= threshold as usize {
-                let mut z = ZlibEncoder::new(self.buf.as_slice(), Compression::best());
+                let mut z = ZlibEncoder::new(&self.buf[start_len..], Compression::best());
 
-                self.compress_buf.clear();
                 z.read_to_end(&mut self.compress_buf)?;
 
                 let data_len_len = VarInt(data_len as i32).written_size();
@@ -61,18 +60,21 @@ impl<W: AsyncWrite + Unpin> Encoder<W> {
 
                 ensure!(packet_len <= MAX_PACKET_SIZE as usize, "bad packet length");
 
-                self.buf.clear();
+                self.buf.truncate(start_len);
+
                 VarInt(packet_len as i32).encode(&mut self.buf)?;
                 VarInt(data_len as i32).encode(&mut self.buf)?;
                 self.buf.extend_from_slice(&self.compress_buf);
+                self.compress_buf.clear();
             } else {
                 let packet_len = VarInt(0).written_size() + data_len;
 
                 ensure!(packet_len <= MAX_PACKET_SIZE as usize, "bad packet length");
 
-                self.buf.clear();
+                self.buf.truncate(start_len);
+
                 VarInt(packet_len as i32).encode(&mut self.buf)?;
-                VarInt(0).encode(&mut self.buf)?;
+                VarInt(0).encode(&mut self.buf)?; // 0 for no compression.
                 packet.encode_packet(&mut self.buf)?;
             }
         } else {
@@ -80,17 +82,36 @@ impl<W: AsyncWrite + Unpin> Encoder<W> {
 
             ensure!(packet_len <= MAX_PACKET_SIZE as usize, "bad packet length");
 
-            self.buf.clear();
+            self.buf.truncate(start_len);
+
             VarInt(packet_len as i32).encode(&mut self.buf)?;
             packet.encode_packet(&mut self.buf)?;
         }
 
-        if let Some(cipher) = &mut self.cipher {
-            cipher.encrypt(&mut self.buf);
+        Ok(())
+    }
+
+    /// Writes all queued packets to the writer.
+    pub async fn flush(&mut self) -> anyhow::Result<()> {
+        if !self.buf.is_empty() {
+            if let Some(cipher) = &mut self.cipher {
+                cipher.encrypt(&mut self.buf);
+            }
+
+            timeout(self.timeout, self.write.write_all(&self.buf)).await??;
+            self.buf.clear();
         }
 
-        self.write.write_all(&self.buf).await?;
         Ok(())
+    }
+
+    /// Queue one packet and then flush the buffer.
+    pub async fn write_packet(
+        &mut self,
+        packet: &(impl EncodePacket + ?Sized),
+    ) -> anyhow::Result<()> {
+        self.queue_packet(packet)?;
+        self.flush().await
     }
 
     pub fn enable_encryption(&mut self, key: &[u8; 16]) {
@@ -296,7 +317,7 @@ mod tests {
     }
 
     async fn send_test_packet(w: &mut Encoder<TcpStream>) {
-        w.write_packet(&TestPacket {
+        w.queue_packet(&TestPacket {
             first: "abcdefghijklmnopqrstuvwxyz".into(),
             second: vec![0x1234, 0xabcd],
             third: 0x1122334455667788,

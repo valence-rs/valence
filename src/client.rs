@@ -36,7 +36,7 @@ use crate::protocol_inner::packets::s2c::play::{
     Rotate, RotateAndMoveRelative, S2cPlayPacket, UnloadChunk, UpdateSubtitle, UpdateTitle,
 };
 use crate::protocol_inner::{BoundedInt, ByteAngle, Nbt, RawBytes, VarInt};
-use crate::server::{C2sPacketChannels, NewClientData, SharedServer};
+use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
 use crate::slotmap::{Key, SlotMap};
 use crate::text::Text;
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
@@ -1275,12 +1275,14 @@ impl<C: Config> Client<C> {
         self.player_data.clear_modifications();
         self.old_position = self.position;
         self.bits.set_created_this_tick(false);
+
+        send_packet(&mut self.send, S2cPlayMessage::Flush);
     }
 }
 
-type SendOpt = Option<Sender<S2cPlayPacket>>;
+type SendOpt = Option<Sender<S2cPlayMessage>>;
 
-fn send_packet(send_opt: &mut SendOpt, pkt: impl Into<S2cPlayPacket>) {
+fn send_packet(send_opt: &mut SendOpt, pkt: impl Into<S2cPlayMessage>) {
     if let Some(send) = send_opt {
         match send.try_send(pkt.into()) {
             Err(TrySendError::Full(_)) => {

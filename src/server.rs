@@ -137,8 +137,23 @@ struct NewClientMessage {
 /// The result type returned from [`start_server`].
 pub type ShutdownResult = Result<(), Box<dyn Error + Send + Sync + 'static>>;
 
-pub(crate) type S2cPacketChannels = (Sender<C2sPlayPacket>, Receiver<S2cPlayPacket>);
-pub(crate) type C2sPacketChannels = (Sender<S2cPlayPacket>, Receiver<C2sPlayPacket>);
+pub(crate) type S2cPacketChannels = (Sender<C2sPlayPacket>, Receiver<S2cPlayMessage>);
+pub(crate) type C2sPacketChannels = (Sender<S2cPlayMessage>, Receiver<C2sPlayPacket>);
+
+/// Messages sent to packet encoders.
+#[derive(Clone, Debug)]
+pub(crate) enum S2cPlayMessage {
+    /// Queue a play packet for sending.
+    Queue(S2cPlayPacket),
+    /// Instructs the encoder to flush all queued packets to the TCP stream.
+    Flush,
+}
+
+impl<P: Into<S2cPlayPacket>> From<P> for S2cPlayMessage {
+    fn from(pkt: P) -> Self {
+        Self::Queue(pkt.into())
+    }
+}
 
 impl<C: Config> SharedServer<C> {
     /// Gets a reference to the config object used to start the server.
@@ -758,10 +773,20 @@ async fn handle_play<C: Config>(
     let Codec { mut enc, mut dec } = c;
 
     tokio::spawn(async move {
-        while let Ok(pkt) = packet_rx.recv_async().await {
-            if let Err(e) = enc.write_packet(&pkt).await {
-                log::debug!("error while sending play packet: {e:#}");
-                break;
+        while let Ok(msg) = packet_rx.recv_async().await {
+            match msg {
+                S2cPlayMessage::Queue(pkt) => {
+                    if let Err(e) = enc.queue_packet(&pkt) {
+                        log::debug!("error while queueing play packet: {e:#}");
+                        break;
+                    }
+                }
+                S2cPlayMessage::Flush => {
+                    if let Err(e) = enc.flush().await {
+                        log::debug!("error while flushing packet queue: {e:#}");
+                        break;
+                    }
+                }
             }
         }
     });

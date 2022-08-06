@@ -1,9 +1,3 @@
-mod byte_angle;
-pub mod codec;
-pub mod packets;
-mod var_int;
-mod var_long;
-
 use std::io::{Read, Write};
 use std::mem;
 
@@ -21,8 +15,16 @@ use vek::{Vec2, Vec3, Vec4};
 
 use crate::entity::EntityId;
 
+mod byte_angle;
+pub mod codec;
+pub mod packets;
+mod var_int;
+mod var_long;
+
 /// Types that can be written to the Minecraft protocol.
 pub trait Encode {
+    /// This function must be pure. In other words, consecutive calls to
+    /// `encode` must write the exact same sequence of bytes.
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()>;
 }
 
