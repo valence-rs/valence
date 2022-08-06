@@ -64,6 +64,17 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
     let max_state_id = blocks.iter().map(|b| b.max_state_id()).max().unwrap();
 
+    let kind_to_translation_key_arms = blocks
+        .iter()
+        .map(|b| {
+            let kind = ident(b.name.to_pascal_case());
+            let translation_key = &b.translation_key;
+            quote! {
+                Self::#kind => #translation_key,
+            }
+        })
+        .collect::<TokenStream>();
+
     let state_to_kind_arms = blocks
         .iter()
         .map(|b| {
@@ -548,6 +559,12 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 match self {
                     #block_kind_props_arms
                     _ => &[],
+                }
+            }
+
+            pub const fn translation_key(self) -> &'static str {
+                match self {
+                    #kind_to_translation_key_arms
                 }
             }
 
