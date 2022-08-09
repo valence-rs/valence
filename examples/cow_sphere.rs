@@ -81,7 +81,6 @@ impl Config for Game {
     fn init(&self, server: &mut Server<Self>) {
         let (world_id, world) = server.worlds.insert(DimensionId::default(), ());
         server.state.player_list = Some(server.player_lists.insert(()).0);
-        world.meta.set_flat(true);
 
         let size = 5;
         for z in -size..size {
@@ -127,6 +126,7 @@ impl Config for Game {
                 }
 
                 client.spawn(world_id);
+                client.set_flat(true);
                 client.set_game_mode(GameMode::Creative);
                 client.teleport(
                     [

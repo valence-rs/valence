@@ -227,6 +227,7 @@ pub struct Client<C: Config> {
 #[bitfield(u16)]
 struct ClientBits {
     spawn: bool,
+    flat: bool,
     teleported_this_tick: bool,
     /// If spawn_position or spawn_position_yaw were modified this tick.
     modified_spawn_position: bool,
@@ -238,7 +239,7 @@ struct ClientBits {
     velocity_modified: bool,
     created_this_tick: bool,
     view_distance_modified: bool,
-    #[bits(6)]
+    #[bits(5)]
     _pad: u8,
 }
 
@@ -323,6 +324,20 @@ impl<C: Config> Client<C> {
 
     pub fn set_player_list(&mut self, id: Option<PlayerListId>) -> Option<PlayerListId> {
         mem::replace(&mut self.new_player_list, id)
+    }
+
+    /// Sets if this client sees the world as superflat. Superflat worlds have
+    /// a horizon line lower than normal worlds.
+    ///
+    /// The player must be spawned for changes to take effect.
+    pub fn set_flat(&mut self, flat: bool) {
+        self.bits.set_flat(flat);
+    }
+
+    /// Gets if this client sees the world as superflat. Superflat worlds have
+    /// a horizon line lower than normal worlds.
+    pub fn is_flat(&self) -> bool {
+        self.bits.flat()
     }
 
     /// Changes the world this client is located in and respawns the client.
@@ -862,7 +877,7 @@ impl<C: Config> Client<C> {
         let current_tick = shared.current_tick();
 
         // Send the join game packet and other initial packets. We defer this until now
-        // so that the user can set the client's location, game mode, etc.
+        // so that the user can set the client's initial location, game mode, etc.
         if self.created_this_tick() {
             if let Some(id) = &self.new_player_list {
                 player_lists
@@ -899,7 +914,7 @@ impl<C: Config> Client<C> {
                 reduced_debug_info: false,
                 enable_respawn_screen: false,
                 is_debug: false,
-                is_flat: world.meta.is_flat(),
+                is_flat: self.bits.flat(),
                 last_death_location: self
                     .death_location
                     .map(|(id, pos)| (ident!("{LIBRARY_NAMESPACE}:dimension_{}", id.0), pos)),
@@ -921,7 +936,7 @@ impl<C: Config> Client<C> {
                     game_mode: self.game_mode(),
                     previous_game_mode: self.game_mode(),
                     is_debug: false,
-                    is_flat: false,
+                    is_flat: self.bits.flat(),
                     copy_metadata: true,
                     last_death_location: None,
                 });
@@ -939,7 +954,7 @@ impl<C: Config> Client<C> {
                     game_mode: self.game_mode(),
                     previous_game_mode: self.game_mode(),
                     is_debug: false,
-                    is_flat: world.meta.is_flat(),
+                    is_flat: self.bits.flat(),
                     copy_metadata: true,
                     last_death_location: self
                         .death_location

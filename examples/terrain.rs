@@ -84,9 +84,8 @@ impl Config for Game {
     }
 
     fn init(&self, server: &mut Server<Self>) {
-        let (_, world) = server.worlds.insert(DimensionId::default(), ());
+        server.worlds.insert(DimensionId::default(), ());
         server.state = Some(server.player_lists.insert(()).0);
-        world.meta.set_flat(true);
     }
 
     fn update(&self, server: &mut Server<Self>) {
@@ -119,6 +118,7 @@ impl Config for Game {
                 }
 
                 client.spawn(world_id);
+                client.set_flat(true);
                 client.set_game_mode(GameMode::Creative);
                 client.teleport([0.0, 200.0, 0.0], 0.0, 0.0);
                 client.set_player_list(server.state.clone());

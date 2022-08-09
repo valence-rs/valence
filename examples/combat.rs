@@ -87,7 +87,6 @@ impl Config for Game {
     fn init(&self, server: &mut Server<Self>) {
         let (_, world) = server.worlds.insert(DimensionId::default(), ());
         server.state = Some(server.player_lists.insert(()).0);
-        world.meta.set_flat(true);
 
         let min_y = server.shared.dimension(DimensionId::default()).min_y;
 
@@ -117,7 +116,7 @@ impl Config for Game {
     }
 
     fn update(&self, server: &mut Server<Self>) {
-        let (world_id, world) = server.worlds.iter_mut().next().unwrap();
+        let (world_id, _) = server.worlds.iter_mut().next().unwrap();
 
         let current_tick = server.shared.current_tick();
 
@@ -152,6 +151,7 @@ impl Config for Game {
                 client.state.extra_knockback = true;
 
                 client.spawn(world_id);
+                client.set_flat(true);
                 client.set_game_mode(GameMode::Survival);
                 client.teleport(
                     [

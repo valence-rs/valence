@@ -101,7 +101,6 @@ impl Config for Game {
     fn init(&self, server: &mut Server<Self>) {
         let world = server.worlds.insert(DimensionId::default(), ()).1;
         server.state.player_list = Some(server.player_lists.insert(()).0);
-        world.meta.set_flat(true);
 
         for chunk_z in -2..Integer::div_ceil(&(SIZE_X as i32), &16) + 2 {
             for chunk_x in -2..Integer::div_ceil(&(SIZE_Z as i32), &16) + 2 {
@@ -144,6 +143,7 @@ impl Config for Game {
                 }
 
                 client.spawn(world_id);
+                client.set_flat(true);
                 client.teleport(spawn_pos, 0.0, 0.0);
                 client.set_player_list(server.state.player_list.clone());
 

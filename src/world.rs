@@ -49,10 +49,7 @@ impl<C: Config> Worlds<C> {
             state,
             spatial_index: SpatialIndex::new(),
             chunks: Chunks::new(self.server.clone(), dim),
-            meta: WorldMeta {
-                dimension: dim,
-                is_flat: false,
-            },
+            meta: WorldMeta { dimension: dim },
         });
 
         (WorldId(id), world)
@@ -136,27 +133,11 @@ pub struct World<C: Config> {
 /// Contains miscellaneous world state.
 pub struct WorldMeta {
     dimension: DimensionId,
-    is_flat: bool,
-    // TODO: time, weather
 }
 
 impl WorldMeta {
     /// Gets the dimension the world was created with.
     pub fn dimension(&self) -> DimensionId {
         self.dimension
-    }
-
-    /// Gets if this world is considered a superflat world. Superflat worlds
-    /// have a horizon line at y=0.
-    pub fn is_flat(&self) -> bool {
-        self.is_flat
-    }
-
-    /// Sets if this world is considered a superflat world. Superflat worlds
-    /// have a horizon line at y=0.
-    ///
-    /// Clients already in the world must be respawned to see any changes.
-    pub fn set_flat(&mut self, flat: bool) {
-        self.is_flat = flat;
     }
 }
