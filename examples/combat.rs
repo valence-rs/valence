@@ -212,6 +212,9 @@ impl Config for Game {
                     Some(ClientEvent::StartSprinting) => {
                         client.state.extra_knockback = true;
                     }
+                    Some(ClientEvent::StopSprinting) => {
+                        client.state.extra_knockback = false;
+                    }
                     Some(ClientEvent::InteractWithEntity {
                         id,
                         kind: InteractWithEntityKind::Attack,
