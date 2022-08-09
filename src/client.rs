@@ -37,7 +37,7 @@ use crate::protocol_inner::packets::s2c::play::{
 };
 use crate::protocol_inner::{BoundedInt, ByteAngle, Nbt, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
-use crate::slotmap::{Key, SlotMap};
+use crate::slab_versioned::{Key, VersionedSlab};
 use crate::text::Text;
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::world::{WorldId, Worlds};
@@ -52,16 +52,18 @@ mod event;
 /// are not automatically deleted. It is your responsibility to delete them once
 /// they disconnect. This can be checked with [`Client::is_disconnected`].
 pub struct Clients<C: Config> {
-    sm: SlotMap<Client<C>>,
+    slab: VersionedSlab<Client<C>>,
 }
 
 impl<C: Config> Clients<C> {
     pub(crate) fn new() -> Self {
-        Self { sm: SlotMap::new() }
+        Self {
+            slab: VersionedSlab::new(),
+        }
     }
 
     pub(crate) fn insert(&mut self, client: Client<C>) -> (ClientId, &mut Client<C>) {
-        let (k, client) = self.sm.insert(client);
+        let (k, client) = self.slab.insert(client);
         (ClientId(k), client)
     }
 
@@ -69,8 +71,8 @@ impl<C: Config> Clients<C> {
     ///
     /// If the given client ID is valid, `true` is returned and the client is
     /// deleted. Otherwise, `false` is returned and the function has no effect.
-    pub fn delete(&mut self, client: ClientId) -> bool {
-        self.sm.remove(client.0).is_some()
+    pub fn remove(&mut self, client: ClientId) -> Option<C::ClientState> {
+        self.slab.remove(client.0).map(|c| c.state)
     }
 
     /// Deletes all clients from the server for
@@ -78,43 +80,47 @@ impl<C: Config> Clients<C> {
     ///
     /// All clients are visited in an unspecified order.
     pub fn retain(&mut self, mut f: impl FnMut(ClientId, &mut Client<C>) -> bool) {
-        self.sm.retain(|k, v| f(ClientId(k), v))
+        self.slab.retain(|k, v| f(ClientId(k), v))
     }
 
     /// Returns the number of clients on the server. This includes clients
     /// which may be disconnected.
-    pub fn count(&self) -> usize {
-        self.sm.len()
+    pub fn len(&self) -> usize {
+        self.slab.len()
     }
 
     /// Returns a shared reference to the client with the given ID. If
     /// the ID is invalid, then `None` is returned.
     pub fn get(&self, client: ClientId) -> Option<&Client<C>> {
-        self.sm.get(client.0)
+        self.slab.get(client.0)
     }
 
     /// Returns an exclusive reference to the client with the given ID. If the
     /// ID is invalid, then `None` is returned.
     pub fn get_mut(&mut self, client: ClientId) -> Option<&mut Client<C>> {
-        self.sm.get_mut(client.0)
+        self.slab.get_mut(client.0)
     }
 
     /// Returns an immutable iterator over all clients on the server in an
     /// unspecified order.
-    pub fn iter(&self) -> impl FusedIterator<Item = (ClientId, &Client<C>)> + Clone + '_ {
-        self.sm.iter().map(|(k, v)| (ClientId(k), v))
+    pub fn iter(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (ClientId, &Client<C>)> + FusedIterator + Clone + '_ {
+        self.slab.iter().map(|(k, v)| (ClientId(k), v))
     }
 
     /// Returns a mutable iterator over all clients on the server in an
     /// unspecified order.
-    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (ClientId, &mut Client<C>)> + '_ {
-        self.sm.iter_mut().map(|(k, v)| (ClientId(k), v))
+    pub fn iter_mut(
+        &mut self,
+    ) -> impl ExactSizeIterator<Item = (ClientId, &mut Client<C>)> + FusedIterator + '_ {
+        self.slab.iter_mut().map(|(k, v)| (ClientId(k), v))
     }
 
     /// Returns a parallel immutable iterator over all clients on the server in
     /// an unspecified order.
     pub fn par_iter(&self) -> impl ParallelIterator<Item = (ClientId, &Client<C>)> + Clone + '_ {
-        self.sm.par_iter().map(|(k, v)| (ClientId(k), v))
+        self.slab.par_iter().map(|(k, v)| (ClientId(k), v))
     }
 
     /// Returns a parallel mutable iterator over all clients on the server in an
@@ -122,7 +128,7 @@ impl<C: Config> Clients<C> {
     pub fn par_iter_mut(
         &mut self,
     ) -> impl ParallelIterator<Item = (ClientId, &mut Client<C>)> + '_ {
-        self.sm.par_iter_mut().map(|(k, v)| (ClientId(k), v))
+        self.slab.par_iter_mut().map(|(k, v)| (ClientId(k), v))
     }
 }
 

@@ -72,13 +72,13 @@ impl Config for Game {
     }
 
     fn init(&self, server: &mut Server<Self>) {
-        let (world_id, world) = server.worlds.create(DimensionId::default(), ());
+        let (world_id, world) = server.worlds.insert(DimensionId::default(), ());
         world.meta.set_flat(true);
 
         let size = 5;
         for z in -size..size {
             for x in -size..size {
-                world.chunks.create([x, z], ());
+                world.chunks.insert([x, z], ());
             }
         }
 
@@ -88,7 +88,7 @@ impl Config for Game {
         for i in 0..SHEEP_COUNT {
             let offset = (i as f64 - (SHEEP_COUNT - 1) as f64 / 2.0) * 1.25;
 
-            let (_, sheep) = server.entities.create(EntityKind::Sheep, false);
+            let (_, sheep) = server.entities.insert(EntityKind::Sheep, false);
             sheep.set_world(world_id);
             sheep.set_position([offset + 0.5, SPAWN_POS.y as f64 + 1.0, 0.0]);
             sheep.set_yaw(180.0);
@@ -114,7 +114,7 @@ impl Config for Game {
 
                 match server
                     .entities
-                    .create_with_uuid(EntityKind::Player, client.uuid(), false)
+                    .insert_with_uuid(EntityKind::Player, client.uuid(), false)
                 {
                     Some((id, _)) => client.state = id,
                     None => {
@@ -154,7 +154,7 @@ impl Config for Game {
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
                 world.meta.player_list_mut().remove(client.uuid());
-                server.entities.delete(client.state);
+                server.entities.remove(client.state);
 
                 return false;
             }

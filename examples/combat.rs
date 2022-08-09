@@ -83,7 +83,7 @@ impl Config for Game {
     }
 
     fn init(&self, server: &mut Server<Self>) {
-        let (_, world) = server.worlds.create(DimensionId::default(), ());
+        let (_, world) = server.worlds.insert(DimensionId::default(), ());
         world.meta.set_flat(true);
 
         let min_y = server.shared.dimension(DimensionId::default()).min_y;
@@ -92,7 +92,7 @@ impl Config for Game {
         let size = 2;
         for chunk_z in -size - 2..size + 2 {
             for chunk_x in -size - 2..size + 2 {
-                let chunk = world.chunks.create([chunk_x, chunk_z], ());
+                let chunk = world.chunks.insert([chunk_x, chunk_z], ());
                 let r = -size..size;
                 if r.contains(&chunk_x) && r.contains(&chunk_z) {
                     for z in 0..16 {
@@ -131,7 +131,7 @@ impl Config for Game {
                     return false;
                 }
 
-                let (player_id, player) = match server.entities.create_with_uuid(
+                let (player_id, player) = match server.entities.insert_with_uuid(
                     EntityKind::Player,
                     client.uuid(),
                     EntityState::default(),
@@ -177,7 +177,7 @@ impl Config for Game {
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.delete(client.state.player);
+                server.entities.remove(client.state.player);
                 world.meta.player_list_mut().remove(client.uuid());
                 return false;
             }

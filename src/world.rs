@@ -9,12 +9,12 @@ use crate::config::Config;
 use crate::dimension::DimensionId;
 use crate::player_list::PlayerList;
 use crate::server::SharedServer;
-use crate::slotmap::{Key, SlotMap};
+use crate::slab_versioned::{Key, VersionedSlab};
 use crate::spatial_index::SpatialIndex;
 
 /// A container for all [`World`]s on a [`Server`](crate::server::Server).
 pub struct Worlds<C: Config> {
-    sm: SlotMap<World<C>>,
+    slab: VersionedSlab<World<C>>,
     server: SharedServer<C>,
 }
 
@@ -38,16 +38,16 @@ impl WorldId {
 impl<C: Config> Worlds<C> {
     pub(crate) fn new(server: SharedServer<C>) -> Self {
         Self {
-            sm: SlotMap::new(),
+            slab: VersionedSlab::new(),
             server,
         }
     }
 
     /// Creates a new world on the server with the provided dimension. A
     /// reference to the world along with its ID is returned.
-    pub fn create(&mut self, dim: DimensionId, data: C::WorldState) -> (WorldId, &mut World<C>) {
-        let (id, world) = self.sm.insert(World {
-            state: data,
+    pub fn insert(&mut self, dim: DimensionId, state: C::WorldState) -> (WorldId, &mut World<C>) {
+        let (id, world) = self.slab.insert(World {
+            state,
             spatial_index: SpatialIndex::new(),
             chunks: Chunks::new(self.server.clone(), dim),
             meta: WorldMeta {
@@ -65,8 +65,8 @@ impl<C: Config> Worlds<C> {
     /// Note that entities located in the world are not deleted themselves.
     /// Additionally, any clients that are still in the deleted world at the end
     /// of the tick are disconnected.
-    pub fn delete(&mut self, world: WorldId) -> bool {
-        self.sm.remove(world.0).is_some()
+    pub fn remove(&mut self, world: WorldId) -> bool {
+        self.slab.remove(world.0).is_some()
     }
 
     /// Deletes all worlds from the server (as if by [`Self::delete`]) for which
@@ -74,48 +74,52 @@ impl<C: Config> Worlds<C> {
     ///
     /// All worlds are visited in an unspecified order.
     pub fn retain(&mut self, mut f: impl FnMut(WorldId, &mut World<C>) -> bool) {
-        self.sm.retain(|k, v| f(WorldId(k), v))
+        self.slab.retain(|k, v| f(WorldId(k), v))
     }
 
     /// Returns the number of worlds on the server.
-    pub fn count(&self) -> usize {
-        self.sm.len()
+    pub fn len(&self) -> usize {
+        self.slab.len()
     }
 
     /// Returns a shared reference to the world with the given ID. If
     /// the ID is invalid, then `None` is returned.
     pub fn get(&self, world: WorldId) -> Option<&World<C>> {
-        self.sm.get(world.0)
+        self.slab.get(world.0)
     }
 
     /// Returns an exclusive reference to the world with the given ID. If the
     /// ID is invalid, then `None` is returned.
     pub fn get_mut(&mut self, world: WorldId) -> Option<&mut World<C>> {
-        self.sm.get_mut(world.0)
+        self.slab.get_mut(world.0)
     }
 
     /// Returns an immutable iterator over all worlds on the server in an
     /// unspecified order.
-    pub fn iter(&self) -> impl FusedIterator<Item = (WorldId, &World<C>)> + Clone + '_ {
-        self.sm.iter().map(|(k, v)| (WorldId(k), v))
+    pub fn iter(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (WorldId, &World<C>)> + FusedIterator + Clone + '_ {
+        self.slab.iter().map(|(k, v)| (WorldId(k), v))
     }
 
     /// Returns a mutable iterator over all worlds on the server in an
-    /// unspecified ordder.
-    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (WorldId, &mut World<C>)> + '_ {
-        self.sm.iter_mut().map(|(k, v)| (WorldId(k), v))
+    /// unspecified order.
+    pub fn iter_mut(
+        &mut self,
+    ) -> impl ExactSizeIterator<Item = (WorldId, &mut World<C>)> + FusedIterator + '_ {
+        self.slab.iter_mut().map(|(k, v)| (WorldId(k), v))
     }
 
     /// Returns a parallel immutable iterator over all worlds on the server in
     /// an unspecified order.
     pub fn par_iter(&self) -> impl ParallelIterator<Item = (WorldId, &World<C>)> + Clone + '_ {
-        self.sm.par_iter().map(|(k, v)| (WorldId(k), v))
+        self.slab.par_iter().map(|(k, v)| (WorldId(k), v))
     }
 
     /// Returns a parallel mutable iterator over all worlds on the server in an
     /// unspecified order.
     pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (WorldId, &mut World<C>)> + '_ {
-        self.sm.par_iter_mut().map(|(k, v)| (WorldId(k), v))
+        self.slab.par_iter_mut().map(|(k, v)| (WorldId(k), v))
     }
 }
 

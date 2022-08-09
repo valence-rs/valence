@@ -119,6 +119,17 @@
     clippy::comparison_chain
 )]
 
+/// Used on [`Config`](config::Config) to allow for async methods in traits.
+///
+/// For more information see the [async_trait] crate.
+///
+/// [async_trait]: https://docs.rs/async-trait/latest/async_trait/
+pub use async_trait::async_trait;
+#[doc(inline)]
+pub use server::start_server;
+#[doc(inline)]
+pub use {nbt, uuid, vek};
+
 pub mod biome;
 pub mod block;
 mod block_pos;
@@ -135,7 +146,8 @@ pub mod player_textures;
 #[allow(dead_code)]
 mod protocol_inner;
 pub mod server;
-mod slotmap;
+mod slab;
+mod slab_versioned;
 pub mod spatial_index;
 pub mod text;
 pub mod util;
@@ -146,17 +158,6 @@ pub mod world;
 pub mod protocol {
     pub use crate::protocol_inner::*;
 }
-
-/// Used on [`Config`](config::Config) to allow for async methods in traits.
-///
-/// For more information see the [async_trait] crate.
-///
-/// [async_trait]: https://docs.rs/async-trait/latest/async_trait/
-pub use async_trait::async_trait;
-#[doc(inline)]
-pub use server::start_server;
-#[doc(inline)]
-pub use {nbt, uuid, vek};
 
 /// The Minecraft protocol version this library currently targets.
 pub const PROTOCOL_VERSION: i32 = 759;

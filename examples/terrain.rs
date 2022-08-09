@@ -82,7 +82,7 @@ impl Config for Game {
     }
 
     fn init(&self, server: &mut Server<Self>) {
-        let (_, world) = server.worlds.create(DimensionId::default(), ());
+        let (_, world) = server.worlds.insert(DimensionId::default(), ());
         world.meta.set_flat(true);
     }
 
@@ -106,7 +106,7 @@ impl Config for Game {
 
                 match server
                     .entities
-                    .create_with_uuid(EntityKind::Player, client.uuid(), ())
+                    .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
                     Some((id, _)) => client.state = id,
                     None => {
@@ -134,7 +134,7 @@ impl Config for Game {
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
                 world.meta.player_list_mut().remove(client.uuid());
-                server.entities.delete(client.state);
+                server.entities.remove(client.state);
 
                 return false;
             }
@@ -149,7 +149,7 @@ impl Config for Game {
             for pos in chunks_in_view_distance(ChunkPos::at(p.x, p.z), dist) {
                 chunks_to_unload.remove(&pos);
                 if world.chunks.get(pos).is_none() {
-                    world.chunks.create(pos, ());
+                    world.chunks.insert(pos, ());
                 }
             }
 
@@ -157,7 +157,7 @@ impl Config for Game {
         });
 
         for pos in chunks_to_unload {
-            world.chunks.delete(pos);
+            world.chunks.remove(pos);
         }
 
         world.chunks.par_iter_mut().for_each(|(pos, chunk)| {

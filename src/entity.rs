@@ -16,7 +16,7 @@ use crate::protocol_inner::packets::s2c::play::{
     EntitySpawn, EntityTrackerUpdate, ExperienceOrbSpawn, PlayerSpawn, S2cPlayPacket,
 };
 use crate::protocol_inner::{ByteAngle, RawBytes, VarInt};
-use crate::slotmap::{Key, SlotMap};
+use crate::slab_versioned::{Key, VersionedSlab};
 use crate::util::aabb_from_bottom_and_size;
 use crate::world::WorldId;
 use crate::STANDARD_TPS;
@@ -37,7 +37,7 @@ include!(concat!(env!("OUT_DIR"), "/entity_event.rs"));
 /// [`Player`]: crate::entity::types::Player
 /// [`PlayerList`]: crate::player_list::PlayerList
 pub struct Entities<C: Config> {
-    sm: SlotMap<Entity<C>>,
+    slab: VersionedSlab<Entity<C>>,
     uuid_to_entity: HashMap<Uuid, EntityId>,
     network_id_to_entity: HashMap<NonZeroU32, u32>,
 }
@@ -45,7 +45,7 @@ pub struct Entities<C: Config> {
 impl<C: Config> Entities<C> {
     pub(crate) fn new() -> Self {
         Self {
-            sm: SlotMap::new(),
+            slab: VersionedSlab::new(),
             uuid_to_entity: HashMap::new(),
             network_id_to_entity: HashMap::new(),
         }
@@ -53,8 +53,12 @@ impl<C: Config> Entities<C> {
 
     /// Spawns a new entity with a random UUID. A reference to the entity along
     /// with its ID is returned.
-    pub fn create(&mut self, kind: EntityKind, data: C::EntityState) -> (EntityId, &mut Entity<C>) {
-        self.create_with_uuid(kind, Uuid::from_bytes(rand::random()), data)
+    pub fn insert(
+        &mut self,
+        kind: EntityKind,
+        state: C::EntityState,
+    ) -> (EntityId, &mut Entity<C>) {
+        self.insert_with_uuid(kind, Uuid::from_bytes(rand::random()), state)
             .expect("UUID collision")
     }
 
@@ -63,7 +67,7 @@ impl<C: Config> Entities<C> {
     ///
     /// The provided UUID must not conflict with an existing entity UUID. If it
     /// does, `None` is returned and the entity is not spawned.
-    pub fn create_with_uuid(
+    pub fn insert_with_uuid(
         &mut self,
         kind: EntityKind,
         uuid: Uuid,
@@ -72,7 +76,7 @@ impl<C: Config> Entities<C> {
         match self.uuid_to_entity.entry(uuid) {
             Entry::Occupied(_) => None,
             Entry::Vacant(ve) => {
-                let (k, e) = self.sm.insert(Entity {
+                let (k, e) = self.slab.insert(Entity {
                     state: data,
                     variants: TrackedData::new(kind),
                     events: Vec::new(),
@@ -101,8 +105,8 @@ impl<C: Config> Entities<C> {
     ///
     /// If the given entity ID is valid, `true` is returned and the entity is
     /// deleted. Otherwise, `false` is returned and the function has no effect.
-    pub fn delete(&mut self, entity: EntityId) -> bool {
-        if let Some(e) = self.sm.remove(entity.0) {
+    pub fn remove(&mut self, entity: EntityId) -> Option<C::EntityState> {
+        self.slab.remove(entity.0).map(|e| {
             self.uuid_to_entity
                 .remove(&e.uuid)
                 .expect("UUID should have been in UUID map");
@@ -111,17 +115,15 @@ impl<C: Config> Entities<C> {
                 .remove(&entity.0.version())
                 .expect("network ID should have been in the network ID map");
 
-            true
-        } else {
-            false
-        }
+            e.state
+        })
     }
 
     /// Removes all entities from the server for which `f` returns `true`.
     ///
     /// All entities are visited in an unspecified order.
     pub fn retain(&mut self, mut f: impl FnMut(EntityId, &mut Entity<C>) -> bool) {
-        self.sm.retain(|k, v| {
+        self.slab.retain(|k, v| {
             if f(EntityId(k), v) {
                 true
             } else {
@@ -139,8 +141,8 @@ impl<C: Config> Entities<C> {
     }
 
     /// Returns the number of entities in this container.
-    pub fn count(&self) -> usize {
-        self.sm.len()
+    pub fn len(&self) -> usize {
+        self.slab.len()
     }
 
     /// Gets the [`EntityId`] of the entity with the given UUID in an efficient
@@ -155,14 +157,14 @@ impl<C: Config> Entities<C> {
     ///
     /// If the ID is invalid, `None` is returned.
     pub fn get(&self, entity: EntityId) -> Option<&Entity<C>> {
-        self.sm.get(entity.0)
+        self.slab.get(entity.0)
     }
 
     /// Gets an exclusive reference to the entity with the given [`EntityId`].
     ///
     /// If the ID is invalid, `None` is returned.
     pub fn get_mut(&mut self, entity: EntityId) -> Option<&mut Entity<C>> {
-        self.sm.get_mut(entity.0)
+        self.slab.get_mut(entity.0)
     }
 
     pub(crate) fn get_with_network_id(&self, network_id: i32) -> Option<EntityId> {
@@ -173,20 +175,24 @@ impl<C: Config> Entities<C> {
 
     /// Returns an immutable iterator over all entities on the server in an
     /// unspecified order.
-    pub fn iter(&self) -> impl FusedIterator<Item = (EntityId, &Entity<C>)> + Clone + '_ {
-        self.sm.iter().map(|(k, v)| (EntityId(k), v))
+    pub fn iter(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (EntityId, &Entity<C>)> + FusedIterator + Clone + '_ {
+        self.slab.iter().map(|(k, v)| (EntityId(k), v))
     }
 
     /// Returns a mutable iterator over all entities on the server in an
     /// unspecified order.
-    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (EntityId, &mut Entity<C>)> + '_ {
-        self.sm.iter_mut().map(|(k, v)| (EntityId(k), v))
+    pub fn iter_mut(
+        &mut self,
+    ) -> impl ExactSizeIterator<Item = (EntityId, &mut Entity<C>)> + FusedIterator + '_ {
+        self.slab.iter_mut().map(|(k, v)| (EntityId(k), v))
     }
 
     /// Returns a parallel immutable iterator over all entities on the server in
     /// an unspecified order.
     pub fn par_iter(&self) -> impl ParallelIterator<Item = (EntityId, &Entity<C>)> + Clone + '_ {
-        self.sm.par_iter().map(|(k, v)| (EntityId(k), v))
+        self.slab.par_iter().map(|(k, v)| (EntityId(k), v))
     }
 
     /// Returns a parallel mutable iterator over all clients on the server in an
@@ -194,7 +200,7 @@ impl<C: Config> Entities<C> {
     pub fn par_iter_mut(
         &mut self,
     ) -> impl ParallelIterator<Item = (EntityId, &mut Entity<C>)> + '_ {
-        self.sm.par_iter_mut().map(|(k, v)| (EntityId(k), v))
+        self.slab.par_iter_mut().map(|(k, v)| (EntityId(k), v))
     }
 
     pub(crate) fn update(&mut self) {

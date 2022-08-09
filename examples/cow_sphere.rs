@@ -73,20 +73,20 @@ impl Config for Game {
     }
 
     fn init(&self, server: &mut Server<Self>) {
-        let (world_id, world) = server.worlds.create(DimensionId::default(), ());
+        let (world_id, world) = server.worlds.insert(DimensionId::default(), ());
         world.meta.set_flat(true);
 
         let size = 5;
         for z in -size..size {
             for x in -size..size {
-                world.chunks.create([x, z], ());
+                world.chunks.insert([x, z], ());
             }
         }
 
         world.chunks.set_block_state(SPAWN_POS, BlockState::BEDROCK);
 
         server.state.cows.extend((0..200).map(|_| {
-            let (id, e) = server.entities.create(EntityKind::Cow, ());
+            let (id, e) = server.entities.insert(EntityKind::Cow, ());
             e.set_world(world_id);
             id
         }));
@@ -110,7 +110,7 @@ impl Config for Game {
 
                 match server
                     .entities
-                    .create_with_uuid(EntityKind::Player, client.uuid(), ())
+                    .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
                     Some((id, _)) => client.state = id,
                     None => {
@@ -144,7 +144,7 @@ impl Config for Game {
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
                 world.meta.player_list_mut().remove(client.uuid());
-                server.entities.delete(client.state);
+                server.entities.remove(client.state);
 
                 return false;
             }

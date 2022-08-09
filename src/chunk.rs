@@ -41,7 +41,7 @@ impl<C: Config> Chunks<C> {
     }
 
     /// Creates an empty chunk at the provided position and returns a mutable
-    /// refernce to it.
+    /// reference to it.
     ///
     /// If a chunk at the position already exists, then the old chunk
     /// is overwritten.
@@ -50,9 +50,9 @@ impl<C: Config> Chunks<C> {
     /// adjacent to it must also be loaded. It is also important that clients
     /// are not spawned within unloaded chunks via
     /// [`spawn`](crate::client::Client::spawn).
-    pub fn create(&mut self, pos: impl Into<ChunkPos>, data: C::ChunkState) -> &mut Chunk<C> {
+    pub fn insert(&mut self, pos: impl Into<ChunkPos>, state: C::ChunkState) -> &mut Chunk<C> {
         let section_count = (self.server.dimension(self.dimension).height / 16) as u32;
-        let chunk = Chunk::new(section_count, self.server.current_tick(), data);
+        let chunk = Chunk::new(section_count, self.server.current_tick(), state);
 
         match self.chunks.entry(pos.into()) {
             Entry::Occupied(mut oe) => {
@@ -67,12 +67,12 @@ impl<C: Config> Chunks<C> {
     ///
     /// If a chunk exists at the position, then it is deleted and `true` is
     /// returned. Otherwise, `false` is returned.
-    pub fn delete(&mut self, pos: impl Into<ChunkPos>) -> bool {
-        self.chunks.remove(&pos.into()).is_some()
+    pub fn remove(&mut self, pos: impl Into<ChunkPos>) -> Option<C::ChunkState> {
+        self.chunks.remove(&pos.into()).map(|c| c.state)
     }
 
     /// Returns the number of loaded chunks.
-    pub fn count(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.chunks.len()
     }
 
@@ -97,13 +97,17 @@ impl<C: Config> Chunks<C> {
 
     /// Returns an immutable iterator over all chunks in the world in an
     /// unspecified order.
-    pub fn iter(&self) -> impl FusedIterator<Item = (ChunkPos, &Chunk<C>)> + Clone + '_ {
+    pub fn iter(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (ChunkPos, &Chunk<C>)> + FusedIterator + Clone + '_ {
         self.chunks.iter().map(|(&pos, chunk)| (pos, chunk))
     }
 
     /// Returns a mutable iterator over all chunks in the world in an
     /// unspecified order.
-    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (ChunkPos, &mut Chunk<C>)> + '_ {
+    pub fn iter_mut(
+        &mut self,
+    ) -> impl ExactSizeIterator<Item = (ChunkPos, &mut Chunk<C>)> + FusedIterator + '_ {
         self.chunks.iter_mut().map(|(&pos, chunk)| (pos, chunk))
     }
 
