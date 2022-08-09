@@ -14,6 +14,7 @@ use valence::spatial_index::RaycastHit;
 use valence::text::{Color, TextFormat};
 use valence::util::from_yaw_and_pitch;
 use vek::Vec3;
+use valence::player_list::PlayerListId;
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()
@@ -25,7 +26,7 @@ pub fn main() -> ShutdownResult {
         Game {
             player_count: AtomicUsize::new(0),
         },
-        (),
+        None,
     )
 }
 
@@ -45,8 +46,9 @@ impl Config for Game {
     type ClientState = EntityId;
     /// `true` for entities that have been intersected with.
     type EntityState = bool;
-    type ServerState = ();
+    type ServerState = Option<PlayerListId>;
     type WorldState = ();
+    type PlayerListState = ();
 
     fn max_connections(&self) -> usize {
         // We want status pings to be successful even if the server is full.
@@ -73,6 +75,7 @@ impl Config for Game {
 
     fn init(&self, server: &mut Server<Self>) {
         let (world_id, world) = server.worlds.insert(DimensionId::default(), ());
+        server.state = Some(server.player_lists.insert(()).0);
         world.meta.set_flat(true);
 
         let size = 5;
@@ -134,15 +137,18 @@ impl Config for Game {
                     0.0,
                     0.0,
                 );
+                client.set_player_list(server.state.clone());
 
-                world.meta.player_list_mut().insert(
-                    client.uuid(),
-                    client.username().to_owned(),
-                    client.textures().cloned(),
-                    client.game_mode(),
-                    0,
-                    None,
-                );
+                if let Some(id) = &server.state {
+                    server.player_lists.get_mut(id).insert(
+                        client.uuid(),
+                        client.username(),
+                        client.textures().cloned(),
+                        client.game_mode(),
+                        0,
+                        None,
+                    );
+                }
 
                 client.send_message(
                     "Look at a sheep to change its ".italic()
@@ -153,7 +159,9 @@ impl Config for Game {
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
-                world.meta.player_list_mut().remove(client.uuid());
+                if let Some(id) = &server.state {
+                    server.player_lists.get_mut(id).remove(client.uuid());
+                }
                 server.entities.remove(client.state);
 
                 return false;

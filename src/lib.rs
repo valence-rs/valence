@@ -147,6 +147,7 @@ pub mod player_textures;
 mod protocol_inner;
 pub mod server;
 mod slab;
+mod slab_rc;
 mod slab_versioned;
 pub mod spatial_index;
 pub mod text;

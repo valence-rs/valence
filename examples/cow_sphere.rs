@@ -10,6 +10,7 @@ use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
 use valence::entity::types::Pose;
 use valence::entity::{Entity, EntityEvent, EntityId, EntityKind, TrackedData};
+use valence::player_list::PlayerListId;
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 use valence::util::to_yaw_and_pitch;
@@ -25,7 +26,10 @@ pub fn main() -> ShutdownResult {
         Game {
             player_count: AtomicUsize::new(0),
         },
-        ServerState { cows: Vec::new() },
+        ServerState {
+            player_list: None,
+            cows: Vec::new(),
+        },
     )
 }
 
@@ -34,6 +38,7 @@ struct Game {
 }
 
 struct ServerState {
+    player_list: Option<PlayerListId>,
     cows: Vec<EntityId>,
 }
 
@@ -46,6 +51,7 @@ impl Config for Game {
     type ChunkState = ();
     type ClientState = EntityId;
     type EntityState = ();
+    type PlayerListState = ();
     type ServerState = ServerState;
     type WorldState = ();
 
@@ -74,6 +80,7 @@ impl Config for Game {
 
     fn init(&self, server: &mut Server<Self>) {
         let (world_id, world) = server.worlds.insert(DimensionId::default(), ());
+        server.state.player_list = Some(server.player_lists.insert(()).0);
         world.meta.set_flat(true);
 
         let size = 5;
@@ -93,7 +100,7 @@ impl Config for Game {
     }
 
     fn update(&self, server: &mut Server<Self>) {
-        let (world_id, world) = server.worlds.iter_mut().next().expect("missing world");
+        let (world_id, _) = server.worlds.iter_mut().next().expect("missing world");
 
         server.clients.retain(|_, client| {
             if client.created_this_tick() {
@@ -130,20 +137,25 @@ impl Config for Game {
                     0.0,
                     0.0,
                 );
+                client.set_player_list(server.state.player_list.clone());
 
-                world.meta.player_list_mut().insert(
-                    client.uuid(),
-                    client.username().to_owned(),
-                    client.textures().cloned(),
-                    client.game_mode(),
-                    0,
-                    None,
-                );
+                if let Some(id) = &server.state.player_list {
+                    server.player_lists.get_mut(id).insert(
+                        client.uuid(),
+                        client.username(),
+                        client.textures().cloned(),
+                        client.game_mode(),
+                        0,
+                        None,
+                    );
+                }
             }
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
-                world.meta.player_list_mut().remove(client.uuid());
+                if let Some(id) = &server.state.player_list {
+                    server.player_lists.get_mut(id).remove(client.uuid());
+                }
                 server.entities.remove(client.state);
 
                 return false;

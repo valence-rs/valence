@@ -2,6 +2,7 @@
 
 use std::collections::{HashSet, VecDeque};
 use std::iter::FusedIterator;
+use std::mem;
 use std::time::Duration;
 
 pub use bitfield_struct::bitfield;
@@ -20,6 +21,7 @@ use crate::entity::data::Player;
 use crate::entity::{
     velocity_to_packet_units, Entities, EntityEvent, EntityId, EntityKind, StatusOrAnimation,
 };
+use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol_inner::packets::c2s::play::{
     C2sPlayPacket, DiggingStatus, InteractKind, PlayerCommandId,
@@ -180,6 +182,8 @@ pub struct Client<C: Config> {
     username: String,
     textures: Option<SignedPlayerTextures>,
     world: WorldId,
+    old_player_list: Option<PlayerListId>,
+    new_player_list: Option<PlayerListId>,
     position: Vec3<f64>,
     old_position: Vec3<f64>,
     /// Measured in m/s.
@@ -254,6 +258,8 @@ impl<C: Config> Client<C> {
             username: ncd.username,
             textures: ncd.textures,
             world: WorldId::default(),
+            old_player_list: None,
+            new_player_list: None,
             position: Vec3::default(),
             old_position: Vec3::default(),
             velocity: Vec3::default(),
@@ -309,6 +315,14 @@ impl<C: Config> Client<C> {
     /// Gets the world this client is located in.
     pub fn world(&self) -> WorldId {
         self.world
+    }
+
+    pub fn player_list(&self) -> Option<&PlayerListId> {
+        self.new_player_list.as_ref()
+    }
+
+    pub fn set_player_list(&mut self, id: Option<PlayerListId>) -> Option<PlayerListId> {
+        mem::replace(&mut self.new_player_list, id)
     }
 
     /// Changes the world this client is located in and respawns the client.
@@ -825,6 +839,7 @@ impl<C: Config> Client<C> {
         shared: &SharedServer<C>,
         entities: &Entities<C>,
         worlds: &Worlds<C>,
+        player_lists: &PlayerLists<C>,
     ) {
         // Mark the client as disconnected when appropriate.
         if self.recv.is_disconnected() || self.send.as_ref().map_or(true, |s| s.is_disconnected()) {
@@ -849,10 +864,11 @@ impl<C: Config> Client<C> {
         // Send the join game packet and other initial packets. We defer this until now
         // so that the user can set the client's location, game mode, etc.
         if self.created_this_tick() {
-            world
-                .meta
-                .player_list()
-                .initial_packets(|pkt| self.send_packet(pkt));
+            if let Some(id) = &self.new_player_list {
+                player_lists
+                    .get(id)
+                    .initial_packets(|p| send_packet(&mut self.send, p));
+            }
 
             let mut dimension_names: Vec<_> = shared
                 .dimensions()
@@ -896,8 +912,6 @@ impl<C: Config> Client<C> {
                 self.loaded_entities.clear();
                 self.loaded_chunks.clear();
 
-                // TODO: clear player list.
-
                 // Client bug workaround: send the client to a dummy dimension first.
                 // TODO: is there actually a bug?
                 self.send_packet(PlayerRespawn {
@@ -935,6 +949,7 @@ impl<C: Config> Client<C> {
                 self.teleport(self.position(), self.yaw(), self.pitch());
             }
 
+            // Update game mode
             if self.old_game_mode != self.new_game_mode {
                 self.old_game_mode = self.new_game_mode;
                 self.send_packet(GameStateChange {
@@ -943,10 +958,29 @@ impl<C: Config> Client<C> {
                 });
             }
 
-            world
-                .meta
-                .player_list()
-                .diff_packets(|pkt| self.send_packet(pkt));
+            // If the player list was changed...
+            if self.old_player_list != self.new_player_list {
+                // Delete existing entries from old player list.
+                if let Some(id) = &self.old_player_list {
+                    player_lists
+                        .get(id)
+                        .clear_packets(|p| send_packet(&mut self.send, p));
+                }
+
+                // Get initial packets for new player list.
+                if let Some(id) = &self.new_player_list {
+                    player_lists
+                        .get(id)
+                        .initial_packets(|p| send_packet(&mut self.send, p));
+                }
+
+                self.old_player_list = self.new_player_list.clone();
+            } else if let Some(id) = &self.new_player_list {
+                // Update current player list.
+                player_lists
+                    .get(id)
+                    .update_packets(|p| send_packet(&mut self.send, p));
+            }
         }
 
         // Set player attributes

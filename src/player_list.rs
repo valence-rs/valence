@@ -7,13 +7,66 @@ use bitfield_struct::bitfield;
 use uuid::Uuid;
 
 use crate::client::GameMode;
+use crate::config::Config;
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol_inner::packets::s2c::play::{
     PlayerListAddPlayer, PlayerListHeaderFooter, S2cPlayPacket, UpdatePlayerList,
 };
 use crate::protocol_inner::packets::Property;
 use crate::protocol_inner::VarInt;
+use crate::slab_rc::{Key, SlabRc};
 use crate::text::Text;
+
+pub struct PlayerLists<C: Config> {
+    slab: SlabRc<PlayerList<C>>,
+}
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct PlayerListId(Key);
+
+impl<C: Config> PlayerLists<C> {
+    pub(crate) fn new() -> Self {
+        Self {
+            slab: SlabRc::new(),
+        }
+    }
+
+    pub fn insert(&mut self, state: C::PlayerListState) -> (PlayerListId, &mut PlayerList<C>) {
+        let (key, pl) = self.slab.insert(PlayerList {
+            state,
+            entries: HashMap::new(),
+            removed: HashSet::new(),
+            header: Text::default(),
+            footer: Text::default(),
+            modified_header_or_footer: false,
+        });
+
+        (PlayerListId(key), pl)
+    }
+
+    pub fn len(&self) -> usize {
+        self.slab.len()
+    }
+
+    pub fn get(&self, id: &PlayerListId) -> &PlayerList<C> {
+        self.slab.get(&id.0)
+    }
+
+    pub fn get_mut(&mut self, id: &PlayerListId) -> &mut PlayerList<C> {
+        self.slab.get_mut(&id.0)
+    }
+
+    pub(crate) fn update(&mut self) {
+        self.slab.collect_garbage();
+        for (_, pl) in self.slab.iter_mut() {
+            for entry in pl.entries.values_mut() {
+                entry.bits = EntryBits::new();
+            }
+            pl.removed.clear();
+            pl.modified_header_or_footer = false;
+        }
+    }
+}
 
 /// The list of players on a server visible by pressing the tab key by default.
 ///
@@ -22,7 +75,9 @@ use crate::text::Text;
 ///
 /// In addition to a list of players, the player list has a header and a footer
 /// which can contain arbitrary text.
-pub struct PlayerList {
+pub struct PlayerList<C: Config> {
+    /// Custom state
+    pub state: C::PlayerListState,
     entries: HashMap<Uuid, PlayerListEntry>,
     removed: HashSet<Uuid>,
     header: Text,
@@ -30,17 +85,7 @@ pub struct PlayerList {
     modified_header_or_footer: bool,
 }
 
-impl PlayerList {
-    pub(crate) fn new() -> Self {
-        Self {
-            entries: HashMap::new(),
-            removed: HashSet::new(),
-            header: Text::default(),
-            footer: Text::default(),
-            modified_header_or_footer: false,
-        }
-    }
-
+impl<C: Config> PlayerList<C> {
     /// Inserts a player into the player list.
     ///
     /// If the given UUID conflicts with an existing entry, the entry is
@@ -160,7 +205,7 @@ impl PlayerList {
         self.entries.iter_mut().map(|(k, v)| (*k, v))
     }
 
-    pub(crate) fn initial_packets(&self, mut packet: impl FnMut(S2cPlayPacket)) {
+    pub(crate) fn initial_packets(&self, mut push_packet: impl FnMut(S2cPlayPacket)) {
         let add_player: Vec<_> = self
             .entries
             .iter()
@@ -186,11 +231,11 @@ impl PlayerList {
             .collect();
 
         if !add_player.is_empty() {
-            packet(UpdatePlayerList::AddPlayer(add_player).into());
+            push_packet(UpdatePlayerList::AddPlayer(add_player).into());
         }
 
         if self.header != Text::default() || self.footer != Text::default() {
-            packet(
+            push_packet(
                 PlayerListHeaderFooter {
                     header: self.header.clone(),
                     footer: self.footer.clone(),
@@ -200,9 +245,11 @@ impl PlayerList {
         }
     }
 
-    pub(crate) fn diff_packets(&self, mut packet: impl FnMut(S2cPlayPacket)) {
+    pub(crate) fn update_packets(&self, mut push_packet: impl FnMut(S2cPlayPacket)) {
         if !self.removed.is_empty() {
-            packet(UpdatePlayerList::RemovePlayer(self.removed.iter().cloned().collect()).into());
+            push_packet(
+                UpdatePlayerList::RemovePlayer(self.removed.iter().cloned().collect()).into(),
+            );
         }
 
         let mut add_player = Vec::new();
@@ -248,23 +295,23 @@ impl PlayerList {
         }
 
         if !add_player.is_empty() {
-            packet(UpdatePlayerList::AddPlayer(add_player).into());
+            push_packet(UpdatePlayerList::AddPlayer(add_player).into());
         }
 
         if !game_mode.is_empty() {
-            packet(UpdatePlayerList::UpdateGameMode(game_mode).into());
+            push_packet(UpdatePlayerList::UpdateGameMode(game_mode).into());
         }
 
         if !ping.is_empty() {
-            packet(UpdatePlayerList::UpdateLatency(ping).into());
+            push_packet(UpdatePlayerList::UpdateLatency(ping).into());
         }
 
         if !display_name.is_empty() {
-            packet(UpdatePlayerList::UpdateDisplayName(display_name).into());
+            push_packet(UpdatePlayerList::UpdateDisplayName(display_name).into());
         }
 
         if self.modified_header_or_footer {
-            packet(
+            push_packet(
                 PlayerListHeaderFooter {
                     header: self.header.clone(),
                     footer: self.footer.clone(),
@@ -274,12 +321,8 @@ impl PlayerList {
         }
     }
 
-    pub(crate) fn update(&mut self) {
-        for e in self.entries.values_mut() {
-            e.bits = EntryBits::new();
-        }
-        self.removed.clear();
-        self.modified_header_or_footer = false;
+    pub(crate) fn clear_packets(&self, mut push_packet: impl FnMut(S2cPlayPacket)) {
+        push_packet(UpdatePlayerList::RemovePlayer(self.entries.keys().cloned().collect()).into());
     }
 }
 

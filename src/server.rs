@@ -32,6 +32,7 @@ use crate::client::{Client, Clients};
 use crate::config::{Config, ServerListPing};
 use crate::dimension::{Dimension, DimensionId};
 use crate::entity::Entities;
+use crate::player_list::PlayerLists;
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol_inner::codec::{Decoder, Encoder};
 use crate::protocol_inner::packets::c2s::handshake::{Handshake, HandshakeNextState};
@@ -64,6 +65,8 @@ pub struct Server<C: Config> {
     pub entities: Entities<C>,
     /// All of the worlds in the server.
     pub worlds: Worlds<C>,
+    /// All of the player lists in the server.
+    pub player_lists: PlayerLists<C>,
 }
 
 /// A handle to a Minecraft server containing the subset of functionality which
@@ -276,6 +279,7 @@ pub fn start_server<C: Config>(config: C, data: C::ServerState) -> ShutdownResul
         clients: Clients::new(),
         entities: Entities::new(),
         worlds: Worlds::new(shared.clone()),
+        player_lists: PlayerLists::new(),
     };
 
     shared.config().init(&mut server);
@@ -445,7 +449,12 @@ fn do_update_loop<C: Config>(server: &mut Server<C>) -> ShutdownResult {
         });
 
         server.clients.par_iter_mut().for_each(|(_, client)| {
-            client.update(&shared, &server.entities, &server.worlds);
+            client.update(
+                &shared,
+                &server.entities,
+                &server.worlds,
+                &server.player_lists,
+            );
         });
 
         server.entities.update();
@@ -454,9 +463,9 @@ fn do_update_loop<C: Config>(server: &mut Server<C>) -> ShutdownResult {
             world.chunks.par_iter_mut().for_each(|(_, chunk)| {
                 chunk.apply_modifications();
             });
-
-            world.meta.update();
         });
+
+        server.player_lists.update();
 
         // Sleep for the remainder of the tick.
         let tick_duration = Duration::from_secs_f64((shared.0.tick_rate as f64).recip());

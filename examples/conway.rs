@@ -15,6 +15,7 @@ use valence::entity::{Entity, EntityEvent, EntityId, EntityKind, TrackedData};
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 use valence::{async_trait, ident};
+use valence::player_list::PlayerListId;
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()
@@ -27,6 +28,7 @@ pub fn main() -> ShutdownResult {
             player_count: AtomicUsize::new(0),
         },
         ServerState {
+            player_list: None,
             board: vec![false; SIZE_X * SIZE_Z].into_boxed_slice(),
             board_buf: vec![false; SIZE_X * SIZE_Z].into_boxed_slice(),
         },
@@ -38,6 +40,7 @@ struct Game {
 }
 
 struct ServerState {
+    player_list: Option<PlayerListId>,
     board: Box<[bool]>,
     board_buf: Box<[bool]>,
 }
@@ -55,6 +58,7 @@ impl Config for Game {
     type EntityState = ();
     type ServerState = ServerState;
     type WorldState = ();
+    type PlayerListState = ();
 
     fn max_connections(&self) -> usize {
         // We want status pings to be successful even if the server is full.
@@ -96,6 +100,7 @@ impl Config for Game {
 
     fn init(&self, server: &mut Server<Self>) {
         let world = server.worlds.insert(DimensionId::default(), ()).1;
+        server.state.player_list = Some(server.player_lists.insert(()).0);
         world.meta.set_flat(true);
 
         for chunk_z in -2..Integer::div_ceil(&(SIZE_X as i32), &16) + 2 {
@@ -140,15 +145,18 @@ impl Config for Game {
 
                 client.spawn(world_id);
                 client.teleport(spawn_pos, 0.0, 0.0);
+                client.set_player_list(server.state.player_list.clone());
 
-                world.meta.player_list_mut().insert(
-                    client.uuid(),
-                    client.username().to_owned(),
-                    client.textures().cloned(),
-                    client.game_mode(),
-                    0,
-                    None,
-                );
+                if let Some(id) = &server.state.player_list {
+                    server.player_lists.get_mut(id).insert(
+                        client.uuid(),
+                        client.username(),
+                        client.textures().cloned(),
+                        client.game_mode(),
+                        0,
+                        None,
+                    );
+                }
 
                 client.send_message("Welcome to Conway's game of life in Minecraft!".italic());
                 client.send_message("Hold the left mouse button to bring blocks to life.".italic());
@@ -157,7 +165,9 @@ impl Config for Game {
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
                 server.entities.remove(client.state);
-                world.meta.player_list_mut().remove(client.uuid());
+                if let Some(id) = &server.state.player_list {
+                    server.player_lists.get_mut(id).remove(client.uuid());
+                }
                 return false;
             }
 

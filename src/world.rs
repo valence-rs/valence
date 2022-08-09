@@ -7,7 +7,6 @@ use rayon::iter::ParallelIterator;
 use crate::chunk::Chunks;
 use crate::config::Config;
 use crate::dimension::DimensionId;
-use crate::player_list::PlayerList;
 use crate::server::SharedServer;
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::spatial_index::SpatialIndex;
@@ -53,7 +52,6 @@ impl<C: Config> Worlds<C> {
             meta: WorldMeta {
                 dimension: dim,
                 is_flat: false,
-                player_list: PlayerList::new(),
             },
         });
 
@@ -139,7 +137,6 @@ pub struct World<C: Config> {
 pub struct WorldMeta {
     dimension: DimensionId,
     is_flat: bool,
-    player_list: PlayerList,
     // TODO: time, weather
 }
 
@@ -161,21 +158,5 @@ impl WorldMeta {
     /// Clients already in the world must be respawned to see any changes.
     pub fn set_flat(&mut self, flat: bool) {
         self.is_flat = flat;
-    }
-
-    /// Returns a shared reference to the world's
-    /// [`PlayerList`](crate::player_list::PlayerList).
-    pub fn player_list(&self) -> &PlayerList {
-        &self.player_list
-    }
-
-    /// Returns an exclusive reference to the world's
-    /// [`PlayerList`](crate::player_list::PlayerList).
-    pub fn player_list_mut(&mut self) -> &mut PlayerList {
-        &mut self.player_list
-    }
-
-    pub(crate) fn update(&mut self) {
-        self.player_list.update();
     }
 }

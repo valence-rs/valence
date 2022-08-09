@@ -83,7 +83,48 @@ pub struct Text {
     extra: Vec<Text>,
 }
 
+#[allow(clippy::self_named_constructors)]
 impl Text {
+    /// Constructs a new plain text object.
+    pub fn text(plain: impl Into<Cow<'static, str>>) -> Self {
+        Self {
+            content: TextContent::Text { text: plain.into() },
+            ..Self::default()
+        }
+    }
+
+    /// Create translated text based on the given translation key.
+    pub fn translate(key: impl Into<Cow<'static, str>>) -> Self {
+        Self {
+            content: TextContent::Translate {
+                translate: key.into(),
+            },
+            ..Self::default()
+        }
+    }
+
+    /// Gets this text object as plain text without any formatting.
+    pub fn to_plain(&self) -> String {
+        let mut res = String::new();
+        self.write_plain(&mut res)
+            .expect("failed to write plain text");
+        res
+    }
+
+    /// Writes this text object as plain text to the provided writer.
+    pub fn write_plain(&self, w: &mut impl fmt::Write) -> fmt::Result {
+        match &self.content {
+            TextContent::Text { text } => w.write_str(text.as_ref())?,
+            TextContent::Translate { translate } => w.write_str(translate.as_ref())?,
+        }
+
+        for child in &self.extra {
+            child.write_plain(w)?;
+        }
+
+        Ok(())
+    }
+
     /// Returns `true` if the text contains no characters. Returns `false`
     /// otherwise.
     pub fn is_empty(&self) -> bool {
@@ -347,49 +388,6 @@ enum HoverEvent {
         kind: Ident,
         // TODO: id (hyphenated entity UUID as a string)
     },
-}
-
-#[allow(clippy::self_named_constructors)]
-impl Text {
-    /// Constructs a new plain text object.
-    pub fn text(plain: impl Into<Cow<'static, str>>) -> Self {
-        Self {
-            content: TextContent::Text { text: plain.into() },
-            ..Self::default()
-        }
-    }
-
-    /// Create translated text based on the given translation key.
-    pub fn translate(key: impl Into<Cow<'static, str>>) -> Self {
-        Self {
-            content: TextContent::Translate {
-                translate: key.into(),
-            },
-            ..Self::default()
-        }
-    }
-
-    /// Gets this text object as plain text without any formatting.
-    pub fn to_plain(&self) -> String {
-        let mut res = String::new();
-        self.write_plain(&mut res)
-            .expect("failed to write plain text");
-        res
-    }
-
-    /// Writes this text object as plain text to the provided writer.
-    pub fn write_plain(&self, w: &mut impl fmt::Write) -> fmt::Result {
-        match &self.content {
-            TextContent::Text { text } => w.write_str(text.as_ref())?,
-            TextContent::Translate { translate } => w.write_str(translate.as_ref())?,
-        }
-
-        for child in &self.extra {
-            child.write_plain(w)?;
-        }
-
-        Ok(())
-    }
 }
 
 impl<T: Into<Text>> TextFormat for T {}

@@ -13,6 +13,7 @@ use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
 use valence::entity::types::Pose;
 use valence::entity::{Entity, EntityEvent, EntityId, EntityKind, TrackedData};
+use valence::player_list::PlayerListId;
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 use valence::util::chunks_in_view_distance;
@@ -35,7 +36,7 @@ pub fn main() -> ShutdownResult {
             gravel_noise: SuperSimplex::new().set_seed(seed.wrapping_add(3)),
             grass_noise: SuperSimplex::new().set_seed(seed.wrapping_add(4)),
         },
-        (),
+        None,
     )
 }
 
@@ -55,7 +56,8 @@ impl Config for Game {
     type ChunkState = ();
     type ClientState = EntityId;
     type EntityState = ();
-    type ServerState = ();
+    type PlayerListState = ();
+    type ServerState = Option<PlayerListId>;
     type WorldState = ();
 
     fn max_connections(&self) -> usize {
@@ -83,6 +85,7 @@ impl Config for Game {
 
     fn init(&self, server: &mut Server<Self>) {
         let (_, world) = server.worlds.insert(DimensionId::default(), ());
+        server.state = Some(server.player_lists.insert(()).0);
         world.meta.set_flat(true);
     }
 
@@ -118,22 +121,27 @@ impl Config for Game {
                 client.spawn(world_id);
                 client.set_game_mode(GameMode::Creative);
                 client.teleport([0.0, 200.0, 0.0], 0.0, 0.0);
+                client.set_player_list(server.state.clone());
 
-                world.meta.player_list_mut().insert(
-                    client.uuid(),
-                    client.username().to_owned(),
-                    client.textures().cloned(),
-                    client.game_mode(),
-                    0,
-                    None,
-                );
+                if let Some(id) = &server.state {
+                    server.player_lists.get_mut(id).insert(
+                        client.uuid(),
+                        client.username(),
+                        client.textures().cloned(),
+                        client.game_mode(),
+                        0,
+                        None,
+                    );
+                }
 
                 client.send_message("Welcome to the terrain example!".italic());
             }
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
-                world.meta.player_list_mut().remove(client.uuid());
+                if let Some(id) = &server.state {
+                    server.player_lists.get_mut(id).remove(client.uuid());
+                }
                 server.entities.remove(client.state);
 
                 return false;

@@ -166,7 +166,7 @@ impl<'a, T> IntoIterator for &'a mut Slab<T> {
     }
 }
 
-impl<'a, T: Send + Sync> IntoParallelIterator for &'a Slab<T> {
+impl<'a, T: Sync> IntoParallelIterator for &'a Slab<T> {
     type Item = (usize, &'a T);
     type Iter = ParIter<'a, T>;
 
@@ -301,7 +301,7 @@ impl<T> Clone for ParIter<'_, T> {
     }
 }
 
-impl<'a, T: Send + Sync> ParallelIterator for ParIter<'a, T> {
+impl<'a, T: Sync> ParallelIterator for ParIter<'a, T> {
     type Item = (usize, &'a T);
 
     fn drive_unindexed<C>(self, consumer: C) -> C::Result

@@ -8,6 +8,7 @@ use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
 use valence::entity::types::Pose;
 use valence::entity::{Entity, EntityEvent, EntityId, EntityKind, TrackedData};
+use valence::player_list::PlayerListId;
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 use valence::{async_trait, Ticks};
@@ -23,7 +24,7 @@ pub fn main() -> ShutdownResult {
         Game {
             player_count: AtomicUsize::new(0),
         },
-        (),
+        None,
     )
 }
 
@@ -57,7 +58,8 @@ impl Config for Game {
     type ChunkState = ();
     type ClientState = ClientState;
     type EntityState = EntityState;
-    type ServerState = ();
+    type PlayerListState = ();
+    type ServerState = Option<PlayerListId>;
     type WorldState = ();
 
     fn max_connections(&self) -> usize {
@@ -84,6 +86,7 @@ impl Config for Game {
 
     fn init(&self, server: &mut Server<Self>) {
         let (_, world) = server.worlds.insert(DimensionId::default(), ());
+        server.state = Some(server.player_lists.insert(()).0);
         world.meta.set_flat(true);
 
         let min_y = server.shared.dimension(DimensionId::default()).min_y;
@@ -159,15 +162,18 @@ impl Config for Game {
                     0.0,
                     0.0,
                 );
+                client.set_player_list(server.state.clone());
 
-                world.meta.player_list_mut().insert(
-                    client.uuid(),
-                    client.username().to_owned(),
-                    client.textures().cloned(),
-                    client.game_mode(),
-                    0,
-                    None,
-                );
+                if let Some(id) = &server.state {
+                    server.player_lists.get_mut(id).insert(
+                        client.uuid(),
+                        client.username(),
+                        client.textures().cloned(),
+                        client.game_mode(),
+                        0,
+                        None,
+                    );
+                }
 
                 client.send_message("Welcome to the arena.".italic());
                 if self.player_count.load(Ordering::SeqCst) <= 1 {
@@ -178,7 +184,9 @@ impl Config for Game {
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
                 server.entities.remove(client.state.player);
-                world.meta.player_list_mut().remove(client.uuid());
+                if let Some(id) = &server.state {
+                    server.player_lists.get_mut(id).remove(client.uuid());
+                }
                 return false;
             }
 
