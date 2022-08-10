@@ -31,7 +31,8 @@ pub trait Config: 'static + Sized + Send + Sync + UnwindSafe + RefUnwindSafe {
     type WorldState: Send + Sync;
     /// Custom state to store with every [`Chunk`](crate::chunk::Chunk).
     type ChunkState: Send + Sync;
-    /// Custom state to store with every [`PlayerList`](crate::player_list::PlayerList).
+    /// Custom state to store with every
+    /// [`PlayerList`](crate::player_list::PlayerList).
     type PlayerListState: Send + Sync;
 
     /// Called once at startup to get the maximum number of simultaneous

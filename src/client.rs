@@ -266,7 +266,7 @@ impl<C: Config> Client<C> {
             velocity: Vec3::default(),
             yaw: 0.0,
             pitch: 0.0,
-            view_distance: 8,
+            view_distance: 2,
             teleport_id_counter: 0,
             pending_teleports: 0,
             spawn_position: BlockPos::default(),
@@ -879,6 +879,8 @@ impl<C: Config> Client<C> {
         // Send the join game packet and other initial packets. We defer this until now
         // so that the user can set the client's initial location, game mode, etc.
         if self.created_this_tick() {
+            self.bits.set_spawn(false);
+
             if let Some(id) = &self.new_player_list {
                 player_lists
                     .get(id)

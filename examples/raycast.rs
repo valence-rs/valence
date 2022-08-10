@@ -9,12 +9,12 @@ use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
 use valence::entity::types::Pose;
 use valence::entity::{Entity, EntityEvent, EntityId, EntityKind, TrackedData};
+use valence::player_list::PlayerListId;
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::spatial_index::RaycastHit;
 use valence::text::{Color, TextFormat};
 use valence::util::from_yaw_and_pitch;
 use vek::Vec3;
-use valence::player_list::PlayerListId;
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()
@@ -46,9 +46,9 @@ impl Config for Game {
     type ClientState = EntityId;
     /// `true` for entities that have been intersected with.
     type EntityState = bool;
+    type PlayerListState = ();
     type ServerState = Option<PlayerListId>;
     type WorldState = ();
-    type PlayerListState = ();
 
     fn max_connections(&self) -> usize {
         // We want status pings to be successful even if the server is full.
