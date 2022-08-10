@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -53,7 +52,8 @@ const MAX_PLAYERS: usize = 10;
 
 #[async_trait]
 impl Config for Game {
-    type ChunkState = ();
+    /// If the chunk should stay loaded at the end of the tick.
+    type ChunkState = bool;
     type ClientState = EntityId;
     type EntityState = ();
     type PlayerListState = ();
@@ -90,8 +90,6 @@ impl Config for Game {
 
     fn update(&self, server: &mut Server<Self>) {
         let (world_id, world) = server.worlds.iter_mut().next().unwrap();
-
-        let mut chunks_to_unload = HashSet::<_>::from_iter(world.chunks.iter().map(|t| t.0));
 
         server.clients.retain(|_, client| {
             if client.created_this_tick() {
@@ -155,19 +153,27 @@ impl Config for Game {
             let p = client.position();
 
             for pos in chunks_in_view_distance(ChunkPos::at(p.x, p.z), dist) {
-                chunks_to_unload.remove(&pos);
-                if world.chunks.get(pos).is_none() {
-                    world.chunks.insert(pos, ());
+                if let Some(chunk) = world.chunks.get_mut(pos) {
+                    chunk.state = true;
+                } else {
+                    world.chunks.insert(pos, true);
                 }
             }
 
             true
         });
 
-        for pos in chunks_to_unload {
-            world.chunks.remove(pos);
-        }
+        // Remove chunks outside the view distance of players.
+        world.chunks.retain(|_, chunk| {
+            if chunk.state {
+                chunk.state = false;
+                true
+            } else {
+                false
+            }
+        });
 
+        // Generate chunk data for chunks created this tick.
         world.chunks.par_iter_mut().for_each(|(pos, chunk)| {
             if chunk.created_tick() != server.shared.current_tick() {
                 return;

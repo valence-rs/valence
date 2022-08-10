@@ -90,6 +90,10 @@ impl<C: Config> Chunks<C> {
         self.chunks.get_mut(&pos.into())
     }
 
+    pub fn retain(&mut self, mut f: impl FnMut(ChunkPos, &mut Chunk<C>) -> bool) {
+        self.chunks.retain(|&pos, chunk| f(pos, chunk))
+    }
+
     /// Deletes all chunks.
     pub fn clear(&mut self) {
         self.chunks.clear();
