@@ -10,15 +10,13 @@ mod entity;
 mod entity_event;
 
 pub fn main() -> anyhow::Result<()> {
+    println!("cargo:rerun-if-changed=extracted/");
+
     let generators = [
         (entity::build as fn() -> _, "entity.rs"),
         (entity_event::build, "entity_event.rs"),
         (block::build, "block.rs"),
     ];
-
-    for (_, file_name) in generators {
-        println!("cargo:rerun-if-changed=extracted/{file_name}");
-    }
 
     let out_dir = env::var_os("OUT_DIR").context("can't get OUT_DIR env var")?;
 
