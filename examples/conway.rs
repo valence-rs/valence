@@ -65,11 +65,6 @@ impl Config for Game {
         MAX_PLAYERS + 64
     }
 
-    fn online_mode(&self) -> bool {
-        // You'll want this to be true on real servers.
-        false
-    }
-
     fn dimensions(&self) -> Vec<Dimension> {
         vec![Dimension {
             fixed_time: Some(6000),

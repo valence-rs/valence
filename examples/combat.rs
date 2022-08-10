@@ -67,10 +67,6 @@ impl Config for Game {
         MAX_PLAYERS + 64
     }
 
-    fn online_mode(&self) -> bool {
-        false
-    }
-
     async fn server_list_ping(
         &self,
         _server: &SharedServer<Self>,
