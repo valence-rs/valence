@@ -1064,8 +1064,6 @@ impl<C: Config> Client<C> {
             }
         }
 
-        let view_dist = self.view_distance();
-
         let center = ChunkPos::at(self.position.x, self.position.z);
 
         // Send the update view position packet if the client changes the chunk section
@@ -1092,8 +1090,8 @@ impl<C: Config> Client<C> {
             let cache = 2;
 
             if let Some(chunk) = world.chunks.get(pos) {
-                if is_chunk_in_view_distance(center, pos, view_dist + cache)
-                    && chunk.created_tick() != current_tick
+                if is_chunk_in_view_distance(center, pos, self.view_distance + cache)
+                    && !chunk.created_this_tick()
                 {
                     chunk.block_change_packets(pos, dimension.min_y, |pkt| {
                         send_packet(&mut self.send, pkt)
@@ -1113,7 +1111,7 @@ impl<C: Config> Client<C> {
         });
 
         // Load new chunks within the view distance
-        for pos in chunks_in_view_distance(center, view_dist) {
+        for pos in chunks_in_view_distance(center, self.view_distance) {
             if let Some(chunk) = world.chunks.get(pos) {
                 if self.loaded_chunks.insert(pos) {
                     self.send_packet(chunk.chunk_data_packet(pos));
@@ -1188,7 +1186,7 @@ impl<C: Config> Client<C> {
         self.loaded_entities.retain(|&id| {
             if let Some(entity) = entities.get(id) {
                 debug_assert!(entity.kind() != EntityKind::Marker);
-                if self.position.distance(entity.position()) <= view_dist as f64 * 16.0 {
+                if self.position.distance(entity.position()) <= self.view_distance as f64 * 16.0 {
                     if let Some(meta) = entity.updated_tracked_data_packet(id) {
                         send_packet(&mut self.send, meta);
                     }
@@ -1300,6 +1298,7 @@ impl<C: Config> Client<C> {
 
         // Spawn new entities within the view distance.
         let pos = self.position();
+        let view_dist = self.view_distance;
         world.spatial_index.query::<_, _, ()>(
             |bb| bb.projected_point(pos).distance(pos) <= view_dist as f64 * 16.0,
             |id, _| {

@@ -436,14 +436,11 @@ fn do_update_loop<C: Config>(server: &mut Server<C>) -> ShutdownResult {
         shared.config().update(server);
 
         server.worlds.par_iter_mut().for_each(|(id, world)| {
-            world.chunks.par_iter_mut().for_each(|(_, chunk)| {
-                if chunk.created_tick() == shared.current_tick() {
-                    // Chunks created this tick can have their changes applied immediately because
-                    // they have not been observed by clients yet. Clients will not have to be sent
-                    // the block change packet in this case.
-                    chunk.apply_modifications(server.shared.biomes().len());
-                }
-            });
+            // Chunks created this tick can have their changes applied immediately because
+            // they have not been observed by clients yet. Clients will not have to be sent
+            // the block change packet in this case, since the changes are applied before we
+            // update clients.
+            world.chunks.update_created_this_tick();
 
             world.spatial_index.update(&server.entities, id);
         });
@@ -460,9 +457,7 @@ fn do_update_loop<C: Config>(server: &mut Server<C>) -> ShutdownResult {
         server.entities.update();
 
         server.worlds.par_iter_mut().for_each(|(_, world)| {
-            world.chunks.par_iter_mut().for_each(|(_, chunk)| {
-                chunk.apply_modifications(server.shared.biomes().len());
-            });
+            world.chunks.update();
         });
 
         server.player_lists.update();

@@ -170,7 +170,7 @@ impl Config for Game {
 
         // Generate chunk data for chunks created this tick.
         world.chunks.par_iter_mut().for_each(|(pos, chunk)| {
-            if chunk.created_tick() != server.shared.current_tick() {
+            if !chunk.created_this_tick() {
                 return;
             }
 

@@ -22,7 +22,6 @@ use crate::protocol_inner::packets::s2c::play::{
 };
 use crate::protocol_inner::{Encode, Nbt, VarInt, VarLong};
 use crate::server::SharedServer;
-use crate::Ticks;
 
 /// A container for all [`Chunks`]s in a [`World`](crate::world::World).
 pub struct Chunks<C: Config> {
@@ -32,10 +31,7 @@ pub struct Chunks<C: Config> {
 }
 
 impl<C: Config> Chunks<C> {
-    pub(crate) fn new(
-        shared: SharedServer<C>,
-        dimension: DimensionId,
-    ) -> Self {
+    pub(crate) fn new(shared: SharedServer<C>, dimension: DimensionId) -> Self {
         Self {
             chunks: HashMap::new(),
             shared,
@@ -56,12 +52,7 @@ impl<C: Config> Chunks<C> {
     pub fn insert(&mut self, pos: impl Into<ChunkPos>, state: C::ChunkState) -> &mut Chunk<C> {
         let section_count = (self.shared.dimension(self.dimension).height / 16) as u32;
         let biome_registry_len = self.shared.biomes().len();
-        let chunk = Chunk::new(
-            section_count,
-            self.shared.current_tick(),
-            biome_registry_len,
-            state,
-        );
+        let chunk = Chunk::new(section_count, biome_registry_len, state);
 
         match self.chunks.entry(pos.into()) {
             Entry::Occupied(mut oe) => {
@@ -194,6 +185,27 @@ impl<C: Config> Chunks<C> {
 
         false
     }
+
+    /// Apply chunk modifications to only the chunks that were created this
+    /// tick.
+    pub(crate) fn update_created_this_tick(&mut self) {
+        let biome_registry_len = self.shared.biomes().len();
+        self.chunks.par_iter_mut().for_each(|(_, chunk)| {
+            if chunk.created_this_tick() {
+                chunk.apply_modifications(biome_registry_len);
+            }
+        });
+    }
+
+    /// Apply chunk modifications to all chunks and clear the created_this_tick
+    /// flag.
+    pub(crate) fn update(&mut self) {
+        let biome_registry_len = self.shared.biomes().len();
+        self.chunks.par_iter_mut().for_each(|(_, chunk)| {
+            chunk.apply_modifications(biome_registry_len);
+            chunk.created_this_tick = false;
+        });
+    }
 }
 
 /// A chunk is a 16x16-block segment of a world with a height determined by the
@@ -208,16 +220,11 @@ pub struct Chunk<C: Config> {
     // TODO block_entities: HashMap<u32, BlockEntity>,
     /// The MOTION_BLOCKING heightmap
     heightmap: Vec<i64>,
-    created_tick: Ticks,
+    created_this_tick: bool,
 }
 
 impl<C: Config> Chunk<C> {
-    pub(crate) fn new(
-        section_count: u32,
-        current_tick: Ticks,
-        biome_registry_len: usize,
-        data: C::ChunkState,
-    ) -> Self {
+    fn new(section_count: u32, biome_registry_len: usize, data: C::ChunkState) -> Self {
         let sect = ChunkSection {
             blocks: [BlockState::AIR.to_raw(); 4096],
             modified_count: 1, // Must be >0 so the chunk is initialized.
@@ -229,15 +236,15 @@ impl<C: Config> Chunk<C> {
             state: data,
             sections: vec![sect; section_count as usize].into(),
             heightmap: Vec::new(),
-            created_tick: current_tick,
+            created_this_tick: true,
         };
 
         chunk.apply_modifications(biome_registry_len);
         chunk
     }
 
-    pub fn created_tick(&self) -> Ticks {
-        self.created_tick
+    pub fn created_this_tick(&self) -> bool {
+        self.created_this_tick
     }
 
     pub fn height(&self) -> usize {
@@ -327,7 +334,7 @@ impl<C: Config> Chunk<C> {
         &self,
         pos: ChunkPos,
         min_y: i32,
-        mut packet: impl FnMut(BlockChangePacket),
+        mut push_packet: impl FnMut(BlockChangePacket),
     ) {
         for (sect_y, sect) in self.sections.iter().enumerate() {
             if sect.modified_count == 1 {
@@ -342,7 +349,7 @@ impl<C: Config> Chunk<C> {
                 let global_y = sect_y as i32 * 16 + (idx / (16 * 16)) as i32 + min_y;
                 let global_z = pos.z * 16 + (idx / 16 % 16) as i32;
 
-                packet(BlockChangePacket::Single(BlockUpdate {
+                push_packet(BlockChangePacket::Single(BlockUpdate {
                     location: BlockPos::new(global_x, global_y, global_z),
                     block_id: VarInt((block & BLOCK_STATE_MASK).into()),
                 }));
@@ -368,7 +375,7 @@ impl<C: Config> Chunk<C> {
                     | (pos.z as i64 & 0x3fffff) << 20
                     | (sect_y as i64 + min_y.div_euclid(16) as i64) & 0xfffff;
 
-                packet(BlockChangePacket::Multi(ChunkSectionUpdate {
+                push_packet(BlockChangePacket::Multi(ChunkSectionUpdate {
                     chunk_section_position,
                     invert_trust_edges: false,
                     blocks,
@@ -377,7 +384,7 @@ impl<C: Config> Chunk<C> {
         }
     }
 
-    pub(crate) fn apply_modifications(&mut self, biome_registry_len: usize) {
+    fn apply_modifications(&mut self, biome_registry_len: usize) {
         let mut any_modified = false;
 
         for sect in self.sections.iter_mut() {
