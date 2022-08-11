@@ -14,7 +14,7 @@ use crate::spatial_index::SpatialIndex;
 /// A container for all [`World`]s on a [`Server`](crate::server::Server).
 pub struct Worlds<C: Config> {
     slab: VersionedSlab<World<C>>,
-    server: SharedServer<C>,
+    shared: SharedServer<C>,
 }
 
 /// An identifier for a [`World`] on the server.
@@ -35,10 +35,10 @@ impl WorldId {
 }
 
 impl<C: Config> Worlds<C> {
-    pub(crate) fn new(server: SharedServer<C>) -> Self {
+    pub(crate) fn new(shared: SharedServer<C>) -> Self {
         Self {
             slab: VersionedSlab::new(),
-            server,
+            shared,
         }
     }
 
@@ -48,7 +48,7 @@ impl<C: Config> Worlds<C> {
         let (id, world) = self.slab.insert(World {
             state,
             spatial_index: SpatialIndex::new(),
-            chunks: Chunks::new(self.server.clone(), dim),
+            chunks: Chunks::new(self.shared.clone(), dim),
             meta: WorldMeta { dimension: dim },
         });
 

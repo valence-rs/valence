@@ -441,7 +441,7 @@ fn do_update_loop<C: Config>(server: &mut Server<C>) -> ShutdownResult {
                     // Chunks created this tick can have their changes applied immediately because
                     // they have not been observed by clients yet. Clients will not have to be sent
                     // the block change packet in this case.
-                    chunk.apply_modifications();
+                    chunk.apply_modifications(server.shared.biomes().len());
                 }
             });
 
@@ -461,7 +461,7 @@ fn do_update_loop<C: Config>(server: &mut Server<C>) -> ShutdownResult {
 
         server.worlds.par_iter_mut().for_each(|(_, world)| {
             world.chunks.par_iter_mut().for_each(|(_, chunk)| {
-                chunk.apply_modifications();
+                chunk.apply_modifications(server.shared.biomes().len());
             });
         });
 
