@@ -1,6 +1,7 @@
 package dev._00a.valence_extractor.extractors;
 
 import com.google.gson.*;
+import dev._00a.valence_extractor.ClassComparator;
 import dev._00a.valence_extractor.DummyPlayerEntity;
 import dev._00a.valence_extractor.DummyWorld;
 import dev._00a.valence_extractor.Main;
@@ -272,7 +273,7 @@ public class Entities implements Main.Extractor {
         final var dataTrackerField = Entity.class.getDeclaredField("dataTracker");
         dataTrackerField.setAccessible(true);
 
-        var entitiesJson = new JsonObject();
+        var entitiesMap = new TreeMap<Class<? extends Entity>, JsonElement>(new ClassComparator());
 
         for (var entry : entityClassToType.entrySet()) {
             var entityClass = entry.getKey();
@@ -285,7 +286,7 @@ public class Entities implements Main.Extractor {
             final var entityInstance = entityType.equals(EntityType.PLAYER) ? DummyPlayerEntity.INSTANCE : entityType.create(DummyWorld.INSTANCE);
             final var dataTracker = (DataTracker) dataTrackerField.get(entityInstance);
 
-            while (entitiesJson.get(entityClass.getSimpleName()) == null) {
+            while (entitiesMap.get(entityClass) == null) {
                 var entityJson = new JsonObject();
 
                 var parent = entityClass.getSuperclass();
@@ -331,7 +332,7 @@ public class Entities implements Main.Extractor {
                 }
                 entityJson.add("fields", fieldsJson);
 
-                entitiesJson.add(entityClass.getSimpleName(), entityJson);
+                entitiesMap.put(entityClass, entityJson);
 
                 if (!hasParent) {
                     break;
@@ -340,6 +341,11 @@ public class Entities implements Main.Extractor {
                 entityClass = (Class<? extends Entity>) parent;
                 entityType = entityClassToType.get(entityClass);
             }
+        }
+
+        var entitiesJson = new JsonObject();
+        for (var entry : entitiesMap.entrySet()) {
+            entitiesJson.add(entry.getKey().getSimpleName(), entry.getValue());
         }
 
         return entitiesJson;
