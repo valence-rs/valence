@@ -391,10 +391,16 @@ pub(crate) mod test {
     use super::*;
 
     def_struct! {
-        TestPacket 0xfff {
+        TestPacket {
             first: String,
             second: Vec<u16>,
             third: u64
+        }
+    }
+
+    def_packet_group! {
+        TestPacketGroup {
+            TestPacket = 12345,
         }
     }
 }

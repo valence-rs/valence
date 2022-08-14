@@ -84,6 +84,7 @@ impl Config for Game {
         &self,
         _server: &SharedServer<Self>,
         _remote_addr: SocketAddr,
+        _protocol_version: i32,
     ) -> ServerListPing {
         ServerListPing::Respond {
             online_players: self.player_count.load(Ordering::SeqCst) as i32,

@@ -547,11 +547,13 @@ async fn handle_connection<C: Config>(
 
     // TODO: peek stream for 0xFE legacy ping
 
-    match c.dec.read_packet::<Handshake>().await?.next_state {
-        HandshakeNextState::Status => handle_status(server, &mut c, remote_addr)
+    let handshake = c.dec.read_packet::<Handshake>().await?;
+
+    match handshake.next_state {
+        HandshakeNextState::Status => handle_status(server, &mut c, remote_addr, handshake)
             .await
             .context("error during status"),
-        HandshakeNextState::Login => match handle_login(&server, &mut c, remote_addr)
+        HandshakeNextState::Login => match handle_login(&server, &mut c, remote_addr, handshake)
             .await
             .context("error during login")?
         {
@@ -567,10 +569,16 @@ async fn handle_status<C: Config>(
     server: SharedServer<C>,
     c: &mut Codec,
     remote_addr: SocketAddr,
+    handshake: Handshake,
 ) -> anyhow::Result<()> {
     c.dec.read_packet::<QueryRequest>().await?;
 
-    match server.0.cfg.server_list_ping(&server, remote_addr).await {
+    match server
+        .0
+        .cfg
+        .server_list_ping(&server, remote_addr, handshake.protocol_version.0)
+        .await
+    {
         ServerListPing::Respond {
             online_players,
             max_players,
@@ -619,7 +627,13 @@ async fn handle_login<C: Config>(
     server: &SharedServer<C>,
     c: &mut Codec,
     remote_addr: SocketAddr,
+    handshake: Handshake,
 ) -> anyhow::Result<Option<NewClientData>> {
+    if handshake.protocol_version.0 != PROTOCOL_VERSION {
+        // TODO: send translated disconnect msg?
+        return Ok(None);
+    }
+
     let LoginStart {
         username: BoundedString(username),
         sig_data: _, // TODO

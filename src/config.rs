@@ -177,6 +177,7 @@ pub trait Config: 'static + Sized + Send + Sync + UnwindSafe + RefUnwindSafe {
         &self,
         shared: &SharedServer<Self>,
         remote_addr: SocketAddr,
+        protocol_version: i32,
     ) -> ServerListPing {
         ServerListPing::Ignore
     }
