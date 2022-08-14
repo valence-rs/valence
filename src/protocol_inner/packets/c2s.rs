@@ -6,7 +6,7 @@ pub mod handshake {
     use super::*;
 
     def_struct! {
-        Handshake 0x00 {
+        Handshake {
             protocol_version: VarInt,
             server_adddress: BoundedString<0, 255>,
             server_port: u16,
@@ -20,18 +20,31 @@ pub mod handshake {
             Login = 2,
         }
     }
+
+    def_packet_group! {
+        C2sHandshakePacket {
+            Handshake = 0,
+        }
+    }
 }
 
 pub mod status {
     use super::*;
 
     def_struct! {
-        QueryRequest 0x00 {}
+        QueryRequest {}
     }
 
     def_struct! {
-        QueryPing 0x01 {
+        QueryPing {
             payload: u64
+        }
+    }
+
+    def_packet_group! {
+        C2sStatusPacket {
+            QueryRequest = 0,
+            QueryPing = 1,
         }
     }
 }
@@ -40,14 +53,14 @@ pub mod login {
     use super::*;
 
     def_struct! {
-        LoginStart 0x00 {
+        LoginStart {
             username: BoundedString<3, 16>,
             sig_data: Option<SignatureData>,
         }
     }
 
     def_struct! {
-        EncryptionResponse 0x01 {
+        EncryptionResponse {
             shared_secret: BoundedArray<u8, 16, 128>,
             token_or_sig: VerifyTokenOrMsgSig,
         }
@@ -68,7 +81,7 @@ pub mod login {
     }
 
     def_struct! {
-        LoginPluginResponse 0x02 {
+        LoginPluginResponse {
             message_id: VarInt,
             data: Option<RawBytes>,
         }
@@ -76,9 +89,9 @@ pub mod login {
 
     def_packet_group! {
         C2sLoginPacket {
-            LoginStart,
-            EncryptionResponse,
-            LoginPluginResponse,
+            LoginStart = 0,
+            EncryptionResponse = 1,
+            LoginPluginResponse = 2,
         }
     }
 }
@@ -87,20 +100,20 @@ pub mod play {
     use super::super::*;
 
     def_struct! {
-        TeleportConfirm 0x00 {
+        TeleportConfirm {
             teleport_id: VarInt
         }
     }
 
     def_struct! {
-        QueryBlockNbt 0x01 {
+        QueryBlockNbt {
             transaction_id: VarInt,
             location: BlockPos,
         }
     }
 
     def_enum! {
-        UpdateDifficulty 0x02: i8 {
+        UpdateDifficulty: i8 {
             Peaceful = 0,
             Easy = 1,
             Normal = 2,
@@ -109,7 +122,7 @@ pub mod play {
     }
 
     def_struct! {
-        CommandExecution 0x03 {
+        CommandExecution {
             command: String, // TODO: bounded?
             // TODO: timestamp, arg signatures
             signed_preview: bool,
@@ -117,7 +130,7 @@ pub mod play {
     }
 
     def_struct! {
-        ChatMessage 0x04 {
+        ChatMessage {
             message: BoundedString<0, 256>,
             timestamp: u64,
             salt: u64,
@@ -127,14 +140,14 @@ pub mod play {
     }
 
     def_struct! {
-        RequestChatPreview 0x05 {
+        RequestChatPreview {
             query: i32, // TODO: is this an i32 or a varint?
             message: BoundedString<0, 256>,
         }
     }
 
     def_enum! {
-        ClientStatus 0x06: VarInt {
+        ClientStatus: VarInt {
             /// Sent when ready to complete login and ready to respawn after death.
             PerformRespawn = 0,
             /// Sent when the statistics menu is opened.
@@ -143,7 +156,7 @@ pub mod play {
     }
 
     def_struct! {
-        ClientSettings 0x07 {
+        ClientSettings {
             /// e.g. en_US
             locale: BoundedString<0, 16>,
             /// Client-side render distance in chunks.
@@ -189,7 +202,7 @@ pub mod play {
     }
 
     def_struct! {
-        RequestCommandCompletion 0x08 {
+        RequestCommandCompletion {
             transaction_id: VarInt,
             /// Text behind the cursor without the '/'.
             text: BoundedString<0, 32500>
@@ -197,33 +210,33 @@ pub mod play {
     }
 
     def_struct! {
-        ButtonClick 0x09 {
+        ButtonClick {
             window_id: i8,
             button_id: i8,
         }
     }
 
     def_struct! {
-        ClickSlot 0x0a {
+        ClickSlot {
             // TODO
         }
     }
 
     def_struct! {
-        CloseHandledScreen 0x0b {
+        CloseHandledScreen {
             window_id: u8,
         }
     }
 
     def_struct! {
-        CustomPayload 0x0c {
+        CustomPayload {
             channel: Ident,
             data: RawBytes,
         }
     }
 
     def_struct! {
-        BookUpdate 0x0d {
+        BookUpdate {
             slot: VarInt,
             entries: Vec<String>,
             title: Option<String>,
@@ -231,14 +244,14 @@ pub mod play {
     }
 
     def_struct! {
-        QueryEntityNbt 0x0e {
+        QueryEntityNbt {
             transaction_id: VarInt,
             entity_id: VarInt,
         }
     }
 
     def_struct! {
-        PlayerInteractEntity 0x0f {
+        PlayerInteractEntity {
             entity_id: VarInt,
             kind: InteractKind,
             sneaking: bool,
@@ -262,7 +275,7 @@ pub mod play {
     }
 
     def_struct! {
-        JigsawGenerate 0x10 {
+        JigsawGenerate {
             location: BlockPos,
             levels: VarInt,
             keep_jigsaws: bool,
@@ -270,26 +283,26 @@ pub mod play {
     }
 
     def_struct! {
-        KeepAlive 0x11 {
+        KeepAlive {
             id: i64,
         }
     }
 
     def_struct! {
-        UpdateDifficultyLock 0x12 {
+        UpdateDifficultyLock {
             locked: bool
         }
     }
 
     def_struct! {
-        MovePlayerPosition 0x13 {
+        MovePlayerPosition {
             position: Vec3<f64>,
             on_ground: bool,
         }
     }
 
     def_struct! {
-        MovePlayerPositionAndRotation 0x14 {
+        MovePlayerPositionAndRotation {
             // Absolute position
             position: Vec3<f64>,
             /// Absolute rotation on X axis in degrees.
@@ -301,7 +314,7 @@ pub mod play {
     }
 
     def_struct! {
-        MovePlayerRotation 0x15 {
+        MovePlayerRotation {
             /// Absolute rotation on X axis in degrees.
             yaw: f32,
             /// Absolute rotation on Y axis in degrees.
@@ -311,13 +324,13 @@ pub mod play {
     }
 
     def_struct! {
-        MovePlayerOnGround 0x16 {
+        MovePlayerOnGround {
             on_ground: bool
         }
     }
 
     def_struct! {
-        MoveVehicle 0x17 {
+        MoveVehicle {
             /// Absolute position
             position: Vec3<f64>,
             /// Degrees
@@ -328,20 +341,20 @@ pub mod play {
     }
 
     def_struct! {
-        BoatPaddleState 0x18 {
+        BoatPaddleState {
             left_paddle_turning: bool,
             right_paddle_turning: bool,
         }
     }
 
     def_struct! {
-        PickFromInventory 0x19 {
+        PickFromInventory {
             slot_to_use: VarInt,
         }
     }
 
     def_struct! {
-        CraftRequest 0x1a {
+        CraftRequest {
             window_id: i8,
             recipe: Ident,
             make_all: bool,
@@ -349,14 +362,14 @@ pub mod play {
     }
 
     def_enum! {
-        UpdatePlayerAbilities 0x1b: i8 {
+        UpdatePlayerAbilities: i8 {
             NotFlying = 0,
             Flying = 0b10,
         }
     }
 
     def_struct! {
-        PlayerAction 0x1c {
+        PlayerAction {
             status: DiggingStatus,
             location: BlockPos,
             face: BlockFace,
@@ -395,7 +408,7 @@ pub mod play {
     }
 
     def_struct! {
-        PlayerCommand 0x1d {
+        PlayerCommand {
             entity_id: VarInt,
             action_id: PlayerCommandId,
             jump_boost: BoundedInt<VarInt, 0, 100>,
@@ -417,7 +430,7 @@ pub mod play {
     }
 
     def_struct! {
-        PlayerInput 0x1e {
+        PlayerInput {
             sideways: f32,
             forward: f32,
             flags: PlayerInputFlags,
@@ -432,13 +445,13 @@ pub mod play {
     }
 
     def_struct! {
-        PlayPong 0x1f {
+        PlayPong {
             id: i32,
         }
     }
 
     def_struct! {
-        RecipeBookChangeSettings 0x20 {
+        RecipeBookChangeSettings {
             book_id: RecipeBookId,
             book_open: bool,
             filter_active: bool,
@@ -455,19 +468,19 @@ pub mod play {
     }
 
     def_struct! {
-        RecipeBookSeenRecipe 0x21 {
+        RecipeBookSeenRecipe {
             recipe_id: Ident,
         }
     }
 
     def_struct! {
-        RenameItem 0x22 {
+        RenameItem {
             item_name: BoundedString<0, 50>,
         }
     }
 
     def_enum! {
-        ResourcePackStatus 0x23: VarInt {
+        ResourcePackStatus: VarInt {
             SuccessfullyLoaded = 0,
             Declined = 1,
             FailedDownload = 2,
@@ -476,20 +489,20 @@ pub mod play {
     }
 
     def_enum! {
-        AdvancementTab 0x24: VarInt {
+        AdvancementTab: VarInt {
             OpenedTab: Ident = 0,
             ClosedScreen = 1,
         }
     }
 
     def_struct! {
-        SelectMerchantTrade 0x25 {
+        SelectMerchantTrade {
             selected_slot: VarInt,
         }
     }
 
     def_struct! {
-        UpdateBeacon 0x26 {
+        UpdateBeacon {
             // TODO: potion ids
             primary_effect: Option<VarInt>,
             secondary_effect: Option<VarInt>,
@@ -497,13 +510,13 @@ pub mod play {
     }
 
     def_struct! {
-        UpdateSelectedSlot 0x27 {
+        UpdateSelectedSlot {
             slot: BoundedInt<i16, 0, 8>,
         }
     }
 
     def_struct! {
-        UpdateCommandBlock 0x28 {
+        UpdateCommandBlock {
             location: BlockPos,
             command: String,
             mode: CommandBlockMode,
@@ -528,7 +541,7 @@ pub mod play {
     }
 
     def_struct! {
-        UpdateCommandBlockMinecart 0x29 {
+        UpdateCommandBlockMinecart {
             entity_id: VarInt,
             command: String,
             track_output: bool,
@@ -536,14 +549,14 @@ pub mod play {
     }
 
     def_struct! {
-        UpdateCreativeModeSlot 0x2a {
+        UpdateCreativeModeSlot {
             slot: i16,
             // TODO: clicked_item: Slot,
         }
     }
 
     def_struct! {
-        UpdateJigsaw 0x2b {
+        UpdateJigsaw {
             location: BlockPos,
             name: Ident,
             target: Ident,
@@ -554,7 +567,7 @@ pub mod play {
     }
 
     def_struct! {
-        UpdateStructureBlock 0x2c {
+        UpdateStructureBlock {
             location: BlockPos,
             action: StructureBlockAction,
             mode: StructureBlockMode,
@@ -614,26 +627,26 @@ pub mod play {
     }
 
     def_struct! {
-        UpdateSign 0x2d {
+        UpdateSign {
             location: BlockPos,
             lines: [BoundedString<0, 384>; 4],
         }
     }
 
     def_struct! {
-        HandSwing 0x2e {
+        HandSwing {
             hand: Hand,
         }
     }
 
     def_struct! {
-        SpectatorTeleport 0x2f {
+        SpectatorTeleport {
             target: Uuid,
         }
     }
 
     def_struct! {
-        PlayerInteractBlock 0x30 {
+        PlayerInteractBlock {
             hand: Hand,
             location: BlockPos,
             face: BlockFace,
@@ -644,7 +657,7 @@ pub mod play {
     }
 
     def_struct! {
-        PlayerInteractItem 0x31 {
+        PlayerInteractItem {
             hand: Hand,
             sequence: VarInt,
         }
@@ -652,56 +665,56 @@ pub mod play {
 
     def_packet_group! {
         C2sPlayPacket {
-            TeleportConfirm,
-            QueryBlockNbt,
-            UpdateDifficulty,
-            CommandExecution,
-            ChatMessage,
-            RequestChatPreview,
-            ClientStatus,
-            ClientSettings,
-            RequestCommandCompletion,
-            ButtonClick,
-            ClickSlot,
-            CloseHandledScreen,
-            CustomPayload,
-            BookUpdate,
-            QueryEntityNbt,
-            PlayerInteractEntity,
-            JigsawGenerate,
-            KeepAlive,
-            UpdateDifficultyLock,
-            MovePlayerPosition,
-            MovePlayerPositionAndRotation,
-            MovePlayerRotation,
-            MovePlayerOnGround,
-            MoveVehicle,
-            BoatPaddleState,
-            PickFromInventory,
-            CraftRequest,
-            UpdatePlayerAbilities,
-            PlayerAction,
-            PlayerCommand,
-            PlayerInput,
-            PlayPong,
-            RecipeBookChangeSettings,
-            RecipeBookSeenRecipe,
-            RenameItem,
-            ResourcePackStatus,
-            AdvancementTab,
-            SelectMerchantTrade,
-            UpdateBeacon,
-            UpdateSelectedSlot,
-            UpdateCommandBlock,
-            UpdateCommandBlockMinecart,
-            UpdateCreativeModeSlot,
-            UpdateJigsaw,
-            UpdateStructureBlock,
-            UpdateSign,
-            HandSwing,
-            SpectatorTeleport,
-            PlayerInteractBlock,
-            PlayerInteractItem,
+            TeleportConfirm = 0,
+            QueryBlockNbt = 1,
+            UpdateDifficulty = 2,
+            CommandExecution = 3,
+            ChatMessage = 4,
+            RequestChatPreview = 5,
+            ClientStatus = 6,
+            ClientSettings = 7,
+            RequestCommandCompletion = 8,
+            ButtonClick = 9,
+            ClickSlot = 10,
+            CloseHandledScreen = 11,
+            CustomPayload = 12,
+            BookUpdate = 13,
+            QueryEntityNbt = 14,
+            PlayerInteractEntity = 15,
+            JigsawGenerate = 16,
+            KeepAlive = 17,
+            UpdateDifficultyLock = 18,
+            MovePlayerPosition = 19,
+            MovePlayerPositionAndRotation = 20,
+            MovePlayerRotation = 21,
+            MovePlayerOnGround = 22,
+            MoveVehicle = 23,
+            BoatPaddleState = 24,
+            PickFromInventory = 25,
+            CraftRequest = 26,
+            UpdatePlayerAbilities = 27,
+            PlayerAction = 28,
+            PlayerCommand = 29,
+            PlayerInput = 30,
+            PlayPong = 31,
+            RecipeBookChangeSettings = 32,
+            RecipeBookSeenRecipe = 33,
+            RenameItem = 34,
+            ResourcePackStatus = 35,
+            AdvancementTab = 36,
+            SelectMerchantTrade = 37,
+            UpdateBeacon = 38,
+            UpdateSelectedSlot = 39,
+            UpdateCommandBlock = 40,
+            UpdateCommandBlockMinecart = 41,
+            UpdateCreativeModeSlot = 42,
+            UpdateJigsaw = 43,
+            UpdateStructureBlock = 44,
+            UpdateSign = 45,
+            HandSwing = 46,
+            SpectatorTeleport = 47,
+            PlayerInteractBlock = 48,
+            PlayerInteractItem = 49,
         }
     }
 }

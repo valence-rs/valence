@@ -54,7 +54,7 @@ pub trait DecodePacket: Sized + fmt::Debug {
 macro_rules! def_struct {
     (
         $(#[$struct_attrs:meta])*
-        $name:ident $($id:literal)? {
+        $name:ident {
             $(
                 $(#[$field_attrs:meta])*
                 $field:ident: $typ:ty
@@ -95,36 +95,6 @@ macro_rules! def_struct {
             }
         }
 
-        $(
-            impl EncodePacket for $name {
-                fn encode_packet(&self, w: &mut impl Write) -> anyhow::Result<()> {
-                    VarInt($id)
-                        .encode(w)
-                        .context(concat!("failed to write packet ID for `", stringify!($name), "`"))?;
-                    self.encode(w)
-                }
-            }
-
-            impl DecodePacket for $name {
-                fn decode_packet(r: &mut impl Read) -> anyhow::Result<Self> {
-                    let VarInt(packet_id) = VarInt::decode(r)
-                        .context(concat!("failed to read packet ID for `", stringify!($name), "`"))?;
-
-                    ensure!(
-                        $id == packet_id,
-                        concat!("bad packet ID for `", stringify!($name), "` (expected {:#04x}, got {:#04x})"),
-                        $id,
-                        packet_id
-                    );
-                    Self::decode(r)
-                }
-            }
-
-            impl $name {
-                pub const PACKET_ID: i32 = $id;
-            }
-        )*
-
         // TODO: https://github.com/rust-lang/rust/issues/48214
         //impl Copy for $name
         //where
@@ -145,7 +115,7 @@ macro_rules! def_struct {
 macro_rules! def_enum {
     (
         $(#[$enum_attrs:meta])*
-        $name:ident $($id:literal)?: $tag_ty:ty {
+        $name:ident: $tag_ty:ty {
             $(
                 $(#[$variant_attrs:meta])*
                 $variant:ident$(: $typ:ty)? = $lit:literal
@@ -203,36 +173,6 @@ macro_rules! def_enum {
                 }
             }
         }
-
-        $(
-            impl EncodePacket for $name {
-                fn encode_packet(&self, w: &mut impl Write) -> anyhow::Result<()> {
-                    VarInt($id)
-                        .encode(w)
-                        .context(concat!("failed to write packet ID for `", stringify!($name), "`"))?;
-                    self.encode(w)
-                }
-            }
-
-            impl DecodePacket for $name {
-                fn decode_packet(r: &mut impl Read) -> anyhow::Result<Self> {
-                    let VarInt(packet_id) = VarInt::decode(r)
-                        .context(concat!("failed to read packet ID for `", stringify!($name), "`"))?;
-
-                    ensure!(
-                        $id == packet_id,
-                        concat!("bad packet ID for `", stringify!($name), "` (expected {:#04X}, got {:#04X})"),
-                        $id,
-                        packet_id
-                    );
-                    Self::decode(r)
-                }
-            }
-
-            impl $name {
-                pub const PACKET_ID: i32 = $id;
-            }
-        )*
     }
 }
 
@@ -336,7 +276,7 @@ macro_rules! def_packet_group {
     (
         $(#[$attrs:meta])*
         $group_name:ident {
-            $($packet:ident),* $(,)?
+            $($packet:ident = $id:literal),* $(,)?
         }
     ) => {
         #[derive(Clone)]
@@ -351,6 +291,26 @@ macro_rules! def_packet_group {
                     Self::$packet(p)
                 }
             }
+
+            impl EncodePacket for $packet {
+                fn encode_packet(&self, w: &mut impl Write) -> anyhow::Result<()> {
+                    VarInt($id).encode(w).context("failed to write packet ID")?;
+                    self.encode(w)
+                }
+            }
+
+            impl DecodePacket for $packet {
+                fn decode_packet(r: &mut impl Read) -> anyhow::Result<Self> {
+                    let packet_id = VarInt::decode(r).context("failed to read packet ID")?.0;
+
+                    ensure!(
+                        $id == packet_id,
+                        "bad packet ID (expected {}, got {packet_id}",
+                        $id
+                    );
+                    Self::decode(r)
+                }
+            }
         )*
 
         impl DecodePacket for $group_name {
@@ -360,12 +320,12 @@ macro_rules! def_packet_group {
 
                 match packet_id {
                     $(
-                        $packet::PACKET_ID => {
+                        $id => {
                             let pkt = $packet::decode(r)?;
                             Ok(Self::$packet(pkt))
                         }
                     )*
-                    id => bail!(concat!("unknown ", stringify!($group_name), " packet ID {:#04x}"), id),
+                    id => bail!(concat!("unknown ", stringify!($group_name), " packet ID {}"), id),
                 }
             }
         }
@@ -375,7 +335,7 @@ macro_rules! def_packet_group {
                 match self {
                     $(
                         Self::$packet(pkt) => {
-                            VarInt($packet::PACKET_ID)
+                            VarInt($id)
                                 .encode(w)
                                 .context(concat!(
                                     "failed to write ",
