@@ -67,4 +67,4 @@ num = "0.4"
 protocol = []
 
 [workspace]
-members = ["packet-inspector"]
+members = ["packet-inspector", "serde_nbt"]

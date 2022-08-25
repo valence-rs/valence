@@ -1,0 +1,15 @@
+[package]
+name = "serde_nbt"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+byteorder = "1.4.3"
+cesu8 = "1.1.0"
+serde = "1"
+smallvec = { version = "1.9.0", features = ["union", "const_generics"] }
+
+[dev-dependencies]
+ordered-float = { version = "3.0.0", features = ["serde"] }
+hematite-nbt = "0.5"
