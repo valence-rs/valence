@@ -1,5 +1,5 @@
 [package]
-name = "serde_nbt"
+name = "valence_nbt"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,9 +7,12 @@ edition = "2021"
 anyhow = "1"
 byteorder = "1.4.3"
 cesu8 = "1.1.0"
+indexmap = { version = "1.9.1", features = ["serde"] }
 serde = "1"
 smallvec = { version = "1.9.0", features = ["union", "const_generics"] }
 
 [dev-dependencies]
-ordered-float = { version = "3.0.0", features = ["serde"] }
 hematite-nbt = "0.5"
+serde_json = "1.0.85"
+pretty_assertions = "1.2.1"
+

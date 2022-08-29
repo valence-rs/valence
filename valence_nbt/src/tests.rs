@@ -1,8 +1,8 @@
-use binary::{from_reader, to_writer, Deserializer, Serializer};
-use ordered_float::OrderedFloat;
+use pretty_assertions::assert_eq;
 use serde::{Deserialize, Serialize};
 
-use super::*;
+use crate::binary::{from_reader, to_writer, Deserializer, Serializer};
+use crate::{byte_array, int_array, long_array, Compound, List, Value};
 
 const ROOT_NAME: &str = "The root name‽";
 
@@ -13,12 +13,20 @@ struct Struct {
     list_of_string: Vec<String>,
     string: String,
     inner: Inner,
-    #[serde(serialize_with = "int_array")]
+    #[serde(with = "int_array")]
     int_array: Vec<i32>,
-    #[serde(serialize_with = "byte_array")]
+    #[serde(with = "byte_array")]
     byte_array: Vec<i8>,
-    #[serde(serialize_with = "long_array")]
+    #[serde(with = "long_array")]
     long_array: Vec<i64>,
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
+struct Inner {
+    int: i32,
+    long: i64,
+    float: f32,
+    double: f64,
 }
 
 impl Struct {
@@ -31,8 +39,8 @@ impl Struct {
             inner: Inner {
                 int: i32::MIN,
                 long: i64::MAX,
-                nan_float: OrderedFloat(f32::NAN),
-                neg_inf_double: f64::NEG_INFINITY,
+                float: 1e10_f32,
+                double: f64::NEG_INFINITY,
             },
             int_array: vec![5, -9, i32::MIN, 0, i32::MAX],
             byte_array: vec![0, 1, 2],
@@ -43,7 +51,7 @@ impl Struct {
     pub fn value() -> Value {
         Value::Compound(
             Compound::from_iter([
-                ("byte".into(), 123.into()),
+                ("byte".into(), 123_i8.into()),
                 ("list_of_int".into(), List::Int(vec![3, -7, 5]).into()),
                 (
                     "list_of_string".into(),
@@ -55,8 +63,8 @@ impl Struct {
                     Compound::from_iter([
                         ("int".into(), i32::MIN.into()),
                         ("long".into(), i64::MAX.into()),
-                        ("nan_float".into(), f32::NAN.into()),
-                        ("neg_inf_double".into(), f64::NEG_INFINITY.into()),
+                        ("float".into(), 1e10_f32.into()),
+                        ("double".into(), f64::NEG_INFINITY.into()),
                     ])
                     .into(),
                 ),
@@ -72,19 +80,12 @@ impl Struct {
     }
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
-struct Inner {
-    int: i32,
-    long: i64,
-    nan_float: OrderedFloat<f32>,
-    neg_inf_double: f64,
-}
-
 #[test]
-fn round_trip() {
+fn round_trip_binary_struct() {
+    let mut buf = Vec::new();
+
     let struct_ = Struct::new();
 
-    let mut buf = Vec::new();
     struct_
         .serialize(&mut Serializer::new(&mut buf, ROOT_NAME))
         .unwrap();
@@ -93,28 +94,45 @@ fn round_trip() {
 
     let mut de = Deserializer::new(reader, true);
 
-    let example_de = Struct::deserialize(&mut de).unwrap();
+    let struct_de = Struct::deserialize(&mut de).unwrap();
 
-    assert_eq!(struct_, example_de);
-
-    let (_, root) = de.into_inner();
-
-    assert_eq!(root.unwrap(), ROOT_NAME);
+    assert_eq!(struct_, struct_de);
+    assert_eq!(de.root_name, ROOT_NAME);
 }
 
 #[test]
-fn serialize() {
-    let struct_ = Struct::new();
-
+fn round_trip_binary_value() {
     let mut buf = Vec::new();
+
+    let value = Struct::value();
+
+    value
+        .serialize(&mut Serializer::new(&mut buf, ROOT_NAME))
+        .unwrap();
+
+    let reader = &mut buf.as_slice();
+
+    let mut de = Deserializer::new(reader, true);
+
+    let value_de = Value::deserialize(&mut de).unwrap();
+
+    assert_eq!(value, value_de);
+    assert_eq!(de.root_name, ROOT_NAME);
+}
+
+#[test]
+fn to_hematite() {
+    let mut buf = Vec::new();
+
+    let struct_ = Struct::new();
 
     struct_
         .serialize(&mut Serializer::new(&mut buf, ROOT_NAME))
         .unwrap();
 
-    let example_de: Struct = nbt::from_reader(&mut buf.as_slice()).unwrap();
+    let struct_de: Struct = nbt::from_reader(&mut buf.as_slice()).unwrap();
 
-    assert_eq!(struct_, example_de);
+    assert_eq!(struct_, struct_de);
 }
 
 #[test]
@@ -126,10 +144,10 @@ fn root_requires_compound() {
 }
 
 #[test]
-fn invalid_array_element() {
+fn mismatched_array_element() {
     #[derive(Serialize)]
     struct Struct {
-        #[serde(serialize_with = "byte_array")]
+        #[serde(with = "byte_array")]
         data: Vec<i32>,
     }
 
@@ -143,30 +161,40 @@ fn invalid_array_element() {
         .is_err());
 }
 
-// #[test]
-// fn struct_to_value() {
-//     let mut buf = Vec::new();
-//
-//     to_writer(&mut buf, ROOT_NAME, &Struct::new()).unwrap();
-//
-//     let reader = &mut buf.as_slice();
-//
-//     let val: Value = from_reader(reader).unwrap();
-//
-//     eprintln!("{:#?}", Struct::value());
-//
-//     assert_eq!(val, Struct::value());
-// }
+#[test]
+fn struct_to_value() {
+    let mut buf = Vec::new();
+
+    let struct_ = Struct::new();
+
+    to_writer(&mut buf, &struct_).unwrap();
+
+    let val: Value = from_reader(&mut buf.as_slice()).unwrap();
+
+    assert_eq!(val, Struct::value());
+}
 
 #[test]
 fn value_to_struct() {
     let mut buf = Vec::new();
 
-    to_writer(&mut buf, ROOT_NAME, &Struct::value()).unwrap();
+    to_writer(&mut buf, &Struct::value()).unwrap();
 
-    let reader = &mut buf.as_slice();
-
-    let struct_: Struct = from_reader(reader).unwrap();
+    let struct_: Struct = from_reader(&mut buf.as_slice()).unwrap();
 
     assert_eq!(struct_, Struct::new());
+}
+
+#[test]
+fn value_from_json() {
+    let mut struct_ = Struct::new();
+
+    // JSON numbers only allow finite floats.
+    struct_.inner.double = 12345.0;
+
+    let string = serde_json::to_string_pretty(&struct_).unwrap();
+
+    let struct_de: Struct = serde_json::from_str(&string).unwrap();
+
+    assert_eq!(struct_, struct_de);
 }

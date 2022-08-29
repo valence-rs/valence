@@ -1,12 +1,11 @@
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::fmt;
-use std::fmt::Formatter;
 
-use serde::de::{DeserializeSeed, Error, MapAccess, SeqAccess, Visitor};
+use indexmap::IndexMap;
+use serde::de::{DeserializeSeed, EnumAccess, Error, MapAccess, SeqAccess, VariantAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::{byte_array, int_array, long_array};
+use crate::{byte_array, int_array, long_array, ArrayType};
 
 /// Represents an arbitrary NBT value.
 #[derive(Clone, PartialEq, Debug)]
@@ -25,7 +24,7 @@ pub enum Value {
     LongArray(Vec<i64>),
 }
 
-pub type Compound = HashMap<String, Value>;
+pub type Compound = IndexMap<String, Value>;
 
 /// An NBT list value.
 ///
@@ -246,12 +245,12 @@ impl Serialize for Value {
             Value::Long(v) => v.serialize(serializer),
             Value::Float(v) => v.serialize(serializer),
             Value::Double(v) => v.serialize(serializer),
-            Value::ByteArray(v) => byte_array(v, serializer),
+            Value::ByteArray(v) => byte_array::serialize(v, serializer),
             Value::String(v) => v.serialize(serializer),
             Value::List(v) => v.serialize(serializer),
             Value::Compound(v) => v.serialize(serializer),
-            Value::IntArray(v) => int_array(v, serializer),
-            Value::LongArray(v) => long_array(v, serializer),
+            Value::IntArray(v) => int_array::serialize(v, serializer),
+            Value::LongArray(v) => long_array::serialize(v, serializer),
         }
     }
 }
@@ -292,7 +291,7 @@ struct ValueVisitor;
 impl<'de> Visitor<'de> for ValueVisitor {
     type Value = Value;
 
-    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "a representable NBT value")
     }
 
@@ -338,18 +337,18 @@ impl<'de> Visitor<'de> for ValueVisitor {
         Ok(Value::Double(v))
     }
 
-    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
-    where
-        E: Error,
-    {
-        Ok(Value::String(v))
-    }
-
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: Error,
     {
         Ok(Value::String(v.to_owned()))
+    }
+
+    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        Ok(Value::String(v))
     }
 
     fn visit_seq<A>(self, seq: A) -> Result<Self::Value, A::Error>
@@ -364,6 +363,19 @@ impl<'de> Visitor<'de> for ValueVisitor {
         A: MapAccess<'de>,
     {
         visit_map(map).map(Value::Compound)
+    }
+
+    fn visit_enum<A>(self, data: A) -> Result<Self::Value, A::Error>
+    where
+        A: EnumAccess<'de>,
+    {
+        let (array_type, variant) = data.variant()?;
+
+        Ok(match array_type {
+            ArrayType::Byte => Value::ByteArray(variant.newtype_variant()?),
+            ArrayType::Int => Value::IntArray(variant.newtype_variant()?),
+            ArrayType::Long => Value::LongArray(variant.newtype_variant()?),
+        })
     }
 }
 
@@ -381,7 +393,7 @@ struct ListVisitor;
 impl<'de> Visitor<'de> for ListVisitor {
     type Value = List;
 
-    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "an NBT list")
     }
 
@@ -430,7 +442,7 @@ macro_rules! visit {
 impl<'de, 'a> Visitor<'de> for DeserializeListElement<'a> {
     type Value = ();
 
-    fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "a valid NBT list element")
     }
 
