@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::io::Read;
 
-use anyhow::anyhow;
 use byteorder::{BigEndian, ReadBytesExt};
 use cesu8::from_java_cesu8;
 use serde::de::Visitor;
@@ -9,7 +8,7 @@ use serde::{forward_to_deserialize_any, Deserializer};
 use smallvec::SmallVec;
 
 use crate::binary::de::payload::PayloadDeserializer;
-use crate::{Error, Tag};
+use crate::{Error, Tag, CESU8_DECODE_ERROR};
 
 #[non_exhaustive]
 pub struct RootDeserializer<R> {
@@ -31,7 +30,7 @@ impl<R: Read> RootDeserializer<R> {
         let tag = Tag::from_u8(self.reader.read_u8()?)?;
 
         if tag != Tag::Compound {
-            return Err(Error(anyhow!(
+            return Err(Error::new_owned(format!(
                 "unexpected tag `{tag}` (root value must be a compound)"
             )));
         }
@@ -42,7 +41,7 @@ impl<R: Read> RootDeserializer<R> {
                 buf.push(self.reader.read_u8()?);
             }
 
-            match from_java_cesu8(&buf).map_err(|e| Error(anyhow!(e)))? {
+            match from_java_cesu8(&buf).map_err(|_| Error::new_static(CESU8_DECODE_ERROR))? {
                 Cow::Borrowed(s) => s.clone_into(&mut self.root_name),
                 Cow::Owned(s) => self.root_name = s,
             }

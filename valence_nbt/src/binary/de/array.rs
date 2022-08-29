@@ -1,6 +1,5 @@
 use std::io::Read;
 
-use anyhow::anyhow;
 use byteorder::{BigEndian, ReadBytesExt};
 use serde::de::value::StrDeserializer;
 use serde::de::{DeserializeSeed, Error as _, SeqAccess, Unexpected, Visitor};
@@ -111,7 +110,7 @@ impl<'de: 'r, 'r, R: Read + ?Sized> Deserializer<'de> for ArrayDeserializer<'r, 
         let len = self.reader.read_i32::<BigEndian>()?;
 
         if len < 0 {
-            return Err(Error(anyhow!("array with negative length")));
+            return Err(Error::new_static("array with negative length"));
         }
 
         visitor.visit_seq(ArraySeqAccess {

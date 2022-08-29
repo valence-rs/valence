@@ -24,7 +24,7 @@ impl<W: Write + ?Sized> ser::SerializeStruct for SerializeStruct<'_, W> {
     {
         value
             .serialize(&mut PayloadSerializer::named(self.writer, key))
-            .map_err(|e| e.context(format!("field `{key}`")))
+            .map_err(|e| e.field(key))
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {

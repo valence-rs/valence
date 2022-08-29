@@ -1,6 +1,5 @@
 use std::io::Write;
 
-use anyhow::anyhow;
 use byteorder::{BigEndian, WriteBytesExt};
 use cesu8::to_java_cesu8;
 pub use root::RootSerializer as Serializer;
@@ -28,7 +27,7 @@ fn write_string(mut writer: impl Write, string: &str) -> Result<()> {
     let data = to_java_cesu8(string);
     match data.len().try_into() {
         Ok(len) => writer.write_u16::<BigEndian>(len)?,
-        Err(_) => return Err(Error(anyhow!("string byte length exceeds u16::MAX"))),
+        Err(_) => return Err(Error::new_static("string byte length exceeds u16::MAX")),
     };
 
     writer.write_all(&data)?;

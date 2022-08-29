@@ -1,6 +1,5 @@
 use std::io::Write;
 
-use anyhow::anyhow;
 use byteorder::{BigEndian, WriteBytesExt};
 use serde::{Serialize, Serializer};
 
@@ -70,9 +69,9 @@ impl<'w, 'n, W: Write + ?Sized> PayloadSerializer<'w, 'n, W> {
             }
             State::SeqElement { element_type } => {
                 if tag != *element_type {
-                    return Err(Error(anyhow!(
+                    return Err(Error::new_owned(format!(
                         "list/array elements must be homogeneous (got {tag}, expected \
-                         {element_type})",
+                         {element_type})"
                     )));
                 }
             }
@@ -83,7 +82,7 @@ impl<'w, 'n, W: Write + ?Sized> PayloadSerializer<'w, 'n, W> {
                     ArrayType::Long => "a long array",
                 };
 
-                return Err(Error(anyhow!(
+                return Err(Error::new_owned(format!(
                     "expected a seq for {msg}, got {tag} instead"
                 )));
             }
@@ -93,9 +92,10 @@ impl<'w, 'n, W: Write + ?Sized> PayloadSerializer<'w, 'n, W> {
     }
 }
 
-#[inline]
-fn unsupported<T>(typ: &str) -> Result<T, Error> {
-    Err(Error(anyhow!("{typ} is not supported")))
+macro_rules! unsupported {
+    ($typ:literal) => {
+        Err(Error::new_static(concat!($typ, " is not supported")))
+    };
 }
 
 impl<'a, W: Write + ?Sized> Serializer for &'a mut PayloadSerializer<'_, '_, W> {
@@ -135,19 +135,19 @@ impl<'a, W: Write + ?Sized> Serializer for &'a mut PayloadSerializer<'_, '_, W> 
     }
 
     fn serialize_u8(self, _v: u8) -> Result<Self::Ok, Self::Error> {
-        unsupported("u8")
+        unsupported!("u8")
     }
 
     fn serialize_u16(self, _v: u16) -> Result<Self::Ok, Self::Error> {
-        unsupported("u16")
+        unsupported!("u16")
     }
 
     fn serialize_u32(self, _v: u32) -> Result<Self::Ok, Self::Error> {
-        unsupported("u32")
+        unsupported!("u32")
     }
 
     fn serialize_u64(self, _v: u64) -> Result<Self::Ok, Self::Error> {
-        unsupported("u64")
+        unsupported!("u64")
     }
 
     fn serialize_f32(self, v: f32) -> Result<Self::Ok, Self::Error> {
@@ -161,7 +161,7 @@ impl<'a, W: Write + ?Sized> Serializer for &'a mut PayloadSerializer<'_, '_, W> 
     }
 
     fn serialize_char(self, _v: char) -> Result<Self::Ok, Self::Error> {
-        unsupported("char")
+        unsupported!("char")
     }
 
     fn serialize_str(self, v: &str) -> Result<Self::Ok, Self::Error> {
@@ -170,26 +170,26 @@ impl<'a, W: Write + ?Sized> Serializer for &'a mut PayloadSerializer<'_, '_, W> 
     }
 
     fn serialize_bytes(self, _v: &[u8]) -> Result<Self::Ok, Self::Error> {
-        unsupported("&[u8]")
+        unsupported!("&[u8]")
     }
 
     fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
-        unsupported("None")
+        unsupported!("None")
     }
 
     fn serialize_some<T: ?Sized>(self, _value: &T) -> Result<Self::Ok, Self::Error>
     where
         T: Serialize,
     {
-        unsupported("Some")
+        unsupported!("Some")
     }
 
     fn serialize_unit(self) -> Result<Self::Ok, Self::Error> {
-        unsupported("()")
+        unsupported!("()")
     }
 
     fn serialize_unit_struct(self, _name: &'static str) -> Result<Self::Ok, Self::Error> {
-        unsupported("unit struct")
+        unsupported!("unit struct")
     }
 
     fn serialize_unit_variant(
@@ -198,7 +198,7 @@ impl<'a, W: Write + ?Sized> Serializer for &'a mut PayloadSerializer<'_, '_, W> 
         _variant_index: u32,
         _variant: &'static str,
     ) -> Result<Self::Ok, Self::Error> {
-        unsupported("unit variant")
+        unsupported!("unit variant")
     }
 
     fn serialize_newtype_struct<T: ?Sized>(
@@ -209,7 +209,7 @@ impl<'a, W: Write + ?Sized> Serializer for &'a mut PayloadSerializer<'_, '_, W> 
     where
         T: Serialize,
     {
-        unsupported("newtype struct")
+        unsupported!("newtype struct")
     }
 
     fn serialize_newtype_variant<T: ?Sized>(
@@ -232,7 +232,7 @@ impl<'a, W: Write + ?Sized> Serializer for &'a mut PayloadSerializer<'_, '_, W> 
             (crate::ARRAY_ENUM_NAME, crate::LONG_ARRAY_VARIANT_NAME) => {
                 (Tag::LongArray, ArrayType::Long)
             }
-            _ => return unsupported("newtype variant"),
+            _ => return unsupported!("newtype variant"),
         };
 
         self.check_state(array_tag)?;
@@ -247,7 +247,7 @@ impl<'a, W: Write + ?Sized> Serializer for &'a mut PayloadSerializer<'_, '_, W> 
         if let State::Array(array_type) = self.state {
             let len = match len {
                 Some(len) => len,
-                None => return Err(Error(anyhow!("array length must be known up front"))),
+                None => return Err(Error::new_static("array length must be known up front")),
             };
 
             match len.try_into() {
@@ -259,25 +259,25 @@ impl<'a, W: Write + ?Sized> Serializer for &'a mut PayloadSerializer<'_, '_, W> 
                         len,
                     ))
                 }
-                Err(_) => Err(Error(anyhow!("length of array exceeds i32::MAX"))),
+                Err(_) => Err(Error::new_static("length of array exceeds i32::MAX")),
             }
         } else {
             self.check_state(Tag::List)?;
 
             let len = match len {
                 Some(len) => len,
-                None => return Err(Error(anyhow!("list length must be known up front"))),
+                None => return Err(Error::new_static("list length must be known up front")),
             };
 
             match len.try_into() {
                 Ok(len) => Ok(SerializeSeq::list(self.writer, len)),
-                Err(_) => Err(Error(anyhow!("length of list exceeds i32::MAX"))),
+                Err(_) => Err(Error::new_static("length of list exceeds i32::MAX")),
             }
         }
     }
 
     fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple, Self::Error> {
-        unsupported("tuple")
+        unsupported!("tuple")
     }
 
     fn serialize_tuple_struct(
@@ -285,7 +285,7 @@ impl<'a, W: Write + ?Sized> Serializer for &'a mut PayloadSerializer<'_, '_, W> 
         _name: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleStruct, Self::Error> {
-        unsupported("tuple struct")
+        unsupported!("tuple struct")
     }
 
     fn serialize_tuple_variant(
@@ -295,7 +295,7 @@ impl<'a, W: Write + ?Sized> Serializer for &'a mut PayloadSerializer<'_, '_, W> 
         _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeTupleVariant, Self::Error> {
-        unsupported("tuple variant")
+        unsupported!("tuple variant")
     }
 
     fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
@@ -325,7 +325,7 @@ impl<'a, W: Write + ?Sized> Serializer for &'a mut PayloadSerializer<'_, '_, W> 
         _variant: &'static str,
         _len: usize,
     ) -> Result<Self::SerializeStructVariant, Self::Error> {
-        unsupported("struct variant")
+        unsupported!("struct variant")
     }
 
     fn is_human_readable(&self) -> bool {

@@ -1,6 +1,5 @@
 use std::io::Read;
 
-use anyhow::anyhow;
 use byteorder::ReadBytesExt;
 use serde::de;
 use serde::de::DeserializeSeed;
@@ -44,7 +43,7 @@ impl<'de: 'r, 'r, R: Read + ?Sized> de::MapAccess<'de> for MapAccess<'r, R> {
         })
         .map(Some)
         .map_err(|e| match self.fields {
-            [f, ..] => e.context(anyhow!("compound key (field `{f}`)")),
+            [f, ..] => e.field(*f),
             [] => e,
         })
     }
@@ -54,7 +53,7 @@ impl<'de: 'r, 'r, R: Read + ?Sized> de::MapAccess<'de> for MapAccess<'r, R> {
         V: DeserializeSeed<'de>,
     {
         if self.value_tag == Tag::End {
-            return Err(Error(anyhow!("end of compound?")));
+            return Err(Error::new_static("end of compound?"));
         }
 
         let field = match self.fields {
@@ -70,7 +69,7 @@ impl<'de: 'r, 'r, R: Read + ?Sized> de::MapAccess<'de> for MapAccess<'r, R> {
             tag: self.value_tag,
         })
         .map_err(|e| match field {
-            Some(f) => e.context(anyhow!("compound value (field `{f}`)")),
+            Some(f) => e.field(f),
             None => e,
         })
     }

@@ -1,7 +1,6 @@
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
-use anyhow::anyhow;
 pub use array::*;
 pub use error::*;
 use serde::de::Visitor;
@@ -119,7 +118,7 @@ impl Tag {
             10 => Ok(Tag::Compound),
             11 => Ok(Tag::IntArray),
             12 => Ok(Tag::LongArray),
-            _ => Err(Error(anyhow!("invalid tag byte `{id}`"))),
+            _ => Err(Error::new_owned(format!("invalid tag byte `{id}`"))),
         }
     }
 }
@@ -145,6 +144,8 @@ impl Display for Tag {
         write!(f, "{name}")
     }
 }
+
+const CESU8_DECODE_ERROR: &str = "could not convert CESU-8 data to UTF-8";
 
 const ARRAY_ENUM_NAME: &str = "__array__";
 

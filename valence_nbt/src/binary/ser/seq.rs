@@ -1,6 +1,5 @@
 use std::io::Write;
 
-use anyhow::anyhow;
 use byteorder::{BigEndian, WriteBytesExt};
 use serde::{ser, Serialize};
 
@@ -58,7 +57,7 @@ impl<W: Write + ?Sized> ser::SerializeSeq for SerializeSeq<'_, W> {
         T: Serialize,
     {
         if self.remaining <= 0 {
-            return Err(Error(anyhow!(
+            return Err(Error::new_owned(format!(
                 "attempt to serialize more {} elements than specified",
                 self.list_or_array.name()
             )));
@@ -94,10 +93,10 @@ impl<W: Write + ?Sized> ser::SerializeSeq for SerializeSeq<'_, W> {
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
         if self.remaining > 0 {
-            return Err(Error(anyhow!(
+            return Err(Error::new_owned(format!(
                 "{} {} element(s) left to serialize",
                 self.remaining,
-                self.list_or_array.name(),
+                self.list_or_array.name()
             )));
         }
 

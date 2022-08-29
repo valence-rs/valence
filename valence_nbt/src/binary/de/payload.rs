@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::io::Read;
 
-use anyhow::anyhow;
 use byteorder::{BigEndian, ReadBytesExt};
 use cesu8::from_java_cesu8;
 use serde::de::Visitor;
@@ -11,7 +10,7 @@ use smallvec::SmallVec;
 use crate::binary::de::array::EnumAccess;
 use crate::binary::de::compound::MapAccess;
 use crate::binary::de::list::SeqAccess;
-use crate::{ArrayType, Error, Tag};
+use crate::{ArrayType, Error, Tag, CESU8_DECODE_ERROR};
 
 pub(super) struct PayloadDeserializer<'w, R: ?Sized> {
     pub reader: &'w mut R,
@@ -50,7 +49,7 @@ impl<'de: 'w, 'w, R: Read + ?Sized> de::Deserializer<'de> for PayloadDeserialize
                     buf.push(self.reader.read_u8()?);
                 }
 
-                match from_java_cesu8(&buf).map_err(|e| Error(anyhow!(e)))? {
+                match from_java_cesu8(&buf).map_err(|_| Error::new_static(CESU8_DECODE_ERROR))? {
                     Cow::Borrowed(s) => visitor.visit_str(s),
                     Cow::Owned(string) => visitor.visit_string(string),
                 }
@@ -60,13 +59,13 @@ impl<'de: 'w, 'w, R: Read + ?Sized> de::Deserializer<'de> for PayloadDeserialize
                 let len = self.reader.read_i32::<BigEndian>()?;
 
                 if len < 0 {
-                    return Err(Error(anyhow!("list with negative length")));
+                    return Err(Error::new_static("list with negative length"));
                 }
 
                 if element_tag == Tag::End && len != 0 {
-                    return Err(Error(anyhow!(
-                        "list with TAG_End element type must have length zero"
-                    )));
+                    return Err(Error::new_static(
+                        "list with TAG_End element type must have length zero",
+                    ));
                 }
 
                 visitor.visit_seq(SeqAccess {
