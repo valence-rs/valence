@@ -14,7 +14,7 @@ pub struct Error {
 
 #[derive(Debug)]
 struct ErrorInner {
-    path: Vec<String>,
+    trace: Vec<String>,
     cause: Cause,
 }
 
@@ -30,7 +30,7 @@ impl Error {
     pub(crate) fn new_owned(msg: impl Into<Box<str>>) -> Self {
         Self {
             inner: Box::new(ErrorInner {
-                path: Vec::new(),
+                trace: Vec::new(),
                 cause: Cause::Owned(msg.into()),
             }),
         }
@@ -39,32 +39,32 @@ impl Error {
     pub(crate) fn new_static(msg: &'static str) -> Self {
         Self {
             inner: Box::new(ErrorInner {
-                path: Vec::new(),
+                trace: Vec::new(),
                 cause: Cause::Static(msg),
             }),
         }
     }
 
     pub(crate) fn field(mut self, ctx: impl Into<String>) -> Self {
-        self.inner.path.push(ctx.into());
+        self.inner.trace.push(ctx.into());
         self
     }
 
-    pub fn path(
+    pub fn trace(
         &self,
     ) -> impl DoubleEndedIterator<Item = &str> + ExactSizeIterator + FusedIterator + Clone + '_
     {
-        self.inner.path.iter().rev().map(|s| s.as_str())
+        self.inner.trace.iter().rev().map(|s| s.as_str())
     }
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let len = self.inner.path.len();
+        let len = self.inner.trace.len();
 
         if len > 0 {
             write!(f, "(")?;
-            for (i, ctx) in self.path().enumerate() {
+            for (i, ctx) in self.trace().enumerate() {
                 write!(f, "{ctx}")?;
 
                 if i != len - 1 {
@@ -114,7 +114,7 @@ impl From<io::Error> for Error {
     fn from(e: io::Error) -> Self {
         Self {
             inner: Box::new(ErrorInner {
-                path: Vec::new(),
+                trace: Vec::new(),
                 cause: Cause::Io(e),
             }),
         }
