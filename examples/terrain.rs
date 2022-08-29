@@ -52,13 +52,13 @@ const MAX_PLAYERS: usize = 10;
 
 #[async_trait]
 impl Config for Game {
-    /// If the chunk should stay loaded at the end of the tick.
-    type ChunkState = bool;
+    type ServerState = Option<PlayerListId>;
     type ClientState = EntityId;
     type EntityState = ();
-    type PlayerListState = ();
-    type ServerState = Option<PlayerListId>;
     type WorldState = ();
+    /// If the chunk should stay loaded at the end of the tick.
+    type ChunkState = bool;
+    type PlayerListState = ();
 
     fn max_connections(&self) -> usize {
         // We want status pings to be successful even if the server is full.

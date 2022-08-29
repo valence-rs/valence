@@ -53,12 +53,12 @@ const BOARD_Y: i32 = 50;
 
 #[async_trait]
 impl Config for Game {
-    type ChunkState = ();
+    type ServerState = ServerState;
     type ClientState = EntityId;
     type EntityState = ();
-    type PlayerListState = ();
-    type ServerState = ServerState;
     type WorldState = ();
+    type ChunkState = ();
+    type PlayerListState = ();
 
     fn max_connections(&self) -> usize {
         // We want status pings to be successful even if the server is full.

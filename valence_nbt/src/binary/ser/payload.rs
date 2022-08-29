@@ -99,15 +99,15 @@ fn unsupported<T>(typ: &str) -> Result<T, Error> {
 }
 
 impl<'a, W: Write + ?Sized> Serializer for &'a mut PayloadSerializer<'_, '_, W> {
-    type Error = Error;
     type Ok = ();
-    type SerializeMap = SerializeMap<'a, W>;
+    type Error = Error;
     type SerializeSeq = SerializeSeq<'a, W>;
-    type SerializeStruct = SerializeStruct<'a, W>;
-    type SerializeStructVariant = Impossible;
     type SerializeTuple = Impossible;
     type SerializeTupleStruct = Impossible;
     type SerializeTupleVariant = Impossible;
+    type SerializeMap = SerializeMap<'a, W>;
+    type SerializeStruct = SerializeStruct<'a, W>;
+    type SerializeStructVariant = Impossible;
 
     fn serialize_bool(self, v: bool) -> Result<Self::Ok, Self::Error> {
         self.check_state(Tag::Byte)?;

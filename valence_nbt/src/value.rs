@@ -488,18 +488,18 @@ impl<'de, 'a> Visitor<'de> for DeserializeListElement<'a> {
         visit!(self, Double, v, E)
     }
 
-    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
-    where
-        E: Error,
-    {
-        visit!(self, String, v, E)
-    }
-
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: Error,
     {
         visit!(self, String, v.to_owned(), E)
+    }
+
+    fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        visit!(self, String, v, E)
     }
 
     fn visit_seq<A>(self, seq: A) -> Result<Self::Value, A::Error>

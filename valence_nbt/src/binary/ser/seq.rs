@@ -50,8 +50,8 @@ impl<'w, W: Write + ?Sized> SerializeSeq<'w, W> {
 }
 
 impl<W: Write + ?Sized> ser::SerializeSeq for SerializeSeq<'_, W> {
-    type Error = Error;
     type Ok = ();
+    type Error = Error;
 
     fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
     where

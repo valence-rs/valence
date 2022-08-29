@@ -11,8 +11,8 @@ pub struct SerializeStruct<'w, W: ?Sized> {
 }
 
 impl<W: Write + ?Sized> ser::SerializeStruct for SerializeStruct<'_, W> {
-    type Error = Error;
     type Ok = ();
+    type Error = Error;
 
     fn serialize_field<T: ?Sized>(
         &mut self,

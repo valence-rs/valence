@@ -13,8 +13,8 @@ pub struct SerializeMap<'w, W: ?Sized> {
 }
 
 impl<'w, W: Write + ?Sized> ser::SerializeMap for SerializeMap<'w, W> {
-    type Error = Error;
     type Ok = ();
+    type Error = Error;
 
     fn serialize_key<T: ?Sized>(&mut self, _key: &T) -> Result<(), Error>
     where
@@ -62,15 +62,15 @@ fn key_not_a_string<T>(typ: &str) -> Result<T, Error> {
 }
 
 impl<W: Write + ?Sized, V: Serialize + ?Sized> Serializer for MapEntrySerializer<'_, '_, W, V> {
-    type Error = Error;
     type Ok = ();
-    type SerializeMap = Impossible;
+    type Error = Error;
     type SerializeSeq = Impossible;
-    type SerializeStruct = Impossible;
-    type SerializeStructVariant = Impossible;
     type SerializeTuple = Impossible;
     type SerializeTupleStruct = Impossible;
     type SerializeTupleVariant = Impossible;
+    type SerializeMap = Impossible;
+    type SerializeStruct = Impossible;
+    type SerializeStructVariant = Impossible;
 
     fn serialize_bool(self, _v: bool) -> Result<Self::Ok, Self::Error> {
         key_not_a_string("bool")

@@ -33,15 +33,15 @@ fn not_compound<T>(typ: &str) -> Result<T, Error> {
 }
 
 impl<'a, W: Write> Serializer for &'a mut RootSerializer<'_, W> {
-    type Error = Error;
     type Ok = ();
-    type SerializeMap = SerializeMap<'a, W>;
+    type Error = Error;
     type SerializeSeq = Impossible;
-    type SerializeStruct = SerializeStruct<'a, W>;
-    type SerializeStructVariant = Impossible;
     type SerializeTuple = Impossible;
     type SerializeTupleStruct = Impossible;
     type SerializeTupleVariant = Impossible;
+    type SerializeMap = SerializeMap<'a, W>;
+    type SerializeStruct = SerializeStruct<'a, W>;
+    type SerializeStructVariant = Impossible;
 
     fn serialize_bool(self, _v: bool) -> Result<Self::Ok, Self::Error> {
         not_compound("bool")

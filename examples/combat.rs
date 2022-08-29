@@ -55,12 +55,12 @@ const SPAWN_POS: BlockPos = BlockPos::new(0, 20, 0);
 
 #[async_trait]
 impl Config for Game {
-    type ChunkState = ();
+    type ServerState = Option<PlayerListId>;
     type ClientState = ClientState;
     type EntityState = EntityState;
-    type PlayerListState = ();
-    type ServerState = Option<PlayerListId>;
     type WorldState = ();
+    type ChunkState = ();
+    type PlayerListState = ();
 
     fn max_connections(&self) -> usize {
         // We want status pings to be successful even if the server is full.

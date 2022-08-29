@@ -96,7 +96,7 @@ mod tests {
         {
             buf.clear();
             n.encode(&mut buf).unwrap();
-            assert!(buf.len() == n.written_size());
+            assert_eq!(buf.len(), n.written_size());
         }
     }
 

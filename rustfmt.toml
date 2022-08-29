@@ -2,7 +2,6 @@ edition = "2021"
 unstable_features = true
 wrap_comments = true
 imports_granularity = "Module"
-reorder_impl_items = true
 group_imports = "StdExternalCrate"
 format_code_in_doc_comments = true
 format_macro_matchers = true

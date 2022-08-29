@@ -42,13 +42,13 @@ const PLAYER_EYE_HEIGHT: f64 = 1.6;
 
 #[async_trait]
 impl Config for Game {
-    type ChunkState = ();
+    type ServerState = Option<PlayerListId>;
     type ClientState = EntityId;
     /// `true` for entities that have been intersected with.
     type EntityState = bool;
-    type PlayerListState = ();
-    type ServerState = Option<PlayerListId>;
     type WorldState = ();
+    type ChunkState = ();
+    type PlayerListState = ();
 
     fn max_connections(&self) -> usize {
         // We want status pings to be successful even if the server is full.

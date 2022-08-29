@@ -58,11 +58,11 @@
 //! struct Game;
 //!
 //! impl Config for Game {
-//!     type ChunkState = ();
+//!     type ServerState = ();
 //!     type ClientState = ();
 //!     type EntityState = ();
-//!     type ServerState = ();
 //!     type WorldState = ();
+//!     type ChunkState = ();
 //!
 //!     fn max_connections(&self) -> usize {
 //!         256
@@ -128,7 +128,7 @@ pub use async_trait::async_trait;
 #[doc(inline)]
 pub use server::start_server;
 #[doc(inline)]
-pub use {nbt, uuid, vek};
+pub use {uuid, vek};
 
 pub mod biome;
 pub mod block;

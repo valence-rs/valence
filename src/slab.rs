@@ -149,8 +149,8 @@ impl<T> Slab<T> {
 }
 
 impl<'a, T> IntoIterator for &'a Slab<T> {
-    type IntoIter = Iter<'a, T>;
     type Item = (usize, &'a T);
+    type IntoIter = Iter<'a, T>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter()
@@ -158,8 +158,8 @@ impl<'a, T> IntoIterator for &'a Slab<T> {
 }
 
 impl<'a, T> IntoIterator for &'a mut Slab<T> {
-    type IntoIter = IterMut<'a, T>;
     type Item = (usize, &'a mut T);
+    type IntoIter = IterMut<'a, T>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
@@ -167,8 +167,8 @@ impl<'a, T> IntoIterator for &'a mut Slab<T> {
 }
 
 impl<'a, T: Sync> IntoParallelIterator for &'a Slab<T> {
-    type Item = (usize, &'a T);
     type Iter = ParIter<'a, T>;
+    type Item = (usize, &'a T);
 
     fn into_par_iter(self) -> Self::Iter {
         ParIter { slab: self }
@@ -176,8 +176,8 @@ impl<'a, T: Sync> IntoParallelIterator for &'a Slab<T> {
 }
 
 impl<'a, T: Send + Sync> IntoParallelIterator for &'a mut Slab<T> {
-    type Item = (usize, &'a mut T);
     type Iter = ParIterMut<'a, T>;
+    type Item = (usize, &'a mut T);
 
     fn into_par_iter(self) -> Self::Iter {
         ParIterMut { slab: self }
