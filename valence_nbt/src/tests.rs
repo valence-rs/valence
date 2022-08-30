@@ -1,4 +1,3 @@
-use std::marker::PhantomData;
 use pretty_assertions::assert_eq;
 use serde::{Deserialize, Serialize};
 
@@ -20,6 +19,8 @@ struct Struct {
     byte_array: Vec<i8>,
     #[serde(with = "long_array")]
     long_array: Vec<i64>,
+    some_int: Option<i32>,
+    none_int: Option<i32>,
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize)]
@@ -46,6 +47,8 @@ impl Struct {
             int_array: vec![5, -9, i32::MIN, 0, i32::MAX],
             byte_array: vec![0, 1, 2],
             long_array: vec![123, 456, 789],
+            some_int: Some(321),
+            none_int: None,
         }
     }
 
@@ -75,6 +78,7 @@ impl Struct {
                 ),
                 ("byte_array".into(), vec![0_i8, 1, 2].into()),
                 ("long_array".into(), vec![123_i64, 456, 789].into()),
+                ("some_int".into(), 321.into()),
             ])
             .into(),
         )
@@ -198,26 +202,4 @@ fn value_from_json() {
     let struct_de: Struct = serde_json::from_str(&string).unwrap();
 
     assert_eq!(struct_, struct_de);
-}
-
-#[test]
-fn some_none_round_trip() {
-    let mut buf = Vec::new();
-
-    #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
-    struct Options {
-        some: Option<i32>,
-        none: Option<i32>,
-    }
-
-    let opts = Options {
-        some: Some(123),
-        none: None,
-    };
-
-    to_writer(&mut buf, &opts).unwrap();
-
-    let opts_de = from_reader(&mut buf.as_slice()).unwrap();
-
-    assert_eq!(opts, opts_de);
 }
