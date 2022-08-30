@@ -1,3 +1,4 @@
+use std::marker::PhantomData;
 use pretty_assertions::assert_eq;
 use serde::{Deserialize, Serialize};
 
@@ -197,4 +198,26 @@ fn value_from_json() {
     let struct_de: Struct = serde_json::from_str(&string).unwrap();
 
     assert_eq!(struct_, struct_de);
+}
+
+#[test]
+fn some_none_round_trip() {
+    let mut buf = Vec::new();
+
+    #[derive(Serialize, Deserialize, PartialEq, Eq, Debug)]
+    struct Options {
+        some: Option<i32>,
+        none: Option<i32>,
+    }
+
+    let opts = Options {
+        some: Some(123),
+        none: None,
+    };
+
+    to_writer(&mut buf, &opts).unwrap();
+
+    let opts_de = from_reader(&mut buf.as_slice()).unwrap();
+
+    assert_eq!(opts, opts_de);
 }

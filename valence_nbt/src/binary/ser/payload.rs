@@ -174,14 +174,14 @@ impl<'a, W: Write + ?Sized> Serializer for &'a mut PayloadSerializer<'_, '_, W> 
     }
 
     fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
-        unsupported!("None")
+        Ok(())
     }
 
-    fn serialize_some<T: ?Sized>(self, _value: &T) -> Result<Self::Ok, Self::Error>
+    fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error>
     where
         T: Serialize,
     {
-        unsupported!("Some")
+        value.serialize(self)
     }
 
     fn serialize_unit(self) -> Result<Self::Ok, Self::Error> {
