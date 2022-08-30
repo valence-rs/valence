@@ -18,9 +18,10 @@ use vek::Vec3;
 // use {def_bitfield, def_enum, def_struct};
 use crate::block_pos::BlockPos;
 use crate::ident::Ident;
+use crate::nbt::Compound;
 use crate::protocol_inner::{
-    BoundedArray, BoundedInt, BoundedString, ByteAngle, Decode, Encode, Nbt, RawBytes, VarInt,
-    VarLong,
+    BoundedArray, BoundedInt, BoundedString, ByteAngle, Decode, Encode, NbtBridge, RawBytes,
+    VarInt, VarLong,
 };
 use crate::text::Text;
 

@@ -37,7 +37,7 @@ use crate::protocol_inner::packets::s2c::play::{
     PlayerPositionLook, PlayerPositionLookFlags, PlayerRespawn, PlayerSpawnPosition, RegistryCodec,
     Rotate, RotateAndMoveRelative, S2cPlayPacket, UnloadChunk, UpdateSubtitle, UpdateTitle,
 };
-use crate::protocol_inner::{BoundedInt, ByteAngle, Nbt, RawBytes, VarInt};
+use crate::protocol_inner::{BoundedInt, ByteAngle, NbtBridge, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::text::Text;
@@ -900,7 +900,7 @@ impl<C: Config> Client<C> {
                 gamemode: self.new_game_mode,
                 previous_gamemode: self.old_game_mode,
                 dimension_names,
-                registry_codec: Nbt(make_registry_codec(shared)),
+                registry_codec: NbtBridge(make_registry_codec(shared)),
                 dimension_type_name: ident!(
                     "{LIBRARY_NAMESPACE}:dimension_type_{}",
                     world.meta.dimension().0

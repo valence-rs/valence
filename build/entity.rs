@@ -125,7 +125,7 @@ impl Value {
             Value::Facing(_) => quote!(Facing),
             Value::OptionalUuid(_) => quote!(Option<Uuid>),
             Value::OptionalBlockState(_) => quote!(BlockState),
-            Value::NbtCompound(_) => quote!(nbt::Blob),
+            Value::NbtCompound(_) => quote!(crate::nbt::Compound),
             Value::Particle(_) => quote!(Particle),
             Value::VillagerData { .. } => quote!(VillagerData),
             Value::OptionalInt(_) => quote!(OptionalInt),
@@ -142,7 +142,7 @@ impl Value {
             Value::String(_) => quote!(&str),
             Value::TextComponent(_) => quote!(&Text),
             Value::OptionalTextComponent(_) => quote!(Option<&Text>),
-            Value::NbtCompound(_) => quote!(&nbt::Blob),
+            Value::NbtCompound(_) => quote!(&crate::nbt::Compound),
             _ => self.field_type(),
         }
     }
@@ -187,7 +187,7 @@ impl Value {
             }
             Value::OptionalUuid(_) => quote!(None), // TODO
             Value::OptionalBlockState(_) => quote!(BlockState::default()), // TODO
-            Value::NbtCompound(_) => quote!(nbt::Blob::default()), // TODO
+            Value::NbtCompound(_) => quote!(crate::nbt::Compound::default()), // TODO
             Value::Particle(p) => {
                 let variant = ident(p.to_pascal_case());
                 quote!(Particle::#variant)

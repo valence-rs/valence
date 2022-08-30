@@ -138,7 +138,7 @@ pub mod play {
         BlockEntityUpdate {
             location: BlockPos,
             kind: VarInt, // TODO: use enum here
-            data: nbt::Blob,
+            data: Compound,
         }
     }
 
@@ -294,7 +294,7 @@ pub mod play {
         ChunkData {
             chunk_x: i32,
             chunk_z: i32,
-            heightmaps: Nbt<ChunkDataHeightmaps>,
+            heightmaps: NbtBridge<ChunkDataHeightmaps>,
             blocks_and_biomes: Vec<u8>,
             block_entities: Vec<ChunkDataBlockEntity>,
             trust_edges: bool,
@@ -309,7 +309,7 @@ pub mod play {
 
     #[derive(Clone, Debug, Serialize, Deserialize)]
     pub struct ChunkDataHeightmaps {
-        #[serde(rename = "MOTION_BLOCKING", serialize_with = "nbt::i64_array")]
+        #[serde(rename = "MOTION_BLOCKING", with = "crate::nbt::long_array")]
         pub motion_blocking: Vec<i64>,
     }
 
@@ -318,7 +318,7 @@ pub mod play {
             packed_xz: i8,
             y: i16,
             kind: VarInt,
-            data: nbt::Blob,
+            data: Compound,
         }
     }
 
@@ -330,7 +330,7 @@ pub mod play {
             gamemode: GameMode,
             previous_gamemode: GameMode,
             dimension_names: Vec<Ident>,
-            registry_codec: Nbt<RegistryCodec>,
+            registry_codec: NbtBridge<RegistryCodec>,
             /// The name of the dimension type being spawned into.
             dimension_type_name: Ident,
             /// The name of the dimension being spawned into.

@@ -17,14 +17,12 @@ async-trait = "0.1"
 base64 = "0.13"
 bitfield-struct = "0.1"
 bitvec = "1"
-bumpalo = "3.11.0"
 byteorder = "1"
 cesu8 = "1.1.0"
 cfb8 = "0.7"
 flate2 = "1"
 flume = "0.10"
 futures = "0.3"
-hematite-nbt = "0.5"
 log = "0.4"
 num = "0.4"
 paste = "1"
@@ -39,6 +37,7 @@ sha2 = "0.10"
 thiserror = "1"
 url = { version = "2.2.2", features = ["serde"] }
 uuid = "1"
+valence_nbt = { path = "valence_nbt" }
 vek = "0.15"
 
 [dependencies.tokio]
