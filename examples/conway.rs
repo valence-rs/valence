@@ -29,6 +29,7 @@ pub fn main() -> ShutdownResult {
         },
         ServerState {
             player_list: None,
+            paused: false,
             board: vec![false; SIZE_X * SIZE_Z].into_boxed_slice(),
             board_buf: vec![false; SIZE_X * SIZE_Z].into_boxed_slice(),
         },
@@ -41,8 +42,15 @@ struct Game {
 
 struct ServerState {
     player_list: Option<PlayerListId>,
+    paused: bool,
     board: Box<[bool]>,
     board_buf: Box<[bool]>,
+}
+
+#[derive(Default)]
+struct ClientState {
+    entity_id: EntityId,
+    sneaking: bool,
 }
 
 const MAX_PLAYERS: usize = 10;
@@ -54,7 +62,7 @@ const BOARD_Y: i32 = 50;
 #[async_trait]
 impl Config for Game {
     type ServerState = ServerState;
-    type ClientState = EntityId;
+    type ClientState = ClientState;
     type EntityState = ();
     type WorldState = ();
     type ChunkState = ();
@@ -114,6 +122,8 @@ impl Config for Game {
             SIZE_Z as f64 / 2.0,
         ];
 
+        server.state.paused = false;
+
         server.clients.retain(|_, client| {
             if client.created_this_tick() {
                 if self
@@ -131,7 +141,7 @@ impl Config for Game {
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => client.state = id,
+                    Some((id, _)) => client.state.entity_id = id,
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;
@@ -155,73 +165,87 @@ impl Config for Game {
                 }
 
                 client.send_message("Welcome to Conway's game of life in Minecraft!".italic());
-                client.send_message("Hold the left mouse button to bring blocks to life.".italic());
+                client.send_message(
+                    "Sneak and hold the left mouse button to bring blocks to life.".italic(),
+                );
             }
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.remove(client.state);
+                server.entities.remove(client.state.entity_id);
                 if let Some(id) = &server.state.player_list {
                     server.player_lists.get_mut(id).remove(client.uuid());
                 }
                 return false;
             }
 
-            let player = server.entities.get_mut(client.state).unwrap();
+            let player = server.entities.get_mut(client.state.entity_id).unwrap();
 
             if client.position().y <= 0.0 {
                 client.teleport(spawn_pos, client.yaw(), client.pitch());
+                server.state.board.fill(false);
             }
 
             while let Some(event) = client_event_boilerplate(client, player) {
-                if let ClientEvent::Digging { position, .. } = event {
-                    if (0..SIZE_X as i32).contains(&position.x)
-                        && (0..SIZE_Z as i32).contains(&position.z)
-                        && position.y == BOARD_Y
-                    {
-                        server.state.board[position.x as usize + position.z as usize * SIZE_X] =
-                            true;
+                match event {
+                    ClientEvent::Digging { position, .. } => {
+                        if (0..SIZE_X as i32).contains(&position.x)
+                            && (0..SIZE_Z as i32).contains(&position.z)
+                            && position.y == BOARD_Y
+                        {
+                            server.state.board
+                                [position.x as usize + position.z as usize * SIZE_X] = true;
+                        }
                     }
+                    ClientEvent::StartSneaking => {
+                        client.state.sneaking = true;
+                    }
+                    ClientEvent::StopSneaking => {
+                        client.state.sneaking = false;
+                    }
+                    _ => {}
                 }
+            }
+
+            if client.state.sneaking {
+                server.state.paused = true;
             }
 
             true
         });
 
-        if server.shared.current_tick() % 4 != 0 {
-            return;
-        }
+        if !server.state.paused {
+            server
+                .state
+                .board_buf
+                .par_iter_mut()
+                .enumerate()
+                .for_each(|(i, cell)| {
+                    let cx = (i % SIZE_X) as i32;
+                    let cz = (i / SIZE_Z) as i32;
 
-        server
-            .state
-            .board_buf
-            .par_iter_mut()
-            .enumerate()
-            .for_each(|(i, cell)| {
-                let cx = (i % SIZE_X) as i32;
-                let cz = (i / SIZE_Z) as i32;
-
-                let mut live_count = 0;
-                for z in cz - 1..=cz + 1 {
-                    for x in cx - 1..=cx + 1 {
-                        if !(x == cx && z == cz) {
-                            let i = x.rem_euclid(SIZE_X as i32) as usize
-                                + z.rem_euclid(SIZE_Z as i32) as usize * SIZE_X;
-                            if server.state.board[i] {
-                                live_count += 1;
+                    let mut live_count = 0;
+                    for z in cz - 1..=cz + 1 {
+                        for x in cx - 1..=cx + 1 {
+                            if !(x == cx && z == cz) {
+                                let i = x.rem_euclid(SIZE_X as i32) as usize
+                                    + z.rem_euclid(SIZE_Z as i32) as usize * SIZE_X;
+                                if server.state.board[i] {
+                                    live_count += 1;
+                                }
                             }
                         }
                     }
-                }
 
-                if server.state.board[cx as usize + cz as usize * SIZE_X] {
-                    *cell = (2..=3).contains(&live_count);
-                } else {
-                    *cell = live_count == 3;
-                }
-            });
+                    if server.state.board[cx as usize + cz as usize * SIZE_X] {
+                        *cell = (2..=3).contains(&live_count);
+                    } else {
+                        *cell = live_count == 3;
+                    }
+                });
 
-        mem::swap(&mut server.state.board, &mut server.state.board_buf);
+            mem::swap(&mut server.state.board, &mut server.state.board_buf);
+        }
 
         let min_y = server.shared.dimensions().next().unwrap().1.min_y;
 
