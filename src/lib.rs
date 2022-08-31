@@ -161,10 +161,10 @@ pub mod protocol {
 }
 
 /// The Minecraft protocol version this library currently targets.
-pub const PROTOCOL_VERSION: i32 = 759;
+pub const PROTOCOL_VERSION: i32 = 760;
 /// The name of the Minecraft version this library currently targets, e.g.
 /// "1.8.2"
-pub const VERSION_NAME: &str = "1.19";
+pub const VERSION_NAME: &str = "1.19.2";
 
 /// The namespace for this library used internally for
 /// [identifiers](crate::ident::Ident).

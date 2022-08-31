@@ -380,7 +380,7 @@ def_struct! {
 }
 
 def_struct! {
-    SignatureData {
+    PublicKeyData {
         timestamp: u64,
         public_key: Vec<u8>,
         signature: Vec<u8>,

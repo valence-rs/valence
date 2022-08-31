@@ -76,7 +76,6 @@ pub struct Server<C: Config> {
 /// be shared between threads.
 ///
 /// [update]: crate::config::Config::update
-
 pub struct SharedServer<C: Config>(Arc<SharedServerInner<C>>);
 
 impl<C: Config> Clone for SharedServer<C> {
@@ -636,7 +635,8 @@ async fn handle_login<C: Config>(
 
     let LoginStart {
         username: BoundedString(username),
-        sig_data: _, // TODO
+        sig_data: _,   // TODO
+        profile_id: _, // TODO
     } = c.dec.read_packet().await?;
 
     ensure!(valid_username(&username), "invalid username '{username}'");

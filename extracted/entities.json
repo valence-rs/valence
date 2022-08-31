@@ -1,479 +1,6 @@
 {
-  "TadpoleEntity": {
-    "parent": "FishEntity",
-    "type": "tadpole",
-    "translation_key": "entity.minecraft.tadpole",
-    "fields": []
-  },
-  "FishEntity": {
-    "parent": "WaterCreatureEntity",
-    "fields": [
-      {
-        "name": "from_bucket",
-        "index": 16,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "WaterCreatureEntity": {
-    "parent": "PathAwareEntity",
-    "fields": []
-  },
-  "PathAwareEntity": {
-    "parent": "MobEntity",
-    "fields": []
-  },
-  "MobEntity": {
-    "parent": "LivingEntity",
-    "fields": [
-      {
-        "name": "mob_flags",
-        "index": 15,
-        "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "ai_disabled",
-            "index": 0
-          },
-          {
-            "name": "left_handed",
-            "index": 1
-          },
-          {
-            "name": "attacking",
-            "index": 2
-          }
-        ]
-      }
-    ]
-  },
-  "LivingEntity": {
-    "parent": "Entity",
-    "fields": [
-      {
-        "name": "living_flags",
-        "index": 8,
-        "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "using_item",
-            "index": 0
-          },
-          {
-            "name": "off_hand_active",
-            "index": 1
-          },
-          {
-            "name": "using_riptide",
-            "index": 2
-          }
-        ]
-      },
-      {
-        "name": "health",
-        "index": 9,
-        "type": "float",
-        "default_value": 6.0,
-        "bits": []
-      },
-      {
-        "name": "potion_swirls_color",
-        "index": 10,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      },
-      {
-        "name": "potion_swirls_ambient",
-        "index": 11,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      },
-      {
-        "name": "stuck_arrow_count",
-        "index": 12,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      },
-      {
-        "name": "stinger_count",
-        "index": 13,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      },
-      {
-        "name": "sleeping_position",
-        "index": 14,
-        "type": "optional_block_pos",
-        "default_value": null,
-        "bits": []
-      }
-    ]
-  },
-  "Entity": {
-    "fields": [
-      {
-        "name": "flags",
-        "index": 0,
-        "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "on_fire",
-            "index": 0
-          },
-          {
-            "name": "sneaking",
-            "index": 1
-          },
-          {
-            "name": "sprinting",
-            "index": 3
-          },
-          {
-            "name": "swimming",
-            "index": 4
-          },
-          {
-            "name": "invisible",
-            "index": 5
-          },
-          {
-            "name": "glowing",
-            "index": 6
-          },
-          {
-            "name": "fall_flying",
-            "index": 7
-          }
-        ]
-      },
-      {
-        "name": "air",
-        "index": 1,
-        "type": "integer",
-        "default_value": 300,
-        "bits": []
-      },
-      {
-        "name": "custom_name",
-        "index": 2,
-        "type": "optional_text_component",
-        "default_value": null,
-        "bits": []
-      },
-      {
-        "name": "name_visible",
-        "index": 3,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      },
-      {
-        "name": "silent",
-        "index": 4,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      },
-      {
-        "name": "no_gravity",
-        "index": 5,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      },
-      {
-        "name": "pose",
-        "index": 6,
-        "type": "entity_pose",
-        "default_value": "standing",
-        "bits": []
-      },
-      {
-        "name": "frozen_ticks",
-        "index": 7,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      }
-    ]
-  },
-  "FrogEntity": {
-    "parent": "AnimalEntity",
-    "type": "frog",
-    "translation_key": "entity.minecraft.frog",
-    "fields": [
-      {
-        "name": "variant",
-        "index": 17,
-        "type": "frog_variant",
-        "default_value": "temperate",
-        "bits": []
-      },
-      {
-        "name": "target",
-        "index": 18,
-        "type": "optional_int",
-        "default_value": null,
-        "bits": []
-      }
-    ]
-  },
-  "AnimalEntity": {
-    "parent": "PassiveEntity",
-    "fields": []
-  },
-  "PassiveEntity": {
-    "parent": "PathAwareEntity",
-    "fields": [
-      {
-        "name": "child",
-        "index": 16,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "FireballEntity": {
-    "parent": "AbstractFireballEntity",
-    "type": "fireball",
-    "translation_key": "entity.minecraft.fireball",
-    "fields": []
-  },
-  "AbstractFireballEntity": {
-    "parent": "ExplosiveProjectileEntity",
-    "fields": [
-      {
-        "name": "item",
-        "index": 8,
-        "type": "item_stack",
-        "default_value": "1 air",
-        "bits": []
-      }
-    ]
-  },
-  "ExplosiveProjectileEntity": {
-    "parent": "ProjectileEntity",
-    "fields": []
-  },
-  "ProjectileEntity": {
-    "parent": "Entity",
-    "fields": []
-  },
-  "VillagerEntity": {
-    "parent": "MerchantEntity",
-    "type": "villager",
-    "translation_key": "entity.minecraft.villager",
-    "fields": [
-      {
-        "name": "villager_data",
-        "index": 18,
-        "type": "villager_data",
-        "default_value": {
-          "type": "plains",
-          "profession": "none",
-          "level": 1
-        },
-        "bits": []
-      }
-    ]
-  },
-  "MerchantEntity": {
-    "parent": "PassiveEntity",
-    "fields": [
-      {
-        "name": "head_rolling_time_left",
-        "index": 17,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      }
-    ]
-  },
-  "ZombieEntity": {
-    "parent": "HostileEntity",
-    "type": "zombie",
-    "translation_key": "entity.minecraft.zombie",
-    "fields": [
-      {
-        "name": "baby",
-        "index": 16,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      },
-      {
-        "name": "zombie_type",
-        "index": 17,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      },
-      {
-        "name": "converting_in_water",
-        "index": 18,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "HostileEntity": {
-    "parent": "PathAwareEntity",
-    "fields": []
-  },
-  "GlowSquidEntity": {
-    "parent": "SquidEntity",
-    "type": "glow_squid",
-    "translation_key": "entity.minecraft.glow_squid",
-    "fields": [
-      {
-        "name": "dark_ticks_remaining",
-        "index": 16,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      }
-    ]
-  },
-  "SquidEntity": {
-    "parent": "WaterCreatureEntity",
-    "type": "squid",
-    "translation_key": "entity.minecraft.squid",
-    "fields": []
-  },
-  "PaintingEntity": {
-    "parent": "AbstractDecorationEntity",
-    "type": "painting",
-    "translation_key": "entity.minecraft.painting",
-    "fields": [
-      {
-        "name": "variant",
-        "index": 8,
-        "type": "painting_variant",
-        "default_value": "kebab",
-        "bits": []
-      }
-    ]
-  },
   "AbstractDecorationEntity": {
     "parent": "Entity",
-    "fields": []
-  },
-  "FishingBobberEntity": {
-    "parent": "ProjectileEntity",
-    "type": "fishing_bobber",
-    "translation_key": "entity.minecraft.fishing_bobber",
-    "fields": [
-      {
-        "name": "hook_entity_id",
-        "index": 8,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      },
-      {
-        "name": "caught_fish",
-        "index": 9,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "WitherSkullEntity": {
-    "parent": "ExplosiveProjectileEntity",
-    "type": "wither_skull",
-    "translation_key": "entity.minecraft.wither_skull",
-    "fields": [
-      {
-        "name": "charged",
-        "index": 8,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "PandaEntity": {
-    "parent": "AnimalEntity",
-    "type": "panda",
-    "translation_key": "entity.minecraft.panda",
-    "fields": [
-      {
-        "name": "ask_for_bamboo_ticks",
-        "index": 17,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      },
-      {
-        "name": "sneeze_progress",
-        "index": 18,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      },
-      {
-        "name": "eating_ticks",
-        "index": 19,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      },
-      {
-        "name": "main_gene",
-        "index": 20,
-        "type": "byte",
-        "default_value": 0,
-        "bits": []
-      },
-      {
-        "name": "hidden_gene",
-        "index": 21,
-        "type": "byte",
-        "default_value": 0,
-        "bits": []
-      },
-      {
-        "name": "panda_flags",
-        "index": 22,
-        "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "sneezing",
-            "index": 1
-          },
-          {
-            "name": "playing",
-            "index": 2
-          },
-          {
-            "name": "sitting",
-            "index": 3
-          },
-          {
-            "name": "lying_on_back",
-            "index": 4
-          }
-        ]
-      }
-    ]
-  },
-  "MuleEntity": {
-    "parent": "AbstractDonkeyEntity",
-    "type": "mule",
-    "translation_key": "entity.minecraft.mule",
     "fields": []
   },
   "AbstractDonkeyEntity": {
@@ -484,6 +11,18 @@
         "index": 19,
         "type": "boolean",
         "default_value": false,
+        "bits": []
+      }
+    ]
+  },
+  "AbstractFireballEntity": {
+    "parent": "ExplosiveProjectileEntity",
+    "fields": [
+      {
+        "name": "item",
+        "index": 8,
+        "type": "item_stack",
+        "default_value": "1 air",
         "bits": []
       }
     ]
@@ -532,132 +71,6 @@
       }
     ]
   },
-  "FireworkRocketEntity": {
-    "parent": "ProjectileEntity",
-    "type": "firework_rocket",
-    "translation_key": "entity.minecraft.firework_rocket",
-    "fields": [
-      {
-        "name": "item",
-        "index": 8,
-        "type": "item_stack",
-        "default_value": "1 air",
-        "bits": []
-      },
-      {
-        "name": "shooter_entity_id",
-        "index": 9,
-        "type": "optional_int",
-        "default_value": null,
-        "bits": []
-      },
-      {
-        "name": "shot_at_angle",
-        "index": 10,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "RavagerEntity": {
-    "parent": "RaiderEntity",
-    "type": "ravager",
-    "translation_key": "entity.minecraft.ravager",
-    "fields": []
-  },
-  "RaiderEntity": {
-    "parent": "PatrolEntity",
-    "fields": [
-      {
-        "name": "celebrating",
-        "index": 16,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "PatrolEntity": {
-    "parent": "HostileEntity",
-    "fields": []
-  },
-  "EndermanEntity": {
-    "parent": "HostileEntity",
-    "type": "enderman",
-    "translation_key": "entity.minecraft.enderman",
-    "fields": [
-      {
-        "name": "carried_block",
-        "index": 16,
-        "type": "optional_block_state",
-        "default_value": null,
-        "bits": []
-      },
-      {
-        "name": "angry",
-        "index": 17,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      },
-      {
-        "name": "provoked",
-        "index": 18,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "PillagerEntity": {
-    "parent": "IllagerEntity",
-    "type": "pillager",
-    "translation_key": "entity.minecraft.pillager",
-    "fields": [
-      {
-        "name": "charging",
-        "index": 17,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "IllagerEntity": {
-    "parent": "RaiderEntity",
-    "fields": []
-  },
-  "GhastEntity": {
-    "parent": "FlyingEntity",
-    "type": "ghast",
-    "translation_key": "entity.minecraft.ghast",
-    "fields": [
-      {
-        "name": "shooting",
-        "index": 16,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "FlyingEntity": {
-    "parent": "MobEntity",
-    "fields": []
-  },
-  "GiantEntity": {
-    "parent": "HostileEntity",
-    "type": "giant",
-    "translation_key": "entity.minecraft.giant",
-    "fields": []
-  },
-  "SpawnerMinecartEntity": {
-    "parent": "AbstractMinecartEntity",
-    "type": "spawner_minecart",
-    "translation_key": "entity.minecraft.spawner_minecart",
-    "fields": []
-  },
   "AbstractMinecartEntity": {
     "parent": "Entity",
     "fields": [
@@ -705,482 +118,85 @@
       }
     ]
   },
-  "StrayEntity": {
-    "parent": "AbstractSkeletonEntity",
-    "type": "stray",
-    "translation_key": "entity.minecraft.stray",
-    "fields": []
+  "AbstractPiglinEntity": {
+    "parent": "HostileEntity",
+    "fields": [
+      {
+        "name": "immune_to_zombification",
+        "index": 16,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      }
+    ]
   },
   "AbstractSkeletonEntity": {
     "parent": "HostileEntity",
-    "fields": []
-  },
-  "LightningEntity": {
-    "parent": "Entity",
-    "type": "lightning_bolt",
-    "translation_key": "entity.minecraft.lightning_bolt",
-    "fields": []
-  },
-  "EyeOfEnderEntity": {
-    "parent": "Entity",
-    "type": "eye_of_ender",
-    "translation_key": "entity.minecraft.eye_of_ender",
-    "fields": [
-      {
-        "name": "item",
-        "index": 8,
-        "type": "item_stack",
-        "default_value": "1 air",
-        "bits": []
-      }
-    ]
-  },
-  "HoglinEntity": {
-    "parent": "AnimalEntity",
-    "type": "hoglin",
-    "translation_key": "entity.minecraft.hoglin",
-    "fields": [
-      {
-        "name": "baby",
-        "index": 17,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "CatEntity": {
-    "parent": "TameableEntity",
-    "type": "cat",
-    "translation_key": "entity.minecraft.cat",
-    "fields": [
-      {
-        "name": "cat_variant",
-        "index": 19,
-        "type": "cat_variant",
-        "default_value": "black",
-        "bits": []
-      },
-      {
-        "name": "in_sleeping_pose",
-        "index": 20,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      },
-      {
-        "name": "head_down",
-        "index": 21,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      },
-      {
-        "name": "collar_color",
-        "index": 22,
-        "type": "integer",
-        "default_value": 14,
-        "bits": []
-      }
-    ]
-  },
-  "TameableEntity": {
-    "parent": "AnimalEntity",
-    "fields": [
-      {
-        "name": "tameable_flags",
-        "index": 17,
-        "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "sitting_pose",
-            "index": 0
-          },
-          {
-            "name": "tamed",
-            "index": 2
-          }
-        ]
-      },
-      {
-        "name": "owner_uuid",
-        "index": 18,
-        "type": "optional_uuid",
-        "default_value": null,
-        "bits": []
-      }
-    ]
-  },
-  "CaveSpiderEntity": {
-    "parent": "SpiderEntity",
-    "type": "cave_spider",
-    "translation_key": "entity.minecraft.cave_spider",
-    "fields": []
-  },
-  "SpiderEntity": {
-    "parent": "HostileEntity",
-    "type": "spider",
-    "translation_key": "entity.minecraft.spider",
-    "fields": [
-      {
-        "name": "spider_flags",
-        "index": 16,
-        "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "climbing_wall",
-            "index": 0
-          }
-        ]
-      }
-    ]
-  },
-  "PolarBearEntity": {
-    "parent": "AnimalEntity",
-    "type": "polar_bear",
-    "translation_key": "entity.minecraft.polar_bear",
-    "fields": [
-      {
-        "name": "warning",
-        "index": 17,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "MooshroomEntity": {
-    "parent": "CowEntity",
-    "type": "mooshroom",
-    "translation_key": "entity.minecraft.mooshroom",
-    "fields": [
-      {
-        "name": "type",
-        "index": 17,
-        "type": "string",
-        "default_value": "red",
-        "bits": []
-      }
-    ]
-  },
-  "CowEntity": {
-    "parent": "AnimalEntity",
-    "type": "cow",
-    "translation_key": "entity.minecraft.cow",
-    "fields": []
-  },
-  "ExperienceBottleEntity": {
-    "parent": "ThrownItemEntity",
-    "type": "experience_bottle",
-    "translation_key": "entity.minecraft.experience_bottle",
-    "fields": []
-  },
-  "ThrownItemEntity": {
-    "parent": "ThrownEntity",
-    "fields": [
-      {
-        "name": "item",
-        "index": 8,
-        "type": "item_stack",
-        "default_value": "1 air",
-        "bits": []
-      }
-    ]
-  },
-  "ThrownEntity": {
-    "parent": "ProjectileEntity",
-    "fields": []
-  },
-  "PufferfishEntity": {
-    "parent": "FishEntity",
-    "type": "pufferfish",
-    "translation_key": "entity.minecraft.pufferfish",
-    "fields": [
-      {
-        "name": "puff_state",
-        "index": 17,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      }
-    ]
-  },
-  "PotionEntity": {
-    "parent": "ThrownItemEntity",
-    "type": "potion",
-    "translation_key": "entity.minecraft.potion",
-    "fields": []
-  },
-  "EvokerEntity": {
-    "parent": "SpellcastingIllagerEntity",
-    "type": "evoker",
-    "translation_key": "entity.minecraft.evoker",
-    "fields": []
-  },
-  "SpellcastingIllagerEntity": {
-    "parent": "IllagerEntity",
-    "fields": [
-      {
-        "name": "spell",
-        "index": 17,
-        "type": "byte",
-        "default_value": 0,
-        "bits": []
-      }
-    ]
-  },
-  "MinecartEntity": {
-    "parent": "AbstractMinecartEntity",
-    "type": "minecart",
-    "translation_key": "entity.minecraft.minecart",
-    "fields": []
-  },
-  "TurtleEntity": {
-    "parent": "AnimalEntity",
-    "type": "turtle",
-    "translation_key": "entity.minecraft.turtle",
-    "fields": [
-      {
-        "name": "home_pos",
-        "index": 17,
-        "type": "block_pos",
-        "default_value": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
-        "bits": []
-      },
-      {
-        "name": "has_egg",
-        "index": 18,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      },
-      {
-        "name": "digging_sand",
-        "index": 19,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      },
-      {
-        "name": "travel_pos",
-        "index": 20,
-        "type": "block_pos",
-        "default_value": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
-        "bits": []
-      },
-      {
-        "name": "land_bound",
-        "index": 21,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      },
-      {
-        "name": "actively_traveling",
-        "index": 22,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "BoatEntity": {
-    "parent": "Entity",
-    "type": "boat",
-    "translation_key": "entity.minecraft.boat",
-    "fields": [
-      {
-        "name": "damage_wobble_ticks",
-        "index": 8,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      },
-      {
-        "name": "damage_wobble_side",
-        "index": 9,
-        "type": "integer",
-        "default_value": 1,
-        "bits": []
-      },
-      {
-        "name": "damage_wobble_strength",
-        "index": 10,
-        "type": "float",
-        "default_value": 0.0,
-        "bits": []
-      },
-      {
-        "name": "boat_type",
-        "index": 11,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      },
-      {
-        "name": "left_paddle_moving",
-        "index": 12,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      },
-      {
-        "name": "right_paddle_moving",
-        "index": 13,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      },
-      {
-        "name": "bubble_wobble_ticks",
-        "index": 14,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      }
-    ]
-  },
-  "FurnaceMinecartEntity": {
-    "parent": "AbstractMinecartEntity",
-    "type": "furnace_minecart",
-    "translation_key": "entity.minecraft.furnace_minecart",
-    "fields": [
-      {
-        "name": "lit",
-        "index": 14,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "ZombifiedPiglinEntity": {
-    "parent": "ZombieEntity",
-    "type": "zombified_piglin",
-    "translation_key": "entity.minecraft.zombified_piglin",
-    "fields": []
-  },
-  "OcelotEntity": {
-    "parent": "AnimalEntity",
-    "type": "ocelot",
-    "translation_key": "entity.minecraft.ocelot",
-    "fields": [
-      {
-        "name": "trusting",
-        "index": 17,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "EndermiteEntity": {
-    "parent": "HostileEntity",
-    "type": "endermite",
-    "translation_key": "entity.minecraft.endermite",
-    "fields": []
-  },
-  "ShulkerEntity": {
-    "parent": "GolemEntity",
-    "type": "shulker",
-    "translation_key": "entity.minecraft.shulker",
-    "fields": [
-      {
-        "name": "attached_face",
-        "index": 16,
-        "type": "facing",
-        "default_value": "down",
-        "bits": []
-      },
-      {
-        "name": "peek_amount",
-        "index": 17,
-        "type": "byte",
-        "default_value": 0,
-        "bits": []
-      },
-      {
-        "name": "color",
-        "index": 18,
-        "type": "byte",
-        "default_value": 16,
-        "bits": []
-      }
-    ]
-  },
-  "GolemEntity": {
-    "parent": "PathAwareEntity",
-    "fields": []
-  },
-  "LeashKnotEntity": {
-    "parent": "AbstractDecorationEntity",
-    "type": "leash_knot",
-    "translation_key": "entity.minecraft.leash_knot",
-    "fields": []
-  },
-  "SilverfishEntity": {
-    "parent": "HostileEntity",
-    "type": "silverfish",
-    "translation_key": "entity.minecraft.silverfish",
-    "fields": []
-  },
-  "HuskEntity": {
-    "parent": "ZombieEntity",
-    "type": "husk",
-    "translation_key": "entity.minecraft.husk",
-    "fields": []
-  },
-  "TntMinecartEntity": {
-    "parent": "AbstractMinecartEntity",
-    "type": "tnt_minecart",
-    "translation_key": "entity.minecraft.tnt_minecart",
-    "fields": []
-  },
-  "TropicalFishEntity": {
-    "parent": "SchoolingFishEntity",
-    "type": "tropical_fish",
-    "translation_key": "entity.minecraft.tropical_fish",
-    "fields": [
-      {
-        "name": "variant",
-        "index": 17,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      }
-    ]
-  },
-  "SchoolingFishEntity": {
-    "parent": "FishEntity",
-    "fields": []
-  },
-  "IllusionerEntity": {
-    "parent": "SpellcastingIllagerEntity",
-    "type": "illusioner",
-    "translation_key": "entity.minecraft.illusioner",
-    "fields": []
-  },
-  "LlamaSpitEntity": {
-    "parent": "ProjectileEntity",
-    "type": "llama_spit",
-    "translation_key": "entity.minecraft.llama_spit",
     "fields": []
   },
   "AllayEntity": {
     "parent": "PathAwareEntity",
     "type": "allay",
     "translation_key": "entity.minecraft.allay",
+    "fields": [
+      {
+        "name": "dancing",
+        "index": 16,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      },
+      {
+        "name": "can_duplicate",
+        "index": 17,
+        "type": "boolean",
+        "default_value": true,
+        "bits": []
+      }
+    ]
+  },
+  "AmbientEntity": {
+    "parent": "MobEntity",
     "fields": []
+  },
+  "AnimalEntity": {
+    "parent": "PassiveEntity",
+    "fields": []
+  },
+  "AreaEffectCloudEntity": {
+    "parent": "Entity",
+    "type": "area_effect_cloud",
+    "translation_key": "entity.minecraft.area_effect_cloud",
+    "fields": [
+      {
+        "name": "radius",
+        "index": 8,
+        "type": "float",
+        "default_value": 3.0,
+        "bits": []
+      },
+      {
+        "name": "color",
+        "index": 9,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      },
+      {
+        "name": "waiting",
+        "index": 10,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      },
+      {
+        "name": "particle_id",
+        "index": 11,
+        "type": "particle",
+        "default_value": "entity_effect",
+        "bits": []
+      }
+    ]
   },
   "ArmorStandEntity": {
     "parent": "LivingEntity",
@@ -1279,325 +295,19 @@
       }
     ]
   },
-  "ChestMinecartEntity": {
-    "parent": "StorageMinecartEntity",
-    "type": "chest_minecart",
-    "translation_key": "entity.minecraft.chest_minecart",
-    "fields": []
-  },
-  "StorageMinecartEntity": {
-    "parent": "AbstractMinecartEntity",
-    "fields": []
-  },
-  "CreeperEntity": {
-    "parent": "HostileEntity",
-    "type": "creeper",
-    "translation_key": "entity.minecraft.creeper",
+  "ArrowEntity": {
+    "parent": "PersistentProjectileEntity",
+    "type": "arrow",
+    "translation_key": "entity.minecraft.arrow",
     "fields": [
       {
-        "name": "fuse_speed",
-        "index": 16,
+        "name": "color",
+        "index": 10,
         "type": "integer",
         "default_value": -1,
         "bits": []
-      },
-      {
-        "name": "charged",
-        "index": 17,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      },
-      {
-        "name": "ignited",
-        "index": 18,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
       }
     ]
-  },
-  "MagmaCubeEntity": {
-    "parent": "SlimeEntity",
-    "type": "magma_cube",
-    "translation_key": "entity.minecraft.magma_cube",
-    "fields": []
-  },
-  "SlimeEntity": {
-    "parent": "MobEntity",
-    "type": "slime",
-    "translation_key": "entity.minecraft.slime",
-    "fields": [
-      {
-        "name": "slime_size",
-        "index": 16,
-        "type": "integer",
-        "default_value": 1,
-        "bits": []
-      }
-    ]
-  },
-  "WitchEntity": {
-    "parent": "RaiderEntity",
-    "type": "witch",
-    "translation_key": "entity.minecraft.witch",
-    "fields": [
-      {
-        "name": "drinking",
-        "index": 17,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "SkeletonEntity": {
-    "parent": "AbstractSkeletonEntity",
-    "type": "skeleton",
-    "translation_key": "entity.minecraft.skeleton",
-    "fields": [
-      {
-        "name": "converting",
-        "index": 16,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "EvokerFangsEntity": {
-    "parent": "Entity",
-    "type": "evoker_fangs",
-    "translation_key": "entity.minecraft.evoker_fangs",
-    "fields": []
-  },
-  "DolphinEntity": {
-    "parent": "WaterCreatureEntity",
-    "type": "dolphin",
-    "translation_key": "entity.minecraft.dolphin",
-    "fields": [
-      {
-        "name": "treasure_pos",
-        "index": 16,
-        "type": "block_pos",
-        "default_value": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
-        "bits": []
-      },
-      {
-        "name": "has_fish",
-        "index": 17,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      },
-      {
-        "name": "moistness",
-        "index": 18,
-        "type": "integer",
-        "default_value": 2400,
-        "bits": []
-      }
-    ]
-  },
-  "EndCrystalEntity": {
-    "parent": "Entity",
-    "type": "end_crystal",
-    "translation_key": "entity.minecraft.end_crystal",
-    "fields": [
-      {
-        "name": "beam_target",
-        "index": 8,
-        "type": "optional_block_pos",
-        "default_value": null,
-        "bits": []
-      },
-      {
-        "name": "show_bottom",
-        "index": 9,
-        "type": "boolean",
-        "default_value": true,
-        "bits": []
-      }
-    ]
-  },
-  "DragonFireballEntity": {
-    "parent": "ExplosiveProjectileEntity",
-    "type": "dragon_fireball",
-    "translation_key": "entity.minecraft.dragon_fireball",
-    "fields": []
-  },
-  "ElderGuardianEntity": {
-    "parent": "GuardianEntity",
-    "type": "elder_guardian",
-    "translation_key": "entity.minecraft.elder_guardian",
-    "fields": []
-  },
-  "GuardianEntity": {
-    "parent": "HostileEntity",
-    "type": "guardian",
-    "translation_key": "entity.minecraft.guardian",
-    "fields": [
-      {
-        "name": "spikes_retracted",
-        "index": 16,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      },
-      {
-        "name": "beam_target_id",
-        "index": 17,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      }
-    ]
-  },
-  "SnowballEntity": {
-    "parent": "ThrownItemEntity",
-    "type": "snowball",
-    "translation_key": "entity.minecraft.snowball",
-    "fields": []
-  },
-  "DrownedEntity": {
-    "parent": "ZombieEntity",
-    "type": "drowned",
-    "translation_key": "entity.minecraft.drowned",
-    "fields": []
-  },
-  "ShulkerBulletEntity": {
-    "parent": "ProjectileEntity",
-    "type": "shulker_bullet",
-    "translation_key": "entity.minecraft.shulker_bullet",
-    "fields": []
-  },
-  "ChickenEntity": {
-    "parent": "AnimalEntity",
-    "type": "chicken",
-    "translation_key": "entity.minecraft.chicken",
-    "fields": []
-  },
-  "GlowItemFrameEntity": {
-    "parent": "ItemFrameEntity",
-    "type": "glow_item_frame",
-    "translation_key": "entity.minecraft.glow_item_frame",
-    "fields": []
-  },
-  "ItemFrameEntity": {
-    "parent": "AbstractDecorationEntity",
-    "type": "item_frame",
-    "translation_key": "entity.minecraft.item_frame",
-    "fields": [
-      {
-        "name": "item_stack",
-        "index": 8,
-        "type": "item_stack",
-        "default_value": "1 air",
-        "bits": []
-      },
-      {
-        "name": "rotation",
-        "index": 9,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      }
-    ]
-  },
-  "LlamaEntity": {
-    "parent": "AbstractDonkeyEntity",
-    "type": "llama",
-    "translation_key": "entity.minecraft.llama",
-    "fields": [
-      {
-        "name": "strength",
-        "index": 20,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      },
-      {
-        "name": "carpet_color",
-        "index": 21,
-        "type": "integer",
-        "default_value": -1,
-        "bits": []
-      },
-      {
-        "name": "variant",
-        "index": 22,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      }
-    ]
-  },
-  "ZoglinEntity": {
-    "parent": "HostileEntity",
-    "type": "zoglin",
-    "translation_key": "entity.minecraft.zoglin",
-    "fields": [
-      {
-        "name": "baby",
-        "index": 16,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "SnowGolemEntity": {
-    "parent": "GolemEntity",
-    "type": "snow_golem",
-    "translation_key": "entity.minecraft.snow_golem",
-    "fields": [
-      {
-        "name": "snow_golem_flags",
-        "index": 16,
-        "type": "byte",
-        "default_value": 16,
-        "bits": [
-          {
-            "name": "has_pumpkin",
-            "index": 4
-          }
-        ]
-      }
-    ]
-  },
-  "TraderLlamaEntity": {
-    "parent": "LlamaEntity",
-    "type": "trader_llama",
-    "translation_key": "entity.minecraft.trader_llama",
-    "fields": []
-  },
-  "FallingBlockEntity": {
-    "parent": "Entity",
-    "type": "falling_block",
-    "translation_key": "entity.minecraft.falling_block",
-    "fields": [
-      {
-        "name": "block_pos",
-        "index": 8,
-        "type": "block_pos",
-        "default_value": {
-          "x": 0,
-          "y": 0,
-          "z": 0
-        },
-        "bits": []
-      }
-    ]
-  },
-  "SmallFireballEntity": {
-    "parent": "AbstractFireballEntity",
-    "type": "small_fireball",
-    "translation_key": "entity.minecraft.small_fireball",
-    "fields": []
   },
   "AxolotlEntity": {
     "parent": "AnimalEntity",
@@ -1627,134 +337,6 @@
       }
     ]
   },
-  "TntEntity": {
-    "parent": "Entity",
-    "type": "tnt",
-    "translation_key": "entity.minecraft.tnt",
-    "fields": [
-      {
-        "name": "fuse",
-        "index": 8,
-        "type": "integer",
-        "default_value": 80,
-        "bits": []
-      }
-    ]
-  },
-  "DonkeyEntity": {
-    "parent": "AbstractDonkeyEntity",
-    "type": "donkey",
-    "translation_key": "entity.minecraft.donkey",
-    "fields": []
-  },
-  "WardenEntity": {
-    "parent": "HostileEntity",
-    "type": "warden",
-    "translation_key": "entity.minecraft.warden",
-    "fields": [
-      {
-        "name": "anger",
-        "index": 16,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      }
-    ]
-  },
-  "PiglinEntity": {
-    "parent": "AbstractPiglinEntity",
-    "type": "piglin",
-    "translation_key": "entity.minecraft.piglin",
-    "fields": [
-      {
-        "name": "baby",
-        "index": 17,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      },
-      {
-        "name": "charging",
-        "index": 18,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      },
-      {
-        "name": "dancing",
-        "index": 19,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "AbstractPiglinEntity": {
-    "parent": "HostileEntity",
-    "fields": [
-      {
-        "name": "immune_to_zombification",
-        "index": 16,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "SpectralArrowEntity": {
-    "parent": "PersistentProjectileEntity",
-    "type": "spectral_arrow",
-    "translation_key": "entity.minecraft.spectral_arrow",
-    "fields": []
-  },
-  "PersistentProjectileEntity": {
-    "parent": "ProjectileEntity",
-    "fields": [
-      {
-        "name": "projectile_flags",
-        "index": 8,
-        "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "critical",
-            "index": 0
-          },
-          {
-            "name": "no_clip",
-            "index": 1
-          }
-        ]
-      },
-      {
-        "name": "pierce_level",
-        "index": 9,
-        "type": "byte",
-        "default_value": 0,
-        "bits": []
-      }
-    ]
-  },
-  "WanderingTraderEntity": {
-    "parent": "MerchantEntity",
-    "type": "wandering_trader",
-    "translation_key": "entity.minecraft.wandering_trader",
-    "fields": []
-  },
-  "RabbitEntity": {
-    "parent": "AnimalEntity",
-    "type": "rabbit",
-    "translation_key": "entity.minecraft.rabbit",
-    "fields": [
-      {
-        "name": "rabbit_type",
-        "index": 17,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      }
-    ]
-  },
   "BatEntity": {
     "parent": "AmbientEntity",
     "type": "bat",
@@ -1768,97 +350,6 @@
         "bits": [
           {
             "name": "hanging",
-            "index": 0
-          }
-        ]
-      }
-    ]
-  },
-  "AmbientEntity": {
-    "parent": "MobEntity",
-    "fields": []
-  },
-  "ItemEntity": {
-    "parent": "Entity",
-    "type": "item",
-    "translation_key": "entity.minecraft.item",
-    "fields": [
-      {
-        "name": "stack",
-        "index": 8,
-        "type": "item_stack",
-        "default_value": "1 air",
-        "bits": []
-      }
-    ]
-  },
-  "GoatEntity": {
-    "parent": "AnimalEntity",
-    "type": "goat",
-    "translation_key": "entity.minecraft.goat",
-    "fields": [
-      {
-        "name": "screaming",
-        "index": 17,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      },
-      {
-        "name": "left_horn",
-        "index": 18,
-        "type": "boolean",
-        "default_value": true,
-        "bits": []
-      },
-      {
-        "name": "right_horn",
-        "index": 19,
-        "type": "boolean",
-        "default_value": true,
-        "bits": []
-      }
-    ]
-  },
-  "SalmonEntity": {
-    "parent": "SchoolingFishEntity",
-    "type": "salmon",
-    "translation_key": "entity.minecraft.salmon",
-    "fields": []
-  },
-  "ExperienceOrbEntity": {
-    "parent": "Entity",
-    "type": "experience_orb",
-    "translation_key": "entity.minecraft.experience_orb",
-    "fields": []
-  },
-  "SheepEntity": {
-    "parent": "AnimalEntity",
-    "type": "sheep",
-    "translation_key": "entity.minecraft.sheep",
-    "fields": [
-      {
-        "name": "color",
-        "index": 17,
-        "type": "byte",
-        "default_value": 0,
-        "bits": []
-      }
-    ]
-  },
-  "VexEntity": {
-    "parent": "HostileEntity",
-    "type": "vex",
-    "translation_key": "entity.minecraft.vex",
-    "fields": [
-      {
-        "name": "vex_flags",
-        "index": 16,
-        "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "charging",
             "index": 0
           }
         ]
@@ -1899,19 +390,145 @@
       }
     ]
   },
-  "HorseEntity": {
-    "parent": "AbstractHorseEntity",
-    "type": "horse",
-    "translation_key": "entity.minecraft.horse",
+  "BlazeEntity": {
+    "parent": "HostileEntity",
+    "type": "blaze",
+    "translation_key": "entity.minecraft.blaze",
     "fields": [
       {
-        "name": "variant",
-        "index": 19,
+        "name": "blaze_flags",
+        "index": 16,
+        "type": "byte",
+        "default_value": 0,
+        "bits": [
+          {
+            "name": "fire_active",
+            "index": 0
+          }
+        ]
+      }
+    ]
+  },
+  "BoatEntity": {
+    "parent": "Entity",
+    "type": "boat",
+    "translation_key": "entity.minecraft.boat",
+    "fields": [
+      {
+        "name": "damage_wobble_ticks",
+        "index": 8,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      },
+      {
+        "name": "damage_wobble_side",
+        "index": 9,
+        "type": "integer",
+        "default_value": 1,
+        "bits": []
+      },
+      {
+        "name": "damage_wobble_strength",
+        "index": 10,
+        "type": "float",
+        "default_value": 0.0,
+        "bits": []
+      },
+      {
+        "name": "boat_type",
+        "index": 11,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      },
+      {
+        "name": "left_paddle_moving",
+        "index": 12,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      },
+      {
+        "name": "right_paddle_moving",
+        "index": 13,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      },
+      {
+        "name": "bubble_wobble_ticks",
+        "index": 14,
         "type": "integer",
         "default_value": 0,
         "bits": []
       }
     ]
+  },
+  "CatEntity": {
+    "parent": "TameableEntity",
+    "type": "cat",
+    "translation_key": "entity.minecraft.cat",
+    "fields": [
+      {
+        "name": "cat_variant",
+        "index": 19,
+        "type": "cat_variant",
+        "default_value": "black",
+        "bits": []
+      },
+      {
+        "name": "in_sleeping_pose",
+        "index": 20,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      },
+      {
+        "name": "head_down",
+        "index": 21,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      },
+      {
+        "name": "collar_color",
+        "index": 22,
+        "type": "integer",
+        "default_value": 14,
+        "bits": []
+      }
+    ]
+  },
+  "CaveSpiderEntity": {
+    "parent": "SpiderEntity",
+    "type": "cave_spider",
+    "translation_key": "entity.minecraft.cave_spider",
+    "fields": []
+  },
+  "ChestBoatEntity": {
+    "parent": "BoatEntity",
+    "type": "chest_boat",
+    "translation_key": "entity.minecraft.chest_boat",
+    "fields": []
+  },
+  "ChestMinecartEntity": {
+    "parent": "StorageMinecartEntity",
+    "type": "chest_minecart",
+    "translation_key": "entity.minecraft.chest_minecart",
+    "fields": []
+  },
+  "ChickenEntity": {
+    "parent": "AnimalEntity",
+    "type": "chicken",
+    "translation_key": "entity.minecraft.chicken",
+    "fields": []
+  },
+  "CodEntity": {
+    "parent": "SchoolingFishEntity",
+    "type": "cod",
+    "translation_key": "entity.minecraft.cod",
+    "fields": []
   },
   "CommandBlockMinecartEntity": {
     "parent": "AbstractMinecartEntity",
@@ -1934,11 +551,122 @@
       }
     ]
   },
+  "CowEntity": {
+    "parent": "AnimalEntity",
+    "type": "cow",
+    "translation_key": "entity.minecraft.cow",
+    "fields": []
+  },
+  "CreeperEntity": {
+    "parent": "HostileEntity",
+    "type": "creeper",
+    "translation_key": "entity.minecraft.creeper",
+    "fields": [
+      {
+        "name": "fuse_speed",
+        "index": 16,
+        "type": "integer",
+        "default_value": -1,
+        "bits": []
+      },
+      {
+        "name": "charged",
+        "index": 17,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      },
+      {
+        "name": "ignited",
+        "index": 18,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      }
+    ]
+  },
+  "DolphinEntity": {
+    "parent": "WaterCreatureEntity",
+    "type": "dolphin",
+    "translation_key": "entity.minecraft.dolphin",
+    "fields": [
+      {
+        "name": "treasure_pos",
+        "index": 16,
+        "type": "block_pos",
+        "default_value": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "bits": []
+      },
+      {
+        "name": "has_fish",
+        "index": 17,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      },
+      {
+        "name": "moistness",
+        "index": 18,
+        "type": "integer",
+        "default_value": 2400,
+        "bits": []
+      }
+    ]
+  },
+  "DonkeyEntity": {
+    "parent": "AbstractDonkeyEntity",
+    "type": "donkey",
+    "translation_key": "entity.minecraft.donkey",
+    "fields": []
+  },
+  "DragonFireballEntity": {
+    "parent": "ExplosiveProjectileEntity",
+    "type": "dragon_fireball",
+    "translation_key": "entity.minecraft.dragon_fireball",
+    "fields": []
+  },
+  "DrownedEntity": {
+    "parent": "ZombieEntity",
+    "type": "drowned",
+    "translation_key": "entity.minecraft.drowned",
+    "fields": []
+  },
   "EggEntity": {
     "parent": "ThrownItemEntity",
     "type": "egg",
     "translation_key": "entity.minecraft.egg",
     "fields": []
+  },
+  "ElderGuardianEntity": {
+    "parent": "GuardianEntity",
+    "type": "elder_guardian",
+    "translation_key": "entity.minecraft.elder_guardian",
+    "fields": []
+  },
+  "EndCrystalEntity": {
+    "parent": "Entity",
+    "type": "end_crystal",
+    "translation_key": "entity.minecraft.end_crystal",
+    "fields": [
+      {
+        "name": "beam_target",
+        "index": 8,
+        "type": "optional_block_pos",
+        "default_value": null,
+        "bits": []
+      },
+      {
+        "name": "show_bottom",
+        "index": 9,
+        "type": "boolean",
+        "default_value": true,
+        "bits": []
+      }
+    ]
   },
   "EnderDragonEntity": {
     "parent": "MobEntity",
@@ -1954,167 +682,265 @@
       }
     ]
   },
-  "ParrotEntity": {
-    "parent": "TameableShoulderEntity",
-    "type": "parrot",
-    "translation_key": "entity.minecraft.parrot",
-    "fields": [
-      {
-        "name": "variant",
-        "index": 19,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      }
-    ]
-  },
-  "TameableShoulderEntity": {
-    "parent": "TameableEntity",
-    "fields": []
-  },
-  "PiglinBruteEntity": {
-    "parent": "AbstractPiglinEntity",
-    "type": "piglin_brute",
-    "translation_key": "entity.minecraft.piglin_brute",
-    "fields": []
-  },
   "EnderPearlEntity": {
     "parent": "ThrownItemEntity",
     "type": "ender_pearl",
     "translation_key": "entity.minecraft.ender_pearl",
     "fields": []
   },
-  "TridentEntity": {
-    "parent": "PersistentProjectileEntity",
-    "type": "trident",
-    "translation_key": "entity.minecraft.trident",
-    "fields": [
-      {
-        "name": "loyalty",
-        "index": 10,
-        "type": "byte",
-        "default_value": 0,
-        "bits": []
-      },
-      {
-        "name": "enchanted",
-        "index": 11,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "StriderEntity": {
-    "parent": "AnimalEntity",
-    "type": "strider",
-    "translation_key": "entity.minecraft.strider",
-    "fields": [
-      {
-        "name": "boost_time",
-        "index": 17,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      },
-      {
-        "name": "cold",
-        "index": 18,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      },
-      {
-        "name": "saddled",
-        "index": 19,
-        "type": "boolean",
-        "default_value": false,
-        "bits": []
-      }
-    ]
-  },
-  "WitherEntity": {
+  "EndermanEntity": {
     "parent": "HostileEntity",
-    "type": "wither",
-    "translation_key": "entity.minecraft.wither",
+    "type": "enderman",
+    "translation_key": "entity.minecraft.enderman",
     "fields": [
       {
-        "name": "tracked_entity_id_1",
+        "name": "carried_block",
         "index": 16,
-        "type": "integer",
-        "default_value": 0,
+        "type": "optional_block_state",
+        "default_value": null,
         "bits": []
       },
       {
-        "name": "tracked_entity_id_2",
+        "name": "angry",
         "index": 17,
-        "type": "integer",
-        "default_value": 0,
+        "type": "boolean",
+        "default_value": false,
         "bits": []
       },
       {
-        "name": "tracked_entity_id_3",
+        "name": "provoked",
         "index": 18,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      },
-      {
-        "name": "invul_timer",
-        "index": 19,
-        "type": "integer",
-        "default_value": 0,
+        "type": "boolean",
+        "default_value": false,
         "bits": []
       }
     ]
   },
-  "ArrowEntity": {
-    "parent": "PersistentProjectileEntity",
-    "type": "arrow",
-    "translation_key": "entity.minecraft.arrow",
-    "fields": [
-      {
-        "name": "color",
-        "index": 10,
-        "type": "integer",
-        "default_value": -1,
-        "bits": []
-      }
-    ]
-  },
-  "MarkerEntity": {
-    "parent": "Entity",
-    "type": "marker",
-    "translation_key": "entity.minecraft.marker",
+  "EndermiteEntity": {
+    "parent": "HostileEntity",
+    "type": "endermite",
+    "translation_key": "entity.minecraft.endermite",
     "fields": []
   },
-  "WolfEntity": {
-    "parent": "TameableEntity",
-    "type": "wolf",
-    "translation_key": "entity.minecraft.wolf",
+  "Entity": {
     "fields": [
       {
-        "name": "begging",
-        "index": 19,
+        "name": "flags",
+        "index": 0,
+        "type": "byte",
+        "default_value": 0,
+        "bits": [
+          {
+            "name": "on_fire",
+            "index": 0
+          },
+          {
+            "name": "sneaking",
+            "index": 1
+          },
+          {
+            "name": "sprinting",
+            "index": 3
+          },
+          {
+            "name": "swimming",
+            "index": 4
+          },
+          {
+            "name": "invisible",
+            "index": 5
+          },
+          {
+            "name": "glowing",
+            "index": 6
+          },
+          {
+            "name": "fall_flying",
+            "index": 7
+          }
+        ]
+      },
+      {
+        "name": "air",
+        "index": 1,
+        "type": "integer",
+        "default_value": 300,
+        "bits": []
+      },
+      {
+        "name": "custom_name",
+        "index": 2,
+        "type": "optional_text_component",
+        "default_value": null,
+        "bits": []
+      },
+      {
+        "name": "name_visible",
+        "index": 3,
         "type": "boolean",
         "default_value": false,
         "bits": []
       },
       {
-        "name": "collar_color",
-        "index": 20,
-        "type": "integer",
-        "default_value": 14,
+        "name": "silent",
+        "index": 4,
+        "type": "boolean",
+        "default_value": false,
         "bits": []
       },
       {
-        "name": "anger_time",
-        "index": 21,
+        "name": "no_gravity",
+        "index": 5,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      },
+      {
+        "name": "pose",
+        "index": 6,
+        "type": "entity_pose",
+        "default_value": "standing",
+        "bits": []
+      },
+      {
+        "name": "frozen_ticks",
+        "index": 7,
         "type": "integer",
         "default_value": 0,
         "bits": []
       }
     ]
+  },
+  "EvokerEntity": {
+    "parent": "SpellcastingIllagerEntity",
+    "type": "evoker",
+    "translation_key": "entity.minecraft.evoker",
+    "fields": []
+  },
+  "EvokerFangsEntity": {
+    "parent": "Entity",
+    "type": "evoker_fangs",
+    "translation_key": "entity.minecraft.evoker_fangs",
+    "fields": []
+  },
+  "ExperienceBottleEntity": {
+    "parent": "ThrownItemEntity",
+    "type": "experience_bottle",
+    "translation_key": "entity.minecraft.experience_bottle",
+    "fields": []
+  },
+  "ExperienceOrbEntity": {
+    "parent": "Entity",
+    "type": "experience_orb",
+    "translation_key": "entity.minecraft.experience_orb",
+    "fields": []
+  },
+  "ExplosiveProjectileEntity": {
+    "parent": "ProjectileEntity",
+    "fields": []
+  },
+  "EyeOfEnderEntity": {
+    "parent": "Entity",
+    "type": "eye_of_ender",
+    "translation_key": "entity.minecraft.eye_of_ender",
+    "fields": [
+      {
+        "name": "item",
+        "index": 8,
+        "type": "item_stack",
+        "default_value": "1 air",
+        "bits": []
+      }
+    ]
+  },
+  "FallingBlockEntity": {
+    "parent": "Entity",
+    "type": "falling_block",
+    "translation_key": "entity.minecraft.falling_block",
+    "fields": [
+      {
+        "name": "block_pos",
+        "index": 8,
+        "type": "block_pos",
+        "default_value": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "bits": []
+      }
+    ]
+  },
+  "FireballEntity": {
+    "parent": "AbstractFireballEntity",
+    "type": "fireball",
+    "translation_key": "entity.minecraft.fireball",
+    "fields": []
+  },
+  "FireworkRocketEntity": {
+    "parent": "ProjectileEntity",
+    "type": "firework_rocket",
+    "translation_key": "entity.minecraft.firework_rocket",
+    "fields": [
+      {
+        "name": "item",
+        "index": 8,
+        "type": "item_stack",
+        "default_value": "1 air",
+        "bits": []
+      },
+      {
+        "name": "shooter_entity_id",
+        "index": 9,
+        "type": "optional_int",
+        "default_value": null,
+        "bits": []
+      },
+      {
+        "name": "shot_at_angle",
+        "index": 10,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      }
+    ]
+  },
+  "FishEntity": {
+    "parent": "WaterCreatureEntity",
+    "fields": [
+      {
+        "name": "from_bucket",
+        "index": 16,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      }
+    ]
+  },
+  "FishingBobberEntity": {
+    "parent": "ProjectileEntity",
+    "type": "fishing_bobber",
+    "translation_key": "entity.minecraft.fishing_bobber",
+    "fields": [
+      {
+        "name": "hook_entity_id",
+        "index": 8,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      },
+      {
+        "name": "caught_fish",
+        "index": 9,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      }
+    ]
+  },
+  "FlyingEntity": {
+    "parent": "MobEntity",
+    "fields": []
   },
   "FoxEntity": {
     "parent": "AnimalEntity",
@@ -2176,6 +1002,669 @@
         "index": 20,
         "type": "optional_uuid",
         "default_value": null,
+        "bits": []
+      }
+    ]
+  },
+  "FrogEntity": {
+    "parent": "AnimalEntity",
+    "type": "frog",
+    "translation_key": "entity.minecraft.frog",
+    "fields": [
+      {
+        "name": "variant",
+        "index": 17,
+        "type": "frog_variant",
+        "default_value": "temperate",
+        "bits": []
+      },
+      {
+        "name": "target",
+        "index": 18,
+        "type": "optional_int",
+        "default_value": null,
+        "bits": []
+      }
+    ]
+  },
+  "FurnaceMinecartEntity": {
+    "parent": "AbstractMinecartEntity",
+    "type": "furnace_minecart",
+    "translation_key": "entity.minecraft.furnace_minecart",
+    "fields": [
+      {
+        "name": "lit",
+        "index": 14,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      }
+    ]
+  },
+  "GhastEntity": {
+    "parent": "FlyingEntity",
+    "type": "ghast",
+    "translation_key": "entity.minecraft.ghast",
+    "fields": [
+      {
+        "name": "shooting",
+        "index": 16,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      }
+    ]
+  },
+  "GiantEntity": {
+    "parent": "HostileEntity",
+    "type": "giant",
+    "translation_key": "entity.minecraft.giant",
+    "fields": []
+  },
+  "GlowItemFrameEntity": {
+    "parent": "ItemFrameEntity",
+    "type": "glow_item_frame",
+    "translation_key": "entity.minecraft.glow_item_frame",
+    "fields": []
+  },
+  "GlowSquidEntity": {
+    "parent": "SquidEntity",
+    "type": "glow_squid",
+    "translation_key": "entity.minecraft.glow_squid",
+    "fields": [
+      {
+        "name": "dark_ticks_remaining",
+        "index": 16,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      }
+    ]
+  },
+  "GoatEntity": {
+    "parent": "AnimalEntity",
+    "type": "goat",
+    "translation_key": "entity.minecraft.goat",
+    "fields": [
+      {
+        "name": "screaming",
+        "index": 17,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      },
+      {
+        "name": "left_horn",
+        "index": 18,
+        "type": "boolean",
+        "default_value": true,
+        "bits": []
+      },
+      {
+        "name": "right_horn",
+        "index": 19,
+        "type": "boolean",
+        "default_value": true,
+        "bits": []
+      }
+    ]
+  },
+  "GolemEntity": {
+    "parent": "PathAwareEntity",
+    "fields": []
+  },
+  "GuardianEntity": {
+    "parent": "HostileEntity",
+    "type": "guardian",
+    "translation_key": "entity.minecraft.guardian",
+    "fields": [
+      {
+        "name": "spikes_retracted",
+        "index": 16,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      },
+      {
+        "name": "beam_target_id",
+        "index": 17,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      }
+    ]
+  },
+  "HoglinEntity": {
+    "parent": "AnimalEntity",
+    "type": "hoglin",
+    "translation_key": "entity.minecraft.hoglin",
+    "fields": [
+      {
+        "name": "baby",
+        "index": 17,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      }
+    ]
+  },
+  "HopperMinecartEntity": {
+    "parent": "StorageMinecartEntity",
+    "type": "hopper_minecart",
+    "translation_key": "entity.minecraft.hopper_minecart",
+    "fields": []
+  },
+  "HorseEntity": {
+    "parent": "AbstractHorseEntity",
+    "type": "horse",
+    "translation_key": "entity.minecraft.horse",
+    "fields": [
+      {
+        "name": "variant",
+        "index": 19,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      }
+    ]
+  },
+  "HostileEntity": {
+    "parent": "PathAwareEntity",
+    "fields": []
+  },
+  "HuskEntity": {
+    "parent": "ZombieEntity",
+    "type": "husk",
+    "translation_key": "entity.minecraft.husk",
+    "fields": []
+  },
+  "IllagerEntity": {
+    "parent": "RaiderEntity",
+    "fields": []
+  },
+  "IllusionerEntity": {
+    "parent": "SpellcastingIllagerEntity",
+    "type": "illusioner",
+    "translation_key": "entity.minecraft.illusioner",
+    "fields": []
+  },
+  "IronGolemEntity": {
+    "parent": "GolemEntity",
+    "type": "iron_golem",
+    "translation_key": "entity.minecraft.iron_golem",
+    "fields": [
+      {
+        "name": "iron_golem_flags",
+        "index": 16,
+        "type": "byte",
+        "default_value": 0,
+        "bits": [
+          {
+            "name": "player_created",
+            "index": 0
+          }
+        ]
+      }
+    ]
+  },
+  "ItemEntity": {
+    "parent": "Entity",
+    "type": "item",
+    "translation_key": "entity.minecraft.item",
+    "fields": [
+      {
+        "name": "stack",
+        "index": 8,
+        "type": "item_stack",
+        "default_value": "1 air",
+        "bits": []
+      }
+    ]
+  },
+  "ItemFrameEntity": {
+    "parent": "AbstractDecorationEntity",
+    "type": "item_frame",
+    "translation_key": "entity.minecraft.item_frame",
+    "fields": [
+      {
+        "name": "item_stack",
+        "index": 8,
+        "type": "item_stack",
+        "default_value": "1 air",
+        "bits": []
+      },
+      {
+        "name": "rotation",
+        "index": 9,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      }
+    ]
+  },
+  "LeashKnotEntity": {
+    "parent": "AbstractDecorationEntity",
+    "type": "leash_knot",
+    "translation_key": "entity.minecraft.leash_knot",
+    "fields": []
+  },
+  "LightningEntity": {
+    "parent": "Entity",
+    "type": "lightning_bolt",
+    "translation_key": "entity.minecraft.lightning_bolt",
+    "fields": []
+  },
+  "LivingEntity": {
+    "parent": "Entity",
+    "fields": [
+      {
+        "name": "living_flags",
+        "index": 8,
+        "type": "byte",
+        "default_value": 0,
+        "bits": [
+          {
+            "name": "using_item",
+            "index": 0
+          },
+          {
+            "name": "off_hand_active",
+            "index": 1
+          },
+          {
+            "name": "using_riptide",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "name": "health",
+        "index": 9,
+        "type": "float",
+        "default_value": 20.0,
+        "bits": []
+      },
+      {
+        "name": "potion_swirls_color",
+        "index": 10,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      },
+      {
+        "name": "potion_swirls_ambient",
+        "index": 11,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      },
+      {
+        "name": "stuck_arrow_count",
+        "index": 12,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      },
+      {
+        "name": "stinger_count",
+        "index": 13,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      },
+      {
+        "name": "sleeping_position",
+        "index": 14,
+        "type": "optional_block_pos",
+        "default_value": null,
+        "bits": []
+      }
+    ]
+  },
+  "LlamaEntity": {
+    "parent": "AbstractDonkeyEntity",
+    "type": "llama",
+    "translation_key": "entity.minecraft.llama",
+    "fields": [
+      {
+        "name": "strength",
+        "index": 20,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      },
+      {
+        "name": "carpet_color",
+        "index": 21,
+        "type": "integer",
+        "default_value": -1,
+        "bits": []
+      },
+      {
+        "name": "variant",
+        "index": 22,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      }
+    ]
+  },
+  "LlamaSpitEntity": {
+    "parent": "ProjectileEntity",
+    "type": "llama_spit",
+    "translation_key": "entity.minecraft.llama_spit",
+    "fields": []
+  },
+  "MagmaCubeEntity": {
+    "parent": "SlimeEntity",
+    "type": "magma_cube",
+    "translation_key": "entity.minecraft.magma_cube",
+    "fields": []
+  },
+  "MarkerEntity": {
+    "parent": "Entity",
+    "type": "marker",
+    "translation_key": "entity.minecraft.marker",
+    "fields": []
+  },
+  "MerchantEntity": {
+    "parent": "PassiveEntity",
+    "fields": [
+      {
+        "name": "head_rolling_time_left",
+        "index": 17,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      }
+    ]
+  },
+  "MinecartEntity": {
+    "parent": "AbstractMinecartEntity",
+    "type": "minecart",
+    "translation_key": "entity.minecraft.minecart",
+    "fields": []
+  },
+  "MobEntity": {
+    "parent": "LivingEntity",
+    "fields": [
+      {
+        "name": "mob_flags",
+        "index": 15,
+        "type": "byte",
+        "default_value": 0,
+        "bits": [
+          {
+            "name": "ai_disabled",
+            "index": 0
+          },
+          {
+            "name": "left_handed",
+            "index": 1
+          },
+          {
+            "name": "attacking",
+            "index": 2
+          }
+        ]
+      }
+    ]
+  },
+  "MooshroomEntity": {
+    "parent": "CowEntity",
+    "type": "mooshroom",
+    "translation_key": "entity.minecraft.mooshroom",
+    "fields": [
+      {
+        "name": "type",
+        "index": 17,
+        "type": "string",
+        "default_value": "red",
+        "bits": []
+      }
+    ]
+  },
+  "MuleEntity": {
+    "parent": "AbstractDonkeyEntity",
+    "type": "mule",
+    "translation_key": "entity.minecraft.mule",
+    "fields": []
+  },
+  "OcelotEntity": {
+    "parent": "AnimalEntity",
+    "type": "ocelot",
+    "translation_key": "entity.minecraft.ocelot",
+    "fields": [
+      {
+        "name": "trusting",
+        "index": 17,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      }
+    ]
+  },
+  "PaintingEntity": {
+    "parent": "AbstractDecorationEntity",
+    "type": "painting",
+    "translation_key": "entity.minecraft.painting",
+    "fields": [
+      {
+        "name": "variant",
+        "index": 8,
+        "type": "painting_variant",
+        "default_value": "kebab",
+        "bits": []
+      }
+    ]
+  },
+  "PandaEntity": {
+    "parent": "AnimalEntity",
+    "type": "panda",
+    "translation_key": "entity.minecraft.panda",
+    "fields": [
+      {
+        "name": "ask_for_bamboo_ticks",
+        "index": 17,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      },
+      {
+        "name": "sneeze_progress",
+        "index": 18,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      },
+      {
+        "name": "eating_ticks",
+        "index": 19,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      },
+      {
+        "name": "main_gene",
+        "index": 20,
+        "type": "byte",
+        "default_value": 0,
+        "bits": []
+      },
+      {
+        "name": "hidden_gene",
+        "index": 21,
+        "type": "byte",
+        "default_value": 0,
+        "bits": []
+      },
+      {
+        "name": "panda_flags",
+        "index": 22,
+        "type": "byte",
+        "default_value": 0,
+        "bits": [
+          {
+            "name": "sneezing",
+            "index": 1
+          },
+          {
+            "name": "playing",
+            "index": 2
+          },
+          {
+            "name": "sitting",
+            "index": 3
+          },
+          {
+            "name": "lying_on_back",
+            "index": 4
+          }
+        ]
+      }
+    ]
+  },
+  "ParrotEntity": {
+    "parent": "TameableShoulderEntity",
+    "type": "parrot",
+    "translation_key": "entity.minecraft.parrot",
+    "fields": [
+      {
+        "name": "variant",
+        "index": 19,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      }
+    ]
+  },
+  "PassiveEntity": {
+    "parent": "PathAwareEntity",
+    "fields": [
+      {
+        "name": "child",
+        "index": 16,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      }
+    ]
+  },
+  "PathAwareEntity": {
+    "parent": "MobEntity",
+    "fields": []
+  },
+  "PatrolEntity": {
+    "parent": "HostileEntity",
+    "fields": []
+  },
+  "PersistentProjectileEntity": {
+    "parent": "ProjectileEntity",
+    "fields": [
+      {
+        "name": "projectile_flags",
+        "index": 8,
+        "type": "byte",
+        "default_value": 0,
+        "bits": [
+          {
+            "name": "critical",
+            "index": 0
+          },
+          {
+            "name": "no_clip",
+            "index": 1
+          }
+        ]
+      },
+      {
+        "name": "pierce_level",
+        "index": 9,
+        "type": "byte",
+        "default_value": 0,
+        "bits": []
+      }
+    ]
+  },
+  "PhantomEntity": {
+    "parent": "FlyingEntity",
+    "type": "phantom",
+    "translation_key": "entity.minecraft.phantom",
+    "fields": [
+      {
+        "name": "size",
+        "index": 16,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      }
+    ]
+  },
+  "PigEntity": {
+    "parent": "AnimalEntity",
+    "type": "pig",
+    "translation_key": "entity.minecraft.pig",
+    "fields": [
+      {
+        "name": "saddled",
+        "index": 17,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      },
+      {
+        "name": "boost_time",
+        "index": 18,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      }
+    ]
+  },
+  "PiglinBruteEntity": {
+    "parent": "AbstractPiglinEntity",
+    "type": "piglin_brute",
+    "translation_key": "entity.minecraft.piglin_brute",
+    "fields": []
+  },
+  "PiglinEntity": {
+    "parent": "AbstractPiglinEntity",
+    "type": "piglin",
+    "translation_key": "entity.minecraft.piglin",
+    "fields": [
+      {
+        "name": "baby",
+        "index": 17,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      },
+      {
+        "name": "charging",
+        "index": 18,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      },
+      {
+        "name": "dancing",
+        "index": 19,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      }
+    ]
+  },
+  "PillagerEntity": {
+    "parent": "IllagerEntity",
+    "type": "pillager",
+    "translation_key": "entity.minecraft.pillager",
+    "fields": [
+      {
+        "name": "charging",
+        "index": 17,
+        "type": "boolean",
+        "default_value": false,
         "bits": []
       }
     ]
@@ -2258,21 +1747,574 @@
       }
     ]
   },
-  "PigEntity": {
+  "PolarBearEntity": {
     "parent": "AnimalEntity",
-    "type": "pig",
-    "translation_key": "entity.minecraft.pig",
+    "type": "polar_bear",
+    "translation_key": "entity.minecraft.polar_bear",
     "fields": [
       {
-        "name": "saddled",
+        "name": "warning",
         "index": 17,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      }
+    ]
+  },
+  "PotionEntity": {
+    "parent": "ThrownItemEntity",
+    "type": "potion",
+    "translation_key": "entity.minecraft.potion",
+    "fields": []
+  },
+  "ProjectileEntity": {
+    "parent": "Entity",
+    "fields": []
+  },
+  "PufferfishEntity": {
+    "parent": "FishEntity",
+    "type": "pufferfish",
+    "translation_key": "entity.minecraft.pufferfish",
+    "fields": [
+      {
+        "name": "puff_state",
+        "index": 17,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      }
+    ]
+  },
+  "RabbitEntity": {
+    "parent": "AnimalEntity",
+    "type": "rabbit",
+    "translation_key": "entity.minecraft.rabbit",
+    "fields": [
+      {
+        "name": "rabbit_type",
+        "index": 17,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      }
+    ]
+  },
+  "RaiderEntity": {
+    "parent": "PatrolEntity",
+    "fields": [
+      {
+        "name": "celebrating",
+        "index": 16,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      }
+    ]
+  },
+  "RavagerEntity": {
+    "parent": "RaiderEntity",
+    "type": "ravager",
+    "translation_key": "entity.minecraft.ravager",
+    "fields": []
+  },
+  "SalmonEntity": {
+    "parent": "SchoolingFishEntity",
+    "type": "salmon",
+    "translation_key": "entity.minecraft.salmon",
+    "fields": []
+  },
+  "SchoolingFishEntity": {
+    "parent": "FishEntity",
+    "fields": []
+  },
+  "SheepEntity": {
+    "parent": "AnimalEntity",
+    "type": "sheep",
+    "translation_key": "entity.minecraft.sheep",
+    "fields": [
+      {
+        "name": "color",
+        "index": 17,
+        "type": "byte",
+        "default_value": 0,
+        "bits": []
+      }
+    ]
+  },
+  "ShulkerBulletEntity": {
+    "parent": "ProjectileEntity",
+    "type": "shulker_bullet",
+    "translation_key": "entity.minecraft.shulker_bullet",
+    "fields": []
+  },
+  "ShulkerEntity": {
+    "parent": "GolemEntity",
+    "type": "shulker",
+    "translation_key": "entity.minecraft.shulker",
+    "fields": [
+      {
+        "name": "attached_face",
+        "index": 16,
+        "type": "facing",
+        "default_value": "down",
+        "bits": []
+      },
+      {
+        "name": "peek_amount",
+        "index": 17,
+        "type": "byte",
+        "default_value": 0,
+        "bits": []
+      },
+      {
+        "name": "color",
+        "index": 18,
+        "type": "byte",
+        "default_value": 16,
+        "bits": []
+      }
+    ]
+  },
+  "SilverfishEntity": {
+    "parent": "HostileEntity",
+    "type": "silverfish",
+    "translation_key": "entity.minecraft.silverfish",
+    "fields": []
+  },
+  "SkeletonEntity": {
+    "parent": "AbstractSkeletonEntity",
+    "type": "skeleton",
+    "translation_key": "entity.minecraft.skeleton",
+    "fields": [
+      {
+        "name": "converting",
+        "index": 16,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      }
+    ]
+  },
+  "SkeletonHorseEntity": {
+    "parent": "AbstractHorseEntity",
+    "type": "skeleton_horse",
+    "translation_key": "entity.minecraft.skeleton_horse",
+    "fields": []
+  },
+  "SlimeEntity": {
+    "parent": "MobEntity",
+    "type": "slime",
+    "translation_key": "entity.minecraft.slime",
+    "fields": [
+      {
+        "name": "slime_size",
+        "index": 16,
+        "type": "integer",
+        "default_value": 1,
+        "bits": []
+      }
+    ]
+  },
+  "SmallFireballEntity": {
+    "parent": "AbstractFireballEntity",
+    "type": "small_fireball",
+    "translation_key": "entity.minecraft.small_fireball",
+    "fields": []
+  },
+  "SnowGolemEntity": {
+    "parent": "GolemEntity",
+    "type": "snow_golem",
+    "translation_key": "entity.minecraft.snow_golem",
+    "fields": [
+      {
+        "name": "snow_golem_flags",
+        "index": 16,
+        "type": "byte",
+        "default_value": 16,
+        "bits": [
+          {
+            "name": "has_pumpkin",
+            "index": 4
+          }
+        ]
+      }
+    ]
+  },
+  "SnowballEntity": {
+    "parent": "ThrownItemEntity",
+    "type": "snowball",
+    "translation_key": "entity.minecraft.snowball",
+    "fields": []
+  },
+  "SpawnerMinecartEntity": {
+    "parent": "AbstractMinecartEntity",
+    "type": "spawner_minecart",
+    "translation_key": "entity.minecraft.spawner_minecart",
+    "fields": []
+  },
+  "SpectralArrowEntity": {
+    "parent": "PersistentProjectileEntity",
+    "type": "spectral_arrow",
+    "translation_key": "entity.minecraft.spectral_arrow",
+    "fields": []
+  },
+  "SpellcastingIllagerEntity": {
+    "parent": "IllagerEntity",
+    "fields": [
+      {
+        "name": "spell",
+        "index": 17,
+        "type": "byte",
+        "default_value": 0,
+        "bits": []
+      }
+    ]
+  },
+  "SpiderEntity": {
+    "parent": "HostileEntity",
+    "type": "spider",
+    "translation_key": "entity.minecraft.spider",
+    "fields": [
+      {
+        "name": "spider_flags",
+        "index": 16,
+        "type": "byte",
+        "default_value": 0,
+        "bits": [
+          {
+            "name": "climbing_wall",
+            "index": 0
+          }
+        ]
+      }
+    ]
+  },
+  "SquidEntity": {
+    "parent": "WaterCreatureEntity",
+    "type": "squid",
+    "translation_key": "entity.minecraft.squid",
+    "fields": []
+  },
+  "StorageMinecartEntity": {
+    "parent": "AbstractMinecartEntity",
+    "fields": []
+  },
+  "StrayEntity": {
+    "parent": "AbstractSkeletonEntity",
+    "type": "stray",
+    "translation_key": "entity.minecraft.stray",
+    "fields": []
+  },
+  "StriderEntity": {
+    "parent": "AnimalEntity",
+    "type": "strider",
+    "translation_key": "entity.minecraft.strider",
+    "fields": [
+      {
+        "name": "boost_time",
+        "index": 17,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      },
+      {
+        "name": "cold",
+        "index": 18,
         "type": "boolean",
         "default_value": false,
         "bits": []
       },
       {
-        "name": "boost_time",
+        "name": "saddled",
+        "index": 19,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      }
+    ]
+  },
+  "TadpoleEntity": {
+    "parent": "FishEntity",
+    "type": "tadpole",
+    "translation_key": "entity.minecraft.tadpole",
+    "fields": []
+  },
+  "TameableEntity": {
+    "parent": "AnimalEntity",
+    "fields": [
+      {
+        "name": "tameable_flags",
+        "index": 17,
+        "type": "byte",
+        "default_value": 0,
+        "bits": [
+          {
+            "name": "sitting_pose",
+            "index": 0
+          },
+          {
+            "name": "tamed",
+            "index": 2
+          }
+        ]
+      },
+      {
+        "name": "owner_uuid",
         "index": 18,
+        "type": "optional_uuid",
+        "default_value": null,
+        "bits": []
+      }
+    ]
+  },
+  "TameableShoulderEntity": {
+    "parent": "TameableEntity",
+    "fields": []
+  },
+  "ThrownEntity": {
+    "parent": "ProjectileEntity",
+    "fields": []
+  },
+  "ThrownItemEntity": {
+    "parent": "ThrownEntity",
+    "fields": [
+      {
+        "name": "item",
+        "index": 8,
+        "type": "item_stack",
+        "default_value": "1 air",
+        "bits": []
+      }
+    ]
+  },
+  "TntEntity": {
+    "parent": "Entity",
+    "type": "tnt",
+    "translation_key": "entity.minecraft.tnt",
+    "fields": [
+      {
+        "name": "fuse",
+        "index": 8,
+        "type": "integer",
+        "default_value": 80,
+        "bits": []
+      }
+    ]
+  },
+  "TntMinecartEntity": {
+    "parent": "AbstractMinecartEntity",
+    "type": "tnt_minecart",
+    "translation_key": "entity.minecraft.tnt_minecart",
+    "fields": []
+  },
+  "TraderLlamaEntity": {
+    "parent": "LlamaEntity",
+    "type": "trader_llama",
+    "translation_key": "entity.minecraft.trader_llama",
+    "fields": []
+  },
+  "TridentEntity": {
+    "parent": "PersistentProjectileEntity",
+    "type": "trident",
+    "translation_key": "entity.minecraft.trident",
+    "fields": [
+      {
+        "name": "loyalty",
+        "index": 10,
+        "type": "byte",
+        "default_value": 0,
+        "bits": []
+      },
+      {
+        "name": "enchanted",
+        "index": 11,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      }
+    ]
+  },
+  "TropicalFishEntity": {
+    "parent": "SchoolingFishEntity",
+    "type": "tropical_fish",
+    "translation_key": "entity.minecraft.tropical_fish",
+    "fields": [
+      {
+        "name": "variant",
+        "index": 17,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      }
+    ]
+  },
+  "TurtleEntity": {
+    "parent": "AnimalEntity",
+    "type": "turtle",
+    "translation_key": "entity.minecraft.turtle",
+    "fields": [
+      {
+        "name": "home_pos",
+        "index": 17,
+        "type": "block_pos",
+        "default_value": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "bits": []
+      },
+      {
+        "name": "has_egg",
+        "index": 18,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      },
+      {
+        "name": "digging_sand",
+        "index": 19,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      },
+      {
+        "name": "travel_pos",
+        "index": 20,
+        "type": "block_pos",
+        "default_value": {
+          "x": 0,
+          "y": 0,
+          "z": 0
+        },
+        "bits": []
+      },
+      {
+        "name": "land_bound",
+        "index": 21,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      },
+      {
+        "name": "actively_traveling",
+        "index": 22,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      }
+    ]
+  },
+  "VexEntity": {
+    "parent": "HostileEntity",
+    "type": "vex",
+    "translation_key": "entity.minecraft.vex",
+    "fields": [
+      {
+        "name": "vex_flags",
+        "index": 16,
+        "type": "byte",
+        "default_value": 0,
+        "bits": [
+          {
+            "name": "charging",
+            "index": 0
+          }
+        ]
+      }
+    ]
+  },
+  "VillagerEntity": {
+    "parent": "MerchantEntity",
+    "type": "villager",
+    "translation_key": "entity.minecraft.villager",
+    "fields": [
+      {
+        "name": "villager_data",
+        "index": 18,
+        "type": "villager_data",
+        "default_value": {
+          "type": "plains",
+          "profession": "none",
+          "level": 1
+        },
+        "bits": []
+      }
+    ]
+  },
+  "VindicatorEntity": {
+    "parent": "IllagerEntity",
+    "type": "vindicator",
+    "translation_key": "entity.minecraft.vindicator",
+    "fields": []
+  },
+  "WanderingTraderEntity": {
+    "parent": "MerchantEntity",
+    "type": "wandering_trader",
+    "translation_key": "entity.minecraft.wandering_trader",
+    "fields": []
+  },
+  "WardenEntity": {
+    "parent": "HostileEntity",
+    "type": "warden",
+    "translation_key": "entity.minecraft.warden",
+    "fields": [
+      {
+        "name": "anger",
+        "index": 16,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      }
+    ]
+  },
+  "WaterCreatureEntity": {
+    "parent": "PathAwareEntity",
+    "fields": []
+  },
+  "WitchEntity": {
+    "parent": "RaiderEntity",
+    "type": "witch",
+    "translation_key": "entity.minecraft.witch",
+    "fields": [
+      {
+        "name": "drinking",
+        "index": 17,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      }
+    ]
+  },
+  "WitherEntity": {
+    "parent": "HostileEntity",
+    "type": "wither",
+    "translation_key": "entity.minecraft.wither",
+    "fields": [
+      {
+        "name": "tracked_entity_id_1",
+        "index": 16,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      },
+      {
+        "name": "tracked_entity_id_2",
+        "index": 17,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      },
+      {
+        "name": "tracked_entity_id_3",
+        "index": 18,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      },
+      {
+        "name": "invul_timer",
+        "index": 19,
         "type": "integer",
         "default_value": 0,
         "bits": []
@@ -2285,127 +2327,94 @@
     "translation_key": "entity.minecraft.wither_skeleton",
     "fields": []
   },
-  "ChestBoatEntity": {
-    "parent": "BoatEntity",
-    "type": "chest_boat",
-    "translation_key": "entity.minecraft.chest_boat",
-    "fields": []
-  },
-  "BlazeEntity": {
-    "parent": "HostileEntity",
-    "type": "blaze",
-    "translation_key": "entity.minecraft.blaze",
+  "WitherSkullEntity": {
+    "parent": "ExplosiveProjectileEntity",
+    "type": "wither_skull",
+    "translation_key": "entity.minecraft.wither_skull",
     "fields": [
       {
-        "name": "blaze_flags",
-        "index": 16,
-        "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "fire_active",
-            "index": 0
-          }
-        ]
-      }
-    ]
-  },
-  "PhantomEntity": {
-    "parent": "FlyingEntity",
-    "type": "phantom",
-    "translation_key": "entity.minecraft.phantom",
-    "fields": [
-      {
-        "name": "size",
-        "index": 16,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      }
-    ]
-  },
-  "SkeletonHorseEntity": {
-    "parent": "AbstractHorseEntity",
-    "type": "skeleton_horse",
-    "translation_key": "entity.minecraft.skeleton_horse",
-    "fields": []
-  },
-  "HopperMinecartEntity": {
-    "parent": "StorageMinecartEntity",
-    "type": "hopper_minecart",
-    "translation_key": "entity.minecraft.hopper_minecart",
-    "fields": []
-  },
-  "CodEntity": {
-    "parent": "SchoolingFishEntity",
-    "type": "cod",
-    "translation_key": "entity.minecraft.cod",
-    "fields": []
-  },
-  "ZombieHorseEntity": {
-    "parent": "AbstractHorseEntity",
-    "type": "zombie_horse",
-    "translation_key": "entity.minecraft.zombie_horse",
-    "fields": []
-  },
-  "IronGolemEntity": {
-    "parent": "GolemEntity",
-    "type": "iron_golem",
-    "translation_key": "entity.minecraft.iron_golem",
-    "fields": [
-      {
-        "name": "iron_golem_flags",
-        "index": 16,
-        "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "player_created",
-            "index": 0
-          }
-        ]
-      }
-    ]
-  },
-  "AreaEffectCloudEntity": {
-    "parent": "Entity",
-    "type": "area_effect_cloud",
-    "translation_key": "entity.minecraft.area_effect_cloud",
-    "fields": [
-      {
-        "name": "radius",
+        "name": "charged",
         "index": 8,
-        "type": "float",
-        "default_value": 3.0,
+        "type": "boolean",
+        "default_value": false,
         "bits": []
-      },
+      }
+    ]
+  },
+  "WolfEntity": {
+    "parent": "TameableEntity",
+    "type": "wolf",
+    "translation_key": "entity.minecraft.wolf",
+    "fields": [
       {
-        "name": "color",
-        "index": 9,
-        "type": "integer",
-        "default_value": 0,
-        "bits": []
-      },
-      {
-        "name": "waiting",
-        "index": 10,
+        "name": "begging",
+        "index": 19,
         "type": "boolean",
         "default_value": false,
         "bits": []
       },
       {
-        "name": "particle_id",
-        "index": 11,
-        "type": "particle",
-        "default_value": "entity_effect",
+        "name": "collar_color",
+        "index": 20,
+        "type": "integer",
+        "default_value": 14,
+        "bits": []
+      },
+      {
+        "name": "anger_time",
+        "index": 21,
+        "type": "integer",
+        "default_value": 0,
         "bits": []
       }
     ]
   },
-  "VindicatorEntity": {
-    "parent": "IllagerEntity",
-    "type": "vindicator",
-    "translation_key": "entity.minecraft.vindicator",
+  "ZoglinEntity": {
+    "parent": "HostileEntity",
+    "type": "zoglin",
+    "translation_key": "entity.minecraft.zoglin",
+    "fields": [
+      {
+        "name": "baby",
+        "index": 16,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      }
+    ]
+  },
+  "ZombieEntity": {
+    "parent": "HostileEntity",
+    "type": "zombie",
+    "translation_key": "entity.minecraft.zombie",
+    "fields": [
+      {
+        "name": "baby",
+        "index": 16,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      },
+      {
+        "name": "zombie_type",
+        "index": 17,
+        "type": "integer",
+        "default_value": 0,
+        "bits": []
+      },
+      {
+        "name": "converting_in_water",
+        "index": 18,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      }
+    ]
+  },
+  "ZombieHorseEntity": {
+    "parent": "AbstractHorseEntity",
+    "type": "zombie_horse",
+    "translation_key": "entity.minecraft.zombie_horse",
     "fields": []
   },
   "ZombieVillagerEntity": {
@@ -2426,11 +2435,17 @@
         "type": "villager_data",
         "default_value": {
           "type": "plains",
-          "profession": "none",
+          "profession": "fisherman",
           "level": 1
         },
         "bits": []
       }
     ]
+  },
+  "ZombifiedPiglinEntity": {
+    "parent": "ZombieEntity",
+    "type": "zombified_piglin",
+    "translation_key": "entity.minecraft.zombified_piglin",
+    "fields": []
   }
 }

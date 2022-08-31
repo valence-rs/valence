@@ -543,11 +543,11 @@ pub mod play {
 
     def_struct! {
         ChatMessage {
+            // TODO: more 1.19 stuff.
             message: Text,
             /// Index into the chat type registry
             kind: VarInt,
             sender: Uuid,
-            // TODO more fields
         }
     }
 
@@ -569,7 +569,7 @@ pub mod play {
             game_mode: GameMode,
             ping: VarInt,
             display_name: Option<Text>,
-            sig_data: Option<SignatureData>,
+            sig_data: Option<PublicKeyData>,
         }
     }
 
@@ -694,7 +694,7 @@ pub mod play {
 
     def_struct! {
         #[derive(Copy, PartialEq, Eq)]
-        TitleAnimationTimes {
+        TitleFade {
             /// Ticks to spend fading in.
             fade_in: u32,
             /// Ticks to keep the title displayed.
@@ -765,37 +765,37 @@ pub mod play {
             BlockUpdate = 9,
             BossBar = 10,
             ClearTitles = 13,
-            Disconnect = 23,
-            EntityStatus = 24,
-            UnloadChunk = 26,
-            GameStateChange = 27,
-            KeepAlive = 30,
-            ChunkData = 31,
-            GameJoin = 35,
-            MoveRelative = 38,
-            RotateAndMoveRelative = 39,
-            Rotate = 40,
-            ChatMessage = 48,
-            UpdatePlayerList = 52,
-            PlayerPositionLook = 54,
-            EntitiesDestroy = 56,
-            PlayerRespawn = 59,
-            EntitySetHeadYaw = 60,
-            ChunkSectionUpdate = 61,
-            UpdateSelectedSlot = 71,
-            ChunkRenderDistanceCenter = 72,
-            ChunkLoadDistance = 73,
-            PlayerSpawnPosition = 74,
-            EntityTrackerUpdate = 77,
-            EntityVelocityUpdate = 79,
-            UpdateSubtitle = 88,
-            WorldTimeUpdate = 89,
-            UpdateTitle = 90,
-            TitleAnimationTimes = 91,
-            GameMessage = 95,
-            PlayerListHeaderFooter = 96,
-            EntityPosition = 99,
-            EntityAttributes = 101,
+            Disconnect = 25,
+            EntityStatus = 26,
+            UnloadChunk = 28,
+            GameStateChange = 29,
+            KeepAlive = 32,
+            ChunkData = 33,
+            GameJoin = 37,
+            MoveRelative = 40,
+            RotateAndMoveRelative = 41,
+            Rotate = 42,
+            ChatMessage = 51,
+            UpdatePlayerList = 55,
+            PlayerPositionLook = 57,
+            EntitiesDestroy = 59,
+            PlayerRespawn = 62,
+            EntitySetHeadYaw = 63,
+            ChunkSectionUpdate = 64,
+            UpdateSelectedSlot = 74,
+            ChunkRenderDistanceCenter = 75,
+            ChunkLoadDistance = 76,
+            PlayerSpawnPosition = 77,
+            EntityTrackerUpdate = 80,
+            EntityVelocityUpdate = 82,
+            UpdateSubtitle = 91,
+            WorldTimeUpdate = 92,
+            UpdateTitle = 93,
+            TitleFade = 94,
+            GameMessage = 98,
+            PlayerListHeaderFooter = 99,
+            EntityPosition = 102,
+            EntityAttributes = 104,
         }
     }
 }

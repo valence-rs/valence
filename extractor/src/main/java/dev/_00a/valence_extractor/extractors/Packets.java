@@ -17,7 +17,7 @@ public class Packets implements Main.Extractor {
     }
 
     @Override
-    public JsonElement extract() throws Exception {
+    public JsonElement extract() {
         var packetsJson = new JsonObject();
 
         for (var side : NetworkSide.values()) {

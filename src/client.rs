@@ -26,10 +26,9 @@ use crate::player_textures::SignedPlayerTextures;
 use crate::protocol_inner::packets::c2s::play::{
     C2sPlayPacket, DiggingStatus, InteractKind, PlayerCommandId,
 };
-pub use crate::protocol_inner::packets::s2c::play::TitleAnimationTimes;
+pub use crate::protocol_inner::packets::s2c::play::TitleFade;
 use crate::protocol_inner::packets::s2c::play::{
-    BiomeRegistry, ChatType, ChatTypeChat, ChatTypeNarration, ChatTypeRegistry,
-    ChatTypeRegistryEntry, ChunkLoadDistance, ChunkRenderDistanceCenter, ClearTitles,
+    BiomeRegistry, ChatTypeRegistry, ChunkLoadDistance, ChunkRenderDistanceCenter, ClearTitles,
     DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, EntitiesDestroy,
     EntityAnimation, EntityAttributes, EntityAttributesProperty, EntityPosition, EntitySetHeadYaw,
     EntityStatus, EntityTrackerUpdate, EntityVelocityUpdate, GameJoin, GameMessage,
@@ -450,12 +449,12 @@ impl<C: Config> Client<C> {
     /// A title is a large piece of text displayed in the center of the screen
     /// which may also include a subtitle underneath it. The title
     /// can be configured to fade in and out using the
-    /// [`TitleAnimationTimes`] struct.
+    /// [`TitleFade`] struct.
     pub fn set_title(
         &mut self,
         title: impl Into<Text>,
         subtitle: impl Into<Text>,
-        animation: impl Into<Option<TitleAnimationTimes>>,
+        animation: impl Into<Option<TitleFade>>,
     ) {
         let title = title.into();
         let subtitle = subtitle.into();
@@ -654,6 +653,7 @@ impl<C: Config> Client<C> {
             }
             C2sPlayPacket::QueryBlockNbt(_) => {}
             C2sPlayPacket::UpdateDifficulty(_) => {}
+            C2sPlayPacket::MessageAcknowledgment(_) => {}
             C2sPlayPacket::CommandExecution(_) => {}
             C2sPlayPacket::ChatMessage(p) => self.events.push_back(ClientEvent::ChatMessage {
                 message: p.message.0,
@@ -1411,16 +1411,7 @@ fn make_registry_codec<C: Config>(shared: &SharedServer<C>) -> RegistryCodec {
         },
         chat_type_registry: ChatTypeRegistry {
             kind: ident!("chat_type"),
-            value: vec![ChatTypeRegistryEntry {
-                name: ident!("system"),
-                id: 0,
-                element: ChatType {
-                    chat: ChatTypeChat {},
-                    narration: ChatTypeNarration {
-                        priority: "system".into(),
-                    },
-                },
-            }],
+            value: Vec::new(),
         },
     }
 }
