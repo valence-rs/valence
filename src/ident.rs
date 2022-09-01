@@ -9,7 +9,7 @@ use serde::de::Visitor;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::protocol_inner::{encode_string_bounded, BoundedString, Decode, Encode};
+use crate::protocol::{encode_string_bounded, BoundedString, Decode, Encode};
 
 /// An identifier is a string split into a "namespace" part and a "name" part.
 /// For instance `minecraft:apple` and `apple` are both valid identifiers.

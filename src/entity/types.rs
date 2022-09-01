@@ -2,7 +2,7 @@
 
 use std::io::{Read, Write};
 
-use crate::protocol_inner::{Decode, Encode, VarInt};
+use crate::protocol::{Decode, Encode, VarInt};
 
 /// Represents an optional `u32` value excluding [`u32::MAX`].
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]

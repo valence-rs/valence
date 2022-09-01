@@ -14,7 +14,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::time::timeout;
 
 use super::packets::{DecodePacket, EncodePacket};
-use crate::protocol_inner::{Decode, Encode, VarInt, MAX_PACKET_SIZE};
+use crate::protocol::{Decode, Encode, VarInt, MAX_PACKET_SIZE};
 
 pub struct Encoder<W> {
     write: W,
@@ -271,7 +271,7 @@ mod tests {
     use tokio::sync::oneshot;
 
     use super::*;
-    use crate::protocol_inner::packets::test::TestPacket;
+    use crate::protocol::packets::test::TestPacket;
 
     #[tokio::test]
     async fn encode_decode() {

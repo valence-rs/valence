@@ -4,9 +4,9 @@ use vek::Vec3;
 
 use crate::block_pos::BlockPos;
 use crate::entity::EntityId;
-use crate::protocol_inner::packets::c2s::play::BlockFace;
-pub use crate::protocol_inner::packets::c2s::play::{ChatMode, DisplayedSkinParts, Hand, MainHand};
-pub use crate::protocol_inner::packets::s2c::play::GameMode;
+use crate::protocol::packets::c2s::play::BlockFace;
+pub use crate::protocol::packets::c2s::play::{ChatMode, DisplayedSkinParts, Hand, MainHand};
+pub use crate::protocol::packets::s2c::play::GameMode;
 
 /// Represents an action performed by a client.
 ///

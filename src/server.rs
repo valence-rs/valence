@@ -34,20 +34,20 @@ use crate::dimension::{Dimension, DimensionId};
 use crate::entity::Entities;
 use crate::player_list::PlayerLists;
 use crate::player_textures::SignedPlayerTextures;
-use crate::protocol_inner::codec::{Decoder, Encoder};
-use crate::protocol_inner::packets::c2s::handshake::{Handshake, HandshakeNextState};
-use crate::protocol_inner::packets::c2s::login::{
+use crate::protocol::codec::{Decoder, Encoder};
+use crate::protocol::packets::c2s::handshake::{Handshake, HandshakeNextState};
+use crate::protocol::packets::c2s::login::{
     EncryptionResponse, LoginStart, VerifyTokenOrMsgSig,
 };
-use crate::protocol_inner::packets::c2s::play::C2sPlayPacket;
-use crate::protocol_inner::packets::c2s::status::{QueryPing, QueryRequest};
-use crate::protocol_inner::packets::s2c::login::{
+use crate::protocol::packets::c2s::play::C2sPlayPacket;
+use crate::protocol::packets::c2s::status::{QueryPing, QueryRequest};
+use crate::protocol::packets::s2c::login::{
     EncryptionRequest, LoginCompression, LoginDisconnect, LoginSuccess,
 };
-use crate::protocol_inner::packets::s2c::play::S2cPlayPacket;
-use crate::protocol_inner::packets::s2c::status::{QueryPong, QueryResponse};
-use crate::protocol_inner::packets::Property;
-use crate::protocol_inner::{BoundedArray, BoundedString, VarInt};
+use crate::protocol::packets::s2c::play::S2cPlayPacket;
+use crate::protocol::packets::s2c::status::{QueryPong, QueryResponse};
+use crate::protocol::packets::Property;
+use crate::protocol::{BoundedArray, BoundedString, VarInt};
 use crate::util::valid_username;
 use crate::world::Worlds;
 use crate::{Ticks, PROTOCOL_VERSION, VERSION_NAME};

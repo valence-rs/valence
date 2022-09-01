@@ -23,11 +23,11 @@ use crate::entity::{
 };
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
-use crate::protocol_inner::packets::c2s::play::{
+use crate::protocol::packets::c2s::play::{
     C2sPlayPacket, DiggingStatus, InteractKind, PlayerCommandId,
 };
-pub use crate::protocol_inner::packets::s2c::play::TitleFade;
-use crate::protocol_inner::packets::s2c::play::{
+pub use crate::protocol::packets::s2c::play::TitleFade;
+use crate::protocol::packets::s2c::play::{
     BiomeRegistry, ChatTypeRegistry, ChunkLoadDistance, ChunkRenderDistanceCenter, ClearTitles,
     DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, EntitiesDestroy,
     EntityAnimation, EntityAttributes, EntityAttributesProperty, EntityPosition, EntitySetHeadYaw,
@@ -36,7 +36,7 @@ use crate::protocol_inner::packets::s2c::play::{
     PlayerPositionLook, PlayerPositionLookFlags, PlayerRespawn, PlayerSpawnPosition, RegistryCodec,
     Rotate, RotateAndMoveRelative, S2cPlayPacket, UnloadChunk, UpdateSubtitle, UpdateTitle,
 };
-use crate::protocol_inner::{BoundedInt, ByteAngle, NbtBridge, RawBytes, VarInt};
+use crate::protocol::{BoundedInt, ByteAngle, NbtBridge, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::text::Text;
@@ -610,13 +610,7 @@ impl<C: Config> Client<C> {
 
     /// Attempts to enqueue a play packet to be sent to this client. The client
     /// is disconnected if the clientbound packet buffer is full.
-    #[cfg(feature = "protocol")]
     pub fn send_packet(&mut self, packet: impl Into<S2cPlayPacket>) {
-        send_packet(&mut self.send, packet);
-    }
-
-    #[cfg(not(feature = "protocol"))]
-    pub(crate) fn send_packet(&mut self, packet: impl Into<S2cPlayPacket>) {
         send_packet(&mut self.send, packet);
     }
 

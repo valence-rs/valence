@@ -9,11 +9,11 @@ use uuid::Uuid;
 use crate::client::GameMode;
 use crate::config::Config;
 use crate::player_textures::SignedPlayerTextures;
-use crate::protocol_inner::packets::s2c::play::{
+use crate::protocol::packets::s2c::play::{
     PlayerListAddPlayer, PlayerListHeaderFooter, S2cPlayPacket, UpdatePlayerList,
 };
-use crate::protocol_inner::packets::Property;
-use crate::protocol_inner::VarInt;
+use crate::protocol::packets::Property;
+use crate::protocol::VarInt;
 use crate::slab_rc::{Key, SlabRc};
 use crate::text::Text;
 

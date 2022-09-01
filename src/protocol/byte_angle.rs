@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use crate::protocol_inner::{Decode, Encode};
+use crate::protocol::{Decode, Encode};
 
 /// Represents an angle in steps of 1/256 of a full turn.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]

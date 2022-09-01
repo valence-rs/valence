@@ -19,7 +19,7 @@ use vek::Vec3;
 use crate::block_pos::BlockPos;
 use crate::ident::Ident;
 use crate::nbt::Compound;
-use crate::protocol_inner::{
+use crate::protocol::{
     BoundedArray, BoundedInt, BoundedString, ByteAngle, Decode, Encode, NbtBridge, RawBytes,
     VarInt, VarLong,
 };

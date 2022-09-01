@@ -1,7 +1,7 @@
 //! Dimension configuration and identification.
 
 use crate::ident;
-use crate::protocol_inner::packets::s2c::play::DimensionType;
+use crate::protocol::packets::s2c::play::DimensionType;
 
 /// Identifies a particular [`Dimension`] on the server.
 ///

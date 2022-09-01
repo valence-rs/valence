@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use anyhow::bail;
 use vek::Vec3;
 
-use crate::protocol_inner::{Decode, Encode};
+use crate::protocol::{Decode, Encode};
 
 /// Represents an absolute block position in a world.
 #[derive(Clone, Copy, Default, PartialEq, Eq, Hash, Debug)]

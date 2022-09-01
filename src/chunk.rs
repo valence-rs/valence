@@ -17,10 +17,10 @@ use crate::block_pos::BlockPos;
 pub use crate::chunk_pos::ChunkPos;
 use crate::config::Config;
 use crate::dimension::DimensionId;
-use crate::protocol_inner::packets::s2c::play::{
+use crate::protocol::packets::s2c::play::{
     BlockUpdate, ChunkData, ChunkDataHeightmaps, ChunkSectionUpdate, S2cPlayPacket,
 };
-use crate::protocol_inner::{Encode, NbtBridge, VarInt, VarLong};
+use crate::protocol::{Encode, NbtBridge, VarInt, VarLong};
 use crate::server::SharedServer;
 
 /// A container for all [`Chunks`]s in a [`World`](crate::world::World).

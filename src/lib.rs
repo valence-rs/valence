@@ -90,12 +90,6 @@
 //!
 //! [examples]: https://github.com/rj00a/valence/tree/main/examples
 //!
-//! # Feature Flags
-//!
-//! * `protocol`: Enables low-level access to the [`protocol`] module, which
-//!   could be used to build your own proxy or client. This feature is
-//!   considered experimental and is subject to change.
-//!
 //! [`Server`]: crate::server::Server
 //! [`Clients`]: crate::client::Clients
 //! [`Entities`]: crate::entity::Entities
@@ -144,7 +138,7 @@ pub mod ident;
 pub mod player_list;
 pub mod player_textures;
 #[allow(dead_code)]
-mod protocol_inner;
+mod protocol;
 pub mod server;
 mod slab;
 mod slab_rc;
@@ -153,12 +147,6 @@ pub mod spatial_index;
 pub mod text;
 pub mod util;
 pub mod world;
-
-/// Provides low-level access to the Minecraft protocol.
-#[cfg(feature = "protocol")]
-pub mod protocol {
-    pub use crate::protocol_inner::*;
-}
 
 /// The Minecraft protocol version this library currently targets.
 pub const PROTOCOL_VERSION: i32 = 760;

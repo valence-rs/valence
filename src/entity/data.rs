@@ -4,7 +4,7 @@
 
 use crate::block::{BlockPos, BlockState};
 use crate::entity::types::*;
-use crate::protocol_inner::{Encode, VarInt};
+use crate::protocol::{Encode, VarInt};
 use crate::text::Text;
 use crate::uuid::Uuid;
 

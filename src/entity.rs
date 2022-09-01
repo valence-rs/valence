@@ -12,10 +12,10 @@ use uuid::Uuid;
 use vek::{Aabb, Vec3};
 
 use crate::config::Config;
-use crate::protocol_inner::packets::s2c::play::{
+use crate::protocol::packets::s2c::play::{
     EntitySpawn, EntityTrackerUpdate, ExperienceOrbSpawn, PlayerSpawn, S2cPlayPacket,
 };
-use crate::protocol_inner::{ByteAngle, RawBytes, VarInt};
+use crate::protocol::{ByteAngle, RawBytes, VarInt};
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::util::aabb_from_bottom_and_size;
 use crate::world::WorldId;
