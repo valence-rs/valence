@@ -138,7 +138,7 @@ pub mod ident;
 pub mod player_list;
 pub mod player_textures;
 #[allow(dead_code)]
-mod protocol;
+pub mod protocol;
 pub mod server;
 mod slab;
 mod slab_rc;

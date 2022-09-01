@@ -68,4 +68,4 @@ num = "0.4"
 protocol = []
 
 [workspace]
-members = ["packet-inspector", "valence_nbt"]
+members = ["valence_nbt", "packet_inspector"]

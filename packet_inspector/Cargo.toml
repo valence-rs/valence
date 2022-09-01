@@ -1,5 +1,5 @@
 [package]
-name = "packet-inspector"
+name = "packet_inspector"
 version = "0.1.0"
 edition = "2021"
 description = "A simple Minecraft proxy for inspecting packets."

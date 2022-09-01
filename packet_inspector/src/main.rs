@@ -46,9 +46,9 @@ impl Cli {
     fn print(&self, d: &impl fmt::Debug) {
         if self.timestamp {
             let now: DateTime<Utc> = Utc::now();
-            println!("{now} {d:?}");
+            println!("{now} {d:#?}");
         } else {
-            println!("{d:?}");
+            println!("{d:#?}");
         }
     }
 
