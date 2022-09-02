@@ -297,7 +297,7 @@ impl<T> FusedIterator for IterMut<'_, T> {}
 
 impl<T> Clone for ParIter<'_, T> {
     fn clone(&self) -> Self {
-        Self { slab: &self.slab }
+        Self { slab: self.slab }
     }
 }
 

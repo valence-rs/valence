@@ -29,7 +29,7 @@ impl<T: Clone> Clone for Slot<T> {
     }
 }
 
-#[derive(Clone, Eq, Ord, Debug)]
+#[derive(Clone, Eq, Debug)]
 pub struct Key(Arc<usize>);
 
 impl PartialEq for Key {
@@ -41,6 +41,12 @@ impl PartialEq for Key {
 impl PartialOrd for Key {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Arc::as_ptr(&self.0).partial_cmp(&Arc::as_ptr(&other.0))
+    }
+}
+
+impl Ord for Key {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.partial_cmp(other).unwrap()
     }
 }
 

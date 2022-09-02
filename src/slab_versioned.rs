@@ -68,12 +68,12 @@ impl<T> VersionedSlab<T> {
 
     pub fn get(&self, key: Key) -> Option<&T> {
         let slot = self.slab.get(key.index as usize)?;
-        (slot.version == key.version).then(|| &slot.value)
+        (slot.version == key.version).then_some(&slot.value)
     }
 
     pub fn get_mut(&mut self, key: Key) -> Option<&mut T> {
         let slot = self.slab.get_mut(key.index as usize)?;
-        (slot.version == key.version).then(|| &mut slot.value)
+        (slot.version == key.version).then_some(&mut slot.value)
     }
 
     pub fn len(&self) -> usize {

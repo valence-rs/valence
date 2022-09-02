@@ -76,6 +76,11 @@ impl<C: Config> Chunks<C> {
         self.chunks.len()
     }
 
+    /// Returns `true` if there are no loaded chunks.
+    pub fn is_empty(&self) -> bool {
+        self.chunks.len() == 0
+    }
+
     /// Gets a shared reference to the chunk at the provided position.
     ///
     /// If there is no chunk at the position, then `None` is returned.

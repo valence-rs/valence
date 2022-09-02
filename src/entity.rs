@@ -146,6 +146,11 @@ impl<C: Config> Entities<C> {
         self.slab.len()
     }
 
+    /// Returns `true` if there are no entities.
+    pub fn is_empty(&self) -> bool {
+        self.slab.len() == 0
+    }
+
     /// Gets the [`EntityId`] of the entity with the given UUID in an efficient
     /// manner.
     ///

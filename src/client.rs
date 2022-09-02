@@ -90,6 +90,12 @@ impl<C: Config> Clients<C> {
         self.slab.len()
     }
 
+    /// Returns `true` if there are no clients on the server. This includes
+    /// clients for which [`Client::is_disconnected`] returns true.
+    pub fn is_empty(&self) -> bool {
+        self.slab.len() == 0
+    }
+
     /// Returns a shared reference to the client with the given ID. If
     /// the ID is invalid, then `None` is returned.
     pub fn get(&self, client: ClientId) -> Option<&Client<C>> {

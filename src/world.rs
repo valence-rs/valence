@@ -79,6 +79,11 @@ impl<C: Config> Worlds<C> {
         self.slab.len()
     }
 
+    /// Returns `true` if there are no worlds on the server.
+    pub fn is_empty(&self) -> bool {
+        self.slab.len() == 0
+    }
+
     /// Returns a shared reference to the world with the given ID. If
     /// the ID is invalid, then `None` is returned.
     pub fn get(&self, world: WorldId) -> Option<&World<C>> {
