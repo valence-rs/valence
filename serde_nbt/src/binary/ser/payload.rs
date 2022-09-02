@@ -60,7 +60,7 @@ impl<'w, 'n, W: Write + ?Sized> PayloadSerializer<'w, 'n, W> {
         match &mut self.state {
             State::Named(name) => {
                 self.writer.write_u8(tag as u8)?;
-                write_string(&mut *self.writer, *name)?;
+                write_string(&mut *self.writer, name)?;
             }
             State::FirstListElement { len, written_tag } => {
                 self.writer.write_u8(tag as u8)?;

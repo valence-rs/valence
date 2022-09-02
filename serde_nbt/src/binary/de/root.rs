@@ -10,14 +10,24 @@ use smallvec::SmallVec;
 use crate::binary::de::payload::PayloadDeserializer;
 use crate::{Error, Tag, CESU8_DECODE_ERROR};
 
+/// A serde [`Deserializer`] for the binary representation of NBT.
 #[non_exhaustive]
 pub struct RootDeserializer<R> {
+    /// The reader to deserialize from.
     pub reader: R,
+    /// The name of the root compound that was deserialized. If
+    /// [`Self::save_root_name`] is false, then deserialization will not
+    /// update this value.
     pub root_name: String,
+    /// Whether or not the root name should be saved to [`Self::root_name`]
+    /// during deserialization.
     pub save_root_name: bool,
 }
 
 impl<R: Read> RootDeserializer<R> {
+    /// Constructs a new deserializer
+    ///
+    /// [`Self::root_name`] is set to the empty string.
     pub fn new(reader: R, save_root_name: bool) -> Self {
         Self {
             reader,

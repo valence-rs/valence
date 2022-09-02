@@ -1,3 +1,9 @@
+//! A [serde] library for the serialization and deserialization of Minecraft's
+//! [Named Binary Tag] (NBT) format.
+//!
+//! [serde]: https://docs.rs/serde/latest/serde/
+//! [Named Binary Tag]: https://minecraft.fandom.com/wiki/NBT_format
+
 use std::fmt;
 use std::fmt::{Display, Formatter};
 
@@ -145,8 +151,10 @@ impl Display for Tag {
     }
 }
 
+/// Error message for cesu-8 decoding failures.
 const CESU8_DECODE_ERROR: &str = "could not convert CESU-8 data to UTF-8";
 
+/// The name of the enum used to encode arrays.
 const ARRAY_ENUM_NAME: &str = "__array__";
 
 const BYTE_ARRAY_VARIANT_NAME: &str = "__byte_array__";

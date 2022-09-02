@@ -130,7 +130,7 @@ impl<W: Write + ?Sized, V: Serialize + ?Sized> Serializer for MapEntrySerializer
     fn serialize_str(self, v: &str) -> Result<Self::Ok, Self::Error> {
         self.value
             .serialize(&mut PayloadSerializer::named(self.writer, v))
-            .map_err(|e| e.field(format!("{v}")))
+            .map_err(|e| e.field(v))
     }
 
     fn serialize_bytes(self, _v: &[u8]) -> Result<Self::Ok, Self::Error> {

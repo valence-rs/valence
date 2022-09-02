@@ -13,6 +13,14 @@ mod root;
 mod seq;
 mod structs;
 
+/// Writes uncompressed NBT binary data to the provided writer.
+///
+/// Note that serialization will fail if the provided value does not serialize
+/// as a compound (a map or struct). This is because the NBT format requires the
+/// root value to be a named compound.
+///
+/// The name of the root compound will be `""`. If you want to use a different
+/// name, see [`Serializer`].
 pub fn to_writer<W, T>(writer: W, value: &T) -> Result<()>
 where
     W: Write,

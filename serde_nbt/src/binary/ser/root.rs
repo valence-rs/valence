@@ -8,13 +8,19 @@ use crate::binary::ser::structs::SerializeStruct;
 use crate::binary::ser::{write_string, Impossible};
 use crate::{Error, Tag};
 
+/// A serde [`Serializer`] for the binary representation of NBT.
 #[non_exhaustive]
 pub struct RootSerializer<'n, W> {
+    /// The writer to serialize to.
     pub writer: W,
+    /// The name of the root compound to serialize.
+    ///
+    /// The empty string `""` is acceptable.
     pub root_name: &'n str,
 }
 
 impl<'n, W: Write> RootSerializer<'n, W> {
+    /// Constructs a new serializer.
     pub fn new(writer: W, root_name: &'n str) -> Self {
         Self { writer, root_name }
     }

@@ -1,0 +1,23 @@
+[package]
+name = "serde_nbt"
+description = "A Serde library for Minecraft's Named Binary Tag (NBT) format."
+documentation = "https://docs.rs/serde_nbt/"
+repository = "https://github.com/rj00a/valence/tree/main/serde_nbt"
+readme = "README.md"
+license = "MIT"
+keywords = ["nbt", "minecraft", "serde", "serialization"]
+version = "0.1.0"
+authors = ["Ryan Johnson <ryanj00a@gmail.com>"]
+edition = "2021"
+
+[dependencies]
+byteorder = "1.4.3"
+cesu8 = "1.1.0"
+indexmap = { version = "1.9.1", features = ["serde"] }
+serde = "1"
+smallvec = { version = "1.9.0", features = ["union"] }
+
+[dev-dependencies]
+hematite-nbt = "0.5.2"
+serde_json = "1.0.85"
+pretty_assertions = "1.2.1"

@@ -7,7 +7,12 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{byte_array, int_array, long_array, ArrayType};
 
-/// Represents an arbitrary NBT value.
+/// An arbitrary NBT value.
+///
+/// Note that `Value`s at the root level other than [`Value::Compound`] will
+/// fail to serialize because NBT requires that the root value be a compound.
+///
+/// At the root level you may want to use [`Compound`] instead.
 #[derive(Clone, PartialEq, Debug)]
 pub enum Value {
     Byte(i8),
@@ -24,6 +29,9 @@ pub enum Value {
     LongArray(Vec<i64>),
 }
 
+/// An arbitrary NBT compound.
+///
+/// This is a convenient type alias for the [`IndexMap`] type.
 pub type Compound = IndexMap<String, Value>;
 
 /// An NBT list value.

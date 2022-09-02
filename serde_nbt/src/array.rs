@@ -11,6 +11,33 @@ use crate::{
 
 macro_rules! def_mod {
     ($index:literal, $mod_name:ident, $display_name:literal, $variant_name:ident) => {
+        /// Provides (de)serialization support for the NBT type
+        #[doc = concat!(" \"", $display_name, "\".")]
+        ///
+        /// This module is intended to be the target of serde's `#[serde(with =
+        /// "module")]` field attribute.
+        ///
+        /// The target field must serialize and deserialize as a seq.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// use serde::{Deserialize, Serialize};
+        /// use serde_nbt::binary::to_writer;
+        ///
+        /// #[derive(Serialize, Deserialize)]
+        /// struct MyStruct {
+        ///     #[serde(with = "serde_nbt::int_array")]
+        ///     array: Vec<i32>,
+        /// }
+        ///
+        /// let s = MyStruct {
+        ///     array: vec![1, 2, 3],
+        /// };
+        ///
+        /// let mut buf = Vec::new();
+        /// to_writer(&mut buf, &s).unwrap();
+        /// ```
         pub mod $mod_name {
             use super::*;
 

@@ -5,6 +5,10 @@ use std::{fmt, io};
 
 use serde::{de, ser};
 
+/// Errors that can occur when serializing or deserializing.
+///
+/// The error type maintains a backtrace through the NBT value which caused the
+/// error. This is used in the `Display` impl on the error.
 #[derive(Debug)]
 pub struct Error {
     /// Box this to keep the error as small as possible. We don't want to
@@ -50,6 +54,10 @@ impl Error {
         self
     }
 
+    /// Returns an iterator through the nested fields of an NBT compound to the
+    /// location where the error occurred.
+    ///
+    /// The iterator's `Item` is the name of the current field.
     pub fn trace(
         &self,
     ) -> impl DoubleEndedIterator<Item = &str> + ExactSizeIterator + FusedIterator + Clone + '_
