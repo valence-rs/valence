@@ -17,10 +17,19 @@ use crate::protocol::VarInt;
 use crate::slab_rc::{Key, SlabRc};
 use crate::text::Text;
 
+/// A container for all [`PlayerList`]s on a server.
 pub struct PlayerLists<C: Config> {
     slab: SlabRc<PlayerList<C>>,
 }
 
+/// An identifier for a [`PlayerList`] on the server.
+///
+/// Player list IDs are refcounted. Once all IDs referring to the same player
+/// list are dropped, the player list is automatically deleted.
+///
+/// The [`Ord`] instance on this type is correct but otherwise unspecified. This
+/// is useful for storing IDs in containers such as
+/// [`BTreeMap`](std::collections::BTreeMap).
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct PlayerListId(Key);
 
@@ -31,6 +40,7 @@ impl<C: Config> PlayerLists<C> {
         }
     }
 
+    ///
     pub fn insert(&mut self, state: C::PlayerListState) -> (PlayerListId, &mut PlayerList<C>) {
         let (key, pl) = self.slab.insert(PlayerList {
             state,
@@ -199,8 +209,7 @@ impl<C: Config> PlayerList<C> {
         self.entries.iter().map(|(k, v)| (*k, v))
     }
 
-    /// Returns an iterator which allows modifications over all entries. The
-    /// entries are visited in an unspecified order.
+    /// Returns a mutable iterator over all entries in an unspecified order.
     pub fn entries_mut(&mut self) -> impl Iterator<Item = (Uuid, &mut PlayerListEntry)> + '_ {
         self.entries.iter_mut().map(|(k, v)| (*k, v))
     }

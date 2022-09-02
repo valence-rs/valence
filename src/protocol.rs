@@ -1,6 +1,6 @@
 //! Provides low-level access to the Minecraft protocol.
 //!
-//! Hopefully you will not need to use this module.
+//! You should avoid this module if possible.
 
 use std::io::{Read, Write};
 use std::mem;

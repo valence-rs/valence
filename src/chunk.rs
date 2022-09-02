@@ -23,7 +23,7 @@ use crate::protocol::packets::s2c::play::{
 use crate::protocol::{Encode, NbtBridge, VarInt, VarLong};
 use crate::server::SharedServer;
 
-/// A container for all [`Chunks`]s in a [`World`](crate::world::World).
+/// A container for all [`Chunk`]s in a [`World`](crate::world::World).
 pub struct Chunks<C: Config> {
     chunks: HashMap<ChunkPos, Chunk<C>>,
     shared: SharedServer<C>,
@@ -65,8 +65,8 @@ impl<C: Config> Chunks<C> {
 
     /// Removes a chunk at the provided position.
     ///
-    /// If a chunk exists at the position, then it is deleted and `true` is
-    /// returned. Otherwise, `false` is returned.
+    /// If a chunk exists at the position, then it is deleted and its
+    /// `ChunkState` is returned. Otherwise, `None` is returned.
     pub fn remove(&mut self, pos: impl Into<ChunkPos>) -> Option<C::ChunkState> {
         self.chunks.remove(&pos.into()).map(|c| c.state)
     }
@@ -90,6 +90,9 @@ impl<C: Config> Chunks<C> {
         self.chunks.get_mut(&pos.into())
     }
 
+    /// Removes all chunks for which `f` returns `true`.
+    ///
+    /// All chunks are visited in an unspecified order.
     pub fn retain(&mut self, mut f: impl FnMut(ChunkPos, &mut Chunk<C>) -> bool) {
         self.chunks.retain(|&pos, chunk| f(pos, chunk))
     }
@@ -99,8 +102,8 @@ impl<C: Config> Chunks<C> {
         self.chunks.clear();
     }
 
-    /// Returns an immutable iterator over all chunks in the world in an
-    /// unspecified order.
+    /// Returns an iterator over all chunks in the world in an unspecified
+    /// order.
     pub fn iter(
         &self,
     ) -> impl ExactSizeIterator<Item = (ChunkPos, &Chunk<C>)> + FusedIterator + Clone + '_ {
@@ -115,7 +118,7 @@ impl<C: Config> Chunks<C> {
         self.chunks.iter_mut().map(|(&pos, chunk)| (pos, chunk))
     }
 
-    /// Returns a parallel immutable iterator over all chunks in the world in an
+    /// Returns a parallel iterator over all chunks in the world in an
     /// unspecified order.
     pub fn par_iter(&self) -> impl ParallelIterator<Item = (ChunkPos, &Chunk<C>)> + Clone + '_ {
         self.chunks.par_iter().map(|(&pos, chunk)| (pos, chunk))
@@ -131,9 +134,8 @@ impl<C: Config> Chunks<C> {
     ///
     /// If the position is not inside of a chunk, then `None` is returned.
     ///
-    /// Note: if you need to get a large number of blocks, it may be more
-    /// efficient to read from the chunks directly with
-    /// [`Chunk::get_block_state`].
+    /// Note: if you need to get a large number of blocks, it is more efficient
+    /// to read from the chunks directly with [`Chunk::get_block_state`].
     pub fn get_block_state(&self, pos: impl Into<BlockPos>) -> Option<BlockState> {
         let pos = pos.into();
         let chunk_pos = ChunkPos::from(pos);
@@ -243,28 +245,41 @@ impl<C: Config> Chunk<C> {
         chunk
     }
 
+    /// Returns `true` if this chunk was created during the current tick.
     pub fn created_this_tick(&self) -> bool {
         self.created_this_tick
     }
 
+    /// Returns the height of this chunk in blocks.
     pub fn height(&self) -> usize {
         self.sections.len() * 16
     }
 
+    /// Gets the block state at the provided offsets in the chunk.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the offsets are outside the bounds of the chunk.
     pub fn get_block_state(&self, x: usize, y: usize, z: usize) -> BlockState {
-        if x < 16 && y < self.height() && z < 16 {
-            BlockState::from_raw_unchecked(
-                self.sections[y / 16].blocks[x + z * 16 + y % 16 * 16 * 16] & BLOCK_STATE_MASK,
-            )
-        } else {
-            BlockState::AIR
-        }
+        assert!(
+            x < 16 && y < self.height() && z < 16,
+            "chunk block offsets must be within bounds"
+        );
+
+        BlockState::from_raw_unchecked(
+            self.sections[y / 16].blocks[x + z * 16 + y % 16 * 16 * 16] & BLOCK_STATE_MASK,
+        )
     }
 
+    /// Sets the block state at the provided offsets in the chunk.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the offsets are outside the bounds of the chunk.
     pub fn set_block_state(&mut self, x: usize, y: usize, z: usize, block: BlockState) {
         assert!(
             x < 16 && y < self.height() && z < 16,
-            "the chunk block coordinates must be within bounds"
+            "chunk block offsets must be within bounds"
         );
 
         let sect = &mut self.sections[y / 16];
@@ -282,18 +297,35 @@ impl<C: Config> Chunk<C> {
         }
     }
 
+    /// Gets the biome at the provided biome offsets in the chunk.
+    ///
+    /// Note: the arguments are **not** block positions. Biomes are 4x4x4
+    /// segments of a chunk, so `x` and `z` are in `0..=4`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the offsets are outside the bounds of the chunk.
     pub fn get_biome(&self, x: usize, y: usize, z: usize) -> BiomeId {
-        if x < 4 && y < self.height() / 4 && z < 4 {
-            self.sections[y / 4].biomes[x + z * 4 + y % 4 * 4 * 4]
-        } else {
-            BiomeId::default()
-        }
+        assert!(
+            x < 4 && y < self.height() / 4 && z < 4,
+            "chunk biome offsets must be within bounds"
+        );
+
+        self.sections[y / 4].biomes[x + z * 4 + y % 4 * 4 * 4]
     }
 
+    /// Sets the biome at the provided biome offsets in the chunk.
+    ///
+    /// Note: the arguments are **not** block positions. Biomes are 4x4x4
+    /// segments of a chunk, so `x` and `z` are in `0..=4`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the offsets are outside the bounds of the chunk.
     pub fn set_biome(&mut self, x: usize, y: usize, z: usize, b: BiomeId) {
         assert!(
             x < 4 && y < self.height() / 4 && z < 4,
-            "the chunk biome coordinates must be within bounds"
+            "chunk biome offsets must be within bounds"
         );
 
         self.sections[y / 4].biomes[x + z * 4 + y % 4 * 4 * 4] = b;

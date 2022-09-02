@@ -36,9 +36,7 @@ use crate::player_list::PlayerLists;
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::codec::{Decoder, Encoder};
 use crate::protocol::packets::c2s::handshake::{Handshake, HandshakeNextState};
-use crate::protocol::packets::c2s::login::{
-    EncryptionResponse, LoginStart, VerifyTokenOrMsgSig,
-};
+use crate::protocol::packets::c2s::login::{EncryptionResponse, LoginStart, VerifyTokenOrMsgSig};
 use crate::protocol::packets::c2s::play::C2sPlayPacket;
 use crate::protocol::packets::c2s::status::{QueryPing, QueryRequest};
 use crate::protocol::packets::s2c::login::{
@@ -59,13 +57,13 @@ pub struct Server<C: Config> {
     pub state: C::ServerState,
     /// A handle to this server's [`SharedServer`].
     pub shared: SharedServer<C>,
-    /// All of the clients in the server.
+    /// All of the clients on the server.
     pub clients: Clients<C>,
-    /// All of entities in the server.
+    /// All of entities on the server.
     pub entities: Entities<C>,
-    /// All of the worlds in the server.
+    /// All of the worlds on the server.
     pub worlds: Worlds<C>,
-    /// All of the player lists in the server.
+    /// All of the player lists on the server.
     pub player_lists: PlayerLists<C>,
 }
 
@@ -221,6 +219,10 @@ impl<C: Config> SharedServer<C> {
     }
 
     /// Obtains a [`Biome`] by using its corresponding [`BiomeId`].
+    ///
+    /// It is safe but unspecified behavior to call this function using a
+    /// [`BiomeId`] not originating from the configuration used to construct
+    /// the server.
     pub fn biome(&self, id: BiomeId) -> &Biome {
         self.0.biomes.get(id.0 as usize).expect("invalid biome ID")
     }

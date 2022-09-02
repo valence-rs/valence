@@ -1,4 +1,4 @@
-//! Dynamic actors in a world.
+//! Entities in a world.
 
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
@@ -26,7 +26,7 @@ pub mod types;
 
 include!(concat!(env!("OUT_DIR"), "/entity_event.rs"));
 
-/// A container for all [`Entity`]s on a [`Server`](crate::server::Server).
+/// A container for all [`Entity`]s on a server.
 ///
 /// # Spawning Player Entities
 ///
@@ -34,7 +34,7 @@ include!(concat!(env!("OUT_DIR"), "/entity_event.rs"));
 /// entity to be visible to clients, the player's UUID must be added to the
 /// [`PlayerList`] _before_ being loaded by the client.
 ///
-/// [`Player`]: crate::entity::types::Player
+/// [`Player`]: crate::entity::data::Player
 /// [`PlayerList`]: crate::player_list::PlayerList
 pub struct Entities<C: Config> {
     slab: VersionedSlab<Entity<C>>,
@@ -62,7 +62,7 @@ impl<C: Config> Entities<C> {
             .expect("UUID collision")
     }
 
-    /// Like [`Self::create`], but requires specifying the new
+    /// Like [`Self::insert`], but requires specifying the new
     /// entity's UUID.
     ///
     /// The provided UUID must not conflict with an existing entity UUID. If it
@@ -103,8 +103,9 @@ impl<C: Config> Entities<C> {
 
     /// Removes an entity from the server.
     ///
-    /// If the given entity ID is valid, `true` is returned and the entity is
-    /// deleted. Otherwise, `false` is returned and the function has no effect.
+    /// If the given entity ID is valid, the entity's `EntityState` is returned
+    /// and the entity is deleted. Otherwise, `None` is returned and the
+    /// function has no effect.
     pub fn remove(&mut self, entity: EntityId) -> Option<C::EntityState> {
         self.slab.remove(entity.0).map(|e| {
             self.uuid_to_entity
@@ -173,8 +174,8 @@ impl<C: Config> Entities<C> {
         Some(EntityId(Key::new(index, version)))
     }
 
-    /// Returns an immutable iterator over all entities on the server in an
-    /// unspecified order.
+    /// Returns an iterator over all entities on the server in an unspecified
+    /// order.
     pub fn iter(
         &self,
     ) -> impl ExactSizeIterator<Item = (EntityId, &Entity<C>)> + FusedIterator + Clone + '_ {
@@ -189,8 +190,8 @@ impl<C: Config> Entities<C> {
         self.slab.iter_mut().map(|(k, v)| (EntityId(k), v))
     }
 
-    /// Returns a parallel immutable iterator over all entities on the server in
-    /// an unspecified order.
+    /// Returns a parallel iterator over all entities on the server in an
+    /// unspecified order.
     pub fn par_iter(&self) -> impl ParallelIterator<Item = (EntityId, &Entity<C>)> + Clone + '_ {
         self.slab.par_iter().map(|(k, v)| (EntityId(k), v))
     }
@@ -239,7 +240,7 @@ impl EntityId {
 
 /// Represents an entity on the server.
 ///
-/// In essence, an entity is anything in a world that isn't a block or client.
+/// An entity is mostly anything in a world that isn't a block or client.
 /// Entities include paintings, falling blocks, zombies, fireballs, and more.
 ///
 /// Every entity has common state which is accessible directly from
@@ -277,10 +278,12 @@ impl<C: Config> Entity<C> {
         self.bits
     }
 
+    /// Returns a shared reference to this entity's tracked data.
     pub fn data(&self) -> &TrackedData {
         &self.variants
     }
 
+    /// Returns an exclusive reference to this entity's tracked data.
     pub fn data_mut(&mut self) -> &mut TrackedData {
         &mut self.variants
     }
@@ -290,6 +293,7 @@ impl<C: Config> Entity<C> {
         self.variants.kind()
     }
 
+    /// Triggers an entity event for this entity.
     pub fn push_event(&mut self, event: EntityEvent) {
         self.events.push(event);
     }
@@ -411,7 +415,7 @@ impl<C: Config> Entity<C> {
     /// The hitbox of an entity is determined by its position, entity type, and
     /// other state specific to that type.
     ///
-    /// [interact event]: crate::client::EntityEvent::InteractWithEntity
+    /// [interact event]: crate::client::ClientEvent::InteractWithEntity
     pub fn hitbox(&self) -> Aabb<f64> {
         let dims = match &self.variants {
             TrackedData::Allay(_) => [0.6, 0.35, 0.6],

@@ -17,7 +17,7 @@ use crate::protocol::{BoundedString, Decode, Encode};
 ///
 /// For more information, see the relevant [Minecraft Wiki article].
 ///
-/// Note that the current `Deserialize` implementation on this type recognizes
+/// Note that the current [`Deserialize`] implementation on this type recognizes
 /// only a subset of the full JSON chat component format.
 ///
 /// [Minecraft Wiki article]: https://minecraft.fandom.com/wiki/Raw_JSON_text_format

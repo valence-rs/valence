@@ -57,15 +57,17 @@ impl<C: Config> Worlds<C> {
 
     /// Deletes a world from the server.
     ///
-    /// Note that entities located in the world are not deleted themselves.
-    /// Additionally, any clients that are still in the deleted world at the end
+    /// Note that any entities located in the world are not deleted.
+    /// Additionally, clients that are still in the deleted world at the end
     /// of the tick are disconnected.
+    ///
+    /// Returns `true` if the world was deleted. Otherwise, `false` is returned
+    /// and the function has no effect.
     pub fn remove(&mut self, world: WorldId) -> bool {
         self.slab.remove(world.0).is_some()
     }
 
-    /// Deletes all worlds from the server (as if by [`Self::delete`]) for which
-    /// `f` returns `true`.
+    /// Removes all worlds from the server for which `f` returns `true`.
     ///
     /// All worlds are visited in an unspecified order.
     pub fn retain(&mut self, mut f: impl FnMut(WorldId, &mut World<C>) -> bool) {
@@ -89,8 +91,8 @@ impl<C: Config> Worlds<C> {
         self.slab.get_mut(world.0)
     }
 
-    /// Returns an immutable iterator over all worlds on the server in an
-    /// unspecified order.
+    /// Returns an iterator over all worlds on the server in an unspecified
+    /// order.
     pub fn iter(
         &self,
     ) -> impl ExactSizeIterator<Item = (WorldId, &World<C>)> + FusedIterator + Clone + '_ {
@@ -105,8 +107,8 @@ impl<C: Config> Worlds<C> {
         self.slab.iter_mut().map(|(k, v)| (WorldId(k), v))
     }
 
-    /// Returns a parallel immutable iterator over all worlds on the server in
-    /// an unspecified order.
+    /// Returns a parallel iterator over all worlds on the server in an
+    /// unspecified order.
     pub fn par_iter(&self) -> impl ParallelIterator<Item = (WorldId, &World<C>)> + Clone + '_ {
         self.slab.par_iter().map(|(k, v)| (WorldId(k), v))
     }
@@ -130,7 +132,7 @@ pub struct World<C: Config> {
     pub meta: WorldMeta,
 }
 
-/// Contains miscellaneous world state.
+/// Contains miscellaneous data about the world.
 pub struct WorldMeta {
     dimension: DimensionId,
 }

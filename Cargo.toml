@@ -37,7 +37,7 @@ sha2 = "0.10"
 thiserror = "1"
 url = { version = "2.2.2", features = ["serde"] }
 uuid = "1"
-valence_nbt = { path = "valence_nbt" }
+serde_nbt = { path = "serde_nbt" }
 vek = "0.15"
 
 [dependencies.tokio]
@@ -68,4 +68,4 @@ num = "0.4"
 protocol = []
 
 [workspace]
-members = ["valence_nbt", "packet_inspector"]
+members = ["serde_nbt", "packet_inspector"]

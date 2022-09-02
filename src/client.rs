@@ -70,22 +70,22 @@ impl<C: Config> Clients<C> {
 
     /// Removes a client from the server.
     ///
-    /// If the given client ID is valid, `true` is returned and the client is
-    /// deleted. Otherwise, `false` is returned and the function has no effect.
+    /// If the given client ID is valid, the client's `ClientState` is returned
+    /// and the client is deleted. Otherwise, `None` is returned and the
+    /// function has no effect.
     pub fn remove(&mut self, client: ClientId) -> Option<C::ClientState> {
         self.slab.remove(client.0).map(|c| c.state)
     }
 
-    /// Deletes all clients from the server for
-    /// which `f` returns `true`.
+    /// Deletes all clients from the server for which `f` returns `true`.
     ///
     /// All clients are visited in an unspecified order.
     pub fn retain(&mut self, mut f: impl FnMut(ClientId, &mut Client<C>) -> bool) {
         self.slab.retain(|k, v| f(ClientId(k), v))
     }
 
-    /// Returns the number of clients on the server. This includes clients
-    /// which may be disconnected.
+    /// Returns the number of clients on the server. This includes clients for
+    /// which [`Client::is_disconnected`] returns true.
     pub fn len(&self) -> usize {
         self.slab.len()
     }
@@ -102,8 +102,8 @@ impl<C: Config> Clients<C> {
         self.slab.get_mut(client.0)
     }
 
-    /// Returns an immutable iterator over all clients on the server in an
-    /// unspecified order.
+    /// Returns an iterator over all clients on the server in an unspecified
+    /// order.
     pub fn iter(
         &self,
     ) -> impl ExactSizeIterator<Item = (ClientId, &Client<C>)> + FusedIterator + Clone + '_ {
@@ -118,8 +118,8 @@ impl<C: Config> Clients<C> {
         self.slab.iter_mut().map(|(k, v)| (ClientId(k), v))
     }
 
-    /// Returns a parallel immutable iterator over all clients on the server in
-    /// an unspecified order.
+    /// Returns a parallel iterator over all clients on the server in an
+    /// unspecified order.
     pub fn par_iter(&self) -> impl ParallelIterator<Item = (ClientId, &Client<C>)> + Clone + '_ {
         self.slab.par_iter().map(|(k, v)| (ClientId(k), v))
     }
@@ -170,7 +170,9 @@ impl ClientId {
 /// simply a subtype of the entity base class backed by a remote connection.
 ///
 /// In Valence however, clients and players are decoupled. This separation
-/// allows for greater flexibility and parallelism.
+/// allows for greater flexibility and enables parallelism.
+///
+/// [`Entity`]: crate::entity::Entity
 pub struct Client<C: Config> {
     /// Custom state.
     pub state: C::ClientState,
@@ -301,7 +303,7 @@ impl<C: Config> Client<C> {
         self.uuid
     }
 
-    /// Gets the username of this client, which is always valid.
+    /// Gets the username of this client.
     pub fn username(&self) -> &str {
         &self.username
     }
@@ -317,18 +319,22 @@ impl<C: Config> Client<C> {
         self.world
     }
 
+    /// Gets the player list this client sees.
     pub fn player_list(&self) -> Option<&PlayerListId> {
         self.new_player_list.as_ref()
     }
 
-    pub fn set_player_list(&mut self, id: Option<PlayerListId>) -> Option<PlayerListId> {
-        mem::replace(&mut self.new_player_list, id)
+    /// Sets the player list this client sees.
+    ///
+    /// The previous player list ID is returned.
+    pub fn set_player_list(&mut self, id: impl Into<Option<PlayerListId>>) -> Option<PlayerListId> {
+        mem::replace(&mut self.new_player_list, id.into())
     }
 
     /// Sets if this client sees the world as superflat. Superflat worlds have
     /// a horizon line lower than normal worlds.
     ///
-    /// The player must be spawned for changes to take effect.
+    /// The player must be (re)spawned for changes to take effect.
     pub fn set_flat(&mut self, flat: bool) {
         self.bits.set_flat(flat);
     }
@@ -349,7 +355,8 @@ impl<C: Config> Client<C> {
         self.bits.set_spawn(true);
     }
 
-    /// Sends a system message to the player which is visible in the chat.
+    /// Sends a system message to the player which is visible in the chat. The
+    /// message is only visible to this client.
     pub fn send_message(&mut self, msg: impl Into<Text>) {
         // We buffer messages because weird things happen if we send them before the
         // login packet.
@@ -512,6 +519,8 @@ impl<C: Config> Client<C> {
         self.send.is_none()
     }
 
+    /// Returns an iterator over all pending client events in the order they
+    /// will be removed from the queue.
     pub fn events(
         &self,
     ) -> impl DoubleEndedIterator<Item = &ClientEvent> + ExactSizeIterator + FusedIterator + Clone + '_
@@ -519,7 +528,7 @@ impl<C: Config> Client<C> {
         self.events.iter()
     }
 
-    /// Removes an [`Event`] from the event queue.
+    /// Removes a [`ClientEvent`] from the event queue.
     ///
     /// If there are no remaining events, `None` is returned.
     ///
@@ -529,6 +538,7 @@ impl<C: Config> Client<C> {
         self.events.pop_front()
     }
 
+    /// Pushes an entity event to the queue.
     pub fn push_entity_event(&mut self, event: EntityEvent) {
         self.entity_events.push(event);
     }

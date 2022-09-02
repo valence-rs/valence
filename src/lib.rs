@@ -1,21 +1,20 @@
 //! A Rust framework for building Minecraft servers.
 //!
-//! Valence is a Rust library which provides the necessary abstractions over
-//! Minecraft's protocol to build servers. Very few assumptions about the
-//! desired server are made, which allows for greater flexibility in its design.
-//!
 //! At a high level, a Valence [`Server`] is a collection of [`Clients`],
-//! [`Entities`], and [`Worlds`]. When a client connects to the server, they are
-//! added to the server's [`Clients`]. After connecting, clients are assigned to
-//! a [`World`] where they are able to interact with the entities and
-//! [`Chunks`] that are a part of it.
+//! [`Entities`], and [`Worlds`]. When a client connects to the server they are
+//! added to the collection of `Clients`. After connecting, clients should
+//! be assigned to a [`World`] where they can interact with the entities
+//! and [`Chunks`] that are a part of it.
 //!
 //! The Valence documentation assumes some familiarity with Minecraft and its
 //! mechanics. See the [Minecraft Wiki] for general information and [wiki.vg]
 //! for protocol documentation.
 //!
+//! For more information, see the repository [README].
+//!
 //! [Minecraft Wiki]: https://minecraft.fandom.com/wiki/Minecraft_Wiki
 //! [wiki.vg]: https://wiki.vg/Main_Page
+//! [README]: https://github.com/rj00a/valence
 //!
 //! # Logging
 //!
@@ -35,58 +34,16 @@
 //! **You must not call [`mem::swap`] on these references (or any other
 //! function that would move their location in memory).** Doing so breaks
 //! invariants within the library and the resulting behavior is safe but
-//! unspecified. These types should be considered [pinned](std::pin).
+//! unspecified. You can think of these types as being [pinned](std::pin).
 //!
 //! Preventing this illegal behavior using Rust's type system was considered too
-//! cumbersome, so a note has been left here instead.
+//! cumbersome, so this note has been left here instead.
 //!
 //! [`mem::swap`]: std::mem::swap
 //!
 //! # Examples
 //!
-//! The following is a minimal server implementation. You should be able to
-//! connect to the server at `localhost`.
-//!
-//! ```
-//! use valence::config::Config;
-//! use valence::server::{Server, ShutdownResult};
-//!
-//! pub fn main() -> ShutdownResult {
-//!     valence::start_server(Game, ())
-//! }
-//!
-//! struct Game;
-//!
-//! impl Config for Game {
-//!     type ServerState = ();
-//!     type ClientState = ();
-//!     type EntityState = ();
-//!     type WorldState = ();
-//!     type ChunkState = ();
-//!
-//!     fn max_connections(&self) -> usize {
-//!         256
-//!     }
-//!
-//!     fn update(&self, server: &mut Server<Self>) {
-//!         server.clients.retain(|_, client| {
-//!             if client.created_tick() == server.shared.current_tick() {
-//!                 println!("{} joined!", client.username());
-//!             }
-//!
-//!             if client.is_disconnected() {
-//!                 println!("{} left!", client.username());
-//!                 false
-//!             } else {
-//!                 true
-//!             }
-//!         });
-//! #        server.shared.shutdown::<_, std::convert::Infallible>(Ok(()));
-//!     }
-//! }
-//! ```
-//!
-//! For more complete examples, see the [examples] in the source repository.
+//! See the [examples] directory in the source repository.
 //!
 //! [examples]: https://github.com/rj00a/valence/tree/main/examples
 //!
@@ -122,7 +79,7 @@ pub use async_trait::async_trait;
 #[doc(inline)]
 pub use server::start_server;
 #[doc(inline)]
-pub use {uuid, valence_nbt as nbt, vek};
+pub use {serde_nbt as nbt, uuid, vek};
 
 pub mod biome;
 pub mod block;

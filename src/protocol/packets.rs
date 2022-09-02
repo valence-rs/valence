@@ -49,9 +49,6 @@ pub trait DecodePacket: Sized + fmt::Debug {
 ///
 /// The fields of the struct are encoded and decoded in the order they are
 /// defined.
-///
-/// If a packet ID is provided after the struct name, then this struct will
-/// implement [`EncodePacket`] and [`DecodePacket`].
 macro_rules! def_struct {
     (
         $(#[$struct_attrs:meta])*
@@ -110,9 +107,6 @@ macro_rules! def_struct {
 ///
 /// The enum tag is encoded and decoded first, followed by the appropriate
 /// variant.
-///
-/// If a packet ID is provided after the struct name, then this struct will
-/// implement [`EncodePacket`] and [`DecodePacket`].
 macro_rules! def_enum {
     (
         $(#[$enum_attrs:meta])*
@@ -195,6 +189,7 @@ macro_rules! if_typ_is_empty_pat {
     };
 }
 
+/// Defines a bitfield struct which implements [`Encode`] and [`Decode`].
 macro_rules! def_bitfield {
     (
         $(#[$struct_attrs:meta])*
@@ -273,6 +268,10 @@ macro_rules! def_bitfield {
     }
 }
 
+/// Defines an enum of packets.
+///
+/// An impl for [`EncodePacket`] and [`DecodePacket`] is defined for each
+/// supplied packet.
 macro_rules! def_packet_group {
     (
         $(#[$attrs:meta])*

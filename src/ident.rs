@@ -11,13 +11,14 @@ use thiserror::Error;
 
 use crate::protocol::{encode_string_bounded, BoundedString, Decode, Encode};
 
-/// An identifier is a string split into a "namespace" part and a "name" part.
+/// An identifier is a string split into a "namespace" part and a "path" part.
 /// For instance `minecraft:apple` and `apple` are both valid identifiers.
 ///
 /// If the namespace part is left off (the part before and including the colon)
 /// the namespace is considered to be "minecraft" for the purposes of equality.
 ///
-/// The identifier must match the regex `^([a-z0-9_-]+:)?[a-z0-9_\/.-]+$`.
+/// A string must match the regex `^([a-z0-9_-]+:)?[a-z0-9_\/.-]+$` to be a
+/// valid identifier.
 #[derive(Clone, Eq)]
 pub struct Ident {
     ident: Cow<'static, AsciiStr>,
@@ -90,6 +91,7 @@ impl Ident {
     }
 
     /// Returns the namespace part of this namespaced identifier.
+    ///
     /// If this identifier was constructed from a string without a namespace,
     /// then `None` is returned.
     pub fn namespace(&self) -> Option<&str> {
@@ -100,8 +102,8 @@ impl Ident {
         }
     }
 
-    /// Returns the name part of this namespaced identifier.
-    pub fn name(&self) -> &str {
+    /// Returns the path part of this namespaced identifier.
+    pub fn path(&self) -> &str {
         if self.colon_idx == usize::MAX {
             self.ident.as_str()
         } else {
@@ -188,14 +190,14 @@ impl std::fmt::Display for Ident {
 impl PartialEq for Ident {
     fn eq(&self, other: &Self) -> bool {
         self.namespace().unwrap_or("minecraft") == other.namespace().unwrap_or("minecraft")
-            && self.name() == other.name()
+            && self.path() == other.path()
     }
 }
 
 impl std::hash::Hash for Ident {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.namespace().unwrap_or("minecraft").hash(state);
-        self.name().hash(state);
+        self.path().hash(state);
     }
 }
 
@@ -261,7 +263,7 @@ impl<'de> Visitor<'de> for IdentifierVisitor {
 /// let apple = ident!("{namespace}:apple");
 ///
 /// assert_eq!(apple.namespace(), Some("my_namespace"));
-/// assert_eq!(apple.name(), "apple");
+/// assert_eq!(apple.path(), "apple");
 /// ```
 #[macro_export]
 macro_rules! ident {

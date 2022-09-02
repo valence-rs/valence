@@ -16,7 +16,7 @@ use crate::world::WorldId;
 ///
 /// The spatial index is only updated at the end of each tick. Any modification
 /// to an entity that would change its hitbox is not reflected in the spatial
-/// index until the end of the tick.
+/// index until the next tick.
 ///
 /// [hitboxes]: crate::entity::Entity::hitbox
 pub struct SpatialIndex {
@@ -28,9 +28,9 @@ impl SpatialIndex {
         Self { bvh: Bvh::new() }
     }
 
+    /// This is for tests only! Not part of the public API.
     #[doc(hidden)]
-    #[deprecated = "This is for documentation tests only!"]
-    pub fn example_new() -> Self {
+    pub fn test_new() -> Self {
         dbg!("Don't call me from outside tests!");
         Self::new()
     }
@@ -50,8 +50,7 @@ impl SpatialIndex {
     /// Visit all entities intersecting a 10x10x10 cube centered at the origin.
     ///
     /// ```
-    /// # #[allow(deprecated)]
-    /// # let si = valence::spatial_index::SpatialIndex::example_new();
+    /// # let si = valence::spatial_index::SpatialIndex::test_new();
     /// use valence::vek::*;
     ///
     /// let cube = Aabb {
@@ -104,9 +103,9 @@ impl SpatialIndex {
     /// Casts a ray defined by `origin` and `direction` through entity hitboxes
     /// and returns the closest intersection for which `f` returns `true`.
     ///
-    /// `f` is a predicate which can be used to filter intersections. For
-    /// instance, if a ray is shot from a player's eye position, you probably
-    /// don't want the ray to intersect with the player's own hitbox.
+    /// `f` is a predicate used to filter intersections. For instance, if a ray
+    /// is shot from a player's eye position, you probably don't want the
+    /// ray to intersect with the player's own hitbox.
     ///
     /// If no intersections are found or if `f` never returns `true` then `None`
     /// is returned. Additionally, the given ray direction must be
@@ -115,8 +114,7 @@ impl SpatialIndex {
     /// # Examples
     ///
     /// ```
-    /// # #[allow(deprecated)]
-    /// # let si = valence::spatial_index::SpatialIndex::example_new();
+    /// # let si = valence::spatial_index::SpatialIndex::test_new();
     /// use valence::vek::*;
     ///
     /// let origin = Vec3::new(0.0, 0.0, 0.0);

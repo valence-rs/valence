@@ -15,12 +15,13 @@ use crate::{Ticks, STANDARD_TPS};
 /// A trait for the configuration of a server.
 ///
 /// This trait uses the [async_trait] attribute macro. It is exported at the
-/// root of this crate.
+/// root of this crate. async_trait will be removed once async fns in traits
+/// are stabilized.
 ///
 /// [async_trait]: https://docs.rs/async-trait/latest/async_trait/
 #[async_trait]
 #[allow(unused_variables)]
-pub trait Config: 'static + Sized + Send + Sync + UnwindSafe + RefUnwindSafe {
+pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
     /// Custom state to store with the [`Server`].
     type ServerState: Send + Sync;
     /// Custom state to store with every [`Client`](crate::client::Client).
@@ -93,22 +94,22 @@ pub trait Config: 'static + Sized + Send + Sync + UnwindSafe + RefUnwindSafe {
     /// Called once at startup to get the capacity of the buffer used to
     /// hold incoming packets.
     ///
-    /// A larger capacity reduces the chance of packet loss but increases
-    /// potential memory usage.
+    /// A larger capacity reduces the chance that a client needs to be
+    /// disconnected due to a full buffer, but increases potential memory usage.
     ///
     /// # Default Implementation
     ///
     /// An unspecified value is returned that should be adequate in most
     /// situations.
     fn incoming_packet_capacity(&self) -> usize {
-        32
+        64
     }
 
     /// Called once at startup to get the capacity of the buffer used to
     /// hold outgoing packets.
     ///
-    /// A larger capacity reduces the chance of packet loss due to a full buffer
-    /// but increases potential memory usage.
+    /// A larger capacity reduces the chance that a client needs to be
+    /// disconnected due to a full buffer, but increases potential memory usage.
     ///
     /// # Default Implementation
     ///
