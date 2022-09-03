@@ -59,6 +59,8 @@ If all goes well you should be playing on the server.
 Valence is published to [crates.io](https://crates.io/crates/valence). Run `cargo add valence` to add it to your
 project.
 
+Documentation is available [here](https://docs.rs/valence/latest/valence/).
+
 # Contributing
 
 Contributions are welcome! Take a look at the [issue tracker](https://github.com/rj00a/valence/issues) to see what needs
