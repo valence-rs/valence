@@ -3,6 +3,54 @@
 //!
 //! [serde]: https://docs.rs/serde/latest/serde/
 //! [Named Binary Tag]: https://minecraft.fandom.com/wiki/NBT_format
+//!
+//! # Examples
+//!
+//! Write an NBT compound to a byte buffer.
+//!
+//! ```
+//! use serde::Serialize;
+//! use serde_nbt::binary::to_writer;
+//!
+//! #[derive(Serialize)]
+//! struct Example {
+//!     boolean: bool,
+//!     string: String,
+//!     list_of_float: Vec<f32>,
+//!     #[serde(with = "serde_nbt::int_array")]
+//!     int_array: Vec<i32>,
+//! }
+//!
+//! let example = Example {
+//!     boolean: true,
+//!     string: "abc123".to_owned(),
+//!     list_of_float: vec![3.1415, 2.7182, 1.4142],
+//!     int_array: vec![7, 8, 9],
+//! };
+//!
+//! let mut buf = Vec::new();
+//! to_writer(&mut buf, &example).unwrap();
+//! ```
+//!
+//! Sometimes the structure of the NBT data is not known ahead of time. For
+//! this, you can use [`Value`].
+//!
+//! ```
+//! use serde_nbt::binary::from_reader;
+//! use serde_nbt::{Compound, Value};
+//!
+//! let some_bytes = [10, 0, 0, 3, 0, 3, 105, 110, 116, 0, 0, 222, 173, 0];
+//! let reader = &mut some_bytes.as_slice();
+//!
+//! let value: Value = from_reader(reader).unwrap();
+//!
+//! let expected_value = Value::Compound(Compound::from_iter([(
+//!     "int".to_owned(),
+//!     Value::Int(0xdead),
+//! )]));
+//!
+//! assert_eq!(value, expected_value);
+//! ```
 
 use std::fmt;
 use std::fmt::{Display, Formatter};
