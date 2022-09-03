@@ -214,7 +214,7 @@ impl Config for Game {
             true
         });
 
-        if !server.state.paused {
+        if !server.state.paused && server.shared.current_tick() % 2 == 0 {
             server
                 .state
                 .board_buf
