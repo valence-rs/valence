@@ -1,3 +1,7 @@
+//! <img src="https://raw.githubusercontent.com/rj00a/valence/main/assets/logo-full.svg" width="400">
+//!
+//! ---
+//!
 //! A Rust framework for building Minecraft servers.
 //!
 //! At a high level, a Valence [`Server`] is a collection of [`Clients`],
@@ -56,6 +60,11 @@
 //! [`Chunk`]: crate::chunk::Chunk
 //! [`Entity`]: crate::entity::Entity
 //! [`Client`]: crate::client::Client
+
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/rj00a/valence/main/assets/logo.svg",
+    html_favicon_url = "https://raw.githubusercontent.com/rj00a/valence/main/assets/logo.svg"
+)]
 
 #![forbid(unsafe_code)]
 #![warn(

@@ -1,11 +1,15 @@
 [package]
 name = "valence"
-version = "0.1.0"
+version = "0.1.0+mc1.19.2"
 edition = "2021"
 description = "A framework for building Minecraft servers in Rust."
 repository = "https://github.com/rj00a/valence"
+readme = "README.md"
 license = "MIT"
+keywords = ["minecraft", "gamedev", "server"]
+categories = ["game-engines"]
 build = "build/main.rs"
+authors = ["Ryan Johnson <ryanj00a@gmail.com>"]
 
 [dependencies]
 aes = "0.7"
@@ -32,12 +36,12 @@ rsa = "0.6"
 rsa-der = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+serde_nbt = "0.1.0"
 sha1 = "0.10"
 sha2 = "0.10"
 thiserror = "1"
 url = { version = "2.2.2", features = ["serde"] }
 uuid = "1"
-serde_nbt = { path = "serde_nbt" }
 vek = "0.15"
 
 [dependencies.tokio]
@@ -63,9 +67,6 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rayon = "1"
 num = "0.4"
-
-[features]
-protocol = []
 
 [workspace]
 members = ["serde_nbt", "packet_inspector"]
