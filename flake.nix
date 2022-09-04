@@ -3,6 +3,10 @@
     nixpkgs.url = "github:nixos/nixpkgs/master";
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay.url = "github:oxalica/rust-overlay";
+    flake-compat = {
+      url = "github:edolstra/flake-compat";
+      flake = false;
+    };
   };
 
   outputs = { self, nixpkgs, flake-utils, rust-overlay, ... }:
@@ -10,30 +14,18 @@
     [ "x86_64-linux" ]
     (system:
     let
+      overlays = [ (import rust-overlay) ];
       pkgs = import nixpkgs {
-        inherit system;
-        overlays = [
-          (import rust-overlay)
-        ];
+        inherit system overlays;
       };
-    in
+    in 
     rec
     {
       devShell = pkgs.mkShell {
         buildInputs = with pkgs; [
-          # Build dependencies
-          rustc
-          cargo
-          openssl
-          pkg-config
-
-          # Development tools
+          (rust-bin.selectLatestNightlyWith (toolchain: toolchain.default))
           rust-analyzer
-          rustfmt
-          clippy
         ];
-
-        RUST_SRC_PATH = "${pkgs.rust.packages.stable.rustPlatform.rustLibSrc}";
       };
     });
 }
