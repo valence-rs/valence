@@ -24,3 +24,7 @@ jobs:
       run: cargo build --verbose
     - name: Run tests on ${{ matrix.os }}
       run: cargo test --verbose
+    - name: Run clippy lints
+      run: cargo clippy --verbose --no-deps
+    - name: Validate formatting
+      run: cargo fmt --all -- --check
