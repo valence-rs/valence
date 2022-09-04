@@ -212,9 +212,9 @@ impl Config for Game {
                     _ => {}
                 }
             }
-            
+
             if client.state.sneaking != server.state.paused {
-                server.state.paused = !server.state.paused;
+                server.state.paused = client.state.sneaking;
                 client.play_sound(ident!("minecraft:block.note_block.pling"), SoundCategory::Block, client.position().into(), 0.5f32, if client.state.sneaking { 0.5f32 } else { 1f32 });
             }
 
