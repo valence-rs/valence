@@ -237,7 +237,7 @@ pub enum ServerListPing<'a> {
         /// a time.
         max_players: i32,
         /// A description of the server.
-        description: Text,
+        description: Box<Text>,
         /// The server's icon as the bytes of a PNG image.
         /// The image must be 64x64 pixels.
         ///
