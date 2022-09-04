@@ -731,6 +731,27 @@ pub mod play {
     }
 
     def_struct! {
+        EntitySoundEffect {
+            id: VarInt,
+            category: SoundCategory,
+            entity_id: VarInt,
+            volume: f32,
+            pitch: f32
+        }
+    }
+
+    def_struct! {
+        SoundEffect {
+            id: VarInt,
+            category: SoundCategory,
+            position: Vec3<i32>,
+            volume: f32,
+            pitch: f32,
+            seed: i64
+        }
+    }
+
+    def_struct! {
         GameMessage {
             chat: Text,
             /// Index into the chat type registry.
@@ -819,6 +840,8 @@ pub mod play {
             WorldTimeUpdate = 92,
             UpdateTitle = 93,
             TitleFade = 94,
+            EntitySoundEffect = 95,
+            SoundEffect = 96,
             GameMessage = 98,
             PlayerListHeaderFooter = 99,
             EntityPosition = 102,
