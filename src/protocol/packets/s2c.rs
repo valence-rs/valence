@@ -227,6 +227,32 @@ pub mod play {
         }
     }
 
+    def_enum! {
+        SoundCategory: VarInt {
+            Master = 0,
+            Music = 1,
+            Record = 2,
+            Weather = 3,
+            Block = 4,
+            Hostile = 5,
+            Neutral = 6,
+            Player = 7,
+            Ambient = 8,
+            Voice = 9,
+        }
+    }
+
+    def_struct! {
+        CustomSoundEffect {
+            name: Ident,
+            category: SoundCategory,
+            position: Vec3<i32>,
+            volume: f32,
+            pitch: f32,
+            seed: i64,
+        }
+    }
+
     def_struct! {
         Disconnect {
             reason: Text,
@@ -765,6 +791,7 @@ pub mod play {
             BlockUpdate = 9,
             BossBar = 10,
             ClearTitles = 13,
+            CustomSoundEffect = 23,
             Disconnect = 25,
             EntityStatus = 26,
             UnloadChunk = 28,

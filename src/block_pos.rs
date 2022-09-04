@@ -88,6 +88,30 @@ impl From<BlockPos> for Vec3<i32> {
     }
 }
 
+impl From<Vec3<f32>> for BlockPos {
+    fn from(pos: Vec3<f32>) -> Self {
+        Self::new(pos.x as i32, pos.y as i32, pos.z as i32)
+    }
+}
+
+impl From<BlockPos> for Vec3<f32> {
+    fn from(pos: BlockPos) -> Self {
+        Vec3::new(pos.x as f32, pos.y as f32, pos.z as f32)
+    }
+}
+
+impl From<Vec3<f64>> for BlockPos {
+    fn from(pos: Vec3<f64>) -> Self {
+        Self::new(pos.x as i32, pos.y as i32, pos.z as i32)
+    }
+}
+
+impl From<BlockPos> for Vec3<f64> {
+    fn from(pos: BlockPos) -> Self {
+        Vec3::new(pos.x as f64, pos.y as f64, pos.z as f64)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
