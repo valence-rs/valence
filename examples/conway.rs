@@ -211,6 +211,15 @@ impl Config for Game {
                 server.state.paused = true;
             }
 
+            // Display Playing in green or Paused in red
+            client.set_action_bar(
+                if server.state.paused {
+                    "Paused".color(Color::RED)
+                } else {
+                    "Playing".color(Color::GREEN)
+                },
+            );
+
             true
         });
 

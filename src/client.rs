@@ -34,7 +34,7 @@ use crate::protocol::packets::s2c::play::{
     EntityStatus, EntityTrackerUpdate, EntityVelocityUpdate, GameJoin, GameMessage,
     GameStateChange, GameStateChangeReason, KeepAlive, MoveRelative, PlayerActionResponse,
     PlayerPositionLook, PlayerPositionLookFlags, PlayerRespawn, PlayerSpawnPosition, RegistryCodec,
-    Rotate, RotateAndMoveRelative, S2cPlayPacket, UnloadChunk, UpdateSubtitle, UpdateTitle,
+    Rotate, RotateAndMoveRelative, S2cPlayPacket, UnloadChunk, UpdateSubtitle, UpdateTitle, SendActionBar
 };
 use crate::protocol::{BoundedInt, ByteAngle, NbtBridge, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
@@ -483,6 +483,10 @@ impl<C: Config> Client<C> {
         if let Some(anim) = animation.into() {
             self.send_packet(anim);
         }
+    }
+
+    pub fn set_action_bar(&mut self, text: impl Into<Text>) {
+        self.send_packet(SendActionBar { text: text.into() });
     }
 
     /// Gets the attack cooldown speed.
