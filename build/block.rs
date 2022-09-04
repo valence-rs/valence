@@ -525,6 +525,42 @@ pub fn build() -> anyhow::Result<TokenStream> {
             #default_block_states
         }
 
+        // WIP/PoC CODE
+        pub struct BlockEntity {
+            id: u8,
+            data: BlockEntityTypes,
+        }
+
+        pub enum BlockEntityTypes {
+            Sign(SignData)
+        }
+
+        pub struct SignData {
+            glowingText: bool,
+            color: TextColor,
+        }
+
+        pub enum TextColor {
+            Black,
+            White,
+            Orange,
+            Magenta,
+            Light_Blue,
+            Yellow,
+            Lime,
+            Pink,
+            Gray,
+            Light_Gray,
+            Cyan,
+            Purple,
+            Blue,
+            Brown,
+            Green,
+            Red
+        }
+        // END WIP CODE
+
+
         /// An enumeration of all block kinds.
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
         pub enum BlockKind {
