@@ -69,4 +69,4 @@ rayon = "1"
 num = "0.4"
 
 [workspace]
-members = ["serde_nbt", "packet_inspector"]
+members = ["packet_inspector"]
