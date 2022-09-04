@@ -485,6 +485,7 @@ impl<C: Config> Client<C> {
         }
     }
 
+    /// Sets the action bar for this client.
     pub fn set_action_bar(&mut self, text: impl Into<Text>) {
         self.send_packet(SendActionBar { text: text.into() });
     }
