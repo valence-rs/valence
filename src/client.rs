@@ -30,12 +30,13 @@ use crate::protocol::packets::c2s::play::{
 pub use crate::protocol::packets::s2c::play::TitleFade;
 use crate::protocol::packets::s2c::play::{
     BiomeRegistry, ChatTypeRegistry, ChunkLoadDistance, ChunkRenderDistanceCenter, ClearTitles,
-    DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, EntitiesDestroy,
-    EntityAnimation, EntityAttributes, EntityAttributesProperty, EntityPosition, EntitySetHeadYaw,
-    EntityStatus, EntityTrackerUpdate, EntityVelocityUpdate, GameJoin, GameMessage,
-    GameStateChange, GameStateChangeReason, KeepAlive, MoveRelative, PlayerActionResponse,
-    PlayerPositionLook, PlayerPositionLookFlags, PlayerRespawn, PlayerSpawnPosition, RegistryCodec,
-    Rotate, RotateAndMoveRelative, S2cPlayPacket, UnloadChunk, UpdateSubtitle, UpdateTitle, SoundCategory, CustomSoundEffect,
+    CustomSoundEffect, DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect,
+    EntitiesDestroy, EntityAnimation, EntityAttributes, EntityAttributesProperty, EntityPosition,
+    EntitySetHeadYaw, EntityStatus, EntityTrackerUpdate, EntityVelocityUpdate, GameJoin,
+    GameMessage, GameStateChange, GameStateChangeReason, KeepAlive, MoveRelative,
+    PlayerActionResponse, PlayerPositionLook, PlayerPositionLookFlags, PlayerRespawn,
+    PlayerSpawnPosition, RegistryCodec, Rotate, RotateAndMoveRelative, S2cPlayPacket,
+    SoundCategory, UnloadChunk, UpdateSubtitle, UpdateTitle,
 };
 use crate::protocol::{BoundedInt, ByteAngle, NbtBridge, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
@@ -458,14 +459,21 @@ impl<C: Config> Client<C> {
         self.new_game_mode = game_mode;
     }
 
-    pub fn play_sound(&mut self, name: Ident, category: SoundCategory, pos: Vec3<f64>, volume: f32, pitch: f32) {
+    pub fn play_sound(
+        &mut self,
+        name: Ident,
+        category: SoundCategory,
+        pos: Vec3<f64>,
+        volume: f32,
+        pitch: f32,
+    ) {
         self.send_packet(CustomSoundEffect {
             name,
             category,
             position: pos.iter().map(|x| *x as i32 * 8).collect(),
             volume,
             pitch,
-            seed: 0
+            seed: 0,
         });
     }
 
