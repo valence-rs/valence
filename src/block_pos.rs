@@ -1,4 +1,4 @@
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 
 use anyhow::bail;
 use vek::Vec3;
@@ -38,7 +38,7 @@ impl Encode for BlockPos {
 }
 
 impl Decode for BlockPos {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         // Use arithmetic right shift to determine sign.
         let val = i64::decode(r)?;
         let x = val >> 38;

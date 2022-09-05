@@ -2,7 +2,7 @@
 //!
 //! You should avoid this module if possible.
 
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 use std::mem;
 
 use anyhow::{anyhow, ensure, Context};
@@ -35,7 +35,7 @@ pub trait Encode {
 
 /// Types that can be read from the Minecraft protocol.
 pub trait Decode: Sized {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self>;
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self>;
 }
 
 /// The maximum number of bytes in a single packet.
@@ -48,7 +48,7 @@ impl Encode for () {
 }
 
 impl Decode for () {
-    fn decode(_r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(_r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         Ok(())
     }
 }
@@ -61,7 +61,7 @@ impl<T: Encode, U: Encode> Encode for (T, U) {
 }
 
 impl<T: Decode, U: Decode> Decode for (T, U) {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         Ok((T::decode(r)?, U::decode(r)?))
     }
 }
@@ -80,7 +80,7 @@ impl Encode for bool {
 }
 
 impl Decode for bool {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         let n = r.read_u8()?;
         ensure!(n < 2, "boolean is not 0 or 1");
         Ok(n == 1)
@@ -95,7 +95,7 @@ impl Encode for u8 {
 }
 
 impl Decode for u8 {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         Ok(r.read_u8()?)
     }
 }
@@ -108,7 +108,7 @@ impl Encode for i8 {
 }
 
 impl Decode for i8 {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         Ok(r.read_i8()?)
     }
 }
@@ -121,7 +121,7 @@ impl Encode for u16 {
 }
 
 impl Decode for u16 {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         Ok(r.read_u16::<BigEndian>()?)
     }
 }
@@ -134,7 +134,7 @@ impl Encode for i16 {
 }
 
 impl Decode for i16 {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         Ok(r.read_i16::<BigEndian>()?)
     }
 }
@@ -147,7 +147,7 @@ impl Encode for u32 {
 }
 
 impl Decode for u32 {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         Ok(r.read_u32::<BigEndian>()?)
     }
 }
@@ -160,7 +160,7 @@ impl Encode for i32 {
 }
 
 impl Decode for i32 {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         Ok(r.read_i32::<BigEndian>()?)
     }
 }
@@ -173,7 +173,7 @@ impl Encode for u64 {
 }
 
 impl Decode for u64 {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         Ok(r.read_u64::<BigEndian>()?)
     }
 }
@@ -186,7 +186,7 @@ impl Encode for i64 {
 }
 
 impl Decode for i64 {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         Ok(r.read_i64::<BigEndian>()?)
     }
 }
@@ -203,7 +203,7 @@ impl Encode for f32 {
     }
 }
 impl Decode for f32 {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         let f = r.read_f32::<BigEndian>()?;
         ensure!(f.is_finite(), "attempt to decode non-finite f32 ({f})");
         Ok(f)
@@ -223,7 +223,7 @@ impl Encode for f64 {
 }
 
 impl Decode for f64 {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         let f = r.read_f64::<BigEndian>()?;
         ensure!(f.is_finite(), "attempt to decode non-finite f64 ({f})");
         Ok(f)
@@ -243,7 +243,7 @@ impl<T: Encode> Encode for Option<T> {
 }
 
 impl<T: Decode> Decode for Option<T> {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         if bool::decode(r)? {
             Ok(Some(T::decode(r)?))
         } else {
@@ -259,7 +259,7 @@ impl<T: Encode> Encode for Box<T> {
 }
 
 impl<T: Decode> Decode for Box<T> {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         Ok(Box::new(T::decode(r)?))
     }
 }
@@ -271,7 +271,7 @@ impl Encode for Box<str> {
 }
 
 impl Decode for Box<str> {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         Ok(String::decode(r)?.into_boxed_str())
     }
 }
@@ -319,7 +319,7 @@ impl<T, const MIN: i64, const MAX: i64> Decode for BoundedInt<T, MIN, MAX>
 where
     T: Decode + Copy + Into<i64>,
 {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         let res = T::decode(r)?;
         let val = res.into();
 
@@ -339,7 +339,7 @@ impl Encode for String {
 }
 
 impl Decode for String {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         decode_string_bounded(0, 32767, r)
     }
 }
@@ -370,7 +370,7 @@ impl<const MIN: usize, const MAX: usize> Encode for BoundedString<MIN, MAX> {
 }
 
 impl<const MIN: usize, const MAX: usize> Decode for BoundedString<MIN, MAX> {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         decode_string_bounded(MIN, MAX, r).map(Self)
     }
 }
@@ -388,7 +388,7 @@ impl<T: Encode> Encode for Vec<T> {
 }
 
 impl<T: Decode> Decode for Vec<T> {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         decode_array_bounded(0, usize::MAX, r)
     }
 }
@@ -400,7 +400,7 @@ impl<T: Encode> Encode for Box<[T]> {
 }
 
 impl<T: Decode> Decode for Box<[T]> {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         decode_array_bounded(0, usize::MAX, r).map(|v| v.into_boxed_slice())
     }
 }
@@ -412,7 +412,7 @@ impl<T: Encode, const N: usize> Encode for [T; N] {
 }
 
 impl<T: Decode, const N: usize> Decode for [T; N] {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         let mut elems = ArrayVec::new();
         for _ in 0..N {
             elems.push(T::decode(r)?);
@@ -448,19 +448,19 @@ impl<T: Encode> Encode for Vec4<T> {
 }
 
 impl<T: Decode> Decode for Vec2<T> {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         Ok(Vec2::new(T::decode(r)?, T::decode(r)?))
     }
 }
 
 impl<T: Decode> Decode for Vec3<T> {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         Ok(Vec3::new(T::decode(r)?, T::decode(r)?, T::decode(r)?))
     }
 }
 
 impl<T: Decode> Decode for Vec4<T> {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         Ok(Vec4::new(
             T::decode(r)?,
             T::decode(r)?,
@@ -484,7 +484,7 @@ impl<T: Encode, const MIN: usize, const MAX: usize> Encode for BoundedArray<T, M
 }
 
 impl<T: Decode, const MIN: usize, const MAX: usize> Decode for BoundedArray<T, MIN, MAX> {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         decode_array_bounded(MIN, MAX, r).map(Self)
     }
 }
@@ -503,7 +503,7 @@ impl Encode for Uuid {
 }
 
 impl Decode for Uuid {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         Ok(Uuid::from_u128(r.read_u128::<BigEndian>()?))
     }
 }
@@ -515,7 +515,7 @@ impl Encode for nbt::Compound {
 }
 
 impl Decode for nbt::Compound {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         Ok(nbt::binary::from_reader(r)?)
     }
 }
@@ -532,7 +532,7 @@ impl<T: Serialize> Encode for NbtBridge<T> {
 }
 
 impl<T: DeserializeOwned> Decode for NbtBridge<T> {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         Ok(Self(nbt::binary::from_reader(r)?))
     }
 }
@@ -544,7 +544,7 @@ impl Encode for BitVec<u64> {
 }
 
 impl Decode for BitVec<u64> {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         BitVec::try_from_vec(Vec::decode(r)?)
             .map_err(|_| anyhow!("Array is too long for bit vector"))
     }
@@ -557,7 +557,7 @@ impl Encode for BitBox<u64> {
 }
 
 impl Decode for BitBox<u64> {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         BitVec::decode(r).map(|v| v.into_boxed_bitslice())
     }
 }
@@ -569,7 +569,7 @@ impl Decode for BitBox<u64> {
 pub struct RawBytes(pub Vec<u8>);
 
 impl Decode for RawBytes {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         let mut buf = Vec::new();
         r.read_to_end(&mut buf)?;
         Ok(RawBytes(buf))
@@ -645,7 +645,7 @@ pub(crate) fn encode_string_bounded(
 pub(crate) fn decode_string_bounded(
     min: usize,
     max: usize,
-    r: &mut impl Read,
+    r: &mut (impl Read + Seek),
 ) -> anyhow::Result<String> {
     assert!(min <= max);
 
@@ -665,7 +665,7 @@ pub(crate) fn decode_string_bounded(
 pub(crate) fn decode_array_bounded<T: Decode>(
     min: usize,
     max: usize,
-    r: &mut impl Read,
+    r: &mut (impl Read + Seek),
 ) -> anyhow::Result<Vec<T>> {
     assert!(min <= max);
 

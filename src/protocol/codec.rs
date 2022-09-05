@@ -1,6 +1,6 @@
 //! Reading and writing packets.
 
-use std::io::Read;
+use std::io::{Cursor, Read};
 use std::time::Duration;
 
 use aes::Aes128;
@@ -174,7 +174,7 @@ impl<R: AsyncRead + Unpin> Decoder<R> {
             cipher.decrypt(&mut self.buf);
         }
 
-        let mut packet_contents = self.buf.as_slice();
+        let mut packet_contents = Cursor::new(self.buf.as_slice());
 
         // Compression enabled?
         let packet = if self.compression_threshold.is_some() {
@@ -195,11 +195,11 @@ impl<R: AsyncRead + Unpin> Decoder<R> {
                 z.read_exact(&mut self.decompress_buf)
                     .context("decompressing packet body")?;
 
-                let mut decompressed = self.decompress_buf.as_slice();
+                let mut decompressed = Cursor::new(self.decompress_buf.as_slice());
                 let packet = P::decode_packet(&mut decompressed)
                     .context("decoding packet after decompressing")?;
                 ensure!(
-                    decompressed.is_empty(),
+                    decompressed.position() >= decompressed.get_ref().len() as u64,
                     "packet contents were not read completely"
                 );
                 packet
@@ -210,14 +210,14 @@ impl<R: AsyncRead + Unpin> Decoder<R> {
             P::decode_packet(&mut packet_contents).context("decoding packet")?
         };
 
-        if !packet_contents.is_empty() {
+        if packet_contents.position() < packet_contents.get_ref().len() as u64 {
             if log_enabled!(Level::Debug) {
                 log::debug!("complete packet after partial decode: {packet:?}");
             }
 
             bail!(
                 "packet contents were not decoded completely ({} bytes remaining)",
-                packet_contents.len()
+                packet_contents.get_ref().len()
             );
         }
 

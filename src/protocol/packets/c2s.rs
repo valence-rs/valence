@@ -138,8 +138,11 @@ pub mod play {
     def_struct! {
         CommandExecution {
             command: String, // TODO: bounded?
-            // TODO: timestamp, arg signatures
+            timestamp: u64,
+            salt: u64,
+            arg_signatures: Vec<(String, Vec<u8>)>,
             signed_preview: bool,
+            data: RawBytes
         }
     }
 
@@ -565,7 +568,7 @@ pub mod play {
     def_struct! {
         UpdateCreativeModeSlot {
             slot: i16,
-            // TODO: clicked_item: Slot,
+            clicked_item: Slot,
         }
     }
 
