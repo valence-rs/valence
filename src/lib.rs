@@ -108,6 +108,7 @@ pub mod server;
 mod slab;
 mod slab_rc;
 mod slab_versioned;
+pub mod slot;
 pub mod spatial_index;
 pub mod text;
 pub mod util;

@@ -23,6 +23,7 @@ use crate::protocol::{
     BoundedArray, BoundedInt, BoundedString, ByteAngle, Decode, Encode, NbtBridge, RawBytes,
     VarInt, VarLong,
 };
+use crate::slot::Slot;
 use crate::text::Text;
 
 /// Trait for types that can be written to the Minecraft protocol as a complete
