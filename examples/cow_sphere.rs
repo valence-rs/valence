@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use log::LevelFilter;
 use valence::async_trait;
 use valence::block::{BlockPos, BlockState};
-use valence::client::{GameMode, default_client_event};
+use valence::client::{default_client_event, GameMode};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
 use valence::entity::{EntityId, EntityKind};

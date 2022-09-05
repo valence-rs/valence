@@ -3,7 +3,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
 use valence::block::{BlockPos, BlockState};
-use valence::client::{ClientEvent, ClientId, GameMode, InteractWithEntityKind, default_client_event};
+use valence::client::{
+    default_client_event, ClientEvent, ClientId, GameMode, InteractWithEntityKind,
+};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
 use valence::entity::{EntityEvent, EntityId, EntityKind};

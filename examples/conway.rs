@@ -7,7 +7,7 @@ use num::Integer;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 use valence::biome::Biome;
 use valence::block::BlockState;
-use valence::client::{ClientEvent, default_client_event};
+use valence::client::{default_client_event, ClientEvent};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::types::Pose;
@@ -49,7 +49,7 @@ struct ServerState {
 
 #[derive(Default)]
 struct ClientState {
-    entity_id: EntityId
+    entity_id: EntityId,
 }
 
 const MAX_PLAYERS: usize = 10;

@@ -2,15 +2,14 @@ use std::time::Duration;
 
 use vek::Vec3;
 
+use super::Client;
 use crate::block_pos::BlockPos;
 use crate::config::Config;
 use crate::entity::types::Pose;
-use crate::entity::{EntityId, EntityEvent, Entity, TrackedData};
+use crate::entity::{Entity, EntityEvent, EntityId, TrackedData};
 use crate::protocol::packets::c2s::play::BlockFace;
 pub use crate::protocol::packets::c2s::play::{ChatMode, DisplayedSkinParts, Hand, MainHand};
 pub use crate::protocol::packets::s2c::play::GameMode;
-
-use super::Client;
 
 /// Represents an action performed by a client.
 ///
@@ -137,7 +136,8 @@ pub enum DiggingStatus {
     Finish,
 }
 
-/// Standard client event handler that stores various things a player may do. Used to avoid extra boilerplate.
+/// Standard client event handler that stores various things a player may do.
+/// Used to avoid extra boilerplate.
 pub fn default_client_event<C: Config>(
     client: &mut Client<C>,
     entity: &mut Entity<C>,

@@ -7,7 +7,7 @@ use rayon::iter::ParallelIterator;
 use valence::async_trait;
 use valence::block::{BlockState, PropName, PropValue};
 use valence::chunk::ChunkPos;
-use valence::client::{GameMode, default_client_event};
+use valence::client::{default_client_event, GameMode};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
 use valence::entity::{EntityId, EntityKind};

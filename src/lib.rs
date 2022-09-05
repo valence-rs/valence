@@ -65,7 +65,6 @@
     html_logo_url = "https://raw.githubusercontent.com/rj00a/valence/main/assets/logo.svg",
     html_favicon_url = "https://raw.githubusercontent.com/rj00a/valence/main/assets/logo.svg"
 )]
-
 #![forbid(unsafe_code)]
 #![warn(
     trivial_casts,
