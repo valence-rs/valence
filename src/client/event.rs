@@ -3,10 +3,14 @@ use std::time::Duration;
 use vek::Vec3;
 
 use crate::block_pos::BlockPos;
-use crate::entity::EntityId;
+use crate::config::Config;
+use crate::entity::types::Pose;
+use crate::entity::{EntityId, EntityEvent, Entity, TrackedData};
 use crate::protocol::packets::c2s::play::BlockFace;
 pub use crate::protocol::packets::c2s::play::{ChatMode, DisplayedSkinParts, Hand, MainHand};
 pub use crate::protocol::packets::s2c::play::GameMode;
+
+use super::Client;
 
 /// Represents an action performed by a client.
 ///
@@ -131,4 +135,121 @@ pub enum DiggingStatus {
     Cancel,
     /// The client finished digging a block successfully.
     Finish,
+}
+
+/// Standard client event handler that stores various things a player may do. Used to avoid extra boilerplate.
+pub fn default_client_event<C: Config>(
+    client: &mut Client<C>,
+    entity: &mut Entity<C>,
+) -> Option<ClientEvent> {
+    let event = client.pop_event()?;
+
+    match &event {
+        ClientEvent::ChatMessage { .. } => {}
+        ClientEvent::SettingsChanged {
+            view_distance,
+            main_hand,
+            displayed_skin_parts,
+            ..
+        } => {
+            client.set_view_distance(*view_distance);
+
+            let player = client.player_mut();
+
+            player.set_cape(displayed_skin_parts.cape());
+            player.set_jacket(displayed_skin_parts.jacket());
+            player.set_left_sleeve(displayed_skin_parts.left_sleeve());
+            player.set_right_sleeve(displayed_skin_parts.right_sleeve());
+            player.set_left_pants_leg(displayed_skin_parts.left_pants_leg());
+            player.set_right_pants_leg(displayed_skin_parts.right_pants_leg());
+            player.set_hat(displayed_skin_parts.hat());
+            player.set_main_arm(*main_hand as u8);
+
+            if let TrackedData::Player(player) = entity.data_mut() {
+                player.set_cape(displayed_skin_parts.cape());
+                player.set_jacket(displayed_skin_parts.jacket());
+                player.set_left_sleeve(displayed_skin_parts.left_sleeve());
+                player.set_right_sleeve(displayed_skin_parts.right_sleeve());
+                player.set_left_pants_leg(displayed_skin_parts.left_pants_leg());
+                player.set_right_pants_leg(displayed_skin_parts.right_pants_leg());
+                player.set_hat(displayed_skin_parts.hat());
+                player.set_main_arm(*main_hand as u8);
+            }
+        }
+        ClientEvent::MovePosition {
+            position,
+            on_ground,
+        } => {
+            entity.set_position(*position);
+            entity.set_on_ground(*on_ground);
+        }
+        ClientEvent::MovePositionAndRotation {
+            position,
+            yaw,
+            pitch,
+            on_ground,
+        } => {
+            entity.set_position(*position);
+            entity.set_yaw(*yaw);
+            entity.set_head_yaw(*yaw);
+            entity.set_pitch(*pitch);
+            entity.set_on_ground(*on_ground);
+        }
+        ClientEvent::MoveRotation {
+            yaw,
+            pitch,
+            on_ground,
+        } => {
+            entity.set_yaw(*yaw);
+            entity.set_head_yaw(*yaw);
+            entity.set_pitch(*pitch);
+            entity.set_on_ground(*on_ground);
+        }
+        ClientEvent::MoveOnGround { on_ground } => {
+            entity.set_on_ground(*on_ground);
+        }
+        ClientEvent::MoveVehicle { .. } => {}
+        ClientEvent::StartSneaking => {
+            if let TrackedData::Player(player) = entity.data_mut() {
+                if player.get_pose() == Pose::Standing {
+                    player.set_pose(Pose::Sneaking);
+                }
+            }
+        }
+        ClientEvent::StopSneaking => {
+            if let TrackedData::Player(player) = entity.data_mut() {
+                if player.get_pose() == Pose::Sneaking {
+                    player.set_pose(Pose::Standing);
+                }
+            }
+        }
+        ClientEvent::StartSprinting => {
+            if let TrackedData::Player(player) = entity.data_mut() {
+                player.set_sprinting(true);
+            }
+        }
+        ClientEvent::StopSprinting => {
+            if let TrackedData::Player(player) = entity.data_mut() {
+                player.set_sprinting(false);
+            }
+        }
+        ClientEvent::StartJumpWithHorse { .. } => {}
+        ClientEvent::StopJumpWithHorse => {}
+        ClientEvent::LeaveBed => {}
+        ClientEvent::OpenHorseInventory => {}
+        ClientEvent::StartFlyingWithElytra => {}
+        ClientEvent::ArmSwing(hand) => {
+            entity.push_event(match hand {
+                Hand::Main => EntityEvent::SwingMainHand,
+                Hand::Off => EntityEvent::SwingOffHand,
+            });
+        }
+        ClientEvent::InteractWithEntity { .. } => {}
+        ClientEvent::SteerBoat { .. } => {}
+        ClientEvent::Digging { .. } => {}
+    }
+
+    entity.set_world(client.world());
+
+    Some(event)
 }
