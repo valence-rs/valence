@@ -854,7 +854,16 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::UpdateSign(_) => {}
             C2sPlayPacket::HandSwing(p) => self.events.push_back(ClientEvent::ArmSwing(p.hand)),
             C2sPlayPacket::SpectatorTeleport(_) => {}
-            C2sPlayPacket::PlayerInteractBlock(_) => {}
+            C2sPlayPacket::PlayerInteractBlock(p) => {
+                self.events.push_back(ClientEvent::InteractWithBlock {
+                    hand: p.hand,
+                    location: p.location,
+                    face: p.face,
+                    cursor_pos: p.cursor_pos,
+                    head_inside_block: p.head_inside_block,
+                    sequence: p.sequence,
+                })
+            }
             C2sPlayPacket::PlayerInteractItem(_) => {}
         }
     }
