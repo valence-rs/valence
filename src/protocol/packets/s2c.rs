@@ -243,7 +243,7 @@ pub mod play {
     }
 
     def_struct! {
-        CustomSoundEffect {
+        PlaySoundId {
             name: Ident,
             category: SoundCategory,
             position: Vec3<i32>,
@@ -731,7 +731,7 @@ pub mod play {
     }
 
     def_struct! {
-        EntitySoundEffect {
+        PlaySoundFromEntity {
             id: VarInt,
             category: SoundCategory,
             entity_id: VarInt,
@@ -741,7 +741,7 @@ pub mod play {
     }
 
     def_struct! {
-        SoundEffect {
+        PlaySound {
             id: VarInt,
             category: SoundCategory,
             position: Vec3<i32>,
@@ -812,7 +812,7 @@ pub mod play {
             BlockUpdate = 9,
             BossBar = 10,
             ClearTitles = 13,
-            CustomSoundEffect = 23,
+            PlaySoundId = 23,
             Disconnect = 25,
             EntityStatus = 26,
             UnloadChunk = 28,
@@ -840,8 +840,8 @@ pub mod play {
             WorldTimeUpdate = 92,
             UpdateTitle = 93,
             TitleFade = 94,
-            EntitySoundEffect = 95,
-            SoundEffect = 96,
+            PlaySoundFromEntity = 95,
+            PlaySound = 96,
             GameMessage = 98,
             PlayerListHeaderFooter = 99,
             EntityPosition = 102,

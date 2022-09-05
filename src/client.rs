@@ -30,10 +30,10 @@ use crate::protocol::packets::c2s::play::{
 pub use crate::protocol::packets::s2c::play::TitleFade;
 use crate::protocol::packets::s2c::play::{
     BiomeRegistry, ChatTypeRegistry, ChunkLoadDistance, ChunkRenderDistanceCenter, ClearTitles,
-    CustomSoundEffect, DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect,
-    EntitiesDestroy, EntityAnimation, EntityAttributes, EntityAttributesProperty, EntityPosition,
-    EntitySetHeadYaw, EntityStatus, EntityTrackerUpdate, EntityVelocityUpdate, GameJoin,
-    GameMessage, GameStateChange, GameStateChangeReason, KeepAlive, MoveRelative,
+    DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, EntitiesDestroy,
+    EntityAnimation, EntityAttributes, EntityAttributesProperty, EntityPosition, EntitySetHeadYaw,
+    EntityStatus, EntityTrackerUpdate, EntityVelocityUpdate, GameJoin, GameMessage,
+    GameStateChange, GameStateChangeReason, KeepAlive, MoveRelative, PlaySoundId,
     PlayerActionResponse, PlayerPositionLook, PlayerPositionLookFlags, PlayerRespawn,
     PlayerSpawnPosition, RegistryCodec, Rotate, RotateAndMoveRelative, S2cPlayPacket,
     SoundCategory, UnloadChunk, UpdateSubtitle, UpdateTitle,
@@ -459,6 +459,7 @@ impl<C: Config> Client<C> {
         self.new_game_mode = game_mode;
     }
 
+    /// Plays a sound to the client at a given position.
     pub fn play_sound(
         &mut self,
         name: Ident,
@@ -467,7 +468,7 @@ impl<C: Config> Client<C> {
         volume: f32,
         pitch: f32,
     ) {
-        self.send_packet(CustomSoundEffect {
+        self.send_packet(PlaySoundId {
             name,
             category,
             position: pos.iter().map(|x| *x as i32 * 8).collect(),

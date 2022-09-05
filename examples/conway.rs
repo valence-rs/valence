@@ -6,7 +6,7 @@ use log::LevelFilter;
 use num::Integer;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 use valence::biome::Biome;
-use valence::block::BlockState;
+use valence::block::{BlockState};
 use valence::client::{Client, ClientEvent, Hand};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
@@ -17,6 +17,7 @@ use valence::protocol::packets::s2c::play::SoundCategory;
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 use valence::{async_trait, ident};
+use vek::Vec3;
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()
@@ -194,11 +195,13 @@ impl Config for Game {
                         {
                             let index = position.x as usize + position.z as usize * SIZE_X;
 
+                            let normal_position = Into::<Vec3<i32>>::into(position);
+
                             if !server.state.board[index] {
                                 client.play_sound(
                                     ident!("minecraft:block.note_block.banjo"),
                                     SoundCategory::Block,
-                                    position.into(),
+                                    Vec3::<f64>::new(normal_position.x.into(), normal_position.y.into(), normal_position.z.into()),
                                     0.5f32,
                                     1f32,
                                 );
