@@ -630,7 +630,7 @@ pub mod play {
     }
 
     def_struct! {
-        SendActionBar {
+        OverlayMessage {
             text: Text
         }
     }
@@ -788,7 +788,7 @@ pub mod play {
             PlayerRespawn = 62,
             EntitySetHeadYaw = 63,
             ChunkSectionUpdate = 64,
-            SendActionBar = 67,
+            OverlayMessage = 67,
             UpdateSelectedSlot = 74,
             ChunkRenderDistanceCenter = 75,
             ChunkLoadDistance = 76,

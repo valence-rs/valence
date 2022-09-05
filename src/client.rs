@@ -34,7 +34,7 @@ use crate::protocol::packets::s2c::play::{
     EntityStatus, EntityTrackerUpdate, EntityVelocityUpdate, GameJoin, GameMessage,
     GameStateChange, GameStateChangeReason, KeepAlive, MoveRelative, PlayerActionResponse,
     PlayerPositionLook, PlayerPositionLookFlags, PlayerRespawn, PlayerSpawnPosition, RegistryCodec,
-    Rotate, RotateAndMoveRelative, S2cPlayPacket, UnloadChunk, UpdateSubtitle, UpdateTitle, SendActionBar
+    Rotate, RotateAndMoveRelative, S2cPlayPacket, UnloadChunk, UpdateSubtitle, UpdateTitle, OverlayMessage
 };
 use crate::protocol::{BoundedInt, ByteAngle, NbtBridge, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
@@ -223,6 +223,7 @@ pub struct Client<C: Config> {
     dug_blocks: Vec<i32>,
     /// Should be sent after login packet.
     msgs_to_send: Vec<Text>,
+    bar_to_send: Option<Text>,
     attack_speed: f64,
     movement_speed: f64,
     bits: ClientBits,
@@ -288,6 +289,7 @@ impl<C: Config> Client<C> {
             settings: None,
             dug_blocks: Vec::new(),
             msgs_to_send: Vec::new(),
+            bar_to_send: None,
             attack_speed: 4.0,
             movement_speed: 0.7,
             bits: ClientBits::new()
@@ -487,7 +489,7 @@ impl<C: Config> Client<C> {
 
     /// Sets the action bar for this client.
     pub fn set_action_bar(&mut self, text: impl Into<Text>) {
-        self.send_packet(SendActionBar { text: text.into() });
+        self.bar_to_send = Some(text.into());
     }
 
     /// Gets the attack cooldown speed.
@@ -1192,6 +1194,10 @@ impl<C: Config> Client<C> {
                     kind: VarInt(0),
                 },
             );
+        }
+        
+        if let Some(bar) = self.bar_to_send.take() {
+            send_packet(&mut self.send, OverlayMessage { text: bar });
         }
 
         let mut entities_to_unload = Vec::new();
