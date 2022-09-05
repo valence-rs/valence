@@ -21,6 +21,7 @@ use crate::entity::data::Player;
 use crate::entity::{
     velocity_to_packet_units, Entities, EntityEvent, EntityId, EntityKind, StatusOrAnimation,
 };
+use crate::ident::Ident;
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::c2s::play::{
@@ -32,9 +33,10 @@ use crate::protocol::packets::s2c::play::{
     DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, EntitiesDestroy,
     EntityAnimation, EntityAttributes, EntityAttributesProperty, EntityPosition, EntitySetHeadYaw,
     EntityStatus, EntityTrackerUpdate, EntityVelocityUpdate, GameJoin, GameMessage,
-    GameStateChange, GameStateChangeReason, KeepAlive, MoveRelative, PlayerActionResponse,
-    PlayerPositionLook, PlayerPositionLookFlags, PlayerRespawn, PlayerSpawnPosition, RegistryCodec,
-    Rotate, RotateAndMoveRelative, S2cPlayPacket, UnloadChunk, UpdateSubtitle, UpdateTitle,
+    GameStateChange, GameStateChangeReason, KeepAlive, MoveRelative, PlaySoundId,
+    PlayerActionResponse, PlayerPositionLook, PlayerPositionLookFlags, PlayerRespawn,
+    PlayerSpawnPosition, RegistryCodec, Rotate, RotateAndMoveRelative, S2cPlayPacket,
+    SoundCategory, UnloadChunk, UpdateSubtitle, UpdateTitle,
 };
 use crate::protocol::{BoundedInt, ByteAngle, NbtBridge, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
@@ -455,6 +457,25 @@ impl<C: Config> Client<C> {
     /// Sets the client's game mode.
     pub fn set_game_mode(&mut self, game_mode: GameMode) {
         self.new_game_mode = game_mode;
+    }
+
+    /// Plays a sound to the client at a given position.
+    pub fn play_sound(
+        &mut self,
+        name: Ident,
+        category: SoundCategory,
+        pos: Vec3<f64>,
+        volume: f32,
+        pitch: f32,
+    ) {
+        self.send_packet(PlaySoundId {
+            name,
+            category,
+            position: pos.iter().map(|x| *x as i32 * 8).collect(),
+            volume,
+            pitch,
+            seed: 0,
+        });
     }
 
     /// Sets the title this client sees.
