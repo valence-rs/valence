@@ -7,8 +7,9 @@ use crate::block_pos::BlockPos;
 use crate::config::Config;
 use crate::entity::types::Pose;
 use crate::entity::{Entity, EntityEvent, EntityId, TrackedData};
-use crate::protocol::packets::c2s::play::BlockFace;
-pub use crate::protocol::packets::c2s::play::{ChatMode, DisplayedSkinParts, Hand, MainHand};
+pub use crate::protocol::packets::c2s::play::{
+    BlockFace, ChatMode, DisplayedSkinParts, Hand, MainHand,
+};
 pub use crate::protocol::packets::s2c::play::GameMode;
 use crate::protocol::VarInt;
 
