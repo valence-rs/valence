@@ -656,6 +656,12 @@ pub mod play {
     }
 
     def_struct! {
+        OverlayMessage {
+            text: Text
+        }
+    }
+
+    def_struct! {
         UpdateSelectedSlot {
             slot: BoundedInt<u8, 0, 9>,
         }
@@ -830,6 +836,7 @@ pub mod play {
             PlayerRespawn = 62,
             EntitySetHeadYaw = 63,
             ChunkSectionUpdate = 64,
+            OverlayMessage = 67,
             UpdateSelectedSlot = 74,
             ChunkRenderDistanceCenter = 75,
             ChunkLoadDistance = 76,
