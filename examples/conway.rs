@@ -7,15 +7,17 @@ use num::Integer;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 use valence::biome::Biome;
 use valence::block::BlockState;
-use valence::client::{default_client_event, ClientEvent};
+use valence::client::{default_client_event, ClientEvent, Hand};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::types::Pose;
 use valence::entity::{EntityId, EntityKind, TrackedData};
 use valence::player_list::PlayerListId;
+use valence::protocol::packets::s2c::play::SoundCategory;
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 use valence::{async_trait, ident};
+use vek::Vec3;
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()
@@ -121,8 +123,6 @@ impl Config for Game {
             SIZE_Z as f64 / 2.0,
         ];
 
-        server.state.paused = false;
-
         server.clients.retain(|_, client| {
             if client.created_this_tick() {
                 if self
@@ -192,8 +192,26 @@ impl Config for Game {
                             && (0..SIZE_Z as i32).contains(&position.z)
                             && position.y == BOARD_Y
                         {
-                            server.state.board
-                                [position.x as usize + position.z as usize * SIZE_X] = true;
+                            let index = position.x as usize + position.z as usize * SIZE_X;
+
+                            let normal_position = Into::<Vec3<i32>>::into(position);
+
+                            if !server.state.board[index] {
+                                client.play_sound(
+                                    ident!("minecraft:block.note_block.banjo"),
+                                    SoundCategory::Block,
+                                    Vec3::<f64>::new(normal_position.x.into(), normal_position.y.into(), normal_position.z.into()),
+                                    0.5f32,
+                                    1f32,
+                                );
+                            }
+
+                            server.state.board[index] = true;
+                        }
+                    }
+                    ClientEvent::InteractWithBlock { hand, .. } => {
+                        if hand == Hand::Main {
+                            client.send_message("I said left click, not right click!".italic());
                         }
                     }
                     _ => {}
@@ -201,7 +219,17 @@ impl Config for Game {
             }
 
             if let TrackedData::Player(data) = player.data() {
-                server.state.paused = data.get_pose() == Pose::Sneaking;
+                let sneaking = data.get_pose() == Pose::Sneaking;
+                if sneaking != server.state.paused {
+                    server.state.paused = sneaking;
+                    client.play_sound(
+                        ident!("minecraft:block.note_block.pling"),
+                        SoundCategory::Block,
+                        client.position().into(),
+                        0.5f32,
+                        if sneaking { 0.5f32 } else { 1f32 },
+                    );
+                }
             }
 
             // Display Playing in green or Paused in red
