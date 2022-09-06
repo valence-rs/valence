@@ -107,8 +107,8 @@ impl Config for Game {
         let world = server.worlds.insert(DimensionId::default(), ()).1;
         server.state.player_list = Some(server.player_lists.insert(()).0);
 
-        for chunk_z in -2..Integer::div_ceil(&(SIZE_X as i32), &16) + 2 {
-            for chunk_x in -2..Integer::div_ceil(&(SIZE_Z as i32), &16) + 2 {
+        for chunk_z in -2..Integer::div_ceil(&(SIZE_Z as i32), &16) + 2 {
+            for chunk_x in -2..Integer::div_ceil(&(SIZE_X as i32), &16) + 2 {
                 world.chunks.insert((chunk_x as i32, chunk_z as i32), ());
             }
         }
