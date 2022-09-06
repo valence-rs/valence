@@ -7,7 +7,7 @@ use num::Integer;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 use valence::biome::Biome;
 use valence::block::BlockState;
-use valence::client::{default_client_event, ClientEvent};
+use valence::client::{default_client_event, ClientEvent, Hand};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::types::Pose;
@@ -207,6 +207,11 @@ impl Config for Game {
                             }
 
                             server.state.board[index] = true;
+                        }
+                    }
+                    ClientEvent::InteractWithBlock { hand, .. } => {
+                        if hand == Hand::Main {
+                            client.send_message("I said left click, not right click!".italic());
                         }
                     }
                     _ => {}
