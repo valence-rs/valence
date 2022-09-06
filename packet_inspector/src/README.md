@@ -2,7 +2,7 @@
 
 The packet inspector is a very simple Minecraft proxy for viewing the contents of packets as they are sent/received.
 It uses Valence's protocol facilities to print packet contents.
-This was made for two purposes:
+This was made for three purposes:
 - Check that packets between Valence and client are matching your expectations.
 - Check that packets between vanilla server and client are parsed correctly by Valence.
 - Understand how the protocol works between the vanilla server and client.
@@ -11,7 +11,7 @@ This was made for two purposes:
 
 First, start a server
 
-```
+```sh
 cargo r -r --example conway
 ```
 In a separate terminal, start the packet inspector. 
