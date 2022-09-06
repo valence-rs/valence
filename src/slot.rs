@@ -19,7 +19,7 @@ impl Slot {
             present: true,
             item_id: Some(item_id),
             item_count: Some(item_count),
-            nbt
+            nbt,
         }
     }
 
@@ -29,7 +29,7 @@ impl Slot {
             present: false,
             item_id: None,
             item_count: None,
-            nbt: None
+            nbt: None,
         }
     }
 }
@@ -50,7 +50,7 @@ impl Decode for Slot {
     fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
         let present = bool::decode(r)?;
         if !present {
-            return Ok(Slot::empty())
+            return Ok(Slot::empty());
         }
         Ok(Slot::new(
             VarInt::decode(r)?,
@@ -60,7 +60,7 @@ impl Decode for Slot {
             } else {
                 r.seek(SeekFrom::Current(-1))?;
                 Some(Compound::decode(r)?)
-            }
+            },
         ))
     }
 }

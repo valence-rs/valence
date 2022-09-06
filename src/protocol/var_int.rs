@@ -81,6 +81,7 @@ impl From<i32> for VarInt {
 #[cfg(test)]
 mod tests {
     use rand::{thread_rng, Rng};
+    use std::io::Cursor;
 
     use super::*;
 
@@ -111,12 +112,13 @@ mod tests {
         {
             VarInt(n).encode(&mut buf).unwrap();
 
-            let mut slice = buf.as_slice();
-            assert!(slice.len() <= VarInt::MAX_SIZE);
+            let mut cursor = Cursor::new(buf.as_slice());
+            assert!(cursor.get_ref().len() <= VarInt::MAX_SIZE);
 
-            assert_eq!(n, VarInt::decode(&mut slice).unwrap().0);
+            assert_eq!(n, VarInt::decode(&mut cursor).unwrap().0);
 
-            assert!(slice.is_empty());
+            // `Cursor::is_empty()` is unstable :(
+            assert!(cursor.position() >= cursor.get_ref().len() as u64);
             buf.clear();
         }
     }

@@ -91,6 +91,7 @@ impl From<BlockPos> for Vec3<i32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Cursor;
 
     #[test]
     fn position() {
@@ -121,7 +122,7 @@ mod tests {
                     let pos = BlockPos::new(x, y, z);
                     if x_valid && y_valid && z_valid {
                         pos.encode(&mut &mut buf[..]).unwrap();
-                        assert_eq!(BlockPos::decode(&mut &buf[..]).unwrap(), pos);
+                        assert_eq!(BlockPos::decode(&mut Cursor::new(&buf[..])).unwrap(), pos);
                     } else {
                         assert!(pos.encode(&mut &mut buf[..]).is_err());
                     }
