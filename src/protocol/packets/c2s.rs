@@ -123,8 +123,15 @@ pub mod play {
     }
 
     def_struct! {
+        MessageAcknowledgmentList {
+            entries: Vec<MessageAcknowledgmentEntry>,
+        }
+    }
+
+    def_struct! {
         MessageAcknowledgment {
-            entry: Option<MessageAcknowledgmentEntry>,
+            last_seen: MessageAcknowledgmentList,
+            last_received: Option<MessageAcknowledgmentEntry>,
         }
     }
 
@@ -150,6 +157,7 @@ pub mod play {
             salt: u64,
             signature: Vec<u8>,
             signed_preview: bool,
+            acknowledgement: MessageAcknowledgment,
         }
     }
 
