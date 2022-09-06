@@ -196,12 +196,12 @@ impl<R: AsyncRead + Unpin> Decoder<R> {
                     .context("decompressing packet body")?;
 
                 let mut decompressed = self.decompress_buf.as_slice();
-                let packet = P::decode_packet(&mut decompressed)
-                    .context("decoding packet after decompressing")?;
                 ensure!(
                     decompressed.is_empty(),
                     "packet contents were not read completely"
                 );
+                let packet = P::decode_packet(&mut decompressed)
+                    .context("decoding packet after decompressing")?;
                 packet
             } else {
                 P::decode_packet(&mut packet_contents).context("decoding packet")?
