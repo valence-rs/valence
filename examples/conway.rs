@@ -194,17 +194,11 @@ impl Config for Game {
                         {
                             let index = position.x as usize + position.z as usize * SIZE_X;
 
-                            let normal_position = Into::<Vec3<i32>>::into(position);
-
                             if !server.state.board[index] {
                                 client.play_sound(
                                     ident!("minecraft:block.note_block.banjo"),
                                     SoundCategory::Block,
-                                    Vec3::<f64>::new(
-                                        normal_position.x.into(),
-                                        normal_position.y.into(),
-                                        normal_position.z.into(),
-                                    ),
+                                    Vec3::<i32>::from(position).as_(),
                                     0.5f32,
                                     1f32,
                                 );
