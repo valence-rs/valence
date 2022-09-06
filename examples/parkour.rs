@@ -106,14 +106,7 @@ impl Config for Game {
     }
 
     fn init(&self, server: &mut Server<Self>) {
-        let world = server.worlds.insert(DimensionId::default(), ()).1;
         server.state.player_list = Some(server.player_lists.insert(()).0);
-
-        for chunk_z in -2..Integer::div_ceil(&(100 as i32), &16) + 2 {
-            for chunk_x in -2..Integer::div_ceil(&(100 as i32), &16) + 2 {
-                world.chunks.insert((chunk_x as i32, chunk_z as i32), true);
-            }
-        }
     }
 
     fn update(&self, server: &mut Server<Self>) {
@@ -158,8 +151,8 @@ impl Config for Game {
 
                 client.state.world_id = world_id;
 
-                for chunk_z in -2..Integer::div_ceil(&(100 as i32), &16) + 2 {
-                    for chunk_x in -2..Integer::div_ceil(&(100 as i32), &16) + 2 {
+                for chunk_z in -1..3 {
+                    for chunk_x in -2..2 {
                         world.chunks.insert((chunk_x as i32, chunk_z as i32), true);
                     }
                 }
@@ -198,6 +191,8 @@ impl Config for Game {
                 }
                 client.state.blocks.clear();
                 client.state.score = 0;
+                
+                server.worlds.remove(world_id);
                 return false;
             }
 
@@ -211,6 +206,11 @@ impl Config for Game {
             }
 
             if (client.position().y as i32) < START_POS.y - 32 {
+                client.send_message(
+                    "Your score was ".italic()
+                    + client.state.score.to_string().color(Color::GOLD).bold().not_italic()
+                );
+
                 reset(client, world);
             }
 
@@ -261,6 +261,13 @@ impl Config for Game {
 }
 
 fn reset(client: &mut Client<Game>, world: &mut World<Game>) {
+    // Load chunks around spawn to avoid double void reset
+    for chunk_z in -1..3 {
+        for chunk_x in -2..2 {
+            world.chunks.insert((chunk_x as i32, chunk_z as i32), true);
+        }
+    }
+
     client.state.score = 0;
     client.state.combo = 0;
 
