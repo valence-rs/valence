@@ -18,7 +18,7 @@ use valence::protocol::packets::s2c::play::SoundCategory;
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 use valence::util::chunks_in_view_distance;
-use valence::world::World;
+use valence::world::{World, WorldId};
 use valence::{async_trait, ident};
 use valence::block::BlockPos;
 
@@ -59,7 +59,8 @@ struct ClientState {
     score: u32,
     combo: u32,
     target_y: i32,
-    last_block_timestamp: u128
+    last_block_timestamp: u128,
+    world_id: WorldId
 }
 
 const MAX_PLAYERS: usize = 10;
@@ -116,7 +117,7 @@ impl Config for Game {
     }
 
     fn update(&self, server: &mut Server<Self>) {
-        let (world_id, world) = server.worlds.iter_mut().next().unwrap();
+        //let (world_id, world) = server.worlds.iter_mut().next().unwrap();
 
         server.clients.retain(|_, client| {
             if client.created_this_tick() {
@@ -144,11 +145,22 @@ impl Config for Game {
                             combo: 0,
                             last_block_timestamp: 0,
                             target_y: 0,
+                            world_id: WorldId::NULL
                         };
                     }
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;
+                    }
+                }
+
+                let (world_id, world) = server.worlds.insert(DimensionId::default(), ());
+
+                client.state.world_id = world_id;
+
+                for chunk_z in -2..Integer::div_ceil(&(100 as i32), &16) + 2 {
+                    for chunk_x in -2..Integer::div_ceil(&(100 as i32), &16) + 2 {
+                        world.chunks.insert((chunk_x as i32, chunk_z as i32), true);
                     }
                 }
 
@@ -172,6 +184,8 @@ impl Config for Game {
                 client.set_game_mode(GameMode::Adventure);
                 reset(client, world);
             }
+
+            let (world_id, world) = server.worlds.iter_mut().find(|w| w.0 == client.state.world_id).unwrap();
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
@@ -230,17 +244,17 @@ impl Config for Game {
                 .is_some()
             {}
 
-            true
-        });
+            // Remove chunks outside the view distance of players.
+            world.chunks.retain(|_, chunk| {
+                if chunk.state {
+                    chunk.state = false;
+                    true
+                } else {
+                    false
+                }
+            });
 
-        // Remove chunks outside the view distance of players.
-        world.chunks.retain(|_, chunk| {
-            if chunk.state {
-                chunk.state = false;
-                true
-            } else {
-                false
-            }
+            true
         });
 
     }
