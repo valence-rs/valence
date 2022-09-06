@@ -7,12 +7,11 @@ use log::LevelFilter;
 use num::Integer;
 use rand::Rng;
 use rand::seq::SliceRandom;
-use valence::biome::Biome;
 use valence::block::BlockState;
 use valence::chunk::ChunkPos;
 use valence::client::{Client, TitleFade, default_client_event, GameMode};
 use valence::config::{Config, ServerListPing};
-use valence::dimension::{Dimension, DimensionId};
+use valence::dimension::{DimensionId};
 use valence::entity::{EntityId, EntityKind};
 use valence::player_list::PlayerListId;
 use valence::protocol::packets::s2c::play::SoundCategory;
@@ -89,21 +88,6 @@ impl Config for Game {
     fn max_connections(&self) -> usize {
         // We want status pings to be successful even if the server is full.
         MAX_PLAYERS + 64
-    }
-
-    fn dimensions(&self) -> Vec<Dimension> {
-        vec![Dimension {
-            fixed_time: Some(6000),
-            ..Dimension::default()
-        }]
-    }
-
-    fn biomes(&self) -> Vec<Biome> {
-        vec![Biome {
-            name: ident!("valence:default_biome"),
-            grass_color: Some(0x00ff00),
-            ..Biome::default()
-        }]
     }
 
     async fn server_list_ping(
