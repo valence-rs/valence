@@ -200,7 +200,11 @@ impl Config for Game {
                                 client.play_sound(
                                     ident!("minecraft:block.note_block.banjo"),
                                     SoundCategory::Block,
-                                    Vec3::<f64>::new(normal_position.x.into(), normal_position.y.into(), normal_position.z.into()),
+                                    Vec3::<f64>::new(
+                                        normal_position.x.into(),
+                                        normal_position.y.into(),
+                                        normal_position.z.into(),
+                                    ),
                                     0.5f32,
                                     1f32,
                                 );
@@ -233,13 +237,11 @@ impl Config for Game {
             }
 
             // Display Playing in green or Paused in red
-            client.set_action_bar(
-                if server.state.paused {
-                    "Paused".color(Color::RED)
-                } else {
-                    "Playing".color(Color::GREEN)
-                },
-            );
+            client.set_action_bar(if server.state.paused {
+                "Paused".color(Color::RED)
+            } else {
+                "Playing".color(Color::GREEN)
+            });
 
             true
         });
