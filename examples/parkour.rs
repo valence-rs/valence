@@ -4,14 +4,14 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use log::LevelFilter;
-use num::Integer;
-use rand::Rng;
 use rand::seq::SliceRandom;
+use rand::Rng;
+use valence::block::BlockPos;
 use valence::block::BlockState;
 use valence::chunk::ChunkPos;
-use valence::client::{Client, TitleFade, default_client_event, GameMode};
+use valence::client::{default_client_event, Client, GameMode, TitleFade};
 use valence::config::{Config, ServerListPing};
-use valence::dimension::{DimensionId};
+use valence::dimension::DimensionId;
 use valence::entity::{EntityId, EntityKind};
 use valence::player_list::PlayerListId;
 use valence::protocol::packets::s2c::play::SoundCategory;
@@ -20,7 +20,6 @@ use valence::text::{Color, TextFormat};
 use valence::util::chunks_in_view_distance;
 use valence::world::{World, WorldId};
 use valence::{async_trait, ident};
-use valence::block::BlockPos;
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()
@@ -32,14 +31,12 @@ pub fn main() -> ShutdownResult {
         Game {
             player_count: AtomicUsize::new(0),
         },
-        ServerState {
-            player_list: None,
-        },
+        ServerState { player_list: None },
     )
 }
 
 struct Game {
-    player_count: AtomicUsize
+    player_count: AtomicUsize,
 }
 
 struct ServerState {
@@ -60,7 +57,7 @@ struct ClientState {
     combo: u32,
     target_y: i32,
     last_block_timestamp: u128,
-    world_id: WorldId
+    world_id: WorldId,
 }
 
 const MAX_PLAYERS: usize = 10;
@@ -73,7 +70,7 @@ const BLOCK_TYPES: [BlockState; 7] = [
     BlockState::OAK_LEAVES,
     BlockState::BIRCH_LEAVES,
     BlockState::DIRT,
-    BlockState::MOSS_BLOCK
+    BlockState::MOSS_BLOCK,
 ];
 
 #[async_trait]
@@ -138,7 +135,7 @@ impl Config for Game {
                             combo: 0,
                             last_block_timestamp: 0,
                             target_y: 0,
-                            world_id: WorldId::NULL
+                            world_id: WorldId::NULL,
                         };
                     }
                     None => {
@@ -178,7 +175,11 @@ impl Config for Game {
                 reset(client, world);
             }
 
-            let (world_id, world) = server.worlds.iter_mut().find(|w| w.0 == client.state.world_id).unwrap();
+            let (world_id, world) = server
+                .worlds
+                .iter_mut()
+                .find(|w| w.0 == client.state.world_id)
+                .unwrap();
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
@@ -191,7 +192,7 @@ impl Config for Game {
                 }
                 client.state.blocks.clear();
                 client.state.score = 0;
-                
+
                 server.worlds.remove(world_id);
                 return false;
             }
@@ -199,7 +200,7 @@ impl Config for Game {
             let p = client.position();
             for pos in chunks_in_view_distance(ChunkPos::at(p.x, p.z), 3) {
                 if let Some(chunk) = world.chunks.get_mut(pos) {
-                   chunk.state = true;
+                    chunk.state = true;
                 } else {
                     world.chunks.insert(pos, true);
                 }
@@ -208,20 +209,36 @@ impl Config for Game {
             if (client.position().y as i32) < START_POS.y - 32 {
                 client.send_message(
                     "Your score was ".italic()
-                    + client.state.score.to_string().color(Color::GOLD).bold().not_italic()
+                        + client.state.score
+                            .to_string()
+                            .color(Color::GOLD)
+                            .bold()
+                            .not_italic(),
                 );
 
                 reset(client, world);
             }
 
-            let pos_under_player = BlockPos::new((client.position().x - 0.5f64).round() as i32, client.position().y as i32 - 1, (client.position().z - 0.5f64).round() as i32);
+            let pos_under_player = BlockPos::new(
+                (client.position().x - 0.5f64).round() as i32,
+                client.position().y as i32 - 1,
+                (client.position().z - 0.5f64).round() as i32,
+            );
 
-            if let Some(index) = client.state.blocks.iter().position(|block| block.pos == pos_under_player) {
+            if let Some(index) = client
+                .state
+                .blocks
+                .iter()
+                .position(|block| block.pos == pos_under_player)
+            {
                 if index > 0 {
                     let power_result = 2.0f32.powf((client.state.combo as f32) / 45.0);
                     let max_time_taken = (1000.0f32 * (index as f32) / power_result) as u128;
 
-                    let current_time_millis = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
+                    let current_time_millis = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_millis();
                     if current_time_millis - client.state.last_block_timestamp < max_time_taken {
                         client.state.combo = client.state.combo + (index as u32)
                     } else {
@@ -234,14 +251,32 @@ impl Config for Game {
                         generate_next_block(client, world, true)
                     }
 
-                    client.play_sound(ident!("minecraft:block.note_block.bass"), SoundCategory::Master, client.position(), 1f32, pitch);
-                    client.set_title("", client.state.score.to_string().into_text().color(Color::LIGHT_PURPLE), TitleFade { fade_in: 0, stay: 7, fade_out: 4 });
+                    client.play_sound(
+                        ident!("minecraft:block.note_block.bass"),
+                        SoundCategory::Master,
+                        client.position(),
+                        1f32,
+                        pitch,
+                    );
+                    client.set_title(
+                        "",
+                        client.state.score
+                            .to_string()
+                            .color(Color::LIGHT_PURPLE),
+                        TitleFade {
+                            fade_in: 0,
+                            stay: 7,
+                            fade_out: 4,
+                        },
+                    );
                 }
-                
             }
-        
-            while default_client_event(client, server.entities.get_mut(client.state.entity_id).unwrap())
-                .is_some()
+
+            while default_client_event(
+                client,
+                server.entities.get_mut(client.state.entity_id).unwrap(),
+            )
+            .is_some()
             {}
 
             // Remove chunks outside the view distance of players.
@@ -256,7 +291,6 @@ impl Config for Game {
 
             true
         });
-
     }
 }
 
@@ -275,21 +309,30 @@ fn reset(client: &mut Client<Game>, world: &mut World<Game>) {
         world.chunks.set_block_state(block.pos, BlockState::AIR);
     }
     client.state.blocks.clear();
-    client.state.blocks.push_back(BlockAndTick { pos: START_POS });
+    client.state.blocks
+        .push_back(BlockAndTick { pos: START_POS });
     world.chunks.set_block_state(START_POS, BlockState::STONE);
 
     for _ in 0..10 {
         generate_next_block(client, world, false)
     }
 
-    client.teleport([START_POS.x as f64 + 0.5, START_POS.y as f64 + 1.0, START_POS.z as f64 + 0.5], 0f32, 0f32);
-
+    client.teleport(
+        [
+            START_POS.x as f64 + 0.5,
+            START_POS.y as f64 + 1.0,
+            START_POS.z as f64 + 0.5,
+        ],
+        0f32,
+        0f32,
+    );
 }
 
 fn generate_next_block(client: &mut Client<Game>, world: &mut World<Game>, in_game: bool) {
     if in_game {
         let removed_block = client.state.blocks.pop_front().unwrap();
-        world.chunks.set_block_state(removed_block.pos, BlockState::AIR);
+        world.chunks
+            .set_block_state(removed_block.pos, BlockState::AIR);
 
         client.state.score = client.state.score + 1
     }
@@ -305,26 +348,31 @@ fn generate_next_block(client: &mut Client<Game>, world: &mut World<Game>, in_ga
 
     let mut rng = rand::thread_rng();
 
-    world.chunks.set_block_state(block_pos, *BLOCK_TYPES.choose(&mut rng).unwrap());
-    client.state.blocks.push_back(BlockAndTick { pos: block_pos });
+    world.chunks
+        .set_block_state(block_pos, *BLOCK_TYPES.choose(&mut rng).unwrap());
+    client.state.blocks
+        .push_back(BlockAndTick { pos: block_pos });
 
     // Combo System
-    client.state.last_block_timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
+    client.state.last_block_timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
 }
 
 fn generate_random_block(pos: BlockPos, target_y: i32) -> BlockPos {
     let mut rng = rand::thread_rng();
-    
+
     // if above or below target_y, change y to gradually reach it
     let y = match target_y {
         0 => rng.gen_range(-1..2),
         y if y > pos.y => 1,
-        _ => -1
+        _ => -1,
     };
     let z = match y {
         1 => rng.gen_range(1..4),
         -1 => rng.gen_range(2..6),
-        _ => rng.gen_range(1..5)
+        _ => rng.gen_range(1..5),
     };
     let x = rng.gen_range(-3..4);
 
