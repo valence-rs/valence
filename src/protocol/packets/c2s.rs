@@ -143,10 +143,20 @@ pub mod play {
     }
 
     def_struct! {
+        ArgumentSignatureEntry {
+            name: BoundedString<0, 16>,
+            signature: Vec<u8>,
+        }
+    }
+
+    def_struct! {
         CommandExecution {
-            command: String, // TODO: bounded?
-            // TODO: timestamp, arg signatures
+            command: BoundedString<0, 256>,
+            timestamp: u64,
+            salt: u64,
+            arg_sig: Vec<ArgumentSignatureEntry>,
             signed_preview: bool,
+            acknowledgement: MessageAcknowledgment,
         }
     }
 
