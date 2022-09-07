@@ -5,6 +5,7 @@ use std::fmt;
 use std::io::{Read, Write};
 
 use serde::de::Visitor;
+use serde::ser::SerializeMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::ident::Ident;
@@ -43,50 +44,27 @@ use crate::protocol::{BoundedString, Decode, Encode};
 ///     "The text is Red, Green, and also Blue!\nAnd maybe even Italic."
 /// );
 /// ```
-#[derive(Clone, PartialEq, Default, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Clone, PartialEq, Default, Debug)]
+// #[serde(rename_all = "camelCase")]
 pub struct Text {
-    #[serde(flatten)]
     content: TextContent,
-
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     color: Option<Color>,
-
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    font: Option<Cow<'static, str>>,
-
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    bold: Option<bool>,
-
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    italic: Option<bool>,
-
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    underlined: Option<bool>,
-
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    strikethrough: Option<bool>,
-
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    obfuscated: Option<bool>,
-
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    insertion: Option<Cow<'static, str>>,
-
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    font: Option<String>,
+    /// A packed representation of all the boolean flags: bold, italic,
+    /// underlined, strikethrough, obfuscated. 2 bits are used for each
+    /// flag, the left bit indicating if the property is set and the right bit
+    /// indicating the value.
+    flags: u16,
+    insertion: Option<String>,
     click_event: Option<ClickEvent>,
-
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     hover_event: Option<HoverEvent>,
-
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     extra: Vec<Text>,
 }
 
 #[allow(clippy::self_named_constructors)]
 impl Text {
     /// Constructs a new plain text object.
-    pub fn text(plain: impl Into<Cow<'static, str>>) -> Self {
+    pub fn text(plain: impl Into<String>) -> Self {
         Self {
             content: TextContent::Text { text: plain.into() },
             ..Self::default()
@@ -94,7 +72,7 @@ impl Text {
     }
 
     /// Create translated text based on the given translation key.
-    pub fn translate(key: impl Into<Cow<'static, str>>) -> Self {
+    pub fn translate(key: impl Into<String>) -> Self {
         Self {
             content: TextContent::Translate {
                 translate: key.into(),
@@ -139,6 +117,189 @@ impl Text {
             TextContent::Translate { translate } => translate.is_empty(),
         }
     }
+
+    fn set_flag(&mut self, flag: TextFlag, value: Option<bool>) {
+        let shift = flag as u16 * 2;
+        let bits = match value {
+            Some(value) => {
+                if value {
+                    0b11
+                } else {
+                    0b10
+                }
+            }
+            None => 0,
+        } << shift;
+        let clearmask = !(0b11 << shift);
+        self.flags &= clearmask; // clear the bits for this flag
+        self.flags |= bits; // set the bits for this flag
+    }
+
+    fn get_flag(&self, flag: TextFlag) -> Option<bool> {
+        let shift = flag as u16 * 2;
+        let set = (self.flags & (1 << shift + 1)) != 0;
+        let value = (self.flags & (1 << shift)) != 0;
+
+        if set {
+            Some(value)
+        } else {
+            None
+        }
+    }
+}
+
+impl Serialize for Text {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_map(None)?;
+        Serialize::serialize(
+            &&self.content,
+            serde::__private::ser::FlatMapSerializer(&mut state),
+        )?;
+        if self.color.is_some() {
+            SerializeMap::serialize_entry(&mut state, "color", &self.color)?;
+        }
+        if self.font.is_some() {
+            SerializeMap::serialize_entry(&mut state, "font", &self.font)?;
+        }
+
+        for flag in TextFlag::all() {
+            if let Some(value) = self.get_flag(flag) {
+                SerializeMap::serialize_entry(&mut state, &flag.field_name(), &value)?;
+            }
+        }
+
+        if self.insertion.is_some() {
+            SerializeMap::serialize_entry(&mut state, "insertion", &self.insertion)?;
+        }
+        if self.click_event.is_some() {
+            SerializeMap::serialize_entry(&mut state, "click_event", &self.click_event)?;
+        }
+        if self.hover_event.is_some() {
+            SerializeMap::serialize_entry(&mut state, "hover_event", &self.hover_event)?;
+        }
+        if !self.extra.is_empty() {
+            SerializeMap::serialize_entry(&mut state, "extra", &self.extra)?;
+        }
+        SerializeMap::end(state)
+    }
+}
+
+impl<'de> Deserialize<'de> for Text {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(field_identifier, rename_all = "camelCase")]
+        enum Field {
+            Text,
+            Translate,
+            Color,
+            Font,
+            Bold,
+            Italic,
+            Underlined,
+            Strikethrough,
+            Obfuscated,
+            Insertion,
+            ClickEvent,
+            HoverEvent,
+            Extra,
+        }
+
+        struct TextVisitor;
+
+        impl<'de> Visitor<'de> for TextVisitor {
+            type Value = Text;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("expected Text")
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::MapAccess<'de>,
+            {
+                let mut text = Text::default();
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Field::Text => {
+                            text.content = TextContent::Text {
+                                text: map.next_value()?,
+                            };
+                        }
+                        Field::Translate => {
+                            text.content = TextContent::Translate {
+                                translate: map.next_value()?,
+                            };
+                        }
+                        Field::Color => {
+                            text.color = map.next_value()?;
+                        }
+                        Field::Font => {
+                            text.font = map.next_value()?;
+                        }
+                        Field::Bold => text.set_flag(TextFlag::Bold, map.next_value()?),
+                        Field::Italic => text.set_flag(TextFlag::Italic, map.next_value()?),
+                        Field::Underlined => text.set_flag(TextFlag::Underlined, map.next_value()?),
+                        Field::Strikethrough => {
+                            text.set_flag(TextFlag::Strikethrough, map.next_value()?)
+                        }
+                        Field::Obfuscated => text.set_flag(TextFlag::Obfuscated, map.next_value()?),
+                        Field::Insertion => {
+                            text.insertion = map.next_value()?;
+                        }
+                        Field::ClickEvent => {
+                            text.click_event = map.next_value()?;
+                        }
+                        Field::HoverEvent => {
+                            text.hover_event = map.next_value()?;
+                        }
+                        Field::Extra => {
+                            text.extra = map.next_value()?;
+                        }
+                    }
+                }
+                Ok(text)
+            }
+        }
+
+        deserializer.deserialize_any(TextVisitor {})
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TextFlag {
+    Bold = 0,
+    Italic = 1,
+    Underlined = 2,
+    Strikethrough = 3,
+    Obfuscated = 4,
+}
+
+impl TextFlag {
+    fn all() -> [TextFlag; 5] {
+        [
+            TextFlag::Bold,
+            TextFlag::Italic,
+            TextFlag::Underlined,
+            TextFlag::Strikethrough,
+            TextFlag::Obfuscated,
+        ]
+    }
+
+    fn field_name(&self) -> &str {
+        match self {
+            TextFlag::Bold => "bold",
+            TextFlag::Italic => "italic",
+            TextFlag::Underlined => "underlined",
+            TextFlag::Strikethrough => "strikethrough",
+            TextFlag::Obfuscated => "obfuscated",
+        }
+    }
 }
 
 /// Provides the methods necessary for working with [`Text`] objects.
@@ -164,7 +325,7 @@ pub trait TextFormat: Into<Text> {
         t
     }
 
-    fn font(self, font: impl Into<Cow<'static, str>>) -> Text {
+    fn font(self, font: impl Into<String>) -> Text {
         let mut t = self.into();
         t.font = Some(font.into());
         t
@@ -178,95 +339,95 @@ pub trait TextFormat: Into<Text> {
 
     fn bold(self) -> Text {
         let mut t = self.into();
-        t.bold = Some(true);
+        t.set_flag(TextFlag::Bold, Some(true));
         t
     }
 
     fn not_bold(self) -> Text {
         let mut t = self.into();
-        t.bold = Some(false);
+        t.set_flag(TextFlag::Bold, Some(false));
         t
     }
 
     fn clear_bold(self) -> Text {
         let mut t = self.into();
-        t.bold = None;
+        t.set_flag(TextFlag::Bold, None);
         t
     }
 
     fn italic(self) -> Text {
         let mut t = self.into();
-        t.italic = Some(true);
+        t.set_flag(TextFlag::Italic, Some(true));
         t
     }
 
     fn not_italic(self) -> Text {
         let mut t = self.into();
-        t.italic = Some(false);
+        t.set_flag(TextFlag::Italic, Some(false));
         t
     }
 
     fn clear_italic(self) -> Text {
         let mut t = self.into();
-        t.italic = None;
+        t.set_flag(TextFlag::Italic, None);
         t
     }
 
     fn underlined(self) -> Text {
         let mut t = self.into();
-        t.underlined = Some(true);
+        t.set_flag(TextFlag::Underlined, Some(true));
         t
     }
 
     fn not_underlined(self) -> Text {
         let mut t = self.into();
-        t.underlined = Some(false);
+        t.set_flag(TextFlag::Underlined, Some(false));
         t
     }
 
     fn clear_underlined(self) -> Text {
         let mut t = self.into();
-        t.underlined = None;
+        t.set_flag(TextFlag::Underlined, None);
         t
     }
 
     fn strikethrough(self) -> Text {
         let mut t = self.into();
-        t.strikethrough = Some(true);
+        t.set_flag(TextFlag::Strikethrough, Some(true));
         t
     }
 
     fn not_strikethrough(self) -> Text {
         let mut t = self.into();
-        t.strikethrough = Some(false);
+        t.set_flag(TextFlag::Strikethrough, Some(false));
         t
     }
 
     fn clear_strikethrough(self) -> Text {
         let mut t = self.into();
-        t.strikethrough = None;
+        t.set_flag(TextFlag::Strikethrough, None);
         t
     }
 
     fn obfuscated(self) -> Text {
         let mut t = self.into();
-        t.obfuscated = Some(true);
+        t.set_flag(TextFlag::Obfuscated, Some(true));
         t
     }
 
     fn not_obfuscated(self) -> Text {
         let mut t = self.into();
-        t.obfuscated = Some(false);
+        t.set_flag(TextFlag::Obfuscated, Some(false));
         t
     }
 
     fn clear_obfuscated(self) -> Text {
         let mut t = self.into();
-        t.obfuscated = None;
+        t.set_flag(TextFlag::Obfuscated, None);
         t
     }
 
-    fn insertion(self, insertion: impl Into<Cow<'static, str>>) -> Text {
+    fn insertion(self, insertion: impl Into<String>) -> Text {
         let mut t = self.into();
         t.insertion = Some(insertion.into());
         t
@@ -278,19 +439,19 @@ pub trait TextFormat: Into<Text> {
         t
     }
 
-    fn on_click_open_url(self, url: impl Into<Cow<'static, str>>) -> Text {
+    fn on_click_open_url(self, url: impl Into<String>) -> Text {
         let mut t = self.into();
         t.click_event = Some(ClickEvent::OpenUrl(url.into()));
         t
     }
 
-    fn on_click_run_command(self, command: impl Into<Cow<'static, str>>) -> Text {
+    fn on_click_run_command(self, command: impl Into<String>) -> Text {
         let mut t = self.into();
         t.click_event = Some(ClickEvent::RunCommand(command.into()));
         t
     }
 
-    fn on_click_suggest_command(self, command: impl Into<Cow<'static, str>>) -> Text {
+    fn on_click_suggest_command(self, command: impl Into<String>) -> Text {
         let mut t = self.into();
         t.click_event = Some(ClickEvent::SuggestCommand(command.into()));
         t
@@ -302,7 +463,7 @@ pub trait TextFormat: Into<Text> {
         t
     }
 
-    fn on_click_copy_to_clipboard(self, text: impl Into<Cow<'static, str>>) -> Text {
+    fn on_click_copy_to_clipboard(self, text: impl Into<String>) -> Text {
         let mut t = self.into();
         t.click_event = Some(ClickEvent::CopyToClipboard(text.into()));
         t
@@ -337,10 +498,10 @@ pub trait TextFormat: Into<Text> {
 #[serde(untagged)]
 enum TextContent {
     Text {
-        text: Cow<'static, str>,
+        text: String,
     },
     Translate {
-        translate: Cow<'static, str>,
+        translate: String,
         // TODO: 'with' field
     },
     // TODO: score
@@ -363,13 +524,13 @@ pub struct Color {
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(tag = "action", content = "value", rename_all = "snake_case")]
 enum ClickEvent {
-    OpenUrl(Cow<'static, str>),
+    OpenUrl(String),
     /// Only usable by internal servers for security reasons.
-    OpenFile(Cow<'static, str>),
-    RunCommand(Cow<'static, str>),
-    SuggestCommand(Cow<'static, str>),
+    OpenFile(String),
+    RunCommand(String),
+    SuggestCommand(String),
     ChangePage(i32),
-    CopyToClipboard(Cow<'static, str>),
+    CopyToClipboard(String),
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
@@ -567,6 +728,7 @@ mod tests {
         assert_eq!(before.to_plain(), "foobarbaz");
 
         let json = serde_json::to_string_pretty(&before).unwrap();
+        println!("serialized: {json}");
 
         let after: Text = serde_json::from_str(&json).unwrap();
 
@@ -577,6 +739,24 @@ mod tests {
 
         assert_eq!(before, after);
         assert_eq!(before.to_plain(), after.to_plain());
+    }
+
+    #[test]
+    fn text_flags() {
+        let mut text = Text::text("creeper");
+        text.set_flag(TextFlag::Bold, Some(true));
+        assert_eq!(text.flags, 0b11);
+        assert_eq!(text.get_flag(TextFlag::Bold), Some(true));
+        text.set_flag(TextFlag::Bold, Some(false));
+        assert_eq!(text.flags, 0b10);
+        text.set_flag(TextFlag::Bold, None);
+        assert_eq!(text.flags, 0b00);
+        text.set_flag(TextFlag::Italic, Some(true));
+        text.set_flag(TextFlag::Strikethrough, Some(false));
+        assert_eq!(text.flags, 0b10001100);
+        assert_eq!(text.get_flag(TextFlag::Bold), None);
+        assert_eq!(text.get_flag(TextFlag::Italic), Some(true));
+        assert_eq!(text.get_flag(TextFlag::Strikethrough), Some(false));
     }
 
     #[test]
