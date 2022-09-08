@@ -27,7 +27,10 @@ impl Encode for Node {
             | (self.redirect_node.is_some() as u8 * 0x08)
             | (if let NodeData::Argument(argument) = &self.data {
                 argument.suggestions_type.is_some()
-            } else { false } as u8 * 0x04);
+            } else {
+                false
+            } as u8
+                * 0x10);
 
         w.write_u8(flags)?;
         self.children.encode(w)?;
@@ -38,9 +41,7 @@ impl Encode for Node {
 
         match &self.data {
             NodeData::Root => {}
-            NodeData::Literal(literal) => {
-                literal.name.encode(w)?
-            }
+            NodeData::Literal(literal) => literal.name.encode(w)?,
             NodeData::Argument(argument) => {
                 argument.name.encode(w)?;
                 argument.parser.encode(w)?;
@@ -82,7 +83,7 @@ impl Decode for Node {
                     None
                 },
             }),
-            _ => bail!("Invalid NodeData variant")
+            _ => bail!("Invalid NodeData variant"),
         };
 
         Ok(Node {
@@ -117,8 +118,9 @@ def_enum! {
     Parser: VarInt {
         BrigadierBool: bool = 0,
         BrigadierFloat: BrigadierFloat = 1,
-        BrigadierInteger: BrigadierInteger = 2,
-        BrigadierLong: BrigadierLong = 3,
+        //BrigadierDouble: BrigadierFloat = 2,
+        BrigadierInteger: BrigadierInteger = 3,
+        BrigadierLong: BrigadierLong = 4,
         //TODO
     }
 }
@@ -131,7 +133,7 @@ pub struct BrigadierFloat {
 
 impl Encode for BrigadierFloat {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        let flags = (self.min.is_some() as u8) << 0 & (self.max.is_some() as u8) << 1;
+        let flags = (self.min.is_some() as u8) << 0 | (self.max.is_some() as u8) << 1;
         w.write_u8(flags)?;
         if let Some(min) = self.min {
             min.encode(w)?;
@@ -168,7 +170,7 @@ pub struct BrigadierInteger {
 
 impl Encode for BrigadierInteger {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        let flags = (self.min.is_some() as u8) << 0 & (self.max.is_some() as u8) << 1;
+        let flags = (self.min.is_some() as u8) << 0 | (self.max.is_some() as u8) << 1;
         w.write_u8(flags)?;
         if let Some(min) = self.min {
             min.encode(w)?;
@@ -205,7 +207,7 @@ pub struct BrigadierLong {
 
 impl Encode for BrigadierLong {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        let flags = (self.min.is_some() as u8) << 0 & (self.max.is_some() as u8) << 1;
+        let flags = (self.min.is_some() as u8) << 0 | (self.max.is_some() as u8) << 1;
         w.write_u8(flags)?;
         if let Some(min) = self.min {
             min.encode(w)?;

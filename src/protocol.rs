@@ -10,12 +10,12 @@ use arrayvec::ArrayVec;
 use bitvec::prelude::*;
 pub use byte_angle::ByteAngle;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+pub use node::Node;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use uuid::Uuid;
 pub use var_int::VarInt;
 pub use var_long::VarLong;
-pub use node::Node;
 use vek::{Vec2, Vec3, Vec4};
 
 use crate::entity::EntityId;
@@ -23,10 +23,10 @@ use crate::nbt;
 
 mod byte_angle;
 pub mod codec;
+pub mod node;
 pub mod packets;
 mod var_int;
 mod var_long;
-pub mod node;
 
 /// Types that can be written to the Minecraft protocol.
 pub trait Encode {
