@@ -123,8 +123,15 @@ pub mod play {
     }
 
     def_struct! {
+        MessageAcknowledgmentList {
+            entries: Vec<MessageAcknowledgmentEntry>,
+        }
+    }
+
+    def_struct! {
         MessageAcknowledgment {
-            entry: Option<MessageAcknowledgmentEntry>,
+            last_seen: MessageAcknowledgmentList,
+            last_received: Option<MessageAcknowledgmentEntry>,
         }
     }
 
@@ -136,13 +143,20 @@ pub mod play {
     }
 
     def_struct! {
+        ArgumentSignatureEntry {
+            name: BoundedString<0, 16>,
+            signature: Vec<u8>,
+        }
+    }
+
+    def_struct! {
         CommandExecution {
-            command: String, // TODO: bounded?
+            command: BoundedString<0, 256>,
             timestamp: u64,
             salt: u64,
-            arg_signatures: Vec<(String, Vec<u8>)>,
+            arg_sig: Vec<ArgumentSignatureEntry>,
             signed_preview: bool,
-            data: RawBytes
+            acknowledgement: MessageAcknowledgment,
         }
     }
 
@@ -153,6 +167,7 @@ pub mod play {
             salt: u64,
             signature: Vec<u8>,
             signed_preview: bool,
+            acknowledgement: MessageAcknowledgment,
         }
     }
 
@@ -568,7 +583,7 @@ pub mod play {
     def_struct! {
         UpdateCreativeModeSlot {
             slot: i16,
-            clicked_item: Slot,
+            // TODO: clicked_item: Slot,
         }
     }
 

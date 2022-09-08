@@ -21,6 +21,7 @@ use crate::entity::data::Player;
 use crate::entity::{
     velocity_to_packet_units, Entities, EntityEvent, EntityId, EntityKind, StatusOrAnimation,
 };
+use crate::ident::Ident;
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::c2s::play::{
@@ -32,9 +33,10 @@ use crate::protocol::packets::s2c::play::{
     DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, EntitiesDestroy,
     EntityAnimation, EntityAttributes, EntityAttributesProperty, EntityPosition, EntitySetHeadYaw,
     EntityStatus, EntityTrackerUpdate, EntityVelocityUpdate, GameJoin, GameMessage,
-    GameStateChange, GameStateChangeReason, KeepAlive, MoveRelative, PlayerActionResponse,
-    PlayerPositionLook, PlayerPositionLookFlags, PlayerRespawn, PlayerSpawnPosition, RegistryCodec,
-    Rotate, RotateAndMoveRelative, S2cPlayPacket, UnloadChunk, UpdateSubtitle, UpdateTitle,
+    GameStateChange, GameStateChangeReason, KeepAlive, MoveRelative, OverlayMessage, PlaySoundId,
+    PlayerActionResponse, PlayerPositionLook, PlayerPositionLookFlags, PlayerRespawn,
+    PlayerSpawnPosition, RegistryCodec, Rotate, RotateAndMoveRelative, S2cPlayPacket,
+    SoundCategory, UnloadChunk, UpdateSubtitle, UpdateTitle,
 };
 use crate::protocol::{BoundedInt, ByteAngle, NbtBridge, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
@@ -223,6 +225,7 @@ pub struct Client<C: Config> {
     dug_blocks: Vec<i32>,
     /// Should be sent after login packet.
     msgs_to_send: Vec<Text>,
+    bar_to_send: Option<Text>,
     attack_speed: f64,
     movement_speed: f64,
     bits: ClientBits,
@@ -288,6 +291,7 @@ impl<C: Config> Client<C> {
             settings: None,
             dug_blocks: Vec::new(),
             msgs_to_send: Vec::new(),
+            bar_to_send: None,
             attack_speed: 4.0,
             movement_speed: 0.7,
             bits: ClientBits::new()
@@ -457,6 +461,25 @@ impl<C: Config> Client<C> {
         self.new_game_mode = game_mode;
     }
 
+    /// Plays a sound to the client at a given position.
+    pub fn play_sound(
+        &mut self,
+        name: Ident,
+        category: SoundCategory,
+        pos: Vec3<f64>,
+        volume: f32,
+        pitch: f32,
+    ) {
+        self.send_packet(PlaySoundId {
+            name,
+            category,
+            position: pos.iter().map(|x| *x as i32 * 8).collect(),
+            volume,
+            pitch,
+            seed: 0,
+        });
+    }
+
     /// Sets the title this client sees.
     ///
     /// A title is a large piece of text displayed in the center of the screen
@@ -483,6 +506,11 @@ impl<C: Config> Client<C> {
         if let Some(anim) = animation.into() {
             self.send_packet(anim);
         }
+    }
+
+    /// Sets the action bar for this client.
+    pub fn set_action_bar(&mut self, text: impl Into<Text>) {
+        self.bar_to_send = Some(text.into());
     }
 
     /// Gets the attack cooldown speed.
@@ -854,7 +882,16 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::UpdateSign(_) => {}
             C2sPlayPacket::HandSwing(p) => self.events.push_back(ClientEvent::ArmSwing(p.hand)),
             C2sPlayPacket::SpectatorTeleport(_) => {}
-            C2sPlayPacket::PlayerInteractBlock(_) => {}
+            C2sPlayPacket::PlayerInteractBlock(p) => {
+                self.events.push_back(ClientEvent::InteractWithBlock {
+                    hand: p.hand,
+                    location: p.location,
+                    face: p.face,
+                    cursor_pos: p.cursor_pos,
+                    head_inside_block: p.head_inside_block,
+                    sequence: p.sequence,
+                })
+            }
             C2sPlayPacket::PlayerInteractItem(_) => {}
         }
     }
@@ -1187,6 +1224,10 @@ impl<C: Config> Client<C> {
                     kind: VarInt(0),
                 },
             );
+        }
+
+        if let Some(bar) = self.bar_to_send.take() {
+            send_packet(&mut self.send, OverlayMessage { text: bar });
         }
 
         let mut entities_to_unload = Vec::new();

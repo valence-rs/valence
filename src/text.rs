@@ -532,7 +532,25 @@ fn color_from_str(s: &str) -> Option<Color> {
             g: to_num(*g0)? << 4 | to_num(*g1)?,
             b: to_num(*b0)? << 4 | to_num(*b1)?,
         }),
-        _ => None,
+        _ => match s {
+            "aqua" => Some(Color::AQUA),
+            "black" => Some(Color::BLACK),
+            "blue" => Some(Color::BLUE),
+            "dark_aqua" => Some(Color::DARK_AQUA),
+            "dark_blue" => Some(Color::DARK_BLUE),
+            "dark_gray" => Some(Color::DARK_GRAY),
+            "dark_green" => Some(Color::DARK_GREEN),
+            "dark_purple" => Some(Color::DARK_PURPLE),
+            "dark_red" => Some(Color::DARK_RED),
+            "gold" => Some(Color::GOLD),
+            "gray" => Some(Color::GRAY),
+            "green" => Some(Color::GREEN),
+            "light_purple" => Some(Color::LIGHT_PURPLE),
+            "red" => Some(Color::RED),
+            "white" => Some(Color::WHITE),
+            "yellow" => Some(Color::YELLOW),
+            _ => None,
+        },
     }
 }
 
@@ -571,6 +589,8 @@ mod tests {
         assert_eq!(color_from_str("#00000000"), None);
         assert_eq!(color_from_str("#000000"), Some(Color::BLACK));
         assert_eq!(color_from_str("#"), None);
+        assert_eq!(color_from_str("red"), Some(Color::RED));
+        assert_eq!(color_from_str("blue"), Some(Color::BLUE));
     }
 
     #[test]

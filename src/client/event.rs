@@ -7,9 +7,11 @@ use crate::block_pos::BlockPos;
 use crate::config::Config;
 use crate::entity::types::Pose;
 use crate::entity::{Entity, EntityEvent, EntityId, TrackedData};
-use crate::protocol::packets::c2s::play::BlockFace;
-pub use crate::protocol::packets::c2s::play::{ChatMode, DisplayedSkinParts, Hand, MainHand};
+pub use crate::protocol::packets::c2s::play::{
+    BlockFace, ChatMode, DisplayedSkinParts, Hand, MainHand,
+};
 pub use crate::protocol::packets::s2c::play::GameMode;
+use crate::protocol::VarInt;
 
 /// Represents an action performed by a client.
 ///
@@ -100,6 +102,20 @@ pub enum ClientEvent {
         position: BlockPos,
         /// The face of the block being broken.
         face: BlockFace,
+    },
+    InteractWithBlock {
+        /// The hand that was used
+        hand: Hand,
+        /// The location of the block that was interacted with
+        location: BlockPos,
+        /// The face of the block that was clicked
+        face: BlockFace,
+        /// The pos inside of the block that was clicked on
+        cursor_pos: Vec3<f32>,
+        /// Whether or not the player's head is inside a block
+        head_inside_block: bool,
+        /// Sequence number
+        sequence: VarInt,
     },
 }
 
@@ -247,6 +263,7 @@ pub fn default_client_event<C: Config>(
         ClientEvent::InteractWithEntity { .. } => {}
         ClientEvent::SteerBoat { .. } => {}
         ClientEvent::Digging { .. } => {}
+        ClientEvent::InteractWithBlock { .. } => {}
     }
 
     entity.set_world(client.world());

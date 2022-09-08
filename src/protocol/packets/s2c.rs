@@ -227,6 +227,32 @@ pub mod play {
         }
     }
 
+    def_enum! {
+        SoundCategory: VarInt {
+            Master = 0,
+            Music = 1,
+            Record = 2,
+            Weather = 3,
+            Block = 4,
+            Hostile = 5,
+            Neutral = 6,
+            Player = 7,
+            Ambient = 8,
+            Voice = 9,
+        }
+    }
+
+    def_struct! {
+        PlaySoundId {
+            name: Ident,
+            category: SoundCategory,
+            position: Vec3<i32>,
+            volume: f32,
+            pitch: f32,
+            seed: i64,
+        }
+    }
+
     def_struct! {
         Disconnect {
             reason: Text,
@@ -630,6 +656,12 @@ pub mod play {
     }
 
     def_struct! {
+        OverlayMessage {
+            text: Text
+        }
+    }
+
+    def_struct! {
         UpdateSelectedSlot {
             slot: BoundedInt<u8, 0, 9>,
         }
@@ -705,6 +737,27 @@ pub mod play {
     }
 
     def_struct! {
+        PlaySoundFromEntity {
+            id: VarInt,
+            category: SoundCategory,
+            entity_id: VarInt,
+            volume: f32,
+            pitch: f32
+        }
+    }
+
+    def_struct! {
+        PlaySound {
+            id: VarInt,
+            category: SoundCategory,
+            position: Vec3<i32>,
+            volume: f32,
+            pitch: f32,
+            seed: i64
+        }
+    }
+
+    def_struct! {
         GameMessage {
             chat: Text,
             /// Index into the chat type registry.
@@ -765,6 +818,7 @@ pub mod play {
             BlockUpdate = 9,
             BossBar = 10,
             ClearTitles = 13,
+            PlaySoundId = 23,
             Disconnect = 25,
             EntityStatus = 26,
             UnloadChunk = 28,
@@ -782,6 +836,7 @@ pub mod play {
             PlayerRespawn = 62,
             EntitySetHeadYaw = 63,
             ChunkSectionUpdate = 64,
+            OverlayMessage = 67,
             UpdateSelectedSlot = 74,
             ChunkRenderDistanceCenter = 75,
             ChunkLoadDistance = 76,
@@ -792,6 +847,8 @@ pub mod play {
             WorldTimeUpdate = 92,
             UpdateTitle = 93,
             TitleFade = 94,
+            PlaySoundFromEntity = 95,
+            PlaySound = 96,
             GameMessage = 98,
             PlayerListHeaderFooter = 99,
             EntityPosition = 102,

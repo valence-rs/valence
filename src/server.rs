@@ -141,6 +141,7 @@ pub(crate) type S2cPacketChannels = (Sender<C2sPlayPacket>, Receiver<S2cPlayMess
 pub(crate) type C2sPacketChannels = (Sender<S2cPlayMessage>, Receiver<C2sPlayPacket>);
 
 /// Messages sent to packet encoders.
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug)]
 pub(crate) enum S2cPlayMessage {
     /// Queue a play packet for sending.

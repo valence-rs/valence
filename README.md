@@ -61,9 +61,17 @@ If all goes well you should be playing on the server.
 ## Adding Valence as a Dependency
 
 Valence is published to [crates.io](https://crates.io/crates/valence). Run `cargo add valence` to add it to your
-project.
+project. Documentation is available [here](https://docs.rs/valence/latest/valence/).
 
-Documentation is available [here](https://docs.rs/valence/latest/valence/).
+However, the crates.io version is likely outdated. To use the most recent development version, clone the repo
+and add Valence as a [path dependency](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#specifying-path-dependencies).
+
+```toml
+[dependencies]
+valence = { path = "the/path/to/valence" }
+```
+
+View the documentation by running `cargo d --open`.
 
 # Contributing
 

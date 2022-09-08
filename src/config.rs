@@ -227,6 +227,7 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
 }
 
 /// The result of the [`server_list_ping`](Config::server_list_ping) callback.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum ServerListPing<'a> {
     /// Responds to the server list ping with the given information.
