@@ -6,7 +6,7 @@ use log::LevelFilter;
 use valence::async_trait;
 use valence::block::{BlockPos, BlockState};
 use valence::client::{default_client_event, GameMode};
-use valence::config::{Config, ServerListPing};
+use valence::config::{Config, SampleListPing, ServerListPing};
 use valence::dimension::DimensionId;
 use valence::entity::{EntityId, EntityKind};
 use valence::player_list::PlayerListId;
@@ -65,9 +65,15 @@ impl Config for Game {
         _remote_addr: SocketAddr,
         _protocol_version: i32,
     ) -> ServerListPing {
+        let sample = vec![
+            "\u{00A7}6Hello",
+            "\u{00A7}6\u{00A7}oWelcome where Cows make a... Sphere",
+        ];
+
         ServerListPing::Respond {
             online_players: self.player_count.load(Ordering::SeqCst) as i32,
             max_players: MAX_PLAYERS as i32,
+            sample_players: Some(sample.into_iter().map(SampleListPing::from).collect()),
             description: "Hello Valence!".color(Color::AQUA),
             favicon_png: Some(include_bytes!("../assets/favicon.png")),
         }

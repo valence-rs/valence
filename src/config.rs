@@ -6,6 +6,9 @@ use std::panic::{RefUnwindSafe, UnwindSafe};
 use async_trait::async_trait;
 use tokio::runtime::Handle as TokioHandle;
 
+use serde::{Serialize, Serializer};
+use uuid::Uuid;
+
 use crate::biome::Biome;
 use crate::dimension::Dimension;
 use crate::server::{NewClientData, Server, SharedServer};
@@ -226,6 +229,54 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
     fn update(&self, server: &mut Server<Self>);
 }
 
+/// Represents a sample of a Ping List Request.
+#[derive(Debug, Serialize)]
+pub struct SampleListPing {
+    /// The player name
+    pub name: String,
+    /// The player id
+    #[serde(with = "SampleListPing")]
+    pub id: Uuid,
+}
+
+impl SampleListPing {
+    /// Create a new and empty sample.
+    pub fn new() -> Self {
+        Self {
+            name: String::new(),
+            id: Uuid::nil(),
+        }
+    }
+
+    /// Create a new sample with a given name.
+    pub fn with_name(name: String) -> Self {
+        Self {
+            name,
+            id: Uuid::nil(),
+        }
+    }
+
+    /// Create a new sample with a given name and id.
+    pub fn with_name_and_id(name: String, id: Uuid) -> Self {
+        Self { name, id }
+    }
+
+    /// Convert the player id in a parsable string.
+    pub fn serialize<S>(id: &Uuid, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        id.to_string().serialize(serializer)
+    }
+}
+
+impl From<&'static str> for SampleListPing {
+    /// Convert a literal string in a sample.
+    fn from(s: &'static str) -> Self {
+        SampleListPing::with_name(s.to_owned())
+    }
+}
+
 /// The result of the [`server_list_ping`](Config::server_list_ping) callback.
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
@@ -237,6 +288,10 @@ pub enum ServerListPing<'a> {
         /// Displayed as the maximum number of players allowed on the server at
         /// a time.
         max_players: i32,
+        /// Displayed as the list of player names connected in the server.
+        ///
+        /// No sample is used if the value is `None`.
+        sample_players: Option<Vec<SampleListPing>>,
         /// A description of the server.
         description: Text,
         /// The server's icon as the bytes of a PNG image.

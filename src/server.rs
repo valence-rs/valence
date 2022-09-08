@@ -584,6 +584,7 @@ async fn handle_status<C: Config>(
         ServerListPing::Respond {
             online_players,
             max_players,
+            sample_players,
             description,
             favicon_png,
         } => {
@@ -595,7 +596,10 @@ async fn handle_status<C: Config>(
                 "players": {
                     "online": online_players,
                     "max": max_players,
-                    // TODO: player sample?
+                    "sample": match sample_players {
+                        Some(sample_list) => json!(sample_list),
+                        None => Value::String(String::new()),
+                    },
                 },
                 "description": description,
             });

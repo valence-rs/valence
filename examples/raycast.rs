@@ -66,6 +66,7 @@ impl Config for Game {
         ServerListPing::Respond {
             online_players: self.player_count.load(Ordering::SeqCst) as i32,
             max_players: MAX_PLAYERS as i32,
+            sample_players: None,
             description: "Hello Valence!".color(Color::AQUA),
             favicon_png: Some(include_bytes!("../assets/favicon.png")),
         }
