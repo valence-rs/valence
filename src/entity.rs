@@ -648,3 +648,29 @@ impl From<EntitySpawnPacket> for S2cPlayPacket {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+  use std::num::NonZeroU32;
+
+use uuid::Uuid;
+
+use super::{Entities, EntityId};
+  use crate::{config::MockConfig, slab_versioned::Key};
+
+  #[test]
+  fn entities_add_and_remove() {
+    let entities: Entities<MockConfig> = Entities::new();
+    let entity_id = EntityId(
+      Key::new(
+        202298,
+        NonZeroU32::new(1526).expect("Value given should never be zero!")
+      )
+    );
+    let uuid = Uuid::from_bytes([2; 16]);
+    // Gets should return None
+    assert!(entities.get(entity_id).is_none());
+    assert!(entities.get_mut(entity_id).is_none());
+    assert!(entities.get_with_uuid(uuid).is_none());
+  }
+}
