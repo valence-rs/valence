@@ -229,7 +229,6 @@ pub mod play {
 
     def_struct! {
         Commands {
-            count: VarInt,
             nodes: Vec<Node>,
             root_index: VarInt,
         }

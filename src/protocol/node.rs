@@ -8,10 +8,10 @@ use crate::protocol::{BoundedString, Decode, Encode, VarInt};
 
 #[derive(Clone, Debug)]
 pub struct Node {
-    children: Vec<VarInt>,
-    data: NodeData,
-    is_executable: bool,
-    redirect_node: Option<VarInt>,
+    pub children: Vec<VarInt>,
+    pub data: NodeData,
+    pub is_executable: bool,
+    pub redirect_node: Option<VarInt>,
 }
 
 impl Encode for Node {
@@ -23,9 +23,9 @@ impl Encode for Node {
         };
 
         let flags = enum_id
-            & (self.is_executable as u8 * 0x04)
-            & (self.redirect_node.is_some() as u8 * 0x08)
-            & (if let NodeData::Argument(argument) = &self.data {
+            | (self.is_executable as u8 * 0x04)
+            | (self.redirect_node.is_some() as u8 * 0x08)
+            | (if let NodeData::Argument(argument) = &self.data {
                 argument.suggestions_type.is_some()
             } else { false } as u8 * 0x04);
 
@@ -103,14 +103,14 @@ pub enum NodeData {
 
 #[derive(Clone, Debug)]
 pub struct Literal {
-    name: BoundedString<0, 32767>,
+    pub name: BoundedString<0, 32767>,
 }
 
 #[derive(Clone, Debug)]
 pub struct Argument {
-    name: BoundedString<0, 32767>,
-    parser: Parser,
-    suggestions_type: Option<Ident>,
+    pub name: BoundedString<0, 32767>,
+    pub parser: Parser,
+    pub suggestions_type: Option<Ident>,
 }
 
 def_enum! {
@@ -125,8 +125,8 @@ def_enum! {
 
 #[derive(Clone, Debug)]
 pub struct BrigadierFloat {
-    min: Option<f32>,
-    max: Option<f32>,
+    pub min: Option<f32>,
+    pub max: Option<f32>,
 }
 
 impl Encode for BrigadierFloat {
@@ -162,8 +162,8 @@ impl Decode for BrigadierFloat {
 
 #[derive(Clone, Debug)]
 pub struct BrigadierInteger {
-    min: Option<i32>,
-    max: Option<i32>,
+    pub min: Option<i32>,
+    pub max: Option<i32>,
 }
 
 impl Encode for BrigadierInteger {
@@ -199,8 +199,8 @@ impl Decode for BrigadierInteger {
 
 #[derive(Clone, Debug)]
 pub struct BrigadierLong {
-    min: Option<i64>,
-    max: Option<i64>,
+    pub min: Option<i64>,
+    pub max: Option<i64>,
 }
 
 impl Encode for BrigadierLong {

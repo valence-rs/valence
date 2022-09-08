@@ -28,16 +28,7 @@ use crate::protocol::packets::c2s::play::{
     C2sPlayPacket, DiggingStatus, InteractKind, PlayerCommandId,
 };
 pub use crate::protocol::packets::s2c::play::TitleFade;
-use crate::protocol::packets::s2c::play::{
-    BiomeRegistry, ChatTypeRegistry, ChunkLoadDistance, ChunkRenderDistanceCenter, ClearTitles,
-    DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, EntitiesDestroy,
-    EntityAnimation, EntityAttributes, EntityAttributesProperty, EntityPosition, EntitySetHeadYaw,
-    EntityStatus, EntityTrackerUpdate, EntityVelocityUpdate, GameJoin, GameMessage,
-    GameStateChange, GameStateChangeReason, KeepAlive, MoveRelative, OverlayMessage, PlaySoundId,
-    PlayerActionResponse, PlayerPositionLook, PlayerPositionLookFlags, PlayerRespawn,
-    PlayerSpawnPosition, RegistryCodec, Rotate, RotateAndMoveRelative, S2cPlayPacket,
-    SoundCategory, UnloadChunk, UpdateSubtitle, UpdateTitle,
-};
+use crate::protocol::packets::s2c::play::{BiomeRegistry, ChatTypeRegistry, ChunkLoadDistance, ChunkRenderDistanceCenter, ClearTitles, DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, EntitiesDestroy, EntityAnimation, EntityAttributes, EntityAttributesProperty, EntityPosition, EntitySetHeadYaw, EntityStatus, EntityTrackerUpdate, EntityVelocityUpdate, GameJoin, GameMessage, GameStateChange, GameStateChangeReason, KeepAlive, MoveRelative, OverlayMessage, PlaySoundId, PlayerActionResponse, PlayerPositionLook, PlayerPositionLookFlags, PlayerRespawn, PlayerSpawnPosition, RegistryCodec, Rotate, RotateAndMoveRelative, S2cPlayPacket, SoundCategory, UnloadChunk, UpdateSubtitle, UpdateTitle, Commands};
 use crate::protocol::{BoundedInt, ByteAngle, NbtBridge, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
 use crate::slab_versioned::{Key, VersionedSlab};
@@ -970,6 +961,27 @@ impl<C: Config> Client<C> {
             });
 
             self.teleport(self.position(), self.yaw(), self.pitch());
+
+            use super::protocol::node::*;
+            self.send_packet(Commands {
+                nodes: vec![
+                    Node {
+                        children: vec![VarInt(1)],
+                        data: NodeData::Root,
+                        is_executable: false,
+                        redirect_node: None,
+                    },
+                    Node {
+                        children: vec![],
+                        data: NodeData::Literal( Literal {
+                            name: String::from("valence").into()
+                        }),
+                        is_executable: true,
+                        redirect_node: None,
+                    }
+                ],
+                root_index: VarInt(0),
+            })
         } else {
             if self.bits.spawn() {
                 self.bits.set_spawn(false);
