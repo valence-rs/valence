@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
 use valence::block::{BlockPos, BlockState};
+use valence::chunk::{Chunk, UnloadedChunk};
 use valence::client::{
     default_client_event, ClientEvent, ClientId, GameMode, InteractWithEntityKind,
 };
@@ -86,13 +87,16 @@ impl Config for Game {
         let (_, world) = server.worlds.insert(DimensionId::default(), ());
         server.state = Some(server.player_lists.insert(()).0);
 
-        let min_y = server.shared.dimension(DimensionId::default()).min_y;
+        let dim = server.shared.dimension(DimensionId::default());
+        let min_y = dim.min_y;
+        let height = dim.height as usize;
 
         // Create circular arena.
         let size = 2;
         for chunk_z in -size - 2..size + 2 {
             for chunk_x in -size - 2..size + 2 {
-                let chunk = world.chunks.insert([chunk_x, chunk_z], ());
+                let mut chunk = UnloadedChunk::new(height);
+
                 let r = -size..size;
                 if r.contains(&chunk_x) && r.contains(&chunk_z) {
                     for z in 0..16 {
@@ -107,6 +111,8 @@ impl Config for Game {
                         }
                     }
                 }
+
+                world.chunks.insert([chunk_x, chunk_z], chunk, ());
             }
         }
 

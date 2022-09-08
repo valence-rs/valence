@@ -33,7 +33,7 @@
 //!
 //! In Valence, many types are owned by the library but given out as mutable
 //! references for the user to modify. Examples of such types include [`World`],
-//! [`Chunk`], [`Entity`], and [`Client`].
+//! [`LoadedChunk`], [`Entity`], and [`Client`].
 //!
 //! **You must not call [`mem::swap`] on these references (or any other
 //! function that would move their location in memory).** Doing so breaks
@@ -57,7 +57,7 @@
 //! [`Worlds`]: crate::world::Worlds
 //! [`World`]: crate::world::World
 //! [`Chunks`]: crate::chunk::Chunks
-//! [`Chunk`]: crate::chunk::Chunk
+//! [`LoadedChunk`]: crate::chunk::LoadedChunk
 //! [`Entity`]: crate::entity::Entity
 //! [`Client`]: crate::client::Client
 
