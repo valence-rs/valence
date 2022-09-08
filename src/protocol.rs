@@ -23,10 +23,10 @@ use crate::nbt;
 
 mod byte_angle;
 pub mod codec;
-pub mod node;
 pub mod packets;
 mod var_int;
 mod var_long;
+pub mod node;
 
 /// Types that can be written to the Minecraft protocol.
 pub trait Encode {
