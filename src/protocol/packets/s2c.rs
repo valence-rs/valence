@@ -227,6 +227,14 @@ pub mod play {
         }
     }
 
+    def_struct! {
+        Commands {
+            count: VarInt,
+            nodes: Vec<Node>,
+            root_index: VarInt,
+        }
+    }
+
     def_enum! {
         SoundCategory: VarInt {
             Master = 0,
@@ -818,6 +826,7 @@ pub mod play {
             BlockUpdate = 9,
             BossBar = 10,
             ClearTitles = 13,
+            Commands = 15,
             PlaySoundId = 23,
             Disconnect = 25,
             EntityStatus = 26,

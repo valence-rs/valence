@@ -15,6 +15,7 @@ use serde::Serialize;
 use uuid::Uuid;
 pub use var_int::VarInt;
 pub use var_long::VarLong;
+pub use node::Node;
 use vek::{Vec2, Vec3, Vec4};
 
 use crate::entity::EntityId;
@@ -25,6 +26,7 @@ pub mod codec;
 pub mod packets;
 mod var_int;
 mod var_long;
+mod node;
 
 /// Types that can be written to the Minecraft protocol.
 pub trait Encode {
