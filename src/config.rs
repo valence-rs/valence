@@ -228,20 +228,6 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
     fn update(&self, server: &mut Server<Self>);
 }
 
-/// Created for the sole purpose of use during unit tests.
-pub struct MockConfig { }
-impl Config for MockConfig {
-  type ServerState = ();
-  type ClientState = ();
-  type EntityState = ();
-  type WorldState = ();
-  type ChunkState = ();
-  type PlayerListState = ();
-
-  fn max_connections(&self) -> usize { 10 }
-  fn update(&self, _server: &mut Server<Self>) { }
-}
-
 /// The result of the [`server_list_ping`](Config::server_list_ping) callback.
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
