@@ -23,6 +23,7 @@ use crate::nbt;
 mod byte_angle;
 pub mod codec;
 pub mod packets;
+pub mod slot;
 mod var_int;
 mod var_long;
 

@@ -5,50 +5,87 @@ use crate::protocol::{Decode, Encode, VarInt};
 
 /// Represents a slot in an inventory.
 #[derive(Clone, Default, Debug)]
-pub struct Slot {
-    pub present: bool,
-    pub item_id: Option<VarInt>,
-    pub item_count: Option<u8>,
-    pub nbt: Option<Compound>,
+pub enum Slot {
+    #[default]
+    Empty,
+    Present {
+        item_id: VarInt,
+        item_count: u8,
+        nbt: Option<Compound>,
+    },
 }
 
 impl Slot {
     /// Constructs a new slot.
     pub const fn new(item_id: VarInt, item_count: u8, nbt: Option<Compound>) -> Self {
-        Self {
-            present: true,
-            item_id: Some(item_id),
-            item_count: Some(item_count),
+        Self::Present {
+            item_id,
+            item_count,
             nbt,
         }
     }
 
     /// Constructs an empty slot.
     pub const fn empty() -> Self {
-        Self {
-            present: false,
-            item_id: None,
-            item_count: None,
-            nbt: None,
+        Self::Empty
+    }
+
+    /// Returns `true` if there is an item present.
+    pub const fn is_present(&self) -> bool {
+        match self {
+            Slot::Empty => false,
+            Slot::Present { .. } => true,
+        }
+    }
+
+    /// Gets the item id.
+    ///
+    /// If the slot is empty, then `None` is returned.
+    pub fn item_id(&self) -> Option<&VarInt> {
+        match self {
+            Slot::Empty => None,
+            Slot::Present { item_id, .. } => Some(item_id),
+        }
+    }
+
+    /// Gets the item count.
+    ///
+    /// If the slot is empty, then `None` is returned.
+    pub fn item_count(&self) -> Option<&u8> {
+        match self {
+            Slot::Empty => None,
+            Slot::Present { item_count, .. } => Some(item_count),
+        }
+    }
+
+    /// Gets the item's nbt data.
+    ///
+    /// If the slot is empty or there is no nbt data, then `None` is returned.
+    pub fn nbt(&self) -> Option<&Compound> {
+        match self {
+            Slot::Empty => None,
+            Slot::Present { nbt, .. } => nbt.as_ref(),
         }
     }
 }
 
 impl Encode for Slot {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        if !self.present {
-            return self.present.encode(w);
-        }
-        self.present.encode(w)?;
-        self.item_id
-            .expect("If item is present then slot should have an item id")
-            .encode(w)?;
-        self.item_count
-            .expect("If item is present then slot should have an item count")
-            .encode(w)?;
-        match &self.nbt {
-            Some(n) => n.encode(w),
-            None => 0u8.encode(w),
+        match self {
+            Slot::Empty => false.encode(w),
+            Slot::Present {
+                item_id,
+                item_count,
+                nbt,
+            } => {
+                true.encode(w)?;
+                item_id.encode(w)?;
+                item_count.encode(w)?;
+                match &nbt {
+                    Some(n) => n.encode(w),
+                    None => 0u8.encode(w),
+                }
+            }
         }
     }
 }
@@ -104,12 +141,12 @@ mod tests {
         let mut cursor = Cursor::new(buf.as_slice());
         let decoded_slot = Slot::decode(&mut cursor).unwrap();
 
-        assert!(decoded_slot.present);
-        assert_eq!(1, decoded_slot.item_id.unwrap().0);
-        assert_eq!(1, decoded_slot.item_count.unwrap());
+        assert!(decoded_slot.is_present());
+        assert_eq!(1, decoded_slot.item_id().unwrap().0);
+        assert_eq!(1, *decoded_slot.item_count().unwrap());
         assert_eq!(
-            Value::Int(1),
-            *decoded_slot.nbt.unwrap().get("Unbreakable").unwrap()
+            &Value::Int(1),
+            decoded_slot.nbt().unwrap().get("Unbreakable").unwrap()
         );
 
         // `Cursor::is_empty()` is unstable :(
@@ -125,7 +162,7 @@ mod tests {
         let mut cursor = Cursor::new(buf.as_slice());
         let decoded_slot = Slot::decode(&mut cursor).unwrap();
 
-        assert_eq!(None, decoded_slot.nbt);
+        assert_eq!(None, decoded_slot.nbt());
 
         // `Cursor::is_empty()` is unstable :(
         assert!(cursor.position() >= cursor.get_ref().len() as u64);
@@ -140,8 +177,8 @@ mod tests {
         let mut cursor = Cursor::new(buf.as_slice());
         let decoded_slot = Slot::decode(&mut cursor).unwrap();
 
-        assert!(!decoded_slot.present);
-        assert_eq!(None, decoded_slot.item_id);
+        assert!(!decoded_slot.is_present());
+        assert_eq!(None, decoded_slot.item_id());
 
         // `Cursor::is_empty()` is unstable :(
         assert!(cursor.position() >= cursor.get_ref().len() as u64);

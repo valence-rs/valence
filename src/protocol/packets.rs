@@ -19,11 +19,11 @@ use vek::Vec3;
 use crate::block_pos::BlockPos;
 use crate::ident::Ident;
 use crate::nbt::Compound;
+use crate::protocol::slot::Slot;
 use crate::protocol::{
     BoundedArray, BoundedInt, BoundedString, ByteAngle, Decode, Encode, NbtBridge, RawBytes,
     VarInt, VarLong,
 };
-use crate::slot::Slot;
 use crate::text::Text;
 
 /// Trait for types that can be written to the Minecraft protocol as a complete
