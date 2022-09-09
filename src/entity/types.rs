@@ -1,6 +1,6 @@
 //! Primitive types used in getters and setters on entities.
 
-use std::io::{Read, Write};
+use std::io::Write;
 
 use crate::protocol::{Decode, Encode, VarInt};
 
@@ -30,7 +30,7 @@ impl Encode for OptionalInt {
 }
 
 impl Decode for OptionalInt {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         Ok(Self(VarInt::decode(r)?.0 as u32))
     }
 }
