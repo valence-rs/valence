@@ -6,7 +6,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt};
 use crate::ident::Ident;
 use crate::protocol::{BoundedString, Decode, Encode, VarInt};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Node {
     pub children: Vec<VarInt>,
     pub data: NodeData,
@@ -95,19 +95,19 @@ impl Decode for Node {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, derive_more::From)]
 pub enum NodeData {
     Root,
     Literal(Literal),
     Argument(Argument),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Literal {
     pub name: BoundedString<0, 32767>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Argument {
     pub name: BoundedString<0, 32767>,
     pub parser: Parser,
@@ -115,6 +115,7 @@ pub struct Argument {
 }
 
 def_enum! {
+    #[derive(derive_more::From, PartialEq)]
     Parser: VarInt {
         BrigadierBool: bool = 0,
         BrigadierFloat: BrigadierFloat = 1,
@@ -125,7 +126,7 @@ def_enum! {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BrigadierFloat {
     pub min: Option<f32>,
     pub max: Option<f32>,
@@ -162,7 +163,7 @@ impl Decode for BrigadierFloat {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BrigadierInteger {
     pub min: Option<i32>,
     pub max: Option<i32>,
@@ -199,7 +200,7 @@ impl Decode for BrigadierInteger {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BrigadierLong {
     pub min: Option<i64>,
     pub max: Option<i64>,

@@ -96,6 +96,7 @@ mod bvh;
 pub mod chunk;
 mod chunk_pos;
 pub mod client;
+mod command;
 pub mod config;
 pub mod dimension;
 pub mod entity;

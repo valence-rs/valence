@@ -971,8 +971,20 @@ impl<C: Config> Client<C> {
 
             self.teleport(self.position(), self.yaw(), self.pitch());
 
+            use super::command::*;
             use super::protocol::node::*;
+            def_command! {
+                Add2Numbers {
+                    number1: i32,
+                    number2: i32,
+                }
+            }
+            let nodes = commands_to_nodes(vec![Add2Numbers::to_command()]);
             self.send_packet(Commands {
+                root_index: VarInt((nodes.len() - 1) as i32),
+                nodes,
+            })
+            /*self.send_packet(Commands {
                 nodes: vec![
                     Node {
                         children: vec![VarInt(1)],
@@ -990,7 +1002,7 @@ impl<C: Config> Client<C> {
                     },
                 ],
                 root_index: VarInt(0),
-            })
+            })*/
         } else {
             if self.bits.spawn() {
                 self.bits.set_spawn(false);
