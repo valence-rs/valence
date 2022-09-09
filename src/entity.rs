@@ -661,7 +661,7 @@ mod tests {
     };
 
     /// Created for the sole purpose of use during unit tests.
-    pub struct MockConfig { }
+    struct MockConfig;
     impl Config for MockConfig {
         type ServerState = ();
         type ClientState = ();
