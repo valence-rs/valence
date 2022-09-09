@@ -793,6 +793,39 @@ impl<C: Config> Entity<C> {
                 yaw: ByteAngle::from_degrees(self.yaw),
                 pitch: ByteAngle::from_degrees(self.pitch),
             })),
+            TrackedData::ItemFrame(e) => Some(EntitySpawnPacket::Entity(EntitySpawn {
+                entity_id: VarInt(this_id.to_network_id()),
+                object_uuid: self.uuid,
+                kind: VarInt(self.kind() as i32),
+                position: self.new_position,
+                pitch: ByteAngle::from_degrees(self.pitch),
+                yaw: ByteAngle::from_degrees(self.yaw),
+                head_yaw: ByteAngle::from_degrees(self.head_yaw),
+                data: VarInt(e.get_rotation()),
+                velocity: velocity_to_packet_units(self.velocity),
+            })),
+            TrackedData::FallingBlock(_e) => Some(EntitySpawnPacket::Entity(EntitySpawn {
+                entity_id: VarInt(this_id.to_network_id()),
+                object_uuid: self.uuid,
+                kind: VarInt(self.kind() as i32),
+                position: self.new_position,
+                pitch: ByteAngle::from_degrees(self.pitch),
+                yaw: ByteAngle::from_degrees(self.yaw),
+                head_yaw: ByteAngle::from_degrees(self.head_yaw),
+                data: VarInt(0), // TODO: set block state id
+                velocity: velocity_to_packet_units(self.velocity),
+            })),
+            TrackedData::FishingBobber(e) => Some(EntitySpawnPacket::Entity(EntitySpawn {
+                entity_id: VarInt(this_id.to_network_id()),
+                object_uuid: self.uuid,
+                kind: VarInt(self.kind() as i32),
+                position: self.new_position,
+                pitch: ByteAngle::from_degrees(self.pitch),
+                yaw: ByteAngle::from_degrees(self.yaw),
+                head_yaw: ByteAngle::from_degrees(self.head_yaw),
+                data: VarInt(e.get_hook_entity_id()),
+                velocity: velocity_to_packet_units(self.velocity),
+            })),
             _ => Some(EntitySpawnPacket::Entity(EntitySpawn {
                 entity_id: VarInt(this_id.to_network_id()),
                 object_uuid: self.uuid,
@@ -801,7 +834,7 @@ impl<C: Config> Entity<C> {
                 pitch: ByteAngle::from_degrees(self.pitch),
                 yaw: ByteAngle::from_degrees(self.yaw),
                 head_yaw: ByteAngle::from_degrees(self.head_yaw),
-                data: VarInt(1), // TODO
+                data: VarInt(0),
                 velocity: velocity_to_packet_units(self.velocity),
             })),
         }
