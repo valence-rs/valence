@@ -3,7 +3,7 @@
 #![allow(clippy::all, missing_docs)]
 
 use std::fmt::{self, Display};
-use std::io::{Read, Seek, Write};
+use std::io::Write;
 use std::iter::FusedIterator;
 
 use anyhow::Context;
@@ -58,7 +58,7 @@ impl Encode for BlockState {
 }
 
 impl Decode for BlockState {
-    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         let id = VarInt::decode(r)?.0;
         let errmsg = "invalid block state ID";
 

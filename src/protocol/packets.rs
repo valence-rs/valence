@@ -5,7 +5,7 @@
 #![macro_use]
 
 use std::fmt;
-use std::io::{Read, Seek, Write};
+use std::io::Write;
 
 use anyhow::{bail, ensure, Context};
 use bitvec::prelude::BitVec;
@@ -19,7 +19,6 @@ use vek::Vec3;
 use crate::block_pos::BlockPos;
 use crate::ident::Ident;
 use crate::nbt::Compound;
-use crate::protocol::slot::Slot;
 use crate::protocol::{
     BoundedArray, BoundedInt, BoundedString, ByteAngle, Decode, Encode, NbtBridge, RawBytes,
     VarInt, VarLong,
@@ -43,7 +42,7 @@ pub trait EncodePacket: fmt::Debug {
 /// the body of the packet.
 pub trait DecodePacket: Sized + fmt::Debug {
     /// Reads a packet from the Minecraft protocol, including its packet ID.
-    fn decode_packet(r: &mut (impl Read + Seek)) -> anyhow::Result<Self>;
+    fn decode_packet(r: &mut &[u8]) -> anyhow::Result<Self>;
 }
 
 /// Defines a struct which implements [`Encode`] and [`Decode`].
@@ -80,7 +79,7 @@ macro_rules! def_struct {
         }
 
         impl Decode for $name {
-            fn decode(_r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
+            fn decode(_r: &mut &[u8]) -> anyhow::Result<Self> {
                 $(
                     let $field: $typ = Decode::decode(_r)
                         .context(concat!("failed to read field `", stringify!($field), "` from struct `", stringify!($name), "`"))?;
@@ -150,7 +149,7 @@ macro_rules! def_enum {
         }
 
         impl Decode for $name {
-            fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
+            fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
                 let tag_ctx = concat!("failed to read enum tag for `", stringify!($name), "`");
                 let tag = <$tag_ty>::decode(r).context(tag_ctx)?.into();
                 match tag {
@@ -262,7 +261,7 @@ macro_rules! def_bitfield {
         }
 
         impl Decode for $name {
-            fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
+            fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
                 <$inner_ty>::decode(r).map(Self)
             }
         }
@@ -301,7 +300,7 @@ macro_rules! def_packet_group {
             }
 
             impl DecodePacket for $packet {
-                fn decode_packet(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
+                fn decode_packet(r: &mut &[u8]) -> anyhow::Result<Self> {
                     let packet_id = VarInt::decode(r).context("failed to read packet ID")?.0;
 
                     ensure!(
@@ -315,7 +314,7 @@ macro_rules! def_packet_group {
         )*
 
         impl DecodePacket for $group_name {
-            fn decode_packet(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
+            fn decode_packet(r: &mut &[u8]) -> anyhow::Result<Self> {
                 let packet_id = VarInt::decode(r)
                     .context(concat!("failed to read ", stringify!($group_name), " packet ID"))?.0;
 

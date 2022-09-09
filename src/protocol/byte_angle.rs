@@ -1,4 +1,4 @@
-use std::io::{Read, Seek, Write};
+use std::io::Write;
 
 use crate::protocol::{Decode, Encode};
 
@@ -23,7 +23,7 @@ impl Encode for ByteAngle {
 }
 
 impl Decode for ByteAngle {
-    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         u8::decode(r).map(ByteAngle)
     }
 }

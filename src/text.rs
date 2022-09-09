@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 use std::fmt;
-use std::io::{Read, Seek, Write};
+use std::io::Write;
 
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -455,7 +455,7 @@ impl Encode for Text {
 }
 
 impl Decode for Text {
-    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         let string = BoundedString::<0, 262144>::decode(r)?;
         Ok(serde_json::from_str(&string.0)?)
     }

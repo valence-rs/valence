@@ -3,7 +3,7 @@
 //!
 
 use std::borrow::Cow;
-use std::io::{Read, Seek, Write};
+use std::io::Write;
 use std::str::FromStr;
 
 use ascii::{AsAsciiStr, AsciiChar, AsciiStr, IntoAsciiString};
@@ -210,7 +210,7 @@ impl Encode for Ident {
 }
 
 impl Decode for Ident {
-    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         let string = BoundedString::<0, 32767>::decode(r)?.0;
         Ok(Ident::new(string)?)
     }

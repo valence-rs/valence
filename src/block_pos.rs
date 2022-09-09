@@ -1,4 +1,4 @@
-use std::io::{Read, Seek, Write};
+use std::io::Write;
 
 use anyhow::bail;
 use vek::Vec3;
@@ -38,7 +38,7 @@ impl Encode for BlockPos {
 }
 
 impl Decode for BlockPos {
-    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         // Use arithmetic right shift to determine sign.
         let val = i64::decode(r)?;
         let x = val >> 38;
@@ -91,7 +91,6 @@ impl From<BlockPos> for Vec3<i32> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Cursor;
 
     #[test]
     fn position() {
@@ -122,7 +121,7 @@ mod tests {
                     let pos = BlockPos::new(x, y, z);
                     if x_valid && y_valid && z_valid {
                         pos.encode(&mut &mut buf[..]).unwrap();
-                        assert_eq!(BlockPos::decode(&mut Cursor::new(&buf[..])).unwrap(), pos);
+                        assert_eq!(BlockPos::decode(&mut &buf[..]).unwrap(), pos);
                     } else {
                         assert!(pos.encode(&mut &mut buf[..]).is_err());
                     }

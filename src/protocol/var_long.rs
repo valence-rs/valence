@@ -1,4 +1,4 @@
-use std::io::{Read, Seek, Write};
+use std::io::Write;
 
 use anyhow::bail;
 use byteorder::{ReadBytesExt, WriteBytesExt};
@@ -30,7 +30,7 @@ impl Encode for VarLong {
 }
 
 impl Decode for VarLong {
-    fn decode(r: &mut (impl Read + Seek)) -> anyhow::Result<Self> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         let mut val = 0;
         for i in 0..Self::MAX_SIZE {
             let byte = r.read_u8()?;
@@ -46,7 +46,6 @@ impl Decode for VarLong {
 #[cfg(test)]
 mod tests {
     use rand::{thread_rng, Rng};
-    use std::io::Cursor;
 
     use super::*;
 
@@ -61,13 +60,11 @@ mod tests {
         {
             VarLong(n).encode(&mut buf).unwrap();
 
-            let mut cursor = Cursor::new(buf.as_slice());
-            assert!(cursor.get_ref().len() <= VarLong::MAX_SIZE);
+            let mut slice = buf.as_slice();
+            assert!(slice.len() <= VarLong::MAX_SIZE);
 
-            assert_eq!(n, VarLong::decode(&mut cursor).unwrap().0);
-
-            // `Cursor::is_empty()` is unstable :(
-            assert!(cursor.position() >= cursor.get_ref().len() as u64);
+            assert_eq!(n, VarLong::decode(&mut slice).unwrap().0);
+            assert!(slice.is_empty());
             buf.clear();
         }
     }
