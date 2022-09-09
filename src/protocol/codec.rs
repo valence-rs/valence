@@ -4,9 +4,10 @@ use std::io::Read;
 use std::time::Duration;
 
 use aes::Aes128;
+use aes::cipher::KeyIvInit;
+use aes::cipher::BlockDecryptMut;
 use anyhow::{bail, ensure, Context};
-use cfb8::cipher::{AsyncStreamCipher, NewCipher};
-use cfb8::Cfb8;
+use cfb8::cipher::AsyncStreamCipher;
 use flate2::bufread::{ZlibDecoder, ZlibEncoder};
 use flate2::Compression;
 use log::{log_enabled, Level};
@@ -21,7 +22,7 @@ pub struct Encoder<W> {
     buf: Vec<u8>,
     compress_buf: Vec<u8>,
     compression_threshold: Option<u32>,
-    cipher: Option<Cipher>,
+    cipher: Option<CipherEnc>,
     timeout: Duration,
 }
 
@@ -94,7 +95,7 @@ impl<W: AsyncWrite + Unpin> Encoder<W> {
     /// Writes all queued packets to the writer.
     pub async fn flush(&mut self) -> anyhow::Result<()> {
         if !self.buf.is_empty() {
-            if let Some(cipher) = &mut self.cipher {
+            if let Some(cipher) = self.cipher.clone() {
                 cipher.encrypt(&mut self.buf);
             }
 
@@ -115,7 +116,7 @@ impl<W: AsyncWrite + Unpin> Encoder<W> {
     }
 
     pub fn enable_encryption(&mut self, key: &[u8; 16]) {
-        self.cipher = Some(NewCipher::new(key.into(), key.into()));
+        self.cipher = Some(CipherEnc::new(key.into(), key.into()));
     }
 
     pub fn enable_compression(&mut self, threshold: u32) {
@@ -132,7 +133,7 @@ pub struct Decoder<R> {
     buf: Vec<u8>,
     decompress_buf: Vec<u8>,
     compression_threshold: Option<u32>,
-    cipher: Option<Cipher>,
+    cipher: Option<CipherDec>,
     timeout: Duration,
 }
 
@@ -170,7 +171,7 @@ impl<R: AsyncRead + Unpin> Decoder<R> {
             .await
             .context("reading packet body")?;
 
-        if let Some(cipher) = &mut self.cipher {
+        if let Some(cipher) = self.cipher.clone() {
             cipher.decrypt(&mut self.buf);
         }
 
@@ -232,7 +233,7 @@ impl<R: AsyncRead + Unpin> Decoder<R> {
         for i in 0..VarInt::MAX_SIZE {
             let array = &mut [self.read.read_u8().await?];
             if let Some(cipher) = &mut self.cipher {
-                cipher.decrypt(array);
+                cipher.decrypt_block_mut(array.into());
             }
             let [byte] = *array;
 
@@ -245,7 +246,7 @@ impl<R: AsyncRead + Unpin> Decoder<R> {
     }
 
     pub fn enable_encryption(&mut self, key: &[u8; 16]) {
-        self.cipher = Some(NewCipher::new(key.into(), key.into()));
+        self.cipher = Some(CipherDec::new(key.into(), key.into()));
     }
 
     pub fn enable_compression(&mut self, threshold: u32) {
@@ -263,7 +264,8 @@ impl<R: AsyncRead + Unpin> Decoder<R> {
 
 /// The AES block cipher with a 128 bit key, using the CFB-8 mode of
 /// operation.
-type Cipher = Cfb8<Aes128>;
+type CipherEnc = cfb8::Encryptor<aes::Aes128>;
+type CipherDec = cfb8::Decryptor<aes::Aes128>;
 
 #[cfg(test)]
 mod tests {

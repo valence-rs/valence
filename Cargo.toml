@@ -12,7 +12,7 @@ build = "build/main.rs"
 authors = ["Ryan Johnson <ryanj00a@gmail.com>"]
 
 [dependencies]
-aes = "0.7"
+aes = "0.8"
 anyhow = "1"
 approx = "0.5.1"
 arrayvec = "0.7"
@@ -23,7 +23,7 @@ bitfield-struct = "0.1"
 bitvec = "1"
 byteorder = "1"
 cesu8 = "1.1.0"
-cfb8 = "0.7"
+cfb8 = "0.8"
 flate2 = "1"
 flume = "0.10"
 futures = "0.3"
