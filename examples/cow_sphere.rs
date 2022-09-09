@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use log::LevelFilter;
 use valence::async_trait;
 use valence::block::{BlockPos, BlockState};
+use valence::chunk::UnloadedChunk;
 use valence::client::{default_client_event, GameMode};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
@@ -80,7 +81,7 @@ impl Config for Game {
         let size = 5;
         for z in -size..size {
             for x in -size..size {
-                world.chunks.insert([x, z], ());
+                world.chunks.insert([x, z], UnloadedChunk::default(), ());
             }
         }
 

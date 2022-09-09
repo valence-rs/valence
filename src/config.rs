@@ -30,7 +30,8 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
     type EntityState: Send + Sync;
     /// Custom state to store with every [`World`](crate::world::World).
     type WorldState: Send + Sync;
-    /// Custom state to store with every [`Chunk`](crate::chunk::Chunk).
+    /// Custom state to store with every
+    /// [`LoadedChunk`](crate::chunk::LoadedChunk).
     type ChunkState: Send + Sync;
     /// Custom state to store with every
     /// [`PlayerList`](crate::player_list::PlayerList).

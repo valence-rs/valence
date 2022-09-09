@@ -119,7 +119,7 @@ def_enum! {
     Parser: VarInt {
         BrigadierBool: bool = 0,
         BrigadierFloat: BrigadierFloat = 1,
-        //BrigadierDouble: BrigadierFloat = 2,
+        //BrigadierDouble: BrigadierDouble = 2,
         BrigadierInteger: BrigadierInteger = 3,
         BrigadierLong: BrigadierLong = 4,
         //TODO
