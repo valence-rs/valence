@@ -1,4 +1,10 @@
 //! Chunks and related types.
+//!
+//! A chunk is a 16x16-block segment of a world with a height determined by the
+//! [`Dimension`](crate::dimension::Dimension) of the world.
+//!
+//! In addition to blocks, chunks also contain [biomes](crate::biome::Biome).
+//! Every 4x4x4 segment of blocks in a chunk corresponds to a biome.
 
 // TODO: https://github.com/rust-lang/rust/issues/88581 for div_ceil
 
@@ -23,9 +29,9 @@ use crate::protocol::packets::s2c::play::{
 use crate::protocol::{Encode, NbtBridge, VarInt, VarLong};
 use crate::server::SharedServer;
 
-/// A container for all [`Chunk`]s in a [`World`](crate::world::World).
+/// A container for all [`LoadedChunk`]s in a [`World`](crate::world::World).
 pub struct Chunks<C: Config> {
-    chunks: HashMap<ChunkPos, Chunk<C>>,
+    chunks: HashMap<ChunkPos, LoadedChunk<C>>,
     shared: SharedServer<C>,
     dimension: DimensionId,
 }
@@ -39,36 +45,49 @@ impl<C: Config> Chunks<C> {
         }
     }
 
-    /// Creates an empty chunk at the provided position and returns a mutable
-    /// reference to it.
+    /// Consumes an [`UnloadedChunk`] and creates a [`LoadedChunk`] at a given
+    /// position. An exclusive reference to the new chunk is returned.
     ///
     /// If a chunk at the position already exists, then the old chunk
-    /// is overwritten.
+    /// is overwritten and its contents are dropped.
+    ///
+    /// The given chunk is resized to match the height of the world as if by
+    /// calling [`UnloadedChunk::resize`].
     ///
     /// **Note**: For the vanilla Minecraft client to see a chunk, all chunks
-    /// adjacent to it must also be loaded. It is also important that clients
-    /// are not spawned within unloaded chunks via
-    /// [`spawn`](crate::client::Client::spawn).
-    pub fn insert(&mut self, pos: impl Into<ChunkPos>, state: C::ChunkState) -> &mut Chunk<C> {
-        let section_count = (self.shared.dimension(self.dimension).height / 16) as u32;
+    /// adjacent to it must also be loaded. Clients should not be spawned within
+    /// unloaded chunks via [`spawn`](crate::client::Client::spawn).
+    pub fn insert(
+        &mut self,
+        pos: impl Into<ChunkPos>,
+        chunk: UnloadedChunk,
+        state: C::ChunkState,
+    ) -> &mut LoadedChunk<C> {
+        let dimension_section_count = (self.shared.dimension(self.dimension).height / 16) as usize;
         let biome_registry_len = self.shared.biomes().len();
-        let chunk = Chunk::new(section_count, biome_registry_len, state);
+        let loaded = LoadedChunk::new(chunk, dimension_section_count, biome_registry_len, state);
 
         match self.chunks.entry(pos.into()) {
             Entry::Occupied(mut oe) => {
-                oe.insert(chunk);
+                oe.insert(loaded);
                 oe.into_mut()
             }
-            Entry::Vacant(ve) => ve.insert(chunk),
+            Entry::Vacant(ve) => ve.insert(loaded),
         }
     }
 
     /// Removes a chunk at the provided position.
     ///
-    /// If a chunk exists at the position, then it is deleted and its
-    /// `ChunkState` is returned. Otherwise, `None` is returned.
-    pub fn remove(&mut self, pos: impl Into<ChunkPos>) -> Option<C::ChunkState> {
-        self.chunks.remove(&pos.into()).map(|c| c.state)
+    /// If a chunk exists at the position, then it is removed from the world and
+    /// its content is returned. Otherwise, `None` is returned.
+    pub fn remove(&mut self, pos: impl Into<ChunkPos>) -> Option<(UnloadedChunk, C::ChunkState)> {
+        let loaded = self.chunks.remove(&pos.into())?;
+
+        let unloaded = UnloadedChunk {
+            sections: loaded.sections.into(),
+        };
+
+        Some((unloaded, loaded.state))
     }
 
     /// Returns the number of loaded chunks.
@@ -84,21 +103,21 @@ impl<C: Config> Chunks<C> {
     /// Gets a shared reference to the chunk at the provided position.
     ///
     /// If there is no chunk at the position, then `None` is returned.
-    pub fn get(&self, pos: impl Into<ChunkPos>) -> Option<&Chunk<C>> {
+    pub fn get(&self, pos: impl Into<ChunkPos>) -> Option<&LoadedChunk<C>> {
         self.chunks.get(&pos.into())
     }
 
     /// Gets an exclusive reference to the chunk at the provided position.
     ///
     /// If there is no chunk at the position, then `None` is returned.
-    pub fn get_mut(&mut self, pos: impl Into<ChunkPos>) -> Option<&mut Chunk<C>> {
+    pub fn get_mut(&mut self, pos: impl Into<ChunkPos>) -> Option<&mut LoadedChunk<C>> {
         self.chunks.get_mut(&pos.into())
     }
 
     /// Removes all chunks for which `f` returns `true`.
     ///
     /// All chunks are visited in an unspecified order.
-    pub fn retain(&mut self, mut f: impl FnMut(ChunkPos, &mut Chunk<C>) -> bool) {
+    pub fn retain(&mut self, mut f: impl FnMut(ChunkPos, &mut LoadedChunk<C>) -> bool) {
         self.chunks.retain(|&pos, chunk| f(pos, chunk))
     }
 
@@ -111,7 +130,8 @@ impl<C: Config> Chunks<C> {
     /// order.
     pub fn iter(
         &self,
-    ) -> impl ExactSizeIterator<Item = (ChunkPos, &Chunk<C>)> + FusedIterator + Clone + '_ {
+    ) -> impl ExactSizeIterator<Item = (ChunkPos, &LoadedChunk<C>)> + FusedIterator + Clone + '_
+    {
         self.chunks.iter().map(|(&pos, chunk)| (pos, chunk))
     }
 
@@ -119,23 +139,27 @@ impl<C: Config> Chunks<C> {
     /// unspecified order.
     pub fn iter_mut(
         &mut self,
-    ) -> impl ExactSizeIterator<Item = (ChunkPos, &mut Chunk<C>)> + FusedIterator + '_ {
+    ) -> impl ExactSizeIterator<Item = (ChunkPos, &mut LoadedChunk<C>)> + FusedIterator + '_ {
         self.chunks.iter_mut().map(|(&pos, chunk)| (pos, chunk))
     }
 
     /// Returns a parallel iterator over all chunks in the world in an
     /// unspecified order.
-    pub fn par_iter(&self) -> impl ParallelIterator<Item = (ChunkPos, &Chunk<C>)> + Clone + '_ {
+    pub fn par_iter(
+        &self,
+    ) -> impl ParallelIterator<Item = (ChunkPos, &LoadedChunk<C>)> + Clone + '_ {
         self.chunks.par_iter().map(|(&pos, chunk)| (pos, chunk))
     }
 
     /// Returns a parallel mutable iterator over all chunks in the world in an
     /// unspecified order.
-    pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (ChunkPos, &mut Chunk<C>)> + '_ {
+    pub fn par_iter_mut(
+        &mut self,
+    ) -> impl ParallelIterator<Item = (ChunkPos, &mut LoadedChunk<C>)> + '_ {
         self.chunks.par_iter_mut().map(|(&pos, chunk)| (pos, chunk))
     }
 
-    /// Gets the block state at a position.
+    /// Gets the block state at a global position in the world.
     ///
     /// If the position is not inside of a chunk, then `None` is returned.
     ///
@@ -162,10 +186,11 @@ impl<C: Config> Chunks<C> {
         }
     }
 
-    /// Sets the block state at a position.
+    /// Sets the block state at a global position in the world.
     ///
     /// If the position is inside of a chunk, then `true` is returned.
-    /// Otherwise, `false` is returned.
+    /// Otherwise, `false` is returned. The function has no effect if `false` is
+    /// returned.
     ///
     /// Note: if you need to set a large number of blocks, it may be more
     /// efficient write to the chunks directly with
@@ -215,57 +240,119 @@ impl<C: Config> Chunks<C> {
     }
 }
 
-/// A chunk is a 16x16-block segment of a world with a height determined by the
-/// [`Dimension`](crate::dimension::Dimension) of the world.
-///
-/// In addition to blocks, chunks also contain [biomes](crate::biome::Biome).
-/// Every 4x4x4 segment of blocks in a chunk corresponds to a biome.
-pub struct Chunk<C: Config> {
-    /// Custom state.
-    pub state: C::ChunkState,
-    sections: Box<[ChunkSection]>,
-    // TODO block_entities: HashMap<u32, BlockEntity>,
-    /// The MOTION_BLOCKING heightmap
-    heightmap: Vec<i64>,
-    created_this_tick: bool,
-}
-
-impl<C: Config> Chunk<C> {
-    fn new(section_count: u32, biome_registry_len: usize, data: C::ChunkState) -> Self {
-        let sect = ChunkSection {
-            blocks: [BlockState::AIR.to_raw(); 4096],
-            modified_count: 1, // Must be >0 so the chunk is initialized.
-            biomes: [BiomeId::default(); 64],
-            compact_data: Vec::new(),
-        };
-
-        let mut chunk = Self {
-            state: data,
-            sections: vec![sect; section_count as usize].into(),
-            heightmap: Vec::new(),
-            created_this_tick: true,
-        };
-
-        chunk.apply_modifications(biome_registry_len);
-        chunk
-    }
-
-    /// Returns `true` if this chunk was created during the current tick.
-    pub fn created_this_tick(&self) -> bool {
-        self.created_this_tick
-    }
-
-    /// Returns the height of this chunk in blocks.
-    pub fn height(&self) -> usize {
-        self.sections.len() * 16
-    }
+/// Operations that can be performed on a chunk. [`LoadedChunk`] and
+/// [`UnloadedChunk`] implement this trait.
+pub trait Chunk {
+    /// Returns the height of this chunk in blocks. The result is always a
+    /// multiple of 16.
+    fn height(&self) -> usize;
 
     /// Gets the block state at the provided offsets in the chunk.
     ///
     /// # Panics
     ///
     /// Panics if the offsets are outside the bounds of the chunk.
-    pub fn get_block_state(&self, x: usize, y: usize, z: usize) -> BlockState {
+    fn get_block_state(&self, x: usize, y: usize, z: usize) -> BlockState;
+
+    /// Sets the block state at the provided offsets in the chunk.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the offsets are outside the bounds of the chunk.
+    fn set_block_state(&mut self, x: usize, y: usize, z: usize, block: BlockState);
+
+    /// Gets the biome at the provided biome offsets in the chunk.
+    ///
+    /// Note: the arguments are **not** block positions. Biomes are 4x4x4
+    /// segments of a chunk, so `x` and `z` are in `0..=4`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the offsets are outside the bounds of the chunk.
+    fn get_biome(&self, x: usize, y: usize, z: usize) -> BiomeId;
+
+    /// Sets the biome at the provided biome offsets in the chunk.
+    ///
+    /// Note: the arguments are **not** block positions. Biomes are 4x4x4
+    /// segments of a chunk, so `x` and `z` are in `0..=4`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the offsets are outside the bounds of the chunk.
+    fn set_biome(&mut self, x: usize, y: usize, z: usize, biome: BiomeId);
+}
+
+/// A chunk that is not loaded in any world.
+pub struct UnloadedChunk {
+    sections: Vec<ChunkSection>,
+    // TODO: block_entities: HashMap<u32, BlockEntity>,
+}
+
+impl UnloadedChunk {
+    /// Constructs a new unloaded chunk containing only [`BlockState::AIR`] with
+    /// the given height in blocks.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value of `height` does not meet the following criteria:
+    /// `height % 16 == 0 && height <= 4064`.
+    pub fn new(height: usize) -> Self {
+        let mut chunk = Self {
+            sections: Vec::new(),
+        };
+
+        chunk.resize(height);
+        chunk
+    }
+
+    /// Changes the height of the chunk to `new_height`. This is a potentially
+    /// expensive operation that may involve copying.
+    ///
+    /// The chunk is extended and truncated from the top. New blocks are always
+    /// [`BlockState::AIR`].
+    ///
+    /// # Panics
+    ///
+    /// The constraints on `new_height` are the same as [`Self::new`].
+    pub fn resize(&mut self, new_height: usize) {
+        assert!(
+            new_height % 16 == 0 && new_height <= 4064,
+            "invalid chunk height of {new_height}"
+        );
+
+        let old_height = self.sections.len() * 16;
+
+        if new_height > old_height {
+            let sect = ChunkSection {
+                blocks: [BlockState::AIR.to_raw(); 4096],
+                modified_count: 0,
+                biomes: [BiomeId::default(); 64],
+                compact_data: Vec::new(),
+            };
+
+            let additional = (new_height - old_height) / 16;
+            self.sections.reserve_exact(additional);
+            self.sections.resize_with(new_height / 16, || sect.clone());
+            debug_assert_eq!(self.sections.capacity(), self.sections.len());
+        } else if new_height < old_height {
+            self.sections.truncate(new_height / 16);
+        }
+    }
+}
+
+/// Constructs a new chunk with height `0`.
+impl Default for UnloadedChunk {
+    fn default() -> Self {
+        Self::new(0)
+    }
+}
+
+impl Chunk for UnloadedChunk {
+    fn height(&self) -> usize {
+        self.sections.len() * 16
+    }
+
+    fn get_block_state(&self, x: usize, y: usize, z: usize) -> BlockState {
         assert!(
             x < 16 && y < self.height() && z < 16,
             "chunk block offsets must be within bounds"
@@ -276,41 +363,17 @@ impl<C: Config> Chunk<C> {
         )
     }
 
-    /// Sets the block state at the provided offsets in the chunk.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the offsets are outside the bounds of the chunk.
-    pub fn set_block_state(&mut self, x: usize, y: usize, z: usize, block: BlockState) {
+    fn set_block_state(&mut self, x: usize, y: usize, z: usize, block: BlockState) {
         assert!(
             x < 16 && y < self.height() && z < 16,
             "chunk block offsets must be within bounds"
         );
 
-        let sect = &mut self.sections[y / 16];
-        let idx = x + z * 16 + y % 16 * 16 * 16;
-
-        if block.to_raw() != sect.blocks[idx] & BLOCK_STATE_MASK {
-            if sect.blocks[idx] & !BLOCK_STATE_MASK == 0 {
-                sect.modified_count += 1;
-            }
-            sect.blocks[idx] = block.to_raw() | !BLOCK_STATE_MASK;
-
-            // TODO: if the block type was modified and the old block type
-            // could be a block entity, then the block entity at this
-            // position must be cleared.
-        }
+        self.sections[y / 16].blocks[x + z * 16 + y % 16 * 16 * 16] = block.to_raw();
+        // TODO: handle block entity here?
     }
 
-    /// Gets the biome at the provided biome offsets in the chunk.
-    ///
-    /// Note: the arguments are **not** block positions. Biomes are 4x4x4
-    /// segments of a chunk, so `x` and `z` are in `0..=4`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the offsets are outside the bounds of the chunk.
-    pub fn get_biome(&self, x: usize, y: usize, z: usize) -> BiomeId {
+    fn get_biome(&self, x: usize, y: usize, z: usize) -> BiomeId {
         assert!(
             x < 4 && y < self.height() / 4 && z < 4,
             "chunk biome offsets must be within bounds"
@@ -319,21 +382,79 @@ impl<C: Config> Chunk<C> {
         self.sections[y / 4].biomes[x + z * 4 + y % 4 * 4 * 4]
     }
 
-    /// Sets the biome at the provided biome offsets in the chunk.
-    ///
-    /// Note: the arguments are **not** block positions. Biomes are 4x4x4
-    /// segments of a chunk, so `x` and `z` are in `0..=4`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the offsets are outside the bounds of the chunk.
-    pub fn set_biome(&mut self, x: usize, y: usize, z: usize, b: BiomeId) {
+    fn set_biome(&mut self, x: usize, y: usize, z: usize, biome: BiomeId) {
         assert!(
             x < 4 && y < self.height() / 4 && z < 4,
             "chunk biome offsets must be within bounds"
         );
 
-        self.sections[y / 4].biomes[x + z * 4 + y % 4 * 4 * 4] = b;
+        self.sections[y / 4].biomes[x + z * 4 + y % 4 * 4 * 4] = biome;
+    }
+}
+
+/// A chunk which is currently loaded in a world.
+pub struct LoadedChunk<C: Config> {
+    /// Custom state.
+    pub state: C::ChunkState,
+    sections: Box<[ChunkSection]>,
+    // TODO block_entities: HashMap<u32, BlockEntity>,
+    /// The MOTION_BLOCKING heightmap
+    heightmap: Vec<i64>,
+    created_this_tick: bool,
+}
+
+/// A 16x16x16 section of blocks, biomes, and light in a chunk.
+#[derive(Clone)]
+struct ChunkSection {
+    /// The block states in this section stored in x, z, y order.
+    /// The most significant bit is used to indicate if this block has been
+    /// modified.
+    blocks: [u16; 4096],
+    /// The number of modified blocks
+    modified_count: u16,
+    biomes: [BiomeId; 64],
+    compact_data: Vec<u8>,
+}
+
+const BLOCK_STATE_MASK: u16 = 0x7fff;
+
+const _: () = assert!(
+    BlockState::max_raw() <= BLOCK_STATE_MASK,
+    "There is not enough space in the block state type to store the modified bit. A bit array \
+     separate from the block state array should be created to keep track of modified blocks in \
+     the chunk section."
+);
+
+impl<C: Config> LoadedChunk<C> {
+    fn new(
+        mut chunk: UnloadedChunk,
+        dimension_section_count: usize,
+        biome_registry_len: usize,
+        state: C::ChunkState,
+    ) -> Self {
+        chunk.resize(dimension_section_count * 16);
+
+        let mut sections = chunk.sections.into_boxed_slice();
+
+        // Mark all sections as modified so the chunk is properly initialized.
+        for sect in sections.iter_mut() {
+            sect.modified_count = 1;
+        }
+
+        let mut loaded = Self {
+            state,
+            sections,
+            heightmap: Vec::new(),
+            created_this_tick: true,
+        };
+
+        loaded.apply_modifications(biome_registry_len);
+        loaded
+    }
+
+    /// Returns `true` if this chunk was created during the current tick.
+    pub fn created_this_tick(&self) -> bool {
+        self.created_this_tick
     }
 
     /// Gets the chunk data packet for this chunk with the given position. This
@@ -468,6 +589,60 @@ impl<C: Config> Chunk<C> {
     }
 }
 
+impl<C: Config> Chunk for LoadedChunk<C> {
+    fn height(&self) -> usize {
+        self.sections.len() * 16
+    }
+
+    fn get_block_state(&self, x: usize, y: usize, z: usize) -> BlockState {
+        assert!(
+            x < 16 && y < self.height() && z < 16,
+            "chunk block offsets must be within bounds"
+        );
+
+        BlockState::from_raw_unchecked(
+            self.sections[y / 16].blocks[x + z * 16 + y % 16 * 16 * 16] & BLOCK_STATE_MASK,
+        )
+    }
+
+    fn set_block_state(&mut self, x: usize, y: usize, z: usize, block: BlockState) {
+        assert!(
+            x < 16 && y < self.height() && z < 16,
+            "chunk block offsets must be within bounds"
+        );
+
+        let sect = &mut self.sections[y / 16];
+        let idx = x + z * 16 + y % 16 * 16 * 16;
+
+        if block.to_raw() != sect.blocks[idx] & BLOCK_STATE_MASK {
+            if sect.blocks[idx] & !BLOCK_STATE_MASK == 0 {
+                sect.modified_count += 1;
+            }
+            sect.blocks[idx] = block.to_raw() | !BLOCK_STATE_MASK;
+
+            // TODO: handle block entity here?
+        }
+    }
+
+    fn get_biome(&self, x: usize, y: usize, z: usize) -> BiomeId {
+        assert!(
+            x < 4 && y < self.height() / 4 && z < 4,
+            "chunk biome offsets must be within bounds"
+        );
+
+        self.sections[y / 4].biomes[x + z * 4 + y % 4 * 4 * 4]
+    }
+
+    fn set_biome(&mut self, x: usize, y: usize, z: usize, biome: BiomeId) {
+        assert!(
+            x < 4 && y < self.height() / 4 && z < 4,
+            "chunk biome offsets must be within bounds"
+        );
+
+        self.sections[y / 4].biomes[x + z * 4 + y % 4 * 4 * 4] = biome;
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) enum BlockChangePacket {
     Single(BlockUpdate),
@@ -482,28 +657,6 @@ impl From<BlockChangePacket> for S2cPlayPacket {
         }
     }
 }
-
-/// A 16x16x16 section of blocks, biomes, and light in a chunk.
-#[derive(Clone)]
-struct ChunkSection {
-    /// The block states in this section, stored in x, z, y order.
-    /// The most significant bit is used to indicate if this block has been
-    /// modified.
-    blocks: [u16; 4096],
-    /// The number of modified blocks
-    modified_count: u16,
-    biomes: [BiomeId; 64],
-    compact_data: Vec<u8>,
-}
-
-const BLOCK_STATE_MASK: u16 = 0x7fff;
-
-const _: () = assert!(
-    BlockState::max_raw() <= BLOCK_STATE_MASK,
-    "There is not enough space in the block state type to store the modified bit. A bit array \
-     separate from the block state array should be created to keep track of modified blocks in \
-     the chunk section."
-);
 
 /// Builds the MOTION_BLOCKING heightmap.
 fn build_heightmap(sections: &[ChunkSection], heightmap: &mut Vec<i64>) {

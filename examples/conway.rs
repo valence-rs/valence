@@ -7,6 +7,7 @@ use num::Integer;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 use valence::biome::Biome;
 use valence::block::BlockState;
+use valence::chunk::{Chunk, UnloadedChunk};
 use valence::client::{default_client_event, ClientEvent, Hand};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
@@ -109,7 +110,11 @@ impl Config for Game {
 
         for chunk_z in -2..Integer::div_ceil(&(SIZE_Z as i32), &16) + 2 {
             for chunk_x in -2..Integer::div_ceil(&(SIZE_X as i32), &16) + 2 {
-                world.chunks.insert((chunk_x as i32, chunk_z as i32), ());
+                world.chunks.insert(
+                    [chunk_x as i32, chunk_z as i32],
+                    UnloadedChunk::default(),
+                    (),
+                );
             }
         }
     }
