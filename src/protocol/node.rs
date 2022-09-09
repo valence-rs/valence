@@ -56,7 +56,7 @@ impl Encode for Node {
 }
 
 impl Decode for Node {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         let flags = r.read_u8()?;
 
         let is_executable = flags & 0x04 != 0;
@@ -147,7 +147,7 @@ impl Encode for BrigadierFloat {
 }
 
 impl Decode for BrigadierFloat {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         let flags = r.read_u8()?;
         let min = if flags & 0x01 != 0 {
             Decode::decode(r)?
@@ -184,7 +184,7 @@ impl Encode for BrigadierInteger {
 }
 
 impl Decode for BrigadierInteger {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         let flags = r.read_u8()?;
         let min = if flags & 0x01 != 0 {
             Decode::decode(r)?
@@ -221,7 +221,7 @@ impl Encode for BrigadierLong {
 }
 
 impl Decode for BrigadierLong {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         let flags = r.read_u8()?;
         let min = if flags & 0x01 != 0 {
             Decode::decode(r)?
