@@ -8,8 +8,6 @@ use tokio::runtime::Handle as TokioHandle;
 
 use crate::biome::Biome;
 use crate::dimension::Dimension;
-use crate::entity::EntityId;
-use crate::player_list::PlayerListId;
 use crate::server::{NewClientData, Server, SharedServer};
 use crate::text::Text;
 use crate::{Ticks, STANDARD_TPS};
