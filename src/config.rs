@@ -92,7 +92,7 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
     /// Furthermore encryption is disabled and minecraft's default skins will be used.
     ///
     /// # `ConnectionMode::Bungeecord`
-    /// This should be used if the server runs behind a Bungeecord Proxy with ip forwarding enabled
+    /// This should be used if the server runs behind a Bungeecord/Waterfall Proxy with ip forwarding enabled
     /// or a Velocity Proxy, which is configured to run with the player info forwarding mode `legacy`.
     /// It fetches all player data (uuid, username and skin) from the bungeecord proxy but does not
     /// block connections, which are not from the proxy.

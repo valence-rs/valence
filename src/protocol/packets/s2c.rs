@@ -243,6 +243,13 @@ pub mod play {
     }
 
     def_struct! {
+        PluginMessageToClient {
+            channel: Ident,
+            data: BoundedArray<u8, 0, 1048576>
+        }
+    }
+
+    def_struct! {
         PlaySoundId {
             name: Ident,
             category: SoundCategory,
@@ -818,6 +825,7 @@ pub mod play {
             BlockUpdate = 9,
             BossBar = 10,
             ClearTitles = 13,
+            PluginMessageToClient = 22,
             PlaySoundId = 23,
             Disconnect = 25,
             EntityStatus = 26,

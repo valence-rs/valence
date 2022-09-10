@@ -1,5 +1,5 @@
 use std::mem;
-use std::net::SocketAddr;
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
@@ -9,7 +9,7 @@ use valence::biome::Biome;
 use valence::block::BlockState;
 use valence::chunk::{Chunk, UnloadedChunk};
 use valence::client::{default_client_event, ClientEvent, Hand};
-use valence::config::{Config, ServerListPing};
+use valence::config::{Config, ConnectionMode, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::types::Pose;
 use valence::entity::{EntityId, EntityKind, TrackedData};
@@ -73,6 +73,14 @@ impl Config for Game {
     fn max_connections(&self) -> usize {
         // We want status pings to be successful even if the server is full.
         MAX_PLAYERS + 64
+    }
+
+    fn connection_mode(&self) -> ConnectionMode {
+        ConnectionMode::Bungeecord // TODO just testing, remove this
+    }
+
+    fn address(&self) -> SocketAddr {
+        SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 25565).into() // TODO remove
     }
 
     fn dimensions(&self) -> Vec<Dimension> {

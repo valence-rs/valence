@@ -7,11 +7,12 @@ use crate::block_pos::BlockPos;
 use crate::config::Config;
 use crate::entity::types::Pose;
 use crate::entity::{Entity, EntityEvent, EntityId, TrackedData};
+use crate::ident::Ident;
 pub use crate::protocol::packets::c2s::play::{
     BlockFace, ChatMode, DisplayedSkinParts, Hand, MainHand,
 };
 pub use crate::protocol::packets::s2c::play::GameMode;
-use crate::protocol::VarInt;
+use crate::protocol::{BoundedArray, VarInt};
 
 /// Represents an action performed by a client.
 ///
@@ -116,6 +117,10 @@ pub enum ClientEvent {
         head_inside_block: bool,
         /// Sequence number
         sequence: VarInt,
+    },
+    PluginMessageReceived {
+        channel: Ident,
+        data: BoundedArray<u8, 0, 32767>,
     },
 }
 
@@ -264,6 +269,7 @@ pub fn default_client_event<C: Config>(
         ClientEvent::SteerBoat { .. } => {}
         ClientEvent::Digging { .. } => {}
         ClientEvent::InteractWithBlock { .. } => {}
+        ClientEvent::PluginMessageReceived { .. } => {}
     }
 
     entity.set_world(client.world());

@@ -2,14 +2,14 @@
 
 use std::collections::HashSet;
 use std::error::Error;
+use std::io::Read;
 use std::iter::FusedIterator;
 use std::net::SocketAddr;
+use std::str::FromStr;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use std::{io, thread};
-use std::io::Read;
-use std::str::FromStr;
 
 use anyhow::{bail, ensure, Context};
 use byteorder::{BigEndian, ReadBytesExt};
@@ -36,24 +36,32 @@ use crate::client::{Client, Clients};
 use crate::config::{Config, ConnectionMode, ServerListPing};
 use crate::dimension::{Dimension, DimensionId};
 use crate::entity::Entities;
+use crate::ident::Ident;
 use crate::player_list::PlayerLists;
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::codec::{Decoder, Encoder};
-use crate::protocol::packets::c2s::handshake::{BungeecordHandshake, Handshake, HandshakeNextState};
-use crate::protocol::packets::c2s::login::{EncryptionResponse, LoginPluginResponse, LoginStart, VerifyTokenOrMsgSig};
+use crate::protocol::packets::c2s::handshake::{
+    BungeecordHandshake, Handshake, HandshakeNextState,
+};
+use crate::protocol::packets::c2s::login::{
+    EncryptionResponse, LoginPluginResponse, LoginStart, VerifyTokenOrMsgSig,
+};
 use crate::protocol::packets::c2s::play::C2sPlayPacket;
 use crate::protocol::packets::c2s::status::{QueryPing, QueryRequest};
-use crate::protocol::packets::s2c::login::{EncryptionRequest, LoginCompression, LoginDisconnect, LoginPluginRequest, LoginSuccess};
+use crate::protocol::packets::s2c::login::{
+    EncryptionRequest, LoginCompression, LoginDisconnect, LoginPluginRequest, LoginSuccess,
+};
 use crate::protocol::packets::s2c::play::S2cPlayPacket;
 use crate::protocol::packets::s2c::status::{QueryPong, QueryResponse};
 use crate::protocol::packets::Property;
 use crate::protocol::{BoundedArray, BoundedString, Decode, RawBytes, VarInt};
+use crate::proxy::velocity::{
+    VELOCITY_MAX_SUPPORTED_VERSION, VELOCITY_PLAYER_INFO_CHANNEL, VELOCITY_SUPPORTED_VERSION,
+};
+use crate::text::Text;
 use crate::util::valid_username;
 use crate::world::Worlds;
 use crate::{Ticks, PROTOCOL_VERSION, VERSION_NAME};
-use crate::ident::Ident;
-use crate::proxy::velocity::{VELOCITY_MAX_SUPPORTED_VERSION, VELOCITY_PLAYER_INFO_CHANNEL, VELOCITY_SUPPORTED_VERSION};
-use crate::text::Text;
 
 /// Contains the entire state of a running Minecraft server, accessible from
 /// within the [update](crate::config::Config::update) loop.
@@ -561,13 +569,15 @@ async fn handle_connection<C: Config>(
     };
 
     // TODO: peek stream for 0xFE legacy ping
-    
+
     let handshake: Handshake;
     if server.connection_mode() == ConnectionMode::Bungeecord {
-        let bungeecord_handshake  = c.dec.read_packet::<BungeecordHandshake>().await?;
+        let bungeecord_handshake = c.dec.read_packet::<BungeecordHandshake>().await?;
         handshake = Handshake {
             protocol_version: bungeecord_handshake.protocol_version,
-            server_address: BoundedString{ 0: bungeecord_handshake.server_address }, // TODO fix writing over string bounds
+            server_address: BoundedString {
+                0: bungeecord_handshake.server_address,
+            }, // TODO fix writing over string bounds
             server_port: bungeecord_handshake.server_port,
             next_state: bungeecord_handshake.next_state,
         };
@@ -701,9 +711,9 @@ async fn handle_login<C: Config>(
                         .context("failed to decrypt verify token")?;
 
                     ensure!(
-                    my_verify_token.as_slice() == verify_token,
-                    "verify tokens do not match"
-                );
+                        my_verify_token.as_slice() == verify_token,
+                        "verify tokens do not match"
+                    );
                     None
                 }
                 VerifyTokenOrMsgSig::MsgSig(sig) => Some(sig),
@@ -736,9 +746,9 @@ async fn handle_login<C: Config>(
 
             let status = resp.status();
             ensure!(
-            status.is_success(),
-            "session server GET request failed: {status}"
-        );
+                status.is_success(),
+                "session server GET request failed: {status}"
+            );
 
             let data: AuthResponse = resp.json().await?;
 
@@ -766,7 +776,11 @@ async fn handle_login<C: Config>(
             let mut skin: Option<SignedPlayerTextures> = None;
 
             // Get data from server_address field of the handshake
-            let data = handshake.server_address.0.split("\0").collect::<Vec<&str>>();
+            let data = handshake
+                .server_address
+                .0
+                .split("\0")
+                .collect::<Vec<&str>>();
             ensure!(data.len() == 4, "bungeecord data invalid");
 
             // Get player uuid
@@ -778,37 +792,56 @@ async fn handle_login<C: Config>(
                 match property_option {
                     Some(property) => {
                         let name = property.get("name").unwrap().as_str().unwrap();
-                        if name != "textures" {continue}
+                        if name != "textures" {
+                            continue;
+                        }
                         let value = property.get("value").unwrap().as_str().unwrap();
                         let empty_string_value: Value = Value::String(String::new());
-                        let signature = property.get("signature").get_or_insert(&empty_string_value).as_str().unwrap();
-                        skin = Some(SignedPlayerTextures::from_base64(String::from(value), String::from(signature)).unwrap());
+                        let signature = property
+                            .get("signature")
+                            .get_or_insert(&empty_string_value)
+                            .as_str()
+                            .unwrap();
+                        skin = Some(
+                            SignedPlayerTextures::from_base64(
+                                String::from(value),
+                                String::from(signature),
+                            )
+                            .unwrap(),
+                        );
                     }
                     None => {}
                 }
             }
-            // TODO add new handshake packet
             (uuid, skin)
         }
         ConnectionMode::Velocity => {
-            let message_id: i32 = -1;
+            let message_id: i32 = i32::MIN;
             // Send Player Info Request into the Plugin Channel
             c.enc
-                .write_packet(&LoginPluginRequest{
+                .write_packet(&LoginPluginRequest {
                     message_id: VarInt::from(message_id),
                     channel: Ident::new(VELOCITY_PLAYER_INFO_CHANNEL).unwrap(),
-                    data: RawBytes{ 0: vec![VELOCITY_SUPPORTED_VERSION as u8] } // TODO
-                }).await?;
+                    data: RawBytes {
+                        0: vec![VELOCITY_SUPPORTED_VERSION as u8],
+                    },
+                })
+                .await?;
 
             // Get Response
-            let plugin_response: LoginPluginResponse = c.dec
-                .read_packet().await?;
+            let plugin_response: LoginPluginResponse = c.dec.read_packet().await?;
 
-            ensure!(plugin_response.message_id.0 == message_id, "plugin messages ids do not match");
+            ensure!(
+                plugin_response.message_id.0 == message_id,
+                "plugin messages ids do not match"
+            );
             let raw_data = plugin_response.data.unwrap();
             let mut data = raw_data.0.as_slice();
             let mut signature: [u8; 32] = [0u8; 32];
-            ensure!(data.read(&mut signature).unwrap() == 32, "can not read signature");
+            ensure!(
+                data.read(&mut signature).unwrap() == 32,
+                "can not read signature"
+            );
 
             // Verify Signature
             let all_data_without_signature: &[u8] = &raw_data.0.as_slice()[32..raw_data.0.len()];
@@ -817,22 +850,25 @@ async fn handle_login<C: Config>(
             Mac::update(&mut mac, all_data_without_signature);
             let signature_check = mac.verify_slice(signature.as_slice());
             if signature_check.is_err() {
-                c.enc.write_packet(&LoginDisconnect{
-                    reason: Text::text("This server requires you to connect with velocity!")
-                }).await?;
+                c.enc
+                    .write_packet(&LoginDisconnect {
+                        reason: Text::text("This server requires you to connect with velocity!"),
+                    })
+                    .await?;
                 log::warn!("Client tried connect with invalid signature. This could be an attacker or a miss configured velocity secret key!");
-                return Ok(None)
+                return Ok(None);
             }
-
 
             // Check Velocity Version
             let version: VarInt = Decode::decode(&mut data).unwrap();
             if version.0 > VELOCITY_MAX_SUPPORTED_VERSION {
-                c.enc.write_packet(&LoginDisconnect{
-                    reason: Text::text("Velocity Version not supported!")
-                }).await?;
+                c.enc
+                    .write_packet(&LoginDisconnect {
+                        reason: Text::text("Velocity Version not supported!"),
+                    })
+                    .await?;
                 log::warn!("Velocity Version {} is not supported", version.0);
-                return Ok(None)
+                return Ok(None);
             }
 
             // Overwrite Client Address
@@ -844,8 +880,6 @@ async fn handle_login<C: Config>(
             let velocity_username: BoundedString<0, 16> = Decode::decode(&mut data).unwrap();
             ensure!(username == velocity_username.0, "usernames do not match");
 
-
-
             // Read Properties and get Skin
             let num_properties = VarInt::decode(&mut data).unwrap();
             let mut skin: Option<SignedPlayerTextures> = None;
@@ -854,9 +888,14 @@ async fn handle_login<C: Config>(
                 let name: String = Decode::decode(&mut data).unwrap();
                 let value: String = Decode::decode(&mut data).unwrap();
                 let has_signature: bool = Decode::decode(&mut data).unwrap();
-                let property_signature: String = if has_signature {Decode::decode(&mut data).unwrap()} else {String::new()};
+                let property_signature: String = if has_signature {
+                    Decode::decode(&mut data).unwrap()
+                } else {
+                    String::new()
+                };
                 if name == String::from("textures") {
-                    skin = Some(SignedPlayerTextures::from_base64(value, property_signature).unwrap());
+                    skin =
+                        Some(SignedPlayerTextures::from_base64(value, property_signature).unwrap());
                 }
             }
 

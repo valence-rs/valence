@@ -277,9 +277,9 @@ pub mod play {
     }
 
     def_struct! {
-        CustomPayload {
+        PluginMessageToServer {
             channel: Ident,
-            data: RawBytes,
+            data: BoundedArray<u8, 0, 32767>,
         }
     }
 
@@ -726,7 +726,7 @@ pub mod play {
             ButtonClick = 10,
             ClickSlot = 11,
             CloseHandledScreen = 12,
-            CustomPayload = 13,
+            PluginMessageToServer = 13,
             BookUpdate = 14,
             QueryEntityNbt = 15,
             PlayerInteractEntity = 16,

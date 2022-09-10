@@ -35,8 +35,8 @@ use crate::protocol::packets::s2c::play::{
     EntityStatus, EntityTrackerUpdate, EntityVelocityUpdate, GameJoin, GameMessage,
     GameStateChange, GameStateChangeReason, KeepAlive, MoveRelative, OverlayMessage, PlaySoundId,
     PlayerActionResponse, PlayerPositionLook, PlayerPositionLookFlags, PlayerRespawn,
-    PlayerSpawnPosition, RegistryCodec, Rotate, RotateAndMoveRelative, S2cPlayPacket,
-    SoundCategory, UnloadChunk, UpdateSubtitle, UpdateTitle,
+    PlayerSpawnPosition, PluginMessageToClient, RegistryCodec, Rotate, RotateAndMoveRelative,
+    S2cPlayPacket, SoundCategory, UnloadChunk, UpdateSubtitle, UpdateTitle,
 };
 use crate::protocol::{BoundedInt, ByteAngle, NbtBridge, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
@@ -226,6 +226,7 @@ pub struct Client<C: Config> {
     /// Should be sent after login packet.
     msgs_to_send: Vec<Text>,
     bar_to_send: Option<Text>,
+    plugin_messages_to_send: Vec<PluginMessageToClient>,
     attack_speed: f64,
     movement_speed: f64,
     bits: ClientBits,
@@ -292,6 +293,7 @@ impl<C: Config> Client<C> {
             dug_blocks: Vec::new(),
             msgs_to_send: Vec::new(),
             bar_to_send: None,
+            plugin_messages_to_send: Vec::new(),
             attack_speed: 4.0,
             movement_speed: 0.7,
             bits: ClientBits::new()
@@ -371,6 +373,10 @@ impl<C: Config> Client<C> {
         // We buffer messages because weird things happen if we send them before the
         // login packet.
         self.msgs_to_send.push(msg.into());
+    }
+
+    pub fn send_plugin_message(&mut self, msg: PluginMessageToClient) {
+        self.plugin_messages_to_send.push(msg);
     }
 
     /// Gets the absolute position of this client in the world it is located
@@ -714,7 +720,6 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::ButtonClick(_) => {}
             C2sPlayPacket::ClickSlot(_) => {}
             C2sPlayPacket::CloseHandledScreen(_) => {}
-            C2sPlayPacket::CustomPayload(_) => {}
             C2sPlayPacket::BookUpdate(_) => {}
             C2sPlayPacket::QueryEntityNbt(_) => {}
             C2sPlayPacket::PlayerInteractEntity(p) => {
@@ -893,6 +898,12 @@ impl<C: Config> Client<C> {
                 })
             }
             C2sPlayPacket::PlayerInteractItem(_) => {}
+            C2sPlayPacket::PluginMessageToServer(p) => {
+                self.events.push_back(ClientEvent::PluginMessageReceived {
+                    channel: p.channel,
+                    data: p.data,
+                });
+            }
         }
     }
 
@@ -1228,6 +1239,10 @@ impl<C: Config> Client<C> {
 
         if let Some(bar) = self.bar_to_send.take() {
             send_packet(&mut self.send, OverlayMessage { text: bar });
+        }
+
+        for plugin_msg in self.plugin_messages_to_send.drain(..) {
+            send_packet(&mut self.send, plugin_msg);
         }
 
         let mut entities_to_unload = Vec::new();
