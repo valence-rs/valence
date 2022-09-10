@@ -20,11 +20,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Build on ${{ matrix.os }}
-      run: cargo build --verbose
-    - name: Run tests on ${{ matrix.os }}
-      run: cargo test --verbose
-    - name: Run clippy lints on ${{ matrix.os }}
-      run: cargo clippy --verbose --no-deps
     - name: Validate formatting on ${{ matrix.os }}
       run: cargo fmt --all -- --check
+    - name: Run clippy lints on ${{ matrix.os }}
+      run: cargo clippy --verbose --no-deps --all-features
+    - name: Run tests on ${{ matrix.os }}
+      run: cargo test --verbose --all-features
