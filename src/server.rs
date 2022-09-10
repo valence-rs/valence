@@ -3,12 +3,12 @@
 use std::collections::HashSet;
 use std::error::Error;
 use std::iter::FusedIterator;
-use std::net::{IpAddr, SocketAddr};
+use std::net::SocketAddr;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use std::{io, thread};
-use std::io::{Bytes, Read};
+use std::io::Read;
 use std::str::FromStr;
 
 use anyhow::{bail, ensure, Context};
@@ -16,7 +16,6 @@ use byteorder::{BigEndian, ReadBytesExt};
 use flume::{Receiver, Sender};
 use hmac::{Hmac, Mac};
 use num::BigInt;
-use rand::random;
 use rand::rngs::OsRng;
 use rayon::iter::ParallelIterator;
 use reqwest::Client as HttpClient;
@@ -40,7 +39,7 @@ use crate::entity::Entities;
 use crate::player_list::PlayerLists;
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::codec::{Decoder, Encoder};
-use crate::protocol::packets::c2s::handshake::{Handshake, HandshakeNextState};
+use crate::protocol::packets::c2s::handshake::{BungeecordHandshake, Handshake, HandshakeNextState};
 use crate::protocol::packets::c2s::login::{EncryptionResponse, LoginPluginResponse, LoginStart, VerifyTokenOrMsgSig};
 use crate::protocol::packets::c2s::play::C2sPlayPacket;
 use crate::protocol::packets::c2s::status::{QueryPing, QueryRequest};
@@ -53,7 +52,7 @@ use crate::util::valid_username;
 use crate::world::Worlds;
 use crate::{Ticks, PROTOCOL_VERSION, VERSION_NAME};
 use crate::ident::Ident;
-use crate::proxy::velocity::{VELOCITY_MAX_SUPPORTED_VERSION, VELOCITY_PLAYER_INFO_CHANNEL};
+use crate::proxy::velocity::{VELOCITY_MAX_SUPPORTED_VERSION, VELOCITY_PLAYER_INFO_CHANNEL, VELOCITY_SUPPORTED_VERSION};
 use crate::text::Text;
 
 /// Contains the entire state of a running Minecraft server, accessible from
@@ -562,8 +561,19 @@ async fn handle_connection<C: Config>(
     };
 
     // TODO: peek stream for 0xFE legacy ping
-
-    let handshake = c.dec.read_packet::<Handshake>().await?;
+    
+    let handshake: Handshake;
+    if server.connection_mode() == ConnectionMode::Bungeecord {
+        let bungeecord_handshake  = c.dec.read_packet::<BungeecordHandshake>().await?;
+        handshake = Handshake {
+            protocol_version: bungeecord_handshake.protocol_version,
+            server_address: BoundedString{ 0: bungeecord_handshake.server_address }, // TODO fix writing over string bounds
+            server_port: bungeecord_handshake.server_port,
+            next_state: bungeecord_handshake.next_state,
+        };
+    } else {
+        handshake = c.dec.read_packet::<Handshake>().await?;
+    }
 
     match handshake.next_state {
         HandshakeNextState::Status => handle_status(server, &mut c, remote_addr, handshake)
@@ -753,21 +763,44 @@ async fn handle_login<C: Config>(
             (uuid, None)
         }
         ConnectionMode::Bungeecord => {
-            // Derive the player's UUID from a hash of their username.
-            let uuid = Uuid::from_slice(&Sha256::digest(&username)[..16]).unwrap();
+            let mut skin: Option<SignedPlayerTextures> = None;
 
-            (uuid, None)
-            // TODO implement
+            // Get data from server_address field of the handshake
+            let data = handshake.server_address.0.split("\0").collect::<Vec<&str>>();
+            ensure!(data.len() == 4, "bungeecord data invalid");
+
+            // Get player uuid
+            let uuid = Uuid::from_str(data[2]).unwrap();
+
+            // read properties and get skin
+            let properties: Vec<Value> = serde_json::from_str(data[3]).unwrap();
+            for property_option in properties.iter().map(|p| p.as_object()) {
+                match property_option {
+                    Some(property) => {
+                        let name = property.get("name").unwrap().as_str().unwrap();
+                        if name != "textures" {continue}
+                        let value = property.get("value").unwrap().as_str().unwrap();
+                        let empty_string_value: Value = Value::String(String::new());
+                        let signature = property.get("signature").get_or_insert(&empty_string_value).as_str().unwrap();
+                        skin = Some(SignedPlayerTextures::from_base64(String::from(value), String::from(signature)).unwrap());
+                    }
+                    None => {}
+                }
+            }
+            // TODO add new handshake packet
+            (uuid, skin)
         }
         ConnectionMode::Velocity => {
             let message_id: i32 = -1;
+            // Send Player Info Request into the Plugin Channel
             c.enc
                 .write_packet(&LoginPluginRequest{
                     message_id: VarInt::from(message_id),
                     channel: Ident::new(VELOCITY_PLAYER_INFO_CHANNEL).unwrap(),
-                    data: RawBytes{ 0: vec![] }
+                    data: RawBytes{ 0: vec![VELOCITY_SUPPORTED_VERSION as u8] } // TODO
                 }).await?;
 
+            // Get Response
             let plugin_response: LoginPluginResponse = c.dec
                 .read_packet().await?;
 
@@ -817,7 +850,7 @@ async fn handle_login<C: Config>(
             let num_properties = VarInt::decode(&mut data).unwrap();
             let mut skin: Option<SignedPlayerTextures> = None;
 
-            for i in 0..num_properties.0 {
+            for _ in 0..num_properties.0 {
                 let name: String = Decode::decode(&mut data).unwrap();
                 let value: String = Decode::decode(&mut data).unwrap();
                 let has_signature: bool = Decode::decode(&mut data).unwrap();
@@ -826,6 +859,8 @@ async fn handle_login<C: Config>(
                     skin = Some(SignedPlayerTextures::from_base64(value, property_signature).unwrap());
                 }
             }
+
+            // TODO: implement VELOCITY_MODERN_FORWARDING_WITH_KEY_V2
 
             (uuid, skin)
         }

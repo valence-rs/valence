@@ -8,6 +8,15 @@ pub mod handshake {
     def_struct! {
         Handshake {
             protocol_version: VarInt,
+            server_address: BoundedString<0, 255>,
+            server_port: u16,
+            next_state: HandshakeNextState,
+        }
+    }
+
+    def_struct! {
+        BungeecordHandshake {
+            protocol_version: VarInt,
             // by the minecraft protocol this is specified as a BoundedString<0, 255> but due issues with bungeecord ip forwarding this limit is removed
             server_address: String,
             server_port: u16,
@@ -25,6 +34,12 @@ pub mod handshake {
     def_packet_group! {
         C2sHandshakePacket {
             Handshake = 0,
+        }
+    }
+
+    def_packet_group! {
+        C2sBungeecordHandshakePacket {
+            BungeecordHandshake = 0,
         }
     }
 }
