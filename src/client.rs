@@ -547,7 +547,8 @@ impl<C: Config> Client<C> {
     /// Sets the XP bar visible above hotbar and total experience.
     ///
     /// # Arguments
-    /// * `bar` - Floating value in the range `0.0..=1.0` indicating progress on the XP bar.
+    /// * `bar` - Floating value in the range `0.0..=1.0` indicating progress on
+    ///   the XP bar.
     /// * `level` - Number above the XP bar.
     /// * `total_xp` - TODO.
     pub fn set_level(&mut self, bar: f32, level: i32, total_xp: i32) {
@@ -562,7 +563,8 @@ impl<C: Config> Client<C> {
     /// You can read more about hunger and saturation [here](https://minecraft.fandom.com/wiki/Food#Hunger_vs._Saturation).
     ///
     /// # Arguments
-    /// * `health` - Float in range `0.0..=20.0`. Value `<=0` is legal and will kill the player.
+    /// * `health` - Float in range `0.0..=20.0`. Value `<=0` is legal and will
+    ///   kill the player.
     /// * `food` - Integer in range `0..=20`.
     /// * `food_saturation` - Float in range `0.0..=5.0`.
     pub fn set_health_and_food(&mut self, health: f32, food: i32, food_saturation: f32) {
