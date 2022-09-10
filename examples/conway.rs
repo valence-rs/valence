@@ -226,9 +226,9 @@ impl Config for Game {
                 if sneaking != server.state.paused {
                     server.state.paused = sneaking;
                     client.play_sound(
-                        ident!("minecraft:block.note_block.pling"),
+                        ident!("block.note_block.pling"),
                         SoundCategory::Block,
-                        client.position().into(),
+                        client.position(),
                         0.5f32,
                         if sneaking { 0.5f32 } else { 1f32 },
                     );
