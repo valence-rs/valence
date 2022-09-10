@@ -43,6 +43,7 @@ thiserror = "1"
 url = { version = "2.2.2", features = ["serde"] }
 uuid = "1"
 vek = "0.15"
+hmac = "0.12.1"
 
 [dependencies.tokio]
 version = "1"

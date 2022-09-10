@@ -113,6 +113,7 @@ pub mod spatial_index;
 pub mod text;
 pub mod util;
 pub mod world;
+pub mod proxy;
 
 /// The Minecraft protocol version this library currently targets.
 pub const PROTOCOL_VERSION: i32 = 760;

@@ -75,21 +75,48 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
         STANDARD_TPS
     }
 
-    /// Called once at startup to get the "online mode" option, which determines
-    /// if client authentication and encryption should take place.
+    /// Called once at startup to get the connection mode option, which determines
+    /// if client authentication and encryption should take place
+    /// and if the server should get the player data from a proxy.
     ///
-    /// When online mode is disabled, malicious clients can give themselves any
-    /// username and UUID they want, potentially gaining privileges they
-    /// might not otherwise have. Additionally, encryption is only enabled in
-    /// online mode. For these reasons online mode should only be disabled
-    /// for development purposes and enabled on servers exposed to the
-    /// internet.
+    /// # `ConnectionMode::Online`
+    /// The "online mode" fetches all player data (uuid, username and skin) from mojang
+    /// and enables encryption.
+    /// This should be used for all publicly exposed servers, which are not behind a proxy.
+    ///
+    /// # `ConnectionMode::Offline`
+    /// If this mode is enabled all players can join with any username and uuid, which can be
+    /// used by malicious actors to get privileges by for example using the username (and uuid)
+    /// of the owner of the server.
+    /// This should only be enabled for development purposes and not for publicly exposed servers.
+    /// Furthermore encryption is disabled and minecraft's default skins will be used.
+    ///
+    /// # `ConnectionMode::Bungeecord`
+    /// TODO: docs
+    /// This is on implemented yet.
+    ///
+    /// # `ConnectionMode::Velocity`
+    /// This should be used if the server runs behind a Velocity Proxy, which is configured to run
+    /// witch the player info forwarding mode `modern`.
+    /// It fetches all player data (uuid, username and skin) from the velocity proxy and blocks
+    /// all connections which are not from the proxy.
+    /// To ensure this the return of `velocity_secret()` has to match the secret key of the velocity proxy.
+    ///
+    ///  # Default Implementation
+    ///
+    /// Returns `ConnectionMode::Online`
+    fn connection_mode(&self) -> ConnectionMode {
+        ConnectionMode::Online
+    }
+
+    /// Called once at startup to get the velocity secret which is only needed if the
+    /// connection mode is `ConnectionMode::Velocity`
     ///
     /// # Default Implementation
     ///
-    /// Returns `true`.
-    fn online_mode(&self) -> bool {
-        true
+    /// Returns ``
+    fn velocity_secret(&self) -> &'static str {
+        ""
     }
 
     /// Called once at startup to get the capacity of the buffer used to
@@ -248,4 +275,14 @@ pub enum ServerListPing<'a> {
     },
     /// Ignores the query and disconnects from the client.
     Ignore,
+}
+
+#[non_exhaustive]
+#[derive(Copy, Clone, Eq, PartialEq, Default)]
+pub enum ConnectionMode {
+    #[default]
+    Online,
+    Offline,
+    Bungeecord,
+    Velocity,
 }

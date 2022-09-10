@@ -3,15 +3,20 @@
 use std::collections::HashSet;
 use std::error::Error;
 use std::iter::FusedIterator;
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use std::{io, thread};
+use std::io::{Bytes, Read};
+use std::str::FromStr;
 
 use anyhow::{bail, ensure, Context};
+use byteorder::{BigEndian, ReadBytesExt};
 use flume::{Receiver, Sender};
+use hmac::{Hmac, Mac};
 use num::BigInt;
+use rand::random;
 use rand::rngs::OsRng;
 use rayon::iter::ParallelIterator;
 use reqwest::Client as HttpClient;
@@ -29,26 +34,27 @@ use uuid::Uuid;
 
 use crate::biome::{Biome, BiomeId};
 use crate::client::{Client, Clients};
-use crate::config::{Config, ServerListPing};
+use crate::config::{Config, ConnectionMode, ServerListPing};
 use crate::dimension::{Dimension, DimensionId};
 use crate::entity::Entities;
 use crate::player_list::PlayerLists;
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::codec::{Decoder, Encoder};
 use crate::protocol::packets::c2s::handshake::{Handshake, HandshakeNextState};
-use crate::protocol::packets::c2s::login::{EncryptionResponse, LoginStart, VerifyTokenOrMsgSig};
+use crate::protocol::packets::c2s::login::{EncryptionResponse, LoginPluginResponse, LoginStart, VerifyTokenOrMsgSig};
 use crate::protocol::packets::c2s::play::C2sPlayPacket;
 use crate::protocol::packets::c2s::status::{QueryPing, QueryRequest};
-use crate::protocol::packets::s2c::login::{
-    EncryptionRequest, LoginCompression, LoginDisconnect, LoginSuccess,
-};
+use crate::protocol::packets::s2c::login::{EncryptionRequest, LoginCompression, LoginDisconnect, LoginPluginRequest, LoginSuccess};
 use crate::protocol::packets::s2c::play::S2cPlayPacket;
 use crate::protocol::packets::s2c::status::{QueryPong, QueryResponse};
 use crate::protocol::packets::Property;
-use crate::protocol::{BoundedArray, BoundedString, VarInt};
+use crate::protocol::{BoundedArray, BoundedString, Decode, RawBytes, VarInt};
 use crate::util::valid_username;
 use crate::world::Worlds;
 use crate::{Ticks, PROTOCOL_VERSION, VERSION_NAME};
+use crate::ident::Ident;
+use crate::proxy::velocity::{VELOCITY_MAX_SUPPORTED_VERSION, VELOCITY_PLAYER_INFO_CHANNEL};
+use crate::text::Text;
 
 /// Contains the entire state of a running Minecraft server, accessible from
 /// within the [update](crate::config::Config::update) loop.
@@ -86,7 +92,8 @@ struct SharedServerInner<C: Config> {
     cfg: C,
     address: SocketAddr,
     tick_rate: Ticks,
-    online_mode: bool,
+    connection_mode: ConnectionMode,
+    velocity_secret: &'static str,
     max_connections: usize,
     incoming_packet_capacity: usize,
     outgoing_packet_capacity: usize,
@@ -172,9 +179,14 @@ impl<C: Config> SharedServer<C> {
         self.0.tick_rate
     }
 
-    /// Gets whether online mode is enabled on this server.
-    pub fn online_mode(&self) -> bool {
-        self.0.online_mode
+    /// Gets the connection mode of the server.
+    pub fn connection_mode(&self) -> ConnectionMode {
+        self.0.connection_mode
+    }
+
+    /// Gets the velocity secret.
+    pub fn velocity_secret(&self) -> &str {
+        self.0.velocity_secret
     }
 
     /// Gets the maximum number of connections allowed to the server at once.
@@ -298,7 +310,8 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
 
     ensure!(tick_rate > 0, "tick rate must be greater than zero");
 
-    let online_mode = cfg.online_mode();
+    let connection_mode = cfg.connection_mode();
+    let velocity_secret = cfg.velocity_secret();
 
     let incoming_packet_capacity = cfg.incoming_packet_capacity();
 
@@ -395,7 +408,8 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         cfg,
         address,
         tick_rate,
-        online_mode,
+        connection_mode,
+        velocity_secret,
         max_connections,
         incoming_packet_capacity,
         outgoing_packet_capacity,
@@ -631,6 +645,7 @@ async fn handle_login<C: Config>(
     remote_addr: SocketAddr,
     handshake: Handshake,
 ) -> anyhow::Result<Option<NewClientData>> {
+    let mut client_addr = remote_addr;
     if handshake.protocol_version.0 != PROTOCOL_VERSION {
         // TODO: send translated disconnect msg?
         return Ok(None);
@@ -644,96 +659,176 @@ async fn handle_login<C: Config>(
 
     ensure!(valid_username(&username), "invalid username '{username}'");
 
-    let (uuid, textures) = if server.0.online_mode {
-        let my_verify_token: [u8; 16] = rand::random();
+    let (uuid, textures) = match server.connection_mode() {
+        ConnectionMode::Online => {
+            let my_verify_token: [u8; 16] = rand::random();
 
-        c.enc
-            .write_packet(&EncryptionRequest {
-                server_id: Default::default(), // Always empty
-                public_key: server.0.public_key_der.to_vec(),
-                verify_token: my_verify_token.to_vec().into(),
-            })
-            .await?;
+            c.enc
+                .write_packet(&EncryptionRequest {
+                    server_id: Default::default(), // Always empty
+                    public_key: server.0.public_key_der.to_vec(),
+                    verify_token: my_verify_token.to_vec().into(),
+                })
+                .await?;
 
-        let EncryptionResponse {
-            shared_secret: BoundedArray(encrypted_shared_secret),
-            token_or_sig,
-        } = c.dec.read_packet().await?;
+            let EncryptionResponse {
+                shared_secret: BoundedArray(encrypted_shared_secret),
+                token_or_sig,
+            } = c.dec.read_packet().await?;
 
-        let shared_secret = server
-            .0
-            .rsa_key
-            .decrypt(PaddingScheme::PKCS1v15Encrypt, &encrypted_shared_secret)
-            .context("failed to decrypt shared secret")?;
+            let shared_secret = server
+                .0
+                .rsa_key
+                .decrypt(PaddingScheme::PKCS1v15Encrypt, &encrypted_shared_secret)
+                .context("failed to decrypt shared secret")?;
 
-        let _opt_signature = match token_or_sig {
-            VerifyTokenOrMsgSig::VerifyToken(BoundedArray(encrypted_verify_token)) => {
-                let verify_token = server
-                    .0
-                    .rsa_key
-                    .decrypt(PaddingScheme::PKCS1v15Encrypt, &encrypted_verify_token)
-                    .context("failed to decrypt verify token")?;
+            let _opt_signature = match token_or_sig {
+                VerifyTokenOrMsgSig::VerifyToken(BoundedArray(encrypted_verify_token)) => {
+                    let verify_token = server
+                        .0
+                        .rsa_key
+                        .decrypt(PaddingScheme::PKCS1v15Encrypt, &encrypted_verify_token)
+                        .context("failed to decrypt verify token")?;
 
-                ensure!(
+                    ensure!(
                     my_verify_token.as_slice() == verify_token,
                     "verify tokens do not match"
                 );
-                None
+                    None
+                }
+                VerifyTokenOrMsgSig::MsgSig(sig) => Some(sig),
+            };
+
+            let crypt_key: [u8; 16] = shared_secret
+                .as_slice()
+                .try_into()
+                .context("shared secret has the wrong length")?;
+
+            c.enc.enable_encryption(&crypt_key);
+            c.dec.enable_encryption(&crypt_key);
+
+            #[derive(Debug, Deserialize)]
+            struct AuthResponse {
+                id: String,
+                name: String,
+                properties: Vec<Property>,
             }
-            VerifyTokenOrMsgSig::MsgSig(sig) => Some(sig),
-        };
 
-        let crypt_key: [u8; 16] = shared_secret
-            .as_slice()
-            .try_into()
-            .context("shared secret has the wrong length")?;
+            let hash = Sha1::new()
+                .chain(&shared_secret)
+                .chain(&server.0.public_key_der)
+                .finalize();
 
-        c.enc.enable_encryption(&crypt_key);
-        c.dec.enable_encryption(&crypt_key);
+            let hex_hash = weird_hex_encoding(&hash);
 
-        #[derive(Debug, Deserialize)]
-        struct AuthResponse {
-            id: String,
-            name: String,
-            properties: Vec<Property>,
-        }
+            let url = format!("https://sessionserver.mojang.com/session/minecraft/hasJoined?username={username}&serverId={hex_hash}&ip={}", remote_addr.ip());
+            let resp = server.0.http_client.get(url).send().await?;
 
-        let hash = Sha1::new()
-            .chain(&shared_secret)
-            .chain(&server.0.public_key_der)
-            .finalize();
-
-        let hex_hash = weird_hex_encoding(&hash);
-
-        let url = format!("https://sessionserver.mojang.com/session/minecraft/hasJoined?username={username}&serverId={hex_hash}&ip={}", remote_addr.ip());
-        let resp = server.0.http_client.get(url).send().await?;
-
-        let status = resp.status();
-        ensure!(
+            let status = resp.status();
+            ensure!(
             status.is_success(),
             "session server GET request failed: {status}"
         );
 
-        let data: AuthResponse = resp.json().await?;
+            let data: AuthResponse = resp.json().await?;
 
-        ensure!(data.name == username, "usernames do not match");
+            ensure!(data.name == username, "usernames do not match");
 
-        let uuid = Uuid::parse_str(&data.id).context("failed to parse player's UUID")?;
+            let uuid = Uuid::parse_str(&data.id).context("failed to parse player's UUID")?;
 
-        let textures = match data.properties.into_iter().find(|p| p.name == "textures") {
-            Some(p) => SignedPlayerTextures::from_base64(
-                p.value,
-                p.signature.context("missing signature for textures")?,
-            )?,
-            None => bail!("failed to find textures in auth response"),
-        };
+            let textures = match data.properties.into_iter().find(|p| p.name == "textures") {
+                Some(p) => SignedPlayerTextures::from_base64(
+                    p.value,
+                    p.signature.context("missing signature for textures")?,
+                )?,
+                None => bail!("failed to find textures in auth response"),
+            };
 
-        (uuid, Some(textures))
-    } else {
-        // Derive the player's UUID from a hash of their username.
-        let uuid = Uuid::from_slice(&Sha256::digest(&username)[..16]).unwrap();
+            (uuid, Some(textures))
+        }
+        ConnectionMode::Offline => {
+            // Derive the player's UUID from a hash of their username.
+            let uuid = Uuid::from_slice(&Sha256::digest(&username)[..16]).unwrap();
 
-        (uuid, None)
+            (uuid, None)
+        }
+        ConnectionMode::Bungeecord => {
+            // Derive the player's UUID from a hash of their username.
+            let uuid = Uuid::from_slice(&Sha256::digest(&username)[..16]).unwrap();
+
+            (uuid, None)
+            // TODO implement
+        }
+        ConnectionMode::Velocity => {
+            let message_id: i32 = -1;
+            c.enc
+                .write_packet(&LoginPluginRequest{
+                    message_id: VarInt::from(message_id),
+                    channel: Ident::new(VELOCITY_PLAYER_INFO_CHANNEL).unwrap(),
+                    data: RawBytes{ 0: vec![] }
+                }).await?;
+
+            let plugin_response: LoginPluginResponse = c.dec
+                .read_packet().await?;
+
+            ensure!(plugin_response.message_id.0 == message_id, "plugin messages ids do not match");
+            let raw_data = plugin_response.data.unwrap();
+            let mut data = raw_data.0.as_slice();
+            let mut signature: [u8; 32] = [0u8; 32];
+            ensure!(data.read(&mut signature).unwrap() == 32, "can not read signature");
+
+            // Verify Signature
+            let all_data_without_signature: &[u8] = &raw_data.0.as_slice()[32..raw_data.0.len()];
+            type HmacSha256 = Hmac<Sha256>;
+            let mut mac = HmacSha256::new_from_slice(server.velocity_secret().as_bytes()).unwrap();
+            Mac::update(&mut mac, all_data_without_signature);
+            let signature_check = mac.verify_slice(signature.as_slice());
+            if signature_check.is_err() {
+                c.enc.write_packet(&LoginDisconnect{
+                    reason: Text::text("This server requires you to connect with velocity!")
+                }).await?;
+                log::warn!("Client tried connect with invalid signature. This could be an attacker or a miss configured velocity secret key!");
+                return Ok(None)
+            }
+
+
+            // Check Velocity Version
+            let version: VarInt = Decode::decode(&mut data).unwrap();
+            if version.0 > VELOCITY_MAX_SUPPORTED_VERSION {
+                c.enc.write_packet(&LoginDisconnect{
+                    reason: Text::text("Velocity Version not supported!")
+                }).await?;
+                log::warn!("Velocity Version {} is not supported", version.0);
+                return Ok(None)
+            }
+
+            // Overwrite Client Address
+            let connection_address: String = String::decode(&mut data).unwrap() + ":0";
+            client_addr = SocketAddr::from_str(connection_address.as_str()).unwrap();
+
+            // Get UUID and validate username
+            let uuid = Uuid::from_u128(data.read_u128::<BigEndian>().unwrap()); // TODO
+            let velocity_username: BoundedString<0, 16> = Decode::decode(&mut data).unwrap();
+            ensure!(username == velocity_username.0, "usernames do not match");
+
+
+
+            // Read Properties and get Skin
+            let num_properties = VarInt::decode(&mut data).unwrap();
+            let mut skin: Option<SignedPlayerTextures> = None;
+
+            for i in 0..num_properties.0 {
+                let name: String = Decode::decode(&mut data).unwrap();
+                let value: String = Decode::decode(&mut data).unwrap();
+                let has_signature: bool = Decode::decode(&mut data).unwrap();
+                let property_signature: String = if has_signature {Decode::decode(&mut data).unwrap()} else {String::new()};
+                if name == String::from("textures") {
+                    skin = Some(SignedPlayerTextures::from_base64(value, property_signature).unwrap());
+                }
+            }
+
+            (uuid, skin)
+        }
     };
 
     let compression_threshold = 256;
@@ -750,7 +845,7 @@ async fn handle_login<C: Config>(
         uuid,
         username,
         textures,
-        remote_addr,
+        remote_addr: client_addr,
     };
 
     if let Err(reason) = server.0.cfg.login(server, &ncd).await {
