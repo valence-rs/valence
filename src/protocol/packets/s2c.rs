@@ -702,6 +702,22 @@ pub mod play {
     }
 
     def_struct! {
+        ExperienceBarUpdate {
+            bar: f32,
+            level: VarInt,
+            total_xp: VarInt,
+        }
+    }
+
+    def_struct! {
+        HealthUpdate {
+            health: f32,
+            food: VarInt,
+            food_saturation: f32,
+        }
+    }
+
+    def_struct! {
         UpdateSubtitle {
             subtitle_text: Text,
         }
@@ -843,6 +859,8 @@ pub mod play {
             PlayerSpawnPosition = 77,
             EntityTrackerUpdate = 80,
             EntityVelocityUpdate = 82,
+            ExperienceBarUpdate = 84,
+            HealthUpdate = 85,
             UpdateSubtitle = 91,
             WorldTimeUpdate = 92,
             UpdateTitle = 93,
