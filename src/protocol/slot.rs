@@ -46,7 +46,7 @@ impl Decode for Slot {
         Ok(Slot::Present {
             item_id: VarInt::decode(r)?,
             item_count: u8::decode(r)?,
-            nbt: if r.get(0) == Some(&0) {
+            nbt: if r.first() == Some(&0) {
                 r.read_u8()?;
                 None
             } else {
