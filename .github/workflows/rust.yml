@@ -21,7 +21,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Validate formatting on ${{ matrix.os }}
-      run: cargo fmt --all -- --check
+      run: cargo +nightly fmt --all -- --check
     - name: Run clippy lints on ${{ matrix.os }}
       run: cargo clippy --verbose --no-deps --all-features
     - name: Run tests on ${{ matrix.os }}
