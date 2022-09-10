@@ -871,3 +871,123 @@ impl From<EntitySpawnPacket> for S2cPlayPacket {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::num::NonZeroU32;
+    use uuid::Uuid;
+    use super::{Entities, EntityId, EntityKind};
+    use crate::{
+        config::Config,
+        slab_versioned::Key,
+        server::Server
+    };
+
+    /// Created for the sole purpose of use during unit tests.
+    struct MockConfig;
+    impl Config for MockConfig {
+        type ServerState = ();
+        type ClientState = ();
+        type EntityState = u8; // Just for identification purposes
+        type WorldState = ();
+        type ChunkState = ();
+        type PlayerListState = ();
+
+        fn max_connections(&self) -> usize { 10 }
+        fn update(&self, _server: &mut Server<Self>) { }
+    }
+
+    #[test]
+    fn entities_has_valid_new_state() {
+        let mut entities: Entities<MockConfig> = Entities::new();
+        let network_id: i32 = 8675309;
+        let entity_id = EntityId(Key::new(
+            202298,
+            NonZeroU32::new(network_id as u32).expect("Value given should never be zero!")
+        ));
+        let uuid = Uuid::from_bytes([2; 16]);
+        assert!(entities.is_empty());
+        assert!(entities.get(entity_id).is_none());
+        assert!(entities.get_mut(entity_id).is_none());
+        assert!(entities.get_with_uuid(uuid).is_none());
+        assert!(entities.get_with_network_id(network_id).is_none());
+    }
+
+    #[test]
+    fn entities_can_be_set_and_get() {
+        let mut entities: Entities<MockConfig> = Entities::new();
+        assert!(entities.is_empty());
+        let (player_id, player_entity) = entities.insert(EntityKind::Player, 1);
+        assert_eq!(player_entity.state, 1);
+        assert_eq!(entities.get(player_id).unwrap().state, 1);
+        let mut_player_entity = entities.get_mut(player_id)
+            .expect("Failed to get mutable reference");
+        mut_player_entity.state = 100;
+        assert_eq!(entities.get(player_id).unwrap().state, 100);
+        assert_eq!(entities.len(), 1);
+    }
+
+    #[test]
+    fn entities_can_be_set_and_get_with_uuid() {
+        let mut entities: Entities<MockConfig> = Entities::new();
+        let uuid = Uuid::from_bytes([2; 16]);
+        assert!(entities.is_empty());
+        let (zombie_id, zombie_entity) = entities.insert_with_uuid(EntityKind::Zombie, uuid, 1)
+            .expect("Unexpected Uuid collision when inserting to an empty collection");
+        assert_eq!(zombie_entity.state, 1);
+        let maybe_zombie = entities.get_with_uuid(uuid)
+            .expect("Uuid lookup failed on item already added to this collection");
+        assert_eq!(zombie_id, maybe_zombie);
+        assert_eq!(entities.len(), 1);
+    }
+
+    #[test]
+    fn entities_can_be_set_and_get_with_network_id() {
+        let mut entities: Entities<MockConfig> = Entities::new();
+        assert!(entities.is_empty());
+        let (boat_id, boat_entity) = entities.insert(EntityKind::Boat, 12);
+        assert_eq!(boat_entity.state, 12);
+        let (cat_id, cat_entity) = entities.insert(EntityKind::Cat, 75);
+        assert_eq!(cat_entity.state, 75);
+        let maybe_boat_id = entities.get_with_network_id(boat_id.0.version.get() as i32)
+            .expect("Network id lookup failed on item already added to this collection");
+        let maybe_boat = entities.get(maybe_boat_id)
+            .expect("Failed to look up item already added to collection");
+        assert_eq!(maybe_boat.state, 12);
+        let maybe_cat_id = entities.get_with_network_id(cat_id.0.version.get() as i32)
+            .expect("Network id lookup failed on item already added to this collection");
+        let maybe_cat = entities.get(maybe_cat_id)
+            .expect("Failed to look up item already added to collection");
+        assert_eq!(maybe_cat.state, 75);
+        assert_eq!(entities.len(), 2);
+    }
+
+    #[test]
+    fn entities_can_be_removed() {
+        let mut entities: Entities<MockConfig> = Entities::new();
+        assert!(entities.is_empty());
+        let (player_id, _) = entities.insert(EntityKind::Player, 1);
+        let player_state = entities.remove(player_id)
+            .expect("Failed to remove an item from the collection");
+        assert_eq!(player_state, 1);
+    }
+
+    #[test]
+    fn entities_can_be_retained() {
+        let mut entities: Entities<MockConfig> = Entities::new();
+        assert!(entities.is_empty());
+        let (blaze_id, _) = entities.insert(EntityKind::Blaze, 10);
+        let (fox_id, _) = entities.insert(EntityKind::Fox, 110);
+        let (turtle_id, _) = entities.insert(EntityKind::Turtle, 20);
+        let (goat_id, _) = entities.insert(EntityKind::Goat, 120);
+        let (horse_id, _) = entities.insert(EntityKind::Horse, 30);
+        assert_eq!(entities.len(), 5);
+        entities.retain(|_id, entity| entity.state > 100 );
+        assert_eq!(entities.len(), 2);
+        assert!(entities.get(fox_id).is_some());
+        assert!(entities.get(goat_id).is_some());
+        assert!(entities.get(blaze_id).is_none());
+        assert!(entities.get(turtle_id).is_none());
+        assert!(entities.get(horse_id).is_none());
+    }
+}

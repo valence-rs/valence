@@ -32,11 +32,11 @@ use crate::protocol::packets::s2c::play::{
     BiomeRegistry, ChatTypeRegistry, ChunkLoadDistance, ChunkRenderDistanceCenter, ClearTitles,
     DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, EntitiesDestroy,
     EntityAnimation, EntityAttributes, EntityAttributesProperty, EntityPosition, EntitySetHeadYaw,
-    EntityStatus, EntityTrackerUpdate, EntityVelocityUpdate, GameJoin, GameMessage,
-    GameStateChange, GameStateChangeReason, KeepAlive, MoveRelative, OverlayMessage, PlaySoundId,
-    PlayerActionResponse, PlayerPositionLook, PlayerPositionLookFlags, PlayerRespawn,
-    PlayerSpawnPosition, RegistryCodec, Rotate, RotateAndMoveRelative, S2cPlayPacket,
-    SoundCategory, UnloadChunk, UpdateSubtitle, UpdateTitle,
+    EntityStatus, EntityTrackerUpdate, EntityVelocityUpdate, ExperienceBarUpdate, GameJoin,
+    GameMessage, GameStateChange, GameStateChangeReason, HealthUpdate, KeepAlive, MoveRelative,
+    OverlayMessage, PlaySoundId, PlayerActionResponse, PlayerPositionLook, PlayerPositionLookFlags,
+    PlayerRespawn, PlayerSpawnPosition, RegistryCodec, Rotate, RotateAndMoveRelative,
+    S2cPlayPacket, SoundCategory, UnloadChunk, UpdateSubtitle, UpdateTitle,
 };
 use crate::protocol::{BoundedInt, ByteAngle, NbtBridge, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
@@ -544,6 +544,35 @@ impl<C: Config> Client<C> {
         self.send_packet(ClearTitles { reset: true });
     }
 
+    /// Sets the XP bar visible above hotbar and total experience.
+    ///
+    /// # Arguments
+    /// * `bar` - Floating value in the range `0.0..=1.0` indicating progress on the XP bar.
+    /// * `level` - Number above the XP bar.
+    /// * `total_xp` - TODO.
+    pub fn set_level(&mut self, bar: f32, level: i32, total_xp: i32) {
+        self.send_packet(ExperienceBarUpdate {
+            bar,
+            level: level.into(),
+            total_xp: total_xp.into(),
+        })
+    }
+
+    /// Sets the health and food of the player.
+    /// You can read more about hunger and saturation [here](https://minecraft.fandom.com/wiki/Food#Hunger_vs._Saturation).
+    ///
+    /// # Arguments
+    /// * `health` - Float in range `0.0..=20.0`. Value `<=0` is legal and will kill the player.
+    /// * `food` - Integer in range `0..=20`.
+    /// * `food_saturation` - Float in range `0.0..=5.0`.
+    pub fn set_health_and_food(&mut self, health: f32, food: i32, food_saturation: f32) {
+        self.send_packet(HealthUpdate {
+            health,
+            food: food.into(),
+            food_saturation,
+        })
+    }
+
     /// Gets whether or not the client is connected to the server.
     ///
     /// A disconnected client object will never become reconnected. It is your
@@ -905,6 +934,7 @@ impl<C: Config> Client<C> {
     ) {
         // Mark the client as disconnected when appropriate.
         if self.recv.is_disconnected() || self.send.as_ref().map_or(true, |s| s.is_disconnected()) {
+            self.bits.set_created_this_tick(false);
             self.send = None;
             return;
         }
