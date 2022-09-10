@@ -905,6 +905,7 @@ impl<C: Config> Client<C> {
     ) {
         // Mark the client as disconnected when appropriate.
         if self.recv.is_disconnected() || self.send.as_ref().map_or(true, |s| s.is_disconnected()) {
+            self.bits.set_created_this_tick(false);
             self.send = None;
             return;
         }
