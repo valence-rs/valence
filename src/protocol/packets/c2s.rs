@@ -8,7 +8,8 @@ pub mod handshake {
     def_struct! {
         Handshake {
             protocol_version: VarInt,
-            server_adddress: BoundedString<0, 255>,
+            // by the minecraft protocol this is specified as a BoundedString<0, 255> but due issues with bungeecord ip forwarding this limit is removed
+            server_address: String,
             server_port: u16,
             next_state: HandshakeNextState,
         }
