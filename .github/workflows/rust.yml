@@ -27,6 +27,6 @@ jobs:
     - name: Validate formatting on ${{ matrix.os }}
       run: cargo fmt --all -- --check
     - name: Run clippy lints on ${{ matrix.os }}
-      run: cargo +stable clippy --verbose --no-deps --all-features --all-targets
+      run: cargo +stable clippy --tests --no-deps --all-features --all-targets
     - name: Run tests on ${{ matrix.os }}
-      run: cargo +stable test --verbose --all-features --all-targets
+      run: cargo +stable test --all-features --all-targets
