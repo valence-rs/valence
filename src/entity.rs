@@ -508,7 +508,12 @@ impl<C: Config> Entity<C> {
             }
             TrackedData::Ghast(_) => [4.0, 4.0, 4.0],
             TrackedData::Giant(_) => [3.6, 12.0, 3.6],
-            TrackedData::GlowItemFrame(_) => todo!("account for rotation"),
+            TrackedData::GlowItemFrame(e) => match e.get_rotation() {
+                0 | 1 => [0.75, 0.0625, 0.75],
+                2 | 3 => [0.75, 0.75, 0.0625],
+                4 | 5 => [0.0625, 0.75, 0.75],
+                _ => [0.75, 0.0625, 0.75], // TODO: Maybe error handling for out of bound values?
+            },
             TrackedData::GlowSquid(_) => [0.8, 0.8, 0.8],
             TrackedData::Goat(e) => {
                 if e.get_child() {
@@ -542,7 +547,12 @@ impl<C: Config> Entity<C> {
             TrackedData::Illusioner(_) => [0.6, 1.95, 0.6],
             TrackedData::IronGolem(_) => [1.4, 2.7, 1.4],
             TrackedData::Item(_) => [0.25, 0.25, 0.25],
-            TrackedData::ItemFrame(_) => todo!("account for rotation"),
+            TrackedData::ItemFrame(e) => match e.get_rotation() {
+                0 | 1 => [0.75, 0.0625, 0.75],
+                2 | 3 => [0.75, 0.75, 0.0625],
+                4 | 5 => [0.0625, 0.75, 0.75],
+                _ => [0.75, 0.0625, 0.75], // TODO: Maybe error handling for out of bound values?
+            },
             TrackedData::Fireball(_) => [1.0, 1.0, 1.0],
             TrackedData::LeashKnot(_) => [0.375, 0.5, 0.375],
             TrackedData::Lightning(_) => [0.0, 0.0, 0.0],
