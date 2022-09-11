@@ -99,8 +99,9 @@ impl Config for Game {
         ServerListPing::Respond {
             online_players: self.player_count.load(Ordering::SeqCst) as i32,
             max_players: MAX_PLAYERS as i32,
+            player_sample: Default::default(),
             description: "Hello Valence!".color(Color::AQUA),
-            favicon_png: Some(include_bytes!("../assets/favicon.png")),
+            favicon_png: Some(include_bytes!("../assets/logo-64x64.png").as_slice().into()),
         }
     }
 
@@ -226,9 +227,9 @@ impl Config for Game {
                 if sneaking != server.state.paused {
                     server.state.paused = sneaking;
                     client.play_sound(
-                        ident!("minecraft:block.note_block.pling"),
+                        ident!("block.note_block.pling"),
                         SoundCategory::Block,
-                        client.position().into(),
+                        client.position(),
                         0.5f32,
                         if sneaking { 0.5f32 } else { 1f32 },
                     );

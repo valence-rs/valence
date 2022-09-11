@@ -1,5 +1,6 @@
-use byteorder::ReadBytesExt;
 use std::io::Write;
+
+use byteorder::ReadBytesExt;
 
 use crate::nbt::Compound;
 use crate::protocol::{Decode, Encode, VarInt};
@@ -46,7 +47,7 @@ impl Decode for Slot {
         Ok(Slot::Present {
             item_id: VarInt::decode(r)?,
             item_count: u8::decode(r)?,
-            nbt: if r.get(0) == Some(&0) {
+            nbt: if r.first() == Some(&0) {
                 r.read_u8()?;
                 None
             } else {
@@ -58,8 +59,9 @@ impl Decode for Slot {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_nbt::Value;
+
+    use super::*;
 
     #[test]
     fn slot_with_nbt() {

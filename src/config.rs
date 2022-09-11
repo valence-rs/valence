@@ -1,10 +1,13 @@
 //! Configuration for the server.
 
+use std::borrow::Cow;
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::panic::{RefUnwindSafe, UnwindSafe};
 
 use async_trait::async_trait;
+use serde::Serialize;
 use tokio::runtime::Handle as TokioHandle;
+use uuid::Uuid;
 
 use crate::biome::Biome;
 use crate::dimension::Dimension;
@@ -229,7 +232,7 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
 
 /// The result of the [`server_list_ping`](Config::server_list_ping) callback.
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum ServerListPing<'a> {
     /// Responds to the server list ping with the given information.
     Respond {
@@ -238,14 +241,30 @@ pub enum ServerListPing<'a> {
         /// Displayed as the maximum number of players allowed on the server at
         /// a time.
         max_players: i32,
+        /// The list of players visible by hovering over the player count.
+        ///
+        /// Has no effect if this list is empty.
+        player_sample: Cow<'a, [PlayerSampleEntry<'a>]>,
         /// A description of the server.
         description: Text,
         /// The server's icon as the bytes of a PNG image.
         /// The image must be 64x64 pixels.
         ///
         /// No icon is used if the value is `None`.
-        favicon_png: Option<&'a [u8]>,
+        favicon_png: Option<Cow<'a, [u8]>>,
     },
     /// Ignores the query and disconnects from the client.
     Ignore,
+}
+
+/// Represents an individual entry in the player sample.
+#[derive(Clone, Debug, Serialize)]
+pub struct PlayerSampleEntry<'a> {
+    /// The name of the player.
+    ///
+    /// This string can contain
+    /// [legacy formatting codes](https://minecraft.fandom.com/wiki/Formatting_codes).
+    pub name: Cow<'a, str>,
+    /// The player UUID.
+    pub id: Uuid,
 }

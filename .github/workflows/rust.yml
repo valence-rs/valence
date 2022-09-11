@@ -20,7 +20,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Build on ${{ matrix.os }}
-      run: cargo build --verbose
+    - uses: dtolnay/rust-toolchain@nightly
+      with:
+        components: clippy, rustfmt
+
+    - name: Validate formatting on ${{ matrix.os }}
+      run: cargo fmt --all -- --check
+    - name: Run clippy lints on ${{ matrix.os }}
+      run: cargo +stable clippy --tests --no-deps --all-features --all-targets
     - name: Run tests on ${{ matrix.os }}
-      run: cargo test --verbose
+      run: cargo +stable test --all-features --all-targets

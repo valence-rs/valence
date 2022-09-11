@@ -1,13 +1,15 @@
+use std::borrow::Cow;
 use std::f64::consts::TAU;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
+use uuid::Uuid;
 use valence::async_trait;
 use valence::block::{BlockPos, BlockState};
 use valence::chunk::UnloadedChunk;
 use valence::client::{default_client_event, GameMode};
-use valence::config::{Config, ServerListPing};
+use valence::config::{Config, PlayerSampleEntry, ServerListPing};
 use valence::dimension::DimensionId;
 use valence::entity::{EntityId, EntityKind};
 use valence::player_list::PlayerListId;
@@ -66,11 +68,23 @@ impl Config for Game {
         _remote_addr: SocketAddr,
         _protocol_version: i32,
     ) -> ServerListPing {
+        const SAMPLE: &[PlayerSampleEntry] = &[
+            PlayerSampleEntry {
+                name: Cow::Borrowed("§cFirst Entry"),
+                id: Uuid::nil(),
+            },
+            PlayerSampleEntry {
+                name: Cow::Borrowed("§6§oSecond Entry"),
+                id: Uuid::nil(),
+            },
+        ];
+
         ServerListPing::Respond {
             online_players: self.player_count.load(Ordering::SeqCst) as i32,
             max_players: MAX_PLAYERS as i32,
+            player_sample: SAMPLE.into(),
             description: "Hello Valence!".color(Color::AQUA),
-            favicon_png: Some(include_bytes!("../assets/favicon.png")),
+            favicon_png: Some(include_bytes!("../assets/logo-64x64.png").as_slice().into()),
         }
     }
 

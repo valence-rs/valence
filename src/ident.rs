@@ -1,6 +1,4 @@
 //! Namespaced identifiers.
-//!
-//!
 
 use std::borrow::Cow;
 use std::io::Write;
