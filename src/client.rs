@@ -38,7 +38,7 @@ use crate::protocol::packets::s2c::play::{
     PlayerSpawnPosition, PluginMessageToClient, RegistryCodec, Rotate, RotateAndMoveRelative,
     S2cPlayPacket, SoundCategory, UnloadChunk, UpdateSubtitle, UpdateTitle,
 };
-use crate::protocol::{BoundedInt, ByteAngle, NbtBridge, RawBytes, VarInt};
+use crate::protocol::{BoundedArray, BoundedInt, ByteAngle, NbtBridge, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::text::Text;
@@ -375,8 +375,11 @@ impl<C: Config> Client<C> {
         self.msgs_to_send.push(msg.into());
     }
 
-    pub fn send_plugin_message(&mut self, msg: PluginMessageToClient) {
-        self.plugin_messages_to_send.push(msg);
+    pub fn send_plugin_message(&mut self, channel: Ident, data: BoundedArray<u8, 0, 1048576>) {
+        self.plugin_messages_to_send.push(PluginMessageToClient{
+            channel,
+            data,
+        });
     }
 
     /// Gets the absolute position of this client in the world it is located

@@ -100,7 +100,6 @@ struct SharedServerInner<C: Config> {
     address: SocketAddr,
     tick_rate: Ticks,
     connection_mode: ConnectionMode,
-    velocity_secret: &'static str,
     max_connections: usize,
     incoming_packet_capacity: usize,
     outgoing_packet_capacity: usize,
@@ -188,12 +187,7 @@ impl<C: Config> SharedServer<C> {
 
     /// Gets the connection mode of the server.
     pub fn connection_mode(&self) -> ConnectionMode {
-        self.0.connection_mode
-    }
-
-    /// Gets the velocity secret.
-    pub fn velocity_secret(&self) -> &str {
-        self.0.velocity_secret
+        self.0.connection_mode.clone()
     }
 
     /// Gets the maximum number of connections allowed to the server at once.
@@ -318,7 +312,6 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
     ensure!(tick_rate > 0, "tick rate must be greater than zero");
 
     let connection_mode = cfg.connection_mode();
-    let velocity_secret = cfg.velocity_secret();
 
     let incoming_packet_capacity = cfg.incoming_packet_capacity();
 
@@ -416,7 +409,6 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         address,
         tick_rate,
         connection_mode,
-        velocity_secret,
         max_connections,
         incoming_packet_capacity,
         outgoing_packet_capacity,
@@ -571,19 +563,8 @@ async fn handle_connection<C: Config>(
     // TODO: peek stream for 0xFE legacy ping
 
     let handshake: Handshake;
-    if server.connection_mode() == ConnectionMode::Bungeecord {
-        let bungeecord_handshake = c.dec.read_packet::<BungeecordHandshake>().await?;
-        handshake = Handshake {
-            protocol_version: bungeecord_handshake.protocol_version,
-            server_address: BoundedString {
-                0: bungeecord_handshake.server_address,
-            }, // TODO fix writing over string bounds
-            server_port: bungeecord_handshake.server_port,
-            next_state: bungeecord_handshake.next_state,
-        };
-    } else {
-        handshake = c.dec.read_packet::<Handshake>().await?;
-    }
+    handshake = c.dec.read_packet::<Handshake>().await?;
+    ensure!(handshake.server_address <= 255 || server.connection_mode() == ConnectionMode::Bungeecord, "server address too long");
 
     match handshake.next_state {
         HandshakeNextState::Status => handle_status(server, &mut c, remote_addr, handshake)
@@ -815,7 +796,7 @@ async fn handle_login<C: Config>(
             }
             (uuid, skin)
         }
-        ConnectionMode::Velocity => {
+        ConnectionMode::Velocity { secret } => {
             let message_id: i32 = i32::MIN;
             // Send Player Info Request into the Plugin Channel
             c.enc
@@ -835,7 +816,7 @@ async fn handle_login<C: Config>(
                 plugin_response.message_id.0 == message_id,
                 "plugin messages ids do not match"
             );
-            let raw_data = plugin_response.data.unwrap();
+            let raw_data = plugin_response.data.expect("could not read data");
             let mut data = raw_data.0.as_slice();
             let mut signature: [u8; 32] = [0u8; 32];
             ensure!(
@@ -846,7 +827,7 @@ async fn handle_login<C: Config>(
             // Verify Signature
             let all_data_without_signature: &[u8] = &raw_data.0.as_slice()[32..raw_data.0.len()];
             type HmacSha256 = Hmac<Sha256>;
-            let mut mac = HmacSha256::new_from_slice(server.velocity_secret().as_bytes()).unwrap();
+            let mut mac = HmacSha256::new_from_slice(secret.as_bytes()).unwrap();
             Mac::update(&mut mac, all_data_without_signature);
             let signature_check = mac.verify_slice(signature.as_slice());
             if signature_check.is_err() {

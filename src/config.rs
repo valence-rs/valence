@@ -79,47 +79,11 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
     /// if client authentication and encryption should take place
     /// and if the server should get the player data from a proxy.
     ///
-    /// # `ConnectionMode::Online`
-    /// The "online mode" fetches all player data (uuid, username and skin) from mojang
-    /// and enables encryption.
-    /// This should be used for all publicly exposed servers, which are not behind a proxy.
-    ///
-    /// # `ConnectionMode::Offline`
-    /// If this mode is enabled all players can join with any username and uuid, which can be
-    /// used by malicious actors to get privileges by for example using the username (and uuid)
-    /// of the owner of the server.
-    /// This should only be enabled for development purposes and not for publicly exposed servers.
-    /// Furthermore encryption is disabled and minecraft's default skins will be used.
-    ///
-    /// # `ConnectionMode::Bungeecord`
-    /// This should be used if the server runs behind a Bungeecord/Waterfall Proxy with ip forwarding enabled
-    /// or a Velocity Proxy, which is configured to run with the player info forwarding mode `legacy`.
-    /// It fetches all player data (uuid, username and skin) from the bungeecord proxy but does not
-    /// block connections, which are not from the proxy.
-    /// If the server is publicly exposed anyone can connect with any name, uuid and skin similar to offline mode.
-    ///
-    /// # `ConnectionMode::Velocity`
-    /// This should be used if the server runs behind a Velocity Proxy, which is configured to run
-    /// with the player info forwarding mode `modern`.
-    /// It fetches all player data (uuid, username and skin) from the velocity proxy and blocks
-    /// all connections, which are not from the proxy.
-    /// To ensure this the return of `velocity_secret()` has to match the secret key of the velocity proxy.
-    ///
     ///  # Default Implementation
     ///
     /// Returns `ConnectionMode::Online`
     fn connection_mode(&self) -> ConnectionMode {
         ConnectionMode::Online
-    }
-
-    /// Called once at startup to get the velocity secret which is only needed if the
-    /// connection mode is `ConnectionMode::Velocity`
-    ///
-    /// # Default Implementation
-    ///
-    /// Returns ``
-    fn velocity_secret(&self) -> &'static str {
-        ""
     }
 
     /// Called once at startup to get the capacity of the buffer used to
@@ -281,11 +245,35 @@ pub enum ServerListPing<'a> {
 }
 
 #[non_exhaustive]
-#[derive(Copy, Clone, Eq, PartialEq, Default)]
+#[derive(Clone, Eq, PartialEq, Default)]
 pub enum ConnectionMode {
     #[default]
+    /// # `ConnectionMode::Online`
+    /// The "online mode" fetches all player data (uuid, username and skin) from mojang
+    /// and enables encryption.
+    /// This should be used for all publicly exposed servers, which are not behind a proxy.
     Online,
+    /// # `ConnectionMode::Offline`
+    /// If this mode is enabled all players can join with any username and uuid, which can be
+    /// used by malicious actors to get privileges by for example using the username (and uuid)
+    /// of the owner of the server.
+    /// This should only be enabled for development purposes and not for publicly exposed servers.
+    /// Furthermore encryption is disabled and minecraft's default skins will be used.
     Offline,
+    /// # `ConnectionMode::Bungeecord`
+    /// This should be used if the server runs behind a Bungeecord/Waterfall Proxy with ip forwarding enabled
+    /// or a Velocity Proxy, which is configured to run with the player info forwarding mode `legacy`.
+    /// It fetches all player data (uuid, username and skin) from the bungeecord proxy but does not
+    /// block connections, which are not from the proxy.
+    /// If the server is publicly exposed anyone can connect with any name, uuid and skin similar to offline mode.
     Bungeecord,
-    Velocity,
+    /// # `ConnectionMode::Velocity`
+    /// This should be used if the server runs behind a Velocity Proxy, which is configured to run
+    /// with the player info forwarding mode `modern`.
+    /// It fetches all player data (uuid, username and skin) from the velocity proxy and blocks
+    /// all connections, which are not from the proxy.
+    /// To ensure to set the secret value to the secret key of the velocity proxy.
+    Velocity {
+        secret: String
+    },
 }
