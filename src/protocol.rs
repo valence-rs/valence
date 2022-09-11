@@ -12,6 +12,7 @@ pub use byte_angle::ByteAngle;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+pub use slot::Slot;
 use uuid::Uuid;
 pub use var_int::VarInt;
 pub use var_long::VarLong;

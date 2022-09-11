@@ -648,7 +648,17 @@ impl<C: Config> Entity<C> {
                     [0.9, 1.3, 0.9]
                 }
             }
-            TrackedData::Shulker(_) => [1.0, 1.0, 1.0], // TODO: how is height calculated?
+            TrackedData::Shulker(e) => {
+                let peek = 0.5 - f64::sin((0.5 + (e.get_peek_amount() as f64 * 0.01f64)) * std::f64::consts::PI) * 0.5;
+                match e.get_attached_face() {
+                    types::Facing::Down => [1.0, peek, 1.0],
+                    types::Facing::Up => [1.0, -peek, 1.0],
+                    types::Facing::North => [1.0, 1.0, peek],
+                    types::Facing::South => [1.0, 1.0, -peek],
+                    types::Facing::West => [peek, 1.0, 1.0],
+                    types::Facing::East => [-peek, 1.0, 1.0],
+                }
+            },
             TrackedData::ShulkerBullet(_) => [0.3125, 0.3125, 0.3125],
             TrackedData::Silverfish(_) => [0.4, 0.3, 0.4],
             TrackedData::Skeleton(_) => [0.6, 1.99, 0.6],

@@ -583,7 +583,7 @@ pub mod play {
     def_struct! {
         UpdateCreativeModeSlot {
             slot: i16,
-            // TODO: clicked_item: Slot,
+            clicked_item: Slot,
         }
     }
 
