@@ -98,6 +98,8 @@ pub mod login {
 }
 
 pub mod play {
+    use crate::protocol::slot::Slot;
+
     use super::super::*;
 
     def_struct! {
@@ -250,7 +252,7 @@ pub mod play {
 
     def_struct! {
         ClickSlot {
-            // TODO
+            // TODO: https://wiki.vg/Protocol#Click_Container
         }
     }
 
@@ -583,7 +585,7 @@ pub mod play {
     def_struct! {
         UpdateCreativeModeSlot {
             slot: i16,
-            // TODO: clicked_item: Slot,
+            clicked_item: Slot,
         }
     }
 
