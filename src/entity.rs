@@ -649,7 +649,10 @@ impl<C: Config> Entity<C> {
                 }
             }
             TrackedData::Shulker(e) => {
-                let peek = 0.5 - f64::sin((0.5 + (e.get_peek_amount() as f64 * 0.01f64)) * std::f64::consts::PI) * 0.5;
+                let peek = 0.5
+                    - f64::sin(
+                        (0.5 + (e.get_peek_amount() as f64 * 0.01f64)) * std::f64::consts::PI,
+                    ) * 0.5;
                 match e.get_attached_face() {
                     types::Facing::Down => [1.0, peek, 1.0],
                     types::Facing::Up => [1.0, -peek, 1.0],
@@ -658,7 +661,7 @@ impl<C: Config> Entity<C> {
                     types::Facing::West => [peek, 1.0, 1.0],
                     types::Facing::East => [-peek, 1.0, 1.0],
                 }
-            },
+            }
             TrackedData::ShulkerBullet(_) => [0.3125, 0.3125, 0.3125],
             TrackedData::Silverfish(_) => [0.4, 0.3, 0.4],
             TrackedData::Skeleton(_) => [0.6, 1.99, 0.6],
@@ -757,7 +760,15 @@ impl<C: Config> Entity<C> {
                     [0.6, 1.95, 0.6]
                 }
             }
-            TrackedData::Player(_) => [0.6, 1.8, 0.6], // TODO: changes depending on the pose.
+            TrackedData::Player(e) => match e.get_pose() {
+                types::Pose::Standing => [0.6, 1.8, 0.6],
+                types::Pose::Sleeping => [0.2, 0.2, 0.2],
+                types::Pose::FallFlying => [0.6, 0.6, 0.6],
+                types::Pose::Swimming => [0.6, 0.6, 0.6],
+                types::Pose::SpinAttack => [0.6, 0.6, 0.6],
+                types::Pose::Sneaking => [0.6, 1.5, 0.6],
+                types::Pose::Dying => [0.2, 0.2, 0.2],
+            },
             TrackedData::FishingBobber(_) => [0.25, 0.25, 0.25],
         };
 
