@@ -768,6 +768,7 @@ impl<C: Config> Entity<C> {
                 types::Pose::SpinAttack => [0.6, 0.6, 0.6],
                 types::Pose::Sneaking => [0.6, 1.5, 0.6],
                 types::Pose::Dying => [0.2, 0.2, 0.2],
+                _ => [0.6, 1.8, 0.6],
             },
             TrackedData::FishingBobber(_) => [0.25, 0.25, 0.25],
         };
