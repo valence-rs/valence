@@ -245,7 +245,7 @@ pub mod play {
     def_struct! {
         PluginMessageToClient {
             channel: Ident,
-            data: BoundedArray<u8, 0, 1048576>
+            data: RawBytes,
         }
     }
 

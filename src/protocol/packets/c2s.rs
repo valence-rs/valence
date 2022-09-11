@@ -29,11 +29,6 @@ pub mod handshake {
         }
     }
 
-    def_packet_group! {
-        C2sBungeecordHandshakePacket {
-            BungeecordHandshake = 0,
-        }
-    }
 }
 
 pub mod status {
@@ -271,7 +266,7 @@ pub mod play {
     def_struct! {
         PluginMessageToServer {
             channel: Ident,
-            data: BoundedArray<u8, 0, 32767>,
+            data: RawBytes,
         }
     }
 

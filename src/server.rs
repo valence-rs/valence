@@ -41,7 +41,7 @@ use crate::player_list::PlayerLists;
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::codec::{Decoder, Encoder};
 use crate::protocol::packets::c2s::handshake::{
-    BungeecordHandshake, Handshake, HandshakeNextState,
+    Handshake, HandshakeNextState,
 };
 use crate::protocol::packets::c2s::login::{
     EncryptionResponse, LoginPluginResponse, LoginStart, VerifyTokenOrMsgSig,
@@ -564,7 +564,10 @@ async fn handle_connection<C: Config>(
 
     let handshake: Handshake;
     handshake = c.dec.read_packet::<Handshake>().await?;
-    ensure!(handshake.server_address <= 255 || server.connection_mode() == ConnectionMode::Bungeecord, "server address too long");
+    ensure!(
+        handshake.server_address.len() <= 255 || server.connection_mode() == ConnectionMode::Bungeecord,
+        "server address too long"
+    );
 
     match handshake.next_state {
         HandshakeNextState::Status => handle_status(server, &mut c, remote_addr, handshake)
@@ -759,7 +762,6 @@ async fn handle_login<C: Config>(
             // Get data from server_address field of the handshake
             let data = handshake
                 .server_address
-                .0
                 .split("\0")
                 .collect::<Vec<&str>>();
             ensure!(data.len() == 4, "bungeecord data invalid");
@@ -797,7 +799,7 @@ async fn handle_login<C: Config>(
             (uuid, skin)
         }
         ConnectionMode::Velocity { secret } => {
-            let message_id: i32 = i32::MIN;
+            let message_id: i32 = i32::MIN + 1;
             // Send Player Info Request into the Plugin Channel
             c.enc
                 .write_packet(&LoginPluginRequest {

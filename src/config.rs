@@ -273,7 +273,5 @@ pub enum ConnectionMode {
     /// It fetches all player data (uuid, username and skin) from the velocity proxy and blocks
     /// all connections, which are not from the proxy.
     /// To ensure to set the secret value to the secret key of the velocity proxy.
-    Velocity {
-        secret: String
-    },
+    Velocity { secret: String },
 }
