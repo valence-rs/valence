@@ -24,9 +24,7 @@ use crate::entity::{
 use crate::ident::Ident;
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
-use crate::protocol::packets::c2s::play::{
-    C2sPlayPacket, DiggingStatus, InteractKind, PlayerCommandId,
-};
+use crate::protocol::packets::c2s::play::{self, C2sPlayPacket, InteractKind, PlayerCommandId};
 pub use crate::protocol::packets::s2c::play::TitleFade;
 use crate::protocol::packets::s2c::play::{
     BiomeRegistry, ChatTypeRegistry, ChunkLoadDistance, ChunkRenderDistanceCenter, ClearTitles,
@@ -859,25 +857,25 @@ impl<C: Config> Client<C> {
                 }
 
                 self.events.push_back(match p.status {
-                    DiggingStatus::StartedDigging => ClientEvent::Digging {
+                    play::DiggingStatus::StartedDigging => ClientEvent::Digging {
                         status: event::DiggingStatus::Start,
                         position: p.location,
                         face: p.face,
                     },
-                    DiggingStatus::CancelledDigging => ClientEvent::Digging {
+                    play::DiggingStatus::CancelledDigging => ClientEvent::Digging {
                         status: event::DiggingStatus::Cancel,
                         position: p.location,
                         face: p.face,
                     },
-                    DiggingStatus::FinishedDigging => ClientEvent::Digging {
+                    play::DiggingStatus::FinishedDigging => ClientEvent::Digging {
                         status: event::DiggingStatus::Finish,
                         position: p.location,
                         face: p.face,
                     },
-                    DiggingStatus::DropItemStack => return,
-                    DiggingStatus::DropItem => return,
-                    DiggingStatus::ShootArrowOrFinishEating => return,
-                    DiggingStatus::SwapItemInHand => return,
+                    play::DiggingStatus::DropItemStack => return,
+                    play::DiggingStatus::DropItem => return,
+                    play::DiggingStatus::ShootArrowOrFinishEating => return,
+                    play::DiggingStatus::SwapItemInHand => return,
                 });
             }
             C2sPlayPacket::PlayerCommand(c) => {
