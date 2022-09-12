@@ -422,6 +422,14 @@ impl<C: Config> Entity<C> {
     ///
     /// [interact event]: crate::client::ClientEvent::InteractWithEntity
     pub fn hitbox(&self) -> Aabb<f64> {
+        fn baby(is_baby: bool, adult_hitbox: [f64; 3]) -> [f64; 3] {
+            if is_baby {
+                adult_hitbox.map(|a| a / 2.0)
+            } else {
+                adult_hitbox
+            }
+        }
+
         let dims = match &self.variants {
             TrackedData::Allay(_) => [0.6, 0.35, 0.6],
             TrackedData::ChestBoat(_) => [1.375, 0.5625, 1.375],
@@ -445,49 +453,19 @@ impl<C: Config> Entity<C> {
             TrackedData::Arrow(_) => [0.5, 0.5, 0.5],
             TrackedData::Axolotl(_) => [1.3, 0.6, 1.3],
             TrackedData::Bat(_) => [0.5, 0.9, 0.5],
-            TrackedData::Bee(e) => {
-                if e.get_child() {
-                    [0.35, 0.3, 0.35]
-                } else {
-                    [0.7, 0.6, 0.7]
-                }
-            }
+            TrackedData::Bee(e) => baby(e.get_child(), [0.7, 0.6, 0.7]),
             TrackedData::Blaze(_) => [0.6, 1.8, 0.6],
             TrackedData::Boat(_) => [1.375, 0.5625, 1.375],
             TrackedData::Cat(_) => [0.6, 0.7, 0.6],
             TrackedData::CaveSpider(_) => [0.7, 0.5, 0.7],
-            TrackedData::Chicken(e) => {
-                if e.get_child() {
-                    [0.2, 0.35, 0.2]
-                } else {
-                    [0.4, 0.7, 0.4]
-                }
-            }
+            TrackedData::Chicken(e) => baby(e.get_child(), [0.4, 0.7, 0.4]),
             TrackedData::Cod(_) => [0.5, 0.3, 0.5],
-            TrackedData::Cow(e) => {
-                if e.get_child() {
-                    [0.45, 0.7, 0.45]
-                } else {
-                    [0.9, 1.4, 0.9]
-                }
-            }
+            TrackedData::Cow(e) => baby(e.get_child(), [0.9, 1.4, 0.9]),
             TrackedData::Creeper(_) => [0.6, 1.7, 0.6],
             TrackedData::Dolphin(_) => [0.9, 0.6, 0.9],
-            TrackedData::Donkey(e) => {
-                if e.get_child() {
-                    [0.75, 0.6982, 0.75]
-                } else {
-                    [1.5, 1.39648, 1.5]
-                }
-            }
+            TrackedData::Donkey(e) => baby(e.get_child(), [1.5, 1.39648, 1.5]),
             TrackedData::DragonFireball(_) => [1.0, 1.0, 1.0],
-            TrackedData::Drowned(e) => {
-                if e.get_baby() {
-                    [0.3, 0.975, 0.3]
-                } else {
-                    [0.6, 1.95, 0.6]
-                }
-            }
+            TrackedData::Drowned(e) => baby(e.get_baby(), [0.6, 1.95, 0.6]),
             TrackedData::ElderGuardian(_) => [1.9975, 1.9975, 1.9975],
             TrackedData::EndCrystal(_) => [2.0, 2.0, 2.0],
             TrackedData::EnderDragon(_) => [16.0, 8.0, 16.0],
@@ -499,51 +477,21 @@ impl<C: Config> Entity<C> {
             TrackedData::EyeOfEnder(_) => [0.25, 0.25, 0.25],
             TrackedData::FallingBlock(_) => [0.98, 0.98, 0.98],
             TrackedData::FireworkRocket(_) => [0.25, 0.25, 0.25],
-            TrackedData::Fox(e) => {
-                if e.get_child() {
-                    [0.3, 0.35, 0.3]
-                } else {
-                    [0.6, 0.7, 0.6]
-                }
-            }
+            TrackedData::Fox(e) => baby(e.get_child(), [0.6, 0.7, 0.6]),
             TrackedData::Ghast(_) => [4.0, 4.0, 4.0],
             TrackedData::Giant(_) => [3.6, 12.0, 3.6],
             TrackedData::GlowItemFrame(e) => match e.get_rotation() {
                 0 | 1 => [0.75, 0.0625, 0.75],
                 2 | 3 => [0.75, 0.75, 0.0625],
                 4 | 5 => [0.0625, 0.75, 0.75],
-                _ => [0.75, 0.0625, 0.75], // TODO: Maybe error handling for out of bound values?
+                _ => [0.75, 0.0625, 0.75],
             },
             TrackedData::GlowSquid(_) => [0.8, 0.8, 0.8],
-            TrackedData::Goat(e) => {
-                if e.get_child() {
-                    [0.45, 0.65, 0.45]
-                } else {
-                    [0.9, 1.3, 0.9]
-                }
-            }
+            TrackedData::Goat(e) => baby(e.get_child(), [0.9, 1.3, 0.9]),
             TrackedData::Guardian(_) => [0.85, 0.85, 0.85],
-            TrackedData::Hoglin(e) => {
-                if e.get_child() {
-                    [0.6982, 0.7, 0.6982]
-                } else {
-                    [1.39648, 1.4, 1.39648]
-                }
-            }
-            TrackedData::Horse(e) => {
-                if e.get_child() {
-                    [0.6982, 0.8, 0.6982]
-                } else {
-                    [1.39648, 1.6, 1.39648]
-                }
-            }
-            TrackedData::Husk(e) => {
-                if e.get_baby() {
-                    [0.3, 0.975, 0.3]
-                } else {
-                    [0.6, 1.95, 0.6]
-                }
-            }
+            TrackedData::Hoglin(e) => baby(e.get_child(), [1.39648, 1.4, 1.39648]),
+            TrackedData::Horse(e) => baby(e.get_child(), [1.39648, 1.6, 1.39648]),
+            TrackedData::Husk(e) => baby(e.get_baby(), [0.6, 1.95, 0.6]),
             TrackedData::Illusioner(_) => [0.6, 1.95, 0.6],
             TrackedData::IronGolem(_) => [1.4, 2.7, 1.4],
             TrackedData::Item(_) => [0.25, 0.25, 0.25],
@@ -551,18 +499,12 @@ impl<C: Config> Entity<C> {
                 0 | 1 => [0.75, 0.0625, 0.75],
                 2 | 3 => [0.75, 0.75, 0.0625],
                 4 | 5 => [0.0625, 0.75, 0.75],
-                _ => [0.75, 0.0625, 0.75], // TODO: Maybe error handling for out of bound values?
+                _ => [0.75, 0.0625, 0.75],
             },
             TrackedData::Fireball(_) => [1.0, 1.0, 1.0],
             TrackedData::LeashKnot(_) => [0.375, 0.5, 0.375],
             TrackedData::Lightning(_) => [0.0, 0.0, 0.0],
-            TrackedData::Llama(e) => {
-                if e.get_child() {
-                    [0.45, 0.935, 0.45]
-                } else {
-                    [0.9, 1.87, 0.9]
-                }
-            }
+            TrackedData::Llama(e) => baby(e.get_child(), [0.9, 1.87, 0.9]),
             TrackedData::LlamaSpit(_) => [0.25, 0.25, 0.25],
             TrackedData::MagmaCube(e) => {
                 let s = e.get_slime_size() as f64 * 0.51000005;
@@ -576,78 +518,24 @@ impl<C: Config> Entity<C> {
             TrackedData::HopperMinecart(_) => [0.98, 0.7, 0.98],
             TrackedData::SpawnerMinecart(_) => [0.98, 0.7, 0.98],
             TrackedData::TntMinecart(_) => [0.98, 0.7, 0.98],
-            TrackedData::Mule(e) => {
-                if e.get_child() {
-                    [0.6982, 0.8, 0.6982]
-                } else {
-                    [1.39648, 1.6, 1.39648]
-                }
-            }
-            TrackedData::Mooshroom(e) => {
-                if e.get_child() {
-                    [0.45, 0.7, 0.45]
-                } else {
-                    [0.9, 1.4, 0.9]
-                }
-            }
-            TrackedData::Ocelot(e) => {
-                if e.get_child() {
-                    [0.3, 0.35, 0.3]
-                } else {
-                    [0.6, 0.7, 0.6]
-                }
-            }
+            TrackedData::Mule(e) => baby(e.get_child(), [1.39648, 1.6, 1.39648]),
+            TrackedData::Mooshroom(e) => baby(e.get_child(), [0.9, 1.4, 0.9]),
+            TrackedData::Ocelot(e) => baby(e.get_child(), [0.6, 0.7, 0.6]),
             TrackedData::Painting(_) => todo!("account for rotation and type"),
-            TrackedData::Panda(e) => {
-                if e.get_child() {
-                    [0.65, 0.625, 0.5]
-                } else {
-                    [1.3, 1.25, 1.3]
-                }
-            }
+            TrackedData::Panda(e) => baby(e.get_child(), [1.3, 1.25, 1.3]),
             TrackedData::Parrot(_) => [0.5, 0.9, 0.5],
             TrackedData::Phantom(_) => [0.9, 0.5, 0.9],
-            TrackedData::Pig(e) => {
-                if e.get_child() {
-                    [0.45, 0.45, 0.45]
-                } else {
-                    [0.9, 0.9, 0.9]
-                }
-            }
-            TrackedData::Piglin(e) => {
-                if e.get_baby() {
-                    [0.3, 0.975, 0.3]
-                } else {
-                    [0.6, 1.95, 0.6]
-                }
-            }
+            TrackedData::Pig(e) => baby(e.get_child(), [0.9, 0.9, 0.9]),
+            TrackedData::Piglin(e) => baby(e.get_baby(), [0.6, 1.95, 0.6]),
             TrackedData::PiglinBrute(_) => [0.6, 1.95, 0.6],
             TrackedData::Pillager(_) => [0.6, 1.95, 0.6],
-            TrackedData::PolarBear(e) => {
-                if e.get_child() {
-                    [0.7, 0.7, 0.7]
-                } else {
-                    [1.4, 1.4, 1.4]
-                }
-            }
+            TrackedData::PolarBear(e) => baby(e.get_child(), [1.4, 1.4, 1.4]),
             TrackedData::Tnt(_) => [0.98, 0.98, 0.98],
             TrackedData::Pufferfish(_) => [0.7, 0.7, 0.7],
-            TrackedData::Rabbit(e) => {
-                if e.get_child() {
-                    [0.2, 0.25, 0.2]
-                } else {
-                    [0.4, 0.5, 0.4]
-                }
-            }
+            TrackedData::Rabbit(e) => baby(e.get_child(), [0.4, 0.5, 0.4]),
             TrackedData::Ravager(_) => [1.95, 2.2, 1.95],
             TrackedData::Salmon(_) => [0.7, 0.4, 0.7],
-            TrackedData::Sheep(e) => {
-                if e.get_child() {
-                    [0.45, 0.65, 0.45]
-                } else {
-                    [0.9, 1.3, 0.9]
-                }
-            }
+            TrackedData::Sheep(e) => baby(e.get_child(), [0.9, 1.3, 0.9]),
             TrackedData::Shulker(e) => {
                 let peek = 0.5
                     - f64::sin(
@@ -665,13 +553,7 @@ impl<C: Config> Entity<C> {
             TrackedData::ShulkerBullet(_) => [0.3125, 0.3125, 0.3125],
             TrackedData::Silverfish(_) => [0.4, 0.3, 0.4],
             TrackedData::Skeleton(_) => [0.6, 1.99, 0.6],
-            TrackedData::SkeletonHorse(e) => {
-                if e.get_child() {
-                    [0.6982, 0.8, 0.6982]
-                } else {
-                    [1.39648, 1.6, 1.39648]
-                }
-            }
+            TrackedData::SkeletonHorse(e) => baby(e.get_child(), [1.39648, 1.6, 1.39648]),
             TrackedData::Slime(e) => {
                 let s = 0.51000005 * e.get_slime_size() as f64;
                 [s, s, s]
@@ -683,13 +565,7 @@ impl<C: Config> Entity<C> {
             TrackedData::Spider(_) => [1.4, 0.9, 1.4],
             TrackedData::Squid(_) => [0.8, 0.8, 0.8],
             TrackedData::Stray(_) => [0.6, 1.99, 0.6],
-            TrackedData::Strider(e) => {
-                if e.get_child() {
-                    [0.45, 0.85, 0.45]
-                } else {
-                    [0.9, 1.7, 0.9]
-                }
-            }
+            TrackedData::Strider(e) => baby(e.get_child(), [0.9, 1.7, 0.9]),
             TrackedData::Egg(_) => [0.25, 0.25, 0.25],
             TrackedData::EnderPearl(_) => [0.25, 0.25, 0.25],
             TrackedData::ExperienceBottle(_) => [0.25, 0.25, 0.25],
@@ -705,61 +581,19 @@ impl<C: Config> Entity<C> {
                 }
             }
             TrackedData::Vex(_) => [0.4, 0.8, 0.4],
-            TrackedData::Villager(e) => {
-                if e.get_child() {
-                    [0.3, 0.975, 0.3]
-                } else {
-                    [0.6, 1.95, 0.6]
-                }
-            }
+            TrackedData::Villager(e) => baby(e.get_child(), [0.6, 1.95, 0.6]),
             TrackedData::Vindicator(_) => [0.6, 1.95, 0.6],
             TrackedData::WanderingTrader(_) => [0.6, 1.95, 0.6],
             TrackedData::Witch(_) => [0.6, 1.95, 0.6],
             TrackedData::Wither(_) => [0.9, 3.5, 0.9],
             TrackedData::WitherSkeleton(_) => [0.7, 2.4, 0.7],
             TrackedData::WitherSkull(_) => [0.3125, 0.3125, 0.3125],
-            TrackedData::Wolf(e) => {
-                if e.get_child() {
-                    [0.3, 0.425, 0.3]
-                } else {
-                    [0.6, 0.85, 0.6]
-                }
-            }
-            TrackedData::Zoglin(e) => {
-                if e.get_baby() {
-                    [0.6982, 0.7, 0.6982]
-                } else {
-                    [1.39648, 1.4, 1.39648]
-                }
-            }
-            TrackedData::Zombie(e) => {
-                if e.get_baby() {
-                    [0.3, 0.975, 0.3]
-                } else {
-                    [0.6, 1.95, 0.6]
-                }
-            }
-            TrackedData::ZombieHorse(e) => {
-                if e.get_child() {
-                    [0.6982, 0.8, 0.6982]
-                } else {
-                    [1.39648, 1.6, 1.39648]
-                }
-            }
-            TrackedData::ZombieVillager(e) => {
-                if e.get_baby() {
-                    [0.3, 0.975, 0.3]
-                } else {
-                    [0.6, 1.95, 0.6]
-                }
-            }
-            TrackedData::ZombifiedPiglin(e) => {
-                if e.get_baby() {
-                    [0.3, 0.975, 0.3]
-                } else {
-                    [0.6, 1.95, 0.6]
-                }
-            }
+            TrackedData::Wolf(e) => baby(e.get_child(), [0.6, 0.85, 0.6]),
+            TrackedData::Zoglin(e) => baby(e.get_baby(), [1.39648, 1.4, 1.39648]),
+            TrackedData::Zombie(e) => baby(e.get_baby(), [0.6, 1.95, 0.6]),
+            TrackedData::ZombieHorse(e) => baby(e.get_child(), [1.39648, 1.6, 1.39648]),
+            TrackedData::ZombieVillager(e) => baby(e.get_baby(), [0.6, 1.95, 0.6]),
+            TrackedData::ZombifiedPiglin(e) => baby(e.get_baby(), [0.6, 1.95, 0.6]),
             TrackedData::Player(e) => match e.get_pose() {
                 types::Pose::Standing => [0.6, 1.8, 0.6],
                 types::Pose::Sleeping => [0.2, 0.2, 0.2],
@@ -844,7 +678,7 @@ impl<C: Config> Entity<C> {
                 pitch: ByteAngle::from_degrees(self.pitch),
                 yaw: ByteAngle::from_degrees(self.yaw),
                 head_yaw: ByteAngle::from_degrees(self.head_yaw),
-                data: VarInt(0), // TODO: set block state id
+                data: VarInt(1), // TODO: set block state id
                 velocity: velocity_to_packet_units(self.velocity),
             })),
             TrackedData::FishingBobber(e) => Some(EntitySpawnPacket::Entity(EntitySpawn {
