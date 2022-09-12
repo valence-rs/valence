@@ -8,6 +8,7 @@ use std::time::Duration;
 pub use bitfield_struct::bitfield;
 pub use event::*;
 use flume::{Receiver, Sender, TrySendError};
+use log::info;
 use rayon::iter::ParallelIterator;
 use uuid::Uuid;
 use vek::Vec3;
@@ -692,7 +693,13 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::QueryBlockNbt(_) => {}
             C2sPlayPacket::UpdateDifficulty(_) => {}
             C2sPlayPacket::MessageAcknowledgment(_) => {}
-            C2sPlayPacket::CommandExecution(_) => {}
+            C2sPlayPacket::CommandExecution(command_execution) => {
+                info!("Command received:\n{:#?}", command_execution);
+            }
+            /*self.events.push_back(ClientEvent::CommandExecution {
+                command: ?,
+                timestamp: Duration::from_millis(p.timestamp),
+            }),*/
             C2sPlayPacket::ChatMessage(p) => self.events.push_back(ClientEvent::ChatMessage {
                 message: p.message.0,
                 timestamp: Duration::from_millis(p.timestamp),
@@ -971,38 +978,7 @@ impl<C: Config> Client<C> {
 
             self.teleport(self.position(), self.yaw(), self.pitch());
 
-            use super::command::*;
-            use super::protocol::node::*;
-            def_command! {
-                Add2Numbers {
-                    number1: i32,
-                    number2: i32,
-                }
-            }
-            let nodes = commands_to_nodes(vec![Add2Numbers::to_command()]);
-            self.send_packet(Commands {
-                root_index: VarInt((nodes.len() - 1) as i32),
-                nodes,
-            })
-            /*self.send_packet(Commands {
-                nodes: vec![
-                    Node {
-                        children: vec![VarInt(1)],
-                        data: NodeData::Root,
-                        is_executable: false,
-                        redirect_node: None,
-                    },
-                    Node {
-                        children: vec![],
-                        data: NodeData::Literal(Literal {
-                            name: String::from("valence").into(),
-                        }),
-                        is_executable: true,
-                        redirect_node: None,
-                    },
-                ],
-                root_index: VarInt(0),
-            })*/
+            self.send_packet(shared.config().commands());
         } else {
             if self.bits.spawn() {
                 self.bits.set_spawn(false);

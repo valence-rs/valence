@@ -89,7 +89,7 @@ pub use server::start_server;
 #[doc(inline)]
 pub use {serde_nbt as nbt, uuid, vek};
 
-mod command;
+pub mod commands;
 
 pub mod biome;
 pub mod block;

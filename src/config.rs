@@ -11,6 +11,9 @@ use crate::dimension::Dimension;
 use crate::server::{NewClientData, Server, SharedServer};
 use crate::text::Text;
 use crate::{Ticks, STANDARD_TPS};
+use crate::protocol::{Node, VarInt};
+use crate::protocol::node::{Literal, NodeData};
+use crate::protocol::packets::s2c::play::Commands;
 
 /// A trait for the configuration of a server.
 ///
@@ -165,6 +168,28 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
     /// Returns `vec![Dimension::default()]`.
     fn biomes(&self) -> Vec<Biome> {
         vec![Biome::default()]
+    }
+
+    fn commands(&self) -> Commands {
+        Commands {
+            nodes: vec![
+                Node {
+                    children: vec![VarInt(1)],
+                    data: NodeData::Root,
+                    is_executable: false,
+                    redirect_node: None,
+                },
+                Node {
+                    children: vec![],
+                    data: NodeData::Literal(Literal {
+                        name: String::from("valence").into(),
+                    }),
+                    is_executable: true,
+                    redirect_node: None,
+                },
+            ],
+            root_index: VarInt(0),
+        }
     }
 
     /// Called when the server receives a Server List Ping query.

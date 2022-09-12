@@ -14,6 +14,16 @@ pub struct Node {
     pub redirect_node: Option<VarInt>,
 }
 
+impl Node {
+    pub fn mut_name(&mut self) -> &mut BoundedString<0, 32767> {
+        match &mut self.data {
+            NodeData::Root => {panic!("Can't set name for root node")}
+            NodeData::Literal(literal) => {&mut literal.name}
+            NodeData::Argument(argument) => {&mut argument.name}
+        }
+    }
+}
+
 impl Encode for Node {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         let enum_id = match self.data {

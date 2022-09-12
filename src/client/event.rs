@@ -4,6 +4,7 @@ use vek::Vec3;
 
 use super::Client;
 use crate::block_pos::BlockPos;
+use crate::commands::AddToCommands;
 use crate::config::Config;
 use crate::entity::types::Pose;
 use crate::entity::{Entity, EntityEvent, EntityId, TrackedData};
@@ -19,6 +20,13 @@ use crate::protocol::VarInt;
 /// [`pop_event`](crate::client::Client::pop_event).
 #[derive(Debug)]
 pub enum ClientEvent {
+    /// A command was executed.
+    CommandExecution {
+        /// The content of the message
+        message: String,
+        /// The time the message was sent.
+        timestamp: Duration,
+    },
     /// A regular message was sent to the chat.
     ChatMessage {
         /// The content of the message
@@ -161,6 +169,7 @@ pub fn default_client_event<C: Config>(
     let event = client.pop_event()?;
 
     match &event {
+        ClientEvent::CommandExecution { .. } => {}
         ClientEvent::ChatMessage { .. } => {}
         ClientEvent::SettingsChanged {
             view_distance,
