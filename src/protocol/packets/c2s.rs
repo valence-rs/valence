@@ -99,6 +99,7 @@ pub mod login {
 
 pub mod play {
     use super::super::*;
+    use crate::protocol::slot::Slot;
 
     def_struct! {
         TeleportConfirm {
@@ -583,7 +584,7 @@ pub mod play {
     def_struct! {
         UpdateCreativeModeSlot {
             slot: i16,
-            // TODO: clicked_item: Slot,
+            clicked_item: Slot,
         }
     }
 
