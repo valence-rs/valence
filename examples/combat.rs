@@ -5,7 +5,7 @@ use log::LevelFilter;
 use valence::block::{BlockPos, BlockState};
 use valence::chunk::{Chunk, UnloadedChunk};
 use valence::client::{
-    default_client_event, ClientEvent, ClientId, GameMode, InteractWithEntityKind,
+    handle_event_default, ClientEvent, ClientId, GameMode, InteractWithEntityKind,
 };
 use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
@@ -213,7 +213,7 @@ impl Config for Game {
                     .get_mut(client.state.player)
                     .expect("missing player entity");
 
-                match default_client_event(client, player) {
+                match handle_event_default(client, player) {
                     Some(ClientEvent::StartSprinting) => {
                         client.state.extra_knockback = true;
                     }

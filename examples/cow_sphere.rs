@@ -8,7 +8,7 @@ use uuid::Uuid;
 use valence::async_trait;
 use valence::block::{BlockPos, BlockState};
 use valence::chunk::UnloadedChunk;
-use valence::client::{default_client_event, GameMode};
+use valence::client::{handle_event_default, GameMode};
 use valence::config::{Config, PlayerSampleEntry, ServerListPing};
 use valence::dimension::DimensionId;
 use valence::entity::{EntityId, EntityKind};
@@ -176,7 +176,7 @@ impl Config for Game {
                 .get_mut(client.state)
                 .expect("missing player entity");
 
-            while default_client_event(client, entity).is_some() {}
+            while handle_event_default(client, entity).is_some() {}
 
             true
         });

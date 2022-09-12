@@ -5,7 +5,7 @@ use log::LevelFilter;
 use valence::async_trait;
 use valence::block::{BlockPos, BlockState};
 use valence::chunk::UnloadedChunk;
-use valence::client::{default_client_event, GameMode};
+use valence::client::{handle_event_default, GameMode};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
 use valence::entity::{EntityId, EntityKind, TrackedData};
@@ -184,7 +184,7 @@ impl Config for Game {
                 }
             }
 
-            while default_client_event(client, server.entities.get_mut(client.state).unwrap())
+            while handle_event_default(client, server.entities.get_mut(client.state).unwrap())
                 .is_some()
             {}
 

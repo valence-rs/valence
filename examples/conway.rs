@@ -8,7 +8,7 @@ use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelI
 use valence::biome::Biome;
 use valence::block::BlockState;
 use valence::chunk::{Chunk, UnloadedChunk};
-use valence::client::{default_client_event, ClientEvent, Hand};
+use valence::client::{handle_event_default, ClientEvent, Hand};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::types::Pose;
@@ -191,7 +191,7 @@ impl Config for Game {
                 server.state.board.fill(false);
             }
 
-            while let Some(event) = default_client_event(client, player) {
+            while let Some(event) = handle_event_default(client, player) {
                 match event {
                     ClientEvent::Digging { position, .. } => {
                         if (0..SIZE_X as i32).contains(&position.x)
