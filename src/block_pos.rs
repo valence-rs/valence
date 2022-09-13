@@ -5,7 +5,7 @@ use vek::Vec3;
 
 use crate::protocol::{Decode, Encode};
 
-/// Represents an absolute block position in a world.
+/// Represents an absolute block position in world space.
 #[derive(Clone, Copy, Default, PartialEq, Eq, Hash, Debug)]
 pub struct BlockPos {
     pub x: i32,

@@ -159,11 +159,11 @@ impl<C: Config> Chunks<C> {
         self.chunks.par_iter_mut().map(|(&pos, chunk)| (pos, chunk))
     }
 
-    /// Gets the block state at a global position in the world.
+    /// Gets the block state at an absolute block position in world space.
     ///
     /// If the position is not inside of a chunk, then `None` is returned.
     ///
-    /// Note: if you need to get a large number of blocks, it is more efficient
+    /// **Note**: if you need to get a large number of blocks, it is more efficient
     /// to read from the chunks directly with [`Chunk::get_block_state`].
     pub fn get_block_state(&self, pos: impl Into<BlockPos>) -> Option<BlockState> {
         let pos = pos.into();
@@ -186,13 +186,13 @@ impl<C: Config> Chunks<C> {
         }
     }
 
-    /// Sets the block state at a global position in the world.
+    /// Sets the block state at an absolute block position in world space.
     ///
-    /// If the position is inside of a chunk, then `true` is returned.
-    /// Otherwise, `false` is returned. The function has no effect if `false` is
-    /// returned.
+    /// If the position is inside of a chunk, then `true` is returned and the
+    /// block is set. Otherwise, `false` is returned and the function has no
+    /// effect.
     ///
-    /// Note: if you need to set a large number of blocks, it may be more
+    /// **Note**: if you need to set a large number of blocks, it may be more
     /// efficient write to the chunks directly with
     /// [`Chunk::set_block_state`].
     pub fn set_block_state(&mut self, pos: impl Into<BlockPos>, block: BlockState) -> bool {
@@ -249,12 +249,20 @@ pub trait Chunk {
 
     /// Gets the block state at the provided offsets in the chunk.
     ///
+    /// **Note**: The arguments to this function are offsets from the minimum
+    /// corner of the chunk in _chunk space_ rather than _world space_. You
+    /// might be looking for [`Chunks::get_block_state`] instead.
+    ///
     /// # Panics
     ///
     /// Panics if the offsets are outside the bounds of the chunk.
     fn get_block_state(&self, x: usize, y: usize, z: usize) -> BlockState;
 
     /// Sets the block state at the provided offsets in the chunk.
+    ///
+    /// **Note**: The arguments to this function are offsets from the minimum
+    /// corner of the chunk in _chunk space_ rather than _world space_. You
+    /// might be looking for [`Chunks::set_block_state`] instead.
     ///
     /// # Panics
     ///
@@ -263,7 +271,7 @@ pub trait Chunk {
 
     /// Gets the biome at the provided biome offsets in the chunk.
     ///
-    /// Note: the arguments are **not** block positions. Biomes are 4x4x4
+    /// **Note**: the arguments are **not** block positions. Biomes are 4x4x4
     /// segments of a chunk, so `x` and `z` are in `0..=4`.
     ///
     /// # Panics
@@ -273,7 +281,7 @@ pub trait Chunk {
 
     /// Sets the biome at the provided biome offsets in the chunk.
     ///
-    /// Note: the arguments are **not** block positions. Biomes are 4x4x4
+    /// **Note**: the arguments are **not** block positions. Biomes are 4x4x4
     /// segments of a chunk, so `x` and `z` are in `0..=4`.
     ///
     /// # Panics
