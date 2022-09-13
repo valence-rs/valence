@@ -163,8 +163,9 @@ impl<C: Config> Chunks<C> {
     ///
     /// If the position is not inside of a chunk, then `None` is returned.
     ///
-    /// **Note**: if you need to get a large number of blocks, it is more efficient
-    /// to read from the chunks directly with [`Chunk::get_block_state`].
+    /// **Note**: if you need to get a large number of blocks, it is more
+    /// efficient to read from the chunks directly with
+    /// [`Chunk::get_block_state`].
     pub fn get_block_state(&self, pos: impl Into<BlockPos>) -> Option<BlockState> {
         let pos = pos.into();
         let chunk_pos = ChunkPos::from(pos);
