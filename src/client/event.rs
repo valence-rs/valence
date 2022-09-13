@@ -16,7 +16,18 @@ use crate::protocol::VarInt;
 /// Represents an action performed by a client.
 ///
 /// Client events can be obtained from
-/// [`pop_event`](crate::client::Client::pop_event).
+/// [`pop_event`](super::Client::pop_event).
+///
+/// # Event Validation
+///
+/// [`Client`](super::Client) makes no attempt to validate events against the
+/// expected rules for players. Malicious clients can teleport through walls,
+/// interact with distant entities, sneak and sprint backwards, break
+/// bedrock in survival mode, etc.
+///
+/// It is best to think of events from clients as _requests_ to interact with
+/// the server. It is then your responsibility to decide if the request should
+/// be honored.
 #[derive(Debug)]
 pub enum ClientEvent {
     /// A regular message was sent to the chat.

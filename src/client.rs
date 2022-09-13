@@ -750,9 +750,6 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::QueryEntityNbt(_) => {}
             C2sPlayPacket::PlayerInteractEntity(p) => {
                 if let Some(id) = entities.get_with_network_id(p.entity_id.0) {
-                    // TODO: verify that the client has line of sight to the targeted entity and
-                    // that the distance is <=4 blocks.
-
                     self.events.push_back(ClientEvent::InteractWithEntity {
                         id,
                         sneaking: p.sneaking,
@@ -851,9 +848,6 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::CraftRequest(_) => {}
             C2sPlayPacket::UpdatePlayerAbilities(_) => {}
             C2sPlayPacket::PlayerAction(p) => {
-                // TODO: verify dug block is within the correct distance from the client.
-                // TODO: verify that the broken block is allowed to be broken?
-
                 if p.sequence.0 != 0 {
                     self.dug_blocks.push(p.sequence.0);
                 }
