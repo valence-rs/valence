@@ -16,6 +16,7 @@ use uuid::Uuid;
 pub use var_int::VarInt;
 pub use var_long::VarLong;
 use vek::{Vec2, Vec3, Vec4};
+pub use slot::Slot;
 
 use crate::entity::EntityId;
 use crate::nbt;
@@ -23,7 +24,7 @@ use crate::nbt;
 mod byte_angle;
 pub mod codec;
 pub mod packets;
-pub mod slot;
+mod slot;
 mod var_int;
 mod var_long;
 

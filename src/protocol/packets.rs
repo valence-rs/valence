@@ -24,7 +24,7 @@ use crate::ident::Ident;
 use crate::nbt::Compound;
 use crate::protocol::{
     BoundedArray, BoundedInt, BoundedString, ByteAngle, Decode, Encode, NbtBridge, RawBytes,
-    VarInt, VarLong,
+    VarInt, VarLong, Slot,
 };
 use crate::text::Text;
 
