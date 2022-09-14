@@ -565,7 +565,7 @@ async fn handle_connection<C: Config>(
     let handshake: Handshake;
     handshake = c.dec.read_packet::<Handshake>().await?;
     ensure!(
-        handshake.server_address.len() <= 255 || server.connection_mode() == ConnectionMode::Bungeecord,
+        handshake.server_address.chars().count() <= 255 || server.connection_mode() == ConnectionMode::Bungeecord,
         "server address too long"
     );
 

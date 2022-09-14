@@ -293,7 +293,6 @@ impl<C: Config> Client<C> {
             dug_blocks: Vec::new(),
             msgs_to_send: Vec::new(),
             bar_to_send: None,
-            plugin_messages_to_send: Vec::new(),
             attack_speed: 4.0,
             movement_speed: 0.7,
             bits: ClientBits::new()
@@ -375,9 +374,8 @@ impl<C: Config> Client<C> {
         self.msgs_to_send.push(msg.into());
     }
 
-    pub fn send_plugin_message(&mut self, channel: Ident, data: RawBytes) {
-        self.plugin_messages_to_send
-            .push(PluginMessageToClient { channel, data });
+    pub fn send_plugin_message(&mut self, channel: Ident, data: Vec<u8>) {
+        send_packet(&mut self, PluginMessageToClient { channel, data: RawBytes(data) });
     }
 
     /// Gets the absolute position of this client in the world it is located
@@ -1240,10 +1238,6 @@ impl<C: Config> Client<C> {
 
         if let Some(bar) = self.bar_to_send.take() {
             send_packet(&mut self.send, OverlayMessage { text: bar });
-        }
-
-        for plugin_msg in self.plugin_messages_to_send.drain(..) {
-            send_packet(&mut self.send, plugin_msg);
         }
 
         let mut entities_to_unload = Vec::new();

@@ -12,7 +12,7 @@ pub use crate::protocol::packets::c2s::play::{
     BlockFace, ChatMode, DisplayedSkinParts, Hand, MainHand,
 };
 pub use crate::protocol::packets::s2c::play::GameMode;
-use crate::protocol::{BoundedArray, VarInt};
+use crate::protocol::{RawBytes, VarInt};
 
 /// Represents an action performed by a client.
 ///
@@ -120,7 +120,7 @@ pub enum ClientEvent {
     },
     PluginMessageReceived {
         channel: Ident,
-        data: BoundedArray<u8, 0, 32767>,
+        data: RawBytes,
     },
 }
 
