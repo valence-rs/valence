@@ -628,6 +628,30 @@ pub mod play {
     }
 
     def_struct! {
+        UpdateRecipeBook {
+            action: UpdateRecipeBookAction,
+            crafting_recipe_book_open: bool,
+            crafting_recipe_book_filter_active: bool,
+            smelting_recipe_book_open: bool,
+            smelting_recipe_book_filter_active: bool,
+            blast_furnace_recipe_book_open: bool,
+            blast_furnace_recipe_book_filter_active: bool,
+            smoker_recipe_book_open: bool,
+            smoker_recipe_book_filter_active: bool,
+            recipe_ids: Vec<Ident>,
+            recipe_ids2: Option<Vec<Ident>>, // only present if action == init
+        }
+    }
+
+    def_enum! {
+        UpdateRecipeBookAction: VarInt {
+            Init = 0,
+            Add = 1,
+            Remove = 2,
+        }
+    }
+
+    def_struct! {
         EntitiesDestroy {
             entities: Vec<VarInt>,
         }
@@ -857,6 +881,7 @@ pub mod play {
             ChatMessage = 51,
             UpdatePlayerList = 55,
             PlayerPositionLook = 57,
+            UpdateRecipeBook = 58,
             EntitiesDestroy = 59,
             PlayerRespawn = 62,
             EntitySetHeadYaw = 63,
