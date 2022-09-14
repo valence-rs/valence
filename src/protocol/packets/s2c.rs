@@ -206,7 +206,7 @@ pub mod play {
     }
 
     def_struct! {
-        SetDifficulty {
+        ChangeDifficulty {
             difficulty: Difficulty,
             locked: bool,
         }
@@ -840,6 +840,7 @@ pub mod play {
             BlockEvent = 8,
             BlockUpdate = 9,
             BossBar = 10,
+            ChangeDifficulty = 11,
             ClearTitles = 13,
             PluginMessage = 22,
             PlaySoundId = 23,
