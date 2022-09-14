@@ -328,7 +328,7 @@ macro_rules! def_packet_group {
                             Ok(Self::$packet(pkt))
                         }
                     )*
-                    id => bail!(concat!("unknown ", stringify!($group_name), " packet ID {}"), id),
+                    id => bail!(concat!("unknown ", stringify!($group_name), " packet ID {} ({:#x})"), id, id),
                 }
             }
         }
