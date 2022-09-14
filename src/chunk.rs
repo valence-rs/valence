@@ -24,7 +24,7 @@ pub use crate::chunk_pos::ChunkPos;
 use crate::config::Config;
 use crate::dimension::DimensionId;
 use crate::protocol::packets::s2c::play::{
-    BlockUpdate, ChunkData, ChunkDataHeightmaps, ChunkSectionUpdate, S2cPlayPacket,
+    BlockUpdate, ChunkDataandUpdateLight, ChunkDataHeightmaps, ChunkSectionUpdate, S2cPlayPacket,
 };
 use crate::protocol::{Encode, NbtBridge, VarInt, VarLong};
 use crate::server::SharedServer;
@@ -468,20 +468,22 @@ impl<C: Config> LoadedChunk<C> {
 
     /// Gets the chunk data packet for this chunk with the given position. This
     /// does not include unapplied changes.
-    pub(crate) fn chunk_data_packet(&self, pos: ChunkPos) -> ChunkData {
+    pub(crate) fn chunk_data_packet(&self, pos: ChunkPos) -> ChunkDataandUpdateLight {
         let mut blocks_and_biomes = Vec::new();
 
         for sect in self.sections.iter() {
             blocks_and_biomes.extend_from_slice(&sect.compact_data);
         }
 
-        ChunkData {
+        ChunkDataandUpdateLight {
             chunk_x: pos.x,
             chunk_z: pos.z,
             heightmaps: NbtBridge(ChunkDataHeightmaps {
                 motion_blocking: self.heightmap.clone(),
             }),
-            blocks_and_biomes,
+            size: VarInt(blocks_and_biomes.len() as i32),
+            data: blocks_and_biomes,
+            number_of_block_entities: VarInt(0), //TODO
             block_entities: Vec::new(), // TODO
             trust_edges: true,
             // sky_light_mask: bitvec![u64, _; 1; section_count + 2],
@@ -490,7 +492,9 @@ impl<C: Config> LoadedChunk<C> {
             empty_sky_light_mask: BitVec::new(),
             empty_block_light_mask: BitVec::new(),
             // sky_light_arrays: vec![[0xff; 2048]; section_count + 2],
+            sky_light_array_count: VarInt(0),
             sky_light_arrays: Vec::new(),
+            block_light_array_count: VarInt(0),
             block_light_arrays: Vec::new(),
         }
     }
