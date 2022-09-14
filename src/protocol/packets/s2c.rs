@@ -227,6 +227,13 @@ pub mod play {
         }
     }
 
+    def_struct! {
+        PluginMessage {
+            channel: Ident,
+            data: Vec<u8>,
+        }
+    }
+
     def_enum! {
         SoundCategory: VarInt {
             Master = 0,
@@ -834,6 +841,7 @@ pub mod play {
             BlockUpdate = 9,
             BossBar = 10,
             ClearTitles = 13,
+            PluginMessage = 22,
             PlaySoundId = 23,
             Disconnect = 25,
             EntityStatus = 26,
