@@ -255,6 +255,8 @@ pub mod play {
             slot_idx: i16,
             button: i8,
             mode: ClickContainerMode,
+            slots: Vec<(i16, Slot)>,
+            carried_item: Slot,
         }
     }
 
