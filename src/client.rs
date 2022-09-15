@@ -770,7 +770,11 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::CommandSuggestionsRequest(_) => {}
             C2sPlayPacket::ClickContainerButton(_) => {}
             C2sPlayPacket::ClickContainer(_) => {}
-            C2sPlayPacket::CloseContainerC2s(_) => {}
+            C2sPlayPacket::CloseContainerC2s(c) => {
+                self.events.push_back(ClientEvent::CloseScreen {
+                    window_id: c.window_id,
+                })
+            }
             C2sPlayPacket::PluginMessageC2s(_) => {}
             C2sPlayPacket::EditBook(_) => {}
             C2sPlayPacket::QueryEntityTag(_) => {}
