@@ -769,7 +769,24 @@ impl<C: Config> Client<C> {
             }
             C2sPlayPacket::CommandSuggestionsRequest(_) => {}
             C2sPlayPacket::ClickContainerButton(_) => {}
-            C2sPlayPacket::ClickContainer(_) => {}
+            C2sPlayPacket::ClickContainer(p) => {
+                if p.slot_idx == -999 {
+                    // client is trying to drop the currently held stack?
+                } else {
+                    self.events.push_back(ClientEvent::ClickContainer {
+                        window_id: p.window_id,
+                        state_id: p.state_id,
+                        slot_id: p.slot_idx as u16,
+                        mode: p.mode,
+                        slot_changes: p
+                            .slots
+                            .into_iter()
+                            .map(|(slot_id, slot)| (slot_id as u16, slot))
+                            .collect(),
+                        carried_item: p.carried_item,
+                    });
+                }
+            }
             C2sPlayPacket::CloseContainerC2s(c) => {
                 self.events.push_back(ClientEvent::CloseScreen {
                     window_id: c.window_id,

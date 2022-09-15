@@ -7,6 +7,7 @@ use crate::block_pos::BlockPos;
 use crate::config::Config;
 use crate::entity::types::Pose;
 use crate::entity::{Entity, EntityEvent, EntityId, TrackedData};
+use crate::protocol::packets::c2s::play::ClickContainerMode;
 pub use crate::protocol::packets::c2s::play::{
     BlockFace, ChatMode, DisplayedSkinParts, Hand, MainHand, ResourcePackC2s as ResourcePackStatus,
 };
@@ -143,6 +144,21 @@ pub enum ClientEvent {
         slot_id: u16,
         /// The contents of the slot.
         slot: Slot,
+    },
+    /// The client is in survival mode, and is trying to modify an inventory.
+    ClickContainer {
+        window_id: u8,
+        state_id: VarInt,
+        /// The slot that was clicked
+        slot_id: u16,
+        /// The type of click that the user performed
+        mode: ClickContainerMode,
+        /// A list of slot ids and what their contents should be set to. It's
+        /// not safe to blindly trust the contents of this, servers need to
+        /// validate it if they want to prevent item duping.
+        slot_changes: Vec<(u16, Slot)>,
+        /// The item that is now being carried by the user's cursor
+        carried_item: Slot,
     },
 }
 
@@ -305,6 +321,7 @@ pub fn handle_event_default<C: Config>(
         ClientEvent::CloseScreen { .. } => {}
         ClientEvent::DropItem => {}
         ClientEvent::SetSlotCreative { .. } => {}
+        ClientEvent::ClickContainer { .. } => {}
     }
 
     entity.set_world(client.world());

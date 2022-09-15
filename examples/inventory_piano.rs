@@ -13,6 +13,7 @@ use valence::dimension::{Dimension, DimensionId};
 use valence::entity::{EntityId, EntityKind};
 use valence::ident::Ident;
 use valence::player_list::PlayerListId;
+use valence::protocol::packets::c2s::play::ClickContainerMode;
 use valence::protocol::packets::s2c::play::SoundCategory;
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
@@ -49,6 +50,11 @@ const MAX_PLAYERS: usize = 10;
 
 const SIZE_X: usize = 100;
 const SIZE_Z: usize = 100;
+
+const SLOT_MIN: u16 = 36;
+const SLOT_MAX: u16 = 43u16;
+const PITCH_MIN: f32 = 0.5;
+const PITCH_MAX: f32 = 1.0;
 
 #[async_trait]
 impl Config for Game {
@@ -202,11 +208,6 @@ impl Config for Game {
                 client.teleport(spawn_pos, client.yaw(), client.pitch());
             }
 
-            let slot_min = 36u16;
-            let slot_max = 43u16;
-            let pitch_min = 0.5;
-            let pitch_max = 1.0;
-
             while let Some(event) = handle_event_default(client, player) {
                 match event {
                     ClientEvent::CloseScreen { .. } => {
@@ -214,10 +215,10 @@ impl Config for Game {
                     }
                     ClientEvent::SetSlotCreative { slot_id, .. } => {
                         println!("{:#?}", event);
-                        if slot_min <= slot_id && slot_id <= slot_max {
-                            let pitch = (slot_id - slot_min) as f32 * (pitch_max - pitch_min)
-                                / (slot_max - slot_min) as f32
-                                + pitch_min;
+                        if SLOT_MIN <= slot_id && slot_id <= SLOT_MAX {
+                            let pitch = (slot_id - SLOT_MIN) as f32 * (PITCH_MAX - PITCH_MIN)
+                                / (SLOT_MAX - SLOT_MIN) as f32
+                                + PITCH_MIN;
                             println!("playing note with pitch: {}", pitch);
                             client.play_sound(
                                 Ident::new("minecraft:block.note_block.harp").unwrap(),
@@ -228,6 +229,27 @@ impl Config for Game {
                             );
                         } else if slot_id == 44 {
                             client.set_game_mode(GameMode::Survival);
+                        }
+                    }
+                    ClientEvent::ClickContainer { slot_id, mode, .. } => {
+                        if mode != ClickContainerMode::Click {
+                            continue;
+                        }
+                        println!("{:#?}", event);
+                        if SLOT_MIN <= slot_id && slot_id <= SLOT_MAX {
+                            let pitch = (slot_id - SLOT_MIN) as f32 * (PITCH_MAX - PITCH_MIN)
+                                / (SLOT_MAX - SLOT_MIN) as f32
+                                + PITCH_MIN;
+                            println!("playing note with pitch: {}", pitch);
+                            client.play_sound(
+                                Ident::new("minecraft:block.note_block.harp").unwrap(),
+                                SoundCategory::Block,
+                                player.position(),
+                                10.0,
+                                pitch,
+                            );
+                        } else if slot_id == 44 {
+                            client.set_game_mode(GameMode::Creative);
                         }
                     }
                     _ => {}

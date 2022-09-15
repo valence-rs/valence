@@ -261,6 +261,7 @@ pub mod play {
     }
 
     def_enum! {
+        #[derive(Copy, PartialEq, Eq)]
         ClickContainerMode: VarInt {
             Click = 0,
             ShiftClick = 1,
