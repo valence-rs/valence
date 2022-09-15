@@ -129,6 +129,10 @@ pub enum ClientEvent {
         sequence: VarInt,
     },
     ResourcePackStatusChanged(ResourcePackStatus),
+    /// The client closed a screen. This occurs when the client closes their inventory, closes a chest inventory, etc.
+    CloseScreen {
+        window_id: u8,
+    },
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -287,6 +291,7 @@ pub fn handle_event_default<C: Config>(
         ClientEvent::Digging { .. } => {}
         ClientEvent::InteractWithBlock { .. } => {}
         ClientEvent::ResourcePackStatusChanged(_) => {}
+        ClientEvent::CloseScreen { .. } => {}
     }
 
     entity.set_world(client.world());
