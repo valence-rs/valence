@@ -304,7 +304,7 @@ pub fn handle_event_default<C: Config>(
         ClientEvent::ResourcePackStatusChanged(_) => {}
         ClientEvent::CloseScreen { .. } => {}
         ClientEvent::DropItem => {}
-        ClientEvent::SetSlotCreative { slot_id, slot } => {}
+        ClientEvent::SetSlotCreative { .. } => {}
     }
 
     entity.set_world(client.world());
