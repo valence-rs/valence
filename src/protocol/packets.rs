@@ -377,9 +377,6 @@ def_struct! {
         name: String,
         value: String,
         #[serde(skip_serializing_if = "Option::is_none")]
-        /// Only if Is Signed is true.
-        /// 
-        /// https://wiki.vg/Protocol#Login_Success
         signature: Option<String>
     }
 }

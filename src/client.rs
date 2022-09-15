@@ -19,7 +19,7 @@ use crate::config::Config;
 use crate::dimension::DimensionId;
 use crate::entity::data::Player;
 use crate::entity::{
-    velocity_to_packet_units, Entities, EntityId, EntityKind, StatusOrAnimation, self
+    velocity_to_packet_units, Entities, EntityEvent, EntityId, EntityKind, StatusOrAnimation,
 };
 use crate::ident::Ident;
 use crate::player_list::{PlayerListId, PlayerLists};
@@ -30,10 +30,10 @@ use crate::protocol::packets::s2c::play::{
     BiomeRegistry, ChatTypeRegistry, ChunkLoadDistance, ChunkRenderDistanceCenter, ClearTitles,
     DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, EntitiesDestroy,
     EntityAnimation, EntityAttributes, EntityAttributesProperty, EntityPosition, EntitySetHeadYaw,
-    EntityEvent, EntityTrackerUpdate, EntityVelocityUpdate, ExperienceBarUpdate, Login,
-    GameMessage, GameEvent, GameEventChangeReason, HealthUpdate, KeepAlive, UpdateEntityPosition,
-    OverlayMessage, CustomSoundEffect, AcknowledgeBlockChange, PlayerPositionLook, PlayerPositionLookFlags,
-    PlayerRespawn, PlayerSpawnPosition, RegistryCodec, UpdateEntityRotation, UpdateEntityPositionAndRotation,
+    EntityStatus, EntityTrackerUpdate, EntityVelocityUpdate, ExperienceBarUpdate, GameJoin,
+    GameMessage, GameStateChange, GameStateChangeReason, HealthUpdate, KeepAlive, MoveRelative,
+    OverlayMessage, PlaySoundId, PlayerActionResponse, PlayerPositionLook, PlayerPositionLookFlags,
+    PlayerRespawn, PlayerSpawnPosition, RegistryCodec, Rotate, RotateAndMoveRelative,
     S2cPlayPacket, SoundCategory, UnloadChunk, UpdateSubtitle, UpdateTitle,
 };
 use crate::protocol::{BoundedInt, ByteAngle, NbtBridge, RawBytes, VarInt};
@@ -229,7 +229,7 @@ pub struct Client<C: Config> {
     bits: ClientBits,
     /// The data for the client's own player entity.
     player_data: Player,
-    entity_events: Vec<entity::EntityEvent>,
+    entity_events: Vec<EntityEvent>,
 }
 
 #[bitfield(u16)]
@@ -468,7 +468,7 @@ impl<C: Config> Client<C> {
         volume: f32,
         pitch: f32,
     ) {
-        self.send_packet(CustomSoundEffect {
+        self.send_packet(PlaySoundId {
             name,
             category,
             position: pos.iter().map(|x| *x as i32 * 8).collect(),
@@ -602,7 +602,7 @@ impl<C: Config> Client<C> {
     }
 
     /// Pushes an entity event to the queue.
-    pub fn push_entity_event(&mut self, event: entity::EntityEvent) {
+    pub fn push_entity_event(&mut self, event: EntityEvent) {
         self.entity_events.push(event);
     }
 
@@ -696,7 +696,7 @@ impl<C: Config> Client<C> {
 
     fn handle_serverbound_packet(&mut self, entities: &Entities<C>, pkt: C2sPlayPacket) {
         match pkt {
-            C2sPlayPacket::ConfirmTeleport(p) => {
+            C2sPlayPacket::TeleportConfirm(p) => {
                 if self.pending_teleports == 0 {
                     log::warn!("unexpected teleport confirmation from {}", self.username());
                     self.disconnect_no_reason();
@@ -965,12 +965,11 @@ impl<C: Config> Client<C> {
 
             dimension_names.push(ident!("{LIBRARY_NAMESPACE}:dummy_dimension"));
 
-            self.send_packet(Login {
+            self.send_packet(GameJoin {
                 entity_id: 0, // EntityId 0 is reserved for clients.
                 is_hardcore: self.bits.hardcore(),
                 gamemode: self.new_game_mode,
                 previous_gamemode: self.old_game_mode,
-                dimension_count: VarInt(dimension_names.len() as i32),
                 dimension_names,
                 registry_codec: NbtBridge(make_registry_codec(shared)),
                 dimension_type_name: ident!(
@@ -1041,8 +1040,8 @@ impl<C: Config> Client<C> {
             // Update game mode
             if self.old_game_mode != self.new_game_mode {
                 self.old_game_mode = self.new_game_mode;
-                self.send_packet(GameEvent {
-                    event: GameEventChangeReason::ChangeGameMode,
+                self.send_packet(GameStateChange {
+                    reason: GameStateChangeReason::ChangeGameMode,
                     value: self.new_game_mode as i32 as f32,
                 });
             }
@@ -1124,7 +1123,7 @@ impl<C: Config> Client<C> {
         if current_tick % (shared.tick_rate() * 8) == 0 {
             if self.bits.got_keepalive() {
                 let id = rand::random();
-                self.send_packet(KeepAlive { keep_alive_id: id });
+                self.send_packet(KeepAlive { id });
                 self.last_keepalive_id = id;
                 self.bits.set_got_keepalive(false);
             } else {
@@ -1196,8 +1195,8 @@ impl<C: Config> Client<C> {
         for seq in self.dug_blocks.drain(..) {
             send_packet(
                 &mut self.send,
-                AcknowledgeBlockChange {
-                    sequence_id: VarInt(seq),
+                PlayerActionResponse {
+                    sequence: VarInt(seq),
                 },
             )
         }
@@ -1277,7 +1276,7 @@ impl<C: Config> Client<C> {
                     {
                         send_packet(
                             &mut self.send,
-                            UpdateEntityPositionAndRotation {
+                            RotateAndMoveRelative {
                                 entity_id: VarInt(id.to_network_id()),
                                 delta: (position_delta * 4096.0).as_(),
                                 yaw: ByteAngle::from_degrees(entity.yaw()),
@@ -1289,7 +1288,7 @@ impl<C: Config> Client<C> {
                         if entity.position() != entity.old_position() && !needs_teleport {
                             send_packet(
                                 &mut self.send,
-                                UpdateEntityPosition {
+                                MoveRelative {
                                     entity_id: VarInt(id.to_network_id()),
                                     delta: (position_delta * 4096.0).as_(),
                                     on_ground: entity.on_ground(),
@@ -1300,7 +1299,7 @@ impl<C: Config> Client<C> {
                         if flags.yaw_or_pitch_modified() {
                             send_packet(
                                 &mut self.send,
-                                UpdateEntityRotation {
+                                Rotate {
                                     entity_id: VarInt(id.to_network_id()),
                                     yaw: ByteAngle::from_degrees(entity.yaw()),
                                     pitch: ByteAngle::from_degrees(entity.pitch()),
@@ -1429,12 +1428,12 @@ fn send_packet(send_opt: &mut SendOpt, pkt: impl Into<S2cPlayMessage>) {
     }
 }
 
-fn send_entity_events(send_opt: &mut SendOpt, entity_id: i32, events: &[entity::EntityEvent]) {
+fn send_entity_events(send_opt: &mut SendOpt, entity_id: i32, events: &[EntityEvent]) {
     for &event in events {
         match event.status_or_animation() {
             StatusOrAnimation::Status(code) => send_packet(
                 send_opt,
-                EntityEvent {
+                EntityStatus {
                     entity_id,
                     entity_status: code,
                 },

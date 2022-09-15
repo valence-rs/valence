@@ -38,12 +38,12 @@ use crate::protocol::codec::{Decoder, Encoder};
 use crate::protocol::packets::c2s::handshake::{Handshake, HandshakeNextState};
 use crate::protocol::packets::c2s::login::{EncryptionResponse, LoginStart, VerifyTokenOrMsgSig};
 use crate::protocol::packets::c2s::play::C2sPlayPacket;
-use crate::protocol::packets::c2s::status::{PingRequest, StatusRequest};
+use crate::protocol::packets::c2s::status::{QueryPing, QueryRequest};
 use crate::protocol::packets::s2c::login::{
-    EncryptionRequest, SetCompression, Disconnect, LoginSuccess,
+    EncryptionRequest, LoginCompression, LoginDisconnect, LoginSuccess,
 };
 use crate::protocol::packets::s2c::play::S2cPlayPacket;
-use crate::protocol::packets::s2c::status::{PingResponse, StatusResponse};
+use crate::protocol::packets::s2c::status::{QueryPong, QueryResponse};
 use crate::protocol::packets::Property;
 use crate::protocol::{BoundedArray, BoundedString, VarInt};
 use crate::util::valid_username;
@@ -573,7 +573,7 @@ async fn handle_status<C: Config>(
     remote_addr: SocketAddr,
     handshake: Handshake,
 ) -> anyhow::Result<()> {
-    c.dec.read_packet::<StatusRequest>().await?;
+    c.dec.read_packet::<QueryRequest>().await?;
 
     match server
         .0
@@ -610,7 +610,7 @@ async fn handle_status<C: Config>(
             }
 
             c.enc
-                .write_packet(&StatusResponse {
+                .write_packet(&QueryResponse {
                     json_response: json.to_string(),
                 })
                 .await?;
@@ -618,9 +618,9 @@ async fn handle_status<C: Config>(
         ServerListPing::Ignore => return Ok(()),
     }
 
-    let PingRequest { payload } = c.dec.read_packet().await?;
+    let QueryPing { payload } = c.dec.read_packet().await?;
 
-    c.enc.write_packet(&PingResponse { payload }).await?;
+    c.enc.write_packet(&QueryPong { payload }).await?;
 
     Ok(())
 }
@@ -638,10 +638,9 @@ async fn handle_login<C: Config>(
     }
 
     let LoginStart {
-        name: BoundedString(username),
+        username: BoundedString(username),
         sig_data: _,   // TODO
-        has_player_uuid: _, //TODO
-        player_uuid: _, // TODO
+        profile_id: _, // TODO
     } = c.dec.read_packet().await?;
 
     ensure!(valid_username(&username), "invalid username '{username}'");
@@ -740,7 +739,7 @@ async fn handle_login<C: Config>(
 
     let compression_threshold = 256;
     c.enc
-        .write_packet(&SetCompression {
+        .write_packet(&LoginCompression {
             threshold: VarInt(compression_threshold as i32),
         })
         .await?;
@@ -757,7 +756,7 @@ async fn handle_login<C: Config>(
 
     if let Err(reason) = server.0.cfg.login(server, &ncd).await {
         log::info!("Disconnect at login: \"{reason}\"");
-        c.enc.write_packet(&Disconnect { reason }).await?;
+        c.enc.write_packet(&LoginDisconnect { reason }).await?;
         return Ok(None);
     }
 
@@ -765,7 +764,6 @@ async fn handle_login<C: Config>(
         .write_packet(&LoginSuccess {
             uuid: ncd.uuid,
             username: ncd.username.clone().into(),
-            number_of_properties: VarInt(0),
             properties: Vec::new(),
         })
         .await?;

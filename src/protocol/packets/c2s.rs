@@ -6,38 +6,17 @@ pub mod handshake {
     use super::*;
 
     def_struct! {
-        /// This causes the server to switch into the target state.
-        /// 
-        /// https://wiki.vg/Protocol#Handshake
         Handshake {
-            /// See [protocol version numbers](https://wiki.vg/Protocol_version_numbers) (currently 760 in Minecraft 1.19.2).
-            /// 
-            /// https://wiki.vg/Protocol#Handshake
             protocol_version: VarInt,
-            /// Hostname or IP, e.g. localhost or 127.0.0.1, that was used to connect.
-            /// The Notchian server does not use this information.
-            /// Note that SRV records are a simple redirect, e.g. if _minecraft._tcp.example.com points to mc.example.org,
-            /// users connecting to example.com will provide example.org as server address in addition to connecting to it.
-            /// 
-            /// https://wiki.vg/Protocol#Handshake
             server_adddress: BoundedString<0, 255>,
-            /// Default is 25565. The Notchian server does not use this information.
-            /// 
-            /// https://wiki.vg/Protocol#Handshake
             server_port: u16,
-            /// 1 for [Status](https://wiki.vg/Protocol#Status),
-            /// 2 for [Login](https://wiki.vg/Protocol#Login).
-            /// 
-            /// https://wiki.vg/Protocol#Handshake
             next_state: HandshakeNextState,
         }
     }
 
     def_enum! {
         HandshakeNextState: VarInt {
-            /// Status https://wiki.vg/Protocol#Status
             Status = 1,
-            /// Login https://wiki.vg/Protocol#Login
             Login = 2,
         }
     }
@@ -53,26 +32,19 @@ pub mod status {
     use super::*;
 
     def_struct! {
-        /// The status can only be requested once immediately after the handshake, before any ping. The server won't respond otherwise.
-        /// 
-        /// https://wiki.vg/Protocol#Status_Request
-        StatusRequest {}
+        QueryRequest {}
     }
 
     def_struct! {
-        /// https://wiki.vg/Protocol#Ping_Request
-        PingRequest {
-            /// May be any number. Notchian clients use a system-dependent time value which is counted in milliseconds.
-            /// 
-            /// https://wiki.vg/Protocol#Ping_Request
+        QueryPing {
             payload: u64
         }
     }
 
     def_packet_group! {
         C2sStatusPacket {
-            StatusRequest = 0,
-            PingRequest = 1,
+            QueryRequest = 0,
+            QueryPing = 1,
         }
     }
 }
@@ -81,84 +53,16 @@ pub mod login {
     use super::*;
 
     def_struct! {
-        /// https://wiki.vg/Protocol#Login_Start
         LoginStart {
-            /// Player's Username.
-            /// 
-            /// https://wiki.vg/Protocol#Login_Start
-            name: BoundedString<3, 16>,
-            /// Whether or not the next 5 fields should be sent.
-            /// 
-            /// https://wiki.vg/Protocol#Login_Start
+            username: BoundedString<3, 16>,
             sig_data: Option<PublicKeyData>,
-            /*/// When the key data will expire. Optional. Only sent if Has Sig Data is true.
-            /// 
-            /// https://wiki.vg/Protocol#Login_Start
-            timestamp: u64,*/
-            /*/// Length of Public Key. Optional. Only sent if Has Sig Data is true.
-            /// 
-            /// https://wiki.vg/Protocol#Login_Start
-            public_key_length: VarInt,*/
-            /*/// The encoded bytes of the public key the client received from Mojang. Optional. Only sent if Has Sig Data is true.
-            /// 
-            /// https://wiki.vg/Protocol#Login_Start
-            public_key: ?Vec<u8>?,*/
-            /*/// Length of Signature. Optional. Only sent if Has Sig Data is true.
-            /// 
-            /// https://wiki.vg/Protocol#Login_Start
-            signature_length: VarInt,*/
-            /*/// The bytes of the public key signature the client received from Mojang. Optional. Only sent if Has Sig Data is true.
-            /// 
-            /// https://wiki.vg/Protocol#Login_Start
-            signature: ?Vec<u8>?,*/
-            /// Whether or not the next field should be sent.
-            /// 
-            /// https://wiki.vg/Protocol#Login_Start
-            has_player_uuid: bool,
-            /// The UUID of the player logging in. Optional. Only sent if Has Player UUID is true.
-            /// 
-            /// https://wiki.vg/Protocol#Login_Start
-            player_uuid: Uuid,
-            //TODO: remove:
-            //profile_id: Option<Uuid>,
+            profile_id: Option<Uuid>,
         }
     }
 
     def_struct! {
-        /// https://wiki.vg/Protocol#Encryption_Response
         EncryptionResponse {
-            /*/// Length of Shared Secret.
-            /// 
-            /// https://wiki.vg/Protocol#Encryption_Response
-            shared_secret_length: VarInt,*/
-            /// Shared Secret value, encrypted with the server's public key.
-            /// 
-            /// https://wiki.vg/Protocol#Encryption_Response
             shared_secret: BoundedArray<u8, 16, 128>,
-            /*/// Whether or not the Verify Token should be sent. If not, then the salt and signature will be sent.
-            /// 
-            /// https://wiki.vg/Protocol#Encryption_Response
-            has_verify_token: bool,*/
-            /*/// Length of Verify Token. Optional and only sent if Has Verify Token is true.
-            /// 
-            /// https://wiki.vg/Protocol#Encryption_Response
-            optional_verify_token_length: VarInt,*/
-            /*/// Verify Token value, encrypted with the same public key as the shared secret. Optional and only sent if Has Verify Token is true.
-            /// 
-            /// https://wiki.vg/Protocol#Encryption_Response
-            optional_verify_token: BoundedArray<u8, 16, 16>,*/
-            /*/// Cryptography, used for validating the message signature. Optional and only sent if Has Verify Token is false.
-            /// 
-            /// https://wiki.vg/Protocol#Encryption_Response
-            optional_salt: u64,*/
-            /*/// Array Length. Optional and only sent if Has Verify Token is false.
-            /// 
-            /// https://wiki.vg/Protocol#Encryption_Response
-            optional_message_signature_length: VarInt,*/
-            /*/// The bytes of the public key signature the client received from Mojang. Optional and only sent if Has Verify Token is false.
-            /// 
-            /// https://wiki.vg/Protocol#Encryption_Response
-            optional_message_signature: MessageSignature,*/
             token_or_sig: VerifyTokenOrMsgSig,
         }
     }
@@ -178,20 +82,8 @@ pub mod login {
     }
 
     def_struct! {
-        /// https://wiki.vg/Protocol#Login_Plugin_Response
         LoginPluginResponse {
-            /// Should match ID from server.
-            /// 
-            /// https://wiki.vg/Protocol#Login_Plugin_Response
             message_id: VarInt,
-            /// ```true``` if the client understood the request,
-            /// ```false``` otherwise. When ```false```, no payload follows.
-            /// 
-            /// https://wiki.vg/Protocol#Login_Plugin_Response
-            successful: bool,
-            /// Any data, depending on the channel. The length of this array must be inferred from the packet length.
-            /// 
-            /// https://wiki.vg/Protocol#Login_Plugin_Response
             data: Option<RawBytes>,
         }
     }
@@ -210,7 +102,7 @@ pub mod play {
     use crate::protocol::slot::Slot;
 
     def_struct! {
-        ConfirmTeleport {
+        TeleportConfirm {
             teleport_id: VarInt
         }
     }
@@ -806,7 +698,7 @@ pub mod play {
 
     def_packet_group! {
         C2sPlayPacket {
-            ConfirmTeleport = 0,
+            TeleportConfirm = 0,
             QueryBlockNbt = 1,
             UpdateDifficulty = 2,
             MessageAcknowledgment = 3,

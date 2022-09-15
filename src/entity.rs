@@ -13,7 +13,7 @@ use vek::{Aabb, Vec3};
 
 use crate::config::Config;
 use crate::protocol::packets::s2c::play::{
-    SpawnEntity, EntityTrackerUpdate, SpawnExperienceOrb, SpawnPlayer, S2cPlayPacket,
+    EntitySpawn, EntityTrackerUpdate, ExperienceOrbSpawn, PlayerSpawn, S2cPlayPacket,
 };
 use crate::protocol::{ByteAngle, RawBytes, VarInt};
 use crate::slab_versioned::{Key, VersionedSlab};
@@ -600,22 +600,22 @@ impl<C: Config> Entity<C> {
         match &self.variants {
             TrackedData::Marker(_) => None,
             TrackedData::ExperienceOrb(_) => {
-                Some(EntitySpawnPacket::ExperienceOrb(SpawnExperienceOrb {
+                Some(EntitySpawnPacket::ExperienceOrb(ExperienceOrbSpawn {
                     entity_id: VarInt(this_id.to_network_id()),
                     position: self.new_position,
                     count: 0, // TODO
                 }))
             }
-            TrackedData::Player(_) => Some(EntitySpawnPacket::Player(SpawnPlayer {
+            TrackedData::Player(_) => Some(EntitySpawnPacket::Player(PlayerSpawn {
                 entity_id: VarInt(this_id.to_network_id()),
                 player_uuid: self.uuid,
                 position: self.new_position,
                 yaw: ByteAngle::from_degrees(self.yaw),
                 pitch: ByteAngle::from_degrees(self.pitch),
             })),
-            _ => Some(EntitySpawnPacket::Entity(SpawnEntity {
+            _ => Some(EntitySpawnPacket::Entity(EntitySpawn {
                 entity_id: VarInt(this_id.to_network_id()),
-                entity_uuid: self.uuid,
+                object_uuid: self.uuid,
                 kind: VarInt(self.kind() as i32),
                 position: self.new_position,
                 pitch: ByteAngle::from_degrees(self.pitch),
@@ -634,9 +634,9 @@ pub(crate) fn velocity_to_packet_units(vel: Vec3<f32>) -> Vec3<i16> {
 }
 
 pub(crate) enum EntitySpawnPacket {
-    Entity(SpawnEntity),
-    ExperienceOrb(SpawnExperienceOrb),
-    Player(SpawnPlayer),
+    Entity(EntitySpawn),
+    ExperienceOrb(ExperienceOrbSpawn),
+    Player(PlayerSpawn),
 }
 
 impl From<EntitySpawnPacket> for S2cPlayPacket {
