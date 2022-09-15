@@ -133,6 +133,8 @@ pub enum ClientEvent {
     CloseScreen {
         window_id: u8,
     },
+    /// The client is attempting to drop 1 of the currently held item.
+    DropItem,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -292,6 +294,7 @@ pub fn handle_event_default<C: Config>(
         ClientEvent::InteractWithBlock { .. } => {}
         ClientEvent::ResourcePackStatusChanged(_) => {}
         ClientEvent::CloseScreen { .. } => {}
+        ClientEvent::DropItem => {}
     }
 
     entity.set_world(client.world());
