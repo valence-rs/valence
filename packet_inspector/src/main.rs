@@ -172,7 +172,7 @@ async fn handle_connection(client: TcpStream, cli: Cli) -> anyhow::Result<()> {
                         .await
                     {
                         if let Some(e) = e.downcast_ref::<io::Error>() {
-                            if e.kind() == ErrorKind::UnexpectedEof {
+                            if e.kind() == ErrorKind::BrokenPipe {
                                 return Ok(());
                             }
                         }
@@ -188,7 +188,7 @@ async fn handle_connection(client: TcpStream, cli: Cli) -> anyhow::Result<()> {
                         .await
                     {
                         if let Some(e) = e.downcast_ref::<io::Error>() {
-                            if e.kind() == ErrorKind::UnexpectedEof {
+                            if e.kind() == ErrorKind::BrokenPipe {
                                 return Ok(());
                             }
                         }
