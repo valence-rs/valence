@@ -899,7 +899,7 @@ impl<C: Config> Client<C> {
                         face: p.face,
                     },
                     play::DiggingStatus::DropItemStack => return,
-                    play::DiggingStatus::DropItem => return,
+                    play::DiggingStatus::DropItem => ClientEvent::DropItem,
                     play::DiggingStatus::ShootArrowOrFinishEating => return,
                     play::DiggingStatus::SwapItemInHand => return,
                 });
