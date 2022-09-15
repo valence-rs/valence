@@ -11,7 +11,7 @@ pub use crate::protocol::packets::c2s::play::{
     BlockFace, ChatMode, DisplayedSkinParts, Hand, MainHand, ResourcePackC2s as ResourcePackStatus,
 };
 pub use crate::protocol::packets::s2c::play::GameMode;
-use crate::protocol::VarInt;
+use crate::protocol::{Slot, VarInt};
 
 /// Represents an action performed by a client.
 ///
@@ -135,6 +135,13 @@ pub enum ClientEvent {
     },
     /// The client is attempting to drop 1 of the currently held item.
     DropItem,
+    /// The client is in creative mode, and is trying to set it's inventory slot to a value.
+    SetSlotCreative {
+        /// The slot number that the client is trying to set.
+        slot_id: u16,
+        /// The contents of the slot.
+        slot: Slot,
+    },
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -295,6 +302,7 @@ pub fn handle_event_default<C: Config>(
         ClientEvent::ResourcePackStatusChanged(_) => {}
         ClientEvent::CloseScreen { .. } => {}
         ClientEvent::DropItem => {}
+        ClientEvent::SetSlotCreative { slot_id, slot } => {}
     }
 
     entity.set_world(client.world());
