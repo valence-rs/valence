@@ -696,7 +696,7 @@ impl<C: Config> Client<C> {
 
     fn handle_serverbound_packet(&mut self, entities: &Entities<C>, pkt: C2sPlayPacket) {
         match pkt {
-            C2sPlayPacket::TeleportConfirm(p) => {
+            C2sPlayPacket::ConfirmTeleport(p) => {
                 if self.pending_teleports == 0 {
                     log::warn!("unexpected teleport confirmation from {}", self.username());
                     self.disconnect_no_reason();
@@ -718,17 +718,17 @@ impl<C: Config> Client<C> {
                     self.disconnect_no_reason();
                 }
             }
-            C2sPlayPacket::QueryBlockNbt(_) => {}
-            C2sPlayPacket::UpdateDifficulty(_) => {}
+            C2sPlayPacket::QueryBlockEntityTag(_) => {}
+            C2sPlayPacket::ChangeDifficulty(_) => {}
             C2sPlayPacket::MessageAcknowledgment(_) => {}
-            C2sPlayPacket::CommandExecution(_) => {}
+            C2sPlayPacket::ChatCommand(_) => {}
             C2sPlayPacket::ChatMessage(p) => self.events.push_back(ClientEvent::ChatMessage {
                 message: p.message.0,
                 timestamp: Duration::from_millis(p.timestamp),
             }),
-            C2sPlayPacket::RequestChatPreview(_) => {}
-            C2sPlayPacket::ClientStatus(_) => {}
-            C2sPlayPacket::ClientSettings(p) => {
+            C2sPlayPacket::ChatPreview(_) => {}
+            C2sPlayPacket::ClientCommand(_) => {}
+            C2sPlayPacket::ClientInformation(p) => {
                 self.events.push_back(ClientEvent::SettingsChanged {
                     locale: p.locale.0,
                     view_distance: p.view_distance.0,
@@ -739,14 +739,14 @@ impl<C: Config> Client<C> {
                     allow_server_listings: p.allow_server_listings,
                 })
             }
-            C2sPlayPacket::RequestCommandCompletion(_) => {}
+            C2sPlayPacket::CommandSuggestionsRequest(_) => {}
             C2sPlayPacket::ClickContainerButton(_) => {}
             C2sPlayPacket::ClickContainer(_) => {}
-            C2sPlayPacket::CloseHandledScreen(_) => {}
-            C2sPlayPacket::CustomPayload(_) => {}
-            C2sPlayPacket::BookUpdate(_) => {}
-            C2sPlayPacket::QueryEntityNbt(_) => {}
-            C2sPlayPacket::PlayerInteractEntity(p) => {
+            C2sPlayPacket::CloseContainer(_) => {}
+            C2sPlayPacket::PluginMessage(_) => {}
+            C2sPlayPacket::EditBook(_) => {}
+            C2sPlayPacket::QueryEntityTag(_) => {}
+            C2sPlayPacket::Interact(p) => {
                 if let Some(id) = entities.get_with_network_id(p.entity_id.0) {
                     self.events.push_back(ClientEvent::InteractWithEntity {
                         id,
@@ -779,8 +779,8 @@ impl<C: Config> Client<C> {
                     self.bits.set_got_keepalive(true);
                 }
             }
-            C2sPlayPacket::UpdateDifficultyLock(_) => {}
-            C2sPlayPacket::MovePlayerPosition(p) => {
+            C2sPlayPacket::LockDifficulty(_) => {}
+            C2sPlayPacket::SetPlayerPosition(p) => {
                 if self.pending_teleports == 0 {
                     self.position = p.position;
 
@@ -790,7 +790,7 @@ impl<C: Config> Client<C> {
                     });
                 }
             }
-            C2sPlayPacket::MovePlayerPositionAndRotation(p) => {
+            C2sPlayPacket::SetPlayerPositionAndRotation(p) => {
                 if self.pending_teleports == 0 {
                     self.position = p.position;
                     self.yaw = p.yaw;
@@ -804,7 +804,7 @@ impl<C: Config> Client<C> {
                     });
                 }
             }
-            C2sPlayPacket::MovePlayerRotation(p) => {
+            C2sPlayPacket::SetPlayerRotation(p) => {
                 if self.pending_teleports == 0 {
                     self.yaw = p.yaw;
                     self.pitch = p.pitch;
@@ -816,7 +816,7 @@ impl<C: Config> Client<C> {
                     });
                 }
             }
-            C2sPlayPacket::MovePlayerOnGround(p) => {
+            C2sPlayPacket::SetPlayerOnGround(p) => {
                 if self.pending_teleports == 0 {
                     self.events.push_back(ClientEvent::MoveOnGround {
                         on_ground: p.on_ground,
@@ -836,15 +836,15 @@ impl<C: Config> Client<C> {
                     });
                 }
             }
-            C2sPlayPacket::BoatPaddleState(p) => {
+            C2sPlayPacket::PaddleBoat(p) => {
                 self.events.push_back(ClientEvent::SteerBoat {
                     left_paddle_turning: p.left_paddle_turning,
                     right_paddle_turning: p.right_paddle_turning,
                 });
             }
-            C2sPlayPacket::PickFromInventory(_) => {}
-            C2sPlayPacket::CraftRequest(_) => {}
-            C2sPlayPacket::UpdatePlayerAbilities(_) => {}
+            C2sPlayPacket::PickItem(_) => {}
+            C2sPlayPacket::PlaceRecipe(_) => {}
+            C2sPlayPacket::PlayerAbilities(_) => {}
             C2sPlayPacket::PlayerAction(p) => {
                 if p.sequence.0 != 0 {
                     self.dug_blocks.push(p.sequence.0);
@@ -888,24 +888,24 @@ impl<C: Config> Client<C> {
                 });
             }
             C2sPlayPacket::PlayerInput(_) => {}
-            C2sPlayPacket::PlayPong(_) => {}
-            C2sPlayPacket::RecipeBookChangeSettings(_) => {}
-            C2sPlayPacket::RecipeBookSeenRecipe(_) => {}
+            C2sPlayPacket::Pong(_) => {}
+            C2sPlayPacket::ChangeRecipeBookSettings(_) => {}
+            C2sPlayPacket::SetSeenRecipe(_) => {}
             C2sPlayPacket::RenameItem(_) => {}
-            C2sPlayPacket::ResourcePackStatus(_) => {}
-            C2sPlayPacket::AdvancementTab(_) => {}
-            C2sPlayPacket::SelectMerchantTrade(_) => {}
-            C2sPlayPacket::UpdateBeacon(_) => {}
-            C2sPlayPacket::UpdateSelectedSlot(_) => {}
-            C2sPlayPacket::UpdateCommandBlock(_) => {}
-            C2sPlayPacket::UpdateCommandBlockMinecart(_) => {}
-            C2sPlayPacket::UpdateCreativeModeSlot(_) => {}
-            C2sPlayPacket::UpdateJigsaw(_) => {}
-            C2sPlayPacket::UpdateStructureBlock(_) => {}
+            C2sPlayPacket::ResourcePack(_) => {}
+            C2sPlayPacket::SeenAdvancements(_) => {}
+            C2sPlayPacket::SelectTrade(_) => {}
+            C2sPlayPacket::SetBeaconEffect(_) => {}
+            C2sPlayPacket::SetHeldItem(_) => {}
+            C2sPlayPacket::ProgramCommandBlock(_) => {}
+            C2sPlayPacket::ProgramCommandBlockMinecart(_) => {}
+            C2sPlayPacket::SetCreativeModeSlot(_) => {}
+            C2sPlayPacket::ProgramJigsawBlock(_) => {}
+            C2sPlayPacket::ProgramStructureBlock(_) => {}
             C2sPlayPacket::UpdateSign(_) => {}
-            C2sPlayPacket::HandSwing(p) => self.events.push_back(ClientEvent::ArmSwing(p.hand)),
-            C2sPlayPacket::SpectatorTeleport(_) => {}
-            C2sPlayPacket::PlayerInteractBlock(p) => {
+            C2sPlayPacket::SwingArm(p) => self.events.push_back(ClientEvent::ArmSwing(p.hand)),
+            C2sPlayPacket::TeleportToEntity(_) => {}
+            C2sPlayPacket::UseItemOn(p) => {
                 self.events.push_back(ClientEvent::InteractWithBlock {
                     hand: p.hand,
                     location: p.location,
@@ -915,7 +915,7 @@ impl<C: Config> Client<C> {
                     sequence: p.sequence,
                 })
             }
-            C2sPlayPacket::PlayerInteractItem(_) => {}
+            C2sPlayPacket::UseItem(_) => {}
         }
     }
 

@@ -38,7 +38,7 @@ use crate::protocol::codec::{Decoder, Encoder};
 use crate::protocol::packets::c2s::handshake::{Handshake, HandshakeNextState};
 use crate::protocol::packets::c2s::login::{EncryptionResponse, LoginStart, VerifyTokenOrMsgSig};
 use crate::protocol::packets::c2s::play::C2sPlayPacket;
-use crate::protocol::packets::c2s::status::{QueryPing, QueryRequest};
+use crate::protocol::packets::c2s::status::{PingRequest, StatusRequest};
 use crate::protocol::packets::s2c::login::{
     EncryptionRequest, LoginCompression, LoginDisconnect, LoginSuccess,
 };
@@ -573,7 +573,7 @@ async fn handle_status<C: Config>(
     remote_addr: SocketAddr,
     handshake: Handshake,
 ) -> anyhow::Result<()> {
-    c.dec.read_packet::<QueryRequest>().await?;
+    c.dec.read_packet::<StatusRequest>().await?;
 
     match server
         .0
@@ -618,7 +618,7 @@ async fn handle_status<C: Config>(
         ServerListPing::Ignore => return Ok(()),
     }
 
-    let QueryPing { payload } = c.dec.read_packet().await?;
+    let PingRequest { payload } = c.dec.read_packet().await?;
 
     c.enc.write_packet(&QueryPong { payload }).await?;
 
