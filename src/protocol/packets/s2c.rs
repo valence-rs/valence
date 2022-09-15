@@ -227,6 +227,39 @@ pub mod play {
         }
     }
 
+    def_struct! {
+        SetContainerContent {
+            window_id: u8,
+            state_id: VarInt,
+            slots: Vec<Slot>,
+            carried_item: Slot,
+        }
+    }
+
+    def_struct! {
+        SetContainerProperty {
+            window_id: u8,
+            property: i16,
+            value: i16,
+        }
+    }
+
+    def_struct! {
+        SetContainerSlot {
+            window_id: i8,
+            state_id: VarInt,
+            slot_idx: i16,
+            slot_data: Slot,
+        }
+    }
+
+    def_struct! {
+        SetCooldown {
+            item_id: VarInt,
+            cooldown_ticks: VarInt,
+        }
+    }
+
     def_enum! {
         SoundCategory: VarInt {
             Master = 0,
@@ -568,6 +601,14 @@ pub mod play {
     }
 
     def_struct! {
+        OpenScreen {
+            window_id: VarInt,
+            window_type: VarInt,
+            window_title: Text,
+        }
+    }
+
+    def_struct! {
         ChatMessage {
             // TODO: more 1.19 stuff.
             message: Text,
@@ -834,6 +875,10 @@ pub mod play {
             BlockUpdate = 9,
             BossBar = 10,
             ClearTitles = 13,
+            SetContainerContent = 17,
+            SetContainerProperty = 18,
+            SetContainerSlot = 19,
+            SetCooldown = 20,
             PlaySoundId = 23,
             Disconnect = 25,
             EntityStatus = 26,
@@ -845,6 +890,7 @@ pub mod play {
             MoveRelative = 40,
             RotateAndMoveRelative = 41,
             Rotate = 42,
+            OpenScreen = 45,
             ChatMessage = 51,
             UpdatePlayerList = 55,
             PlayerPositionLook = 57,

@@ -740,8 +740,8 @@ impl<C: Config> Client<C> {
                 })
             }
             C2sPlayPacket::RequestCommandCompletion(_) => {}
-            C2sPlayPacket::ButtonClick(_) => {}
-            C2sPlayPacket::ClickSlot(_) => {}
+            C2sPlayPacket::ClickContainerButton(_) => {}
+            C2sPlayPacket::ClickContainer(_) => {}
             C2sPlayPacket::CloseHandledScreen(_) => {}
             C2sPlayPacket::CustomPayload(_) => {}
             C2sPlayPacket::BookUpdate(_) => {}
