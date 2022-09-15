@@ -129,13 +129,15 @@ pub enum ClientEvent {
         sequence: VarInt,
     },
     ResourcePackStatusChanged(ResourcePackStatus),
-    /// The client closed a screen. This occurs when the client closes their inventory, closes a chest inventory, etc.
+    /// The client closed a screen. This occurs when the client closes their
+    /// inventory, closes a chest inventory, etc.
     CloseScreen {
         window_id: u8,
     },
     /// The client is attempting to drop 1 of the currently held item.
     DropItem,
-    /// The client is in creative mode, and is trying to set it's inventory slot to a value.
+    /// The client is in creative mode, and is trying to set it's inventory slot
+    /// to a value.
     SetSlotCreative {
         /// The slot number that the client is trying to set.
         slot_id: u16,
