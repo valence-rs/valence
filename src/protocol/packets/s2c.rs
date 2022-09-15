@@ -293,7 +293,7 @@ pub mod play {
     }
 
     def_struct! {
-        EntityStatus {
+        EntityEvent {
             entity_id: i32,
             entity_status: u8,
         }
@@ -881,7 +881,7 @@ pub mod play {
             SetCooldown = 20,
             CustomSoundEffect = 23,
             Disconnect = 25,
-            EntityStatus = 26, // Should I rename it to EntityEvent (wiki.vg), it will conflict with entity::EntityEvent
+            EntityEvent = 26,
             UnloadChunk = 28,
             GameEvent = 29,
             KeepAlive = 32,

@@ -19,7 +19,7 @@ use crate::config::Config;
 use crate::dimension::DimensionId;
 use crate::entity::data::Player;
 use crate::entity::{
-    velocity_to_packet_units, Entities, EntityEvent, EntityId, EntityKind, StatusOrAnimation,
+    velocity_to_packet_units, Entities, EntityId, EntityKind, StatusOrAnimation, self
 };
 use crate::ident::Ident;
 use crate::player_list::{PlayerListId, PlayerLists};
@@ -30,7 +30,7 @@ use crate::protocol::packets::s2c::play::{
     BiomeRegistry, ChatTypeRegistry, SetRenderDistance, SetCenterChunk, ClearTitles,
     DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, RemoveEntities,
     EntityAnimation, UpdateAttributes, EntityAttributesProperty, TeleportEntity, SetHeadRotation,
-    EntityStatus, SetEntityMetadata, SetEntityVelocity, SetExperience, Login,
+    EntityEvent, SetEntityMetadata, SetEntityVelocity, SetExperience, Login,
     SystemChatMessage, GameEvent, GameStateChangeReason, SetHealth, KeepAlive, UpdateEntityPosition,
     SetActionBarText, CustomSoundEffect, AcknowledgeBlockChange, SynchronizePlayerPosition, PlayerPositionLookFlags,
     Respawn, SetDefaultSpawnPosition, RegistryCodec, UpdateEntityRotation, UpdateEntityPositionAndRotation,
@@ -229,7 +229,7 @@ pub struct Client<C: Config> {
     bits: ClientBits,
     /// The data for the client's own player entity.
     player_data: Player,
-    entity_events: Vec<EntityEvent>,
+    entity_events: Vec<entity::EntityEvent>,
 }
 
 #[bitfield(u16)]
@@ -602,7 +602,7 @@ impl<C: Config> Client<C> {
     }
 
     /// Pushes an entity event to the queue.
-    pub fn push_entity_event(&mut self, event: EntityEvent) {
+    pub fn push_entity_event(&mut self, event: entity::EntityEvent) {
         self.entity_events.push(event);
     }
 
@@ -1428,12 +1428,12 @@ fn send_packet(send_opt: &mut SendOpt, pkt: impl Into<S2cPlayMessage>) {
     }
 }
 
-fn send_entity_events(send_opt: &mut SendOpt, entity_id: i32, events: &[EntityEvent]) {
+fn send_entity_events(send_opt: &mut SendOpt, entity_id: i32, events: &[entity::EntityEvent]) {
     for &event in events {
         match event.status_or_animation() {
             StatusOrAnimation::Status(code) => send_packet(
                 send_opt,
-                EntityStatus {
+                EntityEvent {
                     entity_id,
                     entity_status: code,
                 },
