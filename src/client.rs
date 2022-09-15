@@ -933,7 +933,16 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::SetHeldItemS2c(_) => {}
             C2sPlayPacket::ProgramCommandBlock(_) => {}
             C2sPlayPacket::ProgramCommandBlockMinecart(_) => {}
-            C2sPlayPacket::SetCreativeModeSlot(_) => {}
+            C2sPlayPacket::SetCreativeModeSlot(e) => {
+                if e.slot == -1 {
+                    // the client is trying to drop a stack of items?
+                } else {
+                    self.events.push_back(ClientEvent::SetSlotCreative {
+                        slot_id: e.slot as u16,
+                        slot: e.clicked_item,
+                    })
+                }
+            }
             C2sPlayPacket::ProgramJigsawBlock(_) => {}
             C2sPlayPacket::ProgramStructureBlock(_) => {}
             C2sPlayPacket::UpdateSign(_) => {}
