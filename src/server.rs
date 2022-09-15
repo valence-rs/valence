@@ -40,10 +40,10 @@ use crate::protocol::packets::c2s::login::{EncryptionResponse, LoginStart, Verif
 use crate::protocol::packets::c2s::play::C2sPlayPacket;
 use crate::protocol::packets::c2s::status::{PingRequest, StatusRequest};
 use crate::protocol::packets::s2c::login::{
-    EncryptionRequest, LoginCompression, LoginDisconnect, LoginSuccess,
+    EncryptionRequest, SetCompression, Disconnect, LoginSuccess,
 };
 use crate::protocol::packets::s2c::play::S2cPlayPacket;
-use crate::protocol::packets::s2c::status::{QueryPong, QueryResponse};
+use crate::protocol::packets::s2c::status::{PingResponse, StatusResponse};
 use crate::protocol::packets::Property;
 use crate::protocol::{BoundedArray, BoundedString, VarInt};
 use crate::util::valid_username;
@@ -610,7 +610,7 @@ async fn handle_status<C: Config>(
             }
 
             c.enc
-                .write_packet(&QueryResponse {
+                .write_packet(&StatusResponse {
                     json_response: json.to_string(),
                 })
                 .await?;
@@ -620,7 +620,7 @@ async fn handle_status<C: Config>(
 
     let PingRequest { payload } = c.dec.read_packet().await?;
 
-    c.enc.write_packet(&QueryPong { payload }).await?;
+    c.enc.write_packet(&PingResponse { payload }).await?;
 
     Ok(())
 }
@@ -739,7 +739,7 @@ async fn handle_login<C: Config>(
 
     let compression_threshold = 256;
     c.enc
-        .write_packet(&LoginCompression {
+        .write_packet(&SetCompression {
             threshold: VarInt(compression_threshold as i32),
         })
         .await?;
@@ -756,7 +756,7 @@ async fn handle_login<C: Config>(
 
     if let Err(reason) = server.0.cfg.login(server, &ncd).await {
         log::info!("Disconnect at login: \"{reason}\"");
-        c.enc.write_packet(&LoginDisconnect { reason }).await?;
+        c.enc.write_packet(&Disconnect { reason }).await?;
         return Ok(None);
     }
 

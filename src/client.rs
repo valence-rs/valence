@@ -25,16 +25,16 @@ use crate::ident::Ident;
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::c2s::play::{self, C2sPlayPacket, InteractKind, PlayerCommandId};
-pub use crate::protocol::packets::s2c::play::TitleFade;
+pub use crate::protocol::packets::s2c::play::SetTitleAnimationTimes;
 use crate::protocol::packets::s2c::play::{
-    BiomeRegistry, ChatTypeRegistry, ChunkLoadDistance, ChunkRenderDistanceCenter, ClearTitles,
-    DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, EntitiesDestroy,
-    EntityAnimation, EntityAttributes, EntityAttributesProperty, EntityPosition, EntitySetHeadYaw,
-    EntityStatus, EntityTrackerUpdate, EntityVelocityUpdate, ExperienceBarUpdate, GameJoin,
-    GameMessage, GameStateChange, GameStateChangeReason, HealthUpdate, KeepAlive, MoveRelative,
-    OverlayMessage, PlaySoundId, PlayerActionResponse, PlayerPositionLook, PlayerPositionLookFlags,
-    PlayerRespawn, PlayerSpawnPosition, RegistryCodec, Rotate, RotateAndMoveRelative,
-    S2cPlayPacket, SoundCategory, UnloadChunk, UpdateSubtitle, UpdateTitle,
+    BiomeRegistry, ChatTypeRegistry, SetRenderDistance, SetCenterChunk, ClearTitles,
+    DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, RemoveEntities,
+    EntityAnimation, UpdateAttributes, EntityAttributesProperty, TeleportEntity, SetHeadRotation,
+    EntityStatus, SetEntityMetadata, SetEntityVelocity, SetExperience, Login,
+    SystemChatMessage, GameEvent, GameStateChangeReason, SetHealth, KeepAlive, UpdateEntityPosition,
+    SetActionBarText, CustomSoundEffect, AcknowledgeBlockChange, SynchronizePlayerPosition, PlayerPositionLookFlags,
+    Respawn, SetDefaultSpawnPosition, RegistryCodec, UpdateEntityRotation, UpdateEntityPositionAndRotation,
+    S2cPlayPacket, SoundCategory, UnloadChunk, SetSubtitleText, SetTitleText,
 };
 use crate::protocol::{BoundedInt, ByteAngle, NbtBridge, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
@@ -468,7 +468,7 @@ impl<C: Config> Client<C> {
         volume: f32,
         pitch: f32,
     ) {
-        self.send_packet(PlaySoundId {
+        self.send_packet(CustomSoundEffect {
             name,
             category,
             position: pos.iter().map(|x| *x as i32 * 8).collect(),
@@ -488,15 +488,15 @@ impl<C: Config> Client<C> {
         &mut self,
         title: impl Into<Text>,
         subtitle: impl Into<Text>,
-        animation: impl Into<Option<TitleFade>>,
+        animation: impl Into<Option<SetTitleAnimationTimes>>,
     ) {
         let title = title.into();
         let subtitle = subtitle.into();
 
-        self.send_packet(UpdateTitle { text: title });
+        self.send_packet(SetTitleText { text: title });
 
         if !subtitle.is_empty() {
-            self.send_packet(UpdateSubtitle {
+            self.send_packet(SetSubtitleText {
                 subtitle_text: subtitle,
             });
         }
@@ -550,7 +550,7 @@ impl<C: Config> Client<C> {
     /// * `level` - Number above the XP bar.
     /// * `total_xp` - TODO.
     pub fn set_level(&mut self, bar: f32, level: i32, total_xp: i32) {
-        self.send_packet(ExperienceBarUpdate {
+        self.send_packet(SetExperience {
             bar,
             level: level.into(),
             total_xp: total_xp.into(),
@@ -566,7 +566,7 @@ impl<C: Config> Client<C> {
     /// * `food` - Integer in range `0..=20`.
     /// * `food_saturation` - Float in range `0.0..=5.0`.
     pub fn set_health_and_food(&mut self, health: f32, food: i32, food_saturation: f32) {
-        self.send_packet(HealthUpdate {
+        self.send_packet(SetHealth {
             health,
             food: food.into(),
             food_saturation,
@@ -965,7 +965,7 @@ impl<C: Config> Client<C> {
 
             dimension_names.push(ident!("{LIBRARY_NAMESPACE}:dummy_dimension"));
 
-            self.send_packet(GameJoin {
+            self.send_packet(Login {
                 entity_id: 0, // EntityId 0 is reserved for clients.
                 is_hardcore: self.bits.hardcore(),
                 gamemode: self.new_game_mode,
@@ -1002,7 +1002,7 @@ impl<C: Config> Client<C> {
 
                 // Client bug workaround: send the client to a dummy dimension first.
                 // TODO: is there actually a bug?
-                self.send_packet(PlayerRespawn {
+                self.send_packet(Respawn {
                     dimension_type_name: ident!("{LIBRARY_NAMESPACE}:dimension_type_0"),
                     dimension_name: ident!("{LIBRARY_NAMESPACE}:dummy_dimension"),
                     hashed_seed: 0,
@@ -1014,7 +1014,7 @@ impl<C: Config> Client<C> {
                     last_death_location: None,
                 });
 
-                self.send_packet(PlayerRespawn {
+                self.send_packet(Respawn {
                     dimension_type_name: ident!(
                         "{LIBRARY_NAMESPACE}:dimension_type_{}",
                         world.meta.dimension().0
@@ -1040,7 +1040,7 @@ impl<C: Config> Client<C> {
             // Update game mode
             if self.old_game_mode != self.new_game_mode {
                 self.old_game_mode = self.new_game_mode;
-                self.send_packet(GameStateChange {
+                self.send_packet(GameEvent {
                     reason: GameStateChangeReason::ChangeGameMode,
                     value: self.new_game_mode as i32 as f32,
                 });
@@ -1075,7 +1075,7 @@ impl<C: Config> Client<C> {
         if self.bits.attack_speed_modified() {
             self.bits.set_attack_speed_modified(false);
 
-            self.send_packet(EntityAttributes {
+            self.send_packet(UpdateAttributes {
                 entity_id: VarInt(0),
                 properties: vec![EntityAttributesProperty {
                     key: ident!("generic.attack_speed"),
@@ -1088,7 +1088,7 @@ impl<C: Config> Client<C> {
         if self.bits.movement_speed_modified() {
             self.bits.set_movement_speed_modified(false);
 
-            self.send_packet(EntityAttributes {
+            self.send_packet(UpdateAttributes {
                 entity_id: VarInt(0),
                 properties: vec![EntityAttributesProperty {
                     key: ident!("generic.movement_speed"),
@@ -1102,7 +1102,7 @@ impl<C: Config> Client<C> {
         if self.bits.modified_spawn_position() {
             self.bits.set_modified_spawn_position(false);
 
-            self.send_packet(PlayerSpawnPosition {
+            self.send_packet(SetDefaultSpawnPosition {
                 location: self.spawn_position,
                 angle: self.spawn_position_yaw,
             })
@@ -1113,7 +1113,7 @@ impl<C: Config> Client<C> {
             self.bits.set_view_distance_modified(false);
 
             if !self.created_this_tick() {
-                self.send_packet(ChunkLoadDistance {
+                self.send_packet(SetRenderDistance {
                     view_distance: BoundedInt(VarInt(self.view_distance() as i32)),
                 });
             }
@@ -1144,7 +1144,7 @@ impl<C: Config> Client<C> {
             let new_section = self.position.map(|n| (n / 16.0).floor() as i32);
 
             if old_section != new_section {
-                self.send_packet(ChunkRenderDistanceCenter {
+                self.send_packet(SetCenterChunk {
                     chunk_x: VarInt(new_section.x),
                     chunk_z: VarInt(new_section.z),
                 })
@@ -1195,7 +1195,7 @@ impl<C: Config> Client<C> {
         for seq in self.dug_blocks.drain(..) {
             send_packet(
                 &mut self.send,
-                PlayerActionResponse {
+                AcknowledgeBlockChange {
                     sequence: VarInt(seq),
                 },
             )
@@ -1208,7 +1208,7 @@ impl<C: Config> Client<C> {
         if self.bits.teleported_this_tick() {
             self.bits.set_teleported_this_tick(false);
 
-            self.send_packet(PlayerPositionLook {
+            self.send_packet(SynchronizePlayerPosition {
                 position: self.position,
                 yaw: self.yaw,
                 pitch: self.pitch,
@@ -1233,7 +1233,7 @@ impl<C: Config> Client<C> {
         if self.bits.velocity_modified() {
             self.bits.set_velocity_modified(false);
 
-            self.send_packet(EntityVelocityUpdate {
+            self.send_packet(SetEntityVelocity {
                 entity_id: VarInt(0),
                 velocity: velocity_to_packet_units(self.velocity),
             });
@@ -1243,7 +1243,7 @@ impl<C: Config> Client<C> {
         for msg in self.msgs_to_send.drain(..) {
             send_packet(
                 &mut self.send,
-                GameMessage {
+                SystemChatMessage {
                     chat: msg,
                     kind: VarInt(0),
                 },
@@ -1251,7 +1251,7 @@ impl<C: Config> Client<C> {
         }
 
         if let Some(bar) = self.bar_to_send.take() {
-            send_packet(&mut self.send, OverlayMessage { text: bar });
+            send_packet(&mut self.send, SetActionBarText { text: bar });
         }
 
         let mut entities_to_unload = Vec::new();
@@ -1276,7 +1276,7 @@ impl<C: Config> Client<C> {
                     {
                         send_packet(
                             &mut self.send,
-                            RotateAndMoveRelative {
+                            UpdateEntityPositionAndRotation {
                                 entity_id: VarInt(id.to_network_id()),
                                 delta: (position_delta * 4096.0).as_(),
                                 yaw: ByteAngle::from_degrees(entity.yaw()),
@@ -1288,7 +1288,7 @@ impl<C: Config> Client<C> {
                         if entity.position() != entity.old_position() && !needs_teleport {
                             send_packet(
                                 &mut self.send,
-                                MoveRelative {
+                                UpdateEntityPosition {
                                     entity_id: VarInt(id.to_network_id()),
                                     delta: (position_delta * 4096.0).as_(),
                                     on_ground: entity.on_ground(),
@@ -1299,7 +1299,7 @@ impl<C: Config> Client<C> {
                         if flags.yaw_or_pitch_modified() {
                             send_packet(
                                 &mut self.send,
-                                Rotate {
+                                UpdateEntityRotation {
                                     entity_id: VarInt(id.to_network_id()),
                                     yaw: ByteAngle::from_degrees(entity.yaw()),
                                     pitch: ByteAngle::from_degrees(entity.pitch()),
@@ -1312,7 +1312,7 @@ impl<C: Config> Client<C> {
                     if needs_teleport {
                         send_packet(
                             &mut self.send,
-                            EntityPosition {
+                            TeleportEntity {
                                 entity_id: VarInt(id.to_network_id()),
                                 position: entity.position(),
                                 yaw: ByteAngle::from_degrees(entity.yaw()),
@@ -1325,7 +1325,7 @@ impl<C: Config> Client<C> {
                     if flags.velocity_modified() {
                         send_packet(
                             &mut self.send,
-                            EntityVelocityUpdate {
+                            SetEntityVelocity {
                                 entity_id: VarInt(id.to_network_id()),
                                 velocity: velocity_to_packet_units(entity.velocity()),
                             },
@@ -1335,7 +1335,7 @@ impl<C: Config> Client<C> {
                     if flags.head_yaw_modified() {
                         send_packet(
                             &mut self.send,
-                            EntitySetHeadYaw {
+                            SetHeadRotation {
                                 entity_id: VarInt(id.to_network_id()),
                                 head_yaw: ByteAngle::from_degrees(entity.head_yaw()),
                             },
@@ -1353,7 +1353,7 @@ impl<C: Config> Client<C> {
         });
 
         if !entities_to_unload.is_empty() {
-            self.send_packet(EntitiesDestroy {
+            self.send_packet(RemoveEntities {
                 entities: entities_to_unload,
             });
         }
@@ -1365,7 +1365,7 @@ impl<C: Config> Client<C> {
         if !data.is_empty() {
             data.push(0xff);
 
-            self.send_packet(EntityTrackerUpdate {
+            self.send_packet(SetEntityMetadata {
                 entity_id: VarInt(0),
                 metadata: RawBytes(data),
             });
