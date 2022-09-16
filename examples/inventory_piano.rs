@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -7,10 +6,10 @@ use num::Integer;
 use valence::biome::Biome;
 use valence::block::BlockState;
 use valence::chunk::{Chunk, UnloadedChunk};
-use valence::client::{handle_event_default, ClientEvent, GameMode};
+use valence::client::{handle_event_default, Client, ClientEvent, GameMode};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
-use valence::entity::{EntityId, EntityKind};
+use valence::entity::{Entity, EntityId, EntityKind};
 use valence::ident::Ident;
 use valence::player_list::PlayerListId;
 use valence::protocol::packets::c2s::play::ClickContainerMode;
@@ -215,48 +214,45 @@ impl Config for Game {
                     }
                     ClientEvent::SetSlotCreative { slot_id, .. } => {
                         println!("{:#?}", event);
-                        if SLOT_MIN <= slot_id && slot_id <= SLOT_MAX {
-                            let pitch = (slot_id - SLOT_MIN) as f32 * (PITCH_MAX - PITCH_MIN)
-                                / (SLOT_MAX - SLOT_MIN) as f32
-                                + PITCH_MIN;
-                            println!("playing note with pitch: {}", pitch);
-                            client.play_sound(
-                                Ident::new("minecraft:block.note_block.harp").unwrap(),
-                                SoundCategory::Block,
-                                player.position(),
-                                10.0,
-                                pitch,
-                            );
-                        } else if slot_id == 44 {
-                            client.set_game_mode(GameMode::Survival);
-                        }
+                        // If the user does a double click, 3 notes will be played.
+                        // This is not possible to fix :(
+                        play_note(client, player, slot_id);
                     }
                     ClientEvent::ClickContainer { slot_id, mode, .. } => {
+                        println!("{:#?}", event);
                         if mode != ClickContainerMode::Click {
+                            // Prevent notes from being played twice if the user clicks quickly
                             continue;
                         }
-                        println!("{:#?}", event);
-                        if SLOT_MIN <= slot_id && slot_id <= SLOT_MAX {
-                            let pitch = (slot_id - SLOT_MIN) as f32 * (PITCH_MAX - PITCH_MIN)
-                                / (SLOT_MAX - SLOT_MIN) as f32
-                                + PITCH_MIN;
-                            println!("playing note with pitch: {}", pitch);
-                            client.play_sound(
-                                Ident::new("minecraft:block.note_block.harp").unwrap(),
-                                SoundCategory::Block,
-                                player.position(),
-                                10.0,
-                                pitch,
-                            );
-                        } else if slot_id == 44 {
-                            client.set_game_mode(GameMode::Creative);
-                        }
+                        play_note(client, player, slot_id);
                     }
                     _ => {}
                 }
             }
 
             true
+        });
+    }
+}
+
+fn play_note(client: &mut Client<Game>, player: &mut Entity<Game>, clicked_slot: u16) {
+    if SLOT_MIN <= clicked_slot && clicked_slot <= SLOT_MAX {
+        let pitch = (clicked_slot - SLOT_MIN) as f32 * (PITCH_MAX - PITCH_MIN)
+            / (SLOT_MAX - SLOT_MIN) as f32
+            + PITCH_MIN;
+        println!("playing note with pitch: {}", pitch);
+        client.play_sound(
+            ident!("minecraft:block.note_block.harp"),
+            SoundCategory::Block,
+            player.position(),
+            10.0,
+            pitch,
+        );
+    } else if clicked_slot == 44 {
+        client.set_game_mode(match client.game_mode() {
+            GameMode::Survival => GameMode::Creative,
+            GameMode::Creative => GameMode::Survival,
+            _ => GameMode::Creative,
         });
     }
 }
