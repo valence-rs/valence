@@ -779,10 +779,7 @@ impl<C: Config> Client<C> {
                     let held = self.cursor_held_item.clone();
                     self.cursor_held_item = Slot::Empty;
                     match held {
-                        crate::protocol::Slot::Empty => log::warn!(
-                            "Invalid state, client's cursor is not holding an item but it tried \
-                             to drop a stack of nothing."
-                        ),
+                        crate::protocol::Slot::Empty => {}
                         crate::protocol::Slot::Present {
                             item_id,
                             item_count,
