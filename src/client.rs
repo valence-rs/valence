@@ -33,8 +33,8 @@ use crate::protocol::packets::s2c::play::{
     EntityStatus, EntityTrackerUpdate, EntityVelocityUpdate, ExperienceBarUpdate, GameJoin,
     GameMessage, GameStateChange, GameStateChangeReason, HealthUpdate, KeepAlive, MoveRelative,
     OverlayMessage, PlaySoundId, PlayerActionResponse, PlayerPositionLook, PlayerPositionLookFlags,
-    PlayerRespawn, PlayerSpawnPosition, RegistryCodec, Rotate, RotateAndMoveRelative,
-    S2cPlayPacket, SoundCategory, UnloadChunk, UpdateSubtitle, UpdateTitle,
+    PlayerRespawn, PlayerSpawnPosition, RegistryCodec, ResourcePackS2c, Rotate,
+    RotateAndMoveRelative, S2cPlayPacket, SoundCategory, UnloadChunk, UpdateSubtitle, UpdateTitle,
 };
 use crate::protocol::{BoundedInt, ByteAngle, NbtBridge, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
@@ -640,6 +640,30 @@ impl<C: Config> Client<C> {
         self.bits.hardcore()
     }
 
+    /// Requests that the client download and enable a resource pack.
+    ///
+    /// # Arguments
+    /// * `url` - The URL of the resource pack file.
+    /// * `hash` - The SHA-1 hash of the resource pack file.
+    /// * `forced` - Whether a client should be kicked from the server upon
+    ///   declining the pack (this is enforced client-side)
+    /// * `prompt-message` - A message to be displayed with the resource pack
+    ///   dialog.
+    pub fn set_resource_pack(
+        &mut self,
+        url: String,
+        hash: Option<String>,
+        forced: bool,
+        prompt_message: impl Into<Option<Text>>,
+    ) {
+        self.send_packet(ResourcePackS2c {
+            url: url.into(),
+            hash: hash.unwrap_or_default().into(),
+            forced,
+            prompt_message: prompt_message.into(),
+        });
+    }
+
     /// Gets the client's current settings.
     pub fn settings(&self) -> Option<&Settings> {
         self.settings.as_ref()
@@ -892,7 +916,9 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::RecipeBookChangeSettings(_) => {}
             C2sPlayPacket::RecipeBookSeenRecipe(_) => {}
             C2sPlayPacket::RenameItem(_) => {}
-            C2sPlayPacket::ResourcePackStatus(_) => {}
+            C2sPlayPacket::ResourcePackC2s(p) => {
+                self.events.push_back(ClientEvent::ResourcePackStatus(p))
+            }
             C2sPlayPacket::AdvancementTab(_) => {}
             C2sPlayPacket::SelectMerchantTrade(_) => {}
             C2sPlayPacket::UpdateBeacon(_) => {}
