@@ -8,6 +8,7 @@ use std::{fmt, io};
 use anyhow::bail;
 use chrono::{DateTime, Utc};
 use clap::Parser;
+use regex::Regex;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream};
@@ -22,7 +23,6 @@ use valence::protocol::packets::s2c::play::S2cPlayPacket;
 use valence::protocol::packets::s2c::status::{QueryPong, QueryResponse};
 use valence::protocol::packets::{DecodePacket, EncodePacket, PacketName};
 use valence::protocol::{Encode, VarInt};
-use regex::Regex;
 
 #[derive(Parser, Clone, Debug)]
 #[clap(author, version, about)]
