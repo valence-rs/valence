@@ -528,7 +528,7 @@ pub mod play {
     }
 
     def_enum! {
-        ResourcePackStatus: VarInt {
+        ResourcePackC2s: VarInt {
             SuccessfullyLoaded = 0,
             Declined = 1,
             FailedDownload = 2,
@@ -749,7 +749,7 @@ pub mod play {
             RecipeBookChangeSettings = 33,
             RecipeBookSeenRecipe = 34,
             RenameItem = 35,
-            ResourcePackStatus = 36,
+            ResourcePackC2s = 36,
             AdvancementTab = 37,
             SelectMerchantTrade = 38,
             UpdateBeacon = 39,

@@ -668,6 +668,15 @@ pub mod play {
     }
 
     def_struct! {
+        ResourcePackS2c {
+            url: BoundedString<0, 32767>,
+            hash: BoundedString<0, 40>,
+            forced: bool,
+            prompt_message: Option<Text>,
+        }
+    }
+
+    def_struct! {
         PlayerRespawn {
             dimension_type_name: Ident,
             dimension_name: Ident,
@@ -895,6 +904,7 @@ pub mod play {
             UpdatePlayerList = 55,
             PlayerPositionLook = 57,
             EntitiesDestroy = 59,
+            ResourcePackS2c = 61,
             PlayerRespawn = 62,
             EntitySetHeadYaw = 63,
             ChunkSectionUpdate = 64,
