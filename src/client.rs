@@ -647,7 +647,7 @@ impl<C: Config> Client<C> {
     /// * `hash` - The SHA-1 hash of the resource pack file.
     /// * `forced` - Whether a client should be kicked from the server upon
     ///   declining the pack (this is enforced client-side)
-    /// * `prompt-message` - A message to be displayed with the resource pack
+    /// * `prompt_message` - A message to be displayed with the resource pack
     ///   dialog.
     pub fn set_resource_pack(
         &mut self,
