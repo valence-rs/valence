@@ -480,12 +480,39 @@ impl<C: Config> Entity<C> {
             TrackedData::Fox(e) => baby(e.get_child(), [0.6, 0.7, 0.6]),
             TrackedData::Ghast(_) => [4.0, 4.0, 4.0],
             TrackedData::Giant(_) => [3.6, 12.0, 3.6],
-            TrackedData::GlowItemFrame(e) => match e.get_rotation() {
-                0 | 1 => [0.75, 0.0625, 0.75],
-                2 | 3 => [0.75, 0.75, 0.0625],
-                4 | 5 => [0.0625, 0.75, 0.75],
-                _ => [0.75, 0.0625, 0.75],
-            },
+            TrackedData::GlowItemFrame(e) => {
+                let mut center_pos = self.new_position.map(|v| v + 0.5);
+
+                match e.get_rotation() {
+                    0 => center_pos.y += 0.46875f64,
+                    1 => center_pos.y -= 0.46875f64,
+                    2 => center_pos.z += 0.46875f64,
+                    3 => center_pos.z -= 0.46875f64,
+                    4 => center_pos.x += 0.46875f64,
+                    5 => center_pos.x += 0.46875f64,
+                    _ => center_pos.y -= 0.46875f64,
+                };
+
+                let bounds = match e.get_rotation() {
+                    0 | 1 => [0.75, 0.0625, 0.75],
+                    2 | 3 => [0.75, 0.75, 0.0625],
+                    4 | 5 => [0.0625, 0.75, 0.75],
+                    _ => [0.75, 0.0625, 0.75],
+                };
+
+                return Aabb {
+                    min: Vec3::new(
+                        center_pos.x - bounds[0] / 2.0f64,
+                        center_pos.y - bounds[1] / 2.0f64,
+                        center_pos.z - bounds[2] / 2.0f64,
+                    ),
+                    max: Vec3::new(
+                        center_pos.x + bounds[0] / 2.0f64,
+                        center_pos.y + bounds[1] / 2.0f64,
+                        center_pos.z + bounds[2] / 2.0f64,
+                    ),
+                };
+            }
             TrackedData::GlowSquid(_) => [0.8, 0.8, 0.8],
             TrackedData::Goat(e) => baby(e.get_child(), [0.9, 1.3, 0.9]),
             TrackedData::Guardian(_) => [0.85, 0.85, 0.85],
@@ -495,12 +522,39 @@ impl<C: Config> Entity<C> {
             TrackedData::Illusioner(_) => [0.6, 1.95, 0.6],
             TrackedData::IronGolem(_) => [1.4, 2.7, 1.4],
             TrackedData::Item(_) => [0.25, 0.25, 0.25],
-            TrackedData::ItemFrame(e) => match e.get_rotation() {
-                0 | 1 => [0.75, 0.0625, 0.75],
-                2 | 3 => [0.75, 0.75, 0.0625],
-                4 | 5 => [0.0625, 0.75, 0.75],
-                _ => [0.75, 0.0625, 0.75],
-            },
+            TrackedData::ItemFrame(e) => {
+                let mut center_pos = self.new_position.map(|v| v + 0.5);
+
+                match e.get_rotation() {
+                    0 => center_pos.y += 0.46875f64,
+                    1 => center_pos.y -= 0.46875f64,
+                    2 => center_pos.z += 0.46875f64,
+                    3 => center_pos.z -= 0.46875f64,
+                    4 => center_pos.x += 0.46875f64,
+                    5 => center_pos.x += 0.46875f64,
+                    _ => center_pos.y -= 0.46875f64,
+                };
+
+                let bounds = match e.get_rotation() {
+                    0 | 1 => [0.75, 0.0625, 0.75],
+                    2 | 3 => [0.75, 0.75, 0.0625],
+                    4 | 5 => [0.0625, 0.75, 0.75],
+                    _ => [0.75, 0.0625, 0.75],
+                };
+
+                return Aabb {
+                    min: Vec3::new(
+                        center_pos.x - bounds[0] / 2.0f64,
+                        center_pos.y - bounds[1] / 2.0f64,
+                        center_pos.z - bounds[2] / 2.0f64,
+                    ),
+                    max: Vec3::new(
+                        center_pos.x + bounds[0] / 2.0f64,
+                        center_pos.y + bounds[1] / 2.0f64,
+                        center_pos.z + bounds[2] / 2.0f64,
+                    ),
+                };
+            }
             TrackedData::Fireball(_) => [1.0, 1.0, 1.0],
             TrackedData::LeashKnot(_) => [0.375, 0.5, 0.375],
             TrackedData::Lightning(_) => [0.0, 0.0, 0.0],
@@ -521,7 +575,78 @@ impl<C: Config> Entity<C> {
             TrackedData::Mule(e) => baby(e.get_child(), [1.39648, 1.6, 1.39648]),
             TrackedData::Mooshroom(e) => baby(e.get_child(), [0.9, 1.4, 0.9]),
             TrackedData::Ocelot(e) => baby(e.get_child(), [0.6, 0.7, 0.6]),
-            TrackedData::Painting(_) => todo!("account for rotation and type"),
+            TrackedData::Painting(e) => {
+                let mut bounds = match e.get_variant() {
+                    types::PaintingKind::Kebab => [1.0, 1.0, 1.0],
+                    types::PaintingKind::Aztec => [1.0, 1.0, 1.0],
+                    types::PaintingKind::Alban => [1.0, 1.0, 1.0],
+                    types::PaintingKind::Aztec2 => [1.0, 1.0, 1.0],
+                    types::PaintingKind::Bomb => [1.0, 1.0, 1.0],
+                    types::PaintingKind::Plant => [1.0, 1.0, 1.0],
+                    types::PaintingKind::Wasteland => [1.0, 1.0, 1.0],
+                    types::PaintingKind::Pool => [2.0, 1.0, 2.0],
+                    types::PaintingKind::Courbet => [2.0, 1.0, 2.0],
+                    types::PaintingKind::Sea => [2.0, 1.0, 2.0],
+                    types::PaintingKind::Sunset => [2.0, 1.0, 2.0],
+                    types::PaintingKind::Creebet => [2.0, 1.0, 2.0],
+                    types::PaintingKind::Wanderer => [1.0, 2.0, 1.0],
+                    types::PaintingKind::Graham => [1.0, 2.0, 1.0],
+                    types::PaintingKind::Match => [2.0, 2.0, 2.0],
+                    types::PaintingKind::Bust => [2.0, 2.0, 2.0],
+                    types::PaintingKind::Stage => [2.0, 2.0, 2.0],
+                    types::PaintingKind::Void => [2.0, 2.0, 2.0],
+                    types::PaintingKind::SkullAndRoses => [2.0, 2.0, 2.0],
+                    types::PaintingKind::Wither => [2.0, 2.0, 2.0],
+                    types::PaintingKind::Fighters => [4.0, 2.0, 4.0],
+                    types::PaintingKind::Pointer => [4.0, 4.0, 4.0],
+                    types::PaintingKind::Pigscene => [4.0, 4.0, 4.0],
+                    types::PaintingKind::BurningSkull => [4.0, 4.0, 4.0],
+                    types::PaintingKind::Skeleton => [4.0, 3.0, 4.0],
+                    types::PaintingKind::Earth => [2.0, 2.0, 2.0],
+                    types::PaintingKind::Wind => [2.0, 2.0, 2.0],
+                    types::PaintingKind::Water => [2.0, 2.0, 2.0],
+                    types::PaintingKind::Fire => [2.0, 2.0, 2.0],
+                    types::PaintingKind::DonkeyKong => [4.0, 3.0, 4.0],
+                };
+
+                let mut center_pos = self.new_position.map(|v| v + 0.5);
+                let (facing_x, facing_z, cc_facing_x, cc_facing_z) =
+                    match (self.yaw + 180.0).rem_euclid(360.0).round() as i32 {
+                        45..=134 => (1, 0, 0, -1),            // East
+                        225..=314 => (-1, 0, 0, 1),           // West
+                        135..=224 => (0, 1, 1, 0),            // South
+                        315..=360 | 0..=44 => (0, -1, -1, 0), // North
+                        _ => (0, -1, -1, 0),
+                    };
+
+                center_pos.x -= facing_x as f64 * 0.46875f64;
+                center_pos.z -= facing_z as f64 * 0.46875f64;
+
+                center_pos.x +=
+                    cc_facing_x as f64 * (if bounds[0] % 2.0 == 0.0 { 0.5 } else { 0.0 });
+                center_pos.y += if bounds[1] % 2.0 == 0.0 { 0.5 } else { 0.0 };
+                center_pos.z +=
+                    cc_facing_z as f64 * (if bounds[2] % 2.0 == 0.0 { 0.5 } else { 0.0 });
+
+                bounds[match (facing_x, facing_z) {
+                    (1, 0) | (-1, 0) => 0,
+                    (0, 1) | (0, -1) => 2,
+                    _ => 2,
+                }] = 0.0625;
+
+                return Aabb {
+                    min: Vec3::new(
+                        center_pos.x - bounds[0] / 2.0f64,
+                        center_pos.y - bounds[1] / 2.0f64,
+                        center_pos.z - bounds[2] / 2.0f64,
+                    ),
+                    max: Vec3::new(
+                        center_pos.x + bounds[0] / 2.0f64,
+                        center_pos.y + bounds[1] / 2.0f64,
+                        center_pos.z + bounds[2] / 2.0f64,
+                    ),
+                };
+            }
             TrackedData::Panda(e) => baby(e.get_child(), [1.3, 1.25, 1.3]),
             TrackedData::Parrot(_) => [0.5, 0.9, 0.5],
             TrackedData::Phantom(_) => [0.9, 0.5, 0.9],
@@ -537,18 +662,32 @@ impl<C: Config> Entity<C> {
             TrackedData::Salmon(_) => [0.7, 0.4, 0.7],
             TrackedData::Sheep(e) => baby(e.get_child(), [0.9, 1.3, 0.9]),
             TrackedData::Shulker(e) => {
+                let pos = self.new_position.map(|v| v + 0.5);
                 let peek = 0.5
                     - f64::sin(
                         (0.5 + (e.get_peek_amount() as f64 * 0.01f64)) * std::f64::consts::PI,
                     ) * 0.5;
-                match e.get_attached_face() {
-                    types::Facing::Down => [1.0, peek, 1.0],
-                    types::Facing::Up => [1.0, -peek, 1.0],
-                    types::Facing::North => [1.0, 1.0, peek],
-                    types::Facing::South => [1.0, 1.0, -peek],
-                    types::Facing::West => [peek, 1.0, 1.0],
-                    types::Facing::East => [-peek, 1.0, 1.0],
+                let peek_dir = match e.get_attached_face() {
+                    types::Facing::Down => Vec3::new(0f64, peek + 0.5, 0f64),
+                    types::Facing::Up => Vec3::new(0f64, -(peek + 0.5), 0f64),
+                    types::Facing::North => Vec3::new(0f64, 0f64, peek + 0.5),
+                    types::Facing::South => Vec3::new(0f64, 0f64, -(peek + 0.5)),
+                    types::Facing::West => Vec3::new(peek + 0.5, 0f64, 0f64),
+                    types::Facing::East => Vec3::new(-(peek + 0.5), 0f64, 0f64),
+                };
+                return Aabb {
+                    min: Vec3::new(
+                        pos.x - 1.0 / 2.0f64,
+                        pos.y - 1.0 / 2.0f64,
+                        pos.z - 1.0 / 2.0f64,
+                    ),
+                    max: Vec3::new(
+                        pos.x + 1.0 / 2.0f64,
+                        pos.y + 1.0 / 2.0f64,
+                        pos.z + 1.0 / 2.0f64,
+                    ),
                 }
+                .expanded_to_contain_point(pos + peek_dir);
             }
             TrackedData::ShulkerBullet(_) => [0.3125, 0.3125, 0.3125],
             TrackedData::Silverfish(_) => [0.4, 0.3, 0.4],
@@ -668,6 +807,23 @@ impl<C: Config> Entity<C> {
                 yaw: ByteAngle::from_degrees(self.yaw),
                 head_yaw: ByteAngle::from_degrees(self.head_yaw),
                 data: VarInt(e.get_rotation()),
+                velocity: velocity_to_packet_units(self.velocity),
+            })),
+            TrackedData::Painting(_) => Some(EntitySpawnPacket::Entity(EntitySpawn {
+                entity_id: VarInt(this_id.to_network_id()),
+                object_uuid: self.uuid,
+                kind: VarInt(self.kind() as i32),
+                position: self.new_position,
+                pitch: ByteAngle::from_degrees(self.pitch),
+                yaw: ByteAngle::from_degrees(self.yaw),
+                head_yaw: ByteAngle::from_degrees(self.head_yaw),
+                data: VarInt(match (self.yaw + 180.0).rem_euclid(360.0).round() as i32 {
+                    45..=134 => 5,
+                    225..=314 => 4,
+                    135..=224 => 3,
+                    315..=360 | 0..=44 => 2,
+                    _ => 2,
+                }),
                 velocity: velocity_to_packet_units(self.velocity),
             })),
             TrackedData::FallingBlock(_e) => Some(EntitySpawnPacket::Entity(EntitySpawn {

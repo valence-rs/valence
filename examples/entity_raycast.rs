@@ -8,7 +8,7 @@ use valence::chunk::UnloadedChunk;
 use valence::client::{default_client_event, GameMode};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
-use valence::entity::{EntityId, EntityKind, TrackedData};
+use valence::entity::{types, EntityId, EntityKind, TrackedData};
 use valence::player_list::PlayerListId;
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::spatial_index::RaycastHit;
@@ -47,8 +47,7 @@ const PLAYER_EYE_HEIGHT: f64 = 1.62;
 impl Config for Game {
     type ServerState = Option<PlayerListId>;
     type ClientState = EntityId;
-    /// `true` for entities that have been intersected with.
-    type EntityState = bool;
+    type EntityState = ();
     type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
@@ -85,16 +84,82 @@ impl Config for Game {
 
         world.chunks.set_block_state(SPAWN_POS, BlockState::BEDROCK);
 
-        const SHEEP_COUNT: usize = 10;
-        for i in 0..SHEEP_COUNT {
-            let offset = (i as f64 - (SHEEP_COUNT - 1) as f64 / 2.0) * 1.25;
-
-            let (_, sheep) = server.entities.insert(EntityKind::Sheep, false);
-            sheep.set_world(world_id);
-            sheep.set_position([offset + 0.5, SPAWN_POS.y as f64 + 1.0, 0.0]);
-            sheep.set_yaw(180.0);
-            sheep.set_head_yaw(180.0);
+        // Item Frames
+        let (_, e) = server.entities.insert(EntityKind::ItemFrame, ());
+        if let TrackedData::ItemFrame(i) = e.data_mut() {
+            i.set_rotation(types::Facing::North as i32);
         }
+        e.set_world(world_id);
+        e.set_position(Vec3::new(2f64, 102f64, 0f64));
+
+        let (_, e) = server.entities.insert(EntityKind::ItemFrame, ());
+        if let TrackedData::ItemFrame(i) = e.data_mut() {
+            i.set_rotation(types::Facing::West as i32);
+        }
+        e.set_world(world_id);
+        e.set_position(Vec3::new(4f64, 102f64, 0f64));
+
+        // Paintings
+        let (_, e) = server.entities.insert(EntityKind::Painting, ());
+        if let TrackedData::Painting(p) = e.data_mut() {
+            p.set_variant(types::PaintingKind::Graham);
+        }
+        e.set_world(world_id);
+        e.set_position(Vec3::new(0f64, 101f64, 0f64));
+        e.set_yaw(-180f32);
+
+        let (_, e) = server.entities.insert(EntityKind::Painting, ());
+        if let TrackedData::Painting(p) = e.data_mut() {
+            p.set_variant(types::PaintingKind::DonkeyKong);
+        }
+        e.set_world(world_id);
+        e.set_position(Vec3::new(0f64, 102f64, -10f64));
+        e.set_yaw(0f32);
+
+        // Shulkers
+        let (_, e) = server.entities.insert(EntityKind::Shulker, ());
+        if let TrackedData::Shulker(s) = e.data_mut() {
+            s.set_peek_amount(100);
+            s.set_attached_face(types::Facing::West);
+        }
+        e.set_world(world_id);
+        e.set_position(Vec3::new(-3f64, 102f64, 0f64));
+
+        let (_, e) = server.entities.insert(EntityKind::Shulker, ());
+        if let TrackedData::Shulker(s) = e.data_mut() {
+            s.set_peek_amount(32);
+            s.set_attached_face(types::Facing::South);
+        }
+        e.set_world(world_id);
+        e.set_position(Vec3::new(-5f64, 102f64, 0f64));
+
+        let (_, e) = server.entities.insert(EntityKind::Shulker, ());
+        if let TrackedData::Shulker(s) = e.data_mut() {
+            s.set_peek_amount(0);
+            s.set_attached_face(types::Facing::Down);
+        }
+        e.set_world(world_id);
+        e.set_position(Vec3::new(-7f64, 102f64, 0f64));
+
+        // Sheep
+        let (_, e) = server.entities.insert(EntityKind::Sheep, ());
+        if let TrackedData::Sheep(sheep) = e.data_mut() {
+            sheep.set_color(6);
+            sheep.set_child(true);
+        }
+        e.set_world(world_id);
+        e.set_position(Vec3::new(-5f64, 101f64, -4.5f64));
+        e.set_yaw(-90f32);
+        e.set_head_yaw(-90f32);
+
+        let (_, e) = server.entities.insert(EntityKind::Sheep, ());
+        if let TrackedData::Sheep(sheep) = e.data_mut() {
+            sheep.set_color(6);
+        }
+        e.set_world(world_id);
+        e.set_position(Vec3::new(5f64, 101f64, -4.5f64));
+        e.set_yaw(90f32);
+        e.set_head_yaw(90f32);
     }
 
     fn update(&self, server: &mut Server<Self>) {
@@ -115,7 +180,7 @@ impl Config for Game {
 
                 match server
                     .entities
-                    .insert_with_uuid(EntityKind::Player, client.uuid(), false)
+                    .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
                     Some((id, _)) => client.state = id,
                     None => {
@@ -150,9 +215,9 @@ impl Config for Game {
                 }
 
                 client.send_message(
-                    "Look at a sheep to change its ".italic()
-                        + "color".italic().color(Color::GREEN)
-                        + ".",
+                    "Press ".italic()
+                        + "F3 + B".italic().color(Color::AQUA)
+                        + " to show hitboxes.".italic(),
                 );
             }
 
@@ -170,17 +235,17 @@ impl Config for Game {
 
             let origin = Vec3::new(client_pos.x, client_pos.y + PLAYER_EYE_HEIGHT, client_pos.z);
             let direction = from_yaw_and_pitch(client.yaw() as f64, client.pitch() as f64);
-            let only_sheep = |hit: &RaycastHit| {
+            let not_player = |hit: &RaycastHit| {
                 server
                     .entities
                     .get(hit.entity)
-                    .map_or(false, |e| e.kind() == EntityKind::Sheep)
+                    .map_or(false, |e| e.kind() != EntityKind::Player)
             };
 
-            if let Some(hit) = world.spatial_index.raycast(origin, direction, only_sheep) {
-                if let Some(e) = server.entities.get_mut(hit.entity) {
-                    e.state = true;
-                }
+            if let Some(_) = world.spatial_index.raycast(origin, direction, not_player) {
+                client.set_action_bar("Intersection".color(Color::GREEN));
+            } else {
+                client.set_action_bar("No Intersection".color(Color::RED))
             }
 
             while default_client_event(client, server.entities.get_mut(client.state).unwrap())
@@ -189,17 +254,5 @@ impl Config for Game {
 
             true
         });
-
-        for (_, e) in server.entities.iter_mut() {
-            let intersected = e.state;
-            if let TrackedData::Sheep(sheep) = &mut e.data_mut() {
-                if intersected {
-                    sheep.set_color(5);
-                } else {
-                    sheep.set_color(0);
-                }
-            }
-            e.state = false;
-        }
     }
 }
