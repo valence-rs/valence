@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use serde_nbt::Compound;
 use vek::Vec3;
 
 use super::Client;
@@ -137,6 +138,18 @@ pub enum ClientEvent {
     },
     /// The client is attempting to drop 1 of the currently held item.
     DropItem,
+    /// The client is attempting to drop a stack of items.
+    ///
+    /// If the client is in creative mode, the items come from the void, so it
+    /// is safe to trust the contents of this event. Otherwise, you may need to
+    /// do some validation to make sure items are actually coming from the
+    /// user's inventory.
+    DropItemStack {
+        // TODO: maybe we could add `from_slot_id` to make validation easier
+        item_id: VarInt,
+        item_count: u8,
+        nbt: Option<Compound>,
+    },
     /// The client is in creative mode, and is trying to set it's inventory slot
     /// to a value.
     SetSlotCreative {
@@ -153,8 +166,9 @@ pub enum ClientEvent {
         slot_id: u16,
         /// The type of click that the user performed
         mode: ClickContainerMode,
-        /// A list of slot ids and what their contents should be set to. It's
-        /// not safe to blindly trust the contents of this, servers need to
+        /// A list of slot ids and what their contents should be set to.
+        ///
+        /// It's not safe to blindly trust the contents of this. Servers need to
         /// validate it if they want to prevent item duping.
         slot_changes: Vec<(u16, Slot)>,
         /// The item that is now being carried by the user's cursor
@@ -320,6 +334,7 @@ pub fn handle_event_default<C: Config>(
         ClientEvent::ResourcePackStatusChanged(_) => {}
         ClientEvent::CloseScreen { .. } => {}
         ClientEvent::DropItem => {}
+        ClientEvent::DropItemStack { .. } => {}
         ClientEvent::SetSlotCreative { .. } => {}
         ClientEvent::ClickContainer { .. } => {}
     }
