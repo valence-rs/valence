@@ -20,8 +20,9 @@ use valence::protocol::packets::c2s::status::{QueryPing, QueryRequest};
 use valence::protocol::packets::s2c::login::{LoginSuccess, S2cLoginPacket};
 use valence::protocol::packets::s2c::play::S2cPlayPacket;
 use valence::protocol::packets::s2c::status::{QueryPong, QueryResponse};
-use valence::protocol::packets::{DecodePacket, EncodePacket};
+use valence::protocol::packets::{DecodePacket, EncodePacket, PacketName};
 use valence::protocol::{Encode, VarInt};
+use regex::Regex;
 
 #[derive(Parser, Clone, Debug)]
 #[clap(author, version, about)]
@@ -29,26 +30,30 @@ struct Cli {
     /// The socket address to listen for connections on. This is the address
     /// clients should connect to.
     client: SocketAddr,
-    /// The socket address the proxy will connect to.
+    /// The socket address the proxy will connect to. This is the address of the
+    /// server.
     server: SocketAddr,
-
+    /// The regular expression to use on packet names. Packet names matching the
+    /// regex are printed while those that don't are ignored.
+    regex: Regex,
     /// The maximum number of connections allowed to the proxy. By default,
     /// there is no limit.
     #[clap(short, long)]
     max_connections: Option<usize>,
-
     /// Print a timestamp before each packet.
     #[clap(short, long)]
     timestamp: bool,
 }
 
 impl Cli {
-    fn print(&self, d: &impl fmt::Debug) {
-        if self.timestamp {
-            let now: DateTime<Utc> = Utc::now();
-            println!("{now} {d:#?}");
-        } else {
-            println!("{d:#?}");
+    fn print(&self, p: &(impl fmt::Debug + PacketName)) {
+        if self.regex.is_match(p.packet_name()) {
+            if self.timestamp {
+                let now: DateTime<Utc> = Utc::now();
+                println!("{now} {p:#?}");
+            } else {
+                println!("{p:#?}");
+            }
         }
     }
 
