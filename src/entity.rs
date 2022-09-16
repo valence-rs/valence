@@ -848,6 +848,17 @@ impl<C: Config> Entity<C> {
                 data: VarInt(e.get_hook_entity_id()),
                 velocity: velocity_to_packet_units(self.velocity),
             })),
+            TrackedData::Warden(e) => Some(EntitySpawnPacket::Entity(EntitySpawn {
+                entity_id: VarInt(this_id.to_network_id()),
+                object_uuid: self.uuid,
+                kind: VarInt(self.kind() as i32),
+                position: self.new_position,
+                pitch: ByteAngle::from_degrees(self.pitch),
+                yaw: ByteAngle::from_degrees(self.yaw),
+                head_yaw: ByteAngle::from_degrees(self.head_yaw),
+                data: VarInt((e.get_pose() == types::Pose::Emerging).into()),
+                velocity: velocity_to_packet_units(self.velocity),
+            })),
             _ => Some(EntitySpawnPacket::Entity(EntitySpawn {
                 entity_id: VarInt(this_id.to_network_id()),
                 object_uuid: self.uuid,
