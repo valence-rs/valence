@@ -5,7 +5,7 @@ use log::LevelFilter;
 use valence::async_trait;
 use valence::block::{BlockPos, BlockState};
 use valence::chunk::UnloadedChunk;
-use valence::client::{default_client_event, GameMode};
+use valence::client::{handle_event_default, GameMode};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
 use valence::entity::{types, EntityId, EntityKind, TrackedData};
@@ -66,8 +66,9 @@ impl Config for Game {
         ServerListPing::Respond {
             online_players: self.player_count.load(Ordering::SeqCst) as i32,
             max_players: MAX_PLAYERS as i32,
+            player_sample: Default::default(),
             description: "Hello Valence!".color(Color::AQUA),
-            favicon_png: Some(include_bytes!("../assets/favicon.png")),
+            favicon_png: Some(include_bytes!("../assets/logo-64x64.png").as_slice().into()),
         }
     }
 
@@ -248,7 +249,7 @@ impl Config for Game {
                 client.set_action_bar("No Intersection".color(Color::RED))
             }
 
-            while default_client_event(client, server.entities.get_mut(client.state).unwrap())
+            while handle_event_default(client, server.entities.get_mut(client.state).unwrap())
                 .is_some()
             {}
 

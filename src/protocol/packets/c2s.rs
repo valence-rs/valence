@@ -98,7 +98,7 @@ pub mod login {
 }
 
 pub mod play {
-    use super::super::*;
+    use super::*;
 
     def_struct! {
         TeleportConfirm {
@@ -242,15 +242,31 @@ pub mod play {
     }
 
     def_struct! {
-        ButtonClick {
+        ClickContainerButton {
             window_id: i8,
             button_id: i8,
         }
     }
 
     def_struct! {
-        ClickSlot {
-            // TODO
+        ClickContainer {
+            window_id: u8,
+            state_id: VarInt,
+            slot_idx: i16,
+            button: i8,
+            mode: ClickContainerMode,
+        }
+    }
+
+    def_enum! {
+        ClickContainerMode: VarInt {
+            Click = 0,
+            ShiftClick = 1,
+            Hotbar = 2,
+            CreativeMiddleClick = 3,
+            DropKey = 4,
+            Drag = 5,
+            DoubleClick = 6,
         }
     }
 
@@ -707,8 +723,8 @@ pub mod play {
             ClientStatus = 7,
             ClientSettings = 8,
             RequestCommandCompletion = 9,
-            ButtonClick = 10,
-            ClickSlot = 11,
+            ClickContainerButton = 10,
+            ClickContainer = 11,
             CloseHandledScreen = 12,
             CustomPayload = 13,
             BookUpdate = 14,

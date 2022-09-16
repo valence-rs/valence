@@ -7,7 +7,7 @@ use rayon::iter::ParallelIterator;
 use valence::async_trait;
 use valence::block::{BlockState, PropName, PropValue};
 use valence::chunk::{Chunk, ChunkPos, UnloadedChunk};
-use valence::client::{default_client_event, GameMode};
+use valence::client::{handle_event_default, GameMode};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
 use valence::entity::{EntityId, EntityKind};
@@ -73,8 +73,9 @@ impl Config for Game {
         ServerListPing::Respond {
             online_players: self.player_count.load(Ordering::SeqCst) as i32,
             max_players: MAX_PLAYERS as i32,
+            player_sample: Default::default(),
             description: "Hello Valence!".color(Color::AQUA),
-            favicon_png: Some(include_bytes!("../assets/favicon.png")),
+            favicon_png: Some(include_bytes!("../assets/logo-64x64.png").as_slice().into()),
         }
     }
 
@@ -141,7 +142,7 @@ impl Config for Game {
             }
 
             if let Some(entity) = server.entities.get_mut(client.state) {
-                while default_client_event(client, entity).is_some() {}
+                while handle_event_default(client, entity).is_some() {}
             }
 
             let dist = client.view_distance();

@@ -14,7 +14,7 @@ First, start a server
 ```sh
 cargo r -r --example conway
 ```
-In a separate terminal, start the packet inspector. 
+In a separate terminal, start the packet inspector.
 
 ```sh
 cargo r -r -p packet_inspector -- 127.0.0.1:25566 127.0.0.1:25565
@@ -26,4 +26,35 @@ If you only want to see errors, direct `stdout` elsewhere.
 
 ```sh
 cargo r -r -p packet_inspector -- 127.0.0.1:25566 127.0.0.1:25565 > log.txt
+```
+
+## Quick start with Vanilla Server via Docker
+
+Start the server
+```bash
+docker run -e EULA=TRUE -e ONLINE_MODE=false -d -p 25565:25565 --name mc itzg/minecraft-server
+```
+
+View server logs
+```bash
+docker logs -f mc
+```
+
+Server Rcon
+```bash
+docker exec -i mc rcon-cli
+```
+
+In a separate terminal, start the packet inspector.
+
+```sh
+cargo r -r -p packet_inspector -- 127.0.0.1:25566 127.0.0.1:25565
+```
+
+Open Minecraft and connect to `localhost:25566`.
+
+Clean up
+```
+docker stop mc
+docker rm mc
 ```

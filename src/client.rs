@@ -24,9 +24,7 @@ use crate::entity::{
 use crate::ident::Ident;
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
-use crate::protocol::packets::c2s::play::{
-    C2sPlayPacket, DiggingStatus, InteractKind, PlayerCommandId,
-};
+use crate::protocol::packets::c2s::play::{self, C2sPlayPacket, InteractKind, PlayerCommandId};
 pub use crate::protocol::packets::s2c::play::TitleFade;
 use crate::protocol::packets::s2c::play::{
     BiomeRegistry, ChatTypeRegistry, ChunkLoadDistance, ChunkRenderDistanceCenter, ClearTitles,
@@ -547,7 +545,8 @@ impl<C: Config> Client<C> {
     /// Sets the XP bar visible above hotbar and total experience.
     ///
     /// # Arguments
-    /// * `bar` - Floating value in the range `0.0..=1.0` indicating progress on the XP bar.
+    /// * `bar` - Floating value in the range `0.0..=1.0` indicating progress on
+    ///   the XP bar.
     /// * `level` - Number above the XP bar.
     /// * `total_xp` - TODO.
     pub fn set_level(&mut self, bar: f32, level: i32, total_xp: i32) {
@@ -562,7 +561,8 @@ impl<C: Config> Client<C> {
     /// You can read more about hunger and saturation [here](https://minecraft.fandom.com/wiki/Food#Hunger_vs._Saturation).
     ///
     /// # Arguments
-    /// * `health` - Float in range `0.0..=20.0`. Value `<=0` is legal and will kill the player.
+    /// * `health` - Float in range `0.0..=20.0`. Value `<=0` is legal and will
+    ///   kill the player.
     /// * `food` - Integer in range `0..=20`.
     /// * `food_saturation` - Float in range `0.0..=5.0`.
     pub fn set_health_and_food(&mut self, health: f32, food: i32, food_saturation: f32) {
@@ -740,17 +740,14 @@ impl<C: Config> Client<C> {
                 })
             }
             C2sPlayPacket::RequestCommandCompletion(_) => {}
-            C2sPlayPacket::ButtonClick(_) => {}
-            C2sPlayPacket::ClickSlot(_) => {}
+            C2sPlayPacket::ClickContainerButton(_) => {}
+            C2sPlayPacket::ClickContainer(_) => {}
             C2sPlayPacket::CloseHandledScreen(_) => {}
             C2sPlayPacket::CustomPayload(_) => {}
             C2sPlayPacket::BookUpdate(_) => {}
             C2sPlayPacket::QueryEntityNbt(_) => {}
             C2sPlayPacket::PlayerInteractEntity(p) => {
                 if let Some(id) = entities.get_with_network_id(p.entity_id.0) {
-                    // TODO: verify that the client has line of sight to the targeted entity and
-                    // that the distance is <=4 blocks.
-
                     self.events.push_back(ClientEvent::InteractWithEntity {
                         id,
                         sneaking: p.sneaking,
@@ -849,33 +846,30 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::CraftRequest(_) => {}
             C2sPlayPacket::UpdatePlayerAbilities(_) => {}
             C2sPlayPacket::PlayerAction(p) => {
-                // TODO: verify dug block is within the correct distance from the client.
-                // TODO: verify that the broken block is allowed to be broken?
-
                 if p.sequence.0 != 0 {
                     self.dug_blocks.push(p.sequence.0);
                 }
 
                 self.events.push_back(match p.status {
-                    DiggingStatus::StartedDigging => ClientEvent::Digging {
+                    play::DiggingStatus::StartedDigging => ClientEvent::Digging {
                         status: event::DiggingStatus::Start,
                         position: p.location,
                         face: p.face,
                     },
-                    DiggingStatus::CancelledDigging => ClientEvent::Digging {
+                    play::DiggingStatus::CancelledDigging => ClientEvent::Digging {
                         status: event::DiggingStatus::Cancel,
                         position: p.location,
                         face: p.face,
                     },
-                    DiggingStatus::FinishedDigging => ClientEvent::Digging {
+                    play::DiggingStatus::FinishedDigging => ClientEvent::Digging {
                         status: event::DiggingStatus::Finish,
                         position: p.location,
                         face: p.face,
                     },
-                    DiggingStatus::DropItemStack => return,
-                    DiggingStatus::DropItem => return,
-                    DiggingStatus::ShootArrowOrFinishEating => return,
-                    DiggingStatus::SwapItemInHand => return,
+                    play::DiggingStatus::DropItemStack => return,
+                    play::DiggingStatus::DropItem => return,
+                    play::DiggingStatus::ShootArrowOrFinishEating => return,
+                    play::DiggingStatus::SwapItemInHand => return,
                 });
             }
             C2sPlayPacket::PlayerCommand(c) => {

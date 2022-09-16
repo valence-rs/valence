@@ -63,15 +63,16 @@ If all goes well you should be playing on the server.
 Valence is published to [crates.io](https://crates.io/crates/valence). Run `cargo add valence` to add it to your
 project. Documentation is available [here](https://docs.rs/valence/latest/valence/).
 
-However, the crates.io version is likely outdated. To use the most recent development version, clone the repo
-and add Valence as a [path dependency](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#specifying-path-dependencies).
+However, the crates.io version is likely outdated. To use the most recent development version, add Valence as a
+[git dependency](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#specifying-dependencies-from-git-repositories)
+.
 
 ```toml
 [dependencies]
-valence = { path = "the/path/to/valence" }
+valence = { git = "https://github.com/valence-rs/valence" }
 ```
 
-View the documentation by running `cargo d --open`.
+View the documentation by running `cargo d --open` in your project.
 
 # Contributing
 

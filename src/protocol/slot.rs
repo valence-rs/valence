@@ -1,5 +1,6 @@
-use byteorder::ReadBytesExt;
 use std::io::Write;
+
+use byteorder::ReadBytesExt;
 
 use crate::nbt::Compound;
 use crate::protocol::{Decode, Encode, VarInt};
@@ -58,8 +59,9 @@ impl Decode for Slot {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde_nbt::Value;
+
+    use super::*;
 
     #[test]
     fn slot_with_nbt() {
