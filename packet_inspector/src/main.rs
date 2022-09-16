@@ -33,9 +33,11 @@ struct Cli {
     /// The socket address the proxy will connect to. This is the address of the
     /// server.
     server: SocketAddr,
-    /// The regular expression to use on packet names. Packet names matching the
-    /// regex are printed while those that don't are ignored.
-    regex: Regex,
+    /// The optional regular expression to use on packet names. Packet names
+    /// matching the regex are printed while those that don't are ignored.
+    ///
+    /// If no regex is provided, all packets are considered matching.
+    regex: Option<Regex>,
     /// The maximum number of connections allowed to the proxy. By default,
     /// there is no limit.
     #[clap(short, long)]
@@ -47,13 +49,17 @@ struct Cli {
 
 impl Cli {
     fn print(&self, p: &(impl fmt::Debug + PacketName)) {
-        if self.regex.is_match(p.packet_name()) {
-            if self.timestamp {
-                let now: DateTime<Utc> = Utc::now();
-                println!("{now} {p:#?}");
-            } else {
-                println!("{p:#?}");
+        if let Some(r) = &self.regex {
+            if !r.is_match(p.packet_name()) {
+                return;
             }
+        }
+
+        if self.timestamp {
+            let now: DateTime<Utc> = Utc::now();
+            println!("{now} {p:#?}");
+        } else {
+            println!("{p:#?}");
         }
     }
 
