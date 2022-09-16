@@ -19,7 +19,7 @@ use crate::config::Config;
 use crate::dimension::DimensionId;
 use crate::entity::data::Player;
 use crate::entity::{
-    velocity_to_packet_units, Entities, EntityId, EntityKind, StatusOrAnimation, self
+    self, velocity_to_packet_units, Entities, EntityId, EntityKind, StatusOrAnimation,
 };
 use crate::ident::Ident;
 use crate::player_list::{PlayerListId, PlayerLists};
@@ -27,14 +27,15 @@ use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::c2s::play::{self, C2sPlayPacket, InteractKind, PlayerCommandId};
 pub use crate::protocol::packets::s2c::play::SetTitleAnimationTimes;
 use crate::protocol::packets::s2c::play::{
-    BiomeRegistry, ChatTypeRegistry, SetRenderDistance, SetCenterChunk, ClearTitles,
-    DimensionTypeRegistry, DimensionTypeRegistryEntry, Disconnect, RemoveEntities,
-    EntityAnimation, UpdateAttributes, EntityAttributesProperty, TeleportEntity, SetHeadRotation,
-    EntityEvent, SetEntityMetadata, SetEntityVelocity, SetExperience, Login,
-    SystemChatMessage, GameEvent, GameStateChangeReason, SetHealth, KeepAlive, UpdateEntityPosition,
-    SetActionBarText, CustomSoundEffect, AcknowledgeBlockChange, SynchronizePlayerPosition, PlayerPositionLookFlags,
-    Respawn, SetDefaultSpawnPosition, RegistryCodec, UpdateEntityRotation, UpdateEntityPositionAndRotation,
-    S2cPlayPacket, SoundCategory, UnloadChunk, SetSubtitleText, SetTitleText,
+    AcknowledgeBlockChange, BiomeRegistry, ChatTypeRegistry, ClearTitles, CustomSoundEffect,
+    DimensionTypeRegistry, DimensionTypeRegistryEntry, DisconnectPlay, EntityAnimationS2c,
+    EntityAttributesProperty, EntityEvent, GameEvent, GameStateChangeReason, KeepAliveS2c,
+    LoginPlay, PlayerPositionLookFlags, RegistryCodec, RemoveEntities, Respawn, S2cPlayPacket,
+    SetActionBarText, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata,
+    SetEntityVelocity, SetExperience, SetHeadRotation, SetHealth, SetRenderDistance,
+    SetSubtitleText, SetTitleText, SoundCategory, SynchronizePlayerPosition, SystemChatMessage,
+    TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
+    UpdateEntityPositionAndRotation, UpdateEntityRotation,
 };
 use crate::protocol::{BoundedInt, ByteAngle, NbtBridge, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
@@ -654,7 +655,7 @@ impl<C: Config> Client<C> {
             let txt = reason.into();
             log::info!("disconnecting client '{}': \"{txt}\"", self.username);
 
-            self.send_packet(Disconnect { reason: txt });
+            self.send_packet(DisconnectPlay { reason: txt });
 
             self.send = None;
         }
@@ -726,7 +727,7 @@ impl<C: Config> Client<C> {
                 message: p.message.0,
                 timestamp: Duration::from_millis(p.timestamp),
             }),
-            C2sPlayPacket::ChatPreview(_) => {}
+            C2sPlayPacket::ChatPreviewC2s(_) => {}
             C2sPlayPacket::ClientCommand(_) => {}
             C2sPlayPacket::ClientInformation(p) => {
                 self.events.push_back(ClientEvent::SettingsChanged {
@@ -742,8 +743,8 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::CommandSuggestionsRequest(_) => {}
             C2sPlayPacket::ClickContainerButton(_) => {}
             C2sPlayPacket::ClickContainer(_) => {}
-            C2sPlayPacket::CloseContainer(_) => {}
-            C2sPlayPacket::PluginMessage(_) => {}
+            C2sPlayPacket::CloseContainerC2s(_) => {}
+            C2sPlayPacket::PluginMessageC2s(_) => {}
             C2sPlayPacket::EditBook(_) => {}
             C2sPlayPacket::QueryEntityTag(_) => {}
             C2sPlayPacket::Interact(p) => {
@@ -762,7 +763,7 @@ impl<C: Config> Client<C> {
                 }
             }
             C2sPlayPacket::JigsawGenerate(_) => {}
-            C2sPlayPacket::KeepAlive(p) => {
+            C2sPlayPacket::KeepAliveC2s(p) => {
                 let last_keepalive_id = self.last_keepalive_id;
                 if self.bits.got_keepalive() {
                     log::warn!("unexpected keepalive from player {}", self.username());
@@ -823,7 +824,7 @@ impl<C: Config> Client<C> {
                     });
                 }
             }
-            C2sPlayPacket::MoveVehicle(p) => {
+            C2sPlayPacket::MoveVehicleC2s(p) => {
                 if self.pending_teleports == 0 {
                     self.position = p.position;
                     self.yaw = p.yaw;
@@ -844,7 +845,7 @@ impl<C: Config> Client<C> {
             }
             C2sPlayPacket::PickItem(_) => {}
             C2sPlayPacket::PlaceRecipe(_) => {}
-            C2sPlayPacket::PlayerAbilities(_) => {}
+            C2sPlayPacket::PlayerAbilitiesC2s(_) => {}
             C2sPlayPacket::PlayerAction(p) => {
                 if p.sequence.0 != 0 {
                     self.dug_blocks.push(p.sequence.0);
@@ -888,15 +889,15 @@ impl<C: Config> Client<C> {
                 });
             }
             C2sPlayPacket::PlayerInput(_) => {}
-            C2sPlayPacket::Pong(_) => {}
+            C2sPlayPacket::PongPlay(_) => {}
             C2sPlayPacket::ChangeRecipeBookSettings(_) => {}
             C2sPlayPacket::SetSeenRecipe(_) => {}
             C2sPlayPacket::RenameItem(_) => {}
-            C2sPlayPacket::ResourcePack(_) => {}
+            C2sPlayPacket::ResourcePackC2s(_) => {}
             C2sPlayPacket::SeenAdvancements(_) => {}
             C2sPlayPacket::SelectTrade(_) => {}
             C2sPlayPacket::SetBeaconEffect(_) => {}
-            C2sPlayPacket::SetHeldItem(_) => {}
+            C2sPlayPacket::SetHeldItemS2c(_) => {}
             C2sPlayPacket::ProgramCommandBlock(_) => {}
             C2sPlayPacket::ProgramCommandBlockMinecart(_) => {}
             C2sPlayPacket::SetCreativeModeSlot(_) => {}
@@ -905,16 +906,14 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::UpdateSign(_) => {}
             C2sPlayPacket::SwingArm(p) => self.events.push_back(ClientEvent::ArmSwing(p.hand)),
             C2sPlayPacket::TeleportToEntity(_) => {}
-            C2sPlayPacket::UseItemOn(p) => {
-                self.events.push_back(ClientEvent::InteractWithBlock {
-                    hand: p.hand,
-                    location: p.location,
-                    face: p.face,
-                    cursor_pos: p.cursor_pos,
-                    head_inside_block: p.head_inside_block,
-                    sequence: p.sequence,
-                })
-            }
+            C2sPlayPacket::UseItemOn(p) => self.events.push_back(ClientEvent::InteractWithBlock {
+                hand: p.hand,
+                location: p.location,
+                face: p.face,
+                cursor_pos: p.cursor_pos,
+                head_inside_block: p.head_inside_block,
+                sequence: p.sequence,
+            }),
             C2sPlayPacket::UseItem(_) => {}
         }
     }
@@ -965,7 +964,7 @@ impl<C: Config> Client<C> {
 
             dimension_names.push(ident!("{LIBRARY_NAMESPACE}:dummy_dimension"));
 
-            self.send_packet(Login {
+            self.send_packet(LoginPlay {
                 entity_id: 0, // EntityId 0 is reserved for clients.
                 is_hardcore: self.bits.hardcore(),
                 gamemode: self.new_game_mode,
@@ -1123,7 +1122,7 @@ impl<C: Config> Client<C> {
         if current_tick % (shared.tick_rate() * 8) == 0 {
             if self.bits.got_keepalive() {
                 let id = rand::random();
-                self.send_packet(KeepAlive { id });
+                self.send_packet(KeepAliveS2c { id });
                 self.last_keepalive_id = id;
                 self.bits.set_got_keepalive(false);
             } else {
@@ -1440,7 +1439,7 @@ fn send_entity_events(send_opt: &mut SendOpt, entity_id: i32, events: &[entity::
             ),
             StatusOrAnimation::Animation(code) => send_packet(
                 send_opt,
-                EntityAnimation {
+                EntityAnimationS2c {
                     entity_id: VarInt(entity_id),
                     animation: code,
                 },

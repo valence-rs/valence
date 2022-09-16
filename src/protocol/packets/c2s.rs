@@ -172,7 +172,7 @@ pub mod play {
     }
 
     def_struct! {
-        ChatPreview {
+        ChatPreviewC2s {
             query: i32, // TODO: is this an i32 or a varint?
             message: BoundedString<0, 256>,
         }
@@ -271,13 +271,13 @@ pub mod play {
     }
 
     def_struct! {
-        CloseContainer {
+        CloseContainerC2s {
             window_id: u8,
         }
     }
 
     def_struct! {
-        PluginMessage {
+        PluginMessageC2s {
             channel: Ident,
             data: RawBytes,
         }
@@ -331,7 +331,7 @@ pub mod play {
     }
 
     def_struct! {
-        KeepAlive {
+        KeepAliveC2s {
             id: i64,
         }
     }
@@ -378,7 +378,7 @@ pub mod play {
     }
 
     def_struct! {
-        MoveVehicle {
+        MoveVehicleC2s {
             /// Absolute position
             position: Vec3<f64>,
             /// Degrees
@@ -410,7 +410,7 @@ pub mod play {
     }
 
     def_enum! {
-        PlayerAbilities: i8 {
+        PlayerAbilitiesC2s: i8 {
             NotFlying = 0,
             Flying = 0b10,
         }
@@ -493,7 +493,7 @@ pub mod play {
     }
 
     def_struct! {
-        Pong {
+        PongPlay {
             id: i32,
         }
     }
@@ -528,7 +528,7 @@ pub mod play {
     }
 
     def_enum! {
-        ResourcePack: VarInt {
+        ResourcePackC2s: VarInt {
             SuccessfullyLoaded = 0,
             Declined = 1,
             FailedDownload = 2,
@@ -558,7 +558,7 @@ pub mod play {
     }
 
     def_struct! {
-        SetHeldItem {
+        SetHeldItemS2c {
             slot: BoundedInt<i16, 0, 8>,
         }
     }
@@ -719,41 +719,41 @@ pub mod play {
             MessageAcknowledgment = 3,
             ChatCommand = 4,
             ChatMessage = 5,
-            ChatPreview = 6,
+            ChatPreviewC2s = 6,
             ClientCommand = 7,
             ClientInformation = 8,
             CommandSuggestionsRequest = 9,
             ClickContainerButton = 10,
             ClickContainer = 11,
-            CloseContainer = 12,
-            PluginMessage = 13,
+            CloseContainerC2s = 12,
+            PluginMessageC2s = 13,
             EditBook = 14,
             QueryEntityTag = 15,
             Interact = 16,
             JigsawGenerate = 17,
-            KeepAlive = 18,
+            KeepAliveC2s = 18,
             LockDifficulty = 19,
             SetPlayerPosition = 20,
             SetPlayerPositionAndRotation = 21,
             SetPlayerRotation = 22,
             SetPlayerOnGround = 23,
-            MoveVehicle = 24,
+            MoveVehicleC2s = 24,
             PaddleBoat = 25,
             PickItem = 26,
             PlaceRecipe = 27,
-            PlayerAbilities = 28,
+            PlayerAbilitiesC2s = 28,
             PlayerAction = 29,
             PlayerCommand = 30,
             PlayerInput = 31,
-            Pong = 32,
+            PongPlay = 32,
             ChangeRecipeBookSettings = 33,
             SetSeenRecipe = 34,
             RenameItem = 35,
-            ResourcePack = 36,
+            ResourcePackC2s = 36,
             SeenAdvancements = 37,
             SelectTrade = 38,
             SetBeaconEffect = 39,
-            SetHeldItem = 40,
+            SetHeldItemS2c = 40,
             ProgramCommandBlock = 41,
             ProgramCommandBlockMinecart = 42,
             SetCreativeModeSlot = 43,

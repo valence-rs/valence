@@ -30,7 +30,7 @@ pub mod login {
     use super::*;
 
     def_struct! {
-        Disconnect {
+        DisconnectLogin {
             reason: Text,
         }
     }
@@ -69,7 +69,7 @@ pub mod login {
 
     def_packet_group! {
         S2cLoginPacket {
-            Disconnect = 0,
+            DisconnectLogin = 0,
             EncryptionRequest = 1,
             LoginSuccess = 2,
             SetCompression = 3,
@@ -114,7 +114,7 @@ pub mod play {
     }
 
     def_struct! {
-        EntityAnimation {
+        EntityAnimationS2c {
             entity_id: VarInt,
             animation: u8,
         }
@@ -287,7 +287,7 @@ pub mod play {
     }
 
     def_struct! {
-        Disconnect {
+        DisconnectPlay {
             reason: Text,
         }
     }
@@ -344,7 +344,7 @@ pub mod play {
     }
 
     def_struct! {
-        KeepAlive {
+        KeepAliveS2c {
             id: i64,
         }
     }
@@ -382,7 +382,7 @@ pub mod play {
     }
 
     def_struct! {
-        Login {
+        LoginPlay {
             /// Entity ID of the joining player
             entity_id: i32,
             is_hardcore: bool,
@@ -703,7 +703,7 @@ pub mod play {
     }
 
     def_struct! {
-        SetHeldItem {
+        SetHeldItemS2c {
             slot: BoundedInt<u8, 0, 9>,
         }
     }
@@ -867,7 +867,7 @@ pub mod play {
             SpawnEntity = 0,
             SpawnExperienceOrb = 1,
             SpawnPlayer = 2,
-            EntityAnimation = 3,
+            EntityAnimationS2c = 3,
             AcknowledgeBlockChange = 5,
             SetBlockDestroyStage = 6,
             BlockEntityData = 7,
@@ -880,13 +880,13 @@ pub mod play {
             SetContainerSlot = 19,
             SetCooldown = 20,
             CustomSoundEffect = 23,
-            Disconnect = 25,
+            DisconnectPlay = 25,
             EntityEvent = 26,
             UnloadChunk = 28,
             GameEvent = 29,
-            KeepAlive = 32,
+            KeepAliveS2c = 32,
             ChunkDataAndUpdateLight = 33,
-            Login = 37,
+            LoginPlay = 37,
             UpdateEntityPosition = 40,
             UpdateEntityPositionAndRotation = 41,
             UpdateEntityRotation = 42,
@@ -899,7 +899,7 @@ pub mod play {
             SetHeadRotation = 63,
             UpdateSectionBlocks = 64,
             SetActionBarText = 67,
-            SetHeldItem = 74,
+            SetHeldItemS2c = 74,
             SetCenterChunk = 75,
             SetRenderDistance = 76,
             SetDefaultSpawnPosition = 77,

@@ -10,7 +10,7 @@ use crate::client::GameMode;
 use crate::config::Config;
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::s2c::play::{
-    PlayerListAddPlayer, SetTabListHeaderAndFooter, S2cPlayPacket, PlayerInfo,
+    PlayerInfo, PlayerListAddPlayer, S2cPlayPacket, SetTabListHeaderAndFooter,
 };
 use crate::protocol::packets::Property;
 use crate::protocol::VarInt;
@@ -274,9 +274,7 @@ impl<C: Config> PlayerList<C> {
 
     pub(crate) fn update_packets(&self, mut push_packet: impl FnMut(S2cPlayPacket)) {
         if !self.removed.is_empty() {
-            push_packet(
-                PlayerInfo::RemovePlayer(self.removed.iter().cloned().collect()).into(),
-            );
+            push_packet(PlayerInfo::RemovePlayer(self.removed.iter().cloned().collect()).into());
         }
 
         let mut add_player = Vec::new();

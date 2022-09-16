@@ -40,7 +40,7 @@ use crate::protocol::packets::c2s::login::{EncryptionResponse, LoginStart, Verif
 use crate::protocol::packets::c2s::play::C2sPlayPacket;
 use crate::protocol::packets::c2s::status::{PingRequest, StatusRequest};
 use crate::protocol::packets::s2c::login::{
-    EncryptionRequest, SetCompression, Disconnect, LoginSuccess,
+    DisconnectLogin, EncryptionRequest, LoginSuccess, SetCompression,
 };
 use crate::protocol::packets::s2c::play::S2cPlayPacket;
 use crate::protocol::packets::s2c::status::{PingResponse, StatusResponse};
@@ -756,7 +756,7 @@ async fn handle_login<C: Config>(
 
     if let Err(reason) = server.0.cfg.login(server, &ncd).await {
         log::info!("Disconnect at login: \"{reason}\"");
-        c.enc.write_packet(&Disconnect { reason }).await?;
+        c.enc.write_packet(&DisconnectLogin { reason }).await?;
         return Ok(None);
     }
 

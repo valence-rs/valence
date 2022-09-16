@@ -13,7 +13,7 @@ use vek::{Aabb, Vec3};
 
 use crate::config::Config;
 use crate::protocol::packets::s2c::play::{
-    SpawnEntity, SetEntityMetadata, SpawnExperienceOrb, SpawnPlayer, S2cPlayPacket,
+    S2cPlayPacket, SetEntityMetadata, SpawnEntity, SpawnExperienceOrb, SpawnPlayer,
 };
 use crate::protocol::{ByteAngle, RawBytes, VarInt};
 use crate::slab_versioned::{Key, VersionedSlab};

@@ -170,7 +170,7 @@ async fn handle_connection(client: TcpStream, cli: Cli) -> anyhow::Result<()> {
                         .await?;
                 }
                 S2cLoginPacket::LoginSuccess(_) => {}
-                S2cLoginPacket::Disconnect(_) => return Ok(()),
+                S2cLoginPacket::DisconnectLogin(_) => return Ok(()),
                 S2cLoginPacket::LoginPluginRequest(_) => {
                     bail!("got login plugin request. Don't know how to proceed.")
                 }
