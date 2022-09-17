@@ -1,9 +1,6 @@
 //! Packet definitions and related types.
 //!
 //! See <https://wiki.vg/Protocol> for more packet documentation.
-//!
-//! **NOTE**: The names of packets should match the names in `packets.json`
-//! where reasonable.
 
 #![macro_use]
 
