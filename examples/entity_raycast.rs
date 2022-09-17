@@ -282,7 +282,6 @@ impl Config for Game {
         e.set_position([-7.0, 102.0, -6.5]);
         e.set_yaw(270.0);
         e.set_head_yaw(270.0);
-
     }
 
     fn update(&self, server: &mut Server<Self>) {
