@@ -2,13 +2,15 @@ use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
+use uuid::Uuid;
 use valence::async_trait;
 use valence::block::{BlockPos, BlockState};
 use valence::chunk::UnloadedChunk;
 use valence::client::{handle_event_default, GameMode};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
-use valence::entity::{types, EntityId, EntityKind, TrackedData};
+use valence::entity::types::{Facing, PaintingKind, Pose};
+use valence::entity::{EntityId, EntityKind, TrackedData};
 use valence::player_list::PlayerListId;
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::spatial_index::RaycastHit;
@@ -34,6 +36,12 @@ struct Game {
     player_count: AtomicUsize,
 }
 
+#[derive(Default)]
+struct ClientState {
+    player: EntityId,
+    shulker_bullet: EntityId,
+}
+
 const MAX_PLAYERS: usize = 10;
 
 const SPAWN_POS: BlockPos = BlockPos::new(0, 100, -5);
@@ -46,7 +54,7 @@ const PLAYER_EYE_HEIGHT: f64 = 1.62;
 #[async_trait]
 impl Config for Game {
     type ServerState = Option<PlayerListId>;
-    type ClientState = EntityId;
+    type ClientState = ClientState;
     type EntityState = ();
     type WorldState = ();
     type ChunkState = ();
@@ -74,7 +82,8 @@ impl Config for Game {
 
     fn init(&self, server: &mut Server<Self>) {
         let (world_id, world) = server.worlds.insert(DimensionId::default(), ());
-        server.state = Some(server.player_lists.insert(()).0);
+        let (player_list_id, player_list) = server.player_lists.insert(());
+        server.state = Some(player_list_id);
 
         let size = 5;
         for z in -size..size {
@@ -85,82 +94,195 @@ impl Config for Game {
 
         world.chunks.set_block_state(SPAWN_POS, BlockState::BEDROCK);
 
-        // Item Frames
+        // ==== Item Frames ==== //
         let (_, e) = server.entities.insert(EntityKind::ItemFrame, ());
         if let TrackedData::ItemFrame(i) = e.data_mut() {
-            i.set_rotation(types::Facing::North as i32);
+            i.set_rotation(Facing::North as i32);
         }
         e.set_world(world_id);
-        e.set_position(Vec3::new(2f64, 102f64, 0f64));
+        e.set_position([2.0, 102.0, 0.0]);
 
         let (_, e) = server.entities.insert(EntityKind::ItemFrame, ());
         if let TrackedData::ItemFrame(i) = e.data_mut() {
-            i.set_rotation(types::Facing::West as i32);
+            i.set_rotation(Facing::East as i32);
         }
         e.set_world(world_id);
-        e.set_position(Vec3::new(4f64, 102f64, 0f64));
+        e.set_position([3.0, 102.0, 0.0]);
 
-        // Paintings
+        let (_, e) = server.entities.insert(EntityKind::GlowItemFrame, ());
+        if let TrackedData::GlowItemFrame(i) = e.data_mut() {
+            i.set_rotation(Facing::South as i32);
+        }
+        e.set_world(world_id);
+        e.set_position([4.0, 102.0, 0.0]);
+
+        let (_, e) = server.entities.insert(EntityKind::GlowItemFrame, ());
+        if let TrackedData::GlowItemFrame(i) = e.data_mut() {
+            i.set_rotation(Facing::West as i32);
+        }
+        e.set_world(world_id);
+        e.set_position([5.0, 102.0, 0.0]);
+
+        // ==== Paintings ==== //
         let (_, e) = server.entities.insert(EntityKind::Painting, ());
         if let TrackedData::Painting(p) = e.data_mut() {
-            p.set_variant(types::PaintingKind::Graham);
+            p.set_variant(PaintingKind::Pigscene);
         }
         e.set_world(world_id);
-        e.set_position(Vec3::new(0f64, 101f64, 0f64));
-        e.set_yaw(-180f32);
+        e.set_yaw(180.0);
+        e.set_position([0.0, 102.0, 0.0]);
 
         let (_, e) = server.entities.insert(EntityKind::Painting, ());
         if let TrackedData::Painting(p) = e.data_mut() {
-            p.set_variant(types::PaintingKind::DonkeyKong);
+            p.set_variant(PaintingKind::DonkeyKong);
         }
         e.set_world(world_id);
-        e.set_position(Vec3::new(0f64, 102f64, -10f64));
-        e.set_yaw(0f32);
+        e.set_yaw(90.0);
+        e.set_position([-4.0, 102.0, 0.0]);
 
-        // Shulkers
+        let (_, e) = server.entities.insert(EntityKind::Painting, ());
+        if let TrackedData::Painting(p) = e.data_mut() {
+            p.set_variant(PaintingKind::Void);
+        }
+        e.set_world(world_id);
+        e.set_position([-6.0, 102.0, 0.0]);
+
+        let (_, e) = server.entities.insert(EntityKind::Painting, ());
+        if let TrackedData::Painting(p) = e.data_mut() {
+            p.set_variant(PaintingKind::Aztec);
+        }
+        e.set_yaw(270.0);
+        e.set_world(world_id);
+        e.set_position([-7.0, 102.0, 0.0]);
+
+        // ==== Shulkers ==== //
         let (_, e) = server.entities.insert(EntityKind::Shulker, ());
         if let TrackedData::Shulker(s) = e.data_mut() {
             s.set_peek_amount(100);
-            s.set_attached_face(types::Facing::West);
+            s.set_attached_face(Facing::West);
         }
         e.set_world(world_id);
-        e.set_position(Vec3::new(-3f64, 102f64, 0f64));
+        e.set_position([-4.0, 102.0, -8.0]);
 
         let (_, e) = server.entities.insert(EntityKind::Shulker, ());
         if let TrackedData::Shulker(s) = e.data_mut() {
-            s.set_peek_amount(32);
-            s.set_attached_face(types::Facing::South);
+            s.set_peek_amount(75);
+            s.set_attached_face(Facing::Up);
         }
         e.set_world(world_id);
-        e.set_position(Vec3::new(-5f64, 102f64, 0f64));
+        e.set_position([-1.0, 102.0, -8.0]);
+
+        let (_, e) = server.entities.insert(EntityKind::Shulker, ());
+        if let TrackedData::Shulker(s) = e.data_mut() {
+            s.set_peek_amount(50);
+            s.set_attached_face(Facing::Down);
+        }
+        e.set_world(world_id);
+        e.set_position([2.0, 102.0, -8.0]);
+
+        let (_, e) = server.entities.insert(EntityKind::Shulker, ());
+        if let TrackedData::Shulker(s) = e.data_mut() {
+            s.set_peek_amount(25);
+            s.set_attached_face(Facing::East);
+        }
+        e.set_world(world_id);
+        e.set_position([5.0, 102.0, -8.0]);
 
         let (_, e) = server.entities.insert(EntityKind::Shulker, ());
         if let TrackedData::Shulker(s) = e.data_mut() {
             s.set_peek_amount(0);
-            s.set_attached_face(types::Facing::Down);
+            s.set_attached_face(Facing::North);
         }
         e.set_world(world_id);
-        e.set_position(Vec3::new(-7f64, 102f64, 0f64));
+        e.set_position([8.0, 102.0, -8.0]);
 
-        // Sheep
-        let (_, e) = server.entities.insert(EntityKind::Sheep, ());
-        if let TrackedData::Sheep(sheep) = e.data_mut() {
-            sheep.set_color(6);
-            sheep.set_child(true);
+        // ==== Slimes ==== //
+        let (_, e) = server.entities.insert(EntityKind::Slime, ());
+        if let TrackedData::Slime(s) = e.data_mut() {
+            s.set_slime_size(30);
         }
         e.set_world(world_id);
-        e.set_position(Vec3::new(-5f64, 101f64, -4.5f64));
-        e.set_yaw(-90f32);
-        e.set_head_yaw(-90f32);
+        e.set_yaw(180.0);
+        e.set_head_yaw(180.0);
+        e.set_position([12.0, 102.0, 10.0]);
+
+        let (_, e) = server.entities.insert(EntityKind::MagmaCube, ());
+        if let TrackedData::MagmaCube(m) = e.data_mut() {
+            m.set_slime_size(30);
+        }
+        e.set_world(world_id);
+        e.set_yaw(180.0);
+        e.set_head_yaw(180.0);
+        e.set_position([-12.0, 102.0, 10.0]);
+
+        // ==== Sheep ==== //
+        let (_, e) = server.entities.insert(EntityKind::Sheep, ());
+        if let TrackedData::Sheep(s) = e.data_mut() {
+            s.set_color(6);
+            s.set_child(true);
+        }
+        e.set_world(world_id);
+        e.set_position([-5.0, 101.0, -4.5]);
+        e.set_yaw(270.0);
+        e.set_head_yaw(270.0);
 
         let (_, e) = server.entities.insert(EntityKind::Sheep, ());
-        if let TrackedData::Sheep(sheep) = e.data_mut() {
-            sheep.set_color(6);
+        if let TrackedData::Sheep(s) = e.data_mut() {
+            s.set_color(6);
         }
         e.set_world(world_id);
-        e.set_position(Vec3::new(5f64, 101f64, -4.5f64));
-        e.set_yaw(90f32);
-        e.set_head_yaw(90f32);
+        e.set_position([5.0, 101.0, -4.5]);
+        e.set_yaw(90.0);
+        e.set_head_yaw(90.0);
+
+        // ==== Players ==== //
+        let player_poses = [
+            Pose::Standing,
+            Pose::Sneaking,
+            Pose::FallFlying,
+            Pose::Sleeping,
+            Pose::Swimming,
+            Pose::SpinAttack,
+            Pose::Dying,
+        ];
+
+        for (i, pose) in player_poses.into_iter().enumerate() {
+            player_list.insert(
+                Uuid::from_u128(i as u128),
+                format!("fake_player_{i}"),
+                None,
+                GameMode::Survival,
+                0,
+                None,
+            );
+
+            let (_, e) = server
+                .entities
+                .insert_with_uuid(EntityKind::Player, Uuid::from_u128(i as u128), ())
+                .unwrap();
+            if let TrackedData::Player(p) = e.data_mut() {
+                p.set_pose(pose);
+            }
+            e.set_world(world_id);
+            e.set_position([-3.0 + i as f64 * 2.0, 104.0, -9.0]);
+        }
+
+        // ==== Warden ==== //
+        let (_, e) = server.entities.insert(EntityKind::Warden, ());
+        e.set_world(world_id);
+        e.set_position([-7.0, 102.0, -4.5]);
+        e.set_yaw(270.0);
+        e.set_head_yaw(270.0);
+
+        let (_, e) = server.entities.insert(EntityKind::Warden, ());
+        if let TrackedData::Warden(w) = e.data_mut() {
+            w.set_pose(Pose::Emerging);
+        }
+        e.set_world(world_id);
+        e.set_position([-7.0, 102.0, -6.5]);
+        e.set_yaw(270.0);
+        e.set_head_yaw(270.0);
+
     }
 
     fn update(&self, server: &mut Server<Self>) {
@@ -183,7 +305,7 @@ impl Config for Game {
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => client.state = id,
+                    Some((id, _)) => client.state.player = id,
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;
@@ -227,7 +349,7 @@ impl Config for Game {
                 if let Some(id) = &server.state {
                     server.player_lists.get_mut(id).remove(client.uuid());
                 }
-                server.entities.remove(client.state);
+                server.entities.remove(client.state.player);
 
                 return false;
             }
@@ -236,21 +358,42 @@ impl Config for Game {
 
             let origin = Vec3::new(client_pos.x, client_pos.y + PLAYER_EYE_HEIGHT, client_pos.z);
             let direction = from_yaw_and_pitch(client.yaw() as f64, client.pitch() as f64);
-            let not_player = |hit: &RaycastHit| {
-                server
-                    .entities
-                    .get(hit.entity)
-                    .map_or(false, |e| e.kind() != EntityKind::Player)
+            let not_self_or_bullet = |hit: &RaycastHit| {
+                hit.entity != client.state.player && hit.entity != client.state.shulker_bullet
             };
 
-            if let Some(_) = world.spatial_index.raycast(origin, direction, not_player) {
+            if let Some(hit) = world
+                .spatial_index
+                .raycast(origin, direction, not_self_or_bullet)
+            {
+                let bullet =
+                    if let Some(bullet) = server.entities.get_mut(client.state.shulker_bullet) {
+                        bullet
+                    } else {
+                        let (id, bullet) = server.entities.insert(EntityKind::ShulkerBullet, ());
+                        client.state.shulker_bullet = id;
+                        bullet.set_world(world_id);
+                        bullet
+                    };
+
+                let mut hit_pos = origin + direction * hit.near;
+                let hitbox = bullet.hitbox();
+
+                hit_pos.y -= (hitbox.max.y - hitbox.min.y) / 2.0;
+
+                bullet.set_position(hit_pos);
+
                 client.set_action_bar("Intersection".color(Color::GREEN));
             } else {
-                client.set_action_bar("No Intersection".color(Color::RED))
+                server.entities.remove(client.state.shulker_bullet);
+                client.set_action_bar("No Intersection".color(Color::RED));
             }
 
-            while handle_event_default(client, server.entities.get_mut(client.state).unwrap())
-                .is_some()
+            while handle_event_default(
+                client,
+                server.entities.get_mut(client.state.player).unwrap(),
+            )
+            .is_some()
             {}
 
             true
