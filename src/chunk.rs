@@ -24,7 +24,7 @@ pub use crate::chunk_pos::ChunkPos;
 use crate::config::Config;
 use crate::dimension::DimensionId;
 use crate::protocol::packets::s2c::play::{
-    BlockUpdate, ChunkData, ChunkDataHeightmaps, ChunkSectionUpdate, S2cPlayPacket,
+    BlockUpdate, ChunkDataAndUpdateLight, ChunkDataHeightmaps, S2cPlayPacket, UpdateSectionBlocks,
 };
 use crate::protocol::{Encode, NbtBridge, VarInt, VarLong};
 use crate::server::SharedServer;
@@ -468,14 +468,14 @@ impl<C: Config> LoadedChunk<C> {
 
     /// Gets the chunk data packet for this chunk with the given position. This
     /// does not include unapplied changes.
-    pub(crate) fn chunk_data_packet(&self, pos: ChunkPos) -> ChunkData {
+    pub(crate) fn chunk_data_packet(&self, pos: ChunkPos) -> ChunkDataAndUpdateLight {
         let mut blocks_and_biomes = Vec::new();
 
         for sect in self.sections.iter() {
             blocks_and_biomes.extend_from_slice(&sect.compact_data);
         }
 
-        ChunkData {
+        ChunkDataAndUpdateLight {
             chunk_x: pos.x,
             chunk_z: pos.z,
             heightmaps: NbtBridge(ChunkDataHeightmaps {
@@ -542,7 +542,7 @@ impl<C: Config> LoadedChunk<C> {
                     | (pos.z as i64 & 0x3fffff) << 20
                     | (sect_y as i64 + min_y.div_euclid(16) as i64) & 0xfffff;
 
-                push_packet(BlockChangePacket::Multi(ChunkSectionUpdate {
+                push_packet(BlockChangePacket::Multi(UpdateSectionBlocks {
                     chunk_section_position,
                     invert_trust_edges: false,
                     blocks,
@@ -655,7 +655,7 @@ impl<C: Config> Chunk for LoadedChunk<C> {
 #[derive(Clone, Debug)]
 pub(crate) enum BlockChangePacket {
     Single(BlockUpdate),
-    Multi(ChunkSectionUpdate),
+    Multi(UpdateSectionBlocks),
 }
 
 impl From<BlockChangePacket> for S2cPlayPacket {
