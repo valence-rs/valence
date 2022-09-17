@@ -37,7 +37,7 @@ use crate::protocol::packets::s2c::play::{
     TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
     UpdateEntityPositionAndRotation, UpdateEntityRotation,
 };
-use crate::protocol::{BoundedInt, ByteAngle, NbtBridge, RawBytes, VarInt};
+use crate::protocol::{BoundedInt, BoundedString, ByteAngle, NbtBridge, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::text::Text;
@@ -652,14 +652,14 @@ impl<C: Config> Client<C> {
     ///   dialog.
     pub fn set_resource_pack(
         &mut self,
-        url: String,
-        hash: Option<String>,
+        url: impl Into<String>,
+        hash: impl Into<Option<String>>,
         forced: bool,
         prompt_message: impl Into<Option<Text>>,
     ) {
         self.send_packet(ResourcePackS2c {
-            url: url.into(),
-            hash: hash.unwrap_or_default().into(),
+            url: BoundedString(url.into()),
+            hash: BoundedString(hash.into().unwrap_or_default()),
             forced,
             prompt_message: prompt_message.into(),
         });
