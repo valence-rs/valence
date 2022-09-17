@@ -669,7 +669,7 @@ pub mod play {
 
     def_struct! {
         ResourcePackS2c {
-            url: BoundedString<0, 32767>,
+            url: String,
             hash: BoundedString<0, 40>,
             forced: bool,
             prompt_message: Option<Text>,

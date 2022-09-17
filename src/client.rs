@@ -660,7 +660,7 @@ impl<C: Config> Client<C> {
         prompt_message: impl Into<Option<Text>>,
     ) {
         self.resource_pack_to_send = Some(ResourcePackS2c {
-            url: BoundedString(url.into()),
+            url: url.into(),
             hash: BoundedString(hash.into().unwrap_or_default()),
             forced,
             prompt_message: prompt_message.into(),
