@@ -6,13 +6,13 @@ pub mod status {
     use super::*;
 
     def_struct! {
-        QueryResponse {
+        StatusResponse {
             json_response: String
         }
     }
 
     def_struct! {
-        QueryPong {
+        PingResponse {
             /// Should be the same as the payload from ping.
             payload: u64
         }
@@ -20,8 +20,8 @@ pub mod status {
 
     def_packet_group! {
         S2cStatusPacket {
-            QueryResponse = 0,
-            QueryPong = 1,
+            StatusResponse = 0,
+            PingResponse = 1,
         }
     }
 }
@@ -30,7 +30,7 @@ pub mod login {
     use super::*;
 
     def_struct! {
-        LoginDisconnect {
+        DisconnectLogin {
             reason: Text,
         }
     }
@@ -54,7 +54,7 @@ pub mod login {
     }
 
     def_struct! {
-        LoginCompression {
+        SetCompression {
             threshold: VarInt
         }
     }
@@ -69,10 +69,10 @@ pub mod login {
 
     def_packet_group! {
         S2cLoginPacket {
-            LoginDisconnect = 0,
+            DisconnectLogin = 0,
             EncryptionRequest = 1,
             LoginSuccess = 2,
-            LoginCompression = 3,
+            SetCompression = 3,
             LoginPluginRequest = 4,
         }
     }
@@ -82,7 +82,7 @@ pub mod play {
     use super::*;
 
     def_struct! {
-        EntitySpawn {
+        SpawnEntity {
             entity_id: VarInt,
             object_uuid: Uuid,
             kind: VarInt,
@@ -96,7 +96,7 @@ pub mod play {
     }
 
     def_struct! {
-        ExperienceOrbSpawn {
+        SpawnExperienceOrb {
             entity_id: VarInt,
             position: Vec3<f64>,
             count: i16,
@@ -104,7 +104,7 @@ pub mod play {
     }
 
     def_struct! {
-        PlayerSpawn {
+        SpawnPlayer {
             entity_id: VarInt,
             player_uuid: Uuid,
             position: Vec3<f64>,
@@ -114,20 +114,20 @@ pub mod play {
     }
 
     def_struct! {
-        EntityAnimation {
+        EntityAnimationS2c {
             entity_id: VarInt,
             animation: u8,
         }
     }
 
     def_struct! {
-        PlayerActionResponse {
+        AcknowledgeBlockChange {
             sequence: VarInt,
         }
     }
 
     def_struct! {
-        BlockBreakingProgress {
+        SetBlockDestroyStage {
             entity_id: VarInt,
             location: BlockPos,
             destroy_stage: BoundedInt<u8, 0, 10>,
@@ -135,7 +135,7 @@ pub mod play {
     }
 
     def_struct! {
-        BlockEntityUpdate {
+        BlockEntityData {
             location: BlockPos,
             kind: VarInt, // TODO: use enum here
             data: Compound,
@@ -143,7 +143,7 @@ pub mod play {
     }
 
     def_struct! {
-        BlockEvent {
+        BlockAction {
             location: BlockPos,
             action_id: u8,
             action_param: u8,
@@ -276,7 +276,7 @@ pub mod play {
     }
 
     def_struct! {
-        PlaySoundId {
+        CustomSoundEffect {
             name: Ident,
             category: SoundCategory,
             position: Vec3<i32>,
@@ -287,13 +287,13 @@ pub mod play {
     }
 
     def_struct! {
-        Disconnect {
+        DisconnectPlay {
             reason: Text,
         }
     }
 
     def_struct! {
-        EntityStatus {
+        EntityEvent {
             entity_id: i32,
             entity_status: u8,
         }
@@ -307,7 +307,7 @@ pub mod play {
     }
 
     def_struct! {
-        GameStateChange {
+        GameEvent {
             reason: GameStateChangeReason,
             value: f32,
         }
@@ -344,13 +344,13 @@ pub mod play {
     }
 
     def_struct! {
-        KeepAlive {
+        KeepAliveS2c {
             id: i64,
         }
     }
 
     def_struct! {
-        ChunkData {
+        ChunkDataAndUpdateLight {
             chunk_x: i32,
             chunk_z: i32,
             heightmaps: NbtBridge<ChunkDataHeightmaps>,
@@ -382,7 +382,7 @@ pub mod play {
     }
 
     def_struct! {
-        GameJoin {
+        LoginPlay {
             /// Entity ID of the joining player
             entity_id: i32,
             is_hardcore: bool,
@@ -574,7 +574,7 @@ pub mod play {
     }
 
     def_struct! {
-        MoveRelative {
+        UpdateEntityPosition {
             entity_id: VarInt,
             delta: Vec3<i16>,
             on_ground: bool,
@@ -582,7 +582,7 @@ pub mod play {
     }
 
     def_struct! {
-        RotateAndMoveRelative {
+        UpdateEntityPositionAndRotation {
             entity_id: VarInt,
             delta: Vec3<i16>,
             yaw: ByteAngle,
@@ -592,7 +592,7 @@ pub mod play {
     }
 
     def_struct! {
-        Rotate {
+        UpdateEntityRotation {
             entity_id: VarInt,
             yaw: ByteAngle,
             pitch: ByteAngle,
@@ -609,7 +609,7 @@ pub mod play {
     }
 
     def_struct! {
-        ChatMessage {
+        PlayerChatMessage {
             // TODO: more 1.19 stuff.
             message: Text,
             /// Index into the chat type registry
@@ -619,7 +619,7 @@ pub mod play {
     }
 
     def_enum! {
-        UpdatePlayerList: VarInt {
+        PlayerInfo: VarInt {
             AddPlayer: Vec<PlayerListAddPlayer> = 0,
             UpdateGameMode: Vec<(Uuid, GameMode)> = 1,
             UpdateLatency: Vec<(Uuid, VarInt)> = 2,
@@ -641,7 +641,7 @@ pub mod play {
     }
 
     def_struct! {
-        PlayerPositionLook {
+        SynchronizePlayerPosition {
             position: Vec3<f64>,
             yaw: f32,
             pitch: f32,
@@ -662,7 +662,7 @@ pub mod play {
     }
 
     def_struct! {
-        EntitiesDestroy {
+        RemoveEntities {
             entities: Vec<VarInt>,
         }
     }
@@ -677,7 +677,7 @@ pub mod play {
     }
 
     def_struct! {
-        PlayerRespawn {
+        Respawn {
             dimension_type_name: Ident,
             dimension_name: Ident,
             hashed_seed: u64,
@@ -691,14 +691,14 @@ pub mod play {
     }
 
     def_struct! {
-        EntitySetHeadYaw {
+        SetHeadRotation {
             entity_id: VarInt,
             head_yaw: ByteAngle,
         }
     }
 
     def_struct! {
-        ChunkSectionUpdate {
+        UpdateSectionBlocks {
             chunk_section_position: i64,
             invert_trust_edges: bool,
             blocks: Vec<VarLong>,
@@ -706,53 +706,53 @@ pub mod play {
     }
 
     def_struct! {
-        OverlayMessage {
+        SetActionBarText {
             text: Text
         }
     }
 
     def_struct! {
-        UpdateSelectedSlot {
+        SetHeldItemS2c {
             slot: BoundedInt<u8, 0, 9>,
         }
     }
 
     def_struct! {
-        ChunkRenderDistanceCenter {
+        SetCenterChunk {
             chunk_x: VarInt,
             chunk_z: VarInt,
         }
     }
 
     def_struct! {
-        ChunkLoadDistance {
+        SetRenderDistance {
             view_distance: BoundedInt<VarInt, 2, 32>,
         }
     }
 
     def_struct! {
-        PlayerSpawnPosition {
+        SetDefaultSpawnPosition {
             location: BlockPos,
             angle: f32,
         }
     }
 
     def_struct! {
-        EntityTrackerUpdate {
+        SetEntityMetadata {
             entity_id: VarInt,
             metadata: RawBytes,
         }
     }
 
     def_struct! {
-        EntityVelocityUpdate {
+        SetEntityVelocity {
             entity_id: VarInt,
             velocity: Vec3<i16>,
         }
     }
 
     def_struct! {
-        ExperienceBarUpdate {
+        SetExperience {
             bar: f32,
             level: VarInt,
             total_xp: VarInt,
@@ -760,7 +760,7 @@ pub mod play {
     }
 
     def_struct! {
-        HealthUpdate {
+        SetHealth {
             health: f32,
             food: VarInt,
             food_saturation: f32,
@@ -768,13 +768,13 @@ pub mod play {
     }
 
     def_struct! {
-        UpdateSubtitle {
+        SetSubtitleText {
             subtitle_text: Text,
         }
     }
 
     def_struct! {
-        WorldTimeUpdate {
+        UpdateTime {
             /// The age of the world in 1/20ths of a second.
             world_age: i64,
             /// The current time of day in 1/20ths of a second.
@@ -785,14 +785,14 @@ pub mod play {
     }
 
     def_struct! {
-        UpdateTitle {
+        SetTitleText {
             text: Text,
         }
     }
 
     def_struct! {
         #[derive(Copy, PartialEq, Eq)]
-        TitleFade {
+        SetTitleAnimationTimes {
             /// Ticks to spend fading in.
             fade_in: u32,
             /// Ticks to keep the title displayed.
@@ -803,7 +803,7 @@ pub mod play {
     }
 
     def_struct! {
-        PlaySoundFromEntity {
+        EntitySoundEffect {
             id: VarInt,
             category: SoundCategory,
             entity_id: VarInt,
@@ -813,7 +813,7 @@ pub mod play {
     }
 
     def_struct! {
-        PlaySound {
+        SoundEffect {
             id: VarInt,
             category: SoundCategory,
             position: Vec3<i32>,
@@ -824,7 +824,7 @@ pub mod play {
     }
 
     def_struct! {
-        GameMessage {
+        SystemChatMessage {
             chat: Text,
             /// Index into the chat type registry.
             kind: VarInt,
@@ -832,14 +832,14 @@ pub mod play {
     }
 
     def_struct! {
-        PlayerListHeaderFooter {
+        SetTabListHeaderAndFooter {
             header: Text,
             footer: Text,
         }
     }
 
     def_struct! {
-        EntityPosition {
+        TeleportEntity {
             entity_id: VarInt,
             position: Vec3<f64>,
             yaw: ByteAngle,
@@ -849,7 +849,7 @@ pub mod play {
     }
 
     def_struct! {
-        EntityAttributes {
+        UpdateAttributes {
             entity_id: VarInt,
             properties: Vec<EntityAttributesProperty>,
         }
@@ -873,14 +873,14 @@ pub mod play {
 
     def_packet_group! {
         S2cPlayPacket {
-            EntitySpawn = 0,
-            ExperienceOrbSpawn = 1,
-            PlayerSpawn = 2,
-            EntityAnimation = 3,
-            PlayerActionResponse = 5,
-            BlockBreakingProgress = 6,
-            BlockEntityUpdate = 7,
-            BlockEvent = 8,
+            SpawnEntity = 0,
+            SpawnExperienceOrb = 1,
+            SpawnPlayer = 2,
+            EntityAnimationS2c = 3,
+            AcknowledgeBlockChange = 5,
+            SetBlockDestroyStage = 6,
+            BlockEntityData = 7,
+            BlockAction = 8,
             BlockUpdate = 9,
             BossBar = 10,
             ClearTitles = 13,
@@ -888,45 +888,45 @@ pub mod play {
             SetContainerProperty = 18,
             SetContainerSlot = 19,
             SetCooldown = 20,
-            PlaySoundId = 23,
-            Disconnect = 25,
-            EntityStatus = 26,
+            CustomSoundEffect = 23,
+            DisconnectPlay = 25,
+            EntityEvent = 26,
             UnloadChunk = 28,
-            GameStateChange = 29,
-            KeepAlive = 32,
-            ChunkData = 33,
-            GameJoin = 37,
-            MoveRelative = 40,
-            RotateAndMoveRelative = 41,
-            Rotate = 42,
+            GameEvent = 29,
+            KeepAliveS2c = 32,
+            ChunkDataAndUpdateLight = 33,
+            LoginPlay = 37,
+            UpdateEntityPosition = 40,
+            UpdateEntityPositionAndRotation = 41,
+            UpdateEntityRotation = 42,
             OpenScreen = 45,
-            ChatMessage = 51,
-            UpdatePlayerList = 55,
-            PlayerPositionLook = 57,
-            EntitiesDestroy = 59,
+            PlayerChatMessage = 51,
+            PlayerInfo = 55,
+            SynchronizePlayerPosition = 57,
+            RemoveEntities = 59,
             ResourcePackS2c = 61,
-            PlayerRespawn = 62,
-            EntitySetHeadYaw = 63,
-            ChunkSectionUpdate = 64,
-            OverlayMessage = 67,
-            UpdateSelectedSlot = 74,
-            ChunkRenderDistanceCenter = 75,
-            ChunkLoadDistance = 76,
-            PlayerSpawnPosition = 77,
-            EntityTrackerUpdate = 80,
-            EntityVelocityUpdate = 82,
-            ExperienceBarUpdate = 84,
-            HealthUpdate = 85,
-            UpdateSubtitle = 91,
-            WorldTimeUpdate = 92,
-            UpdateTitle = 93,
-            TitleFade = 94,
-            PlaySoundFromEntity = 95,
-            PlaySound = 96,
-            GameMessage = 98,
-            PlayerListHeaderFooter = 99,
-            EntityPosition = 102,
-            EntityAttributes = 104,
+            Respawn = 62,
+            SetHeadRotation = 63,
+            UpdateSectionBlocks = 64,
+            SetActionBarText = 67,
+            SetHeldItemS2c = 74,
+            SetCenterChunk = 75,
+            SetRenderDistance = 76,
+            SetDefaultSpawnPosition = 77,
+            SetEntityMetadata = 80,
+            SetEntityVelocity = 82,
+            SetExperience = 84,
+            SetHealth = 85,
+            SetSubtitleText = 91,
+            UpdateTime = 92,
+            SetTitleText = 93,
+            SetTitleAnimationTimes = 94,
+            EntitySoundEffect = 95,
+            SoundEffect = 96,
+            SystemChatMessage = 98,
+            SetTabListHeaderAndFooter = 99,
+            TeleportEntity = 102,
+            UpdateAttributes = 104,
         }
     }
 }
