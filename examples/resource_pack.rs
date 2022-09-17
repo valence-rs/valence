@@ -188,7 +188,8 @@ impl Config for Game {
                             }
 
                             client.set_resource_pack(
-                                "http://localhost/example_pack.zip".to_owned(),
+                                "https://download843.mediafire.com/jbx81s8p7jig/dve0hxjaqecy7c6/example_pack.zip"
+                                    .to_owned(), // TODO: change to the GitHub URL of /assets/example_pack.zip
                                 None,
                                 false,
                                 None,
