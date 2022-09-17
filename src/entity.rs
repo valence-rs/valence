@@ -14,7 +14,7 @@ use vek::{Aabb, Vec3};
 use crate::config::Config;
 use crate::entity::types::{Facing, PaintingKind};
 use crate::protocol::packets::s2c::play::{
-    EntitySpawn, EntityTrackerUpdate, ExperienceOrbSpawn, PlayerSpawn, S2cPlayPacket,
+    S2cPlayPacket, SetEntityMetadata, SpawnEntity, SpawnExperienceOrb, SpawnPlayer,
 };
 use crate::protocol::{ByteAngle, RawBytes, VarInt};
 use crate::slab_versioned::{Key, VersionedSlab};
@@ -703,10 +703,10 @@ impl<C: Config> Entity<C> {
     pub(crate) fn initial_tracked_data_packet(
         &self,
         this_id: EntityId,
-    ) -> Option<EntityTrackerUpdate> {
+    ) -> Option<SetEntityMetadata> {
         self.variants
             .initial_tracked_data()
-            .map(|meta| EntityTrackerUpdate {
+            .map(|meta| SetEntityMetadata {
                 entity_id: VarInt(this_id.to_network_id()),
                 metadata: RawBytes(meta),
             })
@@ -719,10 +719,10 @@ impl<C: Config> Entity<C> {
     pub(crate) fn updated_tracked_data_packet(
         &self,
         this_id: EntityId,
-    ) -> Option<EntityTrackerUpdate> {
+    ) -> Option<SetEntityMetadata> {
         self.variants
             .updated_tracked_data()
-            .map(|meta| EntityTrackerUpdate {
+            .map(|meta| SetEntityMetadata {
                 entity_id: VarInt(this_id.to_network_id()),
                 metadata: RawBytes(meta),
             })
@@ -730,7 +730,7 @@ impl<C: Config> Entity<C> {
 
     pub(crate) fn spawn_packet(&self, this_id: EntityId) -> Option<EntitySpawnPacket> {
         let with_object_data = |data| {
-            Some(EntitySpawnPacket::Entity(EntitySpawn {
+            Some(EntitySpawnPacket::Entity(SpawnEntity {
                 entity_id: VarInt(this_id.to_network_id()),
                 object_uuid: self.uuid,
                 kind: VarInt(self.kind() as i32),
@@ -746,13 +746,13 @@ impl<C: Config> Entity<C> {
         match &self.variants {
             TrackedData::Marker(_) => None,
             TrackedData::ExperienceOrb(_) => {
-                Some(EntitySpawnPacket::ExperienceOrb(ExperienceOrbSpawn {
+                Some(EntitySpawnPacket::ExperienceOrb(SpawnExperienceOrb {
                     entity_id: VarInt(this_id.to_network_id()),
                     position: self.new_position,
                     count: 0, // TODO
                 }))
             }
-            TrackedData::Player(_) => Some(EntitySpawnPacket::Player(PlayerSpawn {
+            TrackedData::Player(_) => Some(EntitySpawnPacket::Player(SpawnPlayer {
                 entity_id: VarInt(this_id.to_network_id()),
                 player_uuid: self.uuid,
                 position: self.new_position,
@@ -785,9 +785,9 @@ pub(crate) fn velocity_to_packet_units(vel: Vec3<f32>) -> Vec3<i16> {
 }
 
 pub(crate) enum EntitySpawnPacket {
-    Entity(EntitySpawn),
-    ExperienceOrb(ExperienceOrbSpawn),
-    Player(PlayerSpawn),
+    Entity(SpawnEntity),
+    ExperienceOrb(SpawnExperienceOrb),
+    Player(SpawnPlayer),
 }
 
 impl From<EntitySpawnPacket> for S2cPlayPacket {

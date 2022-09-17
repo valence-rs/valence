@@ -200,10 +200,8 @@ impl<R: AsyncRead + Unpin> Decoder<R> {
                     .context("decoding packet after decompressing")?;
                 ensure!(
                     decompressed.is_empty(),
-                    format!(
-                        "packet contents were not read completely, {} remaining bytes",
-                        decompressed.len()
-                    )
+                    "packet contents were not read completely ({} bytes remaining)",
+                    decompressed.len()
                 );
                 packet
             } else {

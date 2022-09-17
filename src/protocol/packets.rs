@@ -28,12 +28,18 @@ use crate::protocol::{
 };
 use crate::text::Text;
 
+/// Provides the name of a packet for debugging purposes.
+pub trait PacketName {
+    /// The name of this packet.
+    fn packet_name(&self) -> &'static str;
+}
+
 /// Trait for types that can be written to the Minecraft protocol as a complete
 /// packet.
 ///
 /// A complete packet is one that starts with a `VarInt` packet ID, followed by
 /// the body of the packet.
-pub trait EncodePacket: fmt::Debug {
+pub trait EncodePacket: PacketName + fmt::Debug {
     /// Writes a packet to the Minecraft protocol, including its packet ID.
     fn encode_packet(&self, w: &mut impl Write) -> anyhow::Result<()>;
 }
@@ -43,7 +49,7 @@ pub trait EncodePacket: fmt::Debug {
 ///
 /// A complete packet is one that starts with a `VarInt` packet ID, followed by
 /// the body of the packet.
-pub trait DecodePacket: Sized + fmt::Debug {
+pub trait DecodePacket: Sized + PacketName + fmt::Debug {
     /// Reads a packet from the Minecraft protocol, including its packet ID.
     fn decode_packet(r: &mut &[u8]) -> anyhow::Result<Self>;
 }
@@ -295,6 +301,12 @@ macro_rules! def_packet_group {
                 }
             }
 
+            impl PacketName for $packet {
+                fn packet_name(&self) -> &'static str {
+                    stringify!($packet)
+                }
+            }
+
             impl EncodePacket for $packet {
                 fn encode_packet(&self, w: &mut impl Write) -> anyhow::Result<()> {
                     VarInt($id).encode(w).context("failed to write packet ID")?;
@@ -315,6 +327,16 @@ macro_rules! def_packet_group {
                 }
             }
         )*
+
+        impl PacketName for $group_name {
+            fn packet_name(&self) -> &'static str {
+                match self {
+                    $(
+                        Self::$packet(pkt) => pkt.packet_name(),
+                    )*
+                }
+            }
+        }
 
         impl DecodePacket for $group_name {
             fn decode_packet(r: &mut &[u8]) -> anyhow::Result<Self> {
