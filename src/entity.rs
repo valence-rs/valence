@@ -729,6 +729,20 @@ impl<C: Config> Entity<C> {
     }
 
     pub(crate) fn spawn_packet(&self, this_id: EntityId) -> Option<EntitySpawnPacket> {
+        let with_object_data = |data| {
+            Some(EntitySpawnPacket::Entity(EntitySpawn {
+                entity_id: VarInt(this_id.to_network_id()),
+                object_uuid: self.uuid,
+                kind: VarInt(self.kind() as i32),
+                position: self.new_position,
+                pitch: ByteAngle::from_degrees(self.pitch),
+                yaw: ByteAngle::from_degrees(self.yaw),
+                head_yaw: ByteAngle::from_degrees(self.head_yaw),
+                data: VarInt(data),
+                velocity: velocity_to_packet_units(self.velocity),
+            }))
+        };
+
         match &self.variants {
             TrackedData::Marker(_) => None,
             TrackedData::ExperienceOrb(_) => {
@@ -745,67 +759,18 @@ impl<C: Config> Entity<C> {
                 yaw: ByteAngle::from_degrees(self.yaw),
                 pitch: ByteAngle::from_degrees(self.pitch),
             })),
-            TrackedData::ItemFrame(e) => Some(EntitySpawnPacket::Entity(EntitySpawn {
-                entity_id: VarInt(this_id.to_network_id()),
-                object_uuid: self.uuid,
-                kind: VarInt(self.kind() as i32),
-                position: self.new_position,
-                pitch: ByteAngle::from_degrees(self.pitch),
-                yaw: ByteAngle::from_degrees(self.yaw),
-                head_yaw: ByteAngle::from_degrees(self.head_yaw),
-                data: VarInt(e.get_rotation()),
-                velocity: velocity_to_packet_units(self.velocity),
-            })),
-            TrackedData::Painting(_) => Some(EntitySpawnPacket::Entity(EntitySpawn {
-                entity_id: VarInt(this_id.to_network_id()),
-                object_uuid: self.uuid,
-                kind: VarInt(self.kind() as i32),
-                position: self.new_position,
-                pitch: ByteAngle::from_degrees(self.pitch),
-                yaw: ByteAngle::from_degrees(self.yaw),
-                head_yaw: ByteAngle::from_degrees(self.head_yaw),
-                data: VarInt(match (self.yaw + 180.0).rem_euclid(360.0).round() as i32 {
-                    45..=134 => 5,
-                    225..=314 => 4,
-                    135..=224 => 3,
-                    315..=360 | 0..=44 => 2,
-                    _ => 2,
-                }),
-                velocity: velocity_to_packet_units(self.velocity),
-            })),
-            TrackedData::FallingBlock(_e) => Some(EntitySpawnPacket::Entity(EntitySpawn {
-                entity_id: VarInt(this_id.to_network_id()),
-                object_uuid: self.uuid,
-                kind: VarInt(self.kind() as i32),
-                position: self.new_position,
-                pitch: ByteAngle::from_degrees(self.pitch),
-                yaw: ByteAngle::from_degrees(self.yaw),
-                head_yaw: ByteAngle::from_degrees(self.head_yaw),
-                data: VarInt(1), // TODO: set block state id
-                velocity: velocity_to_packet_units(self.velocity),
-            })),
-            TrackedData::FishingBobber(e) => Some(EntitySpawnPacket::Entity(EntitySpawn {
-                entity_id: VarInt(this_id.to_network_id()),
-                object_uuid: self.uuid,
-                kind: VarInt(self.kind() as i32),
-                position: self.new_position,
-                pitch: ByteAngle::from_degrees(self.pitch),
-                yaw: ByteAngle::from_degrees(self.yaw),
-                head_yaw: ByteAngle::from_degrees(self.head_yaw),
-                data: VarInt(e.get_hook_entity_id()),
-                velocity: velocity_to_packet_units(self.velocity),
-            })),
-            _ => Some(EntitySpawnPacket::Entity(EntitySpawn {
-                entity_id: VarInt(this_id.to_network_id()),
-                object_uuid: self.uuid,
-                kind: VarInt(self.kind() as i32),
-                position: self.new_position,
-                pitch: ByteAngle::from_degrees(self.pitch),
-                yaw: ByteAngle::from_degrees(self.yaw),
-                head_yaw: ByteAngle::from_degrees(self.head_yaw),
-                data: VarInt(0),
-                velocity: velocity_to_packet_units(self.velocity),
-            })),
+            TrackedData::ItemFrame(e) => with_object_data(e.get_rotation()),
+            TrackedData::GlowItemFrame(e) => with_object_data(e.get_rotation()),
+            TrackedData::Painting(_) => with_object_data(match (self.yaw + 180.0).rem_euclid(360.0).round() as i32 {
+                45..=134 => 5,
+                225..=314 => 4,
+                135..=224 => 3,
+                315..=360 | 0..=44 => 2,
+                _ => 2,
+            }),
+            TrackedData::FallingBlock(_) => with_object_data(1), // TODO: set block state ID.
+            TrackedData::FishingBobber(e) => with_object_data(e.get_hook_entity_id()),
+            _ => with_object_data(0),
         }
     }
 }
