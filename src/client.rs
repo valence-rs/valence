@@ -647,7 +647,8 @@ impl<C: Config> Client<C> {
     ///
     /// # Arguments
     /// * `url` - The URL of the resource pack file.
-    /// * `hash` - The SHA-1 hash of the resource pack file.
+    /// * `hash` - The SHA-1 hash of the resource pack file. Any value other
+    ///   than a 40-character hexadecimal string is ignored by the client.
     /// * `forced` - Whether a client should be kicked from the server upon
     ///   declining the pack (this is enforced client-side)
     /// * `prompt_message` - A message to be displayed with the resource pack
