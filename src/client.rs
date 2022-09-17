@@ -225,6 +225,7 @@ pub struct Client<C: Config> {
     /// Should be sent after login packet.
     msgs_to_send: Vec<Text>,
     bar_to_send: Option<Text>,
+    resource_pack_to_send: Option<ResourcePackS2c>,
     attack_speed: f64,
     movement_speed: f64,
     bits: ClientBits,
@@ -291,6 +292,7 @@ impl<C: Config> Client<C> {
             dug_blocks: Vec::new(),
             msgs_to_send: Vec::new(),
             bar_to_send: None,
+            resource_pack_to_send: None,
             attack_speed: 4.0,
             movement_speed: 0.7,
             bits: ClientBits::new()
@@ -657,7 +659,7 @@ impl<C: Config> Client<C> {
         forced: bool,
         prompt_message: impl Into<Option<Text>>,
     ) {
-        self.send_packet(ResourcePackS2c {
+        self.resource_pack_to_send = Some(ResourcePackS2c {
             url: BoundedString(url.into()),
             hash: BoundedString(hash.into().unwrap_or_default()),
             forced,
@@ -1277,6 +1279,10 @@ impl<C: Config> Client<C> {
 
         if let Some(bar) = self.bar_to_send.take() {
             send_packet(&mut self.send, SetActionBarText { text: bar });
+        }
+
+        if let Some(p) = self.resource_pack_to_send.take() {
+            send_packet(&mut self.send, p);
         }
 
         let mut entities_to_unload = Vec::new();
