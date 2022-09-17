@@ -8,9 +8,7 @@ use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelI
 use valence::biome::Biome;
 use valence::block::BlockState;
 use valence::chunk::{Chunk, UnloadedChunk};
-use valence::client::{
-    handle_event_default, ClientEvent, Hand, InteractWithEntityKind, ResourcePackC2s,
-};
+use valence::client::{handle_event_default, ClientEvent, Hand};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::types::Pose;
@@ -55,7 +53,6 @@ struct ServerState {
 #[derive(Default)]
 struct ClientState {
     entity_id: EntityId,
-    resource_pack_active: bool,
 }
 
 const MAX_PLAYERS: usize = 10;
@@ -109,7 +106,7 @@ impl Config for Game {
     }
 
     fn init(&self, server: &mut Server<Self>) {
-        let (world_id, world) = server.worlds.insert(DimensionId::default(), ());
+        let world = server.worlds.insert(DimensionId::default(), ()).1;
         server.state.player_list = Some(server.player_lists.insert(()).0);
 
         for chunk_z in -2..Integer::div_ceil(&(SIZE_Z as i32), &16) + 2 {
@@ -121,10 +118,6 @@ impl Config for Game {
                 );
             }
         }
-
-        let sheep = server.entities.insert(EntityKind::Sheep, ()).1;
-        sheep.set_world(world_id);
-        sheep.set_position([50.0, 55.0, 50.0]);
     }
 
     fn update(&self, server: &mut Server<Self>) {
@@ -180,9 +173,6 @@ impl Config for Game {
                 client.send_message(
                     "Sneak and hold the left mouse button to bring blocks to life.".italic(),
                 );
-                client.send_message(
-                    "Hit the sheep above you to activate the resource pack.".italic(),
-                );
             }
 
             if client.is_disconnected() {
@@ -226,28 +216,6 @@ impl Config for Game {
                     ClientEvent::InteractWithBlock { hand, .. } => {
                         if hand == Hand::Main {
                             client.send_message("I said left click, not right click!".italic());
-                        }
-                    }
-                    ClientEvent::InteractWithEntity { kind, .. } => {
-                        if kind == InteractWithEntityKind::Attack {
-                            if client.state.resource_pack_active {
-                                client.send_message("You already have the resource pack!".italic());
-                                continue;
-                            }
-
-                            client.set_resource_pack(
-                                "https://download942.mediafire.com/j0ag4kfe1ftg/0ds8poaabjc8snw/pack.zip"
-                                    .to_owned(),
-                                None,
-                                false,
-                                None,
-                            );
-                        }
-                    }
-                    ClientEvent::ResourcePackStatus(s) => {
-                        if matches!(s, ResourcePackC2s::SuccessfullyLoaded) {
-                            client.state.resource_pack_active = true;
-                            client.send_message("Thank you for accepting the resource pack!".italic());
                         }
                     }
                     _ => {}
