@@ -526,7 +526,7 @@ impl<C: Config> Entity<C> {
             TrackedData::Llama(e) => baby(e.get_child(), [0.9, 1.87, 0.9]),
             TrackedData::LlamaSpit(_) => [0.25, 0.25, 0.25],
             TrackedData::MagmaCube(e) => {
-                let s = e.get_slime_size() as f64 * 0.51000005;
+                let s = 0.52 * e.get_slime_size() as f64;
                 [s, s, s]
             }
             TrackedData::Marker(_) => [0.0, 0.0, 0.0],
@@ -641,7 +641,7 @@ impl<C: Config> Entity<C> {
             TrackedData::Skeleton(_) => [0.6, 1.99, 0.6],
             TrackedData::SkeletonHorse(e) => baby(e.get_child(), [1.39648, 1.6, 1.39648]),
             TrackedData::Slime(e) => {
-                let s = 0.51000005 * e.get_slime_size() as f64;
+                let s = 0.52 * e.get_slime_size() as f64;
                 [s, s, s]
             }
             TrackedData::SmallFireball(_) => [0.3125, 0.3125, 0.3125],
@@ -771,6 +771,9 @@ impl<C: Config> Entity<C> {
             }
             TrackedData::FallingBlock(_) => with_object_data(1), // TODO: set block state ID.
             TrackedData::FishingBobber(e) => with_object_data(e.get_hook_entity_id()),
+            TrackedData::Warden(e) => {
+                with_object_data((e.get_pose() == types::Pose::Emerging).into())
+            }
             _ => with_object_data(0),
         }
     }
