@@ -6,7 +6,7 @@ use valence::async_trait;
 use valence::block::{BlockPos, BlockState};
 use valence::chunk::UnloadedChunk;
 use valence::client::{
-    handle_event_default, ClientEvent, GameMode, InteractWithEntityKind, ResourcePackC2s,
+    handle_event_default, ClientEvent, GameMode, InteractWithEntityKind, ResourcePackStatus,
 };
 use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
@@ -195,8 +195,8 @@ impl Config for Game {
                             );
                         }
                     }
-                    ClientEvent::ResourcePackStatus(s) => {
-                        if matches!(s, ResourcePackC2s::SuccessfullyLoaded) {
+                    ClientEvent::ResourcePackStatusChanged(s) => {
+                        if matches!(s, ResourcePackStatus::SuccessfullyLoaded) {
                             client.state.resource_pack_active = true;
                             client.send_message(
                                 "Thank you for accepting the resource pack!".italic(),

@@ -917,9 +917,9 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::ChangeRecipeBookSettings(_) => {}
             C2sPlayPacket::SetSeenRecipe(_) => {}
             C2sPlayPacket::RenameItem(_) => {}
-            C2sPlayPacket::ResourcePackC2s(p) => {
-                self.events.push_back(ClientEvent::ResourcePackStatus(p))
-            }
+            C2sPlayPacket::ResourcePackC2s(p) => self
+                .events
+                .push_back(ClientEvent::ResourcePackStatusChanged(p)),
             C2sPlayPacket::SeenAdvancements(_) => {}
             C2sPlayPacket::SelectTrade(_) => {}
             C2sPlayPacket::SetBeaconEffect(_) => {}
