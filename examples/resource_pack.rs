@@ -6,7 +6,7 @@ use valence::async_trait;
 use valence::block::{BlockPos, BlockState};
 use valence::chunk::UnloadedChunk;
 use valence::client::{
-    handle_event_default, ClientEvent, GameMode, InteractWithEntityKind, ResourcePackStatus,
+    handle_event_default, Client, ClientEvent, GameMode, InteractWithEntityKind, ResourcePackStatus,
 };
 use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
@@ -44,7 +44,6 @@ struct ServerState {
 #[derive(Default)]
 struct ClientState {
     entity_id: EntityId,
-    resource_pack_active: bool,
 }
 
 const MAX_PLAYERS: usize = 10;
@@ -159,9 +158,7 @@ impl Config for Game {
                     );
                 }
 
-                client.send_message(
-                    "Hit the sheep above you to activate the resource pack.".italic(),
-                );
+                set_example_pack(client);
             }
 
             if client.is_disconnected() {
@@ -182,33 +179,45 @@ impl Config for Game {
                         if kind == InteractWithEntityKind::Attack
                             && Some(id) == server.state.sheep_id
                         {
-                            if client.state.resource_pack_active {
-                                client.send_message("You already have the resource pack!".italic());
-                                continue;
-                            }
-
-                            client.set_resource_pack(
-                                "https://download843.mediafire.com/jbx81s8p7jig/dve0hxjaqecy7c6/example_pack.zip"
-                                    .to_owned(), // TODO: change to the GitHub URL of /assets/example_pack.zip
-                                None,
-                                false,
-                                None,
-                            );
+                            set_example_pack(client);
                         }
                     }
                     ClientEvent::ResourcePackStatusChanged(s) => {
-                        if matches!(s, ResourcePackStatus::SuccessfullyLoaded) {
-                            client.state.resource_pack_active = true;
-                            client.send_message(
-                                "Thank you for accepting the resource pack!".italic(),
-                            );
-                        }
+                        let message = match s {
+                            ResourcePackStatus::SuccessfullyLoaded => {
+                                "The resource pack was successfully loaded!".color(Color::GREEN)
+                            }
+                            ResourcePackStatus::Declined => {
+                                "You declined the resource pack :(".color(Color::RED)
+                            }
+                            ResourcePackStatus::FailedDownload => {
+                                "The resource pack download failed.".color(Color::RED)
+                            }
+                            _ => continue,
+                        };
+
+                        client.send_message(message.italic());
+                        client.send_message(
+                            "Hit the sheep above you to prompt the resource pack again."
+                                .color(Color::GRAY)
+                                .italic(),
+                        );
                     }
-                    _ => {}
+                    _ => (),
                 }
             }
 
             true
         });
     }
+}
+
+fn set_example_pack(client: &mut Client<Game>) {
+    client.set_resource_pack(
+        "https://download843.mediafire.com/jbx81s8p7jig/dve0hxjaqecy7c6/example_pack.zip"
+            .to_owned(), // TODO: change to the GitHub URL of /assets/example_pack.zip
+        None,
+        false,
+        None,
+    );
 }
