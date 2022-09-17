@@ -30,7 +30,7 @@ use crate::protocol::packets::s2c::play::{
     AcknowledgeBlockChange, BiomeRegistry, ChatTypeRegistry, ClearTitles, CustomSoundEffect,
     DimensionTypeRegistry, DimensionTypeRegistryEntry, DisconnectPlay, EntityAnimationS2c,
     EntityAttributesProperty, EntityEvent, GameEvent, GameStateChangeReason, KeepAliveS2c,
-    LoginPlay, PlayerPositionLookFlags, RegistryCodec, ResourcePackS2c, RemoveEntities, Respawn,
+    LoginPlay, PlayerPositionLookFlags, RegistryCodec, RemoveEntities, ResourcePackS2c, Respawn,
     S2cPlayPacket, SetActionBarText, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata,
     SetEntityVelocity, SetExperience, SetHeadRotation, SetHealth, SetRenderDistance,
     SetSubtitleText, SetTitleText, SoundCategory, SynchronizePlayerPosition, SystemChatMessage,
