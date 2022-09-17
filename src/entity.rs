@@ -761,13 +761,14 @@ impl<C: Config> Entity<C> {
             })),
             TrackedData::ItemFrame(e) => with_object_data(e.get_rotation()),
             TrackedData::GlowItemFrame(e) => with_object_data(e.get_rotation()),
-            TrackedData::Painting(_) => with_object_data(match (self.yaw + 180.0).rem_euclid(360.0).round() as i32 {
-                45..=134 => 5,
-                225..=314 => 4,
-                135..=224 => 3,
-                315..=360 | 0..=44 => 2,
-                _ => 2,
-            }),
+            TrackedData::Painting(_) => {
+                with_object_data(match ((self.yaw + 45.0).rem_euclid(360.0) / 90.0) as u8 {
+                    0 => 3,
+                    1 => 4,
+                    2 => 2,
+                    _ => 5,
+                })
+            }
             TrackedData::FallingBlock(_) => with_object_data(1), // TODO: set block state ID.
             TrackedData::FishingBobber(e) => with_object_data(e.get_hook_entity_id()),
             _ => with_object_data(0),
