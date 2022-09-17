@@ -656,13 +656,13 @@ impl<C: Config> Client<C> {
     pub fn set_resource_pack(
         &mut self,
         url: impl Into<String>,
-        hash: impl Into<Option<String>>,
+        hash: impl Into<String>,
         forced: bool,
         prompt_message: impl Into<Option<Text>>,
     ) {
         self.resource_pack_to_send = Some(ResourcePackS2c {
             url: url.into(),
-            hash: BoundedString(hash.into().unwrap_or_default()),
+            hash: BoundedString(hash.into()),
             forced,
             prompt_message: prompt_message.into(),
         });

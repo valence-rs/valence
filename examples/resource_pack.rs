@@ -216,7 +216,7 @@ fn set_example_pack(client: &mut Client<Game>) {
     client.set_resource_pack(
         "https://download843.mediafire.com/jbx81s8p7jig/dve0hxjaqecy7c6/example_pack.zip"
             .to_owned(), // TODO: change to the GitHub URL of /assets/example_pack.zip
-        None,
+        String::default(),
         false,
         None,
     );
