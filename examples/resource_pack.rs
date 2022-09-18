@@ -212,11 +212,11 @@ impl Config for Game {
     }
 }
 
+/// Sends the resource pack prompt.
 fn set_example_pack(client: &mut Client<Game>) {
     client.set_resource_pack(
-        "https://download843.mediafire.com/jbx81s8p7jig/dve0hxjaqecy7c6/example_pack.zip"
-            .to_owned(), // TODO: change to the GitHub URL of /assets/example_pack.zip
-        String::default(),
+        "https://github.com/valence-rs/valence/raw/main/assets/example_pack.zip",
+        "d7c6108849fb190ec2a49f2d38b7f1f897d9ce9f",
         false,
         None,
     );

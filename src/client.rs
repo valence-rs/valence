@@ -1278,10 +1278,12 @@ impl<C: Config> Client<C> {
             );
         }
 
+        // Set action bar.
         if let Some(bar) = self.bar_to_send.take() {
             send_packet(&mut self.send, SetActionBarText { text: bar });
         }
 
+        // Send resource pack prompt.
         if let Some(p) = self.resource_pack_to_send.take() {
             send_packet(&mut self.send, p);
         }
