@@ -668,6 +668,15 @@ pub mod play {
     }
 
     def_struct! {
+        ResourcePackS2c {
+            url: String,
+            hash: BoundedString<0, 40>,
+            forced: bool,
+            prompt_message: Option<Text>,
+        }
+    }
+
+    def_struct! {
         Respawn {
             dimension_type_name: Ident,
             dimension_name: Ident,
@@ -895,6 +904,7 @@ pub mod play {
             PlayerInfo = 55,
             SynchronizePlayerPosition = 57,
             RemoveEntities = 59,
+            ResourcePackS2c = 61,
             Respawn = 62,
             SetHeadRotation = 63,
             UpdateSectionBlocks = 64,
