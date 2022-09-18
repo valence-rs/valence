@@ -226,7 +226,7 @@ impl Config for Game {
 }
 
 fn play_note(client: &mut Client<Game>, player: &mut Entity<Game>, clicked_slot: u16) {
-    if SLOT_MIN <= clicked_slot && clicked_slot <= SLOT_MAX {
+    if (SLOT_MIN..=SLOT_MAX).contains(&clicked_slot) {
         let pitch = (clicked_slot - SLOT_MIN) as f32 * (PITCH_MAX - PITCH_MIN)
             / (SLOT_MAX - SLOT_MIN) as f32
             + PITCH_MIN;
