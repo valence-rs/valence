@@ -234,7 +234,36 @@ impl Encode for FrogKind {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub enum PaintingKind {
     #[default]
-    Kebab, // TODO
+    Kebab,
+    Aztec,
+    Alban,
+    Aztec2,
+    Bomb,
+    Plant,
+    Wasteland,
+    Pool,
+    Courbet,
+    Sea,
+    Sunset,
+    Creebet,
+    Wanderer,
+    Graham,
+    Match,
+    Bust,
+    Stage,
+    Void,
+    SkullAndRoses,
+    Wither,
+    Fighters,
+    Pointer,
+    Pigscene,
+    BurningSkull,
+    Skeleton,
+    Earth,
+    Wind,
+    Water,
+    Fire,
+    DonkeyKong,
 }
 
 impl Encode for PaintingKind {
