@@ -7,6 +7,7 @@ use rayon::iter::ParallelIterator;
 use crate::chunk::Chunks;
 use crate::config::Config;
 use crate::dimension::DimensionId;
+use crate::retain::RetainDecision;
 use crate::server::SharedServer;
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::spatial_index::SpatialIndex;
@@ -70,7 +71,7 @@ impl<C: Config> Worlds<C> {
     /// Removes all worlds from the server for which `f` returns `true`.
     ///
     /// All worlds are visited in an unspecified order.
-    pub fn retain(&mut self, mut f: impl FnMut(WorldId, &mut World<C>) -> bool) {
+    pub fn retain(&mut self, mut f: impl FnMut(WorldId, &mut World<C>) -> RetainDecision) {
         self.slab.retain(|k, v| f(WorldId(k), v))
     }
 

@@ -17,6 +17,7 @@ use crate::protocol::packets::s2c::play::{
     S2cPlayPacket, SetEntityMetadata, SpawnEntity, SpawnExperienceOrb, SpawnPlayer,
 };
 use crate::protocol::{ByteAngle, RawBytes, VarInt};
+use crate::retain::RetainDecision;
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::util::aabb_from_bottom_and_size;
 use crate::world::WorldId;
@@ -124,11 +125,10 @@ impl<C: Config> Entities<C> {
     /// Removes all entities from the server for which `f` returns `true`.
     ///
     /// All entities are visited in an unspecified order.
-    pub fn retain(&mut self, mut f: impl FnMut(EntityId, &mut Entity<C>) -> bool) {
-        self.slab.retain(|k, v| {
-            if f(EntityId(k), v) {
-                true
-            } else {
+    pub fn retain(&mut self, mut f: impl FnMut(EntityId, &mut Entity<C>) -> RetainDecision) {
+        self.slab.retain(|k, v| match f(EntityId(k), v) {
+            d @ RetainDecision::Keep => d,
+            RetainDecision::Remove => {
                 self.uuid_to_entity
                     .remove(&v.uuid)
                     .expect("UUID should have been in UUID map");
@@ -137,7 +137,7 @@ impl<C: Config> Entities<C> {
                     .remove(&k.version())
                     .expect("network ID should have been in the network ID map");
 
-                false
+                RetainDecision::Remove
             }
         });
     }
@@ -927,7 +927,7 @@ mod tests {
         let (goat_id, _) = entities.insert(EntityKind::Goat, 120);
         let (horse_id, _) = entities.insert(EntityKind::Horse, 30);
         assert_eq!(entities.len(), 5);
-        entities.retain(|_id, entity| entity.state > 100);
+        entities.retain(|_id, entity| (entity.state > 100).into());
         assert_eq!(entities.len(), 2);
         assert!(entities.get(fox_id).is_some());
         assert!(entities.get(goat_id).is_some());

@@ -3,6 +3,7 @@ use std::num::NonZeroU32;
 
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 
+use crate::retain::RetainDecision;
 use crate::slab::Slab;
 
 #[derive(Clone, Debug)]
@@ -110,7 +111,7 @@ impl<T> VersionedSlab<T> {
         Some(self.slab.remove(key.index as usize).unwrap().value)
     }
 
-    pub fn retain(&mut self, mut f: impl FnMut(Key, &mut T) -> bool) {
+    pub fn retain(&mut self, mut f: impl FnMut(Key, &mut T) -> RetainDecision) {
         self.slab
             .retain(|idx, slot| f(Key::new(idx as u32, slot.version), &mut slot.value))
     }
@@ -186,7 +187,7 @@ mod tests {
         let k1 = sm.insert(20).0;
         let k2 = sm.insert(30).0;
 
-        sm.retain(|k, _| k == k1);
+        sm.retain(|k, _| (k == k1).into());
 
         assert_eq!(sm.get(k1), Some(&20));
         assert_eq!(sm.len(), 1);

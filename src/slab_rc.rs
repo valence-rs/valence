@@ -120,6 +120,6 @@ impl<T> SlabRc<T> {
 
     pub fn collect_garbage(&mut self) {
         self.slab
-            .retain(|_, slot| Arc::strong_count(&slot.key.0) > 1);
+            .retain(|_, slot| (Arc::strong_count(&slot.key.0) > 1).into());
     }
 }

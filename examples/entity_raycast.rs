@@ -12,6 +12,7 @@ use valence::dimension::DimensionId;
 use valence::entity::types::{Facing, PaintingKind, Pose};
 use valence::entity::{EntityId, EntityKind, TrackedData};
 use valence::player_list::PlayerListId;
+use valence::retain::RetainDecision;
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::spatial_index::RaycastHit;
 use valence::text::{Color, TextFormat};
@@ -320,7 +321,7 @@ impl Config for Game {
                     .is_err()
                 {
                     client.disconnect("The server is full!".color(Color::RED));
-                    return false;
+                    return RetainDecision::Remove;
                 }
 
                 match server
@@ -330,7 +331,7 @@ impl Config for Game {
                     Some((id, _)) => client.state.player = id,
                     None => {
                         client.disconnect("Conflicting UUID");
-                        return false;
+                        return RetainDecision::Remove;
                     }
                 }
 
@@ -373,7 +374,7 @@ impl Config for Game {
                 }
                 server.entities.remove(client.state.player);
 
-                return false;
+                return RetainDecision::Remove;
             }
 
             let client_pos = client.position();
@@ -418,7 +419,7 @@ impl Config for Game {
             .is_some()
             {}
 
-            true
+            RetainDecision::Keep
         });
     }
 }

@@ -38,6 +38,7 @@ use crate::protocol::packets::s2c::play::{
     UpdateEntityPositionAndRotation, UpdateEntityRotation,
 };
 use crate::protocol::{BoundedInt, BoundedString, ByteAngle, NbtBridge, RawBytes, VarInt};
+use crate::retain::RetainDecision;
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::text::Text;
@@ -81,7 +82,7 @@ impl<C: Config> Clients<C> {
     /// Deletes all clients from the server for which `f` returns `false`.
     ///
     /// All clients are visited in an unspecified order.
-    pub fn retain(&mut self, mut f: impl FnMut(ClientId, &mut Client<C>) -> bool) {
+    pub fn retain(&mut self, mut f: impl FnMut(ClientId, &mut Client<C>) -> RetainDecision) {
         self.slab.retain(|k, v| f(ClientId(k), v))
     }
 

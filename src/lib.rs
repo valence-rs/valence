@@ -77,6 +77,8 @@
     clippy::unusual_byte_groupings,
     clippy::comparison_chain
 )]
+#![feature(try_trait_v2)]
+#![feature(assert_matches)]
 
 /// Used on [`Config`](config::Config) to allow for async methods in traits.
 ///
@@ -105,6 +107,7 @@ pub mod player_textures;
 #[allow(dead_code)]
 #[doc(hidden)]
 pub mod protocol;
+pub mod retain;
 pub mod server;
 mod slab;
 mod slab_rc;

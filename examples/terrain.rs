@@ -12,6 +12,7 @@ use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
 use valence::entity::{EntityId, EntityKind};
 use valence::player_list::PlayerListId;
+use valence::retain::RetainDecision;
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 use valence::util::chunks_in_view_distance;
@@ -97,7 +98,7 @@ impl Config for Game {
                     .is_err()
                 {
                     client.disconnect("The server is full!".color(Color::RED));
-                    return false;
+                    return RetainDecision::Remove;
                 }
 
                 match server
@@ -107,7 +108,7 @@ impl Config for Game {
                     Some((id, _)) => client.state = id,
                     None => {
                         client.disconnect("Conflicting UUID");
-                        return false;
+                        return RetainDecision::Remove;
                     }
                 }
 
@@ -138,7 +139,7 @@ impl Config for Game {
                 }
                 server.entities.remove(client.state);
 
-                return false;
+                return RetainDecision::Remove;
             }
 
             if let Some(entity) = server.entities.get_mut(client.state) {
@@ -156,16 +157,16 @@ impl Config for Game {
                 }
             }
 
-            true
+            RetainDecision::Keep
         });
 
         // Remove chunks outside the view distance of players.
         world.chunks.retain(|_, chunk| {
             if chunk.state {
                 chunk.state = false;
-                true
+                RetainDecision::Keep
             } else {
-                false
+                RetainDecision::Remove
             }
         });
 

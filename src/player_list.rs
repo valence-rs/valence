@@ -14,6 +14,7 @@ use crate::protocol::packets::s2c::play::{
 };
 use crate::protocol::packets::Property;
 use crate::protocol::VarInt;
+use crate::retain::RetainDecision;
 use crate::slab_rc::{Key, SlabRc};
 use crate::text::Text;
 
@@ -178,9 +179,9 @@ impl<C: Config> PlayerList<C> {
     /// Removes all entries from the player list for which `f` returns `true`.
     ///
     /// All entries are visited in an unspecified order.
-    pub fn retain(&mut self, mut f: impl FnMut(Uuid, &mut PlayerListEntry) -> bool) {
+    pub fn retain(&mut self, mut f: impl FnMut(Uuid, &mut PlayerListEntry) -> RetainDecision) {
         self.entries.retain(|&uuid, entry| {
-            if !f(uuid, entry) {
+            if RetainDecision::should_remove(f(uuid, entry)) {
                 self.removed.insert(uuid);
                 false
             } else {

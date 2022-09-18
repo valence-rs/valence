@@ -27,6 +27,7 @@ use crate::protocol::packets::s2c::play::{
     BlockUpdate, ChunkDataAndUpdateLight, ChunkDataHeightmaps, S2cPlayPacket, UpdateSectionBlocks,
 };
 use crate::protocol::{Encode, NbtBridge, VarInt, VarLong};
+use crate::retain::RetainDecision;
 use crate::server::SharedServer;
 
 /// A container for all [`LoadedChunk`]s in a [`World`](crate::world::World).
@@ -117,8 +118,9 @@ impl<C: Config> Chunks<C> {
     /// Removes all chunks for which `f` returns `true`.
     ///
     /// All chunks are visited in an unspecified order.
-    pub fn retain(&mut self, mut f: impl FnMut(ChunkPos, &mut LoadedChunk<C>) -> bool) {
-        self.chunks.retain(|&pos, chunk| f(pos, chunk))
+    pub fn retain(&mut self, mut f: impl FnMut(ChunkPos, &mut LoadedChunk<C>) -> RetainDecision) {
+        self.chunks
+            .retain(|&pos, chunk| f(pos, chunk).should_keep())
     }
 
     /// Deletes all chunks.

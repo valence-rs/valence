@@ -4,6 +4,8 @@ use std::{iter, mem, slice};
 use rayon::iter::plumbing::UnindexedConsumer;
 use rayon::prelude::*;
 
+use crate::retain::RetainDecision;
+
 #[derive(Clone, Debug)]
 pub struct Slab<T> {
     entries: Vec<Entry<T>>,
@@ -112,10 +114,10 @@ impl<T> Slab<T> {
         }
     }
 
-    pub fn retain(&mut self, mut f: impl FnMut(usize, &mut T) -> bool) {
+    pub fn retain(&mut self, mut f: impl FnMut(usize, &mut T) -> RetainDecision) {
         for (key, entry) in self.entries.iter_mut().enumerate() {
             if let Entry::Occupied(value) = entry {
-                if !f(key, value) {
+                if RetainDecision::should_remove(f(key, value)) {
                     *entry = Entry::Vacant {
                         next_free: self.next_free_head,
                     };

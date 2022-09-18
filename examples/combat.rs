@@ -11,6 +11,7 @@ use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
 use valence::entity::{EntityEvent, EntityId, EntityKind};
 use valence::player_list::PlayerListId;
+use valence::retain::RetainDecision;
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 use valence::{async_trait, Ticks};
@@ -135,7 +136,7 @@ impl Config for Game {
                     .is_err()
                 {
                     client.disconnect("The server is full!".color(Color::RED));
-                    return false;
+                    return RetainDecision::Remove;
                 }
 
                 let (player_id, player) = match server.entities.insert_with_uuid(
@@ -146,7 +147,7 @@ impl Config for Game {
                     Some(e) => e,
                     None => {
                         client.disconnect("Conflicting UUID");
-                        return false;
+                        return RetainDecision::Remove;
                     }
                 };
 
@@ -192,7 +193,7 @@ impl Config for Game {
                 if let Some(id) = &server.state {
                     server.player_lists.get_mut(id).remove(client.uuid());
                 }
-                return false;
+                return RetainDecision::Remove;
             }
 
             if client.position().y <= 0.0 {
@@ -244,7 +245,7 @@ impl Config for Game {
                 }
             }
 
-            true
+            RetainDecision::Keep
         });
 
         for (_, entity) in server.entities.iter_mut() {
