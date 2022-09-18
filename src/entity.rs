@@ -12,7 +12,7 @@ use uuid::Uuid;
 use vek::{Aabb, Vec3};
 
 use crate::config::Config;
-use crate::entity::types::{Facing, PaintingKind};
+use crate::entity::types::{Facing, PaintingKind, Pose};
 use crate::protocol::packets::s2c::play::{
     S2cPlayPacket, SetEntityMetadata, SpawnEntity, SpawnExperienceOrb, SpawnPlayer,
 };
@@ -462,7 +462,10 @@ impl<C: Config> Entity<C> {
             TrackedData::ChestBoat(_) => [1.375, 0.5625, 1.375],
             TrackedData::Frog(_) => [0.5, 0.5, 0.5],
             TrackedData::Tadpole(_) => [0.4, 0.3, 0.4],
-            TrackedData::Warden(_) => [0.9, 2.9, 0.9],
+            TrackedData::Warden(e) => match e.get_pose() {
+                Pose::Emerging | Pose::Digging => [0.9, 1.0, 0.9],
+                _ => [0.9, 2.9, 0.9],
+            },
             TrackedData::AreaEffectCloud(e) => [
                 e.get_radius() as f64 * 2.0,
                 0.5,
@@ -511,7 +514,13 @@ impl<C: Config> Entity<C> {
                 return item_frame(self.new_position, e.get_rotation())
             }
             TrackedData::GlowSquid(_) => [0.8, 0.8, 0.8],
-            TrackedData::Goat(e) => baby(e.get_child(), [0.9, 1.3, 0.9]),
+            TrackedData::Goat(e) => {
+                if e.get_pose() == Pose::LongJumping {
+                    baby(e.get_child(), [0.63, 0.91, 0.63])
+                } else {
+                    baby(e.get_child(), [0.9, 1.3, 0.9])
+                }
+            }
             TrackedData::Guardian(_) => [0.85, 0.85, 0.85],
             TrackedData::Hoglin(e) => baby(e.get_child(), [1.39648, 1.4, 1.39648]),
             TrackedData::Horse(e) => baby(e.get_child(), [1.39648, 1.6, 1.39648]),
@@ -526,7 +535,7 @@ impl<C: Config> Entity<C> {
             TrackedData::Llama(e) => baby(e.get_child(), [0.9, 1.87, 0.9]),
             TrackedData::LlamaSpit(_) => [0.25, 0.25, 0.25],
             TrackedData::MagmaCube(e) => {
-                let s = 0.52 * e.get_slime_size() as f64;
+                let s = 0.5202 * e.get_slime_size() as f64;
                 [s, s, s]
             }
             TrackedData::Marker(_) => [0.0, 0.0, 0.0],
@@ -641,7 +650,7 @@ impl<C: Config> Entity<C> {
             TrackedData::Skeleton(_) => [0.6, 1.99, 0.6],
             TrackedData::SkeletonHorse(e) => baby(e.get_child(), [1.39648, 1.6, 1.39648]),
             TrackedData::Slime(e) => {
-                let s = 0.52 * e.get_slime_size() as f64;
+                let s = 0.5202 * e.get_slime_size() as f64;
                 [s, s, s]
             }
             TrackedData::SmallFireball(_) => [0.3125, 0.3125, 0.3125],
