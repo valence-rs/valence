@@ -528,6 +528,7 @@ pub mod play {
     }
 
     def_enum! {
+        #[derive(Copy, PartialEq, Eq)]
         ResourcePackC2s: VarInt {
             SuccessfullyLoaded = 0,
             Declined = 1,

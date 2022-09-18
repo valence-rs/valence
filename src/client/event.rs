@@ -8,7 +8,7 @@ use crate::config::Config;
 use crate::entity::types::Pose;
 use crate::entity::{Entity, EntityEvent, EntityId, TrackedData};
 pub use crate::protocol::packets::c2s::play::{
-    BlockFace, ChatMode, DisplayedSkinParts, Hand, MainHand,
+    BlockFace, ChatMode, DisplayedSkinParts, Hand, MainHand, ResourcePackC2s as ResourcePackStatus,
 };
 pub use crate::protocol::packets::s2c::play::GameMode;
 use crate::protocol::VarInt;
@@ -128,6 +128,7 @@ pub enum ClientEvent {
         /// Sequence number
         sequence: VarInt,
     },
+    ResourcePackStatusChanged(ResourcePackStatus),
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -285,6 +286,7 @@ pub fn handle_event_default<C: Config>(
         ClientEvent::SteerBoat { .. } => {}
         ClientEvent::Digging { .. } => {}
         ClientEvent::InteractWithBlock { .. } => {}
+        ClientEvent::ResourcePackStatusChanged(_) => {}
     }
 
     entity.set_world(client.world());

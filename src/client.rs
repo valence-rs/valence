@@ -30,14 +30,14 @@ use crate::protocol::packets::s2c::play::{
     AcknowledgeBlockChange, BiomeRegistry, ChatTypeRegistry, ClearTitles, CustomSoundEffect,
     DimensionTypeRegistry, DimensionTypeRegistryEntry, DisconnectPlay, EntityAnimationS2c,
     EntityAttributesProperty, EntityEvent, GameEvent, GameStateChangeReason, KeepAliveS2c,
-    LoginPlay, PlayerPositionLookFlags, RegistryCodec, RemoveEntities, Respawn, S2cPlayPacket,
-    SetActionBarText, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata,
+    LoginPlay, PlayerPositionLookFlags, RegistryCodec, RemoveEntities, ResourcePackS2c, Respawn,
+    S2cPlayPacket, SetActionBarText, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata,
     SetEntityVelocity, SetExperience, SetHeadRotation, SetHealth, SetRenderDistance,
     SetSubtitleText, SetTitleText, SoundCategory, SynchronizePlayerPosition, SystemChatMessage,
     TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
     UpdateEntityPositionAndRotation, UpdateEntityRotation,
 };
-use crate::protocol::{BoundedInt, ByteAngle, NbtBridge, RawBytes, VarInt};
+use crate::protocol::{BoundedInt, BoundedString, ByteAngle, NbtBridge, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::text::Text;
@@ -225,6 +225,7 @@ pub struct Client<C: Config> {
     /// Should be sent after login packet.
     msgs_to_send: Vec<Text>,
     bar_to_send: Option<Text>,
+    resource_pack_to_send: Option<ResourcePackS2c>,
     attack_speed: f64,
     movement_speed: f64,
     bits: ClientBits,
@@ -291,6 +292,7 @@ impl<C: Config> Client<C> {
             dug_blocks: Vec::new(),
             msgs_to_send: Vec::new(),
             bar_to_send: None,
+            resource_pack_to_send: None,
             attack_speed: 4.0,
             movement_speed: 0.7,
             bits: ClientBits::new()
@@ -641,6 +643,31 @@ impl<C: Config> Client<C> {
         self.bits.hardcore()
     }
 
+    /// Requests that the client download and enable a resource pack.
+    ///
+    /// # Arguments
+    /// * `url` - The URL of the resource pack file.
+    /// * `hash` - The SHA-1 hash of the resource pack file. Any value other
+    ///   than a 40-character hexadecimal string is ignored by the client.
+    /// * `forced` - Whether a client should be kicked from the server upon
+    ///   declining the pack (this is enforced client-side)
+    /// * `prompt_message` - A message to be displayed with the resource pack
+    ///   dialog.
+    pub fn set_resource_pack(
+        &mut self,
+        url: impl Into<String>,
+        hash: impl Into<String>,
+        forced: bool,
+        prompt_message: impl Into<Option<Text>>,
+    ) {
+        self.resource_pack_to_send = Some(ResourcePackS2c {
+            url: url.into(),
+            hash: BoundedString(hash.into()),
+            forced,
+            prompt_message: prompt_message.into(),
+        });
+    }
+
     /// Gets the client's current settings.
     pub fn settings(&self) -> Option<&Settings> {
         self.settings.as_ref()
@@ -893,7 +920,9 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::ChangeRecipeBookSettings(_) => {}
             C2sPlayPacket::SetSeenRecipe(_) => {}
             C2sPlayPacket::RenameItem(_) => {}
-            C2sPlayPacket::ResourcePackC2s(_) => {}
+            C2sPlayPacket::ResourcePackC2s(p) => self
+                .events
+                .push_back(ClientEvent::ResourcePackStatusChanged(p)),
             C2sPlayPacket::SeenAdvancements(_) => {}
             C2sPlayPacket::SelectTrade(_) => {}
             C2sPlayPacket::SetBeaconEffect(_) => {}
@@ -1249,8 +1278,14 @@ impl<C: Config> Client<C> {
             );
         }
 
+        // Set action bar.
         if let Some(bar) = self.bar_to_send.take() {
             send_packet(&mut self.send, SetActionBarText { text: bar });
+        }
+
+        // Send resource pack prompt.
+        if let Some(p) = self.resource_pack_to_send.take() {
+            send_packet(&mut self.send, p);
         }
 
         let mut entities_to_unload = Vec::new();
