@@ -781,7 +781,7 @@ impl<C: Config> Entity<C> {
             TrackedData::FallingBlock(_) => with_object_data(1), // TODO: set block state ID.
             TrackedData::FishingBobber(e) => with_object_data(e.get_hook_entity_id()),
             TrackedData::Warden(e) => {
-                with_object_data((e.get_pose() == types::Pose::Emerging).into())
+                with_object_data((e.get_pose() == Pose::Emerging).into())
             }
             _ => with_object_data(0),
         }

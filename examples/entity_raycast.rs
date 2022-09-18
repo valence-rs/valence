@@ -298,6 +298,13 @@ impl Config for Game {
         e.set_position([5.0, 103.0, -3.5]);
         e.set_yaw(270.0);
         e.set_head_yaw(90.0);
+
+        // ==== Giant ==== //
+        let (_, e) = server.entities.insert(EntityKind::Giant, ());
+        e.set_world(world_id);
+        e.set_position([20.0, 101.0, -5.0]);
+        e.set_yaw(270.0);
+        e.set_head_yaw(90.0);
     }
 
     fn update(&self, server: &mut Server<Self>) {
