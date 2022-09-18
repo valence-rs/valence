@@ -704,9 +704,16 @@ async fn handle_login<C: Config>(
             .chain(&server.0.public_key_der)
             .finalize();
 
-        let hex_hash = weird_hex_encoding(&hash);
+        let hex_hash = auth_digest(&hash);
 
-        let url = format!("https://sessionserver.mojang.com/session/minecraft/hasJoined?username={username}&serverId={hex_hash}&ip={}", remote_addr.ip());
+        let url = C::format_session_server_url(
+            server.config(),
+            server,
+            &username,
+            &hex_hash,
+            &remote_addr.ip(),
+        )
+        .to_string();
         let resp = server.0.http_client.get(url).send().await?;
 
         let status = resp.status();
@@ -823,7 +830,7 @@ async fn handle_play<C: Config>(
     Ok(())
 }
 
-fn weird_hex_encoding(bytes: &[u8]) -> String {
+fn auth_digest(bytes: &[u8]) -> String {
     BigInt::from_signed_bytes_be(bytes).to_str_radix(16)
 }
 
@@ -832,17 +839,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn weird_hex_encoding_correct() {
+    fn auth_digest_correct() {
         assert_eq!(
-            weird_hex_encoding(&Sha1::digest("Notch")),
+            auth_digest(&Sha1::digest("Notch")),
             "4ed1f46bbe04bc756bcb17c0c7ce3e4632f06a48"
         );
         assert_eq!(
-            weird_hex_encoding(&Sha1::digest("jeb_")),
+            auth_digest(&Sha1::digest("jeb_")),
             "-7c9d5b0044c130109a5d7b5fb5c317c02b4e28c1"
         );
         assert_eq!(
-            weird_hex_encoding(&Sha1::digest("simon")),
+            auth_digest(&Sha1::digest("simon")),
             "88e16a1019277b15d58faf0541e11910eb756f6"
         );
     }
