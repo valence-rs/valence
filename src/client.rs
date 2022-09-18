@@ -78,7 +78,7 @@ impl<C: Config> Clients<C> {
         self.slab.remove(client.0).map(|c| c.state)
     }
 
-    /// Deletes all clients from the server for which `f` returns `true`.
+    /// Deletes all clients from the server for which `f` returns `false`.
     ///
     /// All clients are visited in an unspecified order.
     pub fn retain(&mut self, mut f: impl FnMut(ClientId, &mut Client<C>) -> bool) {
