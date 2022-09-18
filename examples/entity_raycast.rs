@@ -282,6 +282,22 @@ impl Config for Game {
         e.set_position([-7.0, 102.0, -6.5]);
         e.set_yaw(270.0);
         e.set_head_yaw(270.0);
+
+        // ==== Goat ==== //
+        let (_, e) = server.entities.insert(EntityKind::Goat, ());
+        e.set_world(world_id);
+        e.set_position([5.0, 103.0, -4.5]);
+        e.set_yaw(270.0);
+        e.set_head_yaw(90.0);
+
+        let (_, e) = server.entities.insert(EntityKind::Goat, ());
+        if let TrackedData::Goat(g) = e.data_mut() {
+            g.set_pose(Pose::LongJumping);
+        }
+        e.set_world(world_id);
+        e.set_position([5.0, 103.0, -3.5]);
+        e.set_yaw(270.0);
+        e.set_head_yaw(90.0);
     }
 
     fn update(&self, server: &mut Server<Self>) {
