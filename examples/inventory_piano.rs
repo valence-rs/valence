@@ -3,14 +3,12 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
 use num::Integer;
-use valence::biome::Biome;
 use valence::block::BlockState;
 use valence::chunk::{Chunk, UnloadedChunk};
 use valence::client::{handle_event_default, Client, ClientEvent, GameMode};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::{Entity, EntityId, EntityKind};
-use valence::ident::Ident;
 use valence::player_list::PlayerListId;
 use valence::protocol::packets::c2s::play::ClickContainerMode;
 use valence::protocol::packets::s2c::play::SoundCategory;
@@ -76,14 +74,6 @@ impl Config for Game {
         }]
     }
 
-    fn biomes(&self) -> Vec<Biome> {
-        vec![Biome {
-            name: ident!("valence:default_biome"),
-            grass_color: Some(0x00ff00),
-            ..Biome::default()
-        }]
-    }
-
     async fn server_list_ping(
         &self,
         _server: &SharedServer<Self>,
@@ -136,7 +126,7 @@ impl Config for Game {
     }
 
     fn update(&self, server: &mut Server<Self>) {
-        let (world_id, world) = server.worlds.iter_mut().next().unwrap();
+        let (world_id, _) = server.worlds.iter_mut().next().unwrap();
 
         let spawn_pos = [SIZE_X as f64 / 2.0, 1.0, SIZE_Z as f64 / 2.0];
 
@@ -213,13 +203,13 @@ impl Config for Game {
                         client.send_message("Done already?");
                     }
                     ClientEvent::SetSlotCreative { slot_id, .. } => {
-                        println!("{:#?}", event);
+                        client.send_message(format!("{:#?}", event));
                         // If the user does a double click, 3 notes will be played.
                         // This is not possible to fix :(
                         play_note(client, player, slot_id);
                     }
                     ClientEvent::ClickContainer { slot_id, mode, .. } => {
-                        println!("{:#?}", event);
+                        client.send_message(format!("{:#?}", event));
                         if mode != ClickContainerMode::Click {
                             // Prevent notes from being played twice if the user clicks quickly
                             continue;
@@ -240,9 +230,9 @@ fn play_note(client: &mut Client<Game>, player: &mut Entity<Game>, clicked_slot:
         let pitch = (clicked_slot - SLOT_MIN) as f32 * (PITCH_MAX - PITCH_MIN)
             / (SLOT_MAX - SLOT_MIN) as f32
             + PITCH_MIN;
-        println!("playing note with pitch: {}", pitch);
+        client.send_message(format!("playing note with pitch: {}", pitch));
         client.play_sound(
-            ident!("minecraft:block.note_block.harp"),
+            ident!("block.note_block.harp"),
             SoundCategory::Block,
             player.position(),
             10.0,
