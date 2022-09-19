@@ -13,6 +13,7 @@ use valence::player_list::PlayerListId;
 use valence::protocol::packets::c2s::play::ClickContainerMode;
 use valence::protocol::packets::s2c::play::SoundCategory;
 use valence::server::{Server, SharedServer, ShutdownResult};
+use valence::slot::SlotId;
 use valence::text::{Color, TextFormat};
 use valence::{async_trait, ident};
 
@@ -48,8 +49,8 @@ const MAX_PLAYERS: usize = 10;
 const SIZE_X: usize = 100;
 const SIZE_Z: usize = 100;
 
-const SLOT_MIN: u16 = 36;
-const SLOT_MAX: u16 = 43u16;
+const SLOT_MIN: SlotId = 36;
+const SLOT_MAX: SlotId = 43;
 const PITCH_MIN: f32 = 0.5;
 const PITCH_MAX: f32 = 1.0;
 
@@ -225,7 +226,7 @@ impl Config for Game {
     }
 }
 
-fn play_note(client: &mut Client<Game>, player: &mut Entity<Game>, clicked_slot: u16) {
+fn play_note(client: &mut Client<Game>, player: &mut Entity<Game>, clicked_slot: SlotId) {
     if (SLOT_MIN..=SLOT_MAX).contains(&clicked_slot) {
         let pitch = (clicked_slot - SLOT_MIN) as f32 * (PITCH_MAX - PITCH_MIN)
             / (SLOT_MAX - SLOT_MIN) as f32
