@@ -712,8 +712,7 @@ async fn handle_login<C: Config>(
             &username,
             &hex_hash,
             &remote_addr.ip(),
-        )
-        .to_string();
+        );
         let resp = server.0.http_client.get(url).send().await?;
 
         let status = resp.status();

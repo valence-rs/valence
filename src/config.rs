@@ -208,28 +208,9 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
         Ok(())
     }
 
-    /// Called upon client connect (if online mode is enabled) to obtain
-    /// the host address of the session server. Defaults to the official
-    /// mojang session server.
-    ///
-    /// This method is called from within the default implementation of
-    /// [`Self::session_server_url`]. If that method is overridden, this
-    /// method will not be called.
-    ///
-    /// # Default Implementation
-    ///
-    /// The official mojang session server (`sessionserver.mojang.com`)
-    /// is used.
-    fn session_server_host(&self, server: &SharedServer<Self>) -> Cow<'_, str> {
-        Cow::from("sessionserver.mojang.com")
-    }
-
     /// Called upon (every) client connect (if online mode is enabled) to obtain
     /// the full URL to use for session server requests. Defaults to
-    /// `https://<host>/session/minecraft/hasJoined?username=<username>&serverId=<auth-digest>&ip=<player-ip>`.
-    ///
-    /// If you just want to change the server host, you can override
-    /// [`Self::session_server_host`] instead.
+    /// `https://sessionserver.mojang.com/session/minecraft/hasJoined?username=<username>&serverId=<auth-digest>&ip=<player-ip>`.
     ///
     /// It is assumed, that upon successful request, a structure matching the
     /// description in the [wiki](https://wiki.vg/Protocol_Encryption#Server) was obtained.
@@ -242,14 +223,9 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
         server: &SharedServer<Self>,
         username: &str,
         auth_digest: &str,
-        server_ip: &IpAddr,
-    ) -> Cow<'_, str> {
-        let host = self.session_server_host(server);
-        let path_and_args = format!(
-            "session/minecraft/hasJoined?username={}&serverId={}&ip={}",
-            username, auth_digest, server_ip
-        );
-        Cow::from(format!("https://{}/{}", host, path_and_args))
+        player_ip: &IpAddr,
+    ) -> String {
+        format!("https://sessionserver.mojang.com/session/minecraft/hasJoined?username={username}&serverId={auth_digest}&ip={player_ip}")
     }
 
     /// Called after the server is created, but prior to accepting connections
