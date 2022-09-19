@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use serde_nbt::Compound;
 use vek::Vec3;
 
 use super::Client;
@@ -7,11 +8,13 @@ use crate::block_pos::BlockPos;
 use crate::config::Config;
 use crate::entity::types::Pose;
 use crate::entity::{Entity, EntityEvent, EntityId, TrackedData};
+use crate::protocol::packets::c2s::play::ClickContainerMode;
 pub use crate::protocol::packets::c2s::play::{
     BlockFace, ChatMode, DisplayedSkinParts, Hand, MainHand, ResourcePackC2s as ResourcePackStatus,
 };
 pub use crate::protocol::packets::s2c::play::GameMode;
 use crate::protocol::VarInt;
+use crate::slot::{Slot, SlotId};
 
 /// Represents an action performed by a client.
 ///
@@ -129,6 +132,49 @@ pub enum ClientEvent {
         sequence: VarInt,
     },
     ResourcePackStatusChanged(ResourcePackStatus),
+    /// The client closed a screen. This occurs when the client closes their
+    /// inventory, closes a chest inventory, etc.
+    CloseScreen {
+        window_id: u8,
+    },
+    /// The client is attempting to drop 1 of the currently held item.
+    DropItem,
+    /// The client is attempting to drop a stack of items.
+    ///
+    /// If the client is in creative mode, the items come from the void, so it
+    /// is safe to trust the contents of this event. Otherwise, you may need to
+    /// do some validation to make sure items are actually coming from the
+    /// user's inventory.
+    DropItemStack {
+        // TODO: maybe we could add `from_slot_id` to make validation easier
+        item_id: VarInt,
+        item_count: u8,
+        nbt: Option<Compound>,
+    },
+    /// The client is in creative mode, and is trying to set it's inventory slot
+    /// to a value.
+    SetSlotCreative {
+        /// The slot number that the client is trying to set.
+        slot_id: SlotId,
+        /// The contents of the slot.
+        slot: Slot,
+    },
+    /// The client is in survival mode, and is trying to modify an inventory.
+    ClickContainer {
+        window_id: u8,
+        state_id: VarInt,
+        /// The slot that was clicked
+        slot_id: SlotId,
+        /// The type of click that the user performed
+        mode: ClickContainerMode,
+        /// A list of slot ids and what their contents should be set to.
+        ///
+        /// It's not safe to blindly trust the contents of this. Servers need to
+        /// validate it if they want to prevent item duping.
+        slot_changes: Vec<(SlotId, Slot)>,
+        /// The item that is now being carried by the user's cursor
+        carried_item: Slot,
+    },
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -287,6 +333,11 @@ pub fn handle_event_default<C: Config>(
         ClientEvent::Digging { .. } => {}
         ClientEvent::InteractWithBlock { .. } => {}
         ClientEvent::ResourcePackStatusChanged(_) => {}
+        ClientEvent::CloseScreen { .. } => {}
+        ClientEvent::DropItem => {}
+        ClientEvent::DropItemStack { .. } => {}
+        ClientEvent::SetSlotCreative { .. } => {}
+        ClientEvent::ClickContainer { .. } => {}
     }
 
     entity.set_world(client.world());

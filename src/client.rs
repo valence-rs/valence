@@ -40,6 +40,7 @@ use crate::protocol::packets::s2c::play::{
 use crate::protocol::{BoundedInt, BoundedString, ByteAngle, NbtBridge, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
 use crate::slab_versioned::{Key, VersionedSlab};
+use crate::slot::Slot;
 use crate::text::Text;
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::world::{WorldId, Worlds};
@@ -232,6 +233,9 @@ pub struct Client<C: Config> {
     /// The data for the client's own player entity.
     player_data: Player,
     entity_events: Vec<entity::EntityEvent>,
+    /// The item currently being held by the client's cursor in an inventory
+    /// screen. Does not work for creative mode.
+    cursor_held_item: Slot,
 }
 
 #[bitfield(u16)]
@@ -301,6 +305,7 @@ impl<C: Config> Client<C> {
                 .with_created_this_tick(true),
             player_data: Player::new(),
             entity_events: Vec::new(),
+            cursor_held_item: Slot::Empty,
         }
     }
 
@@ -769,8 +774,39 @@ impl<C: Config> Client<C> {
             }
             C2sPlayPacket::CommandSuggestionsRequest(_) => {}
             C2sPlayPacket::ClickContainerButton(_) => {}
-            C2sPlayPacket::ClickContainer(_) => {}
-            C2sPlayPacket::CloseContainerC2s(_) => {}
+            C2sPlayPacket::ClickContainer(p) => {
+                if p.slot_idx == -999 {
+                    // client is trying to drop the currently held stack
+                    let held = std::mem::replace(&mut self.cursor_held_item, Slot::Empty);
+                    match held {
+                        Slot::Empty => {}
+                        Slot::Present {
+                            item_id,
+                            item_count,
+                            nbt,
+                        } => self.events.push_back(ClientEvent::DropItemStack {
+                            item_id,
+                            item_count,
+                            nbt,
+                        }),
+                    }
+                } else {
+                    self.cursor_held_item = p.carried_item.clone();
+                    self.events.push_back(ClientEvent::ClickContainer {
+                        window_id: p.window_id,
+                        state_id: p.state_id,
+                        slot_id: p.slot_idx,
+                        mode: p.mode,
+                        slot_changes: p.slots,
+                        carried_item: p.carried_item,
+                    });
+                }
+            }
+            C2sPlayPacket::CloseContainerC2s(c) => {
+                self.events.push_back(ClientEvent::CloseScreen {
+                    window_id: c.window_id,
+                })
+            }
             C2sPlayPacket::PluginMessageC2s(_) => {}
             C2sPlayPacket::EditBook(_) => {}
             C2sPlayPacket::QueryEntityTag(_) => {}
@@ -895,7 +931,7 @@ impl<C: Config> Client<C> {
                         face: p.face,
                     },
                     play::DiggingStatus::DropItemStack => return,
-                    play::DiggingStatus::DropItem => return,
+                    play::DiggingStatus::DropItem => ClientEvent::DropItem,
                     play::DiggingStatus::ShootArrowOrFinishEating => return,
                     play::DiggingStatus::SwapItemInHand => return,
                 });
@@ -929,7 +965,30 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::SetHeldItemS2c(_) => {}
             C2sPlayPacket::ProgramCommandBlock(_) => {}
             C2sPlayPacket::ProgramCommandBlockMinecart(_) => {}
-            C2sPlayPacket::SetCreativeModeSlot(_) => {}
+            C2sPlayPacket::SetCreativeModeSlot(e) => {
+                if e.slot == -1 {
+                    // The client is trying to drop a stack of items
+                    match e.clicked_item {
+                        Slot::Empty => log::warn!(
+                            "Invalid packet, creative client tried to drop a stack of nothing."
+                        ),
+                        Slot::Present {
+                            item_id,
+                            item_count,
+                            nbt,
+                        } => self.events.push_back(ClientEvent::DropItemStack {
+                            item_id,
+                            item_count,
+                            nbt,
+                        }),
+                    }
+                } else {
+                    self.events.push_back(ClientEvent::SetSlotCreative {
+                        slot_id: e.slot,
+                        slot: e.clicked_item,
+                    })
+                }
+            }
             C2sPlayPacket::ProgramJigsawBlock(_) => {}
             C2sPlayPacket::ProgramStructureBlock(_) => {}
             C2sPlayPacket::UpdateSign(_) => {}
