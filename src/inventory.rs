@@ -1,0 +1,182 @@
+use std::ops::Range;
+
+use crate::protocol::{Slot, SlotId};
+
+pub trait Inventory {
+    fn get_slot(&self, slot_id: SlotId) -> &Slot;
+    fn set_slot(&mut self, slot_id: SlotId, slot: Slot);
+    fn len(&self) -> usize;
+
+    // TODO: `entry()` style api
+}
+
+pub trait CraftingInventory {
+    fn craft_result_slot() -> SlotId;
+    fn craft_table_slots() -> Range<SlotId>;
+}
+
+/// Represents a player's Inventory.
+#[derive(Debug, Clone)]
+struct PlayerInventory {
+    slots: [Slot; 46],
+}
+
+impl PlayerInventory {
+    fn general_slots() -> Range<SlotId> {
+        9..45
+    }
+}
+
+impl Default for PlayerInventory {
+    fn default() -> Self {
+        Self {
+            // Can't do the shorthand because Slot is not Copy.
+            slots: [
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+                Slot::Empty,
+            ],
+        }
+    }
+}
+
+impl Inventory for PlayerInventory {
+    fn get_slot(&self, slot_id: SlotId) -> &Slot {
+        if slot_id < 0 {
+            // TODO: dont panic
+            panic!("invalid slot id")
+        }
+        &self.slots[slot_id as usize]
+    }
+
+    fn set_slot(&mut self, slot_id: SlotId, slot: Slot) {
+        if slot_id < 0 {
+            // TODO: dont panic
+            panic!("invalid slot id")
+        }
+        self.slots[slot_id as usize] = slot;
+    }
+
+    fn len(&self) -> usize {
+        self.slots.len()
+    }
+}
+
+/// Represents what the player sees when they open an object's Inventory.
+///
+/// This exists because when an object inventory screen is being shown to the
+/// player, it also shows part of the player's inventory so they can move items
+/// between the inventories.
+#[derive(Debug)]
+struct WindowInventory<T>
+where
+    T: Inventory,
+{
+    object_inventory: T,
+    player_inventory: PlayerInventory,
+}
+
+impl<T: Inventory> WindowInventory<T> {
+    fn is_in_object(&self, slot_id: SlotId) -> bool {
+        (slot_id as usize) < self.object_inventory.len()
+    }
+
+    fn to_player_slot(&self, slot_id: SlotId) -> SlotId {
+        let first_general_slot = PlayerInventory::general_slots().start;
+        let player_slot = slot_id - self.object_inventory.len() as SlotId + first_general_slot;
+        player_slot
+    }
+}
+
+impl<T: Inventory> Inventory for WindowInventory<T> {
+    fn get_slot(&self, slot_id: SlotId) -> &Slot {
+        if slot_id < 0 {
+            // TODO: dont panic
+            panic!("invalid slot id")
+        }
+
+        if self.is_in_object(slot_id) {
+            self.object_inventory.get_slot(slot_id)
+        } else {
+            self.player_inventory.get_slot(self.to_player_slot(slot_id))
+        }
+    }
+
+    fn set_slot(&mut self, slot_id: SlotId, slot: Slot) {
+        if slot_id < 0 {
+            // TODO: dont panic
+            panic!("invalid slot id")
+        }
+
+        if self.is_in_object(slot_id) {
+            self.object_inventory.set_slot(slot_id, slot)
+        } else {
+            self.player_inventory
+                .set_slot(self.to_player_slot(slot_id), slot)
+        }
+    }
+
+    fn len(&self) -> usize {
+        self.object_inventory.len() + PlayerInventory::general_slots().len()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::{itemstack::ItemStack, protocol::VarInt};
+
+    fn test_get_set_slots() {
+        let mut inv = PlayerInventory::default();
+        let slot = Slot::Present(ItemStack {
+            item_id: VarInt(7),
+            item_count: 12,
+            nbt: None,
+        });
+        inv.set_slot(9, slot.clone());
+        assert_eq!(*inv.get_slot(9), slot);
+    }
+}
