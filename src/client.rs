@@ -37,9 +37,10 @@ use crate::protocol::packets::s2c::play::{
     TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
     UpdateEntityPositionAndRotation, UpdateEntityRotation,
 };
-use crate::protocol::{BoundedInt, BoundedString, ByteAngle, NbtBridge, RawBytes, Slot, VarInt};
+use crate::protocol::{BoundedInt, BoundedString, ByteAngle, NbtBridge, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
 use crate::slab_versioned::{Key, VersionedSlab};
+use crate::slot::Slot;
 use crate::text::Text;
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::world::{WorldId, Worlds};
@@ -779,8 +780,8 @@ impl<C: Config> Client<C> {
                     let held = self.cursor_held_item.clone();
                     self.cursor_held_item = Slot::Empty;
                     match held {
-                        crate::protocol::Slot::Empty => {}
-                        crate::protocol::Slot::Present {
+                        Slot::Empty => {}
+                        Slot::Present {
                             item_id,
                             item_count,
                             nbt,
@@ -795,13 +796,9 @@ impl<C: Config> Client<C> {
                     self.events.push_back(ClientEvent::ClickContainer {
                         window_id: p.window_id,
                         state_id: p.state_id,
-                        slot_id: p.slot_idx as u16,
+                        slot_id: p.slot_idx,
                         mode: p.mode,
-                        slot_changes: p
-                            .slots
-                            .into_iter()
-                            .map(|(slot_id, slot)| (slot_id as u16, slot))
-                            .collect(),
+                        slot_changes: p.slots,
                         carried_item: p.carried_item,
                     });
                 }
@@ -973,10 +970,10 @@ impl<C: Config> Client<C> {
                 if e.slot == -1 {
                     // The client is trying to drop a stack of items
                     match e.clicked_item {
-                        crate::protocol::Slot::Empty => log::warn!(
+                        Slot::Empty => log::warn!(
                             "Invalid packet, creative client tried to drop a stack of nothing."
                         ),
-                        crate::protocol::Slot::Present {
+                        Slot::Present {
                             item_id,
                             item_count,
                             nbt,
@@ -988,7 +985,7 @@ impl<C: Config> Client<C> {
                     }
                 } else {
                     self.events.push_back(ClientEvent::SetSlotCreative {
-                        slot_id: e.slot as u16,
+                        slot_id: e.slot,
                         slot: e.clicked_item,
                     })
                 }

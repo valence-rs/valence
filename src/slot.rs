@@ -5,6 +5,8 @@ use byteorder::ReadBytesExt;
 use crate::nbt::Compound;
 use crate::protocol::{Decode, Encode, VarInt};
 
+pub type SlotId = i16;
+
 /// Represents a slot in an inventory.
 #[derive(Clone, Default, Debug)]
 pub enum Slot {

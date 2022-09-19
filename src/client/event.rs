@@ -13,7 +13,8 @@ pub use crate::protocol::packets::c2s::play::{
     BlockFace, ChatMode, DisplayedSkinParts, Hand, MainHand, ResourcePackC2s as ResourcePackStatus,
 };
 pub use crate::protocol::packets::s2c::play::GameMode;
-use crate::protocol::{Slot, VarInt};
+use crate::protocol::VarInt;
+use crate::slot::{Slot, SlotId};
 
 /// Represents an action performed by a client.
 ///
@@ -154,7 +155,7 @@ pub enum ClientEvent {
     /// to a value.
     SetSlotCreative {
         /// The slot number that the client is trying to set.
-        slot_id: u16,
+        slot_id: SlotId,
         /// The contents of the slot.
         slot: Slot,
     },
@@ -163,14 +164,14 @@ pub enum ClientEvent {
         window_id: u8,
         state_id: VarInt,
         /// The slot that was clicked
-        slot_id: u16,
+        slot_id: SlotId,
         /// The type of click that the user performed
         mode: ClickContainerMode,
         /// A list of slot ids and what their contents should be set to.
         ///
         /// It's not safe to blindly trust the contents of this. Servers need to
         /// validate it if they want to prevent item duping.
-        slot_changes: Vec<(u16, Slot)>,
+        slot_changes: Vec<(SlotId, Slot)>,
         /// The item that is now being carried by the user's cursor
         carried_item: Slot,
     },
