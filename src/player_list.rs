@@ -175,7 +175,7 @@ impl<C: Config> PlayerList<C> {
         }
     }
 
-    /// Removes all entries from the player list for which `f` returns `true`.
+    /// Removes all entries from the player list for which `f` returns `false`.
     ///
     /// All entries are visited in an unspecified order.
     pub fn retain(&mut self, mut f: impl FnMut(Uuid, &mut PlayerListEntry) -> bool) {

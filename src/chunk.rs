@@ -114,7 +114,7 @@ impl<C: Config> Chunks<C> {
         self.chunks.get_mut(&pos.into())
     }
 
-    /// Removes all chunks for which `f` returns `true`.
+    /// Removes all chunks for which `f` returns `false`.
     ///
     /// All chunks are visited in an unspecified order.
     pub fn retain(&mut self, mut f: impl FnMut(ChunkPos, &mut LoadedChunk<C>) -> bool) {

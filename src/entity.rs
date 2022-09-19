@@ -121,7 +121,7 @@ impl<C: Config> Entities<C> {
         })
     }
 
-    /// Removes all entities from the server for which `f` returns `true`.
+    /// Removes all entities from the server for which `f` returns `false`.
     ///
     /// All entities are visited in an unspecified order.
     pub fn retain(&mut self, mut f: impl FnMut(EntityId, &mut Entity<C>) -> bool) {
