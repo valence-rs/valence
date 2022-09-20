@@ -1,7 +1,7 @@
 //! Configuration for the server.
 
 use std::borrow::Cow;
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::panic::{RefUnwindSafe, UnwindSafe};
 
 use async_trait::async_trait;
@@ -206,6 +206,26 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
     /// [`Clients`]: crate::client::Clients
     async fn login(&self, shared: &SharedServer<Self>, ncd: &NewClientData) -> Result<(), Text> {
         Ok(())
+    }
+
+    /// Called upon (every) client connect (if online mode is enabled) to obtain
+    /// the full URL to use for session server requests. Defaults to
+    /// `https://sessionserver.mojang.com/session/minecraft/hasJoined?username=<username>&serverId=<auth-digest>&ip=<player-ip>`.
+    ///
+    /// It is assumed, that upon successful request, a structure matching the
+    /// description in the [wiki](https://wiki.vg/Protocol_Encryption#Server) was obtained.
+    /// Providing a URL that does not return such a structure will result in a
+    /// disconnect for every client that connects.
+    ///
+    /// The arguments are described in the linked wiki article.
+    fn format_session_server_url(
+        &self,
+        server: &SharedServer<Self>,
+        username: &str,
+        auth_digest: &str,
+        player_ip: &IpAddr,
+    ) -> String {
+        format!("https://sessionserver.mojang.com/session/minecraft/hasJoined?username={username}&serverId={auth_digest}&ip={player_ip}")
     }
 
     /// Called after the server is created, but prior to accepting connections
