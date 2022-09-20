@@ -1224,18 +1224,13 @@ impl<C: Config> Client<C> {
 
         let center = ChunkPos::at(self.position.x, self.position.z);
 
-        // Send the update view position packet if the client changes the chunk section
-        // they're in.
-        {
-            let old_section = self.old_position.map(|n| (n / 16.0).floor() as i32);
-            let new_section = self.position.map(|n| (n / 16.0).floor() as i32);
-
-            if old_section != new_section {
-                self.send_packet(SetCenterChunk {
-                    chunk_x: VarInt(new_section.x),
-                    chunk_z: VarInt(new_section.z),
-                })
-            }
+        // Send the update view position packet if the client changes the chunk they're
+        // in.
+        if ChunkPos::at(self.old_position.x, self.old_position.z) != center {
+            self.send_packet(SetCenterChunk {
+                chunk_x: VarInt(center.x),
+                chunk_z: VarInt(center.z),
+            });
         }
 
         let dimension = shared.dimension(world.meta.dimension());
