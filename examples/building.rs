@@ -10,8 +10,10 @@ use valence::client::{handle_event_default, ClientEvent, DiggingStatus, GameMode
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::{EntityId, EntityKind};
+use valence::inventory::Inventory;
 use valence::player_list::PlayerListId;
 use valence::server::{Server, SharedServer, ShutdownResult};
+use valence::slot::Slot;
 use valence::text::{Color, TextFormat};
 use valence::{async_trait, ident};
 
@@ -218,8 +220,19 @@ impl Config for Game {
                     } => {
                         if hand == Hand::Main {
                             let place_at = location.get_in_direction(face);
-                            // TODO: get block from player's inventory slot
-                            world.chunks.set_block_state(place_at, BlockState::DIRT);
+                            if let Slot::Present {
+                                item_id,
+                                item_count,
+                                nbt,
+                            } = client.held_item()
+                            {
+                                // FIXME: this itemid to block state conversion does not work as you
+                                // would expect. we need some utilities for this
+                                world.chunks.set_block_state(
+                                    place_at,
+                                    BlockState::from_raw(item_id.0 as u16).unwrap(),
+                                );
+                            }
                         }
                     }
                     _ => {}

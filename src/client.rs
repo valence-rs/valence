@@ -21,7 +21,7 @@ use crate::entity::{
     self, velocity_to_packet_units, Entities, EntityId, EntityKind, StatusOrAnimation,
 };
 use crate::ident::Ident;
-use crate::inventory::PlayerInventory;
+use crate::inventory::{Inventory, PlayerInventory};
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::c2s::play::{self, C2sPlayPacket, InteractKind, PlayerCommandId};
@@ -235,6 +235,7 @@ pub struct Client<C: Config> {
     /// The item currently being held by the client's cursor in an inventory
     /// screen. Does not work for creative mode.
     cursor_held_item: Slot,
+    selected_hotbar_slot: SlotId,
 }
 
 #[bitfield(u16)]
@@ -306,6 +307,7 @@ impl<C: Config> Client<C> {
             player_data: Player::new(),
             entity_events: Vec::new(),
             cursor_held_item: None,
+            selected_hotbar_slot: 36,
         }
     }
 
@@ -727,6 +729,10 @@ impl<C: Config> Client<C> {
         self.settings.as_ref()
     }
 
+    pub fn held_item(&self) -> &Slot {
+        self.inventory.get_slot(self.selected_hotbar_slot)
+    }
+
     /// Disconnects this client from the server with the provided reason. This
     /// has no effect if the client is already disconnected.
     ///
@@ -1003,7 +1009,9 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::SeenAdvancements(_) => {}
             C2sPlayPacket::SelectTrade(_) => {}
             C2sPlayPacket::SetBeaconEffect(_) => {}
-            C2sPlayPacket::SetHeldItemS2c(_) => {}
+            C2sPlayPacket::SetHeldItemS2c(e) => {
+                self.selected_hotbar_slot = PlayerInventory::hotbar_to_slot(e.slot.0).unwrap();
+            }
             C2sPlayPacket::ProgramCommandBlock(_) => {}
             C2sPlayPacket::ProgramCommandBlockMinecart(_) => {}
             C2sPlayPacket::SetCreativeModeSlot(e) => {

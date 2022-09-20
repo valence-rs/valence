@@ -25,15 +25,15 @@ impl PlayerInventory {
     /// General slots are the slots that can hold all items, including the
     /// hotbar, excluding offhand. These slots are shown when the player is
     /// looking at another inventory.
-    fn general_slots() -> Range<SlotId> {
+    pub fn general_slots() -> Range<SlotId> {
         9..45
     }
 
-    fn hotbar_slots() -> Range<SlotId> {
+    pub fn hotbar_slots() -> Range<SlotId> {
         36..45
     }
 
-    fn hotbar_to_slot(hotbar_slot: i16) -> Option<SlotId> {
+    pub fn hotbar_to_slot(hotbar_slot: i16) -> Option<SlotId> {
         if !(0..=8).contains(&hotbar_slot) {
             return None;
         }
