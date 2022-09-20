@@ -10,7 +10,6 @@ use valence::client::{handle_event_default, ClientEvent, DiggingStatus, GameMode
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::{EntityId, EntityKind};
-use valence::inventory::Inventory;
 use valence::player_list::PlayerListId;
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::slot::Slot;
@@ -222,8 +221,8 @@ impl Config for Game {
                             let place_at = location.get_in_direction(face);
                             if let Slot::Present {
                                 item_id,
-                                item_count,
-                                nbt,
+                                item_count: _,
+                                nbt: _,
                             } = client.held_item()
                             {
                                 // FIXME: this itemid to block state conversion does not work as you

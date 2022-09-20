@@ -36,7 +36,7 @@ use crate::protocol::packets::s2c::play::{
     TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
     UpdateEntityPositionAndRotation, UpdateEntityRotation, UpdateTime,
 };
-use crate::protocol::{BoundedInt, BoundedString, ByteAngle, RawBytes, Slot, VarInt};
+use crate::protocol::{BoundedInt, BoundedString, ByteAngle, RawBytes, Slot, SlotId, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::text::Text;

@@ -141,8 +141,7 @@ impl<T: Inventory> WindowInventory<T> {
 
     fn to_player_slot(&self, slot_id: SlotId) -> SlotId {
         let first_general_slot = PlayerInventory::general_slots().start;
-        let player_slot = slot_id - self.object_inventory.len() as SlotId + first_general_slot;
-        player_slot
+        slot_id - self.object_inventory.len() as SlotId + first_general_slot
     }
 }
 
@@ -182,7 +181,8 @@ impl<T: Inventory> Inventory for WindowInventory<T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{itemstack::ItemStack, protocol::VarInt};
+    use crate::itemstack::ItemStack;
+    use crate::protocol::VarInt;
 
     #[test]
     fn test_get_set_slots() {
