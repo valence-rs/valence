@@ -21,6 +21,7 @@ use crate::entity::{
     self, velocity_to_packet_units, Entities, EntityId, EntityKind, StatusOrAnimation,
 };
 use crate::ident::Ident;
+use crate::inventory::PlayerInventory;
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::c2s::play::{self, C2sPlayPacket, InteractKind, PlayerCommandId};
@@ -226,6 +227,7 @@ pub struct Client<C: Config> {
     resource_pack_to_send: Option<ResourcePackS2c>,
     attack_speed: f64,
     movement_speed: f64,
+    pub inventory: PlayerInventory,
     bits: ClientBits,
     /// The data for the client's own player entity.
     player_data: Player,
@@ -296,6 +298,7 @@ impl<C: Config> Client<C> {
             resource_pack_to_send: None,
             attack_speed: 4.0,
             movement_speed: 0.7,
+            inventory: PlayerInventory::default(),
             bits: ClientBits::new()
                 .with_modified_spawn_position(true)
                 .with_got_keepalive(true)
