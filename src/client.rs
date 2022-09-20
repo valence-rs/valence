@@ -35,7 +35,7 @@ use crate::protocol::packets::s2c::play::{
     SetEntityVelocity, SetExperience, SetHeadRotation, SetHealth, SetRenderDistance,
     SetSubtitleText, SetTitleText, SoundCategory, SynchronizePlayerPosition, SystemChatMessage,
     TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
-    UpdateEntityPositionAndRotation, UpdateEntityRotation,
+    UpdateEntityPositionAndRotation, UpdateEntityRotation, UpdateTime,
 };
 use crate::protocol::{BoundedInt, BoundedString, ByteAngle, NbtBridge, RawBytes, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
@@ -671,6 +671,15 @@ impl<C: Config> Client<C> {
             forced,
             prompt_message: prompt_message.into(),
         });
+    }
+
+    /// Sets the world_age and the current ingame time.
+    /// 
+    /// To stop the time from passing, the time_of_day parameter must to be
+    /// called with a negativ value. The client will stop the time at the
+    /// absolut value.
+    pub fn set_time(&mut self, world_age: i64, time_of_day: i64) {
+        self.send_packet(UpdateTime { world_age, time_of_day});
     }
 
     /// Gets the client's current settings.
