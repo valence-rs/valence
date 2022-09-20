@@ -222,7 +222,7 @@ pub struct Client<C: Config> {
     new_game_mode: GameMode,
     old_game_mode: GameMode,
     settings: Option<Settings>,
-    dug_blocks: Vec<i32>,
+    dug_block_sequence: i32,
     /// Should be sent after login packet.
     msgs_to_send: Vec<Text>,
     bar_to_send: Option<Text>,
@@ -293,7 +293,7 @@ impl<C: Config> Client<C> {
             new_game_mode: GameMode::Survival,
             old_game_mode: GameMode::Survival,
             settings: None,
-            dug_blocks: Vec::new(),
+            dug_block_sequence: 0,
             msgs_to_send: Vec::new(),
             bar_to_send: None,
             resource_pack_to_send: None,
@@ -911,22 +911,22 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::PlayerAbilitiesC2s(_) => {}
             C2sPlayPacket::PlayerAction(p) => {
                 if p.sequence.0 != 0 {
-                    self.dug_blocks.push(p.sequence.0);
+                    self.dug_block_sequence = p.sequence.0;
                 }
 
                 self.events.push_back(match p.status {
                     play::DiggingStatus::StartedDigging => ClientEvent::Digging {
-                        status: event::DiggingStatus::Start,
+                        status: DiggingStatus::Start,
                         position: p.location,
                         face: p.face,
                     },
                     play::DiggingStatus::CancelledDigging => ClientEvent::Digging {
-                        status: event::DiggingStatus::Cancel,
+                        status: DiggingStatus::Cancel,
                         position: p.location,
                         face: p.face,
                     },
                     play::DiggingStatus::FinishedDigging => ClientEvent::Digging {
-                        status: event::DiggingStatus::Finish,
+                        status: DiggingStatus::Finish,
                         position: p.location,
                         face: p.face,
                     },
@@ -1279,13 +1279,14 @@ impl<C: Config> Client<C> {
         }
 
         // Acknowledge broken blocks.
-        for seq in self.dug_blocks.drain(..) {
+        if self.dug_block_sequence != 0 {
             send_packet(
                 &mut self.send,
                 AcknowledgeBlockChange {
-                    sequence: VarInt(seq),
+                    sequence: VarInt(self.dug_block_sequence),
                 },
-            )
+            );
+            self.dug_block_sequence = 0;
         }
 
         // Teleport the player.
