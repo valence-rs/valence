@@ -17,13 +17,28 @@ pub trait CraftingInventory {
 
 /// Represents a player's Inventory.
 #[derive(Debug, Clone)]
-struct PlayerInventory {
-    slots: [Slot; 46],
+pub struct PlayerInventory {
+    pub(crate) slots: [Slot; 46],
 }
 
 impl PlayerInventory {
+    /// General slots are the slots that can hold all items, including the
+    /// hotbar, excluding offhand. These slots are shown when the player is
+    /// looking at another inventory.
     fn general_slots() -> Range<SlotId> {
         9..45
+    }
+
+    fn hotbar_slots() -> Range<SlotId> {
+        36..45
+    }
+
+    fn hotbar_to_slot(hotbar_slot: i16) -> Option<SlotId> {
+        if !(0..=8).contains(&hotbar_slot) {
+            return None;
+        }
+
+        Some(Self::hotbar_slots().start + hotbar_slot)
     }
 }
 
@@ -111,7 +126,7 @@ impl Inventory for PlayerInventory {
 /// player, it also shows part of the player's inventory so they can move items
 /// between the inventories.
 #[derive(Debug)]
-struct WindowInventory<T>
+pub struct WindowInventory<T>
 where
     T: Inventory,
 {
@@ -169,6 +184,7 @@ mod test {
     use super::*;
     use crate::{itemstack::ItemStack, protocol::VarInt};
 
+    #[test]
     fn test_get_set_slots() {
         let mut inv = PlayerInventory::default();
         let slot = Slot::Present(ItemStack {
