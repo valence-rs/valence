@@ -54,9 +54,9 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
     ///
     /// # Default Implementation
     ///
-    /// Returns `127.0.0.1:25565`.
+    /// Returns `0.0.0.0:25565` to listen on every available network interface.
     fn address(&self) -> SocketAddr {
-        SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 25565).into()
+        SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 25565).into()
     }
 
     /// Called once at startup to get the tick rate, which is the number of game
