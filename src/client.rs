@@ -674,11 +674,14 @@ impl<C: Config> Client<C> {
     }
 
     /// Sets the world_age and the current in-game time.
-    /// 
+    ///
     /// To stop time from passing, the `time_of_day` parameter must be
     /// negative. The client stops the time at the absolute value.
     pub fn set_time(&mut self, world_age: i64, time_of_day: i64) {
-        self.send_packet(UpdateTime { world_age, time_of_day});
+        self.send_packet(UpdateTime {
+            world_age,
+            time_of_day,
+        });
     }
 
     /// Gets the client's current settings.
