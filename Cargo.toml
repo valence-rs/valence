@@ -36,7 +36,7 @@ rsa = "0.6.1"
 rsa-der = "0.3.0"
 serde = { version = "1.0.145", features = ["derive"] }
 serde_json = "1.0.85"
-serde_nbt = "0.1.1"
+valence_nbt = "0.1.2"
 sha1 = "0.10.5"
 sha2 = "0.10.6"
 thiserror = "1.0.35"

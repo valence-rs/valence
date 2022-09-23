@@ -16,6 +16,7 @@ use std::iter::FusedIterator;
 use bitvec::vec::BitVec;
 use num::Integer;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
+use valence_nbt::compound;
 
 use crate::biome::BiomeId;
 use crate::block::BlockState;
@@ -24,9 +25,9 @@ pub use crate::chunk_pos::ChunkPos;
 use crate::config::Config;
 use crate::dimension::DimensionId;
 use crate::protocol::packets::s2c::play::{
-    BlockUpdate, ChunkDataAndUpdateLight, ChunkDataHeightmaps, S2cPlayPacket, UpdateSectionBlocks,
+    BlockUpdate, ChunkDataAndUpdateLight, S2cPlayPacket, UpdateSectionBlocks,
 };
-use crate::protocol::{Encode, NbtBridge, VarInt, VarLong};
+use crate::protocol::{Encode, VarInt, VarLong};
 use crate::server::SharedServer;
 
 /// A container for all [`LoadedChunk`]s in a [`World`](crate::world::World).
@@ -478,9 +479,9 @@ impl<C: Config> LoadedChunk<C> {
         ChunkDataAndUpdateLight {
             chunk_x: pos.x,
             chunk_z: pos.z,
-            heightmaps: NbtBridge(ChunkDataHeightmaps {
-                motion_blocking: self.heightmap.clone(),
-            }),
+            heightmaps: compound! {
+                "MOTION_BLOCKING" => self.heightmap.clone(),
+            },
             blocks_and_biomes,
             block_entities: Vec::new(), // TODO
             trust_edges: true,

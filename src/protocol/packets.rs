@@ -20,8 +20,7 @@ use crate::block_pos::BlockPos;
 use crate::ident::Ident;
 use crate::nbt::Compound;
 use crate::protocol::{
-    BoundedArray, BoundedInt, BoundedString, ByteAngle, Decode, Encode, NbtBridge, RawBytes,
-    VarInt, VarLong,
+    BoundedArray, BoundedInt, BoundedString, ByteAngle, Decode, Encode, RawBytes, VarInt, VarLong,
 };
 use crate::slot::Slot;
 use crate::text::Text;
