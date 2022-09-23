@@ -1,5 +1,8 @@
 //! Biome configuration and identification.
 
+use std::collections::HashSet;
+
+use anyhow::ensure;
 use valence_nbt::{compound, Compound};
 
 use crate::ident;
@@ -134,6 +137,27 @@ impl Biome {
 
         reg
     }
+}
+
+pub(crate) fn validate_biomes(biomes: &[Biome]) -> anyhow::Result<()> {
+    ensure!(!biomes.is_empty(), "at least one biome must be present");
+
+    ensure!(
+        biomes.len() <= u16::MAX as _,
+        "more than u16::MAX biomes present"
+    );
+
+    let mut names = HashSet::new();
+
+    for biome in biomes {
+        ensure!(
+            names.insert(biome.name.clone()),
+            "biome \"{}\" already exists",
+            biome.name
+        );
+    }
+
+    Ok(())
 }
 
 impl Default for Biome {

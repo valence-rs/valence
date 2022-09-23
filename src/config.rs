@@ -165,7 +165,7 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
     ///
     /// # Default Implementation
     ///
-    /// Returns `vec![Dimension::default()]`.
+    /// Returns `vec![Biome::default()]`.
     fn biomes(&self) -> Vec<Biome> {
         vec![Biome::default()]
     }

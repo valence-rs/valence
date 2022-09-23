@@ -1,5 +1,6 @@
 //! Dimension configuration and identification.
 
+use anyhow::ensure;
 use valence_nbt::{compound, Compound};
 
 use crate::ident::Ident;
@@ -115,6 +116,46 @@ impl Dimension {
 
         item
     }
+}
+
+pub(crate) fn validate_dimensions(dimensions: &[Dimension]) -> anyhow::Result<()> {
+    ensure!(
+        !dimensions.is_empty(),
+        "at least one dimension must be present"
+    );
+
+    ensure!(
+        dimensions.len() <= u16::MAX as usize,
+        "more than u16::MAX dimensions present"
+    );
+
+    for (i, dim) in dimensions.iter().enumerate() {
+        ensure!(
+            dim.min_y % 16 == 0 && (-2032..=2016).contains(&dim.min_y),
+            "invalid min_y in dimension #{i}",
+        );
+
+        ensure!(
+            dim.height % 16 == 0
+                && (0..=4064).contains(&dim.height)
+                && dim.min_y.saturating_add(dim.height) <= 2032,
+            "invalid height in dimension #{i}",
+        );
+
+        ensure!(
+            (0.0..=1.0).contains(&dim.ambient_light),
+            "ambient_light is out of range in dimension #{i}",
+        );
+
+        if let Some(fixed_time) = dim.fixed_time {
+            ensure!(
+                (0..=24_000).contains(&fixed_time),
+                "fixed_time is out of range in dimension #{i}",
+            );
+        }
+    }
+
+    Ok(())
 }
 
 impl Default for Dimension {

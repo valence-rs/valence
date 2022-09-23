@@ -10,10 +10,8 @@ pub use event::*;
 use flume::{Receiver, Sender, TrySendError};
 use rayon::iter::ParallelIterator;
 use uuid::Uuid;
-use valence_nbt::{compound, Compound, List};
 use vek::Vec3;
 
-use crate::biome::Biome;
 use crate::block_pos::BlockPos;
 use crate::chunk_pos::ChunkPos;
 use crate::config::Config;
@@ -1069,7 +1067,7 @@ impl<C: Config> Client<C> {
                 gamemode: self.new_game_mode,
                 previous_gamemode: self.old_game_mode,
                 dimension_names,
-                registry_codec: make_registry_codec(shared),
+                registry_codec: shared.registry_codec().clone(),
                 dimension_type_name: world.meta.dimension().dimension_type_name(),
                 dimension_name: world.meta.dimension().dimension_name(),
                 hashed_seed: 0,
@@ -1534,43 +1532,5 @@ fn send_entity_events(send_opt: &mut SendOpt, entity_id: i32, events: &[entity::
                 },
             ),
         }
-    }
-}
-
-fn make_registry_codec<C: Config>(shared: &SharedServer<C>) -> Compound {
-    compound! {
-        ident!("dimension_type") => compound! {
-            "type" => ident!("dimension_type"),
-            "value" => List::Compound(shared.dimensions().map(|(id, dim)| compound! {
-                "name" => id.dimension_type_name(),
-                "id" => id.0 as i32,
-                "element" => dim.to_dimension_registry_item(),
-            }).collect()),
-        },
-        ident!("worldgen/biome") => compound! {
-            "type" => ident!("worldgen/biome"),
-            "value" => {
-                let mut biomes: Vec<_> = shared
-                    .biomes()
-                    .map(|(id, biome)| biome.to_biome_registry_item(id.0 as i32))
-                    .collect();
-
-                // The client needs a biome named "minecraft:plains" in the registry to
-                // connect. This is probably a bug in the client.
-                //
-                // If the issue is resolved, remove this if.
-                if !biomes.iter().any(|b| b["name"] == "plains".into()) {
-                    let biome = Biome::default();
-                    assert_eq!(biome.name, ident!("plains"));
-                    biomes.push(biome.to_biome_registry_item(biomes.len() as i32));
-                }
-
-                List::Compound(biomes)
-            }
-        },
-        ident!("chat_type_registry") => compound! {
-            "type" => ident!("chat_type"),
-            "value" => List::Compound(Vec::new()),
-        },
     }
 }

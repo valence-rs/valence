@@ -1,6 +1,5 @@
 //! The heart of the server.
 
-use std::collections::HashSet;
 use std::error::Error;
 use std::iter::FusedIterator;
 use std::net::SocketAddr;
@@ -26,11 +25,12 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::{Handle, Runtime};
 use tokio::sync::{oneshot, Semaphore};
 use uuid::Uuid;
+use valence_nbt::{compound, Compound, List};
 
-use crate::biome::{Biome, BiomeId};
+use crate::biome::{validate_biomes, Biome, BiomeId};
 use crate::client::{Client, Clients};
 use crate::config::{Config, ServerListPing};
-use crate::dimension::{Dimension, DimensionId};
+use crate::dimension::{validate_dimensions, Dimension, DimensionId};
 use crate::entity::Entities;
 use crate::player_list::PlayerLists;
 use crate::player_textures::SignedPlayerTextures;
@@ -48,7 +48,7 @@ use crate::protocol::packets::Property;
 use crate::protocol::{BoundedArray, BoundedString, VarInt};
 use crate::util::valid_username;
 use crate::world::Worlds;
-use crate::{Ticks, PROTOCOL_VERSION, VERSION_NAME};
+use crate::{ident, Ticks, PROTOCOL_VERSION, VERSION_NAME};
 
 /// Contains the entire state of a running Minecraft server, accessible from
 /// within the [update](crate::config::Config::update) loop.
@@ -95,6 +95,9 @@ struct SharedServerInner<C: Config> {
     _tokio_runtime: Option<Runtime>,
     dimensions: Vec<Dimension>,
     biomes: Vec<Biome>,
+    /// Contains info about dimensions, biomes, and chats.
+    /// Sent to all clients when joining.
+    registry_codec: Compound,
     /// The instant the server was started.
     start_instant: Instant,
     /// Receiver for new clients past the login stage.
@@ -241,6 +244,10 @@ impl<C: Config> SharedServer<C> {
             .map(|(i, b)| (BiomeId(i as u16), b))
     }
 
+    pub(crate) fn registry_codec(&self) -> &Compound {
+        &self.0.registry_codec
+    }
+
     /// Returns the instant the server was started.
     pub fn start_instant(&self) -> Instant {
         self.0.start_instant
@@ -315,62 +322,12 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
     );
 
     let tokio_handle = cfg.tokio_handle();
+
     let dimensions = cfg.dimensions();
-
-    ensure!(
-        !dimensions.is_empty(),
-        "at least one dimension must be added"
-    );
-
-    ensure!(
-        dimensions.len() <= u16::MAX as usize,
-        "more than u16::MAX dimensions added"
-    );
-
-    for (i, dim) in dimensions.iter().enumerate() {
-        ensure!(
-            dim.min_y % 16 == 0 && (-2032..=2016).contains(&dim.min_y),
-            "invalid min_y in dimension #{i}",
-        );
-
-        ensure!(
-            dim.height % 16 == 0
-                && (0..=4064).contains(&dim.height)
-                && dim.min_y.saturating_add(dim.height) <= 2032,
-            "invalid height in dimension #{i}",
-        );
-
-        ensure!(
-            (0.0..=1.0).contains(&dim.ambient_light),
-            "ambient_light is out of range in dimension #{i}",
-        );
-
-        if let Some(fixed_time) = dim.fixed_time {
-            assert!(
-                (0..=24_000).contains(&fixed_time),
-                "fixed_time is out of range in dimension #{i}",
-            );
-        }
-    }
+    validate_dimensions(&dimensions)?;
 
     let biomes = cfg.biomes();
-
-    ensure!(!biomes.is_empty(), "at least one biome must be added");
-
-    ensure!(
-        biomes.len() <= u16::MAX as usize,
-        "more than u16::MAX biomes added"
-    );
-
-    let mut names = HashSet::new();
-
-    for biome in biomes.iter() {
-        ensure!(
-            names.insert(biome.name.clone()),
-            "biome \"{}\" already added",
-            biome.name
-        );
-    }
+    validate_biomes(&biomes)?;
 
     let rsa_key = RsaPrivateKey::new(&mut OsRng, 1024)?;
 
@@ -391,6 +348,8 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         None => tokio_handle.unwrap(),
     };
 
+    let registry_codec = make_registry_codec(&dimensions, &biomes);
+
     let server = SharedServerInner {
         cfg,
         address,
@@ -403,6 +362,7 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         _tokio_runtime: runtime,
         dimensions,
         biomes,
+        registry_codec,
         start_instant: Instant::now(),
         new_clients_rx,
         new_clients_tx,
@@ -415,6 +375,45 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
     };
 
     Ok(SharedServer(Arc::new(server)))
+}
+
+fn make_registry_codec(dimensions: &[Dimension], biomes: &[Biome]) -> Compound {
+    compound! {
+        ident!("dimension_type") => compound! {
+            "type" => ident!("dimension_type"),
+            "value" => List::Compound(dimensions.iter().enumerate().map(|(id, dim)| compound! {
+                "name" => DimensionId(id as u16).dimension_type_name(),
+                "id" => id as i32,
+                "element" => dim.to_dimension_registry_item(),
+            }).collect()),
+        },
+        ident!("worldgen/biome") => compound! {
+            "type" => ident!("worldgen/biome"),
+            "value" => {
+                let mut biomes: Vec<_> = biomes
+                    .iter()
+                    .enumerate()
+                    .map(|(id, biome)| biome.to_biome_registry_item(id as i32))
+                    .collect();
+
+                // The client needs a biome named "minecraft:plains" in the registry to
+                // connect. This is probably a bug in the client.
+                //
+                // If the issue is resolved, remove this if.
+                if !biomes.iter().any(|b| b["name"] == "plains".into()) {
+                    let biome = Biome::default();
+                    assert_eq!(biome.name, ident!("plains"));
+                    biomes.push(biome.to_biome_registry_item(biomes.len() as i32));
+                }
+
+                List::Compound(biomes)
+            }
+        },
+        ident!("chat_type_registry") => compound! {
+            "type" => ident!("chat_type"),
+            "value" => List::Compound(Vec::new()),
+        },
+    }
 }
 
 fn do_update_loop<C: Config>(server: &mut Server<C>) -> ShutdownResult {
