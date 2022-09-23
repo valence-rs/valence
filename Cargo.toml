@@ -12,61 +12,61 @@ build = "build/main.rs"
 authors = ["Ryan Johnson <ryanj00a@gmail.com>"]
 
 [dependencies]
-aes = "0.7"
-anyhow = "1"
+aes = "0.7.5"
+anyhow = "1.0.65"
 approx = "0.5.1"
-arrayvec = "0.7"
-ascii = "1"
-async-trait = "0.1"
-base64 = "0.13"
-bitfield-struct = "0.1"
-bitvec = "1"
-byteorder = "1"
+arrayvec = "0.7.2"
+ascii = "1.1.0"
+async-trait = "0.1.57"
+base64 = "0.13.0"
+bitfield-struct = "0.1.7"
+bitvec = "1.0.1"
+byteorder = "1.4.3"
 cesu8 = "1.1.0"
-cfb8 = "0.7"
-flate2 = "1"
-flume = "0.10"
-futures = "0.3"
-log = "0.4"
-num = "0.4"
-paste = "1"
-rand = "0.8"
-rayon = "1"
-rsa = "0.6"
-rsa-der = "0.3"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-serde_nbt = "0.1.0"
-sha1 = "0.10"
-sha2 = "0.10"
-thiserror = "1"
+cfb8 = "0.7.1"
+flate2 = "1.0.24"
+flume = "0.10.14"
+futures = "0.3.24"
+log = "0.4.17"
+num = "0.4.0"
+paste = "1.0.9"
+rand = "0.8.5"
+rayon = "1.5.3"
+rsa = "0.6.1"
+rsa-der = "0.3.0"
+serde = { version = "1.0.145", features = ["derive"] }
+serde_json = "1.0.85"
+serde_nbt = "0.1.1"
+sha1 = "0.10.5"
+sha2 = "0.10.6"
+thiserror = "1.0.35"
 url = { version = "2.2.2", features = ["serde"] }
-uuid = { version = "1", features = ["serde"] }
-vek = "0.15"
+uuid = { version = "1.1.2", features = ["serde"] }
+vek = "0.15.8"
 
 [dependencies.tokio]
-version = "1"
+version = "1.21.1"
 features = ["macros", "rt-multi-thread", "net", "io-util", "sync", "time"]
 
 [dependencies.reqwest]
-version = "0.11"
+version = "0.11.12"
 default-features = false
 # Avoid OpenSSL dependency on Linux.
 features = ["rustls-tls", "json"]
 
 [dev-dependencies]
-env_logger = "0.9"
-noise = "0.7"
+env_logger = "0.9.1"
+noise = "0.7.0"
 
 [build-dependencies]
-anyhow = "1"
-heck = "0.4"
-proc-macro2 = "1"
-quote = "1"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-rayon = "1"
-num = "0.4"
+anyhow = "1.0.65"
+heck = "0.4.0"
+proc-macro2 = "1.0.43"
+quote = "1.0.21"
+serde = { version = "1.0.145", features = ["derive"] }
+serde_json = "1.0.85"
+rayon = "1.5.3"
+num = "0.4.0"
 
 [workspace]
 members = ["packet_inspector"]
