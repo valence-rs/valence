@@ -10,9 +10,8 @@ use arrayvec::ArrayVec;
 use bitvec::prelude::*;
 pub use byte_angle::ByteAngle;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use serde::de::DeserializeOwned;
-use serde::Serialize;
 use uuid::Uuid;
+use valence_nbt::Compound;
 pub use var_int::VarInt;
 pub use var_long::VarLong;
 use vek::{Vec2, Vec3, Vec4};
@@ -508,32 +507,16 @@ impl Decode for Uuid {
     }
 }
 
-impl Encode for nbt::Compound {
+impl Encode for Compound {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        Ok(nbt::binary::to_writer(w, self)?)
+        Ok(nbt::to_binary_writer(w, self, "")?)
     }
 }
 
-impl Decode for nbt::Compound {
+impl Decode for Compound {
     fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
-        Ok(nbt::binary::from_reader(r)?)
-    }
-}
-
-/// Wrapper type acting as a bridge between Serde and [Encode]/[Decode] through
-/// the NBT format.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash, Debug)]
-pub struct NbtBridge<T>(pub T);
-
-impl<T: Serialize> Encode for NbtBridge<T> {
-    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        Ok(nbt::binary::to_writer(w, &self.0)?)
-    }
-}
-
-impl<T: DeserializeOwned> Decode for NbtBridge<T> {
-    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
-        Ok(Self(nbt::binary::from_reader(r)?))
+        let (nbt, _) = nbt::from_binary_slice(r)?;
+        Ok(nbt)
     }
 }
 

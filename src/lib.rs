@@ -87,7 +87,7 @@ pub use async_trait::async_trait;
 #[doc(inline)]
 pub use server::start_server;
 #[doc(inline)]
-pub use {serde_nbt as nbt, uuid, vek};
+pub use {uuid, valence_nbt as nbt, vek};
 
 pub mod biome;
 pub mod block;

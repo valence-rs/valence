@@ -353,7 +353,7 @@ pub mod play {
         ChunkDataAndUpdateLight {
             chunk_x: i32,
             chunk_z: i32,
-            heightmaps: NbtBridge<ChunkDataHeightmaps>,
+            heightmaps: Compound,
             blocks_and_biomes: Vec<u8>,
             block_entities: Vec<ChunkDataBlockEntity>,
             trust_edges: bool,
@@ -366,11 +366,11 @@ pub mod play {
         }
     }
 
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct ChunkDataHeightmaps {
-        #[serde(rename = "MOTION_BLOCKING", with = "crate::nbt::long_array")]
-        pub motion_blocking: Vec<i64>,
-    }
+    // #[derive(Clone, Debug, Serialize, Deserialize)]
+    // pub struct ChunkDataHeightmaps {
+    //     #[serde(rename = "MOTION_BLOCKING", with = "crate::nbt::long_array")]
+    //     pub motion_blocking: Vec<i64>,
+    // }
 
     def_struct! {
         ChunkDataBlockEntity {
@@ -389,7 +389,8 @@ pub mod play {
             gamemode: GameMode,
             previous_gamemode: GameMode,
             dimension_names: Vec<Ident>,
-            registry_codec: NbtBridge<RegistryCodec>,
+            /// Contains information about dimensions, biomes, and chats.
+            registry_codec: Compound,
             /// The name of the dimension type being spawned into.
             dimension_type_name: Ident,
             /// The name of the dimension being spawned into.
@@ -410,156 +411,6 @@ pub mod play {
             is_flat: bool,
             last_death_location: Option<(Ident, BlockPos)>,
         }
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct RegistryCodec {
-        #[serde(rename = "minecraft:dimension_type")]
-        pub dimension_type_registry: DimensionTypeRegistry,
-        #[serde(rename = "minecraft:worldgen/biome")]
-        pub biome_registry: BiomeRegistry,
-        #[serde(rename = "minecraft:chat_type")]
-        pub chat_type_registry: ChatTypeRegistry,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct DimensionTypeRegistry {
-        #[serde(rename = "type")]
-        pub kind: Ident,
-        pub value: Vec<DimensionTypeRegistryEntry>,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct DimensionTypeRegistryEntry {
-        pub name: Ident,
-        pub id: i32,
-        pub element: DimensionType,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct DimensionType {
-        pub piglin_safe: bool,
-        pub has_raids: bool,
-        pub monster_spawn_light_level: i32,
-        pub monster_spawn_block_light_limit: i32,
-        pub natural: bool,
-        pub ambient_light: f32,
-        pub fixed_time: Option<i64>,
-        pub infiniburn: String, // TODO: tag type?
-        pub respawn_anchor_works: bool,
-        pub has_skylight: bool,
-        pub bed_works: bool,
-        pub effects: Ident,
-        pub min_y: i32,
-        pub height: i32,
-        pub logical_height: i32,
-        pub coordinate_scale: f64,
-        pub ultrawarm: bool,
-        pub has_ceiling: bool,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct BiomeRegistry {
-        #[serde(rename = "type")]
-        pub kind: Ident,
-        pub value: Vec<Biome>,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct Biome {
-        pub name: Ident,
-        pub id: i32,
-        pub element: BiomeProperty,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct BiomeProperty {
-        pub precipitation: String,
-        pub depth: f32,
-        pub temperature: f32,
-        pub scale: f32,
-        pub downfall: f32,
-        pub category: String,
-        pub temperature_modifier: Option<String>,
-        pub effects: BiomeEffects,
-        pub particle: Option<BiomeParticle>,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct BiomeEffects {
-        pub sky_color: i32,
-        pub water_fog_color: i32,
-        pub fog_color: i32,
-        pub water_color: i32,
-        pub foliage_color: Option<i32>,
-        pub grass_color: Option<i32>,
-        pub grass_color_modifier: Option<String>,
-        pub music: Option<BiomeMusic>,
-        pub ambient_sound: Option<Ident>,
-        pub additions_sound: Option<BiomeAdditionsSound>,
-        pub mood_sound: Option<BiomeMoodSound>,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct BiomeMusic {
-        pub replace_current_music: bool,
-        pub sound: Ident,
-        pub max_delay: i32,
-        pub min_delay: i32,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct BiomeAdditionsSound {
-        pub sound: Ident,
-        pub tick_chance: f64,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct BiomeMoodSound {
-        pub sound: Ident,
-        pub tick_delay: i32,
-        pub offset: f64,
-        pub block_search_extent: i32,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct BiomeParticle {
-        pub probability: f32,
-        pub options: BiomeParticleOptions,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct BiomeParticleOptions {
-        #[serde(rename = "type")]
-        pub kind: Ident,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct ChatTypeRegistry {
-        #[serde(rename = "type")]
-        pub kind: Ident,
-        pub value: Vec<ChatTypeRegistryEntry>,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct ChatTypeRegistryEntry {
-        pub name: Ident,
-        pub id: i32,
-        pub element: ChatType,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct ChatType {
-        pub chat: ChatTypeChat,
-        pub narration: ChatTypeNarration,
-    }
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct ChatTypeChat {}
-
-    #[derive(Clone, Debug, Serialize, Deserialize)]
-    pub struct ChatTypeNarration {
-        pub priority: String,
     }
 
     def_enum! {

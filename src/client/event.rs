@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use serde_nbt::Compound;
+use valence_nbt::Compound;
 use vek::Vec3;
 
 use super::Client;
