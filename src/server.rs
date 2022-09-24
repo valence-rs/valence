@@ -278,7 +278,9 @@ impl<C: Config> SharedServer<C> {
 /// The function returns once the server has shut down, a runtime error
 /// occurs, or the configuration is found to be invalid.
 pub fn start_server<C: Config>(config: C, data: C::ServerState) -> ShutdownResult {
-    let shared = setup_server(config).map_err(Box::<dyn Error + Send + Sync + 'static>::from)?;
+    let shared = setup_server(config)
+        .context("failed to initialize server")
+        .map_err(Box::<dyn Error + Send + Sync + 'static>::from)?;
 
     let _guard = shared.tokio_handle().enter();
 

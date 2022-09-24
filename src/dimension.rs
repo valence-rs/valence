@@ -56,7 +56,7 @@ pub struct Dimension {
     pub fixed_time: Option<u16>,
     /// Determines what skybox/fog effects to use.
     pub effects: DimensionEffects,
-    /// The minimum height in which blocks can exist in this dimension.
+    /// The minimum Y coordinate in which blocks can exist in this dimension.
     ///
     /// `min_y` must meet the following conditions:
     /// * `min_y % 16 == 0`

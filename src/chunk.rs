@@ -274,7 +274,7 @@ pub trait Chunk {
     /// Gets the biome at the provided biome offsets in the chunk.
     ///
     /// **Note**: the arguments are **not** block positions. Biomes are 4x4x4
-    /// segments of a chunk, so `x` and `z` are in `0..=4`.
+    /// segments of a chunk, so `x` and `z` are in `0..4`.
     ///
     /// # Panics
     ///
@@ -284,7 +284,7 @@ pub trait Chunk {
     /// Sets the biome at the provided biome offsets in the chunk.
     ///
     /// **Note**: the arguments are **not** block positions. Biomes are 4x4x4
-    /// segments of a chunk, so `x` and `z` are in `0..=4`.
+    /// segments of a chunk, so `x` and `z` are in `0..4`.
     ///
     /// # Panics
     ///
