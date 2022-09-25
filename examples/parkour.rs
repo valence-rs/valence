@@ -235,7 +235,7 @@ impl Config for Game {
                         .unwrap()
                         .as_millis();
                     if current_time_millis - client.state.last_block_timestamp < max_time_taken {
-                        client.state.combo = client.state.combo + (index as u32)
+                        client.state.combo += index as u32
                     } else {
                         client.state.combo = 0
                     }
@@ -329,7 +329,7 @@ fn generate_next_block(client: &mut Client<Game>, world: &mut World<Game>, in_ga
         world.chunks
             .set_block_state(removed_block, BlockState::AIR);
 
-        client.state.score = client.state.score + 1
+        client.state.score += 1
     }
 
     let last_pos = client.state.blocks.back().unwrap();
@@ -371,5 +371,5 @@ fn generate_random_block(pos: BlockPos, target_y: i32) -> BlockPos {
     };
     let x = rng.gen_range(-3..4);
 
-    return BlockPos::new(pos.x + x, pos.y + y, pos.z + z);
+    BlockPos::new(pos.x + x, pos.y + y, pos.z + z)
 }
