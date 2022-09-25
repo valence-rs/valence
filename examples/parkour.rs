@@ -9,7 +9,7 @@ use rand::Rng;
 use valence::block::BlockPos;
 use valence::block::BlockState;
 use valence::chunk::{ChunkPos, UnloadedChunk};
-use valence::client::{Client, GameMode, SetTitleAnimationTimes, handle_event_default};
+use valence::client::{handle_event_default, Client, GameMode, SetTitleAnimationTimes};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
 use valence::entity::{EntityId, EntityKind};
@@ -145,7 +145,11 @@ impl Config for Game {
 
                 for chunk_z in -1..3 {
                     for chunk_x in -2..2 {
-                        world.chunks.insert((chunk_x as i32, chunk_z as i32), UnloadedChunk::default(), true);
+                        world.chunks.insert(
+                            (chunk_x as i32, chunk_z as i32),
+                            UnloadedChunk::default(),
+                            true,
+                        );
                     }
                 }
 
@@ -204,7 +208,9 @@ impl Config for Game {
             if (client.position().y as i32) < START_POS.y - 32 {
                 client.send_message(
                     "Your score was ".italic()
-                        + client.state.score
+                        + client
+                            .state
+                            .score
                             .to_string()
                             .color(Color::GOLD)
                             .bold()
@@ -255,7 +261,9 @@ impl Config for Game {
                     );
                     client.set_title(
                         "",
-                        client.state.score
+                        client
+                            .state
+                            .score
                             .to_string()
                             .color(Color::LIGHT_PURPLE)
                             .bold(),
@@ -294,7 +302,11 @@ fn reset(client: &mut Client<Game>, world: &mut World<Game>) {
     // Load chunks around spawn to avoid double void reset
     for chunk_z in -1..3 {
         for chunk_x in -2..2 {
-            world.chunks.insert((chunk_x as i32, chunk_z as i32), UnloadedChunk::default(), true);
+            world.chunks.insert(
+                (chunk_x as i32, chunk_z as i32),
+                UnloadedChunk::default(),
+                true,
+            );
         }
     }
 
@@ -305,8 +317,7 @@ fn reset(client: &mut Client<Game>, world: &mut World<Game>) {
         world.chunks.set_block_state(*block, BlockState::AIR);
     }
     client.state.blocks.clear();
-    client.state.blocks
-        .push_back(START_POS);
+    client.state.blocks.push_back(START_POS);
     world.chunks.set_block_state(START_POS, BlockState::STONE);
 
     for _ in 0..10 {
@@ -327,8 +338,7 @@ fn reset(client: &mut Client<Game>, world: &mut World<Game>) {
 fn generate_next_block(client: &mut Client<Game>, world: &mut World<Game>, in_game: bool) {
     if in_game {
         let removed_block = client.state.blocks.pop_front().unwrap();
-        world.chunks
-            .set_block_state(removed_block, BlockState::AIR);
+        world.chunks.set_block_state(removed_block, BlockState::AIR);
 
         client.state.score += 1
     }
@@ -344,10 +354,10 @@ fn generate_next_block(client: &mut Client<Game>, world: &mut World<Game>, in_ga
 
     let mut rng = rand::thread_rng();
 
-    world.chunks
+    world
+        .chunks
         .set_block_state(block_pos, *BLOCK_TYPES.choose(&mut rng).unwrap());
-    client.state.blocks
-        .push_back(block_pos);
+    client.state.blocks.push_back(block_pos);
 
     // Combo System
     client.state.last_block_timestamp = SystemTime::now()
