@@ -1,22 +1,19 @@
-use std::borrow::Cow;
-use std::f64::consts::TAU;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
-use uuid::Uuid;
 use valence::async_trait;
 use valence::block::{BlockPos, BlockState};
 use valence::chunk::UnloadedChunk;
-use valence::client::{handle_event_default, GameMode};
-use valence::config::{Config, PlayerSampleEntry, ServerListPing};
+use valence::client::{
+    handle_event_default, Client, ClientEvent, GameMode, InteractWithEntityKind, ResourcePackStatus,
+};
+use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
-use valence::entity::{EntityId, EntityKind};
+use valence::entity::{EntityId, EntityKind, TrackedData};
 use valence::player_list::PlayerListId;
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
-use valence::util::to_yaw_and_pitch;
-use vek::{Mat3, Vec3};
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()
@@ -30,7 +27,7 @@ pub fn main() -> ShutdownResult {
         },
         ServerState {
             player_list: None,
-            cows: Vec::new(),
+            sheep_id: None,
         },
     )
 }
@@ -41,17 +38,22 @@ struct Game {
 
 struct ServerState {
     player_list: Option<PlayerListId>,
-    cows: Vec<EntityId>,
+    sheep_id: Option<EntityId>,
+}
+
+#[derive(Default)]
+struct ClientState {
+    entity_id: EntityId,
 }
 
 const MAX_PLAYERS: usize = 10;
 
-const SPAWN_POS: BlockPos = BlockPos::new(0, 100, -25);
+const SPAWN_POS: BlockPos = BlockPos::new(0, 100, 0);
 
 #[async_trait]
 impl Config for Game {
     type ServerState = ServerState;
-    type ClientState = EntityId;
+    type ClientState = ClientState;
     type EntityState = ();
     type WorldState = ();
     type ChunkState = ();
@@ -68,21 +70,10 @@ impl Config for Game {
         _remote_addr: SocketAddr,
         _protocol_version: i32,
     ) -> ServerListPing {
-        const SAMPLE: &[PlayerSampleEntry] = &[
-            PlayerSampleEntry {
-                name: Cow::Borrowed("§cFirst Entry"),
-                id: Uuid::nil(),
-            },
-            PlayerSampleEntry {
-                name: Cow::Borrowed("§6§oSecond Entry"),
-                id: Uuid::nil(),
-            },
-        ];
-
         ServerListPing::Respond {
             online_players: self.player_count.load(Ordering::SeqCst) as i32,
             max_players: MAX_PLAYERS as i32,
-            player_sample: SAMPLE.into(),
+            player_sample: Default::default(),
             description: "Hello Valence!".color(Color::AQUA),
             favicon_png: Some(include_bytes!("../assets/logo-64x64.png").as_slice().into()),
         }
@@ -99,13 +90,20 @@ impl Config for Game {
             }
         }
 
-        world.chunks.set_block_state(SPAWN_POS, BlockState::BEDROCK);
+        let (sheep_id, sheep) = server.entities.insert(EntityKind::Sheep, ());
+        server.state.sheep_id = Some(sheep_id);
+        sheep.set_world(world_id);
+        sheep.set_position([
+            SPAWN_POS.x as f64 + 0.5,
+            SPAWN_POS.y as f64 + 4.0,
+            SPAWN_POS.z as f64 + 0.5,
+        ]);
 
-        server.state.cows.extend((0..200).map(|_| {
-            let (id, e) = server.entities.insert(EntityKind::Cow, ());
-            e.set_world(world_id);
-            id
-        }));
+        if let TrackedData::Sheep(sheep_data) = sheep.data_mut() {
+            sheep_data.set_custom_name("Hit me".color(Color::GREEN));
+        }
+
+        world.chunks.set_block_state(SPAWN_POS, BlockState::BEDROCK);
     }
 
     fn update(&self, server: &mut Server<Self>) {
@@ -128,7 +126,7 @@ impl Config for Game {
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => client.state = id,
+                    Some((id, _)) => client.state.entity_id = id,
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;
@@ -159,6 +157,8 @@ impl Config for Game {
                         None,
                     );
                 }
+
+                set_example_pack(client);
             }
 
             if client.is_disconnected() {
@@ -166,74 +166,58 @@ impl Config for Game {
                 if let Some(id) = &server.state.player_list {
                     server.player_lists.get_mut(id).remove(client.uuid());
                 }
-                server.entities.remove(client.state);
+                server.entities.remove(client.state.entity_id);
 
                 return false;
             }
 
-            let entity = server
-                .entities
-                .get_mut(client.state)
-                .expect("missing player entity");
+            let player = server.entities.get_mut(client.state.entity_id).unwrap();
 
-            while handle_event_default(client, entity).is_some() {}
+            while let Some(event) = handle_event_default(client, player) {
+                match event {
+                    ClientEvent::InteractWithEntity { kind, id, .. } => {
+                        if kind == InteractWithEntityKind::Attack
+                            && Some(id) == server.state.sheep_id
+                        {
+                            set_example_pack(client);
+                        }
+                    }
+                    ClientEvent::ResourcePackStatusChanged(s) => {
+                        let message = match s {
+                            ResourcePackStatus::SuccessfullyLoaded => {
+                                "The resource pack was successfully loaded!".color(Color::GREEN)
+                            }
+                            ResourcePackStatus::Declined => {
+                                "You declined the resource pack :(".color(Color::RED)
+                            }
+                            ResourcePackStatus::FailedDownload => {
+                                "The resource pack download failed.".color(Color::RED)
+                            }
+                            _ => continue,
+                        };
+
+                        client.send_message(message.italic());
+                        client.send_message(
+                            "Hit the sheep above you to prompt the resource pack again."
+                                .color(Color::GRAY)
+                                .italic(),
+                        );
+                    }
+                    _ => (),
+                }
+            }
 
             true
         });
-
-        let time = server.shared.current_tick() as f64 / server.shared.tick_rate() as f64;
-
-        let rot = Mat3::rotation_x(time * TAU * 0.1)
-            .rotated_y(time * TAU * 0.2)
-            .rotated_z(time * TAU * 0.3);
-
-        let radius = 6.0 + ((time * TAU / 2.5).sin() + 1.0) / 2.0 * 10.0;
-
-        let player_pos = server
-            .clients
-            .iter()
-            .next()
-            .map(|c| c.1.position())
-            .unwrap_or_default();
-
-        // TODO: remove hardcoded eye pos.
-        let eye_pos = Vec3::new(player_pos.x, player_pos.y + 1.6, player_pos.z);
-
-        for (cow_id, p) in server
-            .state
-            .cows
-            .iter()
-            .cloned()
-            .zip(fibonacci_spiral(server.state.cows.len()))
-        {
-            let cow = server.entities.get_mut(cow_id).expect("missing cow");
-            let rotated = p * rot;
-            let transformed = rotated * radius + [0.5, SPAWN_POS.y as f64 + 2.0, 0.5];
-
-            let yaw = f32::atan2(rotated.z as f32, rotated.x as f32).to_degrees() - 90.0;
-            let (looking_yaw, looking_pitch) =
-                to_yaw_and_pitch((eye_pos - transformed).normalized());
-
-            cow.set_position(transformed);
-            cow.set_yaw(yaw);
-            cow.set_pitch(looking_pitch as f32);
-            cow.set_head_yaw(looking_yaw as f32);
-        }
     }
 }
 
-/// Distributes N points on the surface of a unit sphere.
-fn fibonacci_spiral(n: usize) -> impl Iterator<Item = Vec3<f64>> {
-    (0..n).map(move |i| {
-        let golden_ratio = (1.0 + 5_f64.sqrt()) / 2.0;
-
-        // Map to unit square
-        let x = i as f64 / golden_ratio % 1.0;
-        let y = i as f64 / n as f64;
-
-        // Map from unit square to unit sphere.
-        let theta = x * TAU;
-        let phi = (1.0 - 2.0 * y).acos();
-        Vec3::new(theta.cos() * phi.sin(), theta.sin() * phi.sin(), phi.cos())
-    })
+/// Sends the resource pack prompt.
+fn set_example_pack(client: &mut Client<Game>) {
+    client.set_resource_pack(
+        "https://github.com/valence-rs/valence/raw/main/assets/example_pack.zip",
+        "d7c6108849fb190ec2a49f2d38b7f1f897d9ce9f",
+        false,
+        None,
+    );
 }

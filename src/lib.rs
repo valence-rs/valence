@@ -33,7 +33,7 @@
 //!
 //! In Valence, many types are owned by the library but given out as mutable
 //! references for the user to modify. Examples of such types include [`World`],
-//! [`Chunk`], [`Entity`], and [`Client`].
+//! [`LoadedChunk`], [`Entity`], and [`Client`].
 //!
 //! **You must not call [`mem::swap`] on these references (or any other
 //! function that would move their location in memory).** Doing so breaks
@@ -57,7 +57,7 @@
 //! [`Worlds`]: crate::world::Worlds
 //! [`World`]: crate::world::World
 //! [`Chunks`]: crate::chunk::Chunks
-//! [`Chunk`]: crate::chunk::Chunk
+//! [`LoadedChunk`]: crate::chunk::LoadedChunk
 //! [`Entity`]: crate::entity::Entity
 //! [`Client`]: crate::client::Client
 
@@ -87,7 +87,7 @@ pub use async_trait::async_trait;
 #[doc(inline)]
 pub use server::start_server;
 #[doc(inline)]
-pub use {serde_nbt as nbt, uuid, vek};
+pub use {uuid, valence_nbt as nbt, vek};
 
 pub mod biome;
 pub mod block;
@@ -103,11 +103,13 @@ pub mod ident;
 pub mod player_list;
 pub mod player_textures;
 #[allow(dead_code)]
+#[doc(hidden)]
 pub mod protocol;
 pub mod server;
 mod slab;
 mod slab_rc;
 mod slab_versioned;
+pub mod slot;
 pub mod spatial_index;
 pub mod text;
 pub mod util;

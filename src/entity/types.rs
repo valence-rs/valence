@@ -1,6 +1,6 @@
 //! Primitive types used in getters and setters on entities.
 
-use std::io::{Read, Write};
+use std::io::Write;
 
 use crate::protocol::{Decode, Encode, VarInt};
 
@@ -30,7 +30,7 @@ impl Encode for OptionalInt {
 }
 
 impl Decode for OptionalInt {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         Ok(Self(VarInt::decode(r)?.0 as u32))
     }
 }
@@ -234,7 +234,36 @@ impl Encode for FrogKind {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub enum PaintingKind {
     #[default]
-    Kebab, // TODO
+    Kebab,
+    Aztec,
+    Alban,
+    Aztec2,
+    Bomb,
+    Plant,
+    Wasteland,
+    Pool,
+    Courbet,
+    Sea,
+    Sunset,
+    Creebet,
+    Wanderer,
+    Graham,
+    Match,
+    Bust,
+    Stage,
+    Void,
+    SkullAndRoses,
+    Wither,
+    Fighters,
+    Pointer,
+    Pigscene,
+    BurningSkull,
+    Skeleton,
+    Earth,
+    Wind,
+    Water,
+    Fire,
+    DonkeyKong,
 }
 
 impl Encode for PaintingKind {

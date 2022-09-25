@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use valence_nbt::Compound;
 use vek::Vec3;
 
 use super::Client;
@@ -7,15 +8,29 @@ use crate::block_pos::BlockPos;
 use crate::config::Config;
 use crate::entity::types::Pose;
 use crate::entity::{Entity, EntityEvent, EntityId, TrackedData};
-use crate::protocol::packets::c2s::play::BlockFace;
-pub use crate::protocol::packets::c2s::play::{ChatMode, DisplayedSkinParts, Hand, MainHand};
+use crate::protocol::packets::c2s::play::ClickContainerMode;
+pub use crate::protocol::packets::c2s::play::{
+    BlockFace, ChatMode, DisplayedSkinParts, Hand, MainHand, ResourcePackC2s as ResourcePackStatus,
+};
 pub use crate::protocol::packets::s2c::play::GameMode;
 use crate::protocol::VarInt;
+use crate::slot::{Slot, SlotId};
 
 /// Represents an action performed by a client.
 ///
 /// Client events can be obtained from
-/// [`pop_event`](crate::client::Client::pop_event).
+/// [`pop_event`](super::Client::pop_event).
+///
+/// # Event Validation
+///
+/// [`Client`](super::Client) makes no attempt to validate events against the
+/// expected rules for players. Malicious clients can teleport through walls,
+/// interact with distant entities, sneak and sprint backwards, break
+/// bedrock in survival mode, etc.
+///
+/// It is best to think of events from clients as _requests_ to interact with
+/// the server. It is then your responsibility to decide if the request should
+/// be honored.
 #[derive(Debug)]
 pub enum ClientEvent {
     /// A regular message was sent to the chat.
@@ -116,6 +131,50 @@ pub enum ClientEvent {
         /// Sequence number
         sequence: VarInt,
     },
+    ResourcePackStatusChanged(ResourcePackStatus),
+    /// The client closed a screen. This occurs when the client closes their
+    /// inventory, closes a chest inventory, etc.
+    CloseScreen {
+        window_id: u8,
+    },
+    /// The client is attempting to drop 1 of the currently held item.
+    DropItem,
+    /// The client is attempting to drop a stack of items.
+    ///
+    /// If the client is in creative mode, the items come from the void, so it
+    /// is safe to trust the contents of this event. Otherwise, you may need to
+    /// do some validation to make sure items are actually coming from the
+    /// user's inventory.
+    DropItemStack {
+        // TODO: maybe we could add `from_slot_id` to make validation easier
+        item_id: VarInt,
+        item_count: u8,
+        nbt: Option<Compound>,
+    },
+    /// The client is in creative mode, and is trying to set it's inventory slot
+    /// to a value.
+    SetSlotCreative {
+        /// The slot number that the client is trying to set.
+        slot_id: SlotId,
+        /// The contents of the slot.
+        slot: Slot,
+    },
+    /// The client is in survival mode, and is trying to modify an inventory.
+    ClickContainer {
+        window_id: u8,
+        state_id: VarInt,
+        /// The slot that was clicked
+        slot_id: SlotId,
+        /// The type of click that the user performed
+        mode: ClickContainerMode,
+        /// A list of slot ids and what their contents should be set to.
+        ///
+        /// It's not safe to blindly trust the contents of this. Servers need to
+        /// validate it if they want to prevent item duping.
+        slot_changes: Vec<(SlotId, Slot)>,
+        /// The item that is now being carried by the user's cursor
+        carried_item: Slot,
+    },
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -151,9 +210,19 @@ pub enum DiggingStatus {
     Finish,
 }
 
-/// Standard client event handler that stores various things a player may do.
-/// Used to avoid extra boilerplate.
-pub fn default_client_event<C: Config>(
+/// Pops one event from the event queue of `client` and expresses the event in a
+/// reasonable way using `entity`. For instance, movement events are expressed
+/// by changing the entity's position to match the received position. Rotation
+/// events rotate the entity. etc.
+///
+/// This function's primary purpose is to reduce boilerplate code in the
+/// examples, but it can be used as a quick way to get started in your own code.
+/// The precise behavior of this function is left unspecified and is subject to
+/// change.
+///
+/// The popped event is returned unmodified. `None` is returned if there are no
+/// more events in `client`.
+pub fn handle_event_default<C: Config>(
     client: &mut Client<C>,
     entity: &mut Entity<C>,
 ) -> Option<ClientEvent> {
@@ -263,6 +332,12 @@ pub fn default_client_event<C: Config>(
         ClientEvent::SteerBoat { .. } => {}
         ClientEvent::Digging { .. } => {}
         ClientEvent::InteractWithBlock { .. } => {}
+        ClientEvent::ResourcePackStatusChanged(_) => {}
+        ClientEvent::CloseScreen { .. } => {}
+        ClientEvent::DropItem => {}
+        ClientEvent::DropItemStack { .. } => {}
+        ClientEvent::SetSlotCreative { .. } => {}
+        ClientEvent::ClickContainer { .. } => {}
     }
 
     entity.set_world(client.world());

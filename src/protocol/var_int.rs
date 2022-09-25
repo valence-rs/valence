@@ -1,4 +1,4 @@
-use std::io::{Read, Write};
+use std::io::Write;
 
 use anyhow::bail;
 use byteorder::{ReadBytesExt, WriteBytesExt};
@@ -47,7 +47,7 @@ impl Encode for VarInt {
 }
 
 impl Decode for VarInt {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         let mut val = 0;
         for i in 0..Self::MAX_SIZE {
             let byte = r.read_u8()?;

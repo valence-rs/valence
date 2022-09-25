@@ -1,11 +1,12 @@
-use std::io::{Read, Write};
+use std::io::Write;
 
 use anyhow::bail;
 use vek::Vec3;
 
+use crate::client::BlockFace;
 use crate::protocol::{Decode, Encode};
 
-/// Represents an absolute block position in a world.
+/// Represents an absolute block position in world space.
 #[derive(Clone, Copy, Default, PartialEq, Eq, Hash, Debug)]
 pub struct BlockPos {
     pub x: i32,
@@ -23,6 +24,28 @@ impl BlockPos {
     pub fn at(pos: impl Into<Vec3<f64>>) -> Self {
         pos.into().floor().as_::<i32>().into()
     }
+
+    /// Get a new [`BlockPos`] that is adjacent to this position in `dir`
+    /// direction.
+    ///
+    /// ```rust
+    /// use valence::block::BlockPos;
+    /// use valence::client::BlockFace;
+    ///
+    /// let pos = BlockPos::new(0, 0, 0);
+    /// let adj = pos.get_in_direction(BlockFace::South);
+    /// assert_eq!(adj, BlockPos::new(0, 0, 1));
+    /// ```
+    pub fn get_in_direction(self, dir: BlockFace) -> BlockPos {
+        match dir {
+            BlockFace::Bottom => BlockPos::new(self.x, self.y - 1, self.z),
+            BlockFace::Top => BlockPos::new(self.x, self.y + 1, self.z),
+            BlockFace::North => BlockPos::new(self.x, self.y, self.z - 1),
+            BlockFace::South => BlockPos::new(self.x, self.y, self.z + 1),
+            BlockFace::West => BlockPos::new(self.x - 1, self.y, self.z),
+            BlockFace::East => BlockPos::new(self.x + 1, self.y, self.z),
+        }
+    }
 }
 
 impl Encode for BlockPos {
@@ -38,7 +61,7 @@ impl Encode for BlockPos {
 }
 
 impl Decode for BlockPos {
-    fn decode(r: &mut impl Read) -> anyhow::Result<Self> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         // Use arithmetic right shift to determine sign.
         let val = i64::decode(r)?;
         let x = val >> 38;

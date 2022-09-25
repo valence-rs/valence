@@ -3,8 +3,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
 use valence::block::{BlockPos, BlockState};
+use valence::chunk::{Chunk, UnloadedChunk};
 use valence::client::{
-    default_client_event, ClientEvent, ClientId, GameMode, InteractWithEntityKind,
+    handle_event_default, ClientEvent, ClientId, GameMode, InteractWithEntityKind,
 };
 use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
@@ -77,8 +78,9 @@ impl Config for Game {
         ServerListPing::Respond {
             online_players: self.player_count.load(Ordering::SeqCst) as i32,
             max_players: MAX_PLAYERS as i32,
+            player_sample: Default::default(),
             description: "Hello Valence!".color(Color::AQUA),
-            favicon_png: Some(include_bytes!("../assets/favicon.png")),
+            favicon_png: Some(include_bytes!("../assets/logo-64x64.png").as_slice().into()),
         }
     }
 
@@ -86,13 +88,16 @@ impl Config for Game {
         let (_, world) = server.worlds.insert(DimensionId::default(), ());
         server.state = Some(server.player_lists.insert(()).0);
 
-        let min_y = server.shared.dimension(DimensionId::default()).min_y;
+        let dim = server.shared.dimension(DimensionId::default());
+        let min_y = dim.min_y;
+        let height = dim.height as usize;
 
         // Create circular arena.
         let size = 2;
         for chunk_z in -size - 2..size + 2 {
             for chunk_x in -size - 2..size + 2 {
-                let chunk = world.chunks.insert([chunk_x, chunk_z], ());
+                let mut chunk = UnloadedChunk::new(height);
+
                 let r = -size..size;
                 if r.contains(&chunk_x) && r.contains(&chunk_z) {
                     for z in 0..16 {
@@ -107,6 +112,8 @@ impl Config for Game {
                         }
                     }
                 }
+
+                world.chunks.insert([chunk_x, chunk_z], chunk, ());
             }
         }
 
@@ -206,7 +213,7 @@ impl Config for Game {
                     .get_mut(client.state.player)
                     .expect("missing player entity");
 
-                match default_client_event(client, player) {
+                match handle_event_default(client, player) {
                     Some(ClientEvent::StartSprinting) => {
                         client.state.extra_knockback = true;
                     }

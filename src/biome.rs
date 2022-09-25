@@ -1,8 +1,12 @@
 //! Biome configuration and identification.
 
+use std::collections::HashSet;
+
+use anyhow::ensure;
+use valence_nbt::{compound, Compound};
+
 use crate::ident;
 use crate::ident::Ident;
-use crate::protocol::packets::s2c::play::Biome as BiomeRegistryBiome;
 
 /// Identifies a particular [`Biome`] on the server.
 ///
@@ -47,81 +51,127 @@ pub struct Biome {
 }
 
 impl Biome {
-    pub(crate) fn to_biome_registry_item(&self, id: i32) -> BiomeRegistryBiome {
-        use crate::protocol::packets::s2c::play::{
-            BiomeAdditionsSound, BiomeEffects, BiomeMoodSound, BiomeMusic, BiomeParticle,
-            BiomeParticleOptions, BiomeProperty,
-        };
-
-        BiomeRegistryBiome {
-            name: self.name.clone(),
-            id,
-            element: BiomeProperty {
-                precipitation: match self.precipitation {
+    pub(crate) fn to_biome_registry_item(&self, id: i32) -> Compound {
+        let mut reg = compound! {
+            "name" => self.name.clone(),
+            "id" => id,
+            "element" => compound! {
+                "precipitation" => match self.precipitation {
                     BiomePrecipitation::Rain => "rain",
                     BiomePrecipitation::Snow => "snow",
                     BiomePrecipitation::None => "none",
-                }
-                .into(),
-                depth: 0.125,
-                temperature: 0.8,
-                scale: 0.05,
-                downfall: 0.4,
-                category: "none".into(),
-                temperature_modifier: None,
-                effects: BiomeEffects {
-                    sky_color: self.sky_color as i32,
-                    water_fog_color: self.water_fog_color as i32,
-                    fog_color: self.fog_color as i32,
-                    water_color: self.water_color as i32,
-                    foliage_color: self.foliage_color.map(|x| x as i32),
-                    grass_color: self.grass_color.map(|x| x as i32),
-                    grass_color_modifier: match self.grass_color_modifier {
-                        BiomeGrassColorModifier::Swamp => Some("swamp".into()),
-                        BiomeGrassColorModifier::DarkForest => Some("dark_forest".into()),
-                        BiomeGrassColorModifier::None => None,
-                    },
-                    music: self.music.as_ref().map(|bm| BiomeMusic {
-                        replace_current_music: bm.replace_current_music,
-                        sound: bm.sound.clone(),
-                        max_delay: bm.max_delay,
-                        min_delay: bm.min_delay,
-                    }),
-                    ambient_sound: self.ambient_sound.clone(),
-                    additions_sound: self.additions_sound.as_ref().map(|a| BiomeAdditionsSound {
-                        sound: a.sound.clone(),
-                        tick_chance: a.tick_chance,
-                    }),
-                    mood_sound: self.mood_sound.as_ref().map(|m| BiomeMoodSound {
-                        sound: m.sound.clone(),
-                        tick_delay: m.tick_delay,
-                        offset: m.offset,
-                        block_search_extent: m.block_search_extent,
-                    }),
                 },
-                particle: self.particle.as_ref().map(|p| BiomeParticle {
-                    probability: p.probability,
-                    options: BiomeParticleOptions {
-                        kind: p.kind.clone(),
-                    },
-                }),
-            },
+                "depth" => 0.125_f32,
+                "temperature" => 0.8_f32,
+                "scale" => 0.05_f32,
+                "downfall" => 0.4_f32,
+                "category" => "none",
+                // "temperature_modifier" =>
+                "effects" => {
+                    let mut eff = compound! {
+                        "sky_color" => self.sky_color as i32,
+                        "water_fog_color" => self.water_fog_color as i32,
+                        "fog_color" => self.fog_color as i32,
+                        "water_color" => self.water_color as i32,
+                    };
+
+                    if let Some(color) = self.foliage_color {
+                        eff.insert("foliage_color", color as i32);
+                    }
+
+                    if let Some(color) = self.grass_color {
+                        eff.insert("grass_color", color as i32);
+                    }
+
+                    match self.grass_color_modifier {
+                        BiomeGrassColorModifier::Swamp => eff.insert("grass_color_modifier", "swamp"),
+                        BiomeGrassColorModifier::DarkForest => eff.insert("grass_color_modifier", "dark_forest"),
+                        BiomeGrassColorModifier::None => None
+                    };
+
+                    if let Some(music) = &self.music {
+                        eff.insert("music", compound! {
+                            "replace_current_music" => music.replace_current_music,
+                            "sound" => music.sound.clone(),
+                            "max_delay" => music.max_delay,
+                            "min_delay" => music.min_delay,
+                        });
+                    }
+
+                    if let Some(s) = &self.ambient_sound {
+                        eff.insert("ambient_sound", s.clone());
+                    }
+
+                    if let Some(a) = &self.additions_sound {
+                        eff.insert("additions_sound", compound! {
+                            "sound" => a.sound.clone(),
+                            "tick_chance" => a.tick_chance,
+                        });
+                    }
+
+                    if let Some(m) = &self.mood_sound {
+                        eff.insert("mood_sound", compound! {
+                            "sound" => m.sound.clone(),
+                            "tick_delay" => m.tick_delay,
+                            "offset" => m.offset,
+                            "block_search_extent" => m.block_search_extent,
+                        });
+                    }
+
+                    eff
+                },
+            }
+        };
+
+        if let Some(p) = &self.particle {
+            reg.insert(
+                "particle",
+                compound! {
+                    "probability" => p.probability,
+                    "options" => compound! {
+                        "type" => p.kind.clone(),
+                    }
+                },
+            );
         }
+
+        reg
     }
+}
+
+pub(crate) fn validate_biomes(biomes: &[Biome]) -> anyhow::Result<()> {
+    ensure!(!biomes.is_empty(), "at least one biome must be present");
+
+    ensure!(
+        biomes.len() <= u16::MAX as _,
+        "more than u16::MAX biomes present"
+    );
+
+    let mut names = HashSet::new();
+
+    for biome in biomes {
+        ensure!(
+            names.insert(biome.name.clone()),
+            "biome \"{}\" already exists",
+            biome.name
+        );
+    }
+
+    Ok(())
 }
 
 impl Default for Biome {
     fn default() -> Self {
         Self {
             name: ident!("plains"),
-            precipitation: BiomePrecipitation::Rain,
+            precipitation: BiomePrecipitation::default(),
             sky_color: 7907327,
             water_fog_color: 329011,
             fog_color: 12638463,
             water_color: 4159204,
             foliage_color: None,
             grass_color: None,
-            grass_color_modifier: BiomeGrassColorModifier::None,
+            grass_color_modifier: BiomeGrassColorModifier::default(),
             music: None,
             ambient_sound: None,
             additions_sound: None,

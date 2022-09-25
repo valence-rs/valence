@@ -10,7 +10,7 @@ use crate::client::GameMode;
 use crate::config::Config;
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::s2c::play::{
-    PlayerListAddPlayer, PlayerListHeaderFooter, S2cPlayPacket, UpdatePlayerList,
+    PlayerInfo, PlayerListAddPlayer, S2cPlayPacket, SetTabListHeaderAndFooter,
 };
 use crate::protocol::packets::Property;
 use crate::protocol::VarInt;
@@ -175,7 +175,7 @@ impl<C: Config> PlayerList<C> {
         }
     }
 
-    /// Removes all entries from the player list for which `f` returns `true`.
+    /// Removes all entries from the player list for which `f` returns `false`.
     ///
     /// All entries are visited in an unspecified order.
     pub fn retain(&mut self, mut f: impl FnMut(Uuid, &mut PlayerListEntry) -> bool) {
@@ -258,12 +258,12 @@ impl<C: Config> PlayerList<C> {
             .collect();
 
         if !add_player.is_empty() {
-            push_packet(UpdatePlayerList::AddPlayer(add_player).into());
+            push_packet(PlayerInfo::AddPlayer(add_player).into());
         }
 
         if self.header != Text::default() || self.footer != Text::default() {
             push_packet(
-                PlayerListHeaderFooter {
+                SetTabListHeaderAndFooter {
                     header: self.header.clone(),
                     footer: self.footer.clone(),
                 }
@@ -274,9 +274,7 @@ impl<C: Config> PlayerList<C> {
 
     pub(crate) fn update_packets(&self, mut push_packet: impl FnMut(S2cPlayPacket)) {
         if !self.removed.is_empty() {
-            push_packet(
-                UpdatePlayerList::RemovePlayer(self.removed.iter().cloned().collect()).into(),
-            );
+            push_packet(PlayerInfo::RemovePlayer(self.removed.iter().cloned().collect()).into());
         }
 
         let mut add_player = Vec::new();
@@ -322,24 +320,24 @@ impl<C: Config> PlayerList<C> {
         }
 
         if !add_player.is_empty() {
-            push_packet(UpdatePlayerList::AddPlayer(add_player).into());
+            push_packet(PlayerInfo::AddPlayer(add_player).into());
         }
 
         if !game_mode.is_empty() {
-            push_packet(UpdatePlayerList::UpdateGameMode(game_mode).into());
+            push_packet(PlayerInfo::UpdateGameMode(game_mode).into());
         }
 
         if !ping.is_empty() {
-            push_packet(UpdatePlayerList::UpdateLatency(ping).into());
+            push_packet(PlayerInfo::UpdateLatency(ping).into());
         }
 
         if !display_name.is_empty() {
-            push_packet(UpdatePlayerList::UpdateDisplayName(display_name).into());
+            push_packet(PlayerInfo::UpdateDisplayName(display_name).into());
         }
 
         if self.modified_header_or_footer {
             push_packet(
-                PlayerListHeaderFooter {
+                SetTabListHeaderAndFooter {
                     header: self.header.clone(),
                     footer: self.footer.clone(),
                 }
@@ -349,7 +347,7 @@ impl<C: Config> PlayerList<C> {
     }
 
     pub(crate) fn clear_packets(&self, mut push_packet: impl FnMut(S2cPlayPacket)) {
-        push_packet(UpdatePlayerList::RemovePlayer(self.entries.keys().cloned().collect()).into());
+        push_packet(PlayerInfo::RemovePlayer(self.entries.keys().cloned().collect()).into());
     }
 }
 

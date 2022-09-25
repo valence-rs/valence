@@ -32,19 +32,19 @@ pub mod status {
     use super::*;
 
     def_struct! {
-        QueryRequest {}
+        StatusRequest {}
     }
 
     def_struct! {
-        QueryPing {
+        PingRequest {
             payload: u64
         }
     }
 
     def_packet_group! {
         C2sStatusPacket {
-            QueryRequest = 0,
-            QueryPing = 1,
+            StatusRequest = 0,
+            PingRequest = 1,
         }
     }
 }
@@ -98,23 +98,23 @@ pub mod login {
 }
 
 pub mod play {
-    use super::super::*;
+    use super::*;
 
     def_struct! {
-        TeleportConfirm {
+        ConfirmTeleport {
             teleport_id: VarInt
         }
     }
 
     def_struct! {
-        QueryBlockNbt {
+        QueryBlockEntityTag {
             transaction_id: VarInt,
             location: BlockPos,
         }
     }
 
     def_enum! {
-        UpdateDifficulty: i8 {
+        ChangeDifficulty: i8 {
             Peaceful = 0,
             Easy = 1,
             Normal = 2,
@@ -123,8 +123,15 @@ pub mod play {
     }
 
     def_struct! {
+        MessageAcknowledgmentList {
+            entries: Vec<MessageAcknowledgmentEntry>,
+        }
+    }
+
+    def_struct! {
         MessageAcknowledgment {
-            entry: Option<MessageAcknowledgmentEntry>,
+            last_seen: MessageAcknowledgmentList,
+            last_received: Option<MessageAcknowledgmentEntry>,
         }
     }
 
@@ -136,10 +143,20 @@ pub mod play {
     }
 
     def_struct! {
-        CommandExecution {
-            command: String, // TODO: bounded?
-            // TODO: timestamp, arg signatures
+        ArgumentSignatureEntry {
+            name: BoundedString<0, 16>,
+            signature: Vec<u8>,
+        }
+    }
+
+    def_struct! {
+        ChatCommand {
+            command: BoundedString<0, 256>,
+            timestamp: u64,
+            salt: u64,
+            arg_sig: Vec<ArgumentSignatureEntry>,
             signed_preview: bool,
+            acknowledgement: MessageAcknowledgment,
         }
     }
 
@@ -150,18 +167,19 @@ pub mod play {
             salt: u64,
             signature: Vec<u8>,
             signed_preview: bool,
+            acknowledgement: MessageAcknowledgment,
         }
     }
 
     def_struct! {
-        RequestChatPreview {
+        ChatPreviewC2s {
             query: i32, // TODO: is this an i32 or a varint?
             message: BoundedString<0, 256>,
         }
     }
 
     def_enum! {
-        ClientStatus: VarInt {
+        ClientCommand: VarInt {
             /// Sent when ready to complete login and ready to respawn after death.
             PerformRespawn = 0,
             /// Sent when the statistics menu is opened.
@@ -170,7 +188,7 @@ pub mod play {
     }
 
     def_struct! {
-        ClientSettings {
+        ClientInformation {
             /// e.g. en_US
             locale: BoundedString<0, 16>,
             /// Client-side render distance in chunks.
@@ -216,7 +234,7 @@ pub mod play {
     }
 
     def_struct! {
-        RequestCommandCompletion {
+        CommandSuggestionsRequest {
             transaction_id: VarInt,
             /// Text behind the cursor without the '/'.
             text: BoundedString<0, 32500>
@@ -224,33 +242,52 @@ pub mod play {
     }
 
     def_struct! {
-        ButtonClick {
+        ClickContainerButton {
             window_id: i8,
             button_id: i8,
         }
     }
 
     def_struct! {
-        ClickSlot {
-            // TODO
+        ClickContainer {
+            window_id: u8,
+            state_id: VarInt,
+            slot_idx: i16,
+            button: i8,
+            mode: ClickContainerMode,
+            slots: Vec<(i16, Slot)>,
+            carried_item: Slot,
+        }
+    }
+
+    def_enum! {
+        #[derive(Copy, PartialEq, Eq)]
+        ClickContainerMode: VarInt {
+            Click = 0,
+            ShiftClick = 1,
+            Hotbar = 2,
+            CreativeMiddleClick = 3,
+            DropKey = 4,
+            Drag = 5,
+            DoubleClick = 6,
         }
     }
 
     def_struct! {
-        CloseHandledScreen {
+        CloseContainerC2s {
             window_id: u8,
         }
     }
 
     def_struct! {
-        CustomPayload {
+        PluginMessageC2s {
             channel: Ident,
             data: RawBytes,
         }
     }
 
     def_struct! {
-        BookUpdate {
+        EditBook {
             slot: VarInt,
             entries: Vec<String>,
             title: Option<String>,
@@ -258,14 +295,14 @@ pub mod play {
     }
 
     def_struct! {
-        QueryEntityNbt {
+        QueryEntityTag {
             transaction_id: VarInt,
             entity_id: VarInt,
         }
     }
 
     def_struct! {
-        PlayerInteractEntity {
+        Interact {
             entity_id: VarInt,
             kind: InteractKind,
             sneaking: bool,
@@ -297,26 +334,26 @@ pub mod play {
     }
 
     def_struct! {
-        KeepAlive {
+        KeepAliveC2s {
             id: i64,
         }
     }
 
     def_struct! {
-        UpdateDifficultyLock {
+        LockDifficulty {
             locked: bool
         }
     }
 
     def_struct! {
-        MovePlayerPosition {
+        SetPlayerPosition {
             position: Vec3<f64>,
             on_ground: bool,
         }
     }
 
     def_struct! {
-        MovePlayerPositionAndRotation {
+        SetPlayerPositionAndRotation {
             // Absolute position
             position: Vec3<f64>,
             /// Absolute rotation on X axis in degrees.
@@ -328,7 +365,7 @@ pub mod play {
     }
 
     def_struct! {
-        MovePlayerRotation {
+        SetPlayerRotation {
             /// Absolute rotation on X axis in degrees.
             yaw: f32,
             /// Absolute rotation on Y axis in degrees.
@@ -338,13 +375,13 @@ pub mod play {
     }
 
     def_struct! {
-        MovePlayerOnGround {
+        SetPlayerOnGround {
             on_ground: bool
         }
     }
 
     def_struct! {
-        MoveVehicle {
+        MoveVehicleC2s {
             /// Absolute position
             position: Vec3<f64>,
             /// Degrees
@@ -355,20 +392,20 @@ pub mod play {
     }
 
     def_struct! {
-        BoatPaddleState {
+        PaddleBoat {
             left_paddle_turning: bool,
             right_paddle_turning: bool,
         }
     }
 
     def_struct! {
-        PickFromInventory {
+        PickItem {
             slot_to_use: VarInt,
         }
     }
 
     def_struct! {
-        CraftRequest {
+        PlaceRecipe {
             window_id: i8,
             recipe: Ident,
             make_all: bool,
@@ -376,7 +413,7 @@ pub mod play {
     }
 
     def_enum! {
-        UpdatePlayerAbilities: i8 {
+        PlayerAbilitiesC2s: i8 {
             NotFlying = 0,
             Flying = 0b10,
         }
@@ -459,13 +496,13 @@ pub mod play {
     }
 
     def_struct! {
-        PlayPong {
+        PongPlay {
             id: i32,
         }
     }
 
     def_struct! {
-        RecipeBookChangeSettings {
+        ChangeRecipeBookSettings {
             book_id: RecipeBookId,
             book_open: bool,
             filter_active: bool,
@@ -482,7 +519,7 @@ pub mod play {
     }
 
     def_struct! {
-        RecipeBookSeenRecipe {
+        SetSeenRecipe {
             recipe_id: Ident,
         }
     }
@@ -494,7 +531,8 @@ pub mod play {
     }
 
     def_enum! {
-        ResourcePackStatus: VarInt {
+        #[derive(Copy, PartialEq, Eq)]
+        ResourcePackC2s: VarInt {
             SuccessfullyLoaded = 0,
             Declined = 1,
             FailedDownload = 2,
@@ -503,20 +541,20 @@ pub mod play {
     }
 
     def_enum! {
-        AdvancementTab: VarInt {
+        SeenAdvancements: VarInt {
             OpenedTab: Ident = 0,
             ClosedScreen = 1,
         }
     }
 
     def_struct! {
-        SelectMerchantTrade {
+        SelectTrade {
             selected_slot: VarInt,
         }
     }
 
     def_struct! {
-        UpdateBeacon {
+        SetBeaconEffect {
             // TODO: potion ids
             primary_effect: Option<VarInt>,
             secondary_effect: Option<VarInt>,
@@ -524,13 +562,13 @@ pub mod play {
     }
 
     def_struct! {
-        UpdateSelectedSlot {
+        SetHeldItemS2c {
             slot: BoundedInt<i16, 0, 8>,
         }
     }
 
     def_struct! {
-        UpdateCommandBlock {
+        ProgramCommandBlock {
             location: BlockPos,
             command: String,
             mode: CommandBlockMode,
@@ -555,7 +593,7 @@ pub mod play {
     }
 
     def_struct! {
-        UpdateCommandBlockMinecart {
+        ProgramCommandBlockMinecart {
             entity_id: VarInt,
             command: String,
             track_output: bool,
@@ -563,14 +601,14 @@ pub mod play {
     }
 
     def_struct! {
-        UpdateCreativeModeSlot {
+        SetCreativeModeSlot {
             slot: i16,
-            // TODO: clicked_item: Slot,
+            clicked_item: Slot,
         }
     }
 
     def_struct! {
-        UpdateJigsaw {
+        ProgramJigsawBlock {
             location: BlockPos,
             name: Ident,
             target: Ident,
@@ -581,7 +619,7 @@ pub mod play {
     }
 
     def_struct! {
-        UpdateStructureBlock {
+        ProgramStructureBlock {
             location: BlockPos,
             action: StructureBlockAction,
             mode: StructureBlockMode,
@@ -648,19 +686,19 @@ pub mod play {
     }
 
     def_struct! {
-        HandSwing {
+        SwingArm {
             hand: Hand,
         }
     }
 
     def_struct! {
-        SpectatorTeleport {
+        TeleportToEntity {
             target: Uuid,
         }
     }
 
     def_struct! {
-        PlayerInteractBlock {
+        UseItemOn {
             hand: Hand,
             location: BlockPos,
             face: BlockFace,
@@ -671,7 +709,7 @@ pub mod play {
     }
 
     def_struct! {
-        PlayerInteractItem {
+        UseItem {
             hand: Hand,
             sequence: VarInt,
         }
@@ -679,57 +717,57 @@ pub mod play {
 
     def_packet_group! {
         C2sPlayPacket {
-            TeleportConfirm = 0,
-            QueryBlockNbt = 1,
-            UpdateDifficulty = 2,
+            ConfirmTeleport = 0,
+            QueryBlockEntityTag = 1,
+            ChangeDifficulty = 2,
             MessageAcknowledgment = 3,
-            CommandExecution = 4,
+            ChatCommand = 4,
             ChatMessage = 5,
-            RequestChatPreview = 6,
-            ClientStatus = 7,
-            ClientSettings = 8,
-            RequestCommandCompletion = 9,
-            ButtonClick = 10,
-            ClickSlot = 11,
-            CloseHandledScreen = 12,
-            CustomPayload = 13,
-            BookUpdate = 14,
-            QueryEntityNbt = 15,
-            PlayerInteractEntity = 16,
+            ChatPreviewC2s = 6,
+            ClientCommand = 7,
+            ClientInformation = 8,
+            CommandSuggestionsRequest = 9,
+            ClickContainerButton = 10,
+            ClickContainer = 11,
+            CloseContainerC2s = 12,
+            PluginMessageC2s = 13,
+            EditBook = 14,
+            QueryEntityTag = 15,
+            Interact = 16,
             JigsawGenerate = 17,
-            KeepAlive = 18,
-            UpdateDifficultyLock = 19,
-            MovePlayerPosition = 20,
-            MovePlayerPositionAndRotation = 21,
-            MovePlayerRotation = 22,
-            MovePlayerOnGround = 23,
-            MoveVehicle = 24,
-            BoatPaddleState = 25,
-            PickFromInventory = 26,
-            CraftRequest = 27,
-            UpdatePlayerAbilities = 28,
+            KeepAliveC2s = 18,
+            LockDifficulty = 19,
+            SetPlayerPosition = 20,
+            SetPlayerPositionAndRotation = 21,
+            SetPlayerRotation = 22,
+            SetPlayerOnGround = 23,
+            MoveVehicleC2s = 24,
+            PaddleBoat = 25,
+            PickItem = 26,
+            PlaceRecipe = 27,
+            PlayerAbilitiesC2s = 28,
             PlayerAction = 29,
             PlayerCommand = 30,
             PlayerInput = 31,
-            PlayPong = 32,
-            RecipeBookChangeSettings = 33,
-            RecipeBookSeenRecipe = 34,
+            PongPlay = 32,
+            ChangeRecipeBookSettings = 33,
+            SetSeenRecipe = 34,
             RenameItem = 35,
-            ResourcePackStatus = 36,
-            AdvancementTab = 37,
-            SelectMerchantTrade = 38,
-            UpdateBeacon = 39,
-            UpdateSelectedSlot = 40,
-            UpdateCommandBlock = 41,
-            UpdateCommandBlockMinecart = 42,
-            UpdateCreativeModeSlot = 43,
-            UpdateJigsaw = 44,
-            UpdateStructureBlock = 45,
+            ResourcePackC2s = 36,
+            SeenAdvancements = 37,
+            SelectTrade = 38,
+            SetBeaconEffect = 39,
+            SetHeldItemS2c = 40,
+            ProgramCommandBlock = 41,
+            ProgramCommandBlockMinecart = 42,
+            SetCreativeModeSlot = 43,
+            ProgramJigsawBlock = 44,
+            ProgramStructureBlock = 45,
             UpdateSign = 46,
-            HandSwing = 47,
-            SpectatorTeleport = 48,
-            PlayerInteractBlock = 49,
-            PlayerInteractItem = 50,
+            SwingArm = 47,
+            TeleportToEntity = 48,
+            UseItemOn = 49,
+            UseItem = 50,
         }
     }
 }
