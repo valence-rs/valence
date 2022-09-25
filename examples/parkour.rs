@@ -257,7 +257,8 @@ impl Config for Game {
                         "",
                         client.state.score
                             .to_string()
-                            .color(Color::LIGHT_PURPLE),
+                            .color(Color::LIGHT_PURPLE)
+                            .bold(),
                         SetTitleAnimationTimes {
                             fade_in: 0,
                             stay: 7,
