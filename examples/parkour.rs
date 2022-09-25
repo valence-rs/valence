@@ -8,8 +8,8 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 use valence::block::BlockPos;
 use valence::block::BlockState;
-use valence::chunk::ChunkPos;
-use valence::client::{default_client_event, Client, GameMode, TitleFade};
+use valence::chunk::{ChunkPos, UnloadedChunk};
+use valence::client::{Client, GameMode, SetTitleAnimationTimes, handle_event_default};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::DimensionId;
 use valence::entity::{EntityId, EntityKind};
@@ -43,16 +43,10 @@ struct ServerState {
     player_list: Option<PlayerListId>,
 }
 
-#[derive(Clone)]
-struct BlockAndTick {
-    pos: BlockPos,
-    //tick: i64
-}
-
 #[derive(Default)]
 struct ClientState {
     entity_id: EntityId,
-    blocks: VecDeque<BlockAndTick>,
+    blocks: VecDeque<BlockPos>,
     score: u32,
     combo: u32,
     target_y: i32,
@@ -97,8 +91,9 @@ impl Config for Game {
         ServerListPing::Respond {
             online_players: self.player_count.load(Ordering::SeqCst) as i32,
             max_players: MAX_PLAYERS as i32,
+            player_sample: Default::default(),
             description: "Hello Valence!".color(Color::AQUA),
-            favicon_png: Some(include_bytes!("../assets/favicon.png")),
+            favicon_png: Some(include_bytes!("../assets/logo-64x64.png").as_slice().into()),
         }
     }
 
@@ -150,7 +145,7 @@ impl Config for Game {
 
                 for chunk_z in -1..3 {
                     for chunk_x in -2..2 {
-                        world.chunks.insert((chunk_x as i32, chunk_z as i32), true);
+                        world.chunks.insert((chunk_x as i32, chunk_z as i32), UnloadedChunk::default(), true);
                     }
                 }
 
@@ -188,7 +183,7 @@ impl Config for Game {
                     server.player_lists.get_mut(id).remove(client.uuid());
                 }
                 for block in &client.state.blocks {
-                    world.chunks.set_block_state(block.pos, BlockState::AIR);
+                    world.chunks.set_block_state(*block, BlockState::AIR);
                 }
                 client.state.blocks.clear();
                 client.state.score = 0;
@@ -202,7 +197,7 @@ impl Config for Game {
                 if let Some(chunk) = world.chunks.get_mut(pos) {
                     chunk.state = true;
                 } else {
-                    world.chunks.insert(pos, true);
+                    world.chunks.insert(pos, UnloadedChunk::default(), true);
                 }
             }
 
@@ -229,7 +224,7 @@ impl Config for Game {
                 .state
                 .blocks
                 .iter()
-                .position(|block| block.pos == pos_under_player)
+                .position(|block| *block == pos_under_player)
             {
                 if index > 0 {
                     let power_result = 2.0f32.powf((client.state.combo as f32) / 45.0);
@@ -263,7 +258,7 @@ impl Config for Game {
                         client.state.score
                             .to_string()
                             .color(Color::LIGHT_PURPLE),
-                        TitleFade {
+                        SetTitleAnimationTimes {
                             fade_in: 0,
                             stay: 7,
                             fade_out: 4,
@@ -272,7 +267,7 @@ impl Config for Game {
                 }
             }
 
-            while default_client_event(
+            while handle_event_default(
                 client,
                 server.entities.get_mut(client.state.entity_id).unwrap(),
             )
@@ -298,7 +293,7 @@ fn reset(client: &mut Client<Game>, world: &mut World<Game>) {
     // Load chunks around spawn to avoid double void reset
     for chunk_z in -1..3 {
         for chunk_x in -2..2 {
-            world.chunks.insert((chunk_x as i32, chunk_z as i32), true);
+            world.chunks.insert((chunk_x as i32, chunk_z as i32), UnloadedChunk::default(), true);
         }
     }
 
@@ -306,11 +301,11 @@ fn reset(client: &mut Client<Game>, world: &mut World<Game>) {
     client.state.combo = 0;
 
     for block in &client.state.blocks {
-        world.chunks.set_block_state(block.pos, BlockState::AIR);
+        world.chunks.set_block_state(*block, BlockState::AIR);
     }
     client.state.blocks.clear();
     client.state.blocks
-        .push_back(BlockAndTick { pos: START_POS });
+        .push_back(START_POS);
     world.chunks.set_block_state(START_POS, BlockState::STONE);
 
     for _ in 0..10 {
@@ -332,17 +327,17 @@ fn generate_next_block(client: &mut Client<Game>, world: &mut World<Game>, in_ga
     if in_game {
         let removed_block = client.state.blocks.pop_front().unwrap();
         world.chunks
-            .set_block_state(removed_block.pos, BlockState::AIR);
+            .set_block_state(removed_block, BlockState::AIR);
 
         client.state.score = client.state.score + 1
     }
 
     let last_pos = client.state.blocks.back().unwrap();
-    let block_pos = generate_random_block(last_pos.pos, client.state.target_y);
+    let block_pos = generate_random_block(*last_pos, client.state.target_y);
 
-    if last_pos.pos.y == START_POS.y {
+    if last_pos.y == START_POS.y {
         client.state.target_y = 0
-    } else if last_pos.pos.y < START_POS.y - 30 || last_pos.pos.y > START_POS.y + 30 {
+    } else if last_pos.y < START_POS.y - 30 || last_pos.y > START_POS.y + 30 {
         client.state.target_y = START_POS.y;
     }
 
@@ -351,7 +346,7 @@ fn generate_next_block(client: &mut Client<Game>, world: &mut World<Game>, in_ga
     world.chunks
         .set_block_state(block_pos, *BLOCK_TYPES.choose(&mut rng).unwrap());
     client.state.blocks
-        .push_back(BlockAndTick { pos: block_pos });
+        .push_back(block_pos);
 
     // Combo System
     client.state.last_block_timestamp = SystemTime::now()
