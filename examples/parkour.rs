@@ -332,8 +332,8 @@ fn generate_next_block(client: &mut Client<Game>, world: &mut World<Game>, in_ga
         client.state.score += 1
     }
 
-    let last_pos = client.state.blocks.back().unwrap();
-    let block_pos = generate_random_block(*last_pos, client.state.target_y);
+    let last_pos = *client.state.blocks.back().unwrap();
+    let block_pos = generate_random_block(last_pos, client.state.target_y);
 
     if last_pos.y == START_POS.y {
         client.state.target_y = 0
