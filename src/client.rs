@@ -36,10 +36,9 @@ use crate::protocol::packets::s2c::play::{
     TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
     UpdateEntityPositionAndRotation, UpdateEntityRotation, UpdateTime,
 };
-use crate::protocol::{BoundedInt, BoundedString, ByteAngle, RawBytes, VarInt};
+use crate::protocol::{BoundedInt, BoundedString, ByteAngle, RawBytes, Slot, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
 use crate::slab_versioned::{Key, VersionedSlab};
-use crate::slot::Slot;
 use crate::text::Text;
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::world::{WorldId, Worlds};

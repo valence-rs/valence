@@ -20,9 +20,9 @@ use crate::block_pos::BlockPos;
 use crate::ident::Ident;
 use crate::nbt::Compound;
 use crate::protocol::{
-    BoundedArray, BoundedInt, BoundedString, ByteAngle, Decode, Encode, RawBytes, VarInt, VarLong,
+    BoundedArray, BoundedInt, BoundedString, ByteAngle, Decode, Encode, RawBytes, Slot, VarInt,
+    VarLong,
 };
-use crate::slot::Slot;
 use crate::text::Text;
 
 /// Provides the name of a packet for debugging purposes.

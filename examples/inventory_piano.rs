@@ -12,8 +12,8 @@ use valence::entity::{Entity, EntityId, EntityKind};
 use valence::player_list::PlayerListId;
 use valence::protocol::packets::c2s::play::ClickContainerMode;
 use valence::protocol::packets::s2c::play::SoundCategory;
+use valence::protocol::SlotId;
 use valence::server::{Server, SharedServer, ShutdownResult};
-use valence::slot::SlotId;
 use valence::text::{Color, TextFormat};
 use valence::{async_trait, ident};
 

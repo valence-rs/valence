@@ -13,8 +13,7 @@ pub use crate::protocol::packets::c2s::play::{
     BlockFace, ChatMode, DisplayedSkinParts, Hand, MainHand, ResourcePackC2s as ResourcePackStatus,
 };
 pub use crate::protocol::packets::s2c::play::GameMode;
-use crate::protocol::VarInt;
-use crate::slot::{Slot, SlotId};
+use crate::protocol::{Slot, SlotId, VarInt};
 
 /// Represents an action performed by a client.
 ///
