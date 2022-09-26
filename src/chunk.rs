@@ -29,6 +29,7 @@ use crate::protocol::packets::s2c::play::{
 };
 use crate::protocol::{Encode, VarInt, VarLong};
 use crate::server::SharedServer;
+use crate::util::log2_ceil;
 
 /// A container for all [`LoadedChunk`]s in a [`World`](crate::world::World).
 pub struct Chunks<C: Config> {
@@ -772,10 +773,4 @@ fn encode_paletted_container(
     }
 
     Ok(())
-}
-
-/// Calculates the log base 2 rounded up.
-fn log2_ceil(n: usize) -> usize {
-    debug_assert_ne!(n, 0);
-    n.next_power_of_two().trailing_zeros() as usize
 }

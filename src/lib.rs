@@ -100,6 +100,7 @@ pub mod config;
 pub mod dimension;
 pub mod entity;
 pub mod ident;
+mod paletted_container;
 pub mod player_list;
 pub mod player_textures;
 #[allow(dead_code)]
