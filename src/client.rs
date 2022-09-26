@@ -21,6 +21,7 @@ use crate::entity::{
     self, velocity_to_packet_units, Entities, EntityId, EntityKind, StatusOrAnimation,
 };
 use crate::ident::Ident;
+use crate::itemstack::ItemStack;
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::c2s::play::{self, C2sPlayPacket, InteractKind, PlayerCommandId};
@@ -789,11 +790,11 @@ impl<C: Config> Client<C> {
                     let held = std::mem::replace(&mut self.cursor_held_item, Slot::Empty);
                     match held {
                         Slot::Empty => {}
-                        Slot::Present {
+                        Slot::Present(ItemStack {
                             item_id,
                             item_count,
                             nbt,
-                        } => self.events.push_back(ClientEvent::DropItemStack {
+                        }) => self.events.push_back(ClientEvent::DropItemStack {
                             item_id,
                             item_count,
                             nbt,
@@ -981,11 +982,11 @@ impl<C: Config> Client<C> {
                         Slot::Empty => log::warn!(
                             "Invalid packet, creative client tried to drop a stack of nothing."
                         ),
-                        Slot::Present {
+                        Slot::Present(ItemStack {
                             item_id,
                             item_count,
                             nbt,
-                        } => self.events.push_back(ClientEvent::DropItemStack {
+                        }) => self.events.push_back(ClientEvent::DropItemStack {
                             item_id,
                             item_count,
                             nbt,
