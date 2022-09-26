@@ -1,6 +1,5 @@
 use std::time::Duration;
 
-use valence_nbt::Compound;
 use vek::Vec3;
 
 use super::Client;
@@ -8,6 +7,7 @@ use crate::block_pos::BlockPos;
 use crate::config::Config;
 use crate::entity::types::Pose;
 use crate::entity::{Entity, EntityEvent, EntityId, TrackedData};
+use crate::itemstack::ItemStack;
 use crate::protocol::packets::c2s::play::ClickContainerMode;
 pub use crate::protocol::packets::c2s::play::{
     BlockFace, ChatMode, DisplayedSkinParts, Hand, MainHand, ResourcePackC2s as ResourcePackStatus,
@@ -146,9 +146,7 @@ pub enum ClientEvent {
     /// user's inventory.
     DropItemStack {
         // TODO: maybe we could add `from_slot_id` to make validation easier
-        item_id: VarInt,
-        item_count: u8,
-        nbt: Option<Compound>,
+        stack: ItemStack,
     },
     /// The client is in creative mode, and is trying to set it's inventory slot
     /// to a value.
