@@ -8,7 +8,3 @@ Cargo.lock
 /extractor/out
 /extractor/classes
 /extractor/run
-
-/extractor/gradlew
-/extractor/gradlew.bat
-/extractor/gradle/wrapper
