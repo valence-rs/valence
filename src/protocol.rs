@@ -10,6 +10,7 @@ use arrayvec::ArrayVec;
 use bitvec::prelude::*;
 pub use byte_angle::ByteAngle;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+pub use slot::{Slot, SlotId};
 use uuid::Uuid;
 use valence_nbt::Compound;
 pub use var_int::VarInt;
@@ -22,6 +23,7 @@ use crate::nbt;
 mod byte_angle;
 pub mod codec;
 pub mod packets;
+mod slot;
 mod var_int;
 mod var_long;
 
