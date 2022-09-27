@@ -73,7 +73,7 @@
     rustdoc::missing_crate_level_docs,
     rustdoc::invalid_codeblock_attributes,
     rustdoc::invalid_rust_codeblocks,
-    rustdoc::bare_urls,
+    rustdoc::bare_urls
 )]
 #![warn(
     trivial_casts,
