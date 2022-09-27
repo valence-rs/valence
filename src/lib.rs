@@ -100,6 +100,7 @@ pub use {uuid, valence_nbt as nbt, vek};
 
 pub mod biome;
 pub mod block;
+pub mod item;
 mod block_pos;
 mod bvh;
 pub mod chunk;
