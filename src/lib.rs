@@ -100,6 +100,7 @@ pub mod config;
 pub mod dimension;
 pub mod entity;
 pub mod ident;
+pub mod itemstack;
 pub mod player_list;
 pub mod player_textures;
 #[allow(dead_code)]
@@ -109,7 +110,6 @@ pub mod server;
 mod slab;
 mod slab_rc;
 mod slab_versioned;
-pub mod slot;
 pub mod spatial_index;
 pub mod text;
 pub mod util;

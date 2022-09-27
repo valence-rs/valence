@@ -35,10 +35,9 @@ use crate::protocol::packets::s2c::play::{
     TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
     UpdateEntityPositionAndRotation, UpdateEntityRotation, UpdateTime,
 };
-use crate::protocol::{BoundedInt, BoundedString, ByteAngle, RawBytes, VarInt};
+use crate::protocol::{BoundedInt, BoundedString, ByteAngle, RawBytes, Slot, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
 use crate::slab_versioned::{Key, VersionedSlab};
-use crate::slot::Slot;
 use crate::text::Text;
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::world::{WorldId, Worlds};
@@ -789,15 +788,9 @@ impl<C: Config> Client<C> {
                     let held = std::mem::replace(&mut self.cursor_held_item, Slot::Empty);
                     match held {
                         Slot::Empty => {}
-                        Slot::Present {
-                            item_id,
-                            item_count,
-                            nbt,
-                        } => self.events.push_back(ClientEvent::DropItemStack {
-                            item_id,
-                            item_count,
-                            nbt,
-                        }),
+                        Slot::Present(stack) => {
+                            self.events.push_back(ClientEvent::DropItemStack { stack })
+                        }
                     }
                 } else {
                     self.cursor_held_item = p.carried_item.clone();
@@ -981,15 +974,9 @@ impl<C: Config> Client<C> {
                         Slot::Empty => log::warn!(
                             "Invalid packet, creative client tried to drop a stack of nothing."
                         ),
-                        Slot::Present {
-                            item_id,
-                            item_count,
-                            nbt,
-                        } => self.events.push_back(ClientEvent::DropItemStack {
-                            item_id,
-                            item_count,
-                            nbt,
-                        }),
+                        Slot::Present(stack) => {
+                            self.events.push_back(ClientEvent::DropItemStack { stack })
+                        }
                     }
                 } else {
                     self.events.push_back(ClientEvent::SetSlotCreative {

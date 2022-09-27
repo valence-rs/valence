@@ -2,6 +2,7 @@ use std::io::Write;
 
 use byteorder::ReadBytesExt;
 
+use crate::itemstack::ItemStack;
 use crate::nbt::Compound;
 use crate::protocol::{Decode, Encode, VarInt};
 
@@ -12,26 +13,18 @@ pub type SlotId = i16;
 pub enum Slot {
     #[default]
     Empty,
-    Present {
-        item_id: VarInt,
-        item_count: u8,
-        nbt: Option<Compound>,
-    },
+    Present(ItemStack),
 }
 
 impl Encode for Slot {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         match self {
             Slot::Empty => false.encode(w),
-            Slot::Present {
-                item_id,
-                item_count,
-                nbt,
-            } => {
+            Slot::Present(s) => {
                 true.encode(w)?;
-                item_id.encode(w)?;
-                item_count.encode(w)?;
-                match &nbt {
+                s.item_id.encode(w)?;
+                s.item_count.encode(w)?;
+                match &s.nbt {
                     Some(n) => n.encode(w),
                     None => 0u8.encode(w),
                 }
@@ -46,7 +39,7 @@ impl Decode for Slot {
         if !present {
             return Ok(Slot::Empty);
         }
-        Ok(Slot::Present {
+        Ok(Slot::Present(ItemStack {
             item_id: VarInt::decode(r)?,
             item_count: u8::decode(r)?,
             nbt: if r.first() == Some(&0) {
@@ -55,6 +48,26 @@ impl Decode for Slot {
             } else {
                 Some(Compound::decode(r)?)
             },
-        })
+        }))
+    }
+}
+
+impl From<Option<ItemStack>> for Slot {
+    fn from(s: Option<ItemStack>) -> Self {
+        if let Some(s) = s {
+            Slot::Present(s)
+        } else {
+            Slot::Empty
+        }
+    }
+}
+
+impl From<Slot> for Option<ItemStack> {
+    fn from(s: Slot) -> Self {
+        if let Slot::Present(s) = s {
+            Some(s)
+        } else {
+            None
+        }
     }
 }
