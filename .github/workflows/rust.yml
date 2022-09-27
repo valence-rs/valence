@@ -26,6 +26,8 @@ jobs:
 
     - name: Validate formatting
       run: cargo fmt --all -- --check
+    - name: Validate documentation
+      run: cargo +stable doc --no-deps --all-features --workspace --document-private-items
     - name: Run clippy lints
       run: cargo +stable clippy --no-deps --all-features --all-targets -- -D warnings
     - name: Run tests

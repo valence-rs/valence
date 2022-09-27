@@ -66,6 +66,15 @@
     html_favicon_url = "https://raw.githubusercontent.com/valence-rs/valence/main/assets/logo.svg"
 )]
 #![forbid(unsafe_code)]
+// Deny these to make CI checks fail. TODO: invalid_html_tags
+#![deny(
+    rustdoc::broken_intra_doc_links,
+    rustdoc::private_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::invalid_codeblock_attributes,
+    rustdoc::invalid_rust_codeblocks,
+    rustdoc::bare_urls
+)]
 #![warn(
     trivial_casts,
     trivial_numeric_casts,
