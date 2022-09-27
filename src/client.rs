@@ -488,7 +488,7 @@ impl<C: Config> Client<C> {
     /// A title is a large piece of text displayed in the center of the screen
     /// which may also include a subtitle underneath it. The title
     /// can be configured to fade in and out using the
-    /// [`TitleFade`] struct.
+    /// [`SetTitleAnimationTimes`] struct.
     pub fn set_title(
         &mut self,
         title: impl Into<Text>,
