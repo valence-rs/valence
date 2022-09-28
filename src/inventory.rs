@@ -95,7 +95,7 @@ impl Default for PlayerInventory {
 
 impl Inventory for PlayerInventory {
     fn get_slot(&self, slot_id: SlotId) -> &Slot {
-        if slot_id < 0 {
+        if slot_id < 0 || slot_id >= self.slot_count() as i16 {
             // TODO: dont panic
             panic!("invalid slot id")
         }
@@ -103,7 +103,7 @@ impl Inventory for PlayerInventory {
     }
 
     fn set_slot(&mut self, slot_id: SlotId, slot: Slot) {
-        if slot_id < 0 {
+        if slot_id < 0 || slot_id >= self.slot_count() as i16 {
             // TODO: dont panic
             panic!("invalid slot id")
         }
