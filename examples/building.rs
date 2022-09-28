@@ -11,8 +11,8 @@ use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::{EntityId, EntityKind};
 use valence::player_list::PlayerListId;
+use valence::protocol::Slot;
 use valence::server::{Server, SharedServer, ShutdownResult};
-use valence::slot::Slot;
 use valence::text::{Color, TextFormat};
 use valence::{async_trait, ident};
 
@@ -219,17 +219,12 @@ impl Config for Game {
                     } => {
                         if hand == Hand::Main {
                             let place_at = location.get_in_direction(face);
-                            if let Slot::Present {
-                                item_id,
-                                item_count: _,
-                                nbt: _,
-                            } = client.held_item()
-                            {
+                            if let Slot::Present(stack) = client.held_item() {
                                 // FIXME: this itemid to block state conversion does not work as you
                                 // would expect. we need some utilities for this
                                 world.chunks.set_block_state(
                                     place_at,
-                                    BlockState::from_raw(item_id.0 as u16).unwrap(),
+                                    BlockState::from_raw(stack.item_id.0 as u16).unwrap(),
                                 );
                             }
                         }
