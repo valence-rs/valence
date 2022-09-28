@@ -23,6 +23,7 @@ public class Items implements Main.Extractor {
             itemJson.addProperty("id", Registry.ITEM.getRawId(item));
             itemJson.addProperty("name", Registry.ITEM.getId(item).getPath());
             itemJson.addProperty("translation_key", item.getTranslationKey());
+            itemJson.addProperty("max_stack", item.getMaxCount());
 
             itemsJson.add(itemJson);
         }

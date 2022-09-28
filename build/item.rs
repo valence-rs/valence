@@ -12,6 +12,7 @@ struct Item {
     id: u16,
     translation_key: String,
     name: String,
+    max_stack: i16,
 }
 
 pub fn build() -> anyhow::Result<TokenStream> {
@@ -81,6 +82,18 @@ pub fn build() -> anyhow::Result<TokenStream> {
         })
         .collect::<TokenStream>();
 
+    let item_to_max_count_arms = items
+        .iter()
+        .map(|i| {
+            let name_ident = ident(&i.name.to_pascal_case());
+            let max_count = i.max_stack;
+
+            quote! {
+                Item::#name_ident => #max_count,
+            }
+        })
+        .collect::<TokenStream>();
+
     let items_varients = items
         .iter()
         .map(|i| ident(i.name.to_pascal_case()))
@@ -140,6 +153,13 @@ pub fn build() -> anyhow::Result<TokenStream> {
             pub const fn translation_key(self) -> &'static str {
                 match self {
                     #item_to_translation_key_arms
+                }
+            }
+
+            /// Returns the max stack count
+            pub const fn get_max_count(self) -> i16 {
+                match self {
+                    #item_to_max_count_arms
                 }
             }
 
