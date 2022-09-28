@@ -74,12 +74,12 @@ impl Inventory for PlayerInventory {
 /// player, it also shows part of the player's inventory so they can move items
 /// between the inventories.
 #[derive(Debug)]
-pub struct WindowInventory<T> {
-    object_inventory: T,
+pub struct WindowInventory<I> {
+    object_inventory: I,
     player_inventory: PlayerInventory,
 }
 
-impl<T: Inventory> WindowInventory<T> {
+impl<I: Inventory> WindowInventory<I> {
     fn is_in_object(&self, slot_id: SlotId) -> bool {
         (slot_id as usize) < self.object_inventory.slot_count()
     }
@@ -90,7 +90,7 @@ impl<T: Inventory> WindowInventory<T> {
     }
 }
 
-impl<T: Inventory> Inventory for WindowInventory<T> {
+impl<I: Inventory> Inventory for WindowInventory<I> {
     fn get_slot(&self, slot_id: SlotId) -> &Slot {
         if slot_id < 0 {
             // TODO: dont panic
