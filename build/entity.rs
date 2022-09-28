@@ -270,11 +270,11 @@ pub fn build() -> anyhow::Result<TokenStream> {
     });
 
     let concrete_entity_names = concrete_entities
-        .iter()
-        .map(|(k, _)| ident(k))
+        .keys()
+        .map(ident)
         .collect::<Vec<_>>();
 
-    let concrete_entity_structs = concrete_entities.iter().map(|(struct_name, _)| {
+    let concrete_entity_structs = concrete_entities.keys().map(|struct_name| {
         let fields = collect_all_fields(struct_name, &entities);
         let struct_name = ident(struct_name);
 
