@@ -121,10 +121,7 @@ impl Inventory for PlayerInventory {
 /// player, it also shows part of the player's inventory so they can move items
 /// between the inventories.
 #[derive(Debug)]
-pub struct WindowInventory<T>
-where
-    T: Inventory,
-{
+pub struct WindowInventory<T> {
     object_inventory: T,
     player_inventory: PlayerInventory,
 }
