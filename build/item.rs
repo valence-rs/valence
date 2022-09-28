@@ -120,6 +120,8 @@ pub fn build() -> anyhow::Result<TokenStream> {
             /// Construct an item for its snake_case name.
             ///
             /// Returns `None` if the name is invalid.
+            // Added to make it the same as BlockKind
+            #[allow(clippy::should_implement_trait)]
             pub fn from_str(name: &str) -> Option<Item> {
                 match name {
                     #item_from_str_arms
