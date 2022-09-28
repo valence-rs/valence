@@ -18,7 +18,7 @@ pub trait CraftingInventory {
 /// Represents a player's Inventory.
 #[derive(Debug, Clone)]
 pub struct PlayerInventory {
-    pub(crate) slots: [Slot; 46],
+    pub(crate) slots: Box<[Slot; 46]>,
 }
 
 impl PlayerInventory {
@@ -46,7 +46,7 @@ impl Default for PlayerInventory {
     fn default() -> Self {
         Self {
             // Can't do the shorthand because Slot is not Copy.
-            slots: [
+            slots: Box::new([
                 Slot::Empty,
                 Slot::Empty,
                 Slot::Empty,
@@ -93,7 +93,7 @@ impl Default for PlayerInventory {
                 Slot::Empty,
                 Slot::Empty,
                 Slot::Empty,
-            ],
+            ]),
         }
     }
 }
