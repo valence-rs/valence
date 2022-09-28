@@ -115,12 +115,6 @@ pub fn build() -> anyhow::Result<TokenStream> {
                     #item_from_raw_id_arms
                     _ => None
                 }
-
-                //if id <= #items_count.try_into().unwrap() {
-                //    Some(Self(id))
-                //} else {
-                //    None
-                //}
             }
 
             /// Gets the raw item ID from the item
@@ -142,7 +136,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Get the snake_case name of this block kind.
+            /// Gets the snake_case name of this item.
             pub const fn to_str(self) -> &'static str {
                 match self {
                     #item_to_str_arms
