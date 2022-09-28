@@ -25,20 +25,15 @@ impl PlayerInventory {
     /// General slots are the slots that can hold all items, including the
     /// hotbar, excluding offhand. These slots are shown when the player is
     /// looking at another inventory.
-    pub fn general_slots() -> Range<SlotId> {
-        9..45
-    }
-
-    pub fn hotbar_slots() -> Range<SlotId> {
-        36..45
-    }
+    pub const GENERAL_SLOTS: Range<SlotId> = 9..45;
+    pub const HOTBAR_SLOTS: Range<SlotId> = 36..45;
 
     pub fn hotbar_to_slot(hotbar_slot: i16) -> Option<SlotId> {
         if !(0..=8).contains(&hotbar_slot) {
             return None;
         }
 
-        Some(Self::hotbar_slots().start + hotbar_slot)
+        Some(Self::HOTBAR_SLOTS.start + hotbar_slot)
     }
 }
 
@@ -140,7 +135,7 @@ impl<T: Inventory> WindowInventory<T> {
     }
 
     fn to_player_slot(&self, slot_id: SlotId) -> SlotId {
-        let first_general_slot = PlayerInventory::general_slots().start;
+        let first_general_slot = PlayerInventory::GENERAL_SLOTS.start;
         slot_id - self.object_inventory.capacity() as SlotId + first_general_slot
     }
 }
@@ -174,7 +169,7 @@ impl<T: Inventory> Inventory for WindowInventory<T> {
     }
 
     fn capacity(&self) -> usize {
-        self.object_inventory.capacity() + PlayerInventory::general_slots().len()
+        self.object_inventory.capacity() + PlayerInventory::GENERAL_SLOTS.len()
     }
 }
 
