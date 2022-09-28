@@ -5,7 +5,7 @@ use crate::protocol::{Slot, SlotId};
 pub trait Inventory {
     fn get_slot(&self, slot_id: SlotId) -> &Slot;
     fn set_slot(&mut self, slot_id: SlotId, slot: Slot);
-    fn capacity(&self) -> usize;
+    fn slot_count(&self) -> usize;
 
     // TODO: `entry()` style api
 }
@@ -110,7 +110,7 @@ impl Inventory for PlayerInventory {
         self.slots[slot_id as usize] = slot;
     }
 
-    fn capacity(&self) -> usize {
+    fn slot_count(&self) -> usize {
         self.slots.len()
     }
 }
@@ -131,12 +131,12 @@ where
 
 impl<T: Inventory> WindowInventory<T> {
     fn is_in_object(&self, slot_id: SlotId) -> bool {
-        (slot_id as usize) < self.object_inventory.capacity()
+        (slot_id as usize) < self.object_inventory.slot_count()
     }
 
     fn to_player_slot(&self, slot_id: SlotId) -> SlotId {
         let first_general_slot = PlayerInventory::GENERAL_SLOTS.start;
-        slot_id - self.object_inventory.capacity() as SlotId + first_general_slot
+        slot_id - self.object_inventory.slot_count() as SlotId + first_general_slot
     }
 }
 
@@ -168,8 +168,8 @@ impl<T: Inventory> Inventory for WindowInventory<T> {
         }
     }
 
-    fn capacity(&self) -> usize {
-        self.object_inventory.capacity() + PlayerInventory::GENERAL_SLOTS.len()
+    fn slot_count(&self) -> usize {
+        self.object_inventory.slot_count() + PlayerInventory::GENERAL_SLOTS.len()
     }
 }
 
