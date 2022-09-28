@@ -1,21 +1,23 @@
+use std::array;
+
 use arrayvec::ArrayVec;
 
-use crate::util::log2_ceil;
+// TODO: https://github.com/rust-lang/rust/issues/60551
 
 /// `HALF_LEN` must be equal to `ceil(LEN / 2)`.
-#[derive(Clone)]
-pub struct CompactArray<T, const LEN: usize, const HALF_LEN: usize> {
+#[derive(Clone, Debug)]
+pub struct PalettedContainer<T, const LEN: usize, const HALF_LEN: usize> {
     inner: Inner<T, LEN, HALF_LEN>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum Inner<T, const LEN: usize, const HALF_LEN: usize> {
     Single(T),
     Indirect(Box<Indirect<T, LEN, HALF_LEN>>),
     Direct(Box<[T; LEN]>),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Indirect<T, const LEN: usize, const HALF_LEN: usize> {
     /// Each element is a unique instance of `T`.
     palette: ArrayVec<T, 16>,
@@ -24,10 +26,11 @@ struct Indirect<T, const LEN: usize, const HALF_LEN: usize> {
 }
 
 impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
-    CompactArray<T, LEN, HALF_LEN>
+    PalettedContainer<T, LEN, HALF_LEN>
 {
     pub fn new() -> Self {
         assert_eq!(div_ceil(LEN, 2), HALF_LEN);
+        assert_ne!(LEN, 0);
 
         Self {
             inner: Inner::Single(T::default()),
@@ -43,10 +46,7 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
 
         match &self.inner {
             Inner::Single(elem) => *elem,
-            Inner::Indirect(ind) => {
-                let palette_idx = ind.indices[idx / 2] << (idx % 2 * 4);
-                ind.palette[palette_idx as usize]
-            }
+            Inner::Indirect(ind) => ind.get(idx),
             Inner::Direct(elems) => elems[idx],
         }
     }
@@ -59,28 +59,74 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
                 if *old_elem == elem {
                     *old_elem
                 } else {
-                    // Upgrade to the indirect representation.
-
+                    // Upgrade to indirect.
+                    let old = *old_elem;
                     let mut ind = Box::new(Indirect {
-                        palette: ArrayVec::from_iter([*old_elem, elem]),
+                        palette: ArrayVec::from_iter([old, elem]),
                         // All indices are initialized to index 0 (the old element).
                         indices: [0; HALF_LEN],
                     });
 
                     ind.indices[idx / 2] = 1 << (idx % 2 * 4);
                     self.inner = Inner::Indirect(ind);
-                    *old_elem
+                    old
                 }
             }
             Inner::Indirect(ind) => {
-                let old_palette_idx = todo!();
+                if let Some(old) = ind.set(idx, elem) {
+                    old
+                } else {
+                    // Upgrade to direct.
+                    self.inner = Inner::Direct(Box::new(array::from_fn(|i| ind.get(i))));
+                    self.set(idx, elem)
+                }
             }
-            Inner::Direct(_) => {}
+            Inner::Direct(elems) => {
+                let old = elems[idx];
+                elems[idx] = elem;
+                old
+            }
         }
     }
 
     pub fn optimize(&mut self) {
-        todo!()
+        match &mut self.inner {
+            Inner::Single(_) => {}
+            Inner::Indirect(ind) => {
+                let mut new_ind = Indirect {
+                    palette: ArrayVec::new(),
+                    indices: [0; HALF_LEN],
+                };
+
+                for i in 0..LEN {
+                    new_ind.set(i, ind.get(i));
+                }
+
+                if new_ind.palette.len() == 1 {
+                    self.inner = Inner::Single(new_ind.palette[0]);
+                } else {
+                    **ind = new_ind;
+                }
+            }
+            Inner::Direct(dir) => {
+                let mut ind = Indirect {
+                    palette: ArrayVec::new(),
+                    indices: [0; HALF_LEN],
+                };
+
+                for (i, val) in dir.iter().cloned().enumerate() {
+                    if ind.set(i, val).is_none() {
+                        return;
+                    }
+                }
+
+                if ind.palette.len() == 1 {
+                    self.inner = Inner::Single(ind.palette[0]);
+                } else {
+                    self.inner = Inner::Indirect(Box::new(ind));
+                }
+            }
+        }
     }
 
     #[inline]
@@ -90,12 +136,79 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
 }
 
 impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize> Indirect<T, LEN, HALF_LEN> {
-    pub fn get(&self, idx: usize) -> T {}
+    pub fn get(&self, idx: usize) -> T {
+        let palette_idx = self.indices[idx / 2] >> (idx % 2 * 4) & 0b1111;
+        self.palette[palette_idx as usize]
+    }
+
+    pub fn set(&mut self, idx: usize, val: T) -> Option<T> {
+        let palette_idx = if let Some(i) = self.palette.iter().position(|v| *v == val) {
+            i
+        } else {
+            self.palette.try_push(val).ok()?;
+            self.palette.len() - 1
+        };
+
+        let old_val = self.get(idx);
+        let u8 = &mut self.indices[idx / 2];
+        let shift = idx % 2 * 4;
+        *u8 = (*u8 & !(0b1111 << shift)) | ((palette_idx as u8) << shift);
+        Some(old_val)
+    }
 }
 
 /// TODO: https://github.com/rust-lang/rust/issues/88581
 fn div_ceil(left: usize, right: usize) -> usize {
     num::Integer::div_ceil(&left, &right)
+}
+
+#[cfg(test)]
+mod tests {
+    use rand::Rng;
+
+    use super::*;
+
+    fn check<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>(
+        p: &PalettedContainer<T, LEN, HALF_LEN>,
+        s: &[T],
+    ) -> bool {
+        assert_eq!(s.len(), LEN);
+        (0..LEN).all(|i| &p.get(i) == &s[i])
+    }
+
+    #[test]
+    fn random_assignments() {
+        const LEN: usize = 100;
+        let range = 0..64;
+
+        let mut rng = rand::thread_rng();
+
+        for _ in 0..20 {
+            let mut p = PalettedContainer::<u32, LEN, { LEN / 2 }>::new();
+
+            let init = rng.gen_range(range.clone());
+
+            p.fill(init);
+            let mut a = [init; LEN];
+
+            assert!(check(&p, &a));
+
+            let mut rng = rand::thread_rng();
+
+            for _ in 0..LEN * 10 {
+                let idx = rng.gen_range(0..LEN);
+                let val = rng.gen_range(range.clone());
+
+                assert_eq!(p.get(idx), p.set(idx, val));
+                assert_eq!(val, p.get(idx));
+                a[idx] = val;
+
+                p.optimize();
+
+                assert!(check(&p, &a));
+            }
+        }
+    }
 }
 
 /*
