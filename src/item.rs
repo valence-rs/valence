@@ -2,7 +2,7 @@
 
 use anyhow::Context;
 
-use crate::protocol::{Encode, VarInt, Decode};
+use crate::protocol::{Decode, Encode, VarInt};
 
 include!(concat!(env!("OUT_DIR"), "/item.rs"));
 

@@ -56,7 +56,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }
         })
         .collect::<TokenStream>();
-    
+
     let item_to_raw_id_arms = items
         .iter()
         .map(|i| {
