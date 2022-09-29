@@ -1,0 +1,263 @@
+use std::net::SocketAddr;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
+
+use log::LevelFilter;
+use num::Integer;
+use valence::async_trait;
+use valence::block::BlockState;
+use valence::chunk::{Chunk, UnloadedChunk};
+use valence::client::{handle_event_default, ClientEvent, GameMode, Hand};
+use valence::config::{Config, ServerListPing};
+use valence::dimension::{Dimension, DimensionId};
+use valence::entity::{EntityId, EntityKind};
+use valence::inventory::{ConfigurableInventory, Inventory, WindowInventory};
+use valence::player_list::PlayerListId;
+use valence::protocol::packets::s2c::play::{OpenScreen, SetContainerContent};
+use valence::protocol::{Slot, VarInt};
+use valence::server::{Server, SharedServer, ShutdownResult};
+use valence::text::{Color, TextFormat};
+
+pub fn main() -> ShutdownResult {
+    env_logger::Builder::new()
+        .filter_module("valence", LevelFilter::Trace)
+        .parse_default_env()
+        .init();
+
+    valence::start_server(
+        Game {
+            player_count: AtomicUsize::new(0),
+        },
+        ServerState {
+            player_list: None,
+            chest: Arc::new(Mutex::new(ConfigurableInventory::new(27, None))),
+        },
+    )
+}
+
+struct Game {
+    player_count: AtomicUsize,
+}
+
+struct ServerState {
+    player_list: Option<PlayerListId>,
+    chest: Arc<Mutex<ConfigurableInventory>>,
+}
+
+#[derive(Default)]
+struct ClientState {
+    entity_id: EntityId,
+    open_inventory: Option<WindowInventory>,
+}
+
+const MAX_PLAYERS: usize = 10;
+
+const SIZE_X: usize = 100;
+const SIZE_Z: usize = 100;
+
+#[async_trait]
+impl Config for Game {
+    type ServerState = ServerState;
+    type ClientState = ClientState;
+    type EntityState = ();
+    type WorldState = ();
+    type ChunkState = ();
+    type PlayerListState = ();
+
+    fn max_connections(&self) -> usize {
+        // We want status pings to be successful even if the server is full.
+        MAX_PLAYERS + 64
+    }
+
+    fn dimensions(&self) -> Vec<Dimension> {
+        vec![Dimension {
+            fixed_time: Some(6000),
+            ..Dimension::default()
+        }]
+    }
+
+    async fn server_list_ping(
+        &self,
+        _server: &SharedServer<Self>,
+        _remote_addr: SocketAddr,
+        _protocol_version: i32,
+    ) -> ServerListPing {
+        ServerListPing::Respond {
+            online_players: self.player_count.load(Ordering::SeqCst) as i32,
+            max_players: MAX_PLAYERS as i32,
+            player_sample: Default::default(),
+            description: "Hello Valence!".color(Color::AQUA),
+            favicon_png: Some(include_bytes!("../assets/logo-64x64.png").as_slice().into()),
+        }
+    }
+
+    fn init(&self, server: &mut Server<Self>) {
+        let world = server.worlds.insert(DimensionId::default(), ()).1;
+        server.state.player_list = Some(server.player_lists.insert(()).0);
+
+        // initialize chunks
+        for chunk_z in -2..Integer::div_ceil(&(SIZE_Z as i32), &16) + 2 {
+            for chunk_x in -2..Integer::div_ceil(&(SIZE_X as i32), &16) + 2 {
+                world.chunks.insert(
+                    [chunk_x as i32, chunk_z as i32],
+                    UnloadedChunk::default(),
+                    (),
+                );
+            }
+        }
+
+        // initialize blocks in the chunks
+        for chunk_x in 0..Integer::div_ceil(&SIZE_X, &16) {
+            for chunk_z in 0..Integer::div_ceil(&SIZE_Z, &16) {
+                let chunk = world
+                    .chunks
+                    .get_mut((chunk_x as i32, chunk_z as i32))
+                    .unwrap();
+                for x in 0..16 {
+                    for z in 0..16 {
+                        let cell_x = chunk_x * 16 + x;
+                        let cell_z = chunk_z * 16 + z;
+
+                        if cell_x < SIZE_X && cell_z < SIZE_Z {
+                            chunk.set_block_state(x, 63, z, BlockState::GRASS_BLOCK);
+                        }
+                    }
+                }
+            }
+        }
+
+        world
+            .chunks
+            .set_block_state((50, -1, 54), BlockState::STONE);
+        world.chunks.set_block_state((50, 0, 54), BlockState::CHEST);
+    }
+
+    fn update(&self, server: &mut Server<Self>) {
+        let (world_id, world) = server.worlds.iter_mut().next().unwrap();
+
+        let spawn_pos = [SIZE_X as f64 / 2.0, 1.0, SIZE_Z as f64 / 2.0];
+
+        server.clients.retain(|_, client| {
+            if client.created_this_tick() {
+                if self
+                    .player_count
+                    .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
+                        (count < MAX_PLAYERS).then_some(count + 1)
+                    })
+                    .is_err()
+                {
+                    client.disconnect("The server is full!".color(Color::RED));
+                    return false;
+                }
+
+                match server
+                    .entities
+                    .insert_with_uuid(EntityKind::Player, client.uuid(), ())
+                {
+                    Some((id, _)) => client.state.entity_id = id,
+                    None => {
+                        client.disconnect("Conflicting UUID");
+                        return false;
+                    }
+                }
+
+                client.spawn(world_id);
+                client.set_flat(true);
+                client.teleport(spawn_pos, 0.0, 0.0);
+                client.set_player_list(server.state.player_list.clone());
+
+                if let Some(id) = &server.state.player_list {
+                    server.player_lists.get_mut(id).insert(
+                        client.uuid(),
+                        client.username(),
+                        client.textures().cloned(),
+                        client.game_mode(),
+                        0,
+                        None,
+                    );
+                }
+
+                client.set_game_mode(GameMode::Creative);
+                client.send_message("Welcome to Valence! Build something cool.".italic());
+            }
+
+            if client.is_disconnected() {
+                self.player_count.fetch_sub(1, Ordering::SeqCst);
+                server.entities.remove(client.state.entity_id);
+                if let Some(id) = &server.state.player_list {
+                    server.player_lists.get_mut(id).remove(client.uuid());
+                }
+                return false;
+            }
+
+            let player = server.entities.get_mut(client.state.entity_id).unwrap();
+
+            if client.position().y <= -20.0 {
+                client.teleport(spawn_pos, client.yaw(), client.pitch());
+            }
+
+            while let Some(event) = handle_event_default(client, player) {
+                match event {
+                    ClientEvent::InteractWithBlock { hand, location, .. } => {
+                        if hand == Hand::Main
+                            && world.chunks.get_block_state(location) == Some(BlockState::CHEST)
+                        {
+                            client.send_message("Opening chest!");
+                            let window = WindowInventory::new(
+                                1,
+                                server.state.chest.clone(),
+                                client.inventory.clone(),
+                            );
+                            client.send_packet(OpenScreen {
+                                window_id: VarInt(window.window_id.into()),
+                                window_type: VarInt(2),
+                                window_title: "Extra".italic()
+                                    + " Chesty".not_italic().bold().color(Color::RED)
+                                    + " Chest".not_italic(),
+                            });
+                            client.send_packet(SetContainerContent {
+                                window_id: window.window_id,
+                                state_id: VarInt(1),
+                                slots: window.slots(),
+                                carried_item: Slot::Empty,
+                            });
+                            client.state.open_inventory = Some(window);
+                        }
+                    }
+                    ClientEvent::CloseScreen { window_id } => {
+                        client.send_message(format!("Window closed: {}", window_id));
+                        client.state.open_inventory = None;
+                        client.send_message(format!(
+                            "Chest: {:?}",
+                            server.state.chest.lock().unwrap()
+                        ));
+                    }
+                    ClientEvent::ClickContainer {
+                        window_id,
+                        state_id,
+                        slot_id,
+                        mode,
+                        slot_changes,
+                        carried_item,
+                    } => {
+                        println!(
+                            "window_id: {:?}, state_id: {:?}, slot_id: {:?}, mode: {:?}, \
+                             slot_changes: {:?}, carried_item: {:?}",
+                            window_id, state_id, slot_id, mode, slot_changes, carried_item
+                        );
+                        for (slot_id, slot) in slot_changes {
+                            if let Some(inv) = client.state.open_inventory.as_mut() {
+                                inv.set_slot(slot_id, slot);
+                            } else {
+                                client.inventory.lock().unwrap().set_slot(slot_id, slot);
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            true
+        });
+    }
+}

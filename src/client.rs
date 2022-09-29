@@ -3,6 +3,7 @@
 use std::collections::{HashSet, VecDeque};
 use std::iter::FusedIterator;
 use std::mem;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 pub use bitfield_struct::bitfield;
@@ -227,7 +228,7 @@ pub struct Client<C: Config> {
     resource_pack_to_send: Option<ResourcePackS2c>,
     attack_speed: f64,
     movement_speed: f64,
-    pub inventory: PlayerInventory,
+    pub inventory: Arc<Mutex<PlayerInventory>>,
     bits: ClientBits,
     /// The data for the client's own player entity.
     player_data: Player,
@@ -299,7 +300,7 @@ impl<C: Config> Client<C> {
             resource_pack_to_send: None,
             attack_speed: 4.0,
             movement_speed: 0.7,
-            inventory: PlayerInventory::default(),
+            inventory: Arc::new(Mutex::new(PlayerInventory::default())),
             bits: ClientBits::new()
                 .with_modified_spawn_position(true)
                 .with_got_keepalive(true)
@@ -729,8 +730,11 @@ impl<C: Config> Client<C> {
         self.settings.as_ref()
     }
 
-    pub fn held_item(&self) -> &Slot {
-        self.inventory.get_slot(self.selected_hotbar_slot)
+    pub fn held_item(&self) -> Slot {
+        self.inventory
+            .lock()
+            .unwrap()
+            .get_slot(self.selected_hotbar_slot)
     }
 
     /// Disconnects this client from the server with the provided reason. This

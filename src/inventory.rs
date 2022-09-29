@@ -1,9 +1,10 @@
 use std::ops::Range;
+use std::sync::{Arc, Mutex};
 
 use crate::protocol::{Slot, SlotId};
 
 pub trait Inventory {
-    fn get_slot(&self, slot_id: SlotId) -> &Slot;
+    fn get_slot(&self, slot_id: SlotId) -> Slot;
     fn set_slot(&mut self, slot_id: SlotId, slot: Slot);
     fn slot_count(&self) -> usize;
 
@@ -47,12 +48,52 @@ impl Default for PlayerInventory {
 }
 
 impl Inventory for PlayerInventory {
-    fn get_slot(&self, slot_id: SlotId) -> &Slot {
+    fn get_slot(&self, slot_id: SlotId) -> Slot {
         if slot_id < 0 || slot_id >= self.slot_count() as i16 {
             // TODO: dont panic
             panic!("invalid slot id")
         }
-        &self.slots[slot_id as usize]
+        self.slots[slot_id as usize].clone()
+    }
+
+    fn set_slot(&mut self, slot_id: SlotId, slot: Slot) {
+        if slot_id < 0 || slot_id >= self.slot_count() as i16 {
+            // TODO: dont panic
+            panic!("invalid slot id")
+        }
+        self.slots[slot_id as usize] = slot;
+    }
+
+    fn slot_count(&self) -> usize {
+        self.slots.len()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ConfigurableInventory {
+    slots: Vec<Slot>,
+    /// The slots that the player can place items into for crafting. The
+    /// crafting result slot is always zero, and should not be included in this
+    /// range.
+    crafting_slots: Option<Range<SlotId>>,
+}
+
+impl ConfigurableInventory {
+    pub fn new(size: usize, crafting_slots: Option<Range<SlotId>>) -> Self {
+        ConfigurableInventory {
+            slots: vec![Slot::Empty; size],
+            crafting_slots,
+        }
+    }
+}
+
+impl Inventory for ConfigurableInventory {
+    fn get_slot(&self, slot_id: SlotId) -> Slot {
+        if slot_id < 0 || slot_id >= self.slot_count() as i16 {
+            // TODO: dont panic
+            panic!("invalid slot id")
+        }
+        self.slots[slot_id as usize].clone()
     }
 
     fn set_slot(&mut self, slot_id: SlotId, slot: Slot) {
@@ -74,33 +115,55 @@ impl Inventory for PlayerInventory {
 /// player, it also shows part of the player's inventory so they can move items
 /// between the inventories.
 #[derive(Debug)]
-pub struct WindowInventory<I> {
-    object_inventory: I,
-    player_inventory: PlayerInventory,
+pub struct WindowInventory {
+    pub window_id: u8,
+    object_inventory: Arc<Mutex<ConfigurableInventory>>,
+    player_inventory: Arc<Mutex<PlayerInventory>>,
 }
 
-impl<I: Inventory> WindowInventory<I> {
+impl WindowInventory {
+    pub fn new(
+        window_id: impl Into<u8>,
+        object_inventory: Arc<Mutex<ConfigurableInventory>>,
+        player_inventory: Arc<Mutex<PlayerInventory>>,
+    ) -> Self {
+        WindowInventory {
+            window_id: window_id.into(),
+            object_inventory,
+            player_inventory,
+        }
+    }
+
     fn is_in_object(&self, slot_id: SlotId) -> bool {
-        (slot_id as usize) < self.object_inventory.slot_count()
+        (slot_id as usize) < self.object_inventory.lock().unwrap().slot_count()
     }
 
     fn to_player_slot(&self, slot_id: SlotId) -> SlotId {
         let first_general_slot = PlayerInventory::GENERAL_SLOTS.start;
-        slot_id - self.object_inventory.slot_count() as SlotId + first_general_slot
+        slot_id - self.object_inventory.lock().unwrap().slot_count() as SlotId + first_general_slot
+    }
+
+    pub fn slots(&self) -> Vec<Slot> {
+        (0..self.slot_count())
+            .map(|s| self.get_slot(s as SlotId))
+            .collect()
     }
 }
 
-impl<I: Inventory> Inventory for WindowInventory<I> {
-    fn get_slot(&self, slot_id: SlotId) -> &Slot {
+impl Inventory for WindowInventory {
+    fn get_slot(&self, slot_id: SlotId) -> Slot {
         if slot_id < 0 {
             // TODO: dont panic
             panic!("invalid slot id")
         }
 
         if self.is_in_object(slot_id) {
-            self.object_inventory.get_slot(slot_id)
+            self.object_inventory.lock().unwrap().get_slot(slot_id)
         } else {
-            self.player_inventory.get_slot(self.to_player_slot(slot_id))
+            self.player_inventory
+                .lock()
+                .unwrap()
+                .get_slot(self.to_player_slot(slot_id))
         }
     }
 
@@ -111,15 +174,20 @@ impl<I: Inventory> Inventory for WindowInventory<I> {
         }
 
         if self.is_in_object(slot_id) {
-            self.object_inventory.set_slot(slot_id, slot)
+            self.object_inventory
+                .lock()
+                .unwrap()
+                .set_slot(slot_id, slot)
         } else {
             self.player_inventory
+                .lock()
+                .unwrap()
                 .set_slot(self.to_player_slot(slot_id), slot)
         }
     }
 
     fn slot_count(&self) -> usize {
-        self.object_inventory.slot_count() + PlayerInventory::GENERAL_SLOTS.len()
+        self.object_inventory.lock().unwrap().slot_count() + PlayerInventory::GENERAL_SLOTS.len()
     }
 }
 
@@ -138,6 +206,6 @@ mod test {
             nbt: None,
         });
         inv.set_slot(9, slot.clone());
-        assert_eq!(*inv.get_slot(9), slot);
+        assert_eq!(inv.get_slot(9), slot);
     }
 }
