@@ -462,7 +462,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
                     ident(matching_blocks.get(3).unwrap().name.to_shouty_snake_case());
 
                 quote! {
-                    Item::#item_ident => Some(BlockStateType::Cauldren(CauldronBlockState {
+                    Item::#item_ident => Some(BlockStateType::Cauldron(CauldronBlockState {
                         empty: BlockState::#empty_state,
                         water: BlockState::#water_state,
                         lava: BlockState::#lava_state,
@@ -595,7 +595,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Construct a Item from an BlockState
+            /// Construct an Item from a BlockState.
             ///
             /// If the given BlockState doesn't have a corresponding Item, `None` is returned.
             pub const fn to_item(self) -> Option<Item> {
@@ -605,7 +605,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Construct a BlockStateType from an Item
+            /// Construct a BlockStateType from an Item.
             ///
             /// If the given Item doesn't have a corresponding block, `None` is returned.
             pub const fn from_item(item: Item) -> Option<BlockStateType> {
@@ -618,27 +618,26 @@ pub fn build() -> anyhow::Result<TokenStream> {
             #default_block_states
         }
 
-        /// An enum to store the diffrent result from `from_item`
+        /// An enum to store the diffrent result from `from_item`.
         ///
+        /// `Normal` is just a single BlockState.
         ///
-        /// `Normal` is just a single BlockState
+        /// `Wall` is two BlockStates, one for the normal variant and one for the wall variant.
         ///
-        /// `Wall` is to BlockStates one for the normal variant and one for the wall variant
-        ///
-        /// `Cauldren` is the diffrent cauldren varients put into one
+        /// `Cauldron` is the diffrent cauldron varients put into one.
         pub enum BlockStateType {
             Normal(BlockState),
             Wall(WallBlockState),
-            Cauldren(CauldronBlockState)
+            Cauldron(CauldronBlockState)
         }
 
-        /// Stores a normal and a wall variant of an BlockState
+        /// Stores a normal and a wall variant of an BlockState.
         pub struct WallBlockState {
             pub normal: BlockState,
             pub wall: BlockState
         }
 
-        /// Stores the diffrent cauldren variants
+        /// Stores the diffrent cauldren variants.
         pub struct CauldronBlockState {
             pub empty: BlockState,
             pub water: BlockState,

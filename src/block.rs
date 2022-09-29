@@ -89,8 +89,7 @@ mod tests {
 
         let new_block = match BlockState::from_item(item).unwrap() {
             BlockStateType::Normal(b) => b,
-            BlockStateType::Wall(_) => panic!(),
-            BlockStateType::Cauldren(_) => panic!(),
+            _ => panic!(),
         };
 
         assert_eq!(new_block, BlockState::OAK_WOOD)
