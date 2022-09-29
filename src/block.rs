@@ -95,4 +95,13 @@ mod tests {
 
         assert_eq!(new_block, BlockState::OAK_WOOD)
     }
+
+    #[test]
+    fn block_state_to_item() {
+        let block = BlockState::SLIME_BLOCK;
+
+        let new_item = block.to_item().unwrap();
+
+        assert_eq!(new_item, Item::SlimeBlock)
+    }
 }
