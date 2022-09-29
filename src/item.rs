@@ -15,7 +15,7 @@ impl Encode for Item {
 impl Decode for Item {
     fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         let id = VarInt::decode(r)?.0;
-        let errmsg = "invalid block state ID";
+        let errmsg = "invalid item ID";
 
         Item::from_raw(id.try_into().context(errmsg)?).context(errmsg)
     }

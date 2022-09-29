@@ -12,7 +12,7 @@ struct Item {
     id: u16,
     translation_key: String,
     name: String,
-    max_stack: i16,
+    max_stack: u8,
 }
 
 pub fn build() -> anyhow::Result<TokenStream> {
@@ -31,7 +31,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         })
         .collect::<TokenStream>();
 
-    let item_varients = items
+    let item_variants = items
         .iter()
         .map(|i| ident(i.name.to_pascal_case()))
         .collect::<Vec<_>>();
@@ -82,7 +82,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         })
         .collect::<TokenStream>();
 
-    let item_to_max_count_arms = items
+    let item_to_max_stack_arms = items
         .iter()
         .map(|i| {
             let name_ident = ident(&i.name.to_pascal_case());
@@ -103,7 +103,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         /// Represents an item from game
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
         pub enum Item {
-            #(#item_varients,)*
+            #(#item_variants,)*
         }
 
         impl Item {
@@ -151,9 +151,9 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }
 
             /// Returns the max stack count
-            pub const fn get_max_count(self) -> i16 {
+            pub const fn max_stack(self) -> u8 {
                 match self {
-                    #item_to_max_count_arms
+                    #item_to_max_stack_arms
                 }
             }
 
