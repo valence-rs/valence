@@ -404,60 +404,76 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
     let prop_value_count = prop_values.len();
 
-    let item_to_state_arms = {
-        let items = serde_json::from_str::<Vec<Item>>(include_str!("../extracted/items.json"))?;
+    let items = serde_json::from_str::<Vec<Item>>(include_str!("../extracted/items.json"))?;
 
-        items
-            .iter()
-            .map(|i| {
-                let item_id = i.id;
-                let item_ident = ident(i.name.to_pascal_case());
+    let state_to_item_arms = blocks
+        .iter()
+        .map(|b| {
+            let item_id = b.item_id;
 
-                let matching_blocks: Vec<&Block> =
-                    blocks.iter().filter(|b| b.item_id == item_id).collect();
+            let item = items.iter().find(|i| i.id == item_id).unwrap();
 
-                if matching_blocks.len() == 1 {
-                    let state = ident(matching_blocks.get(0).unwrap().name.to_shouty_snake_case());
+            if item.id == 0 {
+                return quote! {};
+            }
 
-                    quote! {
-                        Item::#item_ident => Some(BlockStateType::Normal(BlockState::#state)),
-                    }
-                } else if matching_blocks.len() == 2 {
-                    let normal_state =
-                        ident(matching_blocks.get(0).unwrap().name.to_shouty_snake_case());
-                    let wall_state =
-                        ident(matching_blocks.get(1).unwrap().name.to_shouty_snake_case());
+            let block_ident = ident(b.name.to_shouty_snake_case());
+            let item_ident = ident(item.name.to_pascal_case());
 
-                    quote! {
-                        Item::#item_ident => Some(BlockStateType::Wall(WallBlockState {
-                            normal: BlockState::#normal_state,
-                            wall: BlockState::#wall_state
-                        })),
-                    }
-                } else if item_ident == ident("Cauldron") {
-                    let empty_state =
-                        ident(matching_blocks.get(0).unwrap().name.to_shouty_snake_case());
-                    let water_state =
-                        ident(matching_blocks.get(1).unwrap().name.to_shouty_snake_case());
-                    let lava_state =
-                        ident(matching_blocks.get(2).unwrap().name.to_shouty_snake_case());
-                    let powder_snow_state =
-                        ident(matching_blocks.get(3).unwrap().name.to_shouty_snake_case());
+            quote! {
+                BlockState::#block_ident => Some(Item::#item_ident),
+            }
+        })
+        .collect::<TokenStream>();
 
-                    quote! {
-                        Item::#item_ident => Some(BlockStateType::Cauldren(CauldronBlockState {
-                            empty: BlockState::#empty_state,
-                            water: BlockState::#water_state,
-                            lava: BlockState::#lava_state,
-                            powder_snow: BlockState::#powder_snow_state,
-                        })),
-                    }
-                } else {
-                    quote! {}
+    let item_to_state_arms = items
+        .iter()
+        .map(|i| {
+            let item_id = i.id;
+            let item_ident = ident(i.name.to_pascal_case());
+
+            let matching_blocks: Vec<&Block> =
+                blocks.iter().filter(|b| b.item_id == item_id).collect();
+
+            if matching_blocks.len() == 1 {
+                let state = ident(matching_blocks.get(0).unwrap().name.to_shouty_snake_case());
+
+                quote! {
+                    Item::#item_ident => Some(BlockStateType::Normal(BlockState::#state)),
                 }
-            })
-            .collect::<TokenStream>()
-    };
+            } else if matching_blocks.len() == 2 {
+                let normal_state =
+                    ident(matching_blocks.get(0).unwrap().name.to_shouty_snake_case());
+                let wall_state = ident(matching_blocks.get(1).unwrap().name.to_shouty_snake_case());
+
+                quote! {
+                    Item::#item_ident => Some(BlockStateType::Wall(WallBlockState {
+                        normal: BlockState::#normal_state,
+                        wall: BlockState::#wall_state
+                    })),
+                }
+            } else if item_ident == ident("Cauldron") {
+                let empty_state =
+                    ident(matching_blocks.get(0).unwrap().name.to_shouty_snake_case());
+                let water_state =
+                    ident(matching_blocks.get(1).unwrap().name.to_shouty_snake_case());
+                let lava_state = ident(matching_blocks.get(2).unwrap().name.to_shouty_snake_case());
+                let powder_snow_state =
+                    ident(matching_blocks.get(3).unwrap().name.to_shouty_snake_case());
+
+                quote! {
+                    Item::#item_ident => Some(BlockStateType::Cauldren(CauldronBlockState {
+                        empty: BlockState::#empty_state,
+                        water: BlockState::#water_state,
+                        lava: BlockState::#lava_state,
+                        powder_snow: BlockState::#powder_snow_state,
+                    })),
+                }
+            } else {
+                quote! {}
+            }
+        })
+        .collect::<TokenStream>();
 
     Ok(quote! {
         /// Represents the state of a block. This does not include block entity data such as
@@ -576,6 +592,16 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 match self.0 {
                     #state_to_luminance_arms
                     _ => 0,
+                }
+            }
+
+            /// Construct a Item from an BlockState
+            ///
+            /// If the given BlockState doesn't have a corresponding Item, `None` is returned.
+            pub const fn to_item(self) -> Option<Item> {
+                match self {
+                    #state_to_item_arms
+                    _ => None
                 }
             }
 
