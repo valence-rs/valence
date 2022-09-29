@@ -114,17 +114,16 @@ impl Inventory for ConfigurableInventory {
 /// This exists because when an object inventory screen is being shown to the
 /// player, it also shows part of the player's inventory so they can move items
 /// between the inventories.
-#[derive(Debug)]
 pub struct WindowInventory {
     pub window_id: u8,
-    object_inventory: Arc<Mutex<ConfigurableInventory>>,
+    object_inventory: Arc<Mutex<dyn Inventory + Send>>,
     player_inventory: Arc<Mutex<PlayerInventory>>,
 }
 
 impl WindowInventory {
     pub fn new(
         window_id: impl Into<u8>,
-        object_inventory: Arc<Mutex<ConfigurableInventory>>,
+        object_inventory: Arc<Mutex<dyn Inventory + Send>>,
         player_inventory: Arc<Mutex<PlayerInventory>>,
     ) -> Self {
         WindowInventory {
