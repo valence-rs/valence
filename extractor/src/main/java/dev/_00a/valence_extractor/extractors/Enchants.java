@@ -32,17 +32,12 @@ public class Enchants implements Main.Extractor {
             enchantJson.addProperty("rarity_weight", enchant.getRarity().getWeight());
             enchantJson.addProperty("cursed", enchant.isCursed());
 
-            var enchantmentSources = new JsonArray();
-            if(enchant.isTreasure()){
-                enchantmentSources.add("treasure");
-            }
-            if(enchant.isAvailableForEnchantedBookOffer()){
-                enchantmentSources.add("enchantment_table");
-            }
+            var enchantmentSources = new JsonObject();
+            enchantmentSources.addProperty("treasure", enchant.isTreasure());
+            enchantmentSources.addProperty("enchantment_table", enchant.isAvailableForEnchantedBookOffer());
             //All enchants except for 'Soul speed' and 'Swift sneak' are available for random selection and are only obtainable from loot chests.
-            if(enchant.isAvailableForRandomSelection()){
-                enchantmentSources.add("random_selection");
-            }
+            enchantmentSources.addProperty("random_selection", enchant.isAvailableForRandomSelection());
+
             enchantJson.add("sources", enchantmentSources);
 
             enchantsJson.add(enchantJson);
