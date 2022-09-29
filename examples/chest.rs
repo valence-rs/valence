@@ -225,12 +225,14 @@ impl Config for Game {
                         }
                     }
                     ClientEvent::CloseScreen { window_id } => {
-                        client.send_message(format!("Window closed: {}", window_id));
-                        client.state.open_inventory = None;
-                        client.send_message(format!(
-                            "Chest: {:?}",
-                            server.state.chest.lock().unwrap()
-                        ));
+                        if window_id > 0 {
+                            client.send_message(format!("Window closed: {}", window_id));
+                            client.state.open_inventory = None;
+                            client.send_message(format!(
+                                "Chest: {:?}",
+                                server.state.chest.lock().unwrap()
+                            ));
+                        }
                     }
                     ClientEvent::ClickContainer {
                         window_id,
