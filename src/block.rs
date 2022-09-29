@@ -2,6 +2,7 @@
 
 #![allow(clippy::all, missing_docs)]
 
+use crate::item::Item;
 use std::fmt::{self, Display};
 use std::io::Write;
 use std::iter::FusedIterator;

@@ -5,7 +5,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use serde::Deserialize;
 
-use crate::ident;
+use crate::{ident, item::Item};
 
 #[derive(Deserialize, Clone, Debug)]
 struct TopLevel {
@@ -17,6 +17,7 @@ struct TopLevel {
 struct Block {
     #[allow(unused)]
     id: u16,
+    item_id: u16,
     translation_key: String,
     name: String,
     properties: Vec<Property>,
@@ -402,6 +403,61 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
     let prop_value_count = prop_values.len();
 
+    let item_to_state_arms = {
+        let items = serde_json::from_str::<Vec<Item>>(include_str!("../extracted/items.json"))?;
+
+        items
+            .iter()
+            .map(|i| {
+                let item_id = i.id;
+                let item_ident = ident(i.name.to_pascal_case());
+
+                let matching_blocks: Vec<&Block> =
+                    blocks.iter().filter(|b| b.item_id == item_id).collect();
+
+                if matching_blocks.len() == 1 {
+                    let state = ident(matching_blocks.get(0).unwrap().name.to_shouty_snake_case());
+
+                    quote! {
+                        Item::#item_ident => Some(BlockStateType::Normal(BlockState::#state)),
+                    }
+                } else if matching_blocks.len() == 2 {
+                    let normal_state =
+                        ident(matching_blocks.get(0).unwrap().name.to_shouty_snake_case());
+                    let wall_state =
+                        ident(matching_blocks.get(1).unwrap().name.to_shouty_snake_case());
+
+                    quote! {
+                        Item::#item_ident => Some(BlockStateType::Wall(WallBlockState {
+                            normal: BlockState::#normal_state,
+                            wall: BlockState::#wall_state
+                        })),
+                    }
+                } else if item_ident == ident("Cauldron") {
+                    let empty_state =
+                        ident(matching_blocks.get(0).unwrap().name.to_shouty_snake_case());
+                    let water_state =
+                        ident(matching_blocks.get(1).unwrap().name.to_shouty_snake_case());
+                    let lava_state =
+                        ident(matching_blocks.get(2).unwrap().name.to_shouty_snake_case());
+                    let powder_snow_state =
+                        ident(matching_blocks.get(3).unwrap().name.to_shouty_snake_case());
+
+                    quote! {
+                        Item::#item_ident => Some(BlockStateType::Cauldren(CauldronBlockState {
+                            empty: BlockState::#empty_state,
+                            water: BlockState::#water_state,
+                            lava: BlockState::#lava_state,
+                            powder_snow: BlockState::#powder_snow_state,
+                        })),
+                    }
+                } else {
+                    quote! {}
+                }
+            })
+            .collect::<TokenStream>()
+    };
+
     Ok(quote! {
         /// Represents the state of a block. This does not include block entity data such as
         /// the text on a sign, the design on a banner, or the content of a spawner.
@@ -522,7 +578,45 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
+            /// Construct a BlockStateType from an Item
+            ///
+            /// If the given Item doesn't have a corresponding block, `None` is returned.
+            pub const fn from_item(item: Item) -> Option<BlockStateType> {
+                match item {
+                    #item_to_state_arms
+                    _ => None
+                }
+            }
+
             #default_block_states
+        }
+
+        /// An enum to store the diffrent result from `from_item`
+        ///
+        ///
+        /// `Normal` is just a single BlockState
+        ///
+        /// `Wall` is to BlockStates one for the normal variant and one for the wall variant
+        ///
+        /// `Cauldren` is the diffrent cauldren varients put into one
+        pub enum BlockStateType {
+            Normal(BlockState),
+            Wall(WallBlockState),
+            Cauldren(CauldronBlockState)
+        }
+
+        /// Stores a normal and a wall variant of an BlockState
+        pub struct WallBlockState {
+            pub normal: BlockState,
+            pub wall: BlockState
+        }
+
+        /// Stores the diffrent cauldren variants
+        pub struct CauldronBlockState {
+            pub empty: BlockState,
+            pub water: BlockState,
+            pub lava: BlockState,
+            pub powder_snow: BlockState
         }
 
         /// An enumeration of all block kinds.

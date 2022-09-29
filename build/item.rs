@@ -7,11 +7,11 @@ use serde::Deserialize;
 use crate::ident;
 
 #[derive(Deserialize, Clone, Debug)]
-struct Item {
+pub(crate) struct Item {
     #[allow(unused)]
-    id: u16,
+    pub(crate) id: u16,
     translation_key: String,
-    name: String,
+    pub(crate) name: String,
     max_stack: u8,
 }
 
