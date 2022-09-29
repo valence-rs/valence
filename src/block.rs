@@ -2,7 +2,6 @@
 
 #![allow(clippy::all, missing_docs)]
 
-use crate::item::Item;
 use std::fmt::{self, Display};
 use std::io::Write;
 use std::iter::FusedIterator;
@@ -10,6 +9,7 @@ use std::iter::FusedIterator;
 use anyhow::Context;
 
 pub use crate::block_pos::BlockPos;
+use crate::item::Item;
 use crate::protocol::{Decode, Encode, VarInt};
 
 include!(concat!(env!("OUT_DIR"), "/block.rs"));

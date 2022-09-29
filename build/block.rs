@@ -5,7 +5,8 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use serde::Deserialize;
 
-use crate::{ident, item::Item};
+use crate::ident;
+use crate::item::Item;
 
 #[derive(Deserialize, Clone, Debug)]
 struct TopLevel {
