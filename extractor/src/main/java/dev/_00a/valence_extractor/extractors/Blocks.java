@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev._00a.valence_extractor.Main;
+import net.minecraft.item.Item;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.registry.Registry;
 import net.minecraft.world.EmptyBlockView;
@@ -37,6 +38,7 @@ public class Blocks implements Main.Extractor {
             blockJson.addProperty("translation_key", block.getTranslationKey());
 //            blockJson.addProperty("min_state_id", stateIdCounter);
 //            blockJson.addProperty("max_state_id", stateIdCounter + block.getStateManager().getStates().size() - 1);
+            blockJson.addProperty("item_id", Registry.ITEM.getRawId(block.asItem()));
 
             var propsJson = new JsonArray();
             for (var prop : block.getStateManager().getProperties()) {
