@@ -7,8 +7,13 @@ pub trait Inventory {
     fn get_slot(&self, slot_id: SlotId) -> Slot;
     fn set_slot(&mut self, slot_id: SlotId, slot: Slot);
     fn slot_count(&self) -> usize;
+    fn is_dirty(&self) -> bool;
 
     // TODO: `entry()` style api
+}
+
+pub trait InventoryDirtyable {
+    fn mark_dirty(&mut self, dirty: bool);
 }
 
 pub trait CraftingInventory {
@@ -20,6 +25,7 @@ pub trait CraftingInventory {
 #[derive(Debug, Clone)]
 pub struct PlayerInventory {
     pub(crate) slots: Box<[Slot; 46]>,
+    dirty: bool,
 }
 
 impl PlayerInventory {
@@ -43,6 +49,7 @@ impl Default for PlayerInventory {
         Self {
             // Can't do the shorthand because Slot is not Copy.
             slots: Box::new(std::array::from_fn(|_| Slot::Empty)),
+            dirty: true,
         }
     }
 }
@@ -62,10 +69,21 @@ impl Inventory for PlayerInventory {
             panic!("invalid slot id")
         }
         self.slots[slot_id as usize] = slot;
+        self.mark_dirty(true);
     }
 
     fn slot_count(&self) -> usize {
         self.slots.len()
+    }
+
+    fn is_dirty(&self) -> bool {
+        self.dirty
+    }
+}
+
+impl InventoryDirtyable for PlayerInventory {
+    fn mark_dirty(&mut self, dirty: bool) {
+        self.dirty = dirty
     }
 }
 
@@ -76,6 +94,7 @@ pub struct ConfigurableInventory {
     /// crafting result slot is always zero, and should not be included in this
     /// range.
     crafting_slots: Option<Range<SlotId>>,
+    dirty: bool,
 }
 
 impl ConfigurableInventory {
@@ -83,6 +102,7 @@ impl ConfigurableInventory {
         ConfigurableInventory {
             slots: vec![Slot::Empty; size],
             crafting_slots,
+            dirty: false,
         }
     }
 }
@@ -102,10 +122,21 @@ impl Inventory for ConfigurableInventory {
             panic!("invalid slot id")
         }
         self.slots[slot_id as usize] = slot;
+        self.mark_dirty(true);
     }
 
     fn slot_count(&self) -> usize {
         self.slots.len()
+    }
+
+    fn is_dirty(&self) -> bool {
+        self.dirty
+    }
+}
+
+impl InventoryDirtyable for ConfigurableInventory {
+    fn mark_dirty(&mut self, dirty: bool) {
+        self.dirty = dirty
     }
 }
 
@@ -187,6 +218,11 @@ impl Inventory for WindowInventory {
 
     fn slot_count(&self) -> usize {
         self.object_inventory.lock().unwrap().slot_count() + PlayerInventory::GENERAL_SLOTS.len()
+    }
+
+    fn is_dirty(&self) -> bool {
+        self.player_inventory.lock().unwrap().is_dirty()
+            || self.object_inventory.lock().unwrap().is_dirty()
     }
 }
 
