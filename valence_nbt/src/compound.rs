@@ -12,7 +12,7 @@ pub struct Compound {
 }
 
 #[cfg(not(feature = "preserve_order"))]
-type Map = std::collections::HashMap<String, Value>;
+type Map = std::collections::BTreeMap<String, Value>;
 
 #[cfg(feature = "preserve_order")]
 type Map = indexmap::IndexMap<String, Value>;
@@ -24,6 +24,13 @@ impl Compound {
 
     pub fn with_capacity(cap: usize) -> Self {
         Self {
+            #[cfg(not(feature = "preserve_order"))]
+            map: {
+                // BTreeMap does not have with_capacity.
+                let _ = cap;
+                Map::new()
+            },
+            #[cfg(feature = "preserve_order")]
             map: Map::with_capacity(cap),
         }
     }
@@ -88,14 +95,22 @@ impl Compound {
         self.map.remove_entry(k)
     }
 
-    // TODO: append function for potential BTreeMap usage?
+    pub fn append(&mut self, other: &mut Self) {
+        #[cfg(not(feature = "preserve_order"))]
+        self.map.append(&mut other.map);
+
+        #[cfg(feature = "preserve_order")]
+        for (k, v) in std::mem::replace(&mut other.map, Map::default()) {
+            self.map.insert(k, v);
+        }
+    }
 
     pub fn entry<K>(&mut self, k: K) -> Entry
     where
         K: Into<String>,
     {
         #[cfg(not(feature = "preserve_order"))]
-        use std::collections::hash_map::Entry as EntryImpl;
+        use std::collections::btree_map::Entry as EntryImpl;
 
         #[cfg(feature = "preserve_order")]
         use indexmap::map::Entry as EntryImpl;
@@ -219,7 +234,7 @@ impl<'a> Entry<'a> {
 
 pub struct VacantEntry<'a> {
     #[cfg(not(feature = "preserve_order"))]
-    ve: std::collections::hash_map::VacantEntry<'a, String, Value>,
+    ve: std::collections::btree_map::VacantEntry<'a, String, Value>,
     #[cfg(feature = "preserve_order")]
     ve: indexmap::map::VacantEntry<'a, String, Value>,
 }
@@ -236,7 +251,7 @@ impl<'a> VacantEntry<'a> {
 
 pub struct OccupiedEntry<'a> {
     #[cfg(not(feature = "preserve_order"))]
-    oe: std::collections::hash_map::OccupiedEntry<'a, String, Value>,
+    oe: std::collections::btree_map::OccupiedEntry<'a, String, Value>,
     #[cfg(feature = "preserve_order")]
     oe: indexmap::map::OccupiedEntry<'a, String, Value>,
 }
@@ -336,7 +351,7 @@ impl<'a> IntoIterator for &'a Compound {
 #[derive(Clone)]
 pub struct Iter<'a> {
     #[cfg(not(feature = "preserve_order"))]
-    iter: std::collections::hash_map::Iter<'a, String, Value>,
+    iter: std::collections::btree_map::Iter<'a, String, Value>,
     #[cfg(feature = "preserve_order")]
     iter: indexmap::map::Iter<'a, String, Value>,
 }
@@ -356,7 +371,7 @@ impl<'a> IntoIterator for &'a mut Compound {
 
 pub struct IterMut<'a> {
     #[cfg(not(feature = "preserve_order"))]
-    iter: std::collections::hash_map::IterMut<'a, String, Value>,
+    iter: std::collections::btree_map::IterMut<'a, String, Value>,
     #[cfg(feature = "preserve_order")]
     iter: indexmap::map::IterMut<'a, String, Value>,
 }
@@ -376,7 +391,7 @@ impl IntoIterator for Compound {
 
 pub struct IntoIter {
     #[cfg(not(feature = "preserve_order"))]
-    iter: std::collections::hash_map::IntoIter<String, Value>,
+    iter: std::collections::btree_map::IntoIter<String, Value>,
     #[cfg(feature = "preserve_order")]
     iter: indexmap::map::IntoIter<String, Value>,
 }
@@ -386,7 +401,7 @@ impl_iterator_traits!((IntoIter) => (String, Value));
 #[derive(Clone)]
 pub struct Keys<'a> {
     #[cfg(not(feature = "preserve_order"))]
-    iter: std::collections::hash_map::Keys<'a, String, Value>,
+    iter: std::collections::btree_map::Keys<'a, String, Value>,
     #[cfg(feature = "preserve_order")]
     iter: indexmap::map::Keys<'a, String, Value>,
 }
@@ -396,7 +411,7 @@ impl_iterator_traits!((Keys<'a>) => &'a String);
 #[derive(Clone)]
 pub struct Values<'a> {
     #[cfg(not(feature = "preserve_order"))]
-    iter: std::collections::hash_map::Values<'a, String, Value>,
+    iter: std::collections::btree_map::Values<'a, String, Value>,
     #[cfg(feature = "preserve_order")]
     iter: indexmap::map::Values<'a, String, Value>,
 }
@@ -405,7 +420,7 @@ impl_iterator_traits!((Values<'a>) => &'a Value);
 
 pub struct ValuesMut<'a> {
     #[cfg(not(feature = "preserve_order"))]
-    iter: std::collections::hash_map::ValuesMut<'a, String, Value>,
+    iter: std::collections::btree_map::ValuesMut<'a, String, Value>,
     #[cfg(feature = "preserve_order")]
     iter: indexmap::map::ValuesMut<'a, String, Value>,
 }
