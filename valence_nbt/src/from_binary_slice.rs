@@ -160,55 +160,44 @@ impl DecodeState<'_, '_> {
                     "TAG_End list with nonzero length of {len}"
                 ))),
             },
-            Tag::Byte => Ok(self
-                .read_list::<_, _, 1>(Tag::Byte, |st| st.read_byte())?
-                .into()),
-            Tag::Short => Ok(self
-                .read_list::<_, _, 2>(Tag::Short, |st| st.read_short())?
-                .into()),
-            Tag::Int => Ok(self
-                .read_list::<_, _, 4>(Tag::Int, |st| st.read_int())?
-                .into()),
-            Tag::Long => Ok(self
-                .read_list::<_, _, 8>(Tag::Long, |st| st.read_long())?
-                .into()),
-            Tag::Float => Ok(self
-                .read_list::<_, _, 4>(Tag::Float, |st| st.read_float())?
-                .into()),
+            Tag::Byte => Ok(self.read_list(Tag::Byte, 1, |st| st.read_byte())?.into()),
+            Tag::Short => Ok(self.read_list(Tag::Short, 2, |st| st.read_short())?.into()),
+            Tag::Int => Ok(self.read_list(Tag::Int, 4, |st| st.read_int())?.into()),
+            Tag::Long => Ok(self.read_list(Tag::Long, 8, |st| st.read_long())?.into()),
+            Tag::Float => Ok(self.read_list(Tag::Float, 4, |st| st.read_float())?.into()),
             Tag::Double => Ok(self
-                .read_list::<_, _, 8>(Tag::Double, |st| st.read_double())?
+                .read_list(Tag::Double, 8, |st| st.read_double())?
                 .into()),
             Tag::ByteArray => Ok(self
-                .read_list::<_, _, 4>(Tag::ByteArray, |st| st.read_byte_array())?
+                .read_list(Tag::ByteArray, 4, |st| st.read_byte_array())?
                 .into()),
             Tag::String => Ok(self
-                .read_list::<_, _, 2>(Tag::String, |st| st.read_string())?
+                .read_list(Tag::String, 2, |st| st.read_string())?
                 .into()),
-            Tag::List => self.check_depth(|st| {
-                Ok(st
-                    .read_list::<_, _, 5>(Tag::List, |st| st.read_any_list())?
-                    .into())
-            }),
+            Tag::List => self
+                .check_depth(|st| Ok(st.read_list(Tag::List, 5, |st| st.read_any_list())?.into())),
             Tag::Compound => self.check_depth(|st| {
                 Ok(st
-                    .read_list::<_, _, 1>(Tag::Compound, |st| st.read_compound())?
+                    .read_list(Tag::Compound, 1, |st| st.read_compound())?
                     .into())
             }),
             Tag::IntArray => Ok(self
-                .read_list::<_, _, 4>(Tag::IntArray, |st| st.read_int_array())?
+                .read_list(Tag::IntArray, 4, |st| st.read_int_array())?
                 .into()),
             Tag::LongArray => Ok(self
-                .read_list::<_, _, 4>(Tag::LongArray, |st| st.read_long_array())?
+                .read_list(Tag::LongArray, 4, |st| st.read_long_array())?
                 .into()),
         }
     }
 
     /// Assumes the element tag has already been read.
     ///
-    /// `MIN_ELEM_SIZE` is the minimum size of the list element when encoded.
-    fn read_list<T, F, const MIN_ELEM_SIZE: usize>(
+    /// `min_elem_size` is the minimum size of the list element when encoded.
+    #[inline]
+    fn read_list<T, F>(
         &mut self,
         elem_type: Tag,
+        min_elem_size: usize,
         mut read_elem: F,
     ) -> Result<Vec<T>>
     where
@@ -224,7 +213,7 @@ impl DecodeState<'_, '_> {
 
         // Ensure we don't reserve more than the maximum amount of memory required given
         // the size of the remaining input.
-        if len as u64 * MIN_ELEM_SIZE as u64 > self.slice.len() as u64 {
+        if len as u64 * min_elem_size as u64 > self.slice.len() as u64 {
             return Err(Error::new_owned(format!(
                 "{elem_type} list of length {len} exceeds remainder of input"
             )));
