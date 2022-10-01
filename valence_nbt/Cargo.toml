@@ -2,7 +2,7 @@
 name = "valence_nbt"
 description = "A library for Minecraft's Named Binary Tag (NBT) format."
 documentation = "https://docs.rs/valence_nbt/"
-repository = "https://github.com/valence-rs/valence_nbt"
+repository = "https://github.com/valence-rs/valence/tree/main/valence_nbt"
 readme = "README.md"
 license = "MIT"
 keywords = ["nbt", "minecraft", "serialization"]
