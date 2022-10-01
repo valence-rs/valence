@@ -69,7 +69,7 @@ rayon = "1.5.3"
 num = "0.4.0"
 
 [workspace]
-members = ["packet_inspector"]
+members = ["valence_nbt", "packet_inspector"]
 
 [profile.dev.package."*"]
 opt-level = 3

@@ -1,0 +1,21 @@
+[package]
+name = "valence_nbt"
+description = "A library for Minecraft's Named Binary Tag (NBT) format."
+documentation = "https://docs.rs/valence_nbt/"
+repository = "https://github.com/valence-rs/valence_nbt"
+readme = "README.md"
+license = "MIT"
+keywords = ["nbt", "minecraft", "serialization"]
+version = "0.1.2"
+authors = ["Ryan Johnson <ryanj00a@gmail.com>"]
+edition = "2021"
+
+[dependencies]
+byteorder = "1.4.3"
+cesu8 = "1.1.0"
+indexmap = { version = "1.9.1", optional = true }
+zerocopy = "0.6.1"
+
+[features]
+# When enabled, the order of fields in compounds are preserved.
+preserve_order = ["dep:indexmap"]
