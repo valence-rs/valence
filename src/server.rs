@@ -46,6 +46,7 @@ use crate::protocol::packets::s2c::play::S2cPlayPacket;
 use crate::protocol::packets::s2c::status::{PingResponse, StatusResponse};
 use crate::protocol::packets::Property;
 use crate::protocol::{BoundedArray, BoundedString, VarInt};
+use crate::text::Text;
 use crate::util::valid_username;
 use crate::world::Worlds;
 use crate::{ident, Ticks, PROTOCOL_VERSION, VERSION_NAME};
@@ -716,11 +717,17 @@ async fn handle_login<C: Config>(
         );
         let resp = server.0.http_client.get(url).send().await?;
 
-        let status = resp.status();
-        ensure!(
-            status.is_success(),
-            "session server GET request failed: {status}"
-        );
+        match resp.status().as_u16() {
+            200 => (),
+            204 => {
+                let reason = Text::translate("multiplayer.disconnect.unverified_username");
+                c.enc.write_packet(&DisconnectLogin { reason }).await?;
+                bail!("Could not verify username");
+            }
+            status => {
+                bail!("session server GET request failed: {status}");
+            }
+        }
 
         let data: AuthResponse = resp.json().await?;
 
