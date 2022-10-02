@@ -406,7 +406,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
     let items = serde_json::from_str::<Vec<Item>>(include_str!("../extracted/items.json"))?;
 
-    let state_to_item_arms = blocks
+    let kind_to_item_arms = blocks
         .iter()
         .map(|b| {
             let item_id = b.item_id;
@@ -417,16 +417,16 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 return quote! {};
             }
 
-            let block_ident = ident(b.name.to_shouty_snake_case());
+            let block_ident = ident(b.name.to_pascal_case());
             let item_ident = ident(item.name.to_pascal_case());
 
             quote! {
-                BlockState::#block_ident => Some(Item::#item_ident),
+                BlockKind::#block_ident => Some(Item::#item_ident),
             }
         })
         .collect::<TokenStream>();
 
-    let item_to_state_arms = items
+    let item_to_kind_arms = items
         .iter()
         .map(|i| {
             let item_id = i.id;
@@ -436,37 +436,33 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 blocks.iter().filter(|b| b.item_id == item_id).collect();
 
             if matching_blocks.len() == 1 {
-                let state = ident(matching_blocks.get(0).unwrap().name.to_shouty_snake_case());
+                let kind = ident(matching_blocks.get(0).unwrap().name.to_pascal_case());
 
                 quote! {
-                    Item::#item_ident => Some(BlockStateType::Normal(BlockState::#state)),
+                    Item::#item_ident => Some(BlockKindType::Normal(BlockKind::#kind)),
                 }
             } else if matching_blocks.len() == 2 {
-                let normal_state =
-                    ident(matching_blocks.get(0).unwrap().name.to_shouty_snake_case());
-                let wall_state = ident(matching_blocks.get(1).unwrap().name.to_shouty_snake_case());
+                let normal_kind = ident(matching_blocks.get(0).unwrap().name.to_pascal_case());
+                let wall_kind = ident(matching_blocks.get(1).unwrap().name.to_pascal_case());
 
                 quote! {
-                    Item::#item_ident => Some(BlockStateType::Wall(WallBlockState {
-                        normal: BlockState::#normal_state,
-                        wall: BlockState::#wall_state
+                    Item::#item_ident => Some(BlockKindType::Wall(WallBlockKind {
+                        normal: BlockKind::#normal_kind,
+                        wall: BlockKind::#wall_kind
                     })),
                 }
             } else if item_ident == ident("Cauldron") {
-                let empty_state =
-                    ident(matching_blocks.get(0).unwrap().name.to_shouty_snake_case());
-                let water_state =
-                    ident(matching_blocks.get(1).unwrap().name.to_shouty_snake_case());
-                let lava_state = ident(matching_blocks.get(2).unwrap().name.to_shouty_snake_case());
-                let powder_snow_state =
-                    ident(matching_blocks.get(3).unwrap().name.to_shouty_snake_case());
+                let empty_kind = ident(matching_blocks.get(0).unwrap().name.to_pascal_case());
+                let water_kind = ident(matching_blocks.get(1).unwrap().name.to_pascal_case());
+                let lava_kind = ident(matching_blocks.get(2).unwrap().name.to_pascal_case());
+                let powder_snow_kind = ident(matching_blocks.get(3).unwrap().name.to_pascal_case());
 
                 quote! {
-                    Item::#item_ident => Some(BlockStateType::Cauldron(CauldronBlockState {
-                        empty: BlockState::#empty_state,
-                        water: BlockState::#water_state,
-                        lava: BlockState::#lava_state,
-                        powder_snow: BlockState::#powder_snow_state,
+                    Item::#item_ident => Some(BlockKindType::Cauldron(CauldronBlockKind {
+                        empty: BlockKind::#empty_kind,
+                        water: BlockKind::#water_kind,
+                        lava: BlockKind::#lava_kind,
+                        powder_snow: BlockKind::#powder_snow_kind,
                     })),
                 }
             } else {
@@ -595,54 +591,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Construct an Item from a BlockState.
-            ///
-            /// If the given BlockState doesn't have a corresponding Item, `None` is returned.
-            pub const fn to_item(self) -> Option<Item> {
-                match self {
-                    #state_to_item_arms
-                    _ => None
-                }
-            }
-
-            /// Construct a BlockStateType from an Item.
-            ///
-            /// If the given Item doesn't have a corresponding block, `None` is returned.
-            pub const fn from_item(item: Item) -> Option<BlockStateType> {
-                match item {
-                    #item_to_state_arms
-                    _ => None
-                }
-            }
-
             #default_block_states
-        }
-
-        /// An enum to store the diffrent result from `from_item`.
-        ///
-        /// `Normal` is just a single BlockState.
-        ///
-        /// `Wall` is two BlockStates, one for the normal variant and one for the wall variant.
-        ///
-        /// `Cauldron` is the diffrent cauldron varients put into one.
-        pub enum BlockStateType {
-            Normal(BlockState),
-            Wall(WallBlockState),
-            Cauldron(CauldronBlockState)
-        }
-
-        /// Stores a normal and a wall variant of an BlockState.
-        pub struct WallBlockState {
-            pub normal: BlockState,
-            pub wall: BlockState
-        }
-
-        /// Stores the diffrent cauldren variants.
-        pub struct CauldronBlockState {
-            pub empty: BlockState,
-            pub water: BlockState,
-            pub lava: BlockState,
-            pub powder_snow: BlockState
         }
 
         /// An enumeration of all block kinds.
@@ -688,8 +637,55 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
+            /// Construct an item from a block kind.
+            ///
+            /// If the given block kind doesn't have a corresponding item, `None` is returned.
+            pub const fn to_item(self) -> Option<Item> {
+                match self {
+                    #kind_to_item_arms
+                    _ => None
+                }
+            }
+
+            /// Construct a `BlockKindType` from an item.
+            ///
+            /// If the given item doesn't have a corresponding block, `None` is returned.
+            pub const fn from_item(item: Item) -> Option<BlockKindType> {
+                match item {
+                    #item_to_kind_arms
+                    _ => None
+                }
+            }
+
             /// An array of all block kinds.
             pub const ALL: [Self; #block_kind_count] = [#(Self::#block_kind_variants,)*];
+        }
+
+        /// An enum to store the diffrent result from `from_item`.
+        ///
+        /// `Normal` is just a single block kind.
+        ///
+        /// `Wall` is two block kinds, one for the normal variant and one for the wall variant.
+        ///
+        /// `Cauldron` is the diffrent cauldron varients put into one.
+        pub enum BlockKindType {
+            Normal(BlockKind),
+            Wall(WallBlockKind),
+            Cauldron(CauldronBlockKind)
+        }
+
+        /// Stores a normal and a wall variant of a block kind.
+        pub struct WallBlockKind {
+            pub normal: BlockKind,
+            pub wall: BlockKind
+        }
+
+        /// Stores the diffrent cauldren variants.
+        pub struct CauldronBlockKind {
+            pub empty: BlockKind,
+            pub water: BlockKind,
+            pub lava: BlockKind,
+            pub powder_snow: BlockKind
         }
 
         /// The default block kind is `air`.
