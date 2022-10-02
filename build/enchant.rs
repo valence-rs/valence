@@ -5,12 +5,12 @@ use serde::Deserialize;
 
 use crate::ident;
 
-#[derive(Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
+#[derive(Deserialize, Debug)]
 struct TopLevel {
     enchants: Vec<ParsedEnchantment>,
 }
 
-#[derive(Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
+#[derive(Deserialize, Debug)]
 pub struct ParsedEnchantment {
     #[allow(unused)]
     id: u16,
@@ -25,7 +25,7 @@ pub struct ParsedEnchantment {
     source: ParsedEnchantmentSource,
 }
 
-#[derive(Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
+#[derive(Deserialize, Debug)]
 pub struct ParsedEnchantmentSource {
     treasure: bool,
     enchantment_table: bool,
@@ -78,6 +78,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             };
 
             quote! {
+                #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
                 pub struct #enchantment_variant{
                     #level_field
                 }
@@ -117,6 +118,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .collect::<TokenStream>();
 
     Ok(quote! {
+        #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
         pub enum EnchantmentKind{
             #enum_definition
         }
