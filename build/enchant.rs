@@ -54,8 +54,34 @@ pub fn build() -> anyhow::Result<TokenStream> {
             let source_enchantment_table = &enchant.source.enchantment_table;
             let source_random_selection = &enchant.source.random_selection;
 
+            let level_field = if min_level != max_level {
+                let level_notice =
+                    format!("Vanilla minecraft supports levels {min_level}..={max_level}");
+                quote! {
+                    #[doc = "The level of this enchantment."]
+                    #[doc = #level_notice]
+                    #[allow(unused)]
+                    level: i16
+                }
+            } else {
+                let warning = format!(
+                    "Warning: Vanilla minecraft only supports level {}.",
+                    min_level
+                );
+
+                quote! {
+                    #[doc = "The level of this enchantment."]
+                    #[doc = #warning ]
+                    #[allow(unused)]
+                    level: i16
+                }
+            };
+
             quote! {
-                pub struct #enchantment_variant;
+                pub struct #enchantment_variant{
+                    #level_field
+                }
+
                 impl EnchantmentDescriptor for #enchantment_variant {
                     const ID: u16 = #id;
                     const NAME: &'static str = #name;
@@ -90,8 +116,8 @@ pub fn build() -> anyhow::Result<TokenStream> {
         })
         .collect::<TokenStream>();
 
-    let result = quote! {
-        pub enum Enchant{
+    Ok(quote! {
+        pub enum EnchantmentKind{
             #enum_definition
         }
 
@@ -112,6 +138,5 @@ pub fn build() -> anyhow::Result<TokenStream> {
         }
 
         #enchant_impls
-    };
-    Ok(result)
+    })
 }
