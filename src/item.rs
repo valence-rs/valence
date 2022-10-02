@@ -21,3 +21,29 @@ impl Decode for ItemKind {
         ItemKind::from_raw(id.try_into().context(errmsg)?).context(errmsg)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn item_kind_to_block_kind() {
+        let item = ItemKind::OakWood;
+
+        let new_block = match BlockKind::from_item(item).unwrap() {
+            BlockKindType::Normal(b) => b,
+            _ => panic!(),
+        };
+
+        assert_eq!(new_block, BlockKind::OakWood)
+    }
+
+    #[test]
+    fn block_state_to_item() {
+        let block = BlockKind::SlimeBlock;
+
+        let new_item = block.to_item().unwrap();
+
+        assert_eq!(new_item, ItemKind::SlimeBlock)
+    }
+}
