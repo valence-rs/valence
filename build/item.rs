@@ -110,7 +110,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
     let item_kind_to_block_kind_arms = item_to_block_arms(&blocks, &items);
 
     Ok(quote! {
-        /// Represents an item from game
+        /// Represents an item from the game
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
         #[repr(u16)]
         pub enum ItemKind {
@@ -147,14 +147,14 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Gets the snake_case name of this item.
+            /// Gets the snake_case name of this item kind.
             pub const fn to_str(self) -> &'static str {
                 match self {
                     #item_kind_to_str_arms
                 }
             }
 
-            /// Gets the translation key of an item.
+            /// Gets the translation key of this item kind.
             pub const fn translation_key(self) -> &'static str {
                 match self {
                     #item_kind_to_translation_key_arms
