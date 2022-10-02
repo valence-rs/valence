@@ -9,7 +9,7 @@ use std::iter::FusedIterator;
 use anyhow::Context;
 
 pub use crate::block_pos::BlockPos;
-use crate::item::Item;
+use crate::item::ItemKind;
 use crate::protocol::{Decode, Encode, VarInt};
 
 include!(concat!(env!("OUT_DIR"), "/block.rs"));
@@ -85,7 +85,7 @@ mod tests {
 
     #[test]
     fn item_to_block_state() {
-        let item = Item::OakWood;
+        let item = ItemKind::OakWood;
 
         let new_block = match BlockKind::from_item(item).unwrap() {
             BlockKindType::Normal(b) => b,
@@ -101,6 +101,6 @@ mod tests {
 
         let new_item = block.to_item().unwrap();
 
-        assert_eq!(new_item, Item::SlimeBlock)
+        assert_eq!(new_item, ItemKind::SlimeBlock)
     }
 }

@@ -2,7 +2,7 @@ use std::io::Write;
 
 use byteorder::ReadBytesExt;
 
-use crate::item::Item;
+use crate::item::ItemKind;
 use crate::itemstack::ItemStack;
 use crate::nbt::Compound;
 use crate::protocol::{Decode, Encode};
@@ -41,7 +41,7 @@ impl Decode for Slot {
             return Ok(Slot::Empty);
         }
         Ok(Slot::Present(ItemStack {
-            item: Item::decode(r)?,
+            item: ItemKind::decode(r)?,
             item_count: u8::decode(r)?,
             nbt: if r.first() == Some(&0) {
                 r.read_u8()?;

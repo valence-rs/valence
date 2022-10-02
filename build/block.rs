@@ -421,7 +421,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             let item_ident = ident(item.name.to_pascal_case());
 
             quote! {
-                BlockKind::#block_ident => Some(Item::#item_ident),
+                BlockKind::#block_ident => Some(ItemKind::#item_ident),
             }
         })
         .collect::<TokenStream>();
@@ -439,14 +439,14 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 let kind = ident(matching_blocks.get(0).unwrap().name.to_pascal_case());
 
                 quote! {
-                    Item::#item_ident => Some(BlockKindType::Normal(BlockKind::#kind)),
+                    ItemKind::#item_ident => Some(BlockKindType::Normal(BlockKind::#kind)),
                 }
             } else if matching_blocks.len() == 2 {
                 let normal_kind = ident(matching_blocks.get(0).unwrap().name.to_pascal_case());
                 let wall_kind = ident(matching_blocks.get(1).unwrap().name.to_pascal_case());
 
                 quote! {
-                    Item::#item_ident => Some(BlockKindType::Wall(WallBlockKind {
+                    ItemKind::#item_ident => Some(BlockKindType::Wall(WallBlockKind {
                         normal: BlockKind::#normal_kind,
                         wall: BlockKind::#wall_kind
                     })),
@@ -458,7 +458,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 let powder_snow_kind = ident(matching_blocks.get(3).unwrap().name.to_pascal_case());
 
                 quote! {
-                    Item::#item_ident => Some(BlockKindType::Cauldron(CauldronBlockKind {
+                    ItemKind::#item_ident => Some(BlockKindType::Cauldron(CauldronBlockKind {
                         empty: BlockKind::#empty_kind,
                         water: BlockKind::#water_kind,
                         lava: BlockKind::#lava_kind,
@@ -640,7 +640,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             /// Construct an item from a block kind.
             ///
             /// If the given block kind doesn't have a corresponding item, `None` is returned.
-            pub const fn to_item(self) -> Option<Item> {
+            pub const fn to_item(self) -> Option<ItemKind> {
                 match self {
                     #kind_to_item_arms
                     _ => None
@@ -650,7 +650,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             /// Construct a `BlockKindType` from an item.
             ///
             /// If the given item doesn't have a corresponding block, `None` is returned.
-            pub const fn from_item(item: Item) -> Option<BlockKindType> {
+            pub const fn from_item(item: ItemKind) -> Option<BlockKindType> {
                 match item {
                     #item_to_kind_arms
                     _ => None
