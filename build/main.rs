@@ -9,6 +9,7 @@ mod block;
 mod entity;
 mod entity_event;
 mod item;
+mod item_block_convert;
 
 pub fn main() -> anyhow::Result<()> {
     println!("cargo:rerun-if-changed=extracted/");

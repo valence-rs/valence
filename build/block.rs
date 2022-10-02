@@ -7,6 +7,7 @@ use serde::Deserialize;
 
 use crate::ident;
 use crate::item::Item;
+use crate::item_block_convert::{block_to_item_arms, item_to_block_arms};
 
 #[derive(Deserialize, Clone, Debug)]
 struct TopLevel {
@@ -15,12 +16,12 @@ struct TopLevel {
 }
 
 #[derive(Deserialize, Clone, Debug)]
-struct Block {
+pub(crate) struct Block {
     #[allow(unused)]
-    id: u16,
-    item_id: u16,
+    pub(crate) id: u16,
+    pub(crate) item_id: u16,
     translation_key: String,
-    name: String,
+    pub(crate) name: String,
     properties: Vec<Property>,
     default_state_id: u16,
     states: Vec<State>,
@@ -406,70 +407,9 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
     let items = serde_json::from_str::<Vec<Item>>(include_str!("../extracted/items.json"))?;
 
-    let kind_to_item_arms = blocks
-        .iter()
-        .map(|b| {
-            let item_id = b.item_id;
+    let block_kind_to_item_kind_arms = block_to_item_arms(&blocks, &items);
 
-            let item = items.iter().find(|i| i.id == item_id).unwrap();
-
-            if item.id == 0 {
-                return quote! {};
-            }
-
-            let block_ident = ident(b.name.to_pascal_case());
-            let item_ident = ident(item.name.to_pascal_case());
-
-            quote! {
-                BlockKind::#block_ident => Some(ItemKind::#item_ident),
-            }
-        })
-        .collect::<TokenStream>();
-
-    let item_to_kind_arms = items
-        .iter()
-        .map(|i| {
-            let item_id = i.id;
-            let item_ident = ident(i.name.to_pascal_case());
-
-            let matching_blocks: Vec<&Block> =
-                blocks.iter().filter(|b| b.item_id == item_id).collect();
-
-            if matching_blocks.len() == 1 {
-                let kind = ident(matching_blocks.get(0).unwrap().name.to_pascal_case());
-
-                quote! {
-                    ItemKind::#item_ident => Some(BlockKindType::Normal(BlockKind::#kind)),
-                }
-            } else if matching_blocks.len() == 2 {
-                let normal_kind = ident(matching_blocks.get(0).unwrap().name.to_pascal_case());
-                let wall_kind = ident(matching_blocks.get(1).unwrap().name.to_pascal_case());
-
-                quote! {
-                    ItemKind::#item_ident => Some(BlockKindType::Wall(WallBlockKind {
-                        normal: BlockKind::#normal_kind,
-                        wall: BlockKind::#wall_kind
-                    })),
-                }
-            } else if item_ident == ident("Cauldron") {
-                let empty_kind = ident(matching_blocks.get(0).unwrap().name.to_pascal_case());
-                let water_kind = ident(matching_blocks.get(1).unwrap().name.to_pascal_case());
-                let lava_kind = ident(matching_blocks.get(2).unwrap().name.to_pascal_case());
-                let powder_snow_kind = ident(matching_blocks.get(3).unwrap().name.to_pascal_case());
-
-                quote! {
-                    ItemKind::#item_ident => Some(BlockKindType::Cauldron(CauldronBlockKind {
-                        empty: BlockKind::#empty_kind,
-                        water: BlockKind::#water_kind,
-                        lava: BlockKind::#lava_kind,
-                        powder_snow: BlockKind::#powder_snow_kind,
-                    })),
-                }
-            } else {
-                quote! {}
-            }
-        })
-        .collect::<TokenStream>();
+    let item_kind_to_block_kind_arms = item_to_block_arms(&blocks, &items);
 
     Ok(quote! {
         /// Represents the state of a block. This does not include block entity data such as
@@ -642,7 +582,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             /// If the given block kind doesn't have a corresponding item, `None` is returned.
             pub const fn to_item(self) -> Option<ItemKind> {
                 match self {
-                    #kind_to_item_arms
+                    #block_kind_to_item_kind_arms
                     _ => None
                 }
             }
@@ -652,7 +592,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             /// If the given item doesn't have a corresponding block, `None` is returned.
             pub const fn from_item(item: ItemKind) -> Option<BlockKindType> {
                 match item {
-                    #item_to_kind_arms
+                    #item_kind_to_block_kind_arms
                     _ => None
                 }
             }
