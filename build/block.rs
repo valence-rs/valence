@@ -10,15 +10,15 @@ use crate::item::Item;
 use crate::item_block_convert::{block_to_item_arms, item_to_block_arms};
 
 #[derive(Deserialize, Clone, Debug)]
-struct TopLevel {
-    blocks: Vec<Block>,
+pub(crate) struct TopLevel {
+    pub(crate) blocks: Vec<Block>,
     shapes: Vec<Shape>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
 pub(crate) struct Block {
     #[allow(unused)]
-    pub(crate) id: u16,
+    id: u16,
     pub(crate) item_id: u16,
     translation_key: String,
     pub(crate) name: String,

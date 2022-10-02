@@ -4,7 +4,11 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use serde::Deserialize;
 
-use crate::ident;
+use crate::{
+    block::TopLevel,
+    ident,
+    item_block_convert::{block_to_item_arms, item_to_block_arms},
+};
 
 #[derive(Deserialize, Clone, Debug)]
 pub(crate) struct Item {
@@ -99,6 +103,12 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .map(|i| ident(i.name.to_pascal_case()))
         .collect::<Vec<_>>();
 
+    let TopLevel { blocks, .. } = serde_json::from_str(include_str!("../extracted/blocks.json"))?;
+
+    let block_kind_to_item_kind_arms = block_to_item_arms(&blocks, &items);
+
+    let item_kind_to_block_kind_arms = item_to_block_arms(&blocks, &items);
+
     Ok(quote! {
         /// Represents an item from game
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -155,6 +165,26 @@ pub fn build() -> anyhow::Result<TokenStream> {
             pub const fn max_stack(self) -> u8 {
                 match self {
                     #item_kind_to_max_stack_arms
+                }
+            }
+
+            /// Construct an item kind from a block kind.
+            ///
+            /// If the given block kind doesn't have a corresponding item kind, `None` is returned.
+            pub const fn from_block_kind(block_kind: BlockKind) -> Option<Self> {
+                match block_kind {
+                    #block_kind_to_item_kind_arms
+                    _ => None
+                }
+            }
+
+            /// Construct a `BlockKindType` from an item kind.
+            ///
+            /// If the given item kind doesn't have a corresponding block kind, `None` is returned.
+            pub const fn from_item_kind(self) -> Option<BlockKindType> {
+                match self {
+                    #item_kind_to_block_kind_arms
+                    _ => None
                 }
             }
 

@@ -1,5 +1,6 @@
 //! Items
 
+use crate::block::{BlockKind, BlockKindType, CauldronBlockKind, WallBlockKind};
 use anyhow::Context;
 
 use crate::protocol::{Decode, Encode, VarInt};
