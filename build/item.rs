@@ -4,11 +4,9 @@ use proc_macro2::TokenStream;
 use quote::quote;
 use serde::Deserialize;
 
-use crate::{
-    block::TopLevel,
-    ident,
-    item_block_convert::{block_to_item_arms, item_to_block_arms},
-};
+use crate::block::TopLevel;
+use crate::ident;
+use crate::item_block_convert::{block_to_item_arms, item_to_block_arms};
 
 #[derive(Deserialize, Clone, Debug)]
 pub(crate) struct Item {

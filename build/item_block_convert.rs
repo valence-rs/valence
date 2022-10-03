@@ -1,7 +1,10 @@
-use crate::{block::Block, ident, item::Item};
 use heck::ToPascalCase;
 use proc_macro2::TokenStream;
 use quote::quote;
+
+use crate::block::Block;
+use crate::ident;
+use crate::item::Item;
 
 pub(crate) fn block_to_item_arms(blocks: &[Block], items: &[Item]) -> TokenStream {
     blocks

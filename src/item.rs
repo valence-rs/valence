@@ -1,8 +1,8 @@
 //! Items
 
-use crate::block::{BlockKind, BlockKindType, CauldronBlockKind, WallBlockKind};
 use anyhow::Context;
 
+use crate::block::{BlockKind, BlockKindType, CauldronBlockKind, WallBlockKind};
 use crate::protocol::{Decode, Encode, VarInt};
 
 include!(concat!(env!("OUT_DIR"), "/item.rs"));
