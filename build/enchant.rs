@@ -173,7 +173,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             #enchantmentkind_definitions
         }
 
-        impl EnchantmentKind{
+        impl EnchantmentKind {
             /// Constructs an `EnchantmentKind` from a raw enchantment ID.
             ///
             /// If the given ID is invalid, `None` is returned.
