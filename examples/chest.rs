@@ -11,10 +11,11 @@ use valence::client::{handle_event_default, ClientEvent, GameMode, Hand};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::{EntityId, EntityKind};
-use valence::inventory::{ConfigurableInventory, Inventory, WindowInventory};
+use valence::inventory::{ConfigurableInventory, Inventory, PlayerInventory, WindowInventory};
+use valence::itemstack::ItemStack;
 use valence::player_list::PlayerListId;
 use valence::protocol::packets::s2c::play::{OpenScreen, SetContainerContent};
-use valence::protocol::{Slot, VarInt};
+use valence::protocol::{Slot, SlotId, VarInt};
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 
@@ -253,6 +254,24 @@ impl Config for Game {
                             } else {
                                 client.inventory.lock().unwrap().set_slot(slot_id, slot);
                             }
+                        }
+                    }
+                    ClientEvent::StartSneaking => {
+                        if let Ok(mut inv) = client.inventory.lock() {
+                            let slot_id: SlotId = PlayerInventory::HOTBAR_SLOTS.start;
+                            let stack = match inv.get_slot(slot_id) {
+                                Slot::Empty => ItemStack {
+                                    item_count: 1,
+                                    item_id: VarInt(1),
+                                    nbt: None,
+                                },
+                                Slot::Present(s) => ItemStack {
+                                    item_count: s.item_count + 1,
+                                    item_id: s.item_id,
+                                    nbt: None,
+                                },
+                            };
+                            inv.set_slot(slot_id, Slot::Present(stack));
                         }
                     }
                     _ => {}
