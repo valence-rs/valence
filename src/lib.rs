@@ -107,6 +107,7 @@ mod chunk_pos;
 pub mod client;
 pub mod config;
 pub mod dimension;
+pub mod enchant;
 pub mod entity;
 pub mod ident;
 pub mod itemstack;
