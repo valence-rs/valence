@@ -1,11 +1,19 @@
-//! Items
+//! Items and ItemStacks
 
 use anyhow::Context;
 
 use crate::block::{BlockKind, BlockKindType, CauldronBlockKind, WallBlockKind};
+use crate::nbt::Compound;
 use crate::protocol::{Decode, Encode, VarInt};
 
 include!(concat!(env!("OUT_DIR"), "/item.rs"));
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ItemStack {
+    pub item: ItemKind,
+    pub item_count: u8,
+    pub nbt: Option<Compound>,
+}
 
 impl Encode for ItemKind {
     fn encode(&self, w: &mut impl std::io::Write) -> anyhow::Result<()> {

@@ -110,7 +110,6 @@ pub mod dimension;
 pub mod entity;
 pub mod ident;
 pub mod item;
-pub mod itemstack;
 pub mod player_list;
 pub mod player_textures;
 #[allow(dead_code)]

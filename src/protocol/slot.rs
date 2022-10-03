@@ -2,8 +2,7 @@ use std::io::Write;
 
 use byteorder::ReadBytesExt;
 
-use crate::item::ItemKind;
-use crate::itemstack::ItemStack;
+use crate::item::{ItemKind, ItemStack};
 use crate::nbt::Compound;
 use crate::protocol::{Decode, Encode};
 
