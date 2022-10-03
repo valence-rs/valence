@@ -57,17 +57,6 @@ pub fn build() -> anyhow::Result<TokenStream> {
         })
         .collect::<TokenStream>();
 
-    let enchantmentkind_ids = enchants
-        .iter()
-        .map(|enchant| {
-            let rustified_name = ident(enchant.name.to_pascal_case());
-            let id = &enchant.id;
-            quote! {
-                Self::#rustified_name => #id,
-            }
-        })
-        .collect::<TokenStream>();
-
     let enchantmentkind_names = enchants
         .iter()
         .map(|enchant| {
@@ -178,9 +167,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
             /// Returns the enchantment ID.
             pub const fn id(self) -> u16 {
-                match self{
-                    #enchantmentkind_ids
-                }
+                self as u16
             }
 
             /// Returns the translation key.
