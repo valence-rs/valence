@@ -32,3 +32,5 @@ jobs:
       run: cargo +stable clippy --no-deps --all-features --all-targets -- -D warnings
     - name: Run tests
       run: cargo +stable test --all-features --all-targets
+    - name: Run valence_nbt tests without preserve_order
+      run: cargo +stable test -p valence_nbt
