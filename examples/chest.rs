@@ -12,7 +12,8 @@ use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::{EntityId, EntityKind};
 use valence::inventory::{
-    ConfigurableInventory, Inventory, InventoryId, PlayerInventory, WindowInventory,
+    ConfigurableInventory, Inventory, InventoryDirtyable, InventoryId, PlayerInventory,
+    WindowInventory,
 };
 use valence::itemstack::ItemStack;
 use valence::player_list::PlayerListId;
@@ -289,6 +290,21 @@ impl Config for Game {
                         }
                     }
                     _ => {}
+                }
+            }
+
+            if let Some(window) = client.state.open_inventory.as_ref() {
+                if window.is_dirty() {
+                    client.send_packet(SetContainerContent {
+                        window_id: window.window_id,
+                        state_id: VarInt(1),
+                        slots: window.slots(),
+                        carried_item: Slot::Empty,
+                    });
+                }
+                let mut inv = server.inventories.lock().unwrap();
+                if let Some(inv) = inv.get_mut(server.state.chest) {
+                    inv.mark_dirty(false);
                 }
             }
 
