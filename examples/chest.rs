@@ -1,5 +1,4 @@
 use std::net::SocketAddr;
-use std::ops::DerefMut;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -32,7 +31,7 @@ pub fn main() -> ShutdownResult {
         },
         ServerState {
             player_list: None,
-            chest: Arc::new(Mutex::new(ConfigurableInventory::new(27, None))),
+            chest: Arc::new(Mutex::new(ConfigurableInventory::new(27, VarInt(2), None))),
         },
     )
 }

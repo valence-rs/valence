@@ -32,6 +32,7 @@ use crate::client::{Client, Clients};
 use crate::config::{Config, ServerListPing};
 use crate::dimension::{validate_dimensions, Dimension, DimensionId};
 use crate::entity::Entities;
+use crate::inventory::Inventories;
 use crate::player_list::PlayerLists;
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::codec::{Decoder, Encoder};
@@ -66,6 +67,7 @@ pub struct Server<C: Config> {
     pub worlds: Worlds<C>,
     /// All of the player lists on the server.
     pub player_lists: PlayerLists<C>,
+    pub inventories: Inventories,
 }
 
 /// A handle to a Minecraft server containing the subset of functionality which
@@ -292,6 +294,7 @@ pub fn start_server<C: Config>(config: C, data: C::ServerState) -> ShutdownResul
         entities: Entities::new(),
         worlds: Worlds::new(shared.clone()),
         player_lists: PlayerLists::new(),
+        inventories: Inventories::new(),
     };
 
     shared.config().init(&mut server);

@@ -1,7 +1,8 @@
 use std::ops::Range;
 use std::sync::{Arc, Mutex};
 
-use crate::protocol::{Slot, SlotId};
+use crate::protocol::{Slot, SlotId, VarInt};
+use crate::slab_versioned::{Key, VersionedSlab};
 
 pub trait Inventory {
     fn get_slot(&self, slot_id: SlotId) -> Slot;
@@ -102,14 +103,17 @@ pub struct ConfigurableInventory {
     /// crafting result slot is always zero, and should not be included in this
     /// range.
     crafting_slots: Option<Range<SlotId>>,
+    /// The type of window that should be used to display this inventory.
+    window_type: VarInt,
     dirty: bool,
 }
 
 impl ConfigurableInventory {
-    pub fn new(size: usize, crafting_slots: Option<Range<SlotId>>) -> Self {
+    pub fn new(size: usize, window_type: VarInt, crafting_slots: Option<Range<SlotId>>) -> Self {
         ConfigurableInventory {
             slots: vec![Slot::Empty; size],
             crafting_slots,
+            window_type,
             dirty: false,
         }
     }
@@ -225,6 +229,46 @@ impl Inventory for WindowInventory {
     fn is_dirty(&self) -> bool {
         self.player_inventory.lock().unwrap().is_dirty()
             || self.object_inventory.lock().unwrap().is_dirty()
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
+pub struct InventoryId(Key);
+
+/// Manages all inventories that are present in the server.
+pub struct Inventories {
+    slab: VersionedSlab<ConfigurableInventory>,
+}
+
+impl Inventories {
+    pub fn new() -> Self {
+        Self {
+            slab: VersionedSlab::new(),
+        }
+    }
+
+    /// Creates a new inventory on a server.
+    pub fn insert(
+        &mut self,
+        inv: ConfigurableInventory,
+    ) -> (InventoryId, &mut ConfigurableInventory) {
+        let (key, value) = self.slab.insert(inv);
+        (InventoryId(key), value)
+    }
+
+    /// Removes an inventory from the server.
+    pub fn remove(&mut self, inv: InventoryId) -> Option<ConfigurableInventory> {
+        self.slab.remove(inv.0)
+    }
+
+    /// Returns the number of inventories in this container.
+    pub fn len(&self) -> usize {
+        self.slab.len()
+    }
+
+    /// Returns `true` if there are no inventories.
+    pub fn is_empty(&self) -> bool {
+        self.slab.len() == 0
     }
 }
 
