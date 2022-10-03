@@ -369,7 +369,8 @@
     "id": 61,
     "name": "ancient_debris",
     "translation_key": "block.minecraft.ancient_debris",
-    "max_stack": 64
+    "max_stack": 64,
+    "fireproof": true
   },
   {
     "id": 62,
@@ -435,7 +436,8 @@
     "id": 72,
     "name": "netherite_block",
     "translation_key": "block.minecraft.netherite_block",
-    "max_stack": 64
+    "max_stack": 64,
+    "fireproof": true
   },
   {
     "id": 73,
@@ -4173,19 +4175,25 @@
     "id": 695,
     "name": "carrot_on_a_stick",
     "translation_key": "item.minecraft.carrot_on_a_stick",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 25,
+    "enchantability": 0
   },
   {
     "id": 696,
     "name": "warped_fungus_on_a_stick",
     "translation_key": "item.minecraft.warped_fungus_on_a_stick",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 100,
+    "enchantability": 0
   },
   {
     "id": 697,
     "name": "elytra",
     "translation_key": "item.minecraft.elytra",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 432,
+    "enchantability": 0
   },
   {
     "id": 698,
@@ -4287,7 +4295,9 @@
     "id": 714,
     "name": "turtle_helmet",
     "translation_key": "item.minecraft.turtle_helmet",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 275,
+    "enchantability": 9
   },
   {
     "id": 715,
@@ -4299,19 +4309,33 @@
     "id": 716,
     "name": "flint_and_steel",
     "translation_key": "item.minecraft.flint_and_steel",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 64,
+    "enchantability": 0
   },
   {
     "id": 717,
     "name": "apple",
     "translation_key": "item.minecraft.apple",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 4,
+      "saturation": 0.3,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 718,
     "name": "bow",
     "translation_key": "item.minecraft.bow",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 384,
+    "enchantability": 1
   },
   {
     "id": 719,
@@ -4401,193 +4425,260 @@
     "id": 733,
     "name": "netherite_ingot",
     "translation_key": "item.minecraft.netherite_ingot",
-    "max_stack": 64
+    "max_stack": 64,
+    "fireproof": true
   },
   {
     "id": 734,
     "name": "netherite_scrap",
     "translation_key": "item.minecraft.netherite_scrap",
-    "max_stack": 64
+    "max_stack": 64,
+    "fireproof": true
   },
   {
     "id": 735,
     "name": "wooden_sword",
     "translation_key": "item.minecraft.wooden_sword",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 59,
+    "enchantability": 15
   },
   {
     "id": 736,
     "name": "wooden_shovel",
     "translation_key": "item.minecraft.wooden_shovel",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 59,
+    "enchantability": 15
   },
   {
     "id": 737,
     "name": "wooden_pickaxe",
     "translation_key": "item.minecraft.wooden_pickaxe",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 59,
+    "enchantability": 15
   },
   {
     "id": 738,
     "name": "wooden_axe",
     "translation_key": "item.minecraft.wooden_axe",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 59,
+    "enchantability": 15
   },
   {
     "id": 739,
     "name": "wooden_hoe",
     "translation_key": "item.minecraft.wooden_hoe",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 59,
+    "enchantability": 15
   },
   {
     "id": 740,
     "name": "stone_sword",
     "translation_key": "item.minecraft.stone_sword",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 131,
+    "enchantability": 5
   },
   {
     "id": 741,
     "name": "stone_shovel",
     "translation_key": "item.minecraft.stone_shovel",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 131,
+    "enchantability": 5
   },
   {
     "id": 742,
     "name": "stone_pickaxe",
     "translation_key": "item.minecraft.stone_pickaxe",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 131,
+    "enchantability": 5
   },
   {
     "id": 743,
     "name": "stone_axe",
     "translation_key": "item.minecraft.stone_axe",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 131,
+    "enchantability": 5
   },
   {
     "id": 744,
     "name": "stone_hoe",
     "translation_key": "item.minecraft.stone_hoe",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 131,
+    "enchantability": 5
   },
   {
     "id": 745,
     "name": "golden_sword",
     "translation_key": "item.minecraft.golden_sword",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 32,
+    "enchantability": 22
   },
   {
     "id": 746,
     "name": "golden_shovel",
     "translation_key": "item.minecraft.golden_shovel",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 32,
+    "enchantability": 22
   },
   {
     "id": 747,
     "name": "golden_pickaxe",
     "translation_key": "item.minecraft.golden_pickaxe",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 32,
+    "enchantability": 22
   },
   {
     "id": 748,
     "name": "golden_axe",
     "translation_key": "item.minecraft.golden_axe",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 32,
+    "enchantability": 22
   },
   {
     "id": 749,
     "name": "golden_hoe",
     "translation_key": "item.minecraft.golden_hoe",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 32,
+    "enchantability": 22
   },
   {
     "id": 750,
     "name": "iron_sword",
     "translation_key": "item.minecraft.iron_sword",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 250,
+    "enchantability": 14
   },
   {
     "id": 751,
     "name": "iron_shovel",
     "translation_key": "item.minecraft.iron_shovel",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 250,
+    "enchantability": 14
   },
   {
     "id": 752,
     "name": "iron_pickaxe",
     "translation_key": "item.minecraft.iron_pickaxe",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 250,
+    "enchantability": 14
   },
   {
     "id": 753,
     "name": "iron_axe",
     "translation_key": "item.minecraft.iron_axe",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 250,
+    "enchantability": 14
   },
   {
     "id": 754,
     "name": "iron_hoe",
     "translation_key": "item.minecraft.iron_hoe",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 250,
+    "enchantability": 14
   },
   {
     "id": 755,
     "name": "diamond_sword",
     "translation_key": "item.minecraft.diamond_sword",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 1561,
+    "enchantability": 10
   },
   {
     "id": 756,
     "name": "diamond_shovel",
     "translation_key": "item.minecraft.diamond_shovel",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 1561,
+    "enchantability": 10
   },
   {
     "id": 757,
     "name": "diamond_pickaxe",
     "translation_key": "item.minecraft.diamond_pickaxe",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 1561,
+    "enchantability": 10
   },
   {
     "id": 758,
     "name": "diamond_axe",
     "translation_key": "item.minecraft.diamond_axe",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 1561,
+    "enchantability": 10
   },
   {
     "id": 759,
     "name": "diamond_hoe",
     "translation_key": "item.minecraft.diamond_hoe",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 1561,
+    "enchantability": 10
   },
   {
     "id": 760,
     "name": "netherite_sword",
     "translation_key": "item.minecraft.netherite_sword",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 2031,
+    "enchantability": 15,
+    "fireproof": true
   },
   {
     "id": 761,
     "name": "netherite_shovel",
     "translation_key": "item.minecraft.netherite_shovel",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 2031,
+    "enchantability": 15,
+    "fireproof": true
   },
   {
     "id": 762,
     "name": "netherite_pickaxe",
     "translation_key": "item.minecraft.netherite_pickaxe",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 2031,
+    "enchantability": 15,
+    "fireproof": true
   },
   {
     "id": 763,
     "name": "netherite_axe",
     "translation_key": "item.minecraft.netherite_axe",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 2031,
+    "enchantability": 15,
+    "fireproof": true
   },
   {
     "id": 764,
     "name": "netherite_hoe",
     "translation_key": "item.minecraft.netherite_hoe",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 2031,
+    "enchantability": 15,
+    "fireproof": true
   },
   {
     "id": 765,
@@ -4605,7 +4696,17 @@
     "id": 767,
     "name": "mushroom_stew",
     "translation_key": "item.minecraft.mushroom_stew",
-    "max_stack": 1
+    "max_stack": 1,
+    "food": {
+      "hunger": 6,
+      "saturation": 0.6,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 768,
@@ -4641,151 +4742,213 @@
     "id": 773,
     "name": "bread",
     "translation_key": "item.minecraft.bread",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 5,
+      "saturation": 0.6,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 774,
     "name": "leather_helmet",
     "translation_key": "item.minecraft.leather_helmet",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 55,
+    "enchantability": 15
   },
   {
     "id": 775,
     "name": "leather_chestplate",
     "translation_key": "item.minecraft.leather_chestplate",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 80,
+    "enchantability": 15
   },
   {
     "id": 776,
     "name": "leather_leggings",
     "translation_key": "item.minecraft.leather_leggings",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 75,
+    "enchantability": 15
   },
   {
     "id": 777,
     "name": "leather_boots",
     "translation_key": "item.minecraft.leather_boots",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 65,
+    "enchantability": 15
   },
   {
     "id": 778,
     "name": "chainmail_helmet",
     "translation_key": "item.minecraft.chainmail_helmet",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 165,
+    "enchantability": 12
   },
   {
     "id": 779,
     "name": "chainmail_chestplate",
     "translation_key": "item.minecraft.chainmail_chestplate",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 240,
+    "enchantability": 12
   },
   {
     "id": 780,
     "name": "chainmail_leggings",
     "translation_key": "item.minecraft.chainmail_leggings",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 225,
+    "enchantability": 12
   },
   {
     "id": 781,
     "name": "chainmail_boots",
     "translation_key": "item.minecraft.chainmail_boots",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 195,
+    "enchantability": 12
   },
   {
     "id": 782,
     "name": "iron_helmet",
     "translation_key": "item.minecraft.iron_helmet",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 165,
+    "enchantability": 9
   },
   {
     "id": 783,
     "name": "iron_chestplate",
     "translation_key": "item.minecraft.iron_chestplate",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 240,
+    "enchantability": 9
   },
   {
     "id": 784,
     "name": "iron_leggings",
     "translation_key": "item.minecraft.iron_leggings",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 225,
+    "enchantability": 9
   },
   {
     "id": 785,
     "name": "iron_boots",
     "translation_key": "item.minecraft.iron_boots",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 195,
+    "enchantability": 9
   },
   {
     "id": 786,
     "name": "diamond_helmet",
     "translation_key": "item.minecraft.diamond_helmet",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 363,
+    "enchantability": 10
   },
   {
     "id": 787,
     "name": "diamond_chestplate",
     "translation_key": "item.minecraft.diamond_chestplate",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 528,
+    "enchantability": 10
   },
   {
     "id": 788,
     "name": "diamond_leggings",
     "translation_key": "item.minecraft.diamond_leggings",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 495,
+    "enchantability": 10
   },
   {
     "id": 789,
     "name": "diamond_boots",
     "translation_key": "item.minecraft.diamond_boots",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 429,
+    "enchantability": 10
   },
   {
     "id": 790,
     "name": "golden_helmet",
     "translation_key": "item.minecraft.golden_helmet",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 77,
+    "enchantability": 25
   },
   {
     "id": 791,
     "name": "golden_chestplate",
     "translation_key": "item.minecraft.golden_chestplate",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 112,
+    "enchantability": 25
   },
   {
     "id": 792,
     "name": "golden_leggings",
     "translation_key": "item.minecraft.golden_leggings",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 105,
+    "enchantability": 25
   },
   {
     "id": 793,
     "name": "golden_boots",
     "translation_key": "item.minecraft.golden_boots",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 91,
+    "enchantability": 25
   },
   {
     "id": 794,
     "name": "netherite_helmet",
     "translation_key": "item.minecraft.netherite_helmet",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 407,
+    "enchantability": 15,
+    "fireproof": true
   },
   {
     "id": 795,
     "name": "netherite_chestplate",
     "translation_key": "item.minecraft.netherite_chestplate",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 592,
+    "enchantability": 15,
+    "fireproof": true
   },
   {
     "id": 796,
     "name": "netherite_leggings",
     "translation_key": "item.minecraft.netherite_leggings",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 555,
+    "enchantability": 15,
+    "fireproof": true
   },
   {
     "id": 797,
     "name": "netherite_boots",
     "translation_key": "item.minecraft.netherite_boots",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 481,
+    "enchantability": 15,
+    "fireproof": true
   },
   {
     "id": 798,
@@ -4797,13 +4960,33 @@
     "id": 799,
     "name": "porkchop",
     "translation_key": "item.minecraft.porkchop",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 3,
+      "saturation": 0.3,
+      "always_edible": false,
+      "meat": true,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 800,
     "name": "cooked_porkchop",
     "translation_key": "item.minecraft.cooked_porkchop",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 8,
+      "saturation": 0.8,
+      "always_edible": false,
+      "meat": true,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 801,
@@ -4815,13 +4998,33 @@
     "id": 802,
     "name": "golden_apple",
     "translation_key": "item.minecraft.golden_apple",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 4,
+      "saturation": 1.2,
+      "always_edible": true,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 803,
     "name": "enchanted_golden_apple",
     "translation_key": "item.minecraft.enchanted_golden_apple",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 4,
+      "saturation": 1.2,
+      "always_edible": true,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 804,
@@ -5019,7 +5222,9 @@
     "id": 836,
     "name": "fishing_rod",
     "translation_key": "item.minecraft.fishing_rod",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 64,
+    "enchantability": 1
   },
   {
     "id": 837,
@@ -5043,37 +5248,97 @@
     "id": 840,
     "name": "cod",
     "translation_key": "item.minecraft.cod",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 2,
+      "saturation": 0.1,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 841,
     "name": "salmon",
     "translation_key": "item.minecraft.salmon",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 2,
+      "saturation": 0.1,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 842,
     "name": "tropical_fish",
     "translation_key": "item.minecraft.tropical_fish",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 1,
+      "saturation": 0.1,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 843,
     "name": "pufferfish",
     "translation_key": "item.minecraft.pufferfish",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 1,
+      "saturation": 0.1,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 844,
     "name": "cooked_cod",
     "translation_key": "item.minecraft.cooked_cod",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 5,
+      "saturation": 0.6,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 845,
     "name": "cooked_salmon",
     "translation_key": "item.minecraft.cooked_salmon",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 6,
+      "saturation": 0.8,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 846,
@@ -5313,7 +5578,17 @@
     "id": 885,
     "name": "cookie",
     "translation_key": "item.minecraft.cookie",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 2,
+      "saturation": 0.1,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 886,
@@ -5325,19 +5600,41 @@
     "id": 887,
     "name": "shears",
     "translation_key": "item.minecraft.shears",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 238,
+    "enchantability": 0
   },
   {
     "id": 888,
     "name": "melon_slice",
     "translation_key": "item.minecraft.melon_slice",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 2,
+      "saturation": 0.3,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 889,
     "name": "dried_kelp",
     "translation_key": "item.minecraft.dried_kelp",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 1,
+      "saturation": 0.3,
+      "always_edible": false,
+      "meat": false,
+      "snack": true,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 890,
@@ -5355,31 +5652,81 @@
     "id": 892,
     "name": "beef",
     "translation_key": "item.minecraft.beef",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 3,
+      "saturation": 0.3,
+      "always_edible": false,
+      "meat": true,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 893,
     "name": "cooked_beef",
     "translation_key": "item.minecraft.cooked_beef",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 8,
+      "saturation": 0.8,
+      "always_edible": false,
+      "meat": true,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 894,
     "name": "chicken",
     "translation_key": "item.minecraft.chicken",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 2,
+      "saturation": 0.3,
+      "always_edible": false,
+      "meat": true,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 895,
     "name": "cooked_chicken",
     "translation_key": "item.minecraft.cooked_chicken",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 6,
+      "saturation": 0.6,
+      "always_edible": false,
+      "meat": true,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 896,
     "name": "rotten_flesh",
     "translation_key": "item.minecraft.rotten_flesh",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 4,
+      "saturation": 0.1,
+      "always_edible": false,
+      "meat": true,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 897,
@@ -5427,7 +5774,17 @@
     "id": 904,
     "name": "spider_eye",
     "translation_key": "item.minecraft.spider_eye",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 2,
+      "saturation": 0.8,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 905,
@@ -5943,25 +6300,65 @@
     "id": 990,
     "name": "carrot",
     "translation_key": "item.minecraft.carrot",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 3,
+      "saturation": 0.6,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 991,
     "name": "potato",
     "translation_key": "item.minecraft.potato",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 1,
+      "saturation": 0.3,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 992,
     "name": "baked_potato",
     "translation_key": "item.minecraft.baked_potato",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 5,
+      "saturation": 0.6,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 993,
     "name": "poisonous_potato",
     "translation_key": "item.minecraft.poisonous_potato",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 2,
+      "saturation": 0.3,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 994,
@@ -5973,7 +6370,17 @@
     "id": 995,
     "name": "golden_carrot",
     "translation_key": "item.minecraft.golden_carrot",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 6,
+      "saturation": 1.2,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 996,
@@ -6021,7 +6428,17 @@
     "id": 1003,
     "name": "pumpkin_pie",
     "translation_key": "item.minecraft.pumpkin_pie",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 8,
+      "saturation": 0.3,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 1004,
@@ -6063,19 +6480,49 @@
     "id": 1010,
     "name": "rabbit",
     "translation_key": "item.minecraft.rabbit",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 3,
+      "saturation": 0.3,
+      "always_edible": false,
+      "meat": true,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 1011,
     "name": "cooked_rabbit",
     "translation_key": "item.minecraft.cooked_rabbit",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 5,
+      "saturation": 0.6,
+      "always_edible": false,
+      "meat": true,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 1012,
     "name": "rabbit_stew",
     "translation_key": "item.minecraft.rabbit_stew",
-    "max_stack": 1
+    "max_stack": 1,
+    "food": {
+      "hunger": 10,
+      "saturation": 0.6,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 1013,
@@ -6141,13 +6588,33 @@
     "id": 1023,
     "name": "mutton",
     "translation_key": "item.minecraft.mutton",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 2,
+      "saturation": 0.3,
+      "always_edible": false,
+      "meat": true,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 1024,
     "name": "cooked_mutton",
     "translation_key": "item.minecraft.cooked_mutton",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 6,
+      "saturation": 0.8,
+      "always_edible": false,
+      "meat": true,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 1025,
@@ -6255,7 +6722,17 @@
     "id": 1042,
     "name": "chorus_fruit",
     "translation_key": "item.minecraft.chorus_fruit",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 4,
+      "saturation": 0.3,
+      "always_edible": true,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 1043,
@@ -6267,7 +6744,17 @@
     "id": 1044,
     "name": "beetroot",
     "translation_key": "item.minecraft.beetroot",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 1,
+      "saturation": 0.6,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 1045,
@@ -6279,7 +6766,17 @@
     "id": 1046,
     "name": "beetroot_soup",
     "translation_key": "item.minecraft.beetroot_soup",
-    "max_stack": 1
+    "max_stack": 1,
+    "food": {
+      "hunger": 6,
+      "saturation": 0.6,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 1047,
@@ -6315,7 +6812,9 @@
     "id": 1052,
     "name": "shield",
     "translation_key": "item.minecraft.shield",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 336,
+    "enchantability": 0
   },
   {
     "id": 1053,
@@ -6447,7 +6946,9 @@
     "id": 1074,
     "name": "trident",
     "translation_key": "item.minecraft.trident",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 250,
+    "enchantability": 1
   },
   {
     "id": 1075,
@@ -6471,13 +6972,25 @@
     "id": 1078,
     "name": "crossbow",
     "translation_key": "item.minecraft.crossbow",
-    "max_stack": 1
+    "max_stack": 1,
+    "max_damage": 465,
+    "enchantability": 1
   },
   {
     "id": 1079,
     "name": "suspicious_stew",
     "translation_key": "item.minecraft.suspicious_stew",
-    "max_stack": 1
+    "max_stack": 1,
+    "food": {
+      "hunger": 6,
+      "saturation": 0.6,
+      "always_edible": true,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 1080,
@@ -6603,13 +7116,33 @@
     "id": 1100,
     "name": "sweet_berries",
     "translation_key": "item.minecraft.sweet_berries",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 2,
+      "saturation": 0.1,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 1101,
     "name": "glow_berries",
     "translation_key": "item.minecraft.glow_berries",
-    "max_stack": 64
+    "max_stack": 64,
+    "food": {
+      "hunger": 2,
+      "saturation": 0.1,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 1102,
@@ -6651,7 +7184,17 @@
     "id": 1108,
     "name": "honey_bottle",
     "translation_key": "item.minecraft.honey_bottle",
-    "max_stack": 16
+    "max_stack": 16,
+    "food": {
+      "hunger": 6,
+      "saturation": 0.1,
+      "always_edible": false,
+      "meat": false,
+      "snack": false,
+      "effects": [
+        {}
+      ]
+    }
   },
   {
     "id": 1109,

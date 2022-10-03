@@ -17,6 +17,21 @@ pub(crate) struct Item {
     translation_key: String,
     pub(crate) name: String,
     max_stack: u8,
+    food: Option<FoodComponent>,
+    max_damage: Option<i16>,
+    enchantability: Option<u8>,
+    fireproof: Option<bool>,
+}
+
+#[derive(Deserialize, Clone, Debug)]
+struct FoodComponent {
+    hunger: u8,
+    saturation: f32,
+    always_edible: bool,
+    meat: bool,
+    snack: bool,
+    // TODO: Implement when postions are implemented.
+    //effects: Vec<()>,
 }
 
 pub fn build() -> anyhow::Result<TokenStream> {
@@ -98,6 +113,78 @@ pub fn build() -> anyhow::Result<TokenStream> {
         })
         .collect::<TokenStream>();
 
+    let item_kind_to_food_component_arms = items
+        .iter()
+        .map(|i| {
+            match &i.food {
+                Some(food_component) => {
+                    let name_ident = ident(&i.name.to_pascal_case());
+                    let hunger = food_component.hunger;
+                    let saturation = food_component.saturation;
+                    let always_edible = food_component.always_edible;
+                    let meat = food_component.meat;
+                    let snack = food_component.snack;
+                    //let effects = food_component.effects;
+
+                    quote! {
+                        Self::#name_ident => Some(FoodComponent {
+                            hunger: #hunger,
+                            saturation: #saturation,
+                            always_edible: #always_edible,
+                            meat: #meat,
+                            snack: #snack,
+                            //effects: #effects,
+                        }
+                    ),
+                    }
+                }
+                None => quote! {},
+            }
+        })
+        .collect::<TokenStream>();
+
+    let item_kind_to_max_durability_arms = items
+        .iter()
+        .map(|i| match &i.max_damage {
+            Some(max_durability) => {
+                let name_ident = ident(&i.name.to_pascal_case());
+
+                quote! {
+                    Self::#name_ident => Some(#max_durability),
+                }
+            }
+            None => quote! {},
+        })
+        .collect::<TokenStream>();
+
+    let item_kind_to_enchantability_arms = items
+        .iter()
+        .map(|i| match &i.enchantability {
+            Some(enchantability) => {
+                let name_ident = ident(&i.name.to_pascal_case());
+
+                quote! {
+                    Self::#name_ident => Some(#enchantability),
+                }
+            }
+            None => quote! {},
+        })
+        .collect::<TokenStream>();
+
+    let item_kind_to_fireproof_arms = items
+        .iter()
+        .map(|i| match i.fireproof {
+            Some(_) => {
+                let name_ident = ident(&i.name.to_pascal_case());
+
+                quote! {
+                    Self::#name_ident => true,
+                }
+            }
+            None => quote! {},
+        })
+        .collect::<TokenStream>();
+
     let item_kinds_varients = items
         .iter()
         .map(|i| ident(i.name.to_pascal_case()))
@@ -168,6 +255,45 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
+            /// Returns a food component which stores hunger, saturation etc.
+            ///
+            /// If the item kind can't be eaten, `None` will be returned.
+            pub const fn food_component(self) -> Option<FoodComponent> {
+                match self {
+                    #item_kind_to_food_component_arms
+                    _ => None
+                }
+            }
+
+            /// Returns the max durability before the item kind will break
+            ///
+            /// If the item kind doesn't have durability, `None` is returned.
+            pub const fn max_durability(self) -> Option<i16> {
+                match self {
+                    #item_kind_to_max_durability_arms
+                    _ => None
+                }
+            }
+
+            /// Returns the enchantability of the item kind
+            ///
+            /// If the item kind can't be enchanted, `None` is returned
+            pub const fn enchantability(self) -> Option<u8> {
+                match self {
+                    #item_kind_to_enchantability_arms
+                    _ => None
+                }
+            }
+
+            /// Returns if the item can survive in fire/lava
+            #[allow(clippy::match_like_matches_macro)]
+            pub const fn fireproof(self) -> bool {
+                match self {
+                    #item_kind_to_fireproof_arms
+                    _ => false
+                }
+            }
+
             /// Construct an item kind from a block kind.
             ///
             /// If the given block kind doesn't have a corresponding item kind, `None` is returned.
@@ -190,6 +316,18 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
             /// An array of all item kinds.
             pub const ALL: [Self; #item_kinds_count] = [#(Self::#item_kinds_varients,)*];
+        }
+
+        #[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
+        /// A struct to store all about the food part of an item
+        pub struct FoodComponent {
+            hunger: u8,
+            saturation: f32,
+            always_edible: bool,
+            meat: bool,
+            snack: bool,
+            // TODO: Implement when postions are implemented
+            //effects: Vec<()>,
         }
     })
 }
