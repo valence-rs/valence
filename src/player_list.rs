@@ -222,6 +222,10 @@ impl<C: Config> PlayerList<C> {
         }
     }
 
+    pub fn get_entry(&self, uuid: &Uuid) -> Option<&PlayerListEntry> {
+        self.entries.get(uuid)
+    }
+
     /// Returns an iterator over all entries in an unspecified order.
     pub fn entries(&self) -> impl Iterator<Item = (Uuid, &PlayerListEntry)> + '_ {
         self.entries.iter().map(|(k, v)| (*k, v))

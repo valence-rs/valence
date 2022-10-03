@@ -1453,6 +1453,19 @@ impl<C: Config> Client<C> {
                 let entity = entities
                     .get(id)
                     .expect("entity IDs in spatial index should be valid at this point");
+
+                // We want to skip player entities that are not in the players player_list.
+                if entity.kind() == EntityKind::Player {
+                    if let Some(list_id) = &self.new_player_list {
+                        let entry = player_lists.get(list_id).get_entry(&entity.uuid());
+
+                        match entry {
+                            None => return None,
+                            _ => {}
+                        }
+                    }
+                }
+
                 if entity.kind() != EntityKind::Marker
                     && entity.uuid() != self.uuid
                     && self.loaded_entities.insert(id)
