@@ -36,8 +36,8 @@ public class Main implements ModInitializer {
     @Override
     public void onInitialize() {
         LOGGER.info("Starting extractors...");
-
-        var extractors = new Extractor[]{new Blocks(), new Entities(), new EntityData(), new Packets(), new Items()};
+      
+        var extractors = new Extractor[]{new Blocks(), new Entities(), new EntityData(), new Packets(), new Items(), new Enchants()};
 
         Path outputDirectory;
         try {

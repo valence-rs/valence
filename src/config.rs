@@ -95,6 +95,20 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
         true
     }
 
+    /// Called once at startup to get the "prevent-proxy-connections" option,
+    /// which determines if client IP validation should take place.
+    ///
+    /// When prevent_proxy_connections is enabled, clients can no longer log-in
+    /// if they connected to the yggdrasil server using a different IP.
+    ///
+    /// # Default Implementation
+    /// Proxy connections are allowed.
+    ///
+    /// Returns `false`.
+    fn prevent_proxy_connections(&self) -> bool {
+        false
+    }
+
     /// Called once at startup to get the capacity of the buffer used to
     /// hold incoming packets.
     ///
@@ -225,7 +239,11 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
         auth_digest: &str,
         player_ip: &IpAddr,
     ) -> String {
-        format!("https://sessionserver.mojang.com/session/minecraft/hasJoined?username={username}&serverId={auth_digest}&ip={player_ip}")
+        if self.prevent_proxy_connections() {
+            format!("https://sessionserver.mojang.com/session/minecraft/hasJoined?username={username}&serverId={auth_digest}&ip={player_ip}")
+        } else {
+            format!("https://sessionserver.mojang.com/session/minecraft/hasJoined?username={username}&serverId={auth_digest}")
+        }
     }
 
     /// Called after the server is created, but prior to accepting connections
