@@ -1459,6 +1459,7 @@ impl<C: Config> Client<C> {
                     if let Some(list_id) = &self.new_player_list {
                         let entry = player_lists.get(list_id).get_entry(&entity.uuid());
 
+                        #[allow(clippy::question_mark)]
                         if entry.is_none() {
                             return None;
                         }
