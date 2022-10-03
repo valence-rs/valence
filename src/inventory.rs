@@ -159,34 +159,49 @@ impl InventoryDirtyable for ConfigurableInventory {
 /// between the inventories.
 pub struct WindowInventory {
     pub window_id: u8,
-    object_inventory: Arc<Mutex<ConfigurableInventory>>,
+    inventories: Arc<Mutex<Inventories>>,
+    object_inventory: InventoryId,
     player_inventory: Arc<Mutex<PlayerInventory>>,
 }
 
 impl WindowInventory {
     pub fn new(
         window_id: impl Into<u8>,
-        object_inventory: Arc<Mutex<ConfigurableInventory>>,
+        inventories: Arc<Mutex<Inventories>>,
+        object_inventory: InventoryId,
         player_inventory: Arc<Mutex<PlayerInventory>>,
     ) -> Self {
         WindowInventory {
             window_id: window_id.into(),
+            inventories,
             object_inventory,
             player_inventory,
         }
     }
 
     fn is_in_object(&self, slot_id: SlotId) -> bool {
-        (slot_id as usize) < self.object_inventory.lock().unwrap().slot_count()
+        let inv = self.inventories.lock().unwrap();
+        let inv = inv.get(self.object_inventory);
+        if inv.is_none() {
+            return false;
+        }
+        (slot_id as usize) < inv.unwrap().slot_count()
     }
 
     fn to_player_slot(&self, slot_id: SlotId) -> SlotId {
         let first_general_slot = PlayerInventory::GENERAL_SLOTS.start;
-        slot_id - self.object_inventory.lock().unwrap().slot_count() as SlotId + first_general_slot
+        let offset = match self.inventories.lock().unwrap().get(self.object_inventory) {
+            Some(inv) => inv.slot_count() as SlotId,
+            None => 0,
+        };
+        slot_id - offset + first_general_slot
     }
 
     pub fn window_type(&self) -> VarInt {
-        self.object_inventory.lock().unwrap().window_type
+        match self.inventories.lock().unwrap().get(self.object_inventory) {
+            Some(inv) => inv.window_type,
+            None => VarInt(-1),
+        }
     }
 }
 
@@ -198,7 +213,10 @@ impl Inventory for WindowInventory {
         }
 
         if self.is_in_object(slot_id) {
-            self.object_inventory.lock().unwrap().get_slot(slot_id)
+            match self.inventories.lock().unwrap().get(self.object_inventory) {
+                Some(inv) => inv.get_slot(slot_id),
+                None => Slot::Empty,
+            }
         } else {
             self.player_inventory
                 .lock()
@@ -214,10 +232,15 @@ impl Inventory for WindowInventory {
         }
 
         if self.is_in_object(slot_id) {
-            self.object_inventory
+            match self
+                .inventories
                 .lock()
                 .unwrap()
-                .set_slot(slot_id, slot)
+                .get_mut(self.object_inventory)
+            {
+                Some(inv) => inv.set_slot(slot_id, slot),
+                None => {}
+            }
         } else {
             self.player_inventory
                 .lock()
@@ -227,12 +250,19 @@ impl Inventory for WindowInventory {
     }
 
     fn slot_count(&self) -> usize {
-        self.object_inventory.lock().unwrap().slot_count() + PlayerInventory::GENERAL_SLOTS.len()
+        let offset = match self.inventories.lock().unwrap().get(self.object_inventory) {
+            Some(inv) => inv.slot_count(),
+            None => 0,
+        };
+        offset + PlayerInventory::GENERAL_SLOTS.len()
     }
 
     fn is_dirty(&self) -> bool {
-        self.player_inventory.lock().unwrap().is_dirty()
-            || self.object_inventory.lock().unwrap().is_dirty()
+        let obj_dirty = match self.inventories.lock().unwrap().get(self.object_inventory) {
+            Some(inv) => inv.is_dirty(),
+            None => false,
+        };
+        obj_dirty || self.player_inventory.lock().unwrap().is_dirty()
     }
 }
 
@@ -273,6 +303,14 @@ impl Inventories {
     /// Returns `true` if there are no inventories.
     pub fn is_empty(&self) -> bool {
         self.slab.len() == 0
+    }
+
+    pub fn get(&self, inv: InventoryId) -> Option<&ConfigurableInventory> {
+        self.slab.get(inv.0)
+    }
+
+    pub fn get_mut(&mut self, inv: InventoryId) -> Option<&mut ConfigurableInventory> {
+        self.slab.get_mut(inv.0)
     }
 }
 

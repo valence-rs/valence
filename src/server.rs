@@ -67,7 +67,7 @@ pub struct Server<C: Config> {
     pub worlds: Worlds<C>,
     /// All of the player lists on the server.
     pub player_lists: PlayerLists<C>,
-    pub inventories: Inventories,
+    pub inventories: Arc<Mutex<Inventories>>,
 }
 
 /// A handle to a Minecraft server containing the subset of functionality which
@@ -294,7 +294,7 @@ pub fn start_server<C: Config>(config: C, data: C::ServerState) -> ShutdownResul
         entities: Entities::new(),
         worlds: Worlds::new(shared.clone()),
         player_lists: PlayerLists::new(),
-        inventories: Inventories::new(),
+        inventories: Arc::new(Mutex::new(Inventories::new())),
     };
 
     shared.config().init(&mut server);

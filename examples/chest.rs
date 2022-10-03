@@ -11,7 +11,9 @@ use valence::client::{handle_event_default, ClientEvent, GameMode, Hand};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::{EntityId, EntityKind};
-use valence::inventory::{ConfigurableInventory, Inventory, PlayerInventory, WindowInventory};
+use valence::inventory::{
+    ConfigurableInventory, Inventory, InventoryId, PlayerInventory, WindowInventory,
+};
 use valence::itemstack::ItemStack;
 use valence::player_list::PlayerListId;
 use valence::protocol::packets::s2c::play::{OpenScreen, SetContainerContent};
@@ -31,7 +33,7 @@ pub fn main() -> ShutdownResult {
         },
         ServerState {
             player_list: None,
-            chest: Arc::new(Mutex::new(ConfigurableInventory::new(27, VarInt(2), None))),
+            chest: Default::default(),
         },
     )
 }
@@ -42,7 +44,7 @@ struct Game {
 
 struct ServerState {
     player_list: Option<PlayerListId>,
-    chest: Arc<Mutex<ConfigurableInventory>>,
+    chest: InventoryId,
 }
 
 #[derive(Default)]
@@ -131,6 +133,11 @@ impl Config for Game {
             .chunks
             .set_block_state((50, -1, 54), BlockState::STONE);
         world.chunks.set_block_state((50, 0, 54), BlockState::CHEST);
+
+        // create chest inventory
+        let inv = ConfigurableInventory::new(27, VarInt(2), None);
+        let (id, inv) = server.inventories.lock().unwrap().insert(inv);
+        server.state.chest = id;
     }
 
     fn update(&self, server: &mut Server<Self>) {
@@ -138,7 +145,14 @@ impl Config for Game {
 
         let spawn_pos = [SIZE_X as f64 / 2.0, 1.0, SIZE_Z as f64 / 2.0];
 
-        rotate_items(&mut server.state.chest);
+        if let Some(inv) = server
+            .inventories
+            .lock()
+            .unwrap()
+            .get_mut(server.state.chest)
+        {
+            rotate_items(inv);
+        }
 
         server.clients.retain(|_, client| {
             if client.created_this_tick() {
@@ -208,7 +222,8 @@ impl Config for Game {
                             client.send_message("Opening chest!");
                             let window = WindowInventory::new(
                                 1,
-                                server.state.chest.clone(),
+                                server.inventories.clone(),
+                                server.state.chest,
                                 client.inventory.clone(),
                             );
                             client.send_packet(OpenScreen {
@@ -231,10 +246,7 @@ impl Config for Game {
                         if window_id > 0 {
                             client.send_message(format!("Window closed: {}", window_id));
                             client.state.open_inventory = None;
-                            client.send_message(format!(
-                                "Chest: {:?}",
-                                server.state.chest.lock().unwrap()
-                            ));
+                            client.send_message(format!("Chest: {:?}", server.state.chest));
                         }
                     }
                     ClientEvent::ClickContainer {
@@ -285,8 +297,7 @@ impl Config for Game {
     }
 }
 
-fn rotate_items(inv: &mut Arc<Mutex<ConfigurableInventory>>) {
-    let mut inv = inv.lock().unwrap();
+fn rotate_items(inv: &mut ConfigurableInventory) {
     for i in 1..inv.slot_count() {
         let a = inv.get_slot((i - 1) as SlotId);
         let b = inv.get_slot(i as SlotId);
