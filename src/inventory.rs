@@ -10,6 +10,12 @@ pub trait Inventory {
     fn is_dirty(&self) -> bool;
 
     // TODO: `entry()` style api
+
+    fn slots(&self) -> Vec<Slot> {
+        (0..self.slot_count())
+            .map(|s| self.get_slot(s as SlotId))
+            .collect()
+    }
 }
 
 pub trait InventoryDirtyable {
@@ -26,6 +32,7 @@ pub trait CraftingInventory {
 pub struct PlayerInventory {
     pub(crate) slots: Box<[Slot; 46]>,
     dirty: bool,
+    pub(crate) state_id: i32,
 }
 
 impl PlayerInventory {
@@ -50,6 +57,7 @@ impl Default for PlayerInventory {
             // Can't do the shorthand because Slot is not Copy.
             slots: Box::new(std::array::from_fn(|_| Slot::Empty)),
             dirty: true,
+            state_id: Default::default(),
         }
     }
 }
@@ -171,12 +179,6 @@ impl WindowInventory {
     fn to_player_slot(&self, slot_id: SlotId) -> SlotId {
         let first_general_slot = PlayerInventory::GENERAL_SLOTS.start;
         slot_id - self.object_inventory.lock().unwrap().slot_count() as SlotId + first_general_slot
-    }
-
-    pub fn slots(&self) -> Vec<Slot> {
-        (0..self.slot_count())
-            .map(|s| self.get_slot(s as SlotId))
-            .collect()
     }
 }
 

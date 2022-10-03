@@ -22,7 +22,7 @@ use crate::entity::{
     self, velocity_to_packet_units, Entities, EntityId, EntityKind, StatusOrAnimation,
 };
 use crate::ident::Ident;
-use crate::inventory::{Inventory, PlayerInventory};
+use crate::inventory::{Inventory, InventoryDirtyable, PlayerInventory};
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::c2s::play::{self, C2sPlayPacket, InteractKind, PlayerCommandId};
@@ -31,10 +31,10 @@ use crate::protocol::packets::s2c::play::{
     AcknowledgeBlockChange, ClearTitles, CustomSoundEffect, DisconnectPlay, EntityAnimationS2c,
     EntityAttributesProperty, EntityEvent, GameEvent, GameStateChangeReason, KeepAliveS2c,
     LoginPlay, PlayerPositionLookFlags, RemoveEntities, ResourcePackS2c, Respawn, S2cPlayPacket,
-    SetActionBarText, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata,
-    SetEntityVelocity, SetExperience, SetHeadRotation, SetHealth, SetRenderDistance,
-    SetSubtitleText, SetTitleText, SoundCategory, SynchronizePlayerPosition, SystemChatMessage,
-    TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
+    SetActionBarText, SetCenterChunk, SetContainerContent, SetDefaultSpawnPosition,
+    SetEntityMetadata, SetEntityVelocity, SetExperience, SetHeadRotation, SetHealth,
+    SetRenderDistance, SetSubtitleText, SetTitleText, SoundCategory, SynchronizePlayerPosition,
+    SystemChatMessage, TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
     UpdateEntityPositionAndRotation, UpdateEntityRotation, UpdateTime,
 };
 use crate::protocol::{BoundedInt, BoundedString, ByteAngle, RawBytes, Slot, SlotId, VarInt};
@@ -1536,6 +1536,23 @@ impl<C: Config> Client<C> {
         self.bits.set_created_this_tick(false);
 
         send_packet(&mut self.send, S2cPlayMessage::Flush);
+
+        // Update the player's inventory
+        if let Ok(mut inv) = self.inventory.lock() {
+            if inv.is_dirty() {
+                send_packet(
+                    &mut self.send,
+                    SetContainerContent {
+                        window_id: 0,
+                        state_id: VarInt(inv.state_id),
+                        slots: inv.slots(),
+                        carried_item: Slot::Empty,
+                    },
+                );
+                inv.state_id += 1;
+                inv.mark_dirty(false);
+            }
+        }
     }
 }
 
