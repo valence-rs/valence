@@ -134,41 +134,33 @@ pub fn build() -> anyhow::Result<TokenStream> {
         })
         .collect::<TokenStream>();
 
-    let enchantmentkind_source_treasure = enchants
+    let enchantmentkind_sources = enchants
         .iter()
         .map(|enchant| {
             let rustified_name = ident(enchant.name.to_pascal_case());
-            let source_treasure = &enchant.source.treasure;
-            quote! {
-                Self::#rustified_name => #source_treasure,
-            }
-        })
-        .collect::<TokenStream>();
-
-    let enchantmentkind_source_enchantment_table = enchants
-        .iter()
-        .map(|enchant| {
-            let rustified_name = ident(enchant.name.to_pascal_case());
+            let treasure = &enchant.source.treasure;
             let enchantment_table = &enchant.source.enchantment_table;
-            quote! {
-                Self::#rustified_name => #enchantment_table,
-            }
-        })
-        .collect::<TokenStream>();
-
-    let enchantmentkind_source_random_selection = enchants
-        .iter()
-        .map(|enchant| {
-            let rustified_name = ident(enchant.name.to_pascal_case());
             let random_selection = &enchant.source.random_selection;
             quote! {
-                Self::#rustified_name => #random_selection,
+                Self::#rustified_name => EnchantmentSources {
+                    treasure: #treasure,
+                    enchantment_table: #enchantment_table,
+                    random_selection: #random_selection,
+                },
             }
         })
         .collect::<TokenStream>();
 
     Ok(quote! {
-        #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        pub struct EnchantmentSources {
+            pub treasure: bool,
+            pub enchantment_table: bool,
+            pub random_selection: bool,
+        }
+
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
         pub enum EnchantmentKind {
             #enchantmentkind_definitions
         }
@@ -185,72 +177,58 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }
 
             /// Returns the enchantment ID.
-            pub const fn id(&self) -> u16{
-                match &self{
+            pub const fn id(self) -> u16 {
+                match self{
                     #enchantmentkind_ids
                 }
             }
 
             /// Returns the translation key.
-            pub const fn translation_key(&self) -> &'static str{
-                match &self{
+            pub const fn translation_key(self) -> &'static str {
+                match self{
                     #enchantmentkind_translations
                 }
             }
 
             /// Returns the enchantment name the game uses.
-            pub const fn name(&self) -> &'static str{
-                match &self{
+            pub const fn name(self) -> &'static str {
+                match self{
                     #enchantmentkind_names
                 }
             }
 
             /// Returns the minimum enchantment level officially supported by Minecraft.
-            pub const fn min_level(&self) -> i16{
-                match &self{
+            pub const fn min_level(self) -> i16 {
+                match self{
                     #enchantmentkind_min_level
                 }
             }
 
             /// Returns the maximum enchantment level officially supported by Minecraft.
-            pub const fn max_level(&self) -> i16{
-                match &self{
+            pub const fn max_level(self) -> i16 {
+                match self{
                     #enchantmentkind_max_level
                 }
             }
 
             /// Returns true if the enchantment is of the curse type.
-            pub const fn is_curse(&self) -> bool{
-                match &self{
+            pub const fn is_curse(self) -> bool {
+                match self{
                     #enchantmentkind_is_curse
                 }
             }
 
             /// Returns the rarity of the enchant. Lower means more rare.
-            pub const fn rarity_weight(&self) -> i32{
-                match &self{
+            pub const fn rarity_weight(self) -> i32 {
+                match self{
                     #enchantmentkind_rarity_weight
                 }
             }
 
-            /// Returns true if the enchantment is of a treasure type.
-            pub const fn is_treasure_source(&self) -> bool{
-                match &self{
-                    #enchantmentkind_source_treasure
-                }
-            }
-
-            /// Returns true if the enchantment can be obtained through a enchantment table.
-            pub const fn is_enchantment_table_source(&self) -> bool{
-                match &self{
-                    #enchantmentkind_source_enchantment_table
-                }
-            }
-
-            /// Returns true if the enchantment can be chosen randomly by using an enchantment table, for example.
-            pub const fn is_random_selection_source(&self) -> bool{
-                match &self{
-                    #enchantmentkind_source_random_selection
+            /// Returns the different sources this enchantment has.
+            pub const fn sources(self) -> EnchantmentSources {
+                match self{
+                    #enchantmentkind_sources
                 }
             }
         }
