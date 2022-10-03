@@ -213,7 +213,7 @@ impl Config for Game {
                             );
                             client.send_packet(OpenScreen {
                                 window_id: VarInt(window.window_id.into()),
-                                window_type: VarInt(2),
+                                window_type: window.window_type(),
                                 window_title: "Extra".italic()
                                     + " Chesty".not_italic().bold().color(Color::RED)
                                     + " Chest".not_italic(),

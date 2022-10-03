@@ -104,7 +104,7 @@ pub struct ConfigurableInventory {
     /// range.
     crafting_slots: Option<Range<SlotId>>,
     /// The type of window that should be used to display this inventory.
-    window_type: VarInt,
+    pub window_type: VarInt,
     dirty: bool,
 }
 
@@ -159,14 +159,14 @@ impl InventoryDirtyable for ConfigurableInventory {
 /// between the inventories.
 pub struct WindowInventory {
     pub window_id: u8,
-    object_inventory: Arc<Mutex<dyn Inventory + Send>>,
+    object_inventory: Arc<Mutex<ConfigurableInventory>>,
     player_inventory: Arc<Mutex<PlayerInventory>>,
 }
 
 impl WindowInventory {
     pub fn new(
         window_id: impl Into<u8>,
-        object_inventory: Arc<Mutex<dyn Inventory + Send>>,
+        object_inventory: Arc<Mutex<ConfigurableInventory>>,
         player_inventory: Arc<Mutex<PlayerInventory>>,
     ) -> Self {
         WindowInventory {
@@ -183,6 +183,10 @@ impl WindowInventory {
     fn to_player_slot(&self, slot_id: SlotId) -> SlotId {
         let first_general_slot = PlayerInventory::GENERAL_SLOTS.start;
         slot_id - self.object_inventory.lock().unwrap().slot_count() as SlotId + first_general_slot
+    }
+
+    pub fn window_type(&self) -> VarInt {
+        self.object_inventory.lock().unwrap().window_type
     }
 }
 
