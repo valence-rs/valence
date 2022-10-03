@@ -1,4 +1,5 @@
 use std::net::SocketAddr;
+use std::ops::DerefMut;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -137,6 +138,8 @@ impl Config for Game {
         let (world_id, world) = server.worlds.iter_mut().next().unwrap();
 
         let spawn_pos = [SIZE_X as f64 / 2.0, 1.0, SIZE_Z as f64 / 2.0];
+
+        rotate_items(&mut server.state.chest);
 
         server.clients.retain(|_, client| {
             if client.created_this_tick() {
@@ -280,5 +283,15 @@ impl Config for Game {
 
             true
         });
+    }
+}
+
+fn rotate_items(inv: &mut Arc<Mutex<ConfigurableInventory>>) {
+    let mut inv = inv.lock().unwrap();
+    for i in 1..inv.slot_count() {
+        let a = inv.get_slot((i - 1) as SlotId);
+        let b = inv.get_slot(i as SlotId);
+        inv.set_slot((i - 1) as SlotId, b);
+        inv.set_slot(i as SlotId, a);
     }
 }
