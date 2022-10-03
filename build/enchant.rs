@@ -169,7 +169,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
     Ok(quote! {
         #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-        pub enum EnchantmentKind{
+        pub enum EnchantmentKind {
             #enchantmentkind_definitions
         }
 
