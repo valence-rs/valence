@@ -1459,7 +1459,7 @@ impl<C: Config> Client<C> {
                     if let Some(list_id) = &self.new_player_list {
                         let entry = player_lists.get(list_id).get_entry(&entity.uuid());
 
-                        if let None = entry {
+                        if entry.is_none() {
                             return None;
                         }
                     }
