@@ -98,4 +98,12 @@ mod tests {
 
         assert_eq!(new_item, ItemKind::SlimeBlock)
     }
+
+    #[test]
+    fn block_state_to_wall_state() {
+        let block = BlockState::TORCH;
+        let wall = block.wall_state().unwrap();
+
+        assert_eq!(wall, BlockState::WALL_TORCH)
+    }
 }

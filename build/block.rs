@@ -411,6 +411,26 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
     let item_kind_to_block_kind_arms = item_to_block_arms(&blocks, &items);
 
+    let block_state_to_wall_state = items
+        .iter()
+        .map(|i| {
+            let item_id = i.id;
+
+            let matching_blocks: Vec<&Block> =
+                blocks.iter().filter(|b| b.item_id == item_id).collect();
+
+            if matching_blocks.len() == 2 {
+                let state_ident = ident(matching_blocks[0].name.to_shouty_snake_case());
+                let wall_ident = ident(matching_blocks[1].name.to_shouty_snake_case());
+
+                return quote! {
+                    BlockState::#state_ident => Some(BlockState::#wall_ident),
+                };
+            }
+            quote! {}
+        })
+        .collect::<TokenStream>();
+
     Ok(quote! {
         /// Represents the state of a block. This does not include block entity data such as
         /// the text on a sign, the design on a banner, or the content of a spawner.
@@ -528,6 +548,23 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 match self.0 {
                     #state_to_luminance_arms
                     _ => 0,
+                }
+            }
+
+            /// Returns the wall state of an block state.
+            ///
+            /// If there is no wall state for the block, `None` is returned.
+            ///
+            /// ```rust
+            /// let block = BlockState::TORCH;
+            /// let wall = block.wall_state().unwrap();
+            ///
+            /// assert_eq!(wall, BlockState::WALL_TORCH)
+            /// ```
+            pub const fn wall_state(self) -> Option<Self> {
+                match self {
+                    #block_state_to_wall_state
+                    _ => None
                 }
             }
 
