@@ -10,7 +10,7 @@ use crate::protocol::{Encode, VarInt};
 
 /// `HALF_LEN` must be equal to `ceil(LEN / 2)`.
 #[derive(Clone, Default, Debug)]
-pub struct PalettedContainer<T, const LEN: usize, const HALF_LEN: usize> {
+pub struct PalettedContainer<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> {
     inner: Inner<T, LEN, HALF_LEN>,
 }
 
@@ -33,14 +33,14 @@ pub trait PalettedContainerElement: Copy + Eq + Default {
 }
 
 #[derive(Clone, Debug)]
-enum Inner<T, const LEN: usize, const HALF_LEN: usize> {
+enum Inner<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> {
     Single(T),
     Indirect(Box<Indirect<T, LEN, HALF_LEN>>),
     Direct(Box<[T; LEN]>),
 }
 
 #[derive(Clone, Debug)]
-struct Indirect<T, const LEN: usize, const HALF_LEN: usize> {
+struct Indirect<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> {
     /// Each element is a unique instance of `T`.
     palette: ArrayVec<T, 16>,
     /// Each half-byte is an index into `palette`.
@@ -70,6 +70,14 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize>
             Inner::Single(elem) => *elem,
             Inner::Indirect(ind) => ind.get(idx),
             Inner::Direct(elems) => elems[idx],
+        }
+    }
+
+    pub fn single(&self) -> Option<T> {
+        match &self.inner {
+            Inner::Single(val) => Some(*val),
+            Inner::Indirect(_) => None,
+            Inner::Direct(_) => None,
         }
     }
 
