@@ -818,21 +818,7 @@ mod tests {
     use crate::server::Server;
     use crate::slab_versioned::Key;
 
-    /// Created for the sole purpose of use during unit tests.
-    struct MockConfig;
-    impl Config for MockConfig {
-        type ServerState = ();
-        type ClientState = ();
-        type EntityState = u8; // Just for identification purposes
-        type WorldState = ();
-        type ChunkState = ();
-        type PlayerListState = ();
-
-        fn max_connections(&self) -> usize {
-            10
-        }
-        fn update(&self, _server: &mut Server<Self>) {}
-    }
+    type MockConfig = crate::config::MockConfig<(), (), u8>;
 
     #[test]
     fn entities_has_valid_new_state() {
