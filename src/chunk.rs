@@ -13,20 +13,19 @@ use std::iter::FusedIterator;
 
 use bitvec::vec::BitVec;
 use byteorder::{BigEndian, WriteBytesExt};
-use num::Integer;
+use paletted_container::{PalettedContainer, PalettedContainerElement};
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use valence_nbt::compound;
 
 use crate::biome::BiomeId;
 use crate::block::BlockState;
 use crate::block_pos::BlockPos;
-use paletted_container::{PalettedContainer, PalettedContainerElement};
 pub use crate::chunk_pos::ChunkPos;
 use crate::config::Config;
 use crate::protocol::packets::s2c::play::{
     BlockUpdate, ChunkDataAndUpdateLight, S2cPlayPacket, UpdateSectionBlocks,
 };
-use crate::protocol::{VarInt, VarLong};
+use crate::protocol::{Encode, VarInt, VarLong};
 use crate::util::log2_ceil;
 
 mod paletted_container;
@@ -65,7 +64,7 @@ impl<C: Config> Chunks<C> {
         chunk: UnloadedChunk,
         state: C::ChunkState,
     ) -> &mut LoadedChunk<C> {
-        let dimension_section_count = (self.shared.dimension(self.dimension).height / 16) as usize;
+        let dimension_section_count = (self.dimension_height / 16) as usize;
         let loaded = LoadedChunk::new(chunk, dimension_section_count, state);
 
         match self.chunks.entry(pos.into()) {
@@ -218,9 +217,11 @@ impl<C: Config> Chunks<C> {
         let chunk_pos = ChunkPos::from(pos);
 
         if let Some(chunk) = self.chunks.get_mut(&chunk_pos) {
-            let min_y = self.shared.dimension(self.dimension).min_y;
-
-            if let Some(y) = pos.y.checked_sub(min_y).and_then(|y| y.try_into().ok()) {
+            if let Some(y) = pos
+                .y
+                .checked_sub(self.dimension_min_y)
+                .and_then(|y| y.try_into().ok())
+            {
                 if y < chunk.height() {
                     chunk.set_block_state(
                         pos.x.rem_euclid(16) as usize,
@@ -520,7 +521,7 @@ impl Default for ChunkSection {
             modified_blocks: [Default::default(); SECTION_BLOCK_COUNT / USIZE_BITS],
             modified_blocks_count: Default::default(),
             non_air_count: Default::default(),
-            biomes: Default::default()
+            biomes: Default::default(),
         }
     }
 }
@@ -815,31 +816,33 @@ fn is_motion_blocking(b: BlockState) -> bool {
 #[inline]
 fn encode_compact_u64s(
     w: &mut impl Write,
-    vals: impl Iterator<Item = u64>,
+    mut vals: impl Iterator<Item = u64>,
     bits_per_val: usize,
 ) -> anyhow::Result<()> {
     debug_assert!(bits_per_val <= 64);
 
     let vals_per_u64 = 64 / bits_per_val;
-    for val in vals {
-        debug_assert!(val < 2_u64.pow(bits_per_val as _));
 
-        let mut n = 0_u64;
-        for i in 0..vals_per_u64 {
-            n = (n << bits_per_val) | val;
+    loop {
+        let mut n = 0;
+        for _ in 0..vals_per_u64 {
+            match vals.next() {
+                Some(val) => {
+                    debug_assert!(val < (2_u128.pow(bits_per_val as _) - 1) as _);
+                    n = (n << bits_per_val) | val
+                }
+                None => return Ok(w.write_u64::<BigEndian>(n)?),
+            }
         }
         w.write_u64::<BigEndian>(n)?;
     }
-
-    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use rand::Rng;
+    use rand::prelude::*;
 
     use super::*;
-    use crate::server::Server;
     use crate::config::MockConfig;
 
     fn check_invariants(sections: &[ChunkSection]) {
@@ -863,17 +866,50 @@ mod tests {
         }
     }
 
+    fn rand_block_state(rng: &mut (impl Rng + ?Sized)) -> BlockState {
+        BlockState::from_raw(rng.gen_range(0..=BlockState::max_raw())).unwrap()
+    }
+
     #[test]
-    fn random_assignments() {
-        let mut rng = rand::thread_rng();
+    fn random_block_assignments() {
+        let mut rng = thread_rng();
 
         let height = 512;
 
         let mut loaded = LoadedChunk::<MockConfig>::new(UnloadedChunk::default(), height / 16, ());
         let mut unloaded = UnloadedChunk::new(height);
 
-        for _ in 0..10_000 {
-            let state = BlockState::from_raw(rng.gen_range(0..=BlockState::max_raw())).unwrap();
+        for i in 0..10_000 {
+            let state = if i % 1_000 == 0 {
+                [BlockState::AIR, BlockState::CAVE_AIR, BlockState::VOID_AIR]
+                    .into_iter()
+                    .choose(&mut rng)
+                    .unwrap()
+            } else {
+                rand_block_state(&mut rng)
+            };
+
+            let x = rng.gen_range(0..16);
+            let y = rng.gen_range(0..height);
+            let z = rng.gen_range(0..16);
+
+            loaded.set_block_state(x, y, z, state);
+            unloaded.set_block_state(x, y, z, state);
         }
+
+        check_invariants(&loaded.sections);
+        check_invariants(&unloaded.sections);
+
+        loaded.optimize();
+        unloaded.optimize();
+
+        check_invariants(&loaded.sections);
+        check_invariants(&unloaded.sections);
+
+        loaded.fill_block_states(rand_block_state(&mut rng));
+        unloaded.fill_block_states(rand_block_state(&mut rng));
+
+        check_invariants(&loaded.sections);
+        check_invariants(&unloaded.sections);
     }
 }

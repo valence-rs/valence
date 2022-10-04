@@ -1,7 +1,6 @@
 //! Configuration for the server.
 
 use std::borrow::Cow;
-use std::marker::PhantomData;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
 
 use async_trait::async_trait;
@@ -310,7 +309,7 @@ pub struct PlayerSampleEntry<'a> {
 /// A minimal `Config` implementation for testing purposes.
 #[cfg(test)]
 pub(crate) struct MockConfig<S = (), Cl = (), E = (), W = (), Ch = (), P = ()> {
-    _marker: PhantomData<(S, Cl, E, W, Ch, P)>
+    _marker: std::marker::PhantomData<(S, Cl, E, W, Ch, P)>
 }
 
 #[cfg(test)]

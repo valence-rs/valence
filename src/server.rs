@@ -440,12 +440,6 @@ fn do_update_loop<C: Config>(server: &mut Server<C>) -> ShutdownResult {
         shared.config().update(server);
 
         server.worlds.par_iter_mut().for_each(|(id, world)| {
-            // Chunks created this tick can have their changes applied immediately because
-            // they have not been observed by clients yet. Clients will not have to be sent
-            // the block change packet in this case, since the changes are applied before we
-            // update clients.
-            world.chunks.update_created_this_tick();
-
             world.spatial_index.update(&server.entities, id);
         });
 

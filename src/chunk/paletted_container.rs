@@ -9,7 +9,7 @@ use crate::protocol::{Encode, VarInt};
 // TODO: https://github.com/rust-lang/rust/issues/60551
 
 /// `HALF_LEN` must be equal to `ceil(LEN / 2)`.
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Debug)]
 pub struct PalettedContainer<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> {
     inner: Inner<T, LEN, HALF_LEN>,
 }
@@ -51,7 +51,7 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize>
     PalettedContainer<T, LEN, HALF_LEN>
 {
     pub fn new() -> Self {
-        assert_eq!(div_ceil(LEN, 2), HALF_LEN);
+        assert_eq!(num::Integer::div_ceil(&LEN, &2), HALF_LEN);
         assert_ne!(LEN, 0);
 
         Self {
@@ -168,6 +168,14 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize>
     }
 }
 
+impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> Default
+for PalettedContainer<T, LEN, HALF_LEN>
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize>
     Indirect<T, LEN, HALF_LEN>
 {
@@ -189,14 +197,6 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize>
         let shift = idx % 2 * 4;
         *u8 = (*u8 & !(0b1111 << shift)) | ((palette_idx as u8) << shift);
         Some(old_val)
-    }
-}
-
-impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> Default
-    for Inner<T, LEN, HALF_LEN>
-{
-    fn default() -> Self {
-        Inner::Single(T::default())
     }
 }
 
@@ -241,23 +241,28 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> Encod
     }
 }
 
-/// TODO: https://github.com/rust-lang/rust/issues/88581
-fn div_ceil(left: usize, right: usize) -> usize {
-    num::Integer::div_ceil(&left, &right)
-}
-
 #[cfg(test)]
 mod tests {
     use rand::Rng;
 
     use super::*;
 
-    fn check<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>(
+    fn check<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize>(
         p: &PalettedContainer<T, LEN, HALF_LEN>,
         s: &[T],
     ) -> bool {
         assert_eq!(s.len(), LEN);
-        (0..LEN).all(|i| &p.get(i) == &s[i])
+        (0..LEN).all(|i| p.get(i) == s[i])
+    }
+
+    impl PalettedContainerElement for u32 {
+        const DIRECT_BITS: usize = 0;
+        const MAX_INDIRECT_BITS: usize = 0;
+        const MIN_INDIRECT_BITS: usize = 0;
+
+        fn to_bits(self) -> u64 {
+            self.into()
+        }
     }
 
     #[test]

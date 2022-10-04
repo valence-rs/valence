@@ -814,8 +814,6 @@ mod tests {
     use uuid::Uuid;
 
     use super::{Entities, EntityId, EntityKind};
-    use crate::config::Config;
-    use crate::server::Server;
     use crate::slab_versioned::Key;
 
     type MockConfig = crate::config::MockConfig<(), (), u8>;
