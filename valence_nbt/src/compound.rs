@@ -100,7 +100,7 @@ impl Compound {
         self.map.append(&mut other.map);
 
         #[cfg(feature = "preserve_order")]
-        for (k, v) in std::mem::replace(&mut other.map, Map::default()) {
+        for (k, v) in std::mem::take(&mut other.map) {
             self.map.insert(k, v);
         }
     }
