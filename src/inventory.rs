@@ -1,6 +1,11 @@
+use std::collections::HashSet;
 use std::ops::Range;
-use std::sync::{Arc, Mutex};
 
+use rayon::prelude::ParallelIterator;
+
+use crate::client::Clients;
+use crate::config::Config;
+use crate::protocol::packets::s2c::play::SetContainerContent;
 use crate::protocol::{Slot, SlotId, VarInt};
 use crate::slab_versioned::{Key, VersionedSlab};
 
@@ -159,110 +164,33 @@ impl InventoryDirtyable for ConfigurableInventory {
 /// between the inventories.
 pub struct WindowInventory {
     pub window_id: u8,
-    inventories: Arc<Mutex<Inventories>>,
-    object_inventory: InventoryId,
-    player_inventory: Arc<Mutex<PlayerInventory>>,
+    pub object_inventory: InventoryId,
 }
 
 impl WindowInventory {
-    pub fn new(
-        window_id: impl Into<u8>,
-        inventories: Arc<Mutex<Inventories>>,
-        object_inventory: InventoryId,
-        player_inventory: Arc<Mutex<PlayerInventory>>,
-    ) -> Self {
+    pub fn new(window_id: impl Into<u8>, object_inventory: InventoryId) -> Self {
         WindowInventory {
             window_id: window_id.into(),
-            inventories,
             object_inventory,
-            player_inventory,
         }
     }
 
-    fn is_in_object(&self, slot_id: SlotId) -> bool {
-        let inv = self.inventories.lock().unwrap();
-        let inv = inv.get(self.object_inventory);
-        if inv.is_none() {
-            return false;
-        }
-        (slot_id as usize) < inv.unwrap().slot_count()
-    }
-
-    fn to_player_slot(&self, slot_id: SlotId) -> SlotId {
-        let first_general_slot = PlayerInventory::GENERAL_SLOTS.start;
-        let offset = match self.inventories.lock().unwrap().get(self.object_inventory) {
-            Some(inv) => inv.slot_count() as SlotId,
-            None => 0,
-        };
-        slot_id - offset + first_general_slot
-    }
-
-    pub fn window_type(&self) -> VarInt {
-        match self.inventories.lock().unwrap().get(self.object_inventory) {
-            Some(inv) => inv.window_type,
-            None => VarInt(-1),
-        }
-    }
-}
-
-impl Inventory for WindowInventory {
-    fn get_slot(&self, slot_id: SlotId) -> Slot {
-        if slot_id < 0 {
-            // TODO: dont panic
-            panic!("invalid slot id")
-        }
-
-        if self.is_in_object(slot_id) {
-            match self.inventories.lock().unwrap().get(self.object_inventory) {
-                Some(inv) => inv.get_slot(slot_id),
-                None => Slot::Empty,
-            }
-        } else {
-            self.player_inventory
-                .lock()
-                .unwrap()
-                .get_slot(self.to_player_slot(slot_id))
-        }
-    }
-
-    fn set_slot(&mut self, slot_id: SlotId, slot: Slot) {
-        if slot_id < 0 {
-            // TODO: dont panic
-            panic!("invalid slot id")
-        }
-
-        if self.is_in_object(slot_id) {
-            match self
-                .inventories
-                .lock()
-                .unwrap()
-                .get_mut(self.object_inventory)
-            {
-                Some(inv) => inv.set_slot(slot_id, slot),
-                None => {}
-            }
-        } else {
-            self.player_inventory
-                .lock()
-                .unwrap()
-                .set_slot(self.to_player_slot(slot_id), slot)
-        }
-    }
-
-    fn slot_count(&self) -> usize {
-        let offset = match self.inventories.lock().unwrap().get(self.object_inventory) {
-            Some(inv) => inv.slot_count(),
-            None => 0,
-        };
-        offset + PlayerInventory::GENERAL_SLOTS.len()
-    }
-
-    fn is_dirty(&self) -> bool {
-        let obj_dirty = match self.inventories.lock().unwrap().get(self.object_inventory) {
-            Some(inv) => inv.is_dirty(),
-            None => false,
-        };
-        obj_dirty || self.player_inventory.lock().unwrap().is_dirty()
+    fn slots(
+        &self,
+        obj_inventory: &ConfigurableInventory,
+        player_inventory: &PlayerInventory,
+    ) -> Vec<Slot> {
+        let total_slots = obj_inventory.slots.len() + PlayerInventory::GENERAL_SLOTS.len();
+        (0..total_slots)
+            .map(|s| {
+                if s < obj_inventory.slot_count() {
+                    return obj_inventory.get_slot(s as SlotId);
+                }
+                let offset = obj_inventory.slot_count();
+                return player_inventory
+                    .get_slot((s - offset) as SlotId + PlayerInventory::GENERAL_SLOTS.start);
+            })
+            .collect()
     }
 }
 
@@ -311,6 +239,40 @@ impl Inventories {
 
     pub fn get_mut(&mut self, inv: InventoryId) -> Option<&mut ConfigurableInventory> {
         self.slab.get_mut(inv.0)
+    }
+
+    pub(crate) fn sync<C: Config>(&mut self, clients: &mut Clients<C>) {
+        // sync open, dirty inventories to clients
+        let _obj_inventories_cleaned: HashSet<InventoryId> = clients
+            .par_iter_mut()
+            .map(|(_client_id, client)| {
+                if let Some(window) = client.open_inventory.as_ref() {
+                    // this client has an inventory open
+                    let obj_inv_id = window.object_inventory;
+                    let obj_inv = self.get(obj_inv_id).unwrap(); // FIXME: don't unwrap
+                    if obj_inv.is_dirty() {
+                        let window_id = window.window_id;
+                        let slots = window.slots(&obj_inv, &client.inventory);
+                        let carried_item = client.cursor_held_item.clone();
+                        drop(window);
+                        client.send_packet(SetContainerContent {
+                            window_id,
+                            state_id: VarInt(1),
+                            slots,
+                            carried_item,
+                        });
+                        return Some(obj_inv_id);
+                    }
+                }
+                return None;
+            })
+            .filter(|id| id.is_some())
+            .map(|id| id.unwrap())
+            .collect();
+
+        for (_, inv) in self.slab.iter_mut() {
+            inv.mark_dirty(false);
+        }
     }
 }
 

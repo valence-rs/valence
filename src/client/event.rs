@@ -335,11 +335,7 @@ pub fn handle_event_default<C: Config>(
         ClientEvent::DropItem => {}
         ClientEvent::DropItemStack { .. } => {}
         ClientEvent::SetSlotCreative { slot_id, slot } => {
-            client
-                .inventory
-                .lock()
-                .unwrap()
-                .set_slot(*slot_id, slot.clone());
+            client.inventory.set_slot(*slot_id, slot.clone());
         }
         ClientEvent::ClickContainer { .. } => {}
     }

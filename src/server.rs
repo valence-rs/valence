@@ -67,7 +67,7 @@ pub struct Server<C: Config> {
     pub worlds: Worlds<C>,
     /// All of the player lists on the server.
     pub player_lists: PlayerLists<C>,
-    pub inventories: Arc<Mutex<Inventories>>,
+    pub inventories: Inventories,
 }
 
 /// A handle to a Minecraft server containing the subset of functionality which
@@ -294,7 +294,7 @@ pub fn start_server<C: Config>(config: C, data: C::ServerState) -> ShutdownResul
         entities: Entities::new(),
         worlds: Worlds::new(shared.clone()),
         player_lists: PlayerLists::new(),
-        inventories: Arc::new(Mutex::new(Inventories::new())),
+        inventories: Inventories::new(),
     };
 
     shared.config().init(&mut server);
@@ -462,6 +462,7 @@ fn do_update_loop<C: Config>(server: &mut Server<C>) -> ShutdownResult {
         });
 
         server.player_lists.update();
+        server.inventories.sync(&mut server.clients);
 
         // Sleep for the remainder of the tick.
         let tick_duration = Duration::from_secs_f64((shared.0.tick_rate as f64).recip());

@@ -1,6 +1,5 @@
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
 
 use log::LevelFilter;
 use num::Integer;
@@ -12,12 +11,11 @@ use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::{EntityId, EntityKind};
 use valence::inventory::{
-    ConfigurableInventory, Inventory, InventoryDirtyable, InventoryId, PlayerInventory,
-    WindowInventory,
+    ConfigurableInventory, Inventory, InventoryId, PlayerInventory, WindowInventory,
 };
 use valence::itemstack::ItemStack;
 use valence::player_list::PlayerListId;
-use valence::protocol::packets::s2c::play::{OpenScreen, SetContainerContent};
+use valence::protocol::packets::s2c::play::OpenScreen;
 use valence::protocol::{Slot, SlotId, VarInt};
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
@@ -51,7 +49,7 @@ struct ServerState {
 #[derive(Default)]
 struct ClientState {
     entity_id: EntityId,
-    open_inventory: Option<WindowInventory>,
+    // open_inventory: Option<WindowInventory>,
 }
 
 const MAX_PLAYERS: usize = 10;
@@ -137,7 +135,7 @@ impl Config for Game {
 
         // create chest inventory
         let inv = ConfigurableInventory::new(27, VarInt(2), None);
-        let (id, inv) = server.inventories.lock().unwrap().insert(inv);
+        let (id, inv) = server.inventories.insert(inv);
         server.state.chest = id;
     }
 
@@ -146,12 +144,7 @@ impl Config for Game {
 
         let spawn_pos = [SIZE_X as f64 / 2.0, 1.0, SIZE_Z as f64 / 2.0];
 
-        if let Some(inv) = server
-            .inventories
-            .lock()
-            .unwrap()
-            .get_mut(server.state.chest)
-        {
+        if let Some(inv) = server.inventories.get_mut(server.state.chest) {
             rotate_items(inv);
         }
 
@@ -221,32 +214,21 @@ impl Config for Game {
                             && world.chunks.get_block_state(location) == Some(BlockState::CHEST)
                         {
                             client.send_message("Opening chest!");
-                            let window = WindowInventory::new(
-                                1,
-                                server.inventories.clone(),
-                                server.state.chest,
-                                client.inventory.clone(),
-                            );
+                            let window = WindowInventory::new(1, server.state.chest);
                             client.send_packet(OpenScreen {
                                 window_id: VarInt(window.window_id.into()),
-                                window_type: window.window_type(),
+                                window_type: VarInt(2),
                                 window_title: "Extra".italic()
                                     + " Chesty".not_italic().bold().color(Color::RED)
                                     + " Chest".not_italic(),
                             });
-                            client.send_packet(SetContainerContent {
-                                window_id: window.window_id,
-                                state_id: VarInt(1),
-                                slots: window.slots(),
-                                carried_item: Slot::Empty,
-                            });
-                            client.state.open_inventory = Some(window);
+                            client.open_inventory = Some(window);
                         }
                     }
                     ClientEvent::CloseScreen { window_id } => {
                         if window_id > 0 {
                             client.send_message(format!("Window closed: {}", window_id));
-                            client.state.open_inventory = None;
+                            client.open_inventory = None;
                             client.send_message(format!("Chest: {:?}", server.state.chest));
                         }
                     }
@@ -263,48 +245,42 @@ impl Config for Game {
                              slot_changes: {:?}, carried_item: {:?}",
                             window_id, state_id, slot_id, mode, slot_changes, carried_item
                         );
-                        for (slot_id, slot) in slot_changes {
-                            if let Some(inv) = client.state.open_inventory.as_mut() {
-                                inv.set_slot(slot_id, slot);
-                            } else {
-                                client.inventory.lock().unwrap().set_slot(slot_id, slot);
+                        client.cursor_held_item = carried_item;
+                        if let Some(window) = client.open_inventory.as_mut() {
+                            if let Some(obj_inv) =
+                                server.inventories.get_mut(window.object_inventory)
+                            {
+                                for (slot_id, slot) in slot_changes {
+                                    if slot_id < obj_inv.slot_count() as SlotId {
+                                        obj_inv.set_slot(slot_id, slot);
+                                    } else {
+                                        let offset = obj_inv.slot_count() as SlotId;
+                                        client.inventory.set_slot(
+                                            slot_id - offset + PlayerInventory::GENERAL_SLOTS.start,
+                                            slot,
+                                        );
+                                    }
+                                }
                             }
                         }
                     }
                     ClientEvent::StartSneaking => {
-                        if let Ok(mut inv) = client.inventory.lock() {
-                            let slot_id: SlotId = PlayerInventory::HOTBAR_SLOTS.start;
-                            let stack = match inv.get_slot(slot_id) {
-                                Slot::Empty => ItemStack {
-                                    item_count: 1,
-                                    item_id: VarInt(1),
-                                    nbt: None,
-                                },
-                                Slot::Present(s) => ItemStack {
-                                    item_count: s.item_count + 1,
-                                    item_id: s.item_id,
-                                    nbt: None,
-                                },
-                            };
-                            inv.set_slot(slot_id, Slot::Present(stack));
-                        }
+                        let slot_id: SlotId = PlayerInventory::HOTBAR_SLOTS.start;
+                        let stack = match client.inventory.get_slot(slot_id) {
+                            Slot::Empty => ItemStack {
+                                item_count: 1,
+                                item_id: VarInt(1),
+                                nbt: None,
+                            },
+                            Slot::Present(s) => ItemStack {
+                                item_count: s.item_count + 1,
+                                item_id: s.item_id,
+                                nbt: None,
+                            },
+                        };
+                        client.inventory.set_slot(slot_id, Slot::Present(stack));
                     }
                     _ => {}
-                }
-            }
-
-            if let Some(window) = client.state.open_inventory.as_ref() {
-                if window.is_dirty() {
-                    client.send_packet(SetContainerContent {
-                        window_id: window.window_id,
-                        state_id: VarInt(1),
-                        slots: window.slots(),
-                        carried_item: Slot::Empty,
-                    });
-                }
-                let mut inv = server.inventories.lock().unwrap();
-                if let Some(inv) = inv.get_mut(server.state.chest) {
-                    inv.mark_dirty(false);
                 }
             }
 

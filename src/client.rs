@@ -22,7 +22,9 @@ use crate::entity::{
     self, velocity_to_packet_units, Entities, EntityId, EntityKind, StatusOrAnimation,
 };
 use crate::ident::Ident;
-use crate::inventory::{Inventory, InventoryDirtyable, PlayerInventory};
+use crate::inventory::{
+    Inventory, InventoryDirtyable, InventoryId, PlayerInventory, WindowInventory,
+};
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::c2s::play::{self, C2sPlayPacket, InteractKind, PlayerCommandId};
@@ -228,14 +230,15 @@ pub struct Client<C: Config> {
     resource_pack_to_send: Option<ResourcePackS2c>,
     attack_speed: f64,
     movement_speed: f64,
-    pub inventory: Arc<Mutex<PlayerInventory>>,
+    pub inventory: PlayerInventory, // TODO: make private or pub(crate)
+    pub open_inventory: Option<WindowInventory>, // TODO: make private or pub(crate)
     bits: ClientBits,
     /// The data for the client's own player entity.
     player_data: Player,
     entity_events: Vec<entity::EntityEvent>,
     /// The item currently being held by the client's cursor in an inventory
     /// screen. Does not work for creative mode.
-    cursor_held_item: Slot,
+    pub cursor_held_item: Slot, // TODO: make private or pub(crate)
     selected_hotbar_slot: SlotId,
 }
 
@@ -300,7 +303,8 @@ impl<C: Config> Client<C> {
             resource_pack_to_send: None,
             attack_speed: 4.0,
             movement_speed: 0.7,
-            inventory: Arc::new(Mutex::new(PlayerInventory::default())),
+            inventory: PlayerInventory::default(),
+            open_inventory: None,
             bits: ClientBits::new()
                 .with_modified_spawn_position(true)
                 .with_got_keepalive(true)
@@ -731,10 +735,7 @@ impl<C: Config> Client<C> {
     }
 
     pub fn held_item(&self) -> Slot {
-        self.inventory
-            .lock()
-            .unwrap()
-            .get_slot(self.selected_hotbar_slot)
+        self.inventory.get_slot(self.selected_hotbar_slot)
     }
 
     /// Disconnects this client from the server with the provided reason. This
@@ -1538,20 +1539,18 @@ impl<C: Config> Client<C> {
         send_packet(&mut self.send, S2cPlayMessage::Flush);
 
         // Update the player's inventory
-        if let Ok(mut inv) = self.inventory.lock() {
-            if inv.is_dirty() {
-                send_packet(
-                    &mut self.send,
-                    SetContainerContent {
-                        window_id: 0,
-                        state_id: VarInt(inv.state_id),
-                        slots: inv.slots(),
-                        carried_item: Slot::Empty,
-                    },
-                );
-                inv.state_id += 1;
-                inv.mark_dirty(false);
-            }
+        if self.inventory.is_dirty() {
+            send_packet(
+                &mut self.send,
+                SetContainerContent {
+                    window_id: 0,
+                    state_id: VarInt(self.inventory.state_id),
+                    slots: self.inventory.slots(),
+                    carried_item: self.cursor_held_item.clone(),
+                },
+            );
+            self.inventory.state_id += 1;
+            self.inventory.mark_dirty(false);
         }
     }
 }
