@@ -6,6 +6,7 @@ use anyhow::Context;
 use proc_macro2::{Ident, Span};
 
 mod block;
+mod enchant;
 mod entity;
 mod entity_event;
 mod item;
@@ -19,6 +20,7 @@ pub fn main() -> anyhow::Result<()> {
         (entity_event::build, "entity_event.rs"),
         (block::build, "block.rs"),
         (item::build, "item.rs"),
+        (enchant::build, "enchant.rs"),
     ];
 
     let out_dir = env::var_os("OUT_DIR").context("can't get OUT_DIR env var")?;
