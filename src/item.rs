@@ -2,7 +2,7 @@
 
 use anyhow::Context;
 
-use crate::block::{BlockKind, BlockKindType, CauldronBlockKind, WallBlockKind};
+use crate::block::BlockKind;
 use crate::nbt::Compound;
 use crate::protocol::{Decode, Encode, VarInt};
 
@@ -38,19 +38,14 @@ mod tests {
     fn item_kind_to_block_kind() {
         let item = ItemKind::OakWood;
 
-        let new_block = match BlockKind::from_item(item).unwrap() {
-            BlockKindType::Normal(b) => b,
-            _ => panic!(),
-        };
-
-        assert_eq!(new_block, BlockKind::OakWood)
+        assert_eq!(item.to_block_kind().unwrap(), BlockKind::OakWood)
     }
 
     #[test]
     fn block_state_to_item() {
         let block = BlockKind::SlimeBlock;
 
-        let new_item = block.to_item().unwrap();
+        let new_item = ItemKind::from_block_kind(block).unwrap();
 
         assert_eq!(new_item, ItemKind::SlimeBlock)
     }

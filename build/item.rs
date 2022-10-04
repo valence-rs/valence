@@ -302,10 +302,10 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Construct a `BlockKindType` from an item kind.
+            /// Construct a block kind from an item kind.
             ///
             /// If the given item kind doesn't have a corresponding block kind, `None` is returned.
-            pub const fn from_item_kind(self) -> Option<BlockKindType> {
+            pub const fn to_block_kind(self) -> Option<BlockKind> {
                 match self {
                     #item_kind_to_block_kind_arms
                     _ => None

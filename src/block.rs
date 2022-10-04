@@ -87,19 +87,14 @@ mod tests {
     fn item_to_block_state() {
         let item = ItemKind::OakWood;
 
-        let new_block = match BlockKind::from_item(item).unwrap() {
-            BlockKindType::Normal(b) => b,
-            _ => panic!(),
-        };
-
-        assert_eq!(new_block, BlockKind::OakWood)
+        assert_eq!(BlockKind::from_item_kind(item).unwrap(), BlockKind::OakWood)
     }
 
     #[test]
     fn block_state_to_item() {
         let block = BlockKind::SlimeBlock;
 
-        let new_item = block.to_item().unwrap();
+        let new_item = block.to_item_kind().unwrap();
 
         assert_eq!(new_item, ItemKind::SlimeBlock)
     }

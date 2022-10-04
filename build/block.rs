@@ -18,7 +18,7 @@ pub(crate) struct TopLevel {
 #[derive(Deserialize, Clone, Debug)]
 pub(crate) struct Block {
     #[allow(unused)]
-    id: u16,
+    pub(crate) id: u16,
     pub(crate) item_id: u16,
     translation_key: String,
     pub(crate) name: String,
@@ -580,17 +580,17 @@ pub fn build() -> anyhow::Result<TokenStream> {
             /// Construct an item kind from a block kind.
             ///
             /// If the given block kind doesn't have a corresponding item kind, `None` is returned.
-            pub const fn to_item(self) -> Option<ItemKind> {
+            pub const fn to_item_kind(self) -> Option<ItemKind> {
                 match self {
                     #block_kind_to_item_kind_arms
                     _ => None
                 }
             }
 
-            /// Construct a `BlockKindType` from an item kind.
+            /// Construct a block kind from an item kind.
             ///
             /// If the given item kind doesn't have a corresponding block, `None` is returned.
-            pub const fn from_item(item: ItemKind) -> Option<BlockKindType> {
+            pub const fn from_item_kind(item: ItemKind) -> Option<BlockKind> {
                 match item {
                     #item_kind_to_block_kind_arms
                     _ => None
@@ -599,33 +599,6 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
             /// An array of all block kinds.
             pub const ALL: [Self; #block_kind_count] = [#(Self::#block_kind_variants,)*];
-        }
-
-        /// An enum to store the diffrent result from `from_item`.
-        ///
-        /// `Normal` is just a single block kind.
-        ///
-        /// `Wall` is two block kinds, one for the normal variant and one for the wall variant.
-        ///
-        /// `Cauldron` is the diffrent cauldron varients put into one.
-        pub enum BlockKindType {
-            Normal(BlockKind),
-            Wall(WallBlockKind),
-            Cauldron(CauldronBlockKind)
-        }
-
-        /// Stores a normal and a wall variant of a block kind.
-        pub struct WallBlockKind {
-            pub normal: BlockKind,
-            pub wall: BlockKind
-        }
-
-        /// Stores the diffrent cauldren variants.
-        pub struct CauldronBlockKind {
-            pub empty: BlockKind,
-            pub water: BlockKind,
-            pub lava: BlockKind,
-            pub powder_snow: BlockKind
         }
 
         /// The default block kind is `air`.
