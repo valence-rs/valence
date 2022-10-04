@@ -44,7 +44,11 @@ impl<C: Config> Worlds<C> {
 
     /// Creates a new world on the server with the provided dimension. A
     /// reference to the world along with its ID is returned.
-    pub fn insert(&mut self, dimension: DimensionId, state: C::WorldState) -> (WorldId, &mut World<C>) {
+    pub fn insert(
+        &mut self,
+        dimension: DimensionId,
+        state: C::WorldState,
+    ) -> (WorldId, &mut World<C>) {
         let dim = self.shared.dimension(dimension);
 
         let (id, world) = self.slab.insert(World {

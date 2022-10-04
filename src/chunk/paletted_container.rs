@@ -169,7 +169,7 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize>
 }
 
 impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> Default
-for PalettedContainer<T, LEN, HALF_LEN>
+    for PalettedContainer<T, LEN, HALF_LEN>
 {
     fn default() -> Self {
         Self::new()

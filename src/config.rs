@@ -309,7 +309,7 @@ pub struct PlayerSampleEntry<'a> {
 /// A minimal `Config` implementation for testing purposes.
 #[cfg(test)]
 pub(crate) struct MockConfig<S = (), Cl = (), E = (), W = (), Ch = (), P = ()> {
-    _marker: std::marker::PhantomData<(S, Cl, E, W, Ch, P)>
+    _marker: std::marker::PhantomData<(S, Cl, E, W, Ch, P)>,
 }
 
 #[cfg(test)]
