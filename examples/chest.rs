@@ -228,7 +228,6 @@ impl Config for Game {
                     ClientEvent::CloseScreen { window_id } => {
                         if window_id > 0 {
                             client.send_message(format!("Window closed: {}", window_id));
-                            client.open_inventory = None;
                             client.send_message(format!("Chest: {:?}", server.state.chest));
                         }
                     }
