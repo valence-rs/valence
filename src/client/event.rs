@@ -331,14 +331,13 @@ pub fn handle_event_default<C: Config>(
         ClientEvent::Digging { .. } => {}
         ClientEvent::InteractWithBlock { .. } => {}
         ClientEvent::ResourcePackStatusChanged(_) => {}
-        ClientEvent::CloseScreen { window_id } => match &client.open_inventory {
-            Some(window) => {
+        ClientEvent::CloseScreen { window_id } => {
+            if let Some(window) = &client.open_inventory {
                 if window.window_id == *window_id {
                     client.open_inventory = None;
                 }
             }
-            _ => {}
-        },
+        }
         ClientEvent::DropItem => {}
         ClientEvent::DropItemStack { .. } => {}
         ClientEvent::SetSlotCreative { slot_id, slot } => {

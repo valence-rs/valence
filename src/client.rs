@@ -3,7 +3,6 @@
 use std::collections::{HashSet, VecDeque};
 use std::iter::FusedIterator;
 use std::mem;
-use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 pub use bitfield_struct::bitfield;
@@ -22,9 +21,7 @@ use crate::entity::{
     self, velocity_to_packet_units, Entities, EntityId, EntityKind, StatusOrAnimation,
 };
 use crate::ident::Ident;
-use crate::inventory::{
-    Inventory, InventoryDirtyable, InventoryId, PlayerInventory, WindowInventory,
-};
+use crate::inventory::{Inventory, InventoryDirtyable, PlayerInventory, WindowInventory};
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::c2s::play::{self, C2sPlayPacket, InteractKind, PlayerCommandId};

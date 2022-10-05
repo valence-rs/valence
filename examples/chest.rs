@@ -135,7 +135,7 @@ impl Config for Game {
 
         // create chest inventory
         let inv = ConfigurableInventory::new(27, VarInt(2), None);
-        let (id, inv) = server.inventories.insert(inv);
+        let (id, _inv) = server.inventories.insert(inv);
         server.state.chest = id;
     }
 

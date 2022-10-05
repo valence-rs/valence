@@ -187,8 +187,8 @@ impl WindowInventory {
                     return obj_inventory.get_slot(s as SlotId);
                 }
                 let offset = obj_inventory.slot_count();
-                return player_inventory
-                    .get_slot((s - offset) as SlotId + PlayerInventory::GENERAL_SLOTS.start);
+                player_inventory
+                    .get_slot((s - offset) as SlotId + PlayerInventory::GENERAL_SLOTS.start)
             })
             .collect()
     }
@@ -252,9 +252,8 @@ impl Inventories {
                     let obj_inv = self.get(obj_inv_id).unwrap(); // FIXME: don't unwrap
                     if obj_inv.is_dirty() {
                         let window_id = window.window_id;
-                        let slots = window.slots(&obj_inv, &client.inventory);
+                        let slots = window.slots(obj_inv, &client.inventory);
                         let carried_item = client.cursor_held_item.clone();
-                        drop(window);
                         client.send_packet(SetContainerContent {
                             window_id,
                             state_id: VarInt(1),
@@ -264,7 +263,7 @@ impl Inventories {
                         return Some(obj_inv_id);
                     }
                 }
-                return None;
+                None
             })
             .filter(|id| id.is_some())
             .map(|id| id.unwrap())
