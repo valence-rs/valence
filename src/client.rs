@@ -1457,11 +1457,7 @@ impl<C: Config> Client<C> {
                     && entity.uuid() != self.uuid
                     && self.loaded_entities.insert(id)
                 {
-                    self.send_packet(
-                        entity
-                            .spawn_packet(id)
-                            .expect("should not be a marker entity"),
-                    );
+                    entity.spawn_packets(id, |pkt| self.send_packet(pkt));
 
                     if let Some(meta) = entity.initial_tracked_data_packet(id) {
                         self.send_packet(meta);
