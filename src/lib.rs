@@ -113,7 +113,6 @@ pub mod ident;
 pub mod item;
 pub mod player_list;
 pub mod player_textures;
-#[allow(dead_code)]
 #[doc(hidden)]
 pub mod protocol;
 pub mod server;

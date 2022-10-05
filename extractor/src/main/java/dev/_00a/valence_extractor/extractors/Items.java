@@ -4,12 +4,12 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev._00a.valence_extractor.Main;
-import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.util.registry.Registry;
 
 public class Items implements Main.Extractor {
     public Items() {
     }
+
     @Override
     public String fileName() {
         return "items.json";
@@ -25,54 +25,37 @@ public class Items implements Main.Extractor {
             itemJson.addProperty("name", Registry.ITEM.getId(item).getPath());
             itemJson.addProperty("translation_key", item.getTranslationKey());
             itemJson.addProperty("max_stack", item.getMaxCount());
+            itemJson.addProperty("max_durability", item.getMaxDamage());
+            itemJson.addProperty("enchantability", item.getEnchantability());
+            itemJson.addProperty("fireproof", item.isFireproof());
 
-
-
-            if (item.isFood() && item.getFoodComponent() != null) {
-                var hungerSaturationJson = new JsonObject();
+            if (item.getFoodComponent() != null) {
+                var foodJson = new JsonObject();
                 var foodComp = item.getFoodComponent();
 
+                foodJson.addProperty("hunger", foodComp.getHunger());
+                foodJson.addProperty("saturation", foodComp.getSaturationModifier());
+                foodJson.addProperty("always_edible", foodComp.isAlwaysEdible());
+                foodJson.addProperty("meat", foodComp.isMeat());
+                foodJson.addProperty("snack", foodComp.isSnack());
 
-                hungerSaturationJson.addProperty("hunger", foodComp.getHunger());
-                hungerSaturationJson.addProperty("saturation", foodComp.getSaturationModifier());
-                hungerSaturationJson.addProperty("always_edible", foodComp.isAlwaysEdible());
-                hungerSaturationJson.addProperty("meat", foodComp.isMeat());
-                hungerSaturationJson.addProperty("snack", foodComp.isSnack());
+                itemJson.add("food", foodJson);
 
                 var effectsJson = new JsonArray();
-
-                // TODO: Implement when potions is implemented
-                /*
-                for (var effect : foodComp.getStatusEffects()) {
+                for (var pair : foodComp.getStatusEffects()) {
                     var effectJson = new JsonObject();
 
-                    effectJson.addProperty("name", effect.getFirst().getEffectType().getName().getString());
-                    effectJson.addProperty("translation_key", effect.getFirst().getTranslationKey());
-                    effectJson.addProperty("duration", effect.getFirst().getDuration());
-                    effectJson.addProperty("amplifier", effect.getFirst().getAmplifier());
-                    effectJson.addProperty("permanent", effect.getFirst().isPermanent());
-                    effectJson.addProperty("ambient", effect.getFirst().isAmbient());
-                    effectJson.addProperty("show_icon", effect.getFirst().shouldShowIcon());
-                    effectJson.addProperty("show_particles", effect.getFirst().shouldShowParticles());
+                    var effect = pair.getFirst();
+                    var chance = pair.getSecond();
+
+                    effectJson.addProperty("chance", chance);
+                    effectJson.addProperty("translation_key", effect.getEffectType().getTranslationKey());
+                    // TODO: more effect information.
 
                     effectsJson.add(effectJson);
                 }
-                */
-                // To be removed when potions is implemented
-                effectsJson.add(new JsonObject());
 
-                hungerSaturationJson.add("effects", effectsJson);
-                itemJson.add("food", hungerSaturationJson);
-            }
-
-
-            if (item.isDamageable()) {
-                itemJson.addProperty("max_damage", item.getMaxDamage());
-                itemJson.addProperty("enchantability", item.getEnchantability());
-            }
-
-            if(item.isFireproof()) {
-                itemJson.addProperty("fireproof", true);
+                foodJson.add("effects", effectsJson);
             }
 
             itemsJson.add(itemJson);

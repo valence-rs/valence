@@ -82,28 +82,4 @@ mod tests {
             }
         }
     }
-
-    #[test]
-    fn item_to_block_state() {
-        let item = ItemKind::OakWood;
-
-        assert_eq!(BlockKind::from_item_kind(item).unwrap(), BlockKind::OakWood)
-    }
-
-    #[test]
-    fn block_state_to_item() {
-        let block = BlockKind::SlimeBlock;
-
-        let new_item = block.to_item_kind().unwrap();
-
-        assert_eq!(new_item, ItemKind::SlimeBlock)
-    }
-
-    #[test]
-    fn block_state_to_wall_state() {
-        let block = BlockState::TORCH;
-        let wall = block.wall_state().unwrap();
-
-        assert_eq!(wall, BlockState::WALL_TORCH)
-    }
 }

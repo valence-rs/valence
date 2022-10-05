@@ -36,17 +36,20 @@ mod tests {
 
     #[test]
     fn item_kind_to_block_kind() {
-        let item = ItemKind::OakWood;
-
-        assert_eq!(item.to_block_kind().unwrap(), BlockKind::OakWood)
+        assert_eq!(
+            ItemKind::Cauldron.to_block_kind(),
+            Some(BlockKind::Cauldron)
+        );
     }
 
     #[test]
     fn block_state_to_item() {
-        let block = BlockKind::SlimeBlock;
+        assert_eq!(BlockKind::Torch.to_item_kind(), ItemKind::Torch);
+        assert_eq!(BlockKind::WallTorch.to_item_kind(), ItemKind::Torch);
 
-        let new_item = ItemKind::from_block_kind(block).unwrap();
+        assert_eq!(BlockKind::Cauldron.to_item_kind(), ItemKind::Cauldron);
+        assert_eq!(BlockKind::LavaCauldron.to_item_kind(), ItemKind::Cauldron);
 
-        assert_eq!(new_item, ItemKind::SlimeBlock)
+        assert_eq!(BlockKind::NetherPortal.to_item_kind(), ItemKind::Air);
     }
 }

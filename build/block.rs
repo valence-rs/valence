@@ -6,22 +6,20 @@ use quote::quote;
 use serde::Deserialize;
 
 use crate::ident;
-use crate::item::Item;
-use crate::item_block_convert::{block_to_item_arms, item_to_block_arms};
 
 #[derive(Deserialize, Clone, Debug)]
-pub(crate) struct TopLevel {
-    pub(crate) blocks: Vec<Block>,
+struct TopLevel {
+    blocks: Vec<Block>,
     shapes: Vec<Shape>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
-pub(crate) struct Block {
+struct Block {
     #[allow(unused)]
-    pub(crate) id: u16,
-    pub(crate) item_id: u16,
+    id: u16,
+    item_id: u16,
     translation_key: String,
-    pub(crate) name: String,
+    name: String,
     properties: Vec<Property>,
     default_state_id: u16,
     states: Vec<State>,
@@ -316,6 +314,31 @@ pub fn build() -> anyhow::Result<TokenStream> {
         })
         .collect::<TokenStream>();
 
+    let block_kind_to_item_kind_arms = blocks
+        .iter()
+        .map(|block| {
+            let name = ident(block.name.to_pascal_case());
+            let item_id = block.item_id;
+
+            quote! {
+                BlockKind::#name => #item_id,
+            }
+        })
+        .collect::<TokenStream>();
+
+    let block_kind_from_item_kind_arms = blocks
+        .iter()
+        .filter(|block| block.item_id != 0)
+        .map(|block| {
+            let name = ident(block.name.to_pascal_case());
+            let item_id = block.item_id;
+
+            quote! {
+                #item_id => Some(BlockKind::#name),
+            }
+        })
+        .collect::<TokenStream>();
+
     let block_kind_count = blocks.len();
 
     let prop_names = blocks
@@ -404,32 +427,6 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .collect::<TokenStream>();
 
     let prop_value_count = prop_values.len();
-
-    let items = serde_json::from_str::<Vec<Item>>(include_str!("../extracted/items.json"))?;
-
-    let block_kind_to_item_kind_arms = block_to_item_arms(&blocks, &items);
-
-    let item_kind_to_block_kind_arms = item_to_block_arms(&blocks, &items);
-
-    let block_state_to_wall_state = items
-        .iter()
-        .map(|i| {
-            let item_id = i.id;
-
-            let matching_blocks: Vec<&Block> =
-                blocks.iter().filter(|b| b.item_id == item_id).collect();
-
-            if matching_blocks.len() == 2 {
-                let state_ident = ident(matching_blocks[0].name.to_shouty_snake_case());
-                let wall_ident = ident(matching_blocks[1].name.to_shouty_snake_case());
-
-                return quote! {
-                    BlockState::#state_ident => Some(BlockState::#wall_ident),
-                };
-            }
-            quote! {}
-        })
-        .collect::<TokenStream>();
 
     Ok(quote! {
         /// Represents the state of a block. This does not include block entity data such as
@@ -551,23 +548,6 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Returns the wall state of an block state.
-            ///
-            /// If there is no wall state for the block, `None` is returned.
-            ///
-            /// ```rust
-            /// let block = BlockState::TORCH;
-            /// let wall = block.wall_state().unwrap();
-            ///
-            /// assert_eq!(wall, BlockState::WALL_TORCH)
-            /// ```
-            pub const fn wall_state(self) -> Option<Self> {
-                match self {
-                    #block_state_to_wall_state
-                    _ => None
-                }
-            }
-
             #default_block_states
         }
 
@@ -581,7 +561,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             /// Construct a block kind from its snake_case name.
             ///
             /// Returns `None` if the name is invalid.
-            pub fn from_str(name: &str) -> Option<BlockKind> {
+            pub fn from_str(name: &str) -> Option<Self> {
                 match name {
                     #block_kind_from_str_arms
                     _ => None
@@ -614,23 +594,32 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Construct an item kind from a block kind.
+            /// Converts a block kind to its corresponding item kind.
             ///
-            /// If the given block kind doesn't have a corresponding item kind, `None` is returned.
-            pub const fn to_item_kind(self) -> Option<ItemKind> {
-                match self {
+            /// [`ItemKind::Air`] is used to indicate the absence of an item.
+            pub const fn to_item_kind(self) -> ItemKind {
+                let id = match self {
                     #block_kind_to_item_kind_arms
-                    _ => None
+                };
+
+                // TODO: unwrap() is not const yet.
+                match ItemKind::from_raw(id) {
+                    Some(k) => k,
+                    None => unreachable!(),
                 }
             }
 
-            /// Construct a block kind from an item kind.
+            /// Constructs a block kind from an item kind.
             ///
-            /// If the given item kind doesn't have a corresponding block, `None` is returned.
-            pub const fn from_item_kind(item: ItemKind) -> Option<BlockKind> {
-                match item {
-                    #item_kind_to_block_kind_arms
-                    _ => None
+            /// If the given item does not have a corresponding block, `None` is returned.
+            pub const fn from_item_kind(item: ItemKind) -> Option<Self> {
+                // The "default" blocks are ordered before the other variants.
+                // For instance, `torch` comes before `wall_torch` so this match
+                // should do the correct thing.
+                #[allow(unreachable_patterns)]
+                match item.to_raw() {
+                    #block_kind_from_item_kind_arms
+                    _ => None,
                 }
             }
 
