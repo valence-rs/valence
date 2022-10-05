@@ -13,7 +13,7 @@ use flume::{Receiver, Sender};
 use num::BigInt;
 use rand::rngs::OsRng;
 use rayon::iter::ParallelIterator;
-use reqwest::Client as HttpClient;
+use reqwest::{Client as HttpClient, StatusCode};
 use rsa::{PaddingScheme, PublicKeyParts, RsaPrivateKey};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -715,17 +715,18 @@ async fn handle_login<C: Config>(
             &hex_hash,
             &remote_addr.ip(),
         );
+
         let resp = server.0.http_client.get(url).send().await?;
 
-        match resp.status().as_u16() {
-            200 => (),
-            204 => {
+        match resp.status() {
+            StatusCode::OK => {}
+            StatusCode::NO_CONTENT => {
                 let reason = Text::translate("multiplayer.disconnect.unverified_username");
                 c.enc.write_packet(&DisconnectLogin { reason }).await?;
                 bail!("Could not verify username");
             }
             status => {
-                bail!("session server GET request failed: {status}");
+                bail!("session server GET request failed (status code {status})");
             }
         }
 
