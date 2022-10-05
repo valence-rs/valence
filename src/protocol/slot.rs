@@ -2,9 +2,9 @@ use std::io::Write;
 
 use byteorder::ReadBytesExt;
 
-use crate::itemstack::ItemStack;
+use crate::item::{ItemKind, ItemStack};
 use crate::nbt::Compound;
-use crate::protocol::{Decode, Encode, VarInt};
+use crate::protocol::{Decode, Encode};
 
 pub type SlotId = i16;
 
@@ -22,7 +22,7 @@ impl Encode for Slot {
             Slot::Empty => false.encode(w),
             Slot::Present(s) => {
                 true.encode(w)?;
-                s.item_id.encode(w)?;
+                s.item.encode(w)?;
                 s.item_count.encode(w)?;
                 match &s.nbt {
                     Some(n) => n.encode(w),
@@ -40,7 +40,7 @@ impl Decode for Slot {
             return Ok(Slot::Empty);
         }
         Ok(Slot::Present(ItemStack {
-            item_id: VarInt::decode(r)?,
+            item: ItemKind::decode(r)?,
             item_count: u8::decode(r)?,
             nbt: if r.first() == Some(&0) {
                 r.read_u8()?;
