@@ -6,12 +6,7 @@ use serde::Deserialize;
 use crate::ident;
 
 #[derive(Deserialize, Debug)]
-struct TopLevel {
-    enchants: Vec<ParsedEnchantment>,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct ParsedEnchantment {
+pub struct Enchantment {
     #[allow(unused)]
     id: u16,
     name: String,
@@ -22,18 +17,19 @@ pub struct ParsedEnchantment {
     is_curse: bool,
     rarity_weight: i32,
     #[serde(alias = "sources")]
-    source: ParsedEnchantmentSource,
+    source: EnchantmentSources,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct ParsedEnchantmentSource {
+pub struct EnchantmentSources {
     treasure: bool,
     enchantment_table: bool,
     random_selection: bool,
 }
 
 pub fn build() -> anyhow::Result<TokenStream> {
-    let TopLevel { enchants } = serde_json::from_str(include_str!("../extracted/enchants.json"))?;
+    let enchants: Vec<Enchantment> =
+        serde_json::from_str(include_str!("../extracted/enchants.json"))?;
 
     let enchantmentkind_definitions = enchants
         .iter()
@@ -141,7 +137,6 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .collect::<TokenStream>();
 
     Ok(quote! {
-
         #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
         pub struct EnchantmentSources {
             pub treasure: bool,
@@ -165,8 +160,8 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Returns the enchantment ID.
-            pub const fn id(self) -> u16 {
+            /// Returns the raw enchantment ID.
+            pub const fn to_raw(self) -> u16 {
                 self as u16
             }
 
