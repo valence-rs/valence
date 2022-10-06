@@ -1,13 +1,13 @@
-package dev._00a.valence_extractor.extractors;
+package rs.valence.extractor.extractors;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import dev._00a.valence_extractor.Main;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EntityStatuses;
 import net.minecraft.network.packet.s2c.play.EntityAnimationS2CPacket;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.registry.Registry;
+import rs.valence.extractor.Main;
 
 import java.lang.reflect.Modifier;
 import java.util.Locale;

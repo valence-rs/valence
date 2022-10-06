@@ -1,4 +1,4 @@
-package dev._00a.valence_extractor;
+package rs.valence.extractor;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
