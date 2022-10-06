@@ -1,7 +1,10 @@
 //! Dimension configuration and identification.
 
-use crate::ident;
-use crate::protocol::packets::s2c::play::DimensionType;
+use anyhow::ensure;
+use valence_nbt::{compound, Compound};
+
+use crate::ident::Ident;
+use crate::{ident, LIBRARY_NAMESPACE};
 
 /// Identifies a particular [`Dimension`] on the server.
 ///
@@ -12,6 +15,16 @@ use crate::protocol::packets::s2c::play::DimensionType;
 /// [`dimensions`](crate::server::SharedServer::dimensions).
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct DimensionId(pub(crate) u16);
+
+impl DimensionId {
+    pub(crate) fn dimension_type_name(self) -> Ident {
+        ident!("{LIBRARY_NAMESPACE}:dimension_type_{}", self.0)
+    }
+
+    pub(crate) fn dimension_name(self) -> Ident {
+        ident!("{LIBRARY_NAMESPACE}:dimension_{}", self.0)
+    }
+}
 
 /// The default dimension ID corresponds to the first element in the `Vec`
 /// returned by [`crate::config::Config::dimensions`].
@@ -43,7 +56,7 @@ pub struct Dimension {
     pub fixed_time: Option<u16>,
     /// Determines what skybox/fog effects to use.
     pub effects: DimensionEffects,
-    /// The minimum height in which blocks can exist in this dimension.
+    /// The minimum Y coordinate in which blocks can exist in this dimension.
     ///
     /// `min_y` must meet the following conditions:
     /// * `min_y % 16 == 0`
@@ -72,32 +85,77 @@ pub struct Dimension {
 }
 
 impl Dimension {
-    pub(crate) fn to_dimension_registry_item(&self) -> DimensionType {
-        DimensionType {
-            piglin_safe: true,
-            has_raids: true,
-            monster_spawn_light_level: 0,
-            monster_spawn_block_light_limit: 0,
-            natural: self.natural,
-            ambient_light: self.ambient_light,
-            fixed_time: self.fixed_time.map(|t| t as i64),
-            infiniburn: "#minecraft:infiniburn_overworld".into(),
-            respawn_anchor_works: true,
-            has_skylight: true,
-            bed_works: true,
-            effects: match self.effects {
-                DimensionEffects::Overworld => ident!("overworld"),
-                DimensionEffects::TheNether => ident!("the_nether"),
-                DimensionEffects::TheEnd => ident!("the_end"),
+    pub(crate) fn to_dimension_registry_item(&self) -> Compound {
+        let mut item = compound! {
+            "piglin_safe" => true,
+            "has_raids" => true,
+            "monster_spawn_light_level" => 0,
+            "monster_spawn_block_light_limit" => 0,
+            "natural" => self.natural,
+            "ambient_light" => self.ambient_light,
+            "infiniburn" => "#minecraft:infiniburn_overworld",
+            "respawn_anchor_works" => true,
+            "has_skylight" => true,
+            "bed_works" => true,
+            "effects" => match self.effects {
+                DimensionEffects::Overworld => "overworld",
+                DimensionEffects::TheNether => "the_nether",
+                DimensionEffects::TheEnd => "the_end",
             },
-            min_y: self.min_y,
-            height: self.height,
-            logical_height: self.height,
-            coordinate_scale: 1.0,
-            ultrawarm: false,
-            has_ceiling: false,
+            "min_y" => self.min_y,
+            "height" => self.height,
+            "logical_height" => self.height,
+            "coordinate_scale" => 1.0,
+            "ultrawarm" => false,
+            "has_ceiling" => false,
+        };
+
+        if let Some(t) = self.fixed_time {
+            item.insert("fixed_time", t as i64);
+        }
+
+        item
+    }
+}
+
+pub(crate) fn validate_dimensions(dimensions: &[Dimension]) -> anyhow::Result<()> {
+    ensure!(
+        !dimensions.is_empty(),
+        "at least one dimension must be present"
+    );
+
+    ensure!(
+        dimensions.len() <= u16::MAX as usize,
+        "more than u16::MAX dimensions present"
+    );
+
+    for (i, dim) in dimensions.iter().enumerate() {
+        ensure!(
+            dim.min_y % 16 == 0 && (-2032..=2016).contains(&dim.min_y),
+            "invalid min_y in dimension #{i}",
+        );
+
+        ensure!(
+            dim.height % 16 == 0
+                && (0..=4064).contains(&dim.height)
+                && dim.min_y.saturating_add(dim.height) <= 2032,
+            "invalid height in dimension #{i}",
+        );
+
+        ensure!(
+            (0.0..=1.0).contains(&dim.ambient_light),
+            "ambient_light is out of range in dimension #{i}",
+        );
+
+        if let Some(fixed_time) = dim.fixed_time {
+            ensure!(
+                (0..=24_000).contains(&fixed_time),
+                "fixed_time is out of range in dimension #{i}",
+            );
         }
     }
+
+    Ok(())
 }
 
 impl Default for Dimension {

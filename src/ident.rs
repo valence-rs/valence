@@ -1,8 +1,7 @@
 //! Namespaced identifiers.
-//!
-//!
 
 use std::borrow::Cow;
+use std::hash;
 use std::io::Write;
 use std::str::FromStr;
 
@@ -11,6 +10,7 @@ use serde::de::Visitor;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::nbt;
 use crate::protocol::{encode_string_bounded, BoundedString, Decode, Encode};
 
 /// An identifier is a string split into a "namespace" part and a "path" part.
@@ -113,7 +113,7 @@ impl Ident {
         }
     }
 
-    /// Returns the original string as a `str`.
+    /// Returns the underlying string as a `str`.
     pub fn as_str(&self) -> &str {
         self.ident.as_str()
     }
@@ -159,6 +159,12 @@ impl From<Ident> for Cow<'static, str> {
     }
 }
 
+impl From<Ident> for nbt::Value {
+    fn from(id: Ident) -> Self {
+        Self::String(id.into())
+    }
+}
+
 impl AsRef<str> for Ident {
     fn as_ref(&self) -> &str {
         self.as_str()
@@ -196,8 +202,8 @@ impl PartialEq for Ident {
     }
 }
 
-impl std::hash::Hash for Ident {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+impl hash::Hash for Ident {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.namespace().unwrap_or("minecraft").hash(state);
         self.path().hash(state);
     }
@@ -254,7 +260,7 @@ impl<'de> Visitor<'de> for IdentifierVisitor {
 /// # Panics
 ///
 /// The macro will cause a panic if the formatted string is not a valid
-/// identifier.
+/// identifier. See [`Ident`] for more information.
 ///
 /// # Examples
 ///
@@ -281,6 +287,9 @@ macro_rules! ident {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
     #[test]
     fn parse_valid() {
         ident!("minecraft:whatever");
@@ -308,5 +317,16 @@ mod tests {
     #[test]
     fn equality() {
         assert_eq!(ident!("minecraft:my.identifier"), ident!("my.identifier"));
+    }
+
+    #[test]
+    fn equal_hash() {
+        let mut h1 = DefaultHasher::new();
+        ident!("minecraft:my.identifier").hash(&mut h1);
+
+        let mut h2 = DefaultHasher::new();
+        ident!("my.identifier").hash(&mut h2);
+
+        assert_eq!(h1.finish(), h2.finish());
     }
 }

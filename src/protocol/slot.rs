@@ -1,34 +1,30 @@
-use byteorder::ReadBytesExt;
 use std::io::Write;
 
+use byteorder::ReadBytesExt;
+
+use crate::item::{ItemKind, ItemStack};
 use crate::nbt::Compound;
-use crate::protocol::{Decode, Encode, VarInt};
+use crate::protocol::{Decode, Encode};
+
+pub type SlotId = i16;
 
 /// Represents a slot in an inventory.
 #[derive(Clone, Default, Debug)]
 pub enum Slot {
     #[default]
     Empty,
-    Present {
-        item_id: VarInt,
-        item_count: u8,
-        nbt: Option<Compound>,
-    },
+    Present(ItemStack),
 }
 
 impl Encode for Slot {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         match self {
             Slot::Empty => false.encode(w),
-            Slot::Present {
-                item_id,
-                item_count,
-                nbt,
-            } => {
+            Slot::Present(s) => {
                 true.encode(w)?;
-                item_id.encode(w)?;
-                item_count.encode(w)?;
-                match &nbt {
+                s.item.encode(w)?;
+                s.item_count.encode(w)?;
+                match &s.nbt {
                     Some(n) => n.encode(w),
                     None => 0u8.encode(w),
                 }
@@ -43,106 +39,35 @@ impl Decode for Slot {
         if !present {
             return Ok(Slot::Empty);
         }
-        Ok(Slot::Present {
-            item_id: VarInt::decode(r)?,
+        Ok(Slot::Present(ItemStack {
+            item: ItemKind::decode(r)?,
             item_count: u8::decode(r)?,
-            nbt: if r.get(0) == Some(&0) {
+            nbt: if r.first() == Some(&0) {
                 r.read_u8()?;
                 None
             } else {
                 Some(Compound::decode(r)?)
             },
-        })
+        }))
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_nbt::Value;
-
-    #[test]
-    fn slot_with_nbt() {
-        let mut buf: Vec<u8> = Vec::new();
-
-        // Example nbt blob
-        // https://wiki.vg/Slot_Data
-        let mut nbt = Compound::new();
-        {
-            let mut enchant = Compound::new();
-            enchant.insert("id".to_string(), Value::Short(1));
-            enchant.insert("lvl".to_string(), Value::Short(1));
-
-            let enchant_list = vec![enchant];
-            nbt.insert(
-                "StoredEnchantments".to_string(),
-                Value::List(enchant_list.into()),
-            );
-            nbt.insert("Unbreakable".to_string(), Value::Int(1));
+impl From<Option<ItemStack>> for Slot {
+    fn from(s: Option<ItemStack>) -> Self {
+        if let Some(s) = s {
+            Slot::Present(s)
+        } else {
+            Slot::Empty
         }
-
-        Slot::Present {
-            item_id: VarInt(1),
-            item_count: 1,
-            nbt: Some(nbt),
-        }
-        .encode(&mut buf)
-        .unwrap();
-
-        let mut slice = buf.as_slice();
-        let (item_id, item_count, nbt) = match Slot::decode(&mut slice).unwrap() {
-            Slot::Empty => {
-                panic!("Slot should be present")
-            }
-            Slot::Present {
-                item_id,
-                item_count,
-                nbt,
-            } => (item_id, item_count, nbt),
-        };
-        assert_eq!(1, item_id.0);
-        assert_eq!(1, item_count);
-        assert_eq!(&Value::Int(1), nbt.unwrap().get("Unbreakable").unwrap());
-
-        assert!(slice.is_empty());
     }
+}
 
-    #[test]
-    fn slot_no_nbt() {
-        let mut buf: Vec<u8> = Vec::new();
-
-        Slot::Present {
-            item_id: VarInt(1),
-            item_count: 1,
-            nbt: None,
+impl From<Slot> for Option<ItemStack> {
+    fn from(s: Slot) -> Self {
+        if let Slot::Present(s) = s {
+            Some(s)
+        } else {
+            None
         }
-        .encode(&mut buf)
-        .unwrap();
-
-        let mut slice = buf.as_slice();
-        let nbt = match Slot::decode(&mut slice).unwrap() {
-            Slot::Empty => {
-                panic!("Slot should be present")
-            }
-            Slot::Present { nbt, .. } => nbt,
-        };
-
-        assert_eq!(None, nbt);
-
-        assert!(slice.is_empty());
-    }
-
-    #[test]
-    fn empty_slot() {
-        let mut buf: Vec<u8> = Vec::new();
-
-        Slot::Empty.encode(&mut buf).unwrap();
-
-        let mut slice = buf.as_slice();
-        if let Slot::Present { .. } = Slot::decode(&mut slice).unwrap() {
-            panic!("Slot should be empty")
-        };
-
-        assert!(slice.is_empty());
     }
 }

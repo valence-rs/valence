@@ -12,8 +12,9 @@ use uuid::Uuid;
 use vek::{Aabb, Vec3};
 
 use crate::config::Config;
+use crate::entity::types::{Facing, PaintingKind, Pose};
 use crate::protocol::packets::s2c::play::{
-    EntitySpawn, EntityTrackerUpdate, ExperienceOrbSpawn, PlayerSpawn, S2cPlayPacket,
+    S2cPlayPacket, SetEntityMetadata, SetHeadRotation, SpawnEntity, SpawnExperienceOrb, SpawnPlayer,
 };
 use crate::protocol::{ByteAngle, RawBytes, VarInt};
 use crate::slab_versioned::{Key, VersionedSlab};
@@ -120,7 +121,7 @@ impl<C: Config> Entities<C> {
         })
     }
 
-    /// Removes all entities from the server for which `f` returns `true`.
+    /// Removes all entities from the server for which `f` returns `false`.
     ///
     /// All entities are visited in an unspecified order.
     pub fn retain(&mut self, mut f: impl FnMut(EntityId, &mut Entity<C>) -> bool) {
@@ -422,12 +423,49 @@ impl<C: Config> Entity<C> {
     ///
     /// [interact event]: crate::client::ClientEvent::InteractWithEntity
     pub fn hitbox(&self) -> Aabb<f64> {
-        let dims = match &self.variants {
+        fn baby(is_baby: bool, adult_hitbox: [f64; 3]) -> [f64; 3] {
+            if is_baby {
+                adult_hitbox.map(|a| a / 2.0)
+            } else {
+                adult_hitbox
+            }
+        }
+
+        fn item_frame(pos: Vec3<f64>, rotation: i32) -> Aabb<f64> {
+            let mut center_pos = pos + 0.5;
+
+            match rotation {
+                0 => center_pos.y += 0.46875,
+                1 => center_pos.y -= 0.46875,
+                2 => center_pos.z += 0.46875,
+                3 => center_pos.z -= 0.46875,
+                4 => center_pos.x += 0.46875,
+                5 => center_pos.x -= 0.46875,
+                _ => center_pos.y -= 0.46875,
+            };
+
+            let bounds = Vec3::from(match rotation {
+                0 | 1 => [0.75, 0.0625, 0.75],
+                2 | 3 => [0.75, 0.75, 0.0625],
+                4 | 5 => [0.0625, 0.75, 0.75],
+                _ => [0.75, 0.0625, 0.75],
+            });
+
+            Aabb {
+                min: center_pos - bounds / 2.0,
+                max: center_pos + bounds / 2.0,
+            }
+        }
+
+        let dimensions = match &self.variants {
             TrackedData::Allay(_) => [0.6, 0.35, 0.6],
             TrackedData::ChestBoat(_) => [1.375, 0.5625, 1.375],
             TrackedData::Frog(_) => [0.5, 0.5, 0.5],
             TrackedData::Tadpole(_) => [0.4, 0.3, 0.4],
-            TrackedData::Warden(_) => [0.9, 2.9, 0.9],
+            TrackedData::Warden(e) => match e.get_pose() {
+                Pose::Emerging | Pose::Digging => [0.9, 1.0, 0.9],
+                _ => [0.9, 2.9, 0.9],
+            },
             TrackedData::AreaEffectCloud(e) => [
                 e.get_radius() as f64 * 2.0,
                 0.5,
@@ -445,19 +483,19 @@ impl<C: Config> Entity<C> {
             TrackedData::Arrow(_) => [0.5, 0.5, 0.5],
             TrackedData::Axolotl(_) => [1.3, 0.6, 1.3],
             TrackedData::Bat(_) => [0.5, 0.9, 0.5],
-            TrackedData::Bee(_) => [0.7, 0.6, 0.7], // TODO: baby size?
+            TrackedData::Bee(e) => baby(e.get_child(), [0.7, 0.6, 0.7]),
             TrackedData::Blaze(_) => [0.6, 1.8, 0.6],
             TrackedData::Boat(_) => [1.375, 0.5625, 1.375],
             TrackedData::Cat(_) => [0.6, 0.7, 0.6],
             TrackedData::CaveSpider(_) => [0.7, 0.5, 0.7],
-            TrackedData::Chicken(_) => [0.4, 0.7, 0.4], // TODO: baby size?
+            TrackedData::Chicken(e) => baby(e.get_child(), [0.4, 0.7, 0.4]),
             TrackedData::Cod(_) => [0.5, 0.3, 0.5],
-            TrackedData::Cow(_) => [0.9, 1.4, 0.9], // TODO: baby size?
+            TrackedData::Cow(e) => baby(e.get_child(), [0.9, 1.4, 0.9]),
             TrackedData::Creeper(_) => [0.6, 1.7, 0.6],
             TrackedData::Dolphin(_) => [0.9, 0.6, 0.9],
-            TrackedData::Donkey(_) => [1.5, 1.39648, 1.5], // TODO: baby size?
+            TrackedData::Donkey(e) => baby(e.get_child(), [1.5, 1.39648, 1.5]),
             TrackedData::DragonFireball(_) => [1.0, 1.0, 1.0],
-            TrackedData::Drowned(_) => [0.6, 1.95, 0.6], // TODO: baby size?
+            TrackedData::Drowned(e) => baby(e.get_baby(), [0.6, 1.95, 0.6]),
             TrackedData::ElderGuardian(_) => [1.9975, 1.9975, 1.9975],
             TrackedData::EndCrystal(_) => [2.0, 2.0, 2.0],
             TrackedData::EnderDragon(_) => [16.0, 8.0, 16.0],
@@ -469,27 +507,35 @@ impl<C: Config> Entity<C> {
             TrackedData::EyeOfEnder(_) => [0.25, 0.25, 0.25],
             TrackedData::FallingBlock(_) => [0.98, 0.98, 0.98],
             TrackedData::FireworkRocket(_) => [0.25, 0.25, 0.25],
-            TrackedData::Fox(_) => [0.6, 0.7, 0.6], // TODO: baby size?
+            TrackedData::Fox(e) => baby(e.get_child(), [0.6, 0.7, 0.6]),
             TrackedData::Ghast(_) => [4.0, 4.0, 4.0],
             TrackedData::Giant(_) => [3.6, 12.0, 3.6],
-            TrackedData::GlowItemFrame(_) => todo!("account for rotation"),
+            TrackedData::GlowItemFrame(e) => {
+                return item_frame(self.new_position, e.get_rotation())
+            }
             TrackedData::GlowSquid(_) => [0.8, 0.8, 0.8],
-            TrackedData::Goat(_) => [1.3, 0.9, 1.3], // TODO: baby size?
+            TrackedData::Goat(e) => {
+                if e.get_pose() == Pose::LongJumping {
+                    baby(e.get_child(), [0.63, 0.91, 0.63])
+                } else {
+                    baby(e.get_child(), [0.9, 1.3, 0.9])
+                }
+            }
             TrackedData::Guardian(_) => [0.85, 0.85, 0.85],
-            TrackedData::Hoglin(_) => [1.39648, 1.4, 1.39648], // TODO: baby size?
-            TrackedData::Horse(_) => [1.39648, 1.6, 1.39648],  // TODO: baby size?
-            TrackedData::Husk(_) => [0.6, 1.95, 0.6],          // TODO: baby size?
+            TrackedData::Hoglin(e) => baby(e.get_child(), [1.39648, 1.4, 1.39648]),
+            TrackedData::Horse(e) => baby(e.get_child(), [1.39648, 1.6, 1.39648]),
+            TrackedData::Husk(e) => baby(e.get_baby(), [0.6, 1.95, 0.6]),
             TrackedData::Illusioner(_) => [0.6, 1.95, 0.6],
             TrackedData::IronGolem(_) => [1.4, 2.7, 1.4],
             TrackedData::Item(_) => [0.25, 0.25, 0.25],
-            TrackedData::ItemFrame(_) => todo!("account for rotation"),
+            TrackedData::ItemFrame(e) => return item_frame(self.new_position, e.get_rotation()),
             TrackedData::Fireball(_) => [1.0, 1.0, 1.0],
             TrackedData::LeashKnot(_) => [0.375, 0.5, 0.375],
             TrackedData::Lightning(_) => [0.0, 0.0, 0.0],
-            TrackedData::Llama(_) => [0.9, 1.87, 0.9], // TODO: baby size?
+            TrackedData::Llama(e) => baby(e.get_child(), [0.9, 1.87, 0.9]),
             TrackedData::LlamaSpit(_) => [0.25, 0.25, 0.25],
             TrackedData::MagmaCube(e) => {
-                let s = e.get_slime_size() as f64 * 0.51000005;
+                let s = 0.5202 * e.get_slime_size() as f64;
                 [s, s, s]
             }
             TrackedData::Marker(_) => [0.0, 0.0, 0.0],
@@ -500,31 +546,111 @@ impl<C: Config> Entity<C> {
             TrackedData::HopperMinecart(_) => [0.98, 0.7, 0.98],
             TrackedData::SpawnerMinecart(_) => [0.98, 0.7, 0.98],
             TrackedData::TntMinecart(_) => [0.98, 0.7, 0.98],
-            TrackedData::Mule(_) => [1.39648, 1.6, 1.39648], // TODO: baby size?
-            TrackedData::Mooshroom(_) => [0.9, 1.4, 0.9],    // TODO: baby size?
-            TrackedData::Ocelot(_) => [0.6, 0.7, 0.6],       // TODO: baby size?
-            TrackedData::Painting(_) => todo!("account for rotation and type"),
-            TrackedData::Panda(_) => [0.6, 0.7, 0.6], // TODO: baby size?
+            TrackedData::Mule(e) => baby(e.get_child(), [1.39648, 1.6, 1.39648]),
+            TrackedData::Mooshroom(e) => baby(e.get_child(), [0.9, 1.4, 0.9]),
+            TrackedData::Ocelot(e) => baby(e.get_child(), [0.6, 0.7, 0.6]),
+            TrackedData::Painting(e) => {
+                let bounds: Vec3<u32> = match e.get_variant() {
+                    PaintingKind::Kebab => [1, 1, 1],
+                    PaintingKind::Aztec => [1, 1, 1],
+                    PaintingKind::Alban => [1, 1, 1],
+                    PaintingKind::Aztec2 => [1, 1, 1],
+                    PaintingKind::Bomb => [1, 1, 1],
+                    PaintingKind::Plant => [1, 1, 1],
+                    PaintingKind::Wasteland => [1, 1, 1],
+                    PaintingKind::Pool => [2, 1, 2],
+                    PaintingKind::Courbet => [2, 1, 2],
+                    PaintingKind::Sea => [2, 1, 2],
+                    PaintingKind::Sunset => [2, 1, 2],
+                    PaintingKind::Creebet => [2, 1, 2],
+                    PaintingKind::Wanderer => [1, 2, 1],
+                    PaintingKind::Graham => [1, 2, 1],
+                    PaintingKind::Match => [2, 2, 2],
+                    PaintingKind::Bust => [2, 2, 2],
+                    PaintingKind::Stage => [2, 2, 2],
+                    PaintingKind::Void => [2, 2, 2],
+                    PaintingKind::SkullAndRoses => [2, 2, 2],
+                    PaintingKind::Wither => [2, 2, 2],
+                    PaintingKind::Fighters => [4, 2, 4],
+                    PaintingKind::Pointer => [4, 4, 4],
+                    PaintingKind::Pigscene => [4, 4, 4],
+                    PaintingKind::BurningSkull => [4, 4, 4],
+                    PaintingKind::Skeleton => [4, 3, 4],
+                    PaintingKind::Earth => [2, 2, 2],
+                    PaintingKind::Wind => [2, 2, 2],
+                    PaintingKind::Water => [2, 2, 2],
+                    PaintingKind::Fire => [2, 2, 2],
+                    PaintingKind::DonkeyKong => [4, 3, 4],
+                }
+                .into();
+
+                let mut center_pos = self.new_position + 0.5;
+
+                let (facing_x, facing_z, cc_facing_x, cc_facing_z) =
+                    match ((self.yaw + 45.0).rem_euclid(360.0) / 90.0) as u8 {
+                        0 => (0, 1, 1, 0),   // South
+                        1 => (-1, 0, 0, 1),  // West
+                        2 => (0, -1, -1, 0), // North
+                        _ => (1, 0, 0, -1),  // East
+                    };
+
+                center_pos.x -= facing_x as f64 * 0.46875;
+                center_pos.z -= facing_z as f64 * 0.46875;
+
+                center_pos.x += cc_facing_x as f64 * if bounds.x % 2 == 0 { 0.5 } else { 0.0 };
+                center_pos.y += if bounds.y % 2 == 0 { 0.5 } else { 0.0 };
+                center_pos.z += cc_facing_z as f64 * if bounds.z % 2 == 0 { 0.5 } else { 0.0 };
+
+                let bounds = match (facing_x, facing_z) {
+                    (1, 0) | (-1, 0) => bounds.as_().with_x(0.0625),
+                    _ => bounds.as_().with_z(0.0625),
+                };
+
+                return Aabb {
+                    min: center_pos - bounds / 2.0,
+                    max: center_pos + bounds / 2.0,
+                };
+            }
+            TrackedData::Panda(e) => baby(e.get_child(), [1.3, 1.25, 1.3]),
             TrackedData::Parrot(_) => [0.5, 0.9, 0.5],
             TrackedData::Phantom(_) => [0.9, 0.5, 0.9],
-            TrackedData::Pig(_) => [0.9, 0.9, 0.9], // TODO: baby size?
-            TrackedData::Piglin(_) => [0.6, 1.95, 0.6], // TODO: baby size?
+            TrackedData::Pig(e) => baby(e.get_child(), [0.9, 0.9, 0.9]),
+            TrackedData::Piglin(e) => baby(e.get_baby(), [0.6, 1.95, 0.6]),
             TrackedData::PiglinBrute(_) => [0.6, 1.95, 0.6],
             TrackedData::Pillager(_) => [0.6, 1.95, 0.6],
-            TrackedData::PolarBear(_) => [1.4, 1.4, 1.4], // TODO: baby size?
+            TrackedData::PolarBear(e) => baby(e.get_child(), [1.4, 1.4, 1.4]),
             TrackedData::Tnt(_) => [0.98, 0.98, 0.98],
             TrackedData::Pufferfish(_) => [0.7, 0.7, 0.7],
-            TrackedData::Rabbit(_) => [0.4, 0.5, 0.4], // TODO: baby size?
+            TrackedData::Rabbit(e) => baby(e.get_child(), [0.4, 0.5, 0.4]),
             TrackedData::Ravager(_) => [1.95, 2.2, 1.95],
             TrackedData::Salmon(_) => [0.7, 0.4, 0.7],
-            TrackedData::Sheep(_) => [0.9, 1.3, 0.9], // TODO: baby size?
-            TrackedData::Shulker(_) => [1.0, 1.0, 1.0], // TODO: how is height calculated?
+            TrackedData::Sheep(e) => baby(e.get_child(), [0.9, 1.3, 0.9]),
+            TrackedData::Shulker(e) => {
+                const PI: f64 = std::f64::consts::PI;
+
+                let pos = self.new_position + 0.5;
+                let mut min = pos - 0.5;
+                let mut max = pos + 0.5;
+
+                let peek = 0.5 - f64::cos(e.get_peek_amount() as f64 * 0.01 * PI) * 0.5;
+
+                match e.get_attached_face() {
+                    Facing::Down => max.y += peek,
+                    Facing::Up => min.y -= peek,
+                    Facing::North => max.z += peek,
+                    Facing::South => min.z -= peek,
+                    Facing::West => max.x += peek,
+                    Facing::East => min.x -= peek,
+                }
+
+                return Aabb { min, max };
+            }
             TrackedData::ShulkerBullet(_) => [0.3125, 0.3125, 0.3125],
             TrackedData::Silverfish(_) => [0.4, 0.3, 0.4],
             TrackedData::Skeleton(_) => [0.6, 1.99, 0.6],
-            TrackedData::SkeletonHorse(_) => [1.39648, 1.6, 1.39648], // TODO: baby size?
+            TrackedData::SkeletonHorse(e) => baby(e.get_child(), [1.39648, 1.6, 1.39648]),
             TrackedData::Slime(e) => {
-                let s = 0.51000005 * e.get_slime_size() as f64;
+                let s = 0.5202 * e.get_slime_size() as f64;
                 [s, s, s]
             }
             TrackedData::SmallFireball(_) => [0.3125, 0.3125, 0.3125],
@@ -534,7 +660,7 @@ impl<C: Config> Entity<C> {
             TrackedData::Spider(_) => [1.4, 0.9, 1.4],
             TrackedData::Squid(_) => [0.8, 0.8, 0.8],
             TrackedData::Stray(_) => [0.6, 1.99, 0.6],
-            TrackedData::Strider(_) => [0.9, 1.7, 0.9], // TODO: baby size?
+            TrackedData::Strider(e) => baby(e.get_child(), [0.9, 1.7, 0.9]),
             TrackedData::Egg(_) => [0.25, 0.25, 0.25],
             TrackedData::EnderPearl(_) => [0.25, 0.25, 0.25],
             TrackedData::ExperienceBottle(_) => [0.25, 0.25, 0.25],
@@ -542,26 +668,41 @@ impl<C: Config> Entity<C> {
             TrackedData::Trident(_) => [0.5, 0.5, 0.5],
             TrackedData::TraderLlama(_) => [0.9, 1.87, 0.9],
             TrackedData::TropicalFish(_) => [0.5, 0.4, 0.5],
-            TrackedData::Turtle(_) => [1.2, 0.4, 1.2], // TODO: baby size?
+            TrackedData::Turtle(e) => {
+                if e.get_child() {
+                    [0.36, 0.12, 0.36]
+                } else {
+                    [1.2, 0.4, 1.2]
+                }
+            }
             TrackedData::Vex(_) => [0.4, 0.8, 0.4],
-            TrackedData::Villager(_) => [0.6, 1.95, 0.6], // TODO: baby size?
+            TrackedData::Villager(e) => baby(e.get_child(), [0.6, 1.95, 0.6]),
             TrackedData::Vindicator(_) => [0.6, 1.95, 0.6],
             TrackedData::WanderingTrader(_) => [0.6, 1.95, 0.6],
             TrackedData::Witch(_) => [0.6, 1.95, 0.6],
             TrackedData::Wither(_) => [0.9, 3.5, 0.9],
             TrackedData::WitherSkeleton(_) => [0.7, 2.4, 0.7],
             TrackedData::WitherSkull(_) => [0.3125, 0.3125, 0.3125],
-            TrackedData::Wolf(_) => [0.6, 0.85, 0.6], // TODO: baby size?
-            TrackedData::Zoglin(_) => [1.39648, 1.4, 1.39648], // TODO: baby size?
-            TrackedData::Zombie(_) => [0.6, 1.95, 0.6], // TODO: baby size?
-            TrackedData::ZombieHorse(_) => [1.39648, 1.6, 1.39648], // TODO: baby size?
-            TrackedData::ZombieVillager(_) => [0.6, 1.95, 0.6], // TODO: baby size?
-            TrackedData::ZombifiedPiglin(_) => [0.6, 1.95, 0.6], // TODO: baby size?
-            TrackedData::Player(_) => [0.6, 1.8, 0.6], // TODO: changes depending on the pose.
+            TrackedData::Wolf(e) => baby(e.get_child(), [0.6, 0.85, 0.6]),
+            TrackedData::Zoglin(e) => baby(e.get_baby(), [1.39648, 1.4, 1.39648]),
+            TrackedData::Zombie(e) => baby(e.get_baby(), [0.6, 1.95, 0.6]),
+            TrackedData::ZombieHorse(e) => baby(e.get_child(), [1.39648, 1.6, 1.39648]),
+            TrackedData::ZombieVillager(e) => baby(e.get_baby(), [0.6, 1.95, 0.6]),
+            TrackedData::ZombifiedPiglin(e) => baby(e.get_baby(), [0.6, 1.95, 0.6]),
+            TrackedData::Player(e) => match e.get_pose() {
+                Pose::Standing => [0.6, 1.8, 0.6],
+                Pose::Sleeping => [0.2, 0.2, 0.2],
+                Pose::FallFlying => [0.6, 0.6, 0.6],
+                Pose::Swimming => [0.6, 0.6, 0.6],
+                Pose::SpinAttack => [0.6, 0.6, 0.6],
+                Pose::Sneaking => [0.6, 1.5, 0.6],
+                Pose::Dying => [0.2, 0.2, 0.2],
+                _ => [0.6, 1.8, 0.6],
+            },
             TrackedData::FishingBobber(_) => [0.25, 0.25, 0.25],
         };
 
-        aabb_from_bottom_and_size(self.new_position, dims.into())
+        aabb_from_bottom_and_size(self.new_position, dimensions.into())
     }
 
     /// Gets the tracked data packet to send to clients after this entity has
@@ -571,10 +712,10 @@ impl<C: Config> Entity<C> {
     pub(crate) fn initial_tracked_data_packet(
         &self,
         this_id: EntityId,
-    ) -> Option<EntityTrackerUpdate> {
+    ) -> Option<SetEntityMetadata> {
         self.variants
             .initial_tracked_data()
-            .map(|meta| EntityTrackerUpdate {
+            .map(|meta| SetEntityMetadata {
                 entity_id: VarInt(this_id.to_network_id()),
                 metadata: RawBytes(meta),
             })
@@ -587,33 +728,23 @@ impl<C: Config> Entity<C> {
     pub(crate) fn updated_tracked_data_packet(
         &self,
         this_id: EntityId,
-    ) -> Option<EntityTrackerUpdate> {
+    ) -> Option<SetEntityMetadata> {
         self.variants
             .updated_tracked_data()
-            .map(|meta| EntityTrackerUpdate {
+            .map(|meta| SetEntityMetadata {
                 entity_id: VarInt(this_id.to_network_id()),
                 metadata: RawBytes(meta),
             })
     }
 
-    pub(crate) fn spawn_packet(&self, this_id: EntityId) -> Option<EntitySpawnPacket> {
-        match &self.variants {
-            TrackedData::Marker(_) => None,
-            TrackedData::ExperienceOrb(_) => {
-                Some(EntitySpawnPacket::ExperienceOrb(ExperienceOrbSpawn {
-                    entity_id: VarInt(this_id.to_network_id()),
-                    position: self.new_position,
-                    count: 0, // TODO
-                }))
-            }
-            TrackedData::Player(_) => Some(EntitySpawnPacket::Player(PlayerSpawn {
-                entity_id: VarInt(this_id.to_network_id()),
-                player_uuid: self.uuid,
-                position: self.new_position,
-                yaw: ByteAngle::from_degrees(self.yaw),
-                pitch: ByteAngle::from_degrees(self.pitch),
-            })),
-            _ => Some(EntitySpawnPacket::Entity(EntitySpawn {
+    /// Sends the appropriate packets to spawn the entity.
+    pub(crate) fn spawn_packets(
+        &self,
+        this_id: EntityId,
+        mut push_packet: impl FnMut(S2cPlayPacket),
+    ) {
+        let with_object_data = |data| {
+            S2cPlayPacket::from(SpawnEntity {
                 entity_id: VarInt(this_id.to_network_id()),
                 object_uuid: self.uuid,
                 kind: VarInt(self.kind() as i32),
@@ -621,9 +752,59 @@ impl<C: Config> Entity<C> {
                 pitch: ByteAngle::from_degrees(self.pitch),
                 yaw: ByteAngle::from_degrees(self.yaw),
                 head_yaw: ByteAngle::from_degrees(self.head_yaw),
-                data: VarInt(1), // TODO
+                data: VarInt(data),
                 velocity: velocity_to_packet_units(self.velocity),
-            })),
+            })
+        };
+
+        match &self.variants {
+            TrackedData::Marker(_) => {}
+            TrackedData::ExperienceOrb(_) => push_packet(
+                SpawnExperienceOrb {
+                    entity_id: VarInt(this_id.to_network_id()),
+                    position: self.new_position,
+                    count: 0, // TODO
+                }
+                .into(),
+            ),
+            TrackedData::Player(_) => {
+                push_packet(
+                    SpawnPlayer {
+                        entity_id: VarInt(this_id.to_network_id()),
+                        player_uuid: self.uuid,
+                        position: self.new_position,
+                        yaw: ByteAngle::from_degrees(self.yaw),
+                        pitch: ByteAngle::from_degrees(self.pitch),
+                    }
+                    .into(),
+                );
+
+                // Player spawn packet doesn't include head yaw for some reason.
+                push_packet(
+                    SetHeadRotation {
+                        entity_id: VarInt(this_id.to_network_id()),
+                        head_yaw: ByteAngle::from_degrees(self.head_yaw),
+                    }
+                    .into(),
+                );
+            }
+            TrackedData::ItemFrame(e) => push_packet(with_object_data(e.get_rotation())),
+            TrackedData::GlowItemFrame(e) => push_packet(with_object_data(e.get_rotation())),
+            TrackedData::Painting(_) => push_packet(with_object_data(
+                match ((self.yaw + 45.0).rem_euclid(360.0) / 90.0) as u8 {
+                    0 => 3,
+                    1 => 4,
+                    2 => 2,
+                    _ => 5,
+                },
+            )),
+            // TODO: set block state ID for falling block.
+            TrackedData::FallingBlock(_) => push_packet(with_object_data(1)),
+            TrackedData::FishingBobber(e) => push_packet(with_object_data(e.get_hook_entity_id())),
+            TrackedData::Warden(e) => {
+                push_packet(with_object_data((e.get_pose() == Pose::Emerging).into()))
+            }
+            _ => push_packet(with_object_data(0)),
         }
     }
 }
@@ -633,18 +814,132 @@ pub(crate) fn velocity_to_packet_units(vel: Vec3<f32>) -> Vec3<i16> {
     (8000.0 / STANDARD_TPS as f32 * vel).as_()
 }
 
-pub(crate) enum EntitySpawnPacket {
-    Entity(EntitySpawn),
-    ExperienceOrb(ExperienceOrbSpawn),
-    Player(PlayerSpawn),
-}
+#[cfg(test)]
+mod tests {
+    use std::num::NonZeroU32;
 
-impl From<EntitySpawnPacket> for S2cPlayPacket {
-    fn from(pkt: EntitySpawnPacket) -> Self {
-        match pkt {
-            EntitySpawnPacket::Entity(pkt) => pkt.into(),
-            EntitySpawnPacket::ExperienceOrb(pkt) => pkt.into(),
-            EntitySpawnPacket::Player(pkt) => pkt.into(),
+    use uuid::Uuid;
+
+    use super::{Entities, EntityId, EntityKind};
+    use crate::config::Config;
+    use crate::server::Server;
+    use crate::slab_versioned::Key;
+
+    /// Created for the sole purpose of use during unit tests.
+    struct MockConfig;
+    impl Config for MockConfig {
+        type ServerState = ();
+        type ClientState = ();
+        type EntityState = u8; // Just for identification purposes
+        type WorldState = ();
+        type ChunkState = ();
+        type PlayerListState = ();
+
+        fn max_connections(&self) -> usize {
+            10
         }
+        fn update(&self, _server: &mut Server<Self>) {}
+    }
+
+    #[test]
+    fn entities_has_valid_new_state() {
+        let mut entities: Entities<MockConfig> = Entities::new();
+        let network_id: i32 = 8675309;
+        let entity_id = EntityId(Key::new(
+            202298,
+            NonZeroU32::new(network_id as u32).expect("Value given should never be zero!"),
+        ));
+        let uuid = Uuid::from_bytes([2; 16]);
+        assert!(entities.is_empty());
+        assert!(entities.get(entity_id).is_none());
+        assert!(entities.get_mut(entity_id).is_none());
+        assert!(entities.get_with_uuid(uuid).is_none());
+        assert!(entities.get_with_network_id(network_id).is_none());
+    }
+
+    #[test]
+    fn entities_can_be_set_and_get() {
+        let mut entities: Entities<MockConfig> = Entities::new();
+        assert!(entities.is_empty());
+        let (player_id, player_entity) = entities.insert(EntityKind::Player, 1);
+        assert_eq!(player_entity.state, 1);
+        assert_eq!(entities.get(player_id).unwrap().state, 1);
+        let mut_player_entity = entities
+            .get_mut(player_id)
+            .expect("Failed to get mutable reference");
+        mut_player_entity.state = 100;
+        assert_eq!(entities.get(player_id).unwrap().state, 100);
+        assert_eq!(entities.len(), 1);
+    }
+
+    #[test]
+    fn entities_can_be_set_and_get_with_uuid() {
+        let mut entities: Entities<MockConfig> = Entities::new();
+        let uuid = Uuid::from_bytes([2; 16]);
+        assert!(entities.is_empty());
+        let (zombie_id, zombie_entity) = entities
+            .insert_with_uuid(EntityKind::Zombie, uuid, 1)
+            .expect("Unexpected Uuid collision when inserting to an empty collection");
+        assert_eq!(zombie_entity.state, 1);
+        let maybe_zombie = entities
+            .get_with_uuid(uuid)
+            .expect("Uuid lookup failed on item already added to this collection");
+        assert_eq!(zombie_id, maybe_zombie);
+        assert_eq!(entities.len(), 1);
+    }
+
+    #[test]
+    fn entities_can_be_set_and_get_with_network_id() {
+        let mut entities: Entities<MockConfig> = Entities::new();
+        assert!(entities.is_empty());
+        let (boat_id, boat_entity) = entities.insert(EntityKind::Boat, 12);
+        assert_eq!(boat_entity.state, 12);
+        let (cat_id, cat_entity) = entities.insert(EntityKind::Cat, 75);
+        assert_eq!(cat_entity.state, 75);
+        let maybe_boat_id = entities
+            .get_with_network_id(boat_id.0.version.get() as i32)
+            .expect("Network id lookup failed on item already added to this collection");
+        let maybe_boat = entities
+            .get(maybe_boat_id)
+            .expect("Failed to look up item already added to collection");
+        assert_eq!(maybe_boat.state, 12);
+        let maybe_cat_id = entities
+            .get_with_network_id(cat_id.0.version.get() as i32)
+            .expect("Network id lookup failed on item already added to this collection");
+        let maybe_cat = entities
+            .get(maybe_cat_id)
+            .expect("Failed to look up item already added to collection");
+        assert_eq!(maybe_cat.state, 75);
+        assert_eq!(entities.len(), 2);
+    }
+
+    #[test]
+    fn entities_can_be_removed() {
+        let mut entities: Entities<MockConfig> = Entities::new();
+        assert!(entities.is_empty());
+        let (player_id, _) = entities.insert(EntityKind::Player, 1);
+        let player_state = entities
+            .remove(player_id)
+            .expect("Failed to remove an item from the collection");
+        assert_eq!(player_state, 1);
+    }
+
+    #[test]
+    fn entities_can_be_retained() {
+        let mut entities: Entities<MockConfig> = Entities::new();
+        assert!(entities.is_empty());
+        let (blaze_id, _) = entities.insert(EntityKind::Blaze, 10);
+        let (fox_id, _) = entities.insert(EntityKind::Fox, 110);
+        let (turtle_id, _) = entities.insert(EntityKind::Turtle, 20);
+        let (goat_id, _) = entities.insert(EntityKind::Goat, 120);
+        let (horse_id, _) = entities.insert(EntityKind::Horse, 30);
+        assert_eq!(entities.len(), 5);
+        entities.retain(|_id, entity| entity.state > 100);
+        assert_eq!(entities.len(), 2);
+        assert!(entities.get(fox_id).is_some());
+        assert!(entities.get(goat_id).is_some());
+        assert!(entities.get(blaze_id).is_none());
+        assert!(entities.get(turtle_id).is_none());
+        assert!(entities.get(horse_id).is_none());
     }
 }

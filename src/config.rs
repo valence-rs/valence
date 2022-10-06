@@ -1,10 +1,13 @@
 //! Configuration for the server.
 
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::borrow::Cow;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::panic::{RefUnwindSafe, UnwindSafe};
 
 use async_trait::async_trait;
+use serde::Serialize;
 use tokio::runtime::Handle as TokioHandle;
+use uuid::Uuid;
 
 use crate::biome::Biome;
 use crate::dimension::Dimension;
@@ -51,9 +54,9 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
     ///
     /// # Default Implementation
     ///
-    /// Returns `127.0.0.1:25565`.
+    /// Returns `0.0.0.0:25565` to listen on every available network interface.
     fn address(&self) -> SocketAddr {
-        SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 25565).into()
+        SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 25565).into()
     }
 
     /// Called once at startup to get the tick rate, which is the number of game
@@ -84,6 +87,20 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
     /// Returns `ConnectionMode::Online`
     fn connection_mode(&self) -> ConnectionMode {
         ConnectionMode::Online
+    }
+
+    /// Called once at startup to get the "prevent-proxy-connections" option,
+    /// which determines if client IP validation should take place.
+    ///
+    /// When prevent_proxy_connections is enabled, clients can no longer log-in
+    /// if they connected to the yggdrasil server using a different IP.
+    ///
+    /// # Default Implementation
+    /// Proxy connections are allowed.
+    ///
+    /// Returns `false`.
+    fn prevent_proxy_connections(&self) -> bool {
+        false
     }
 
     /// Called once at startup to get the capacity of the buffer used to
@@ -156,7 +173,7 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
     ///
     /// # Default Implementation
     ///
-    /// Returns `vec![Dimension::default()]`.
+    /// Returns `vec![Biome::default()]`.
     fn biomes(&self) -> Vec<Biome> {
         vec![Biome::default()]
     }
@@ -199,6 +216,30 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
         Ok(())
     }
 
+    /// Called upon (every) client connect (if online mode is enabled) to obtain
+    /// the full URL to use for session server requests. Defaults to
+    /// `https://sessionserver.mojang.com/session/minecraft/hasJoined?username=<username>&serverId=<auth-digest>&ip=<player-ip>`.
+    ///
+    /// It is assumed, that upon successful request, a structure matching the
+    /// description in the [wiki](https://wiki.vg/Protocol_Encryption#Server) was obtained.
+    /// Providing a URL that does not return such a structure will result in a
+    /// disconnect for every client that connects.
+    ///
+    /// The arguments are described in the linked wiki article.
+    fn format_session_server_url(
+        &self,
+        server: &SharedServer<Self>,
+        username: &str,
+        auth_digest: &str,
+        player_ip: &IpAddr,
+    ) -> String {
+        if self.prevent_proxy_connections() {
+            format!("https://sessionserver.mojang.com/session/minecraft/hasJoined?username={username}&serverId={auth_digest}&ip={player_ip}")
+        } else {
+            format!("https://sessionserver.mojang.com/session/minecraft/hasJoined?username={username}&serverId={auth_digest}")
+        }
+    }
+
     /// Called after the server is created, but prior to accepting connections
     /// and entering the update loop.
     ///
@@ -223,7 +264,7 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
 
 /// The result of the [`server_list_ping`](Config::server_list_ping) callback.
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum ServerListPing<'a> {
     /// Responds to the server list ping with the given information.
     Respond {
@@ -232,17 +273,22 @@ pub enum ServerListPing<'a> {
         /// Displayed as the maximum number of players allowed on the server at
         /// a time.
         max_players: i32,
+        /// The list of players visible by hovering over the player count.
+        ///
+        /// Has no effect if this list is empty.
+        player_sample: Cow<'a, [PlayerSampleEntry<'a>]>,
         /// A description of the server.
         description: Text,
         /// The server's icon as the bytes of a PNG image.
         /// The image must be 64x64 pixels.
         ///
         /// No icon is used if the value is `None`.
-        favicon_png: Option<&'a [u8]>,
+        favicon_png: Option<Cow<'a, [u8]>>,
     },
     /// Ignores the query and disconnects from the client.
     Ignore,
 }
+
 
 #[non_exhaustive]
 #[derive(Clone, Eq, PartialEq, Default)]
@@ -274,4 +320,15 @@ pub enum ConnectionMode {
     /// all connections, which are not from the proxy.
     /// To ensure to set the secret value to the secret key of the velocity proxy.
     Velocity { secret: String },
+
+/// Represents an individual entry in the player sample.
+#[derive(Clone, Debug, Serialize)]
+pub struct PlayerSampleEntry<'a> {
+    /// The name of the player.
+    ///
+    /// This string can contain
+    /// [legacy formatting codes](https://minecraft.fandom.com/wiki/Formatting_codes).
+    pub name: Cow<'a, str>,
+    /// The player UUID.
+    pub id: Uuid,
 }

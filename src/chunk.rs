@@ -16,6 +16,7 @@ use std::iter::FusedIterator;
 use bitvec::vec::BitVec;
 use num::Integer;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
+use valence_nbt::compound;
 
 use crate::biome::BiomeId;
 use crate::block::BlockState;
@@ -24,9 +25,9 @@ pub use crate::chunk_pos::ChunkPos;
 use crate::config::Config;
 use crate::dimension::DimensionId;
 use crate::protocol::packets::s2c::play::{
-    BlockUpdate, ChunkData, ChunkDataHeightmaps, ChunkSectionUpdate, S2cPlayPacket,
+    BlockUpdate, ChunkDataAndUpdateLight, S2cPlayPacket, UpdateSectionBlocks,
 };
-use crate::protocol::{Encode, NbtBridge, VarInt, VarLong};
+use crate::protocol::{Encode, VarInt, VarLong};
 use crate::server::SharedServer;
 
 /// A container for all [`LoadedChunk`]s in a [`World`](crate::world::World).
@@ -114,7 +115,7 @@ impl<C: Config> Chunks<C> {
         self.chunks.get_mut(&pos.into())
     }
 
-    /// Removes all chunks for which `f` returns `true`.
+    /// Removes all chunks for which `f` returns `false`.
     ///
     /// All chunks are visited in an unspecified order.
     pub fn retain(&mut self, mut f: impl FnMut(ChunkPos, &mut LoadedChunk<C>) -> bool) {
@@ -159,12 +160,13 @@ impl<C: Config> Chunks<C> {
         self.chunks.par_iter_mut().map(|(&pos, chunk)| (pos, chunk))
     }
 
-    /// Gets the block state at a global position in the world.
+    /// Gets the block state at an absolute block position in world space.
     ///
     /// If the position is not inside of a chunk, then `None` is returned.
     ///
-    /// Note: if you need to get a large number of blocks, it is more efficient
-    /// to read from the chunks directly with [`Chunk::get_block_state`].
+    /// **Note**: if you need to get a large number of blocks, it is more
+    /// efficient to read from the chunks directly with
+    /// [`Chunk::get_block_state`].
     pub fn get_block_state(&self, pos: impl Into<BlockPos>) -> Option<BlockState> {
         let pos = pos.into();
         let chunk_pos = ChunkPos::from(pos);
@@ -186,13 +188,13 @@ impl<C: Config> Chunks<C> {
         }
     }
 
-    /// Sets the block state at a global position in the world.
+    /// Sets the block state at an absolute block position in world space.
     ///
-    /// If the position is inside of a chunk, then `true` is returned.
-    /// Otherwise, `false` is returned. The function has no effect if `false` is
-    /// returned.
+    /// If the position is inside of a chunk, then `true` is returned and the
+    /// block is set. Otherwise, `false` is returned and the function has no
+    /// effect.
     ///
-    /// Note: if you need to set a large number of blocks, it may be more
+    /// **Note**: if you need to set a large number of blocks, it may be more
     /// efficient write to the chunks directly with
     /// [`Chunk::set_block_state`].
     pub fn set_block_state(&mut self, pos: impl Into<BlockPos>, block: BlockState) -> bool {
@@ -249,12 +251,20 @@ pub trait Chunk {
 
     /// Gets the block state at the provided offsets in the chunk.
     ///
+    /// **Note**: The arguments to this function are offsets from the minimum
+    /// corner of the chunk in _chunk space_ rather than _world space_. You
+    /// might be looking for [`Chunks::get_block_state`] instead.
+    ///
     /// # Panics
     ///
     /// Panics if the offsets are outside the bounds of the chunk.
     fn get_block_state(&self, x: usize, y: usize, z: usize) -> BlockState;
 
     /// Sets the block state at the provided offsets in the chunk.
+    ///
+    /// **Note**: The arguments to this function are offsets from the minimum
+    /// corner of the chunk in _chunk space_ rather than _world space_. You
+    /// might be looking for [`Chunks::set_block_state`] instead.
     ///
     /// # Panics
     ///
@@ -263,8 +273,8 @@ pub trait Chunk {
 
     /// Gets the biome at the provided biome offsets in the chunk.
     ///
-    /// Note: the arguments are **not** block positions. Biomes are 4x4x4
-    /// segments of a chunk, so `x` and `z` are in `0..=4`.
+    /// **Note**: the arguments are **not** block positions. Biomes are 4x4x4
+    /// segments of a chunk, so `x` and `z` are in `0..4`.
     ///
     /// # Panics
     ///
@@ -273,8 +283,8 @@ pub trait Chunk {
 
     /// Sets the biome at the provided biome offsets in the chunk.
     ///
-    /// Note: the arguments are **not** block positions. Biomes are 4x4x4
-    /// segments of a chunk, so `x` and `z` are in `0..=4`.
+    /// **Note**: the arguments are **not** block positions. Biomes are 4x4x4
+    /// segments of a chunk, so `x` and `z` are in `0..4`.
     ///
     /// # Panics
     ///
@@ -459,19 +469,19 @@ impl<C: Config> LoadedChunk<C> {
 
     /// Gets the chunk data packet for this chunk with the given position. This
     /// does not include unapplied changes.
-    pub(crate) fn chunk_data_packet(&self, pos: ChunkPos) -> ChunkData {
+    pub(crate) fn chunk_data_packet(&self, pos: ChunkPos) -> ChunkDataAndUpdateLight {
         let mut blocks_and_biomes = Vec::new();
 
         for sect in self.sections.iter() {
             blocks_and_biomes.extend_from_slice(&sect.compact_data);
         }
 
-        ChunkData {
+        ChunkDataAndUpdateLight {
             chunk_x: pos.x,
             chunk_z: pos.z,
-            heightmaps: NbtBridge(ChunkDataHeightmaps {
-                motion_blocking: self.heightmap.clone(),
-            }),
+            heightmaps: compound! {
+                "MOTION_BLOCKING" => self.heightmap.clone(),
+            },
             blocks_and_biomes,
             block_entities: Vec::new(), // TODO
             trust_edges: true,
@@ -533,7 +543,7 @@ impl<C: Config> LoadedChunk<C> {
                     | (pos.z as i64 & 0x3fffff) << 20
                     | (sect_y as i64 + min_y.div_euclid(16) as i64) & 0xfffff;
 
-                push_packet(BlockChangePacket::Multi(ChunkSectionUpdate {
+                push_packet(BlockChangePacket::Multi(UpdateSectionBlocks {
                     chunk_section_position,
                     invert_trust_edges: false,
                     blocks,
@@ -646,7 +656,7 @@ impl<C: Config> Chunk for LoadedChunk<C> {
 #[derive(Clone, Debug)]
 pub(crate) enum BlockChangePacket {
     Single(BlockUpdate),
-    Multi(ChunkSectionUpdate),
+    Multi(UpdateSectionBlocks),
 }
 
 impl From<BlockChangePacket> for S2cPlayPacket {

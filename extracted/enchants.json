@@ -1,0 +1,548 @@
+[
+  {
+    "id": 0,
+    "name": "protection",
+    "translation_key": "enchantment.minecraft.protection",
+    "min_level": 1,
+    "max_level": 4,
+    "rarity_weight": 10,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 1,
+    "name": "fire_protection",
+    "translation_key": "enchantment.minecraft.fire_protection",
+    "min_level": 1,
+    "max_level": 4,
+    "rarity_weight": 5,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 2,
+    "name": "feather_falling",
+    "translation_key": "enchantment.minecraft.feather_falling",
+    "min_level": 1,
+    "max_level": 4,
+    "rarity_weight": 5,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 3,
+    "name": "blast_protection",
+    "translation_key": "enchantment.minecraft.blast_protection",
+    "min_level": 1,
+    "max_level": 4,
+    "rarity_weight": 2,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 4,
+    "name": "projectile_protection",
+    "translation_key": "enchantment.minecraft.projectile_protection",
+    "min_level": 1,
+    "max_level": 4,
+    "rarity_weight": 5,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 5,
+    "name": "respiration",
+    "translation_key": "enchantment.minecraft.respiration",
+    "min_level": 1,
+    "max_level": 3,
+    "rarity_weight": 2,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 6,
+    "name": "aqua_affinity",
+    "translation_key": "enchantment.minecraft.aqua_affinity",
+    "min_level": 1,
+    "max_level": 1,
+    "rarity_weight": 2,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 7,
+    "name": "thorns",
+    "translation_key": "enchantment.minecraft.thorns",
+    "min_level": 1,
+    "max_level": 3,
+    "rarity_weight": 1,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 8,
+    "name": "depth_strider",
+    "translation_key": "enchantment.minecraft.depth_strider",
+    "min_level": 1,
+    "max_level": 3,
+    "rarity_weight": 2,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 9,
+    "name": "frost_walker",
+    "translation_key": "enchantment.minecraft.frost_walker",
+    "min_level": 1,
+    "max_level": 2,
+    "rarity_weight": 2,
+    "cursed": false,
+    "sources": {
+      "treasure": true,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 10,
+    "name": "binding_curse",
+    "translation_key": "enchantment.minecraft.binding_curse",
+    "min_level": 1,
+    "max_level": 1,
+    "rarity_weight": 1,
+    "cursed": true,
+    "sources": {
+      "treasure": true,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 11,
+    "name": "soul_speed",
+    "translation_key": "enchantment.minecraft.soul_speed",
+    "min_level": 1,
+    "max_level": 3,
+    "rarity_weight": 1,
+    "cursed": false,
+    "sources": {
+      "treasure": true,
+      "enchantment_table": false,
+      "random_selection": false
+    }
+  },
+  {
+    "id": 12,
+    "name": "swift_sneak",
+    "translation_key": "enchantment.minecraft.swift_sneak",
+    "min_level": 1,
+    "max_level": 3,
+    "rarity_weight": 1,
+    "cursed": false,
+    "sources": {
+      "treasure": true,
+      "enchantment_table": false,
+      "random_selection": false
+    }
+  },
+  {
+    "id": 13,
+    "name": "sharpness",
+    "translation_key": "enchantment.minecraft.sharpness",
+    "min_level": 1,
+    "max_level": 5,
+    "rarity_weight": 10,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 14,
+    "name": "smite",
+    "translation_key": "enchantment.minecraft.smite",
+    "min_level": 1,
+    "max_level": 5,
+    "rarity_weight": 5,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 15,
+    "name": "bane_of_arthropods",
+    "translation_key": "enchantment.minecraft.bane_of_arthropods",
+    "min_level": 1,
+    "max_level": 5,
+    "rarity_weight": 5,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 16,
+    "name": "knockback",
+    "translation_key": "enchantment.minecraft.knockback",
+    "min_level": 1,
+    "max_level": 2,
+    "rarity_weight": 5,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 17,
+    "name": "fire_aspect",
+    "translation_key": "enchantment.minecraft.fire_aspect",
+    "min_level": 1,
+    "max_level": 2,
+    "rarity_weight": 2,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 18,
+    "name": "looting",
+    "translation_key": "enchantment.minecraft.looting",
+    "min_level": 1,
+    "max_level": 3,
+    "rarity_weight": 2,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 19,
+    "name": "sweeping",
+    "translation_key": "enchantment.minecraft.sweeping",
+    "min_level": 1,
+    "max_level": 3,
+    "rarity_weight": 2,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 20,
+    "name": "efficiency",
+    "translation_key": "enchantment.minecraft.efficiency",
+    "min_level": 1,
+    "max_level": 5,
+    "rarity_weight": 10,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 21,
+    "name": "silk_touch",
+    "translation_key": "enchantment.minecraft.silk_touch",
+    "min_level": 1,
+    "max_level": 1,
+    "rarity_weight": 1,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 22,
+    "name": "unbreaking",
+    "translation_key": "enchantment.minecraft.unbreaking",
+    "min_level": 1,
+    "max_level": 3,
+    "rarity_weight": 5,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 23,
+    "name": "fortune",
+    "translation_key": "enchantment.minecraft.fortune",
+    "min_level": 1,
+    "max_level": 3,
+    "rarity_weight": 2,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 24,
+    "name": "power",
+    "translation_key": "enchantment.minecraft.power",
+    "min_level": 1,
+    "max_level": 5,
+    "rarity_weight": 10,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 25,
+    "name": "punch",
+    "translation_key": "enchantment.minecraft.punch",
+    "min_level": 1,
+    "max_level": 2,
+    "rarity_weight": 2,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 26,
+    "name": "flame",
+    "translation_key": "enchantment.minecraft.flame",
+    "min_level": 1,
+    "max_level": 1,
+    "rarity_weight": 2,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 27,
+    "name": "infinity",
+    "translation_key": "enchantment.minecraft.infinity",
+    "min_level": 1,
+    "max_level": 1,
+    "rarity_weight": 1,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 28,
+    "name": "luck_of_the_sea",
+    "translation_key": "enchantment.minecraft.luck_of_the_sea",
+    "min_level": 1,
+    "max_level": 3,
+    "rarity_weight": 2,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 29,
+    "name": "lure",
+    "translation_key": "enchantment.minecraft.lure",
+    "min_level": 1,
+    "max_level": 3,
+    "rarity_weight": 2,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 30,
+    "name": "loyalty",
+    "translation_key": "enchantment.minecraft.loyalty",
+    "min_level": 1,
+    "max_level": 3,
+    "rarity_weight": 5,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 31,
+    "name": "impaling",
+    "translation_key": "enchantment.minecraft.impaling",
+    "min_level": 1,
+    "max_level": 5,
+    "rarity_weight": 2,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 32,
+    "name": "riptide",
+    "translation_key": "enchantment.minecraft.riptide",
+    "min_level": 1,
+    "max_level": 3,
+    "rarity_weight": 2,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 33,
+    "name": "channeling",
+    "translation_key": "enchantment.minecraft.channeling",
+    "min_level": 1,
+    "max_level": 1,
+    "rarity_weight": 1,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 34,
+    "name": "multishot",
+    "translation_key": "enchantment.minecraft.multishot",
+    "min_level": 1,
+    "max_level": 1,
+    "rarity_weight": 2,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 35,
+    "name": "quick_charge",
+    "translation_key": "enchantment.minecraft.quick_charge",
+    "min_level": 1,
+    "max_level": 3,
+    "rarity_weight": 5,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 36,
+    "name": "piercing",
+    "translation_key": "enchantment.minecraft.piercing",
+    "min_level": 1,
+    "max_level": 4,
+    "rarity_weight": 10,
+    "cursed": false,
+    "sources": {
+      "treasure": false,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 37,
+    "name": "mending",
+    "translation_key": "enchantment.minecraft.mending",
+    "min_level": 1,
+    "max_level": 1,
+    "rarity_weight": 2,
+    "cursed": false,
+    "sources": {
+      "treasure": true,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  },
+  {
+    "id": 38,
+    "name": "vanishing_curse",
+    "translation_key": "enchantment.minecraft.vanishing_curse",
+    "min_level": 1,
+    "max_level": 1,
+    "rarity_weight": 1,
+    "cursed": true,
+    "sources": {
+      "treasure": true,
+      "enchantment_table": true,
+      "random_selection": true
+    }
+  }
+]

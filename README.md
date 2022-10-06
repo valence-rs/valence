@@ -36,8 +36,9 @@ place. Here are some noteworthy achievements:
 - [x] JSON Text API
 - [x] A Fabric mod for extracting data from the game into JSON files. These files are processed by a build script to
   generate Rust code for the project. The JSON files can be used in other projects as well.
+- [x] Items
+- [ ] Inventory
 - [ ] Block entities
-- [ ] Inventory and items
 - [x] Proxy support ([Velocity](https://velocitypowered.com/), [Bungeecord](https://www.spigotmc.org/wiki/bungeecord/) and [Waterfall](https://docs.papermc.io/waterfall))
 - [ ] Sounds, particles, etc.
 - [ ] Utilities for continuous collision detection
@@ -63,15 +64,16 @@ If all goes well you should be playing on the server.
 Valence is published to [crates.io](https://crates.io/crates/valence). Run `cargo add valence` to add it to your
 project. Documentation is available [here](https://docs.rs/valence/latest/valence/).
 
-However, the crates.io version is likely outdated. To use the most recent development version, clone the repo
-and add Valence as a [path dependency](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#specifying-path-dependencies).
+However, the crates.io version is likely outdated. To use the most recent development version, add Valence as a
+[git dependency](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#specifying-dependencies-from-git-repositories)
+.
 
 ```toml
 [dependencies]
-valence = { path = "the/path/to/valence" }
+valence = { git = "https://github.com/valence-rs/valence" }
 ```
 
-View the documentation by running `cargo d --open`.
+View the documentation by running `cargo d --open` in your project.
 
 # Contributing
 
@@ -85,7 +87,7 @@ under [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/)
 
 # Funding
 
-If you would like to contribute financially consider sponsoring me (rj00a) on GitHub (soon?)
-or [Patreon](https://www.patreon.com/rj00a).
+If you would like to contribute financially consider sponsoring me (rj00a) on [GitHub](https://github.com/sponsors/rj00a)
+or [Patreon](https://www.patreon.com/rj00a) (GitHub is preferred).
 
 I would love to continue working on Valence and your support would help me do that. Thanks!

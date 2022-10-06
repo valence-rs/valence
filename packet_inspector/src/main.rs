@@ -8,6 +8,7 @@ use std::{fmt, io};
 use anyhow::bail;
 use chrono::{DateTime, Utc};
 use clap::Parser;
+use regex::Regex;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream};
@@ -16,11 +17,11 @@ use valence::protocol::codec::Decoder;
 use valence::protocol::packets::c2s::handshake::{Handshake, HandshakeNextState};
 use valence::protocol::packets::c2s::login::{EncryptionResponse, LoginStart};
 use valence::protocol::packets::c2s::play::C2sPlayPacket;
-use valence::protocol::packets::c2s::status::{QueryPing, QueryRequest};
+use valence::protocol::packets::c2s::status::{PingRequest, StatusRequest};
 use valence::protocol::packets::s2c::login::{LoginSuccess, S2cLoginPacket};
 use valence::protocol::packets::s2c::play::S2cPlayPacket;
-use valence::protocol::packets::s2c::status::{QueryPong, QueryResponse};
-use valence::protocol::packets::{DecodePacket, EncodePacket};
+use valence::protocol::packets::s2c::status::{PingResponse, StatusResponse};
+use valence::protocol::packets::{DecodePacket, EncodePacket, PacketName};
 use valence::protocol::{Encode, VarInt};
 
 #[derive(Parser, Clone, Debug)]
@@ -29,26 +30,36 @@ struct Cli {
     /// The socket address to listen for connections on. This is the address
     /// clients should connect to.
     client: SocketAddr,
-    /// The socket address the proxy will connect to.
+    /// The socket address the proxy will connect to. This is the address of the
+    /// server.
     server: SocketAddr,
-
+    /// The optional regular expression to use on packet names. Packet names
+    /// matching the regex are printed while those that don't are ignored.
+    ///
+    /// If no regex is provided, all packets are considered matching.
+    regex: Option<Regex>,
     /// The maximum number of connections allowed to the proxy. By default,
     /// there is no limit.
     #[clap(short, long)]
     max_connections: Option<usize>,
-
     /// Print a timestamp before each packet.
     #[clap(short, long)]
     timestamp: bool,
 }
 
 impl Cli {
-    fn print(&self, d: &impl fmt::Debug) {
+    fn print(&self, p: &(impl fmt::Debug + PacketName)) {
+        if let Some(r) = &self.regex {
+            if !r.is_match(p.packet_name()) {
+                return;
+            }
+        }
+
         if self.timestamp {
             let now: DateTime<Utc> = Utc::now();
-            println!("{now} {d:#?}");
+            println!("{now} {p:#?}");
         } else {
-            println!("{d:#?}");
+            println!("{p:#?}");
         }
     }
 
@@ -121,14 +132,14 @@ async fn handle_connection(client: TcpStream, cli: Cli) -> anyhow::Result<()> {
 
     match handshake.next_state {
         HandshakeNextState::Status => {
-            cli.rw_packet::<QueryRequest>(&mut client_read, &mut server_write)
+            cli.rw_packet::<StatusRequest>(&mut client_read, &mut server_write)
                 .await?;
-            cli.rw_packet::<QueryResponse>(&mut server_read, &mut client_write)
+            cli.rw_packet::<StatusResponse>(&mut server_read, &mut client_write)
                 .await?;
 
-            cli.rw_packet::<QueryPing>(&mut client_read, &mut server_write)
+            cli.rw_packet::<PingRequest>(&mut client_read, &mut server_write)
                 .await?;
-            cli.rw_packet::<QueryPong>(&mut server_read, &mut client_write)
+            cli.rw_packet::<PingResponse>(&mut server_read, &mut client_write)
                 .await?;
         }
         HandshakeNextState::Login => {
@@ -150,7 +161,7 @@ async fn handle_connection(client: TcpStream, cli: Cli) -> anyhow::Result<()> {
                         s2c = passthrough(server_read.into_inner(), client_write) => s2c,
                     };
                 }
-                S2cLoginPacket::LoginCompression(pkt) => {
+                S2cLoginPacket::SetCompression(pkt) => {
                     let threshold = pkt.threshold.0 as u32;
                     client_read.enable_compression(threshold);
                     server_read.enable_compression(threshold);
@@ -159,7 +170,7 @@ async fn handle_connection(client: TcpStream, cli: Cli) -> anyhow::Result<()> {
                         .await?;
                 }
                 S2cLoginPacket::LoginSuccess(_) => {}
-                S2cLoginPacket::LoginDisconnect(_) => return Ok(()),
+                S2cLoginPacket::DisconnectLogin(_) => return Ok(()),
                 S2cLoginPacket::LoginPluginRequest(_) => {
                     bail!("got login plugin request. Don't know how to proceed.")
                 }

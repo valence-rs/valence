@@ -15,7 +15,7 @@ impl ChunkPos {
         Self { x, z }
     }
 
-    /// Takes an absolute position and returns the chunk position
+    /// Takes an X and Z position in world space and returns the chunk position
     /// containing the point.
     pub fn at(x: f64, z: f64) -> Self {
         Self::new((x / 16.0).floor() as i32, (z / 16.0).floor() as i32)

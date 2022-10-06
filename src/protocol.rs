@@ -1,6 +1,17 @@
 //! Provides low-level access to the Minecraft protocol.
 //!
-//! You should avoid this module if possible.
+//! Contained within are the definitions of Minecraft's [`packets`] and the
+//! [`codec`] module for performing packet IO.
+//!
+//! While the protocol module is technically public API, its use is discouraged
+//! and has thus been hidden from the documentation. You may find yourself
+//! needing to use this module under the following circumstances:
+//! - You want to send packets to clients manually using the [`send_packet`]
+//!   function.
+//! - You are writing a proxy between the client and server.
+//! - You are writing a Minecraft client.
+//!
+//! [`send_packet`]: crate::client::Client::send_packet
 
 use std::io::{Read, Write};
 use std::mem;
@@ -10,9 +21,9 @@ use arrayvec::ArrayVec;
 use bitvec::prelude::*;
 pub use byte_angle::ByteAngle;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+pub use slot::{Slot, SlotId};
 use uuid::Uuid;
+use valence_nbt::Compound;
 pub use var_int::VarInt;
 pub use var_long::VarLong;
 use vek::{Vec2, Vec3, Vec4};
@@ -23,7 +34,7 @@ use crate::nbt;
 mod byte_angle;
 pub mod codec;
 pub mod packets;
-pub mod slot;
+mod slot;
 mod var_int;
 mod var_long;
 
@@ -509,32 +520,16 @@ impl Decode for Uuid {
     }
 }
 
-impl Encode for nbt::Compound {
+impl Encode for Compound {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        Ok(nbt::binary::to_writer(w, self)?)
+        Ok(nbt::to_binary_writer(w, self, "")?)
     }
 }
 
-impl Decode for nbt::Compound {
+impl Decode for Compound {
     fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
-        Ok(nbt::binary::from_reader(r)?)
-    }
-}
-
-/// Wrapper type acting as a bridge between Serde and [Encode]/[Decode] through
-/// the NBT format.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash, Debug)]
-pub struct NbtBridge<T>(pub T);
-
-impl<T: Serialize> Encode for NbtBridge<T> {
-    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        Ok(nbt::binary::to_writer(w, &self.0)?)
-    }
-}
-
-impl<T: DeserializeOwned> Decode for NbtBridge<T> {
-    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
-        Ok(Self(nbt::binary::from_reader(r)?))
+        let (nbt, _) = nbt::from_binary_slice(r)?;
+        Ok(nbt)
     }
 }
 

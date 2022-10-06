@@ -66,6 +66,15 @@
     html_favicon_url = "https://raw.githubusercontent.com/valence-rs/valence/main/assets/logo.svg"
 )]
 #![forbid(unsafe_code)]
+// Deny these to make CI checks fail. TODO: invalid_html_tags
+#![deny(
+    rustdoc::broken_intra_doc_links,
+    rustdoc::private_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::invalid_codeblock_attributes,
+    rustdoc::invalid_rust_codeblocks,
+    rustdoc::bare_urls
+)]
 #![warn(
     trivial_casts,
     trivial_numeric_casts,
@@ -87,7 +96,7 @@ pub use async_trait::async_trait;
 #[doc(inline)]
 pub use server::start_server;
 #[doc(inline)]
-pub use {serde_nbt as nbt, uuid, vek};
+pub use {uuid, valence_nbt as nbt, vek};
 
 pub mod biome;
 pub mod block;
@@ -98,11 +107,12 @@ mod chunk_pos;
 pub mod client;
 pub mod config;
 pub mod dimension;
+pub mod enchant;
 pub mod entity;
 pub mod ident;
+pub mod item;
 pub mod player_list;
 pub mod player_textures;
-#[allow(dead_code)]
 #[doc(hidden)]
 pub mod protocol;
 pub mod proxy;

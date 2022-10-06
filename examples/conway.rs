@@ -8,7 +8,7 @@ use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelI
 use valence::biome::Biome;
 use valence::block::BlockState;
 use valence::chunk::{Chunk, UnloadedChunk};
-use valence::client::{default_client_event, ClientEvent, Hand};
+use valence::client::{handle_event_default, ClientEvent, Hand};
 use valence::config::{Config, ConnectionMode, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::types::Pose;
@@ -107,8 +107,9 @@ impl Config for Game {
         ServerListPing::Respond {
             online_players: self.player_count.load(Ordering::SeqCst) as i32,
             max_players: MAX_PLAYERS as i32,
+            player_sample: Default::default(),
             description: "Hello Valence!".color(Color::AQUA),
-            favicon_png: Some(include_bytes!("../assets/favicon.png")),
+            favicon_png: Some(include_bytes!("../assets/logo-64x64.png").as_slice().into()),
         }
     }
 
@@ -198,7 +199,7 @@ impl Config for Game {
                 server.state.board.fill(false);
             }
 
-            while let Some(event) = default_client_event(client, player) {
+            while let Some(event) = handle_event_default(client, player) {
                 match event {
                     ClientEvent::Digging { position, .. } => {
                         if (0..SIZE_X as i32).contains(&position.x)
@@ -234,9 +235,9 @@ impl Config for Game {
                 if sneaking != server.state.paused {
                     server.state.paused = sneaking;
                     client.play_sound(
-                        ident!("minecraft:block.note_block.pling"),
+                        ident!("block.note_block.pling"),
                         SoundCategory::Block,
-                        client.position().into(),
+                        client.position(),
                         0.5f32,
                         if sneaking { 0.5f32 } else { 1f32 },
                     );

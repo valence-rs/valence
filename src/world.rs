@@ -67,7 +67,7 @@ impl<C: Config> Worlds<C> {
         self.slab.remove(world.0).is_some()
     }
 
-    /// Removes all worlds from the server for which `f` returns `true`.
+    /// Removes all worlds from the server for which `f` returns `false`.
     ///
     /// All worlds are visited in an unspecified order.
     pub fn retain(&mut self, mut f: impl FnMut(WorldId, &mut World<C>) -> bool) {

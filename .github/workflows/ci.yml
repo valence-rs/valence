@@ -1,0 +1,36 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: dtolnay/rust-toolchain@nightly
+      with:
+        components: clippy, rustfmt
+
+    - name: Validate formatting
+      run: cargo fmt --all -- --check
+    - name: Validate documentation
+      run: cargo +stable doc --workspace --no-deps --all-features --document-private-items
+    - name: Run clippy lints
+      run: cargo +stable clippy --workspace --no-deps --all-features --all-targets -- -D warnings
+    - name: Run tests
+      run: cargo +stable test --workspace --all-features --all-targets
+    - name: Run valence_nbt tests without preserve_order feature
+      run: cargo +stable test -p valence_nbt --all-targets

@@ -1,6 +1,5 @@
 //! The heart of the server.
 
-use std::collections::HashSet;
 use std::error::Error;
 use std::io::Read;
 use std::iter::FusedIterator;
@@ -18,7 +17,7 @@ use hmac::{Hmac, Mac};
 use num::BigInt;
 use rand::rngs::OsRng;
 use rayon::iter::ParallelIterator;
-use reqwest::Client as HttpClient;
+use reqwest::{Client as HttpClient, StatusCode};
 use rsa::{PaddingScheme, PublicKeyParts, RsaPrivateKey};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -30,11 +29,12 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::{Handle, Runtime};
 use tokio::sync::{oneshot, Semaphore};
 use uuid::Uuid;
+use valence_nbt::{compound, Compound, List};
 
-use crate::biome::{Biome, BiomeId};
+use crate::biome::{validate_biomes, Biome, BiomeId};
 use crate::client::{Client, Clients};
 use crate::config::{Config, ConnectionMode, ServerListPing};
-use crate::dimension::{Dimension, DimensionId};
+use crate::dimension::{validate_dimensions, Dimension, DimensionId};
 use crate::entity::Entities;
 use crate::ident::Ident;
 use crate::player_list::PlayerLists;
@@ -47,12 +47,12 @@ use crate::protocol::packets::c2s::login::{
     EncryptionResponse, LoginPluginResponse, LoginStart, VerifyTokenOrMsgSig,
 };
 use crate::protocol::packets::c2s::play::C2sPlayPacket;
-use crate::protocol::packets::c2s::status::{QueryPing, QueryRequest};
+use crate::protocol::packets::c2s::status::{PingRequest, StatusRequest};
 use crate::protocol::packets::s2c::login::{
-    EncryptionRequest, LoginCompression, LoginDisconnect, LoginPluginRequest, LoginSuccess,
+    DisconnectLogin, EncryptionRequest, LoginSuccess, SetCompression, LoginPluginRequest
 };
 use crate::protocol::packets::s2c::play::S2cPlayPacket;
-use crate::protocol::packets::s2c::status::{QueryPong, QueryResponse};
+use crate::protocol::packets::s2c::status::{PingResponse, StatusResponse};
 use crate::protocol::packets::Property;
 use crate::protocol::{BoundedArray, BoundedString, Decode, RawBytes, VarInt};
 use crate::proxy::velocity::{
@@ -61,7 +61,7 @@ use crate::proxy::velocity::{
 use crate::text::Text;
 use crate::util::valid_username;
 use crate::world::Worlds;
-use crate::{Ticks, PROTOCOL_VERSION, VERSION_NAME};
+use crate::{ident, Ticks, PROTOCOL_VERSION, VERSION_NAME};
 
 /// Contains the entire state of a running Minecraft server, accessible from
 /// within the [update](crate::config::Config::update) loop.
@@ -108,6 +108,9 @@ struct SharedServerInner<C: Config> {
     _tokio_runtime: Option<Runtime>,
     dimensions: Vec<Dimension>,
     biomes: Vec<Biome>,
+    /// Contains info about dimensions, biomes, and chats.
+    /// Sent to all clients when joining.
+    registry_codec: Compound,
     /// The instant the server was started.
     start_instant: Instant,
     /// Receiver for new clients past the login stage.
@@ -254,6 +257,10 @@ impl<C: Config> SharedServer<C> {
             .map(|(i, b)| (BiomeId(i as u16), b))
     }
 
+    pub(crate) fn registry_codec(&self) -> &Compound {
+        &self.0.registry_codec
+    }
+
     /// Returns the instant the server was started.
     pub fn start_instant(&self) -> Instant {
         self.0.start_instant
@@ -284,7 +291,9 @@ impl<C: Config> SharedServer<C> {
 /// The function returns once the server has shut down, a runtime error
 /// occurs, or the configuration is found to be invalid.
 pub fn start_server<C: Config>(config: C, data: C::ServerState) -> ShutdownResult {
-    let shared = setup_server(config).map_err(Box::<dyn Error + Send + Sync + 'static>::from)?;
+    let shared = setup_server(config)
+        .context("failed to initialize server")
+        .map_err(Box::<dyn Error + Send + Sync + 'static>::from)?;
 
     let _guard = shared.tokio_handle().enter();
 
@@ -328,62 +337,12 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
     );
 
     let tokio_handle = cfg.tokio_handle();
+
     let dimensions = cfg.dimensions();
-
-    ensure!(
-        !dimensions.is_empty(),
-        "at least one dimension must be added"
-    );
-
-    ensure!(
-        dimensions.len() <= u16::MAX as usize,
-        "more than u16::MAX dimensions added"
-    );
-
-    for (i, dim) in dimensions.iter().enumerate() {
-        ensure!(
-            dim.min_y % 16 == 0 && (-2032..=2016).contains(&dim.min_y),
-            "invalid min_y in dimension #{i}",
-        );
-
-        ensure!(
-            dim.height % 16 == 0
-                && (0..=4064).contains(&dim.height)
-                && dim.min_y.saturating_add(dim.height) <= 2032,
-            "invalid height in dimension #{i}",
-        );
-
-        ensure!(
-            (0.0..=1.0).contains(&dim.ambient_light),
-            "ambient_light is out of range in dimension #{i}",
-        );
-
-        if let Some(fixed_time) = dim.fixed_time {
-            assert!(
-                (0..=24_000).contains(&fixed_time),
-                "fixed_time is out of range in dimension #{i}",
-            );
-        }
-    }
+    validate_dimensions(&dimensions)?;
 
     let biomes = cfg.biomes();
-
-    ensure!(!biomes.is_empty(), "at least one biome must be added");
-
-    ensure!(
-        biomes.len() <= u16::MAX as usize,
-        "more than u16::MAX biomes added"
-    );
-
-    let mut names = HashSet::new();
-
-    for biome in biomes.iter() {
-        ensure!(
-            names.insert(biome.name.clone()),
-            "biome \"{}\" already added",
-            biome.name
-        );
-    }
+    validate_biomes(&biomes)?;
 
     let rsa_key = RsaPrivateKey::new(&mut OsRng, 1024)?;
 
@@ -404,6 +363,8 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         None => tokio_handle.unwrap(),
     };
 
+    let registry_codec = make_registry_codec(&dimensions, &biomes);
+
     let server = SharedServerInner {
         cfg,
         address,
@@ -416,6 +377,7 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         _tokio_runtime: runtime,
         dimensions,
         biomes,
+        registry_codec,
         start_instant: Instant::now(),
         new_clients_rx,
         new_clients_tx,
@@ -428,6 +390,45 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
     };
 
     Ok(SharedServer(Arc::new(server)))
+}
+
+fn make_registry_codec(dimensions: &[Dimension], biomes: &[Biome]) -> Compound {
+    compound! {
+        ident!("dimension_type") => compound! {
+            "type" => ident!("dimension_type"),
+            "value" => List::Compound(dimensions.iter().enumerate().map(|(id, dim)| compound! {
+                "name" => DimensionId(id as u16).dimension_type_name(),
+                "id" => id as i32,
+                "element" => dim.to_dimension_registry_item(),
+            }).collect()),
+        },
+        ident!("worldgen/biome") => compound! {
+            "type" => ident!("worldgen/biome"),
+            "value" => {
+                let mut biomes: Vec<_> = biomes
+                    .iter()
+                    .enumerate()
+                    .map(|(id, biome)| biome.to_biome_registry_item(id as i32))
+                    .collect();
+
+                // The client needs a biome named "minecraft:plains" in the registry to
+                // connect. This is probably a bug in the client.
+                //
+                // If the issue is resolved, remove this if.
+                if !biomes.iter().any(|b| b["name"] == "plains".into()) {
+                    let biome = Biome::default();
+                    assert_eq!(biome.name, ident!("plains"));
+                    biomes.push(biome.to_biome_registry_item(biomes.len() as i32));
+                }
+
+                List::Compound(biomes)
+            }
+        },
+        ident!("chat_type_registry") => compound! {
+            "type" => ident!("chat_type"),
+            "value" => List::Compound(Vec::new()),
+        },
+    }
 }
 
 fn do_update_loop<C: Config>(server: &mut Server<C>) -> ShutdownResult {
@@ -591,7 +592,7 @@ async fn handle_status<C: Config>(
     remote_addr: SocketAddr,
     handshake: Handshake,
 ) -> anyhow::Result<()> {
-    c.dec.read_packet::<QueryRequest>().await?;
+    c.dec.read_packet::<StatusRequest>().await?;
 
     match server
         .0
@@ -602,6 +603,7 @@ async fn handle_status<C: Config>(
         ServerListPing::Respond {
             online_players,
             max_players,
+            player_sample,
             description,
             favicon_png,
         } => {
@@ -613,7 +615,7 @@ async fn handle_status<C: Config>(
                 "players": {
                     "online": online_players,
                     "max": max_players,
-                    // TODO: player sample?
+                    "sample": player_sample,
                 },
                 "description": description,
             });
@@ -627,7 +629,7 @@ async fn handle_status<C: Config>(
             }
 
             c.enc
-                .write_packet(&QueryResponse {
+                .write_packet(&StatusResponse {
                     json_response: json.to_string(),
                 })
                 .await?;
@@ -635,9 +637,9 @@ async fn handle_status<C: Config>(
         ServerListPing::Ignore => return Ok(()),
     }
 
-    let QueryPing { payload } = c.dec.read_packet().await?;
+    let PingRequest { payload } = c.dec.read_packet().await?;
 
-    c.enc.write_packet(&QueryPong { payload }).await?;
+    c.enc.write_packet(&PingResponse { payload }).await?;
 
     Ok(())
 }
@@ -723,16 +725,28 @@ async fn handle_login<C: Config>(
                 .chain(&server.0.public_key_der)
                 .finalize();
 
-            let hex_hash = weird_hex_encoding(&hash);
+            let hex_hash = auth_digest(&hash);
 
-            let url = format!("https://sessionserver.mojang.com/session/minecraft/hasJoined?username={username}&serverId={hex_hash}&ip={}", remote_addr.ip());
+            let url = C::format_session_server_url(
+                server.config(),
+                server,
+                &username,
+                &hex_hash,
+                &remote_addr.ip(),
+            );
             let resp = server.0.http_client.get(url).send().await?;
 
-            let status = resp.status();
-            ensure!(
-                status.is_success(),
-                "session server GET request failed: {status}"
-            );
+            match resp.status() {
+                StatusCode::OK => {}
+                StatusCode::NO_CONTENT => {
+                    let reason = Text::translate("multiplayer.disconnect.unverified_username");
+                    c.enc.write_packet(&DisconnectLogin { reason }).await?;
+                    bail!("Could not verify username");
+                }
+                status => {
+                    bail!("session server GET request failed (status code {status})");
+                }
+            }
 
             let data: AuthResponse = resp.json().await?;
 
@@ -890,7 +904,7 @@ async fn handle_login<C: Config>(
 
     let compression_threshold = 256;
     c.enc
-        .write_packet(&LoginCompression {
+        .write_packet(&SetCompression {
             threshold: VarInt(compression_threshold as i32),
         })
         .await?;
@@ -907,7 +921,7 @@ async fn handle_login<C: Config>(
 
     if let Err(reason) = server.0.cfg.login(server, &ncd).await {
         log::info!("Disconnect at login: \"{reason}\"");
-        c.enc.write_packet(&LoginDisconnect { reason }).await?;
+        c.enc.write_packet(&DisconnectLogin { reason }).await?;
         return Ok(None);
     }
 
@@ -974,7 +988,7 @@ async fn handle_play<C: Config>(
     Ok(())
 }
 
-fn weird_hex_encoding(bytes: &[u8]) -> String {
+fn auth_digest(bytes: &[u8]) -> String {
     BigInt::from_signed_bytes_be(bytes).to_str_radix(16)
 }
 
@@ -983,17 +997,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn weird_hex_encoding_correct() {
+    fn auth_digest_correct() {
         assert_eq!(
-            weird_hex_encoding(&Sha1::digest("Notch")),
+            auth_digest(&Sha1::digest("Notch")),
             "4ed1f46bbe04bc756bcb17c0c7ce3e4632f06a48"
         );
         assert_eq!(
-            weird_hex_encoding(&Sha1::digest("jeb_")),
+            auth_digest(&Sha1::digest("jeb_")),
             "-7c9d5b0044c130109a5d7b5fb5c317c02b4e28c1"
         );
         assert_eq!(
-            weird_hex_encoding(&Sha1::digest("simon")),
+            auth_digest(&Sha1::digest("simon")),
             "88e16a1019277b15d58faf0541e11910eb756f6"
         );
     }
