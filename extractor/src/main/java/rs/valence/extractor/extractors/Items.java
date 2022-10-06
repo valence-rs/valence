@@ -1,10 +1,10 @@
-package dev._00a.valence_extractor.extractors;
+package rs.valence.extractor.extractors;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import dev._00a.valence_extractor.Main;
 import net.minecraft.util.registry.Registry;
+import rs.valence.extractor.Main;
 
 public class Items implements Main.Extractor {
     public Items() {

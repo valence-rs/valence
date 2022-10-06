@@ -1,12 +1,12 @@
-package dev._00a.valence_extractor.extractors;
+package rs.valence.extractor.extractors;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import dev._00a.valence_extractor.Main;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.registry.Registry;
 import net.minecraft.world.EmptyBlockView;
+import rs.valence.extractor.Main;
 
 import java.util.LinkedHashMap;
 import java.util.Locale;

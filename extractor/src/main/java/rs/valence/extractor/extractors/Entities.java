@@ -1,11 +1,6 @@
-package dev._00a.valence_extractor.extractors;
+package rs.valence.extractor.extractors;
 
 import com.google.gson.*;
-import dev._00a.valence_extractor.ClassComparator;
-import dev._00a.valence_extractor.DummyPlayerEntity;
-import dev._00a.valence_extractor.DummyWorld;
-import dev._00a.valence_extractor.Main;
-import dev._00a.valence_extractor.Main.Pair;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EntityType;
@@ -24,6 +19,11 @@ import net.minecraft.util.registry.Registry;
 import net.minecraft.util.registry.RegistryEntry;
 import net.minecraft.village.VillagerData;
 import org.jetbrains.annotations.Nullable;
+import rs.valence.extractor.ClassComparator;
+import rs.valence.extractor.DummyPlayerEntity;
+import rs.valence.extractor.DummyWorld;
+import rs.valence.extractor.Main;
+import rs.valence.extractor.Main.Pair;
 
 import java.lang.reflect.ParameterizedType;
 import java.util.*;

@@ -1,11 +1,11 @@
-package dev._00a.valence_extractor;
+package rs.valence.extractor;
 
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
-import dev._00a.valence_extractor.extractors.*;
 import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import rs.valence.extractor.extractors.*;
 import sun.reflect.ReflectionFactory;
 
 import java.io.FileWriter;
@@ -36,7 +36,7 @@ public class Main implements ModInitializer {
     @Override
     public void onInitialize() {
         LOGGER.info("Starting extractors...");
-      
+
         var extractors = new Extractor[]{new Blocks(), new Entities(), new EntityData(), new Packets(), new Items(), new Enchants()};
 
         Path outputDirectory;
