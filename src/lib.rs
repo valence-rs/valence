@@ -110,10 +110,9 @@ pub mod dimension;
 pub mod enchant;
 pub mod entity;
 pub mod ident;
-pub mod itemstack;
+pub mod item;
 pub mod player_list;
 pub mod player_textures;
-#[allow(dead_code)]
 #[doc(hidden)]
 pub mod protocol;
 pub mod server;

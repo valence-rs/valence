@@ -17,6 +17,7 @@ struct TopLevel {
 struct Block {
     #[allow(unused)]
     id: u16,
+    item_id: u16,
     translation_key: String,
     name: String,
     properties: Vec<Property>,
@@ -313,6 +314,31 @@ pub fn build() -> anyhow::Result<TokenStream> {
         })
         .collect::<TokenStream>();
 
+    let block_kind_to_item_kind_arms = blocks
+        .iter()
+        .map(|block| {
+            let name = ident(block.name.to_pascal_case());
+            let item_id = block.item_id;
+
+            quote! {
+                BlockKind::#name => #item_id,
+            }
+        })
+        .collect::<TokenStream>();
+
+    let block_kind_from_item_kind_arms = blocks
+        .iter()
+        .filter(|block| block.item_id != 0)
+        .map(|block| {
+            let name = ident(block.name.to_pascal_case());
+            let item_id = block.item_id;
+
+            quote! {
+                #item_id => Some(BlockKind::#name),
+            }
+        })
+        .collect::<TokenStream>();
+
     let block_kind_count = blocks.len();
 
     let prop_names = blocks
@@ -530,7 +556,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             /// Construct a block kind from its snake_case name.
             ///
             /// Returns `None` if the name is invalid.
-            pub fn from_str(name: &str) -> Option<BlockKind> {
+            pub fn from_str(name: &str) -> Option<Self> {
                 match name {
                     #block_kind_from_str_arms
                     _ => None
@@ -560,6 +586,35 @@ pub fn build() -> anyhow::Result<TokenStream> {
             pub const fn translation_key(self) -> &'static str {
                 match self {
                     #kind_to_translation_key_arms
+                }
+            }
+
+            /// Converts a block kind to its corresponding item kind.
+            ///
+            /// [`ItemKind::Air`] is used to indicate the absence of an item.
+            pub const fn to_item_kind(self) -> ItemKind {
+                let id = match self {
+                    #block_kind_to_item_kind_arms
+                };
+
+                // TODO: unwrap() is not const yet.
+                match ItemKind::from_raw(id) {
+                    Some(k) => k,
+                    None => unreachable!(),
+                }
+            }
+
+            /// Constructs a block kind from an item kind.
+            ///
+            /// If the given item does not have a corresponding block, `None` is returned.
+            pub const fn from_item_kind(item: ItemKind) -> Option<Self> {
+                // The "default" blocks are ordered before the other variants.
+                // For instance, `torch` comes before `wall_torch` so this match
+                // should do the correct thing.
+                #[allow(unreachable_patterns)]
+                match item.to_raw() {
+                    #block_kind_from_item_kind_arms
+                    _ => None,
                 }
             }
 

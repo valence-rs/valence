@@ -36,8 +36,9 @@ place. Here are some noteworthy achievements:
 - [x] JSON Text API
 - [x] A Fabric mod for extracting data from the game into JSON files. These files are processed by a build script to
   generate Rust code for the project. The JSON files can be used in other projects as well.
+- [x] Items
+- [ ] Inventory
 - [ ] Block entities
-- [ ] Inventory and items
 - [ ] Proxy support
 - [ ] Sounds, particles, etc.
 - [ ] Utilities for continuous collision detection
