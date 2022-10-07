@@ -88,9 +88,8 @@ impl Config for Game {
         let (_, world) = server.worlds.insert(DimensionId::default(), ());
         server.state = Some(server.player_lists.insert(()).0);
 
-        let dim = server.shared.dimension(DimensionId::default());
-        let min_y = dim.min_y;
-        let height = dim.height as usize;
+        let min_y = world.chunks.min_y();
+        let height = world.chunks.height();
 
         // Create circular arena.
         let size = 2;
