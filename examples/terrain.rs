@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::SystemTime;
 
 use log::LevelFilter;
 use noise::{NoiseFn, Seedable, SuperSimplex};
@@ -23,7 +24,12 @@ pub fn main() -> ShutdownResult {
         .parse_default_env()
         .init();
 
-    let seed = rand::random();
+    let seconds_per_day = 86_400;
+
+    let seed = (SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)?
+        .as_secs()
+        / seconds_per_day) as u32;
 
     valence::start_server(
         Game {
