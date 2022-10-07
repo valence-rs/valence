@@ -40,16 +40,14 @@ use crate::ident::Ident;
 use crate::player_list::PlayerLists;
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::codec::{Decoder, Encoder};
-use crate::protocol::packets::c2s::handshake::{
-    Handshake, HandshakeNextState,
-};
+use crate::protocol::packets::c2s::handshake::{Handshake, HandshakeNextState};
 use crate::protocol::packets::c2s::login::{
     EncryptionResponse, LoginPluginResponse, LoginStart, VerifyTokenOrMsgSig,
 };
 use crate::protocol::packets::c2s::play::C2sPlayPacket;
 use crate::protocol::packets::c2s::status::{PingRequest, StatusRequest};
 use crate::protocol::packets::s2c::login::{
-    DisconnectLogin, EncryptionRequest, LoginSuccess, SetCompression, LoginPluginRequest
+    DisconnectLogin, EncryptionRequest, LoginPluginRequest, LoginSuccess, SetCompression,
 };
 use crate::protocol::packets::s2c::play::S2cPlayPacket;
 use crate::protocol::packets::s2c::status::{PingResponse, StatusResponse};
@@ -566,7 +564,8 @@ async fn handle_connection<C: Config>(
     let handshake: Handshake;
     handshake = c.dec.read_packet::<Handshake>().await?;
     ensure!(
-        handshake.server_address.chars().count() <= 255 || server.connection_mode() == ConnectionMode::Bungeecord,
+        handshake.server_address.chars().count() <= 255
+            || server.connection_mode() == ConnectionMode::Bungeecord,
         "server address too long"
     );
 
@@ -774,10 +773,7 @@ async fn handle_login<C: Config>(
             let mut skin: Option<SignedPlayerTextures> = None;
 
             // Get data from server_address field of the handshake
-            let data = handshake
-                .server_address
-                .split("\0")
-                .collect::<Vec<&str>>();
+            let data = handshake.server_address.split("\0").collect::<Vec<&str>>();
             ensure!(data.len() == 4, "bungeecord data invalid");
 
             // Get player uuid
@@ -848,11 +844,14 @@ async fn handle_login<C: Config>(
             let signature_check = mac.verify_slice(signature.as_slice());
             if signature_check.is_err() {
                 c.enc
-                    .write_packet(&LoginDisconnect {
+                    .write_packet(&DisconnectLogin {
                         reason: Text::text("This server requires you to connect with velocity!"),
                     })
                     .await?;
-                log::warn!("Client tried connect with invalid signature. This could be an attacker or a miss configured velocity secret key!");
+                log::warn!(
+                    "Client tried connect with invalid signature. This could be an attacker or a \
+                     miss configured velocity secret key!"
+                );
                 return Ok(None);
             }
 
@@ -860,7 +859,7 @@ async fn handle_login<C: Config>(
             let version: VarInt = Decode::decode(&mut data).unwrap();
             if version.0 > VELOCITY_MAX_SUPPORTED_VERSION {
                 c.enc
-                    .write_packet(&LoginDisconnect {
+                    .write_packet(&DisconnectLogin {
                         reason: Text::text("Velocity Version not supported!"),
                     })
                     .await?;

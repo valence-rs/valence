@@ -134,7 +134,7 @@ pub enum ClientEvent {
     PluginMessageReceived {
         channel: Ident,
         data: RawBytes,
-   },
+    },
     ResourcePackStatusChanged(ResourcePackStatus),
     /// The client closed a screen. This occurs when the client closes their
     /// inventory, closes a chest inventory, etc.

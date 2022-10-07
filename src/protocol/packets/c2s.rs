@@ -28,7 +28,6 @@ pub mod handshake {
             Handshake = 0,
         }
     }
-
 }
 
 pub mod status {
