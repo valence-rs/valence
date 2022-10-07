@@ -561,8 +561,7 @@ async fn handle_connection<C: Config>(
 
     // TODO: peek stream for 0xFE legacy ping
 
-    let handshake: Handshake;
-    handshake = c.dec.read_packet::<Handshake>().await?;
+    let handshake: Handshake = c.dec.read_packet::<Handshake>().await?;
     ensure!(
         handshake.server_address.chars().count() <= 255
             || server.connection_mode() == ConnectionMode::Bungeecord,
@@ -773,7 +772,7 @@ async fn handle_login<C: Config>(
             let mut skin: Option<SignedPlayerTextures> = None;
 
             // Get data from server_address field of the handshake
-            let data = handshake.server_address.split("\0").collect::<Vec<&str>>();
+            let data = handshake.server_address.split('\0').collect::<Vec<&str>>();
             ensure!(data.len() == 4, "bungeecord data invalid");
 
             // Get player uuid
@@ -815,9 +814,9 @@ async fn handle_login<C: Config>(
                 .write_packet(&LoginPluginRequest {
                     message_id: VarInt::from(message_id),
                     channel: Ident::new(VELOCITY_PLAYER_INFO_CHANNEL).unwrap(),
-                    data: RawBytes {
-                        0: vec![VELOCITY_SUPPORTED_VERSION as u8],
-                    },
+                    data: RawBytes(
+                        vec![VELOCITY_SUPPORTED_VERSION as u8],
+                    ),
                 })
                 .await?;
 
@@ -889,7 +888,7 @@ async fn handle_login<C: Config>(
                 } else {
                     String::new()
                 };
-                if name == String::from("textures") {
+                if name == *"textures" {
                     skin =
                         Some(SignedPlayerTextures::from_base64(value, property_signature).unwrap());
                 }
