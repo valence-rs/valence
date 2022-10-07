@@ -33,6 +33,7 @@ pub fn main() -> ShutdownResult {
         ServerState {
             player_list: None,
             chest: Default::default(),
+            tick: 0,
         },
     )
 }
@@ -44,6 +45,7 @@ struct Game {
 struct ServerState {
     player_list: Option<PlayerListId>,
     chest: InventoryId,
+    tick: u32,
 }
 
 #[derive(Default)]
@@ -140,12 +142,18 @@ impl Config for Game {
     }
 
     fn update(&self, server: &mut Server<Self>) {
+        server.state.tick += 1;
+        if server.state.tick > 10 {
+            server.state.tick = 0;
+        }
         let (world_id, world) = server.worlds.iter_mut().next().unwrap();
 
         let spawn_pos = [SIZE_X as f64 / 2.0, 1.0, SIZE_Z as f64 / 2.0];
 
         if let Some(inv) = server.inventories.get_mut(server.state.chest) {
-            rotate_items(inv);
+            if server.state.tick == 0 {
+                rotate_items(inv);
+            }
         }
 
         server.clients.retain(|_, client| {
