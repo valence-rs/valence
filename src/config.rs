@@ -78,8 +78,8 @@ pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
         STANDARD_TPS
     }
 
-    /// Called once at startup to get the connection mode option, which determines
-    /// if client authentication and encryption should take place
+    /// Called once at startup to get the connection mode option, which
+    /// determines if client authentication and encryption should take place
     /// and if the server should get the player data from a proxy.
     ///
     ///  # Default Implementation
@@ -289,37 +289,42 @@ pub enum ServerListPing<'a> {
     Ignore,
 }
 
-
 #[non_exhaustive]
 #[derive(Clone, Eq, PartialEq, Default)]
 pub enum ConnectionMode {
     #[default]
     /// # `ConnectionMode::Online`
-    /// The "online mode" fetches all player data (uuid, username and skin) from mojang
-    /// and enables encryption.
-    /// This should be used for all publicly exposed servers, which are not behind a proxy.
+    /// The "online mode" fetches all player data (uuid, username and skin) from
+    /// mojang and enables encryption.
+    /// This should be used for all publicly exposed servers, which are not
+    /// behind a proxy.
     Online,
     /// # `ConnectionMode::Offline`
-    /// If this mode is enabled all players can join with any username and uuid, which can be
-    /// used by malicious actors to get privileges by for example using the username (and uuid)
-    /// of the owner of the server.
-    /// This should only be enabled for development purposes and not for publicly exposed servers.
-    /// Furthermore encryption is disabled and minecraft's default skins will be used.
+    /// If this mode is enabled all players can join with any username and uuid,
+    /// which can be used by malicious actors to get privileges by for
+    /// example using the username (and uuid) of the owner of the server.
+    /// This should only be enabled for development purposes and not for
+    /// publicly exposed servers. Furthermore encryption is disabled and
+    /// minecraft's default skins will be used.
     Offline,
     /// # `ConnectionMode::Bungeecord`
-    /// This should be used if the server runs behind a Bungeecord/Waterfall Proxy with ip forwarding enabled
-    /// or a Velocity Proxy, which is configured to run with the player info forwarding mode `legacy`.
-    /// It fetches all player data (uuid, username and skin) from the bungeecord proxy but does not
-    /// block connections, which are not from the proxy.
-    /// If the server is publicly exposed anyone can connect with any name, uuid and skin similar to offline mode.
+    /// This should be used if the server runs behind a Bungeecord/Waterfall
+    /// Proxy with ip forwarding enabled or a Velocity Proxy, which is
+    /// configured to run with the player info forwarding mode `legacy`.
+    /// It fetches all player data (uuid, username and skin) from the bungeecord
+    /// proxy but does not block connections, which are not from the proxy.
+    /// If the server is publicly exposed anyone can connect with any name, uuid
+    /// and skin similar to offline mode.
     Bungeecord,
     /// # `ConnectionMode::Velocity`
-    /// This should be used if the server runs behind a Velocity Proxy, which is configured to run
-    /// with the player info forwarding mode `modern`.
-    /// It fetches all player data (uuid, username and skin) from the velocity proxy and blocks
-    /// all connections, which are not from the proxy.
-    /// To ensure to set the secret value to the secret key of the velocity proxy.
+    /// This should be used if the server runs behind a Velocity Proxy, which is
+    /// configured to run with the player info forwarding mode `modern`.
+    /// It fetches all player data (uuid, username and skin) from the velocity
+    /// proxy and blocks all connections, which are not from the proxy.
+    /// To ensure to set the secret value to the secret key of the velocity
+    /// proxy.
     Velocity { secret: String },
+}
 
 /// Represents an individual entry in the player sample.
 #[derive(Clone, Debug, Serialize)]

@@ -9,7 +9,7 @@ use valence::biome::Biome;
 use valence::block::BlockState;
 use valence::chunk::{Chunk, UnloadedChunk};
 use valence::client::{handle_event_default, ClientEvent, Hand};
-use valence::config::{Config, ConnectionMode, ServerListPing};
+use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::types::Pose;
 use valence::entity::{EntityId, EntityKind, TrackedData};
@@ -73,10 +73,6 @@ impl Config for Game {
     fn max_connections(&self) -> usize {
         // We want status pings to be successful even if the server is full.
         MAX_PLAYERS + 64
-    }
-
-    fn connection_mode(&self) -> ConnectionMode {
-        ConnectionMode::Bungeecord // TODO just testing, remove this
     }
 
     fn address(&self) -> SocketAddr {

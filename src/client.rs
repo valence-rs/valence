@@ -28,8 +28,8 @@ pub use crate::protocol::packets::s2c::play::SetTitleAnimationTimes;
 use crate::protocol::packets::s2c::play::{
     AcknowledgeBlockChange, ClearTitles, CustomSoundEffect, DisconnectPlay, EntityAnimationS2c,
     EntityAttributesProperty, EntityEvent, GameEvent, GameStateChangeReason, KeepAliveS2c,
-    LoginPlay, PlayerPositionLookFlags, RemoveEntities, ResourcePackS2c, Respawn, S2cPlayPacket,
-    SetActionBarText, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata,
+    LoginPlay, PlayerPositionLookFlags, PluginMessageS2c, RemoveEntities, ResourcePackS2c, Respawn,
+    S2cPlayPacket, SetActionBarText, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata,
     SetEntityVelocity, SetExperience, SetHeadRotation, SetHealth, SetRenderDistance,
     SetSubtitleText, SetTitleText, SoundCategory, SynchronizePlayerPosition, SystemChatMessage,
     TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
@@ -223,7 +223,6 @@ pub struct Client<C: Config> {
     /// Should be sent after login packet.
     msgs_to_send: Vec<Text>,
     bar_to_send: Option<Text>,
-    plugin_messages_to_send: Vec<PluginMessageToClient>,
     resource_pack_to_send: Option<ResourcePackS2c>,
     attack_speed: f64,
     movement_speed: f64,
@@ -378,7 +377,13 @@ impl<C: Config> Client<C> {
     }
 
     pub fn send_plugin_message(&mut self, channel: Ident, data: Vec<u8>) {
-        send_packet(&mut self, PluginMessageToClient { channel, data: RawBytes(data) });
+        send_packet(
+            &mut self.send,
+            PluginMessageS2c {
+                channel,
+                data: RawBytes(data),
+            },
+        );
     }
 
     /// Gets the absolute position of this client in the world it is located
@@ -814,7 +819,6 @@ impl<C: Config> Client<C> {
                     window_id: c.window_id,
                 })
             }
-            C2sPlayPacket::PluginMessageC2s(_) => {}
             C2sPlayPacket::EditBook(_) => {}
             C2sPlayPacket::QueryEntityTag(_) => {}
             C2sPlayPacket::Interact(p) => {
@@ -990,7 +994,7 @@ impl<C: Config> Client<C> {
                     })
                 }
             }
-            C2sPlayPacket::PluginMessageToServer(p) => {
+            C2sPlayPacket::PluginMessageC2s(p) => {
                 self.events.push_back(ClientEvent::PluginMessageReceived {
                     channel: p.channel,
                     data: p.data,
