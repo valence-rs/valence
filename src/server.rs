@@ -814,9 +814,7 @@ async fn handle_login<C: Config>(
                 .write_packet(&LoginPluginRequest {
                     message_id: VarInt::from(message_id),
                     channel: Ident::new(VELOCITY_PLAYER_INFO_CHANNEL).unwrap(),
-                    data: RawBytes(
-                        vec![VELOCITY_SUPPORTED_VERSION as u8],
-                    ),
+                    data: RawBytes(vec![VELOCITY_SUPPORTED_VERSION as u8]),
                 })
                 .await?;
 
