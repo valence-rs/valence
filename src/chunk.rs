@@ -596,7 +596,7 @@ impl<C: Config> LoadedChunk<C> {
         &self,
         pos: ChunkPos,
         min_y: i32,
-        mut push_packet: impl FnMut(BlockChangePacket),
+        mut push_packet: impl FnMut(S2cPlayPacket),
     ) {
         for (sect_y, sect) in self.sections.iter().enumerate() {
             if sect.modified_blocks_count == 1 {
@@ -617,10 +617,13 @@ impl<C: Config> LoadedChunk<C> {
                 let global_y = sect_y as i32 * 16 + (idx / (16 * 16)) as i32 + min_y;
                 let global_z = pos.z * 16 + (idx / 16 % 16) as i32;
 
-                push_packet(BlockChangePacket::Single(BlockUpdate {
-                    location: BlockPos::new(global_x, global_y, global_z),
-                    block_id: VarInt(block.to_raw() as _),
-                }));
+                push_packet(
+                    BlockUpdate {
+                        location: BlockPos::new(global_x, global_y, global_z),
+                        block_id: VarInt(block.to_raw() as _),
+                    }
+                    .into(),
+                );
             } else if sect.modified_blocks_count > 1 {
                 let mut blocks = Vec::with_capacity(sect.modified_blocks_count as _);
 
@@ -643,11 +646,14 @@ impl<C: Config> LoadedChunk<C> {
                     | (pos.z as i64 & 0x3fffff) << 20
                     | (sect_y as i64 + min_y.div_euclid(16) as i64) & 0xfffff;
 
-                push_packet(BlockChangePacket::Multi(UpdateSectionBlocks {
-                    chunk_section_position,
-                    invert_trust_edges: false,
-                    blocks,
-                }));
+                push_packet(
+                    UpdateSectionBlocks {
+                        chunk_section_position,
+                        invert_trust_edges: false,
+                        blocks,
+                    }
+                    .into(),
+                );
             }
         }
     }
@@ -660,21 +666,6 @@ impl<C: Config> LoadedChunk<C> {
             }
         }
         self.created_this_tick = false;
-    }
-}
-
-#[derive(Clone, Debug)]
-pub(crate) enum BlockChangePacket {
-    Single(BlockUpdate),
-    Multi(UpdateSectionBlocks),
-}
-
-impl From<BlockChangePacket> for S2cPlayPacket {
-    fn from(p: BlockChangePacket) -> Self {
-        match p {
-            BlockChangePacket::Single(p) => p.into(),
-            BlockChangePacket::Multi(p) => p.into(),
-        }
     }
 }
 
