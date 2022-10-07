@@ -625,7 +625,7 @@ impl<C: Config> LoadedChunk<C> {
                     .into(),
                 );
             } else if sect.modified_blocks_count > 1 {
-                let mut blocks = Vec::with_capacity(sect.modified_blocks_count as _);
+                let mut blocks = Vec::with_capacity(sect.modified_blocks_count.into());
 
                 for y in 0..16 {
                     for z in 0..16 {
@@ -801,7 +801,7 @@ fn encode_compact_u64s(
             match vals.next() {
                 Some(val) => {
                     debug_assert!(val < 2_u128.pow(bits_per_val as _) as _);
-                    n = (n << bits_per_val) | val
+                    n |= val << (i * bits_per_val);
                 }
                 None if i > 0 => return n.encode(w),
                 None => return Ok(()),

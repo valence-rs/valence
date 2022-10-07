@@ -189,8 +189,8 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> Encod
     for PalettedContainer<T, LEN, HALF_LEN>
 {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        assert!(T::DIRECT_BITS <= u8::MAX as _);
-        assert!(T::MAX_INDIRECT_BITS <= u8::MAX as _);
+        assert!(T::DIRECT_BITS <= 64);
+        assert!(T::MAX_INDIRECT_BITS <= 64);
         assert!(T::MIN_INDIRECT_BITS <= T::MAX_INDIRECT_BITS);
         assert!(T::MIN_INDIRECT_BITS <= 4);
 
