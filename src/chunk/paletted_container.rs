@@ -3,8 +3,9 @@ use std::io::Write;
 
 use arrayvec::ArrayVec;
 
-use crate::chunk::encode_compact_u64s;
+use crate::chunk::{compact_u64s_len, encode_compact_u64s};
 use crate::protocol::{Encode, VarInt};
+use crate::util::log2_ceil;
 
 // TODO: https://github.com/rust-lang/rust/issues/60551
 
@@ -21,7 +22,7 @@ pub trait PalettedContainerElement: Copy + Eq + Default {
     const DIRECT_BITS: usize;
     /// The maximum number of bits per element allowed in the indirect
     /// representation while encoding. Any higher than this will force
-    /// conversion to the direct representation to be encoded.
+    /// conversion to the direct representation while encoding.
     const MAX_INDIRECT_BITS: usize;
     /// The minimum number of bits used to represent the element type in the
     /// indirect representation while encoding. If the bits per index is lower,
@@ -205,6 +206,11 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> Encod
     for PalettedContainer<T, LEN, HALF_LEN>
 {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+        assert!(T::DIRECT_BITS <= u8::MAX as _);
+        assert!(T::MAX_INDIRECT_BITS <= u8::MAX as _);
+        assert!(T::MIN_INDIRECT_BITS <= T::MAX_INDIRECT_BITS);
+        assert!(T::MIN_INDIRECT_BITS <= 4);
+
         match &self.inner {
             Inner::Single(val) => {
                 0_u8.encode(w)?; // Bits per entry
@@ -212,12 +218,21 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> Encod
                 VarInt(0).encode(w)?; // Number of longs (ignored)
             }
             Inner::Indirect(ind) => {
-                4_u8.encode(w)?; // Bits per entry
+                let bits_per_entry = T::MIN_INDIRECT_BITS.max(log2_ceil(ind.palette.len()));
+
+                // TODO: if bits_per_entry > MAX_INDIRECT_BITS, encode as direct.
+                debug_assert!(bits_per_entry <= T::MAX_INDIRECT_BITS);
+
+                (bits_per_entry as u8).encode(w)?; // Bits per entry
                 VarInt(ind.palette.len() as i32).encode(w)?; // Palette len
                 for val in &ind.palette {
                     VarInt(val.to_bits() as i32).encode(w)?;
                 }
-                VarInt(0).encode(w)?; // Number of longs (ignored)
+
+                // Number of longs in data array.
+                VarInt(compact_u64s_len(LEN, bits_per_entry) as _).encode(w)?;
+
+                // VarInt(0).encode(w)?; // Number of longs (ignored)
                 encode_compact_u64s(
                     w,
                     ind.indices
@@ -226,13 +241,18 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> Encod
                         .flat_map(|byte| [byte & 0b1111, byte >> 4])
                         .map(u64::from)
                         .take(LEN),
-                    4,
+                    bits_per_entry,
                 )?; // Data array
             }
             Inner::Direct(dir) => {
                 (T::DIRECT_BITS as u8).encode(w)?; // Bits per entry
-                VarInt(0).encode(w)?; // Number of longs (ignored)
-                                      // Data array
+
+                // Number of longs in data array.
+                VarInt(compact_u64s_len(LEN, T::DIRECT_BITS) as _).encode(w)?;
+
+                // VarInt(0).encode(w)?; // Number of longs (ignored)
+
+                // Data array
                 encode_compact_u64s(w, dir.iter().map(|v| v.to_bits()), T::DIRECT_BITS)?;
             }
         }

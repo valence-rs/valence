@@ -12,7 +12,6 @@ use std::io::Write;
 use std::iter::FusedIterator;
 
 use bitvec::vec::BitVec;
-use byteorder::{BigEndian, WriteBytesExt};
 use paletted_container::{PalettedContainer, PalettedContainerElement};
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use valence_nbt::compound;
@@ -183,7 +182,7 @@ impl<C: Config> Chunks<C> {
     ///
     /// **Note**: if you need to get a large number of blocks, it is more
     /// efficient to read from the chunks directly with
-    /// [`Chunk::get_block_state`].
+    /// [`Chunk::block_state`].
     pub fn block_state(&self, pos: impl Into<BlockPos>) -> Option<BlockState> {
         let pos = pos.into();
         let chunk_pos = ChunkPos::from(pos);
@@ -242,29 +241,6 @@ impl<C: Config> Chunks<C> {
             chunk.update();
         }
     }
-
-    /*
-    /// Apply chunk modifications to only the chunks that were created this
-    /// tick.
-    pub(crate) fn update_created_this_tick(&mut self) {
-        let biome_registry_len = self.shared.biomes().len();
-        self.chunks.par_iter_mut().for_each(|(_, chunk)| {
-            if chunk.created_this_tick() {
-                chunk.apply_modifications(biome_registry_len);
-            }
-        });
-    }
-
-    /// Apply chunk modifications to all chunks and clear the created_this_tick
-    /// flag.
-    pub(crate) fn update(&mut self) {
-        let biome_registry_len = self.shared.biomes().len();
-        self.chunks.par_iter_mut().for_each(|(_, chunk)| {
-            chunk.apply_modifications(biome_registry_len);
-            chunk.created_this_tick = false;
-        });
-    }
-     */
 }
 
 /// Operations that can be performed on a chunk. [`LoadedChunk`] and
@@ -813,6 +789,11 @@ fn is_motion_blocking(b: BlockState) -> bool {
 }
 */
 
+fn compact_u64s_len(vals_count: usize, bits_per_val: usize) -> usize {
+    let vals_per_u64 = 64 / bits_per_val;
+    num::Integer::div_ceil(&vals_count, &vals_per_u64)
+}
+
 #[inline]
 fn encode_compact_u64s(
     w: &mut impl Write,
@@ -828,13 +809,13 @@ fn encode_compact_u64s(
         for _ in 0..vals_per_u64 {
             match vals.next() {
                 Some(val) => {
-                    debug_assert!(val < (2_u128.pow(bits_per_val as _) - 1) as _);
+                    debug_assert!(val < 2_u128.pow(bits_per_val as _) as _);
                     n = (n << bits_per_val) | val
                 }
-                None => return Ok(w.write_u64::<BigEndian>(n)?),
+                None => return n.encode(w),
             }
         }
-        w.write_u64::<BigEndian>(n)?;
+        n.encode(w)?;
     }
 }
 
@@ -880,7 +861,7 @@ mod tests {
         let mut unloaded = UnloadedChunk::new(height);
 
         for i in 0..10_000 {
-            let state = if i % 1_000 == 0 {
+            let state = if i % 250 == 0 {
                 [BlockState::AIR, BlockState::CAVE_AIR, BlockState::VOID_AIR]
                     .into_iter()
                     .choose(&mut rng)
