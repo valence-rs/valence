@@ -7,12 +7,12 @@ use crate::chunk::{compact_u64s_len, encode_compact_u64s};
 use crate::protocol::{Encode, VarInt};
 use crate::util::log2_ceil;
 
-// TODO: https://github.com/rust-lang/rust/issues/60551
-
 /// `HALF_LEN` must be equal to `ceil(LEN / 2)`.
 #[derive(Clone, Debug)]
-pub struct PalettedContainer<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> {
-    inner: Inner<T, LEN, HALF_LEN>,
+pub enum PalettedContainer<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> {
+    Single(T),
+    Indirect(Box<Indirect<T, LEN, HALF_LEN>>),
+    Direct(Box<[T; LEN]>),
 }
 
 pub trait PalettedContainerElement: Copy + Eq + Default {
@@ -34,14 +34,7 @@ pub trait PalettedContainerElement: Copy + Eq + Default {
 }
 
 #[derive(Clone, Debug)]
-enum Inner<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> {
-    Single(T),
-    Indirect(Box<Indirect<T, LEN, HALF_LEN>>),
-    Direct(Box<[T; LEN]>),
-}
-
-#[derive(Clone, Debug)]
-struct Indirect<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> {
+pub struct Indirect<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> {
     /// Each element is a unique instance of `T`.
     palette: ArrayVec<T, 16>,
     /// Each half-byte is an index into `palette`.
@@ -55,38 +48,28 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize>
         assert_eq!(num::Integer::div_ceil(&LEN, &2), HALF_LEN);
         assert_ne!(LEN, 0);
 
-        Self {
-            inner: Inner::Single(T::default()),
-        }
+        Self::Single(T::default())
     }
 
     pub fn fill(&mut self, val: T) {
-        self.inner = Inner::Single(val);
+        *self = Self::Single(val)
     }
 
     pub fn get(&self, idx: usize) -> T {
         self.check_oob(idx);
 
-        match &self.inner {
-            Inner::Single(elem) => *elem,
-            Inner::Indirect(ind) => ind.get(idx),
-            Inner::Direct(elems) => elems[idx],
-        }
-    }
-
-    pub fn single(&self) -> Option<T> {
-        match &self.inner {
-            Inner::Single(val) => Some(*val),
-            Inner::Indirect(_) => None,
-            Inner::Direct(_) => None,
+        match self {
+            Self::Single(elem) => *elem,
+            Self::Indirect(ind) => ind.get(idx),
+            Self::Direct(elems) => elems[idx],
         }
     }
 
     pub fn set(&mut self, idx: usize, val: T) -> T {
         self.check_oob(idx);
 
-        match &mut self.inner {
-            Inner::Single(old_val) => {
+        match self {
+            Self::Single(old_val) => {
                 if *old_val == val {
                     *old_val
                 } else {
@@ -99,20 +82,20 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize>
                     });
 
                     ind.indices[idx / 2] = 1 << (idx % 2 * 4);
-                    self.inner = Inner::Indirect(ind);
+                    *self = Self::Indirect(ind);
                     old
                 }
             }
-            Inner::Indirect(ind) => {
+            Self::Indirect(ind) => {
                 if let Some(old) = ind.set(idx, val) {
                     old
                 } else {
                     // Upgrade to direct.
-                    self.inner = Inner::Direct(Box::new(array::from_fn(|i| ind.get(i))));
+                    *self = Self::Direct(Box::new(array::from_fn(|i| ind.get(i))));
                     self.set(idx, val)
                 }
             }
-            Inner::Direct(vals) => {
+            Self::Direct(vals) => {
                 let old = vals[idx];
                 vals[idx] = val;
                 old
@@ -121,9 +104,9 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize>
     }
 
     pub fn optimize(&mut self) {
-        match &mut self.inner {
-            Inner::Single(_) => {}
-            Inner::Indirect(ind) => {
+        match self {
+            Self::Single(_) => {}
+            Self::Indirect(ind) => {
                 let mut new_ind = Indirect {
                     palette: ArrayVec::new(),
                     indices: [0; HALF_LEN],
@@ -134,12 +117,12 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize>
                 }
 
                 if new_ind.palette.len() == 1 {
-                    self.inner = Inner::Single(new_ind.palette[0]);
+                    *self = Self::Single(new_ind.palette[0]);
                 } else {
                     **ind = new_ind;
                 }
             }
-            Inner::Direct(dir) => {
+            Self::Direct(dir) => {
                 let mut ind = Indirect {
                     palette: ArrayVec::new(),
                     indices: [0; HALF_LEN],
@@ -151,11 +134,11 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize>
                     }
                 }
 
-                if ind.palette.len() == 1 {
-                    self.inner = Inner::Single(ind.palette[0]);
+                *self = if ind.palette.len() == 1 {
+                    Self::Single(ind.palette[0])
                 } else {
-                    self.inner = Inner::Indirect(Box::new(ind));
-                }
+                    Self::Indirect(Box::new(ind))
+                };
             }
         }
     }
@@ -211,8 +194,8 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> Encod
         assert!(T::MIN_INDIRECT_BITS <= T::MAX_INDIRECT_BITS);
         assert!(T::MIN_INDIRECT_BITS <= 4);
 
-        match &self.inner {
-            Inner::Single(val) => {
+        match self {
+            Self::Single(val) => {
                 // Bits per entry
                 0_u8.encode(w)?;
 
@@ -222,7 +205,7 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> Encod
                 // Number of longs
                 VarInt(0).encode(w)?;
             }
-            Inner::Indirect(ind) => {
+            Self::Indirect(ind) => {
                 let bits_per_entry = T::MIN_INDIRECT_BITS.max(log2_ceil(ind.palette.len()));
 
                 // TODO: if bits_per_entry > MAX_INDIRECT_BITS, encode as direct.
@@ -252,7 +235,7 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> Encod
                     bits_per_entry,
                 )?;
             }
-            Inner::Direct(dir) => {
+            Self::Direct(dir) => {
                 // Bits per entry
                 (T::DIRECT_BITS as u8).encode(w)?;
 

@@ -715,8 +715,8 @@ impl<C: Config> Chunk for LoadedChunk<C> {
         for sect in self.sections.iter_mut() {
             // Mark the appropriate blocks as modified.
             // No need to iterate through all the blocks if we know they're all the same.
-            if let Some(single) = sect.block_states.single() {
-                if block != single {
+            if let PalettedContainer::Single(single) = &sect.block_states {
+                if block != *single {
                     sect.mark_all_blocks_as_modified();
                 }
             } else {
