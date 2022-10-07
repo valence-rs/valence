@@ -96,8 +96,8 @@ impl<C: Config> Chunks<C> {
 
     /// Returns the height of all loaded chunks in the world. This returns the
     /// same value as [`Chunk::height`] for all loaded chunks.
-    pub fn height(&self) -> i32 {
-        self.dimension_height
+    pub fn height(&self) -> usize {
+        self.dimension_height as usize
     }
 
     /// The minimum Y coordinate in world space that chunks in this world can
