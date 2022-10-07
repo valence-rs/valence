@@ -213,9 +213,14 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> Encod
 
         match &self.inner {
             Inner::Single(val) => {
-                0_u8.encode(w)?; // Bits per entry
-                VarInt(val.to_bits() as i32).encode(w)?; // Palette
-                VarInt(0).encode(w)?; // Number of longs (ignored)
+                // Bits per entry
+                0_u8.encode(w)?;
+
+                // Palette
+                VarInt(val.to_bits() as i32).encode(w)?;
+
+                // Number of longs
+                VarInt(0).encode(w)?;
             }
             Inner::Indirect(ind) => {
                 let bits_per_entry = T::MIN_INDIRECT_BITS.max(log2_ceil(ind.palette.len()));
@@ -223,16 +228,19 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> Encod
                 // TODO: if bits_per_entry > MAX_INDIRECT_BITS, encode as direct.
                 debug_assert!(bits_per_entry <= T::MAX_INDIRECT_BITS);
 
-                (bits_per_entry as u8).encode(w)?; // Bits per entry
-                VarInt(ind.palette.len() as i32).encode(w)?; // Palette len
+                // Bits per entry
+                (bits_per_entry as u8).encode(w)?;
+
+                // Palette len
+                VarInt(ind.palette.len() as i32).encode(w)?;
+                // Palette
                 for val in &ind.palette {
                     VarInt(val.to_bits() as i32).encode(w)?;
                 }
 
                 // Number of longs in data array.
                 VarInt(compact_u64s_len(LEN, bits_per_entry) as _).encode(w)?;
-
-                // VarInt(0).encode(w)?; // Number of longs (ignored)
+                // Data array
                 encode_compact_u64s(
                     w,
                     ind.indices
@@ -242,16 +250,14 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> Encod
                         .map(u64::from)
                         .take(LEN),
                     bits_per_entry,
-                )?; // Data array
+                )?;
             }
             Inner::Direct(dir) => {
-                (T::DIRECT_BITS as u8).encode(w)?; // Bits per entry
+                // Bits per entry
+                (T::DIRECT_BITS as u8).encode(w)?;
 
                 // Number of longs in data array.
                 VarInt(compact_u64s_len(LEN, T::DIRECT_BITS) as _).encode(w)?;
-
-                // VarInt(0).encode(w)?; // Number of longs (ignored)
-
                 // Data array
                 encode_compact_u64s(w, dir.iter().map(|v| v.to_bits()), T::DIRECT_BITS)?;
             }

@@ -806,13 +806,14 @@ fn encode_compact_u64s(
 
     loop {
         let mut n = 0;
-        for _ in 0..vals_per_u64 {
+        for i in 0..vals_per_u64 {
             match vals.next() {
                 Some(val) => {
                     debug_assert!(val < 2_u128.pow(bits_per_val as _) as _);
                     n = (n << bits_per_val) | val
                 }
-                None => return n.encode(w),
+                None if i > 0 => return n.encode(w),
+                None => return Ok(()),
             }
         }
         n.encode(w)?;
