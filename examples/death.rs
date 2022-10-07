@@ -331,7 +331,7 @@ fn create_world(server: &mut Server<Game>, spawn_pos: BlockPos, world_type: Whic
     let dimension = match world_type {
         WhichWorld::First => server.shared.dimensions().next().unwrap(),
         WhichWorld::Second => server.shared.dimensions().next().unwrap(),
-        WhichWorld::Third => server.shared.dimensions().skip(1).next().unwrap(),
+        WhichWorld::Third => server.shared.dimensions().nth(1).unwrap(),
     };
 
     let player_list = server.player_lists.insert(()).0;
