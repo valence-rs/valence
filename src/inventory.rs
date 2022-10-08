@@ -23,6 +23,19 @@ pub trait Inventory {
             .map(|s| self.get_slot(s as SlotId))
             .collect()
     }
+
+    fn consume_one(&mut self, slot_id: SlotId) {
+        let slot = self.get_slot(slot_id);
+        if let Slot::Present(mut stack) = slot {
+            stack.item_count -= 1;
+            let slot = if stack.item_count == 0 {
+                Slot::Empty
+            } else {
+                Slot::Present(stack)
+            };
+            self.set_slot(slot_id, slot);
+        }
+    }
 }
 
 pub trait CraftingInventory {
