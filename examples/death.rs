@@ -10,7 +10,6 @@ use valence::config::{Config, ServerListPing};
 use valence::dimension::Dimension;
 use valence::entity::{EntityId, EntityKind};
 use valence::player_list::PlayerListId;
-use valence::protocol::packets::s2c::play::{GameEvent, GameStateChangeReason};
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 use valence::world::WorldId;
@@ -37,7 +36,6 @@ struct Game {
 #[derive(Default)]
 struct ClientState {
     entity_id: EntityId,
-    enable_death_screen_packet_sent: bool,
     // World and position to respawn at
     respawn_location: (WorldId, Vec3<f64>),
     // Anticheat measure
@@ -193,21 +191,13 @@ impl Config for Game {
                         None,
                     );
 
+                client.set_respawn_screen(true);
+
                 client.send_message("Welcome to the death example!".italic());
                 client.send_message("Step over the left line to die. :)");
                 client.send_message("Step over the right line to die and respawn in second world.");
                 client.send_message("Jumping down kills you and spawns you in another dimension.");
                 client.send_message("Sneaking triggers game credits after which you respawn.");
-            }
-
-            if !client.state.enable_death_screen_packet_sent && !client.created_this_tick() {
-                // This packet enables death screen
-                // TODO create helper function, this must be deferred
-                client.send_packet(GameEvent {
-                    reason: GameStateChangeReason::EnableRespawnScreen,
-                    value: 0.0,
-                });
-                client.state.enable_death_screen_packet_sent = true;
             }
 
             // TODO after inventory support is added, show interaction with compass.
@@ -294,10 +284,7 @@ impl Config for Game {
                     ClientEvent::StartSneaking => {
                         // Roll the credits, respawn after
                         client.state.can_respawn = true;
-                        client.send_packet(GameEvent {
-                            reason: GameStateChangeReason::WinGame,
-                            value: 1.0,
-                        });
+                        client.win_game(true);
                     }
                     _ => {}
                 }
