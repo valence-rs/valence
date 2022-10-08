@@ -222,6 +222,20 @@ impl<C: Config> PlayerList<C> {
         }
     }
 
+    /// Returns a reference to the entry with the given UUID.
+    ///
+    /// If the entry does not exist, `None` is returned.
+    pub fn entry(&self, uuid: Uuid) -> Option<&PlayerListEntry> {
+        self.entries.get(&uuid)
+    }
+
+    /// Returns a mutable reference to the entry with the given UUID.
+    ///
+    /// If the entry does not exist, `None` is returned.
+    pub fn entry_mut(&mut self, uuid: Uuid) -> Option<&mut PlayerListEntry> {
+        self.entries.get_mut(&uuid)
+    }
+
     /// Returns an iterator over all entries in an unspecified order.
     pub fn entries(&self) -> impl Iterator<Item = (Uuid, &PlayerListEntry)> + '_ {
         self.entries.iter().map(|(k, v)| (*k, v))
