@@ -14,7 +14,7 @@ use vek::{Aabb, Vec3};
 use crate::config::Config;
 use crate::entity::types::{Facing, PaintingKind, Pose};
 use crate::protocol::packets::s2c::play::{
-    S2cPlayPacket, SetEntityMetadata, SpawnEntity, SpawnExperienceOrb, SpawnPlayer,
+    S2cPlayPacket, SetEntityMetadata, SetHeadRotation, SpawnEntity, SpawnExperienceOrb, SpawnPlayer,
 };
 use crate::protocol::{ByteAngle, RawBytes, VarInt};
 use crate::slab_versioned::{Key, VersionedSlab};
@@ -737,9 +737,14 @@ impl<C: Config> Entity<C> {
             })
     }
 
-    pub(crate) fn spawn_packet(&self, this_id: EntityId) -> Option<EntitySpawnPacket> {
+    /// Sends the appropriate packets to spawn the entity.
+    pub(crate) fn spawn_packets(
+        &self,
+        this_id: EntityId,
+        mut push_packet: impl FnMut(S2cPlayPacket),
+    ) {
         let with_object_data = |data| {
-            Some(EntitySpawnPacket::Entity(SpawnEntity {
+            S2cPlayPacket::from(SpawnEntity {
                 entity_id: VarInt(this_id.to_network_id()),
                 object_uuid: self.uuid,
                 kind: VarInt(self.kind() as i32),
@@ -749,39 +754,57 @@ impl<C: Config> Entity<C> {
                 head_yaw: ByteAngle::from_degrees(self.head_yaw),
                 data: VarInt(data),
                 velocity: velocity_to_packet_units(self.velocity),
-            }))
+            })
         };
 
         match &self.variants {
-            TrackedData::Marker(_) => None,
-            TrackedData::ExperienceOrb(_) => {
-                Some(EntitySpawnPacket::ExperienceOrb(SpawnExperienceOrb {
+            TrackedData::Marker(_) => {}
+            TrackedData::ExperienceOrb(_) => push_packet(
+                SpawnExperienceOrb {
                     entity_id: VarInt(this_id.to_network_id()),
                     position: self.new_position,
                     count: 0, // TODO
-                }))
+                }
+                .into(),
+            ),
+            TrackedData::Player(_) => {
+                push_packet(
+                    SpawnPlayer {
+                        entity_id: VarInt(this_id.to_network_id()),
+                        player_uuid: self.uuid,
+                        position: self.new_position,
+                        yaw: ByteAngle::from_degrees(self.yaw),
+                        pitch: ByteAngle::from_degrees(self.pitch),
+                    }
+                    .into(),
+                );
+
+                // Player spawn packet doesn't include head yaw for some reason.
+                push_packet(
+                    SetHeadRotation {
+                        entity_id: VarInt(this_id.to_network_id()),
+                        head_yaw: ByteAngle::from_degrees(self.head_yaw),
+                    }
+                    .into(),
+                );
             }
-            TrackedData::Player(_) => Some(EntitySpawnPacket::Player(SpawnPlayer {
-                entity_id: VarInt(this_id.to_network_id()),
-                player_uuid: self.uuid,
-                position: self.new_position,
-                yaw: ByteAngle::from_degrees(self.yaw),
-                pitch: ByteAngle::from_degrees(self.pitch),
-            })),
-            TrackedData::ItemFrame(e) => with_object_data(e.get_rotation()),
-            TrackedData::GlowItemFrame(e) => with_object_data(e.get_rotation()),
-            TrackedData::Painting(_) => {
-                with_object_data(match ((self.yaw + 45.0).rem_euclid(360.0) / 90.0) as u8 {
+            TrackedData::ItemFrame(e) => push_packet(with_object_data(e.get_rotation())),
+            TrackedData::GlowItemFrame(e) => push_packet(with_object_data(e.get_rotation())),
+            TrackedData::Painting(_) => push_packet(with_object_data(
+                match ((self.yaw + 45.0).rem_euclid(360.0) / 90.0) as u8 {
                     0 => 3,
                     1 => 4,
                     2 => 2,
                     _ => 5,
-                })
+                },
+            )),
+            // TODO: set block state ID for falling block.
+            TrackedData::FallingBlock(_) => push_packet(with_object_data(1)),
+            TrackedData::FishingBobber(e) => push_packet(with_object_data(e.get_hook_entity_id())),
+            TrackedData::Warden(e) => {
+                push_packet(with_object_data((e.get_pose() == Pose::Emerging).into()))
             }
-            TrackedData::FallingBlock(_) => with_object_data(1), // TODO: set block state ID.
-            TrackedData::FishingBobber(e) => with_object_data(e.get_hook_entity_id()),
-            TrackedData::Warden(e) => with_object_data((e.get_pose() == Pose::Emerging).into()),
-            _ => with_object_data(0),
+            _ => push_packet(with_object_data(0)),
         }
     }
 }
@@ -791,22 +814,6 @@ pub(crate) fn velocity_to_packet_units(vel: Vec3<f32>) -> Vec3<i16> {
     (8000.0 / STANDARD_TPS as f32 * vel).as_()
 }
 
-pub(crate) enum EntitySpawnPacket {
-    Entity(SpawnEntity),
-    ExperienceOrb(SpawnExperienceOrb),
-    Player(SpawnPlayer),
-}
-
-impl From<EntitySpawnPacket> for S2cPlayPacket {
-    fn from(pkt: EntitySpawnPacket) -> Self {
-        match pkt {
-            EntitySpawnPacket::Entity(pkt) => pkt.into(),
-            EntitySpawnPacket::ExperienceOrb(pkt) => pkt.into(),
-            EntitySpawnPacket::Player(pkt) => pkt.into(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::num::NonZeroU32;
@@ -814,25 +821,9 @@ mod tests {
     use uuid::Uuid;
 
     use super::{Entities, EntityId, EntityKind};
-    use crate::config::Config;
-    use crate::server::Server;
     use crate::slab_versioned::Key;
 
-    /// Created for the sole purpose of use during unit tests.
-    struct MockConfig;
-    impl Config for MockConfig {
-        type ServerState = ();
-        type ClientState = ();
-        type EntityState = u8; // Just for identification purposes
-        type WorldState = ();
-        type ChunkState = ();
-        type PlayerListState = ();
-
-        fn max_connections(&self) -> usize {
-            10
-        }
-        fn update(&self, _server: &mut Server<Self>) {}
-    }
+    type MockConfig = crate::config::MockConfig<(), (), u8>;
 
     #[test]
     fn entities_has_valid_new_state() {

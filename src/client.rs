@@ -1252,7 +1252,6 @@ impl<C: Config> Client<C> {
             if let Some(chunk) = world.chunks.get(pos) {
                 if self.loaded_chunks.insert(pos) {
                     self.send_packet(chunk.chunk_data_packet(pos));
-                    chunk.block_change_packets(pos, dimension.min_y, |pkt| self.send_packet(pkt));
                 }
             }
         }
@@ -1470,11 +1469,7 @@ impl<C: Config> Client<C> {
                     && entity.uuid() != self.uuid
                     && self.loaded_entities.insert(id)
                 {
-                    self.send_packet(
-                        entity
-                            .spawn_packet(id)
-                            .expect("should not be a marker entity"),
-                    );
+                    entity.spawn_packets(id, |pkt| self.send_packet(pkt));
 
                     if let Some(meta) = entity.initial_tracked_data_packet(id) {
                         self.send_packet(meta);

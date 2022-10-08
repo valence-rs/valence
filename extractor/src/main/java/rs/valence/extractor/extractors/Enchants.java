@@ -1,10 +1,10 @@
-package dev._00a.valence_extractor.extractors;
+package rs.valence.extractor.extractors;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import dev._00a.valence_extractor.Main;
 import net.minecraft.util.registry.Registry;
+import rs.valence.extractor.Main;
 
 public class Enchants implements Main.Extractor {
     public Enchants() {
@@ -17,7 +17,6 @@ public class Enchants implements Main.Extractor {
 
     @Override
     public JsonElement extract() {
-        var topLevelJson = new JsonObject();
         var enchantsJson = new JsonArray();
 
         for (var enchant : Registry.ENCHANTMENT) {
@@ -35,7 +34,7 @@ public class Enchants implements Main.Extractor {
             var enchantmentSources = new JsonObject();
             enchantmentSources.addProperty("treasure", enchant.isTreasure());
             enchantmentSources.addProperty("enchantment_table", enchant.isAvailableForEnchantedBookOffer());
-            //All enchants except for 'Soul speed' and 'Swift sneak' are available for random selection and are only obtainable from loot chests.
+            // All enchants except for 'Soul speed' and 'Swift sneak' are available for random selection and are only obtainable from loot chests.
             enchantmentSources.addProperty("random_selection", enchant.isAvailableForRandomSelection());
 
             enchantJson.add("sources", enchantmentSources);
@@ -43,7 +42,6 @@ public class Enchants implements Main.Extractor {
             enchantsJson.add(enchantJson);
         }
 
-        topLevelJson.add("enchants", enchantsJson);
-        return topLevelJson;
+        return enchantsJson;
     }
 }

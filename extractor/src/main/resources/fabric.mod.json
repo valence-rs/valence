@@ -8,13 +8,13 @@
     "Valence Project Authors"
   ],
   "contact": {
-    "homepage": "https://github.com/rj00a/valence",
-    "sources": "https://github.com/rj00a/valence"
+    "homepage": "https://github.com/valence-rs/valence",
+    "sources": "https://github.com/valence-rs/valence"
   },
   "environment": "*",
   "entrypoints": {
     "main": [
-      "dev._00a.valence_extractor.Main"
+      "rs.valence.extractor.Main"
     ]
   },
   "mixins": [],

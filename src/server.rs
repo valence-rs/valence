@@ -13,7 +13,7 @@ use flume::{Receiver, Sender};
 use num::BigInt;
 use rand::rngs::OsRng;
 use rayon::iter::ParallelIterator;
-use reqwest::Client as HttpClient;
+use reqwest::{Client as HttpClient, StatusCode};
 use rsa::{PaddingScheme, PublicKeyParts, RsaPrivateKey};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -440,12 +440,6 @@ fn do_update_loop<C: Config>(server: &mut Server<C>) -> ShutdownResult {
         shared.config().update(server);
 
         server.worlds.par_iter_mut().for_each(|(id, world)| {
-            // Chunks created this tick can have their changes applied immediately because
-            // they have not been observed by clients yet. Clients will not have to be sent
-            // the block change packet in this case, since the changes are applied before we
-            // update clients.
-            world.chunks.update_created_this_tick();
-
             world.spatial_index.update(&server.entities, id);
         });
 
@@ -715,17 +709,18 @@ async fn handle_login<C: Config>(
             &hex_hash,
             &remote_addr.ip(),
         );
+
         let resp = server.0.http_client.get(url).send().await?;
 
-        match resp.status().as_u16() {
-            200 => (),
-            204 => {
+        match resp.status() {
+            StatusCode::OK => {}
+            StatusCode::NO_CONTENT => {
                 let reason = Text::translate("multiplayer.disconnect.unverified_username");
                 c.enc.write_packet(&DisconnectLogin { reason }).await?;
                 bail!("Could not verify username");
             }
             status => {
-                bail!("session server GET request failed: {status}");
+                bail!("session server GET request failed (status code {status})");
             }
         }
 

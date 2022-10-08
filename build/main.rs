@@ -9,6 +9,7 @@ mod block;
 mod enchant;
 mod entity;
 mod entity_event;
+mod item;
 
 pub fn main() -> anyhow::Result<()> {
     println!("cargo:rerun-if-changed=extracted/");
@@ -17,6 +18,7 @@ pub fn main() -> anyhow::Result<()> {
         (entity::build as fn() -> _, "entity.rs"),
         (entity_event::build, "entity_event.rs"),
         (block::build, "block.rs"),
+        (item::build, "item.rs"),
         (enchant::build, "enchant.rs"),
     ];
 

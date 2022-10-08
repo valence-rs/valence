@@ -9,6 +9,7 @@ use std::iter::FusedIterator;
 use anyhow::Context;
 
 pub use crate::block_pos::BlockPos;
+use crate::item::ItemKind;
 use crate::protocol::{Decode, Encode, VarInt};
 
 include!(concat!(env!("OUT_DIR"), "/block.rs"));
