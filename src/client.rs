@@ -1018,7 +1018,8 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::SelectTrade(_) => {}
             C2sPlayPacket::SetBeaconEffect(_) => {}
             C2sPlayPacket::SetHeldItemS2c(e) => {
-                self.selected_hotbar_slot = PlayerInventory::hotbar_to_slot(e.slot.0).unwrap();
+                self.selected_hotbar_slot =
+                    PlayerInventory::hotbar_to_slot(e.slot.0).unwrap_or(self.selected_hotbar_slot);
             }
             C2sPlayPacket::ProgramCommandBlock(_) => {}
             C2sPlayPacket::ProgramCommandBlockMinecart(_) => {}
