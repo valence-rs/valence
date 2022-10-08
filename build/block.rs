@@ -453,11 +453,6 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            pub(crate) const fn from_raw_unchecked(id: u16) -> Self {
-                debug_assert!(Self::from_raw(id).is_some());
-                Self(id)
-            }
-
             /// Returns the [`BlockKind`] of this block state.
             pub const fn to_kind(self) -> BlockKind {
                 match self.0 {

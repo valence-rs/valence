@@ -1275,7 +1275,6 @@ impl<C: Config> Client<C> {
             if let Some(chunk) = world.chunks.get(pos) {
                 if self.loaded_chunks.insert(pos) {
                     self.send_packet(chunk.chunk_data_packet(pos));
-                    chunk.block_change_packets(pos, dimension.min_y, |pkt| self.send_packet(pkt));
                 }
             }
         }

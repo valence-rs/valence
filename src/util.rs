@@ -127,6 +127,17 @@ pub fn ray_box_intersect(ro: Vec3<f64>, rd: Vec3<f64>, bb: Aabb<f64>) -> Option<
     }
 }
 
+/// Calculates the log base 2 rounded up.
+pub(crate) const fn log2_ceil(n: usize) -> usize {
+    debug_assert!(n != 0);
+
+    // TODO: replace with `n.wrapping_next_power_of_two().trailing_zeros()`.
+    match n.checked_next_power_of_two() {
+        Some(n) => n.trailing_zeros() as usize,
+        None => 0_u64.trailing_zeros() as usize,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
