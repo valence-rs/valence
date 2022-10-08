@@ -38,11 +38,6 @@ pub trait Inventory {
     }
 }
 
-pub trait CraftingInventory {
-    fn craft_result_slot() -> SlotId;
-    fn craft_table_slots() -> Range<SlotId>;
-}
-
 /// Represents a player's Inventory.
 #[derive(Debug, Clone)]
 pub struct PlayerInventory {
