@@ -6,7 +6,7 @@ use num::Integer;
 use valence::async_trait;
 use valence::block::BlockState;
 use valence::chunk::{Chunk, UnloadedChunk};
-use valence::client::{handle_event_default, ClientEvent, GameMode, Hand};
+use valence::client::{handle_event_default, ClientEvent, Hand};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::{EntityId, EntityKind};
@@ -196,8 +196,7 @@ impl Config for Game {
                     );
                 }
 
-                client.set_game_mode(GameMode::Creative);
-                client.send_message("Welcome to Valence! Build something cool.".italic());
+                client.send_message("Welcome to Valence! Sneak to give yourself an item.".italic());
             }
 
             if client.is_disconnected() {
