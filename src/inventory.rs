@@ -102,6 +102,7 @@ pub struct ConfigurableInventory {
     /// The slots that the player can place items into for crafting. The
     /// crafting result slot is always zero, and should not be included in this
     /// range.
+    #[allow(dead_code)] // TODO: implement crafting
     crafting_slots: Option<Range<SlotId>>,
     /// The type of window that should be used to display this inventory.
     pub window_type: VarInt,
