@@ -731,8 +731,14 @@ impl<C: Config> Client<C> {
         self.settings.as_ref()
     }
 
+    /// The slot that the client has selected in their hotbar.
     pub fn held_item(&self) -> Slot {
         self.inventory.get_slot(self.selected_hotbar_slot)
+    }
+
+    /// Consume a single item from the stack that the client is holding.
+    pub fn consume_one_held_item(&mut self) {
+        self.inventory.consume_one(self.selected_hotbar_slot);
     }
 
     /// Disconnects this client from the server with the provided reason. This

@@ -220,11 +220,12 @@ impl Config for Game {
                         if hand == Hand::Main {
                             let place_at = location.get_in_direction(face);
                             if let Slot::Present(stack) = client.held_item() {
-                                // FIXME: this itemid to block state conversion does not work as you
-                                // would expect. we need some utilities for this
+                                if client.game_mode() != GameMode::Creative {
+                                    client.consume_one_held_item();
+                                }
                                 world.chunks.set_block_state(
                                     place_at,
-                                    BlockState::from_raw(stack.item_id.0 as u16).unwrap(),
+                                    BlockState::from_kind(stack.item.to_block_kind().unwrap()),
                                 );
                             }
                         }
