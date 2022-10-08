@@ -780,30 +780,22 @@ async fn handle_login<C: Config>(
 
             // read properties and get skin
             let properties: Vec<Value> = serde_json::from_str(data[3]).unwrap();
-            for property_option in properties.iter().map(|p| p.as_object()) {
-                match property_option {
-                    Some(property) => {
-                        let name = property.get("name").unwrap().as_str().unwrap();
-                        if name != "textures" {
-                            continue;
-                        }
-                        let value = property.get("value").unwrap().as_str().unwrap();
-                        let empty_string_value: Value = Value::String(String::new());
-                        let signature = property
-                            .get("signature")
-                            .get_or_insert(&empty_string_value)
-                            .as_str()
-                            .unwrap();
-                        skin = Some(
-                            SignedPlayerTextures::from_base64(
-                                String::from(value),
-                                String::from(signature),
-                            )
-                            .unwrap(),
-                        );
-                    }
-                    None => {}
+            for property in properties.iter().filter_map(|p| p.as_object()) {
+                let name = property.get("name").unwrap().as_str().unwrap();
+                if name != "textures" {
+                    continue;
                 }
+                let value = property.get("value").unwrap().as_str().unwrap();
+                let empty_string_value: Value = Value::String(String::new());
+                let signature = property
+                    .get("signature")
+                    .get_or_insert(&empty_string_value)
+                    .as_str()
+                    .unwrap();
+                skin = Some(
+                    SignedPlayerTextures::from_base64(String::from(value), String::from(signature))
+                        .unwrap(),
+                );
             }
             (uuid, skin)
         }
