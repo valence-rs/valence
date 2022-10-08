@@ -13,7 +13,7 @@ use valence::entity::{EntityId, EntityKind};
 use valence::inventory::{
     ConfigurableInventory, Inventory, InventoryId, PlayerInventory, WindowInventory,
 };
-use valence::itemstack::ItemStack;
+use valence::item::{ItemKind, ItemStack};
 use valence::player_list::PlayerListId;
 use valence::protocol::packets::s2c::play::OpenScreen;
 use valence::protocol::{Slot, SlotId, VarInt};
@@ -218,7 +218,7 @@ impl Config for Game {
                 match event {
                     ClientEvent::InteractWithBlock { hand, location, .. } => {
                         if hand == Hand::Main
-                            && world.chunks.get_block_state(location) == Some(BlockState::CHEST)
+                            && world.chunks.block_state(location) == Some(BlockState::CHEST)
                         {
                             client.send_message("Opening chest!");
                             let window = WindowInventory::new(1, server.state.chest);
@@ -275,12 +275,12 @@ impl Config for Game {
                         let stack = match client.inventory.get_slot(slot_id) {
                             Slot::Empty => ItemStack {
                                 item_count: 1,
-                                item_id: VarInt(1),
+                                item: ItemKind::Stone,
                                 nbt: None,
                             },
                             Slot::Present(s) => ItemStack {
                                 item_count: s.item_count + 1,
-                                item_id: s.item_id,
+                                item: s.item,
                                 nbt: None,
                             },
                         };

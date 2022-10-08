@@ -280,14 +280,13 @@ impl Inventories {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::itemstack::ItemStack;
-    use crate::protocol::VarInt;
+    use crate::item::{ItemKind, ItemStack};
 
     #[test]
     fn test_get_set_slots() {
         let mut inv = PlayerInventory::default();
         let slot = Slot::Present(ItemStack {
-            item_id: VarInt(7),
+            item: ItemKind::Bone,
             item_count: 12,
             nbt: None,
         });
