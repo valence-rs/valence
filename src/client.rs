@@ -21,7 +21,7 @@ use crate::entity::{
     self, velocity_to_packet_units, Entities, EntityId, EntityKind, StatusOrAnimation,
 };
 use crate::ident::Ident;
-use crate::inventory::{Inventory, InventoryDirtyable, PlayerInventory, WindowInventory};
+use crate::inventory::{Inventory, PlayerInventory, WindowInventory};
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::c2s::play::{self, C2sPlayPacket, InteractKind, PlayerCommandId};

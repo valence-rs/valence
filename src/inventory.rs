@@ -13,6 +13,7 @@ pub trait Inventory {
     fn get_slot(&self, slot_id: SlotId) -> Slot;
     fn set_slot(&mut self, slot_id: SlotId, slot: Slot);
     fn slot_count(&self) -> usize;
+    fn mark_dirty(&mut self, dirty: bool);
     fn is_dirty(&self) -> bool;
 
     // TODO: `entry()` style api
@@ -22,10 +23,6 @@ pub trait Inventory {
             .map(|s| self.get_slot(s as SlotId))
             .collect()
     }
-}
-
-pub trait InventoryDirtyable {
-    fn mark_dirty(&mut self, dirty: bool);
 }
 
 pub trait CraftingInventory {
@@ -90,14 +87,12 @@ impl Inventory for PlayerInventory {
         self.slots.len()
     }
 
-    fn is_dirty(&self) -> bool {
-        self.dirty
-    }
-}
-
-impl InventoryDirtyable for PlayerInventory {
     fn mark_dirty(&mut self, dirty: bool) {
         self.dirty = dirty
+    }
+
+    fn is_dirty(&self) -> bool {
+        self.dirty
     }
 }
 
@@ -146,14 +141,12 @@ impl Inventory for ConfigurableInventory {
         self.slots.len()
     }
 
-    fn is_dirty(&self) -> bool {
-        self.dirty
-    }
-}
-
-impl InventoryDirtyable for ConfigurableInventory {
     fn mark_dirty(&mut self, dirty: bool) {
         self.dirty = dirty
+    }
+
+    fn is_dirty(&self) -> bool {
+        self.dirty
     }
 }
 
