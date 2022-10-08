@@ -582,8 +582,8 @@ impl<C: Config> Client<C> {
         })
     }
 
-    /// Kills player. Shows `message` on the death screen. If an entity killed
-    /// the player, pass it's ID into the function.
+    /// Kills the client and shows `message` on the death screen. If an entity killed
+    /// the player, pass its ID into the function.
     pub fn kill(&mut self, killer: Option<EntityId>, message: impl Into<Text>) {
         let entity_id = match killer {
             Some(k) => k.to_network_id(),

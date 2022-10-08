@@ -2,10 +2,9 @@ use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
-use num::Integer;
-use valence::biome::Biome;
+use valence::async_trait;
 use valence::block::{BlockPos, BlockState};
-use valence::chunk::{Chunk, UnloadedChunk};
+use valence::chunk::UnloadedChunk;
 use valence::client::{handle_event_default, ClientEvent};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::Dimension;
@@ -15,12 +14,11 @@ use valence::protocol::packets::s2c::play::{GameEvent, GameStateChangeReason};
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 use valence::world::WorldId;
-use valence::{async_trait, ident};
 use vek::Vec3;
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()
-        .filter_module("valence", LevelFilter::Info) // todo reset to Trace
+        .filter_module("valence", LevelFilter::Trace)
         .parse_default_env()
         .init();
 
@@ -53,11 +51,8 @@ struct WorldState {
 #[derive(Default)]
 struct ServerState {
     first_world: WorldId,
-    first_world_spawn_block: BlockPos,
     second_world: WorldId,
-    second_world_spawn_block: BlockPos,
     third_world: WorldId,
-    third_world_spawn_block: BlockPos,
 }
 
 const MAX_PLAYERS: usize = 10;
@@ -68,6 +63,11 @@ const PLATFORM_Z: i32 = 20;
 const LEFT_DEATH_LINE: i32 = 16;
 const RIGHT_DEATH_LINE: i32 = 4;
 
+const FIRST_WORLD_SPAWN_BLOCK: BlockPos = BlockPos::new(10, FLOOR_Y, 10);
+const SECOND_WORLD_SPAWN_BLOCK: BlockPos = BlockPos::new(5, FLOOR_Y, 5);
+const THIRD_WORLD_SPAWN_BLOCK: BlockPos = BlockPos::new(5, FLOOR_Y, 5);
+
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum WhichWorld {
     First,
     Second,
@@ -114,14 +114,6 @@ impl Config for Game {
         ]
     }
 
-    fn biomes(&self) -> Vec<Biome> {
-        vec![Biome {
-            name: ident!("valence:default_biome"),
-            grass_color: Some(0x00ff00),
-            ..Biome::default()
-        }]
-    }
-
     async fn server_list_ping(
         &self,
         _server: &SharedServer<Self>,
@@ -140,23 +132,10 @@ impl Config for Game {
     fn init(&self, server: &mut Server<Self>) {
         // We created server with meaningless default state.
         // Let's create three worlds and create new ServerState.
-
-        let first_world_spawn_block = [10_i32, FLOOR_Y, 10].into();
-        let first_world = create_world(server, first_world_spawn_block, WhichWorld::First);
-
-        let second_world_spawn_block = [5_i32, FLOOR_Y, 5].into();
-        let second_world = create_world(server, second_world_spawn_block, WhichWorld::Second);
-
-        let third_world_spawn_block = [5_i32, FLOOR_Y, 5].into();
-        let third_world = create_world(server, third_world_spawn_block, WhichWorld::Third);
-
         server.state = ServerState {
-            first_world,
-            first_world_spawn_block,
-            second_world,
-            second_world_spawn_block,
-            third_world,
-            third_world_spawn_block,
+            first_world: create_world(server, FIRST_WORLD_SPAWN_BLOCK, WhichWorld::First),
+            second_world: create_world(server, SECOND_WORLD_SPAWN_BLOCK, WhichWorld::Second),
+            third_world: create_world(server, THIRD_WORLD_SPAWN_BLOCK, WhichWorld::Third),
         };
     }
 
@@ -190,11 +169,11 @@ impl Config for Game {
 
                 client.state.respawn_location = (
                     server.state.first_world,
-                    block_pos_to_vec(server.state.first_world_spawn_block),
+                    block_pos_to_vec(FIRST_WORLD_SPAWN_BLOCK),
                 );
 
                 // `set_spawn_position` is used for compass _only_
-                client.set_spawn_position(server.state.first_world_spawn_block, 0.0);
+                client.set_spawn_position(FIRST_WORLD_SPAWN_BLOCK, 0.0);
 
                 client.set_flat(true);
                 client.spawn(first_world_id);
@@ -246,7 +225,7 @@ impl Config for Game {
 
             // Handling respawn locations
             if !client.state.can_respawn {
-                if client.position().y <= -10.0 {
+                if client.position().y < 0.0 {
                     client.state.can_respawn = true;
                     client.kill(None, "You fell");
                     // You could have also killed the player with `Client::set_health_and_food`,
@@ -256,38 +235,40 @@ impl Config for Game {
                         // Falling in third world gets you back to the first world
                         client.state.respawn_location = (
                             server.state.first_world,
-                            block_pos_to_vec(server.state.first_world_spawn_block),
+                            block_pos_to_vec(FIRST_WORLD_SPAWN_BLOCK),
                         );
-                        client.set_spawn_position(server.state.first_world_spawn_block, 0.0);
+                        client.set_spawn_position(FIRST_WORLD_SPAWN_BLOCK, 0.0);
                     } else {
                         // falling in first and second world will cause player to spawn in third
                         // world
                         client.state.respawn_location = (
                             server.state.third_world,
-                            block_pos_to_vec(server.state.third_world_spawn_block),
+                            block_pos_to_vec(THIRD_WORLD_SPAWN_BLOCK),
                         );
                         // This is for compass to point at
-                        client.set_spawn_position(server.state.third_world_spawn_block, 0.0);
+                        client.set_spawn_position(THIRD_WORLD_SPAWN_BLOCK, 0.0);
                     }
                 }
 
                 // Death lanes in the first world
                 if client.world() == server.state.first_world {
+                    let death_msg = "You shouldn't cross suspicious lines";
+
                     if client.position().x >= LEFT_DEATH_LINE as f64 {
                         // Client went to the left, he dies
                         client.state.can_respawn = true;
-                        client.kill(None, "You shouldn't cross suspicious lines");
+                        client.kill(None, death_msg);
                     }
 
                     if client.position().x <= RIGHT_DEATH_LINE as f64 {
                         // Client went to the right, he dies and spawns in world2
                         client.state.can_respawn = true;
-                        client.kill(None, "You shouldn't cross suspicious lines");
+                        client.kill(None, death_msg);
                         client.state.respawn_location = (
                             server.state.second_world,
-                            block_pos_to_vec(server.state.second_world_spawn_block),
+                            block_pos_to_vec(SECOND_WORLD_SPAWN_BLOCK),
                         );
-                        client.set_spawn_position(server.state.second_world_spawn_block, 0.0);
+                        client.set_spawn_position(SECOND_WORLD_SPAWN_BLOCK, 0.0);
                     }
                 }
             }
@@ -299,6 +280,7 @@ impl Config for Game {
                     ClientEvent::RespawnRequest => {
                         if !client.state.can_respawn {
                             client.disconnect("Unexpected RespawnRequest");
+                            return false;
                         }
                         // Let's respawn our player. `spawn` will load the world, but we are
                         // responsible for teleporting the player.
@@ -335,16 +317,14 @@ fn create_world(server: &mut Server<Game>, spawn_pos: BlockPos, world_type: Whic
     };
 
     let player_list = server.player_lists.insert(()).0;
-    let (world_id, world1) = server
+    let (world_id, world) = server
         .worlds
         .insert(dimension.0, WorldState { player_list });
 
-    let first_min_y = server.shared.dimension(world1.meta.dimension()).min_y;
-
     // Create chunks
-    for chunk_z in -2..2 {
-        for chunk_x in -2..2 {
-            world1.chunks.insert(
+    for chunk_z in -3..3 {
+        for chunk_x in -3..3 {
+            world.chunks.insert(
                 [chunk_x as i32, chunk_z as i32],
                 UnloadedChunk::default(),
                 (),
@@ -353,34 +333,36 @@ fn create_world(server: &mut Server<Game>, spawn_pos: BlockPos, world_type: Whic
     }
 
     // Create platform
-    for chunk_x in 0..Integer::div_ceil(&PLATFORM_X, &16) {
-        for chunk_z in 0..Integer::div_ceil(&PLATFORM_Z, &16) {
-            let chunk = world1.chunks.get_mut((chunk_x, chunk_z)).unwrap();
-            for x in 0..16_usize {
-                for z in 0..16_usize {
-                    let cell_x = chunk_x * 16 + x as i32;
-                    let cell_z = chunk_z * 16 + z as i32;
+    let platform_block = match world_type {
+        WhichWorld::First => BlockState::END_STONE,
+        WhichWorld::Second => BlockState::AMETHYST_BLOCK,
+        WhichWorld::Third => BlockState::BLACKSTONE,
+    };
 
-                    let b = if cell_x == spawn_pos.x && cell_z == spawn_pos.z {
-                        BlockState::REDSTONE_BLOCK
-                    } else {
-                        match world_type {
-                            WhichWorld::First => match cell_x {
-                                LEFT_DEATH_LINE => BlockState::GOLD_BLOCK,
-                                RIGHT_DEATH_LINE => BlockState::DIAMOND_BLOCK,
-                                _ => BlockState::END_STONE,
-                            },
-                            _ => BlockState::BLACKSTONE,
-                        }
-                    };
-
-                    if cell_x < PLATFORM_X && cell_z < PLATFORM_Z {
-                        chunk.set_block_state(x, (FLOOR_Y - first_min_y) as usize, z, b);
-                    }
-                }
-            }
+    for z in 0..PLATFORM_Z {
+        for x in 0..PLATFORM_X {
+            world
+                .chunks
+                .set_block_state([x, FLOOR_Y, z], platform_block);
         }
     }
+
+    // Set death lines
+    if world_type == WhichWorld::First {
+        for z in 0..PLATFORM_Z {
+            world
+                .chunks
+                .set_block_state([LEFT_DEATH_LINE, FLOOR_Y, z], BlockState::GOLD_BLOCK);
+            world
+                .chunks
+                .set_block_state([RIGHT_DEATH_LINE, FLOOR_Y, z], BlockState::DIAMOND_BLOCK);
+        }
+    }
+
+    // Set spawn block
+    world
+        .chunks
+        .set_block_state(spawn_pos, BlockState::REDSTONE_BLOCK);
 
     world_id
 }
