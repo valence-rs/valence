@@ -249,18 +249,19 @@ impl Inventories {
                 if let Some(window) = client.open_inventory.as_ref() {
                     // this client has an inventory open
                     let obj_inv_id = window.object_inventory;
-                    let obj_inv = self.get(obj_inv_id).unwrap(); // FIXME: don't unwrap
-                    if obj_inv.is_dirty() {
-                        let window_id = window.window_id;
-                        let slots = window.slots(obj_inv, &client.inventory);
-                        let carried_item = client.cursor_held_item.clone();
-                        client.send_packet(SetContainerContent {
-                            window_id,
-                            state_id: VarInt(1),
-                            slots,
-                            carried_item,
-                        });
-                        return Some(obj_inv_id);
+                    if let Some(obj_inv) = self.get(obj_inv_id) {
+                        if obj_inv.is_dirty() {
+                            let window_id = window.window_id;
+                            let slots = window.slots(obj_inv, &client.inventory);
+                            let carried_item = client.cursor_held_item.clone();
+                            client.send_packet(SetContainerContent {
+                                window_id,
+                                state_id: VarInt(1),
+                                slots,
+                                carried_item,
+                            });
+                            return Some(obj_inv_id);
+                        }
                     }
                 }
                 None
@@ -269,6 +270,7 @@ impl Inventories {
             .map(|id| id.unwrap())
             .collect();
 
+        // now that we have synced all the dirty inventories, mark them as clean
         for (_, inv) in self.slab.iter_mut() {
             inv.mark_dirty(false);
         }
