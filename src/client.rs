@@ -1453,15 +1453,11 @@ impl<C: Config> Client<C> {
                     .get(id)
                     .expect("entity IDs in spatial index should be valid at this point");
 
-                // We want to skip player entities that are not in the players player_list.
+                // Skip spawning players not in the player list because they would be invisible
+                // otherwise.
                 if entity.kind() == EntityKind::Player {
                     if let Some(list_id) = &self.new_player_list {
-                        let entry = player_lists.get(list_id).get_entry(&entity.uuid());
-
-                        #[allow(clippy::question_mark)]
-                        if entry.is_none() {
-                            return None;
-                        }
+                        player_lists.get(list_id).entry(entity.uuid())?;
                     }
                 }
 
