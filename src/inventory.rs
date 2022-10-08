@@ -196,6 +196,12 @@ pub struct Inventories {
     slab: VersionedSlab<ConfigurableInventory>,
 }
 
+impl Default for Inventories {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Inventories {
     pub fn new() -> Self {
         Self {
