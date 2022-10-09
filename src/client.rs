@@ -733,7 +733,7 @@ impl<C: Config> Client<C> {
 
     /// The slot that the client has selected in their hotbar.
     pub fn held_item(&self) -> Slot {
-        self.inventory.get_slot(self.selected_hotbar_slot)
+        self.inventory.slot(self.selected_hotbar_slot)
     }
 
     /// Consume a single item from the stack that the client is holding.

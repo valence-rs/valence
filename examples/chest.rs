@@ -272,7 +272,7 @@ impl Config for Game {
                     }
                     ClientEvent::StartSneaking => {
                         let slot_id: SlotId = PlayerInventory::HOTBAR_SLOTS.start;
-                        let stack = match client.inventory.get_slot(slot_id) {
+                        let stack = match client.inventory.slot(slot_id) {
                             Slot::Empty => ItemStack {
                                 item_count: 1,
                                 item: ItemKind::Stone,
@@ -297,8 +297,8 @@ impl Config for Game {
 
 fn rotate_items(inv: &mut ConfigurableInventory) {
     for i in 1..inv.slot_count() {
-        let a = inv.get_slot((i - 1) as SlotId);
-        let b = inv.get_slot(i as SlotId);
+        let a = inv.slot((i - 1) as SlotId);
+        let b = inv.slot(i as SlotId);
         inv.set_slot((i - 1) as SlotId, b);
         inv.set_slot(i as SlotId, a);
     }
