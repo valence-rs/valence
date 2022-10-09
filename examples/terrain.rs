@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::SystemTime;
 
 use log::LevelFilter;
 use noise::{NoiseFn, Seedable, SuperSimplex};
@@ -23,7 +24,12 @@ pub fn main() -> ShutdownResult {
         .parse_default_env()
         .init();
 
-    let seed = rand::random();
+    let seconds_per_day = 86_400;
+
+    let seed = (SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)?
+        .as_secs()
+        / seconds_per_day) as u32;
 
     valence::start_server(
         Game {
@@ -197,8 +203,8 @@ impl Config for Game {
 
                     // Add grass
                     for y in (0..chunk.height()).rev() {
-                        if chunk.get_block_state(x, y, z).is_air()
-                            && chunk.get_block_state(x, y - 1, z) == BlockState::GRASS_BLOCK
+                        if chunk.block_state(x, y, z).is_air()
+                            && chunk.block_state(x, y - 1, z) == BlockState::GRASS_BLOCK
                         {
                             let density = fbm(
                                 &self.grass_noise,
@@ -209,7 +215,7 @@ impl Config for Game {
                             );
 
                             if density > 0.55 {
-                                if density > 0.7 && chunk.get_block_state(x, y + 1, z).is_air() {
+                                if density > 0.7 && chunk.block_state(x, y + 1, z).is_air() {
                                     let upper = BlockState::TALL_GRASS
                                         .set(PropName::Half, PropValue::Upper);
                                     let lower = BlockState::TALL_GRASS

@@ -1,4 +1,4 @@
-package dev._00a.valence_extractor;
+package rs.valence.extractor;
 
 import com.mojang.authlib.GameProfile;
 import net.minecraft.entity.Entity;

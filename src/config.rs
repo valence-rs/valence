@@ -2,7 +2,6 @@
 
 use std::borrow::Cow;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
-use std::panic::{RefUnwindSafe, UnwindSafe};
 
 use async_trait::async_trait;
 use serde::Serialize;
@@ -24,7 +23,7 @@ use crate::{Ticks, STANDARD_TPS};
 /// [async_trait]: https://docs.rs/async-trait/latest/async_trait/
 #[async_trait]
 #[allow(unused_variables)]
-pub trait Config: Sized + Send + Sync + UnwindSafe + RefUnwindSafe + 'static {
+pub trait Config: Sized + Send + Sync + 'static {
     /// Custom state to store with the [`Server`].
     type ServerState: Send + Sync;
     /// Custom state to store with every [`Client`](crate::client::Client).
@@ -336,4 +335,34 @@ pub struct PlayerSampleEntry<'a> {
     pub name: Cow<'a, str>,
     /// The player UUID.
     pub id: Uuid,
+}
+
+/// A minimal `Config` implementation for testing purposes.
+#[cfg(test)]
+pub(crate) struct MockConfig<S = (), Cl = (), E = (), W = (), Ch = (), P = ()> {
+    _marker: std::marker::PhantomData<(S, Cl, E, W, Ch, P)>,
+}
+
+#[cfg(test)]
+impl<S, Cl, E, W, Ch, P> Config for MockConfig<S, Cl, E, W, Ch, P>
+where
+    S: Send + Sync + 'static,
+    Cl: Default + Send + Sync + 'static,
+    E: Send + Sync + 'static,
+    W: Send + Sync + 'static,
+    Ch: Send + Sync + 'static,
+    P: Send + Sync + 'static,
+{
+    type ServerState = S;
+    type ClientState = Cl;
+    type EntityState = E;
+    type WorldState = W;
+    type ChunkState = Ch;
+    type PlayerListState = P;
+
+    fn max_connections(&self) -> usize {
+        64
+    }
+
+    fn update(&self, _server: &mut Server<Self>) {}
 }

@@ -283,7 +283,7 @@ impl Config for Game {
             mem::swap(&mut server.state.board, &mut server.state.board_buf);
         }
 
-        let min_y = server.shared.dimensions().next().unwrap().1.min_y;
+        let min_y = world.chunks.min_y();
 
         for chunk_x in 0..Integer::div_ceil(&SIZE_X, &16) {
             for chunk_z in 0..Integer::div_ceil(&SIZE_Z, &16) {

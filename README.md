@@ -2,9 +2,13 @@
 
 A Rust framework for building Minecraft: Java Edition servers.
 
-Like [feather](https://github.com/feather-rs/feather), Valence is an effort to build a Minecraft compatible server completely from scratch in Rust. The difference is that Valence has decided to organize the effort a little differently. All game logic is behind a trait. This approach has many advantages. Features such as a plugin system, dedicated executable, and vanilla game mechanics can be implemented _on top of_ Valence. Valence is a Rust library like any other.
+Like [feather](https://github.com/feather-rs/feather), Valence is an effort to build a Minecraft compatible server
+completely from scratch in Rust. The difference is that Valence has decided to organize the effort a little differently.
+All game logic is behind a trait. This approach has many advantages. Features such as a plugin system, dedicated
+executable, and vanilla game mechanics can be implemented _on top of_ Valence. Valence is a Rust library like any other.
 
-In the future we may decide to reimplement vanilla game mechanics as a separate project. If you're developing something like a minigame server without need for vanilla game mechanics, you can depend on Valence directly.
+In the future we may decide to reimplement vanilla game mechanics as a separate project. If you're developing something
+like a minigame server without need for vanilla game mechanics, you can depend on Valence directly.
 
 # Goals
 
@@ -77,8 +81,9 @@ View the documentation by running `cargo d --open` in your project.
 
 # Contributing
 
-Contributions are welcome! Take a look at the [issue tracker](https://github.com/rj00a/valence/issues) to see what needs
-to be done. You can also join [the Discord](https://discord.gg/8Fqqy9XrYb) to discuss the project and ask questions.
+Contributions are welcome! Please
+see [CONTRIBUTING.md](https://github.com/valence-rs/valence/blob/main/CONTRIBUTING.md). You can also
+join [the Discord](https://discord.gg/8Fqqy9XrYb) to discuss the project and ask questions.
 
 # License
 
@@ -87,7 +92,8 @@ under [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/)
 
 # Funding
 
-If you would like to contribute financially consider sponsoring me (rj00a) on [GitHub](https://github.com/sponsors/rj00a)
+If you would like to contribute financially consider sponsoring me (rj00a)
+on [GitHub](https://github.com/sponsors/rj00a)
 or [Patreon](https://www.patreon.com/rj00a) (GitHub is preferred).
 
 I would love to continue working on Valence and your support would help me do that. Thanks!

@@ -188,8 +188,8 @@ pub struct Client<C: Config> {
     username: String,
     textures: Option<SignedPlayerTextures>,
     world: WorldId,
+    player_list: Option<PlayerListId>,
     old_player_list: Option<PlayerListId>,
-    new_player_list: Option<PlayerListId>,
     position: Vec3<f64>,
     old_position: Vec3<f64>,
     /// Measured in m/s.
@@ -271,7 +271,7 @@ impl<C: Config> Client<C> {
             textures: ncd.textures,
             world: WorldId::default(),
             old_player_list: None,
-            new_player_list: None,
+            player_list: None,
             position: Vec3::default(),
             old_position: Vec3::default(),
             velocity: Vec3::default(),
@@ -334,14 +334,14 @@ impl<C: Config> Client<C> {
 
     /// Gets the player list this client sees.
     pub fn player_list(&self) -> Option<&PlayerListId> {
-        self.new_player_list.as_ref()
+        self.player_list.as_ref()
     }
 
     /// Sets the player list this client sees.
     ///
     /// The previous player list ID is returned.
     pub fn set_player_list(&mut self, id: impl Into<Option<PlayerListId>>) -> Option<PlayerListId> {
-        mem::replace(&mut self.new_player_list, id.into())
+        mem::replace(&mut self.player_list, id.into())
     }
 
     /// Sets if this client sees the world as superflat. Superflat worlds have
@@ -1050,7 +1050,7 @@ impl<C: Config> Client<C> {
         if self.created_this_tick() {
             self.bits.set_spawn(false);
 
-            if let Some(id) = &self.new_player_list {
+            if let Some(id) = &self.player_list {
                 player_lists
                     .get(id)
                     .initial_packets(|p| send_packet(&mut self.send, p));
@@ -1133,7 +1133,7 @@ impl<C: Config> Client<C> {
             }
 
             // If the player list was changed...
-            if self.old_player_list != self.new_player_list {
+            if self.old_player_list != self.player_list {
                 // Delete existing entries from old player list.
                 if let Some(id) = &self.old_player_list {
                     player_lists
@@ -1142,14 +1142,14 @@ impl<C: Config> Client<C> {
                 }
 
                 // Get initial packets for new player list.
-                if let Some(id) = &self.new_player_list {
+                if let Some(id) = &self.player_list {
                     player_lists
                         .get(id)
                         .initial_packets(|p| send_packet(&mut self.send, p));
                 }
 
-                self.old_player_list = self.new_player_list.clone();
-            } else if let Some(id) = &self.new_player_list {
+                self.old_player_list = self.player_list.clone();
+            } else if let Some(id) = &self.player_list {
                 // Update current player list.
                 player_lists
                     .get(id)
@@ -1267,7 +1267,6 @@ impl<C: Config> Client<C> {
             if let Some(chunk) = world.chunks.get(pos) {
                 if self.loaded_chunks.insert(pos) {
                     self.send_packet(chunk.chunk_data_packet(pos));
-                    chunk.block_change_packets(pos, dimension.min_y, |pkt| self.send_packet(pkt));
                 }
             }
         }
@@ -1468,6 +1467,17 @@ impl<C: Config> Client<C> {
                 let entity = entities
                     .get(id)
                     .expect("entity IDs in spatial index should be valid at this point");
+
+                // Skip spawning players not in the player list because they would be invisible
+                // otherwise.
+                if entity.kind() == EntityKind::Player {
+                    if let Some(list_id) = &self.player_list {
+                        player_lists.get(list_id).entry(entity.uuid())?;
+                    } else {
+                        return None;
+                    }
+                }
+
                 if entity.kind() != EntityKind::Marker
                     && entity.uuid() != self.uuid
                     && self.loaded_entities.insert(id)
