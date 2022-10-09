@@ -233,6 +233,12 @@ pub struct Client<C: Config> {
     /// The item currently being held by the client's cursor in an inventory
     /// screen. Does not work for creative mode.
     cursor_held_item: Slot,
+    old_raining: bool,
+    new_raining: bool,
+    old_rain_level: f32,
+    new_rain_level: f32,
+    old_thunder_level: f32,
+    new_thunder_level: f32,
 }
 
 #[bitfield(u16)]
@@ -303,6 +309,12 @@ impl<C: Config> Client<C> {
             player_data: Player::new(),
             entity_events: Vec::new(),
             cursor_held_item: Slot::Empty,
+            old_raining: false,
+            new_raining: false,
+            old_rain_level: 0 as f32,
+            new_rain_level: 0 as f32,
+            old_thunder_level: 0 as f32,
+            new_thunder_level: 0 as f32,
         }
     }
 
@@ -462,6 +474,36 @@ impl<C: Config> Client<C> {
     /// Sets the client's game mode.
     pub fn set_game_mode(&mut self, game_mode: GameMode) {
         self.new_game_mode = game_mode;
+    }
+
+    /// Indicates if it is raining
+    pub fn raining(&self) -> bool {
+        self.new_raining
+    }
+
+    /// Sets sets whether it rains
+    pub fn set_raining(&mut self, raining: bool) {
+        self.new_raining = raining;
+    }
+
+    /// Gets the client's rain level
+    pub fn rain_level(&self) -> f32 {
+        self.new_rain_level
+    }
+
+    /// Sets the client's rain level
+    pub fn set_rain_level(&mut self, rain_level: f32) {
+        self.new_rain_level = rain_level;
+    }
+
+    /// Gets the client's thunder level
+    pub fn thunder_level(&self) -> f32 {
+        self.new_thunder_level
+    }
+
+    /// Sets the client's thunder level
+    pub fn set_thunder_level(&mut self, thunder_level: f32) {
+        self.new_thunder_level = thunder_level;
     }
 
     /// Plays a sound to the client at a given position.
@@ -1114,6 +1156,32 @@ impl<C: Config> Client<C> {
                 self.send_packet(GameEvent {
                     reason: GameStateChangeReason::ChangeGameMode,
                     value: self.new_game_mode as i32 as f32,
+                });
+            }
+
+            // Update Raining and Thundering
+
+            if self.old_raining != self.new_raining {
+                self.old_raining = self.new_raining;
+                self.send_packet(GameEvent {
+                    reason: if self.old_raining {GameStateChangeReason::BeginRaining} else {GameStateChangeReason::EndRaining},
+                    value: 0 as f32,
+                })
+            }
+
+            if self.old_rain_level != self.new_rain_level {
+                self.old_rain_level = self.new_rain_level;
+                self.send_packet(GameEvent {
+                    reason: GameStateChangeReason::RainLevelChange,
+                    value: self.old_rain_level as f32,
+                });
+            }
+
+            if self.old_thunder_level != self.new_thunder_level {
+                self.old_thunder_level = self.new_thunder_level;
+                self.send_packet(GameEvent {
+                    reason: GameStateChangeReason::ThunderLevelChange,
+                    value: self.old_thunder_level as f32,
                 });
             }
 
