@@ -302,7 +302,7 @@ impl<C: Config> Client<C> {
                 .with_created_this_tick(true),
             player_data: Player::new(),
             entity_events: Vec::new(),
-            cursor_held_item: Slot::Empty,
+            cursor_held_item: None,
         }
     }
 
@@ -785,12 +785,10 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::ClickContainer(p) => {
                 if p.slot_idx == -999 {
                     // client is trying to drop the currently held stack
-                    let held = std::mem::replace(&mut self.cursor_held_item, Slot::Empty);
+                    let held = std::mem::replace(&mut self.cursor_held_item, None);
                     match held {
-                        Slot::Empty => {}
-                        Slot::Present(stack) => {
-                            self.events.push_back(ClientEvent::DropItemStack { stack })
-                        }
+                        None => {}
+                        Some(stack) => self.events.push_back(ClientEvent::DropItemStack { stack }),
                     }
                 } else {
                     self.cursor_held_item = p.carried_item.clone();
@@ -971,12 +969,10 @@ impl<C: Config> Client<C> {
                 if e.slot == -1 {
                     // The client is trying to drop a stack of items
                     match e.clicked_item {
-                        Slot::Empty => log::warn!(
+                        None => log::warn!(
                             "Invalid packet, creative client tried to drop a stack of nothing."
                         ),
-                        Slot::Present(stack) => {
-                            self.events.push_back(ClientEvent::DropItemStack { stack })
-                        }
+                        Some(stack) => self.events.push_back(ClientEvent::DropItemStack { stack }),
                     }
                 } else {
                     self.events.push_back(ClientEvent::SetSlotCreative {
