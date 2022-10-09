@@ -464,6 +464,44 @@ impl<C: Config> Client<C> {
         self.new_game_mode = game_mode;
     }
 
+    /// Sets whether or not the client sees rain.
+    pub fn set_raining(&mut self, raining: bool) {
+        self.send_packet(GameEvent {
+            reason: if raining {
+                GameStateChangeReason::BeginRaining
+            } else {
+                GameStateChangeReason::EndRaining
+            },
+            value: 0.0,
+        })
+    }
+
+    /// Sets the client's rain level. This changes the sky color and lightning
+    /// on the client.
+    ///
+    /// The rain level is clamped between `0.0.` and `1.0`.
+    pub fn set_rain_level(&mut self, rain_level: f32) {
+        self.send_packet(GameEvent {
+            reason: GameStateChangeReason::RainLevelChange,
+            value: rain_level.clamp(0.0, 1.0),
+        });
+    }
+
+    /// Sets the client's thunder level. This changes the sky color and
+    /// lightning on the client.
+    ///
+    /// For this to take effect, it must already be raining via
+    /// [`set_raining`](Self::set_raining) or
+    /// [`set_rain_level`](Self::set_rain_level).
+    ///
+    /// The thunder level is clamped between `0.0` and `1.0`.
+    pub fn set_thunder_level(&mut self, thunder_level: f32) {
+        self.send_packet(GameEvent {
+            reason: GameStateChangeReason::ThunderLevelChange,
+            value: thunder_level.clamp(0.0, 1.0),
+        });
+    }
+
     /// Plays a sound to the client at a given position.
     pub fn play_sound(
         &mut self,
