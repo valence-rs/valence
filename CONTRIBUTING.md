@@ -25,18 +25,21 @@ If an error does occur, it must be fixed before the pull request can be merged.
 # Code Conventions
 
 Here are some rules you should follow for your code. Generally the goal here is to be consistent with existing code, the
-standard library, and the Rust ecosystem as a whole.
+standard library, and the Rust ecosystem as a whole. Nonconforming code is not necessarily a blocker for accepting your
+contribution. It's just nice to have.
 
 These guidelines are intended to complement
 the [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/naming.html).
 
 ## Top-down Modules
 
-[Items](https://doc.rust-lang.org/reference/items.html) in modules should be structured in a top-down style. Readers of
-the module should be able to understand your code by reading it from top to bottom. This implies that `pub` items are
-placed at the top of the file.
+Readers of the module should be able to understand your code by reading it from top to bottom.
+Whenever [items](https://doc.rust-lang.org/reference/items.html) in your module form a parent-child relationship, the
+parent should be written above the children. Typically this means that important `pub` items are placed before private
+implementation details.
 
-For instance, here are three functions. Notice how the definition of `foo` is placed above its dependencies.
+For instance, here are three functions. Notice how the definition of `foo` is placed above its dependencies. The parent
+is `foo` while its children are `bar` and `baz`.
 
 ```rust
 pub fn foo() {
@@ -53,37 +56,12 @@ This guideline applies to types as well.
 
 ```rust
 pub struct Foo {
-    bar: Bar,
-    baz: Baz,
+    bars: Vec<Bar>,
 }
 
-struct Bar;
-
-struct Baz;
-```
-
-## Separate Data and Functions
-
-Types that are closely related should be grouped together separately from the functions that operate on them. `impl`
-blocks are placed below the type definitions.
-
-Here is an example combined with the previous guideline:
-
-```rust
-pub struct Foo {
-    bar: Bar
-}
-
-pub struct Bar;
-
-impl Foo {
+struct Bar {
     // ...
 }
-
-impl Bar {
-    // ...
-}
-
 ```
 
 ## Getters and Setters
