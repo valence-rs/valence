@@ -5,7 +5,6 @@ use std::iter::FusedIterator;
 use std::mem;
 use std::time::Duration;
 
-use anyhow::ensure;
 pub use bitfield_struct::bitfield;
 pub use event::*;
 use flume::{Receiver, Sender, TrySendError};
