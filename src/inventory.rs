@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::ops::Range;
 
 use rayon::prelude::ParallelIterator;
@@ -246,9 +245,9 @@ impl Inventories {
 
     pub(crate) fn sync<C: Config>(&mut self, clients: &mut Clients<C>) {
         // sync open, dirty inventories to clients
-        let _obj_inventories_cleaned: HashSet<InventoryId> = clients
+        let _obj_inventories_cleaned: Vec<InventoryId> = clients
             .par_iter_mut()
-            .map(|(_client_id, client)| {
+            .filter_map(|(_client_id, client)| {
                 if let Some(window) = client.open_inventory.as_ref() {
                     // this client has an inventory open
                     let obj_inv_id = window.object_inventory;
@@ -269,8 +268,6 @@ impl Inventories {
                 }
                 None
             })
-            .filter(|id| id.is_some())
-            .map(|id| id.unwrap())
             .collect();
 
         // now that we have synced all the dirty inventories, mark them as clean
