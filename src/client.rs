@@ -1164,7 +1164,11 @@ impl<C: Config> Client<C> {
             if self.old_raining != self.new_raining {
                 self.old_raining = self.new_raining;
                 self.send_packet(GameEvent {
-                    reason: if self.old_raining {GameStateChangeReason::BeginRaining} else {GameStateChangeReason::EndRaining},
+                    reason: if self.old_raining {
+                        GameStateChangeReason::BeginRaining
+                    } else {
+                        GameStateChangeReason::EndRaining
+                    },
                     value: 0 as f32,
                 })
             }
@@ -1173,7 +1177,7 @@ impl<C: Config> Client<C> {
                 self.old_rain_level = self.new_rain_level;
                 self.send_packet(GameEvent {
                     reason: GameStateChangeReason::RainLevelChange,
-                    value: self.old_rain_level as f32,
+                    value: self.old_rain_level,
                 });
             }
 
@@ -1181,7 +1185,7 @@ impl<C: Config> Client<C> {
                 self.old_thunder_level = self.new_thunder_level;
                 self.send_packet(GameEvent {
                     reason: GameStateChangeReason::ThunderLevelChange,
-                    value: self.old_thunder_level as f32,
+                    value: self.old_thunder_level,
                 });
             }
 
