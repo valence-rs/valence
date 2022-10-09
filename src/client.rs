@@ -465,7 +465,7 @@ impl<C: Config> Client<C> {
         self.new_game_mode = game_mode;
     }
 
-    /// Sets sets whether it rains
+    /// Sets whether or not the client sees rain.
     pub fn set_raining(&mut self, raining: bool) {
         self.send_packet(GameEvent {
             reason: if raining {
@@ -477,35 +477,30 @@ impl<C: Config> Client<C> {
         })
     }
 
-    /// Sets the client's rain level
-    /// The rain level must be a float between 0.0 and 1.0.
-    /// This changes the skycolor and lightning on the client.
-    pub fn set_rain_level(&mut self, rain_level: f32) -> anyhow::Result<()> {
-        ensure!(
-            (0.0..=1.0).contains(&rain_level),
-            "the rain level must be between 0 and 1"
-        );
+    /// Sets the client's rain level. This changes the sky color and lightning
+    /// on the client.
+    ///
+    /// The rain level is clamped between `0.0.` and `1.0`.
+    pub fn set_rain_level(&mut self, rain_level: f32) {
         self.send_packet(GameEvent {
             reason: GameStateChangeReason::RainLevelChange,
-            value: rain_level,
+            value: rain_level.clamp(0.0, 1.0),
         });
-        Ok(())
     }
 
-    /// Sets the client's thunder level
-    /// Requires either to start a rain with `set_raining` or set the rain level
-    /// with `set_rain_level`. The thunder level must be a float between 0.0
-    /// and 1.0. This changes the skycolor and lightning on the client.
-    pub fn set_thunder_level(&mut self, thunder_level: f32) -> anyhow::Result<()> {
-        ensure!(
-            (0.0..=1.0).contains(&thunder_level),
-            "the thunder level must be between 0 and 1"
-        );
+    /// Sets the client's thunder level. This changes the sky color and
+    /// lightning on the client.
+    ///
+    /// For this to take effect, it must already be raining via
+    /// [`set_raining`](Self::set_raining) or
+    /// [`set_rain_level`](Self::set_rain_level).
+    ///
+    /// The thunder level is clamped between `0.0` and `1.0`.
+    pub fn set_thunder_level(&mut self, thunder_level: f32) {
         self.send_packet(GameEvent {
             reason: GameStateChangeReason::ThunderLevelChange,
-            value: thunder_level,
+            value: thunder_level.clamp(0.0, 1.0),
         });
-        Ok(())
     }
 
     /// Plays a sound to the client at a given position.
