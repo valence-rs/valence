@@ -11,7 +11,9 @@ use crate::slab_versioned::{Key, VersionedSlab};
 
 pub trait Inventory {
     fn slot(&self, slot_id: SlotId) -> &Slot;
-    fn set_slot(&mut self, slot_id: SlotId, slot: Slot);
+    /// Sets the slot to the desired contents. Returns the previous contents of
+    /// the slot.
+    fn set_slot(&mut self, slot_id: SlotId, slot: Slot) -> Slot;
     fn slot_count(&self) -> usize;
     fn mark_dirty(&mut self, dirty: bool);
     fn is_dirty(&self) -> bool;
@@ -82,13 +84,13 @@ impl Inventory for PlayerInventory {
         &self.slots[slot_id as usize]
     }
 
-    fn set_slot(&mut self, slot_id: SlotId, slot: Slot) {
+    fn set_slot(&mut self, slot_id: SlotId, slot: Slot) -> Slot {
         if slot_id < 0 || slot_id >= self.slot_count() as i16 {
             // TODO: dont panic
             panic!("invalid slot id")
         }
-        self.slots[slot_id as usize] = slot;
         self.mark_dirty(true);
+        std::mem::replace(&mut self.slots[slot_id as usize], slot)
     }
 
     fn slot_count(&self) -> usize {
@@ -137,13 +139,13 @@ impl Inventory for ConfigurableInventory {
         &self.slots[slot_id as usize]
     }
 
-    fn set_slot(&mut self, slot_id: SlotId, slot: Slot) {
+    fn set_slot(&mut self, slot_id: SlotId, slot: Slot) -> Slot {
         if slot_id < 0 || slot_id >= self.slot_count() as i16 {
             // TODO: dont panic
             panic!("invalid slot id")
         }
-        self.slots[slot_id as usize] = slot;
         self.mark_dirty(true);
+        std::mem::replace(&mut self.slots[slot_id as usize], slot)
     }
 
     fn slot_count(&self) -> usize {
@@ -299,7 +301,8 @@ mod test {
             item_count: 12,
             nbt: None,
         });
-        inv.set_slot(9, slot.clone());
+        let prev = inv.set_slot(9, slot.clone());
         assert_eq!(*inv.slot(9), slot);
+        assert_eq!(prev, Slot::Empty);
     }
 }

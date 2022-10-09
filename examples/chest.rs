@@ -297,9 +297,8 @@ impl Config for Game {
 
 fn rotate_items(inv: &mut ConfigurableInventory) {
     for i in 1..inv.slot_count() {
-        let a = inv.slot((i - 1) as SlotId);
-        let b = inv.slot(i as SlotId);
+        let a = inv.slot((i - 1) as SlotId).clone();
+        let b = inv.set_slot(i as SlotId, a);
         inv.set_slot((i - 1) as SlotId, b);
-        inv.set_slot(i as SlotId, a);
     }
 }
