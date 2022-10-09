@@ -309,7 +309,7 @@ impl<C: Config> Client<C> {
             player_data: Player::new(),
             entity_events: Vec::new(),
             cursor_held_item: None,
-            selected_hotbar_slot: 36,
+            selected_hotbar_slot: PlayerInventory::HOTBAR_SLOTS.start,
         }
     }
 
