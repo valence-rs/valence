@@ -3,12 +3,9 @@ or comments.
 
 # What version of Rust should I use?
 
-For _users_ of Valence, the most recent stable version of Rust is required. However, contributors should use a
-recent version of nightly (`rustup default nightly`). This implies that unstable `#![feature(...)]` attributes must not
-be used.
-
-The reason for nightly is that we are using unstable `rustfmt` settings. Hopefully these settings will not require
-nightly in the future.
+To _use_ Valence, only the most recent stable version of Rust is required. However, contributors should know that
+unstable `rustfmt` settings are enabled in the project. To run `rustfmt` with the nightly toolchain, use
+the `cargo +nightly fmt` command.
 
 # What issues can I work on?
 
@@ -52,7 +49,7 @@ fn bar() {}
 fn baz() {}
 ```
 
-This rule applies to types as well.
+This guideline applies to types as well.
 
 ```rust
 pub struct Foo {
@@ -115,6 +112,9 @@ type that uses this convention.
 Under appropriate circumstances a different naming scheme can be
 used. [`Command`](https://doc.rust-lang.org/stable/std/process/struct.Command.html) is a standard type that demonstrates
 this.
+
+If a `bar` field exists and no invariants need to be maintained by the getters and setters, it is usually better to make
+the `bar` field public.
 
 ## Naming Quantities
 
