@@ -22,6 +22,7 @@ use crate::entity::{
 };
 use crate::ident::Ident;
 use crate::inventory::{Inventory, PlayerInventory, WindowInventory};
+use crate::item::ItemStack;
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::c2s::play::{self, C2sPlayPacket, InteractKind, PlayerCommandId};
@@ -36,7 +37,7 @@ use crate::protocol::packets::s2c::play::{
     SystemChatMessage, TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
     UpdateEntityPositionAndRotation, UpdateEntityRotation, UpdateTime,
 };
-use crate::protocol::{BoundedInt, BoundedString, ByteAngle, RawBytes, Slot, SlotId, VarInt};
+use crate::protocol::{BoundedInt, BoundedString, ByteAngle, RawBytes, SlotId, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::text::Text;
@@ -235,7 +236,7 @@ pub struct Client<C: Config> {
     entity_events: Vec<entity::EntityEvent>,
     /// The item currently being held by the client's cursor in an inventory
     /// screen. Does not work for creative mode.
-    pub cursor_held_item: Slot, // TODO: make private or pub(crate)
+    pub cursor_held_item: Option<ItemStack>, // TODO: make private or pub(crate)
     selected_hotbar_slot: SlotId,
 }
 
@@ -732,7 +733,7 @@ impl<C: Config> Client<C> {
     }
 
     /// The slot that the client has selected in their hotbar.
-    pub fn held_item(&self) -> &Slot {
+    pub fn held_item(&self) -> &Option<ItemStack> {
         self.inventory.slot(self.selected_hotbar_slot)
     }
 

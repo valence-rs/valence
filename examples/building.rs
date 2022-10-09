@@ -11,7 +11,6 @@ use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::{EntityId, EntityKind};
 use valence::player_list::PlayerListId;
-use valence::protocol::Slot;
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 use valence::{async_trait, ident};
@@ -219,7 +218,7 @@ impl Config for Game {
                     } => {
                         if hand == Hand::Main {
                             let place_at = location.get_in_direction(face);
-                            if let Slot::Present(stack) = client.held_item() {
+                            if let Some(stack) = client.held_item() {
                                 if let Some(block_kind) = stack.item.to_block_kind() {
                                     world.chunks.set_block_state(
                                         place_at,

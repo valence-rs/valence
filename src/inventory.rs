@@ -4,22 +4,23 @@ use rayon::prelude::ParallelIterator;
 
 use crate::client::Clients;
 use crate::config::Config;
+use crate::item::ItemStack;
 use crate::protocol::packets::s2c::play::SetContainerContent;
-use crate::protocol::{Slot, SlotId, VarInt};
+use crate::protocol::{SlotId, VarInt};
 use crate::slab_versioned::{Key, VersionedSlab};
 
 pub trait Inventory {
-    fn slot(&self, slot_id: SlotId) -> &Slot;
+    fn slot(&self, slot_id: SlotId) -> &Option<ItemStack>;
     /// Sets the slot to the desired contents. Returns the previous contents of
     /// the slot.
-    fn set_slot(&mut self, slot_id: SlotId, slot: Slot) -> Slot;
+    fn set_slot(&mut self, slot_id: SlotId, slot: Option<ItemStack>) -> Option<ItemStack>;
     fn slot_count(&self) -> usize;
     fn mark_dirty(&mut self, dirty: bool);
     fn is_dirty(&self) -> bool;
 
     // TODO: `entry()` style api
 
-    fn slots(&self) -> Vec<Slot> {
+    fn slots(&self) -> Vec<Option<ItemStack>> {
         (0..self.slot_count())
             .map(|s| self.slot(s as SlotId).clone())
             .collect()
@@ -27,12 +28,12 @@ pub trait Inventory {
 
     fn consume_one(&mut self, slot_id: SlotId) {
         let slot = self.slot(slot_id);
-        if let Slot::Present(mut stack) = slot.clone() {
+        if let Some(mut stack) = slot.clone() {
             stack.item_count -= 1;
             let slot = if stack.item_count == 0 {
-                Slot::Empty
+                None
             } else {
-                Slot::Present(stack)
+                Some(stack)
             };
             self.set_slot(slot_id, slot);
         }
@@ -42,7 +43,7 @@ pub trait Inventory {
 /// Represents a player's Inventory.
 #[derive(Debug, Clone)]
 pub struct PlayerInventory {
-    pub(crate) slots: Box<[Slot; 46]>,
+    pub(crate) slots: Box<[Option<ItemStack>; 46]>,
     dirty: bool,
     pub(crate) state_id: i32,
 }
@@ -64,8 +65,8 @@ impl PlayerInventory {
 
     pub(crate) fn new() -> Self {
         Self {
-            // Can't do the shorthand because Slot is not Copy.
-            slots: Box::new(std::array::from_fn(|_| Slot::Empty)),
+            // Can't do the shorthand because Option<ItemStack> is not Copy.
+            slots: Box::new(std::array::from_fn(|_| None)),
             dirty: true,
             state_id: Default::default(),
         }
@@ -73,7 +74,7 @@ impl PlayerInventory {
 }
 
 impl Inventory for PlayerInventory {
-    fn slot(&self, slot_id: SlotId) -> &Slot {
+    fn slot(&self, slot_id: SlotId) -> &Option<ItemStack> {
         if slot_id < 0 || slot_id >= self.slot_count() as i16 {
             // TODO: dont panic
             panic!("invalid slot id")
@@ -81,7 +82,7 @@ impl Inventory for PlayerInventory {
         &self.slots[slot_id as usize]
     }
 
-    fn set_slot(&mut self, slot_id: SlotId, slot: Slot) -> Slot {
+    fn set_slot(&mut self, slot_id: SlotId, slot: Option<ItemStack>) -> Option<ItemStack> {
         if slot_id < 0 || slot_id >= self.slot_count() as i16 {
             // TODO: dont panic
             panic!("invalid slot id")
@@ -105,7 +106,7 @@ impl Inventory for PlayerInventory {
 
 #[derive(Debug, Clone)]
 pub struct ConfigurableInventory {
-    slots: Vec<Slot>,
+    slots: Vec<Option<ItemStack>>,
     /// The slots that the player can place items into for crafting. The
     /// crafting result slot is always zero, and should not be included in this
     /// range.
@@ -119,7 +120,7 @@ pub struct ConfigurableInventory {
 impl ConfigurableInventory {
     pub fn new(size: usize, window_type: VarInt, crafting_slots: Option<Range<SlotId>>) -> Self {
         ConfigurableInventory {
-            slots: vec![Slot::Empty; size],
+            slots: vec![None; size],
             crafting_slots,
             window_type,
             dirty: false,
@@ -128,7 +129,7 @@ impl ConfigurableInventory {
 }
 
 impl Inventory for ConfigurableInventory {
-    fn slot(&self, slot_id: SlotId) -> &Slot {
+    fn slot(&self, slot_id: SlotId) -> &Option<ItemStack> {
         if slot_id < 0 || slot_id >= self.slot_count() as i16 {
             // TODO: dont panic
             panic!("invalid slot id")
@@ -136,7 +137,7 @@ impl Inventory for ConfigurableInventory {
         &self.slots[slot_id as usize]
     }
 
-    fn set_slot(&mut self, slot_id: SlotId, slot: Slot) -> Slot {
+    fn set_slot(&mut self, slot_id: SlotId, slot: Option<ItemStack>) -> Option<ItemStack> {
         if slot_id < 0 || slot_id >= self.slot_count() as i16 {
             // TODO: dont panic
             panic!("invalid slot id")
@@ -180,7 +181,7 @@ impl WindowInventory {
         &self,
         obj_inventory: &ConfigurableInventory,
         player_inventory: &PlayerInventory,
-    ) -> Vec<Slot> {
+    ) -> Vec<Option<ItemStack>> {
         let total_slots = obj_inventory.slots.len() + PlayerInventory::GENERAL_SLOTS.len();
         (0..total_slots)
             .map(|s| {
@@ -285,13 +286,13 @@ mod test {
     #[test]
     fn test_get_set_slots() {
         let mut inv = PlayerInventory::new();
-        let slot = Slot::Present(ItemStack {
+        let slot = Some(ItemStack {
             item: ItemKind::Bone,
             item_count: 12,
             nbt: None,
         });
         let prev = inv.set_slot(9, slot.clone());
         assert_eq!(*inv.slot(9), slot);
-        assert_eq!(prev, Slot::Empty);
+        assert_eq!(prev, None);
     }
 }

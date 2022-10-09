@@ -16,7 +16,7 @@ use valence::inventory::{
 use valence::item::{ItemKind, ItemStack};
 use valence::player_list::PlayerListId;
 use valence::protocol::packets::s2c::play::OpenScreen;
-use valence::protocol::{Slot, SlotId, VarInt};
+use valence::protocol::{SlotId, VarInt};
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 
@@ -273,18 +273,18 @@ impl Config for Game {
                     ClientEvent::StartSneaking => {
                         let slot_id: SlotId = PlayerInventory::HOTBAR_SLOTS.start;
                         let stack = match client.inventory.slot(slot_id) {
-                            Slot::Empty => ItemStack {
+                            None => ItemStack {
                                 item_count: 1,
                                 item: ItemKind::Stone,
                                 nbt: None,
                             },
-                            Slot::Present(s) => ItemStack {
+                            Some(s) => ItemStack {
                                 item_count: s.item_count + 1,
                                 item: s.item,
                                 nbt: None,
                             },
                         };
-                        client.inventory.set_slot(slot_id, Slot::Present(stack));
+                        client.inventory.set_slot(slot_id, Some(stack));
                     }
                     _ => {}
                 }
