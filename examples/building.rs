@@ -220,13 +220,15 @@ impl Config for Game {
                         if hand == Hand::Main {
                             let place_at = location.get_in_direction(face);
                             if let Slot::Present(stack) = client.held_item() {
-                                if client.game_mode() != GameMode::Creative {
-                                    client.consume_one_held_item();
+                                if let Some(block_kind) = stack.item.to_block_kind() {
+                                    world.chunks.set_block_state(
+                                        place_at,
+                                        BlockState::from_kind(block_kind),
+                                    );
+                                    if client.game_mode() != GameMode::Creative {
+                                        client.consume_one_held_item();
+                                    }
                                 }
-                                world.chunks.set_block_state(
-                                    place_at,
-                                    BlockState::from_kind(stack.item.to_block_kind().unwrap()),
-                                );
                             }
                         }
                     }

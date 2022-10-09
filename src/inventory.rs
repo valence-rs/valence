@@ -10,7 +10,7 @@ use crate::protocol::{Slot, SlotId, VarInt};
 use crate::slab_versioned::{Key, VersionedSlab};
 
 pub trait Inventory {
-    fn slot(&self, slot_id: SlotId) -> Slot;
+    fn slot(&self, slot_id: SlotId) -> &Slot;
     fn set_slot(&mut self, slot_id: SlotId, slot: Slot);
     fn slot_count(&self) -> usize;
     fn mark_dirty(&mut self, dirty: bool);
@@ -20,13 +20,13 @@ pub trait Inventory {
 
     fn slots(&self) -> Vec<Slot> {
         (0..self.slot_count())
-            .map(|s| self.slot(s as SlotId))
+            .map(|s| self.slot(s as SlotId).clone())
             .collect()
     }
 
     fn consume_one(&mut self, slot_id: SlotId) {
         let slot = self.slot(slot_id);
-        if let Slot::Present(mut stack) = slot {
+        if let Slot::Present(mut stack) = slot.clone() {
             stack.item_count -= 1;
             let slot = if stack.item_count == 0 {
                 Slot::Empty
@@ -74,12 +74,12 @@ impl Default for PlayerInventory {
 }
 
 impl Inventory for PlayerInventory {
-    fn slot(&self, slot_id: SlotId) -> Slot {
+    fn slot(&self, slot_id: SlotId) -> &Slot {
         if slot_id < 0 || slot_id >= self.slot_count() as i16 {
             // TODO: dont panic
             panic!("invalid slot id")
         }
-        self.slots[slot_id as usize].clone()
+        &self.slots[slot_id as usize]
     }
 
     fn set_slot(&mut self, slot_id: SlotId, slot: Slot) {
@@ -129,12 +129,12 @@ impl ConfigurableInventory {
 }
 
 impl Inventory for ConfigurableInventory {
-    fn slot(&self, slot_id: SlotId) -> Slot {
+    fn slot(&self, slot_id: SlotId) -> &Slot {
         if slot_id < 0 || slot_id >= self.slot_count() as i16 {
             // TODO: dont panic
             panic!("invalid slot id")
         }
-        self.slots[slot_id as usize].clone()
+        &self.slots[slot_id as usize]
     }
 
     fn set_slot(&mut self, slot_id: SlotId, slot: Slot) {
@@ -186,10 +186,12 @@ impl WindowInventory {
         (0..total_slots)
             .map(|s| {
                 if s < obj_inventory.slot_count() {
-                    return obj_inventory.slot(s as SlotId);
+                    return obj_inventory.slot(s as SlotId).clone();
                 }
                 let offset = obj_inventory.slot_count();
-                player_inventory.slot((s - offset) as SlotId + PlayerInventory::GENERAL_SLOTS.start)
+                player_inventory
+                    .slot((s - offset) as SlotId + PlayerInventory::GENERAL_SLOTS.start)
+                    .clone()
             })
             .collect()
     }
@@ -298,6 +300,6 @@ mod test {
             nbt: None,
         });
         inv.set_slot(9, slot.clone());
-        assert_eq!(inv.slot(9), slot);
+        assert_eq!(*inv.slot(9), slot);
     }
 }
