@@ -1553,7 +1553,7 @@ impl<C: Config> Client<C> {
                     carried_item: self.cursor_held_item.clone(),
                 },
             );
-            self.inventory.state_id += 1;
+            self.inventory.state_id = self.inventory.state_id.wrapping_add(1);
             self.inventory.mark_dirty(false);
         }
     }
