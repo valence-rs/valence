@@ -300,7 +300,7 @@ impl<C: Config> Client<C> {
             resource_pack_to_send: None,
             attack_speed: 4.0,
             movement_speed: 0.7,
-            inventory: PlayerInventory::default(),
+            inventory: PlayerInventory::new(),
             open_inventory: None,
             bits: ClientBits::new()
                 .with_modified_spawn_position(true)

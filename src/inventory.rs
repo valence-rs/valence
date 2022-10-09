@@ -62,10 +62,8 @@ impl PlayerInventory {
 
         Some(Self::HOTBAR_SLOTS.start + hotbar_slot)
     }
-}
 
-impl Default for PlayerInventory {
-    fn default() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             // Can't do the shorthand because Slot is not Copy.
             slots: Box::new(std::array::from_fn(|_| Slot::Empty)),
@@ -207,14 +205,8 @@ pub struct Inventories {
     slab: VersionedSlab<ConfigurableInventory>,
 }
 
-impl Default for Inventories {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Inventories {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             slab: VersionedSlab::new(),
         }
@@ -295,7 +287,7 @@ mod test {
 
     #[test]
     fn test_get_set_slots() {
-        let mut inv = PlayerInventory::default();
+        let mut inv = PlayerInventory::new();
         let slot = Slot::Present(ItemStack {
             item: ItemKind::Bone,
             item_count: 12,
