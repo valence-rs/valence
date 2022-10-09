@@ -54,7 +54,8 @@ use crate::protocol::packets::s2c::status::{PingResponse, StatusResponse};
 use crate::protocol::packets::Property;
 use crate::protocol::{BoundedArray, BoundedString, Decode, RawBytes, VarInt};
 use crate::proxy::velocity::{
-    VELOCITY_MAX_SUPPORTED_VERSION, VELOCITY_PLAYER_INFO_CHANNEL, VELOCITY_SUPPORTED_VERSION,
+    VELOCITY_MAX_SUPPORTED_VERSION, VELOCITY_MODERN_FORWARDING_WITH_KEY_V2,
+    VELOCITY_PLAYER_INFO_CHANNEL, VELOCITY_SUPPORTED_VERSION,
 };
 use crate::text::Text;
 use crate::util::valid_username;
@@ -884,7 +885,17 @@ async fn handle_login<C: Config>(
                 }
             }
 
-            // TODO: implement VELOCITY_MODERN_FORWARDING_WITH_KEY_V2
+            if version.0 >= VELOCITY_MODERN_FORWARDING_WITH_KEY_V2 {
+                #[allow(unused_variables)] // TODO remove
+                let expires_at: i64 = Decode::decode(&mut data).unwrap(); // millis since the unix epoch
+                #[allow(unused_variables)] // TODO remove
+                let encoded_public_key: BoundedArray<u8, 0, 512> =
+                    Decode::decode(&mut data).unwrap(); // A public key is represented by a byte array of X.509-encoded payload.
+                #[allow(unused_variables)] // TODO remove
+                let key_signature: BoundedArray<u8, 0, 4096> = Decode::decode(&mut data).unwrap();
+
+                // TODO parse this public key and verify the signature
+            }
 
             (uuid, skin)
         }
