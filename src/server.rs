@@ -894,6 +894,13 @@ async fn handle_login<C: Config>(
                 #[allow(unused_variables)] // TODO remove
                 let key_signature: BoundedArray<u8, 0, 4096> = Decode::decode(&mut data).unwrap();
 
+                #[allow(unused_variables)] // TODO remove
+                let signer: Uuid = if bool::decode(&mut data).unwrap() {
+                    Uuid::from_u128(data.read_u128::<BigEndian>().unwrap())
+                } else {
+                    uuid
+                };
+
                 // TODO parse this public key and verify the signature
             }
 
