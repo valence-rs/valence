@@ -10,7 +10,7 @@ use crate::protocol::{SlotId, VarInt};
 use crate::slab_versioned::{Key, VersionedSlab};
 
 pub trait Inventory {
-    fn slot(&self, slot_id: SlotId) -> &Option<ItemStack>;
+    fn slot(&self, slot_id: SlotId) -> Option<&ItemStack>;
     /// Sets the slot to the desired contents. Returns the previous contents of
     /// the slot.
     fn set_slot(&mut self, slot_id: SlotId, slot: Option<ItemStack>) -> Option<ItemStack>;
@@ -20,20 +20,20 @@ pub trait Inventory {
 
     fn slots(&self) -> Vec<Option<ItemStack>> {
         (0..self.slot_count())
-            .map(|s| self.slot(s as SlotId).clone())
+            .map(|s| self.slot(s as SlotId).cloned())
             .collect()
     }
 
     fn consume_one(&mut self, slot_id: SlotId) {
-        let slot = self.slot(slot_id);
-        if let Some(mut stack) = slot.clone() {
+        let mut slot = self.slot(slot_id).cloned();
+        if let Some(mut stack) = slot.as_mut() {
             stack.item_count -= 1;
             let slot = if stack.item_count == 0 {
                 None
             } else {
                 Some(stack)
             };
-            self.set_slot(slot_id, slot);
+            self.set_slot(slot_id, slot.cloned());
         }
     }
 }
@@ -77,12 +77,12 @@ impl PlayerInventory {
 }
 
 impl Inventory for PlayerInventory {
-    fn slot(&self, slot_id: SlotId) -> &Option<ItemStack> {
+    fn slot(&self, slot_id: SlotId) -> Option<&ItemStack> {
         if slot_id < 0 || slot_id >= self.slot_count() as i16 {
             // TODO: dont panic
             panic!("invalid slot id")
         }
-        &self.slots[slot_id as usize]
+        self.slots[slot_id as usize].as_ref()
     }
 
     fn set_slot(&mut self, slot_id: SlotId, slot: Option<ItemStack>) -> Option<ItemStack> {
@@ -134,12 +134,12 @@ impl ConfigurableInventory {
 }
 
 impl Inventory for ConfigurableInventory {
-    fn slot(&self, slot_id: SlotId) -> &Option<ItemStack> {
+    fn slot(&self, slot_id: SlotId) -> Option<&ItemStack> {
         if slot_id < 0 || slot_id >= self.slot_count() as i16 {
             // TODO: dont panic
             panic!("invalid slot id")
         }
-        &self.slots[slot_id as usize]
+        self.slots[slot_id as usize].as_ref()
     }
 
     fn set_slot(&mut self, slot_id: SlotId, slot: Option<ItemStack>) -> Option<ItemStack> {
@@ -192,12 +192,12 @@ impl WindowInventory {
         (0..total_slots)
             .map(|s| {
                 if s < obj_inventory.slot_count() {
-                    return obj_inventory.slot(s as SlotId).clone();
+                    return obj_inventory.slot(s as SlotId).cloned();
                 }
                 let offset = obj_inventory.slot_count();
                 player_inventory
                     .slot((s - offset) as SlotId + PlayerInventory::GENERAL_SLOTS.start)
-                    .clone()
+                    .cloned()
             })
             .collect()
     }
@@ -298,7 +298,7 @@ mod test {
             nbt: None,
         });
         let prev = inv.set_slot(9, slot.clone());
-        assert_eq!(*inv.slot(9), slot);
+        assert_eq!(inv.slot(9), slot.as_ref());
         assert_eq!(prev, None);
     }
 }

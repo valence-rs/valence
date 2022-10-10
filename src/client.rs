@@ -733,7 +733,7 @@ impl<C: Config> Client<C> {
     }
 
     /// The slot that the client has selected in their hotbar.
-    pub fn held_item(&self) -> &Option<ItemStack> {
+    pub fn held_item(&self) -> Option<&ItemStack> {
         self.inventory.slot(self.selected_hotbar_slot)
     }
 
