@@ -15,8 +15,6 @@ pub trait Inventory {
     /// the slot.
     fn set_slot(&mut self, slot_id: SlotId, slot: Option<ItemStack>) -> Option<ItemStack>;
     fn slot_count(&self) -> usize;
-    fn mark_dirty(&mut self, dirty: bool);
-    fn is_dirty(&self) -> bool;
 
     // TODO: `entry()` style api
 
@@ -38,6 +36,11 @@ pub trait Inventory {
             self.set_slot(slot_id, slot);
         }
     }
+}
+
+pub(crate) trait InventoryDirtyable {
+    fn mark_dirty(&mut self, dirty: bool);
+    fn is_dirty(&self) -> bool;
 }
 
 /// Represents a player's Inventory.
@@ -94,7 +97,9 @@ impl Inventory for PlayerInventory {
     fn slot_count(&self) -> usize {
         self.slots.len()
     }
+}
 
+impl InventoryDirtyable for PlayerInventory {
     fn mark_dirty(&mut self, dirty: bool) {
         self.dirty = dirty
     }
@@ -149,7 +154,9 @@ impl Inventory for ConfigurableInventory {
     fn slot_count(&self) -> usize {
         self.slots.len()
     }
+}
 
+impl InventoryDirtyable for ConfigurableInventory {
     fn mark_dirty(&mut self, dirty: bool) {
         self.dirty = dirty
     }
@@ -158,7 +165,6 @@ impl Inventory for ConfigurableInventory {
         self.dirty
     }
 }
-
 /// Represents what the player sees when they open an object's Inventory.
 ///
 /// This exists because when an object inventory screen is being shown to the

@@ -21,7 +21,7 @@ use crate::entity::{
     self, velocity_to_packet_units, Entities, EntityId, EntityKind, StatusOrAnimation,
 };
 use crate::ident::Ident;
-use crate::inventory::{Inventory, PlayerInventory, WindowInventory};
+use crate::inventory::{Inventory, InventoryDirtyable, PlayerInventory, WindowInventory};
 use crate::item::ItemStack;
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
