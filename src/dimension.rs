@@ -17,11 +17,11 @@ use crate::{ident, LIBRARY_NAMESPACE};
 pub struct DimensionId(pub(crate) u16);
 
 impl DimensionId {
-    pub(crate) fn dimension_type_name(self) -> Ident {
+    pub(crate) fn dimension_type_name(self) -> Ident<'static> {
         ident!("{LIBRARY_NAMESPACE}:dimension_type_{}", self.0)
     }
 
-    pub(crate) fn dimension_name(self) -> Ident {
+    pub(crate) fn dimension_name(self) -> Ident<'static> {
         ident!("{LIBRARY_NAMESPACE}:dimension_{}", self.0)
     }
 }

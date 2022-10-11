@@ -302,7 +302,7 @@ impl<C: Config> Client<C> {
                 .with_created_this_tick(true),
             player_data: Player::new(),
             entity_events: Vec::new(),
-            cursor_held_item: Slot::Empty,
+            cursor_held_item: None,
         }
     }
 
@@ -474,10 +474,48 @@ impl<C: Config> Client<C> {
         self.new_game_mode = game_mode;
     }
 
+    /// Sets whether or not the client sees rain.
+    pub fn set_raining(&mut self, raining: bool) {
+        self.send_packet(GameEvent {
+            reason: if raining {
+                GameStateChangeReason::BeginRaining
+            } else {
+                GameStateChangeReason::EndRaining
+            },
+            value: 0.0,
+        })
+    }
+
+    /// Sets the client's rain level. This changes the sky color and lightning
+    /// on the client.
+    ///
+    /// The rain level is clamped between `0.0.` and `1.0`.
+    pub fn set_rain_level(&mut self, rain_level: f32) {
+        self.send_packet(GameEvent {
+            reason: GameStateChangeReason::RainLevelChange,
+            value: rain_level.clamp(0.0, 1.0),
+        });
+    }
+
+    /// Sets the client's thunder level. This changes the sky color and
+    /// lightning on the client.
+    ///
+    /// For this to take effect, it must already be raining via
+    /// [`set_raining`](Self::set_raining) or
+    /// [`set_rain_level`](Self::set_rain_level).
+    ///
+    /// The thunder level is clamped between `0.0` and `1.0`.
+    pub fn set_thunder_level(&mut self, thunder_level: f32) {
+        self.send_packet(GameEvent {
+            reason: GameStateChangeReason::ThunderLevelChange,
+            value: thunder_level.clamp(0.0, 1.0),
+        });
+    }
+
     /// Plays a sound to the client at a given position.
     pub fn play_sound(
         &mut self,
-        name: Ident,
+        name: Ident<'static>,
         category: SoundCategory,
         pos: Vec3<f64>,
         volume: f32,
@@ -486,7 +524,7 @@ impl<C: Config> Client<C> {
         self.send_packet(CustomSoundEffect {
             name,
             category,
-            position: pos.iter().map(|x| *x as i32 * 8).collect(),
+            position: pos.as_() * 8,
             volume,
             pitch,
             seed: 0,
@@ -795,12 +833,10 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::ClickContainer(p) => {
                 if p.slot_idx == -999 {
                     // client is trying to drop the currently held stack
-                    let held = std::mem::replace(&mut self.cursor_held_item, Slot::Empty);
+                    let held = std::mem::replace(&mut self.cursor_held_item, None);
                     match held {
-                        Slot::Empty => {}
-                        Slot::Present(stack) => {
-                            self.events.push_back(ClientEvent::DropItemStack { stack })
-                        }
+                        None => {}
+                        Some(stack) => self.events.push_back(ClientEvent::DropItemStack { stack }),
                     }
                 } else {
                     self.cursor_held_item = p.carried_item.clone();
@@ -980,12 +1016,10 @@ impl<C: Config> Client<C> {
                 if e.slot == -1 {
                     // The client is trying to drop a stack of items
                     match e.clicked_item {
-                        Slot::Empty => log::warn!(
+                        None => log::warn!(
                             "Invalid packet, creative client tried to drop a stack of nothing."
                         ),
-                        Slot::Present(stack) => {
-                            self.events.push_back(ClientEvent::DropItemStack { stack })
-                        }
+                        Some(stack) => self.events.push_back(ClientEvent::DropItemStack { stack }),
                     }
                 } else {
                     self.events.push_back(ClientEvent::SetSlotCreative {
