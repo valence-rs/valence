@@ -8,7 +8,7 @@ pub mod handshake {
     def_struct! {
         Handshake {
             protocol_version: VarInt,
-            server_adddress: BoundedString<0, 255>,
+            server_address: BoundedString<0, 255>,
             server_port: u16,
             next_state: HandshakeNextState,
         }
