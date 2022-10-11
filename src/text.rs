@@ -5,7 +5,7 @@ use std::fmt;
 use std::io::Write;
 
 use serde::de::Visitor;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::ident::Ident;
 use crate::protocol::{BoundedString, Decode, Encode};
@@ -378,14 +378,15 @@ enum ClickEvent {
 enum HoverEvent {
     ShowText(Box<Text>),
     ShowItem {
-        id: Ident,
+        #[serde(deserialize_with = "Ident::deserialize_to_owned")]
+        id: Ident<'static>,
         count: Option<i32>,
         // TODO: tag
     },
     ShowEntity {
         name: Box<Text>,
-        #[serde(rename = "type")]
-        kind: Ident,
+        #[serde(rename = "type", deserialize_with = "Ident::deserialize_to_owned")]
+        kind: Ident<'static>,
         // TODO: id (hyphenated entity UUID as a string)
     },
 }
@@ -513,7 +514,7 @@ impl<'de> Visitor<'de> for ColorVisitor {
         write!(f, "a hex color of the form #rrggbb")
     }
 
-    fn visit_str<E: serde::de::Error>(self, s: &str) -> Result<Self::Value, E> {
+    fn visit_str<E: de::Error>(self, s: &str) -> Result<Self::Value, E> {
         color_from_str(s).ok_or_else(|| E::custom("invalid hex color"))
     }
 }
