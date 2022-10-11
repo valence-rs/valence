@@ -26,9 +26,9 @@ pub trait Inventory {
 
     fn consume_one(&mut self, slot_id: SlotId) {
         let mut slot = self.slot(slot_id).cloned();
-        if let Some(mut stack) = slot.as_mut() {
-            stack.item_count -= 1;
-            let slot = if stack.item_count == 0 {
+        if let Some(stack) = slot.as_mut() {
+            stack.set_count(stack.count() - 1);
+            let slot = if stack.count() == 0 {
                 None
             } else {
                 Some(stack)
@@ -292,11 +292,7 @@ mod test {
     #[test]
     fn test_get_set_slots() {
         let mut inv = PlayerInventory::new();
-        let slot = Some(ItemStack {
-            item: ItemKind::Bone,
-            item_count: 12,
-            nbt: None,
-        });
+        let slot = Some(ItemStack::new(ItemKind::Bone, 12, None));
         let prev = inv.set_slot(9, slot.clone());
         assert_eq!(inv.slot(9), slot.as_ref());
         assert_eq!(prev, None);
