@@ -239,32 +239,38 @@ impl<'a> Serialize for Ident<'a> {
 /// data, see [`Ident::deserialize_to_owned`].
 impl<'de> Deserialize<'de> for Ident<'de> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        struct IdentVisitor;
-
-        impl<'de> Visitor<'de> for IdentVisitor {
-            type Value = Ident<'de>;
-
-            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                write!(f, "a valid Minecraft resource identifier")
-            }
-
-            fn visit_str<E: de::Error>(self, s: &str) -> Result<Self::Value, E> {
-                Ident::from_str(s).map_err(E::custom)
-            }
-
-            fn visit_borrowed_str<E>(self, v: &'de str) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                Ident::new(v).map_err(E::custom)
-            }
-
-            fn visit_string<E: de::Error>(self, s: String) -> Result<Self::Value, E> {
-                Ident::new(s).map_err(E::custom)
-            }
-        }
-
         deserializer.deserialize_string(IdentVisitor)
+    }
+}
+
+struct IdentVisitor;
+
+impl<'de> Visitor<'de> for IdentVisitor {
+    type Value = Ident<'de>;
+
+    fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "a valid Minecraft resource identifier")
+    }
+
+    fn visit_str<E: de::Error>(self, s: &str) -> Result<Self::Value, E> {
+        dbg!("foo");
+
+        Ident::from_str(s).map_err(E::custom)
+    }
+
+    fn visit_borrowed_str<E>(self, v: &'de str) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        dbg!("bar");
+
+        Ident::new(v).map_err(E::custom)
+    }
+
+    fn visit_string<E: de::Error>(self, s: String) -> Result<Self::Value, E> {
+        dbg!("baz");
+
+        Ident::new(s).map_err(E::custom)
     }
 }
 
@@ -348,10 +354,25 @@ mod tests {
         assert_eq!(h1.finish(), h2.finish());
     }
 
-    #[test]
-    fn literal_is_borrowed() {
-        if let Cow::Owned(_) = ident!("akjghsjkhebf").into_inner() {
+    fn check_borrowed(id: Ident) {
+        if let Cow::Owned(_) = id.into_inner() {
             panic!("not borrowed!");
         }
+    }
+
+    #[test]
+    fn literal_is_borrowed() {
+        check_borrowed(ident!("akjghsjkhebf"));
+    }
+
+    #[test]
+    fn visit_borrowed_str_works() {
+        let data = String::from("valence:frobnicator");
+
+        check_borrowed(
+            IdentVisitor
+                .visit_borrowed_str::<de::value::Error>(data.as_ref())
+                .unwrap(),
+        );
     }
 }
