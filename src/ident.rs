@@ -28,12 +28,8 @@ use crate::protocol::{Decode, Encode};
 #[derive(Clone, Eq)]
 pub struct Ident<'a> {
     string: Cow<'a, AsciiStr>,
-    /// The index of the ':' character in the string.
-    /// If there is no namespace then it is `usize::MAX`.
-    ///
-    /// Since the string only contains ASCII characters, we can slice it
-    /// in O(1) time.
-    colon_idx: usize,
+    /// The index of the first character of the path part in the string.
+    path_start: usize,
 }
 
 /// The error type created when an [`Ident`] cannot be parsed from a
@@ -79,12 +75,12 @@ impl<'a> Ident<'a> {
             {
                 Ok(Self {
                     string: cow,
-                    colon_idx,
+                    path_start: colon_idx + 1,
                 })
             }
             None if check_path(str) => Ok(Self {
                 string: cow,
-                colon_idx: usize::MAX,
+                path_start: 0,
             }),
             _ => Err(IdentParseError(ascii_cow_to_str_cow(cow))),
         }
@@ -95,20 +91,16 @@ impl<'a> Ident<'a> {
     /// If this identifier was constructed from a string without a namespace,
     /// then "minecraft" is returned.
     pub fn namespace(&self) -> &str {
-        if self.colon_idx != usize::MAX {
-            self.string[..self.colon_idx].as_str()
-        } else {
+        if self.path_start == 0 {
             "minecraft"
+        } else {
+            self.string[..self.path_start - 1].as_str()
         }
     }
 
     /// Returns the path part of this resource identifier.
     pub fn path(&self) -> &str {
-        if self.colon_idx == usize::MAX {
-            self.string.as_str()
-        } else {
-            self.string[self.colon_idx + 1..].as_str()
-        }
+        self.string[self.path_start..].as_str()
     }
 
     /// Returns the underlying string as a `str`.
@@ -160,7 +152,7 @@ impl<'a> From<Ident<'a>> for String {
 
 impl<'a> From<Ident<'a>> for Cow<'a, str> {
     fn from(id: Ident<'a>) -> Self {
-        ascii_cow_to_str_cow(id.string)
+        id.into_inner()
     }
 }
 
@@ -253,8 +245,6 @@ impl<'de> Visitor<'de> for IdentVisitor {
     }
 
     fn visit_str<E: de::Error>(self, s: &str) -> Result<Self::Value, E> {
-        dbg!("foo");
-
         Ident::from_str(s).map_err(E::custom)
     }
 
@@ -262,14 +252,10 @@ impl<'de> Visitor<'de> for IdentVisitor {
     where
         E: de::Error,
     {
-        dbg!("bar");
-
         Ident::new(v).map_err(E::custom)
     }
 
     fn visit_string<E: de::Error>(self, s: String) -> Result<Self::Value, E> {
-        dbg!("baz");
-
         Ident::new(s).map_err(E::custom)
     }
 }
@@ -312,6 +298,13 @@ mod tests {
     use std::hash::Hasher;
 
     use super::*;
+
+    #[test]
+    fn check_namespace_and_path() {
+        let id = ident!("namespace:path");
+        assert_eq!(id.namespace(), "namespace");
+        assert_eq!(id.path(), "path");
+    }
 
     #[test]
     fn parse_valid() {
@@ -366,7 +359,7 @@ mod tests {
     }
 
     #[test]
-    fn visit_borrowed_str_works() {
+    fn visit_borrowed_str_borrows() {
         let data = String::from("valence:frobnicator");
 
         check_borrowed(
