@@ -1550,7 +1550,15 @@ impl<C: Config> Client<C> {
                 SetContainerContent {
                     window_id: 0,
                     state_id: VarInt(self.inventory.state_id),
-                    slots: self.inventory.slots(),
+                    slots: self
+                        .inventory
+                        .slots()
+                        .into_iter()
+                        // FIXME: cloning is necessary here to build the packet.
+                        // However, it should be possible to avoid the clone if this packet
+                        // could consume refs
+                        .map(|s| s.cloned())
+                        .collect(),
                     carried_item: self.cursor_held_item.clone(),
                 },
             );

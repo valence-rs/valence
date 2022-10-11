@@ -18,9 +18,9 @@ pub trait Inventory {
 
     // TODO: `entry()` style api
 
-    fn slots(&self) -> Vec<Option<ItemStack>> {
+    fn slots(&self) -> Vec<Option<&ItemStack>> {
         (0..self.slot_count())
-            .map(|s| self.slot(s as SlotId).cloned())
+            .map(|s| self.slot(s as SlotId))
             .collect()
     }
 
@@ -183,21 +183,19 @@ impl WindowInventory {
         }
     }
 
-    fn slots(
+    fn slots<'a>(
         &self,
-        obj_inventory: &ConfigurableInventory,
-        player_inventory: &PlayerInventory,
-    ) -> Vec<Option<ItemStack>> {
+        obj_inventory: &'a ConfigurableInventory,
+        player_inventory: &'a PlayerInventory,
+    ) -> Vec<Option<&'a ItemStack>> {
         let total_slots = obj_inventory.slots.len() + PlayerInventory::GENERAL_SLOTS.len();
         (0..total_slots)
             .map(|s| {
                 if s < obj_inventory.slot_count() {
-                    return obj_inventory.slot(s as SlotId).cloned();
+                    return obj_inventory.slot(s as SlotId);
                 }
                 let offset = obj_inventory.slot_count();
-                player_inventory
-                    .slot((s - offset) as SlotId + PlayerInventory::GENERAL_SLOTS.start)
-                    .cloned()
+                player_inventory.slot((s - offset) as SlotId + PlayerInventory::GENERAL_SLOTS.start)
             })
             .collect()
     }
@@ -261,7 +259,13 @@ impl Inventories {
                     if let Some(obj_inv) = self.get(obj_inv_id) {
                         if obj_inv.is_dirty() {
                             let window_id = window.window_id;
-                            let slots = window.slots(obj_inv, &client.inventory);
+                            let slots = window.slots(obj_inv, &client.inventory)
+                                .into_iter()
+                                // FIXME: cloning is necessary here to build the packet.
+                                // However, it should be possible to avoid the clone if this packet
+                                // could consume refs
+                                .map(|s| s.cloned())
+                                .collect();
                             let carried_item = client.cursor_held_item.clone();
                             client.send_packet(SetContainerContent {
                                 window_id,
