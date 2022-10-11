@@ -505,7 +505,7 @@ impl<C: Config> Client<C> {
     /// Plays a sound to the client at a given position.
     pub fn play_sound(
         &mut self,
-        name: Ident,
+        name: Ident<'static>,
         category: SoundCategory,
         pos: Vec3<f64>,
         volume: f32,
@@ -514,7 +514,7 @@ impl<C: Config> Client<C> {
         self.send_packet(CustomSoundEffect {
             name,
             category,
-            position: pos.iter().map(|x| *x as i32 * 8).collect(),
+            position: pos.as_() * 8,
             volume,
             pitch,
             seed: 0,

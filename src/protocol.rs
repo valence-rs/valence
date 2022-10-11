@@ -13,6 +13,7 @@
 //!
 //! [`send_packet`]: crate::client::Client::send_packet
 
+use std::borrow::Cow;
 use std::io::{Read, Write};
 use std::mem;
 
@@ -344,15 +345,33 @@ where
     }
 }
 
-impl Encode for String {
+impl Encode for str {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         encode_string_bounded(self, 0, 32767, w)
+    }
+}
+
+impl Encode for String {
+    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+        self.as_str().encode(w)
     }
 }
 
 impl Decode for String {
     fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         decode_string_bounded(0, 32767, r)
+    }
+}
+
+impl<'a> Encode for Cow<'a, str> {
+    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+        self.as_ref().encode(w)
+    }
+}
+
+impl Decode for Cow<'static, str> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
+        Ok(String::decode(r)?.into())
     }
 }
 
