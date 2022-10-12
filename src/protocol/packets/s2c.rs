@@ -469,6 +469,15 @@ pub mod play {
         }
     }
 
+    def_struct! {
+        CombatDeath {
+            player_id: VarInt,
+            /// Killer's entity ID, -1 if no killer
+            entity_id: i32,
+            message: Text
+        }
+    }
+
     def_enum! {
         PlayerInfo: VarInt {
             AddPlayer: Vec<PlayerListAddPlayer> = 0,
@@ -752,6 +761,7 @@ pub mod play {
             UpdateEntityRotation = 42,
             OpenScreen = 45,
             PlayerChatMessage = 51,
+            CombatDeath = 54,
             PlayerInfo = 55,
             SynchronizePlayerPosition = 57,
             RemoveEntities = 59,
