@@ -1080,7 +1080,7 @@ impl<C: Config> Client<C> {
                 .map(|(id, _)| id.dimension_name())
                 .collect();
 
-            dimension_names.push(ident!("{LIBRARY_NAMESPACE}:dummy_dimension").to_owned_ident());
+            dimension_names.push(ident!("{LIBRARY_NAMESPACE}:dummy_dimension"));
 
             self.send_packet(LoginPlay {
                 entity_id: 0, // EntityId 0 is reserved for clients.
