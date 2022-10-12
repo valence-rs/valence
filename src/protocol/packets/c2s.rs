@@ -8,7 +8,7 @@ pub mod handshake {
     def_struct! {
         Handshake {
             protocol_version: VarInt,
-            server_adddress: BoundedString<0, 255>,
+            server_address: BoundedString<0, 255>,
             server_port: u16,
             next_state: HandshakeNextState,
         }
@@ -281,7 +281,7 @@ pub mod play {
 
     def_struct! {
         PluginMessageC2s {
-            channel: Ident,
+            channel: Ident<'static>,
             data: RawBytes,
         }
     }
@@ -407,7 +407,7 @@ pub mod play {
     def_struct! {
         PlaceRecipe {
             window_id: i8,
-            recipe: Ident,
+            recipe: Ident<'static>,
             make_all: bool,
         }
     }
@@ -520,7 +520,7 @@ pub mod play {
 
     def_struct! {
         SetSeenRecipe {
-            recipe_id: Ident,
+            recipe_id: Ident<'static>,
         }
     }
 
@@ -542,7 +542,7 @@ pub mod play {
 
     def_enum! {
         SeenAdvancements: VarInt {
-            OpenedTab: Ident = 0,
+            OpenedTab: Ident<'static> = 0,
             ClosedScreen = 1,
         }
     }
@@ -610,9 +610,9 @@ pub mod play {
     def_struct! {
         ProgramJigsawBlock {
             location: BlockPos,
-            name: Ident,
-            target: Ident,
-            pool: Ident,
+            name: Ident<'static>,
+            target: Ident<'static>,
+            pool: Ident<'static>,
             final_state: String,
             joint_type: String,
         }
