@@ -87,7 +87,7 @@ impl<S: Borrow<str>> Ident<S> {
     /// operation is infallible and no checks need to be performed.
     pub fn as_str_ident(&self) -> Ident<&str> {
         Ident {
-            string: &self.string.borrow(),
+            string: self.string.borrow(),
             path_start: self.path_start,
         }
     }
