@@ -505,7 +505,7 @@ impl<C: Config> Client<C> {
     /// Plays a sound to the client at a given position.
     pub fn play_sound(
         &mut self,
-        name: Ident<'static>,
+        name: Ident<String>,
         category: SoundCategory,
         pos: Vec3<f64>,
         volume: f32,
@@ -1080,7 +1080,7 @@ impl<C: Config> Client<C> {
                 .map(|(id, _)| id.dimension_name())
                 .collect();
 
-            dimension_names.push(ident!("{LIBRARY_NAMESPACE}:dummy_dimension"));
+            dimension_names.push(ident!("{LIBRARY_NAMESPACE}:dummy_dimension").to_owned_ident());
 
             self.send_packet(LoginPlay {
                 entity_id: 0, // EntityId 0 is reserved for clients.

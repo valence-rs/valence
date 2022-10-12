@@ -378,15 +378,14 @@ enum ClickEvent {
 enum HoverEvent {
     ShowText(Box<Text>),
     ShowItem {
-        #[serde(deserialize_with = "Ident::deserialize_to_owned")]
-        id: Ident<'static>,
+        id: Ident<String>,
         count: Option<i32>,
         // TODO: tag
     },
     ShowEntity {
         name: Box<Text>,
-        #[serde(rename = "type", deserialize_with = "Ident::deserialize_to_owned")]
-        kind: Ident<'static>,
+        #[serde(rename = "type")]
+        kind: Ident<String>,
         // TODO: id (hyphenated entity UUID as a string)
     },
 }

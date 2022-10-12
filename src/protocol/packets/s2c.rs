@@ -62,7 +62,7 @@ pub mod login {
     def_struct! {
         LoginPluginRequest {
             message_id: VarInt,
-            channel: Ident<'static>,
+            channel: Ident<String>,
             data: RawBytes,
         }
     }
@@ -277,7 +277,7 @@ pub mod play {
 
     def_struct! {
         CustomSoundEffect {
-            name: Ident<'static>,
+            name: Ident<String>,
             category: SoundCategory,
             position: Vec3<i32>,
             volume: f32,
@@ -388,13 +388,13 @@ pub mod play {
             is_hardcore: bool,
             gamemode: GameMode,
             previous_gamemode: GameMode,
-            dimension_names: Vec<Ident<'static>>,
+            dimension_names: Vec<Ident<String>>,
             /// Contains information about dimensions, biomes, and chats.
             registry_codec: Compound,
             /// The name of the dimension type being spawned into.
-            dimension_type_name: Ident<'static>,
+            dimension_type_name: Ident<String>,
             /// The name of the dimension being spawned into.
-            dimension_name: Ident<'static>,
+            dimension_name: Ident<String>,
             /// Hash of the world's seed used for client biome noise.
             hashed_seed: i64,
             /// No longer used by the client.
@@ -409,7 +409,7 @@ pub mod play {
             /// If this is a superflat world.
             /// Superflat worlds have different void fog and horizon levels.
             is_flat: bool,
-            last_death_location: Option<(Ident<'static>, BlockPos)>,
+            last_death_location: Option<(Ident<String>, BlockPos)>,
         }
     }
 
@@ -529,15 +529,15 @@ pub mod play {
 
     def_struct! {
         Respawn {
-            dimension_type_name: Ident<'static>,
-            dimension_name: Ident<'static>,
+            dimension_type_name: Ident<String>,
+            dimension_name: Ident<String>,
             hashed_seed: u64,
             game_mode: GameMode,
             previous_game_mode: GameMode,
             is_debug: bool,
             is_flat: bool,
             copy_metadata: bool,
-            last_death_location: Option<(Ident<'static>, BlockPos)>,
+            last_death_location: Option<(Ident<String>, BlockPos)>,
         }
     }
 
@@ -708,7 +708,7 @@ pub mod play {
 
     def_struct! {
         EntityAttributesProperty {
-            key: Ident<'static>,
+            key: Ident<String>,
             value: f64,
             modifiers: Vec<EntityAttributesModifiers>
         }
