@@ -222,8 +222,6 @@ pub struct Client<C: Config> {
     loaded_chunks: HashSet<ChunkPos>,
     new_game_mode: GameMode,
     old_game_mode: GameMode,
-    new_enable_respawn_screen: bool,
-    old_enable_respawn_screen: bool,
     settings: Option<Settings>,
     dug_block_sequence: i32,
     /// Should be sent after login packet.
@@ -295,8 +293,6 @@ impl<C: Config> Client<C> {
             loaded_chunks: HashSet::new(),
             new_game_mode: GameMode::Survival,
             old_game_mode: GameMode::Survival,
-            new_enable_respawn_screen: false,
-            old_enable_respawn_screen: false,
             settings: None,
             dug_block_sequence: 0,
             msgs_to_send: Vec::new(),
@@ -614,7 +610,14 @@ impl<C: Config> Client<C> {
 
     /// Sets whether respawn screen should be displayed after client's death.
     pub fn set_respawn_screen(&mut self, enable: bool) {
-        self.new_enable_respawn_screen = enable;
+        let value = match enable {
+            true => 0.0,
+            false => 1.0,
+        };
+        self.send_packet(GameEvent {
+            reason: GameStateChangeReason::EnableRespawnScreen,
+            value,
+        });
     }
 
     /// Gets whether or not the client is connected to the server.
@@ -1158,18 +1161,6 @@ impl<C: Config> Client<C> {
                 self.send_packet(GameEvent {
                     reason: GameStateChangeReason::ChangeGameMode,
                     value: self.new_game_mode as i32 as f32,
-                });
-            }
-
-            if self.old_enable_respawn_screen != self.new_enable_respawn_screen {
-                self.old_enable_respawn_screen = self.new_enable_respawn_screen;
-                let value = match self.new_enable_respawn_screen {
-                    true => 0.0,
-                    false => 1.0,
-                };
-                self.send_packet(GameEvent {
-                    reason: GameStateChangeReason::EnableRespawnScreen,
-                    value,
                 });
             }
 
