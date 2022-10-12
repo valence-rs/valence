@@ -26,7 +26,7 @@ pub struct BiomeId(pub(crate) u16);
 pub struct Biome {
     /// The unique name for this biome. The name can be
     /// seen in the F3 debug menu.
-    pub name: Ident<'static>,
+    pub name: Ident<String>,
     pub precipitation: BiomePrecipitation,
     pub sky_color: u32,
     pub water_fog_color: u32,
@@ -36,7 +36,7 @@ pub struct Biome {
     pub grass_color: Option<u32>,
     pub grass_color_modifier: BiomeGrassColorModifier,
     pub music: Option<BiomeMusic>,
-    pub ambient_sound: Option<Ident<'static>>,
+    pub ambient_sound: Option<Ident<String>>,
     pub additions_sound: Option<BiomeAdditionsSound>,
     pub mood_sound: Option<BiomeMoodSound>,
     pub particle: Option<BiomeParticle>,
@@ -202,20 +202,20 @@ pub enum BiomeGrassColorModifier {
 #[derive(Clone, Debug)]
 pub struct BiomeMusic {
     pub replace_current_music: bool,
-    pub sound: Ident<'static>,
+    pub sound: Ident<String>,
     pub min_delay: i32,
     pub max_delay: i32,
 }
 
 #[derive(Clone, Debug)]
 pub struct BiomeAdditionsSound {
-    pub sound: Ident<'static>,
+    pub sound: Ident<String>,
     pub tick_chance: f64,
 }
 
 #[derive(Clone, Debug)]
 pub struct BiomeMoodSound {
-    pub sound: Ident<'static>,
+    pub sound: Ident<String>,
     pub tick_delay: i32,
     pub offset: f64,
     pub block_search_extent: i32,
@@ -224,5 +224,5 @@ pub struct BiomeMoodSound {
 #[derive(Clone, Debug)]
 pub struct BiomeParticle {
     pub probability: f32,
-    pub kind: Ident<'static>,
+    pub kind: Ident<String>,
 }

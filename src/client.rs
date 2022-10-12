@@ -505,7 +505,7 @@ impl<C: Config> Client<C> {
     /// Plays a sound to the client at a given position.
     pub fn play_sound(
         &mut self,
-        name: Ident<'static>,
+        name: Ident<String>,
         category: SoundCategory,
         pos: Vec3<f64>,
         volume: f32,

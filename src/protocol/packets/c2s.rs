@@ -281,7 +281,7 @@ pub mod play {
 
     def_struct! {
         PluginMessageC2s {
-            channel: Ident<'static>,
+            channel: Ident<String>,
             data: RawBytes,
         }
     }
@@ -407,7 +407,7 @@ pub mod play {
     def_struct! {
         PlaceRecipe {
             window_id: i8,
-            recipe: Ident<'static>,
+            recipe: Ident<String>,
             make_all: bool,
         }
     }
@@ -520,7 +520,7 @@ pub mod play {
 
     def_struct! {
         SetSeenRecipe {
-            recipe_id: Ident<'static>,
+            recipe_id: Ident<String>,
         }
     }
 
@@ -542,7 +542,7 @@ pub mod play {
 
     def_enum! {
         SeenAdvancements: VarInt {
-            OpenedTab: Ident<'static> = 0,
+            OpenedTab: Ident<String> = 0,
             ClosedScreen = 1,
         }
     }
@@ -610,9 +610,9 @@ pub mod play {
     def_struct! {
         ProgramJigsawBlock {
             location: BlockPos,
-            name: Ident<'static>,
-            target: Ident<'static>,
-            pool: Ident<'static>,
+            name: Ident<String>,
+            target: Ident<String>,
+            pool: Ident<String>,
             final_state: String,
             joint_type: String,
         }
