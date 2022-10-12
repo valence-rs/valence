@@ -38,7 +38,6 @@ pub mod packets;
 mod slot;
 mod var_int;
 mod var_long;
-mod packet_buf;
 
 /// Types that can be written to the Minecraft protocol.
 pub trait Encode {
