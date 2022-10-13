@@ -393,24 +393,13 @@ fn make_registry_codec(dimensions: &[Dimension], biomes: &[Biome]) -> Compound {
         ident!("worldgen/biome") => compound! {
             "type" => ident!("worldgen/biome"),
             "value" => {
-                let mut biomes: Vec<_> = biomes
+                List::Compound(biomes
                     .iter()
                     .enumerate()
                     .map(|(id, biome)| biome.to_biome_registry_item(id as i32))
-                    .collect();
-
-                // The client needs a biome named "minecraft:plains" in the registry to
-                // connect. This is probably a bug in the client.
-                //
-                // If the issue is resolved, remove this if.
-                if !biomes.iter().any(|b| b["name"] == "plains".into()) {
-                    let biome = Biome::default();
-                    assert_eq!(biome.name, ident!("plains"));
-                    biomes.push(biome.to_biome_registry_item(biomes.len() as i32));
-                }
-
-                List::Compound(biomes)
+                    .collect())
             }
+
         },
         ident!("chat_type_registry") => compound! {
             "type" => ident!("chat_type"),

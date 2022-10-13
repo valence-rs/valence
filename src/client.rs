@@ -1138,7 +1138,7 @@ impl<C: Config> Client<C> {
                 registry_codec: shared.registry_codec().clone(),
                 dimension_type_name: world.meta.dimension().dimension_type_name(),
                 dimension_name: world.meta.dimension().dimension_name(),
-                hashed_seed: 0,
+                hashed_seed: 10,
                 max_players: VarInt(0),
                 view_distance: BoundedInt(VarInt(self.view_distance() as i32)),
                 simulation_distance: VarInt(16),
@@ -1332,7 +1332,7 @@ impl<C: Config> Client<C> {
         for pos in chunks_in_view_distance(center, self.view_distance) {
             if let Some(chunk) = world.chunks.get(pos) {
                 if self.loaded_chunks.insert(pos) {
-                    self.send_packet(chunk.chunk_data_packet(pos));
+                    self.send_packet(chunk.chunk_data_packet(pos, shared.biomes().len()));
                 }
             }
         }

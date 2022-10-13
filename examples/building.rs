@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
 use num::Integer;
-use valence::biome::Biome;
+use valence::async_trait;
 use valence::block::BlockState;
 use valence::chunk::{Chunk, UnloadedChunk};
 use valence::client::{handle_event_default, ClientEvent, DiggingStatus, GameMode, Hand};
@@ -13,7 +13,6 @@ use valence::entity::{EntityId, EntityKind};
 use valence::player_list::PlayerListId;
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
-use valence::{async_trait, ident};
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()
@@ -65,14 +64,6 @@ impl Config for Game {
         vec![Dimension {
             fixed_time: Some(6000),
             ..Dimension::default()
-        }]
-    }
-
-    fn biomes(&self) -> Vec<Biome> {
-        vec![Biome {
-            name: ident!("valence:default_biome"),
-            grass_color: Some(0x00ff00),
-            ..Biome::default()
         }]
     }
 

@@ -9,39 +9,21 @@ use crate::util::log2_ceil;
 
 /// `HALF_LEN` must be equal to `ceil(LEN / 2)`.
 #[derive(Clone, Debug)]
-pub enum PalettedContainer<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> {
+pub enum PalettedContainer<T, const LEN: usize, const HALF_LEN: usize> {
     Single(T),
     Indirect(Box<Indirect<T, LEN, HALF_LEN>>),
     Direct(Box<[T; LEN]>),
 }
 
-pub trait PalettedContainerElement: Copy + Eq + Default {
-    /// The minimum number of bits required to represent all instances of the
-    /// element type. If `N` is the total number of possible values, then
-    /// `DIRECT_BITS` is `ceil(log2(N))`.
-    const DIRECT_BITS: usize;
-    /// The maximum number of bits per element allowed in the indirect
-    /// representation while encoding. Any higher than this will force
-    /// conversion to the direct representation while encoding.
-    const MAX_INDIRECT_BITS: usize;
-    /// The minimum number of bits used to represent the element type in the
-    /// indirect representation while encoding. If the bits per index is lower,
-    /// it will be rounded up to this.
-    const MIN_INDIRECT_BITS: usize;
-    /// Converts the element type to bits. The output must be less than two to
-    /// the power of `DIRECT_BITS`.
-    fn to_bits(self) -> u64;
-}
-
 #[derive(Clone, Debug)]
-pub struct Indirect<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> {
+pub struct Indirect<T, const LEN: usize, const HALF_LEN: usize> {
     /// Each element is a unique instance of `T`.
     palette: ArrayVec<T, 16>,
     /// Each half-byte is an index into `palette`.
     indices: [u8; HALF_LEN],
 }
 
-impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize>
+impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
     PalettedContainer<T, LEN, HALF_LEN>
 {
     pub fn new() -> Self {
@@ -150,9 +132,108 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize>
             "index {idx} is out of bounds in paletted container of length {LEN}"
         );
     }
+
+    /// Encodes the paletted container in the format that Minecraft expects.
+    ///
+    /// - **`writer`**: The [`Write`] instance to write the paletted container
+    ///   to.
+    /// - **`to_bits`**: A function to convert the element type to bits. The
+    ///   output must be less than two to the power of `direct_bits`.
+    /// - **`min_indirect_bits`**: The minimum number of bits used to represent
+    ///   the element type in the indirect representation. If the bits per index
+    ///   is lower, it will be rounded up to this.
+    /// - **`max_indirect_bits`**: The maximum number of bits per element
+    ///   allowed in the indirect representation. Any higher than this will
+    ///   force conversion to the direct representation while encoding.
+    /// - **`direct_bits`**: The minimum number of bits required to represent
+    ///   all instances of the element type. If `N` is the total number of
+    ///   possible values, then `DIRECT_BITS` is `ceil(log2(N))`.
+    pub fn encode_mc_format<W, F>(
+        &self,
+        mut writer: W,
+        mut to_bits: F,
+        min_indirect_bits: usize,
+        max_indirect_bits: usize,
+        direct_bits: usize,
+    ) -> anyhow::Result<()>
+    where
+        W: Write,
+        F: FnMut(T) -> u64,
+    {
+        debug_assert!(min_indirect_bits <= 4);
+        debug_assert!(min_indirect_bits <= max_indirect_bits);
+        debug_assert!(max_indirect_bits <= 64);
+        debug_assert!(direct_bits <= 64);
+
+        match self {
+            Self::Single(val) => {
+                // Bits per entry
+                0_u8.encode(&mut writer)?;
+
+                // Palette
+                VarInt(to_bits(*val) as i32).encode(&mut writer)?;
+
+                // Number of longs
+                VarInt(0).encode(&mut writer)?;
+            }
+            Self::Indirect(ind) => {
+                let bits_per_entry = min_indirect_bits.max(log2_ceil(ind.palette.len()));
+
+                // Encode as direct if necessary.
+                if bits_per_entry > max_indirect_bits {
+                    // Bits per entry
+                    (direct_bits as u8).encode(&mut writer)?;
+
+                    // Number of longs in data array.
+                    VarInt(compact_u64s_len(LEN, direct_bits) as _).encode(&mut writer)?;
+                    // Data array
+                    encode_compact_u64s(
+                        &mut writer,
+                        (0..LEN).map(|i| to_bits(ind.get(i))),
+                        direct_bits,
+                    )?;
+                } else {
+                    // Bits per entry
+                    (bits_per_entry as u8).encode(&mut writer)?;
+
+                    // Palette len
+                    VarInt(ind.palette.len() as i32).encode(&mut writer)?;
+                    // Palette
+                    for val in &ind.palette {
+                        VarInt(to_bits(*val) as i32).encode(&mut writer)?;
+                    }
+
+                    // Number of longs in data array.
+                    VarInt(compact_u64s_len(LEN, bits_per_entry) as _).encode(&mut writer)?;
+                    // Data array
+                    encode_compact_u64s(
+                        &mut writer,
+                        ind.indices
+                            .iter()
+                            .cloned()
+                            .flat_map(|byte| [byte & 0b1111, byte >> 4])
+                            .map(u64::from)
+                            .take(LEN),
+                        bits_per_entry,
+                    )?;
+                }
+            }
+            Self::Direct(dir) => {
+                // Bits per entry
+                (direct_bits as u8).encode(&mut writer)?;
+
+                // Number of longs in data array.
+                VarInt(compact_u64s_len(LEN, direct_bits) as _).encode(&mut writer)?;
+                // Data array
+                encode_compact_u64s(&mut writer, dir.iter().cloned().map(to_bits), direct_bits)?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
-impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> Default
+impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize> Default
     for PalettedContainer<T, LEN, HALF_LEN>
 {
     fn default() -> Self {
@@ -160,9 +241,7 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> Defau
     }
 }
 
-impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize>
-    Indirect<T, LEN, HALF_LEN>
-{
+impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize> Indirect<T, LEN, HALF_LEN> {
     pub fn get(&self, idx: usize) -> T {
         let palette_idx = self.indices[idx / 2] >> (idx % 2 * 4) & 0b1111;
         self.palette[palette_idx as usize]
@@ -184,94 +263,18 @@ impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize>
     }
 }
 
-/// Encodes the paletted container in the format that Minecraft expects.
-impl<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize> Encode
-    for PalettedContainer<T, LEN, HALF_LEN>
-{
-    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        assert!(T::DIRECT_BITS <= 64);
-        assert!(T::MAX_INDIRECT_BITS <= 64);
-        assert!(T::MIN_INDIRECT_BITS <= T::MAX_INDIRECT_BITS);
-        assert!(T::MIN_INDIRECT_BITS <= 4);
-
-        match self {
-            Self::Single(val) => {
-                // Bits per entry
-                0_u8.encode(w)?;
-
-                // Palette
-                VarInt(val.to_bits() as i32).encode(w)?;
-
-                // Number of longs
-                VarInt(0).encode(w)?;
-            }
-            Self::Indirect(ind) => {
-                let bits_per_entry = T::MIN_INDIRECT_BITS.max(log2_ceil(ind.palette.len()));
-
-                // TODO: if bits_per_entry > MAX_INDIRECT_BITS, encode as direct.
-                debug_assert!(bits_per_entry <= T::MAX_INDIRECT_BITS);
-
-                // Bits per entry
-                (bits_per_entry as u8).encode(w)?;
-
-                // Palette len
-                VarInt(ind.palette.len() as i32).encode(w)?;
-                // Palette
-                for val in &ind.palette {
-                    VarInt(val.to_bits() as i32).encode(w)?;
-                }
-
-                // Number of longs in data array.
-                VarInt(compact_u64s_len(LEN, bits_per_entry) as _).encode(w)?;
-                // Data array
-                encode_compact_u64s(
-                    w,
-                    ind.indices
-                        .iter()
-                        .cloned()
-                        .flat_map(|byte| [byte & 0b1111, byte >> 4])
-                        .map(u64::from)
-                        .take(LEN),
-                    bits_per_entry,
-                )?;
-            }
-            Self::Direct(dir) => {
-                // Bits per entry
-                (T::DIRECT_BITS as u8).encode(w)?;
-
-                // Number of longs in data array.
-                VarInt(compact_u64s_len(LEN, T::DIRECT_BITS) as _).encode(w)?;
-                // Data array
-                encode_compact_u64s(w, dir.iter().map(|v| v.to_bits()), T::DIRECT_BITS)?;
-            }
-        }
-
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use rand::Rng;
 
     use super::*;
 
-    fn check<T: PalettedContainerElement, const LEN: usize, const HALF_LEN: usize>(
+    fn check<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>(
         p: &PalettedContainer<T, LEN, HALF_LEN>,
         s: &[T],
     ) -> bool {
         assert_eq!(s.len(), LEN);
         (0..LEN).all(|i| p.get(i) == s[i])
-    }
-
-    impl PalettedContainerElement for u32 {
-        const DIRECT_BITS: usize = 0;
-        const MAX_INDIRECT_BITS: usize = 0;
-        const MIN_INDIRECT_BITS: usize = 0;
-
-        fn to_bits(self) -> u64 {
-            self.into()
-        }
     }
 
     #[test]
