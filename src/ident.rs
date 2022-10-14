@@ -1,6 +1,5 @@
 //! Resource identifiers.
 
-use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::error::Error;
 use std::fmt;
@@ -20,34 +19,40 @@ use crate::protocol::{Decode, Encode};
 ///
 /// A resource identifier is a string divided into a "namespace" part and a
 /// "path" part. For instance `minecraft:apple` and `valence:frobnicator` are
-/// both valid identifiers.
+/// both valid identifiers. A string must match the regex
+/// `^([a-z0-9_.-]+:)?[a-z0-9_.-\/]+$` to be considered valid.
 ///
 /// If the namespace part is left off (the part before and including the colon)
 /// the namespace is considered to be "minecraft" for the purposes of equality,
 /// ordering, and hashing.
 ///
-/// A string must match the regex `^([a-z0-9_-]+:)?[a-z0-9_\/.-]+$` to be a
-/// valid identifier.
+/// # Contract
+///
+/// The type `S` must meet the following criteria:
+/// - All calls to [`AsRef::as_ref`] and [`Borrow::borrow`][borrow] while the
+///   string is wrapped in `Ident` must return the same value.
+///
+/// [borrow]: std::borrow::Borrow::borrow
 #[derive(Copy, Clone, Debug)]
 pub struct Ident<S> {
     string: S,
     path_start: usize,
 }
 
-impl<S: Borrow<str>> Ident<S> {
+impl<S: AsRef<str>> Ident<S> {
     pub fn new(string: S) -> Result<Self, IdentError<S>> {
         let check_namespace = |s: &str| {
             !s.is_empty()
                 && s.chars()
-                    .all(|c| matches!(c, 'a'..='z' | '0'..='9' | '_' | '-'))
+                    .all(|c| matches!(c, 'a'..='z' | '0'..='9' | '_' | '.' | '-'))
         };
         let check_path = |s: &str| {
             !s.is_empty()
                 && s.chars()
-                    .all(|c| matches!(c, 'a'..='z' | '0'..='9' | '_' | '/' | '.' | '-'))
+                    .all(|c| matches!(c, 'a'..='z' | '0'..='9' | '_' | '.' | '-' | '/'))
         };
 
-        let str = string.borrow();
+        let str = string.as_ref();
 
         match str.split_once(':') {
             Some((namespace, path)) if check_namespace(namespace) && check_path(path) => {
@@ -70,24 +75,24 @@ impl<S: Borrow<str>> Ident<S> {
         if self.path_start == 0 {
             "minecraft"
         } else {
-            &self.string.borrow()[..self.path_start - 1]
+            &self.string.as_ref()[..self.path_start - 1]
         }
     }
 
     pub fn path(&self) -> &str {
-        &self.string.borrow()[self.path_start..]
+        &self.string.as_ref()[self.path_start..]
     }
 
     /// Returns the underlying string as a `str`.
     pub fn as_str(&self) -> &str {
-        self.string.borrow()
+        self.string.as_ref()
     }
 
     /// Borrows the underlying string and returns it as an `Ident`. This
     /// operation is infallible and no checks need to be performed.
     pub fn as_str_ident(&self) -> Ident<&str> {
         Ident {
-            string: self.string.borrow(),
+            string: self.string.as_ref(),
             path_start: self.path_start,
         }
     }
@@ -98,7 +103,7 @@ impl<S: Borrow<str>> Ident<S> {
     pub fn to_owned_ident(&self) -> Ident<S::Owned>
     where
         S: ToOwned,
-        S::Owned: Borrow<str>,
+        S::Owned: AsRef<str>,
     {
         Ident {
             string: self.string.to_owned(),
@@ -110,32 +115,12 @@ impl<S: Borrow<str>> Ident<S> {
     pub fn into_inner(self) -> S {
         self.string
     }
-}
 
-/// The error type created when an [`Ident`] cannot be parsed from a
-/// string. Contains the offending string.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct IdentError<S>(pub S);
-
-impl<S> fmt::Debug for IdentError<S>
-where
-    S: Borrow<str>,
-{
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.debug_tuple("IdentError").field(&self.0.borrow()).finish()
+    /// Consumes the identifier and returns the underlying string.
+    pub fn get(self) -> S {
+        self.string
     }
 }
-
-impl<S> fmt::Display for IdentError<S>
-where
-    S: Borrow<str>,
-{
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "invalid resource identifier \"{}\"", self.0.borrow())
-    }
-}
-
-impl<S> Error for IdentError<S> where S: Borrow<str> {}
 
 impl FromStr for Ident<String> {
     type Err = IdentError<String>;
@@ -155,18 +140,18 @@ impl TryFrom<String> for Ident<String> {
 
 impl<S> From<Ident<S>> for String
 where
-    S: Into<String> + Borrow<str>,
+    S: Into<String> + AsRef<str>,
 {
     fn from(id: Ident<S>) -> Self {
         if id.path_start == 0 {
-            format!("minecraft:{}", id.string.borrow())
+            format!("minecraft:{}", id.string.as_ref())
         } else {
             id.string.into()
         }
     }
 }
 
-impl<S: Borrow<str>> fmt::Display for Ident<S> {
+impl<S: AsRef<str>> fmt::Display for Ident<S> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}", self.namespace(), self.path())
     }
@@ -174,20 +159,20 @@ impl<S: Borrow<str>> fmt::Display for Ident<S> {
 
 impl<S, T> PartialEq<Ident<T>> for Ident<S>
 where
-    S: Borrow<str>,
-    T: Borrow<str>,
+    S: AsRef<str>,
+    T: AsRef<str>,
 {
     fn eq(&self, other: &Ident<T>) -> bool {
         self.namespace() == other.namespace() && self.path() == other.path()
     }
 }
 
-impl<S> Eq for Ident<S> where S: Borrow<str> {}
+impl<S> Eq for Ident<S> where S: AsRef<str> {}
 
 impl<S, T> PartialOrd<Ident<T>> for Ident<S>
 where
-    S: Borrow<str>,
-    T: Borrow<str>,
+    S: AsRef<str>,
+    T: AsRef<str>,
 {
     fn partial_cmp(&self, other: &Ident<T>) -> Option<Ordering> {
         (self.namespace(), self.path()).partial_cmp(&(other.namespace(), other.path()))
@@ -196,7 +181,7 @@ where
 
 impl<S> Ord for Ident<S>
 where
-    S: Borrow<str>,
+    S: AsRef<str>,
 {
     fn cmp(&self, other: &Self) -> Ordering {
         (self.namespace(), self.path()).cmp(&(other.namespace(), other.path()))
@@ -205,7 +190,7 @@ where
 
 impl<S> Hash for Ident<S>
 where
-    S: Borrow<str>,
+    S: AsRef<str>,
 {
     fn hash<H: Hasher>(&self, state: &mut H) {
         (self.namespace(), self.path()).hash(state);
@@ -226,7 +211,7 @@ where
 
 impl<'de, T> Deserialize<'de> for Ident<T>
 where
-    T: Deserialize<'de> + Borrow<str>,
+    T: Deserialize<'de> + AsRef<str>,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -244,7 +229,7 @@ impl<S: Encode> Encode for Ident<S> {
 
 impl<S> Decode for Ident<S>
 where
-    S: Decode + Borrow<str> + Send + Sync + 'static,
+    S: Decode + AsRef<str> + Send + Sync + 'static,
 {
     fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         Ok(Ident::new(S::decode(r)?)?)
@@ -259,6 +244,31 @@ where
         id.string.into()
     }
 }
+
+/// The error type created when an [`Ident`] cannot be parsed from a
+/// string. Contains the offending string.
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct IdentError<S>(pub S);
+
+impl<S> fmt::Debug for IdentError<S>
+where
+    S: AsRef<str>,
+{
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_tuple("IdentError").field(&self.0.as_ref()).finish()
+    }
+}
+
+impl<S> fmt::Display for IdentError<S>
+where
+    S: AsRef<str>,
+{
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "invalid resource identifier \"{}\"", self.0.as_ref())
+    }
+}
+
+impl<S> Error for IdentError<S> where S: AsRef<str> {}
 
 /// Convenience macro for constructing an [`Ident<String>`] from a format
 /// string.
