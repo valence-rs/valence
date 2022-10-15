@@ -68,7 +68,12 @@ rayon = "1.5.3"
 num = "0.4.0"
 
 [workspace]
-members = ["valence_nbt", "packet_inspector"]
+members = [
+    "valence_nbt",
+    "packet_inspector",
+    "performance_tests/players"
+]
+exclude = ["performance_tests/rust-mc-bot"]
 
 [profile.dev.package."*"]
 opt-level = 3

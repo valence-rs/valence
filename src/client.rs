@@ -870,7 +870,7 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::ClickContainer(p) => {
                 if p.slot_idx == -999 {
                     // client is trying to drop the currently held stack
-                    let held = std::mem::replace(&mut self.cursor_held_item, None);
+                    let held = mem::replace(&mut self.cursor_held_item, None);
                     match held {
                         None => {}
                         Some(stack) => self.events.push_back(ClientEvent::DropItemStack { stack }),
