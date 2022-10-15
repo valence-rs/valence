@@ -52,7 +52,7 @@ pub trait Decode: Sized {
 }
 
 /// The maximum number of bytes in a single packet.
-pub const MAX_PACKET_SIZE: i32 = 2097151;
+pub const MAX_PACKET_SIZE: i32 = 2097152;
 
 impl Encode for () {
     fn encode(&self, _w: &mut impl Write) -> anyhow::Result<()> {

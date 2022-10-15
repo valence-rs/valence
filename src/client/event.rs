@@ -173,6 +173,7 @@ pub enum ClientEvent {
         /// The item that is now being carried by the user's cursor
         carried_item: Slot,
     },
+    RespawnRequest,
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -344,6 +345,7 @@ pub fn handle_event_default<C: Config>(
             client.inventory.set_slot(*slot_id, slot.clone());
         }
         ClientEvent::ClickContainer { .. } => {}
+        ClientEvent::RespawnRequest => {}
     }
 
     entity.set_world(client.world());

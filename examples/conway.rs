@@ -84,7 +84,7 @@ impl Config for Game {
 
     fn biomes(&self) -> Vec<Biome> {
         vec![Biome {
-            name: ident!("valence:default_biome"),
+            name: ident!("plains"),
             grass_color: Some(0x00ff00),
             ..Biome::default()
         }]

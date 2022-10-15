@@ -25,13 +25,15 @@ use crate::inventory::{Inventory, InventoryDirtyable, PlayerInventory, WindowInv
 use crate::item::ItemStack;
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
-use crate::protocol::packets::c2s::play::{self, C2sPlayPacket, InteractKind, PlayerCommandId};
+use crate::protocol::packets::c2s::play::{
+    self, C2sPlayPacket, ClientCommand, InteractKind, PlayerCommandId,
+};
 pub use crate::protocol::packets::s2c::play::SetTitleAnimationTimes;
 use crate::protocol::packets::s2c::play::{
-    AcknowledgeBlockChange, ClearTitles, CustomSoundEffect, DisconnectPlay, EntityAnimationS2c,
-    EntityAttributesProperty, EntityEvent, GameEvent, GameStateChangeReason, KeepAliveS2c,
-    LoginPlay, PlayerPositionLookFlags, RemoveEntities, ResourcePackS2c, Respawn, S2cPlayPacket,
-    SetActionBarText, SetCenterChunk, SetContainerContent, SetDefaultSpawnPosition,
+    AcknowledgeBlockChange, ClearTitles, CombatDeath, CustomSoundEffect, DisconnectPlay,
+    EntityAnimationS2c, EntityAttributesProperty, EntityEvent, GameEvent, GameStateChangeReason,
+    KeepAliveS2c, LoginPlay, PlayerPositionLookFlags, RemoveEntities, ResourcePackS2c, Respawn,
+    S2cPlayPacket, SetActionBarText, SetCenterChunk, SetContainerContent, SetDefaultSpawnPosition,
     SetEntityMetadata, SetEntityVelocity, SetExperience, SetHeadRotation, SetHealth,
     SetRenderDistance, SetSubtitleText, SetTitleText, SoundCategory, SynchronizePlayerPosition,
     SystemChatMessage, TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
@@ -189,6 +191,8 @@ pub struct Client<C: Config> {
     uuid: Uuid,
     username: String,
     textures: Option<SignedPlayerTextures>,
+    /// World client is currently in. Default value is **invalid** and must
+    /// be set by calling [`Client::spawn`].
     world: WorldId,
     player_list: Option<PlayerListId>,
     old_player_list: Option<PlayerListId>,
@@ -513,7 +517,7 @@ impl<C: Config> Client<C> {
     /// Plays a sound to the client at a given position.
     pub fn play_sound(
         &mut self,
-        name: Ident<'static>,
+        name: Ident<String>,
         category: SoundCategory,
         pos: Vec3<f64>,
         volume: f32,
@@ -622,6 +626,44 @@ impl<C: Config> Client<C> {
             food: food.into(),
             food_saturation,
         })
+    }
+
+    /// Kills the client and shows `message` on the death screen. If an entity
+    /// killed the player, pass its ID into the function.
+    pub fn kill(&mut self, killer: Option<EntityId>, message: impl Into<Text>) {
+        let entity_id = match killer {
+            Some(k) => k.to_network_id(),
+            None => -1,
+        };
+        self.send_packet(CombatDeath {
+            player_id: VarInt(0),
+            entity_id,
+            message: message.into(),
+        });
+    }
+
+    /// Respawns client. Optionally can roll the credits before respawning.
+    pub fn win_game(&mut self, show_credits: bool) {
+        let value = match show_credits {
+            true => 1.0,
+            false => 0.0,
+        };
+        self.send_packet(GameEvent {
+            reason: GameStateChangeReason::WinGame,
+            value,
+        });
+    }
+
+    /// Sets whether respawn screen should be displayed after client's death.
+    pub fn set_respawn_screen(&mut self, enable: bool) {
+        let value = match enable {
+            true => 0.0,
+            false => 1.0,
+        };
+        self.send_packet(GameEvent {
+            reason: GameStateChangeReason::EnableRespawnScreen,
+            value,
+        });
     }
 
     /// Gets whether or not the client is connected to the server.
@@ -824,7 +866,12 @@ impl<C: Config> Client<C> {
                 timestamp: Duration::from_millis(p.timestamp),
             }),
             C2sPlayPacket::ChatPreviewC2s(_) => {}
-            C2sPlayPacket::ClientCommand(_) => {}
+            C2sPlayPacket::ClientCommand(p) => match p {
+                ClientCommand::PerformRespawn => {
+                    self.events.push_back(ClientEvent::RespawnRequest);
+                }
+                ClientCommand::RequestStatus => (),
+            },
             C2sPlayPacket::ClientInformation(p) => {
                 self.events.push_back(ClientEvent::SettingsChanged {
                     locale: p.locale.0,
@@ -841,7 +888,7 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::ClickContainer(p) => {
                 if p.slot_idx == -999 {
                     // client is trying to drop the currently held stack
-                    let held = std::mem::replace(&mut self.cursor_held_item, None);
+                    let held = mem::replace(&mut self.cursor_held_item, None);
                     match held {
                         None => {}
                         Some(stack) => self.events.push_back(ClientEvent::DropItemStack { stack }),
@@ -1112,7 +1159,7 @@ impl<C: Config> Client<C> {
                 registry_codec: shared.registry_codec().clone(),
                 dimension_type_name: world.meta.dimension().dimension_type_name(),
                 dimension_name: world.meta.dimension().dimension_name(),
-                hashed_seed: 0,
+                hashed_seed: 10,
                 max_players: VarInt(0),
                 view_distance: BoundedInt(VarInt(self.view_distance() as i32)),
                 simulation_distance: VarInt(16),
@@ -1306,7 +1353,7 @@ impl<C: Config> Client<C> {
         for pos in chunks_in_view_distance(center, self.view_distance) {
             if let Some(chunk) = world.chunks.get(pos) {
                 if self.loaded_chunks.insert(pos) {
-                    self.send_packet(chunk.chunk_data_packet(pos));
+                    self.send_packet(chunk.chunk_data_packet(pos, shared.biomes().len()));
                 }
             }
         }
