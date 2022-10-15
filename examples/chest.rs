@@ -5,7 +5,7 @@ use log::LevelFilter;
 use num::Integer;
 use valence::async_trait;
 use valence::block::BlockState;
-use valence::chunk::{Chunk, UnloadedChunk};
+use valence::chunk::UnloadedChunk;
 use valence::client::{handle_event_default, ClientEvent, Hand};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
@@ -111,29 +111,16 @@ impl Config for Game {
         }
 
         // initialize blocks in the chunks
-        for chunk_x in 0..Integer::div_ceil(&SIZE_X, &16) {
-            for chunk_z in 0..Integer::div_ceil(&SIZE_Z, &16) {
-                let chunk = world
+        for x in 0..SIZE_X {
+            for z in 0..SIZE_Z {
+                world
                     .chunks
-                    .get_mut((chunk_x as i32, chunk_z as i32))
-                    .unwrap();
-                for x in 0..16 {
-                    for z in 0..16 {
-                        let cell_x = chunk_x * 16 + x;
-                        let cell_z = chunk_z * 16 + z;
-
-                        if cell_x < SIZE_X && cell_z < SIZE_Z {
-                            chunk.set_block_state(x, 63, z, BlockState::GRASS_BLOCK);
-                        }
-                    }
-                }
+                    .set_block_state((x as i32, 0, z as i32), BlockState::GRASS_BLOCK);
             }
         }
 
-        world
-            .chunks
-            .set_block_state((50, -1, 54), BlockState::STONE);
-        world.chunks.set_block_state((50, 0, 54), BlockState::CHEST);
+        world.chunks.set_block_state((50, 0, 54), BlockState::STONE);
+        world.chunks.set_block_state((50, 1, 54), BlockState::CHEST);
 
         // create chest inventory
         let inv = ConfigurableInventory::new(27, VarInt(2), None);
