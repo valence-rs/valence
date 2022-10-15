@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::ops::{Range, RangeInclusive};
 
 use rayon::prelude::ParallelIterator;
 
@@ -14,7 +14,11 @@ pub trait Inventory {
     /// Sets the slot to the desired contents. Returns the previous contents of
     /// the slot.
     fn set_slot(&mut self, slot_id: SlotId, slot: Option<ItemStack>) -> Option<ItemStack>;
-    fn slot_count(&self) -> usize;
+    fn slot_range(&self) -> Range<SlotId>;
+
+    fn slot_count(&self) -> usize {
+        self.slot_range().count()
+    }
 
     // TODO: `entry()` style api
 
@@ -78,22 +82,22 @@ impl PlayerInventory {
 
 impl Inventory for PlayerInventory {
     fn slot(&self, slot_id: SlotId) -> Option<&ItemStack> {
-        if slot_id < 0 || slot_id >= self.slot_count() as i16 {
+        if !self.slot_range().contains(&slot_id) {
             return None;
         }
         self.slots[slot_id as usize].as_ref()
     }
 
     fn set_slot(&mut self, slot_id: SlotId, slot: Option<ItemStack>) -> Option<ItemStack> {
-        if slot_id < 0 || slot_id >= self.slot_count() as i16 {
+        if !self.slot_range().contains(&slot_id) {
             return None;
         }
         self.mark_dirty(true);
         std::mem::replace(&mut self.slots[slot_id as usize], slot)
     }
 
-    fn slot_count(&self) -> usize {
-        self.slots.len()
+    fn slot_range(&self) -> Range<SlotId> {
+        0..(self.slots.len() as SlotId)
     }
 }
 
@@ -133,22 +137,22 @@ impl ConfigurableInventory {
 
 impl Inventory for ConfigurableInventory {
     fn slot(&self, slot_id: SlotId) -> Option<&ItemStack> {
-        if slot_id < 0 || slot_id >= self.slot_count() as i16 {
+        if !self.slot_range().contains(&slot_id) {
             return None;
         }
         self.slots[slot_id as usize].as_ref()
     }
 
     fn set_slot(&mut self, slot_id: SlotId, slot: Option<ItemStack>) -> Option<ItemStack> {
-        if slot_id < 0 || slot_id >= self.slot_count() as i16 {
+        if !self.slot_range().contains(&slot_id) {
             return None;
         }
         self.mark_dirty(true);
         std::mem::replace(&mut self.slots[slot_id as usize], slot)
     }
 
-    fn slot_count(&self) -> usize {
-        self.slots.len()
+    fn slot_range(&self) -> Range<SlotId> {
+        0..(self.slots.len() as SlotId)
     }
 }
 
