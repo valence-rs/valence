@@ -79,16 +79,14 @@ impl PlayerInventory {
 impl Inventory for PlayerInventory {
     fn slot(&self, slot_id: SlotId) -> Option<&ItemStack> {
         if slot_id < 0 || slot_id >= self.slot_count() as i16 {
-            // TODO: dont panic
-            panic!("invalid slot id")
+            return None;
         }
         self.slots[slot_id as usize].as_ref()
     }
 
     fn set_slot(&mut self, slot_id: SlotId, slot: Option<ItemStack>) -> Option<ItemStack> {
         if slot_id < 0 || slot_id >= self.slot_count() as i16 {
-            // TODO: dont panic
-            panic!("invalid slot id")
+            return None;
         }
         self.mark_dirty(true);
         std::mem::replace(&mut self.slots[slot_id as usize], slot)
@@ -136,16 +134,14 @@ impl ConfigurableInventory {
 impl Inventory for ConfigurableInventory {
     fn slot(&self, slot_id: SlotId) -> Option<&ItemStack> {
         if slot_id < 0 || slot_id >= self.slot_count() as i16 {
-            // TODO: dont panic
-            panic!("invalid slot id")
+            return None;
         }
         self.slots[slot_id as usize].as_ref()
     }
 
     fn set_slot(&mut self, slot_id: SlotId, slot: Option<ItemStack>) -> Option<ItemStack> {
         if slot_id < 0 || slot_id >= self.slot_count() as i16 {
-            // TODO: dont panic
-            panic!("invalid slot id")
+            return None;
         }
         self.mark_dirty(true);
         std::mem::replace(&mut self.slots[slot_id as usize], slot)
