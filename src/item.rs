@@ -23,6 +23,11 @@ impl Decode for ItemKind {
     }
 }
 
+/// Represents a stack of items, possibly with NBT data. The number of items the
+/// stack contains is clamped to 1-127, which is provided in the constants
+/// `STACK_MIN` and `STACK_MAX` respectively. **A stack cannot have zero
+/// items.** If you are consuming the last item in a stack, you need to remove
+/// the stack from the slot.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ItemStack {
     pub item: ItemKind,
