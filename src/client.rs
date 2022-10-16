@@ -21,6 +21,10 @@ use crate::entity::{
     self, velocity_to_packet_units, Entities, EntityId, EntityKind, StatusOrAnimation,
 };
 use crate::ident::Ident;
+use crate::inventory::{
+    Inventories, Inventory, InventoryDirtyable, PlayerInventory, WindowInventory,
+};
+use crate::item::ItemStack;
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::c2s::play::{
@@ -31,13 +35,13 @@ use crate::protocol::packets::s2c::play::{
     AcknowledgeBlockChange, ClearTitles, CombatDeath, CustomSoundEffect, DisconnectPlay,
     EntityAnimationS2c, EntityAttributesProperty, EntityEvent, GameEvent, GameStateChangeReason,
     KeepAliveS2c, LoginPlay, PlayerPositionLookFlags, RemoveEntities, ResourcePackS2c, Respawn,
-    S2cPlayPacket, SetActionBarText, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata,
-    SetEntityVelocity, SetExperience, SetHeadRotation, SetHealth, SetRenderDistance,
-    SetSubtitleText, SetTitleText, SoundCategory, SynchronizePlayerPosition, SystemChatMessage,
-    TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
+    S2cPlayPacket, SetActionBarText, SetCenterChunk, SetContainerContent, SetDefaultSpawnPosition,
+    SetEntityMetadata, SetEntityVelocity, SetExperience, SetHeadRotation, SetHealth,
+    SetRenderDistance, SetSubtitleText, SetTitleText, SoundCategory, SynchronizePlayerPosition,
+    SystemChatMessage, TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
     UpdateEntityPositionAndRotation, UpdateEntityRotation, UpdateTime,
 };
-use crate::protocol::{BoundedInt, BoundedString, ByteAngle, RawBytes, Slot, VarInt};
+use crate::protocol::{BoundedInt, BoundedString, ByteAngle, RawBytes, SlotId, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::text::Text;
@@ -230,13 +234,16 @@ pub struct Client<C: Config> {
     resource_pack_to_send: Option<ResourcePackS2c>,
     attack_speed: f64,
     movement_speed: f64,
+    pub inventory: PlayerInventory, // TODO: make private or pub(crate)
+    pub open_inventory: Option<WindowInventory>, // TODO: make private or pub(crate)
     bits: ClientBits,
     /// The data for the client's own player entity.
     player_data: Player,
     entity_events: Vec<entity::EntityEvent>,
     /// The item currently being held by the client's cursor in an inventory
     /// screen. Does not work for creative mode.
-    cursor_held_item: Slot,
+    pub cursor_held_item: Option<ItemStack>, // TODO: make private or pub(crate)
+    selected_hotbar_slot: SlotId,
 }
 
 #[bitfield(u16)]
@@ -300,6 +307,8 @@ impl<C: Config> Client<C> {
             resource_pack_to_send: None,
             attack_speed: 4.0,
             movement_speed: 0.7,
+            inventory: PlayerInventory::new(),
+            open_inventory: None,
             bits: ClientBits::new()
                 .with_modified_spawn_position(true)
                 .with_got_keepalive(true)
@@ -307,6 +316,7 @@ impl<C: Config> Client<C> {
             player_data: Player::new(),
             entity_events: Vec::new(),
             cursor_held_item: None,
+            selected_hotbar_slot: PlayerInventory::HOTBAR_SLOTS.start,
         }
     }
 
@@ -766,6 +776,16 @@ impl<C: Config> Client<C> {
         self.settings.as_ref()
     }
 
+    /// The slot that the client has selected in their hotbar.
+    pub fn held_item(&self) -> Option<&ItemStack> {
+        self.inventory.slot(self.selected_hotbar_slot)
+    }
+
+    /// Consume a single item from the stack that the client is holding.
+    pub fn consume_one_held_item(&mut self) {
+        self.inventory.consume_one(self.selected_hotbar_slot);
+    }
+
     /// Disconnects this client from the server with the provided reason. This
     /// has no effect if the client is already disconnected.
     ///
@@ -1047,7 +1067,10 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::SeenAdvancements(_) => {}
             C2sPlayPacket::SelectTrade(_) => {}
             C2sPlayPacket::SetBeaconEffect(_) => {}
-            C2sPlayPacket::SetHeldItemS2c(_) => {}
+            C2sPlayPacket::SetHeldItemS2c(e) => {
+                self.selected_hotbar_slot =
+                    PlayerInventory::hotbar_to_slot(e.slot.0).unwrap_or(self.selected_hotbar_slot);
+            }
             C2sPlayPacket::ProgramCommandBlock(_) => {}
             C2sPlayPacket::ProgramCommandBlockMinecart(_) => {}
             C2sPlayPacket::SetCreativeModeSlot(e) => {
@@ -1089,6 +1112,7 @@ impl<C: Config> Client<C> {
         entities: &Entities<C>,
         worlds: &Worlds<C>,
         player_lists: &PlayerLists<C>,
+        inventories: &Inventories,
     ) {
         // Mark the client as disconnected when appropriate.
         if self.recv.is_disconnected() || self.send.as_ref().map_or(true, |s| s.is_disconnected()) {
@@ -1566,6 +1590,54 @@ impl<C: Config> Client<C> {
         self.player_data.clear_modifications();
         self.old_position = self.position;
         self.bits.set_created_this_tick(false);
+
+        // Update the player's inventory
+        if self.inventory.is_dirty() {
+            send_packet(
+                &mut self.send,
+                SetContainerContent {
+                    window_id: 0,
+                    state_id: VarInt(self.inventory.state_id),
+                    slots: self
+                        .inventory
+                        .slots()
+                        .into_iter()
+                        // FIXME: cloning is necessary here to build the packet.
+                        // However, it should be possible to avoid the clone if this packet
+                        // could consume refs
+                        .map(|s| s.cloned())
+                        .collect(),
+                    carried_item: self.cursor_held_item.clone(),
+                },
+            );
+            self.inventory.state_id = self.inventory.state_id.wrapping_add(1);
+            self.inventory.mark_dirty(false);
+        }
+
+        // Update the client's UI if they have an open inventory.
+        if let Some(window) = self.open_inventory.as_ref() {
+            // this client has an inventory open
+            let obj_inv_id = window.object_inventory;
+            if let Some(obj_inv) = inventories.get(obj_inv_id) {
+                if obj_inv.is_dirty() {
+                    let window_id = window.window_id;
+                    let slots = window.slots(obj_inv, &self.inventory)
+                        .into_iter()
+                        // FIXME: cloning is necessary here to build the packet.
+                        // However, it should be possible to avoid the clone if this packet
+                        // could consume refs
+                        .map(|s| s.cloned())
+                        .collect();
+                    let carried_item = self.cursor_held_item.clone();
+                    self.send_packet(SetContainerContent {
+                        window_id,
+                        state_id: VarInt(1),
+                        slots,
+                        carried_item,
+                    });
+                }
+            }
+        }
 
         send_packet(&mut self.send, S2cPlayMessage::Flush);
     }

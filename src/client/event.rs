@@ -7,6 +7,7 @@ use crate::block_pos::BlockPos;
 use crate::config::Config;
 use crate::entity::types::Pose;
 use crate::entity::{Entity, EntityEvent, EntityId, TrackedData};
+use crate::inventory::Inventory;
 use crate::item::ItemStack;
 use crate::protocol::packets::c2s::play::ClickContainerMode;
 pub use crate::protocol::packets::c2s::play::{
@@ -331,10 +332,18 @@ pub fn handle_event_default<C: Config>(
         ClientEvent::Digging { .. } => {}
         ClientEvent::InteractWithBlock { .. } => {}
         ClientEvent::ResourcePackStatusChanged(_) => {}
-        ClientEvent::CloseScreen { .. } => {}
+        ClientEvent::CloseScreen { window_id } => {
+            if let Some(window) = &client.open_inventory {
+                if window.window_id == *window_id {
+                    client.open_inventory = None;
+                }
+            }
+        }
         ClientEvent::DropItem => {}
         ClientEvent::DropItemStack { .. } => {}
-        ClientEvent::SetSlotCreative { .. } => {}
+        ClientEvent::SetSlotCreative { slot_id, slot } => {
+            client.inventory.set_slot(*slot_id, slot.clone());
+        }
         ClientEvent::ClickContainer { .. } => {}
         ClientEvent::RespawnRequest => {}
     }

@@ -5,12 +5,18 @@ use log::LevelFilter;
 use num::Integer;
 use valence::async_trait;
 use valence::block::BlockState;
-use valence::chunk::{Chunk, UnloadedChunk};
-use valence::client::{handle_event_default, ClientEvent, DiggingStatus, GameMode, Hand};
+use valence::chunk::UnloadedChunk;
+use valence::client::{handle_event_default, ClientEvent, Hand};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::{EntityId, EntityKind};
+use valence::inventory::{
+    ConfigurableInventory, Inventory, InventoryId, PlayerInventory, WindowInventory,
+};
+use valence::item::{ItemKind, ItemStack};
 use valence::player_list::PlayerListId;
+use valence::protocol::packets::s2c::play::OpenScreen;
+use valence::protocol::{SlotId, VarInt};
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 
@@ -24,7 +30,11 @@ pub fn main() -> ShutdownResult {
         Game {
             player_count: AtomicUsize::new(0),
         },
-        ServerState { player_list: None },
+        ServerState {
+            player_list: None,
+            chest: Default::default(),
+            tick: 0,
+        },
     )
 }
 
@@ -34,11 +44,14 @@ struct Game {
 
 struct ServerState {
     player_list: Option<PlayerListId>,
+    chest: InventoryId,
+    tick: u32,
 }
 
 #[derive(Default)]
 struct ClientState {
     entity_id: EntityId,
+    // open_inventory: Option<WindowInventory>,
 }
 
 const MAX_PLAYERS: usize = 10;
@@ -98,30 +111,37 @@ impl Config for Game {
         }
 
         // initialize blocks in the chunks
-        for chunk_x in 0..Integer::div_ceil(&SIZE_X, &16) {
-            for chunk_z in 0..Integer::div_ceil(&SIZE_Z, &16) {
-                let chunk = world
+        for x in 0..SIZE_X {
+            for z in 0..SIZE_Z {
+                world
                     .chunks
-                    .get_mut((chunk_x as i32, chunk_z as i32))
-                    .unwrap();
-                for x in 0..16 {
-                    for z in 0..16 {
-                        let cell_x = chunk_x * 16 + x;
-                        let cell_z = chunk_z * 16 + z;
-
-                        if cell_x < SIZE_X && cell_z < SIZE_Z {
-                            chunk.set_block_state(x, 63, z, BlockState::GRASS_BLOCK);
-                        }
-                    }
-                }
+                    .set_block_state((x as i32, 0, z as i32), BlockState::GRASS_BLOCK);
             }
         }
+
+        world.chunks.set_block_state((50, 0, 54), BlockState::STONE);
+        world.chunks.set_block_state((50, 1, 54), BlockState::CHEST);
+
+        // create chest inventory
+        let inv = ConfigurableInventory::new(27, VarInt(2), None);
+        let (id, _inv) = server.inventories.insert(inv);
+        server.state.chest = id;
     }
 
     fn update(&self, server: &mut Server<Self>) {
+        server.state.tick += 1;
+        if server.state.tick > 10 {
+            server.state.tick = 0;
+        }
         let (world_id, world) = server.worlds.iter_mut().next().unwrap();
 
         let spawn_pos = [SIZE_X as f64 / 2.0, 1.0, SIZE_Z as f64 / 2.0];
+
+        if let Some(inv) = server.inventories.get_mut(server.state.chest) {
+            if server.state.tick == 0 {
+                rotate_items(inv);
+            }
+        }
 
         server.clients.retain(|_, client| {
             if client.created_this_tick() {
@@ -163,8 +183,7 @@ impl Config for Game {
                     );
                 }
 
-                client.set_game_mode(GameMode::Creative);
-                client.send_message("Welcome to Valence! Build something cool.".italic());
+                client.send_message("Welcome to Valence! Sneak to give yourself an item.".italic());
             }
 
             if client.is_disconnected() {
@@ -184,43 +203,67 @@ impl Config for Game {
 
             while let Some(event) = handle_event_default(client, player) {
                 match event {
-                    ClientEvent::Digging {
-                        position, status, ..
-                    } => {
-                        match status {
-                            DiggingStatus::Start => {
-                                // Allows clients in creative mode to break blocks.
-                                if client.game_mode() == GameMode::Creative {
-                                    world.chunks.set_block_state(position, BlockState::AIR);
-                                }
-                            }
-                            DiggingStatus::Finish => {
-                                // Allows clients in survival mode to break blocks.
-                                world.chunks.set_block_state(position, BlockState::AIR);
-                            }
-                            _ => {}
+                    ClientEvent::InteractWithBlock { hand, location, .. } => {
+                        if hand == Hand::Main
+                            && world.chunks.block_state(location) == Some(BlockState::CHEST)
+                        {
+                            client.send_message("Opening chest!");
+                            let window = WindowInventory::new(1, server.state.chest);
+                            client.send_packet(OpenScreen {
+                                window_id: VarInt(window.window_id.into()),
+                                window_type: VarInt(2),
+                                window_title: "Extra".italic()
+                                    + " Chesty".not_italic().bold().color(Color::RED)
+                                    + " Chest".not_italic(),
+                            });
+                            client.open_inventory = Some(window);
                         }
                     }
-                    ClientEvent::InteractWithBlock {
-                        hand,
-                        location,
-                        face,
-                        ..
+                    ClientEvent::CloseScreen { window_id } => {
+                        if window_id > 0 {
+                            client.send_message(format!("Window closed: {}", window_id));
+                            client.send_message(format!("Chest: {:?}", server.state.chest));
+                        }
+                    }
+                    ClientEvent::ClickContainer {
+                        window_id,
+                        state_id,
+                        slot_id,
+                        mode,
+                        slot_changes,
+                        carried_item,
                     } => {
-                        if hand == Hand::Main {
-                            let place_at = location.get_in_direction(face);
-                            if let Some(stack) = client.held_item() {
-                                if let Some(block_kind) = stack.item.to_block_kind() {
-                                    world.chunks.set_block_state(
-                                        place_at,
-                                        BlockState::from_kind(block_kind),
-                                    );
-                                    if client.game_mode() != GameMode::Creative {
-                                        client.consume_one_held_item();
+                        println!(
+                            "window_id: {:?}, state_id: {:?}, slot_id: {:?}, mode: {:?}, \
+                             slot_changes: {:?}, carried_item: {:?}",
+                            window_id, state_id, slot_id, mode, slot_changes, carried_item
+                        );
+                        client.cursor_held_item = carried_item;
+                        if let Some(window) = client.open_inventory.as_mut() {
+                            if let Some(obj_inv) =
+                                server.inventories.get_mut(window.object_inventory)
+                            {
+                                for (slot_id, slot) in slot_changes {
+                                    if slot_id < obj_inv.slot_count() as SlotId {
+                                        obj_inv.set_slot(slot_id, slot);
+                                    } else {
+                                        let offset = obj_inv.slot_count() as SlotId;
+                                        client.inventory.set_slot(
+                                            slot_id - offset + PlayerInventory::GENERAL_SLOTS.start,
+                                            slot,
+                                        );
                                     }
                                 }
                             }
                         }
+                    }
+                    ClientEvent::StartSneaking => {
+                        let slot_id: SlotId = PlayerInventory::HOTBAR_SLOTS.start;
+                        let stack = match client.inventory.slot(slot_id) {
+                            None => ItemStack::new(ItemKind::Stone, 1, None),
+                            Some(s) => ItemStack::new(s.item, s.count() + 1, None),
+                        };
+                        client.inventory.set_slot(slot_id, Some(stack));
                     }
                     _ => {}
                 }
@@ -228,5 +271,13 @@ impl Config for Game {
 
             true
         });
+    }
+}
+
+fn rotate_items(inv: &mut ConfigurableInventory) {
+    for i in 1..inv.slot_count() {
+        let a = inv.slot((i - 1) as SlotId);
+        let b = inv.set_slot(i as SlotId, a.cloned());
+        inv.set_slot((i - 1) as SlotId, b);
     }
 }
