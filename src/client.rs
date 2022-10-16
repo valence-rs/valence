@@ -1100,7 +1100,7 @@ impl<C: Config> Client<C> {
                 face: p.face,
                 cursor_pos: p.cursor_pos,
                 head_inside_block: p.head_inside_block,
-                sequence: dbg!(p.sequence),
+                sequence: p.sequence,
             }),
             C2sPlayPacket::UseItem(_) => {}
         }
