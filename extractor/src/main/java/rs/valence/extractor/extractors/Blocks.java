@@ -3,10 +3,12 @@ package rs.valence.extractor.extractors;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import net.minecraft.item.WallStandingBlockItem;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.registry.Registry;
 import net.minecraft.world.EmptyBlockView;
 import rs.valence.extractor.Main;
+import rs.valence.extractor.mixin.ExposeWallBlock;
 
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -36,6 +38,13 @@ public class Blocks implements Main.Extractor {
             blockJson.addProperty("name", Registry.BLOCK.getId(block).getPath());
             blockJson.addProperty("translation_key", block.getTranslationKey());
             blockJson.addProperty("item_id", Registry.ITEM.getRawId(block.asItem()));
+
+            if (block.asItem() instanceof WallStandingBlockItem wsbItem) {
+                if (wsbItem.getBlock() == block) {
+                    var wallBlock = ((ExposeWallBlock) wsbItem).getWallBlock();
+                    blockJson.addProperty("wall_variant_id", Registry.BLOCK.getRawId(wallBlock));
+                }
+            }
 
             var propsJson = new JsonArray();
             for (var prop : block.getStateManager().getProperties()) {

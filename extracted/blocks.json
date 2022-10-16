@@ -19550,6 +19550,7 @@
       "name": "torch",
       "translation_key": "block.minecraft.torch",
       "item_id": 248,
+      "wall_variant_id": 157,
       "properties": [],
       "default_state_id": 1689,
       "states": [
@@ -31985,6 +31986,7 @@
       "name": "oak_sign",
       "translation_key": "block.minecraft.oak_sign",
       "item_id": 804,
+      "wall_variant_id": 182,
       "properties": [
         {
           "name": "rotation",
@@ -32216,6 +32218,7 @@
       "name": "spruce_sign",
       "translation_key": "block.minecraft.spruce_sign",
       "item_id": 805,
+      "wall_variant_id": 183,
       "properties": [
         {
           "name": "rotation",
@@ -32447,6 +32450,7 @@
       "name": "birch_sign",
       "translation_key": "block.minecraft.birch_sign",
       "item_id": 806,
+      "wall_variant_id": 184,
       "properties": [
         {
           "name": "rotation",
@@ -32678,6 +32682,7 @@
       "name": "acacia_sign",
       "translation_key": "block.minecraft.acacia_sign",
       "item_id": 808,
+      "wall_variant_id": 185,
       "properties": [
         {
           "name": "rotation",
@@ -32909,6 +32914,7 @@
       "name": "jungle_sign",
       "translation_key": "block.minecraft.jungle_sign",
       "item_id": 807,
+      "wall_variant_id": 186,
       "properties": [
         {
           "name": "rotation",
@@ -33140,6 +33146,7 @@
       "name": "dark_oak_sign",
       "translation_key": "block.minecraft.dark_oak_sign",
       "item_id": 809,
+      "wall_variant_id": 187,
       "properties": [
         {
           "name": "rotation",
@@ -33371,6 +33378,7 @@
       "name": "mangrove_sign",
       "translation_key": "block.minecraft.mangrove_sign",
       "item_id": 810,
+      "wall_variant_id": 188,
       "properties": [
         {
           "name": "rotation",
@@ -36790,6 +36798,7 @@
       "name": "redstone_torch",
       "translation_key": "block.minecraft.redstone_torch",
       "item_id": 609,
+      "wall_variant_id": 202,
       "properties": [
         {
           "name": "lit",
@@ -38018,6 +38027,7 @@
       "name": "soul_torch",
       "translation_key": "block.minecraft.soul_torch",
       "item_id": 286,
+      "wall_variant_id": 219,
       "properties": [],
       "default_state_id": 4317,
       "states": [
@@ -64570,6 +64580,7 @@
       "name": "skeleton_skull",
       "translation_key": "block.minecraft.skeleton_skull",
       "item_id": 996,
+      "wall_variant_id": 346,
       "properties": [
         {
           "name": "rotation",
@@ -64782,6 +64793,7 @@
       "name": "wither_skeleton_skull",
       "translation_key": "block.minecraft.wither_skeleton_skull",
       "item_id": 997,
+      "wall_variant_id": 348,
       "properties": [
         {
           "name": "rotation",
@@ -64994,6 +65006,7 @@
       "name": "zombie_head",
       "translation_key": "block.minecraft.zombie_head",
       "item_id": 999,
+      "wall_variant_id": 350,
       "properties": [
         {
           "name": "rotation",
@@ -65206,6 +65219,7 @@
       "name": "player_head",
       "translation_key": "block.minecraft.player_head",
       "item_id": 998,
+      "wall_variant_id": 352,
       "properties": [
         {
           "name": "rotation",
@@ -65418,6 +65432,7 @@
       "name": "creeper_head",
       "translation_key": "block.minecraft.creeper_head",
       "item_id": 1000,
+      "wall_variant_id": 354,
       "properties": [
         {
           "name": "rotation",
@@ -65630,6 +65645,7 @@
       "name": "dragon_head",
       "translation_key": "block.minecraft.dragon_head",
       "item_id": 1001,
+      "wall_variant_id": 356,
       "properties": [
         {
           "name": "rotation",
@@ -80480,6 +80496,7 @@
       "name": "white_banner",
       "translation_key": "block.minecraft.white_banner",
       "item_id": 1025,
+      "wall_variant_id": 465,
       "properties": [
         {
           "name": "rotation",
@@ -80608,6 +80625,7 @@
       "name": "orange_banner",
       "translation_key": "block.minecraft.orange_banner",
       "item_id": 1026,
+      "wall_variant_id": 466,
       "properties": [
         {
           "name": "rotation",
@@ -80736,6 +80754,7 @@
       "name": "magenta_banner",
       "translation_key": "block.minecraft.magenta_banner",
       "item_id": 1027,
+      "wall_variant_id": 467,
       "properties": [
         {
           "name": "rotation",
@@ -80864,6 +80883,7 @@
       "name": "light_blue_banner",
       "translation_key": "block.minecraft.light_blue_banner",
       "item_id": 1028,
+      "wall_variant_id": 468,
       "properties": [
         {
           "name": "rotation",
@@ -80992,6 +81012,7 @@
       "name": "yellow_banner",
       "translation_key": "block.minecraft.yellow_banner",
       "item_id": 1029,
+      "wall_variant_id": 469,
       "properties": [
         {
           "name": "rotation",
@@ -81120,6 +81141,7 @@
       "name": "lime_banner",
       "translation_key": "block.minecraft.lime_banner",
       "item_id": 1030,
+      "wall_variant_id": 470,
       "properties": [
         {
           "name": "rotation",
@@ -81248,6 +81270,7 @@
       "name": "pink_banner",
       "translation_key": "block.minecraft.pink_banner",
       "item_id": 1031,
+      "wall_variant_id": 471,
       "properties": [
         {
           "name": "rotation",
@@ -81376,6 +81399,7 @@
       "name": "gray_banner",
       "translation_key": "block.minecraft.gray_banner",
       "item_id": 1032,
+      "wall_variant_id": 472,
       "properties": [
         {
           "name": "rotation",
@@ -81504,6 +81528,7 @@
       "name": "light_gray_banner",
       "translation_key": "block.minecraft.light_gray_banner",
       "item_id": 1033,
+      "wall_variant_id": 473,
       "properties": [
         {
           "name": "rotation",
@@ -81632,6 +81657,7 @@
       "name": "cyan_banner",
       "translation_key": "block.minecraft.cyan_banner",
       "item_id": 1034,
+      "wall_variant_id": 474,
       "properties": [
         {
           "name": "rotation",
@@ -81760,6 +81786,7 @@
       "name": "purple_banner",
       "translation_key": "block.minecraft.purple_banner",
       "item_id": 1035,
+      "wall_variant_id": 475,
       "properties": [
         {
           "name": "rotation",
@@ -81888,6 +81915,7 @@
       "name": "blue_banner",
       "translation_key": "block.minecraft.blue_banner",
       "item_id": 1036,
+      "wall_variant_id": 476,
       "properties": [
         {
           "name": "rotation",
@@ -82016,6 +82044,7 @@
       "name": "brown_banner",
       "translation_key": "block.minecraft.brown_banner",
       "item_id": 1037,
+      "wall_variant_id": 477,
       "properties": [
         {
           "name": "rotation",
@@ -82144,6 +82173,7 @@
       "name": "green_banner",
       "translation_key": "block.minecraft.green_banner",
       "item_id": 1038,
+      "wall_variant_id": 478,
       "properties": [
         {
           "name": "rotation",
@@ -82272,6 +82302,7 @@
       "name": "red_banner",
       "translation_key": "block.minecraft.red_banner",
       "item_id": 1039,
+      "wall_variant_id": 479,
       "properties": [
         {
           "name": "rotation",
@@ -82400,6 +82431,7 @@
       "name": "black_banner",
       "translation_key": "block.minecraft.black_banner",
       "item_id": 1040,
+      "wall_variant_id": 480,
       "properties": [
         {
           "name": "rotation",
@@ -98367,6 +98399,7 @@
       "name": "dead_tube_coral_fan",
       "translation_key": "block.minecraft.dead_tube_coral_fan",
       "item_id": 565,
+      "wall_variant_id": 646,
       "properties": [
         {
           "name": "waterlogged",
@@ -98397,6 +98430,7 @@
       "name": "dead_brain_coral_fan",
       "translation_key": "block.minecraft.dead_brain_coral_fan",
       "item_id": 566,
+      "wall_variant_id": 647,
       "properties": [
         {
           "name": "waterlogged",
@@ -98427,6 +98461,7 @@
       "name": "dead_bubble_coral_fan",
       "translation_key": "block.minecraft.dead_bubble_coral_fan",
       "item_id": 567,
+      "wall_variant_id": 648,
       "properties": [
         {
           "name": "waterlogged",
@@ -98457,6 +98492,7 @@
       "name": "dead_fire_coral_fan",
       "translation_key": "block.minecraft.dead_fire_coral_fan",
       "item_id": 568,
+      "wall_variant_id": 649,
       "properties": [
         {
           "name": "waterlogged",
@@ -98487,6 +98523,7 @@
       "name": "dead_horn_coral_fan",
       "translation_key": "block.minecraft.dead_horn_coral_fan",
       "item_id": 569,
+      "wall_variant_id": 650,
       "properties": [
         {
           "name": "waterlogged",
@@ -98517,6 +98554,7 @@
       "name": "tube_coral_fan",
       "translation_key": "block.minecraft.tube_coral_fan",
       "item_id": 560,
+      "wall_variant_id": 651,
       "properties": [
         {
           "name": "waterlogged",
@@ -98547,6 +98585,7 @@
       "name": "brain_coral_fan",
       "translation_key": "block.minecraft.brain_coral_fan",
       "item_id": 561,
+      "wall_variant_id": 652,
       "properties": [
         {
           "name": "waterlogged",
@@ -98577,6 +98616,7 @@
       "name": "bubble_coral_fan",
       "translation_key": "block.minecraft.bubble_coral_fan",
       "item_id": 562,
+      "wall_variant_id": 653,
       "properties": [
         {
           "name": "waterlogged",
@@ -98607,6 +98647,7 @@
       "name": "fire_coral_fan",
       "translation_key": "block.minecraft.fire_coral_fan",
       "item_id": 563,
+      "wall_variant_id": 654,
       "properties": [
         {
           "name": "waterlogged",
@@ -98637,6 +98678,7 @@
       "name": "horn_coral_fan",
       "translation_key": "block.minecraft.horn_coral_fan",
       "item_id": 564,
+      "wall_variant_id": 655,
       "properties": [
         {
           "name": "waterlogged",
@@ -163849,6 +163891,7 @@
       "name": "crimson_sign",
       "translation_key": "block.minecraft.crimson_sign",
       "item_id": 811,
+      "wall_variant_id": 763,
       "properties": [
         {
           "name": "rotation",
@@ -164080,6 +164123,7 @@
       "name": "warped_sign",
       "translation_key": "block.minecraft.warped_sign",
       "item_id": 812,
+      "wall_variant_id": 764,
       "properties": [
         {
           "name": "rotation",
