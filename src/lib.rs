@@ -86,6 +86,7 @@
     clippy::unusual_byte_groupings,
     clippy::comparison_chain
 )]
+#![deny(clippy::dbg_macro)]
 
 /// Used on [`Config`](config::Config) to allow for async methods in traits.
 ///
