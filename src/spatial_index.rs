@@ -31,7 +31,7 @@ impl SpatialIndex {
     /// This is for tests only! Not part of the public API.
     #[doc(hidden)]
     pub fn test_new() -> Self {
-        dbg!("Don't call me from outside tests!");
+        eprintln!("Don't call me from outside tests!");
         Self::new()
     }
 

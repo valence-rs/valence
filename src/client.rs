@@ -227,7 +227,7 @@ pub struct Client<C: Config> {
     new_game_mode: GameMode,
     old_game_mode: GameMode,
     settings: Option<Settings>,
-    dug_block_sequence: i32,
+    block_change_sequence: i32,
     /// Should be sent after login packet.
     msgs_to_send: Vec<Text>,
     bar_to_send: Option<Text>,
@@ -301,7 +301,7 @@ impl<C: Config> Client<C> {
             new_game_mode: GameMode::Survival,
             old_game_mode: GameMode::Survival,
             settings: None,
-            dug_block_sequence: 0,
+            block_change_sequence: 0,
             msgs_to_send: Vec::new(),
             bar_to_send: None,
             resource_pack_to_send: None,
@@ -1016,7 +1016,7 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::PlayerAbilitiesC2s(_) => {}
             C2sPlayPacket::PlayerAction(p) => {
                 if p.sequence.0 != 0 {
-                    self.dug_block_sequence = p.sequence.0;
+                    self.block_change_sequence = p.sequence.0;
                 }
 
                 self.events.push_back(match p.status {
@@ -1361,15 +1361,15 @@ impl<C: Config> Client<C> {
             }
         }
 
-        // Acknowledge broken blocks.
-        if self.dug_block_sequence != 0 {
+        // Acknowledge broken/placed blocks.
+        if self.block_change_sequence != 0 {
             send_packet(
                 &mut self.send,
                 AcknowledgeBlockChange {
-                    sequence: VarInt(self.dug_block_sequence),
+                    sequence: VarInt(self.block_change_sequence),
                 },
             );
-            self.dug_block_sequence = 0;
+            self.block_change_sequence = 0;
         }
 
         // Teleport the player.
