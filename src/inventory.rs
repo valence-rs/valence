@@ -1,11 +1,6 @@
 use std::ops::Range;
 
-use rayon::prelude::ParallelIterator;
-
-use crate::client::Clients;
-use crate::config::Config;
 use crate::item::ItemStack;
-use crate::protocol::packets::s2c::play::SetContainerContent;
 use crate::protocol::{SlotId, VarInt};
 use crate::slab_versioned::{Key, VersionedSlab};
 
@@ -183,7 +178,7 @@ impl WindowInventory {
         }
     }
 
-    fn slots<'a>(
+    pub fn slots<'a>(
         &self,
         obj_inventory: &'a ConfigurableInventory,
         player_inventory: &'a PlayerInventory,
@@ -248,39 +243,7 @@ impl Inventories {
         self.slab.get_mut(inv.0)
     }
 
-    pub(crate) fn sync<C: Config>(&mut self, clients: &mut Clients<C>) {
-        // sync open, dirty inventories to clients
-        let _obj_inventories_cleaned: Vec<InventoryId> = clients
-            .par_iter_mut()
-            .filter_map(|(_client_id, client)| {
-                if let Some(window) = client.open_inventory.as_ref() {
-                    // this client has an inventory open
-                    let obj_inv_id = window.object_inventory;
-                    if let Some(obj_inv) = self.get(obj_inv_id) {
-                        if obj_inv.is_dirty() {
-                            let window_id = window.window_id;
-                            let slots = window.slots(obj_inv, &client.inventory)
-                                .into_iter()
-                                // FIXME: cloning is necessary here to build the packet.
-                                // However, it should be possible to avoid the clone if this packet
-                                // could consume refs
-                                .map(|s| s.cloned())
-                                .collect();
-                            let carried_item = client.cursor_held_item.clone();
-                            client.send_packet(SetContainerContent {
-                                window_id,
-                                state_id: VarInt(1),
-                                slots,
-                                carried_item,
-                            });
-                            return Some(obj_inv_id);
-                        }
-                    }
-                }
-                None
-            })
-            .collect();
-
+    pub(crate) fn update(&mut self) {
         // now that we have synced all the dirty inventories, mark them as clean
         for (_, inv) in self.slab.iter_mut() {
             inv.mark_dirty(false);

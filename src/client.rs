@@ -21,7 +21,9 @@ use crate::entity::{
     self, velocity_to_packet_units, Entities, EntityId, EntityKind, StatusOrAnimation,
 };
 use crate::ident::Ident;
-use crate::inventory::{Inventory, InventoryDirtyable, PlayerInventory, WindowInventory};
+use crate::inventory::{
+    Inventories, Inventory, InventoryDirtyable, PlayerInventory, WindowInventory,
+};
 use crate::item::ItemStack;
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
@@ -1110,6 +1112,7 @@ impl<C: Config> Client<C> {
         entities: &Entities<C>,
         worlds: &Worlds<C>,
         player_lists: &PlayerLists<C>,
+        inventories: &Inventories,
     ) {
         // Mark the client as disconnected when appropriate.
         if self.recv.is_disconnected() || self.send.as_ref().map_or(true, |s| s.is_disconnected()) {
@@ -1588,8 +1591,6 @@ impl<C: Config> Client<C> {
         self.old_position = self.position;
         self.bits.set_created_this_tick(false);
 
-        send_packet(&mut self.send, S2cPlayMessage::Flush);
-
         // Update the player's inventory
         if self.inventory.is_dirty() {
             send_packet(
@@ -1612,6 +1613,33 @@ impl<C: Config> Client<C> {
             self.inventory.state_id = self.inventory.state_id.wrapping_add(1);
             self.inventory.mark_dirty(false);
         }
+
+        // Update the client's UI if they have an open inventory.
+        if let Some(window) = self.open_inventory.as_ref() {
+            // this client has an inventory open
+            let obj_inv_id = window.object_inventory;
+            if let Some(obj_inv) = inventories.get(obj_inv_id) {
+                if obj_inv.is_dirty() {
+                    let window_id = window.window_id;
+                    let slots = window.slots(obj_inv, &self.inventory)
+                        .into_iter()
+                        // FIXME: cloning is necessary here to build the packet.
+                        // However, it should be possible to avoid the clone if this packet
+                        // could consume refs
+                        .map(|s| s.cloned())
+                        .collect();
+                    let carried_item = self.cursor_held_item.clone();
+                    self.send_packet(SetContainerContent {
+                        window_id,
+                        state_id: VarInt(1),
+                        slots,
+                        carried_item,
+                    });
+                }
+            }
+        }
+
+        send_packet(&mut self.send, S2cPlayMessage::Flush);
     }
 }
 

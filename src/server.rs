@@ -441,6 +441,7 @@ fn do_update_loop<C: Config>(server: &mut Server<C>) -> ShutdownResult {
                 &server.entities,
                 &server.worlds,
                 &server.player_lists,
+                &server.inventories,
             );
         });
 
@@ -451,7 +452,7 @@ fn do_update_loop<C: Config>(server: &mut Server<C>) -> ShutdownResult {
         });
 
         server.player_lists.update();
-        server.inventories.sync(&mut server.clients);
+        server.inventories.update();
 
         // Sleep for the remainder of the tick.
         let tick_duration = Duration::from_secs_f64((shared.0.tick_rate as f64).recip());
