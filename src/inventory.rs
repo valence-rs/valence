@@ -6,6 +6,7 @@ use crate::slab_versioned::{Key, VersionedSlab};
 
 pub trait Inventory {
     fn slot(&self, slot_id: SlotId) -> Option<&ItemStack>;
+    fn slot_mut(&mut self, slot_id: SlotId) -> Option<&mut ItemStack>;
     /// Sets the slot to the desired contents. Returns the previous contents of
     /// the slot.
     fn set_slot(&mut self, slot_id: SlotId, slot: Option<ItemStack>) -> Option<ItemStack>;
@@ -13,6 +14,11 @@ pub trait Inventory {
 
     fn slot_count(&self) -> usize {
         self.slot_range().count()
+    }
+
+    /// Alias for `set_slot(slot_id, None)`
+    fn clear_slot(&mut self, slot_id: SlotId) -> Option<ItemStack> {
+        self.set_slot(slot_id, None)
     }
 
     // TODO: `entry()` style api
@@ -24,15 +30,13 @@ pub trait Inventory {
     }
 
     fn consume_one(&mut self, slot_id: SlotId) {
-        let mut slot = self.slot(slot_id).cloned();
-        if let Some(stack) = slot.as_mut() {
-            stack.set_count(stack.count() - 1);
-            let slot = if stack.count() == 0 {
-                None
+        let slot = self.slot_mut(slot_id);
+        if let Some(stack) = slot {
+            if stack.count() == 1 {
+                self.clear_slot(slot_id);
             } else {
-                Some(stack)
-            };
-            self.set_slot(slot_id, slot.cloned());
+                stack.set_count(stack.count() - 1);
+            }
         }
     }
 }
@@ -81,6 +85,14 @@ impl Inventory for PlayerInventory {
             return None;
         }
         self.slots[slot_id as usize].as_ref()
+    }
+
+    fn slot_mut(&mut self, slot_id: SlotId) -> Option<&mut ItemStack> {
+        if !self.slot_range().contains(&slot_id) {
+            return None;
+        }
+        self.mark_dirty(true);
+        self.slots[slot_id as usize].as_mut()
     }
 
     fn set_slot(&mut self, slot_id: SlotId, slot: Option<ItemStack>) -> Option<ItemStack> {
@@ -136,6 +148,14 @@ impl Inventory for ConfigurableInventory {
             return None;
         }
         self.slots[slot_id as usize].as_ref()
+    }
+
+    fn slot_mut(&mut self, slot_id: SlotId) -> Option<&mut ItemStack> {
+        if !self.slot_range().contains(&slot_id) {
+            return None;
+        }
+        self.mark_dirty(true);
+        self.slots[slot_id as usize].as_mut()
     }
 
     fn set_slot(&mut self, slot_id: SlotId, slot: Option<ItemStack>) -> Option<ItemStack> {
@@ -263,5 +283,18 @@ mod test {
         let prev = inv.set_slot(9, slot.clone());
         assert_eq!(inv.slot(9), slot.as_ref());
         assert_eq!(prev, None);
+    }
+
+    #[test]
+    fn test_slot_mut_can_change_count() {
+        let mut inv = PlayerInventory::new();
+        let slot_id: SlotId = 9;
+        let slot = Some(ItemStack::new(ItemKind::Bone, 2, None));
+        inv.set_slot(slot_id, slot);
+        let slot = inv.slot_mut(slot_id);
+        slot.unwrap().set_count(1);
+        let slot = inv.slot(slot_id);
+        assert_eq!(slot.unwrap().count(), 1);
+        assert!(inv.is_dirty());
     }
 }

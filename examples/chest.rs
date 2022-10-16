@@ -259,11 +259,17 @@ impl Config for Game {
                     }
                     ClientEvent::StartSneaking => {
                         let slot_id: SlotId = PlayerInventory::HOTBAR_SLOTS.start;
-                        let stack = match client.inventory.slot(slot_id) {
-                            None => ItemStack::new(ItemKind::Stone, 1, None),
-                            Some(s) => ItemStack::new(s.item, s.count() + 1, None),
+                        match client.inventory.slot_mut(slot_id) {
+                            None => {
+                                client.inventory.set_slot(
+                                    slot_id,
+                                    Some(ItemStack::new(ItemKind::Stone, 1, None)),
+                                );
+                            }
+                            Some(s) => {
+                                s.set_count(s.count() + 1);
+                            }
                         };
-                        client.inventory.set_slot(slot_id, Some(stack));
                     }
                     _ => {}
                 }
