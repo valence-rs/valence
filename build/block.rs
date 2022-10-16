@@ -18,6 +18,7 @@ struct Block {
     #[allow(unused)]
     id: u16,
     item_id: u16,
+    wall_variant_id: Option<u16>,
     translation_key: String,
     name: String,
     properties: Vec<Property>,
@@ -259,6 +260,22 @@ pub fn build() -> anyhow::Result<TokenStream> {
             quote! {
                 #[doc = #doc]
                 pub const #name: BlockState = BlockState(#state);
+            }
+        })
+        .collect::<TokenStream>();
+
+    let block_state_to_wall_variant = blocks
+        .iter()
+        .filter(|b| b.wall_variant_id.is_some())
+        .map(|b| {
+            let name = ident(b.name.to_shouty_snake_case());
+            let wall_name = ident(
+                blocks[b.wall_variant_id.unwrap() as usize]
+                    .name
+                    .to_shouty_snake_case(),
+            );
+            quote! {
+                BlockState::#name => Some(BlockState::#wall_name),
             }
         })
         .collect::<TokenStream>();
@@ -540,6 +557,16 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 match self.0 {
                     #state_to_luminance_arms
                     _ => 0,
+                }
+            }
+
+            /// Returns the wall variant of the block state.
+            ///
+            /// If the given block state doesn't have a wall variant, `None` is returned.
+            pub const fn to_wall_variant(self) -> Option<Self> {
+                match self {
+                    #block_state_to_wall_variant
+                    _ => None
                 }
             }
 

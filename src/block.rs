@@ -82,4 +82,22 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn standing_to_wall() {
+        assert_eq!(
+            BlockState::TORCH.to_wall_variant().unwrap(),
+            BlockState::WALL_TORCH
+        );
+        assert_eq!(
+            BlockState::SPRUCE_SIGN.to_wall_variant().unwrap(),
+            BlockState::SPRUCE_WALL_SIGN
+        );
+        assert_eq!(
+            BlockState::PURPLE_BANNER.to_wall_variant().unwrap(),
+            BlockState::PURPLE_WALL_BANNER
+        );
+
+        assert_eq!(BlockState::NETHER_PORTAL.to_wall_variant(), None);
+    }
 }
