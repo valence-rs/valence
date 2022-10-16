@@ -10,12 +10,9 @@ use valence::client::{handle_event_default, ClientEvent, Hand};
 use valence::config::{Config, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::{EntityId, EntityKind};
-use valence::inventory::{
-    ConfigurableInventory, Inventory, InventoryId, PlayerInventory, WindowInventory,
-};
+use valence::inventory::{ConfigurableInventory, Inventory, InventoryId, PlayerInventory};
 use valence::item::{ItemKind, ItemStack};
 use valence::player_list::PlayerListId;
-use valence::protocol::packets::s2c::play::OpenScreen;
 use valence::protocol::{SlotId, VarInt};
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
@@ -208,15 +205,13 @@ impl Config for Game {
                             && world.chunks.block_state(location) == Some(BlockState::CHEST)
                         {
                             client.send_message("Opening chest!");
-                            let window = WindowInventory::new(1, server.state.chest);
-                            client.send_packet(OpenScreen {
-                                window_id: VarInt(window.window_id.into()),
-                                window_type: VarInt(2),
-                                window_title: "Extra".italic()
+                            client.open_inventory(
+                                &server.inventories,
+                                server.state.chest,
+                                "Extra".italic()
                                     + " Chesty".not_italic().bold().color(Color::RED)
                                     + " Chest".not_italic(),
-                            });
-                            client.open_inventory = Some(window);
+                            );
                         }
                     }
                     ClientEvent::CloseScreen { window_id } => {
