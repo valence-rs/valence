@@ -34,12 +34,13 @@ pub use crate::protocol::packets::s2c::play::SetTitleAnimationTimes;
 use crate::protocol::packets::s2c::play::{
     AcknowledgeBlockChange, ClearTitles, CombatDeath, CustomSoundEffect, DisconnectPlay,
     EntityAnimationS2c, EntityAttributesProperty, EntityEvent, GameEvent, GameStateChangeReason,
-    KeepAliveS2c, LoginPlay, OpenScreen, PlayerPositionLookFlags, RemoveEntities, ResourcePackS2c,
-    Respawn, S2cPlayPacket, SetActionBarText, SetCenterChunk, SetContainerContent,
-    SetDefaultSpawnPosition, SetEntityMetadata, SetEntityVelocity, SetExperience, SetHeadRotation,
-    SetHealth, SetRenderDistance, SetSubtitleText, SetTitleText, SoundCategory,
-    SynchronizePlayerPosition, SystemChatMessage, TeleportEntity, UnloadChunk, UpdateAttributes,
-    UpdateEntityPosition, UpdateEntityPositionAndRotation, UpdateEntityRotation, UpdateTime,
+    InitializeWorldBorder, KeepAliveS2c, LoginPlay, OpenScreen, PlayerPositionLookFlags,
+    RemoveEntities, ResourcePackS2c, Respawn, S2cPlayPacket, SetActionBarText, SetBorderLerpSize,
+    SetCenterChunk, SetContainerContent, SetDefaultSpawnPosition, SetEntityMetadata,
+    SetEntityVelocity, SetExperience, SetHeadRotation, SetHealth, SetRenderDistance,
+    SetSubtitleText, SetTitleText, SoundCategory, SynchronizePlayerPosition, SystemChatMessage,
+    TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
+    UpdateEntityPositionAndRotation, UpdateEntityRotation, UpdateTime,
 };
 use crate::protocol::{BoundedInt, BoundedString, ByteAngle, RawBytes, SlotId, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
@@ -666,6 +667,44 @@ impl<C: Config> Client<C> {
             reason: GameStateChangeReason::EnableRespawnScreen,
             value,
         });
+    }
+
+    /// Create a new world border for client.
+    /// The border will be a square of side `diameter` centered at `center` x
+    /// and z coordinates.
+    ///
+    /// Only one border can exist at a time per client. Calling this method
+    /// again will cause the old border to disappear.
+    pub fn set_world_border(&mut self, center: [f64; 2], diameter: f64) {
+        let [x, z] = center;
+        self.send_packet(InitializeWorldBorder {
+            x,
+            z,
+            old_diameter: diameter,
+            new_diameter: diameter,
+            speed: 0.into(),
+            portal_teleport_boundary: (i32::MAX).into(), // limits diameter: with teleport_boundary X, max diameter is 2*X
+            warning_blocks: 0.into(),
+            warning_time: 0.into(),
+        })
+    }
+
+    /// Grow or shrink the diameter of the client's world border. The change in
+    /// diameter is interpolated over time `resize_speed_ms` in
+    /// milliseconds.
+    ///
+    /// If no border exists, one will be created with center at [0, 0].
+    pub fn resize_world_border(
+        &mut self,
+        old_diameter: f64,
+        new_diameter: f64,
+        resize_speed_ms: i64,
+    ) {
+        self.send_packet(SetBorderLerpSize {
+            old_diameter,
+            new_diameter,
+            speed: resize_speed_ms.into(),
+        })
     }
 
     /// Gets whether or not the client is connected to the server.
