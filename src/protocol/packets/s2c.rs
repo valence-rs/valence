@@ -331,7 +331,7 @@ pub mod play {
     }
 
     def_struct! {
-        WorldBorderInitialize {
+        InitializeWorldBorder {
             x: f64,
             z: f64,
             old_diameter: f64,
@@ -572,6 +572,39 @@ pub mod play {
     }
 
     def_struct! {
+        SetBorderCenter {
+            x: f64,
+            z: f64
+        }
+    }
+
+    def_struct! {
+        SetBorderLerpSize {
+            old_diameter: f64,
+            new_diameter: f64,
+            speed: VarLong
+        }
+    }
+
+    def_struct! {
+        SetBorderSize {
+            diameter: f64,
+        }
+    }
+
+    def_struct! {
+        SetBorderWarningDelay {
+            warning_time: VarInt, // In seconds
+        }
+    }
+
+    def_struct! {
+        SetBorderWarningDistance {
+            warning_blocks: VarInt,
+        }
+    }
+
+    def_struct! {
         SetHeldItemS2c {
             slot: BoundedInt<u8, 0, 9>,
         }
@@ -753,6 +786,7 @@ pub mod play {
             EntityEvent = 26,
             UnloadChunk = 28,
             GameEvent = 29,
+            InitializeWorldBorder = 31,
             KeepAliveS2c = 32,
             ChunkDataAndUpdateLight = 33,
             LoginPlay = 37,
@@ -770,6 +804,11 @@ pub mod play {
             SetHeadRotation = 63,
             UpdateSectionBlocks = 64,
             SetActionBarText = 67,
+            SetBorderCenter = 68,
+            SetBorderLerpSize = 69,
+            SetBorderSize = 70,
+            SetBorderWarningDelay = 71,
+            SetBorderWarningDistance = 72,
             SetHeldItemS2c = 74,
             SetCenterChunk = 75,
             SetRenderDistance = 76,
