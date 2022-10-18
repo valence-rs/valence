@@ -28,7 +28,7 @@ impl Compound {
     /// If the result is `Err`, then the reported count will be greater than or
     /// equal to the number of bytes that have actually been written.
     ///
-    /// [`to_binary_writer`]: crate::to_binary_writer
+    /// [`to_binary_writer`]: crate::to_binary_writer()
     pub fn binary_encoded_len(&self, root_name: &str) -> usize {
         encoded_len(self, root_name)
     }
