@@ -1,8 +1,9 @@
-/// Utilities for working with Java's "Modified UTF-8" character encoding.
-///
-/// For more information, refer to [Wikipedia].
-///
-/// [Wikipedia]: https://en.wikipedia.org/wiki/UTF-8#Modified_UTF-8
+//! Utilities for working with Java's "Modified UTF-8" character encoding.
+//!
+//! For more information, refer to [Wikipedia].
+//!
+//! [Wikipedia]: https://en.wikipedia.org/wiki/UTF-8#Modified_UTF-8
+
 use std::io;
 use std::io::Write;
 use std::str::from_utf8_unchecked;
