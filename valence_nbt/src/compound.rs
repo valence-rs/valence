@@ -3,6 +3,7 @@ use std::hash::Hash;
 use std::iter::FusedIterator;
 use std::ops::{Index, IndexMut};
 
+use crate::to_binary_writer::encoded_len;
 use crate::Value;
 
 /// A map type with [`String`] keys and [`Value`] values.
@@ -16,6 +17,22 @@ type Map = std::collections::BTreeMap<String, Value>;
 
 #[cfg(feature = "preserve_order")]
 type Map = indexmap::IndexMap<String, Value>;
+
+impl Compound {
+    /// Returns the number of bytes that will be written with
+    /// [`to_binary_writer`] when called with this compound and root name.
+    ///
+    /// If [`to_binary_writer`] results in `Ok`, the exact number of bytes
+    /// reported by this function will have been written.
+    ///
+    /// If the result is `Err`, then the reported count will be greater than or
+    /// equal to the number of bytes that have actually been written.
+    ///
+    /// [`to_binary_writer`]: crate::to_binary_writer
+    pub fn binary_encoded_len(&self, root_name: &str) -> usize {
+        encoded_len(self, root_name)
+    }
+}
 
 impl Compound {
     pub fn new() -> Self {

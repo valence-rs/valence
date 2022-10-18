@@ -6,7 +6,7 @@ repository = "https://github.com/valence-rs/valence/tree/main/valence_nbt"
 readme = "README.md"
 license = "MIT"
 keywords = ["nbt", "minecraft", "serialization"]
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Ryan Johnson <ryanj00a@gmail.com>"]
 edition = "2021"
 
