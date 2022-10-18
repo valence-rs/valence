@@ -79,14 +79,14 @@
     trivial_casts,
     trivial_numeric_casts,
     unused_lifetimes,
-    unused_import_braces
+    unused_import_braces,
+    clippy::dbg_macro
 )]
 #![allow(
     clippy::derive_partial_eq_without_eq,
     clippy::unusual_byte_groupings,
     clippy::comparison_chain
 )]
-#![deny(clippy::dbg_macro)]
 
 /// Used on [`Config`](config::Config) to allow for async methods in traits.
 ///
