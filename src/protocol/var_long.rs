@@ -39,7 +39,19 @@ impl Decode for VarLong {
                 return Ok(VarLong(val));
             }
         }
-        bail!("VarInt is too large")
+        bail!("VarLong is too large")
+    }
+}
+
+impl From<VarLong> for i64 {
+    fn from(i: VarLong) -> Self {
+        i.0
+    }
+}
+
+impl From<i64> for VarLong {
+    fn from(i: i64) -> Self {
+        VarLong(i)
     }
 }
 
