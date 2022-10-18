@@ -25,7 +25,7 @@ use crate::protocol::packets::s2c::play::{
     BlockUpdate, ChunkDataAndUpdateLight, S2cPlayPacket, UpdateSectionBlocks,
 };
 use crate::protocol::{Encode, VarInt, VarLong};
-use crate::util::log2_ceil;
+use crate::util::bits_needed;
 
 mod paletted_container;
 
@@ -556,7 +556,7 @@ impl<C: Config> LoadedChunk<C> {
                     |b| b.to_raw().into(),
                     4,
                     8,
-                    log2_ceil(BlockState::max_raw().into()),
+                    bits_needed(BlockState::max_raw().into()),
                 )
                 .unwrap();
 
@@ -566,7 +566,7 @@ impl<C: Config> LoadedChunk<C> {
                     |b| b.0.into(),
                     0,
                     3,
-                    log2_ceil(biome_registry_len),
+                    bits_needed(biome_registry_len - 1),
                 )
                 .unwrap();
         }
@@ -612,7 +612,7 @@ impl<C: Config> LoadedChunk<C> {
 
                 debug_assert_eq!(bits.count_ones(), 1);
 
-                let idx = i * USIZE_BITS + log2_ceil(bits);
+                let idx = i * USIZE_BITS + bits.trailing_zeros() as usize;
                 let block = sect.block_states.get(idx);
 
                 let global_x = pos.x * 16 + (idx % 16) as i32;
