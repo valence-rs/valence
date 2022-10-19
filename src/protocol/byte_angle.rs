@@ -20,6 +20,10 @@ impl Encode for ByteAngle {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         self.0.encode(w)
     }
+
+    fn encoded_len(&self) -> usize {
+        self.0.encoded_len()
+    }
 }
 
 impl Decode for ByteAngle {

@@ -15,7 +15,6 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use vek::Vec3;
 
-// use {def_bitfield, def_enum, def_struct};
 use crate::block_pos::BlockPos;
 use crate::ident::Ident;
 use crate::nbt::Compound;
@@ -81,6 +80,13 @@ macro_rules! def_struct {
                         .context(concat!("failed to write field `", stringify!($field), "` from struct `", stringify!($name), "`"))?;
                 )*
                 Ok(())
+            }
+
+            fn encoded_len(&self) -> usize {
+                0
+                $(
+                    + self.$field.encoded_len()
+                )*
             }
         }
 
@@ -148,6 +154,20 @@ macro_rules! def_enum {
                     )*
 
                     // Need this because references to uninhabited enums are considered inhabited.
+                    #[allow(unreachable_patterns)]
+                    _ => unreachable!("uninhabited enum?")
+                }
+            }
+
+            fn encoded_len(&self) -> usize {
+                match self {
+                    $(
+                        if_typ_is_empty_pat!($($typ)?, $name::$variant, $name::$variant(val)) => {
+                            <$tag_ty>::encoded_len(&$lit.into()) +
+                            if_typ_is_empty_expr!($($typ)?, 0, Encode::encoded_len(val))
+                        }
+                    )*
+
                     #[allow(unreachable_patterns)]
                     _ => unreachable!("uninhabited enum?")
                 }
@@ -263,6 +283,10 @@ macro_rules! def_bitfield {
         impl Encode for $name {
             fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
                 self.0.encode(w)
+            }
+
+            fn encoded_len(&self) -> usize {
+                self.0.encoded_len()
             }
         }
 

@@ -40,7 +40,7 @@ sha2 = "0.10.6"
 thiserror = "1.0.35"
 url = { version = "2.2.2", features = ["serde"] }
 uuid = { version = "1.1.2", features = ["serde"] }
-valence_nbt = "0.2.0"
+valence_nbt = "0.3.0"
 vek = "0.15.8"
 
 [dependencies.tokio]

@@ -55,7 +55,7 @@ impl<W: AsyncWrite + Unpin> Encoder<W> {
 
                 z.read_to_end(&mut self.compress_buf)?;
 
-                let data_len_len = VarInt(data_len as i32).written_size();
+                let data_len_len = VarInt(data_len as i32).encoded_len();
                 let packet_len = data_len_len + self.compress_buf.len();
 
                 ensure!(packet_len <= MAX_PACKET_SIZE as usize, "bad packet length");
@@ -67,7 +67,7 @@ impl<W: AsyncWrite + Unpin> Encoder<W> {
                 self.buf.extend_from_slice(&self.compress_buf);
                 self.compress_buf.clear();
             } else {
-                let packet_len = VarInt(0).written_size() + data_len;
+                let packet_len = VarInt(0).encoded_len() + data_len;
 
                 ensure!(packet_len <= MAX_PACKET_SIZE as usize, "bad packet length");
 
