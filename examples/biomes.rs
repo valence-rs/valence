@@ -1,3 +1,4 @@
+use std::iter;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -43,7 +44,9 @@ struct ClientState {
 
 const MAX_PLAYERS: usize = 10;
 
-const BIOME_COUNT: usize = 4 * 4;
+const BIOME_COUNT: usize = 10;
+
+const MIN_Y: i32 = -64;
 
 #[async_trait]
 impl Config for Game {
@@ -67,7 +70,7 @@ impl Config for Game {
     }
 
     fn biomes(&self) -> Vec<Biome> {
-        (0..BIOME_COUNT)
+        (1..BIOME_COUNT)
             .map(|i| {
                 let color = (0xffffff / BIOME_COUNT * i) as u32;
                 Biome {
@@ -81,6 +84,10 @@ impl Config for Game {
                     ..Default::default()
                 }
             })
+            .chain(iter::once(Biome {
+                name: ident!("plains"),
+                ..Default::default()
+            }))
             .collect()
     }
 
@@ -102,7 +109,9 @@ impl Config for Game {
     fn init(&self, server: &mut Server<Self>) {
         let world = server.worlds.insert(DimensionId::default(), ()).1;
         server.state.player_list = Some(server.player_lists.insert(()).0);
-        let height = server.shared.dimensions().next().unwrap().1.height as usize;
+
+        let height = world.chunks.height();
+        assert_eq!(world.chunks.min_y(), MIN_Y);
 
         for chunk_z in 0..3 {
             for chunk_x in 0..3 {
@@ -112,16 +121,21 @@ impl Config for Game {
                     // Set chunk blocks
                     for z in 0..16 {
                         for x in 0..16 {
-                            chunk.set_block_state(x, 50, z, BlockState::GRASS_BLOCK);
+                            chunk.set_block_state(x, 1, z, BlockState::GRASS_BLOCK);
                         }
                     }
 
                     // Set chunk biomes
                     for z in 0..4 {
                         for x in 0..4 {
-                            let biome_id = server.shared.biomes().nth(x + z * 4).unwrap().0;
-
                             for y in 0..height / 4 {
+                                let biome_id = server
+                                    .shared
+                                    .biomes()
+                                    .nth((x + z * 4 + y * 4 * 4) % BIOME_COUNT)
+                                    .unwrap()
+                                    .0;
+
                                 chunk.set_biome(x, y, z, biome_id);
                             }
                         }
@@ -194,7 +208,7 @@ impl Config for Game {
                 return false;
             }
 
-            if client.position().y <= -20.0 {
+            if client.position().y < MIN_Y as _ {
                 client.teleport(spawn_pos, client.yaw(), client.pitch());
             }
 

@@ -41,9 +41,17 @@ mod var_long;
 
 /// Types that can be written to the Minecraft protocol.
 pub trait Encode {
-    /// This function must be pure. In other words, consecutive calls to
-    /// `encode` must write the exact same sequence of bytes.
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()>;
+
+    /// Returns the number of bytes that will be written when [`Self::encode`]
+    /// is called.
+    ///
+    /// If [`Self::encode`] results in `Ok`, the exact number of bytes reported
+    /// by this function must be written to the writer argument.
+    ///
+    /// If the result is `Err`, then the number of written bytes must be less
+    /// than or equal to the count returned by this function.
+    fn encoded_len(&self) -> usize;
 }
 
 /// Types that can be read from the Minecraft protocol.
@@ -52,11 +60,15 @@ pub trait Decode: Sized {
 }
 
 /// The maximum number of bytes in a single packet.
-pub const MAX_PACKET_SIZE: i32 = 2097151;
+pub const MAX_PACKET_SIZE: i32 = 2097152;
 
 impl Encode for () {
     fn encode(&self, _w: &mut impl Write) -> anyhow::Result<()> {
         Ok(())
+    }
+
+    fn encoded_len(&self) -> usize {
+        0
     }
 }
 
@@ -71,6 +83,10 @@ impl<T: Encode, U: Encode> Encode for (T, U) {
         self.0.encode(w)?;
         self.1.encode(w)
     }
+
+    fn encoded_len(&self) -> usize {
+        self.0.encoded_len() + self.1.encoded_len()
+    }
 }
 
 impl<T: Decode, U: Decode> Decode for (T, U) {
@@ -83,12 +99,20 @@ impl<T: Encode> Encode for &T {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         (*self).encode(w)
     }
+
+    fn encoded_len(&self) -> usize {
+        (*self).encoded_len()
+    }
 }
 
 impl Encode for bool {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         w.write_u8(*self as u8)?;
         Ok(())
+    }
+
+    fn encoded_len(&self) -> usize {
+        1
     }
 }
 
@@ -105,6 +129,10 @@ impl Encode for u8 {
         w.write_u8(*self)?;
         Ok(())
     }
+
+    fn encoded_len(&self) -> usize {
+        1
+    }
 }
 
 impl Decode for u8 {
@@ -117,6 +145,10 @@ impl Encode for i8 {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         w.write_i8(*self)?;
         Ok(())
+    }
+
+    fn encoded_len(&self) -> usize {
+        1
     }
 }
 
@@ -131,6 +163,10 @@ impl Encode for u16 {
         w.write_u16::<BigEndian>(*self)?;
         Ok(())
     }
+
+    fn encoded_len(&self) -> usize {
+        2
+    }
 }
 
 impl Decode for u16 {
@@ -143,6 +179,10 @@ impl Encode for i16 {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         w.write_i16::<BigEndian>(*self)?;
         Ok(())
+    }
+
+    fn encoded_len(&self) -> usize {
+        2
     }
 }
 
@@ -157,6 +197,10 @@ impl Encode for u32 {
         w.write_u32::<BigEndian>(*self)?;
         Ok(())
     }
+
+    fn encoded_len(&self) -> usize {
+        4
+    }
 }
 
 impl Decode for u32 {
@@ -169,6 +213,10 @@ impl Encode for i32 {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         w.write_i32::<BigEndian>(*self)?;
         Ok(())
+    }
+
+    fn encoded_len(&self) -> usize {
+        4
     }
 }
 
@@ -183,6 +231,10 @@ impl Encode for u64 {
         w.write_u64::<BigEndian>(*self)?;
         Ok(())
     }
+
+    fn encoded_len(&self) -> usize {
+        8
+    }
 }
 
 impl Decode for u64 {
@@ -195,6 +247,10 @@ impl Encode for i64 {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         w.write_i64::<BigEndian>(*self)?;
         Ok(())
+    }
+
+    fn encoded_len(&self) -> usize {
+        8
     }
 }
 
@@ -214,6 +270,10 @@ impl Encode for f32 {
         w.write_f32::<BigEndian>(*self)?;
         Ok(())
     }
+
+    fn encoded_len(&self) -> usize {
+        4
+    }
 }
 impl Decode for f32 {
     fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
@@ -232,6 +292,10 @@ impl Encode for f64 {
         );
         w.write_f64::<BigEndian>(*self)?;
         Ok(())
+    }
+
+    fn encoded_len(&self) -> usize {
+        8
     }
 }
 
@@ -253,6 +317,13 @@ impl<T: Encode> Encode for Option<T> {
             None => false.encode(w),
         }
     }
+
+    fn encoded_len(&self) -> usize {
+        1 + match self {
+            Some(t) => t.encoded_len(),
+            None => 0,
+        }
+    }
 }
 
 impl<T: Decode> Decode for Option<T> {
@@ -269,6 +340,10 @@ impl<T: Encode> Encode for Box<T> {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         self.as_ref().encode(w)
     }
+
+    fn encoded_len(&self) -> usize {
+        self.as_ref().encoded_len()
+    }
 }
 
 impl<T: Decode> Decode for Box<T> {
@@ -280,6 +355,10 @@ impl<T: Decode> Decode for Box<T> {
 impl Encode for Box<str> {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         encode_string_bounded(self, 0, 32767, w)
+    }
+
+    fn encoded_len(&self) -> usize {
+        self.as_ref().encoded_len()
     }
 }
 
@@ -326,6 +405,10 @@ where
 
         self.0.encode(w)
     }
+
+    fn encoded_len(&self) -> usize {
+        self.0.encoded_len()
+    }
 }
 
 impl<T, const MIN: i64, const MAX: i64> Decode for BoundedInt<T, MIN, MAX>
@@ -349,11 +432,19 @@ impl Encode for str {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         encode_string_bounded(self, 0, 32767, w)
     }
+
+    fn encoded_len(&self) -> usize {
+        VarInt(self.len().try_into().unwrap_or(i32::MAX)).encoded_len() + self.len()
+    }
 }
 
 impl Encode for String {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         self.as_str().encode(w)
+    }
+
+    fn encoded_len(&self) -> usize {
+        self.as_str().encoded_len()
     }
 }
 
@@ -366,6 +457,10 @@ impl Decode for String {
 impl<'a> Encode for Cow<'a, str> {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         self.as_ref().encode(w)
+    }
+
+    fn encoded_len(&self) -> usize {
+        self.as_ref().encoded_len()
     }
 }
 
@@ -398,6 +493,10 @@ impl<const MIN: usize, const MAX: usize> Encode for BoundedString<MIN, MAX> {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         encode_string_bounded(&self.0, MIN, MAX, w)
     }
+
+    fn encoded_len(&self) -> usize {
+        self.0.encoded_len()
+    }
 }
 
 impl<const MIN: usize, const MAX: usize> Decode for BoundedString<MIN, MAX> {
@@ -412,9 +511,24 @@ impl<const MIN: usize, const MAX: usize> From<String> for BoundedString<MIN, MAX
     }
 }
 
-impl<T: Encode> Encode for Vec<T> {
+impl<'a, T: Encode> Encode for &'a [T] {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         encode_array_bounded(self, 0, usize::MAX, w)
+    }
+
+    fn encoded_len(&self) -> usize {
+        let elems_len: usize = self.iter().map(|a| a.encoded_len()).sum();
+        VarInt(self.len().try_into().unwrap_or(i32::MAX)).encoded_len() + elems_len
+    }
+}
+
+impl<T: Encode> Encode for Vec<T> {
+    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+        self.as_slice().encode(w)
+    }
+
+    fn encoded_len(&self) -> usize {
+        self.as_slice().encoded_len()
     }
 }
 
@@ -428,6 +542,10 @@ impl<T: Encode> Encode for Box<[T]> {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         encode_array_bounded(self, 0, usize::MAX, w)
     }
+
+    fn encoded_len(&self) -> usize {
+        self.as_ref().encoded_len()
+    }
 }
 
 impl<T: Decode> Decode for Box<[T]> {
@@ -438,19 +556,31 @@ impl<T: Decode> Decode for Box<[T]> {
 
 impl<T: Encode, const N: usize> Encode for [T; N] {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        encode_array_bounded(self, N, N, w)
+        //        for t in self {
+        //            t.encode(w)?;
+        //        }
+        //
+        //        Ok(())
+
+        self.as_slice().encode(w)
+
+        // encode_array_bounded(self, N, N, w)
+    }
+
+    fn encoded_len(&self) -> usize {
+        self.iter().map(Encode::encoded_len).sum()
     }
 }
 
 impl<T: Decode, const N: usize> Decode for [T; N] {
     fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
+        ensure!(VarInt::decode(r)?.0 == N as i32);
+
         let mut elems = ArrayVec::new();
         for _ in 0..N {
             elems.push(T::decode(r)?);
         }
-        elems
-            .into_inner()
-            .map_err(|_| unreachable!("mismatched array size"))
+        elems.into_inner().map_err(|_| unreachable!())
     }
 }
 
@@ -458,6 +588,10 @@ impl<T: Encode> Encode for Vec2<T> {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         self.x.encode(w)?;
         self.y.encode(w)
+    }
+
+    fn encoded_len(&self) -> usize {
+        self.x.encoded_len() + self.y.encoded_len()
     }
 }
 
@@ -467,6 +601,10 @@ impl<T: Encode> Encode for Vec3<T> {
         self.y.encode(w)?;
         self.z.encode(w)
     }
+
+    fn encoded_len(&self) -> usize {
+        self.x.encoded_len() + self.y.encoded_len() + self.z.encoded_len()
+    }
 }
 
 impl<T: Encode> Encode for Vec4<T> {
@@ -475,6 +613,10 @@ impl<T: Encode> Encode for Vec4<T> {
         self.y.encode(w)?;
         self.z.encode(w)?;
         self.w.encode(w)
+    }
+
+    fn encoded_len(&self) -> usize {
+        self.x.encoded_len() + self.y.encoded_len() + self.z.encoded_len() + self.w.encoded_len()
     }
 }
 
@@ -506,11 +648,15 @@ impl<T: Decode> Decode for Vec4<T> {
 /// If the array is not in bounds, an error is generated while
 /// encoding or decoding.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Default, Hash, Debug)]
-pub struct BoundedArray<T, const MIN: usize = 0, const MAX: usize = { usize::MAX }>(pub Vec<T>);
+pub struct BoundedArray<T, const MIN: usize, const MAX: usize>(pub Vec<T>);
 
 impl<T: Encode, const MIN: usize, const MAX: usize> Encode for BoundedArray<T, MIN, MAX> {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         encode_array_bounded(&self.0, MIN, MAX, w)
+    }
+
+    fn encoded_len(&self) -> usize {
+        self.0.as_slice().encoded_len()
     }
 }
 
@@ -531,6 +677,10 @@ impl Encode for Uuid {
         w.write_u128::<BigEndian>(self.as_u128())?;
         Ok(())
     }
+
+    fn encoded_len(&self) -> usize {
+        16
+    }
 }
 
 impl Decode for Uuid {
@@ -543,6 +693,10 @@ impl Encode for Compound {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         Ok(nbt::to_binary_writer(w, self, "")?)
     }
+
+    fn encoded_len(&self) -> usize {
+        self.binary_encoded_len("")
+    }
 }
 
 impl Decode for Compound {
@@ -554,7 +708,11 @@ impl Decode for Compound {
 
 impl Encode for BitVec<u64> {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        encode_array_bounded(self.as_raw_slice(), 0, usize::MAX, w)
+        self.as_raw_slice().encode(w)
+    }
+
+    fn encoded_len(&self) -> usize {
+        self.as_raw_slice().encoded_len()
     }
 }
 
@@ -567,7 +725,11 @@ impl Decode for BitVec<u64> {
 
 impl Encode for BitBox<u64> {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        encode_array_bounded(self.as_raw_slice(), 0, usize::MAX, w)
+        self.as_raw_slice().encode(w)
+    }
+
+    fn encoded_len(&self) -> usize {
+        self.as_raw_slice().encoded_len()
     }
 }
 
@@ -593,7 +755,11 @@ impl Decode for RawBytes {
 
 impl Encode for RawBytes {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        w.write_all(&self.0).map_err(|e| e.into())
+        Ok(w.write_all(&self.0)?)
+    }
+
+    fn encoded_len(&self) -> usize {
+        self.0.len()
     }
 }
 
@@ -608,6 +774,10 @@ impl Encode for Option<EntityId> {
             None => VarInt(0),
         }
         .encode(w)
+    }
+
+    fn encoded_len(&self) -> usize {
+        4
     }
 }
 

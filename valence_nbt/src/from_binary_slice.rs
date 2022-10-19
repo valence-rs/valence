@@ -4,7 +4,7 @@ use byteorder::{BigEndian, ReadBytesExt};
 use cesu8::Cesu8DecodingError;
 
 use crate::tag::Tag;
-use crate::{Compound, Error, List, Result, Value, MAX_DEPTH};
+use crate::{Compound, Error, List, Result, Value};
 
 /// Decodes uncompressed NBT binary data from the provided slice.
 ///
@@ -26,6 +26,9 @@ pub fn from_binary_slice(slice: &mut &[u8]) -> Result<(Compound, String)> {
 
     Ok((root, root_name))
 }
+
+/// Maximum recursion depth to prevent overflowing the call stack.
+const MAX_DEPTH: usize = 512;
 
 struct DecodeState<'a, 'b> {
     slice: &'a mut &'b [u8],

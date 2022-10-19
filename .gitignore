@@ -8,3 +8,7 @@ Cargo.lock
 /extractor/out
 /extractor/classes
 /extractor/run
+/performance_tests/rust-mc-bot
+flamegraph.svg
+perf.data
+perf.data.old

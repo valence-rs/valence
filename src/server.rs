@@ -36,7 +36,7 @@ use crate::client::{Client, Clients};
 use crate::config::{Config, ConnectionMode, ServerListPing};
 use crate::dimension::{validate_dimensions, Dimension, DimensionId};
 use crate::entity::Entities;
-use crate::ident::Ident;
+use crate::inventory::Inventories;
 use crate::player_list::PlayerLists;
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::codec::{Decoder, Encoder};
@@ -77,6 +77,7 @@ pub struct Server<C: Config> {
     pub worlds: Worlds<C>,
     /// All of the player lists on the server.
     pub player_lists: PlayerLists<C>,
+    pub inventories: Inventories,
 }
 
 /// A handle to a Minecraft server containing the subset of functionality which
@@ -303,6 +304,7 @@ pub fn start_server<C: Config>(config: C, data: C::ServerState) -> ShutdownResul
         entities: Entities::new(),
         worlds: Worlds::new(shared.clone()),
         player_lists: PlayerLists::new(),
+        inventories: Inventories::new(),
     };
 
     shared.config().init(&mut server);
@@ -404,24 +406,13 @@ fn make_registry_codec(dimensions: &[Dimension], biomes: &[Biome]) -> Compound {
         ident!("worldgen/biome") => compound! {
             "type" => ident!("worldgen/biome"),
             "value" => {
-                let mut biomes: Vec<_> = biomes
+                List::Compound(biomes
                     .iter()
                     .enumerate()
                     .map(|(id, biome)| biome.to_biome_registry_item(id as i32))
-                    .collect();
-
-                // The client needs a biome named "minecraft:plains" in the registry to
-                // connect. This is probably a bug in the client.
-                //
-                // If the issue is resolved, remove this if.
-                if !biomes.iter().any(|b| b["name"] == "plains".into()) {
-                    let biome = Biome::default();
-                    assert_eq!(biome.name, ident!("plains"));
-                    biomes.push(biome.to_biome_registry_item(biomes.len() as i32));
-                }
-
-                List::Compound(biomes)
+                    .collect())
             }
+
         },
         ident!("chat_type_registry") => compound! {
             "type" => ident!("chat_type"),
@@ -460,6 +451,7 @@ fn do_update_loop<C: Config>(server: &mut Server<C>) -> ShutdownResult {
                 &server.entities,
                 &server.worlds,
                 &server.player_lists,
+                &server.inventories,
             );
         });
 
@@ -470,6 +462,7 @@ fn do_update_loop<C: Config>(server: &mut Server<C>) -> ShutdownResult {
         });
 
         server.player_lists.update();
+        server.inventories.update();
 
         // Sleep for the remainder of the tick.
         let tick_duration = Duration::from_secs_f64((shared.0.tick_rate as f64).recip());
@@ -800,7 +793,7 @@ async fn handle_login<C: Config>(
             c.enc
                 .write_packet(&LoginPluginRequest {
                     message_id: VarInt::from(message_id),
-                    channel: Ident::new(VELOCITY_PLAYER_INFO_CHANNEL).unwrap(),
+                    channel: ident!("{VELOCITY_PLAYER_INFO_CHANNEL}"),
                     data: RawBytes(vec![VELOCITY_SUPPORTED_VERSION as u8]),
                 })
                 .await?;

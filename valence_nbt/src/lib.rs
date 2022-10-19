@@ -49,7 +49,22 @@
 //! preserved during insertion and deletion at a slight cost to performance.
 //! The iterators on `Compound` can then implement [`DoubleEndedIterator`].
 
-#![deny(unsafe_code)]
+#![deny(
+    rustdoc::broken_intra_doc_links,
+    rustdoc::private_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::invalid_codeblock_attributes,
+    rustdoc::invalid_rust_codeblocks,
+    rustdoc::bare_urls
+)]
+#![warn(
+    trivial_casts,
+    trivial_numeric_casts,
+    unused_lifetimes,
+    unused_import_braces,
+    clippy::dbg_macro
+)]
+#![allow(clippy::unusual_byte_groupings)]
 
 pub use compound::Compound;
 pub use error::Error;
@@ -60,15 +75,13 @@ pub use value::{List, Value};
 pub mod compound;
 mod error;
 mod from_binary_slice;
+mod modified_utf8;
 mod to_binary_writer;
 pub mod value;
 
 mod tag;
 #[cfg(test)]
 mod tests;
-
-/// Maximum recursion depth to prevent overflowing the call stack.
-const MAX_DEPTH: usize = 512;
 
 type Result<T> = std::result::Result<T, Error>;
 

@@ -12,7 +12,7 @@ use std::io::Write;
 use std::iter::FusedIterator;
 
 use bitvec::vec::BitVec;
-use paletted_container::{PalettedContainer, PalettedContainerElement};
+use paletted_container::PalettedContainer;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use valence_nbt::compound;
 
@@ -25,7 +25,7 @@ use crate::protocol::packets::s2c::play::{
     BlockUpdate, ChunkDataAndUpdateLight, S2cPlayPacket, UpdateSectionBlocks,
 };
 use crate::protocol::{Encode, VarInt, VarLong};
-use crate::util::log2_ceil;
+use crate::util::bits_needed;
 
 mod paletted_container;
 
@@ -505,26 +505,6 @@ impl Default for ChunkSection {
 const SECTION_BLOCK_COUNT: usize = 4096;
 const USIZE_BITS: usize = usize::BITS as _;
 
-impl PalettedContainerElement for BlockState {
-    const DIRECT_BITS: usize = log2_ceil(BlockState::max_raw() as _);
-    const MAX_INDIRECT_BITS: usize = 8;
-    const MIN_INDIRECT_BITS: usize = 4;
-
-    fn to_bits(self) -> u64 {
-        self.to_raw() as _
-    }
-}
-
-impl PalettedContainerElement for BiomeId {
-    const DIRECT_BITS: usize = 6;
-    const MAX_INDIRECT_BITS: usize = 4;
-    const MIN_INDIRECT_BITS: usize = 0;
-
-    fn to_bits(self) -> u64 {
-        self.0 as _
-    }
-}
-
 impl ChunkSection {
     fn mark_block_as_modified(&mut self, idx: usize) {
         if !self.is_block_modified(idx) {
@@ -560,13 +540,35 @@ impl<C: Config> LoadedChunk<C> {
     }
 
     /// Gets the chunk data packet for this chunk with the given position.
-    pub(crate) fn chunk_data_packet(&self, pos: ChunkPos) -> ChunkDataAndUpdateLight {
+    pub(crate) fn chunk_data_packet(
+        &self,
+        pos: ChunkPos,
+        biome_registry_len: usize,
+    ) -> ChunkDataAndUpdateLight {
         let mut blocks_and_biomes = Vec::new();
 
         for sect in self.sections.iter() {
             sect.non_air_count.encode(&mut blocks_and_biomes).unwrap();
-            sect.block_states.encode(&mut blocks_and_biomes).unwrap();
-            sect.biomes.encode(&mut blocks_and_biomes).unwrap();
+
+            sect.block_states
+                .encode_mc_format(
+                    &mut blocks_and_biomes,
+                    |b| b.to_raw().into(),
+                    4,
+                    8,
+                    bits_needed(BlockState::max_raw().into()),
+                )
+                .unwrap();
+
+            sect.biomes
+                .encode_mc_format(
+                    &mut blocks_and_biomes,
+                    |b| b.0.into(),
+                    0,
+                    3,
+                    bits_needed(biome_registry_len - 1),
+                )
+                .unwrap();
         }
 
         ChunkDataAndUpdateLight {
@@ -610,7 +612,7 @@ impl<C: Config> LoadedChunk<C> {
 
                 debug_assert_eq!(bits.count_ones(), 1);
 
-                let idx = i * USIZE_BITS + log2_ceil(bits);
+                let idx = i * USIZE_BITS + bits.trailing_zeros() as usize;
                 let block = sect.block_states.get(idx);
 
                 let global_x = pos.x * 16 + (idx % 16) as i32;

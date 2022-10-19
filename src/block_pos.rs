@@ -58,6 +58,10 @@ impl Encode for BlockPos {
             _ => bail!("out of range: {self:?}"),
         }
     }
+
+    fn encoded_len(&self) -> usize {
+        8
+    }
 }
 
 impl Decode for BlockPos {

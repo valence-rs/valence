@@ -1,0 +1,9 @@
+[package]
+name = "players"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+env_logger = "0.9.1"
+log = "0.4.17"
+valence = { path = "../.." }

@@ -79,7 +79,8 @@
     trivial_casts,
     trivial_numeric_casts,
     unused_lifetimes,
-    unused_import_braces
+    unused_import_braces,
+    clippy::dbg_macro
 )]
 #![allow(
     clippy::derive_partial_eq_without_eq,
@@ -110,6 +111,7 @@ pub mod dimension;
 pub mod enchant;
 pub mod entity;
 pub mod ident;
+pub mod inventory;
 pub mod item;
 pub mod player_list;
 pub mod player_textures;

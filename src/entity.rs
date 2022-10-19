@@ -72,13 +72,13 @@ impl<C: Config> Entities<C> {
         &mut self,
         kind: EntityKind,
         uuid: Uuid,
-        data: C::EntityState,
+        state: C::EntityState,
     ) -> Option<(EntityId, &mut Entity<C>)> {
         match self.uuid_to_entity.entry(uuid) {
             Entry::Occupied(_) => None,
             Entry::Vacant(ve) => {
                 let (k, e) = self.slab.insert(Entity {
-                    state: data,
+                    state,
                     variants: TrackedData::new(kind),
                     events: Vec::new(),
                     bits: EntityBits::new(),

@@ -62,7 +62,7 @@ pub mod login {
     def_struct! {
         LoginPluginRequest {
             message_id: VarInt,
-            channel: Ident<'static>,
+            channel: Ident<String>,
             data: RawBytes,
         }
     }
@@ -277,14 +277,14 @@ pub mod play {
 
     def_struct! {
         PluginMessageS2c {
-            channel: Ident,
+            channel: Ident<String>,
             data: RawBytes,
         }
     }
 
     def_struct! {
         CustomSoundEffect {
-            name: Ident<'static>,
+            name: Ident<String>,
             category: SoundCategory,
             position: Vec3<i32>,
             volume: f32,
@@ -373,12 +373,6 @@ pub mod play {
         }
     }
 
-    // #[derive(Clone, Debug, Serialize, Deserialize)]
-    // pub struct ChunkDataHeightmaps {
-    //     #[serde(rename = "MOTION_BLOCKING", with = "crate::nbt::long_array")]
-    //     pub motion_blocking: Vec<i64>,
-    // }
-
     def_struct! {
         ChunkDataBlockEntity {
             packed_xz: i8,
@@ -395,13 +389,13 @@ pub mod play {
             is_hardcore: bool,
             gamemode: GameMode,
             previous_gamemode: GameMode,
-            dimension_names: Vec<Ident<'static>>,
+            dimension_names: Vec<Ident<String>>,
             /// Contains information about dimensions, biomes, and chats.
             registry_codec: Compound,
             /// The name of the dimension type being spawned into.
-            dimension_type_name: Ident<'static>,
+            dimension_type_name: Ident<String>,
             /// The name of the dimension being spawned into.
-            dimension_name: Ident<'static>,
+            dimension_name: Ident<String>,
             /// Hash of the world's seed used for client biome noise.
             hashed_seed: i64,
             /// No longer used by the client.
@@ -416,7 +410,7 @@ pub mod play {
             /// If this is a superflat world.
             /// Superflat worlds have different void fog and horizon levels.
             is_flat: bool,
-            last_death_location: Option<(Ident<'static>, BlockPos)>,
+            last_death_location: Option<(Ident<String>, BlockPos)>,
         }
     }
 
@@ -473,6 +467,15 @@ pub mod play {
             /// Index into the chat type registry
             kind: VarInt,
             sender: Uuid,
+        }
+    }
+
+    def_struct! {
+        CombatDeath {
+            player_id: VarInt,
+            /// Killer's entity ID, -1 if no killer
+            entity_id: i32,
+            message: Text
         }
     }
 
@@ -536,15 +539,15 @@ pub mod play {
 
     def_struct! {
         Respawn {
-            dimension_type_name: Ident<'static>,
-            dimension_name: Ident<'static>,
+            dimension_type_name: Ident<String>,
+            dimension_name: Ident<String>,
             hashed_seed: u64,
             game_mode: GameMode,
             previous_game_mode: GameMode,
             is_debug: bool,
             is_flat: bool,
             copy_metadata: bool,
-            last_death_location: Option<(Ident<'static>, BlockPos)>,
+            last_death_location: Option<(Ident<String>, BlockPos)>,
         }
     }
 
@@ -715,7 +718,7 @@ pub mod play {
 
     def_struct! {
         EntityAttributesProperty {
-            key: Ident<'static>,
+            key: Ident<String>,
             value: f64,
             modifiers: Vec<EntityAttributesModifiers>
         }
@@ -760,6 +763,7 @@ pub mod play {
             UpdateEntityRotation = 42,
             OpenScreen = 45,
             PlayerChatMessage = 51,
+            CombatDeath = 54,
             PlayerInfo = 55,
             SynchronizePlayerPosition = 57,
             RemoveEntities = 59,

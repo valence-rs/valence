@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
 use num::Integer;
-use valence::biome::Biome;
+use valence::async_trait;
 use valence::block::BlockState;
 use valence::chunk::{Chunk, UnloadedChunk};
 use valence::client::{handle_event_default, ClientEvent, DiggingStatus, GameMode, Hand};
@@ -13,7 +13,6 @@ use valence::entity::{EntityId, EntityKind};
 use valence::player_list::PlayerListId;
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
-use valence::{async_trait, ident};
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()
@@ -65,14 +64,6 @@ impl Config for Game {
         vec![Dimension {
             fixed_time: Some(6000),
             ..Dimension::default()
-        }]
-    }
-
-    fn biomes(&self) -> Vec<Biome> {
-        vec![Biome {
-            name: ident!("valence:default_biome"),
-            grass_color: Some(0x00ff00),
-            ..Biome::default()
         }]
     }
 
@@ -218,8 +209,17 @@ impl Config for Game {
                     } => {
                         if hand == Hand::Main {
                             let place_at = location.get_in_direction(face);
-                            // TODO: get block from player's inventory slot
-                            world.chunks.set_block_state(place_at, BlockState::DIRT);
+                            if let Some(stack) = client.held_item() {
+                                if let Some(block_kind) = stack.item.to_block_kind() {
+                                    world.chunks.set_block_state(
+                                        place_at,
+                                        BlockState::from_kind(block_kind),
+                                    );
+                                    if client.game_mode() != GameMode::Creative {
+                                        client.consume_one_held_item();
+                                    }
+                                }
+                            }
                         }
                     }
                     _ => {}

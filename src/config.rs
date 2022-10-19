@@ -170,6 +170,10 @@ pub trait Config: Sized + Send + Sync + 'static {
     /// Additionally, the documented requirements on the fields of [`Biome`]
     /// must be met.
     ///
+    /// **NOTE**: As of 1.19.2, there is a bug in the client which prevents
+    /// joining the game when a biome named "minecraft:plains" is not present.
+    /// Ensure there is a biome named "plains".
+    ///
     /// # Default Implementation
     ///
     /// Returns `vec![Biome::default()]`.
