@@ -26,10 +26,10 @@ pub trait Inventory {
     fn consume_one(&mut self, slot_id: SlotId) {
         let mut slot = self.slot(slot_id).cloned();
         if let Some(stack) = slot.as_mut() {
-            stack.set_count(stack.count() - 1);
-            let slot = if stack.count() == 0 {
+            let slot = if stack.count() <= 1 {
                 None
             } else {
+                stack.set_count(stack.count() - 1);
                 Some(stack)
             };
             self.set_slot(slot_id, slot.cloned());
