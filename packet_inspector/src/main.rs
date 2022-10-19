@@ -154,7 +154,10 @@ async fn handle_connection(client: TcpStream, cli: Cli) -> anyhow::Result<()> {
                     cli.rw_packet::<EncryptionResponse>(&mut client_read, &mut server_write)
                         .await?;
 
-                    eprintln!("Encryption was enabled! I can't see what's going on anymore.");
+                    eprintln!(
+                        "Encryption was enabled! Packet contents are inaccessible to the proxy. \
+                         Disable online_mode to fix this."
+                    );
 
                     return tokio::select! {
                         c2s = passthrough(client_read.into_inner(), server_write) => c2s,
