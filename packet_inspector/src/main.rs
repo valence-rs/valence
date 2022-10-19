@@ -78,7 +78,7 @@ impl Cli {
         let len = VarInt(read.packet_buf().len() as i32);
         len.encode(&mut len_buf.as_mut_slice())?;
 
-        write.write_all(&len_buf[..len.encoded_len_const()]).await?;
+        write.write_all(&len_buf[..len.encoded_len()]).await?;
         write.write_all(read.packet_buf()).await?;
 
         pkt
