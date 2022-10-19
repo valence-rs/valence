@@ -6,7 +6,7 @@ use valence::async_trait;
 use valence::block::BlockState;
 use valence::chunk::{Chunk, UnloadedChunk};
 use valence::client::{handle_event_default, ClientEvent};
-use valence::config::{Config, ServerListPing};
+use valence::config::{Config, ConnectionMode, ServerListPing};
 use valence::dimension::{Dimension, DimensionId};
 use valence::entity::{EntityId, EntityKind};
 use valence::player_list::PlayerListId;
@@ -52,8 +52,8 @@ impl Config for Game {
         MAX_PLAYERS + 64
     }
 
-    fn online_mode(&self) -> bool {
-        false
+    fn connection_mode(&self) -> ConnectionMode {
+        ConnectionMode::Offline
     }
 
     fn outgoing_packet_capacity(&self) -> usize {
