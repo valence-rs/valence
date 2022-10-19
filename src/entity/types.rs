@@ -27,6 +27,10 @@ impl Encode for OptionalInt {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         VarInt(self.0 as i32).encode(w)
     }
+
+    fn encoded_len(&self) -> usize {
+        VarInt(self.0 as i32).encoded_len()
+    }
 }
 
 impl Decode for OptionalInt {
@@ -54,6 +58,10 @@ impl Encode for EulerAngle {
         self.yaw.encode(w)?;
         self.roll.encode(w)
     }
+
+    fn encoded_len(&self) -> usize {
+        self.pitch.encoded_len() + self.yaw.encoded_len() + self.roll.encoded_len()
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -69,6 +77,10 @@ pub enum Facing {
 impl Encode for Facing {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         VarInt(*self as i32).encode(w)
+    }
+
+    fn encoded_len(&self) -> usize {
+        VarInt(*self as i32).encoded_len()
     }
 }
 
@@ -104,6 +116,12 @@ impl Encode for VillagerData {
         VarInt(self.kind as i32).encode(w)?;
         VarInt(self.profession as i32).encode(w)?;
         VarInt(self.level).encode(w)
+    }
+
+    fn encoded_len(&self) -> usize {
+        VarInt(self.kind as i32).encoded_len()
+            + VarInt(self.profession as i32).encoded_len()
+            + VarInt(self.level).encoded_len()
     }
 }
 
@@ -162,6 +180,10 @@ impl Encode for Pose {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         VarInt(*self as i32).encode(w)
     }
+
+    fn encoded_len(&self) -> usize {
+        VarInt(*self as i32).encoded_len()
+    }
 }
 
 /// The main hand of a player.
@@ -175,6 +197,10 @@ pub enum MainArm {
 impl Encode for MainArm {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         (*self as u8).encode(w)
+    }
+
+    fn encoded_len(&self) -> usize {
+        1
     }
 }
 
@@ -192,6 +218,10 @@ pub enum BoatKind {
 impl Encode for BoatKind {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         VarInt(*self as i32).encode(w)
+    }
+
+    fn encoded_len(&self) -> usize {
+        VarInt(*self as i32).encoded_len()
     }
 }
 
@@ -215,6 +245,10 @@ impl Encode for CatKind {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         VarInt(*self as i32).encode(w)
     }
+
+    fn encoded_len(&self) -> usize {
+        VarInt(*self as i32).encoded_len()
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
@@ -228,6 +262,10 @@ pub enum FrogKind {
 impl Encode for FrogKind {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         VarInt(*self as i32).encode(w)
+    }
+
+    fn encoded_len(&self) -> usize {
+        VarInt(*self as i32).encoded_len()
     }
 }
 
@@ -270,6 +308,10 @@ impl Encode for PaintingKind {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         VarInt(*self as i32).encode(w)
     }
+
+    fn encoded_len(&self) -> usize {
+        VarInt(*self as i32).encoded_len()
+    }
 }
 
 // TODO
@@ -281,5 +323,9 @@ pub enum Particle {
 impl Encode for Particle {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         VarInt(*self as i32).encode(w)
+    }
+
+    fn encoded_len(&self) -> usize {
+        VarInt(*self as i32).encoded_len()
     }
 }

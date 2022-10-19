@@ -13,27 +13,12 @@ impl VarInt {
     /// The maximum number of bytes a VarInt could occupy when read from and
     /// written to the Minecraft protocol.
     pub const MAX_SIZE: usize = 5;
-
-    /// The number of bytes this `VarInt` will occupy when written to the
-    /// Minecraft protocol.
-    pub const fn written_size(self) -> usize {
-        let val = self.0 as u32;
-        if val & 0b11110000_00000000_00000000_00000000 != 0 {
-            5
-        } else if val & 0b11111111_11100000_00000000_00000000 != 0 {
-            4
-        } else if val & 0b11111111_11111111_11000000_00000000 != 0 {
-            3
-        } else if val & 0b11111111_11111111_11111111_10000000 != 0 {
-            2
-        } else {
-            1
-        }
-    }
 }
 
 impl Encode for VarInt {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+        // TODO: optimize this.
+
         let mut val = self.0 as u32;
         loop {
             if val & 0b11111111111111111111111110000000 == 0 {
@@ -42,6 +27,13 @@ impl Encode for VarInt {
             }
             w.write_u8(val as u8 & 0b01111111 | 0b10000000)?;
             val >>= 7;
+        }
+    }
+
+    fn encoded_len(&self) -> usize {
+        match self.0 {
+            0 => 1,
+            n => (31 - n.leading_zeros() as usize) / 7 + 1,
         }
     }
 }
@@ -85,7 +77,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn written_size_correct() {
+    fn encoded_len_correct() {
         let mut rng = thread_rng();
         let mut buf = Vec::new();
 
@@ -96,7 +88,7 @@ mod tests {
         {
             buf.clear();
             n.encode(&mut buf).unwrap();
-            assert_eq!(buf.len(), n.written_size());
+            assert_eq!(buf.len(), n.encoded_len());
         }
     }
 

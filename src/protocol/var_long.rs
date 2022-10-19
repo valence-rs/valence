@@ -17,6 +17,8 @@ impl VarLong {
 
 impl Encode for VarLong {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+        // TODO: optimize this.
+
         let mut val = self.0 as u64;
         loop {
             if val & 0b1111111111111111111111111111111111111111111111111111111110000000 == 0 {
@@ -25,6 +27,13 @@ impl Encode for VarLong {
             }
             w.write_u8(val as u8 & 0b01111111 | 0b10000000)?;
             val >>= 7;
+        }
+    }
+
+    fn encoded_len(&self) -> usize {
+        match self.0 {
+            0 => 1,
+            n => (63 - n.leading_zeros() as usize) / 7 + 1,
         }
     }
 }
