@@ -3,19 +3,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
 use num::Integer;
-use valence::async_trait;
-use valence::block::BlockState;
-use valence::chunk::UnloadedChunk;
-use valence::client::{handle_event_default, ClientEvent, Hand};
-use valence::config::{Config, ServerListPing};
-use valence::dimension::{Dimension, DimensionId};
-use valence::entity::{EntityId, EntityKind};
-use valence::inventory::{ConfigurableInventory, Inventory, InventoryId, PlayerInventory};
-use valence::item::{ItemKind, ItemStack};
-use valence::player_list::PlayerListId;
+use valence::client::Hand;
+use valence::prelude::*;
 use valence::protocol::{SlotId, VarInt};
-use valence::server::{Server, SharedServer, ShutdownResult};
-use valence::text::{Color, TextFormat};
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()

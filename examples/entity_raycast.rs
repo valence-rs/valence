@@ -2,21 +2,8 @@ use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
-use uuid::Uuid;
-use valence::async_trait;
-use valence::block::{BlockPos, BlockState};
-use valence::chunk::UnloadedChunk;
-use valence::client::{handle_event_default, GameMode};
-use valence::config::{Config, ServerListPing};
-use valence::dimension::DimensionId;
 use valence::entity::types::{Facing, PaintingKind, Pose};
-use valence::entity::{EntityId, EntityKind, TrackedData};
-use valence::player_list::PlayerListId;
-use valence::server::{Server, SharedServer, ShutdownResult};
-use valence::spatial_index::RaycastHit;
-use valence::text::{Color, TextFormat};
-use valence::util::from_yaw_and_pitch;
-use vek::Vec3;
+use valence::prelude::*;
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()

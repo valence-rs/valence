@@ -2,15 +2,7 @@ use std::net::SocketAddr;
 use std::time::Instant;
 
 use log::LevelFilter;
-use valence::async_trait;
-use valence::block::BlockState;
-use valence::chunk::{Chunk, UnloadedChunk};
-use valence::client::{handle_event_default, ClientEvent};
-use valence::config::{Config, ServerListPing};
-use valence::dimension::{Dimension, DimensionId};
-use valence::entity::{EntityId, EntityKind};
-use valence::player_list::PlayerListId;
-use valence::server::{Server, SharedServer, ShutdownResult};
+use valence::prelude::*;
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()
