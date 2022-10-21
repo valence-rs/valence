@@ -1,4 +1,6 @@
 //! Contains login procedures for the different [`ConnectionMode`]s.
+//!
+//! [`ConnectionMode`]: crate::config::ConnectionMode
 
 use std::net::SocketAddr;
 
@@ -27,7 +29,8 @@ use crate::protocol::{BoundedArray, BoundedString, Decode, RawBytes, VarInt};
 use crate::server::{Codec, NewClientData, SharedServer};
 use crate::text::Text;
 
-/// Login sequence for [`ConnectionMode::Online`].
+/// Login sequence for
+/// [`ConnectionMode::Online`](crate::config::ConnectionMode).
 pub(super) async fn online(
     server: &SharedServer<impl Config>,
     c: &mut Codec,
@@ -135,7 +138,8 @@ pub(super) async fn online(
     })
 }
 
-/// Login sequence for [`ConnectionMode::Offline`].
+/// Login sequence for
+/// [`ConnectionMode::Offline`](crate::config::ConnectionMode).
 pub(super) fn offline(remote_addr: SocketAddr, username: String) -> anyhow::Result<NewClientData> {
     Ok(NewClientData {
         // Derive the client's UUID from a hash of their username.
@@ -146,7 +150,8 @@ pub(super) fn offline(remote_addr: SocketAddr, username: String) -> anyhow::Resu
     })
 }
 
-/// Login sequence for [`ConnectionMode::BungeeCord`].
+/// Login sequence for
+/// [`ConnectionMode::BungeeCord`](crate::config::ConnectionMode).
 pub(super) fn bungeecord(server_address: &str, username: String) -> anyhow::Result<NewClientData> {
     // Get data from server_address field of the handshake
     let [_, client_ip, uuid, properties]: [&str; 4] = server_address
