@@ -81,9 +81,9 @@ pub trait Config: Sized + Send + Sync + 'static {
     /// determines if client authentication and encryption should take place
     /// and if the server should get the player data from a proxy.
     ///
-    ///  # Default Implementation
+    /// # Default Implementation
     ///
-    /// Returns `ConnectionMode::Online`
+    /// Returns [`ConnectionMode::Online`].
     fn connection_mode(&self) -> ConnectionMode {
         ConnectionMode::Online
     }
@@ -250,6 +250,10 @@ pub trait Config: Sized + Send + Sync + 'static {
     /// no connections to the server will be made until this function returns.
     ///
     /// This method is called from within a tokio runtime.
+    ///
+    /// # Default Implementation
+    ///
+    /// The default implementation does nothing.
     fn init(&self, server: &mut Server<Self>) {}
 
     /// Called once at the beginning of every server update (also known as
@@ -292,41 +296,59 @@ pub enum ServerListPing<'a> {
     Ignore,
 }
 
+/// Describes how new connections to the server are handled.
 #[non_exhaustive]
-#[derive(Clone, Eq, PartialEq, Default)]
+#[derive(Clone, PartialEq, Default)]
 pub enum ConnectionMode {
-    #[default]
-    /// # `ConnectionMode::Online`
-    /// The "online mode" fetches all player data (uuid, username and skin) from
-    /// mojang and enables encryption.
-    /// This should be used for all publicly exposed servers, which are not
+    /// The "online mode" fetches all player data (username, UUID, and skin)
+    /// from the [configured session server] and enables encryption.
+    ///
+    /// This mode should be used for all publicly exposed servers which are not
     /// behind a proxy.
+    ///
+    /// [configured session server]: Config::format_session_server_url
+    #[default]
     Online,
-    /// # `ConnectionMode::Offline`
-    /// If this mode is enabled all players can join with any username and uuid,
-    /// which can be used by malicious actors to get privileges by for
-    /// example using the username (and uuid) of the owner of the server.
-    /// This should only be enabled for development purposes and not for
-    /// publicly exposed servers. Furthermore encryption is disabled and
-    /// minecraft's default skins will be used.
+    /// Disables client authentication with the configured session server.
+    /// Clients can join with any username and UUID they choose, potentially
+    /// gaining privileges they would not otherwise have. Additionally,
+    /// encryption is disabled and Minecraft's default skins will be used.
+    ///
+    /// This mode should be used for development purposes only and not for
+    /// publicly exposed servers.
     Offline,
-    /// # `ConnectionMode::Bungeecord`
-    /// This should be used if the server runs behind a Bungeecord/Waterfall
-    /// Proxy with ip forwarding enabled or a Velocity Proxy, which is
-    /// configured to run with the player info forwarding mode `legacy`.
-    /// It fetches all player data (uuid, username and skin) from the bungeecord
-    /// proxy but does not block connections, which are not from the proxy.
-    /// If the server is publicly exposed anyone can connect with any name, uuid
-    /// and skin similar to offline mode.
-    Bungeecord,
-    /// # `ConnectionMode::Velocity`
-    /// This should be used if the server runs behind a Velocity Proxy, which is
-    /// configured to run with the player info forwarding mode `modern`.
-    /// It fetches all player data (uuid, username and skin) from the velocity
-    /// proxy and blocks all connections, which are not from the proxy.
-    /// To ensure to set the secret value to the secret key of the velocity
-    /// proxy.
-    Velocity { secret: String },
+    /// This mode should be used under one of the following situations:
+    /// - The server is behind a [BungeeCord]/[Waterfall] proxy with IP
+    ///   forwarding enabled.
+    /// - The server is behind a [Velocity] proxy configured to use the `legacy`
+    ///   forwarding mode.
+    ///
+    /// All player data (username, UUID, and skin) is fetched from the proxy,
+    /// but no attempt is made to stop connections originating from
+    /// elsewhere. As a result, you must ensure clients connect through the
+    /// proxy and are unable to connect to the server directly. Otherwise,
+    /// clients can use any username or UUID they choose similar to
+    /// [`ConnectionMode::Offline`].
+    ///
+    /// To protect against this, a firewall can be used. However,
+    /// [`ConnectionMode::Velocity`] is recommended as a secure alternative.
+    ///
+    /// [BungeeCord]: https://www.spigotmc.org/wiki/bungeecord/
+    /// [Waterfall]: https://github.com/PaperMC/Waterfall
+    /// [Velocity]: https://velocitypowered.com/
+    BungeeCord,
+    /// This mode is used when the server is behind a [Velocity] proxy
+    /// configured with the forwarding mode `modern`.
+    ///
+    /// All player data (username, UUID, and skin) is fetched from the proxy and
+    /// all connections originating from outside Velocity are blocked.
+    ///
+    /// [Velocity]: https://velocitypowered.com/
+    Velocity {
+        /// The secret key used to prevent connections from outside Velocity.
+        /// The proxy and Valence must be configured to use the same secret key.
+        secret: String,
+    },
 }
 
 /// Represents an individual entry in the player sample.

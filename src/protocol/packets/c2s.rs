@@ -9,7 +9,7 @@ pub mod handshake {
         Handshake {
             protocol_version: VarInt,
             // by the minecraft protocol this is specified as a BoundedString<0, 255> but due
-            // issues with bungeecord ip forwarding this limit is removed here and checked when handling the handshake
+            // issues with Bungeecord ip forwarding this limit is removed here and checked when handling the handshake
             server_address: String,
             server_port: u16,
             next_state: HandshakeNextState,

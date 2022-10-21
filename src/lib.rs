@@ -117,7 +117,6 @@ pub mod player_list;
 pub mod player_textures;
 #[doc(hidden)]
 pub mod protocol;
-pub mod proxy;
 pub mod server;
 mod slab;
 mod slab_rc;
@@ -129,6 +128,7 @@ pub mod world;
 
 /// The Minecraft protocol version this library currently targets.
 pub const PROTOCOL_VERSION: i32 = 760;
+
 /// The name of the Minecraft version this library currently targets, e.g.
 /// "1.8.2"
 pub const VERSION_NAME: &str = "1.19.2";
@@ -138,6 +138,16 @@ pub const VERSION_NAME: &str = "1.19.2";
 ///
 /// You should avoid using this namespace in your own identifiers.
 pub const LIBRARY_NAMESPACE: &str = "valence";
+
+/// The most recent version of the [Velocity] proxy which has been tested to
+/// work with Valence. The elements of the tuple are (major, minor, patch)
+/// version numbers.
+///
+/// See [`Config::connection_mode`] to configure the proxy used with Valence.
+///
+/// [Velocity]: https://velocitypowered.com/
+/// [`Config::connection_mode`]: config::Config::connection_mode
+pub const SUPPORTED_VELOCITY_VERSION: (u16, u16, u16) = (3, 1, 2);
 
 /// A discrete unit of time where 1 tick is the duration of a
 /// single game update.
