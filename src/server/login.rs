@@ -147,10 +147,7 @@ pub(super) fn offline(remote_addr: SocketAddr, username: String) -> anyhow::Resu
 }
 
 /// Login sequence for [`ConnectionMode::BungeeCord`].
-pub(super) fn bungeecord(
-    server_address: &str,
-    username: String,
-) -> anyhow::Result<NewClientData> {
+pub(super) fn bungeecord(server_address: &str, username: String) -> anyhow::Result<NewClientData> {
     // Get data from server_address field of the handshake
     let [_, client_ip, uuid, properties]: [&str; 4] = server_address
         .split('\0')

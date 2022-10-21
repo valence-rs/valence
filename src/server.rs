@@ -638,9 +638,7 @@ async fn handle_login(
         ConnectionMode::Online => login::online(server, c, remote_addr, username).await?,
         ConnectionMode::Offline => login::offline(remote_addr, username)?,
         ConnectionMode::BungeeCord => login::bungeecord(&handshake.server_address, username)?,
-        ConnectionMode::Velocity { secret } => {
-            login::velocity(c, username, secret).await?
-        }
+        ConnectionMode::Velocity { secret } => login::velocity(c, username, secret).await?,
     };
 
     let compression_threshold = 256;
