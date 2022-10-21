@@ -26,6 +26,17 @@ impl Encode for Slot {
             }
         }
     }
+
+    fn encoded_len(&self) -> usize {
+        match self {
+            None => 1,
+            Some(s) => {
+                1 + s.item.encoded_len()
+                    + 1
+                    + s.nbt.as_ref().map(|nbt| nbt.encoded_len()).unwrap_or(1)
+            }
+        }
+    }
 }
 
 impl Decode for Slot {

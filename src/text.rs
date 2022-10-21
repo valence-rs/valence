@@ -112,17 +112,21 @@ impl Text {
     }
 
     /// Writes this text object as plain text to the provided writer.
-    pub fn write_plain(&self, w: &mut impl fmt::Write) -> fmt::Result {
-        match &self.content {
-            TextContent::Text { text } => w.write_str(text.as_ref())?,
-            TextContent::Translate { translate } => w.write_str(translate.as_ref())?,
+    pub fn write_plain(&self, mut w: impl fmt::Write) -> fmt::Result {
+        fn write_plain_impl(this: &Text, w: &mut impl fmt::Write) -> fmt::Result {
+            match &this.content {
+                TextContent::Text { text } => w.write_str(text.as_ref())?,
+                TextContent::Translate { translate } => w.write_str(translate.as_ref())?,
+            }
+
+            for child in &this.extra {
+                write_plain_impl(child, w)?;
+            }
+
+            Ok(())
         }
 
-        for child in &self.extra {
-            child.write_plain(w)?;
-        }
-
-        Ok(())
+        write_plain_impl(self, &mut w)
     }
 
     /// Returns `true` if the text contains no characters. Returns `false`
@@ -443,14 +447,18 @@ impl<'a, 'b> From<&'a Text> for Cow<'b, str> {
 }
 
 impl fmt::Display for Text {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", String::from(self))
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.write_plain(f)
     }
 }
 
 impl Encode for Text {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         BoundedString::<0, 262144>(serde_json::to_string(self)?).encode(w)
+    }
+
+    fn encoded_len(&self) -> usize {
+        todo!("remove Encode impl on text and come up with solution")
     }
 }
 
@@ -467,7 +475,6 @@ impl Default for TextContent {
     }
 }
 
-#[allow(missing_docs)]
 impl Color {
     pub const AQUA: Color = Color::new(85, 255, 255);
     pub const BLACK: Color = Color::new(0, 0, 0);

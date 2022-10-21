@@ -1,5 +1,3 @@
-use std::mem;
-
 use crate::tag::Tag;
 use crate::{compound, from_binary_slice, to_binary_writer, Compound, List, Value};
 
@@ -54,20 +52,6 @@ fn check_min_sizes() {
 }
 
 #[test]
-fn deeply_nested_compound_encode() {
-    let mut c = compound!("" => 111_i8);
-    for _ in 0..10_000 {
-        c = compound!("" => c);
-    }
-
-    // Should not overflow the stack
-    let _ = to_binary_writer(&mut Vec::new(), &c, ROOT_NAME);
-
-    // Don"t overflow the stack while dropping.
-    mem::forget(c);
-}
-
-#[test]
 fn deeply_nested_compound_decode() {
     let mut buf = vec![Tag::Compound as u8, 0, 0]; // Root compound
     let n = 10_000;
@@ -82,22 +66,6 @@ fn deeply_nested_compound_decode() {
 
     // Should not overflow the stack
     let _ = from_binary_slice(&mut buf.as_slice());
-}
-
-#[test]
-fn deeply_nested_list_encode() {
-    let mut l = List::Byte(Vec::new());
-    for _ in 0..10_000 {
-        l = List::List(vec![l]);
-    }
-
-    let c = compound!("" => l);
-
-    // Should not panic
-    let _ = to_binary_writer(&mut Vec::new(), &c, ROOT_NAME);
-
-    // Don"t overflow the stack while dropping.
-    mem::forget(c);
 }
 
 #[test]
@@ -117,6 +85,16 @@ fn deeply_nested_list_decode() {
 
     // Should not overflow the stack
     let _ = from_binary_slice(&mut buf.as_slice());
+}
+
+#[test]
+fn correct_length() {
+    let c = example_compound();
+
+    let mut buf = Vec::new();
+    to_binary_writer(&mut buf, &c, "abc").unwrap();
+
+    assert_eq!(c.binary_encoded_len("abc"), buf.len());
 }
 
 #[cfg(feature = "preserve_order")]

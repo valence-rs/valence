@@ -78,6 +78,10 @@ impl Encode for BlockState {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
         VarInt(self.0 as i32).encode(w)
     }
+
+    fn encoded_len(&self) -> usize {
+        VarInt(self.0 as i32).encoded_len()
+    }
 }
 
 impl Decode for BlockState {

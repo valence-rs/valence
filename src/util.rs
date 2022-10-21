@@ -127,15 +127,12 @@ pub fn ray_box_intersect(ro: Vec3<f64>, rd: Vec3<f64>, bb: Aabb<f64>) -> Option<
     }
 }
 
-/// Calculates the log base 2 rounded up.
-pub(crate) const fn log2_ceil(n: usize) -> usize {
-    debug_assert!(n != 0);
-
-    // TODO: replace with `n.wrapping_next_power_of_two().trailing_zeros()`.
-    match n.checked_next_power_of_two() {
-        Some(n) => n.trailing_zeros() as usize,
-        None => 0_u64.trailing_zeros() as usize,
-    }
+/// Calculates the minimum number of bits needed to represent the integer `n`.
+/// Also known as `floor(log2(n)) + 1`.
+///
+/// This returns `0` if `n` is `0`.
+pub(crate) const fn bits_needed(n: usize) -> usize {
+    (usize::BITS - n.leading_zeros()) as _
 }
 
 #[cfg(test)]

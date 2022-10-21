@@ -78,7 +78,7 @@ impl Cli {
         let len = VarInt(read.packet_buf().len() as i32);
         len.encode(&mut len_buf.as_mut_slice())?;
 
-        write.write_all(&len_buf[..len.written_size()]).await?;
+        write.write_all(&len_buf[..len.encoded_len()]).await?;
         write.write_all(read.packet_buf()).await?;
 
         pkt
@@ -154,7 +154,10 @@ async fn handle_connection(client: TcpStream, cli: Cli) -> anyhow::Result<()> {
                     cli.rw_packet::<EncryptionResponse>(&mut client_read, &mut server_write)
                         .await?;
 
-                    eprintln!("Encryption was enabled! I can't see what's going on anymore.");
+                    eprintln!(
+                        "Encryption was enabled! Packet contents are inaccessible to the proxy. \
+                         Disable online_mode to fix this."
+                    );
 
                     return tokio::select! {
                         c2s = passthrough(client_read.into_inner(), server_write) => c2s,

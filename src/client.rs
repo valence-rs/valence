@@ -2,8 +2,8 @@
 
 use std::collections::{HashSet, VecDeque};
 use std::iter::FusedIterator;
-use std::mem;
 use std::time::Duration;
+use std::{cmp, mem};
 
 pub use bitfield_struct::bitfield;
 pub use event::*;
@@ -22,7 +22,7 @@ use crate::entity::{
 };
 use crate::ident::Ident;
 use crate::inventory::{
-    Inventories, Inventory, InventoryDirtyable, PlayerInventory, WindowInventory,
+    Inventories, Inventory, InventoryDirtyable, InventoryId, PlayerInventory, WindowInventory,
 };
 use crate::item::ItemStack;
 use crate::player_list::{PlayerListId, PlayerLists};
@@ -34,12 +34,12 @@ pub use crate::protocol::packets::s2c::play::SetTitleAnimationTimes;
 use crate::protocol::packets::s2c::play::{
     AcknowledgeBlockChange, ClearTitles, CombatDeath, CustomSoundEffect, DisconnectPlay,
     EntityAnimationS2c, EntityAttributesProperty, EntityEvent, GameEvent, GameStateChangeReason,
-    KeepAliveS2c, LoginPlay, PlayerPositionLookFlags, RemoveEntities, ResourcePackS2c, Respawn,
-    S2cPlayPacket, SetActionBarText, SetCenterChunk, SetContainerContent, SetDefaultSpawnPosition,
-    SetEntityMetadata, SetEntityVelocity, SetExperience, SetHeadRotation, SetHealth,
-    SetRenderDistance, SetSubtitleText, SetTitleText, SoundCategory, SynchronizePlayerPosition,
-    SystemChatMessage, TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
-    UpdateEntityPositionAndRotation, UpdateEntityRotation, UpdateTime,
+    KeepAliveS2c, LoginPlay, OpenScreen, PlayerPositionLookFlags, RemoveEntities, ResourcePackS2c,
+    Respawn, S2cPlayPacket, SetActionBarText, SetCenterChunk, SetContainerContent,
+    SetDefaultSpawnPosition, SetEntityMetadata, SetEntityVelocity, SetExperience, SetHeadRotation,
+    SetHealth, SetRenderDistance, SetSubtitleText, SetTitleText, SoundCategory,
+    SynchronizePlayerPosition, SystemChatMessage, TeleportEntity, UnloadChunk, UpdateAttributes,
+    UpdateEntityPosition, UpdateEntityPositionAndRotation, UpdateEntityRotation, UpdateTime,
 };
 use crate::protocol::{BoundedInt, BoundedString, ByteAngle, RawBytes, SlotId, VarInt};
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
@@ -786,6 +786,24 @@ impl<C: Config> Client<C> {
         self.inventory.consume_one(self.selected_hotbar_slot);
     }
 
+    /// Makes the client open a window displaying the given inventory.
+    pub fn open_inventory(
+        &mut self,
+        inventories: &Inventories,
+        id: InventoryId,
+        window_title: impl Into<Text>,
+    ) {
+        if let Some(inv) = inventories.get(id) {
+            let window = WindowInventory::new(1, id);
+            self.send_packet(OpenScreen {
+                window_id: VarInt(window.window_id.into()),
+                window_type: inv.window_type,
+                window_title: window_title.into(),
+            });
+            self.open_inventory = Some(window);
+        }
+    }
+
     /// Disconnects this client from the server with the provided reason. This
     /// has no effect if the client is already disconnected.
     ///
@@ -1016,7 +1034,7 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::PlayerAbilitiesC2s(_) => {}
             C2sPlayPacket::PlayerAction(p) => {
                 if p.sequence.0 != 0 {
-                    self.block_change_sequence = p.sequence.0;
+                    self.block_change_sequence = cmp::max(p.sequence.0, self.block_change_sequence);
                 }
 
                 self.events.push_back(match p.status {
@@ -1094,15 +1112,25 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::UpdateSign(_) => {}
             C2sPlayPacket::SwingArm(p) => self.events.push_back(ClientEvent::ArmSwing(p.hand)),
             C2sPlayPacket::TeleportToEntity(_) => {}
-            C2sPlayPacket::UseItemOn(p) => self.events.push_back(ClientEvent::InteractWithBlock {
-                hand: p.hand,
-                location: p.location,
-                face: p.face,
-                cursor_pos: p.cursor_pos,
-                head_inside_block: p.head_inside_block,
-                sequence: p.sequence,
-            }),
-            C2sPlayPacket::UseItem(_) => {}
+            C2sPlayPacket::UseItemOn(p) => {
+                if p.sequence.0 != 0 {
+                    self.block_change_sequence = cmp::max(p.sequence.0, self.block_change_sequence);
+                }
+
+                self.events.push_back(ClientEvent::InteractWithBlock {
+                    hand: p.hand,
+                    location: p.location,
+                    face: p.face,
+                    cursor_pos: p.cursor_pos,
+                    head_inside_block: p.head_inside_block,
+                    sequence: p.sequence,
+                })
+            }
+            C2sPlayPacket::UseItem(p) => {
+                if p.sequence.0 != 0 {
+                    self.block_change_sequence = cmp::max(p.sequence.0, self.block_change_sequence);
+                }
+            }
         }
     }
 

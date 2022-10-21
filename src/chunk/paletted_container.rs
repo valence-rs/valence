@@ -5,7 +5,7 @@ use arrayvec::ArrayVec;
 
 use crate::chunk::{compact_u64s_len, encode_compact_u64s};
 use crate::protocol::{Encode, VarInt};
-use crate::util::log2_ceil;
+use crate::util::bits_needed;
 
 /// `HALF_LEN` must be equal to `ceil(LEN / 2)`.
 #[derive(Clone, Debug)]
@@ -17,7 +17,8 @@ pub enum PalettedContainer<T, const LEN: usize, const HALF_LEN: usize> {
 
 #[derive(Clone, Debug)]
 pub struct Indirect<T, const LEN: usize, const HALF_LEN: usize> {
-    /// Each element is a unique instance of `T`.
+    /// Each element is a unique instance of `T`. The length of the palette is
+    /// always ≥2.
     palette: ArrayVec<T, 16>,
     /// Each half-byte is an index into `palette`.
     indices: [u8; HALF_LEN],
@@ -147,7 +148,7 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
     ///   force conversion to the direct representation while encoding.
     /// - **`direct_bits`**: The minimum number of bits required to represent
     ///   all instances of the element type. If `N` is the total number of
-    ///   possible values, then `DIRECT_BITS` is `ceil(log2(N))`.
+    ///   possible values, then `DIRECT_BITS` is `floor(log2(N - 1)) + 1`.
     pub fn encode_mc_format<W, F>(
         &self,
         mut writer: W,
@@ -177,7 +178,7 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
                 VarInt(0).encode(&mut writer)?;
             }
             Self::Indirect(ind) => {
-                let bits_per_entry = min_indirect_bits.max(log2_ceil(ind.palette.len()));
+                let bits_per_entry = min_indirect_bits.max(bits_needed(ind.palette.len() - 1));
 
                 // Encode as direct if necessary.
                 if bits_per_entry > max_indirect_bits {

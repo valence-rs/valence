@@ -12,6 +12,10 @@ impl Encode for ItemKind {
     fn encode(&self, w: &mut impl std::io::Write) -> anyhow::Result<()> {
         VarInt(self.to_raw() as i32).encode(w)
     }
+
+    fn encoded_len(&self) -> usize {
+        VarInt(self.to_raw() as i32).encoded_len()
+    }
 }
 
 impl Decode for ItemKind {

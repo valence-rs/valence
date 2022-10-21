@@ -366,12 +366,6 @@ pub mod play {
         }
     }
 
-    // #[derive(Clone, Debug, Serialize, Deserialize)]
-    // pub struct ChunkDataHeightmaps {
-    //     #[serde(rename = "MOTION_BLOCKING", with = "crate::nbt::long_array")]
-    //     pub motion_blocking: Vec<i64>,
-    // }
-
     def_struct! {
         ChunkDataBlockEntity {
             packed_xz: i8,
