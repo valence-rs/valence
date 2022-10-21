@@ -10,9 +10,31 @@ use anyhow::Context;
 
 pub use crate::block_pos::BlockPos;
 use crate::item::ItemKind;
+use crate::protocol::packets::c2s::play::BlockFace;
 use crate::protocol::{Decode, Encode, VarInt};
 
 include!(concat!(env!("OUT_DIR"), "/block.rs"));
+
+impl BlockFace {
+    pub const fn to_block_facing(self) -> PropValue {
+        match self {
+            BlockFace::Bottom => PropValue::Down,
+            BlockFace::Top => PropValue::Up,
+            BlockFace::North => PropValue::North,
+            BlockFace::South => PropValue::South,
+            BlockFace::West => PropValue::West,
+            BlockFace::East => PropValue::East,
+        }
+    }
+
+    pub const fn to_block_axis(self) -> PropValue {
+        match self {
+            BlockFace::Bottom | BlockFace::Top => PropValue::Y,
+            BlockFace::North | BlockFace::South => PropValue::Z,
+            BlockFace::West | BlockFace::East => PropValue::X,
+        }
+    }
+}
 
 impl fmt::Debug for BlockState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

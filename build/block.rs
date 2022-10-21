@@ -161,6 +161,24 @@ pub fn build() -> anyhow::Result<TokenStream> {
         })
         .collect::<TokenStream>();
 
+    let all_props_arms = blocks
+        .iter()
+        .filter(|&b| !b.properties.is_empty())
+        .map(|b| {
+            let block_kind_name = ident(b.name.to_pascal_case());
+
+            let arms = b
+                .properties
+                .iter()
+                .map(|p| ident(p.name.to_pascal_case()))
+                .collect::<Vec<_>>();
+
+            quote! {
+                BlockKind::#block_kind_name => Some(&[#(PropName::#arms,)*]),
+            }
+        })
+        .collect::<TokenStream>();
+
     let get_arms = blocks
         .iter()
         .filter(|&b| !b.properties.is_empty())
@@ -501,6 +519,13 @@ pub fn build() -> anyhow::Result<TokenStream> {
             /// Returns the maximum block state ID.
             pub const fn max_raw() -> u16 {
                 #max_state_id
+            }
+
+            pub const fn all_props(self) -> Option<&'static [PropName]> {
+                match self.to_kind() {
+                    #all_props_arms
+                    _ => None
+                }
             }
 
             /// Gets the value of the property with the given name from this block.
