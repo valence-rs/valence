@@ -7,6 +7,7 @@ use crate::block_pos::BlockPos;
 use crate::config::Config;
 use crate::entity::types::Pose;
 use crate::entity::{Entity, EntityEvent, EntityId, TrackedData};
+use crate::ident::Ident;
 use crate::inventory::Inventory;
 use crate::item::ItemStack;
 use crate::protocol::packets::c2s::play::ClickContainerMode;
@@ -14,7 +15,7 @@ pub use crate::protocol::packets::c2s::play::{
     BlockFace, ChatMode, DisplayedSkinParts, Hand, MainHand, ResourcePackC2s as ResourcePackStatus,
 };
 pub use crate::protocol::packets::s2c::play::GameMode;
-use crate::protocol::{Slot, SlotId, VarInt};
+use crate::protocol::{RawBytes, Slot, SlotId, VarInt};
 
 /// Represents an action performed by a client.
 ///
@@ -130,6 +131,10 @@ pub enum ClientEvent {
         head_inside_block: bool,
         /// Sequence number
         sequence: VarInt,
+    },
+    PluginMessageReceived {
+        channel: Ident<String>,
+        data: RawBytes,
     },
     ResourcePackStatusChanged(ResourcePackStatus),
     /// The client closed a screen. This occurs when the client closes their
@@ -331,6 +336,7 @@ pub fn handle_event_default<C: Config>(
         ClientEvent::SteerBoat { .. } => {}
         ClientEvent::Digging { .. } => {}
         ClientEvent::InteractWithBlock { .. } => {}
+        ClientEvent::PluginMessageReceived { .. } => {}
         ClientEvent::ResourcePackStatusChanged(_) => {}
         ClientEvent::CloseScreen { window_id } => {
             if let Some(window) = &client.open_inventory {

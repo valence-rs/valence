@@ -44,8 +44,8 @@ impl Config for Game {
         MAX_PLAYERS + 64
     }
 
-    fn online_mode(&self) -> bool {
-        false
+    fn connection_mode(&self) -> ConnectionMode {
+        ConnectionMode::Offline
     }
 
     fn outgoing_packet_capacity(&self) -> usize {

@@ -276,6 +276,13 @@ pub mod play {
     }
 
     def_struct! {
+        PluginMessageS2c {
+            channel: Ident<String>,
+            data: RawBytes,
+        }
+    }
+
+    def_struct! {
         CustomSoundEffect {
             name: Ident<String>,
             category: SoundCategory,
@@ -738,6 +745,7 @@ pub mod play {
             BlockUpdate = 9,
             BossBar = 10,
             ClearTitles = 13,
+            PluginMessageS2c = 22,
             SetContainerContent = 17,
             SetContainerProperty = 18,
             SetContainerSlot = 19,

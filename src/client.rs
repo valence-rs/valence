@@ -34,8 +34,8 @@ pub use crate::protocol::packets::s2c::play::SetTitleAnimationTimes;
 use crate::protocol::packets::s2c::play::{
     AcknowledgeBlockChange, ClearTitles, CombatDeath, CustomSoundEffect, DisconnectPlay,
     EntityAnimationS2c, EntityAttributesProperty, EntityEvent, GameEvent, GameStateChangeReason,
-    KeepAliveS2c, LoginPlay, OpenScreen, PlayerPositionLookFlags, RemoveEntities, ResourcePackS2c,
-    Respawn, S2cPlayPacket, SetActionBarText, SetCenterChunk, SetContainerContent,
+    KeepAliveS2c, LoginPlay, OpenScreen, PlayerPositionLookFlags, PluginMessageS2c, RemoveEntities,
+    ResourcePackS2c, Respawn, S2cPlayPacket, SetActionBarText, SetCenterChunk, SetContainerContent,
     SetDefaultSpawnPosition, SetEntityMetadata, SetEntityVelocity, SetExperience, SetHeadRotation,
     SetHealth, SetRenderDistance, SetSubtitleText, SetTitleText, SoundCategory,
     SynchronizePlayerPosition, SystemChatMessage, TeleportEntity, UnloadChunk, UpdateAttributes,
@@ -388,6 +388,16 @@ impl<C: Config> Client<C> {
         // We buffer messages because weird things happen if we send them before the
         // login packet.
         self.msgs_to_send.push(msg.into());
+    }
+
+    pub fn send_plugin_message(&mut self, channel: Ident<String>, data: Vec<u8>) {
+        send_packet(
+            &mut self.send,
+            PluginMessageS2c {
+                channel,
+                data: RawBytes(data),
+            },
+        );
     }
 
     /// Gets the absolute position of this client in the world it is located
@@ -930,7 +940,6 @@ impl<C: Config> Client<C> {
                     window_id: c.window_id,
                 })
             }
-            C2sPlayPacket::PluginMessageC2s(_) => {}
             C2sPlayPacket::EditBook(_) => {}
             C2sPlayPacket::QueryEntityTag(_) => {}
             C2sPlayPacket::Interact(p) => {
@@ -1106,6 +1115,12 @@ impl<C: Config> Client<C> {
                         slot: e.clicked_item,
                     })
                 }
+            }
+            C2sPlayPacket::PluginMessageC2s(p) => {
+                self.events.push_back(ClientEvent::PluginMessageReceived {
+                    channel: p.channel,
+                    data: p.data,
+                });
             }
             C2sPlayPacket::ProgramJigsawBlock(_) => {}
             C2sPlayPacket::ProgramStructureBlock(_) => {}
