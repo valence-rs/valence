@@ -12,6 +12,7 @@ use crate::biome::Biome;
 use crate::dimension::Dimension;
 use crate::server::{NewClientData, Server, SharedServer};
 use crate::text::Text;
+use crate::username::Username;
 use crate::{Ticks, STANDARD_TPS};
 
 /// A trait for the configuration of a server.
@@ -232,7 +233,7 @@ pub trait Config: Sized + Send + Sync + 'static {
     fn format_session_server_url(
         &self,
         server: &SharedServer<Self>,
-        username: &str,
+        username: Username<&str>,
         auth_digest: &str,
         player_ip: &IpAddr,
     ) -> String {

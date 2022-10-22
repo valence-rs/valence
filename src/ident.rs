@@ -151,7 +151,10 @@ where
     }
 }
 
-impl<S: AsRef<str>> fmt::Display for Ident<S> {
+impl<S> fmt::Display for Ident<S>
+where
+    S: AsRef<str>,
+{
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}", self.namespace(), self.path())
     }

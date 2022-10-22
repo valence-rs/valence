@@ -23,6 +23,7 @@ use crate::protocol::{
     VarLong,
 };
 use crate::text::Text;
+use crate::username::Username;
 
 /// Provides the name of a packet for debugging purposes.
 pub trait PacketName {

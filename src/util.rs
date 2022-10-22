@@ -8,28 +8,6 @@ use vek::{Aabb, Vec3};
 
 use crate::chunk_pos::ChunkPos;
 
-/// Returns true if the given string meets the criteria for a valid Minecraft
-/// username.
-///
-/// Usernames are valid if they match the regex `^[a-zA-Z0-9_]{3,16}$`.
-///
-/// # Examples
-///
-/// ```
-/// use valence::util::valid_username;
-///
-/// assert!(valid_username("00a"));
-/// assert!(valid_username("jeb_"));
-///
-/// assert!(!valid_username("notavalidusername"));
-/// assert!(!valid_username("NotValid!"));
-/// ```
-pub fn valid_username(s: &str) -> bool {
-    (3..=16).contains(&s.len())
-        && s.chars()
-            .all(|c| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '_'))
-}
-
 const EXTRA_RADIUS: i32 = 3;
 
 /// Returns an iterator over all chunk positions within a view distance,
