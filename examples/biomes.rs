@@ -3,17 +3,7 @@ use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
-use valence::biome::Biome;
-use valence::block::BlockState;
-use valence::chunk::{Chunk, UnloadedChunk};
-use valence::client::GameMode;
-use valence::config::{Config, ServerListPing};
-use valence::dimension::{Dimension, DimensionId};
-use valence::entity::{EntityId, EntityKind};
-use valence::player_list::PlayerListId;
-use valence::server::{Server, SharedServer, ShutdownResult};
-use valence::text::{Color, TextFormat};
-use valence::{async_trait, ident};
+use valence::prelude::*;
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()
@@ -43,9 +33,7 @@ struct ClientState {
 }
 
 const MAX_PLAYERS: usize = 10;
-
 const BIOME_COUNT: usize = 10;
-
 const MIN_Y: i32 = -64;
 
 #[async_trait]

@@ -6,19 +6,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use log::LevelFilter;
 use rand::seq::SliceRandom;
 use rand::Rng;
-use valence::block::{BlockPos, BlockState};
-use valence::chunk::{ChunkPos, UnloadedChunk};
-use valence::client::{handle_event_default, Client, GameMode, SetTitleAnimationTimes};
-use valence::config::{Config, ServerListPing};
-use valence::dimension::DimensionId;
-use valence::entity::{EntityId, EntityKind};
-use valence::player_list::PlayerListId;
+use valence::client::SetTitleAnimationTimes;
+use valence::prelude::*;
+// TODO: remove protocol imports.
 use valence::protocol::packets::s2c::play::SoundCategory;
-use valence::server::{Server, SharedServer, ShutdownResult};
-use valence::text::{Color, TextFormat};
-use valence::util::chunks_in_view_distance;
-use valence::world::{World, WorldId};
-use valence::{async_trait, ident};
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()

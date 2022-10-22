@@ -3,19 +3,11 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
 use num::Integer;
-use valence::block::BlockState;
-use valence::chunk::{Chunk, UnloadedChunk};
-use valence::client::{handle_event_default, Client, ClientEvent, GameMode};
-use valence::config::{Config, ServerListPing};
-use valence::dimension::{Dimension, DimensionId};
-use valence::entity::{Entity, EntityId, EntityKind};
-use valence::player_list::PlayerListId;
+pub use valence::prelude::*;
+// TODO: remove protocol imports.
 use valence::protocol::packets::c2s::play::ClickContainerMode;
 use valence::protocol::packets::s2c::play::SoundCategory;
 use valence::protocol::SlotId;
-use valence::server::{Server, SharedServer, ShutdownResult};
-use valence::text::{Color, TextFormat};
-use valence::{async_trait, ident};
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()

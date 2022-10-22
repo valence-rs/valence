@@ -2,18 +2,7 @@ use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
-use valence::async_trait;
-use valence::block::{BlockPos, BlockState};
-use valence::chunk::UnloadedChunk;
-use valence::client::{handle_event_default, ClientEvent};
-use valence::config::{Config, ServerListPing};
-use valence::dimension::Dimension;
-use valence::entity::{EntityId, EntityKind};
-use valence::player_list::PlayerListId;
-use valence::server::{Server, SharedServer, ShutdownResult};
-use valence::text::{Color, TextFormat};
-use valence::world::WorldId;
-use vek::Vec3;
+use valence::prelude::*;
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()

@@ -1,7 +1,6 @@
 //! Player skins and capes.
 
-use anyhow::Context;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use url::Url;
 
 /// Contains URLs to the skin and cape of a player.
@@ -12,9 +11,46 @@ use url::Url;
 pub struct SignedPlayerTextures {
     payload: Box<[u8]>,
     signature: Box<[u8]>,
+    skin_url: Box<str>,
+    cape_url: Option<Box<str>>,
 }
 
 impl SignedPlayerTextures {
+    pub(crate) fn from_base64(
+        payload: impl AsRef<str>,
+        signature: impl AsRef<str>,
+    ) -> anyhow::Result<Self> {
+        let payload = base64::decode(payload.as_ref())?;
+        let signature = base64::decode(signature.as_ref())?;
+
+        #[derive(Debug, Deserialize)]
+        struct Textures {
+            textures: PlayerTexturesPayload,
+        }
+
+        #[derive(Debug, Deserialize)]
+        #[serde(rename_all = "UPPERCASE")]
+        struct PlayerTexturesPayload {
+            skin: TextureUrl,
+            #[serde(default)]
+            cape: Option<TextureUrl>,
+        }
+
+        #[derive(Debug, Deserialize)]
+        struct TextureUrl {
+            url: Url,
+        }
+
+        let textures: Textures = serde_json::from_slice(&payload)?;
+
+        Ok(Self {
+            payload: payload.into(),
+            signature: signature.into(),
+            skin_url: String::from(textures.textures.skin.url).into(),
+            cape_url: textures.textures.cape.map(|t| String::from(t.url).into()),
+        })
+    }
+
     pub(crate) fn payload(&self) -> &[u8] {
         &self.payload
     }
@@ -23,66 +59,18 @@ impl SignedPlayerTextures {
         &self.signature
     }
 
-    /// Gets the unsigned texture URLs.
-    pub fn to_textures(&self) -> PlayerTextures {
-        self.to_textures_fallible()
-            .expect("payload should have been validated earlier")
+    /// Returns the URL to the texture's skin as a `str`.
+    ///
+    /// The returned string is guaranteed to be a valid URL.
+    pub fn skin(&self) -> &str {
+        &self.skin_url
     }
 
-    fn to_textures_fallible(&self) -> anyhow::Result<PlayerTextures> {
-        #[derive(Debug, Deserialize)]
-        struct Textures {
-            textures: PlayerTexturesPayload,
-        }
-
-        let textures: Textures = serde_json::from_slice(&self.payload)?;
-
-        Ok(PlayerTextures {
-            skin: textures.textures.skin.map(|t| t.url),
-            cape: textures.textures.cape.map(|t| t.url),
-        })
+    /// Returns the URL to the texture's cape as a `str` if present.
+    ///
+    /// The returned string is guaranteed to be a valid URL. `None` is returned
+    /// instead if there is no cape.
+    pub fn cape(&self) -> Option<&str> {
+        self.cape_url.as_deref()
     }
-
-    pub(crate) fn from_base64(payload: String, signature: String) -> anyhow::Result<Self> {
-        let res = Self {
-            payload: base64::decode(payload)?.into_boxed_slice(),
-            signature: base64::decode(signature)?.into_boxed_slice(),
-        };
-
-        match res.to_textures_fallible() {
-            Ok(_) => Ok(res),
-            Err(e) => Err(e).context("failed to parse textures payload"),
-        }
-    }
-}
-
-/// Contains URLs to the skin and cape of a player.
-#[derive(Clone, PartialEq, Eq, Default, Debug)]
-pub struct PlayerTextures {
-    /// A URL to the skin of a player. Is `None` if the player does not have a
-    /// skin.
-    pub skin: Option<Url>,
-    /// A URL to the cape of a player. Is `None` if the player does not have a
-    /// cape.
-    pub cape: Option<Url>,
-}
-
-impl From<SignedPlayerTextures> for PlayerTextures {
-    fn from(spt: SignedPlayerTextures) -> Self {
-        spt.to_textures()
-    }
-}
-
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "UPPERCASE")]
-struct PlayerTexturesPayload {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    skin: Option<TextureUrl>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    cape: Option<TextureUrl>,
-}
-
-#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
-struct TextureUrl {
-    url: Url,
 }

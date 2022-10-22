@@ -126,6 +126,40 @@ pub mod text;
 pub mod util;
 pub mod world;
 
+/// Use `valence::prelude::*` to import the most commonly used items from the
+/// library.
+pub mod prelude {
+    pub use biome::{Biome, BiomeId};
+    pub use block::{BlockKind, BlockPos, BlockState, PropName, PropValue};
+    pub use chunk::{Chunk, ChunkPos, Chunks, LoadedChunk, UnloadedChunk};
+    pub use client::{handle_event_default, Client, ClientEvent, ClientId, Clients, GameMode};
+    pub use config::{Config, ConnectionMode, PlayerSampleEntry, ServerListPing};
+    pub use dimension::{Dimension, DimensionId};
+    pub use entity::{Entities, Entity, EntityEvent, EntityId, EntityKind, TrackedData};
+    pub use ident::{Ident, IdentError};
+    pub use inventory::{
+        ConfigurableInventory, Inventories, Inventory, InventoryId, PlayerInventory,
+    };
+    pub use item::{ItemKind, ItemStack};
+    pub use player_list::{PlayerList, PlayerListEntry, PlayerListId, PlayerLists};
+    pub use server::{NewClientData, Server, SharedServer, ShutdownResult};
+    pub use spatial_index::{RaycastHit, SpatialIndex};
+    pub use text::{Color, Text, TextFormat};
+    pub use util::{
+        chunks_in_view_distance, from_yaw_and_pitch, is_chunk_in_view_distance, to_yaw_and_pitch,
+    };
+    pub use uuid::Uuid;
+    pub use valence_nbt::Compound;
+    pub use vek::{Aabb, Mat2, Mat3, Mat4, Vec2, Vec3, Vec4};
+    pub use world::{World, WorldId, WorldMeta, Worlds};
+
+    use super::*;
+    pub use crate::{
+        async_trait, ident, nbt, vek, Ticks, LIBRARY_NAMESPACE, PROTOCOL_VERSION, STANDARD_TPS,
+        VERSION_NAME,
+    };
+}
+
 /// The Minecraft protocol version this library currently targets.
 pub const PROTOCOL_VERSION: i32 = 760;
 
