@@ -27,11 +27,30 @@ impl BlockFace {
         }
     }
 
+    pub const fn to_block_face(self) -> PropValue {
+        match self {
+            BlockFace::Bottom => PropValue::Ceiling,
+            BlockFace::Top => PropValue::Floor,
+            _ => PropValue::Wall,
+        }
+    }
+
     pub const fn to_block_axis(self) -> PropValue {
         match self {
             BlockFace::Bottom | BlockFace::Top => PropValue::Y,
             BlockFace::North | BlockFace::South => PropValue::Z,
             BlockFace::West | BlockFace::East => PropValue::X,
+        }
+    }
+
+    pub const fn opposite(self) -> Self {
+        match self {
+            BlockFace::Bottom => BlockFace::Top,
+            BlockFace::Top => BlockFace::Bottom,
+            BlockFace::North => BlockFace::South,
+            BlockFace::South => BlockFace::North,
+            BlockFace::West => BlockFace::East,
+            BlockFace::East => BlockFace::West,
         }
     }
 }

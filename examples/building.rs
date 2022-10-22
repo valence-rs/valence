@@ -197,6 +197,7 @@ impl Config for Game {
                         hand,
                         location,
                         face,
+                        cursor_pos,
                         ..
                     } => {
                         if hand == Hand::Main {
@@ -206,6 +207,7 @@ impl Config for Game {
                                         BlockState::from_kind(held_block_kind),
                                         face,
                                         client.yaw(),
+                                        cursor_pos,
                                     );
 
                                     if world
@@ -236,7 +238,7 @@ impl Config for Game {
     }
 }
 
-fn face_block(block: BlockState, face: BlockFace, yaw: f32) -> BlockState {
+fn face_block(block: BlockState, face: BlockFace, yaw: f32, cursor_pos: Vec3<f32>) -> BlockState {
     let block = match block.to_wall_variant() {
         Some(wall_vaniant) => match face {
             BlockFace::Bottom | BlockFace::Top => block,
@@ -250,8 +252,40 @@ fn face_block(block: BlockState, face: BlockFace, yaw: f32) -> BlockState {
 
         for prop in props {
             mut_block = match prop {
-                PropName::Facing => mut_block.set(PropName::Facing, face.to_block_facing()),
                 PropName::Axis => mut_block.set(PropName::Axis, face.to_block_axis()),
+                PropName::Face => mut_block.set(PropName::Face, face.to_block_face()),
+                PropName::Facing => {
+                    // This could be improved, mabye we can extract something?
+                    let block_name = mut_block.to_kind().to_str();
+                    if block_name.contains("shulker_box") || block_name == "end_rod" || mut_block.to_wall_variant().is_some() {
+                        mut_block.set(PropName::Facing, face.to_block_facing())
+                    } else {
+                        let facing = match (yaw / 90.0 + 0.5).floor() as i32 & 3 {
+                            0 => BlockFace::North,
+                            1 => BlockFace::East,
+                            2 => BlockFace::South,
+                            3 => BlockFace::West,
+                            _ => unreachable!(),
+                        };
+
+                        let facing = if mut_block.to_kind().to_str().contains("stairs") {
+                            facing.opposite()
+                        } else {
+                            facing
+                        };
+
+                        mut_block.set(PropName::Facing, facing.to_block_facing())
+                    }
+                }
+                PropName::Half => mut_block.set(
+                    PropName::Half,
+                    if cursor_pos.y > 0.5f32 && face != BlockFace::Top || face == BlockFace::Bottom
+                    {
+                        PropValue::Top
+                    } else {
+                        PropValue::Bottom
+                    },
+                ),
                 PropName::Rotation => mut_block.set(
                     PropName::Rotation,
                     PropValue::from_u16(
@@ -259,6 +293,18 @@ fn face_block(block: BlockState, face: BlockFace, yaw: f32) -> BlockState {
                     )
                     .unwrap_or_else(|| panic!("Player yaw: {}, was out of bound", yaw)),
                 ),
+                PropName::Type => mut_block.set(
+                    PropName::Type,
+                    if cursor_pos.y > 0.5f32 && face != BlockFace::Top || face == BlockFace::Bottom
+                    {
+                        PropValue::Top
+                    } else {
+                        PropValue::Bottom
+                    },
+                ),
+                PropName::Waterlogged => {
+                    mut_block.set(PropName::Waterlogged, PropValue::from_bool(false))
+                }
                 _ => continue,
             }
         }
