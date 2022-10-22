@@ -257,7 +257,10 @@ fn face_block(block: BlockState, face: BlockFace, yaw: f32, cursor_pos: Vec3<f32
                 PropName::Facing => {
                     // This could be improved, mabye we can extract something?
                     let block_name = mut_block.to_kind().to_str();
-                    if block_name.contains("shulker_box") || block_name == "end_rod" || mut_block.to_wall_variant().is_some() {
+                    if block_name.contains("shulker_box")
+                        || block_name == "end_rod"
+                        || mut_block.to_wall_variant().is_some()
+                    {
                         mut_block.set(PropName::Facing, face.to_block_facing())
                     } else {
                         let facing = match (yaw / 90.0 + 0.5).floor() as i32 & 3 {
