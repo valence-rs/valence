@@ -43,7 +43,7 @@ place. Here are some noteworthy achievements:
 - [x] Items
 - [ ] Inventory
 - [ ] Block entities
-- [x] Proxy support ([Velocity](https://velocitypowered.com/), [Bungeecord](https://www.spigotmc.org/wiki/bungeecord/) and [Waterfall](https://docs.papermc.io/waterfall))
+- [ ] Proxy support ([Velocity](https://velocitypowered.com/), [Bungeecord](https://www.spigotmc.org/wiki/bungeecord/) and [Waterfall](https://docs.papermc.io/waterfall))
 - [ ] Sounds, particles, etc.
 - [ ] Utilities for continuous collision detection
 
