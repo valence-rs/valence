@@ -126,6 +126,7 @@ pub mod text;
 pub mod username;
 pub mod util;
 pub mod world;
+pub mod biomes;
 
 /// Use `valence::prelude::*` to import the most commonly used items from the
 /// library.
