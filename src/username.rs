@@ -5,7 +5,8 @@ use std::fmt::Formatter;
 use std::io::Write;
 use std::str::FromStr;
 
-use serde::{Deserialize, Serialize};
+use serde::de::Error as _;
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::protocol::{Decode, Encode};
 
@@ -19,10 +20,8 @@ use crate::protocol::{Decode, Encode};
 /// # Contract
 ///
 /// The type `S` must meet the following criteria:
-/// - All calls to [`AsRef::as_ref`] and [`Borrow::borrow`][borrow] while the
-///   string is wrapped in `Username` must return the same value.
-///
-/// [borrow]: std::borrow::Borrow::borrow
+/// - All calls to [`AsRef::as_ref`] and [`Borrow::borrow`] while the string is
+///   wrapped in `Username` must return the same value.
 ///
 /// # Examples
 ///
@@ -35,7 +34,7 @@ use crate::protocol::{Decode, Encode};
 /// assert!(Username::new("notavalidusername").is_err());
 /// assert!(Username::new("NotValid!").is_err());
 /// ```
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize)]
 #[repr(transparent)]
 #[serde(transparent)]
 pub struct Username<S>(S);
@@ -143,6 +142,18 @@ where
 {
     fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         Ok(Username::new(S::decode(r)?)?)
+    }
+}
+
+impl<'de, S> Deserialize<'de> for Username<S>
+where
+    S: Deserialize<'de> + AsRef<str>,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Username::new(S::deserialize(deserializer)?).map_err(D::Error::custom)
     }
 }
 
