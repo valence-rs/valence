@@ -25,9 +25,10 @@ use crate::protocol::packets::s2c::login::{
     DisconnectLogin, EncryptionRequest, LoginPluginRequest,
 };
 use crate::protocol::packets::Property;
-use crate::protocol::{BoundedArray, BoundedString, Decode, RawBytes, VarInt};
+use crate::protocol::{BoundedArray, Decode, RawBytes, VarInt};
 use crate::server::{Codec, NewClientData, SharedServer};
 use crate::text::Text;
+use crate::username::Username;
 
 /// Login sequence for
 /// [`ConnectionMode::Online`](crate::config::ConnectionMode).
@@ -35,7 +36,7 @@ pub(super) async fn online(
     server: &SharedServer<impl Config>,
     c: &mut Codec,
     remote_addr: SocketAddr,
-    username: String,
+    username: Username<String>,
 ) -> anyhow::Result<NewClientData> {
     let my_verify_token: [u8; 16] = rand::random();
 
@@ -86,7 +87,7 @@ pub(super) async fn online(
     #[derive(Debug, Deserialize)]
     struct AuthResponse {
         id: String,
-        name: String,
+        name: Username<String>,
         properties: Vec<Property>,
     }
 
@@ -97,7 +98,7 @@ pub(super) async fn online(
 
     let url = server.config().format_session_server_url(
         server,
-        &username,
+        username.as_str_username(),
         &auth_digest(&hash),
         &remote_addr.ip(),
     );
@@ -140,10 +141,13 @@ pub(super) async fn online(
 
 /// Login sequence for
 /// [`ConnectionMode::Offline`](crate::config::ConnectionMode).
-pub(super) fn offline(remote_addr: SocketAddr, username: String) -> anyhow::Result<NewClientData> {
+pub(super) fn offline(
+    remote_addr: SocketAddr,
+    username: Username<String>,
+) -> anyhow::Result<NewClientData> {
     Ok(NewClientData {
         // Derive the client's UUID from a hash of their username.
-        uuid: Uuid::from_slice(&Sha256::digest(&username)[..16])?,
+        uuid: Uuid::from_slice(&Sha256::digest(username.as_str())[..16])?,
         username,
         textures: None,
         remote_addr: remote_addr.ip(),
@@ -152,7 +156,10 @@ pub(super) fn offline(remote_addr: SocketAddr, username: String) -> anyhow::Resu
 
 /// Login sequence for
 /// [`ConnectionMode::BungeeCord`](crate::config::ConnectionMode).
-pub(super) fn bungeecord(server_address: &str, username: String) -> anyhow::Result<NewClientData> {
+pub(super) fn bungeecord(
+    server_address: &str,
+    username: Username<String>,
+) -> anyhow::Result<NewClientData> {
     // Get data from server_address field of the handshake
     let [_, client_ip, uuid, properties]: [&str; 4] = server_address
         .split('\0')
@@ -194,7 +201,7 @@ fn auth_digest(bytes: &[u8]) -> String {
 
 pub(super) async fn velocity(
     c: &mut Codec,
-    username: String,
+    username: Username<String>,
     velocity_secret: &str,
 ) -> anyhow::Result<NewClientData> {
     const VELOCITY_MIN_SUPPORTED_VERSION: u8 = 1;
@@ -245,8 +252,10 @@ pub(super) async fn velocity(
     let uuid = Uuid::decode(&mut data_without_signature)?;
 
     // Get username and validate
-    let velocity_username = BoundedString::<0, 16>::decode(&mut data_without_signature)?.0;
-    ensure!(username == velocity_username, "mismatched usernames");
+    ensure!(
+        username == Username::decode(&mut data_without_signature)?,
+        "mismatched usernames"
+    );
 
     // Read properties and get textures
     let mut textures = None;

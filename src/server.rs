@@ -38,8 +38,8 @@ use crate::protocol::packets::c2s::status::{PingRequest, StatusRequest};
 use crate::protocol::packets::s2c::login::{DisconnectLogin, LoginSuccess, SetCompression};
 use crate::protocol::packets::s2c::play::S2cPlayPacket;
 use crate::protocol::packets::s2c::status::{PingResponse, StatusResponse};
-use crate::protocol::{BoundedString, VarInt};
-use crate::util::valid_username;
+use crate::protocol::VarInt;
+use crate::username::Username;
 use crate::world::Worlds;
 use crate::{ident, Ticks, PROTOCOL_VERSION, VERSION_NAME};
 
@@ -120,7 +120,7 @@ pub struct NewClientData {
     /// The UUID of the new client.
     pub uuid: Uuid,
     /// The username of the new client.
-    pub username: String,
+    pub username: Username<String>,
     /// The new client's player textures. May be `None` if the client does not
     /// have a skin or cape.
     pub textures: Option<SignedPlayerTextures>,
@@ -627,12 +627,10 @@ async fn handle_login(
     }
 
     let LoginStart {
-        username: BoundedString(username),
+        username,
         sig_data: _,   // TODO
         profile_id: _, // TODO
     } = c.dec.read_packet().await?;
-
-    ensure!(valid_username(&username), "invalid username '{username}'");
 
     let ncd = match server.connection_mode() {
         ConnectionMode::Online => login::online(server, c, remote_addr, username).await?,
@@ -660,7 +658,7 @@ async fn handle_login(
     c.enc
         .write_packet(&LoginSuccess {
             uuid: ncd.uuid,
-            username: ncd.username.clone().into(),
+            username: ncd.username.clone(),
             properties: Vec::new(),
         })
         .await?;

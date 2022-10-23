@@ -45,6 +45,7 @@ use crate::protocol::{BoundedInt, BoundedString, ByteAngle, RawBytes, SlotId, Va
 use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServer};
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::text::Text;
+use crate::username::Username;
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::world::{WorldId, Worlds};
 use crate::{ident, LIBRARY_NAMESPACE};
@@ -191,7 +192,7 @@ pub struct Client<C: Config> {
     send: SendOpt,
     recv: Receiver<C2sPlayPacket>,
     uuid: Uuid,
-    username: String,
+    username: Username<String>,
     textures: Option<SignedPlayerTextures>,
     /// World client is currently in. Default value is **invalid** and must
     /// be set by calling [`Client::spawn`].
@@ -331,8 +332,8 @@ impl<C: Config> Client<C> {
     }
 
     /// Gets the username of this client.
-    pub fn username(&self) -> &str {
-        &self.username
+    pub fn username(&self) -> Username<&str> {
+        self.username.as_str_username()
     }
 
     /// Gets the player textures of this client. If the client does not have

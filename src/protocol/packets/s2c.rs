@@ -48,7 +48,7 @@ pub mod login {
     def_struct! {
         LoginSuccess {
             uuid: Uuid,
-            username: BoundedString<3, 16>,
+            username: Username<String>,
             properties: Vec<Property>,
         }
     }

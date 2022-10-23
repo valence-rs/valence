@@ -56,7 +56,7 @@ pub mod login {
 
     def_struct! {
         LoginStart {
-            username: BoundedString<3, 16>,
+            username: Username<String>,
             sig_data: Option<PublicKeyData>,
             profile_id: Option<Uuid>,
         }

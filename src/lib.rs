@@ -123,6 +123,7 @@ mod slab_rc;
 mod slab_versioned;
 pub mod spatial_index;
 pub mod text;
+pub mod username;
 pub mod util;
 pub mod world;
 
@@ -145,6 +146,7 @@ pub mod prelude {
     pub use server::{NewClientData, Server, SharedServer, ShutdownResult};
     pub use spatial_index::{RaycastHit, SpatialIndex};
     pub use text::{Color, Text, TextFormat};
+    pub use username::Username;
     pub use util::{
         chunks_in_view_distance, from_yaw_and_pitch, is_chunk_in_view_distance, to_yaw_and_pitch,
     };
