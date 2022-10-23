@@ -1,0 +1,20 @@
+[package]
+name = "valence_anvil"
+description = "A library for Minecraft's Anvil world format."
+documentation = "https://docs.rs/valence_anvil/"
+repository = "https://github.com/valence_anvil/valence/tree/main/valence_anvil"
+readme = "README.md"
+license = "MIT"
+keywords = ["anvil", "minecraft", "serialization"]
+version = "0.1.0"
+authors = ["Ryan Johnson <ryanj00a@gmail.com>", "TerminatorNL <TerminatorNL@users.noreply.github.com>"]
+edition = "2021"
+
+[dependencies]
+valence = {path = ".."}
+valence_nbt = {path = "../valence_nbt"}
+rayon = "1.5.3"
+async-compression = {version  = "0.3.15", features = ["tokio", "gzip", "zlib"]}
+byteorder = "1"
+tokio = {version = "1", features = ["fs", "io-util", "full"]}
+futures = "0.3.24"
