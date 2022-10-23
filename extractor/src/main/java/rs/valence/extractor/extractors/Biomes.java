@@ -2,6 +2,7 @@ package rs.valence.extractor.extractors;
 
 import com.google.gson.*;
 import net.minecraft.entity.SpawnGroup;
+import net.minecraft.util.collection.Weighted;
 import net.minecraft.util.registry.BuiltinRegistries;
 import rs.valence.extractor.Main;
 
@@ -68,17 +69,20 @@ public class Biomes implements Main.Extractor {
             var spawnSettings = biome.getSpawnSettings();
             spawnSettingsJson.addProperty("probability", spawnSettings.getCreatureSpawnProbability());
 
-            var spawn_groups = new JsonArray();
+            var spawn_groups = new JsonObject();
             for (var spawn_group : SpawnGroup.values()){
-                var group = new JsonObject();
-                group.addProperty("name", spawn_group.getName());
-                group.addProperty("capacity", spawn_group.getCapacity());
-                group.addProperty("despawn_range_start", spawn_group.getDespawnStartRange());
-                group.addProperty("despawn_range_immediate", spawn_group.getImmediateDespawnRange());
-                group.addProperty("is_peaceful", spawn_group.isPeaceful());
-                group.addProperty("is_rare", spawn_group.isRare());
-
-                spawn_groups.add(group);
+                var spawns_within_group = new JsonArray();
+                   for (var entry : spawnSettings.getSpawnEntries(spawn_group).getEntries()){
+                       var within_group = new JsonObject();
+                       // Depreciated method to get the entity namespace and path.
+                       //noinspection deprecation
+                       within_group.addProperty("name", entry.type.getRegistryEntry().registryKey().getValue().toString());
+                       within_group.addProperty("min_group_size", entry.minGroupSize);
+                       within_group.addProperty("max_group_size", entry.maxGroupSize);
+                       within_group.addProperty("weight", ((Weighted) entry).getWeight().getValue());
+                       spawns_within_group.add(within_group);
+                   }
+                spawn_groups.add(spawn_group.asString(), spawns_within_group);
             }
             spawnSettingsJson.add("groups", spawn_groups);
 
