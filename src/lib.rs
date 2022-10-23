@@ -100,6 +100,7 @@ pub use server::start_server;
 pub use {uuid, valence_nbt as nbt, vek};
 
 pub mod biome;
+pub mod biomes;
 pub mod block;
 mod block_pos;
 mod bvh;
@@ -126,7 +127,6 @@ pub mod text;
 pub mod username;
 pub mod util;
 pub mod world;
-pub mod biomes;
 
 /// Use `valence::prelude::*` to import the most commonly used items from the
 /// library.

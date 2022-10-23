@@ -1,40 +1,40 @@
-use std::collections::{BTreeMap};
+use std::collections::{BTreeMap, HashMap};
 
 use heck::{ToPascalCase, ToSnakeCase};
 use proc_macro2::{Ident, TokenStream};
-use quote::{quote};
+use quote::quote;
 use serde::Deserialize;
 
 use crate::ident;
 
 #[derive(Deserialize, Debug)]
-pub struct ParsedBiome {
+struct ParsedBiome {
     id: u16,
     name: String,
     weather: ParsedBiomeWeather,
     color: ParsedBiomeColor,
-    spawn_settings: ParsedBiomeSpawnSettings,
+    spawn_settings: ParsedBiomeSpawnRates,
 }
 
 #[derive(Debug)]
-pub struct RenamedBiome {
+struct RenamedBiome {
     id: u16,
     name: String,
     rustified_name: Ident,
     weather: ParsedBiomeWeather,
     color: ParsedBiomeColor,
-    spawn_settings: ParsedBiomeSpawnSettings,
+    spawn_rates: ParsedBiomeSpawnRates,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct ParsedBiomeWeather {
+struct ParsedBiomeWeather {
     precipitation: String,
     temperature: f32,
     downfall: f32,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct ParsedBiomeColor {
+struct ParsedBiomeColor {
     grass_modifier: String,
     grass: Option<i32>,
     foliage: Option<i32>,
@@ -45,19 +45,17 @@ pub struct ParsedBiomeColor {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct ParsedBiomeSpawnSettings {
+struct ParsedBiomeSpawnRates {
     probability: f32,
-    groups: Vec<ParsedBiomeGroupSpawnSettings>,
+    groups: HashMap<String, Vec<ParsedSpawnRate>>,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct ParsedBiomeGroupSpawnSettings {
+struct ParsedSpawnRate {
     name: String,
-    capacity: i32,
-    despawn_range_start: i32,
-    despawn_range_immediate: i32,
-    is_peaceful: bool,
-    is_rare: bool,
+    min_group_size: u32,
+    max_group_size: u32,
+    weight: i32,
 }
 
 pub fn build() -> anyhow::Result<TokenStream> {
@@ -71,13 +69,13 @@ pub fn build() -> anyhow::Result<TokenStream> {
             name: biome.name,
             weather: biome.weather,
             color: biome.color,
-            spawn_settings: biome.spawn_settings,
+            spawn_rates: biome.spawn_settings,
         })
         .collect::<Vec<RenamedBiome>>();
 
     let mut precipitation_types = BTreeMap::<&str, Ident>::new();
     let mut grass_modifier_types = BTreeMap::<&str, Ident>::new();
-    let mut biome_group_spawn_types = BTreeMap::<&str, (Ident, Ident)>::new();
+    let mut class_spawn_fields = BTreeMap::<&str, Ident>::new();
     for biome in biomes.iter() {
         precipitation_types
             .entry(biome.weather.precipitation.as_str())
@@ -85,23 +83,10 @@ pub fn build() -> anyhow::Result<TokenStream> {
         grass_modifier_types
             .entry(biome.color.grass_modifier.as_str())
             .or_insert_with(|| ident(biome.color.grass_modifier.to_pascal_case()));
-        for group in biome.spawn_settings.groups.iter() {
-            biome_group_spawn_types
-                .entry(group.name.as_str())
-                .or_insert_with(|| {
-                    (
-                        ident({
-                            let mut identity = group.name.to_snake_case();
-                            identity.insert_str(0, "group_");
-                            identity
-                        }),
-                        ident({
-                            let mut identity = group.name.to_pascal_case();
-                            identity.push_str("SpawnSettings");
-                            identity
-                        }),
-                    )
-                });
+        for class in biome.spawn_rates.groups.keys() {
+            class_spawn_fields
+                .entry(class)
+                .or_insert_with(|| ident(class.to_snake_case()));
         }
     }
 
@@ -138,7 +123,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .map(|(_, rust_id)| {
             quote! {
-                pub #rust_id,
+                #rust_id,
             }
         })
         .collect::<TokenStream>();
@@ -147,7 +132,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .map(|(_, rust_id)| {
             quote! {
-                pub #rust_id,
+                #rust_id,
             }
         })
         .collect::<TokenStream>();
@@ -162,17 +147,6 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }
         })
         .collect::<TokenStream>();
-
-    let biome_spawn_settings_fields = biome_group_spawn_types
-        .iter()
-        .map(|(_, (field, ident))| {
-            quote! {
-                pub #field: #ident,
-            }
-        })
-        .collect::<TokenStream>();
-
-    let biome_spawn_settings_structs = biome_group_spawn_types.iter().map(|(_, (_, ident))| ident);
 
     let biomekind_weather = biomes
         .iter()
@@ -224,27 +198,30 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .map(|biome| {
             let rustified_name = &biome.rustified_name;
-            let probability = biome.spawn_settings.probability;
+            let probability = biome.spawn_rates.probability;
 
-            let fields = biome.spawn_settings.groups.iter().map(|parsed_biome|{
-                let (_, (field, declaration)) = biome_group_spawn_types.iter().find(|(name,_)| parsed_biome.name.as_str() == **name).expect("Could not find previously generated spawn type");
-                let capacity = &parsed_biome.capacity;
-                let despawn_range_start = &parsed_biome.despawn_range_start;
-                let despawn_range_immediate = &parsed_biome.despawn_range_immediate;
-                let is_peaceful = &parsed_biome.is_peaceful;
-                let is_rare = &parsed_biome.is_rare;
-                quote! {
-                    #field: #declaration{
-                        capacity: #capacity,
-                        despawn_range_start: #despawn_range_start,
-                        despawn_range_immediate: #despawn_range_immediate,
-                        is_peaceful: #is_peaceful,
-                        is_rare: #is_rare
+            let fields = biome.spawn_rates.groups.iter().map(|(class, rates)| {
+                let rates = rates.iter().map(|spawn_rate| {
+                    let name = &spawn_rate.name;
+                    let min_group_size = &spawn_rate.min_group_size;
+                    let max_group_size = &spawn_rate.max_group_size;
+                    let weight = &spawn_rate.weight;
+                    quote! {
+                        SpawnEntry {
+                            name: #name,
+                            min_group_size: #min_group_size,
+                            max_group_size: #max_group_size,
+                            weight: #weight
+                        }
                     }
+                });
+                let class = ident(class);
+                quote! {
+                    #class: &[#( #rates ),*]
                 }
             });
             quote! {
-                Self::#rustified_name => VanillaBiomeSpawnSettings {
+                Self::#rustified_name => VanillaBiomeSpawnRates {
                     probability: #probability,
                     #( #fields ),*
                 },
@@ -252,13 +229,15 @@ pub fn build() -> anyhow::Result<TokenStream> {
         })
         .collect::<TokenStream>();
 
+    let spawn_classes = class_spawn_fields.values();
+
     Ok(quote! {
-        pub trait BiomeSpawnSettings {
-            fn capacity(&self) -> i32;
-            fn despawn_range_start(&self) -> i32;
-            fn despawn_range_immediate(&self) -> i32;
-            fn is_peaceful(&self) -> bool;
-            fn is_rare(&self) -> bool;
+        #[derive(Debug, Clone, PartialEq, PartialOrd)]
+        pub struct SpawnEntry {
+            pub name: &'static str,
+            pub min_group_size: u32,
+            pub max_group_size: u32,
+            pub weight: i32
         }
 
         #[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
@@ -289,38 +268,11 @@ pub fn build() -> anyhow::Result<TokenStream> {
             #grass_modifier_names
         }
 
-        #[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
-        pub struct VanillaBiomeSpawnSettings {
+        #[derive(Debug, Clone, PartialEq, PartialOrd)]
+        pub struct VanillaBiomeSpawnRates {
             pub probability: f32,
-            #biome_spawn_settings_fields
+            #( pub #spawn_classes: &'static [SpawnEntry] ),*
         }
-
-        #( #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-        pub struct #biome_spawn_settings_structs {
-            pub capacity: i32,
-            pub despawn_range_start: i32,
-            pub despawn_range_immediate: i32,
-            pub is_peaceful: bool,
-            pub is_rare: bool,
-        }
-
-        impl BiomeSpawnSettings for #biome_spawn_settings_structs{
-            fn capacity(&self) -> i32 {
-                self.capacity
-            }
-            fn despawn_range_start(&self) -> i32 {
-                self.despawn_range_start
-            }
-            fn despawn_range_immediate(&self) -> i32 {
-                self.despawn_range_immediate
-            }
-            fn is_peaceful(&self) -> bool {
-                self.is_peaceful
-            }
-            fn is_rare(&self) -> bool {
-                self.is_rare
-            }
-        } )*
 
         #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
         pub enum BiomeKind {
@@ -364,8 +316,8 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Gets the biome spawn settings
-            pub const fn spawn_settings(self) -> VanillaBiomeSpawnSettings {
+            /// Gets the biome spawn rates
+            pub const fn spawn_rates(self) -> VanillaBiomeSpawnRates {
                 match self{
                     #biomekind_spawn_settings_arms
                 }
