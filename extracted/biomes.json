@@ -1,0 +1,5483 @@
+[
+  {
+    "name": "minecraft:the_void",
+    "id": 0,
+    "weather": {
+      "precipitation": "none",
+      "temperature": 0.5,
+      "downfall": 0.5
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8103167,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:plains",
+    "id": 1,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.8,
+      "downfall": 0.4
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 7907327,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:sunflower_plains",
+    "id": 2,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.8,
+      "downfall": 0.4
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 7907327,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:snowy_plains",
+    "id": 3,
+    "weather": {
+      "precipitation": "snow",
+      "temperature": 0.0,
+      "downfall": 0.5
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8364543,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.07,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:ice_spikes",
+    "id": 4,
+    "weather": {
+      "precipitation": "snow",
+      "temperature": 0.0,
+      "downfall": 0.5
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8364543,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.07,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:desert",
+    "id": 5,
+    "weather": {
+      "precipitation": "none",
+      "temperature": 2.0,
+      "downfall": 0.0
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 7254527,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:swamp",
+    "id": 6,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.8,
+      "downfall": 0.9
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "swamp",
+      "foliage": 6975545,
+      "fog": 12638463,
+      "sky": 7907327,
+      "water_fog": 2302743,
+      "water": 6388580
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:mangrove_swamp",
+    "id": 7,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.8,
+      "downfall": 0.9
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "swamp",
+      "foliage": 9285927,
+      "fog": 12638463,
+      "sky": 7907327,
+      "water_fog": 5077600,
+      "water": 3832426
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:forest",
+    "id": 8,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.7,
+      "downfall": 0.8
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 7972607,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:flower_forest",
+    "id": 9,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.7,
+      "downfall": 0.8
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 7972607,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:birch_forest",
+    "id": 10,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.6,
+      "downfall": 0.6
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8037887,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:dark_forest",
+    "id": 11,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.7,
+      "downfall": 0.8
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "dark_forest",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 7972607,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:old_growth_birch_forest",
+    "id": 12,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.6,
+      "downfall": 0.6
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8037887,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:old_growth_pine_taiga",
+    "id": 13,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.3,
+      "downfall": 0.8
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8168447,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:old_growth_spruce_taiga",
+    "id": 14,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.25,
+      "downfall": 0.8
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8233983,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:taiga",
+    "id": 15,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.25,
+      "downfall": 0.8
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8233983,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:snowy_taiga",
+    "id": 16,
+    "weather": {
+      "precipitation": "snow",
+      "temperature": -0.5,
+      "downfall": 0.4
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8625919,
+      "water_fog": 329011,
+      "water": 4020182
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:savanna",
+    "id": 17,
+    "weather": {
+      "precipitation": "none",
+      "temperature": 2.0,
+      "downfall": 0.0
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 7254527,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:savanna_plateau",
+    "id": 18,
+    "weather": {
+      "precipitation": "none",
+      "temperature": 2.0,
+      "downfall": 0.0
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 7254527,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:windswept_hills",
+    "id": 19,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.2,
+      "downfall": 0.3
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8233727,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:windswept_gravelly_hills",
+    "id": 20,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.2,
+      "downfall": 0.3
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8233727,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:windswept_forest",
+    "id": 21,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.2,
+      "downfall": 0.3
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8233727,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:windswept_savanna",
+    "id": 22,
+    "weather": {
+      "precipitation": "none",
+      "temperature": 2.0,
+      "downfall": 0.0
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 7254527,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:jungle",
+    "id": 23,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.95,
+      "downfall": 0.9
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 7842047,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:sparse_jungle",
+    "id": 24,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.95,
+      "downfall": 0.8
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 7842047,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:bamboo_jungle",
+    "id": 25,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.95,
+      "downfall": 0.9
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 7842047,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:badlands",
+    "id": 26,
+    "weather": {
+      "precipitation": "none",
+      "temperature": 2.0,
+      "downfall": 0.0
+    },
+    "color": {
+      "grass": 9470285,
+      "grass_modifier": "none",
+      "foliage": 10387789,
+      "fog": 12638463,
+      "sky": 7254527,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:eroded_badlands",
+    "id": 27,
+    "weather": {
+      "precipitation": "none",
+      "temperature": 2.0,
+      "downfall": 0.0
+    },
+    "color": {
+      "grass": 9470285,
+      "grass_modifier": "none",
+      "foliage": 10387789,
+      "fog": 12638463,
+      "sky": 7254527,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:wooded_badlands",
+    "id": 28,
+    "weather": {
+      "precipitation": "none",
+      "temperature": 2.0,
+      "downfall": 0.0
+    },
+    "color": {
+      "grass": 9470285,
+      "grass_modifier": "none",
+      "foliage": 10387789,
+      "fog": 12638463,
+      "sky": 7254527,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:meadow",
+    "id": 29,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.5,
+      "downfall": 0.8
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8103167,
+      "water_fog": 329011,
+      "water": 937679
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:grove",
+    "id": 30,
+    "weather": {
+      "precipitation": "snow",
+      "temperature": -0.2,
+      "downfall": 0.8
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8495359,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:snowy_slopes",
+    "id": 31,
+    "weather": {
+      "precipitation": "snow",
+      "temperature": -0.3,
+      "downfall": 0.9
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8560639,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:frozen_peaks",
+    "id": 32,
+    "weather": {
+      "precipitation": "snow",
+      "temperature": -0.7,
+      "downfall": 0.9
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8756735,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:jagged_peaks",
+    "id": 33,
+    "weather": {
+      "precipitation": "snow",
+      "temperature": -0.7,
+      "downfall": 0.9
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8756735,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:stony_peaks",
+    "id": 34,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 1.0,
+      "downfall": 0.3
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 7776511,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:river",
+    "id": 35,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.5,
+      "downfall": 0.5
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8103167,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:frozen_river",
+    "id": 36,
+    "weather": {
+      "precipitation": "snow",
+      "temperature": 0.0,
+      "downfall": 0.5
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8364543,
+      "water_fog": 329011,
+      "water": 3750089
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:beach",
+    "id": 37,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.8,
+      "downfall": 0.4
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 7907327,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:snowy_beach",
+    "id": 38,
+    "weather": {
+      "precipitation": "snow",
+      "temperature": 0.05,
+      "downfall": 0.3
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8364543,
+      "water_fog": 329011,
+      "water": 4020182
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:stony_shore",
+    "id": 39,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.2,
+      "downfall": 0.3
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8233727,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:warm_ocean",
+    "id": 40,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.5,
+      "downfall": 0.5
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8103167,
+      "water_fog": 270131,
+      "water": 4445678
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:lukewarm_ocean",
+    "id": 41,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.5,
+      "downfall": 0.5
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8103167,
+      "water_fog": 267827,
+      "water": 4566514
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:deep_lukewarm_ocean",
+    "id": 42,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.5,
+      "downfall": 0.5
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8103167,
+      "water_fog": 267827,
+      "water": 4566514
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:ocean",
+    "id": 43,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.5,
+      "downfall": 0.5
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8103167,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:deep_ocean",
+    "id": 44,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.5,
+      "downfall": 0.5
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8103167,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:cold_ocean",
+    "id": 45,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.5,
+      "downfall": 0.5
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8103167,
+      "water_fog": 329011,
+      "water": 4020182
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:deep_cold_ocean",
+    "id": 46,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.5,
+      "downfall": 0.5
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8103167,
+      "water_fog": 329011,
+      "water": 4020182
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:frozen_ocean",
+    "id": 47,
+    "weather": {
+      "precipitation": "snow",
+      "temperature": 0.0,
+      "downfall": 0.5
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8364543,
+      "water_fog": 329011,
+      "water": 3750089
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:deep_frozen_ocean",
+    "id": 48,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.5,
+      "downfall": 0.5
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8103167,
+      "water_fog": 329011,
+      "water": 3750089
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:mushroom_fields",
+    "id": 49,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.9,
+      "downfall": 1.0
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 7842047,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:dripstone_caves",
+    "id": 50,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.8,
+      "downfall": 0.4
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 7907327,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:lush_caves",
+    "id": 51,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.5,
+      "downfall": 0.5
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 8103167,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:deep_dark",
+    "id": 52,
+    "weather": {
+      "precipitation": "rain",
+      "temperature": 0.8,
+      "downfall": 0.4
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 12638463,
+      "sky": 7907327,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:nether_wastes",
+    "id": 53,
+    "weather": {
+      "precipitation": "none",
+      "temperature": 2.0,
+      "downfall": 0.0
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 3344392,
+      "sky": 7254527,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:warped_forest",
+    "id": 54,
+    "weather": {
+      "precipitation": "none",
+      "temperature": 2.0,
+      "downfall": 0.0
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 1705242,
+      "sky": 7254527,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:crimson_forest",
+    "id": 55,
+    "weather": {
+      "precipitation": "none",
+      "temperature": 2.0,
+      "downfall": 0.0
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 3343107,
+      "sky": 7254527,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:soul_sand_valley",
+    "id": 56,
+    "weather": {
+      "precipitation": "none",
+      "temperature": 2.0,
+      "downfall": 0.0
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 1787717,
+      "sky": 7254527,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:basalt_deltas",
+    "id": 57,
+    "weather": {
+      "precipitation": "none",
+      "temperature": 2.0,
+      "downfall": 0.0
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 6840176,
+      "sky": 7254527,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:the_end",
+    "id": 58,
+    "weather": {
+      "precipitation": "none",
+      "temperature": 0.5,
+      "downfall": 0.5
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 10518688,
+      "sky": 0,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:end_highlands",
+    "id": 59,
+    "weather": {
+      "precipitation": "none",
+      "temperature": 0.5,
+      "downfall": 0.5
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 10518688,
+      "sky": 0,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:end_midlands",
+    "id": 60,
+    "weather": {
+      "precipitation": "none",
+      "temperature": 0.5,
+      "downfall": 0.5
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 10518688,
+      "sky": 0,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:small_end_islands",
+    "id": 61,
+    "weather": {
+      "precipitation": "none",
+      "temperature": 0.5,
+      "downfall": 0.5
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 10518688,
+      "sky": 0,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  },
+  {
+    "name": "minecraft:end_barrens",
+    "id": 62,
+    "weather": {
+      "precipitation": "none",
+      "temperature": 0.5,
+      "downfall": 0.5
+    },
+    "color": {
+      "grass": null,
+      "grass_modifier": "none",
+      "foliage": null,
+      "fog": 10518688,
+      "sky": 0,
+      "water_fog": 329011,
+      "water": 4159204
+    },
+    "spawn_settings": {
+      "probability": 0.1,
+      "groups": [
+        {
+          "name": "monster",
+          "capacity": 70,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": false,
+          "is_rare": false
+        },
+        {
+          "name": "creature",
+          "capacity": 10,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        },
+        {
+          "name": "ambient",
+          "capacity": 15,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "axolotls",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "underground_water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_creature",
+          "capacity": 5,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "water_ambient",
+          "capacity": 20,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 64,
+          "is_peaceful": true,
+          "is_rare": false
+        },
+        {
+          "name": "misc",
+          "capacity": -1,
+          "despawn_range_start": 32,
+          "despawn_range_immediate": 128,
+          "is_peaceful": true,
+          "is_rare": true
+        }
+      ]
+    }
+  }
+]
