@@ -37,7 +37,7 @@ public class Main implements ModInitializer {
     public void onInitialize() {
         LOGGER.info("Starting extractors...");
 
-        var extractors = new Extractor[]{new Blocks(), new Entities(), new EntityData(), new Packets(), new Items(), new Enchants()};
+        var extractors = new Extractor[]{new Blocks(), new Entities(), new EntityData(), new Packets(), new Items(), new Enchants(), new Biomes()};
 
         Path outputDirectory;
         try {
