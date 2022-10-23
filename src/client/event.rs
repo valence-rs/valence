@@ -8,7 +8,7 @@ use crate::config::Config;
 use crate::entity::types::Pose;
 use crate::entity::{Entity, EntityEvent, EntityId, TrackedData};
 use crate::ident::Ident;
-use crate::inventory::Inventory;
+use crate::inventory::{Inventory, InventoryDirtyable};
 use crate::item::ItemStack;
 use crate::protocol::packets::c2s::play::ClickContainerMode;
 pub use crate::protocol::packets::c2s::play::{
@@ -348,7 +348,11 @@ pub fn handle_event_default<C: Config>(
         ClientEvent::DropItem => {}
         ClientEvent::DropItemStack { .. } => {}
         ClientEvent::SetSlotCreative { slot_id, slot } => {
+            let previous_dirty = client.inventory.is_dirty();
             client.inventory.set_slot(*slot_id, slot.clone());
+            // HACK: we don't need to mark the inventory as dirty because the
+            // client already knows what the updated state of the inventory is.
+            client.inventory.mark_dirty(previous_dirty);
         }
         ClientEvent::ClickContainer { .. } => {}
         ClientEvent::RespawnRequest => {}
