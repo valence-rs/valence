@@ -14,22 +14,22 @@ public class Biomes implements Main.Extractor {
     }
 
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-    private <T> JsonElement optional_to_json(Optional<T> var){
-        if(var.isEmpty()){
+    private <T> JsonElement optional_to_json(Optional<T> var) {
+        if (var.isEmpty()) {
             return JsonNull.INSTANCE;
-        }else{
+        } else {
             var value = var.get();
-            if(value instanceof Boolean){
+            if (value instanceof Boolean) {
                 return new JsonPrimitive((Boolean) value);
-            }else if(value instanceof Integer){
+            } else if (value instanceof Integer) {
                 return new JsonPrimitive((Integer) value);
-            }else if(value instanceof Float){
+            } else if (value instanceof Float) {
                 return new JsonPrimitive((Float) value);
-            }else if(value instanceof Long){
+            } else if (value instanceof Long) {
                 return new JsonPrimitive((Long) value);
-            }else if(value instanceof Number){
+            } else if (value instanceof Number) {
                 return new JsonPrimitive((Number) value);
-            }else{
+            } else {
                 throw new UnsupportedOperationException("Could not convert " + value + " to primitive (" + value.getClass().toString() + ")");
             }
         }
@@ -43,7 +43,7 @@ public class Biomes implements Main.Extractor {
     @Override
     public JsonElement extract() {
         var results = new LinkedList<JsonObject>();
-        for (var biome_key : BuiltinRegistries.BIOME.getKeys()){
+        for (var biome_key : BuiltinRegistries.BIOME.getKeys()) {
             var identifier = biome_key.getValue();
             var biome = BuiltinRegistries.BIOME.get(identifier);
             assert biome != null;
@@ -70,24 +70,24 @@ public class Biomes implements Main.Extractor {
             spawnSettingsJson.addProperty("probability", spawnSettings.getCreatureSpawnProbability());
 
             var spawn_groups = new JsonObject();
-            for (var spawn_group : SpawnGroup.values()){
+            for (var spawn_group : SpawnGroup.values()) {
                 var spawns_within_group = new JsonArray();
-                   for (var entry : spawnSettings.getSpawnEntries(spawn_group).getEntries()){
-                       var within_group = new JsonObject();
-                       // Depreciated method to get the entity namespace and path.
-                       //noinspection deprecation
-                       within_group.addProperty("name", entry.type.getRegistryEntry().registryKey().getValue().toString());
-                       within_group.addProperty("min_group_size", entry.minGroupSize);
-                       within_group.addProperty("max_group_size", entry.maxGroupSize);
-                       within_group.addProperty("weight", ((Weighted) entry).getWeight().getValue());
-                       spawns_within_group.add(within_group);
-                   }
+                for (var entry : spawnSettings.getSpawnEntries(spawn_group).getEntries()) {
+                    var within_group = new JsonObject();
+                    // Depreciated method to get the entity namespace and path.
+                    //noinspection deprecation
+                    within_group.addProperty("name", entry.type.getRegistryEntry().registryKey().getValue().toString());
+                    within_group.addProperty("min_group_size", entry.minGroupSize);
+                    within_group.addProperty("max_group_size", entry.maxGroupSize);
+                    within_group.addProperty("weight", ((Weighted) entry).getWeight().getValue());
+                    spawns_within_group.add(within_group);
+                }
                 spawn_groups.add(spawn_group.asString(), spawns_within_group);
             }
             spawnSettingsJson.add("groups", spawn_groups);
 
-            biomeJson.addProperty("name",identifier.toString());
-            biomeJson.addProperty("id",BuiltinRegistries.BIOME.getRawId(biome));
+            biomeJson.addProperty("name", identifier.toString());
+            biomeJson.addProperty("id", BuiltinRegistries.BIOME.getRawId(biome));
             biomeJson.add("weather", weatherJson);
             biomeJson.add("color", colorJson);
             biomeJson.add("spawn_settings", spawnSettingsJson);
@@ -96,9 +96,9 @@ public class Biomes implements Main.Extractor {
         }
 
         results.sort((one, two) -> {
-            try{
+            try {
                 return one.get("id").getAsInt() - two.get("id").getAsInt();
-            }catch (Exception e){
+            } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         });
