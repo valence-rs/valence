@@ -5,6 +5,7 @@ use std::{env, fs};
 use anyhow::Context;
 use proc_macro2::{Ident, Span};
 
+mod biome;
 mod block;
 mod enchant;
 mod entity;
@@ -20,6 +21,7 @@ pub fn main() -> anyhow::Result<()> {
         (block::build, "block.rs"),
         (item::build, "item.rs"),
         (enchant::build, "enchant.rs"),
+        (biome::build, "biome.rs"),
     ];
 
     let out_dir = env::var_os("OUT_DIR").context("can't get OUT_DIR env var")?;
