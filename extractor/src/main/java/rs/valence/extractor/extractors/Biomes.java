@@ -47,10 +47,10 @@ public class Biomes implements Main.Extractor {
         for (var biome : BuiltinRegistries.BIOME) {
             var biomeIdent = BuiltinRegistries.BIOME.getId(biome);
 
-            var weatherJson = new JsonObject();
-            weatherJson.addProperty("precipitation", biome.getPrecipitation().getName());
-            weatherJson.addProperty("temperature", biome.getTemperature());
-            weatherJson.addProperty("downfall", biome.getDownfall());
+            var climateJson = new JsonObject();
+            climateJson.addProperty("precipitation", biome.getPrecipitation().getName());
+            climateJson.addProperty("temperature", biome.getTemperature());
+            climateJson.addProperty("downfall", biome.getDownfall());
 
             var colorJson = new JsonObject();
             var biomeEffects = biome.getEffects();
@@ -84,7 +84,7 @@ public class Biomes implements Main.Extractor {
             var biomeJson = new JsonObject();
             biomeJson.addProperty("name", biomeIdent.getPath());
             biomeJson.addProperty("id", BuiltinRegistries.BIOME.getRawId(biome));
-            biomeJson.add("weather", weatherJson);
+            biomeJson.add("climate", climateJson);
             biomeJson.add("color", colorJson);
             biomeJson.add("spawn_settings", spawnSettingsJson);
 
