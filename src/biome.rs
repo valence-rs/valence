@@ -8,6 +8,16 @@ use valence_nbt::{compound, Compound};
 use valence_protocol::ident;
 use valence_protocol::ident::Ident;
 
+pub mod default {
+    //! Contains data for the default Minecraft biomes.
+    //!
+    //! All biome variants are located in [`BiomeKind`]. You can use the
+    //! associated const functions of [`BiomeKind`] to access details about a
+    //! biome type.
+
+    include!(concat!(env!("OUT_DIR"), "/biome.rs"));
+}
+
 /// Identifies a particular [`Biome`] on the server.
 ///
 /// The default biome ID refers to the first biome added in the server's
