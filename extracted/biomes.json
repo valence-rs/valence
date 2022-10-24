@@ -1,6 +1,6 @@
 [
   {
-    "name": "minecraft:the_void",
+    "name": "the_void",
     "id": 0,
     "weather": {
       "precipitation": "none",
@@ -31,7 +31,7 @@
     }
   },
   {
-    "name": "minecraft:plains",
+    "name": "plains",
     "id": 1,
     "weather": {
       "precipitation": "rain",
@@ -52,49 +52,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -102,37 +102,37 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:horse",
+            "name": "horse",
             "min_group_size": 2,
             "max_group_size": 6,
             "weight": 5
           },
           {
-            "name": "minecraft:donkey",
+            "name": "donkey",
             "min_group_size": 1,
             "max_group_size": 3,
             "weight": 1
@@ -140,7 +140,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -149,7 +149,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -162,7 +162,7 @@
     }
   },
   {
-    "name": "minecraft:sunflower_plains",
+    "name": "sunflower_plains",
     "id": 2,
     "weather": {
       "precipitation": "rain",
@@ -183,49 +183,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -233,37 +233,37 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:horse",
+            "name": "horse",
             "min_group_size": 2,
             "max_group_size": 6,
             "weight": 5
           },
           {
-            "name": "minecraft:donkey",
+            "name": "donkey",
             "min_group_size": 1,
             "max_group_size": 3,
             "weight": 1
@@ -271,7 +271,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -280,7 +280,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -293,7 +293,7 @@
     }
   },
   {
-    "name": "minecraft:snowy_plains",
+    "name": "snowy_plains",
     "id": 3,
     "weather": {
       "precipitation": "snow",
@@ -314,55 +314,55 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 20
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:stray",
+            "name": "stray",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 80
@@ -370,13 +370,13 @@
         ],
         "creature": [
           {
-            "name": "minecraft:rabbit",
+            "name": "rabbit",
             "min_group_size": 2,
             "max_group_size": 3,
             "weight": 10
           },
           {
-            "name": "minecraft:polar_bear",
+            "name": "polar_bear",
             "min_group_size": 1,
             "max_group_size": 2,
             "weight": 1
@@ -384,7 +384,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -393,7 +393,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -406,7 +406,7 @@
     }
   },
   {
-    "name": "minecraft:ice_spikes",
+    "name": "ice_spikes",
     "id": 4,
     "weather": {
       "precipitation": "snow",
@@ -427,55 +427,55 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 20
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:stray",
+            "name": "stray",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 80
@@ -483,13 +483,13 @@
         ],
         "creature": [
           {
-            "name": "minecraft:rabbit",
+            "name": "rabbit",
             "min_group_size": 2,
             "max_group_size": 3,
             "weight": 10
           },
           {
-            "name": "minecraft:polar_bear",
+            "name": "polar_bear",
             "min_group_size": 1,
             "max_group_size": 2,
             "weight": 1
@@ -497,7 +497,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -506,7 +506,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -519,7 +519,7 @@
     }
   },
   {
-    "name": "minecraft:desert",
+    "name": "desert",
     "id": 5,
     "weather": {
       "precipitation": "none",
@@ -540,55 +540,55 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 19
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 1
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:husk",
+            "name": "husk",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 80
@@ -596,7 +596,7 @@
         ],
         "creature": [
           {
-            "name": "minecraft:rabbit",
+            "name": "rabbit",
             "min_group_size": 2,
             "max_group_size": 3,
             "weight": 4
@@ -604,7 +604,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -613,7 +613,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -626,7 +626,7 @@
     }
   },
   {
-    "name": "minecraft:swamp",
+    "name": "swamp",
     "id": 6,
     "weather": {
       "precipitation": "rain",
@@ -647,55 +647,55 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 1
@@ -703,31 +703,31 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:frog",
+            "name": "frog",
             "min_group_size": 2,
             "max_group_size": 5,
             "weight": 10
@@ -735,7 +735,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -744,7 +744,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -757,7 +757,7 @@
     }
   },
   {
-    "name": "minecraft:mangrove_swamp",
+    "name": "mangrove_swamp",
     "id": 7,
     "weather": {
       "precipitation": "rain",
@@ -778,55 +778,55 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 1
@@ -834,7 +834,7 @@
         ],
         "creature": [
           {
-            "name": "minecraft:frog",
+            "name": "frog",
             "min_group_size": 2,
             "max_group_size": 5,
             "weight": 10
@@ -842,7 +842,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -851,7 +851,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -860,7 +860,7 @@
         "water_creature": [],
         "water_ambient": [
           {
-            "name": "minecraft:tropical_fish",
+            "name": "tropical_fish",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 25
@@ -871,7 +871,7 @@
     }
   },
   {
-    "name": "minecraft:forest",
+    "name": "forest",
     "id": 8,
     "weather": {
       "precipitation": "rain",
@@ -892,49 +892,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -942,31 +942,31 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:wolf",
+            "name": "wolf",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 5
@@ -974,7 +974,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -983,7 +983,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -996,7 +996,7 @@
     }
   },
   {
-    "name": "minecraft:flower_forest",
+    "name": "flower_forest",
     "id": 9,
     "weather": {
       "precipitation": "rain",
@@ -1017,49 +1017,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -1067,31 +1067,31 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:rabbit",
+            "name": "rabbit",
             "min_group_size": 2,
             "max_group_size": 3,
             "weight": 4
@@ -1099,7 +1099,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -1108,7 +1108,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -1121,7 +1121,7 @@
     }
   },
   {
-    "name": "minecraft:birch_forest",
+    "name": "birch_forest",
     "id": 10,
     "weather": {
       "precipitation": "rain",
@@ -1142,49 +1142,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -1192,25 +1192,25 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
@@ -1218,7 +1218,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -1227,7 +1227,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -1240,7 +1240,7 @@
     }
   },
   {
-    "name": "minecraft:dark_forest",
+    "name": "dark_forest",
     "id": 11,
     "weather": {
       "precipitation": "rain",
@@ -1261,49 +1261,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -1311,25 +1311,25 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
@@ -1337,7 +1337,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -1346,7 +1346,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -1359,7 +1359,7 @@
     }
   },
   {
-    "name": "minecraft:old_growth_birch_forest",
+    "name": "old_growth_birch_forest",
     "id": 12,
     "weather": {
       "precipitation": "rain",
@@ -1380,49 +1380,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -1430,25 +1430,25 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
@@ -1456,7 +1456,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -1465,7 +1465,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -1478,7 +1478,7 @@
     }
   },
   {
-    "name": "minecraft:old_growth_pine_taiga",
+    "name": "old_growth_pine_taiga",
     "id": 13,
     "weather": {
       "precipitation": "rain",
@@ -1499,49 +1499,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 25
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -1549,43 +1549,43 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:wolf",
+            "name": "wolf",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:rabbit",
+            "name": "rabbit",
             "min_group_size": 2,
             "max_group_size": 3,
             "weight": 4
           },
           {
-            "name": "minecraft:fox",
+            "name": "fox",
             "min_group_size": 2,
             "max_group_size": 4,
             "weight": 8
@@ -1593,7 +1593,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -1602,7 +1602,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -1615,7 +1615,7 @@
     }
   },
   {
-    "name": "minecraft:old_growth_spruce_taiga",
+    "name": "old_growth_spruce_taiga",
     "id": 14,
     "weather": {
       "precipitation": "rain",
@@ -1636,49 +1636,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -1686,43 +1686,43 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:wolf",
+            "name": "wolf",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:rabbit",
+            "name": "rabbit",
             "min_group_size": 2,
             "max_group_size": 3,
             "weight": 4
           },
           {
-            "name": "minecraft:fox",
+            "name": "fox",
             "min_group_size": 2,
             "max_group_size": 4,
             "weight": 8
@@ -1730,7 +1730,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -1739,7 +1739,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -1752,7 +1752,7 @@
     }
   },
   {
-    "name": "minecraft:taiga",
+    "name": "taiga",
     "id": 15,
     "weather": {
       "precipitation": "rain",
@@ -1773,49 +1773,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -1823,43 +1823,43 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:wolf",
+            "name": "wolf",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:rabbit",
+            "name": "rabbit",
             "min_group_size": 2,
             "max_group_size": 3,
             "weight": 4
           },
           {
-            "name": "minecraft:fox",
+            "name": "fox",
             "min_group_size": 2,
             "max_group_size": 4,
             "weight": 8
@@ -1867,7 +1867,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -1876,7 +1876,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -1889,7 +1889,7 @@
     }
   },
   {
-    "name": "minecraft:snowy_taiga",
+    "name": "snowy_taiga",
     "id": 16,
     "weather": {
       "precipitation": "snow",
@@ -1910,49 +1910,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -1960,43 +1960,43 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:wolf",
+            "name": "wolf",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:rabbit",
+            "name": "rabbit",
             "min_group_size": 2,
             "max_group_size": 3,
             "weight": 4
           },
           {
-            "name": "minecraft:fox",
+            "name": "fox",
             "min_group_size": 2,
             "max_group_size": 4,
             "weight": 8
@@ -2004,7 +2004,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -2013,7 +2013,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -2026,7 +2026,7 @@
     }
   },
   {
-    "name": "minecraft:savanna",
+    "name": "savanna",
     "id": 17,
     "weather": {
       "precipitation": "none",
@@ -2047,49 +2047,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -2097,37 +2097,37 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:horse",
+            "name": "horse",
             "min_group_size": 2,
             "max_group_size": 6,
             "weight": 1
           },
           {
-            "name": "minecraft:donkey",
+            "name": "donkey",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 1
@@ -2135,7 +2135,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -2144,7 +2144,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -2157,7 +2157,7 @@
     }
   },
   {
-    "name": "minecraft:savanna_plateau",
+    "name": "savanna_plateau",
     "id": 18,
     "weather": {
       "precipitation": "none",
@@ -2178,49 +2178,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -2228,43 +2228,43 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:horse",
+            "name": "horse",
             "min_group_size": 2,
             "max_group_size": 6,
             "weight": 1
           },
           {
-            "name": "minecraft:donkey",
+            "name": "donkey",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 1
           },
           {
-            "name": "minecraft:llama",
+            "name": "llama",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
@@ -2272,7 +2272,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -2281,7 +2281,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -2294,7 +2294,7 @@
     }
   },
   {
-    "name": "minecraft:windswept_hills",
+    "name": "windswept_hills",
     "id": 19,
     "weather": {
       "precipitation": "rain",
@@ -2315,49 +2315,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -2365,31 +2365,31 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:llama",
+            "name": "llama",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 5
@@ -2397,7 +2397,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -2406,7 +2406,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -2419,7 +2419,7 @@
     }
   },
   {
-    "name": "minecraft:windswept_gravelly_hills",
+    "name": "windswept_gravelly_hills",
     "id": 20,
     "weather": {
       "precipitation": "rain",
@@ -2440,49 +2440,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -2490,31 +2490,31 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:llama",
+            "name": "llama",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 5
@@ -2522,7 +2522,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -2531,7 +2531,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -2544,7 +2544,7 @@
     }
   },
   {
-    "name": "minecraft:windswept_forest",
+    "name": "windswept_forest",
     "id": 21,
     "weather": {
       "precipitation": "rain",
@@ -2565,49 +2565,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -2615,31 +2615,31 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:llama",
+            "name": "llama",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 5
@@ -2647,7 +2647,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -2656,7 +2656,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -2669,7 +2669,7 @@
     }
   },
   {
-    "name": "minecraft:windswept_savanna",
+    "name": "windswept_savanna",
     "id": 22,
     "weather": {
       "precipitation": "none",
@@ -2690,49 +2690,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -2740,37 +2740,37 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:horse",
+            "name": "horse",
             "min_group_size": 2,
             "max_group_size": 6,
             "weight": 1
           },
           {
-            "name": "minecraft:donkey",
+            "name": "donkey",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 1
@@ -2778,7 +2778,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -2787,7 +2787,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -2800,7 +2800,7 @@
     }
   },
   {
-    "name": "minecraft:jungle",
+    "name": "jungle",
     "id": 23,
     "weather": {
       "precipitation": "rain",
@@ -2821,55 +2821,55 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:ocelot",
+            "name": "ocelot",
             "min_group_size": 1,
             "max_group_size": 3,
             "weight": 2
@@ -2877,43 +2877,43 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:parrot",
+            "name": "parrot",
             "min_group_size": 1,
             "max_group_size": 2,
             "weight": 40
           },
           {
-            "name": "minecraft:panda",
+            "name": "panda",
             "min_group_size": 1,
             "max_group_size": 2,
             "weight": 1
@@ -2921,7 +2921,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -2930,7 +2930,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -2943,7 +2943,7 @@
     }
   },
   {
-    "name": "minecraft:sparse_jungle",
+    "name": "sparse_jungle",
     "id": 24,
     "weather": {
       "precipitation": "rain",
@@ -2964,49 +2964,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -3014,31 +3014,31 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
@@ -3046,7 +3046,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -3055,7 +3055,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -3068,7 +3068,7 @@
     }
   },
   {
-    "name": "minecraft:bamboo_jungle",
+    "name": "bamboo_jungle",
     "id": 25,
     "weather": {
       "precipitation": "rain",
@@ -3089,55 +3089,55 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:ocelot",
+            "name": "ocelot",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 2
@@ -3145,43 +3145,43 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:parrot",
+            "name": "parrot",
             "min_group_size": 1,
             "max_group_size": 2,
             "weight": 40
           },
           {
-            "name": "minecraft:panda",
+            "name": "panda",
             "min_group_size": 1,
             "max_group_size": 2,
             "weight": 80
@@ -3189,7 +3189,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -3198,7 +3198,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -3211,7 +3211,7 @@
     }
   },
   {
-    "name": "minecraft:badlands",
+    "name": "badlands",
     "id": 26,
     "weather": {
       "precipitation": "none",
@@ -3232,49 +3232,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -3283,7 +3283,7 @@
         "creature": [],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -3292,7 +3292,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -3305,7 +3305,7 @@
     }
   },
   {
-    "name": "minecraft:eroded_badlands",
+    "name": "eroded_badlands",
     "id": 27,
     "weather": {
       "precipitation": "none",
@@ -3326,49 +3326,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -3377,7 +3377,7 @@
         "creature": [],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -3386,7 +3386,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -3399,7 +3399,7 @@
     }
   },
   {
-    "name": "minecraft:wooded_badlands",
+    "name": "wooded_badlands",
     "id": 28,
     "weather": {
       "precipitation": "none",
@@ -3420,49 +3420,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -3471,7 +3471,7 @@
         "creature": [],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -3480,7 +3480,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -3493,7 +3493,7 @@
     }
   },
   {
-    "name": "minecraft:meadow",
+    "name": "meadow",
     "id": 29,
     "weather": {
       "precipitation": "rain",
@@ -3514,49 +3514,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -3564,19 +3564,19 @@
         ],
         "creature": [
           {
-            "name": "minecraft:donkey",
+            "name": "donkey",
             "min_group_size": 1,
             "max_group_size": 2,
             "weight": 1
           },
           {
-            "name": "minecraft:rabbit",
+            "name": "rabbit",
             "min_group_size": 2,
             "max_group_size": 6,
             "weight": 2
           },
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 2,
             "max_group_size": 4,
             "weight": 2
@@ -3584,7 +3584,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -3593,7 +3593,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -3606,7 +3606,7 @@
     }
   },
   {
-    "name": "minecraft:grove",
+    "name": "grove",
     "id": 30,
     "weather": {
       "precipitation": "snow",
@@ -3627,49 +3627,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -3677,43 +3677,43 @@
         ],
         "creature": [
           {
-            "name": "minecraft:sheep",
+            "name": "sheep",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 12
           },
           {
-            "name": "minecraft:pig",
+            "name": "pig",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:chicken",
+            "name": "chicken",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:cow",
+            "name": "cow",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:wolf",
+            "name": "wolf",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:rabbit",
+            "name": "rabbit",
             "min_group_size": 2,
             "max_group_size": 3,
             "weight": 4
           },
           {
-            "name": "minecraft:fox",
+            "name": "fox",
             "min_group_size": 2,
             "max_group_size": 4,
             "weight": 8
@@ -3721,7 +3721,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -3730,7 +3730,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -3743,7 +3743,7 @@
     }
   },
   {
-    "name": "minecraft:snowy_slopes",
+    "name": "snowy_slopes",
     "id": 31,
     "weather": {
       "precipitation": "snow",
@@ -3764,49 +3764,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -3814,13 +3814,13 @@
         ],
         "creature": [
           {
-            "name": "minecraft:rabbit",
+            "name": "rabbit",
             "min_group_size": 2,
             "max_group_size": 3,
             "weight": 4
           },
           {
-            "name": "minecraft:goat",
+            "name": "goat",
             "min_group_size": 1,
             "max_group_size": 3,
             "weight": 5
@@ -3828,7 +3828,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -3837,7 +3837,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -3850,7 +3850,7 @@
     }
   },
   {
-    "name": "minecraft:frozen_peaks",
+    "name": "frozen_peaks",
     "id": 32,
     "weather": {
       "precipitation": "snow",
@@ -3871,49 +3871,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -3921,7 +3921,7 @@
         ],
         "creature": [
           {
-            "name": "minecraft:goat",
+            "name": "goat",
             "min_group_size": 1,
             "max_group_size": 3,
             "weight": 5
@@ -3929,7 +3929,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -3938,7 +3938,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -3951,7 +3951,7 @@
     }
   },
   {
-    "name": "minecraft:jagged_peaks",
+    "name": "jagged_peaks",
     "id": 33,
     "weather": {
       "precipitation": "snow",
@@ -3972,49 +3972,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -4022,7 +4022,7 @@
         ],
         "creature": [
           {
-            "name": "minecraft:goat",
+            "name": "goat",
             "min_group_size": 1,
             "max_group_size": 3,
             "weight": 5
@@ -4030,7 +4030,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -4039,7 +4039,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -4052,7 +4052,7 @@
     }
   },
   {
-    "name": "minecraft:stony_peaks",
+    "name": "stony_peaks",
     "id": 34,
     "weather": {
       "precipitation": "rain",
@@ -4073,49 +4073,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -4124,7 +4124,7 @@
         "creature": [],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -4133,7 +4133,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -4146,7 +4146,7 @@
     }
   },
   {
-    "name": "minecraft:river",
+    "name": "river",
     "id": 35,
     "weather": {
       "precipitation": "rain",
@@ -4167,55 +4167,55 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:drowned",
+            "name": "drowned",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 100
@@ -4224,7 +4224,7 @@
         "creature": [],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -4233,7 +4233,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -4241,7 +4241,7 @@
         ],
         "water_creature": [
           {
-            "name": "minecraft:squid",
+            "name": "squid",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 2
@@ -4249,7 +4249,7 @@
         ],
         "water_ambient": [
           {
-            "name": "minecraft:salmon",
+            "name": "salmon",
             "min_group_size": 1,
             "max_group_size": 5,
             "weight": 5
@@ -4260,7 +4260,7 @@
     }
   },
   {
-    "name": "minecraft:frozen_river",
+    "name": "frozen_river",
     "id": 36,
     "weather": {
       "precipitation": "snow",
@@ -4281,55 +4281,55 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:drowned",
+            "name": "drowned",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 1
@@ -4338,7 +4338,7 @@
         "creature": [],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -4347,7 +4347,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -4355,7 +4355,7 @@
         ],
         "water_creature": [
           {
-            "name": "minecraft:squid",
+            "name": "squid",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 2
@@ -4363,7 +4363,7 @@
         ],
         "water_ambient": [
           {
-            "name": "minecraft:salmon",
+            "name": "salmon",
             "min_group_size": 1,
             "max_group_size": 5,
             "weight": 5
@@ -4374,7 +4374,7 @@
     }
   },
   {
-    "name": "minecraft:beach",
+    "name": "beach",
     "id": 37,
     "weather": {
       "precipitation": "rain",
@@ -4395,49 +4395,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -4445,7 +4445,7 @@
         ],
         "creature": [
           {
-            "name": "minecraft:turtle",
+            "name": "turtle",
             "min_group_size": 2,
             "max_group_size": 5,
             "weight": 5
@@ -4453,7 +4453,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -4462,7 +4462,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -4475,7 +4475,7 @@
     }
   },
   {
-    "name": "minecraft:snowy_beach",
+    "name": "snowy_beach",
     "id": 38,
     "weather": {
       "precipitation": "snow",
@@ -4496,49 +4496,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -4547,7 +4547,7 @@
         "creature": [],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -4556,7 +4556,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -4569,7 +4569,7 @@
     }
   },
   {
-    "name": "minecraft:stony_shore",
+    "name": "stony_shore",
     "id": 39,
     "weather": {
       "precipitation": "rain",
@@ -4590,49 +4590,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -4641,7 +4641,7 @@
         "creature": [],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -4650,7 +4650,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -4663,7 +4663,7 @@
     }
   },
   {
-    "name": "minecraft:warm_ocean",
+    "name": "warm_ocean",
     "id": 40,
     "weather": {
       "precipitation": "rain",
@@ -4684,55 +4684,55 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:drowned",
+            "name": "drowned",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -4741,7 +4741,7 @@
         "creature": [],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -4750,7 +4750,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -4758,13 +4758,13 @@
         ],
         "water_creature": [
           {
-            "name": "minecraft:squid",
+            "name": "squid",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:dolphin",
+            "name": "dolphin",
             "min_group_size": 1,
             "max_group_size": 2,
             "weight": 2
@@ -4772,13 +4772,13 @@
         ],
         "water_ambient": [
           {
-            "name": "minecraft:pufferfish",
+            "name": "pufferfish",
             "min_group_size": 1,
             "max_group_size": 3,
             "weight": 15
           },
           {
-            "name": "minecraft:tropical_fish",
+            "name": "tropical_fish",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 25
@@ -4789,7 +4789,7 @@
     }
   },
   {
-    "name": "minecraft:lukewarm_ocean",
+    "name": "lukewarm_ocean",
     "id": 41,
     "weather": {
       "precipitation": "rain",
@@ -4810,55 +4810,55 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:drowned",
+            "name": "drowned",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -4867,7 +4867,7 @@
         "creature": [],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -4876,7 +4876,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -4884,13 +4884,13 @@
         ],
         "water_creature": [
           {
-            "name": "minecraft:squid",
+            "name": "squid",
             "min_group_size": 1,
             "max_group_size": 2,
             "weight": 10
           },
           {
-            "name": "minecraft:dolphin",
+            "name": "dolphin",
             "min_group_size": 1,
             "max_group_size": 2,
             "weight": 2
@@ -4898,19 +4898,19 @@
         ],
         "water_ambient": [
           {
-            "name": "minecraft:cod",
+            "name": "cod",
             "min_group_size": 3,
             "max_group_size": 6,
             "weight": 15
           },
           {
-            "name": "minecraft:pufferfish",
+            "name": "pufferfish",
             "min_group_size": 1,
             "max_group_size": 3,
             "weight": 5
           },
           {
-            "name": "minecraft:tropical_fish",
+            "name": "tropical_fish",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 25
@@ -4921,7 +4921,7 @@
     }
   },
   {
-    "name": "minecraft:deep_lukewarm_ocean",
+    "name": "deep_lukewarm_ocean",
     "id": 42,
     "weather": {
       "precipitation": "rain",
@@ -4942,55 +4942,55 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:drowned",
+            "name": "drowned",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -4999,7 +4999,7 @@
         "creature": [],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -5008,7 +5008,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -5016,13 +5016,13 @@
         ],
         "water_creature": [
           {
-            "name": "minecraft:squid",
+            "name": "squid",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 8
           },
           {
-            "name": "minecraft:dolphin",
+            "name": "dolphin",
             "min_group_size": 1,
             "max_group_size": 2,
             "weight": 2
@@ -5030,19 +5030,19 @@
         ],
         "water_ambient": [
           {
-            "name": "minecraft:cod",
+            "name": "cod",
             "min_group_size": 3,
             "max_group_size": 6,
             "weight": 8
           },
           {
-            "name": "minecraft:pufferfish",
+            "name": "pufferfish",
             "min_group_size": 1,
             "max_group_size": 3,
             "weight": 5
           },
           {
-            "name": "minecraft:tropical_fish",
+            "name": "tropical_fish",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 25
@@ -5053,7 +5053,7 @@
     }
   },
   {
-    "name": "minecraft:ocean",
+    "name": "ocean",
     "id": 43,
     "weather": {
       "precipitation": "rain",
@@ -5074,55 +5074,55 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:drowned",
+            "name": "drowned",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -5131,7 +5131,7 @@
         "creature": [],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -5140,7 +5140,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -5148,13 +5148,13 @@
         ],
         "water_creature": [
           {
-            "name": "minecraft:squid",
+            "name": "squid",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 1
           },
           {
-            "name": "minecraft:dolphin",
+            "name": "dolphin",
             "min_group_size": 1,
             "max_group_size": 2,
             "weight": 1
@@ -5162,7 +5162,7 @@
         ],
         "water_ambient": [
           {
-            "name": "minecraft:cod",
+            "name": "cod",
             "min_group_size": 3,
             "max_group_size": 6,
             "weight": 10
@@ -5173,7 +5173,7 @@
     }
   },
   {
-    "name": "minecraft:deep_ocean",
+    "name": "deep_ocean",
     "id": 44,
     "weather": {
       "precipitation": "rain",
@@ -5194,55 +5194,55 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:drowned",
+            "name": "drowned",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -5251,7 +5251,7 @@
         "creature": [],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -5260,7 +5260,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -5268,13 +5268,13 @@
         ],
         "water_creature": [
           {
-            "name": "minecraft:squid",
+            "name": "squid",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 1
           },
           {
-            "name": "minecraft:dolphin",
+            "name": "dolphin",
             "min_group_size": 1,
             "max_group_size": 2,
             "weight": 1
@@ -5282,7 +5282,7 @@
         ],
         "water_ambient": [
           {
-            "name": "minecraft:cod",
+            "name": "cod",
             "min_group_size": 3,
             "max_group_size": 6,
             "weight": 10
@@ -5293,7 +5293,7 @@
     }
   },
   {
-    "name": "minecraft:cold_ocean",
+    "name": "cold_ocean",
     "id": 45,
     "weather": {
       "precipitation": "rain",
@@ -5314,55 +5314,55 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:drowned",
+            "name": "drowned",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -5371,7 +5371,7 @@
         "creature": [],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -5380,7 +5380,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -5388,7 +5388,7 @@
         ],
         "water_creature": [
           {
-            "name": "minecraft:squid",
+            "name": "squid",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 3
@@ -5396,13 +5396,13 @@
         ],
         "water_ambient": [
           {
-            "name": "minecraft:cod",
+            "name": "cod",
             "min_group_size": 3,
             "max_group_size": 6,
             "weight": 15
           },
           {
-            "name": "minecraft:salmon",
+            "name": "salmon",
             "min_group_size": 1,
             "max_group_size": 5,
             "weight": 15
@@ -5413,7 +5413,7 @@
     }
   },
   {
-    "name": "minecraft:deep_cold_ocean",
+    "name": "deep_cold_ocean",
     "id": 46,
     "weather": {
       "precipitation": "rain",
@@ -5434,55 +5434,55 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:drowned",
+            "name": "drowned",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -5491,7 +5491,7 @@
         "creature": [],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -5500,7 +5500,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -5508,7 +5508,7 @@
         ],
         "water_creature": [
           {
-            "name": "minecraft:squid",
+            "name": "squid",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 3
@@ -5516,13 +5516,13 @@
         ],
         "water_ambient": [
           {
-            "name": "minecraft:cod",
+            "name": "cod",
             "min_group_size": 3,
             "max_group_size": 6,
             "weight": 15
           },
           {
-            "name": "minecraft:salmon",
+            "name": "salmon",
             "min_group_size": 1,
             "max_group_size": 5,
             "weight": 15
@@ -5533,7 +5533,7 @@
     }
   },
   {
-    "name": "minecraft:frozen_ocean",
+    "name": "frozen_ocean",
     "id": 47,
     "weather": {
       "precipitation": "snow",
@@ -5554,55 +5554,55 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:drowned",
+            "name": "drowned",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -5610,7 +5610,7 @@
         ],
         "creature": [
           {
-            "name": "minecraft:polar_bear",
+            "name": "polar_bear",
             "min_group_size": 1,
             "max_group_size": 2,
             "weight": 1
@@ -5618,7 +5618,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -5627,7 +5627,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -5635,7 +5635,7 @@
         ],
         "water_creature": [
           {
-            "name": "minecraft:squid",
+            "name": "squid",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 1
@@ -5643,7 +5643,7 @@
         ],
         "water_ambient": [
           {
-            "name": "minecraft:salmon",
+            "name": "salmon",
             "min_group_size": 1,
             "max_group_size": 5,
             "weight": 15
@@ -5654,7 +5654,7 @@
     }
   },
   {
-    "name": "minecraft:deep_frozen_ocean",
+    "name": "deep_frozen_ocean",
     "id": 48,
     "weather": {
       "precipitation": "rain",
@@ -5675,55 +5675,55 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:drowned",
+            "name": "drowned",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -5731,7 +5731,7 @@
         ],
         "creature": [
           {
-            "name": "minecraft:polar_bear",
+            "name": "polar_bear",
             "min_group_size": 1,
             "max_group_size": 2,
             "weight": 1
@@ -5739,7 +5739,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -5748,7 +5748,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -5756,7 +5756,7 @@
         ],
         "water_creature": [
           {
-            "name": "minecraft:squid",
+            "name": "squid",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 1
@@ -5764,7 +5764,7 @@
         ],
         "water_ambient": [
           {
-            "name": "minecraft:salmon",
+            "name": "salmon",
             "min_group_size": 1,
             "max_group_size": 5,
             "weight": 15
@@ -5775,7 +5775,7 @@
     }
   },
   {
-    "name": "minecraft:mushroom_fields",
+    "name": "mushroom_fields",
     "id": 49,
     "weather": {
       "precipitation": "rain",
@@ -5797,7 +5797,7 @@
         "monster": [],
         "creature": [
           {
-            "name": "minecraft:mooshroom",
+            "name": "mooshroom",
             "min_group_size": 4,
             "max_group_size": 8,
             "weight": 8
@@ -5805,7 +5805,7 @@
         ],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -5814,7 +5814,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -5827,7 +5827,7 @@
     }
   },
   {
-    "name": "minecraft:dripstone_caves",
+    "name": "dripstone_caves",
     "id": 50,
     "weather": {
       "precipitation": "rain",
@@ -5848,55 +5848,55 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:drowned",
+            "name": "drowned",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
@@ -5905,7 +5905,7 @@
         "creature": [],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -5914,7 +5914,7 @@
         "axolotls": [],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -5927,7 +5927,7 @@
     }
   },
   {
-    "name": "minecraft:lush_caves",
+    "name": "lush_caves",
     "id": 51,
     "weather": {
       "precipitation": "rain",
@@ -5948,49 +5948,49 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:spider",
+            "name": "spider",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:zombie",
+            "name": "zombie",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 95
           },
           {
-            "name": "minecraft:zombie_villager",
+            "name": "zombie_villager",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
           },
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:creeper",
+            "name": "creeper",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:slime",
+            "name": "slime",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 1,
             "max_group_size": 4,
             "weight": 10
           },
           {
-            "name": "minecraft:witch",
+            "name": "witch",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 5
@@ -5999,7 +5999,7 @@
         "creature": [],
         "ambient": [
           {
-            "name": "minecraft:bat",
+            "name": "bat",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 10
@@ -6007,7 +6007,7 @@
         ],
         "axolotls": [
           {
-            "name": "minecraft:axolotl",
+            "name": "axolotl",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -6015,7 +6015,7 @@
         ],
         "underground_water_creature": [
           {
-            "name": "minecraft:glow_squid",
+            "name": "glow_squid",
             "min_group_size": 4,
             "max_group_size": 6,
             "weight": 10
@@ -6024,7 +6024,7 @@
         "water_creature": [],
         "water_ambient": [
           {
-            "name": "minecraft:tropical_fish",
+            "name": "tropical_fish",
             "min_group_size": 8,
             "max_group_size": 8,
             "weight": 25
@@ -6035,7 +6035,7 @@
     }
   },
   {
-    "name": "minecraft:deep_dark",
+    "name": "deep_dark",
     "id": 52,
     "weather": {
       "precipitation": "rain",
@@ -6066,7 +6066,7 @@
     }
   },
   {
-    "name": "minecraft:nether_wastes",
+    "name": "nether_wastes",
     "id": 53,
     "weather": {
       "precipitation": "none",
@@ -6087,31 +6087,31 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:ghast",
+            "name": "ghast",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 50
           },
           {
-            "name": "minecraft:zombified_piglin",
+            "name": "zombified_piglin",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 100
           },
           {
-            "name": "minecraft:magma_cube",
+            "name": "magma_cube",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 2
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 1
           },
           {
-            "name": "minecraft:piglin",
+            "name": "piglin",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 15
@@ -6119,7 +6119,7 @@
         ],
         "creature": [
           {
-            "name": "minecraft:strider",
+            "name": "strider",
             "min_group_size": 1,
             "max_group_size": 2,
             "weight": 60
@@ -6135,7 +6135,7 @@
     }
   },
   {
-    "name": "minecraft:warped_forest",
+    "name": "warped_forest",
     "id": 54,
     "weather": {
       "precipitation": "none",
@@ -6156,7 +6156,7 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 1
@@ -6164,7 +6164,7 @@
         ],
         "creature": [
           {
-            "name": "minecraft:strider",
+            "name": "strider",
             "min_group_size": 1,
             "max_group_size": 2,
             "weight": 60
@@ -6180,7 +6180,7 @@
     }
   },
   {
-    "name": "minecraft:crimson_forest",
+    "name": "crimson_forest",
     "id": 55,
     "weather": {
       "precipitation": "none",
@@ -6201,19 +6201,19 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:zombified_piglin",
+            "name": "zombified_piglin",
             "min_group_size": 2,
             "max_group_size": 4,
             "weight": 1
           },
           {
-            "name": "minecraft:hoglin",
+            "name": "hoglin",
             "min_group_size": 3,
             "max_group_size": 4,
             "weight": 9
           },
           {
-            "name": "minecraft:piglin",
+            "name": "piglin",
             "min_group_size": 3,
             "max_group_size": 4,
             "weight": 5
@@ -6221,7 +6221,7 @@
         ],
         "creature": [
           {
-            "name": "minecraft:strider",
+            "name": "strider",
             "min_group_size": 1,
             "max_group_size": 2,
             "weight": 60
@@ -6237,7 +6237,7 @@
     }
   },
   {
-    "name": "minecraft:soul_sand_valley",
+    "name": "soul_sand_valley",
     "id": 56,
     "weather": {
       "precipitation": "none",
@@ -6258,19 +6258,19 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:skeleton",
+            "name": "skeleton",
             "min_group_size": 5,
             "max_group_size": 5,
             "weight": 20
           },
           {
-            "name": "minecraft:ghast",
+            "name": "ghast",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 50
           },
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 1
@@ -6278,7 +6278,7 @@
         ],
         "creature": [
           {
-            "name": "minecraft:strider",
+            "name": "strider",
             "min_group_size": 1,
             "max_group_size": 2,
             "weight": 60
@@ -6294,7 +6294,7 @@
     }
   },
   {
-    "name": "minecraft:basalt_deltas",
+    "name": "basalt_deltas",
     "id": 57,
     "weather": {
       "precipitation": "none",
@@ -6315,13 +6315,13 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:ghast",
+            "name": "ghast",
             "min_group_size": 1,
             "max_group_size": 1,
             "weight": 40
           },
           {
-            "name": "minecraft:magma_cube",
+            "name": "magma_cube",
             "min_group_size": 2,
             "max_group_size": 5,
             "weight": 100
@@ -6329,7 +6329,7 @@
         ],
         "creature": [
           {
-            "name": "minecraft:strider",
+            "name": "strider",
             "min_group_size": 1,
             "max_group_size": 2,
             "weight": 60
@@ -6345,7 +6345,7 @@
     }
   },
   {
-    "name": "minecraft:the_end",
+    "name": "the_end",
     "id": 58,
     "weather": {
       "precipitation": "none",
@@ -6366,7 +6366,7 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
@@ -6383,7 +6383,7 @@
     }
   },
   {
-    "name": "minecraft:end_highlands",
+    "name": "end_highlands",
     "id": 59,
     "weather": {
       "precipitation": "none",
@@ -6404,7 +6404,7 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
@@ -6421,7 +6421,7 @@
     }
   },
   {
-    "name": "minecraft:end_midlands",
+    "name": "end_midlands",
     "id": 60,
     "weather": {
       "precipitation": "none",
@@ -6442,7 +6442,7 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
@@ -6459,7 +6459,7 @@
     }
   },
   {
-    "name": "minecraft:small_end_islands",
+    "name": "small_end_islands",
     "id": 61,
     "weather": {
       "precipitation": "none",
@@ -6480,7 +6480,7 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10
@@ -6497,7 +6497,7 @@
     }
   },
   {
-    "name": "minecraft:end_barrens",
+    "name": "end_barrens",
     "id": 62,
     "weather": {
       "precipitation": "none",
@@ -6518,7 +6518,7 @@
       "groups": {
         "monster": [
           {
-            "name": "minecraft:enderman",
+            "name": "enderman",
             "min_group_size": 4,
             "max_group_size": 4,
             "weight": 10

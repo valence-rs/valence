@@ -4,9 +4,9 @@ import com.google.gson.*;
 import net.minecraft.entity.SpawnGroup;
 import net.minecraft.util.collection.Weighted;
 import net.minecraft.util.registry.BuiltinRegistries;
+import net.minecraft.util.registry.Registry;
 import rs.valence.extractor.Main;
 
-import java.util.LinkedList;
 import java.util.Optional;
 
 public class Biomes implements Main.Extractor {
@@ -14,21 +14,21 @@ public class Biomes implements Main.Extractor {
     }
 
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-    private <T> JsonElement optional_to_json(Optional<T> var) {
+    private static <T> JsonElement optional_to_json(Optional<T> var) {
         if (var.isEmpty()) {
             return JsonNull.INSTANCE;
         } else {
             var value = var.get();
-            if (value instanceof Boolean) {
-                return new JsonPrimitive((Boolean) value);
-            } else if (value instanceof Integer) {
-                return new JsonPrimitive((Integer) value);
-            } else if (value instanceof Float) {
-                return new JsonPrimitive((Float) value);
-            } else if (value instanceof Long) {
-                return new JsonPrimitive((Long) value);
-            } else if (value instanceof Number) {
-                return new JsonPrimitive((Number) value);
+            if (value instanceof Boolean b) {
+                return new JsonPrimitive(b);
+            } else if (value instanceof Integer i) {
+                return new JsonPrimitive(i);
+            } else if (value instanceof Float f) {
+                return new JsonPrimitive(f);
+            } else if (value instanceof Long l) {
+                return new JsonPrimitive(l);
+            } else if (value instanceof Number n) {
+                return new JsonPrimitive(n);
             } else {
                 throw new UnsupportedOperationException("Could not convert " + value + " to primitive (" + value.getClass().toString() + ")");
             }
@@ -42,13 +42,10 @@ public class Biomes implements Main.Extractor {
 
     @Override
     public JsonElement extract() {
-        var results = new LinkedList<JsonObject>();
-        for (var biome_key : BuiltinRegistries.BIOME.getKeys()) {
-            var identifier = biome_key.getValue();
-            var biome = BuiltinRegistries.BIOME.get(identifier);
-            assert biome != null;
+        var biomesJson = new JsonArray();
 
-            var biomeJson = new JsonObject();
+        for (var biome : BuiltinRegistries.BIOME) {
+            var biomeIdent = BuiltinRegistries.BIOME.getId(biome);
 
             var weatherJson = new JsonObject();
             weatherJson.addProperty("precipitation", biome.getPrecipitation().getName());
@@ -56,55 +53,44 @@ public class Biomes implements Main.Extractor {
             weatherJson.addProperty("downfall", biome.getDownfall());
 
             var colorJson = new JsonObject();
-            var biome_effects = biome.getEffects();
-            colorJson.add("grass", optional_to_json(biome_effects.getGrassColor()));
-            colorJson.addProperty("grass_modifier", biome_effects.getGrassColorModifier().getName());
-            colorJson.add("foliage", optional_to_json(biome_effects.getFoliageColor()));
-            colorJson.addProperty("fog", biome_effects.getFogColor());
-            colorJson.addProperty("sky", biome_effects.getSkyColor());
-            colorJson.addProperty("water_fog", biome_effects.getWaterFogColor());
-            colorJson.addProperty("water", biome_effects.getWaterColor());
+            var biomeEffects = biome.getEffects();
+            colorJson.add("grass", optional_to_json(biomeEffects.getGrassColor()));
+            colorJson.addProperty("grass_modifier", biomeEffects.getGrassColorModifier().getName());
+            colorJson.add("foliage", optional_to_json(biomeEffects.getFoliageColor()));
+            colorJson.addProperty("fog", biomeEffects.getFogColor());
+            colorJson.addProperty("sky", biomeEffects.getSkyColor());
+            colorJson.addProperty("water_fog", biomeEffects.getWaterFogColor());
+            colorJson.addProperty("water", biomeEffects.getWaterColor());
 
             var spawnSettingsJson = new JsonObject();
             var spawnSettings = biome.getSpawnSettings();
             spawnSettingsJson.addProperty("probability", spawnSettings.getCreatureSpawnProbability());
 
-            var spawn_groups = new JsonObject();
-            for (var spawn_group : SpawnGroup.values()) {
-                var spawns_within_group = new JsonArray();
-                for (var entry : spawnSettings.getSpawnEntries(spawn_group).getEntries()) {
-                    var within_group = new JsonObject();
-                    // Depreciated method to get the entity namespace and path.
-                    //noinspection deprecation
-                    within_group.addProperty("name", entry.type.getRegistryEntry().registryKey().getValue().toString());
-                    within_group.addProperty("min_group_size", entry.minGroupSize);
-                    within_group.addProperty("max_group_size", entry.maxGroupSize);
-                    within_group.addProperty("weight", ((Weighted) entry).getWeight().getValue());
-                    spawns_within_group.add(within_group);
+            var spawnGroupsJson = new JsonObject();
+            for (var spawnGroup : SpawnGroup.values()) {
+                var spawnGroupJson = new JsonArray();
+                for (var entry : spawnSettings.getSpawnEntries(spawnGroup).getEntries()) {
+                    var groupEntryJson = new JsonObject();
+                    groupEntryJson.addProperty("name", Registry.ENTITY_TYPE.getId(entry.type).getPath());
+                    groupEntryJson.addProperty("min_group_size", entry.minGroupSize);
+                    groupEntryJson.addProperty("max_group_size", entry.maxGroupSize);
+                    groupEntryJson.addProperty("weight", ((Weighted) entry).getWeight().getValue());
+                    spawnGroupJson.add(groupEntryJson);
                 }
-                spawn_groups.add(spawn_group.asString(), spawns_within_group);
+                spawnGroupsJson.add(spawnGroup.getName(), spawnGroupJson);
             }
-            spawnSettingsJson.add("groups", spawn_groups);
+            spawnSettingsJson.add("groups", spawnGroupsJson);
 
-            biomeJson.addProperty("name", identifier.toString());
+            var biomeJson = new JsonObject();
+            biomeJson.addProperty("name", biomeIdent.getPath());
             biomeJson.addProperty("id", BuiltinRegistries.BIOME.getRawId(biome));
             biomeJson.add("weather", weatherJson);
             biomeJson.add("color", colorJson);
             biomeJson.add("spawn_settings", spawnSettingsJson);
 
-            results.add(biomeJson);
+            biomesJson.add(biomeJson);
         }
 
-        results.sort((one, two) -> {
-            try {
-                return one.get("id").getAsInt() - two.get("id").getAsInt();
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        });
-
-        var biomesJson = new JsonArray(results.size());
-        results.forEach(biomesJson::add);
         return biomesJson;
     }
 }
