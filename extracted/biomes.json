@@ -2,7 +2,7 @@
   {
     "name": "the_void",
     "id": 0,
-    "weather": {
+    "climate": {
       "precipitation": "none",
       "temperature": 0.5,
       "downfall": 0.5
@@ -33,7 +33,7 @@
   {
     "name": "plains",
     "id": 1,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.8,
       "downfall": 0.4
@@ -164,7 +164,7 @@
   {
     "name": "sunflower_plains",
     "id": 2,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.8,
       "downfall": 0.4
@@ -295,7 +295,7 @@
   {
     "name": "snowy_plains",
     "id": 3,
-    "weather": {
+    "climate": {
       "precipitation": "snow",
       "temperature": 0.0,
       "downfall": 0.5
@@ -408,7 +408,7 @@
   {
     "name": "ice_spikes",
     "id": 4,
-    "weather": {
+    "climate": {
       "precipitation": "snow",
       "temperature": 0.0,
       "downfall": 0.5
@@ -521,7 +521,7 @@
   {
     "name": "desert",
     "id": 5,
-    "weather": {
+    "climate": {
       "precipitation": "none",
       "temperature": 2.0,
       "downfall": 0.0
@@ -628,7 +628,7 @@
   {
     "name": "swamp",
     "id": 6,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.8,
       "downfall": 0.9
@@ -759,7 +759,7 @@
   {
     "name": "mangrove_swamp",
     "id": 7,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.8,
       "downfall": 0.9
@@ -873,7 +873,7 @@
   {
     "name": "forest",
     "id": 8,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.7,
       "downfall": 0.8
@@ -998,7 +998,7 @@
   {
     "name": "flower_forest",
     "id": 9,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.7,
       "downfall": 0.8
@@ -1123,7 +1123,7 @@
   {
     "name": "birch_forest",
     "id": 10,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.6,
       "downfall": 0.6
@@ -1242,7 +1242,7 @@
   {
     "name": "dark_forest",
     "id": 11,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.7,
       "downfall": 0.8
@@ -1361,7 +1361,7 @@
   {
     "name": "old_growth_birch_forest",
     "id": 12,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.6,
       "downfall": 0.6
@@ -1480,7 +1480,7 @@
   {
     "name": "old_growth_pine_taiga",
     "id": 13,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.3,
       "downfall": 0.8
@@ -1617,7 +1617,7 @@
   {
     "name": "old_growth_spruce_taiga",
     "id": 14,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.25,
       "downfall": 0.8
@@ -1754,7 +1754,7 @@
   {
     "name": "taiga",
     "id": 15,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.25,
       "downfall": 0.8
@@ -1891,7 +1891,7 @@
   {
     "name": "snowy_taiga",
     "id": 16,
-    "weather": {
+    "climate": {
       "precipitation": "snow",
       "temperature": -0.5,
       "downfall": 0.4
@@ -2028,7 +2028,7 @@
   {
     "name": "savanna",
     "id": 17,
-    "weather": {
+    "climate": {
       "precipitation": "none",
       "temperature": 2.0,
       "downfall": 0.0
@@ -2159,7 +2159,7 @@
   {
     "name": "savanna_plateau",
     "id": 18,
-    "weather": {
+    "climate": {
       "precipitation": "none",
       "temperature": 2.0,
       "downfall": 0.0
@@ -2296,7 +2296,7 @@
   {
     "name": "windswept_hills",
     "id": 19,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.2,
       "downfall": 0.3
@@ -2421,7 +2421,7 @@
   {
     "name": "windswept_gravelly_hills",
     "id": 20,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.2,
       "downfall": 0.3
@@ -2546,7 +2546,7 @@
   {
     "name": "windswept_forest",
     "id": 21,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.2,
       "downfall": 0.3
@@ -2671,7 +2671,7 @@
   {
     "name": "windswept_savanna",
     "id": 22,
-    "weather": {
+    "climate": {
       "precipitation": "none",
       "temperature": 2.0,
       "downfall": 0.0
@@ -2802,7 +2802,7 @@
   {
     "name": "jungle",
     "id": 23,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.95,
       "downfall": 0.9
@@ -2945,7 +2945,7 @@
   {
     "name": "sparse_jungle",
     "id": 24,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.95,
       "downfall": 0.8
@@ -3070,7 +3070,7 @@
   {
     "name": "bamboo_jungle",
     "id": 25,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.95,
       "downfall": 0.9
@@ -3213,7 +3213,7 @@
   {
     "name": "badlands",
     "id": 26,
-    "weather": {
+    "climate": {
       "precipitation": "none",
       "temperature": 2.0,
       "downfall": 0.0
@@ -3307,7 +3307,7 @@
   {
     "name": "eroded_badlands",
     "id": 27,
-    "weather": {
+    "climate": {
       "precipitation": "none",
       "temperature": 2.0,
       "downfall": 0.0
@@ -3401,7 +3401,7 @@
   {
     "name": "wooded_badlands",
     "id": 28,
-    "weather": {
+    "climate": {
       "precipitation": "none",
       "temperature": 2.0,
       "downfall": 0.0
@@ -3495,7 +3495,7 @@
   {
     "name": "meadow",
     "id": 29,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.5,
       "downfall": 0.8
@@ -3608,7 +3608,7 @@
   {
     "name": "grove",
     "id": 30,
-    "weather": {
+    "climate": {
       "precipitation": "snow",
       "temperature": -0.2,
       "downfall": 0.8
@@ -3745,7 +3745,7 @@
   {
     "name": "snowy_slopes",
     "id": 31,
-    "weather": {
+    "climate": {
       "precipitation": "snow",
       "temperature": -0.3,
       "downfall": 0.9
@@ -3852,7 +3852,7 @@
   {
     "name": "frozen_peaks",
     "id": 32,
-    "weather": {
+    "climate": {
       "precipitation": "snow",
       "temperature": -0.7,
       "downfall": 0.9
@@ -3953,7 +3953,7 @@
   {
     "name": "jagged_peaks",
     "id": 33,
-    "weather": {
+    "climate": {
       "precipitation": "snow",
       "temperature": -0.7,
       "downfall": 0.9
@@ -4054,7 +4054,7 @@
   {
     "name": "stony_peaks",
     "id": 34,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 1.0,
       "downfall": 0.3
@@ -4148,7 +4148,7 @@
   {
     "name": "river",
     "id": 35,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.5,
       "downfall": 0.5
@@ -4262,7 +4262,7 @@
   {
     "name": "frozen_river",
     "id": 36,
-    "weather": {
+    "climate": {
       "precipitation": "snow",
       "temperature": 0.0,
       "downfall": 0.5
@@ -4376,7 +4376,7 @@
   {
     "name": "beach",
     "id": 37,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.8,
       "downfall": 0.4
@@ -4477,7 +4477,7 @@
   {
     "name": "snowy_beach",
     "id": 38,
-    "weather": {
+    "climate": {
       "precipitation": "snow",
       "temperature": 0.05,
       "downfall": 0.3
@@ -4571,7 +4571,7 @@
   {
     "name": "stony_shore",
     "id": 39,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.2,
       "downfall": 0.3
@@ -4665,7 +4665,7 @@
   {
     "name": "warm_ocean",
     "id": 40,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.5,
       "downfall": 0.5
@@ -4791,7 +4791,7 @@
   {
     "name": "lukewarm_ocean",
     "id": 41,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.5,
       "downfall": 0.5
@@ -4923,7 +4923,7 @@
   {
     "name": "deep_lukewarm_ocean",
     "id": 42,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.5,
       "downfall": 0.5
@@ -5055,7 +5055,7 @@
   {
     "name": "ocean",
     "id": 43,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.5,
       "downfall": 0.5
@@ -5175,7 +5175,7 @@
   {
     "name": "deep_ocean",
     "id": 44,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.5,
       "downfall": 0.5
@@ -5295,7 +5295,7 @@
   {
     "name": "cold_ocean",
     "id": 45,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.5,
       "downfall": 0.5
@@ -5415,7 +5415,7 @@
   {
     "name": "deep_cold_ocean",
     "id": 46,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.5,
       "downfall": 0.5
@@ -5535,7 +5535,7 @@
   {
     "name": "frozen_ocean",
     "id": 47,
-    "weather": {
+    "climate": {
       "precipitation": "snow",
       "temperature": 0.0,
       "downfall": 0.5
@@ -5656,7 +5656,7 @@
   {
     "name": "deep_frozen_ocean",
     "id": 48,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.5,
       "downfall": 0.5
@@ -5777,7 +5777,7 @@
   {
     "name": "mushroom_fields",
     "id": 49,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.9,
       "downfall": 1.0
@@ -5829,7 +5829,7 @@
   {
     "name": "dripstone_caves",
     "id": 50,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.8,
       "downfall": 0.4
@@ -5929,7 +5929,7 @@
   {
     "name": "lush_caves",
     "id": 51,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.5,
       "downfall": 0.5
@@ -6037,7 +6037,7 @@
   {
     "name": "deep_dark",
     "id": 52,
-    "weather": {
+    "climate": {
       "precipitation": "rain",
       "temperature": 0.8,
       "downfall": 0.4
@@ -6068,7 +6068,7 @@
   {
     "name": "nether_wastes",
     "id": 53,
-    "weather": {
+    "climate": {
       "precipitation": "none",
       "temperature": 2.0,
       "downfall": 0.0
@@ -6137,7 +6137,7 @@
   {
     "name": "warped_forest",
     "id": 54,
-    "weather": {
+    "climate": {
       "precipitation": "none",
       "temperature": 2.0,
       "downfall": 0.0
@@ -6182,7 +6182,7 @@
   {
     "name": "crimson_forest",
     "id": 55,
-    "weather": {
+    "climate": {
       "precipitation": "none",
       "temperature": 2.0,
       "downfall": 0.0
@@ -6239,7 +6239,7 @@
   {
     "name": "soul_sand_valley",
     "id": 56,
-    "weather": {
+    "climate": {
       "precipitation": "none",
       "temperature": 2.0,
       "downfall": 0.0
@@ -6296,7 +6296,7 @@
   {
     "name": "basalt_deltas",
     "id": 57,
-    "weather": {
+    "climate": {
       "precipitation": "none",
       "temperature": 2.0,
       "downfall": 0.0
@@ -6347,7 +6347,7 @@
   {
     "name": "the_end",
     "id": 58,
-    "weather": {
+    "climate": {
       "precipitation": "none",
       "temperature": 0.5,
       "downfall": 0.5
@@ -6385,7 +6385,7 @@
   {
     "name": "end_highlands",
     "id": 59,
-    "weather": {
+    "climate": {
       "precipitation": "none",
       "temperature": 0.5,
       "downfall": 0.5
@@ -6423,7 +6423,7 @@
   {
     "name": "end_midlands",
     "id": 60,
-    "weather": {
+    "climate": {
       "precipitation": "none",
       "temperature": 0.5,
       "downfall": 0.5
@@ -6461,7 +6461,7 @@
   {
     "name": "small_end_islands",
     "id": 61,
-    "weather": {
+    "climate": {
       "precipitation": "none",
       "temperature": 0.5,
       "downfall": 0.5
@@ -6499,7 +6499,7 @@
   {
     "name": "end_barrens",
     "id": 62,
-    "weather": {
+    "climate": {
       "precipitation": "none",
       "temperature": 0.5,
       "downfall": 0.5

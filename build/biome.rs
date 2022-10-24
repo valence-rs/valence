@@ -11,7 +11,7 @@ use crate::ident;
 struct ParsedBiome {
     id: u16,
     name: String,
-    weather: ParsedBiomeWeather,
+    climate: ParsedBiomeClimate,
     color: ParsedBiomeColor,
     spawn_settings: ParsedBiomeSpawnRates,
 }
@@ -21,13 +21,13 @@ struct RenamedBiome {
     id: u16,
     name: String,
     rustified_name: Ident,
-    weather: ParsedBiomeWeather,
+    climate: ParsedBiomeClimate,
     color: ParsedBiomeColor,
     spawn_rates: ParsedBiomeSpawnRates,
 }
 
 #[derive(Deserialize, Debug)]
-struct ParsedBiomeWeather {
+struct ParsedBiomeClimate {
     precipitation: String,
     temperature: f32,
     downfall: f32,
@@ -36,12 +36,12 @@ struct ParsedBiomeWeather {
 #[derive(Deserialize, Debug)]
 struct ParsedBiomeColor {
     grass_modifier: String,
-    grass: Option<i32>,
-    foliage: Option<i32>,
-    fog: i32,
-    sky: i32,
-    water_fog: i32,
-    water: i32,
+    grass: Option<u32>,
+    foliage: Option<u32>,
+    fog: u32,
+    sky: u32,
+    water_fog: u32,
+    water: u32,
 }
 
 #[derive(Deserialize, Debug)]
@@ -67,7 +67,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             id: biome.id,
             rustified_name: ident(&biome.name.replace("minecraft:", "").to_pascal_case()),
             name: biome.name,
-            weather: biome.weather,
+            climate: biome.climate,
             color: biome.color,
             spawn_rates: biome.spawn_settings,
         })
@@ -78,8 +78,8 @@ pub fn build() -> anyhow::Result<TokenStream> {
     let mut class_spawn_fields = BTreeMap::<&str, Ident>::new();
     for biome in biomes.iter() {
         precipitation_types
-            .entry(biome.weather.precipitation.as_str())
-            .or_insert_with(|| ident(biome.weather.precipitation.to_pascal_case()));
+            .entry(biome.climate.precipitation.as_str())
+            .or_insert_with(|| ident(biome.climate.precipitation.to_pascal_case()));
         grass_modifier_types
             .entry(biome.color.grass_modifier.as_str())
             .or_insert_with(|| ident(biome.color.grass_modifier.to_pascal_case()));
@@ -119,77 +119,69 @@ pub fn build() -> anyhow::Result<TokenStream> {
         })
         .collect::<TokenStream>();
 
-    let precipitation_names = precipitation_types
-        .iter()
-        .map(|(_, rust_id)| {
-            quote! {
-                #rust_id,
-            }
-        })
-        .collect::<TokenStream>();
-
-    let grass_modifier_names = grass_modifier_types
-        .iter()
-        .map(|(_, rust_id)| {
-            quote! {
-                #rust_id,
-            }
-        })
-        .collect::<TokenStream>();
-
-    let biomekind_names = biomes
+    let biomekind_name_lookup = biomes
         .iter()
         .map(|biome| {
             let rustified_name = &biome.rustified_name;
             let name = &biome.name;
             quote! {
-                Self::#rustified_name => #name,
+                #name => Some(Self::#rustified_name),
             }
         })
         .collect::<TokenStream>();
 
-    let biomekind_weather = biomes
+    let biomekind_temperatures_arms = biomes
         .iter()
         .map(|biome| {
             let rustified_name = &biome.rustified_name;
-            let precipitation = precipitation_types
-                .get(biome.weather.precipitation.as_str())
-                .expect("Could not find previously generated precipitation");
-            let downfall = &biome.weather.downfall;
-            let temperature = &biome.weather.temperature;
+            let temp = &biome.climate.temperature;
             quote! {
-                Self::#rustified_name => BiomeWeather {
-                    precipitation: Precipitation::#precipitation,
-                    downfall: #downfall,
-                    temperature: #temperature,
-                },
+                Self::#rustified_name => #temp,
             }
         })
         .collect::<TokenStream>();
 
-    let biomekind_color = biomes
+    let biomekind_downfall_arms = biomes
         .iter()
         .map(|biome| {
             let rustified_name = &biome.rustified_name;
-            let grass_modifier = grass_modifier_types
-                .get(biome.color.grass_modifier.as_str())
-                .expect("Could not find previously generated grass modifier");
-            let grass = option_to_quote(&biome.color.grass);
-            let foliage = option_to_quote(&biome.color.foliage);
-            let fog = &biome.color.fog;
-            let sky = &biome.color.sky;
+            let downfall = &biome.climate.downfall;
+            quote! {
+                Self::#rustified_name => #downfall,
+            }
+        })
+        .collect::<TokenStream>();
+
+    let biomekind_to_biome = biomes
+        .iter()
+        .map(|biome| {
+            let rustified_name = &biome.rustified_name;
+            let name = &biome.name;
+            let precipitation = ident(&biome.climate.precipitation.to_pascal_case());
+            let sky_color = &biome.color.sky;
             let water_fog = &biome.color.water_fog;
-            let water = &biome.color.water;
+            let fog = &biome.color.fog;
+            let water_color = &biome.color.water;
+            let foliage_color = option_to_quote(&biome.color.foliage);
+            let grass_color = option_to_quote(&biome.color.grass);
+            let grass_modifier = ident(&biome.color.grass_modifier.to_pascal_case());
             quote! {
-                Self::#rustified_name => BiomeColor {
-                    grass_modifier: GrassModifier::#grass_modifier,
-                    grass: #grass,
-                    foliage: #foliage,
-                    fog: #fog,
-                    sky: #sky,
-                    water_fog: #water_fog,
-                    water: #water,
-                },
+                Self::#rustified_name => Ok(Biome{
+                    name: Ident::from_str(#name)?,
+                    precipitation: BiomePrecipitation::#precipitation,
+                    sky_color: #sky_color,
+                    water_fog_color: #water_fog,
+                    fog_color: #fog,
+                    water_color: #water_color,
+                    foliage_color: #foliage_color,
+                    grass_color: #grass_color,
+                    grass_color_modifier: BiomeGrassColorModifier::#grass_modifier,
+                    music: None,
+                    ambient_sound: None,
+                    additions_sound: None,
+                    mood_sound: None,
+                    particle: None,
+                }),
             }
         })
         .collect::<TokenStream>();
@@ -207,7 +199,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
                     let max_group_size = &spawn_rate.max_group_size;
                     let weight = &spawn_rate.weight;
                     quote! {
-                        SpawnEntry {
+                        SpawnProperty {
                             name: #name,
                             min_group_size: #min_group_size,
                             max_group_size: #max_group_size,
@@ -221,7 +213,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             });
             quote! {
-                Self::#rustified_name => VanillaBiomeSpawnRates {
+                Self::#rustified_name => SpawnSettings {
                     probability: #probability,
                     #( #fields ),*
                 },
@@ -232,46 +224,22 @@ pub fn build() -> anyhow::Result<TokenStream> {
     let spawn_classes = class_spawn_fields.values();
 
     Ok(quote! {
+        use super::{Biome,BiomeGrassColorModifier,BiomePrecipitation};
+        use crate::ident::{Ident,IdentError};
+        use std::str::FromStr;
+
         #[derive(Debug, Clone, PartialEq, PartialOrd)]
-        pub struct SpawnEntry {
+        pub struct SpawnProperty {
             pub name: &'static str,
             pub min_group_size: u32,
             pub max_group_size: u32,
             pub weight: i32
         }
 
-        #[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
-        pub struct BiomeWeather {
-            pub precipitation: Precipitation,
-            pub temperature: f32,
-            pub downfall: f32,
-        }
-
-        #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-        pub enum Precipitation {
-            #precipitation_names
-        }
-
-        #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-        pub struct BiomeColor {
-            pub grass_modifier: GrassModifier,
-            pub grass: Option<i32>,
-            pub foliage: Option<i32>,
-            pub fog: i32,
-            pub sky: i32,
-            pub water_fog: i32,
-            pub water: i32,
-        }
-
-        #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-        pub enum GrassModifier {
-            #grass_modifier_names
-        }
-
         #[derive(Debug, Clone, PartialEq, PartialOrd)]
-        pub struct VanillaBiomeSpawnRates {
+        pub struct SpawnSettings {
             pub probability: f32,
-            #( pub #spawn_classes: &'static [SpawnEntry] ),*
+            #( pub #spawn_classes: &'static [SpawnProperty] ),*
         }
 
         #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -295,31 +263,38 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 self as u16
             }
 
-            /// Returns the biome name with both the namespace and path (eg: minecraft:plains)
-            pub const fn name(self) -> &'static str {
-                match self{
-                    #biomekind_names
+            pub fn from_ident<S: AsRef<str>>(ident: &Ident<S>) -> Option<Self> {
+                if ident.namespace() != "minecraft"{
+                    return None;
+                }
+                match ident.path() {
+                    #biomekind_name_lookup
+                    _ => None
                 }
             }
 
-            /// Gets the biome weather settings
-            pub const fn weather(self) -> BiomeWeather {
+            pub fn biome(self) -> Result<Biome, IdentError<String>> {
                 match self{
-                    #biomekind_weather
-                }
-            }
-
-            /// Gets the biome color settings
-            pub const fn color(self) -> BiomeColor {
-                match self{
-                    #biomekind_color
+                    #biomekind_to_biome
                 }
             }
 
             /// Gets the biome spawn rates
-            pub const fn spawn_rates(self) -> VanillaBiomeSpawnRates {
+            pub const fn spawn_rates(self) -> SpawnSettings {
                 match self{
                     #biomekind_spawn_settings_arms
+                }
+            }
+
+            pub const fn temperature(self) -> f32 {
+                match self{
+                    #biomekind_temperatures_arms
+                }
+            }
+
+            pub const fn downfall(self) -> f32 {
+                match self{
+                    #biomekind_downfall_arms
                 }
             }
         }
