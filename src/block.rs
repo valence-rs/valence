@@ -16,6 +16,19 @@ use crate::protocol::{Decode, Encode, VarInt};
 include!(concat!(env!("OUT_DIR"), "/block.rs"));
 
 impl BlockFace {
+    /// Returns a `PropValue` to use when setting a propety in a block state.
+    ///
+    /// # Examples
+    /// Making a Torch hang on a wall:
+    /// ```rust
+    /// use valence::block::{BlockState, PropName};
+    /// use valence::protocol::packets::c2s::play::BlockFace;
+    ///
+    /// let torch = BlockState::WALL_TORCH;
+    /// let face = BlockFace::West;
+    /// // Now the torch is hanging on a west facing wall.
+    /// torch.set(PropName::Facing, face.to_block_facing());
+    /// ```
     pub const fn to_block_facing(self) -> PropValue {
         match self {
             BlockFace::Bottom => PropValue::Down,
@@ -27,6 +40,31 @@ impl BlockFace {
         }
     }
 
+    /// Retuns wether the block should hang on the wall, be on the celling or on
+    /// the floor.
+    ///
+    /// # Examples
+    /// Making a button be on the celling:
+    /// ```rust
+    /// use valence::block::{BlockState, PropName};
+    /// use valence::protocol::packets::c2s::play::BlockFace;
+    ///
+    /// let button = BlockState::OAK_BUTTON;
+    /// let face = BlockFace::Bottom;
+    /// // Now the button is on the celling.
+    /// button.set(PropName::Face, face.to_block_facing());
+    /// ```
+    /// Making a lever hang on a wall:
+    /// ```rust
+    /// use valence::block::{BlockState, PropName};
+    /// use valence::protocol::packets::c2s::play::BlockFace;
+    ///
+    /// let lever = BlockState::LEVER;
+    /// let face = BlockFace::West;
+    /// // Now the lever is hanging on a wall.
+    /// lever.set(PropName::Face, face.to_block_facing());
+    /// ```
+    /// Making a
     pub const fn to_block_face(self) -> PropValue {
         match self {
             BlockFace::Bottom => PropValue::Ceiling,
@@ -35,6 +73,19 @@ impl BlockFace {
         }
     }
 
+    /// Returns the axis that the block should be on.
+    ///
+    /// # Examples
+    /// Setting an oak logs axis:
+    /// ```rust
+    /// use valence::block::{BlockState, PropName};
+    /// use valence::protocol::packets::c2s::play::BlockFace;
+    ///
+    /// let log = BlockState::OAK_LOG;
+    /// let face = BlockFace::East;
+    /// // Now the log's axis is the x axis
+    /// log.set(PropName::axis, face.to_block_axis());
+    /// ```
     pub const fn to_block_axis(self) -> PropValue {
         match self {
             BlockFace::Bottom | BlockFace::Top => PropValue::Y,
@@ -43,6 +94,15 @@ impl BlockFace {
         }
     }
 
+    /// Returns the opposite direction to the current
+    ///
+    /// # Examples
+    /// Basic usage:
+    /// ```rust
+    /// use valence::protocol::packets::c2s::play::BlockFace;
+    ///
+    /// assert_eq(BlockFace::West.opposite(), BlockFace::East)
+    /// ```
     pub const fn opposite(self) -> Self {
         match self {
             BlockFace::Bottom => BlockFace::Top,
@@ -52,6 +112,86 @@ impl BlockFace {
             BlockFace::West => BlockFace::East,
             BlockFace::East => BlockFace::West,
         }
+    }
+
+    /// Returns the direction to the right side of the current
+    ///
+    /// `BlockFace::Bottom` and `BlockFace::Top` can't be rotated, so they just
+    /// return them self again
+    pub const fn rotate_right(self) -> Self {
+        match self {
+            BlockFace::Bottom => BlockFace::Bottom,
+            BlockFace::Top => BlockFace::Top,
+            BlockFace::North => BlockFace::East,
+            BlockFace::South => BlockFace::West,
+            BlockFace::West => BlockFace::North,
+            BlockFace::East => BlockFace::South,
+        }
+    }
+
+    /// Returns the direction to the left side of the current
+    ///
+    /// `BlockFace::Bottom` and `BlockFace::Top` can't be rotated, so they just
+    /// return them self again
+    pub const fn rotate_left(self) -> Self {
+        match self {
+            BlockFace::Bottom => BlockFace::Bottom,
+            BlockFace::Top => BlockFace::Top,
+            BlockFace::North => BlockFace::West,
+            BlockFace::South => BlockFace::East,
+            BlockFace::West => BlockFace::South,
+            BlockFace::East => BlockFace::North,
+        }
+    }
+
+    // Used for barrel, command block, dispenser, dropper, observer and piston
+    // placement
+    // For more info look at `net/minecraft/item/ItemPlacementContext.java:53`
+    pub fn player_look_direction(pitch: f32, yaw: f32) -> Self {
+        let pitch_pi = pitch * (std::f32::consts::PI / 180.0);
+        let yaw_pi = -yaw * (std::f32::consts::PI / 180.0);
+        let pitch_sin = f32::sin(pitch_pi);
+        let pitch_cos = f32::cos(pitch_pi);
+        let yaw_sin = f32::sin(yaw_pi);
+        let yaw_cos = f32::cos(yaw_pi);
+        let yaw_sin_greater = yaw_sin > 0.0;
+        let pitch_sin_lesser = pitch_sin < 0.0;
+        let yaw_cos_greater = yaw_cos > 0.0;
+        let yaw_sin = if yaw_sin_greater { yaw_sin } else { -yaw_sin };
+        let pitch_sin = if pitch_sin_lesser {
+            -pitch_sin
+        } else {
+            pitch_sin
+        };
+        let yaw_cos = if yaw_cos_greater { yaw_cos } else { -yaw_cos };
+        let yaw_sin_pitch_cos = yaw_sin * pitch_cos;
+        let yaw_cos_pitch_cos = yaw_cos * pitch_cos;
+        if yaw_sin > yaw_cos {
+            if pitch_sin > yaw_sin_pitch_cos {
+                return if pitch_sin_lesser {
+                    BlockFace::Top
+                } else {
+                    BlockFace::Bottom
+                };
+            }
+            return if yaw_sin_greater {
+                BlockFace::East
+            } else {
+                BlockFace::West
+            };
+        }
+        if pitch_sin > yaw_cos_pitch_cos {
+            return if pitch_sin_lesser {
+                BlockFace::Top
+            } else {
+                BlockFace::Bottom
+            };
+        }
+        return if yaw_cos_greater {
+            BlockFace::South
+        } else {
+            BlockFace::North
+        };
     }
 }
 

@@ -207,6 +207,7 @@ impl Config for Game {
                                         BlockState::from_kind(held_block_kind),
                                         face,
                                         client.yaw(),
+                                        client.pitch(),
                                         cursor_pos,
                                     );
 
@@ -238,7 +239,13 @@ impl Config for Game {
     }
 }
 
-fn face_block(block: BlockState, face: BlockFace, yaw: f32, cursor_pos: Vec3<f32>) -> BlockState {
+fn face_block(
+    block: BlockState,
+    face: BlockFace,
+    yaw: f32,
+    pitch: f32,
+    cursor_pos: Vec3<f32>,
+) -> BlockState {
     let block = match block.to_wall_variant() {
         Some(wall_vaniant) => match face {
             BlockFace::Bottom | BlockFace::Top => block,
@@ -256,9 +263,37 @@ fn face_block(block: BlockState, face: BlockFace, yaw: f32, cursor_pos: Vec3<f32
                 PropName::Face => mut_block.set(PropName::Face, face.to_block_face()),
                 PropName::Facing => {
                     // This could be improved, mabye we can extract something?
-                    let block_name = mut_block.to_kind().to_str();
-                    if block_name.contains("shulker_box")
-                        || block_name == "end_rod"
+                    // Mabye there's some tags?
+                    // But it will work for now
+                    let kind = mut_block.to_kind();
+                    let block_name = kind.to_str();
+
+                    if kind == BlockKind::Barrel
+                        || kind == BlockKind::CommandBlock
+                        || kind == BlockKind::ChainCommandBlock
+                        || kind == BlockKind::RepeatingCommandBlock
+                        || kind == BlockKind::Dispenser
+                        || kind == BlockKind::Dropper
+                        || kind == BlockKind::Piston
+                        || kind == BlockKind::StickyPiston
+                    {
+                        return mut_block.set(
+                            PropName::Facing,
+                            BlockFace::player_look_direction(pitch, yaw)
+                                .opposite()
+                                .to_block_facing(),
+                        );
+                    } else if kind == BlockKind::Observer {
+                        return mut_block.set(
+                            PropName::Facing,
+                            BlockFace::player_look_direction(pitch, yaw).to_block_facing(),
+                        );
+                    } else if block_name.contains("shulker_box")
+                        || block_name.contains("trapdoor")
+                        || kind == BlockKind::EndRod
+                        || kind == BlockKind::Tripwire
+                        || kind == BlockKind::LightningRod
+                        || kind == BlockKind::Ladder
                         || mut_block.to_wall_variant().is_some()
                     {
                         mut_block.set(PropName::Facing, face.to_block_facing())
@@ -271,8 +306,19 @@ fn face_block(block: BlockState, face: BlockFace, yaw: f32, cursor_pos: Vec3<f32
                             _ => unreachable!(),
                         };
 
-                        let facing = if mut_block.to_kind().to_str().contains("stairs") {
+                        let facing = if block_name.contains("stairs")
+                            || block_name.contains("door")
+                            || block_name.contains("fence_gate")
+                            || block_name.contains("button")
+                            || block_name.contains("bed")
+                            || kind == BlockKind::Lever
+                            || kind == BlockKind::Bell
+                            || kind == BlockKind::Campfire
+                            || kind == BlockKind::SoulCampfire
+                        {
                             facing.opposite()
+                        } else if block_name.contains("anvil") {
+                            facing.rotate_left()
                         } else {
                             facing
                         };
@@ -292,7 +338,14 @@ fn face_block(block: BlockState, face: BlockFace, yaw: f32, cursor_pos: Vec3<f32
                 PropName::Rotation => mut_block.set(
                     PropName::Rotation,
                     PropValue::from_u16(
-                        (((yaw as f64 * 16.0 / 360.0) + 0.5).floor() as i32 & 0xf) as u16,
+                        if mut_block.to_kind().to_str().contains("head")
+                            || mut_block.to_kind().to_str().contains("skull")
+                        {
+                            (((yaw as f64 * 16.0 / 360.0) + 0.5).floor() as i32 & 0xf) as u16
+                        } else {
+                            ((((180.0 + yaw) as f64 * 16.0 / 360.0) + 0.5).floor() as i32 & 0xf)
+                                as u16
+                        },
                     )
                     .unwrap_or_else(|| panic!("Player yaw: {}, was out of bound", yaw)),
                 ),
@@ -307,6 +360,31 @@ fn face_block(block: BlockState, face: BlockFace, yaw: f32, cursor_pos: Vec3<f32
                 ),
                 PropName::Waterlogged => {
                     mut_block.set(PropName::Waterlogged, PropValue::from_bool(false))
+                }
+                // For vines, glow lichen and sculk vein
+                PropName::East => mut_block.set(
+                    PropName::East,
+                    PropValue::from_bool(face == BlockFace::West),
+                ),
+                PropName::North => mut_block.set(
+                    PropName::North,
+                    PropValue::from_bool(face == BlockFace::South),
+                ),
+                PropName::South => mut_block.set(
+                    PropName::South,
+                    PropValue::from_bool(face == BlockFace::North),
+                ),
+                PropName::West => mut_block.set(
+                    PropName::West,
+                    PropValue::from_bool(face == BlockFace::East),
+                ),
+                PropName::Up => mut_block.set(
+                    PropName::Up,
+                    PropValue::from_bool(face == BlockFace::Bottom),
+                ),
+                // Only for sculk vein
+                PropName::Down => {
+                    mut_block.set(PropName::Down, PropValue::from_bool(face == BlockFace::Top))
                 }
                 _ => continue,
             }
