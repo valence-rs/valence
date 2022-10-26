@@ -48,7 +48,7 @@ pub mod login {
     def_struct! {
         LoginSuccess {
             uuid: Uuid,
-            username: BoundedString<3, 16>,
+            username: Username<String>,
             properties: Vec<Property>,
         }
     }
@@ -272,6 +272,13 @@ pub mod play {
             Player = 7,
             Ambient = 8,
             Voice = 9,
+        }
+    }
+
+    def_struct! {
+        PluginMessageS2c {
+            channel: Ident<String>,
+            data: RawBytes,
         }
     }
 
@@ -738,6 +745,7 @@ pub mod play {
             BlockUpdate = 9,
             BossBar = 10,
             ClearTitles = 13,
+            PluginMessageS2c = 22,
             SetContainerContent = 17,
             SetContainerProperty = 18,
             SetContainerSlot = 19,

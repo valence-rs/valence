@@ -123,6 +123,7 @@ mod slab_rc;
 mod slab_versioned;
 pub mod spatial_index;
 pub mod text;
+pub mod username;
 pub mod util;
 pub mod world;
 
@@ -133,7 +134,7 @@ pub mod prelude {
     pub use block::{BlockKind, BlockPos, BlockState, PropName, PropValue};
     pub use chunk::{Chunk, ChunkPos, Chunks, LoadedChunk, UnloadedChunk};
     pub use client::{handle_event_default, Client, ClientEvent, ClientId, Clients, GameMode};
-    pub use config::{Config, PlayerSampleEntry, ServerListPing};
+    pub use config::{Config, ConnectionMode, PlayerSampleEntry, ServerListPing};
     pub use dimension::{Dimension, DimensionId};
     pub use entity::{Entities, Entity, EntityEvent, EntityId, EntityKind, TrackedData};
     pub use ident::{Ident, IdentError};
@@ -145,6 +146,7 @@ pub mod prelude {
     pub use server::{NewClientData, Server, SharedServer, ShutdownResult};
     pub use spatial_index::{RaycastHit, SpatialIndex};
     pub use text::{Color, Text, TextFormat};
+    pub use username::Username;
     pub use util::{
         chunks_in_view_distance, from_yaw_and_pitch, is_chunk_in_view_distance, to_yaw_and_pitch,
     };
@@ -172,6 +174,16 @@ pub const VERSION_NAME: &str = "1.19.2";
 ///
 /// You should avoid using this namespace in your own identifiers.
 pub const LIBRARY_NAMESPACE: &str = "valence";
+
+/// The most recent version of the [Velocity] proxy which has been tested to
+/// work with Valence. The elements of the tuple are (major, minor, patch)
+/// version numbers.
+///
+/// See [`Config::connection_mode`] to configure the proxy used with Valence.
+///
+/// [Velocity]: https://velocitypowered.com/
+/// [`Config::connection_mode`]: config::Config::connection_mode
+pub const SUPPORTED_VELOCITY_VERSION: (u16, u16, u16) = (3, 1, 2);
 
 /// A discrete unit of time where 1 tick is the duration of a
 /// single game update.

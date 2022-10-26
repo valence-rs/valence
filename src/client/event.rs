@@ -7,14 +7,15 @@ use crate::block_pos::BlockPos;
 use crate::config::Config;
 use crate::entity::types::Pose;
 use crate::entity::{Entity, EntityEvent, EntityId, TrackedData};
-use crate::inventory::Inventory;
+use crate::ident::Ident;
+use crate::inventory::{Inventory, InventoryDirtyable};
 use crate::item::ItemStack;
 use crate::protocol::packets::c2s::play::ClickContainerMode;
 pub use crate::protocol::packets::c2s::play::{
     BlockFace, ChatMode, DisplayedSkinParts, Hand, MainHand, ResourcePackC2s as ResourcePackStatus,
 };
 pub use crate::protocol::packets::s2c::play::GameMode;
-use crate::protocol::{Slot, SlotId, VarInt};
+use crate::protocol::{RawBytes, Slot, SlotId, VarInt};
 
 /// Represents an action performed by a client.
 ///
@@ -130,6 +131,10 @@ pub enum ClientEvent {
         head_inside_block: bool,
         /// Sequence number
         sequence: VarInt,
+    },
+    PluginMessageReceived {
+        channel: Ident<String>,
+        data: RawBytes,
     },
     ResourcePackStatusChanged(ResourcePackStatus),
     /// The client closed a screen. This occurs when the client closes their
@@ -331,6 +336,7 @@ pub fn handle_event_default<C: Config>(
         ClientEvent::SteerBoat { .. } => {}
         ClientEvent::Digging { .. } => {}
         ClientEvent::InteractWithBlock { .. } => {}
+        ClientEvent::PluginMessageReceived { .. } => {}
         ClientEvent::ResourcePackStatusChanged(_) => {}
         ClientEvent::CloseScreen { window_id } => {
             if let Some(window) = &client.open_inventory {
@@ -342,7 +348,11 @@ pub fn handle_event_default<C: Config>(
         ClientEvent::DropItem => {}
         ClientEvent::DropItemStack { .. } => {}
         ClientEvent::SetSlotCreative { slot_id, slot } => {
+            let previous_dirty = client.inventory.is_dirty();
             client.inventory.set_slot(*slot_id, slot.clone());
+            // HACK: we don't need to mark the inventory as dirty because the
+            // client already knows what the updated state of the inventory is.
+            client.inventory.mark_dirty(previous_dirty);
         }
         ClientEvent::ClickContainer { .. } => {}
         ClientEvent::RespawnRequest => {}

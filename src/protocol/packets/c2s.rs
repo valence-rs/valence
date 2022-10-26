@@ -8,7 +8,9 @@ pub mod handshake {
     def_struct! {
         Handshake {
             protocol_version: VarInt,
-            server_address: BoundedString<0, 255>,
+            // by the minecraft protocol this is specified as a BoundedString<0, 255> but due
+            // issues with Bungeecord ip forwarding this limit is removed here and checked when handling the handshake
+            server_address: String,
             server_port: u16,
             next_state: HandshakeNextState,
         }
@@ -54,7 +56,7 @@ pub mod login {
 
     def_struct! {
         LoginStart {
-            username: BoundedString<3, 16>,
+            username: Username<String>,
             sig_data: Option<PublicKeyData>,
             profile_id: Option<Uuid>,
         }

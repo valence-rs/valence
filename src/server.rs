@@ -2,24 +2,19 @@
 
 use std::error::Error;
 use std::iter::FusedIterator;
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use std::{io, thread};
 
-use anyhow::{bail, ensure, Context};
+use anyhow::{ensure, Context};
 use flume::{Receiver, Sender};
-use num::BigInt;
 use rand::rngs::OsRng;
 use rayon::iter::ParallelIterator;
-use reqwest::{Client as HttpClient, StatusCode};
-use rsa::{PaddingScheme, PublicKeyParts, RsaPrivateKey};
-use serde::Deserialize;
+use reqwest::Client as HttpClient;
+use rsa::{PublicKeyParts, RsaPrivateKey};
 use serde_json::{json, Value};
-use sha1::digest::Update;
-use sha1::Sha1;
-use sha2::{Digest, Sha256};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::{Handle, Runtime};
@@ -29,7 +24,7 @@ use valence_nbt::{compound, Compound, List};
 
 use crate::biome::{validate_biomes, Biome, BiomeId};
 use crate::client::{Client, Clients};
-use crate::config::{Config, ServerListPing};
+use crate::config::{Config, ConnectionMode, ServerListPing};
 use crate::dimension::{validate_dimensions, Dimension, DimensionId};
 use crate::entity::Entities;
 use crate::inventory::Inventories;
@@ -37,20 +32,18 @@ use crate::player_list::PlayerLists;
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::codec::{Decoder, Encoder};
 use crate::protocol::packets::c2s::handshake::{Handshake, HandshakeNextState};
-use crate::protocol::packets::c2s::login::{EncryptionResponse, LoginStart, VerifyTokenOrMsgSig};
+use crate::protocol::packets::c2s::login::LoginStart;
 use crate::protocol::packets::c2s::play::C2sPlayPacket;
 use crate::protocol::packets::c2s::status::{PingRequest, StatusRequest};
-use crate::protocol::packets::s2c::login::{
-    DisconnectLogin, EncryptionRequest, LoginSuccess, SetCompression,
-};
+use crate::protocol::packets::s2c::login::{DisconnectLogin, LoginSuccess, SetCompression};
 use crate::protocol::packets::s2c::play::S2cPlayPacket;
 use crate::protocol::packets::s2c::status::{PingResponse, StatusResponse};
-use crate::protocol::packets::Property;
-use crate::protocol::{BoundedArray, BoundedString, VarInt};
-use crate::text::Text;
-use crate::util::valid_username;
+use crate::protocol::VarInt;
+use crate::username::Username;
 use crate::world::Worlds;
 use crate::{ident, Ticks, PROTOCOL_VERSION, VERSION_NAME};
+
+mod login;
 
 /// Contains the entire state of a running Minecraft server, accessible from
 /// within the [update](crate::config::Config::update) loop.
@@ -89,7 +82,7 @@ struct SharedServerInner<C: Config> {
     cfg: C,
     address: SocketAddr,
     tick_rate: Ticks,
-    online_mode: bool,
+    connection_mode: ConnectionMode,
     max_connections: usize,
     incoming_packet_capacity: usize,
     outgoing_packet_capacity: usize,
@@ -127,12 +120,12 @@ pub struct NewClientData {
     /// The UUID of the new client.
     pub uuid: Uuid,
     /// The username of the new client.
-    pub username: String,
+    pub username: Username<String>,
     /// The new client's player textures. May be `None` if the client does not
     /// have a skin or cape.
     pub textures: Option<SignedPlayerTextures>,
     /// The remote address of the new client.
-    pub remote_addr: SocketAddr,
+    pub remote_addr: IpAddr,
 }
 
 struct NewClientMessage {
@@ -178,9 +171,9 @@ impl<C: Config> SharedServer<C> {
         self.0.tick_rate
     }
 
-    /// Gets whether online mode is enabled on this server.
-    pub fn online_mode(&self) -> bool {
-        self.0.online_mode
+    /// Gets the connection mode of the server.
+    pub fn connection_mode(&self) -> &ConnectionMode {
+        &self.0.connection_mode
     }
 
     /// Gets the maximum number of connections allowed to the server at once.
@@ -311,7 +304,7 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
 
     ensure!(tick_rate > 0, "tick rate must be greater than zero");
 
-    let online_mode = cfg.online_mode();
+    let connection_mode = cfg.connection_mode();
 
     let incoming_packet_capacity = cfg.incoming_packet_capacity();
 
@@ -360,7 +353,7 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         cfg,
         address,
         tick_rate,
-        online_mode,
+        connection_mode,
         max_connections,
         incoming_packet_capacity,
         outgoing_packet_capacity,
@@ -539,7 +532,13 @@ async fn handle_connection<C: Config>(
 
     // TODO: peek stream for 0xFE legacy ping
 
-    let handshake = c.dec.read_packet::<Handshake>().await?;
+    let handshake: Handshake = c.dec.read_packet().await?;
+
+    ensure!(
+        matches!(server.connection_mode(), ConnectionMode::BungeeCord)
+            || handshake.server_address.chars().count() <= 255,
+        "handshake server address is too long"
+    );
 
     match handshake.next_state {
         HandshakeNextState::Status => handle_status(server, &mut c, remote_addr, handshake)
@@ -615,9 +614,9 @@ async fn handle_status<C: Config>(
     Ok(())
 }
 
-/// Handle the login process and return the new player's data if successful.
-async fn handle_login<C: Config>(
-    server: &SharedServer<C>,
+/// Handle the login process and return the new client's data if successful.
+async fn handle_login(
+    server: &SharedServer<impl Config>,
     c: &mut Codec,
     remote_addr: SocketAddr,
     handshake: Handshake,
@@ -628,116 +627,16 @@ async fn handle_login<C: Config>(
     }
 
     let LoginStart {
-        username: BoundedString(username),
+        username,
         sig_data: _,   // TODO
         profile_id: _, // TODO
     } = c.dec.read_packet().await?;
 
-    ensure!(valid_username(&username), "invalid username '{username}'");
-
-    let (uuid, textures) = if server.0.online_mode {
-        let my_verify_token: [u8; 16] = rand::random();
-
-        c.enc
-            .write_packet(&EncryptionRequest {
-                server_id: Default::default(), // Always empty
-                public_key: server.0.public_key_der.to_vec(),
-                verify_token: my_verify_token.to_vec().into(),
-            })
-            .await?;
-
-        let EncryptionResponse {
-            shared_secret: BoundedArray(encrypted_shared_secret),
-            token_or_sig,
-        } = c.dec.read_packet().await?;
-
-        let shared_secret = server
-            .0
-            .rsa_key
-            .decrypt(PaddingScheme::PKCS1v15Encrypt, &encrypted_shared_secret)
-            .context("failed to decrypt shared secret")?;
-
-        let _opt_signature = match token_or_sig {
-            VerifyTokenOrMsgSig::VerifyToken(BoundedArray(encrypted_verify_token)) => {
-                let verify_token = server
-                    .0
-                    .rsa_key
-                    .decrypt(PaddingScheme::PKCS1v15Encrypt, &encrypted_verify_token)
-                    .context("failed to decrypt verify token")?;
-
-                ensure!(
-                    my_verify_token.as_slice() == verify_token,
-                    "verify tokens do not match"
-                );
-                None
-            }
-            VerifyTokenOrMsgSig::MsgSig(sig) => Some(sig),
-        };
-
-        let crypt_key: [u8; 16] = shared_secret
-            .as_slice()
-            .try_into()
-            .context("shared secret has the wrong length")?;
-
-        c.enc.enable_encryption(&crypt_key);
-        c.dec.enable_encryption(&crypt_key);
-
-        #[derive(Debug, Deserialize)]
-        struct AuthResponse {
-            id: String,
-            name: String,
-            properties: Vec<Property>,
-        }
-
-        let hash = Sha1::new()
-            .chain(&shared_secret)
-            .chain(&server.0.public_key_der)
-            .finalize();
-
-        let hex_hash = auth_digest(&hash);
-
-        let url = C::format_session_server_url(
-            server.config(),
-            server,
-            &username,
-            &hex_hash,
-            &remote_addr.ip(),
-        );
-
-        let resp = server.0.http_client.get(url).send().await?;
-
-        match resp.status() {
-            StatusCode::OK => {}
-            StatusCode::NO_CONTENT => {
-                let reason = Text::translate("multiplayer.disconnect.unverified_username");
-                c.enc.write_packet(&DisconnectLogin { reason }).await?;
-                bail!("Could not verify username");
-            }
-            status => {
-                bail!("session server GET request failed (status code {status})");
-            }
-        }
-
-        let data: AuthResponse = resp.json().await?;
-
-        ensure!(data.name == username, "usernames do not match");
-
-        let uuid = Uuid::parse_str(&data.id).context("failed to parse player's UUID")?;
-
-        let textures = match data.properties.into_iter().find(|p| p.name == "textures") {
-            Some(p) => SignedPlayerTextures::from_base64(
-                p.value,
-                p.signature.context("missing signature for textures")?,
-            )?,
-            None => bail!("failed to find textures in auth response"),
-        };
-
-        (uuid, Some(textures))
-    } else {
-        // Derive the player's UUID from a hash of their username.
-        let uuid = Uuid::from_slice(&Sha256::digest(&username)[..16]).unwrap();
-
-        (uuid, None)
+    let ncd = match server.connection_mode() {
+        ConnectionMode::Online => login::online(server, c, remote_addr, username).await?,
+        ConnectionMode::Offline => login::offline(remote_addr, username)?,
+        ConnectionMode::BungeeCord => login::bungeecord(&handshake.server_address, username)?,
+        ConnectionMode::Velocity { secret } => login::velocity(c, username, secret).await?,
     };
 
     let compression_threshold = 256;
@@ -750,13 +649,6 @@ async fn handle_login<C: Config>(
     c.enc.enable_compression(compression_threshold);
     c.dec.enable_compression(compression_threshold);
 
-    let ncd = NewClientData {
-        uuid,
-        username,
-        textures,
-        remote_addr,
-    };
-
     if let Err(reason) = server.0.cfg.login(server, &ncd).await {
         log::info!("Disconnect at login: \"{reason}\"");
         c.enc.write_packet(&DisconnectLogin { reason }).await?;
@@ -766,7 +658,7 @@ async fn handle_login<C: Config>(
     c.enc
         .write_packet(&LoginSuccess {
             uuid: ncd.uuid,
-            username: ncd.username.clone().into(),
+            username: ncd.username.clone(),
             properties: Vec::new(),
         })
         .await?;
@@ -824,29 +716,4 @@ async fn handle_play<C: Config>(
     }
 
     Ok(())
-}
-
-fn auth_digest(bytes: &[u8]) -> String {
-    BigInt::from_signed_bytes_be(bytes).to_str_radix(16)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn auth_digest_correct() {
-        assert_eq!(
-            auth_digest(&Sha1::digest("Notch")),
-            "4ed1f46bbe04bc756bcb17c0c7ce3e4632f06a48"
-        );
-        assert_eq!(
-            auth_digest(&Sha1::digest("jeb_")),
-            "-7c9d5b0044c130109a5d7b5fb5c317c02b4e28c1"
-        );
-        assert_eq!(
-            auth_digest(&Sha1::digest("simon")),
-            "88e16a1019277b15d58faf0541e11910eb756f6"
-        );
-    }
 }

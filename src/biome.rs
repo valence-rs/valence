@@ -157,6 +157,13 @@ pub(crate) fn validate_biomes(biomes: &[Biome]) -> anyhow::Result<()> {
         );
     }
 
+    if !names.contains(&ident!("plains")) {
+        log::warn!(
+            "A biome named \"plains\" is missing from the biome registry! Due to a bug in the \
+             vanilla client, players may not be able to join the game!"
+        );
+    }
+
     Ok(())
 }
 
