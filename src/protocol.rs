@@ -34,6 +34,7 @@ use crate::nbt;
 
 mod byte_angle;
 pub mod codec;
+pub mod io;
 pub mod packets;
 mod slot;
 mod var_int;
