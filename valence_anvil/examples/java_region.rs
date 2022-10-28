@@ -6,6 +6,7 @@ use std::str::FromStr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use valence::async_trait;
+use valence::biome::Biome;
 use valence::chunk::{Chunk, ChunkPos, UnloadedChunk};
 use valence::client::{handle_event_default, GameMode};
 use valence::config::{Config, ServerListPing};
@@ -15,17 +16,13 @@ use valence::player_list::PlayerListId;
 use valence::server::{Server, SharedServer, ShutdownResult};
 use valence::text::{Color, TextFormat};
 use valence::util::chunks_in_view_distance;
+use valence_anvil::biome::BiomeKind;
 use valence_anvil::AnvilWorld;
 
 pub fn main() -> ShutdownResult {
-    let world_folder = PathBuf::from_str(WORLD_FOLDER).unwrap();
-
-    println!("World folder: {:?}", world_folder.canonicalize());
-
     valence::start_server(
         Game {
             player_count: AtomicUsize::new(0),
-            anvil_world: AnvilWorld::new(world_folder),
         },
         None,
     )
@@ -33,7 +30,6 @@ pub fn main() -> ShutdownResult {
 
 struct Game {
     player_count: AtomicUsize,
-    anvil_world: AnvilWorld,
 }
 
 const MAX_PLAYERS: usize = 10;
@@ -44,7 +40,7 @@ impl Config for Game {
     type ServerState = Option<PlayerListId>;
     type ClientState = EntityId;
     type EntityState = ();
-    type WorldState = ();
+    type WorldState = AnvilWorld;
     /// If the chunk should stay loaded at the end of the tick.
     type ChunkState = bool;
     type PlayerListState = ();
@@ -52,6 +48,10 @@ impl Config for Game {
     fn max_connections(&self) -> usize {
         // We want status pings to be successful even if the server is full.
         MAX_PLAYERS + 64
+    }
+
+    fn biomes(&self) -> Vec<Biome> {
+        BiomeKind::ALL.iter().map(|b| b.biome().unwrap()).collect()
     }
 
     async fn server_list_ping(
@@ -74,7 +74,11 @@ impl Config for Game {
     }
 
     fn init(&self, server: &mut Server<Self>) {
-        server.worlds.insert(DimensionId::default(), ());
+        let world_folder = PathBuf::from_str(WORLD_FOLDER).unwrap();
+        server.worlds.insert(
+            DimensionId::default(),
+            AnvilWorld::new(world_folder, &server.shared),
+        );
         server.state = Some(server.player_lists.insert(()).0);
     }
 
@@ -151,7 +155,7 @@ impl Config for Game {
                 }
             });
 
-            let future = self.anvil_world.load_chunks(new_chunks);
+            let future = world.state.load_chunks(new_chunks);
             let parsed_chunks = futures::executor::block_on(future).unwrap();
             for (pos, chunk) in parsed_chunks {
                 if let Some(chunk) = chunk {

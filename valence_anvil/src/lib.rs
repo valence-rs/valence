@@ -3,7 +3,7 @@ mod palette;
 
 use std::collections::BTreeMap;
 use std::fmt::{Debug, Formatter, Result as FmtResult};
-use std::io::{SeekFrom};
+use std::io::SeekFrom;
 use std::path::{Path, PathBuf};
 
 use async_compression::tokio::bufread::ZlibDecoder;
@@ -18,19 +18,35 @@ use valence::chunk::{Chunk, ChunkPos, UnloadedChunk};
 use valence::ident::Ident;
 use valence::nbt::{Compound, List, Value};
 
+pub mod biome;
+
+use valence::config::Config;
+use valence::server::SharedServer;
+
 use crate::error::Error;
 use crate::palette::DataFormat;
+
+pub enum Test {
+    One,
+    Two,
+}
 
 #[derive(Debug)]
 pub struct AnvilWorld {
     world_root: PathBuf,
+    biomes: BTreeMap<Ident<String>, BiomeId>,
     region_files: Mutex<BTreeMap<RegionPos, Option<Region<File>>>>,
 }
 
 impl AnvilWorld {
-    pub fn new(directory: PathBuf) -> Self {
+    pub fn new<C: Config>(directory: PathBuf, server: &SharedServer<C>) -> Self {
+        let mut biomes = BTreeMap::new();
+        for (id, biome) in server.biomes() {
+            biomes.insert(biome.name.clone(), id);
+        }
         Self {
             world_root: directory,
+            biomes,
             region_files: Mutex::new(BTreeMap::new()),
         }
     }
@@ -59,7 +75,7 @@ impl AnvilWorld {
                 }
             }) {
                 // A region file exists, and it is loaded.
-                result_vec.extend(region.parse_chunks(chunk_pos_vec).await?);
+                result_vec.extend(region.parse_chunks(self, chunk_pos_vec).await?);
             } else {
                 // No region file exists, there is no data to load here.
                 result_vec.extend(chunk_pos_vec.into_iter().map(|pos| (pos, None)));
@@ -157,6 +173,7 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
 
     pub async fn parse_chunks<I: IntoIterator<Item = ChunkPos>>(
         &self,
+        world: &AnvilWorld,
         positions: I,
     ) -> Result<Vec<(ChunkPos, Option<UnloadedChunk>)>, Error> {
         let mut results = Vec::<(ChunkPos, Option<UnloadedChunk>)>::new();
@@ -165,7 +182,7 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
             let chunk_data = self.read_chunk_data(pos).await?;
             if let Some(chunk_data) = chunk_data {
                 let mut nbt = valence::nbt::from_binary_slice(&mut chunk_data.as_slice())?.0;
-                let parsed_chunk = Self::parse_chunk_nbt(&mut nbt)?;
+                let parsed_chunk = Self::parse_chunk_nbt(&mut nbt, world)?;
                 results.push((pos, Some(parsed_chunk)));
             } else {
                 results.push((pos, None));
@@ -175,10 +192,10 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
         Ok(results)
     }
 
-    fn parse_chunk_nbt(nbt: &mut Compound) -> Result<UnloadedChunk, Error> {
+    fn parse_chunk_nbt(nbt: &mut Compound, world: &AnvilWorld) -> Result<UnloadedChunk, Error> {
         fn take_assume<R>(compound: &mut Compound, key: &'static str) -> Result<R, Error>
-            where
-                Option<R>: From<Value>,
+        where
+            Option<R>: From<Value>,
         {
             match compound.remove(key) {
                 None => Err(Error::missing_nbt_value(key)),
@@ -193,8 +210,8 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
         }
 
         fn take_assume_optional<R>(compound: &mut Compound, key: &'static str) -> Option<R>
-            where
-                Option<R>: From<Value>,
+        where
+            Option<R>: From<Value>,
         {
             match compound.remove(key) {
                 None => None,
@@ -205,7 +222,7 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
         // let _chunk_x_pos: i32 = take_assume(nbt, "xPos")?;
         // let _chunk_y_pos: i32 = take_assume(nbt, "yPos")?;
         // let _chunk_z_pos: i32 = take_assume(nbt, "zPos")?;
-//
+        //
         // let _status: String = take_assume(nbt, "Status")?;
         // let _last_update: i64 = take_assume(nbt, "LastUpdate")?;
 
@@ -222,7 +239,8 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
                 }
             }
 
-            // Max should always be equal or higher than 'lower'. Therefore, this is positive.
+            // Max should always be equal or higher than 'lower'. Therefore, this is
+            // positive.
             let section_height = ((y_max - y_min) as usize * 16) + 16;
             let y_raise = isize::from(-y_min) * 16;
 
@@ -236,7 +254,7 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
                 let mut nbt_block_states: Compound = take_assume(&mut nbt_section, "block_states")?;
                 let parsed_block_state_palette: Vec<BlockState> =
                     if let Some(Value::List(List::Compound(nbt_palette_vec))) =
-                    nbt_block_states.remove("palette")
+                        nbt_block_states.remove("palette")
                     {
                         let mut palette_vec: Vec<BlockState> =
                             Vec::with_capacity(nbt_palette_vec.len());
@@ -253,14 +271,14 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
                                 };
                             let mut block_state = BlockState::from_kind(block_kind);
                             if let Some(Value::Compound(nbt_palette_properties)) =
-                            nbt_palette.remove("Properties")
+                                nbt_palette.remove("Properties")
                             {
                                 for (property_name, property_value) in nbt_palette_properties {
                                     if let Value::String(property_value) = property_value {
                                         let property_name = PropName::from_str(&property_name);
                                         let property_value = PropValue::from_str(&property_value);
                                         if let (Some(property_name), Some(property_value)) =
-                                        (property_name, property_value)
+                                            (property_name, property_value)
                                         {
                                             block_state =
                                                 block_state.set(property_name, property_value);
@@ -286,7 +304,7 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
                     };
 
                 // Block state palette
-                palette::parse_palette::<BlockState, _,>(
+                palette::parse_palette::<BlockState, _>(
                     &parsed_block_state_palette,
                     take_assume_optional(&mut nbt_block_states, "data"),
                     4,
@@ -329,22 +347,25 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
                 let mut nbt_biomes: Compound = take_assume(&mut nbt_section, "biomes")?;
                 let parsed_biome_palette: Vec<BiomeId> =
                     if let Some(Value::List(List::String(biome_names))) =
-                    nbt_biomes.remove("palette")
+                        nbt_biomes.remove("palette")
                     {
                         let mut biomes: Vec<BiomeId> = Vec::with_capacity(biome_names.len());
                         for biome in biome_names {
-                            let _identity_IMPLEMENT_ME = Ident::new(biome)?;
-
-                            //TODO: EXTRACT BIOME IDs
-                            //TODO: BiomeId::from_str(identity.path());
-                            biomes.push(BiomeId::default());
+                            let biome_identity = Ident::new(biome)?;
+                            if let Some(biome) = world.biomes.get(&biome_identity) {
+                                biomes.push(*biome);
+                            } else {
+                                return Err(Error::invalid_nbt(
+                                    "sections/*/palette/ Unknown biome",
+                                ));
+                            }
                         }
                         biomes
                     } else {
                         return Err(Error::invalid_nbt("sections/*/palette."));
                     };
 
-                palette::parse_palette::<BiomeId, _,>(
+                palette::parse_palette::<BiomeId, _>(
                     &parsed_biome_palette,
                     take_assume_optional(&mut nbt_biomes, "data"),
                     0,
@@ -370,12 +391,7 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
                                 let x = index & 0b11;
 
                                 let final_y = y + (chunk_y_offset / 4) + (y_raise / 4);
-                                chunk.set_biome(
-                                    x,
-                                    final_y as usize,
-                                    z,
-                                    biome,
-                                );
+                                chunk.set_biome(x, final_y as usize, z, biome);
                             }
                         }
                         Ok(())
@@ -516,9 +532,7 @@ impl CompressionScheme {
                 decoder.read_to_end(&mut vec).await?;
                 Ok(vec)
             }
-            CompressionScheme::Raw => {
-                Ok(raw_data)
-            }
+            CompressionScheme::Raw => Ok(raw_data),
         }
     }
 }

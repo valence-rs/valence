@@ -59,9 +59,10 @@ struct ParsedSpawnRate {
 }
 
 pub fn build() -> anyhow::Result<TokenStream> {
-    let biomes: Vec<ParsedBiome> = serde_json::from_str(include_str!("../extracted/biomes.json"))?;
+    let biomes: Vec<ParsedBiome> =
+        serde_json::from_str(include_str!("../../extracted/biomes.json"))?;
 
-    let biomes = biomes
+    let mut biomes = biomes
         .into_iter()
         .map(|biome| RenamedBiome {
             id: biome.id,
@@ -72,6 +73,9 @@ pub fn build() -> anyhow::Result<TokenStream> {
             spawn_rates: biome.spawn_settings,
         })
         .collect::<Vec<RenamedBiome>>();
+
+    //Ensure biomes are sorted, even if the JSON changes later.
+    biomes.sort_by(|one, two| one.id.cmp(&two.id));
 
     let mut precipitation_types = BTreeMap::<&str, Ident>::new();
     let mut grass_modifier_types = BTreeMap::<&str, Ident>::new();
@@ -97,7 +101,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         }
     }
 
-    let biome_kind_definitions = biomes
+    let biome_kind_enum_declare = biomes
         .iter()
         .map(|biome| {
             let rustified_name = &biome.rustified_name;
@@ -107,6 +111,16 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }
         })
         .collect::<TokenStream>();
+
+    let biome_kind_enum_names = biomes
+        .iter()
+        .map(|biome| {
+            let rustified_name = &biome.rustified_name;
+            quote! {
+                #rustified_name
+            }
+        })
+        .collect::<Vec<TokenStream>>();
 
     let biomekind_id_to_variant_lookup = biomes
         .iter()
@@ -224,8 +238,8 @@ pub fn build() -> anyhow::Result<TokenStream> {
     let spawn_classes = class_spawn_fields.values();
 
     Ok(quote! {
-        use super::{Biome,BiomeGrassColorModifier,BiomePrecipitation};
-        use crate::ident::{Ident,IdentError};
+        use valence::biome::{Biome,BiomeGrassColorModifier,BiomePrecipitation};
+        use valence::ident::{Ident,IdentError};
         use std::str::FromStr;
 
         #[derive(Debug, Clone, PartialEq, PartialOrd)]
@@ -244,10 +258,13 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
         #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
         pub enum BiomeKind {
-            #biome_kind_definitions
+            #biome_kind_enum_declare
         }
 
         impl BiomeKind {
+            /// All imported vanilla biomes (All variants of `BiomeKind`)
+            pub const ALL: &'static [Self] = &[#(Self::#biome_kind_enum_names),*];
+
             /// Constructs an `BiomeKind` from a raw biome ID.
             ///
             /// If the given ID is invalid, `None` is returned.
