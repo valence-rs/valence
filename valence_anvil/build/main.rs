@@ -5,22 +5,12 @@ use std::{env, fs};
 use anyhow::Context;
 use proc_macro2::{Ident, Span};
 
-mod block;
-mod enchant;
-mod entity;
-mod entity_event;
-mod item;
+mod biome;
 
 pub fn main() -> anyhow::Result<()> {
     println!("cargo:rerun-if-changed=extracted/");
 
-    let generators = [
-        (entity::build as fn() -> _, "entity.rs"),
-        (entity_event::build, "entity_event.rs"),
-        (block::build, "block.rs"),
-        (item::build, "item.rs"),
-        (enchant::build, "enchant.rs"),
-    ];
+    let generators = [(biome::build, "biome.rs")];
 
     let out_dir = env::var_os("OUT_DIR").context("can't get OUT_DIR env var")?;
 
