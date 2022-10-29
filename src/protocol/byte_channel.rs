@@ -76,12 +76,12 @@ impl ByteSender {
         Ok(())
     }
 
-    pub async fn send_async(&mut self, mut bytes: BytesMut) -> Result<(), BytesMut> {
+    pub async fn send_async(&mut self, mut bytes: BytesMut) -> Result<(), SendError> {
         loop {
             let mut lck = self.shared.mtx.lock().unwrap();
 
             if lck.disconnected {
-                return Err(bytes);
+                return Err(SendError(bytes));
             }
 
             let available = self.shared.limit - lck.bytes.len();
@@ -116,6 +116,16 @@ pub enum TrySendError {
     /// Contains any excess bytes not sent.
     #[error("channel full")]
     Full(BytesMut),
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Error)]
+#[error("sender disconnected")]
+pub struct SendError(pub BytesMut);
+
+impl SendError {
+    pub fn into_inner(self) -> BytesMut {
+        self.0
+    }
 }
 
 impl ByteReceiver {
