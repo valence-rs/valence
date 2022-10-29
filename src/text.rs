@@ -139,6 +139,26 @@ impl Text {
         }
     }
 
+    /// Creates a text component for selecting entity names.
+    pub fn entity_names(selector: impl Into<Cow<'static, str>>) -> Self {
+        Self::entity_names_with_separator(selector, None::<Text>)
+    }
+
+    /// Creates a text component for selecting entity names, with a custom
+    /// separator.
+    pub fn entity_names_with_separator(
+        selector: impl Into<Cow<'static, str>>,
+        separator: Option<impl Into<Text>>,
+    ) -> Self {
+        Self {
+            content: TextContent::EntityNames {
+                selector: selector.into(),
+                separator: separator.map(|v| Box::new(v.into())),
+            },
+            ..Self::default()
+        }
+    }
+
     /// Gets this text object as plain text without any formatting.
     pub fn to_plain(&self) -> String {
         let mut res = String::new();
@@ -182,6 +202,21 @@ impl Text {
 
                     w.write_char(')')?;
                 }
+                TextContent::EntityNames {
+                    selector,
+                    separator,
+                } => {
+                    write!(w, "entity_names(selector={selector}")?;
+
+                    if let Some(separator) = separator {
+                        if !separator.is_empty() {
+                            w.write_str(", separator=")?;
+                            write_plain_impl(separator, w)?;
+                        }
+                    }
+
+                    w.write_char(')')?;
+                }
             }
 
             for child in &this.extra {
@@ -213,6 +248,7 @@ impl Text {
 
                 name.is_empty() || objective.is_empty()
             }
+            TextContent::EntityNames { selector, .. } => selector.is_empty(),
         }
     }
 }
@@ -431,7 +467,19 @@ enum TextContent {
     ScoreboardValue {
         score: ScoreboardValueContent,
     },
-    // TODO: entity names
+    /// Displays the name of one or more entities found by a [`selector`].
+    ///
+    /// [`selector`]: https://minecraft.fandom.com/wiki/Target_selectors
+    EntityNames {
+        /// A string containing a [`selector`].
+        ///
+        /// [`selector`]: https://minecraft.fandom.com/wiki/Target_selectors
+        selector: Cow<'static, str>,
+        /// An optional custom separator used when the selector returns multiple
+        /// entities. Defaults to the ", " text with gray color.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        separator: Option<Box<Text>>,
+    },
     // TODO: keybind
     // TODO: nbt
 }
@@ -807,5 +855,47 @@ mod tests {
             score.to_plain(),
             "scoreboard_value(name=, objective=, value=baz)"
         );
+    }
+
+    #[test]
+    fn entity_names() {
+        let entity_names = Text::entity_names("foo");
+        let json = serde_json::to_string(&entity_names).unwrap();
+        let after: Text = serde_json::from_str(&json).unwrap();
+
+        assert!(!entity_names.is_empty());
+        assert_eq!(entity_names, after);
+        assert_eq!(entity_names.to_plain(), after.to_plain());
+        assert_eq!(entity_names.to_plain(), "entity_names(selector=foo)");
+        assert_eq!(json, "{\"selector\":\"foo\"}");
+    }
+
+    #[test]
+    fn entity_names_with_separator() {
+        let separator = Text::text("bar").color(Color::RED).bold();
+        let text = Text::entity_names_with_separator("foo", Some(separator));
+        let json = serde_json::to_string(&text).unwrap();
+        let after: Text = serde_json::from_str(&json).unwrap();
+
+        assert!(!text.is_empty());
+        assert_eq!(text, after);
+        assert_eq!(text.to_plain(), after.to_plain());
+        assert_eq!(text.to_plain(), "entity_names(selector=foo, separator=bar)");
+        assert_eq!(
+            json,
+            "{\"selector\":\"foo\",\"separator\":{\"text\":\"bar\",\"color\":\"#ff5555\",\"bold\":\
+             true}}"
+        );
+    }
+
+    #[test]
+    fn empty_entity_names() {
+        let entity_names = Text::entity_names("");
+        assert!(entity_names.is_empty());
+        assert_eq!(entity_names.to_plain(), "entity_names(selector=)");
+
+        let entity_names = Text::entity_names_with_separator("", Some(""));
+        assert!(entity_names.is_empty());
+        assert_eq!(entity_names.to_plain(), "entity_names(selector=)");
     }
 }
