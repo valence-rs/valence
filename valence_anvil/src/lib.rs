@@ -69,7 +69,7 @@ impl AnvilWorld {
             if let Some(region) = lock.entry(region_pos).or_insert({
                 let path = region_pos.path(&self.world_root);
                 if path.exists() {
-                    Some(Region::from_file(File::open(&path).await?).await?)
+                    Some(Region::from_file(File::open(&path).await?, region_pos).await?)
                 } else {
                     None
                 }
@@ -108,26 +108,36 @@ impl RegionPos {
             .join("region")
             .join(format!("r.{}.{}.mca", self.x, self.z))
     }
+
+    pub fn contains(self, chunk_pos: ChunkPos) -> bool {
+        Self::from(chunk_pos) == self
+    }
 }
 
 #[derive(Debug)]
 pub struct Region<S: AsyncRead + AsyncSeek + Unpin> {
     source: Mutex<S>,
     offset: u64,
+    position: RegionPos,
     header: AnvilHeader,
 }
 
 impl Region<File> {
-    /// Convenience method, creates a Region object from the given file.
-    pub async fn from_file(source: File) -> Result<Self, std::io::Error> {
-        Self::from_seek(Mutex::new(source), 0).await
+    /// Convenience method, creates a Region object from the given file and
+    /// position.
+    pub async fn from_file(source: File, position: RegionPos) -> Result<Self, std::io::Error> {
+        Self::from_seek(Mutex::new(source), 0, position).await
     }
 }
 
 impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
     /// Creates a Region object using the incoming stream. The offset defines
     /// the position of the header start.
-    pub async fn from_seek(source: Mutex<S>, offset: u64) -> Result<Self, std::io::Error> {
+    pub async fn from_seek(
+        source: Mutex<S>,
+        offset: u64,
+        position: RegionPos,
+    ) -> Result<Self, std::io::Error> {
         let mut lock = source.lock().await;
         lock.seek(SeekFrom::Start(offset)).await?;
         let header = AnvilHeader::parse(&mut *lock).await?;
@@ -136,8 +146,15 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
         Ok(Self {
             source,
             offset,
+            position,
             header,
         })
+    }
+
+    /// Get the last time the chunk was modified in seconds since epoch.
+    pub fn chunk_timestamp(&self, chunk_pos: ChunkPos) -> &ChunkTimestamp {
+        self.header
+            .timestamp((chunk_pos.x & 31) as usize, (chunk_pos.z & 31) as usize)
     }
 
     async fn read_chunk_data(&self, chunk_pos: ChunkPos) -> Result<Option<Vec<u8>>, Error> {
@@ -179,6 +196,13 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
         let mut results = Vec::<(ChunkPos, Option<UnloadedChunk>)>::new();
 
         for pos in positions.into_iter() {
+            assert!(
+                self.position.contains(pos),
+                "Chunk position {:?} was not found in region {:?}",
+                pos,
+                self.position
+            );
+
             let chunk_data = self.read_chunk_data(pos).await?;
             if let Some(chunk_data) = chunk_data {
                 let mut nbt = valence::nbt::from_binary_slice(&mut chunk_data.as_slice())?.0;
@@ -241,7 +265,7 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
 
             // Max should always be equal or higher than 'lower'. Therefore, this is
             // positive.
-            let section_height = ((y_max - y_min) as usize * 16) + 16;
+            let section_height = ((y_max as isize - y_min as isize) as usize * 16) + 16;
             let y_raise = isize::from(-y_min) * 16;
 
             //Parsing sections
@@ -477,7 +501,7 @@ impl ChunkLocation {
 
 /// The timestamp when the chunk was last modified in seconds since epoch.
 #[derive(Copy, Clone)]
-struct ChunkTimestamp(u32);
+pub struct ChunkTimestamp(u32);
 
 impl Debug for ChunkTimestamp {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
@@ -492,6 +516,11 @@ impl ChunkTimestamp {
 
     fn load(&mut self, chunk: [u8; 4]) {
         self.0 = BigEndian::read_u32(&chunk)
+    }
+
+    #[inline(always)]
+    pub fn seconds_since_epoch(&self) -> u32 {
+        self.0
     }
 }
 
