@@ -113,6 +113,32 @@ impl Text {
         }
     }
 
+    /// Create a score from the scoreboard.
+    pub fn score(
+        name: impl Into<Cow<'static, str>>,
+        objective: impl Into<Cow<'static, str>>,
+    ) -> Self {
+        Self::score_with_value(name, objective, None::<Cow<'static, str>>)
+    }
+
+    /// Create a score from the scoreboard with a custom value.
+    pub fn score_with_value(
+        name: impl Into<Cow<'static, str>>,
+        objective: impl Into<Cow<'static, str>>,
+        value: Option<impl Into<Cow<'static, str>>>,
+    ) -> Self {
+        Self {
+            content: TextContent::ScoreboardValue {
+                score: ScoreboardValueContent {
+                    name: name.into(),
+                    objective: objective.into(),
+                    value: value.map(|val| val.into()),
+                },
+            },
+            ..Self::default()
+        }
+    }
+
     /// Gets this text object as plain text without any formatting.
     pub fn to_plain(&self) -> String {
         let mut res = String::new();
@@ -138,6 +164,24 @@ impl Text {
                         w.write_char('}')?;
                     }
                 }
+                TextContent::ScoreboardValue { score } => {
+                    let ScoreboardValueContent {
+                        name,
+                        objective,
+                        value,
+                    } = score;
+
+                    write!(w, "scoreboard_value(name={name}, objective={objective}")?;
+
+                    if let Some(value) = value {
+                        if !value.is_empty() {
+                            w.write_str(", value=")?;
+                            w.write_str(value)?;
+                        }
+                    }
+
+                    w.write_char(')')?;
+                }
             }
 
             for child in &this.extra {
@@ -162,6 +206,13 @@ impl Text {
         match &self.content {
             TextContent::Text { text } => text.is_empty(),
             TextContent::Translate { translate, .. } => translate.is_empty(),
+            TextContent::ScoreboardValue { score } => {
+                let ScoreboardValueContent {
+                    name, objective, ..
+                } = score;
+
+                name.is_empty() || objective.is_empty()
+            }
         }
     }
 }
@@ -376,10 +427,28 @@ enum TextContent {
         #[serde(default, skip_serializing_if = "Vec::is_empty")]
         with: Vec<Text>,
     },
-    // TODO: score
+    /// Displays a score holder's current score in an objective.
+    ScoreboardValue {
+        score: ScoreboardValueContent,
+    },
     // TODO: entity names
     // TODO: keybind
     // TODO: nbt
+}
+
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+struct ScoreboardValueContent {
+    /// The name of the score holder whose score should be displayed. This
+    /// can be a [`selector`] or an explicit name.
+    ///
+    /// [`selector`]: https://minecraft.fandom.com/wiki/Target_selectors
+    name: Cow<'static, str>,
+    /// The internal name of the objective to display the player's score in.
+    objective: Cow<'static, str>,
+    /// If present, this value is displayed regardless of what the score
+    /// would have been.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    value: Option<Cow<'static, str>>,
 }
 
 /// Text color
@@ -666,6 +735,77 @@ mod tests {
         assert_eq!(
             json,
             "{\"translate\":\"key\",\"with\":[{\"text\":\"arg1\"},{\"text\":\"arg2\"}]}"
+        );
+    }
+
+    #[test]
+    fn score() {
+        let score = Text::score("foo", "bar");
+        let json = serde_json::to_string(&score).unwrap();
+        let after: Text = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(score, after);
+        assert_eq!(score.to_plain(), after.to_plain());
+        assert_eq!(
+            score.to_plain(),
+            "scoreboard_value(name=foo, objective=bar)"
+        );
+        assert_eq!(json, "{\"score\":{\"name\":\"foo\",\"objective\":\"bar\"}}");
+    }
+
+    #[test]
+    fn score_with_value() {
+        let score = Text::score_with_value("foo", "bar", Some("baz"));
+        let json = serde_json::to_string(&score).unwrap();
+        let after: Text = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(score, after);
+        assert_eq!(score.to_plain(), after.to_plain());
+        assert_eq!(
+            score.to_plain(),
+            "scoreboard_value(name=foo, objective=bar, value=baz)"
+        );
+        assert_eq!(
+            json,
+            "{\"score\":{\"name\":\"foo\",\"objective\":\"bar\",\"value\":\"baz\"}}"
+        );
+    }
+
+    #[test]
+    fn empty_score() {
+        // All properties empty
+        let score = Text::score("", "");
+        assert!(score.is_empty());
+        assert_eq!(score.to_plain(), "scoreboard_value(name=, objective=)");
+
+        let score = Text::score_with_value("", "", Some(""));
+        assert!(score.is_empty());
+        assert_eq!(score.to_plain(), "scoreboard_value(name=, objective=)");
+
+        // Name set
+        let score = Text::score("foo", "");
+        assert!(score.is_empty());
+        assert_eq!(score.to_plain(), "scoreboard_value(name=foo, objective=)");
+
+        // Objective set
+        let score = Text::score("", "bar");
+        assert!(score.is_empty());
+        assert_eq!(score.to_plain(), "scoreboard_value(name=, objective=bar)");
+
+        // Name and objective set
+        let score = Text::score("foo", "bar");
+        assert!(!score.is_empty());
+        assert_eq!(
+            score.to_plain(),
+            "scoreboard_value(name=foo, objective=bar)"
+        );
+
+        // Value set
+        let score = Text::score_with_value("", "", Some("baz"));
+        assert!(score.is_empty());
+        assert_eq!(
+            score.to_plain(),
+            "scoreboard_value(name=, objective=, value=baz)"
         );
     }
 }
