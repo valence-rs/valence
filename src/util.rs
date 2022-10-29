@@ -105,6 +105,15 @@ pub fn ray_box_intersect(ro: Vec3<f64>, rd: Vec3<f64>, bb: Aabb<f64>) -> Option<
     }
 }
 
+/// Takes a float and wraps it around -180..180 in a way that matches the
+/// client's interpretation of yaw values
+pub fn wrap_yaw(yaw: f32) -> f32 {
+    let abs_yaw = yaw.abs();
+    let steps = (abs_yaw / 180.0).floor();
+    let step_offset = steps % 2.0;
+    return abs_yaw - (steps + step_offset) * 180.0;
+}
+
 /// Calculates the minimum number of bits needed to represent the integer `n`.
 /// Also known as `floor(log2(n)) + 1`.
 ///

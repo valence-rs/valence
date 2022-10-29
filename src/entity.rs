@@ -352,7 +352,7 @@ impl<C: Config> Entity<C> {
     /// Sets the yaw of this entity in degrees.
     pub fn set_yaw(&mut self, yaw: f32) {
         if self.yaw != yaw {
-            self.yaw = yaw;
+            self.yaw = wrap_yaw(yaw);
             self.bits.set_yaw_or_pitch_modified(true);
         }
     }
