@@ -1,15 +1,13 @@
-use crate::error::Error;
 use std::ops::BitXor;
+
+use crate::error::Error;
 
 pub enum DataFormat<T> {
     All(T),
     Palette(usize, T),
 }
 
-pub fn parse_palette<
-    T: Copy,
-    F: (FnMut(DataFormat<T>) -> Result<(), Error>)
->(
+pub fn parse_palette<T: Copy, F: (FnMut(DataFormat<T>) -> Result<(), Error>)>(
     source: &Vec<T>,
     data: Option<Vec<i64>>,
     min_bits: usize,
