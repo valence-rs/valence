@@ -33,9 +33,10 @@ use crate::entity::EntityId;
 use crate::nbt;
 
 mod byte_angle;
+pub mod byte_channel;
 pub mod codec;
-pub mod io;
-pub mod packets;
+pub mod codec_new;
+pub mod packets; // TODO: re-export `c2s` and `s2c` and make `packets` private.
 mod slot;
 mod var_int;
 mod var_long;
