@@ -95,9 +95,19 @@ impl Text {
 
     /// Create translated text based on the given translation key.
     pub fn translate(key: impl Into<Cow<'static, str>>) -> Self {
+        Self::translate_with_slots(key, Vec::default())
+    }
+
+    /// Create translated text based on the given translation key, with extra
+    /// text components to be inserted into the slots in the translation text.
+    pub fn translate_with_slots(
+        key: impl Into<Cow<'static, str>>,
+        with: impl Into<Vec<Text>>,
+    ) -> Self {
         Self {
             content: TextContent::Translate {
                 translate: key.into(),
+                with: with.into(),
             },
             ..Self::default()
         }
@@ -116,7 +126,18 @@ impl Text {
         fn write_plain_impl(this: &Text, w: &mut impl fmt::Write) -> fmt::Result {
             match &this.content {
                 TextContent::Text { text } => w.write_str(text.as_ref())?,
-                TextContent::Translate { translate } => w.write_str(translate.as_ref())?,
+                TextContent::Translate { translate, with } => {
+                    w.write_str(translate.as_ref())?;
+
+                    if !with.is_empty() {
+                        w.write_char('{')?;
+                        for slot in with {
+                            write_plain_impl(slot, w)?;
+                            w.write_char(',')?;
+                        }
+                        w.write_char('}')?;
+                    }
+                }
             }
 
             for child in &this.extra {
@@ -140,7 +161,7 @@ impl Text {
 
         match &self.content {
             TextContent::Text { text } => text.is_empty(),
-            TextContent::Translate { translate } => translate.is_empty(),
+            TextContent::Translate { translate, .. } => translate.is_empty(),
         }
     }
 }
@@ -343,9 +364,17 @@ enum TextContent {
     Text {
         text: Cow<'static, str>,
     },
+    /// A piece of text that will be translated on the client based on the
+    /// client language. If no corresponding translation can be found, the
+    /// identifier itself is used as the translated text.
     Translate {
+        /// A translation identifier, corresponding to the identifiers found in
+        /// loaded language files.
         translate: Cow<'static, str>,
-        // TODO: 'with' field
+        /// Optional list of text components to be inserted into slots in the
+        /// translation text. Ignored if `translate` is not present.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        with: Vec<Text>,
     },
     // TODO: score
     // TODO: entity names
@@ -608,5 +637,35 @@ mod tests {
         let txt = "".into_text() + Text::translate("") + ("".italic().color(Color::RED) + "");
         assert!(txt.is_empty());
         assert!(txt.to_plain().is_empty());
+    }
+
+    #[test]
+    fn translate() {
+        let text = Text::translate("key");
+        let json = serde_json::to_string(&text).unwrap();
+        let after: Text = serde_json::from_str(&json).unwrap();
+        assert_eq!(text, after);
+        assert_eq!(text.to_plain(), after.to_plain());
+        assert_eq!(text.to_plain(), "key");
+        assert_eq!(json, "{\"translate\":\"key\"}");
+
+        let text = Text::translate_with_slots("key", []);
+        let json = serde_json::to_string(&text).unwrap();
+        let after: Text = serde_json::from_str(&json).unwrap();
+        assert_eq!(text, after);
+        assert_eq!(text.to_plain(), after.to_plain());
+        assert_eq!(text.to_plain(), "key");
+        assert_eq!(json, "{\"translate\":\"key\"}");
+
+        let text = Text::translate_with_slots("key", [Text::text("arg1"), Text::text("arg2")]);
+        let json = serde_json::to_string(&text).unwrap();
+        let after: Text = serde_json::from_str(&json).unwrap();
+        assert_eq!(text, after);
+        assert_eq!(text.to_plain(), after.to_plain());
+        assert_eq!(text.to_plain(), "key{arg1,arg2,}");
+        assert_eq!(
+            json,
+            "{\"translate\":\"key\",\"with\":[{\"text\":\"arg1\"},{\"text\":\"arg2\"}]}"
+        );
     }
 }
