@@ -5,17 +5,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use log::LevelFilter;
 use rand::seq::SliceRandom;
 use rayon::prelude::ParallelIterator;
-use valence::async_trait;
-use valence::block::BlockState;
-use valence::chunk::{Chunk, ChunkPos, UnloadedChunk};
-use valence::client::{handle_event_default, GameMode};
-use valence::config::{Config, ServerListPing};
-use valence::dimension::DimensionId;
-use valence::entity::{EntityId, EntityKind};
-use valence::player_list::PlayerListId;
-use valence::server::{Server, SharedServer, ShutdownResult};
-use valence::text::{Color, TextFormat};
-use valence::util::chunks_in_view_distance;
+use valence::prelude::*;
 
 const MAX_PLAYERS: usize = 10;
 const Y_RANGE: Range<i64> = -64..319;
