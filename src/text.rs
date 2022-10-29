@@ -172,6 +172,66 @@ impl Text {
         }
     }
 
+    /// Creates a text component for a block NBT tag.
+    pub fn block_nbt(
+        nbt: impl Into<Cow<'static, str>>,
+        block: impl Into<Cow<'static, str>>,
+        interpret: Option<bool>,
+        separator: Option<impl Into<Text>>,
+    ) -> Self {
+        Self {
+            content: TextContent::Nbt {
+                nbt: nbt.into(),
+                interpret,
+                separator: separator.map(|v| Box::new(v.into())),
+                block: Some(block.into()),
+                entity: None,
+                storage: None,
+            },
+            ..Self::default()
+        }
+    }
+
+    /// Creates a text component for an entity NBT tag.
+    pub fn entity_nbt(
+        nbt: impl Into<Cow<'static, str>>,
+        entity: impl Into<Cow<'static, str>>,
+        interpret: Option<bool>,
+        separator: Option<impl Into<Text>>,
+    ) -> Self {
+        Self {
+            content: TextContent::Nbt {
+                nbt: nbt.into(),
+                interpret,
+                separator: separator.map(|v| Box::new(v.into())),
+                block: None,
+                entity: Some(entity.into()),
+                storage: None,
+            },
+            ..Self::default()
+        }
+    }
+
+    /// Creates a text component for a command storage NBT tag.
+    pub fn storage_nbt(
+        nbt: impl Into<Cow<'static, str>>,
+        storage: impl Into<Ident<String>>,
+        interpret: Option<bool>,
+        separator: Option<impl Into<Text>>,
+    ) -> Self {
+        Self {
+            content: TextContent::Nbt {
+                nbt: nbt.into(),
+                interpret,
+                separator: separator.map(|v| Box::new(v.into())),
+                block: None,
+                entity: None,
+                storage: Some(storage.into()),
+            },
+            ..Self::default()
+        }
+    }
+
     /// Gets this text object as plain text without any formatting.
     pub fn to_plain(&self) -> String {
         let mut res = String::new();
@@ -231,6 +291,41 @@ impl Text {
                     w.write_char(')')?;
                 }
                 TextContent::Keybind { keybind } => write!(w, "keybind({keybind})")?,
+                TextContent::Nbt {
+                    nbt,
+                    interpret,
+                    separator,
+                    block,
+                    entity,
+                    storage,
+                } => {
+                    write!(w, "nbt(nbt={nbt}")?;
+
+                    if let Some(interpret) = interpret {
+                        write!(w, ", interpret={interpret}")?;
+                    }
+
+                    if let Some(separator) = separator {
+                        if !separator.is_empty() {
+                            w.write_str(", separator=")?;
+                            write_plain_impl(separator, w)?;
+                        }
+                    }
+
+                    if let Some(block) = block {
+                        write!(w, ", block={block}")?;
+                    }
+
+                    if let Some(entity) = entity {
+                        write!(w, ", entity={entity}")?;
+                    }
+
+                    if let Some(storage) = storage {
+                        write!(w, ", storage={storage}")?;
+                    }
+
+                    w.write_char(')')?;
+                }
             }
 
             for child in &this.extra {
@@ -264,6 +359,13 @@ impl Text {
             }
             TextContent::EntityNames { selector, .. } => selector.is_empty(),
             TextContent::Keybind { keybind } => keybind.is_empty(),
+            TextContent::Nbt {
+                nbt,
+                block,
+                entity,
+                storage,
+                ..
+            } => nbt.is_empty() || (block.is_none() && entity.is_none() && storage.is_none()),
         }
     }
 }
@@ -504,7 +606,37 @@ enum TextContent {
         /// [`keybind identifier`]: https://minecraft.fandom.com/wiki/Controls#Configurable_controls
         keybind: Cow<'static, str>,
     },
-    // TODO: nbt
+    /// Displays NBT values from entities, block entities, or command storage.
+    Nbt {
+        /// The [`NBT path`] used for looking up NBT values from an entity,
+        /// block entity, or storage.
+        ///
+        /// [`NBT path`]: https://minecraft.fandom.com/wiki/NBT_path_format
+        nbt: Cow<'static, str>,
+        /// Optional property that, when set to true, attempts to parse the text
+        /// of each NBT value as a raw JSON text component.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        interpret: Option<bool>,
+        /// An optional custom separator used when the NBT selector has multiple
+        /// tags. Defaults to the ", " text.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        separator: Option<Box<Text>>,
+        /// A string specifying the coordinates of the block entity from which
+        /// the NBT value is obtained. The coordinates can be absolute,
+        /// relative, or local.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        block: Option<Cow<'static, str>>,
+        /// A string specifying the [`selector`] for the entity or entities
+        /// from which the NBT value is obtained.
+        ///
+        /// [`selector`]: https://minecraft.fandom.com/wiki/Target_selectors
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        entity: Option<Cow<'static, str>>,
+        /// A string specifying the resource location of the command storage
+        /// from which the NBT value is obtained.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        storage: Option<Ident<String>>,
+    },
 }
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
@@ -734,6 +866,7 @@ fn color_from_str(s: &str) -> Option<Color> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ident;
 
     #[test]
     fn serialize_deserialize() {
@@ -940,5 +1073,71 @@ mod tests {
         let entity_names = Text::keybind("");
         assert!(entity_names.is_empty());
         assert_eq!(entity_names.to_plain(), "keybind()");
+    }
+
+    #[test]
+    fn block_nbt() {
+        let text = Text::block_nbt("foo", "bar", Some(true), Some("baz"));
+        let json = serde_json::to_string(&text).unwrap();
+        let after: Text = serde_json::from_str(&json).unwrap();
+
+        assert!(!text.is_empty());
+        assert_eq!(text, after);
+        assert_eq!(text.to_plain(), after.to_plain());
+        assert_eq!(
+            text.to_plain(),
+            "nbt(nbt=foo, interpret=true, separator=baz, block=bar)"
+        );
+        let expected_json = "{\"nbt\":\"foo\",\"interpret\":true,\"separator\":{\"text\":\"baz\"},\
+                             \"block\":\"bar\"}";
+        assert_eq!(json, expected_json);
+
+        let empty = Text::block_nbt("", "", None, None::<Text>);
+        assert!(empty.is_empty());
+        assert_eq!(empty.to_plain(), "nbt(nbt=, block=)");
+    }
+
+    #[test]
+    fn entity_nbt() {
+        let text = Text::entity_nbt("foo", "bar", Some(true), Some("baz"));
+        let json = serde_json::to_string(&text).unwrap();
+        let after: Text = serde_json::from_str(&json).unwrap();
+
+        assert!(!text.is_empty());
+        assert_eq!(text, after);
+        assert_eq!(text.to_plain(), after.to_plain());
+        assert_eq!(
+            text.to_plain(),
+            "nbt(nbt=foo, interpret=true, separator=baz, entity=bar)"
+        );
+        let expected_json = "{\"nbt\":\"foo\",\"interpret\":true,\"separator\":{\"text\":\"baz\"},\
+                             \"entity\":\"bar\"}";
+        assert_eq!(json, expected_json);
+
+        let empty = Text::entity_nbt("", "", None, None::<Text>);
+        assert!(empty.is_empty());
+        assert_eq!(empty.to_plain(), "nbt(nbt=, entity=)");
+    }
+
+    #[test]
+    fn storage_nbt() {
+        let text = Text::storage_nbt("foo", ident!("bar"), Some(true), Some("baz"));
+        let json = serde_json::to_string(&text).unwrap();
+        let after: Text = serde_json::from_str(&json).unwrap();
+
+        assert!(!text.is_empty());
+        assert_eq!(text, after);
+        assert_eq!(text.to_plain(), after.to_plain());
+        assert_eq!(
+            text.to_plain(),
+            "nbt(nbt=foo, interpret=true, separator=baz, storage=minecraft:bar)"
+        );
+        let expected_json = "{\"nbt\":\"foo\",\"interpret\":true,\"separator\":{\"text\":\"baz\"},\
+                             \"storage\":\"bar\"}";
+        assert_eq!(json, expected_json);
+
+        let empty = Text::storage_nbt("", ident!("bar"), None, None::<Text>);
+        assert!(empty.is_empty());
+        assert_eq!(empty.to_plain(), "nbt(nbt=, storage=minecraft:bar)");
     }
 }
