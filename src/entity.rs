@@ -18,7 +18,7 @@ use crate::protocol::packets::s2c::play::{
 };
 use crate::protocol::{ByteAngle, RawBytes, VarInt};
 use crate::slab_versioned::{Key, VersionedSlab};
-use crate::util::aabb_from_bottom_and_size;
+use crate::util::{aabb_from_bottom_and_size, wrap_yaw};
 use crate::world::WorldId;
 use crate::STANDARD_TPS;
 
