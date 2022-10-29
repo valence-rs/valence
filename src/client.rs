@@ -46,7 +46,7 @@ use crate::server::{C2sPacketChannels, NewClientData, S2cPlayMessage, SharedServ
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::text::Text;
 use crate::username::Username;
-use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
+use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance, wrap_yaw};
 use crate::world::{WorldId, Worlds};
 use crate::{ident, LIBRARY_NAMESPACE};
 
@@ -413,7 +413,7 @@ impl<C: Config> Client<C> {
     /// If you want to change the client's world, use [`Self::spawn`].
     pub fn teleport(&mut self, pos: impl Into<Vec3<f64>>, yaw: f32, pitch: f32) {
         self.position = pos.into();
-        self.yaw = yaw;
+        self.yaw = wrap_yaw(yaw);
         self.pitch = pitch;
 
         self.bits.set_teleported_this_tick(true);
@@ -990,7 +990,7 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::SetPlayerPositionAndRotation(p) => {
                 if self.pending_teleports == 0 {
                     self.position = p.position;
-                    self.yaw = p.yaw;
+                    self.yaw = wrap_yaw(p.yaw);
                     self.pitch = p.pitch;
 
                     self.events.push_back(ClientEvent::MovePositionAndRotation {
@@ -1003,7 +1003,7 @@ impl<C: Config> Client<C> {
             }
             C2sPlayPacket::SetPlayerRotation(p) => {
                 if self.pending_teleports == 0 {
-                    self.yaw = p.yaw;
+                    self.yaw = wrap_yaw(p.yaw);
                     self.pitch = p.pitch;
 
                     self.events.push_back(ClientEvent::MoveRotation {
