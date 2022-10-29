@@ -111,7 +111,7 @@ pub fn wrap_yaw(yaw: f32) -> f32 {
     let abs_yaw = yaw.abs();
     let steps = (abs_yaw / 180.0).floor();
     let step_offset = steps % 2.0;
-    return abs_yaw - (steps + step_offset) * 180.0;
+    abs_yaw - (steps + step_offset) * 180.0
 }
 
 /// Calculates the minimum number of bits needed to represent the integer `n`.
