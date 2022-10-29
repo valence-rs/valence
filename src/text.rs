@@ -159,6 +159,19 @@ impl Text {
         }
     }
 
+    /// Creates a text component for a keybind. The keybind should be a valid
+    /// [`keybind identifier`].
+    ///
+    /// [`keybind identifier`]: https://minecraft.fandom.com/wiki/Controls#Configurable_controls
+    pub fn keybind(keybind: impl Into<Cow<'static, str>>) -> Self {
+        Self {
+            content: TextContent::Keybind {
+                keybind: keybind.into(),
+            },
+            ..Self::default()
+        }
+    }
+
     /// Gets this text object as plain text without any formatting.
     pub fn to_plain(&self) -> String {
         let mut res = String::new();
@@ -217,6 +230,7 @@ impl Text {
 
                     w.write_char(')')?;
                 }
+                TextContent::Keybind { keybind } => write!(w, "keybind({keybind})")?,
             }
 
             for child in &this.extra {
@@ -249,6 +263,7 @@ impl Text {
                 name.is_empty() || objective.is_empty()
             }
             TextContent::EntityNames { selector, .. } => selector.is_empty(),
+            TextContent::Keybind { keybind } => keybind.is_empty(),
         }
     }
 }
@@ -480,7 +495,15 @@ enum TextContent {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         separator: Option<Box<Text>>,
     },
-    // TODO: keybind
+    /// Displays the name of the button that is currently bound to a certain
+    /// configurable control on the client.
+    Keybind {
+        /// A [`keybind identifier`], to be displayed as the name of the button
+        /// that is currently bound to that action.
+        ///
+        /// [`keybind identifier`]: https://minecraft.fandom.com/wiki/Controls#Configurable_controls
+        keybind: Cow<'static, str>,
+    },
     // TODO: nbt
 }
 
@@ -897,5 +920,25 @@ mod tests {
         let entity_names = Text::entity_names_with_separator("", Some(""));
         assert!(entity_names.is_empty());
         assert_eq!(entity_names.to_plain(), "entity_names(selector=)");
+    }
+
+    #[test]
+    fn keybind() {
+        let text = Text::keybind("foo");
+        let json = serde_json::to_string(&text).unwrap();
+        let after: Text = serde_json::from_str(&json).unwrap();
+
+        assert!(!text.is_empty());
+        assert_eq!(text, after);
+        assert_eq!(text.to_plain(), after.to_plain());
+        assert_eq!(text.to_plain(), "keybind(foo)");
+        assert_eq!(json, "{\"keybind\":\"foo\"}");
+    }
+
+    #[test]
+    fn empty_keybind() {
+        let entity_names = Text::keybind("");
+        assert!(entity_names.is_empty());
+        assert_eq!(entity_names.to_plain(), "keybind()");
     }
 }
