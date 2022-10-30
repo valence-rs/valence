@@ -35,11 +35,17 @@ impl PacketEncoder {
         }
     }
 
-    pub fn append_packet(&mut self, pkt: &(impl EncodePacket + ?Sized)) -> anyhow::Result<()> {
+    pub fn append_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
+    where
+        P: EncodePacket + ?Sized,
+    {
         self.append_or_prepend_packet::<true>(pkt)
     }
 
-    pub fn prepend_packet(&mut self, pkt: &(impl EncodePacket + ?Sized)) -> anyhow::Result<()> {
+    pub fn prepend_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
+    where
+        P: EncodePacket + ?Sized,
+    {
         self.append_or_prepend_packet::<false>(pkt)
     }
 

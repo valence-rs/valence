@@ -59,6 +59,10 @@ impl ByteSender {
             return Err(TrySendError::Disconnected(bytes));
         }
 
+        if bytes.is_empty() {
+            return Ok(());
+        }
+
         let available = self.shared.limit - lck.bytes.len();
 
         if bytes.len() > available {
@@ -84,6 +88,10 @@ impl ByteSender {
                 return Err(SendError(bytes));
             }
 
+            if bytes.is_empty() {
+                return Ok(());
+            }
+
             let available = self.shared.limit - lck.bytes.len();
 
             if bytes.len() > available {
@@ -93,8 +101,6 @@ impl ByteSender {
                 }
                 drop(lck);
 
-                // Wait until the receiver takes some bytes to try again and see if there's
-                // space for our data.
                 self.shared.notify.notified().await;
             } else {
                 lck.bytes.unsplit(bytes);

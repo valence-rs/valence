@@ -22,6 +22,7 @@ use arrayvec::ArrayVec;
 use bitvec::prelude::*;
 pub use byte_angle::ByteAngle;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+pub use packet_controller::PacketController;
 pub use slot::{Slot, SlotId};
 use uuid::Uuid;
 use valence_nbt::Compound;
@@ -36,7 +37,8 @@ mod byte_angle;
 pub mod byte_channel;
 pub mod codec;
 pub mod codec_new;
-pub mod packets; // TODO: re-export `c2s` and `s2c` and make `packets` private.
+mod packet_controller;
+pub mod packets;
 mod slot;
 mod var_int;
 mod var_long;
