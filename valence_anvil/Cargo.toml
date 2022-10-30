@@ -12,7 +12,7 @@ build = "build/main.rs"
 edition = "2021"
 
 [dependencies]
-valence = {path = ".."}
+valence = {version = "0.1.0+mc1.19.2", path = ".."}
 rayon = "1.5.3"
 async-compression = {version  = "0.3.15", features = ["tokio", "gzip", "zlib"]}
 byteorder = "1"
