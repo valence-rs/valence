@@ -242,7 +242,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         use valence::ident::{Ident,IdentError};
         use std::str::FromStr;
 
-        #[derive(Debug, Clone, PartialEq, PartialOrd)]
+        #[derive(Debug, Clone, PartialEq, Eq, PartialOrd)]
         pub struct SpawnProperty {
             pub name: &'static str,
             pub min_group_size: u32,
