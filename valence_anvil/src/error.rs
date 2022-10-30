@@ -2,57 +2,36 @@ use std::error::Error as StdError;
 use std::fmt::{Display, Formatter};
 use std::io;
 
-use valence::ident::Ident;
+use valence::ident::{Ident, IdentError};
 
-/// Errors that can occur when encoding or decoding.
 #[derive(Debug)]
-pub struct Error {
-    /// Box this to keep the size of `Result<T, Error>` small.
-    cause: Box<Cause>,
+pub enum Error {
+    Io(io::Error),
+    DataFormatError(DataFormatError),
+    NbtParseError(valence::nbt::Error),
+    NbtFormatError(NbtFormatError),
 }
 
-impl Error {
-    pub(crate) fn unknown_compression_scheme(mode: u8) -> Self {
-        Self {
-            cause: Box::new(Cause::Parse(ParseError::UnknownCompressionScheme(mode))),
-        }
-    }
+#[derive(Debug)]
+pub enum NbtFormatError {
+    MissingKey(String),
+    InvalidType(String),
+}
 
-    pub(crate) fn invalid_chunk_size(size: usize) -> Self {
-        Self {
-            cause: Box::new(Cause::Parse(ParseError::InvalidChunkSize(size))),
-        }
-    }
-
-    pub(crate) fn missing_nbt_value(key: &'static str) -> Self {
-        Self {
-            cause: Box::new(Cause::Parse(ParseError::MissingNBT(key))),
-        }
-    }
-
-    pub(crate) fn invalid_nbt(message: &'static str) -> Self {
-        Self {
-            cause: Box::new(Cause::Parse(ParseError::InvalidNBT(message))),
-        }
-    }
-
-    pub(crate) fn invalid_palette() -> Self {
-        Self {
-            cause: Box::new(Cause::Parse(ParseError::InvalidPalette)),
-        }
-    }
-
-    pub(crate) fn unknown_type(ident: Ident<String>) -> Self {
-        Self {
-            cause: Box::new(Cause::Parse(ParseError::UnknownType(ident))),
-        }
-    }
+#[derive(Debug)]
+pub enum DataFormatError {
+    UnknownCompressionScheme(u8),
+    InvalidChunkSize(usize),
+    IdentityError(IdentError<String>),
+    UnknownType(Ident<String>),
+    InvalidChunkState(String),
+    InvalidPalette,
 }
 
 impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        match &*self.cause {
-            Cause::Io(e) => Some(e),
+        match self {
+            Self::Io(e) => Some(e),
             _ => None,
         }
     }
@@ -60,69 +39,55 @@ impl StdError for Error {
 
 impl From<io::Error> for Error {
     fn from(e: io::Error) -> Self {
-        Self {
-            cause: Box::new(Cause::Io(e)),
-        }
+        Self::Io(e)
     }
 }
+
 impl From<valence::nbt::Error> for Error {
     fn from(e: valence::nbt::Error) -> Self {
-        Self {
-            cause: Box::new(Cause::NBT(e)),
-        }
+        Self::NbtParseError(e)
     }
 }
 
 impl From<valence::ident::IdentError<String>> for Error {
     fn from(e: valence::ident::IdentError<String>) -> Self {
-        Self {
-            cause: Box::new(Cause::IdentityError(e)),
-        }
+        Self::DataFormatError(DataFormatError::IdentityError(e))
     }
-}
-
-#[derive(Debug)]
-pub enum Cause {
-    Io(io::Error),
-    Parse(ParseError),
-    NBT(valence::nbt::Error),
-    IdentityError(valence::ident::IdentError<String>),
-}
-
-#[derive(Debug)]
-pub enum ParseError {
-    UnknownCompressionScheme(u8),
-    InvalidChunkSize(usize),
-    MissingNBT(&'static str),
-    InvalidNBT(&'static str),
-    InvalidPalette,
-    UnknownType(Ident<String>),
-}
-
-#[derive(Debug)]
-pub enum SerializeError {
-    //    ChunkTooLarge
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match &*self.cause {
-            Cause::Io(e) => e.fmt(f),
-            Cause::Parse(err) => err.fmt(f),
-            Cause::NBT(e) => e.fmt(f),
-            Cause::IdentityError(e) => e.fmt(f),
+        match self {
+            Error::Io(e) => e.fmt(f),
+            Error::DataFormatError(e) => e.fmt(f),
+            Error::NbtParseError(e) => e.fmt(f),
+            Error::NbtFormatError(e) => e.fmt(f),
         }
     }
 }
 
-impl Display for ParseError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> valence::vek::serde::__private::fmt::Result {
-        write!(f, "Parse failed")
+impl Display for DataFormatError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> valence::prelude::vek::serde::__private::fmt::Result {
+        match self {
+            DataFormatError::UnknownCompressionScheme(scheme) => {
+                write!(f, "Unknown compression scheme: {scheme}")
+            }
+            DataFormatError::InvalidChunkSize(size) => write!(f, "Invalid chunk size: {size}"),
+            DataFormatError::IdentityError(e) => e.fmt(f),
+            DataFormatError::UnknownType(identity) => write!(f, "Unknown identity: {identity}"),
+            DataFormatError::InvalidChunkState(state) => write!(f, "Unknown chunk state: {state}"),
+            DataFormatError::InvalidPalette => write!(f, "Invalid chunk palette"),
+        }
     }
 }
 
-impl Display for SerializeError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> valence::vek::serde::__private::fmt::Result {
-        write!(f, "Serialization failed")
+impl Display for NbtFormatError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> valence::prelude::vek::serde::__private::fmt::Result {
+        match self {
+            NbtFormatError::MissingKey(key) => {
+                write!(f, "Could not find key: \"{key}\" in nbt data.")
+            }
+            NbtFormatError::InvalidType(key) => write!(f, "Unexpected type for key: \"{key}\""),
+        }
     }
 }

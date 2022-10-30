@@ -1,35 +1,25 @@
-mod error;
-mod palette;
-
 use std::collections::BTreeMap;
 use std::fmt::{Debug, Formatter, Result as FmtResult};
-use std::io::SeekFrom;
 use std::path::{Path, PathBuf};
 
-use async_compression::tokio::bufread::ZlibDecoder;
-use async_compression::tokio::write::GzipDecoder;
 use byteorder::{BigEndian, ByteOrder};
+use region::Region;
 use tokio::fs::File;
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeek, AsyncSeekExt, AsyncWriteExt};
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, MutexGuard};
 use valence::biome::BiomeId;
-use valence::block::{BlockKind, BlockState, PropName, PropValue};
-use valence::chunk::{Chunk, ChunkPos, UnloadedChunk};
-use valence::ident::Ident;
-use valence::nbt::{Compound, List, Value};
-
-pub mod biome;
-
+use valence::chunk::{ChunkPos, UnloadedChunk};
 use valence::config::Config;
+use valence::ident::Ident;
 use valence::server::SharedServer;
 
 use crate::error::Error;
-use crate::palette::DataFormat;
 
-pub enum Test {
-    One,
-    Two,
-}
+pub mod error;
+pub mod biome;
+pub mod compression;
+
+mod palette;
+mod region;
 
 #[derive(Debug)]
 pub struct AnvilWorld {
@@ -39,6 +29,31 @@ pub struct AnvilWorld {
 }
 
 impl AnvilWorld {
+    //noinspection ALL
+    ///  Creates an `AnvilWorld` instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `directory`: A path to the world folder. Inside this folder you should
+    ///   see the `region` directory.
+    /// * `server`: The shared server. This is used to initialize which biomes
+    ///   to use.
+    ///
+    /// returns: AnvilWorld
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// impl Config for Game {
+    ///     fn init(&self, server: &mut Server<Self>) {
+    ///         let world_folder = PathBuf::from_str(WORLD_FOLDER).unwrap();
+    ///         server.worlds.insert(
+    ///             DimensionId::default(),
+    ///             AnvilWorld::new(world_folder, &server.shared),
+    ///         );
+    ///     }
+    /// }
+    /// ```
     pub fn new<C: Config>(directory: PathBuf, server: &SharedServer<C>) -> Self {
         let mut biomes = BTreeMap::new();
         for (id, biome) in server.biomes() {
@@ -51,29 +66,57 @@ impl AnvilWorld {
         }
     }
 
-    pub async fn load_chunks<I: IntoIterator<Item = ChunkPos>>(
+    //noinspection ALL
+    /// Load chunks from the available region files within the world directory.
+    /// This operation will temporarily block operations on all region files
+    /// within `AnvilWorld`.
+    ///
+    /// # Arguments
+    ///
+    /// * `positions`: Any iterator of `valence::chunk_pos::ChunkPos`
+    ///
+    /// returns: An iterator of the requested chunk positions and their
+    /// associated chunks
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let to_load = chunks_in_view_distance(ChunkPos::at(p.x, p.z), dist);
+    /// let future = world.state.load_chunks(to_load);
+    /// let parsed_chunks = futures::executor::block_on(future).unwrap();
+    /// for (pos, chunk) in parsed_chunks {
+    ///     if let Some(chunk) = chunk {
+    ///         // A chunk has successfully loaded from the region file.
+    ///         world.chunks.insert(pos, chunk, true);
+    ///     } else {
+    ///         // There is no information on this chunk in the region file.
+    ///         let mut blank_chunk = UnloadedChunk::new(16);
+    ///         blank_chunk.set_block_state(
+    ///             0,
+    ///             0,
+    ///             0,
+    ///             valence::block::BlockState::from_kind(valence::block::BlockKind::Lava),
+    ///         );
+    ///         world.chunks.insert(pos, blank_chunk, true);
+    ///     }
+    /// }
+    /// ```
+    pub async fn load_chunks<I: Iterator<Item = ChunkPos>>(
         &self,
         positions: I,
-    ) -> Result<Vec<(ChunkPos, Option<UnloadedChunk>)>, Error> {
+    ) -> Result<impl IntoIterator<Item = (ChunkPos, Option<UnloadedChunk>)>, Error> {
         let mut map = BTreeMap::<RegionPos, Vec<ChunkPos>>::new();
-        for pos in positions.into_iter() {
+        for pos in positions {
             let region_pos = RegionPos::from(pos);
             map.entry(region_pos)
                 .and_modify(|v| v.push(pos))
-                .or_insert(vec![pos]);
+                .or_insert_with(|| vec![pos]);
         }
 
         let mut result_vec = Vec::<(ChunkPos, Option<UnloadedChunk>)>::new();
         let mut lock = self.region_files.lock().await;
         for (region_pos, chunk_pos_vec) in map.into_iter() {
-            if let Some(region) = lock.entry(region_pos).or_insert({
-                let path = region_pos.path(&self.world_root);
-                if path.exists() {
-                    Some(Region::from_file(File::open(&path).await?, region_pos).await?)
-                } else {
-                    None
-                }
-            }) {
+            if let Some(region) = self.access_region_mut(&mut lock, region_pos).await? {
                 // A region file exists, and it is loaded.
                 result_vec.extend(region.parse_chunks(self, chunk_pos_vec).await?);
             } else {
@@ -82,7 +125,63 @@ impl AnvilWorld {
             }
         }
 
-        Ok(result_vec)
+        Ok(result_vec.into_iter())
+    }
+
+    /// Get the last time the chunk was modified in seconds since epoch.
+    /// This operation will temporarily block operations on all region files
+    /// within `AnvilWorld`.
+    ///
+    /// # Arguments
+    ///
+    /// * `positions`: An iterator of chunk positions
+    ///
+    /// returns: An iterator with `ChunkPos` and the respective
+    /// `Option<ChunkTimestamp>` as tuple.
+    pub async fn chunk_timestamps<I: Iterator<Item = ChunkPos>>(
+        &self,
+        positions: I,
+    ) -> Result<impl IntoIterator<Item = (ChunkPos, Option<ChunkTimestamp>)>, Error> {
+        let mut map = BTreeMap::<RegionPos, Vec<ChunkPos>>::new();
+        for pos in positions {
+            let region_pos = RegionPos::from(pos);
+            map.entry(region_pos)
+                .and_modify(|v| v.push(pos))
+                .or_insert_with(|| vec![pos]);
+        }
+
+        let mut result_vec = Vec::<(ChunkPos, Option<ChunkTimestamp>)>::new();
+        let mut lock = self.region_files.lock().await;
+        for (region_pos, chunk_pos_vec) in map.into_iter() {
+            if let Some(region) = self.access_region_mut(&mut lock, region_pos).await? {
+                for chunk_pos in chunk_pos_vec {
+                    result_vec.push((chunk_pos, region.chunk_timestamp(chunk_pos)));
+                }
+            } else {
+                for chunk_pos in chunk_pos_vec {
+                    result_vec.push((chunk_pos, None));
+                }
+            }
+        }
+        Ok(result_vec.into_iter())
+    }
+
+    async fn access_region_mut<'a>(
+        &self,
+        lock: &'a mut MutexGuard<'_, BTreeMap<RegionPos, Option<Region<File>>>>,
+        region_pos: RegionPos,
+    ) -> Result<Option<&'a mut Region<File>>, Error> {
+        Ok(lock
+            .entry(region_pos)
+            .or_insert({
+                let path = region_pos.path(&self.world_root);
+                if path.exists() {
+                    Some(Region::from_file(File::open(&path).await?, region_pos).await?)
+                } else {
+                    None
+                }
+            })
+            .as_mut())
     }
 }
 
@@ -114,370 +213,14 @@ impl RegionPos {
     }
 }
 
-#[derive(Debug)]
-pub struct Region<S: AsyncRead + AsyncSeek + Unpin> {
-    source: Mutex<S>,
-    offset: u64,
-    position: RegionPos,
-    header: AnvilHeader,
-}
-
-impl Region<File> {
-    /// Convenience method, creates a Region object from the given file and
-    /// position.
-    pub async fn from_file(source: File, position: RegionPos) -> Result<Self, std::io::Error> {
-        Self::from_seek(Mutex::new(source), 0, position).await
-    }
-}
-
-impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
-    /// Creates a Region object using the incoming stream. The offset defines
-    /// the position of the header start.
-    pub async fn from_seek(
-        source: Mutex<S>,
-        offset: u64,
-        position: RegionPos,
-    ) -> Result<Self, std::io::Error> {
-        let mut lock = source.lock().await;
-        lock.seek(SeekFrom::Start(offset)).await?;
-        let header = AnvilHeader::parse(&mut *lock).await?;
-        drop(lock);
-
-        Ok(Self {
-            source,
-            offset,
-            position,
-            header,
-        })
-    }
-
-    /// Get the last time the chunk was modified in seconds since epoch.
-    pub fn chunk_timestamp(&self, chunk_pos: ChunkPos) -> &ChunkTimestamp {
-        self.header
-            .timestamp((chunk_pos.x & 31) as usize, (chunk_pos.z & 31) as usize)
-    }
-
-    async fn read_chunk_data(&self, chunk_pos: ChunkPos) -> Result<Option<Vec<u8>>, Error> {
-        let seek_pos = self
-            .header
-            .offset((chunk_pos.x & 31) as usize, (chunk_pos.z & 31) as usize);
-
-        let mut lock = self.source.lock().await;
-
-        lock.seek(SeekFrom::Start(seek_pos.offset() + self.offset))
-            .await?;
-
-        if seek_pos.len() == 0 {
-            return Ok(None);
-        }
-
-        let compressed_chunk_size = {
-            let mut buf = [0u8; 4];
-            lock.read_exact(&mut buf).await?;
-            BigEndian::read_u32(&buf) as usize
-        };
-
-        if compressed_chunk_size == 0 {
-            return Err(Error::invalid_chunk_size(compressed_chunk_size));
-        }
-
-        let compression = CompressionScheme::from_raw(lock.read_u8().await?)?;
-        let uncompressed_buffer = compression
-            .read_to_vec(&mut *lock, compressed_chunk_size - 1)
-            .await?;
-        Ok(Some(uncompressed_buffer))
-    }
-
-    pub async fn parse_chunks<I: IntoIterator<Item = ChunkPos>>(
-        &self,
-        world: &AnvilWorld,
-        positions: I,
-    ) -> Result<Vec<(ChunkPos, Option<UnloadedChunk>)>, Error> {
-        let mut results = Vec::<(ChunkPos, Option<UnloadedChunk>)>::new();
-
-        for pos in positions.into_iter() {
-            assert!(
-                self.position.contains(pos),
-                "Chunk position {:?} was not found in region {:?}",
-                pos,
-                self.position
-            );
-
-            let chunk_data = self.read_chunk_data(pos).await?;
-            if let Some(chunk_data) = chunk_data {
-                let mut nbt = valence::nbt::from_binary_slice(&mut chunk_data.as_slice())?.0;
-                let parsed_chunk = Self::parse_chunk_nbt(&mut nbt, world)?;
-                results.push((pos, Some(parsed_chunk)));
-            } else {
-                results.push((pos, None));
-            }
-        }
-
-        Ok(results)
-    }
-
-    fn parse_chunk_nbt(nbt: &mut Compound, world: &AnvilWorld) -> Result<UnloadedChunk, Error> {
-        fn take_assume<R>(compound: &mut Compound, key: &'static str) -> Result<R, Error>
-        where
-            Option<R>: From<Value>,
-        {
-            match compound.remove(key) {
-                None => Err(Error::missing_nbt_value(key)),
-                Some(value) => {
-                    if let Some(value) = Option::<R>::from(value) {
-                        Ok(value)
-                    } else {
-                        Err(Error::invalid_nbt(key))
-                    }
-                }
-            }
-        }
-
-        fn take_assume_optional<R>(compound: &mut Compound, key: &'static str) -> Option<R>
-        where
-            Option<R>: From<Value>,
-        {
-            match compound.remove(key) {
-                None => None,
-                Some(value) => Option::<R>::from(value),
-            }
-        }
-
-        // let _chunk_x_pos: i32 = take_assume(nbt, "xPos")?;
-        // let _chunk_y_pos: i32 = take_assume(nbt, "yPos")?;
-        // let _chunk_z_pos: i32 = take_assume(nbt, "zPos")?;
-        //
-        // let _status: String = take_assume(nbt, "Status")?;
-        // let _last_update: i64 = take_assume(nbt, "LastUpdate")?;
-
-        if let Some(Value::List(List::Compound(nbt_sections))) = nbt.remove("sections") {
-            let mut y_max = 0i8;
-            let mut y_min = 0i8;
-
-            for chunk_nbt in nbt_sections.iter() {
-                if let Some(Value::Byte(section_y)) = chunk_nbt.get("Y") {
-                    y_max = y_max.max(*section_y);
-                    y_min = y_min.min(*section_y);
-                } else {
-                    return Err(Error::missing_nbt_value("sections/*/Y"));
-                }
-            }
-
-            // Max should always be equal or higher than 'lower'. Therefore, this is
-            // positive.
-            let section_height = ((y_max as isize - y_min as isize) as usize * 16) + 16;
-            let y_raise = isize::from(-y_min) * 16;
-
-            //Parsing sections
-            let mut chunk = UnloadedChunk::new(section_height);
-            for mut nbt_section in nbt_sections.into_iter() {
-                let chunk_y_offset: isize =
-                    isize::from(take_assume::<i8>(&mut nbt_section, "Y")?) * 16;
-
-                // Block states
-                let mut nbt_block_states: Compound = take_assume(&mut nbt_section, "block_states")?;
-                let parsed_block_state_palette: Vec<BlockState> =
-                    if let Some(Value::List(List::Compound(nbt_palette_vec))) =
-                        nbt_block_states.remove("palette")
-                    {
-                        let mut palette_vec: Vec<BlockState> =
-                            Vec::with_capacity(nbt_palette_vec.len());
-                        for mut nbt_palette in nbt_palette_vec {
-                            let block_id = valence::ident::Ident::new(take_assume::<String>(
-                                &mut nbt_palette,
-                                "Name",
-                            )?)?;
-                            let block_kind =
-                                if let Some(block_kind) = BlockKind::from_str(block_id.path()) {
-                                    block_kind
-                                } else {
-                                    return Err(Error::unknown_type(block_id));
-                                };
-                            let mut block_state = BlockState::from_kind(block_kind);
-                            if let Some(Value::Compound(nbt_palette_properties)) =
-                                nbt_palette.remove("Properties")
-                            {
-                                for (property_name, property_value) in nbt_palette_properties {
-                                    if let Value::String(property_value) = property_value {
-                                        let property_name = PropName::from_str(&property_name);
-                                        let property_value = PropValue::from_str(&property_value);
-                                        if let (Some(property_name), Some(property_value)) =
-                                            (property_name, property_value)
-                                        {
-                                            block_state =
-                                                block_state.set(property_name, property_value);
-                                        } else {
-                                            return Err(Error::invalid_nbt(
-                                                "sections/*/block_states/Properties/*/property \
-                                                 value is not recognized.",
-                                            ));
-                                        }
-                                    } else {
-                                        return Err(Error::invalid_nbt(
-                                            "sections/*/block_states/Properties/*/property value \
-                                             is invalid.",
-                                        ));
-                                    }
-                                }
-                            }
-                            palette_vec.push(block_state);
-                        }
-                        palette_vec
-                    } else {
-                        return Err(Error::invalid_nbt("sections/*/palette"));
-                    };
-
-                // Block state palette
-                palette::parse_palette::<BlockState, _>(
-                    &parsed_block_state_palette,
-                    take_assume_optional(&mut nbt_block_states, "data"),
-                    4,
-                    &mut |data| {
-                        match data {
-                            DataFormat::All(state) => {
-                                if !state.is_air() {
-                                    for x in 0..16 {
-                                        for y in 0..16isize {
-                                            for z in 0..16 {
-                                                chunk.set_block_state(
-                                                    x,
-                                                    (y + chunk_y_offset + y_raise) as usize,
-                                                    z,
-                                                    state,
-                                                );
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            DataFormat::Palette(index, state) => {
-                                let y = (index >> 8 & 0b1111) as isize;
-                                let z = index >> 4 & 0b1111;
-                                let x = index & 0b1111;
-
-                                chunk.set_block_state(
-                                    x,
-                                    (y + chunk_y_offset + y_raise) as usize,
-                                    z,
-                                    state,
-                                );
-                            }
-                        }
-                        Ok(())
-                    },
-                )?;
-
-                // Biome palette
-                let mut nbt_biomes: Compound = take_assume(&mut nbt_section, "biomes")?;
-                let parsed_biome_palette: Vec<BiomeId> =
-                    if let Some(Value::List(List::String(biome_names))) =
-                        nbt_biomes.remove("palette")
-                    {
-                        let mut biomes: Vec<BiomeId> = Vec::with_capacity(biome_names.len());
-                        for biome in biome_names {
-                            let biome_identity = Ident::new(biome)?;
-                            if let Some(biome) = world.biomes.get(&biome_identity) {
-                                biomes.push(*biome);
-                            } else {
-                                return Err(Error::invalid_nbt(
-                                    "sections/*/palette/ Unknown biome",
-                                ));
-                            }
-                        }
-                        biomes
-                    } else {
-                        return Err(Error::invalid_nbt("sections/*/palette."));
-                    };
-
-                palette::parse_palette::<BiomeId, _>(
-                    &parsed_biome_palette,
-                    take_assume_optional(&mut nbt_biomes, "data"),
-                    0,
-                    &mut |data| {
-                        match data {
-                            DataFormat::All(biome) => {
-                                for x in 0..4 {
-                                    for y in 0..4isize {
-                                        for z in 0..4 {
-                                            chunk.set_biome(
-                                                x,
-                                                (y + (chunk_y_offset / 4) + (y_raise / 4)) as usize,
-                                                z,
-                                                biome,
-                                            );
-                                        }
-                                    }
-                                }
-                            }
-                            DataFormat::Palette(index, biome) => {
-                                let y = (index >> 4 & 0b11) as isize;
-                                let z = index >> 2 & 0b11;
-                                let x = index & 0b11;
-
-                                let final_y = y + (chunk_y_offset / 4) + (y_raise / 4);
-                                chunk.set_biome(x, final_y as usize, z, biome);
-                            }
-                        }
-                        Ok(())
-                    },
-                )?;
-            }
-
-            //sections
-
-            Ok(chunk)
-        } else {
-            return Err(Error::invalid_nbt("sections tag invalid."));
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
-struct AnvilHeader {
-    offsets: [ChunkLocation; 1024],
-    timestamps: [ChunkTimestamp; 1024],
-}
-
-impl AnvilHeader {
-    /// Parses the header bytes from the current position
-    async fn parse<R: AsyncRead + Unpin>(source: &mut R) -> Result<Self, std::io::Error> {
-        let mut offsets = [ChunkLocation::zero(); 1024];
-        for offset in &mut offsets {
-            let mut buf = [0u8; 4];
-            source.read_exact(&mut buf).await?;
-            offset.load(buf);
-        }
-        let mut timestamps = [ChunkTimestamp::zero(); 1024];
-        for timestamp in &mut timestamps {
-            let mut buf = [0u8; 4];
-            source.read_exact(&mut buf).await?;
-            timestamp.load(buf);
-        }
-        Ok(Self {
-            offsets,
-            timestamps,
-        })
-    }
-
-    #[inline(always)]
-    fn offset(&self, x: usize, z: usize) -> &ChunkLocation {
-        &self.offsets[(x & 0b11111) + ((z & 0b11111) * 32)]
-    }
-
-    #[inline(always)]
-    fn timestamp(&self, x: usize, z: usize) -> &ChunkTimestamp {
-        &self.timestamps[(x & 0b11111) + ((z & 0b11111) * 32)]
-    }
-}
-
 /// The location of the chunk inside the region file.
 #[derive(Copy, Clone, Debug)]
-struct ChunkLocation {
+struct ChunkSeekLocation {
     offset_sectors: u32,
     len_sectors: u8,
 }
 
-impl ChunkLocation {
+impl ChunkSeekLocation {
     const fn zero() -> Self {
         Self {
             offset_sectors: 0,
@@ -518,50 +261,16 @@ impl ChunkTimestamp {
         self.0 = BigEndian::read_u32(&chunk)
     }
 
+    fn into_option(self) -> Option<Self> {
+        if self.0 == 0 {
+            None
+        } else {
+            Some(self)
+        }
+    }
+
     #[inline(always)]
-    pub fn seconds_since_epoch(&self) -> u32 {
+    pub fn seconds_since_epoch(self) -> u32 {
         self.0
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-enum CompressionScheme {
-    GZip = 1,
-    Zlib = 2,
-    Raw = 3,
-}
-
-impl CompressionScheme {
-    fn from_raw(mode: u8) -> Result<Self, Error> {
-        match mode {
-            1 => Ok(Self::GZip),
-            2 => Ok(Self::Zlib),
-            3 => Ok(Self::Raw),
-            mode => Err(Error::unknown_compression_scheme(mode)),
-        }
-    }
-
-    async fn read_to_vec<R: AsyncRead + Unpin>(
-        self,
-        source: &mut R,
-        length: usize,
-    ) -> Result<Vec<u8>, std::io::Error> {
-        let mut raw_data = vec![0u8; length];
-        source.read_exact(&mut raw_data).await?;
-        match self {
-            CompressionScheme::GZip => {
-                let mut decoder = GzipDecoder::new(Vec::<u8>::new());
-                decoder.write_all(&mut raw_data).await?;
-                decoder.shutdown().await?;
-                Ok(decoder.into_inner())
-            }
-            CompressionScheme::Zlib => {
-                let mut decoder = ZlibDecoder::new(std::io::Cursor::new(raw_data));
-                let mut vec = Vec::<u8>::new();
-                decoder.read_to_end(&mut vec).await?;
-                Ok(vec)
-            }
-            CompressionScheme::Raw => Ok(raw_data),
-        }
     }
 }

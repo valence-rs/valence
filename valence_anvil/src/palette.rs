@@ -1,6 +1,6 @@
 use std::ops::BitXor;
 
-use crate::error::Error;
+use crate::error::{DataFormatError, Error};
 
 pub enum DataFormat<T> {
     All(T),
@@ -28,9 +28,9 @@ pub fn parse_palette<T: Copy, F: (FnMut(DataFormat<T>) -> Result<(), Error>)>(
 
             let mut entry_mask = (u64::MAX << bits_per_index).bitxor(u64::MAX);
             let mut mask_fields: Vec<(u64, usize)> = vec![(0u64, 0usize); entries_per_integer];
-            for i in 0..mask_fields.len() {
-                mask_fields[i] = (entry_mask, (i * bits_per_index));
-                entry_mask = entry_mask << bits_per_index;
+            for (i, mask_field) in mask_fields.iter_mut().enumerate() {
+                *mask_field = (entry_mask, (i * bits_per_index));
+                entry_mask <<= bits_per_index;
             }
 
             let mut index: usize = 0;
@@ -49,7 +49,9 @@ pub fn parse_palette<T: Copy, F: (FnMut(DataFormat<T>) -> Result<(), Error>)>(
                         //panic!("############### INVALID: {:?} {:?} {:?} {:?} {:?}",
                         // palette_index_shifted, choice_len,
                         // bits_per_index, source, source.len());
-                        return Err(crate::error::Error::invalid_palette());
+                        return Err(crate::error::Error::DataFormatError(
+                            DataFormatError::InvalidPalette,
+                        ));
                     } else {
                         fun(DataFormat::Palette(index, source[palette_index_shifted]))?;
                         index += 1;

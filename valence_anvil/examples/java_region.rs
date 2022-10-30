@@ -33,7 +33,12 @@ struct Game {
 }
 
 const MAX_PLAYERS: usize = 10;
-const WORLD_FOLDER: &'static str = "./test_data/";
+
+/// # IMPORTANT
+/// Change the following to the world file you wish to load.
+/// Inside this folder you should see `advancements`, `DIM1`, `DIM-1` and most
+/// importantly `region` directories. Only the `region` directory is accessed.
+const WORLD_FOLDER: &str = "./test_data/";
 
 #[async_trait]
 impl Config for Game {
@@ -146,16 +151,18 @@ impl Config for Game {
             let dist = client.view_distance();
             let p = client.position();
 
-            let new_chunks = chunks_in_view_distance(ChunkPos::at(p.x, p.z), dist).filter(|pos| {
-                if let Some(existing) = world.chunks.get_mut(*pos) {
+            let required_chunks = chunks_in_view_distance(ChunkPos::at(p.x, p.z), dist);
+            let mut new_chunks = Vec::new();
+            for pos in required_chunks {
+                if let Some(existing) = world.chunks.get_mut(pos) {
                     existing.state = true;
-                    false
                 } else {
-                    true
+                    new_chunks.push(pos);
                 }
-            });
+            }
 
-            let future = world.state.load_chunks(new_chunks);
+            let future = world.state.load_chunks(new_chunks.into_iter());
+
             let parsed_chunks = futures::executor::block_on(future).unwrap();
             for (pos, chunk) in parsed_chunks {
                 if let Some(chunk) = chunk {
