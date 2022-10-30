@@ -14,9 +14,9 @@ use valence::server::SharedServer;
 
 use crate::error::Error;
 
-pub mod error;
 pub mod biome;
 pub mod compression;
+pub mod error;
 
 mod palette;
 mod region;
