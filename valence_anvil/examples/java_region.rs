@@ -131,7 +131,7 @@ impl Config for Game {
                     );
                 }
 
-                client.send_message("Welcome to the terrain example!".italic());
+                client.send_message("Welcome to the java chunk parsing example!".italic());
             }
 
             if client.is_disconnected() {
