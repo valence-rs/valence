@@ -111,7 +111,7 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
             if let Some(chunk_data) = chunk_data {
                 let mut nbt = valence::nbt::from_binary_slice(&mut chunk_data.as_slice())?.0;
                 match Self::parse_chunk_nbt(&mut nbt, world) {
-                    Err(Error::NbtParseError(_)) => {
+                    Err(Error::DataFormatError(DataFormatError::InvalidChunkState(..))) => {
                         results.push((pos, None));
                     }
                     Err(e) => return Err(e),
