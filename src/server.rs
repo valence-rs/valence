@@ -10,6 +10,7 @@ use std::{io, thread};
 
 use anyhow::{ensure, Context};
 use flume::{Receiver, Sender};
+pub(crate) use packet_controller::PlayPacketController;
 use rand::rngs::OsRng;
 use rayon::iter::ParallelIterator;
 use reqwest::Client as HttpClient;
@@ -43,7 +44,9 @@ use crate::username::Username;
 use crate::world::Worlds;
 use crate::{ident, Ticks, PROTOCOL_VERSION, VERSION_NAME};
 
+mod byte_channel;
 mod login;
+mod packet_controller;
 
 /// Contains the entire state of a running Minecraft server, accessible from
 /// within the [update](crate::config::Config::update) loop.

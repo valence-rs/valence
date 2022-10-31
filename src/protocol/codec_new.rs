@@ -293,8 +293,16 @@ impl PacketDecoder {
         self.buf.unsplit(bytes);
     }
 
+    pub fn queue_slice(&mut self, bytes: &[u8]) {
+        let len = self.buf.len();
+        self.buf.extend_from_slice(bytes);
+        if let Some(cipher) = &mut self.cipher {
+            cipher.decrypt(&mut self.buf[len..]);
+        }
+    }
+
     pub fn take_capacity(&mut self) -> BytesMut {
-        self.buf.split_to(self.buf.len())
+        self.buf.split_off(self.buf.len())
     }
 
     pub fn reserve(&mut self, additional: usize) {

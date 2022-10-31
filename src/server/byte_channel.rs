@@ -82,31 +82,32 @@ impl ByteSender {
 
     pub async fn send_async(&mut self, mut bytes: BytesMut) -> Result<(), SendError> {
         loop {
-            let mut lck = self.shared.mtx.lock().unwrap();
+            {
+                let mut lck = self.shared.mtx.lock().unwrap();
 
-            if lck.disconnected {
-                return Err(SendError(bytes));
-            }
+                if lck.disconnected {
+                    return Err(SendError(bytes));
+                }
 
-            if bytes.is_empty() {
-                return Ok(());
-            }
+                if bytes.is_empty() {
+                    return Ok(());
+                }
 
-            let available = self.shared.limit - lck.bytes.len();
+                let available = self.shared.limit - lck.bytes.len();
 
-            if bytes.len() > available {
+                if bytes.len() <= available {
+                    lck.bytes.unsplit(bytes);
+                    self.shared.notify.notify_waiters();
+                    return Ok(());
+                }
+
                 if available > 0 {
                     lck.bytes.unsplit(bytes.split_to(available));
                     self.shared.notify.notify_waiters();
                 }
-                drop(lck);
-
-                self.shared.notify.notified().await;
-            } else {
-                lck.bytes.unsplit(bytes);
-                self.shared.notify.notify_waiters();
-                return Ok(());
             }
+
+            self.shared.notify.notified().await;
         }
     }
 
