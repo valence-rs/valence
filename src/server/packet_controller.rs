@@ -75,6 +75,7 @@ where
         .await?
     }
 
+    #[allow(dead_code)]
     pub fn set_compression(&mut self, threshold: Option<u32>) {
         self.enc.set_compression(threshold);
         self.dec.set_compression(threshold.is_some());
@@ -192,6 +193,7 @@ impl PlayPacketController {
         }
     }
 
+    #[allow(dead_code)]
     pub fn set_compression(&mut self, threshold: Option<u32>) {
         self.enc.set_compression(threshold)
     }

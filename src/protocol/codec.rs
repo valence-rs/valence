@@ -18,6 +18,7 @@ use crate::protocol::{Decode, Encode, VarInt, MAX_PACKET_SIZE};
 /// operation.
 type Cipher = Cfb8<Aes128>;
 
+#[derive(Default)]
 pub struct PacketEncoder {
     buf: BytesMut,
     compress_buf: Vec<u8>,
@@ -27,12 +28,7 @@ pub struct PacketEncoder {
 
 impl PacketEncoder {
     pub fn new() -> Self {
-        Self {
-            buf: BytesMut::new(),
-            compress_buf: Vec::new(),
-            compression_threshold: None,
-            cipher: None,
-        }
+        Self::default()
     }
 
     pub fn append_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
@@ -189,6 +185,7 @@ fn move_forward_by(bytes: &mut BytesMut, count: usize) -> &mut [u8] {
     &mut bytes[..count]
 }
 
+#[derive(Default)]
 pub struct PacketDecoder {
     buf: BytesMut,
     decompress_buf: Vec<u8>,
@@ -198,12 +195,7 @@ pub struct PacketDecoder {
 
 impl PacketDecoder {
     pub fn new() -> Self {
-        Self {
-            buf: BytesMut::new(),
-            decompress_buf: Vec::new(),
-            compression: false,
-            cipher: None,
-        }
+        Self::default()
     }
 
     pub fn try_next_packet<P>(&mut self) -> anyhow::Result<Option<P>>
