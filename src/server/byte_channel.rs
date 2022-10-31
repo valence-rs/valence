@@ -116,11 +116,11 @@ impl ByteSender {
     }
 }
 
+/// Contains any excess bytes not sent.
 #[derive(Clone, PartialEq, Eq, Debug, Error)]
 pub enum TrySendError {
     #[error("sender disconnected")]
     Disconnected(BytesMut),
-    /// Contains any excess bytes not sent.
     #[error("channel full")]
     Full(BytesMut),
 }

@@ -14,9 +14,10 @@ use vek::{Aabb, Vec3};
 use crate::config::Config;
 use crate::entity::types::{Facing, PaintingKind, Pose};
 use crate::protocol::packets::s2c::play::{
-    S2cPlayPacket, SetEntityMetadata, SetHeadRotation, SpawnEntity, SpawnExperienceOrb, SpawnPlayer,
+    SetEntityMetadata, SetHeadRotation, SpawnEntity, SpawnExperienceOrb, SpawnPlayer,
 };
 use crate::protocol::{ByteAngle, RawBytes, VarInt};
+use crate::server::PlayPacketController;
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::util::aabb_from_bottom_and_size;
 use crate::world::WorldId;
@@ -741,71 +742,67 @@ impl<C: Config> Entity<C> {
     pub(crate) fn spawn_packets(
         &self,
         this_id: EntityId,
-        mut push_packet: impl FnMut(S2cPlayPacket),
-    ) {
-        let with_object_data = |data| {
-            S2cPlayPacket::from(SpawnEntity {
-                entity_id: VarInt(this_id.to_network_id()),
-                object_uuid: self.uuid,
-                kind: VarInt(self.kind() as i32),
-                position: self.new_position,
-                pitch: ByteAngle::from_degrees(self.pitch),
-                yaw: ByteAngle::from_degrees(self.yaw),
-                head_yaw: ByteAngle::from_degrees(self.head_yaw),
-                data: VarInt(data),
-                velocity: velocity_to_packet_units(self.velocity),
-            })
+        ctrl: &mut PlayPacketController,
+    ) -> anyhow::Result<()> {
+        let with_object_data = |data| SpawnEntity {
+            entity_id: VarInt(this_id.to_network_id()),
+            object_uuid: self.uuid,
+            kind: VarInt(self.kind() as i32),
+            position: self.new_position,
+            pitch: ByteAngle::from_degrees(self.pitch),
+            yaw: ByteAngle::from_degrees(self.yaw),
+            head_yaw: ByteAngle::from_degrees(self.head_yaw),
+            data: VarInt(data),
+            velocity: velocity_to_packet_units(self.velocity),
         };
 
         match &self.variants {
             TrackedData::Marker(_) => {}
-            TrackedData::ExperienceOrb(_) => push_packet(
-                SpawnExperienceOrb {
-                    entity_id: VarInt(this_id.to_network_id()),
-                    position: self.new_position,
-                    count: 0, // TODO
-                }
-                .into(),
-            ),
+            TrackedData::ExperienceOrb(_) => ctrl.append_packet(&SpawnExperienceOrb {
+                entity_id: VarInt(this_id.to_network_id()),
+                position: self.new_position,
+                count: 0, // TODO
+            })?,
             TrackedData::Player(_) => {
-                push_packet(
-                    SpawnPlayer {
-                        entity_id: VarInt(this_id.to_network_id()),
-                        player_uuid: self.uuid,
-                        position: self.new_position,
-                        yaw: ByteAngle::from_degrees(self.yaw),
-                        pitch: ByteAngle::from_degrees(self.pitch),
-                    }
-                    .into(),
-                );
+                ctrl.append_packet(&SpawnPlayer {
+                    entity_id: VarInt(this_id.to_network_id()),
+                    player_uuid: self.uuid,
+                    position: self.new_position,
+                    yaw: ByteAngle::from_degrees(self.yaw),
+                    pitch: ByteAngle::from_degrees(self.pitch),
+                })?;
 
                 // Player spawn packet doesn't include head yaw for some reason.
-                push_packet(
-                    SetHeadRotation {
-                        entity_id: VarInt(this_id.to_network_id()),
-                        head_yaw: ByteAngle::from_degrees(self.head_yaw),
-                    }
-                    .into(),
-                );
+                ctrl.append_packet(&SetHeadRotation {
+                    entity_id: VarInt(this_id.to_network_id()),
+                    head_yaw: ByteAngle::from_degrees(self.head_yaw),
+                })?;
             }
-            TrackedData::ItemFrame(e) => push_packet(with_object_data(e.get_rotation())),
-            TrackedData::GlowItemFrame(e) => push_packet(with_object_data(e.get_rotation())),
-            TrackedData::Painting(_) => push_packet(with_object_data(
+            TrackedData::ItemFrame(e) => ctrl.append_packet(&with_object_data(e.get_rotation()))?,
+            TrackedData::GlowItemFrame(e) => {
+                ctrl.append_packet(&with_object_data(e.get_rotation()))?
+            }
+
+            TrackedData::Painting(_) => ctrl.append_packet(&with_object_data(
                 match ((self.yaw + 45.0).rem_euclid(360.0) / 90.0) as u8 {
                     0 => 3,
                     1 => 4,
                     2 => 2,
                     _ => 5,
                 },
-            )),
+            ))?,
             // TODO: set block state ID for falling block.
-            TrackedData::FallingBlock(_) => push_packet(with_object_data(1)),
-            TrackedData::FishingBobber(e) => push_packet(with_object_data(e.get_hook_entity_id())),
-            TrackedData::Warden(e) => {
-                push_packet(with_object_data((e.get_pose() == Pose::Emerging).into()))
+            TrackedData::FallingBlock(_) => ctrl.append_packet(&with_object_data(1))?,
+            TrackedData::FishingBobber(e) => {
+                ctrl.append_packet(&with_object_data(e.get_hook_entity_id()))?
             }
-            _ => push_packet(with_object_data(0)),
+            TrackedData::Warden(e) => {
+                ctrl.append_packet(&with_object_data((e.get_pose() == Pose::Emerging).into()))?
+            }
+            _ => ctrl.append_packet(&with_object_data(0))?,
         }
+
+        Ok(())
     }
 }
 

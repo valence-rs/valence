@@ -13,6 +13,7 @@ use rsa::PaddingScheme;
 use serde::Deserialize;
 use sha1::Sha1;
 use sha2::{Digest, Sha256};
+use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use uuid::Uuid;
 
 use crate::config::Config;
@@ -26,7 +27,8 @@ use crate::protocol::packets::s2c::login::{
 };
 use crate::protocol::packets::Property;
 use crate::protocol::{BoundedArray, Decode, RawBytes, VarInt};
-use crate::server::{Codec, NewClientData, SharedServer};
+use crate::server::packet_controller::InitialPacketController;
+use crate::server::{NewClientData, SharedServer};
 use crate::text::Text;
 use crate::username::Username;
 
@@ -34,24 +36,23 @@ use crate::username::Username;
 /// [`ConnectionMode::Online`](crate::config::ConnectionMode).
 pub(super) async fn online(
     server: &SharedServer<impl Config>,
-    c: &mut Codec,
+    ctrl: &mut InitialPacketController<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
     username: Username<String>,
 ) -> anyhow::Result<NewClientData> {
     let my_verify_token: [u8; 16] = rand::random();
 
-    c.enc
-        .write_packet(&EncryptionRequest {
-            server_id: Default::default(), // Always empty
-            public_key: server.0.public_key_der.to_vec(),
-            verify_token: my_verify_token.to_vec().into(),
-        })
-        .await?;
+    ctrl.send_packet(&EncryptionRequest {
+        server_id: Default::default(), // Always empty
+        public_key: server.0.public_key_der.to_vec(),
+        verify_token: my_verify_token.to_vec().into(),
+    })
+    .await?;
 
     let EncryptionResponse {
         shared_secret: BoundedArray(encrypted_shared_secret),
         token_or_sig,
-    } = c.dec.read_packet().await?;
+    } = ctrl.recv_packet().await?;
 
     let shared_secret = server
         .0
@@ -81,8 +82,7 @@ pub(super) async fn online(
         .try_into()
         .context("shared secret has the wrong length")?;
 
-    c.enc.enable_encryption(&crypt_key);
-    c.dec.enable_encryption(&crypt_key);
+    ctrl.enable_encryption(&crypt_key);
 
     #[derive(Debug, Deserialize)]
     struct AuthResponse {
@@ -109,7 +109,7 @@ pub(super) async fn online(
         StatusCode::OK => {}
         StatusCode::NO_CONTENT => {
             let reason = Text::translate("multiplayer.disconnect.unverified_username");
-            c.enc.write_packet(&DisconnectLogin { reason }).await?;
+            ctrl.send_packet(&DisconnectLogin { reason }).await?;
             bail!("session server could not verify username");
         }
         status => {
@@ -200,7 +200,7 @@ fn auth_digest(bytes: &[u8]) -> String {
 }
 
 pub(super) async fn velocity(
-    c: &mut Codec,
+    ctrl: &mut InitialPacketController<OwnedReadHalf, OwnedWriteHalf>,
     username: Username<String>,
     velocity_secret: &str,
 ) -> anyhow::Result<NewClientData> {
@@ -210,16 +210,15 @@ pub(super) async fn velocity(
     let message_id = 0;
 
     // Send Player Info Request into the Plugin Channel
-    c.enc
-        .write_packet(&LoginPluginRequest {
-            message_id: VarInt(message_id),
-            channel: ident!("velocity:player_info"),
-            data: RawBytes(vec![VELOCITY_MIN_SUPPORTED_VERSION]),
-        })
-        .await?;
+    ctrl.send_packet(&LoginPluginRequest {
+        message_id: VarInt(message_id),
+        channel: ident!("velocity:player_info"),
+        data: RawBytes(vec![VELOCITY_MIN_SUPPORTED_VERSION]),
+    })
+    .await?;
 
     // Get Response
-    let plugin_response: LoginPluginResponse = c.dec.read_packet().await?;
+    let plugin_response: LoginPluginResponse = ctrl.recv_packet().await?;
 
     ensure!(
         plugin_response.message_id.0 == message_id,

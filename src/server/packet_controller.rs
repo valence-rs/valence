@@ -6,7 +6,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 
-use crate::protocol::codec_new::{PacketDecoder, PacketEncoder};
+use crate::protocol::codec::{PacketDecoder, PacketEncoder};
 use crate::protocol::packets::{DecodePacket, EncodePacket};
 use crate::server::byte_channel::{byte_channel, ByteReceiver, ByteSender, TryRecvError};
 
@@ -73,6 +73,16 @@ where
             }
         })
         .await?
+    }
+
+    pub fn set_compression(&mut self, threshold: Option<u32>) {
+        self.enc.set_compression(threshold);
+        self.dec.set_compression(threshold.is_some());
+    }
+
+    pub fn enable_encryption(&mut self, key: &[u8; 16]) {
+        self.enc.enable_encryption(key);
+        self.dec.enable_encryption(key);
     }
 
     pub fn into_play_packet_controller(
