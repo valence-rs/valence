@@ -333,7 +333,6 @@ impl<C: Config> Client<C> {
                     pkt.packet_name(),
                     &self.username
                 );
-                // TODO: send disconnect packet.
                 self.ctrl = None;
             }
         }
@@ -871,7 +870,6 @@ impl<C: Config> Client<C> {
                                 "failed to handle {name} packet from client {}: {e:#}",
                                 &self.username
                             );
-                            // TODO: send disconnect packet.
                             return;
                         }
                     }
@@ -884,7 +882,6 @@ impl<C: Config> Client<C> {
                             "failed to read next serverbound packet from client {}: {e:#}",
                             &self.username
                         );
-                        // TODO: send disconnect packet.
                         return;
                     }
                 }
@@ -1193,7 +1190,6 @@ impl<C: Config> Client<C> {
                 Ok(()) => self.ctrl = Some(ctrl),
                 Err(e) => {
                     log::warn!("error updating client '{}': {e:#}", &self.username);
-                    // TODO: send disconnect packet.
                 }
             }
         }
@@ -1225,10 +1221,6 @@ impl<C: Config> Client<C> {
         if self.created_this_tick() {
             self.bits.set_spawn(false);
 
-            if let Some(id) = &self.player_list {
-                player_lists.get(id).initial_packets(ctrl)?;
-            }
-
             let mut dimension_names: Vec<_> = shared
                 .dimensions()
                 .map(|(id, _)| id.dimension_name())
@@ -1236,7 +1228,10 @@ impl<C: Config> Client<C> {
 
             dimension_names.push(ident!("{LIBRARY_NAMESPACE}:dummy_dimension"));
 
-            ctrl.append_packet(&LoginPlay {
+            // The login packet is prepended so that it is sent before all the other
+            // packets. Some packets don't work correctly when sent before the login packet,
+            // which is why we're doing this.
+            ctrl.prepend_packet(&LoginPlay {
                 entity_id: 0, // EntityId 0 is reserved for clients.
                 is_hardcore: self.bits.hardcore(),
                 gamemode: self.new_game_mode,
@@ -1257,6 +1252,10 @@ impl<C: Config> Client<C> {
                     .death_location
                     .map(|(id, pos)| (id.dimension_name(), pos)),
             })?;
+
+            if let Some(id) = &self.player_list {
+                player_lists.get(id).initial_packets(ctrl)?;
+            }
 
             self.teleport(self.position(), self.yaw(), self.pitch());
         } else {
