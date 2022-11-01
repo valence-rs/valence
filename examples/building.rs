@@ -199,20 +199,20 @@ impl Config for Game {
                                 if let Some(held_block_kind) = stack.item.to_block_kind() {
                                     let block_to_place = BlockState::from_kind(held_block_kind);
 
-                                    if world
-                                        .chunks
-                                        .block_state(location)
-                                        .map(|s| s.is_replaceable())
-                                        .unwrap_or(false)
+                                    if client.game_mode() == GameMode::Creative
+                                        || client.consume_held_item(1).is_ok()
                                     {
-                                        world.chunks.set_block_state(location, block_to_place);
-                                    } else {
-                                        let place_at = location.get_in_direction(face);
-                                        world.chunks.set_block_state(place_at, block_to_place);
-                                    }
-
-                                    if client.game_mode() != GameMode::Creative {
-                                        client.consume_one_held_item();
+                                        if world
+                                            .chunks
+                                            .block_state(location)
+                                            .map(|s| s.is_replaceable())
+                                            .unwrap_or(false)
+                                        {
+                                            world.chunks.set_block_state(location, block_to_place);
+                                        } else {
+                                            let place_at = location.get_in_direction(face);
+                                            world.chunks.set_block_state(place_at, block_to_place);
+                                        }
                                     }
                                 }
                             }

@@ -794,9 +794,10 @@ impl<C: Config> Client<C> {
         self.inventory.slot(self.selected_hotbar_slot)
     }
 
-    /// Consume a single item from the stack that the client is holding.
-    pub fn consume_one_held_item(&mut self) -> Result<(), ()> {
-        self.inventory.consume(self.selected_hotbar_slot, 1)
+    /// Consume items from the stack in the client's inventory that the client
+    /// is holding.
+    pub fn consume_held_item(&mut self, amount: impl Into<u8>) -> Result<(), ()> {
+        self.inventory.consume(self.selected_hotbar_slot, amount)
     }
 
     /// Makes the client open a window displaying the given inventory.
