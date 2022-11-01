@@ -1,7 +1,8 @@
-use std::io::Write;
+use std::io::{Read, Write};
 
 use anyhow::bail;
 use byteorder::{ReadBytesExt, WriteBytesExt};
+use thiserror::Error;
 
 use crate::protocol::{Decode, Encode};
 
@@ -13,12 +14,31 @@ impl VarInt {
     /// The maximum number of bytes a VarInt could occupy when read from and
     /// written to the Minecraft protocol.
     pub const MAX_SIZE: usize = 5;
+
+    pub(crate) fn decode_partial(mut r: impl Read) -> Result<i32, VarIntDecodeError> {
+        let mut val = 0;
+        for i in 0..Self::MAX_SIZE {
+            let byte = r.read_u8().map_err(|_| VarIntDecodeError::Incomplete)?;
+            val |= (byte as i32 & 0b01111111) << (i * 7);
+            if byte & 0b10000000 == 0 {
+                return Ok(val);
+            }
+        }
+
+        Err(VarIntDecodeError::TooLarge)
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Error)]
+pub(crate) enum VarIntDecodeError {
+    #[error("incomplete VarInt decode")]
+    Incomplete,
+    #[error("VarInt is too large")]
+    TooLarge,
 }
 
 impl Encode for VarInt {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        // TODO: optimize this.
-
         let mut val = self.0 as u32;
         loop {
             if val & 0b11111111111111111111111110000000 == 0 {

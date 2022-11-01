@@ -17,8 +17,6 @@ impl VarLong {
 
 impl Encode for VarLong {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        // TODO: optimize this.
-
         let mut val = self.0 as u64;
         loop {
             if val & 0b1111111111111111111111111111111111111111111111111111111110000000 == 0 {

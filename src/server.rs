@@ -10,6 +10,7 @@ use std::{io, thread};
 
 use anyhow::{ensure, Context};
 use flume::{Receiver, Sender};
+pub(crate) use packet_controller::PlayPacketController;
 use rand::rngs::OsRng;
 use rayon::iter::ParallelIterator;
 use reqwest::Client as HttpClient;
@@ -18,7 +19,7 @@ use serde_json::{json, Value};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::{Handle, Runtime};
-use tokio::sync::{oneshot, Semaphore};
+use tokio::sync::Semaphore;
 use uuid::Uuid;
 use valence_nbt::{compound, Compound, List};
 
@@ -30,20 +31,21 @@ use crate::entity::Entities;
 use crate::inventory::Inventories;
 use crate::player_list::PlayerLists;
 use crate::player_textures::SignedPlayerTextures;
-use crate::protocol::codec::{Decoder, Encoder};
+use crate::protocol::codec::{PacketDecoder, PacketEncoder};
 use crate::protocol::packets::c2s::handshake::{Handshake, HandshakeNextState};
 use crate::protocol::packets::c2s::login::LoginStart;
-use crate::protocol::packets::c2s::play::C2sPlayPacket;
 use crate::protocol::packets::c2s::status::{PingRequest, StatusRequest};
 use crate::protocol::packets::s2c::login::{DisconnectLogin, LoginSuccess, SetCompression};
-use crate::protocol::packets::s2c::play::S2cPlayPacket;
 use crate::protocol::packets::s2c::status::{PingResponse, StatusResponse};
 use crate::protocol::VarInt;
+use crate::server::packet_controller::InitialPacketController;
 use crate::username::Username;
 use crate::world::Worlds;
 use crate::{ident, Ticks, PROTOCOL_VERSION, VERSION_NAME};
 
+mod byte_channel;
 mod login;
+mod packet_controller;
 
 /// Contains the entire state of a running Minecraft server, accessible from
 /// within the [update](crate::config::Config::update) loop.
@@ -64,7 +66,7 @@ pub struct Server<C: Config> {
 }
 
 /// A handle to a Minecraft server containing the subset of functionality which
-/// is accessible outside the [update][update] loop.
+/// is accessible outside the [update] loop.
 ///
 /// `SharedServer`s are internally refcounted and can
 /// be shared between threads.
@@ -84,8 +86,8 @@ struct SharedServerInner<C: Config> {
     tick_rate: Ticks,
     connection_mode: ConnectionMode,
     max_connections: usize,
-    incoming_packet_capacity: usize,
-    outgoing_packet_capacity: usize,
+    incoming_capacity: usize,
+    outgoing_capacity: usize,
     tokio_handle: Handle,
     /// Store this here so we don't drop it.
     _tokio_runtime: Option<Runtime>,
@@ -116,6 +118,7 @@ struct SharedServerInner<C: Config> {
 }
 
 /// Contains information about a new client.
+#[non_exhaustive]
 pub struct NewClientData {
     /// The UUID of the new client.
     pub uuid: Uuid,
@@ -130,30 +133,11 @@ pub struct NewClientData {
 
 struct NewClientMessage {
     ncd: NewClientData,
-    reply: oneshot::Sender<S2cPacketChannels>,
+    ctrl: PlayPacketController,
 }
 
 /// The result type returned from [`start_server`].
 pub type ShutdownResult = Result<(), Box<dyn Error + Send + Sync + 'static>>;
-
-pub(crate) type S2cPacketChannels = (Sender<C2sPlayPacket>, Receiver<S2cPlayMessage>);
-pub(crate) type C2sPacketChannels = (Sender<S2cPlayMessage>, Receiver<C2sPlayPacket>);
-
-/// Messages sent to packet encoders.
-#[allow(clippy::large_enum_variant)]
-#[derive(Clone, Debug)]
-pub(crate) enum S2cPlayMessage {
-    /// Queue a play packet for sending.
-    Queue(S2cPlayPacket),
-    /// Instructs the encoder to flush all queued packets to the TCP stream.
-    Flush,
-}
-
-impl<P: Into<S2cPlayPacket>> From<P> for S2cPlayMessage {
-    fn from(pkt: P) -> Self {
-        Self::Queue(pkt.into())
-    }
-}
 
 impl<C: Config> SharedServer<C> {
     /// Gets a reference to the config object used to start the server.
@@ -181,14 +165,14 @@ impl<C: Config> SharedServer<C> {
         self.0.max_connections
     }
 
-    /// Gets the configured incoming packet capacity.
-    pub fn incoming_packet_capacity(&self) -> usize {
-        self.0.incoming_packet_capacity
+    /// Gets the configured incoming capacity.
+    pub fn incoming_capacity(&self) -> usize {
+        self.0.incoming_capacity
     }
 
-    /// Gets the configured outgoing incoming packet capacity.
-    pub fn outgoing_packet_capacity(&self) -> usize {
-        self.0.outgoing_packet_capacity
+    /// Gets the configured outgoing incoming capacity.
+    pub fn outgoing_capacity(&self) -> usize {
+        self.0.outgoing_capacity
     }
 
     /// Gets a handle to the tokio instance this server is using.
@@ -259,13 +243,12 @@ impl<C: Config> SharedServer<C> {
     ///
     /// You may want to disconnect all players with a message prior to calling
     /// this function.
-    pub fn shutdown<R, E>(&self, res: R)
+    pub fn shutdown<E>(&self, res: Result<(), E>)
     where
-        R: Into<Result<(), E>>,
         E: Into<Box<dyn Error + Send + Sync + 'static>>,
     {
         self.0.connection_sema.close();
-        *self.0.shutdown_result.lock().unwrap() = Some(res.into().map_err(|e| e.into()));
+        *self.0.shutdown_result.lock().unwrap() = Some(res.map_err(|e| e.into()));
     }
 }
 
@@ -306,14 +289,14 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
 
     let connection_mode = cfg.connection_mode();
 
-    let incoming_packet_capacity = cfg.incoming_packet_capacity();
+    let incoming_packet_capacity = cfg.incoming_capacity();
 
     ensure!(
         incoming_packet_capacity > 0,
         "serverbound packet capacity must be nonzero"
     );
 
-    let outgoing_packet_capacity = cfg.outgoing_packet_capacity();
+    let outgoing_packet_capacity = cfg.outgoing_capacity();
 
     ensure!(
         outgoing_packet_capacity > 0,
@@ -334,7 +317,7 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         rsa_der::public_key_to_der(&rsa_key.n().to_bytes_be(), &rsa_key.e().to_bytes_be())
             .into_boxed_slice();
 
-    let (new_clients_tx, new_clients_rx) = flume::bounded(1);
+    let (new_clients_tx, new_clients_rx) = flume::bounded(1024);
 
     let runtime = if tokio_handle.is_none() {
         Some(Runtime::new()?)
@@ -355,8 +338,8 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         tick_rate,
         connection_mode,
         max_connections,
-        incoming_packet_capacity,
-        outgoing_packet_capacity,
+        incoming_capacity: incoming_packet_capacity,
+        outgoing_capacity: outgoing_packet_capacity,
         tokio_handle,
         _tokio_runtime: runtime,
         dimensions,
@@ -404,7 +387,7 @@ fn make_registry_codec(dimensions: &[Dimension], biomes: &[Biome]) -> Compound {
     }
 }
 
-fn do_update_loop<C: Config>(server: &mut Server<C>) -> ShutdownResult {
+fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
     let mut tick_start = Instant::now();
 
     let shared = server.shared.clone();
@@ -414,7 +397,9 @@ fn do_update_loop<C: Config>(server: &mut Server<C>) -> ShutdownResult {
         }
 
         while let Ok(msg) = shared.0.new_clients_rx.try_recv() {
-            join_player(server, msg);
+            server
+                .clients
+                .insert(Client::new(msg.ctrl, msg.ncd, Default::default()));
         }
 
         // Get serverbound packets first so they are not dealt with a tick late.
@@ -456,26 +441,7 @@ fn do_update_loop<C: Config>(server: &mut Server<C>) -> ShutdownResult {
     }
 }
 
-fn join_player<C: Config>(server: &mut Server<C>, msg: NewClientMessage) {
-    let (clientbound_tx, clientbound_rx) = flume::bounded(server.shared.0.outgoing_packet_capacity);
-    let (serverbound_tx, serverbound_rx) = flume::bounded(server.shared.0.incoming_packet_capacity);
-
-    let s2c_packet_channels: S2cPacketChannels = (serverbound_tx, clientbound_rx);
-    let c2s_packet_channels: C2sPacketChannels = (clientbound_tx, serverbound_rx);
-
-    let _ = msg.reply.send(s2c_packet_channels);
-
-    let client = Client::new(c2s_packet_channels, msg.ncd, C::ClientState::default());
-
-    server.clients.insert(client);
-}
-
-struct Codec {
-    enc: Encoder<OwnedWriteHalf>,
-    dec: Decoder<OwnedReadHalf>,
-}
-
-async fn do_accept_loop<C: Config>(server: SharedServer<C>) {
+async fn do_accept_loop(server: SharedServer<impl Config>) {
     log::trace!("entering accept loop");
 
     let listener = match TcpListener::bind(server.0.address).await {
@@ -517,22 +483,24 @@ async fn do_accept_loop<C: Config>(server: SharedServer<C>) {
     }
 }
 
-async fn handle_connection<C: Config>(
-    server: SharedServer<C>,
+async fn handle_connection(
+    server: SharedServer<impl Config>,
     stream: TcpStream,
     remote_addr: SocketAddr,
 ) -> anyhow::Result<()> {
-    let timeout = Duration::from_secs(10);
-
     let (read, write) = stream.into_split();
-    let mut c = Codec {
-        enc: Encoder::new(write, timeout),
-        dec: Decoder::new(read, timeout),
-    };
+
+    let mut ctrl = InitialPacketController::new(
+        read,
+        write,
+        PacketEncoder::new(),
+        PacketDecoder::new(),
+        Duration::from_secs(5),
+    );
 
     // TODO: peek stream for 0xFE legacy ping
 
-    let handshake: Handshake = c.dec.read_packet().await?;
+    let handshake: Handshake = ctrl.recv_packet().await?;
 
     ensure!(
         matches!(server.connection_mode(), ConnectionMode::BungeeCord)
@@ -541,28 +509,37 @@ async fn handle_connection<C: Config>(
     );
 
     match handshake.next_state {
-        HandshakeNextState::Status => handle_status(server, &mut c, remote_addr, handshake)
+        HandshakeNextState::Status => handle_status(server, ctrl, remote_addr, handshake)
             .await
             .context("error during status"),
-        HandshakeNextState::Login => match handle_login(&server, &mut c, remote_addr, handshake)
+        HandshakeNextState::Login => match handle_login(&server, &mut ctrl, remote_addr, handshake)
             .await
             .context("error during login")?
         {
-            Some(npd) => handle_play(&server, c, npd)
-                .await
-                .context("error during play"),
+            Some(ncd) => {
+                let msg = NewClientMessage {
+                    ncd,
+                    ctrl: ctrl.into_play_packet_controller(
+                        server.0.incoming_capacity,
+                        server.0.outgoing_capacity,
+                    ),
+                };
+
+                let _ = server.0.new_clients_tx.send_async(msg).await;
+                Ok(())
+            }
             None => Ok(()),
         },
     }
 }
 
-async fn handle_status<C: Config>(
-    server: SharedServer<C>,
-    c: &mut Codec,
+async fn handle_status(
+    server: SharedServer<impl Config>,
+    mut ctrl: InitialPacketController<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
     handshake: Handshake,
 ) -> anyhow::Result<()> {
-    c.dec.read_packet::<StatusRequest>().await?;
+    ctrl.recv_packet::<StatusRequest>().await?;
 
     match server
         .0
@@ -598,18 +575,17 @@ async fn handle_status<C: Config>(
                     .insert("favicon".to_owned(), Value::String(buf));
             }
 
-            c.enc
-                .write_packet(&StatusResponse {
-                    json_response: json.to_string(),
-                })
-                .await?;
+            ctrl.send_packet(&StatusResponse {
+                json_response: json.to_string(),
+            })
+            .await?;
         }
         ServerListPing::Ignore => return Ok(()),
     }
 
-    let PingRequest { payload } = c.dec.read_packet().await?;
+    let PingRequest { payload } = ctrl.recv_packet().await?;
 
-    c.enc.write_packet(&PingResponse { payload }).await?;
+    ctrl.send_packet(&PingResponse { payload }).await?;
 
     Ok(())
 }
@@ -617,7 +593,7 @@ async fn handle_status<C: Config>(
 /// Handle the login process and return the new client's data if successful.
 async fn handle_login(
     server: &SharedServer<impl Config>,
-    c: &mut Codec,
+    ctrl: &mut InitialPacketController<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
     handshake: Handshake,
 ) -> anyhow::Result<Option<NewClientData>> {
@@ -630,90 +606,35 @@ async fn handle_login(
         username,
         sig_data: _,   // TODO
         profile_id: _, // TODO
-    } = c.dec.read_packet().await?;
+    } = ctrl.recv_packet().await?;
 
     let ncd = match server.connection_mode() {
-        ConnectionMode::Online => login::online(server, c, remote_addr, username).await?,
+        ConnectionMode::Online => login::online(server, ctrl, remote_addr, username).await?,
         ConnectionMode::Offline => login::offline(remote_addr, username)?,
         ConnectionMode::BungeeCord => login::bungeecord(&handshake.server_address, username)?,
-        ConnectionMode::Velocity { secret } => login::velocity(c, username, secret).await?,
+        ConnectionMode::Velocity { secret } => login::velocity(ctrl, username, secret).await?,
     };
 
     let compression_threshold = 256;
-    c.enc
-        .write_packet(&SetCompression {
-            threshold: VarInt(compression_threshold as i32),
-        })
-        .await?;
+    ctrl.send_packet(&SetCompression {
+        threshold: VarInt(compression_threshold as i32),
+    })
+    .await?;
 
-    c.enc.enable_compression(compression_threshold);
-    c.dec.enable_compression(compression_threshold);
+    ctrl.set_compression(Some(compression_threshold));
 
     if let Err(reason) = server.0.cfg.login(server, &ncd).await {
         log::info!("Disconnect at login: \"{reason}\"");
-        c.enc.write_packet(&DisconnectLogin { reason }).await?;
+        ctrl.send_packet(&DisconnectLogin { reason }).await?;
         return Ok(None);
     }
 
-    c.enc
-        .write_packet(&LoginSuccess {
-            uuid: ncd.uuid,
-            username: ncd.username.clone(),
-            properties: Vec::new(),
-        })
-        .await?;
+    ctrl.send_packet(&LoginSuccess {
+        uuid: ncd.uuid,
+        username: ncd.username.clone(),
+        properties: Vec::new(),
+    })
+    .await?;
 
     Ok(Some(ncd))
-}
-
-async fn handle_play<C: Config>(
-    server: &SharedServer<C>,
-    c: Codec,
-    ncd: NewClientData,
-) -> anyhow::Result<()> {
-    let (reply_tx, reply_rx) = oneshot::channel();
-
-    server
-        .0
-        .new_clients_tx
-        .send_async(NewClientMessage {
-            ncd,
-            reply: reply_tx,
-        })
-        .await?;
-
-    let (packet_tx, packet_rx) = match reply_rx.await {
-        Ok(res) => res,
-        Err(_) => return Ok(()), // Server closed
-    };
-
-    let Codec { mut enc, mut dec } = c;
-
-    tokio::spawn(async move {
-        while let Ok(msg) = packet_rx.recv_async().await {
-            match msg {
-                S2cPlayMessage::Queue(pkt) => {
-                    if let Err(e) = enc.queue_packet(&pkt) {
-                        log::debug!("error while queueing play packet: {e:#}");
-                        break;
-                    }
-                }
-                S2cPlayMessage::Flush => {
-                    if let Err(e) = enc.flush().await {
-                        log::debug!("error while flushing packet queue: {e:#}");
-                        break;
-                    }
-                }
-            }
-        }
-    });
-
-    loop {
-        let pkt = dec.read_packet().await?;
-        if packet_tx.send_async(pkt).await.is_err() {
-            break;
-        }
-    }
-
-    Ok(())
 }
