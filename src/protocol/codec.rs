@@ -293,6 +293,10 @@ impl PacketDecoder {
         }
     }
 
+    pub fn queued_bytes(&self) -> &[u8] {
+        self.buf.as_ref()
+    }
+
     pub fn take_capacity(&mut self) -> BytesMut {
         self.buf.split_off(self.buf.len())
     }

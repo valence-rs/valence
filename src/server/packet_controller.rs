@@ -57,6 +57,10 @@ where
     {
         timeout(self.timeout, async {
             loop {
+                if let Some(pkt) = self.dec.try_next_packet()? {
+                    return Ok(pkt);
+                }
+
                 self.dec.reserve(READ_BUF_SIZE);
                 let mut buf = self.dec.take_capacity();
 
@@ -64,12 +68,9 @@ where
                     return Err(io::Error::from(ErrorKind::UnexpectedEof).into());
                 }
 
-                // This should always be an O(1) unsplit because we reserved space earlier.
+                // This should always be an O(1) unsplit because we reserved space earlier and
+                // the previous call to `read_buf` shouldn't have grown the allocation.
                 self.dec.queue_bytes(buf);
-
-                if let Some(pkt) = self.dec.try_next_packet()? {
-                    return Ok(pkt);
-                }
             }
         })
         .await?
