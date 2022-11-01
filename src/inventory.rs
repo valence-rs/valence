@@ -31,8 +31,11 @@ pub trait Inventory {
     /// and no changes were made to the inventory.
     fn consume(&mut self, slot_id: SlotId, amount: impl Into<u8>) -> Result<(), ()> {
         let amount: u8 = amount.into();
-        let mut slot = self.slot(slot_id).cloned();
-        if let Some(stack) = slot.as_mut() {
+        let slot = self.slot(slot_id).cloned();
+        if slot.is_some() {
+            // Intentionally not using `if let` so stack can be moved out of the slot to
+            // avoid another clone later.
+            let mut stack = slot.unwrap();
             if amount > stack.count() {
                 return Err(());
             }
@@ -42,7 +45,8 @@ pub trait Inventory {
                 stack.set_count(stack.count() - amount);
                 Some(stack)
             };
-            self.set_slot(slot_id, slot.cloned());
+
+            self.set_slot(slot_id, slot);
         }
         Ok(())
     }
