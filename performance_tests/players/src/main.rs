@@ -48,7 +48,7 @@ impl Config for Game {
         ConnectionMode::Offline
     }
 
-    fn outgoing_packet_capacity(&self) -> usize {
+    fn outgoing_capacity(&self) -> usize {
         usize::MAX
     }
 

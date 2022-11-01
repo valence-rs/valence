@@ -47,11 +47,6 @@ impl Config for Game {
     type ChunkState = ();
     type PlayerListState = ();
 
-    fn max_connections(&self) -> usize {
-        // We want status pings to be successful even if the server is full.
-        MAX_PLAYERS + 64
-    }
-
     async fn server_list_ping(
         &self,
         _server: &SharedServer<Self>,

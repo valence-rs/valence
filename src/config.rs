@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 use crate::biome::Biome;
 use crate::dimension::Dimension;
+use crate::protocol::MAX_PACKET_SIZE;
 use crate::server::{NewClientData, Server, SharedServer};
 use crate::text::Text;
 use crate::username::Username;
@@ -47,7 +48,13 @@ pub trait Config: Sized + Send + Sync + 'static {
     /// You will want this value to be somewhere above the maximum number of
     /// players, since status pings should still succeed even when the server is
     /// full.
-    fn max_connections(&self) -> usize;
+    ///
+    /// # Default Implementation
+    ///
+    /// Currently returns `1024`. This may change in a future version.
+    fn max_connections(&self) -> usize {
+        1024
+    }
 
     /// Called once at startup to get the socket address the server will
     /// be bound to.
@@ -103,32 +110,34 @@ pub trait Config: Sized + Send + Sync + 'static {
         false
     }
 
-    /// Called once at startup to get the capacity of the buffer used to
-    /// hold incoming packets.
+    /// Called once at startup to get the maximum capacity (in bytes) of the
+    /// buffer used to hold incoming packet data.
     ///
     /// A larger capacity reduces the chance that a client needs to be
-    /// disconnected due to a full buffer, but increases potential memory usage.
+    /// disconnected due to the buffer being full, but increases potential
+    /// memory usage.
     ///
     /// # Default Implementation
     ///
     /// An unspecified value is returned that should be adequate in most
     /// situations.
-    fn incoming_packet_capacity(&self) -> usize {
-        64
+    fn incoming_capacity(&self) -> usize {
+        MAX_PACKET_SIZE as usize
     }
 
-    /// Called once at startup to get the capacity of the buffer used to
-    /// hold outgoing packets.
+    /// Called once at startup to get the maximum capacity (in bytes) of the
+    /// buffer used to hold outgoing packets.
     ///
     /// A larger capacity reduces the chance that a client needs to be
-    /// disconnected due to a full buffer, but increases potential memory usage.
+    /// disconnected due to the buffer being full, but increases potential
+    /// memory usage.
     ///
     /// # Default Implementation
     ///
     /// An unspecified value is returned that should be adequate in most
     /// situations.
-    fn outgoing_packet_capacity(&self) -> usize {
-        2048
+    fn outgoing_capacity(&self) -> usize {
+        MAX_PACKET_SIZE as usize * 4
     }
 
     /// Called once at startup to get a handle to the tokio runtime the server
@@ -386,10 +395,6 @@ where
     type WorldState = W;
     type ChunkState = Ch;
     type PlayerListState = P;
-
-    fn max_connections(&self) -> usize {
-        64
-    }
 
     fn update(&self, _server: &mut Server<Self>) {}
 }

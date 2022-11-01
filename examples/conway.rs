@@ -61,11 +61,6 @@ impl Config for Game {
     type ChunkState = ();
     type PlayerListState = ();
 
-    fn max_connections(&self) -> usize {
-        // We want status pings to be successful even if the server is full.
-        MAX_PLAYERS + 64
-    }
-
     fn address(&self) -> SocketAddr {
         SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 25565).into() // TODO remove
     }
