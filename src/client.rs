@@ -22,7 +22,8 @@ use crate::entity::{
 };
 use crate::ident::Ident;
 use crate::inventory::{
-    Inventories, Inventory, InventoryDirtyable, InventoryId, PlayerInventory, WindowInventory,
+    Inventories, Inventory, InventoryDirtyable, InventoryError, InventoryId, PlayerInventory,
+    WindowInventory,
 };
 use crate::item::ItemStack;
 use crate::player_list::{PlayerListId, PlayerLists};
@@ -794,9 +795,10 @@ impl<C: Config> Client<C> {
         self.inventory.slot(self.selected_hotbar_slot)
     }
 
-    /// Consume a single item from the stack that the client is holding.
-    pub fn consume_one_held_item(&mut self) {
-        self.inventory.consume_one(self.selected_hotbar_slot);
+    /// Consume items from the stack in the client's inventory that the client
+    /// is holding.
+    pub fn consume_held_item(&mut self, amount: impl Into<u8>) -> Result<(), InventoryError> {
+        self.inventory.consume(self.selected_hotbar_slot, amount)
     }
 
     /// Makes the client open a window displaying the given inventory.

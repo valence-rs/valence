@@ -1,5 +1,7 @@
 use std::ops::Range;
 
+use thiserror::Error;
+
 use crate::item::ItemStack;
 use crate::protocol::{SlotId, VarInt};
 use crate::slab_versioned::{Key, VersionedSlab};
@@ -23,17 +25,33 @@ pub trait Inventory {
             .collect()
     }
 
-    fn consume_one(&mut self, slot_id: SlotId) {
-        let mut slot = self.slot(slot_id).cloned();
-        if let Some(stack) = slot.as_mut() {
-            stack.set_count(stack.count() - 1);
-            let slot = if stack.count() == 0 {
+    /// Decreases the count for stack in the slot by amount. If there is not
+    /// enough items in the stack to perform the operation, then it will fail.
+    ///
+    /// Returns `Ok` if the stack had enough items, and the operation was
+    /// carried out. Otherwise, it returns `Err` if `amount > stack.count()`,
+    /// and no changes were made to the inventory.
+    #[allow(clippy::unnecessary_unwrap)]
+    fn consume(&mut self, slot_id: SlotId, amount: impl Into<u8>) -> Result<(), InventoryError> {
+        let amount: u8 = amount.into();
+        let slot = self.slot(slot_id).cloned();
+        if slot.is_some() {
+            // Intentionally not using `if let` so stack can be moved out of the slot as mut
+            // to avoid another clone later.
+            let mut stack = slot.unwrap();
+            if amount > stack.count() {
+                return Err(InventoryError);
+            }
+            let slot = if amount == stack.count() {
                 None
             } else {
+                stack.set_count(stack.count() - amount);
                 Some(stack)
             };
-            self.set_slot(slot_id, slot.cloned());
+
+            self.set_slot(slot_id, slot);
         }
+        Ok(())
     }
 }
 
@@ -251,6 +269,10 @@ impl Inventories {
     }
 }
 
+#[derive(Debug, Error)]
+#[error("InventoryError")]
+pub struct InventoryError;
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -263,5 +285,19 @@ mod test {
         let prev = inv.set_slot(9, slot.clone());
         assert_eq!(inv.slot(9), slot.as_ref());
         assert_eq!(prev, None);
+    }
+
+    #[test]
+    fn test_consume() {
+        let mut inv = PlayerInventory::new();
+        let slot_id = 9;
+        let slot = Some(ItemStack::new(ItemKind::Bone, 12, None));
+        inv.set_slot(slot_id, slot);
+        assert!(matches!(inv.consume(slot_id, 2), Ok(_)));
+        assert_eq!(inv.slot(slot_id).unwrap().count(), 10);
+        assert!(matches!(inv.consume(slot_id, 20), Err(_)));
+        assert_eq!(inv.slot(slot_id).unwrap().count(), 10);
+        assert!(matches!(inv.consume(slot_id, 10), Ok(_)));
+        assert_eq!(inv.slot(slot_id), None);
     }
 }
