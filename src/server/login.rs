@@ -96,7 +96,7 @@ pub(super) async fn online(
         .chain(&server.0.public_key_der)
         .finalize();
 
-    let url = server.config().format_session_server_url(
+    let url = server.config().session_server(
         server,
         username.as_str_username(),
         &auth_digest(&hash),

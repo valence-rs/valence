@@ -123,7 +123,7 @@ impl ByteSender {
 pub enum TrySendError {
     #[error("sender disconnected")]
     Disconnected(BytesMut),
-    #[error("channel full")]
+    #[error("channel full (see `Config::outgoing_capacity`)")]
     Full(BytesMut),
 }
 
