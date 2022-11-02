@@ -53,7 +53,7 @@ impl PacketEncoder {
 
         if let Some(threshold) = self.compression_threshold {
             if data_len >= threshold as usize {
-                let mut z = ZlibEncoder::new(&mut self.compress_buf, Compression::best());
+                let mut z = ZlibEncoder::new(&mut self.compress_buf, Compression::new(4));
                 pkt.encode_packet(&mut z)?;
                 drop(z);
 

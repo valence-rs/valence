@@ -615,13 +615,14 @@ async fn handle_login(
         ConnectionMode::Velocity { secret } => login::velocity(ctrl, username, secret).await?,
     };
 
-    let compression_threshold = 256;
-    ctrl.send_packet(&SetCompression {
-        threshold: VarInt(compression_threshold as i32),
-    })
-    .await?;
+    if let Some(threshold) = server.0.cfg.compression_threshold() {
+        ctrl.send_packet(&SetCompression {
+            threshold: VarInt(threshold as i32),
+        })
+        .await?;
 
-    ctrl.set_compression(Some(compression_threshold));
+        ctrl.set_compression(Some(threshold));
+    }
 
     if let Err(reason) = server.0.cfg.login(server, &ncd).await {
         log::info!("Disconnect at login: \"{reason}\"");
