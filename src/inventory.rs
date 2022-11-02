@@ -1,5 +1,7 @@
 use std::ops::Range;
 
+use thiserror::Error;
+
 use crate::item::ItemStack;
 use crate::protocol::{SlotId, VarInt};
 use crate::slab_versioned::{Key, VersionedSlab};
@@ -267,6 +269,8 @@ impl Inventories {
     }
 }
 
+#[derive(Debug, Error)]
+#[error("InventoryError")]
 pub struct InventoryError;
 
 #[cfg(test)]
