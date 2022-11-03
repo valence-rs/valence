@@ -155,12 +155,7 @@ impl Config for Game {
                     world.chunks.insert(pos, chunk, true);
                 } else {
                     let mut blank_chunk = UnloadedChunk::new(16);
-                    blank_chunk.set_block_state(
-                        0,
-                        0,
-                        0,
-                        BlockState::from_kind(BlockKind::Lava),
-                    );
+                    blank_chunk.set_block_state(0, 0, 0, BlockState::from_kind(BlockKind::Lava));
                     world.chunks.insert(pos, blank_chunk, true);
                 }
             }
