@@ -16,7 +16,7 @@ use crate::palette::DataFormat;
 use crate::{palette, AnvilWorld, ChunkSeekLocation, ChunkTimestamp, RegionPos};
 
 #[derive(Debug)]
-pub struct Region<S: AsyncRead + AsyncSeek + Unpin> {
+pub struct Region<S> {
     source: Mutex<S>,
     offset: u64,
     position: RegionPos,
@@ -187,7 +187,7 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
             let section_height = ((y_max as isize - y_min as isize) as usize * 16) + 16;
             let y_raise = isize::from(-y_min) * 16;
 
-            //Parsing sections
+            // Parsing sections
             let mut chunk = UnloadedChunk::new(section_height);
             for mut nbt_section in nbt_sections.into_iter() {
                 let chunk_y_offset: isize =
@@ -202,7 +202,7 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
                         let mut palette_vec: Vec<BlockState> =
                             Vec::with_capacity(nbt_palette_vec.len());
                         for mut nbt_palette in nbt_palette_vec {
-                            let block_id = valence::ident::Ident::new(take_assume::<String>(
+                            let block_id = Ident::new(take_assume::<String>(
                                 &mut nbt_palette,
                                 "Name",
                             )?)?;

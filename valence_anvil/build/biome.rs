@@ -281,7 +281,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }
 
             pub fn from_ident<S: AsRef<str>>(ident: &Ident<S>) -> Option<Self> {
-                if ident.namespace() != "minecraft"{
+                if ident.namespace() != "minecraft" {
                     return None;
                 }
                 match ident.path() {
@@ -291,26 +291,26 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }
 
             pub fn biome(self) -> Result<Biome, IdentError<String>> {
-                match self{
+                match self {
                     #biomekind_to_biome
                 }
             }
 
             /// Gets the biome spawn rates
             pub const fn spawn_rates(self) -> SpawnSettings {
-                match self{
+                match self {
                     #biomekind_spawn_settings_arms
                 }
             }
 
             pub const fn temperature(self) -> f32 {
-                match self{
+                match self {
                     #biomekind_temperatures_arms
                 }
             }
 
             pub const fn downfall(self) -> f32 {
-                match self{
+                match self {
                     #biomekind_downfall_arms
                 }
             }
