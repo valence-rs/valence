@@ -202,10 +202,8 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
                         let mut palette_vec: Vec<BlockState> =
                             Vec::with_capacity(nbt_palette_vec.len());
                         for mut nbt_palette in nbt_palette_vec {
-                            let block_id = Ident::new(take_assume::<String>(
-                                &mut nbt_palette,
-                                "Name",
-                            )?)?;
+                            let block_id =
+                                Ident::new(take_assume::<String>(&mut nbt_palette, "Name")?)?;
                             let block_kind =
                                 if let Some(block_kind) = BlockKind::from_str(block_id.path()) {
                                     block_kind
