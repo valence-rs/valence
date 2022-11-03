@@ -511,8 +511,8 @@ pub fn build() -> anyhow::Result<TokenStream> {
             /// If this block is `air`, `cave_air` or `void_air`.
             pub const fn is_air(self) -> bool {
                 matches!(
-                    self.to_kind(),
-                    BlockKind::Air | BlockKind::CaveAir | BlockKind::VoidAir
+                    self,
+                    BlockState::AIR | BlockState::CAVE_AIR | BlockState::VOID_AIR
                 )
             }
 

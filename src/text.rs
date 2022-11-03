@@ -458,7 +458,8 @@ impl Encode for Text {
     }
 
     fn encoded_len(&self) -> usize {
-        todo!("remove Encode impl on text and come up with solution")
+        // TODO: This is obviously not ideal. This will be fixed later.
+        serde_json::to_string(self).map_or(0, |s| s.encoded_len())
     }
 }
 

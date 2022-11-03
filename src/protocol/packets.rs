@@ -39,6 +39,7 @@ pub trait PacketName {
 pub trait EncodePacket: PacketName + fmt::Debug {
     /// Writes a packet to the Minecraft protocol, including its packet ID.
     fn encode_packet(&self, w: &mut impl Write) -> anyhow::Result<()>;
+    fn encoded_packet_len(&self) -> usize;
 }
 
 /// Trait for types that can be read from the Minecraft protocol as a complete
@@ -334,6 +335,10 @@ macro_rules! def_packet_group {
                     VarInt($id).encode(w).context("failed to write packet ID")?;
                     self.encode(w)
                 }
+
+                fn encoded_packet_len(&self) -> usize {
+                    VarInt($id).encoded_len() + self.encoded_len()
+                }
             }
 
             impl DecodePacket for $packet {
@@ -392,6 +397,14 @@ macro_rules! def_packet_group {
                                 ))?;
                             pkt.encode(w)
                         }
+                    )*
+                }
+            }
+
+            fn encoded_packet_len(&self) -> usize {
+                match self {
+                    $(
+                        Self::$packet(pkt) => VarInt($id).encoded_len() + pkt.encoded_len(),
                     )*
                 }
             }
