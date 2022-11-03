@@ -5,17 +5,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use valence::async_trait;
-use valence::biome::Biome;
-use valence::chunk::{Chunk, ChunkPos, UnloadedChunk};
-use valence::client::{handle_event_default, GameMode};
-use valence::config::{Config, ServerListPing};
-use valence::dimension::DimensionId;
-use valence::entity::{EntityId, EntityKind};
-use valence::player_list::PlayerListId;
-use valence::server::{Server, SharedServer, ShutdownResult};
-use valence::text::{Color, TextFormat};
-use valence::util::chunks_in_view_distance;
+use valence::prelude::*;
 use valence_anvil::biome::BiomeKind;
 use valence_anvil::AnvilWorld;
 
@@ -35,6 +25,7 @@ struct Game {
 const MAX_PLAYERS: usize = 10;
 
 /// # IMPORTANT
+///
 /// Change the following to the world file you wish to load.
 /// Inside this folder you should see `advancements`, `DIM1`, `DIM-1` and most
 /// importantly `region` directories. Only the `region` directory is accessed.
@@ -49,11 +40,6 @@ impl Config for Game {
     /// If the chunk should stay loaded at the end of the tick.
     type ChunkState = bool;
     type PlayerListState = ();
-
-    fn max_connections(&self) -> usize {
-        // We want status pings to be successful even if the server is full.
-        MAX_PLAYERS + 64
-    }
 
     fn biomes(&self) -> Vec<Biome> {
         BiomeKind::ALL.iter().map(|b| b.biome().unwrap()).collect()
@@ -173,7 +159,7 @@ impl Config for Game {
                         0,
                         0,
                         0,
-                        valence::block::BlockState::from_kind(valence::block::BlockKind::Lava),
+                        BlockState::from_kind(BlockKind::Lava),
                     );
                     world.chunks.insert(pos, blank_chunk, true);
                 }

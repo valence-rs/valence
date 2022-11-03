@@ -1,6 +1,6 @@
 use std::error::Error as StdError;
 use std::fmt::{Display, Formatter};
-use std::io;
+use std::{fmt, io};
 
 use valence::ident::{Ident, IdentError};
 
@@ -49,14 +49,14 @@ impl From<valence::nbt::Error> for Error {
     }
 }
 
-impl From<valence::ident::IdentError<String>> for Error {
-    fn from(e: valence::ident::IdentError<String>) -> Self {
+impl From<IdentError<String>> for Error {
+    fn from(e: IdentError<String>) -> Self {
         Self::DataFormatError(DataFormatError::IdentityError(e))
     }
 }
 
 impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Error::Io(e) => e.fmt(f),
             Error::DataFormatError(e) => e.fmt(f),
@@ -67,7 +67,7 @@ impl Display for Error {
 }
 
 impl Display for DataFormatError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> valence::prelude::vek::serde::__private::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             DataFormatError::UnknownCompressionScheme(scheme) => {
                 write!(f, "Unknown compression scheme: {scheme}")
@@ -82,7 +82,7 @@ impl Display for DataFormatError {
 }
 
 impl Display for NbtFormatError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> valence::prelude::vek::serde::__private::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             NbtFormatError::MissingKey(key) => {
                 write!(f, "Could not find key: \"{key}\" in nbt data.")

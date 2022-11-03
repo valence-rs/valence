@@ -81,6 +81,8 @@ impl AnvilWorld {
     /// # Examples
     ///
     /// ```
+    /// use valence::prelude::*;
+    ///
     /// let to_load = chunks_in_view_distance(ChunkPos::at(p.x, p.z), dist);
     /// let future = world.state.load_chunks(to_load);
     /// let parsed_chunks = futures::executor::block_on(future).unwrap();
@@ -91,12 +93,7 @@ impl AnvilWorld {
     ///     } else {
     ///         // There is no information on this chunk in the region file.
     ///         let mut blank_chunk = UnloadedChunk::new(16);
-    ///         blank_chunk.set_block_state(
-    ///             0,
-    ///             0,
-    ///             0,
-    ///             valence::block::BlockState::from_kind(valence::block::BlockKind::Lava),
-    ///         );
+    ///         blank_chunk.set_block_state(0, 0, 0, BlockState::from_kind(BlockKind::Lava));
     ///         world.chunks.insert(pos, blank_chunk, true);
     ///     }
     /// }
@@ -104,7 +101,7 @@ impl AnvilWorld {
     pub async fn load_chunks<I: Iterator<Item = ChunkPos>>(
         &self,
         positions: I,
-    ) -> Result<impl IntoIterator<Item = (ChunkPos, Option<UnloadedChunk>)>, Error> {
+    ) -> Result<impl Iterator<Item = (ChunkPos, Option<UnloadedChunk>)>, Error> {
         let mut map = BTreeMap::<RegionPos, Vec<ChunkPos>>::new();
         for pos in positions {
             let region_pos = RegionPos::from(pos);
