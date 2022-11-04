@@ -251,6 +251,7 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
                     &parsed_block_state_palette,
                     take_assume_optional(&mut nbt_block_states, "data"),
                     4,
+                    16 * 16 * 16,
                     &mut |data| {
                         match data {
                             DataFormat::All(state) => {
@@ -314,6 +315,7 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
                     &parsed_biome_palette,
                     take_assume_optional(&mut nbt_biomes, "data"),
                     0,
+                    4 * 4 * 4,
                     &mut |data| {
                         match data {
                             DataFormat::All(biome) => {

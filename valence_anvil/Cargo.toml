@@ -18,6 +18,7 @@ async-compression = { version = "0.3.15", features = ["tokio", "gzip", "zlib"] }
 byteorder = "1.4.3"
 tokio = { version = "1.21.2", features = ["fs", "io-util"] }
 futures = "0.3.24"
+thiserror = "1.0.37"
 
 [build-dependencies]
 anyhow = "1.0.65"

@@ -6,11 +6,10 @@ use byteorder::{BigEndian, ByteOrder};
 use region::Region;
 use tokio::fs::File;
 use tokio::sync::{Mutex, MutexGuard};
-use valence::biome::BiomeId;
+use valence::biome::{Biome, BiomeId};
 use valence::chunk::{ChunkPos, UnloadedChunk};
 use valence::config::Config;
 use valence::ident::Ident;
-use valence::server::SharedServer;
 
 use crate::error::Error;
 
@@ -46,21 +45,23 @@ impl AnvilWorld {
     /// ```
     /// impl Config for Game {
     ///     fn init(&self, server: &mut Server<Self>) {
-    ///         let world_folder = PathBuf::from_str(WORLD_FOLDER).unwrap();
     ///         server.worlds.insert(
     ///             DimensionId::default(),
-    ///             AnvilWorld::new(world_folder, &server.shared),
+    ///             AnvilWorld::new::<Game>(&self.world_dir, server.shared.biomes()),
     ///         );
     ///     }
     /// }
     /// ```
-    pub fn new<C: Config>(directory: PathBuf, server: &SharedServer<C>) -> Self {
+    pub fn new<'a, C: Config>(
+        directory: impl Into<PathBuf>,
+        server_biomes: impl Iterator<Item = (BiomeId, &'a Biome)>,
+    ) -> Self {
         let mut biomes = BTreeMap::new();
-        for (id, biome) in server.biomes() {
+        for (id, biome) in server_biomes {
             biomes.insert(biome.name.clone(), id);
         }
         Self {
-            world_root: directory,
+            world_root: directory.into(),
             biomes,
             region_files: Mutex::new(BTreeMap::new()),
         }

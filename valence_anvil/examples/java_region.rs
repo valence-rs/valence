@@ -2,39 +2,64 @@ extern crate valence;
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use valence::prelude::*;
 use valence_anvil::biome::BiomeKind;
 use valence_anvil::AnvilWorld;
 
+/// # IMPORTANT
+///
+/// Run this example with one argument containing the path of the the following
+/// to the world directory you wish to load. Inside this directory you can
+/// commonly see `advancements`, `DIM1`, `DIM-1` and most importantly `region`
+/// subdirectories. Only the `region` directory is accessed.
 pub fn main() -> ShutdownResult {
-    valence::start_server(
-        Game {
-            player_count: AtomicUsize::new(0),
-        },
-        None,
-    )
+    let args: Vec<String> = std::env::args().collect();
+    if let Some(world_folder) = args.get(1) {
+        let world_folder = PathBuf::from(world_folder);
+        if world_folder.exists() && world_folder.is_dir() {
+            if !world_folder.join("region").exists() {
+                ShutdownResult::Err(
+                    "Could not find the `region` folder inside the world directory.".into(),
+                )
+            } else {
+                // This actually starts and runs the server.
+                valence::start_server(
+                    Game {
+                        world_dir: world_folder,
+                        player_count: AtomicUsize::new(0),
+                    },
+                    None,
+                )
+            }
+        } else {
+            ShutdownResult::Err(
+                "World directory argument is not valid: Must be a folder that exists.".into(),
+            )
+        }
+    } else {
+        ShutdownResult::Err("Please add the world directory as program argument.".into())
+    }
+}
+
+#[derive(Debug, Default)]
+struct ClientData {
+    id: EntityId,
+    //block: valence::block::BlockKind
 }
 
 struct Game {
+    world_dir: PathBuf,
     player_count: AtomicUsize,
 }
 
 const MAX_PLAYERS: usize = 10;
 
-/// # IMPORTANT
-///
-/// Change the following to the world file you wish to load.
-/// Inside this folder you should see `advancements`, `DIM1`, `DIM-1` and most
-/// importantly `region` directories. Only the `region` directory is accessed.
-const WORLD_FOLDER: &str = "./test_data/";
-
 #[async_trait]
 impl Config for Game {
     type ServerState = Option<PlayerListId>;
-    type ClientState = EntityId;
+    type ClientState = ClientData;
     type EntityState = ();
     type WorldState = AnvilWorld;
     /// If the chunk should stay loaded at the end of the tick.
@@ -65,10 +90,9 @@ impl Config for Game {
     }
 
     fn init(&self, server: &mut Server<Self>) {
-        let world_folder = PathBuf::from_str(WORLD_FOLDER).unwrap();
         server.worlds.insert(
             DimensionId::default(),
-            AnvilWorld::new(world_folder, &server.shared),
+            AnvilWorld::new::<Game>(&self.world_dir, server.shared.biomes()),
         );
         server.state = Some(server.player_lists.insert(()).0);
     }
@@ -93,7 +117,7 @@ impl Config for Game {
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => client.state = id,
+                    Some((id, _)) => client.state.id = id,
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;
@@ -117,7 +141,12 @@ impl Config for Game {
                     );
                 }
 
-                client.send_message("Welcome to the java chunk parsing example!".italic());
+                client.send_message("Welcome to the java chunk parsing example!");
+                client.send_message(
+                    "Chunks with a single lava source block indicates that the chunk is not \
+                     (fully) generated."
+                        .italic(),
+                );
             }
 
             if client.is_disconnected() {
@@ -125,12 +154,12 @@ impl Config for Game {
                 if let Some(id) = &server.state {
                     server.player_lists.get_mut(id).remove(client.uuid());
                 }
-                server.entities.remove(client.state);
+                server.entities.remove(client.state.id);
 
                 return false;
             }
 
-            if let Some(entity) = server.entities.get_mut(client.state) {
+            if let Some(entity) = server.entities.get_mut(client.state.id) {
                 while handle_event_default(client, entity).is_some() {}
             }
 

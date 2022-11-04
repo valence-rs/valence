@@ -1,10 +1,10 @@
-use std::error::Error as StdError;
 use std::fmt::{Display, Formatter};
 use std::{fmt, io};
 
+use thiserror::Error;
 use valence::ident::{Ident, IdentError};
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum Error {
     Io(io::Error),
     DataFormatError(DataFormatError),
@@ -26,15 +26,6 @@ pub enum DataFormatError {
     UnknownType(Ident<String>),
     InvalidChunkState(String),
     InvalidPalette,
-}
-
-impl StdError for Error {
-    fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        match self {
-            Self::Io(e) => Some(e),
-            _ => None,
-        }
-    }
 }
 
 impl From<io::Error> for Error {
