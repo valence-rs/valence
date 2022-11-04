@@ -11,9 +11,15 @@ pub fn parse_palette<T: Copy, F: (FnMut(DataFormat<T>) -> Result<(), Error>)>(
     source: &Vec<T>,
     data: Option<Vec<i64>>,
     min_bits: usize,
+    expected_len: usize,
     fun: &mut F,
 ) -> Result<(), Error> {
     let palette_len = source.len();
+    if palette_len == 0 {
+        return Err(crate::error::Error::DataFormatError(
+            DataFormatError::InvalidPalette,
+        ));
+    }
     if let Some(data) = data {
         if palette_len < 2 || data.is_empty() {
             fun(DataFormat::All(source[0]))?;
@@ -40,21 +46,17 @@ pub fn parse_palette<T: Copy, F: (FnMut(DataFormat<T>) -> Result<(), Error>)>(
                     let palette_index_unshifted = (integer & mask) as usize;
                     let palette_index_shifted = palette_index_unshifted >> rev_shift;
 
-                    // Uncomment the following to aid in debugging.
-                    // println!("IN
-                    // \t{integer:064b}\nMSK\t{mask:064b}({bits_per_index})\nRES\
-                    // t{palette_index_unshifted:064b}\nSFT\t{palette_index_shifted:064b}
-                    // ({rev_shift} - {trailing_bits})\n");
                     if palette_index_shifted > choice_len {
-                        //panic!("############### INVALID: {:?} {:?} {:?} {:?} {:?}",
-                        // palette_index_shifted, choice_len,
-                        // bits_per_index, source, source.len());
                         return Err(crate::error::Error::DataFormatError(
                             DataFormatError::InvalidPalette,
                         ));
                     } else {
                         fun(DataFormat::Palette(index, source[palette_index_shifted]))?;
                         index += 1;
+                        // Prevents interpreting the rest of the long as data.
+                        if index == expected_len {
+                            return Ok(());
+                        }
                     }
                 }
             }
