@@ -49,7 +49,7 @@ pub enum ParticleType {
     EntityEffect,
     ExplosionEmitter,
     Explosion,
-    FallingDust(BlockState),
+    FallingDust,
     Firework,
     Fishing,
     Flame,
@@ -148,7 +148,7 @@ impl ParticleType {
             ParticleType::EntityEffect => 21,
             ParticleType::ExplosionEmitter => 22,
             ParticleType::Explosion => 23,
-            ParticleType::FallingDust(_) => 24,
+            ParticleType::FallingDust => 24,
             ParticleType::Firework => 25,
             ParticleType::Fishing => 26,
             ParticleType::Flame => 27,
@@ -354,15 +354,6 @@ impl Encode for ParticleType {
                     "`"
                 ))?;
             }
-            ParticleType::FallingDust(block_state) => {
-                Encode::encode(block_state, _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(block_state),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
-            }
             ParticleType::Item(_) => todo!("Item particle not yet implemented"),
             ParticleType::Vibration {
                 position_source_type,
@@ -419,7 +410,6 @@ impl Encode for ParticleType {
             ParticleType::BlockMarker(block_state) => block_state.encoded_len(),
             ParticleType::Dust { .. } => { 4 * 4 }
             ParticleType::DustColorTransition { .. } => { 7 * 4 }
-            ParticleType::FallingDust(block_state) => block_state.encoded_len(),
             ParticleType::Item(_) => todo!("Item particle not yet implemented"),
             ParticleType::Vibration {
                 position_source_type,
