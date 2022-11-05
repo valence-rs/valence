@@ -269,7 +269,7 @@ impl Encode for Particle {
         ))?;
         Encode::encode(&self.particle_type, _w).context(concat!(
             "failed to write field `",
-            stringify!(particawdle_type),
+            stringify!(particle_type),
             "` from struct `",
             stringify!(Particle),
             "`"
