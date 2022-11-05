@@ -1,84 +1,46 @@
-use std::fmt::{Display, Formatter};
-use std::{fmt, io};
+use std::io;
 
 use thiserror::Error;
 use valence::ident::{Ident, IdentError};
 
-#[derive(Debug, Error)]
+#[derive(Error, Debug)]
 pub enum Error {
-    Io(io::Error),
-    DataFormatError(DataFormatError),
-    NbtParseError(valence::nbt::Error),
-    NbtFormatError(NbtFormatError),
+    #[error(transparent)]
+    Io(#[from] io::Error),
+    #[error(transparent)]
+    DataFormatError(#[from] DataFormatError),
+    #[error(transparent)]
+    NbtParseError(#[from] valence::nbt::Error),
+    #[error(transparent)]
+    NbtFormatError(#[from] NbtFormatError),
 }
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum NbtFormatError {
+    #[error("Missing key: {0}")]
     MissingKey(String),
+    #[error("Invalid type: {0}")]
     InvalidType(String),
 }
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum DataFormatError {
+    #[error("Unknown compression scheme: {0}")]
     UnknownCompressionScheme(u8),
+    #[error("Invalid chunk size: {0}")]
     InvalidChunkSize(usize),
-    IdentityError(IdentError<String>),
+    #[error(transparent)]
+    IdentityError(#[from] IdentError<String>),
+    #[error("Unknown identity: {0}")]
     UnknownType(Ident<String>),
+    #[error("Invalid chunk state: {0}")]
     InvalidChunkState(String),
+    #[error("Invalid chunk palette")]
     InvalidPalette,
 }
 
-impl From<io::Error> for Error {
-    fn from(e: io::Error) -> Self {
-        Self::Io(e)
-    }
-}
-
-impl From<valence::nbt::Error> for Error {
-    fn from(e: valence::nbt::Error) -> Self {
-        Self::NbtParseError(e)
-    }
-}
-
-impl From<IdentError<String>> for Error {
-    fn from(e: IdentError<String>) -> Self {
-        Self::DataFormatError(DataFormatError::IdentityError(e))
-    }
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            Error::Io(e) => e.fmt(f),
-            Error::DataFormatError(e) => e.fmt(f),
-            Error::NbtParseError(e) => e.fmt(f),
-            Error::NbtFormatError(e) => e.fmt(f),
-        }
-    }
-}
-
-impl Display for DataFormatError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            DataFormatError::UnknownCompressionScheme(scheme) => {
-                write!(f, "Unknown compression scheme: {scheme}")
-            }
-            DataFormatError::InvalidChunkSize(size) => write!(f, "Invalid chunk size: {size}"),
-            DataFormatError::IdentityError(e) => e.fmt(f),
-            DataFormatError::UnknownType(identity) => write!(f, "Unknown identity: {identity}"),
-            DataFormatError::InvalidChunkState(state) => write!(f, "Unknown chunk state: {state}"),
-            DataFormatError::InvalidPalette => write!(f, "Invalid chunk palette"),
-        }
-    }
-}
-
-impl Display for NbtFormatError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            NbtFormatError::MissingKey(key) => {
-                write!(f, "Could not find key: \"{key}\" in nbt data.")
-            }
-            NbtFormatError::InvalidType(key) => write!(f, "Unexpected type for key: \"{key}\""),
-        }
+impl From<IdentError<String>> for Error{
+    fn from(err: IdentError<String>) -> Self {
+        Self::DataFormatError(DataFormatError::IdentityError(err))
     }
 }
