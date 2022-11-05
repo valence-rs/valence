@@ -113,6 +113,7 @@ pub mod entity;
 pub mod ident;
 pub mod inventory;
 pub mod item;
+pub mod particle;
 pub mod player_list;
 pub mod player_textures;
 #[doc(hidden)]

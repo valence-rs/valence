@@ -26,6 +26,7 @@ use crate::inventory::{
     WindowInventory,
 };
 use crate::item::ItemStack;
+use crate::particle::{Particle, ParticleType};
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::c2s::play::{
@@ -559,6 +560,25 @@ impl<C: Config> Client<C> {
             pitch,
             seed: 0,
         });
+    }
+
+    pub fn play_particle(
+        &mut self,
+        particle_type: ParticleType,
+        position: Vec3<f64>,
+        offset: Vec3<f32>,
+        max_speed: f32,
+        particle_count: u32,
+        long_distance: bool,
+    ) {
+        self.queue_packet(&Particle {
+            particle_type,
+            long_distance,
+            position,
+            offset,
+            max_speed,
+            particle_count,
+        })
     }
 
     /// Sets the title this client sees.

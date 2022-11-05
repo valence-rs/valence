@@ -1,6 +1,7 @@
 //! Server to client packets.
 
 use super::*;
+use crate::particle::Particle;
 
 pub mod status {
     use super::*;
@@ -757,6 +758,7 @@ pub mod play {
             GameEvent = 29,
             KeepAliveS2c = 32,
             ChunkDataAndUpdateLight = 33,
+            Particle = 35,
             LoginPlay = 37,
             UpdateEntityPosition = 40,
             UpdateEntityPositionAndRotation = 41,
