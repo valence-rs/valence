@@ -67,11 +67,13 @@ pub enum ParticleType {
     Heart,
     InstantEffect,
     Item(u32), // TODO: field is 'Slot': 'The item that will be used.'
-    VibrationBlock { // The 'Block' variant of the 'Vibration' particle
+    VibrationBlock {
+        // The 'Block' variant of the 'Vibration' particle
         block_pos: BlockPos,
-        ticks: VarInt
+        ticks: VarInt,
     },
-    VibrationEntity { // The 'Entity' variant of the 'Vibration' particle
+    VibrationEntity {
+        // The 'Entity' variant of the 'Vibration' particle
         entity_id: VarInt,
         entity_eye_height: f32,
         ticks: VarInt,
@@ -162,7 +164,7 @@ impl ParticleType {
             ParticleType::Fishing => 27,
             ParticleType::Flame => 28,
             ParticleType::SculkSoul => 29,
-            ParticleType::SculkCharge{ .. } => 30,
+            ParticleType::SculkCharge { .. } => 30,
             ParticleType::SculkChargePop => 31,
             ParticleType::SoulFireFlame => 32,
             ParticleType::Soul => 33,
@@ -225,6 +227,104 @@ impl ParticleType {
             ParticleType::WaxOff => 89,
             ParticleType::ElectricSpark => 90,
             ParticleType::Scrape => 91,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        match self {
+            ParticleType::AmbientEntityEffect => "ambient_entity_effect",
+            ParticleType::AngryVillager => "angry_villager",
+            ParticleType::Block(_) => "block",
+            ParticleType::BlockMarker(_) => "block_marker",
+            ParticleType::Bubble => "bubble",
+            ParticleType::Cloud => "cloud",
+            ParticleType::Crit => "crit",
+            ParticleType::DamageIndicator => "damage_indicator",
+            ParticleType::DragonBreath => "dragon_breath",
+            ParticleType::DrippingLava => "dripping_lava",
+            ParticleType::FallingLava => "falling_lava",
+            ParticleType::LandingLava => "landing_lava",
+            ParticleType::DrippingWater => "dripping_water",
+            ParticleType::FallingWater => "falling_water",
+            ParticleType::Dust { .. } => "dust",
+            ParticleType::DustColorTransition { .. } => "dust_color_transition",
+            ParticleType::Effect => "effect",
+            ParticleType::ElderGuardian => "elder_guardian",
+            ParticleType::EnchantedHit => "enchanted_hit",
+            ParticleType::Enchant => "enchant",
+            ParticleType::EndRod => "end_rod",
+            ParticleType::EntityEffect => "entity_effect",
+            ParticleType::ExplosionEmitter => "explosion_emitter",
+            ParticleType::Explosion => "explosion",
+            ParticleType::SonicBoom => "sonic_boom",
+            ParticleType::FallingDust(_) => "falling_dust",
+            ParticleType::Firework => "firework",
+            ParticleType::Fishing => "fishing",
+            ParticleType::Flame => "flame",
+            ParticleType::SculkSoul => "sculk_soul",
+            ParticleType::SculkCharge { .. } => "sculk_charge",
+            ParticleType::SculkChargePop => "sculk_charge_pop",
+            ParticleType::SoulFireFlame => "soul_fire_flame",
+            ParticleType::Soul => "soul",
+            ParticleType::Flash => "flash",
+            ParticleType::HappyVillager => "happy_villager",
+            ParticleType::Composter => "composter",
+            ParticleType::Heart => "heart",
+            ParticleType::InstantEffect => "instant_effect",
+            ParticleType::Item(_) => "item",
+            ParticleType::VibrationBlock { .. } => "vibration",
+            ParticleType::VibrationEntity { .. } => "vibration",
+            ParticleType::ItemSlime => "item_slime",
+            ParticleType::ItemSnowball => "item_snowball",
+            ParticleType::LargeSmoke => "large_smoke",
+            ParticleType::Lava => "lava",
+            ParticleType::Mycelium => "mycelium",
+            ParticleType::Note => "note",
+            ParticleType::Poof => "poof",
+            ParticleType::Portal => "portal",
+            ParticleType::Rain => "rain",
+            ParticleType::Smoke => "smoke",
+            ParticleType::Sneeze => "sneeze",
+            ParticleType::Spit => "spit",
+            ParticleType::SquidInk => "squid_ink",
+            ParticleType::SweepAttack => "sweep_attack",
+            ParticleType::TotemOfUndying => "totem_of_undying",
+            ParticleType::Underwater => "underwater",
+            ParticleType::Splash => "splash",
+            ParticleType::Witch => "witch",
+            ParticleType::BubblePop => "bubble_pop",
+            ParticleType::CurrentDown => "current_down",
+            ParticleType::BubbleColumnUp => "bubble_column_up",
+            ParticleType::Nautilus => "nautilus",
+            ParticleType::Dolphin => "dolphin",
+            ParticleType::CampfireCosySmoke => "campfire_cosy_smoke",
+            ParticleType::CampfireSignalSmoke => "campfire_signal_smoke",
+            ParticleType::DrippingHoney => "dripping_honey",
+            ParticleType::FallingHoney => "falling_honey",
+            ParticleType::LandingHoney => "landing_honey",
+            ParticleType::FallingNectar => "falling_nectar",
+            ParticleType::FallingSporeBlossom => "falling_spore_blossom",
+            ParticleType::Ash => "ash",
+            ParticleType::CrimsonSpore => "crimson_spore",
+            ParticleType::WarpedSpore => "warped_spore",
+            ParticleType::SporeBlossomAir => "spore_blossom_air",
+            ParticleType::DrippingObsidianTear => "dripping_obsidian_tear",
+            ParticleType::FallingObsidianTear => "falling_obsidian_tear",
+            ParticleType::LandingObsidianTear => "landing_obsidian_tear",
+            ParticleType::ReversePortal => "reverse_portal", // Particle does not have name
+            ParticleType::WhiteAsh => "white_ash",
+            ParticleType::SmallFlame => "small_flame",
+            ParticleType::Snowflake => "snowflake",
+            ParticleType::DrippingDripstoneLava => "dripping_dripstone_lava",
+            ParticleType::FallingDripstoneLava => "falling_dripstone_lava",
+            ParticleType::DrippingDripstoneWater => "dripping_dripstone_water",
+            ParticleType::FallingDripstoneWater => "falling_dripstone_water",
+            ParticleType::GlowSquidInk => "glow_squid_ink",
+            ParticleType::Glow => "glow",
+            ParticleType::WaxOn => "wax_on",
+            ParticleType::WaxOff => "wax_off",
+            ParticleType::ElectricSpark => "electric_spark",
+            ParticleType::Scrape => "scrape",
         }
     }
 }
@@ -376,9 +476,7 @@ impl Encode for ParticleType {
                     "`"
                 ))?;
             }
-            ParticleType::SculkCharge {
-                roll,
-            } => {
+            ParticleType::SculkCharge { roll } => {
                 Encode::encode(roll, _w).context(concat!(
                     "failed to write field `",
                     stringify!(block_pos),
@@ -388,10 +486,7 @@ impl Encode for ParticleType {
                 ))?;
             }
             ParticleType::Item(_) => todo!("Item particle not yet implemented"),
-            ParticleType::VibrationBlock {
-                block_pos,
-                ticks,
-            } => {
+            ParticleType::VibrationBlock { block_pos, ticks } => {
                 Encode::encode(&"block".to_string(), _w).context(concat!(
                     "failed to write field `",
                     stringify!(position_source_type),
@@ -463,13 +558,8 @@ impl Encode for ParticleType {
             ParticleType::FallingDust(block_state) => block_state.encoded_len(),
             ParticleType::SculkCharge { .. } => 4,
             ParticleType::Item(_) => todo!("Item particle not yet implemented"),
-            ParticleType::VibrationBlock {
-                block_pos,
-                ticks,
-            } => {
-                &"block".to_string().encoded_len()
-                    + block_pos.encoded_len()
-                    + ticks.encoded_len()
+            ParticleType::VibrationBlock { block_pos, ticks } => {
+                &"block".to_string().encoded_len() + block_pos.encoded_len() + ticks.encoded_len()
             }
             ParticleType::VibrationEntity {
                 entity_id,
