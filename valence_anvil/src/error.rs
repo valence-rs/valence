@@ -39,7 +39,7 @@ pub enum DataFormatError {
     InvalidPalette,
 }
 
-impl From<IdentError<String>> for Error{
+impl From<IdentError<String>> for Error {
     fn from(err: IdentError<String>) -> Self {
         Self::DataFormatError(DataFormatError::IdentityError(err))
     }
