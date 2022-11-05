@@ -3,7 +3,7 @@ use std::io::Write;
 use anyhow::Context;
 use vek::Vec3;
 
-use crate::block::BlockState;
+use crate::block::{BlockState, BlockPos};
 use crate::protocol::{Decode, Encode, VarInt};
 
 #[derive(Clone, Debug)]
@@ -33,19 +33,13 @@ pub enum ParticleType {
     DrippingWater,
     FallingWater,
     Dust {
-        r: f32,
-        g: f32,
-        b: f32,
+        rgb: Vec3<f32>,
         scale: f32,
     },
     DustColorTransition {
-        from_r: f32,
-        from_g: f32,
-        from_b: f32,
+        from_rgb: Vec3<f32>,
         scale: f32,
-        to_r: f32,
-        to_g: f32,
-        to_b: f32,
+        to_rgb: Vec3<f32>,
     },
     Effect,
     ElderGuardian,
@@ -69,7 +63,7 @@ pub enum ParticleType {
     Item(u32), // TODO: field is 'Slot': 'The item that will be used.'
     Vibration {
         position_source_type: String,
-        block_pos: Vec3<f32>,
+        block_pos: BlockPos,
         entity_id: VarInt,
         entity_eye_height: f32,
         ticks: VarInt,
@@ -317,24 +311,10 @@ impl Encode for ParticleType {
                     "`"
                 ))?;
             }
-            ParticleType::Dust { r, g, b, scale } => {
-                Encode::encode(r, _w).context(concat!(
+            ParticleType::Dust { rgb, scale } => {
+                Encode::encode(rgb, _w).context(concat!(
                     "failed to write field `",
                     stringify!(r),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
-                Encode::encode(g, _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(g),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
-                Encode::encode(b, _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(b),
                     "` from struct `",
                     stringify!(Particle),
                     "`"
@@ -348,31 +328,13 @@ impl Encode for ParticleType {
                 ))?;
             }
             ParticleType::DustColorTransition {
-                from_r,
-                from_g,
-                from_b,
+                from_rgb,
                 scale,
-                to_r,
-                to_g,
-                to_b,
+                to_rgb,
             } => {
-                Encode::encode(from_r, _w).context(concat!(
+                Encode::encode(from_rgb, _w).context(concat!(
                     "failed to write field `",
                     stringify!(from_r),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
-                Encode::encode(from_g, _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(from_g),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
-                Encode::encode(from_b, _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(from_b),
                     "` from struct `",
                     stringify!(Particle),
                     "`"
@@ -384,23 +346,9 @@ impl Encode for ParticleType {
                     stringify!(Particle),
                     "`"
                 ))?;
-                Encode::encode(to_r, _w).context(concat!(
+                Encode::encode(to_rgb, _w).context(concat!(
                     "failed to write field `",
                     stringify!(to_r),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
-                Encode::encode(to_g, _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(to_g),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
-                Encode::encode(to_b, _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(to_b),
                     "` from struct `",
                     stringify!(Particle),
                     "`"
@@ -469,26 +417,8 @@ impl Encode for ParticleType {
         let data_len = match self {
             ParticleType::Block(block_state) => block_state.encoded_len(),
             ParticleType::BlockMarker(block_state) => block_state.encoded_len(),
-            ParticleType::Dust { r, g, b, scale } => {
-                r.encoded_len() + g.encoded_len() + b.encoded_len() + scale.encoded_len()
-            }
-            ParticleType::DustColorTransition {
-                from_r,
-                from_g,
-                from_b,
-                scale,
-                to_r,
-                to_g,
-                to_b,
-            } => {
-                from_r.encoded_len()
-                    + from_g.encoded_len()
-                    + from_b.encoded_len()
-                    + scale.encoded_len()
-                    + to_r.encoded_len()
-                    + to_g.encoded_len()
-                    + to_b.encoded_len()
-            }
+            ParticleType::Dust { .. } => { 4 * 4 }
+            ParticleType::DustColorTransition { .. } => { 7 * 4 }
             ParticleType::FallingDust(block_state) => block_state.encoded_len(),
             ParticleType::Item(_) => todo!("Item particle not yet implemented"),
             ParticleType::Vibration {
