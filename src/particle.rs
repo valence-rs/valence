@@ -49,10 +49,16 @@ pub enum ParticleType {
     EntityEffect,
     ExplosionEmitter,
     Explosion,
-    FallingDust,
+    SonicBoom,
+    FallingDust(BlockState),
     Firework,
     Fishing,
     Flame,
+    SculkSoul,
+    SculkCharge {
+        roll: f32,
+    },
+    SculkChargePop,
     SoulFireFlame,
     Soul,
     Flash,
@@ -61,9 +67,11 @@ pub enum ParticleType {
     Heart,
     InstantEffect,
     Item(u32), // TODO: field is 'Slot': 'The item that will be used.'
-    Vibration {
-        position_source_type: String,
+    VibrationBlock { // The 'Block' variant of the 'Vibration' particle
         block_pos: BlockPos,
+        ticks: VarInt
+    },
+    VibrationEntity { // The 'Entity' variant of the 'Vibration' particle
         entity_id: VarInt,
         entity_eye_height: f32,
         ticks: VarInt,
@@ -148,70 +156,75 @@ impl ParticleType {
             ParticleType::EntityEffect => 21,
             ParticleType::ExplosionEmitter => 22,
             ParticleType::Explosion => 23,
-            ParticleType::FallingDust => 24,
-            ParticleType::Firework => 25,
-            ParticleType::Fishing => 26,
-            ParticleType::Flame => 27,
-            ParticleType::SoulFireFlame => 28,
-            ParticleType::Soul => 29,
-            ParticleType::Flash => 30,
-            ParticleType::HappyVillager => 31,
-            ParticleType::Composter => 32,
-            ParticleType::Heart => 33,
-            ParticleType::InstantEffect => 34,
-            ParticleType::Item(_) => 35,
-            ParticleType::Vibration { .. } => 36,
-            ParticleType::ItemSlime => 37,
-            ParticleType::ItemSnowball => 38,
-            ParticleType::LargeSmoke => 39,
-            ParticleType::Lava => 40,
-            ParticleType::Mycelium => 41,
-            ParticleType::Note => 42,
-            ParticleType::Poof => 43,
-            ParticleType::Portal => 44,
-            ParticleType::Rain => 45,
-            ParticleType::Smoke => 46,
-            ParticleType::Sneeze => 47,
-            ParticleType::Spit => 48,
-            ParticleType::SquidInk => 49,
-            ParticleType::SweepAttack => 50,
-            ParticleType::TotemOfUndying => 51,
-            ParticleType::Underwater => 52,
-            ParticleType::Splash => 53,
-            ParticleType::Witch => 54,
-            ParticleType::BubblePop => 55,
-            ParticleType::CurrentDown => 56,
-            ParticleType::BubbleColumnUp => 57,
-            ParticleType::Nautilus => 58,
-            ParticleType::Dolphin => 59,
-            ParticleType::CampfireCosySmoke => 60,
-            ParticleType::CampfireSignalSmoke => 61,
-            ParticleType::DrippingHoney => 62,
-            ParticleType::FallingHoney => 63,
-            ParticleType::LandingHoney => 64,
-            ParticleType::FallingNectar => 65,
-            ParticleType::FallingSporeBlossom => 66,
-            ParticleType::Ash => 67,
-            ParticleType::CrimsonSpore => 68,
-            ParticleType::WarpedSpore => 69,
-            ParticleType::SporeBlossomAir => 70,
-            ParticleType::DrippingObsidianTear => 71,
-            ParticleType::FallingObsidianTear => 72,
-            ParticleType::LandingObsidianTear => 73,
-            ParticleType::ReversePortal => 74,
-            ParticleType::WhiteAsh => 75,
-            ParticleType::SmallFlame => 76,
-            ParticleType::Snowflake => 77,
-            ParticleType::DrippingDripstoneLava => 78,
-            ParticleType::FallingDripstoneLava => 79,
-            ParticleType::DrippingDripstoneWater => 80,
-            ParticleType::FallingDripstoneWater => 81,
-            ParticleType::GlowSquidInk => 82,
-            ParticleType::Glow => 83,
-            ParticleType::WaxOn => 84,
-            ParticleType::WaxOff => 85,
-            ParticleType::ElectricSpark => 86,
-            ParticleType::Scrape => 87,
+            ParticleType::SonicBoom => 24,
+            ParticleType::FallingDust(_) => 25,
+            ParticleType::Firework => 26,
+            ParticleType::Fishing => 27,
+            ParticleType::Flame => 28,
+            ParticleType::SculkSoul => 29,
+            ParticleType::SculkCharge{ .. } => 30,
+            ParticleType::SculkChargePop => 31,
+            ParticleType::SoulFireFlame => 32,
+            ParticleType::Soul => 33,
+            ParticleType::Flash => 34,
+            ParticleType::HappyVillager => 35,
+            ParticleType::Composter => 36,
+            ParticleType::Heart => 37,
+            ParticleType::InstantEffect => 38,
+            ParticleType::Item(_) => 39,
+            ParticleType::VibrationBlock { .. } => 40,
+            ParticleType::VibrationEntity { .. } => 40,
+            ParticleType::ItemSlime => 41,
+            ParticleType::ItemSnowball => 42,
+            ParticleType::LargeSmoke => 43,
+            ParticleType::Lava => 44,
+            ParticleType::Mycelium => 45,
+            ParticleType::Note => 46,
+            ParticleType::Poof => 47,
+            ParticleType::Portal => 48,
+            ParticleType::Rain => 49,
+            ParticleType::Smoke => 50,
+            ParticleType::Sneeze => 51,
+            ParticleType::Spit => 52,
+            ParticleType::SquidInk => 53,
+            ParticleType::SweepAttack => 54,
+            ParticleType::TotemOfUndying => 55,
+            ParticleType::Underwater => 56,
+            ParticleType::Splash => 57,
+            ParticleType::Witch => 58,
+            ParticleType::BubblePop => 59,
+            ParticleType::CurrentDown => 60,
+            ParticleType::BubbleColumnUp => 61,
+            ParticleType::Nautilus => 62,
+            ParticleType::Dolphin => 63,
+            ParticleType::CampfireCosySmoke => 64,
+            ParticleType::CampfireSignalSmoke => 65,
+            ParticleType::DrippingHoney => 66,
+            ParticleType::FallingHoney => 67,
+            ParticleType::LandingHoney => 68,
+            ParticleType::FallingNectar => 69,
+            ParticleType::FallingSporeBlossom => 70,
+            ParticleType::Ash => 71,
+            ParticleType::CrimsonSpore => 72,
+            ParticleType::WarpedSpore => 73,
+            ParticleType::SporeBlossomAir => 74,
+            ParticleType::DrippingObsidianTear => 75,
+            ParticleType::FallingObsidianTear => 76,
+            ParticleType::LandingObsidianTear => 77,
+            ParticleType::ReversePortal => 78,
+            ParticleType::WhiteAsh => 79,
+            ParticleType::SmallFlame => 80,
+            ParticleType::Snowflake => 81,
+            ParticleType::DrippingDripstoneLava => 82,
+            ParticleType::FallingDripstoneLava => 83,
+            ParticleType::DrippingDripstoneWater => 84,
+            ParticleType::FallingDripstoneWater => 85,
+            ParticleType::GlowSquidInk => 86,
+            ParticleType::Glow => 87,
+            ParticleType::WaxOn => 88,
+            ParticleType::WaxOff => 89,
+            ParticleType::ElectricSpark => 90,
+            ParticleType::Scrape => 91,
         }
     }
 }
@@ -354,15 +367,32 @@ impl Encode for ParticleType {
                     "`"
                 ))?;
             }
+            ParticleType::FallingDust(block_state) => {
+                Encode::encode(block_state, _w).context(concat!(
+                    "failed to write field `",
+                    stringify!(to_r),
+                    "` from struct `",
+                    stringify!(Particle),
+                    "`"
+                ))?;
+            }
+            ParticleType::SculkCharge {
+                roll,
+            } => {
+                Encode::encode(roll, _w).context(concat!(
+                    "failed to write field `",
+                    stringify!(block_pos),
+                    "` from struct `",
+                    stringify!(Particle),
+                    "`"
+                ))?;
+            }
             ParticleType::Item(_) => todo!("Item particle not yet implemented"),
-            ParticleType::Vibration {
-                position_source_type,
+            ParticleType::VibrationBlock {
                 block_pos,
-                entity_id,
-                entity_eye_height,
                 ticks,
             } => {
-                Encode::encode(position_source_type, _w).context(concat!(
+                Encode::encode(&"block".to_string(), _w).context(concat!(
                     "failed to write field `",
                     stringify!(position_source_type),
                     "` from struct `",
@@ -376,16 +406,36 @@ impl Encode for ParticleType {
                     stringify!(Particle),
                     "`"
                 ))?;
+                Encode::encode(ticks, _w).context(concat!(
+                    "failed to write field `",
+                    stringify!(ticks),
+                    "` from struct `",
+                    stringify!(Particle),
+                    "`"
+                ))?;
+            }
+            ParticleType::VibrationEntity {
+                entity_id,
+                entity_eye_height,
+                ticks,
+            } => {
+                Encode::encode(&"entity".to_string(), _w).context(concat!(
+                    "failed to write field `",
+                    stringify!(position_source_type),
+                    "` from struct `",
+                    stringify!(Particle),
+                    "`"
+                ))?;
                 Encode::encode(entity_id, _w).context(concat!(
                     "failed to write field `",
-                    stringify!(entity_id),
+                    stringify!(block_pos),
                     "` from struct `",
                     stringify!(Particle),
                     "`"
                 ))?;
                 Encode::encode(entity_eye_height, _w).context(concat!(
                     "failed to write field `",
-                    stringify!(entity_eye_height),
+                    stringify!(block_pos),
                     "` from struct `",
                     stringify!(Particle),
                     "`"
@@ -410,16 +460,23 @@ impl Encode for ParticleType {
             ParticleType::BlockMarker(block_state) => block_state.encoded_len(),
             ParticleType::Dust { .. } => 4 * 4,
             ParticleType::DustColorTransition { .. } => 7 * 4,
+            ParticleType::FallingDust(block_state) => block_state.encoded_len(),
+            ParticleType::SculkCharge { .. } => 4,
             ParticleType::Item(_) => todo!("Item particle not yet implemented"),
-            ParticleType::Vibration {
-                position_source_type,
+            ParticleType::VibrationBlock {
                 block_pos,
+                ticks,
+            } => {
+                &"block".to_string().encoded_len()
+                    + block_pos.encoded_len()
+                    + ticks.encoded_len()
+            }
+            ParticleType::VibrationEntity {
                 entity_id,
                 entity_eye_height,
                 ticks,
             } => {
-                position_source_type.encoded_len()
-                    + block_pos.encoded_len()
+                &"entity".to_string().encoded_len()
                     + entity_id.encoded_len()
                     + entity_eye_height.encoded_len()
                     + ticks.encoded_len()
