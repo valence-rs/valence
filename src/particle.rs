@@ -3,7 +3,7 @@ use std::io::Write;
 use anyhow::Context;
 use vek::Vec3;
 
-use crate::block::{BlockState, BlockPos};
+use crate::block::{BlockPos, BlockState};
 use crate::protocol::{Decode, Encode, VarInt};
 
 #[derive(Clone, Debug)]
@@ -408,8 +408,8 @@ impl Encode for ParticleType {
         let data_len = match self {
             ParticleType::Block(block_state) => block_state.encoded_len(),
             ParticleType::BlockMarker(block_state) => block_state.encoded_len(),
-            ParticleType::Dust { .. } => { 4 * 4 }
-            ParticleType::DustColorTransition { .. } => { 7 * 4 }
+            ParticleType::Dust { .. } => 4 * 4,
+            ParticleType::DustColorTransition { .. } => 7 * 4,
             ParticleType::Item(_) => todo!("Item particle not yet implemented"),
             ParticleType::Vibration {
                 position_source_type,
