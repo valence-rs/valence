@@ -70,13 +70,13 @@ pub enum ParticleType {
     VibrationBlock {
         // The 'Block' variant of the 'Vibration' particle
         block_pos: BlockPos,
-        ticks: VarInt,
+        ticks: i32,
     },
     VibrationEntity {
         // The 'Entity' variant of the 'Vibration' particle
-        entity_id: VarInt,
+        entity_id: i32,
         entity_eye_height: f32,
-        ticks: VarInt,
+        ticks: i32,
     },
     ItemSlime,
     ItemSnowball,
@@ -423,7 +423,7 @@ impl Encode for ParticleType {
                 Encode::encode(block_pos, _w).context(
                     "failed to write field `block_pos` from struct `ParticleType::VibrationBlock`",
                 )?;
-                Encode::encode(ticks, _w).context(
+                Encode::encode(&VarInt(*ticks), _w).context(
                     "failed to write field `ticks` from struct `ParticleType::VibrationBlock`",
                 )?;
             }
@@ -436,14 +436,14 @@ impl Encode for ParticleType {
                     "failed to write field `position_source_type` from struct \
                      `ParticleType::VibrationEntity`",
                 )?;
-                Encode::encode(entity_id, _w).context(
+                Encode::encode(&VarInt(*entity_id), _w).context(
                     "failed to write field `entity_id` from struct `ParticleType::VibrationEntity`",
                 )?;
                 Encode::encode(entity_eye_height, _w).context(
                     "failed to write field `entity_eye_height` from struct \
                      `ParticleType::VibrationEntity`",
                 )?;
-                Encode::encode(ticks, _w).context(
+                Encode::encode(&VarInt(*ticks), _w).context(
                     "failed to write field `ticks` from struct `ParticleType::VibrationEntity`",
                 )?;
             }
@@ -471,9 +471,9 @@ impl Encode for ParticleType {
                 ticks,
             } => {
                 "entity".encoded_len()
-                    + entity_id.encoded_len()
+                    + VarInt(*entity_id).encoded_len()
                     + entity_eye_height.encoded_len()
-                    + ticks.encoded_len()
+                    + VarInt(*ticks).encoded_len()
             }
             _ => 0,
         };
