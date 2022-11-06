@@ -7,7 +7,7 @@ use crate::block::{BlockPos, BlockState};
 use crate::protocol::{Decode, Encode, VarInt};
 
 #[derive(Clone, Debug)]
-pub struct Particle {
+pub struct ParticleS2c {
     pub particle_type: ParticleType,
     pub long_distance: bool,
     pub position: Vec3<f64>,
@@ -329,23 +329,23 @@ impl ParticleType {
     }
 }
 
-impl Encode for Particle {
+impl Encode for ParticleS2c {
     fn encode(&self, _w: &mut impl Write) -> anyhow::Result<()> {
         let particle_id: VarInt = VarInt(self.particle_type.id());
         Encode::encode(&particle_id, _w)
-            .context("failed to write particle id from struct `Particle`")?;
+            .context("failed to write particle id from struct `ParticleS2c`")?;
         Encode::encode(&self.long_distance, _w)
-            .context("failed to write field `long_distance` from struct `Particle`")?;
+            .context("failed to write field `long_distance` from struct `ParticleS2c`")?;
         Encode::encode(&self.position, _w)
-            .context("failed to write field `position` from struct `Particle`")?;
+            .context("failed to write field `position` from struct `ParticleS2c`")?;
         Encode::encode(&self.offset, _w)
-            .context("failed to write field `offset` from struct `Particle`")?;
+            .context("failed to write field `offset` from struct `ParticleS2c`")?;
         Encode::encode(&self.max_speed, _w)
-            .context("failed to write field `max_speed` from struct `Particle`")?;
+            .context("failed to write field `max_speed` from struct `ParticleS2c`")?;
         Encode::encode(&self.particle_count, _w)
-            .context("failed to write field `particle_count` from struct `Particle`")?;
+            .context("failed to write field `particle_count` from struct `ParticleS2c`")?;
         Encode::encode(&self.particle_type, _w)
-            .context("failed to write field `particle_type` from struct `Particle`")?;
+            .context("failed to write field `particle_type` from struct `ParticleS2c`")?;
         Ok(())
     }
 
@@ -359,7 +359,7 @@ impl Encode for Particle {
     }
 }
 
-impl Decode for Particle {
+impl Decode for ParticleS2c {
     fn decode(_r: &mut &[u8]) -> anyhow::Result<Self> {
         todo!("Is this even necessary?");
         // let particle_id: VarInt = Decode::decode(_r).context(concat!("failed

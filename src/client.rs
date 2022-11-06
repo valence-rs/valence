@@ -26,7 +26,7 @@ use crate::inventory::{
     WindowInventory,
 };
 use crate::item::ItemStack;
-use crate::particle::{Particle, ParticleType};
+use crate::particle::{ParticleS2c, ParticleType};
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::c2s::play::{
@@ -571,7 +571,7 @@ impl<C: Config> Client<C> {
         particle_count: u32,
         long_distance: bool,
     ) {
-        self.queue_packet(&Particle {
+        self.queue_packet(&ParticleS2c {
             particle_type,
             long_distance,
             position,
