@@ -26,7 +26,7 @@ use crate::inventory::{
     WindowInventory,
 };
 use crate::item::ItemStack;
-use crate::particle::{ParticleS2c, ParticleType};
+use crate::particle::{Particle, ParticleS2c};
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::c2s::play::{
@@ -564,7 +564,7 @@ impl<C: Config> Client<C> {
 
     pub fn play_particle(
         &mut self,
-        particle_type: ParticleType,
+        particle_type: Particle,
         position: Vec3<f64>,
         offset: Vec3<f32>,
         max_speed: f32,
