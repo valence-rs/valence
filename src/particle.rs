@@ -4,7 +4,8 @@ use anyhow::Context;
 use vek::{Rgb, Vec3};
 
 use crate::block::{BlockPos, BlockState};
-use crate::protocol::{Decode, Encode, VarInt};
+use crate::item::ItemStack;
+use crate::protocol::{Decode, Encode, Slot, VarInt};
 
 #[derive(Clone, Debug)]
 pub struct ParticleS2c {
@@ -66,7 +67,7 @@ pub enum Particle {
     Composter,
     Heart,
     InstantEffect,
-    Item(u32), // TODO: field is 'Slot': 'The item that will be used.'
+    Item(Option<ItemStack>),
     VibrationBlock {
         // The 'Block' variant of the 'Vibration' particle
         block_pos: BlockPos,
@@ -411,7 +412,12 @@ impl Encode for Particle {
                     "failed to write field `block_state` from struct `Particle::FallingDust`",
                 )?;
             }
-            Particle::Item(_) => todo!("Item particle not yet implemented"),
+            Particle::Item(stack) => {
+                let slot: &Slot = stack;
+                Encode::encode(slot, _w).context(
+                    "failed to write field `block_state` from struct `Particle::FallingDust`",
+                )?;
+            }
             Particle::VibrationBlock { block_pos, ticks } => {
                 Encode::encode("block", _w).context(
                     "failed to write field `position_source_type` from struct \
@@ -458,7 +464,10 @@ impl Encode for Particle {
             Particle::DustColorTransition { .. } => 7 * 4,
             Particle::FallingDust(block_state) => block_state.encoded_len(),
             Particle::SculkCharge { .. } => 4,
-            Particle::Item(_) => todo!("Item particle not yet implemented"),
+            Particle::Item(stack) => {
+                let slot: &Slot = stack;
+                slot.encoded_len()
+            }
             Particle::VibrationBlock { block_pos, ticks } => {
                 "block".encoded_len() + block_pos.encoded_len() + VarInt(*ticks).encoded_len()
             }
