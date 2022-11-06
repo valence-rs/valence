@@ -1,7 +1,7 @@
 use std::io::Write;
 
 use anyhow::Context;
-use vek::Vec3;
+use vek::{Rgb, Vec3};
 
 use crate::block::{BlockPos, BlockState};
 use crate::protocol::{Decode, Encode, VarInt};
@@ -33,13 +33,13 @@ pub enum ParticleType {
     DrippingWater,
     FallingWater,
     Dust {
-        rgb: Vec3<f32>,
+        rgb: Rgb<f32>,
         scale: f32,
     },
     DustColorTransition {
-        from_rgb: Vec3<f32>,
+        from_rgb: Rgb<f32>,
         scale: f32,
-        to_rgb: Vec3<f32>,
+        to_rgb: Rgb<f32>,
     },
     Effect,
     ElderGuardian,
