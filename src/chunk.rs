@@ -22,9 +22,10 @@ use crate::block_pos::BlockPos;
 pub use crate::chunk_pos::ChunkPos;
 use crate::config::Config;
 use crate::protocol::packets::s2c::play::{
-    BlockUpdate, ChunkDataAndUpdateLight, S2cPlayPacket, UpdateSectionBlocks,
+    BlockUpdate, ChunkDataAndUpdateLight, UpdateSectionBlocks,
 };
 use crate::protocol::{Encode, VarInt, VarLong};
+use crate::server::PlayPacketController;
 use crate::util::bits_needed;
 
 mod paletted_container;
@@ -598,8 +599,8 @@ impl<C: Config> LoadedChunk<C> {
         &self,
         pos: ChunkPos,
         min_y: i32,
-        mut push_packet: impl FnMut(S2cPlayPacket),
-    ) {
+        ctrl: &mut PlayPacketController,
+    ) -> anyhow::Result<()> {
         for (sect_y, sect) in self.sections.iter().enumerate() {
             if sect.modified_blocks_count == 1 {
                 let (i, bits) = sect
@@ -619,13 +620,10 @@ impl<C: Config> LoadedChunk<C> {
                 let global_y = sect_y as i32 * 16 + (idx / (16 * 16)) as i32 + min_y;
                 let global_z = pos.z * 16 + (idx / 16 % 16) as i32;
 
-                push_packet(
-                    BlockUpdate {
-                        location: BlockPos::new(global_x, global_y, global_z),
-                        block_id: VarInt(block.to_raw() as _),
-                    }
-                    .into(),
-                );
+                ctrl.append_packet(&BlockUpdate {
+                    location: BlockPos::new(global_x, global_y, global_z),
+                    block_id: VarInt(block.to_raw() as _),
+                })?;
             } else if sect.modified_blocks_count > 1 {
                 let mut blocks = Vec::with_capacity(sect.modified_blocks_count.into());
 
@@ -648,16 +646,15 @@ impl<C: Config> LoadedChunk<C> {
                     | (pos.z as i64 & 0x3fffff) << 20
                     | (sect_y as i64 + min_y.div_euclid(16) as i64) & 0xfffff;
 
-                push_packet(
-                    UpdateSectionBlocks {
-                        chunk_section_position,
-                        invert_trust_edges: false,
-                        blocks,
-                    }
-                    .into(),
-                );
+                ctrl.append_packet(&UpdateSectionBlocks {
+                    chunk_section_position,
+                    invert_trust_edges: false,
+                    blocks,
+                })?;
             }
         }
+
+        Ok(())
     }
 
     fn update(&mut self) {

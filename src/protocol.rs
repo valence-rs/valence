@@ -6,12 +6,12 @@
 //! While the protocol module is technically public API, its use is discouraged
 //! and has thus been hidden from the documentation. You may find yourself
 //! needing to use this module under the following circumstances:
-//! - You want to send packets to clients manually using the [`send_packet`]
+//! - You want to send packets to clients manually using the [`queue_packet`]
 //!   function.
 //! - You are writing a proxy between the client and server.
 //! - You are writing a Minecraft client.
 //!
-//! [`send_packet`]: crate::client::Client::send_packet
+//! [`queue_packet`]: crate::client::Client::queue_packet
 
 use std::borrow::Cow;
 use std::io::{Read, Write};

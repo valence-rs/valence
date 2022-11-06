@@ -10,6 +10,7 @@ use uuid::Uuid;
 
 use crate::biome::Biome;
 use crate::dimension::Dimension;
+use crate::protocol::MAX_PACKET_SIZE;
 use crate::server::{NewClientData, Server, SharedServer};
 use crate::text::Text;
 use crate::username::Username;
@@ -47,7 +48,13 @@ pub trait Config: Sized + Send + Sync + 'static {
     /// You will want this value to be somewhere above the maximum number of
     /// players, since status pings should still succeed even when the server is
     /// full.
-    fn max_connections(&self) -> usize;
+    ///
+    /// # Default Implementation
+    ///
+    /// Currently returns `1024`. This may change in a future version.
+    fn max_connections(&self) -> usize {
+        1024
+    }
 
     /// Called once at startup to get the socket address the server will
     /// be bound to.
@@ -78,9 +85,9 @@ pub trait Config: Sized + Send + Sync + 'static {
         STANDARD_TPS
     }
 
-    /// Called once at startup to get the connection mode option, which
-    /// determines if client authentication and encryption should take place
-    /// and if the server should get the player data from a proxy.
+    /// Called to get the connection mode option, which determines if client
+    /// authentication and encryption should take place and if the server
+    /// should get the player data from a proxy.
     ///
     /// # Default Implementation
     ///
@@ -89,13 +96,62 @@ pub trait Config: Sized + Send + Sync + 'static {
         ConnectionMode::Online
     }
 
-    /// Called once at startup to get the "prevent-proxy-connections" option,
-    /// which determines if client IP validation should take place.
-    ///
-    /// When prevent_proxy_connections is enabled, clients can no longer log-in
-    /// if they connected to the yggdrasil server using a different IP.
+    /// Obtains the compression threshold to use for compressing packets. For a
+    /// compression threshold of `Some(N)`, packets with encoded lengths >= `N`
+    /// are compressed while all others are not. `None` disables compression.
     ///
     /// # Default Implementation
+    ///
+    /// If the connection mode is [`ConnectionMode::Online`], `Some(256)` is
+    /// returned. Otherwise, compression is disabled.
+    fn compression_threshold(&self) -> Option<u32> {
+        match self.connection_mode() {
+            ConnectionMode::Online => Some(256),
+            _ => None,
+        }
+    }
+
+    /// Called upon every client login to obtain the full URL to use for session
+    /// server requests. This is done to authenticate player accounts. This
+    /// method is not called unless [online mode] is enabled.
+    ///
+    /// It is assumed that upon successful request, a structure matching the
+    /// description in the [wiki](https://wiki.vg/Protocol_Encryption#Server) was obtained.
+    /// Providing a URL that does not return such a structure will result in a
+    /// disconnect for every client that connects.
+    ///
+    /// The arguments are described in the linked wiki article.
+    ///
+    /// # Default Implementation
+    ///
+    /// Uses the official Minecraft session server. This is formatted as
+    /// `https://sessionserver.mojang.com/session/minecraft/hasJoined?username=<username>&serverId=<auth-digest>&ip=<player-ip>`.
+    ///
+    /// [online mode]: crate::config::ConnectionMode::Online
+    fn session_server(
+        &self,
+        server: &SharedServer<Self>,
+        username: Username<&str>,
+        auth_digest: &str,
+        player_ip: &IpAddr,
+    ) -> String {
+        if self.prevent_proxy_connections() {
+            format!("https://sessionserver.mojang.com/session/minecraft/hasJoined?username={username}&serverId={auth_digest}&ip={player_ip}")
+        } else {
+            format!("https://sessionserver.mojang.com/session/minecraft/hasJoined?username={username}&serverId={auth_digest}")
+        }
+    }
+
+    /// Called from the default implementation of [`Config::session_server`] to
+    /// get the "prevent-proxy-connections" option, which determines if client
+    /// IP validation should take place.
+    ///
+    /// When `prevent_proxy_connections` is enabled, clients can no longer
+    /// log-in if they connected to the yggdrasil server using a different
+    /// IP.
+    ///
+    /// # Default Implementation
+    ///
     /// Proxy connections are allowed.
     ///
     /// Returns `false`.
@@ -103,32 +159,34 @@ pub trait Config: Sized + Send + Sync + 'static {
         false
     }
 
-    /// Called once at startup to get the capacity of the buffer used to
-    /// hold incoming packets.
+    /// Called once at startup to get the maximum capacity (in bytes) of the
+    /// buffer used to hold incoming packet data.
     ///
     /// A larger capacity reduces the chance that a client needs to be
-    /// disconnected due to a full buffer, but increases potential memory usage.
+    /// disconnected due to the buffer being full, but increases potential
+    /// memory usage.
     ///
     /// # Default Implementation
     ///
-    /// An unspecified value is returned that should be adequate in most
-    /// situations.
-    fn incoming_packet_capacity(&self) -> usize {
-        64
+    /// An unspecified value is returned that should be adequate for most
+    /// situations. This default may change in future versions.
+    fn incoming_capacity(&self) -> usize {
+        MAX_PACKET_SIZE as usize
     }
 
-    /// Called once at startup to get the capacity of the buffer used to
-    /// hold outgoing packets.
+    /// Called once at startup to get the maximum capacity (in bytes) of the
+    /// buffer used to hold outgoing packets.
     ///
     /// A larger capacity reduces the chance that a client needs to be
-    /// disconnected due to a full buffer, but increases potential memory usage.
+    /// disconnected due to the buffer being full, but increases potential
+    /// memory usage.
     ///
     /// # Default Implementation
     ///
-    /// An unspecified value is returned that should be adequate in most
-    /// situations.
-    fn outgoing_packet_capacity(&self) -> usize {
-        2048
+    /// An unspecified value is returned that should be adequate for most
+    /// situations. This default may change in future versions.
+    fn outgoing_capacity(&self) -> usize {
+        MAX_PACKET_SIZE as usize * 4
     }
 
     /// Called once at startup to get a handle to the tokio runtime the server
@@ -220,30 +278,6 @@ pub trait Config: Sized + Send + Sync + 'static {
         Ok(())
     }
 
-    /// Called upon (every) client connect (if online mode is enabled) to obtain
-    /// the full URL to use for session server requests. Defaults to
-    /// `https://sessionserver.mojang.com/session/minecraft/hasJoined?username=<username>&serverId=<auth-digest>&ip=<player-ip>`.
-    ///
-    /// It is assumed, that upon successful request, a structure matching the
-    /// description in the [wiki](https://wiki.vg/Protocol_Encryption#Server) was obtained.
-    /// Providing a URL that does not return such a structure will result in a
-    /// disconnect for every client that connects.
-    ///
-    /// The arguments are described in the linked wiki article.
-    fn format_session_server_url(
-        &self,
-        server: &SharedServer<Self>,
-        username: Username<&str>,
-        auth_digest: &str,
-        player_ip: &IpAddr,
-    ) -> String {
-        if self.prevent_proxy_connections() {
-            format!("https://sessionserver.mojang.com/session/minecraft/hasJoined?username={username}&serverId={auth_digest}&ip={player_ip}")
-        } else {
-            format!("https://sessionserver.mojang.com/session/minecraft/hasJoined?username={username}&serverId={auth_digest}")
-        }
-    }
-
     /// Called after the server is created, but prior to accepting connections
     /// and entering the update loop.
     ///
@@ -267,7 +301,7 @@ pub trait Config: Sized + Send + Sync + 'static {
     /// # Default Implementation
     ///
     /// The default implementation does nothing.
-    fn update(&self, server: &mut Server<Self>);
+    fn update(&self, server: &mut Server<Self>) {}
 }
 
 /// The result of the [`server_list_ping`](Config::server_list_ping) callback.
@@ -307,7 +341,7 @@ pub enum ConnectionMode {
     /// This mode should be used for all publicly exposed servers which are not
     /// behind a proxy.
     ///
-    /// [configured session server]: Config::format_session_server_url
+    /// [configured session server]: Config::session_server
     #[default]
     Online,
     /// Disables client authentication with the configured session server.
@@ -386,10 +420,4 @@ where
     type WorldState = W;
     type ChunkState = Ch;
     type PlayerListState = P;
-
-    fn max_connections(&self) -> usize {
-        64
-    }
-
-    fn update(&self, _server: &mut Server<Self>) {}
 }

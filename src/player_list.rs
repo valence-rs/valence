@@ -10,10 +10,11 @@ use crate::client::GameMode;
 use crate::config::Config;
 use crate::player_textures::SignedPlayerTextures;
 use crate::protocol::packets::s2c::play::{
-    PlayerInfo, PlayerListAddPlayer, S2cPlayPacket, SetTabListHeaderAndFooter,
+    PlayerInfo, PlayerListAddPlayer, SetTabListHeaderAndFooter,
 };
 use crate::protocol::packets::Property;
 use crate::protocol::VarInt;
+use crate::server::PlayPacketController;
 use crate::slab_rc::{Key, SlabRc};
 use crate::text::Text;
 
@@ -246,7 +247,7 @@ impl<C: Config> PlayerList<C> {
         self.entries.iter_mut().map(|(k, v)| (*k, v))
     }
 
-    pub(crate) fn initial_packets(&self, mut push_packet: impl FnMut(S2cPlayPacket)) {
+    pub(crate) fn initial_packets(&self, ctrl: &mut PlayPacketController) -> anyhow::Result<()> {
         let add_player: Vec<_> = self
             .entries
             .iter()
@@ -272,23 +273,24 @@ impl<C: Config> PlayerList<C> {
             .collect();
 
         if !add_player.is_empty() {
-            push_packet(PlayerInfo::AddPlayer(add_player).into());
+            ctrl.append_packet(&PlayerInfo::AddPlayer(add_player))?;
         }
 
         if self.header != Text::default() || self.footer != Text::default() {
-            push_packet(
-                SetTabListHeaderAndFooter {
-                    header: self.header.clone(),
-                    footer: self.footer.clone(),
-                }
-                .into(),
-            );
+            ctrl.append_packet(&SetTabListHeaderAndFooter {
+                header: self.header.clone(),
+                footer: self.footer.clone(),
+            })?;
         }
+
+        Ok(())
     }
 
-    pub(crate) fn update_packets(&self, mut push_packet: impl FnMut(S2cPlayPacket)) {
+    pub(crate) fn update_packets(&self, ctrl: &mut PlayPacketController) -> anyhow::Result<()> {
         if !self.removed.is_empty() {
-            push_packet(PlayerInfo::RemovePlayer(self.removed.iter().cloned().collect()).into());
+            ctrl.append_packet(&PlayerInfo::RemovePlayer(
+                self.removed.iter().cloned().collect(),
+            ))?;
         }
 
         let mut add_player = Vec::new();
@@ -334,34 +336,35 @@ impl<C: Config> PlayerList<C> {
         }
 
         if !add_player.is_empty() {
-            push_packet(PlayerInfo::AddPlayer(add_player).into());
+            ctrl.append_packet(&PlayerInfo::AddPlayer(add_player))?;
         }
 
         if !game_mode.is_empty() {
-            push_packet(PlayerInfo::UpdateGameMode(game_mode).into());
+            ctrl.append_packet(&PlayerInfo::UpdateGameMode(game_mode))?;
         }
 
         if !ping.is_empty() {
-            push_packet(PlayerInfo::UpdateLatency(ping).into());
+            ctrl.append_packet(&PlayerInfo::UpdateLatency(ping))?;
         }
 
         if !display_name.is_empty() {
-            push_packet(PlayerInfo::UpdateDisplayName(display_name).into());
+            ctrl.append_packet(&PlayerInfo::UpdateDisplayName(display_name))?;
         }
 
         if self.modified_header_or_footer {
-            push_packet(
-                SetTabListHeaderAndFooter {
-                    header: self.header.clone(),
-                    footer: self.footer.clone(),
-                }
-                .into(),
-            );
+            ctrl.append_packet(&SetTabListHeaderAndFooter {
+                header: self.header.clone(),
+                footer: self.footer.clone(),
+            })?;
         }
+
+        Ok(())
     }
 
-    pub(crate) fn clear_packets(&self, mut push_packet: impl FnMut(S2cPlayPacket)) {
-        push_packet(PlayerInfo::RemovePlayer(self.entries.keys().cloned().collect()).into());
+    pub(crate) fn clear_packets(&self, ctrl: &mut PlayPacketController) -> anyhow::Result<()> {
+        ctrl.append_packet(&PlayerInfo::RemovePlayer(
+            self.entries.keys().cloned().collect(),
+        ))
     }
 }
 

@@ -41,7 +41,7 @@ pub mod login {
             server_id: BoundedString<0, 20>,
             /// The RSA public key
             public_key: Vec<u8>,
-            verify_token: BoundedArray<u8, 16, 16>,
+            verify_token: BoundedArray<u8, 4, 16>,
         }
     }
 
