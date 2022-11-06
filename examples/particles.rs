@@ -19,7 +19,7 @@ pub fn main() -> ShutdownResult {
         },
         ServerState {
             player_list: None,
-            particle_list: Vec::new(),
+            particle_list: create_particle_vec(),
             particle_index: 0,
         },
     )
@@ -75,7 +75,6 @@ impl Config for Game {
         }
 
         world.chunks.set_block_state(SPAWN_POS, BlockState::BEDROCK);
-        add_all_particles(server);
     }
 
     fn update(&self, server: &mut Server<Self>) {
@@ -184,126 +183,114 @@ impl Config for Game {
     }
 }
 
-fn add_all_particles(server: &mut Server<Game>) {
-    fn push_particle(server: &mut Server<Game>, particle_type: ParticleType) {
-        server.state.particle_list.push(particle_type);
-    }
-    push_particle(server, ParticleType::AmbientEntityEffect);
-    push_particle(server, ParticleType::AngryVillager);
-    push_particle(server, ParticleType::Block(BlockState::OAK_PLANKS));
-    push_particle(server, ParticleType::BlockMarker(BlockState::GOLD_BLOCK));
-    push_particle(server, ParticleType::Bubble);
-    push_particle(server, ParticleType::Cloud);
-    push_particle(server, ParticleType::Crit);
-    push_particle(server, ParticleType::DamageIndicator);
-    push_particle(server, ParticleType::DragonBreath);
-    push_particle(server, ParticleType::DrippingLava);
-    push_particle(server, ParticleType::FallingLava);
-    push_particle(server, ParticleType::LandingLava);
-    push_particle(server, ParticleType::DrippingWater);
-    push_particle(server, ParticleType::FallingWater);
-    push_particle(
-        server,
+#[inline]
+fn create_particle_vec() -> Vec<ParticleType> {
+    vec![
+        ParticleType::AmbientEntityEffect,
+        ParticleType::AngryVillager,
+        ParticleType::Block(BlockState::OAK_PLANKS),
+        ParticleType::BlockMarker(BlockState::GOLD_BLOCK),
+        ParticleType::Bubble,
+        ParticleType::Cloud,
+        ParticleType::Crit,
+        ParticleType::DamageIndicator,
+        ParticleType::DragonBreath,
+        ParticleType::DrippingLava,
+        ParticleType::FallingLava,
+        ParticleType::LandingLava,
+        ParticleType::DrippingWater,
+        ParticleType::FallingWater,
         ParticleType::Dust {
             rgb: Rgb::new(1.0, 1.0, 0.0),
             scale: 2.0,
         },
-    );
-    push_particle(
-        server,
         ParticleType::DustColorTransition {
             from_rgb: Rgb::new(1.0, 0.0, 0.0),
             scale: 2.0,
             to_rgb: Rgb::new(0.0, 1.0, 0.0),
         },
-    );
-    push_particle(server, ParticleType::Effect);
-    push_particle(server, ParticleType::ElderGuardian);
-    push_particle(server, ParticleType::EnchantedHit);
-    push_particle(server, ParticleType::Enchant);
-    push_particle(server, ParticleType::EndRod);
-    push_particle(server, ParticleType::EntityEffect);
-    push_particle(server, ParticleType::ExplosionEmitter);
-    push_particle(server, ParticleType::Explosion);
-    push_particle(server, ParticleType::SonicBoom);
-    push_particle(server, ParticleType::FallingDust(BlockState::RED_SAND));
-    push_particle(server, ParticleType::Firework);
-    push_particle(server, ParticleType::Fishing);
-    push_particle(server, ParticleType::Flame);
-    push_particle(server, ParticleType::SculkSoul);
-    push_particle(server, ParticleType::SculkCharge { roll: 1.0 });
-    push_particle(server, ParticleType::SculkChargePop);
-    push_particle(server, ParticleType::SoulFireFlame);
-    push_particle(server, ParticleType::Soul);
-    push_particle(server, ParticleType::Flash);
-    push_particle(server, ParticleType::HappyVillager);
-    push_particle(server, ParticleType::Composter);
-    push_particle(server, ParticleType::Heart);
-    push_particle(server, ParticleType::InstantEffect);
-    push_particle(
-        server,
+        ParticleType::Effect,
+        ParticleType::ElderGuardian,
+        ParticleType::EnchantedHit,
+        ParticleType::Enchant,
+        ParticleType::EndRod,
+        ParticleType::EntityEffect,
+        ParticleType::ExplosionEmitter,
+        ParticleType::Explosion,
+        ParticleType::SonicBoom,
+        ParticleType::FallingDust(BlockState::RED_SAND),
+        ParticleType::Firework,
+        ParticleType::Fishing,
+        ParticleType::Flame,
+        ParticleType::SculkSoul,
+        ParticleType::SculkCharge { roll: 1.0 },
+        ParticleType::SculkChargePop,
+        ParticleType::SoulFireFlame,
+        ParticleType::Soul,
+        ParticleType::Flash,
+        ParticleType::HappyVillager,
+        ParticleType::Composter,
+        ParticleType::Heart,
+        ParticleType::InstantEffect,
         ParticleType::VibrationBlock {
             block_pos: SPAWN_POS,
             ticks: 50,
         },
-    );
-    push_particle(
-        server,
         ParticleType::VibrationEntity {
             entity_id: 0,
             entity_eye_height: 1.0,
             ticks: 50,
         },
-    );
-    push_particle(server, ParticleType::ItemSlime);
-    push_particle(server, ParticleType::ItemSnowball);
-    push_particle(server, ParticleType::LargeSmoke);
-    push_particle(server, ParticleType::Lava);
-    push_particle(server, ParticleType::Mycelium);
-    push_particle(server, ParticleType::Note);
-    push_particle(server, ParticleType::Poof);
-    push_particle(server, ParticleType::Portal);
-    push_particle(server, ParticleType::Rain);
-    push_particle(server, ParticleType::Smoke);
-    push_particle(server, ParticleType::Sneeze);
-    push_particle(server, ParticleType::Spit);
-    push_particle(server, ParticleType::SquidInk);
-    push_particle(server, ParticleType::SweepAttack);
-    push_particle(server, ParticleType::TotemOfUndying);
-    push_particle(server, ParticleType::Underwater);
-    push_particle(server, ParticleType::Splash);
-    push_particle(server, ParticleType::Witch);
-    push_particle(server, ParticleType::BubblePop);
-    push_particle(server, ParticleType::CurrentDown);
-    push_particle(server, ParticleType::BubbleColumnUp);
-    push_particle(server, ParticleType::Nautilus);
-    push_particle(server, ParticleType::Dolphin);
-    push_particle(server, ParticleType::CampfireCosySmoke);
-    push_particle(server, ParticleType::CampfireSignalSmoke);
-    push_particle(server, ParticleType::DrippingHoney);
-    push_particle(server, ParticleType::FallingHoney);
-    push_particle(server, ParticleType::LandingHoney);
-    push_particle(server, ParticleType::FallingNectar);
-    push_particle(server, ParticleType::FallingSporeBlossom);
-    push_particle(server, ParticleType::Ash);
-    push_particle(server, ParticleType::CrimsonSpore);
-    push_particle(server, ParticleType::WarpedSpore);
-    push_particle(server, ParticleType::SporeBlossomAir);
-    push_particle(server, ParticleType::DrippingObsidianTear);
-    push_particle(server, ParticleType::FallingObsidianTear);
-    push_particle(server, ParticleType::LandingObsidianTear);
-    push_particle(server, ParticleType::ReversePortal);
-    push_particle(server, ParticleType::WhiteAsh);
-    push_particle(server, ParticleType::SmallFlame);
-    push_particle(server, ParticleType::Snowflake);
-    push_particle(server, ParticleType::DrippingDripstoneLava);
-    push_particle(server, ParticleType::FallingDripstoneLava);
-    push_particle(server, ParticleType::DrippingDripstoneWater);
-    push_particle(server, ParticleType::FallingDripstoneWater);
-    push_particle(server, ParticleType::GlowSquidInk);
-    push_particle(server, ParticleType::Glow);
-    push_particle(server, ParticleType::WaxOn);
-    push_particle(server, ParticleType::WaxOff);
-    push_particle(server, ParticleType::ElectricSpark);
-    push_particle(server, ParticleType::Scrape);
+        ParticleType::ItemSlime,
+        ParticleType::ItemSnowball,
+        ParticleType::LargeSmoke,
+        ParticleType::Lava,
+        ParticleType::Mycelium,
+        ParticleType::Note,
+        ParticleType::Poof,
+        ParticleType::Portal,
+        ParticleType::Rain,
+        ParticleType::Smoke,
+        ParticleType::Sneeze,
+        ParticleType::Spit,
+        ParticleType::SquidInk,
+        ParticleType::SweepAttack,
+        ParticleType::TotemOfUndying,
+        ParticleType::Underwater,
+        ParticleType::Splash,
+        ParticleType::Witch,
+        ParticleType::BubblePop,
+        ParticleType::CurrentDown,
+        ParticleType::BubbleColumnUp,
+        ParticleType::Nautilus,
+        ParticleType::Dolphin,
+        ParticleType::CampfireCosySmoke,
+        ParticleType::CampfireSignalSmoke,
+        ParticleType::DrippingHoney,
+        ParticleType::FallingHoney,
+        ParticleType::LandingHoney,
+        ParticleType::FallingNectar,
+        ParticleType::FallingSporeBlossom,
+        ParticleType::Ash,
+        ParticleType::CrimsonSpore,
+        ParticleType::WarpedSpore,
+        ParticleType::SporeBlossomAir,
+        ParticleType::DrippingObsidianTear,
+        ParticleType::FallingObsidianTear,
+        ParticleType::LandingObsidianTear,
+        ParticleType::ReversePortal,
+        ParticleType::WhiteAsh,
+        ParticleType::SmallFlame,
+        ParticleType::Snowflake,
+        ParticleType::DrippingDripstoneLava,
+        ParticleType::FallingDripstoneLava,
+        ParticleType::DrippingDripstoneWater,
+        ParticleType::FallingDripstoneWater,
+        ParticleType::GlowSquidInk,
+        ParticleType::Glow,
+        ParticleType::WaxOn,
+        ParticleType::WaxOff,
+        ParticleType::ElectricSpark,
+        ParticleType::Scrape,
+    ]
 }
