@@ -27,7 +27,7 @@ use uuid::Uuid;
 use valence_nbt::Compound;
 pub use var_int::VarInt;
 pub use var_long::VarLong;
-use vek::{Vec2, Vec3, Vec4};
+use vek::{Rgb, Vec2, Vec3, Vec4};
 
 use crate::entity::EntityId;
 use crate::nbt;
@@ -604,6 +604,18 @@ impl<T: Encode> Encode for Vec3<T> {
 
     fn encoded_len(&self) -> usize {
         self.x.encoded_len() + self.y.encoded_len() + self.z.encoded_len()
+    }
+}
+
+impl<T: Encode> Encode for Rgb<T> {
+    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+        self.r.encode(w)?;
+        self.g.encode(w)?;
+        self.b.encode(w)
+    }
+
+    fn encoded_len(&self) -> usize {
+        self.r.encoded_len() + self.g.encoded_len() + self.b.encoded_len()
     }
 }
 
