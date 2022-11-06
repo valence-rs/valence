@@ -150,34 +150,31 @@ impl Config for Game {
             true
         });
 
+        // TODO add a way to speed up particle cycle, for testing
         if !server.clients.is_empty() && server.shared.current_tick() % 30 == 0 {
             if server.state.particle_index == server.state.particle_list.len() {
                 server.state.particle_index = 0;
             }
             let pos = Vec3::new(0.0, 100.0, -10.0);
             let offset = Vec3::new(0.5, 0.5, 0.5);
-            let opt: Option<&ParticleType> =
-                server.state.particle_list.get(server.state.particle_index);
-            match opt {
-                None => {
-                    unreachable!("Invalid index to particle list");
-                }
-                Some(particle_type) => {
-                    println!("Current particle: {}", particle_type.name());
-                    server.clients.iter_mut().for_each(|(_cid, client)| {
-                        client.set_title(
-                            "",
-                            particle_type.name().to_string().bold(),
-                            SetTitleAnimationTimes {
-                                fade_in: 0,
-                                stay: 100,
-                                fade_out: 2,
-                            },
-                        );
-                        client.play_particle(particle_type.clone(), pos, offset, 0.1, 100, true);
-                    });
-                }
-            }
+            let particle_type: &ParticleType = server
+                .state
+                .particle_list
+                .get(server.state.particle_index)
+                .expect("Invalid index to particle list");
+            println!("Current particle: {}", particle_type.name());
+            server.clients.iter_mut().for_each(|(_cid, client)| {
+                client.set_title(
+                    "",
+                    particle_type.name().to_string().bold(),
+                    SetTitleAnimationTimes {
+                        fade_in: 0,
+                        stay: 100,
+                        fade_out: 2,
+                    },
+                );
+                client.play_particle(particle_type.clone(), pos, offset, 0.1, 100, true);
+            });
             server.state.particle_index += 1;
         }
     }
