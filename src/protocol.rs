@@ -29,6 +29,8 @@ pub use var_int::VarInt;
 pub use var_long::VarLong;
 use vek::{Vec2, Vec3, Vec4};
 
+pub use valence_derive::{Encode, Decode};
+
 use crate::entity::EntityId;
 use crate::nbt;
 
@@ -40,7 +42,7 @@ mod var_int;
 mod var_long;
 
 /// Types that can be written to the Minecraft protocol.
-pub trait Encode {
+pub trait Encode<T: ?Sized = Self> {
     fn encode(&self, w: &mut impl Write) -> anyhow::Result<()>;
 
     /// Returns the number of bytes that will be written when [`Self::encode`]
