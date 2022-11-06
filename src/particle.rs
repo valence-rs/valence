@@ -463,7 +463,7 @@ impl Encode for ParticleType {
             ParticleType::SculkCharge { .. } => 4,
             ParticleType::Item(_) => todo!("Item particle not yet implemented"),
             ParticleType::VibrationBlock { block_pos, ticks } => {
-                "block".encoded_len() + block_pos.encoded_len() + ticks.encoded_len()
+                "block".encoded_len() + block_pos.encoded_len() + VarInt(*ticks).encoded_len()
             }
             ParticleType::VibrationEntity {
                 entity_id,
