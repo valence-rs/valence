@@ -185,125 +185,113 @@ impl Config for Game {
 }
 
 fn add_all_particles(server: &mut Server<Game>) {
-    fn add_particle_to_list(server: &mut Server<Game>, pt: ParticleType) {
+    fn add_particle_to_list(pt: ParticleType) {
         server.state.particle_list.push(pt);
     }
-    add_particle_to_list(server, ParticleType::AmbientEntityEffect);
-    add_particle_to_list(server, ParticleType::AngryVillager);
-    add_particle_to_list(server, ParticleType::Block(BlockState::OAK_PLANKS));
-    add_particle_to_list(server, ParticleType::BlockMarker(BlockState::GOLD_BLOCK));
-    add_particle_to_list(server, ParticleType::Bubble);
-    add_particle_to_list(server, ParticleType::Cloud);
-    add_particle_to_list(server, ParticleType::Crit);
-    add_particle_to_list(server, ParticleType::DamageIndicator);
-    add_particle_to_list(server, ParticleType::DragonBreath);
-    add_particle_to_list(server, ParticleType::DrippingLava);
-    add_particle_to_list(server, ParticleType::FallingLava);
-    add_particle_to_list(server, ParticleType::LandingLava);
-    add_particle_to_list(server, ParticleType::DrippingWater);
-    add_particle_to_list(server, ParticleType::FallingWater);
-    add_particle_to_list(
-        server,
-        ParticleType::Dust {
-            rgb: Vec3::new(1.0, 1.0, 0.0),
-            scale: 2.0,
-        },
-    );
-    add_particle_to_list(
-        server,
-        ParticleType::DustColorTransition {
-            from_rgb: Vec3::new(1.0, 0.0, 0.0),
-            scale: 2.0,
-            to_rgb: Vec3::new(0.0, 1.0, 0.0),
-        },
-    );
-    add_particle_to_list(server, ParticleType::Effect);
-    add_particle_to_list(server, ParticleType::ElderGuardian);
-    add_particle_to_list(server, ParticleType::EnchantedHit);
-    add_particle_to_list(server, ParticleType::Enchant);
-    add_particle_to_list(server, ParticleType::EndRod);
-    add_particle_to_list(server, ParticleType::EntityEffect);
-    add_particle_to_list(server, ParticleType::ExplosionEmitter);
-    add_particle_to_list(server, ParticleType::Explosion);
-    add_particle_to_list(server, ParticleType::SonicBoom);
-    add_particle_to_list(server, ParticleType::FallingDust(BlockState::RED_SAND));
-    add_particle_to_list(server, ParticleType::Firework);
-    add_particle_to_list(server, ParticleType::Fishing);
-    add_particle_to_list(server, ParticleType::Flame);
-    add_particle_to_list(server, ParticleType::SculkSoul);
-    add_particle_to_list(server, ParticleType::SculkCharge { roll: 1.0 });
-    add_particle_to_list(server, ParticleType::SculkChargePop);
-    add_particle_to_list(server, ParticleType::SoulFireFlame);
-    add_particle_to_list(server, ParticleType::Soul);
-    add_particle_to_list(server, ParticleType::Flash);
-    add_particle_to_list(server, ParticleType::HappyVillager);
-    add_particle_to_list(server, ParticleType::Composter);
-    add_particle_to_list(server, ParticleType::Heart);
-    add_particle_to_list(server, ParticleType::InstantEffect);
-    add_particle_to_list(
-        server,
-        ParticleType::VibrationBlock {
-            block_pos: SPAWN_POS,
-            ticks: VarInt(50),
-        },
-    );
-    add_particle_to_list(
-        server,
-        ParticleType::VibrationEntity {
-            entity_id: VarInt(0),
-            entity_eye_height: 1.0,
-            ticks: VarInt(50),
-        },
-    );
-    add_particle_to_list(server, ParticleType::ItemSlime);
-    add_particle_to_list(server, ParticleType::ItemSnowball);
-    add_particle_to_list(server, ParticleType::LargeSmoke);
-    add_particle_to_list(server, ParticleType::Lava);
-    add_particle_to_list(server, ParticleType::Mycelium);
-    add_particle_to_list(server, ParticleType::Note);
-    add_particle_to_list(server, ParticleType::Poof);
-    add_particle_to_list(server, ParticleType::Portal);
-    add_particle_to_list(server, ParticleType::Rain);
-    add_particle_to_list(server, ParticleType::Smoke);
-    add_particle_to_list(server, ParticleType::Sneeze);
-    add_particle_to_list(server, ParticleType::Spit);
-    add_particle_to_list(server, ParticleType::SquidInk);
-    add_particle_to_list(server, ParticleType::SweepAttack);
-    add_particle_to_list(server, ParticleType::TotemOfUndying);
-    add_particle_to_list(server, ParticleType::Underwater);
-    add_particle_to_list(server, ParticleType::Splash);
-    add_particle_to_list(server, ParticleType::Witch);
-    add_particle_to_list(server, ParticleType::BubblePop);
-    add_particle_to_list(server, ParticleType::CurrentDown);
-    add_particle_to_list(server, ParticleType::BubbleColumnUp);
-    add_particle_to_list(server, ParticleType::Nautilus);
-    add_particle_to_list(server, ParticleType::Dolphin);
-    add_particle_to_list(server, ParticleType::CampfireCosySmoke);
-    add_particle_to_list(server, ParticleType::CampfireSignalSmoke);
-    add_particle_to_list(server, ParticleType::DrippingHoney);
-    add_particle_to_list(server, ParticleType::FallingHoney);
-    add_particle_to_list(server, ParticleType::LandingHoney);
-    add_particle_to_list(server, ParticleType::FallingNectar);
-    add_particle_to_list(server, ParticleType::FallingSporeBlossom);
-    add_particle_to_list(server, ParticleType::Ash);
-    add_particle_to_list(server, ParticleType::CrimsonSpore);
-    add_particle_to_list(server, ParticleType::WarpedSpore);
-    add_particle_to_list(server, ParticleType::SporeBlossomAir);
-    add_particle_to_list(server, ParticleType::DrippingObsidianTear);
-    add_particle_to_list(server, ParticleType::FallingObsidianTear);
-    add_particle_to_list(server, ParticleType::LandingObsidianTear);
-    add_particle_to_list(server, ParticleType::ReversePortal);
-    add_particle_to_list(server, ParticleType::WhiteAsh);
-    add_particle_to_list(server, ParticleType::SmallFlame);
-    add_particle_to_list(server, ParticleType::Snowflake);
-    add_particle_to_list(server, ParticleType::DrippingDripstoneLava);
-    add_particle_to_list(server, ParticleType::FallingDripstoneLava);
-    add_particle_to_list(server, ParticleType::DrippingDripstoneWater);
-    add_particle_to_list(server, ParticleType::FallingDripstoneWater);
-    add_particle_to_list(server, ParticleType::GlowSquidInk);
-    add_particle_to_list(server, ParticleType::Glow);
-    add_particle_to_list(server, ParticleType::WaxOn);
-    add_particle_to_list(server, ParticleType::WaxOff);
-    add_particle_to_list(server, ParticleType::ElectricSpark);
-    add_particle_to_list(server, ParticleType::Scrape);
+    add_particle_to_list(ParticleType::AmbientEntityEffect);
+    add_particle_to_list(ParticleType::AngryVillager);
+    add_particle_to_list(ParticleType::Block(BlockState::OAK_PLANKS));
+    add_particle_to_list(ParticleType::BlockMarker(BlockState::GOLD_BLOCK));
+    add_particle_to_list(ParticleType::Bubble);
+    add_particle_to_list(ParticleType::Cloud);
+    add_particle_to_list(ParticleType::Crit);
+    add_particle_to_list(ParticleType::DamageIndicator);
+    add_particle_to_list(ParticleType::DragonBreath);
+    add_particle_to_list(ParticleType::DrippingLava);
+    add_particle_to_list(ParticleType::FallingLava);
+    add_particle_to_list(ParticleType::LandingLava);
+    add_particle_to_list(ParticleType::DrippingWater);
+    add_particle_to_list(ParticleType::FallingWater);
+    add_particle_to_list(ParticleType::Dust {
+        rgb: Vec3::new(1.0, 1.0, 0.0),
+        scale: 2.0,
+    });
+    add_particle_to_list(ParticleType::DustColorTransition {
+        from_rgb: Vec3::new(1.0, 0.0, 0.0),
+        scale: 2.0,
+        to_rgb: Vec3::new(0.0, 1.0, 0.0),
+    });
+    add_particle_to_list(ParticleType::Effect);
+    add_particle_to_list(ParticleType::ElderGuardian);
+    add_particle_to_list(ParticleType::EnchantedHit);
+    add_particle_to_list(ParticleType::Enchant);
+    add_particle_to_list(ParticleType::EndRod);
+    add_particle_to_list(ParticleType::EntityEffect);
+    add_particle_to_list(ParticleType::ExplosionEmitter);
+    add_particle_to_list(ParticleType::Explosion);
+    add_particle_to_list(ParticleType::SonicBoom);
+    add_particle_to_list(ParticleType::FallingDust(BlockState::RED_SAND));
+    add_particle_to_list(ParticleType::Firework);
+    add_particle_to_list(ParticleType::Fishing);
+    add_particle_to_list(ParticleType::Flame);
+    add_particle_to_list(ParticleType::SculkSoul);
+    add_particle_to_list(ParticleType::SculkCharge { roll: 1.0 });
+    add_particle_to_list(ParticleType::SculkChargePop);
+    add_particle_to_list(ParticleType::SoulFireFlame);
+    add_particle_to_list(ParticleType::Soul);
+    add_particle_to_list(ParticleType::Flash);
+    add_particle_to_list(ParticleType::HappyVillager);
+    add_particle_to_list(ParticleType::Composter);
+    add_particle_to_list(ParticleType::Heart);
+    add_particle_to_list(ParticleType::InstantEffect);
+    add_particle_to_list(ParticleType::VibrationBlock {
+        block_pos: SPAWN_POS,
+        ticks: VarInt(50),
+    });
+    add_particle_to_list(ParticleType::VibrationEntity {
+        entity_id: VarInt(0),
+        entity_eye_height: 1.0,
+        ticks: VarInt(50),
+    });
+    add_particle_to_list(ParticleType::ItemSlime);
+    add_particle_to_list(ParticleType::ItemSnowball);
+    add_particle_to_list(ParticleType::LargeSmoke);
+    add_particle_to_list(ParticleType::Lava);
+    add_particle_to_list(ParticleType::Mycelium);
+    add_particle_to_list(ParticleType::Note);
+    add_particle_to_list(ParticleType::Poof);
+    add_particle_to_list(ParticleType::Portal);
+    add_particle_to_list(ParticleType::Rain);
+    add_particle_to_list(ParticleType::Smoke);
+    add_particle_to_list(ParticleType::Sneeze);
+    add_particle_to_list(ParticleType::Spit);
+    add_particle_to_list(ParticleType::SquidInk);
+    add_particle_to_list(ParticleType::SweepAttack);
+    add_particle_to_list(ParticleType::TotemOfUndying);
+    add_particle_to_list(ParticleType::Underwater);
+    add_particle_to_list(ParticleType::Splash);
+    add_particle_to_list(ParticleType::Witch);
+    add_particle_to_list(ParticleType::BubblePop);
+    add_particle_to_list(ParticleType::CurrentDown);
+    add_particle_to_list(ParticleType::BubbleColumnUp);
+    add_particle_to_list(ParticleType::Nautilus);
+    add_particle_to_list(ParticleType::Dolphin);
+    add_particle_to_list(ParticleType::CampfireCosySmoke);
+    add_particle_to_list(ParticleType::CampfireSignalSmoke);
+    add_particle_to_list(ParticleType::DrippingHoney);
+    add_particle_to_list(ParticleType::FallingHoney);
+    add_particle_to_list(ParticleType::LandingHoney);
+    add_particle_to_list(ParticleType::FallingNectar);
+    add_particle_to_list(ParticleType::FallingSporeBlossom);
+    add_particle_to_list(ParticleType::Ash);
+    add_particle_to_list(ParticleType::CrimsonSpore);
+    add_particle_to_list(ParticleType::WarpedSpore);
+    add_particle_to_list(ParticleType::SporeBlossomAir);
+    add_particle_to_list(ParticleType::DrippingObsidianTear);
+    add_particle_to_list(ParticleType::FallingObsidianTear);
+    add_particle_to_list(ParticleType::LandingObsidianTear);
+    add_particle_to_list(ParticleType::ReversePortal);
+    add_particle_to_list(ParticleType::WhiteAsh);
+    add_particle_to_list(ParticleType::SmallFlame);
+    add_particle_to_list(ParticleType::Snowflake);
+    add_particle_to_list(ParticleType::DrippingDripstoneLava);
+    add_particle_to_list(ParticleType::FallingDripstoneLava);
+    add_particle_to_list(ParticleType::DrippingDripstoneWater);
+    add_particle_to_list(ParticleType::FallingDripstoneWater);
+    add_particle_to_list(ParticleType::GlowSquidInk);
+    add_particle_to_list(ParticleType::Glow);
+    add_particle_to_list(ParticleType::WaxOn);
+    add_particle_to_list(ParticleType::WaxOff);
+    add_particle_to_list(ParticleType::ElectricSpark);
+    add_particle_to_list(ParticleType::Scrape);
 }
