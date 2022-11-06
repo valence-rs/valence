@@ -168,7 +168,7 @@ impl Config for Game {
                     server.clients.iter_mut().for_each(|(_cid, client)| {
                         client.set_title(
                             "",
-                            format!("{}", particle_type.name()).bold(),
+                            particle_type.name().to_string().bold(),
                             SetTitleAnimationTimes {
                                 fade_in: 0,
                                 stay: 100,
