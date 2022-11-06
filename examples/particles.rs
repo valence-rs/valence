@@ -228,6 +228,8 @@ fn create_particle_vec() -> Vec<Particle> {
         Particle::Composter,
         Particle::Heart,
         Particle::InstantEffect,
+        Particle::Item(None),
+        Particle::Item(Some(ItemStack::new(ItemKind::IronPickaxe, 1, None))),
         Particle::VibrationBlock {
             block_pos: SPAWN_POS,
             ticks: 50,
