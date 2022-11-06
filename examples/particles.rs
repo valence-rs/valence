@@ -3,6 +3,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
 use valence::client::SetTitleAnimationTimes;
+use valence::entity::types::Pose;
 use valence::prelude::*;
 use vek::Rgb;
 
@@ -116,6 +117,7 @@ impl Config for Game {
                     0.0,
                 );
                 client.set_player_list(server.state.player_list.clone());
+                client.send_message("Sneak to speed up the cycling of particles");
 
                 if let Some(id) = &server.state.player_list {
                     server.player_lists.get_mut(id).insert(
@@ -149,8 +151,15 @@ impl Config for Game {
             true
         });
 
-        // TODO add a way to speed up particle cycle, for testing
-        if !server.clients.is_empty() && server.shared.current_tick() % 30 == 0 {
+        let players_are_sneaking = server.clients.iter().any(|(_, client)| -> bool {
+            let player = server.entities.get(client.state).unwrap();
+            if let TrackedData::Player(data) = player.data() {
+                return data.get_pose() == Pose::Sneaking;
+            }
+            false
+        });
+        let cycle_time: i64 = if players_are_sneaking { 5 } else { 30 };
+        if !server.clients.is_empty() && server.shared.current_tick() % cycle_time == 0 {
             if server.state.particle_index == server.state.particle_list.len() {
                 server.state.particle_index = 0;
             }
