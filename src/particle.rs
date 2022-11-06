@@ -332,55 +332,20 @@ impl ParticleType {
 impl Encode for Particle {
     fn encode(&self, _w: &mut impl Write) -> anyhow::Result<()> {
         let particle_id: VarInt = VarInt(self.particle_type.id());
-        Encode::encode(&particle_id, _w).context(concat!(
-            "failed to write field `",
-            stringify!(particle_id),
-            "` from struct `",
-            stringify!(Particle),
-            "`"
-        ))?;
-        Encode::encode(&self.long_distance, _w).context(concat!(
-            "failed to write field `",
-            stringify!(long_distance),
-            "` from struct `",
-            stringify!(Particle),
-            "`"
-        ))?;
-        Encode::encode(&self.position, _w).context(concat!(
-            "failed to write field `",
-            stringify!(position),
-            "` from struct `",
-            stringify!(Particle),
-            "`"
-        ))?;
-        Encode::encode(&self.offset, _w).context(concat!(
-            "failed to write field `",
-            stringify!(offset),
-            "` from struct `",
-            stringify!(Particle),
-            "`"
-        ))?;
-        Encode::encode(&self.max_speed, _w).context(concat!(
-            "failed to write field `",
-            stringify!(max_speed),
-            "` from struct `",
-            stringify!(Particle),
-            "`"
-        ))?;
-        Encode::encode(&self.particle_count, _w).context(concat!(
-            "failed to write field `",
-            stringify!(particle_count),
-            "` from struct `",
-            stringify!(Particle),
-            "`"
-        ))?;
-        Encode::encode(&self.particle_type, _w).context(concat!(
-            "failed to write field `",
-            stringify!(particle_type),
-            "` from struct `",
-            stringify!(Particle),
-            "`"
-        ))?;
+        Encode::encode(&particle_id, _w)
+            .context("failed to write particle id from struct `Particle`")?;
+        Encode::encode(&self.long_distance, _w)
+            .context("failed to write field `long_distance` from struct `Particle`")?;
+        Encode::encode(&self.position, _w)
+            .context("failed to write field `position` from struct `Particle`")?;
+        Encode::encode(&self.offset, _w)
+            .context("failed to write field `offset` from struct `Particle`")?;
+        Encode::encode(&self.max_speed, _w)
+            .context("failed to write field `max_speed` from struct `Particle`")?;
+        Encode::encode(&self.particle_count, _w)
+            .context("failed to write field `particle_count` from struct `Particle`")?;
+        Encode::encode(&self.particle_type, _w)
+            .context("failed to write field `particle_type` from struct `Particle`")?;
         Ok(())
     }
 
@@ -407,141 +372,80 @@ impl Encode for ParticleType {
     fn encode(&self, _w: &mut impl Write) -> anyhow::Result<()> {
         match self {
             ParticleType::Block(block_state) => {
-                Encode::encode(block_state, _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(block_state),
-                    "` from struct `",
-                    stringify!(ParticleType),
-                    "`"
-                ))?;
+                Encode::encode(block_state, _w).context(
+                    "failed to write field `block_state` from struct `ParticleType::Block`",
+                )?;
             }
             ParticleType::BlockMarker(block_state) => {
-                Encode::encode(block_state, _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(block_state),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
+                Encode::encode(block_state, _w).context(
+                    "failed to write field `block_state` from struct `ParticleType::BlockMarker`",
+                )?;
             }
             ParticleType::Dust { rgb, scale } => {
-                Encode::encode(rgb, _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(r),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
-                Encode::encode(scale, _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(scale),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
+                Encode::encode(rgb, _w)
+                    .context("failed to write field `rgb` from struct `ParticleType::Dust`")?;
+                Encode::encode(scale, _w)
+                    .context("failed to write field `scale` from struct `ParticleType::Dust`")?;
             }
             ParticleType::DustColorTransition {
                 from_rgb,
                 scale,
                 to_rgb,
             } => {
-                Encode::encode(from_rgb, _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(from_r),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
-                Encode::encode(scale, _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(scale),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
-                Encode::encode(to_rgb, _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(to_r),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
+                Encode::encode(from_rgb, _w).context(
+                    "failed to write field `from_rgb` from struct \
+                     `ParticleType::DustColorTransition`",
+                )?;
+                Encode::encode(scale, _w).context(
+                    "failed to write field `scale` from struct `ParticleType::DustColorTransition`",
+                )?;
+                Encode::encode(to_rgb, _w).context(
+                    "failed to write field `to_rgb` from struct \
+                     `ParticleType::DustColorTransition`",
+                )?;
             }
             ParticleType::FallingDust(block_state) => {
-                Encode::encode(block_state, _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(to_r),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
+                Encode::encode(block_state, _w).context(
+                    "failed to write field `block_state` from struct `ParticleType::FallingDust`",
+                )?;
             }
             ParticleType::SculkCharge { roll } => {
-                Encode::encode(roll, _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(block_pos),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
+                Encode::encode(roll, _w).context(
+                    "failed to write field `block_state` from struct `ParticleType::FallingDust`",
+                )?;
             }
             ParticleType::Item(_) => todo!("Item particle not yet implemented"),
             ParticleType::VibrationBlock { block_pos, ticks } => {
-                Encode::encode(&"block".to_string(), _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(position_source_type),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
-                Encode::encode(block_pos, _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(block_pos),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
-                Encode::encode(ticks, _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(ticks),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
+                Encode::encode(&"block".to_string(), _w).context(
+                    "failed to write field `position_source_type` from struct \
+                     `ParticleType::VibrationBlock`",
+                )?;
+                Encode::encode(block_pos, _w).context(
+                    "failed to write field `block_pos` from struct `ParticleType::VibrationBlock`",
+                )?;
+                Encode::encode(ticks, _w).context(
+                    "failed to write field `ticks` from struct `ParticleType::VibrationBlock`",
+                )?;
             }
             ParticleType::VibrationEntity {
                 entity_id,
                 entity_eye_height,
                 ticks,
             } => {
-                Encode::encode(&"entity".to_string(), _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(position_source_type),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
-                Encode::encode(entity_id, _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(block_pos),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
-                Encode::encode(entity_eye_height, _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(block_pos),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
-                Encode::encode(ticks, _w).context(concat!(
-                    "failed to write field `",
-                    stringify!(ticks),
-                    "` from struct `",
-                    stringify!(Particle),
-                    "`"
-                ))?;
+                Encode::encode(&"entity".to_string(), _w).context(
+                    "failed to write field `position_source_type` from struct \
+                     `ParticleType::VibrationEntity`",
+                )?;
+                Encode::encode(entity_id, _w).context(
+                    "failed to write field `entity_id` from struct `ParticleType::VibrationEntity`",
+                )?;
+                Encode::encode(entity_eye_height, _w).context(
+                    "failed to write field `entity_eye_height` from struct \
+                     `ParticleType::VibrationEntity`",
+                )?;
+                Encode::encode(ticks, _w).context(
+                    "failed to write field `ticks` from struct `ParticleType::VibrationEntity`",
+                )?;
             }
             _ => {}
         }
