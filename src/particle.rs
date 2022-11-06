@@ -416,7 +416,7 @@ impl Encode for ParticleType {
             }
             ParticleType::Item(_) => todo!("Item particle not yet implemented"),
             ParticleType::VibrationBlock { block_pos, ticks } => {
-                Encode::encode(&"block".to_string(), _w).context(
+                Encode::encode("block", _w).context(
                     "failed to write field `position_source_type` from struct \
                      `ParticleType::VibrationBlock`",
                 )?;
@@ -432,7 +432,7 @@ impl Encode for ParticleType {
                 entity_eye_height,
                 ticks,
             } => {
-                Encode::encode(&"entity".to_string(), _w).context(
+                Encode::encode("entity", _w).context(
                     "failed to write field `position_source_type` from struct \
                      `ParticleType::VibrationEntity`",
                 )?;
