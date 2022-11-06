@@ -1,4 +1,5 @@
 use std::io::SeekFrom;
+use std::path::{Path, PathBuf};
 
 use byteorder::{BigEndian, ByteOrder};
 use tokio::fs::File;
@@ -9,11 +10,13 @@ use valence::block::{BlockKind, BlockState, PropName, PropValue};
 use valence::chunk::{Chunk, ChunkPos, UnloadedChunk};
 use valence::ident::Ident;
 use valence::nbt::{Compound, List, Value};
+use valence::prelude::vek::serde::__private::fmt::{Debug, Result as FmtResult};
+use valence::prelude::vek::serde::__private::Formatter;
 
 use crate::compression::CompressionScheme;
 use crate::error::{DataFormatError, Error, NbtFormatError};
 use crate::palette::DataFormat;
-use crate::{palette, AnvilWorld, ChunkSeekLocation, ChunkTimestamp, RegionPos};
+use crate::{palette, AnvilWorld};
 
 #[derive(Debug)]
 pub struct Region<S> {
@@ -390,5 +393,95 @@ impl AnvilHeader {
     #[inline(always)]
     fn timestamp(&self, x: usize, z: usize) -> &ChunkTimestamp {
         &self.timestamps[(x & 0b11111) + ((z & 0b11111) * 32)]
+    }
+}
+
+/// The location of the chunk inside the region file.
+#[derive(Copy, Clone, Debug)]
+struct ChunkSeekLocation {
+    offset_sectors: u32,
+    len_sectors: u8,
+}
+
+impl ChunkSeekLocation {
+    const fn zero() -> Self {
+        Self {
+            offset_sectors: 0,
+            len_sectors: 0,
+        }
+    }
+
+    const fn offset(&self) -> u64 {
+        self.offset_sectors as u64 * 1024 * 4
+    }
+
+    const fn len(&self) -> usize {
+        self.len_sectors as usize * 1024 * 4
+    }
+
+    fn load(&mut self, chunk: [u8; 4]) {
+        self.offset_sectors = BigEndian::read_u24(&chunk[..3]);
+        self.len_sectors = chunk[3];
+    }
+}
+
+/// The timestamp when the chunk was last modified in seconds since epoch.
+#[derive(Copy, Clone)]
+pub struct ChunkTimestamp(u32);
+
+impl Debug for ChunkTimestamp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        write!(f, "{}s", self.0)
+    }
+}
+
+impl ChunkTimestamp {
+    const fn zero() -> Self {
+        Self(0)
+    }
+
+    fn load(&mut self, chunk: [u8; 4]) {
+        self.0 = BigEndian::read_u32(&chunk)
+    }
+
+    fn into_option(self) -> Option<Self> {
+        if self.0 == 0 {
+            None
+        } else {
+            Some(self)
+        }
+    }
+
+    #[inline(always)]
+    pub fn seconds_since_epoch(self) -> u32 {
+        self.0
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Eq, Ord)]
+pub struct RegionPos {
+    x: i32,
+    z: i32,
+}
+
+impl From<ChunkPos> for RegionPos {
+    fn from(pos: ChunkPos) -> Self {
+        Self {
+            x: pos.x >> 5,
+            z: pos.z >> 5,
+        }
+    }
+}
+
+impl RegionPos {
+    pub fn path(self, world_root: impl AsRef<Path>) -> PathBuf {
+        world_root
+            .as_ref()
+            .join("region")
+            .join(format!("r.{}.{}.mca", self.x, self.z))
+    }
+
+    pub fn contains(self, chunk_pos: ChunkPos) -> bool {
+        Self::from(chunk_pos) == self
     }
 }
