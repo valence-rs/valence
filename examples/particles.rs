@@ -3,7 +3,6 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
 use valence::client::SetTitleAnimationTimes;
-use valence::particle::Particle;
 use valence::prelude::*;
 use vek::Rgb;
 
