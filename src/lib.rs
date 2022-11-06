@@ -143,6 +143,7 @@ pub mod prelude {
         ConfigurableInventory, Inventories, Inventory, InventoryId, PlayerInventory,
     };
     pub use item::{ItemKind, ItemStack};
+    pub use particle::Particle;
     pub use player_list::{PlayerList, PlayerListEntry, PlayerListId, PlayerLists};
     pub use server::{NewClientData, Server, SharedServer, ShutdownResult};
     pub use spatial_index::{RaycastHit, SpatialIndex};
