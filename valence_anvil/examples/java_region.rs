@@ -92,7 +92,7 @@ impl Config for Game {
     fn init(&self, server: &mut Server<Self>) {
         server.worlds.insert(
             DimensionId::default(),
-            AnvilWorld::new::<Game>(&self.world_dir, server.shared.biomes()),
+            AnvilWorld::new::<Game, _>(&self.world_dir, server.shared.biomes()),
         );
         server.state = Some(server.player_lists.insert(()).0);
     }
