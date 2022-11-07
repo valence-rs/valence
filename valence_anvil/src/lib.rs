@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::path::PathBuf;
@@ -46,18 +47,18 @@ impl AnvilWorld {
     ///     fn init(&self, server: &mut Server<Self>) {
     ///         server.worlds.insert(
     ///             DimensionId::default(),
-    ///             AnvilWorld::new::<Game>(&self.world_dir, server.shared.biomes()),
+    ///             AnvilWorld::new::<Game, _>(&self.world_dir, server.shared.biomes()),
     ///         );
     ///     }
     /// }
     /// ```
-    pub fn new<'a, C: Config>(
+    pub fn new<C: Config, BIOME: Borrow<Biome>>(
         directory: impl Into<PathBuf>,
-        server_biomes: impl Iterator<Item = (BiomeId, &'a Biome)>,
+        server_biomes: impl Iterator<Item = (BiomeId, BIOME)>,
     ) -> Self {
         let mut biomes = BTreeMap::new();
         for (id, biome) in server_biomes {
-            biomes.insert(biome.name.clone(), id);
+            biomes.insert(biome.borrow().name.clone(), id);
         }
         Self {
             world_root: directory.into(),
