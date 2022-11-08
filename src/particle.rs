@@ -675,9 +675,7 @@ impl Decode for ParticleS2c {
             89 => Particle::WaxOff,
             90 => Particle::ElectricSpark,
             91 => Particle::Scrape,
-            _ => {
-                bail!("Invalid particle id");
-            }
+            id => bail!("invalid particle ID {id}"),
         };
         let particle_packet: ParticleS2c = ParticleS2c {
             particle_type: particle,
