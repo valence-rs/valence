@@ -30,7 +30,7 @@ fn derive_encode_impl(item: TokenStream) -> Result<TokenStream> {
 
     match input.data {
         Data::Struct(s) => {
-            add_trait_bounds(&mut input.generics, quote!(::valence::__private::Encode));
+            add_trait_bounds(&mut input.generics, quote!(::valence_protocol::__private::Encode));
 
             let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
@@ -80,9 +80,9 @@ fn derive_encode_impl(item: TokenStream) -> Result<TokenStream> {
 
             Ok(quote! {
                 #[allow(unused_imports)]
-                impl #impl_generics ::valence::__private::Encode for #name #ty_generics #where_clause {
-                    fn encode(&self, mut _w: impl ::std::io::Write) -> ::valence::__private::Result<()> {
-                        use ::valence::__private::{Encode, Context};
+                impl #impl_generics ::valence_protocol::__private::Encode for #name #ty_generics #where_clause {
+                    fn encode(&self, mut _w: impl ::std::io::Write) -> ::valence_protocol::__private::Result<()> {
+                        use ::valence_protocol::__private::{Encode, Context};
 
                         #encode_fields
 
@@ -90,7 +90,7 @@ fn derive_encode_impl(item: TokenStream) -> Result<TokenStream> {
                     }
 
                     fn encoded_len(&self) -> usize {
-                        use ::valence::__private::{Encode, Context};
+                        use ::valence_protocol::__private::{Encode, Context};
 
                         0 #encoded_len_fields
                     }
@@ -98,7 +98,7 @@ fn derive_encode_impl(item: TokenStream) -> Result<TokenStream> {
             })
         }
         Data::Enum(e) => {
-            add_trait_bounds(&mut input.generics, quote!(::valence::__private::Encode));
+            add_trait_bounds(&mut input.generics, quote!(::valence_protocol::__private::Encode));
 
             let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
@@ -190,9 +190,9 @@ fn derive_encode_impl(item: TokenStream) -> Result<TokenStream> {
 
             Ok(quote! {
                 #[allow(unused_imports)]
-                impl #impl_generics ::valence::Encode for #name #ty_generics #where_clause {
-                    fn encode(&self, mut _w: impl ::std::io::Write) -> ::valence::__private::anyhow::Result<()> {
-                        use ::valence::__private::{Encode, VarInt, Context};
+                impl #impl_generics ::valence_protocol::Encode for #name #ty_generics #where_clause {
+                    fn encode(&self, mut _w: impl ::std::io::Write) -> ::valence_protocol::__private::Result<()> {
+                        use ::valence_protocol::__private::{Encode, VarInt, Context};
 
                         match self {
                             #encode_arms
@@ -203,8 +203,7 @@ fn derive_encode_impl(item: TokenStream) -> Result<TokenStream> {
                     }
                     #[allow(unused_imports)]
                     fn encoded_len(&self) -> usize {
-                        use ::valence::{Encode, VarInt};
-                        use ::valence::__private::anyhow::Context;
+                        use ::valence_protocol::__private::{Encode, Context, VarInt};
 
                         match self {
                             #encoded_len_arms
@@ -240,7 +239,7 @@ fn derive_decode_impl(item: TokenStream) -> Result<TokenStream> {
         .lifetimes()
         .next()
         .map(|l| l.lifetime.clone())
-        .unwrap_or(parse_quote!('a));
+        .unwrap_or_else(|| parse_quote!('a));
 
     match input.data {
         Data::Struct(s) => {
@@ -275,19 +274,18 @@ fn derive_decode_impl(item: TokenStream) -> Result<TokenStream> {
                 Fields::Unit => quote!(Self),
             };
 
-            add_trait_bounds(&mut input.generics, quote!(::valence::Decode<#lifetime>));
+            add_trait_bounds(&mut input.generics, quote!(::valence_protocol::Decode<#lifetime>));
 
             let (impl_generics, ty_generics, where_clause) =
                 decode_split_for_impl(input.generics, lifetime.clone());
 
             Ok(quote! {
                 #[allow(unused_imports)]
-                impl #impl_generics ::valence::Decode<#lifetime> for #name #ty_generics
+                impl #impl_generics ::valence_protocol::Decode<#lifetime> for #name #ty_generics
                 #where_clause
                 {
-                    fn decode(_r: &mut &#lifetime [u8]) -> ::valence::__private::anyhow::Result<Self> {
-                        use ::valence::{Decode, VarInt};
-                        use ::valence::__private::anyhow::Context;
+                    fn decode(_r: &mut &#lifetime [u8]) -> ::valence_protocol::__private::Result<Self> {
+                        use ::valence_protocol::__private::{Decode, Context, VarInt};
 
                         Ok(#decode_fields)
                     }
@@ -332,19 +330,18 @@ fn derive_decode_impl(item: TokenStream) -> Result<TokenStream> {
                 })
                 .collect::<TokenStream>();
 
-            add_trait_bounds(&mut input.generics, quote!(::valence::Decode<#lifetime>));
+            add_trait_bounds(&mut input.generics, quote!(::valence_protocol::Decode<#lifetime>));
 
             let (impl_generics, ty_generics, where_clause) =
                 decode_split_for_impl(input.generics, lifetime.clone());
 
             Ok(quote! {
                 #[allow(unused_imports)]
-                impl #impl_generics ::valence::Decode<#lifetime> for #name #ty_generics
+                impl #impl_generics ::valence_protocol::Decode<#lifetime> for #name #ty_generics
                 #where_clause
                 {
-                    fn decode(_r: &mut &#lifetime [u8]) -> ::valence::__private::anyhow::Result<Self> {
-                        use ::valence::{Decode, VarInt};
-                        use ::valence::__private::anyhow::{Context, bail};
+                    fn decode(_r: &mut &#lifetime [u8]) -> ::valence_protocol::__private::Result<Self> {
+                        use ::valence_protocol::__private::{Decode, Context, VarInt, bail};
 
                         // TODO: anyhow context.
                         let disc = VarInt::decode(_r)?.0;
