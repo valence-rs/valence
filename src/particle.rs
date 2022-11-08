@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use anyhow::Context;
+use anyhow::{bail, Context};
 use vek::{Rgb, Vec3};
 
 use crate::block::{BlockPos, BlockState};
@@ -360,15 +360,6 @@ impl Encode for ParticleS2c {
     }
 }
 
-impl Decode for ParticleS2c {
-    fn decode(_r: &mut &[u8]) -> anyhow::Result<Self> {
-        todo!("Is this even necessary?");
-        // let particle_id: VarInt = Decode::decode(_r).context(concat!("failed
-        // to read field `", stringify!(particle_id), "` from struct `",
-        // stringify!(Particle), "`"))?;
-    }
-}
-
 impl Encode for Particle {
     fn encode(&self, _w: &mut impl Write) -> anyhow::Result<()> {
         match self {
@@ -484,5 +475,218 @@ impl Encode for Particle {
             _ => 0,
         };
         id_len + data_len
+    }
+}
+
+impl Decode for ParticleS2c {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
+        let particle_id: VarInt = Decode::decode(r)
+            .context("Failed to read field `particle_id` from struct `Particle`")?;
+        let long_distance: bool = Decode::decode(r)
+            .context("Failed to read field `long_distance` from struct `Particle`")?;
+        let position: Vec3<f64> =
+            Decode::decode(r).context("Failed to read field `position` from struct `Particle`")?;
+        let offset: Vec3<f32> =
+            Decode::decode(r).context("Failed to read field `offset` from struct `Particle`")?;
+        let max_speed: f32 =
+            Decode::decode(r).context("Failed to read field `max_speed` from struct `Particle`")?;
+        let particle_count: u32 = Decode::decode(r)
+            .context("Failed to read field `particle_count` from struct `Particle`")?;
+        let particle = match particle_id.0 {
+            0 => Particle::AmbientEntityEffect,
+            1 => Particle::AngryVillager,
+            2 => {
+                let block_state: BlockState = Decode::decode(r).context(
+                    "Failed to read field `block_state` while decoding a Block particle packet",
+                )?;
+                Particle::Block(block_state)
+            }
+            3 => {
+                let block_state: BlockState = Decode::decode(r).context(
+                    "Failed to read field `block_state` while decoding a BlockMarker particle \
+                     packet",
+                )?;
+                Particle::BlockMarker(block_state)
+            }
+            4 => Particle::Bubble,
+            5 => Particle::Cloud,
+            6 => Particle::Crit,
+            7 => Particle::DamageIndicator,
+            8 => Particle::DragonBreath,
+            9 => Particle::DrippingLava,
+            10 => Particle::FallingLava,
+            11 => Particle::LandingLava,
+            12 => Particle::DrippingWater,
+            13 => Particle::FallingWater,
+            14 => {
+                let rgb: Rgb<f32> = Decode::decode(r)
+                    .context("Failed to read field `rgb` while decoding a Dust particle packet")?;
+                let scale: f32 = Decode::decode(r).context(
+                    "Failed to read field `block_state` while decoding a Dust particle packet",
+                )?;
+                Particle::Dust { rgb, scale }
+            }
+            15 => {
+                let from_rgb: Rgb<f32> = Decode::decode(r).context(
+                    "Failed to read field `from_rgb` while decoding a DustColorTransition packet",
+                )?;
+                let scale: f32 = Decode::decode(r).context(
+                    "Failed to read field `scale` while decoding a DustColorTransition packet",
+                )?;
+                let to_rgb: Rgb<f32> = Decode::decode(r).context(
+                    "Failed to read field `to_rgb` while decoding a DustColorTransition packet",
+                )?;
+                Particle::DustColorTransition {
+                    from_rgb,
+                    scale,
+                    to_rgb,
+                }
+            }
+            16 => Particle::Effect,
+            17 => Particle::ElderGuardian,
+            18 => Particle::EnchantedHit,
+            19 => Particle::Enchant,
+            20 => Particle::EndRod,
+            21 => Particle::EntityEffect,
+            22 => Particle::ExplosionEmitter,
+            23 => Particle::Explosion,
+            24 => Particle::SonicBoom,
+            25 => {
+                let block_state: BlockState = Decode::decode(r).context(
+                    "Failed to read field `block_state` while decoding a SonicBoom particle packet",
+                )?;
+                Particle::FallingDust(block_state)
+            }
+            26 => Particle::Firework,
+            27 => Particle::Fishing,
+            28 => Particle::Flame,
+            29 => Particle::SculkSoul,
+            30 => {
+                let roll: f32 = Decode::decode(r).context(
+                    "Failed to read field `roll` while decoding a SculkSoul particle packet",
+                )?;
+                Particle::SculkCharge { roll }
+            }
+            31 => Particle::SculkChargePop,
+            32 => Particle::SoulFireFlame,
+            33 => Particle::Soul,
+            34 => Particle::Flash,
+            35 => Particle::HappyVillager,
+            36 => Particle::Composter,
+            37 => Particle::Heart,
+            38 => Particle::InstantEffect,
+            39 => {
+                let slot: Slot = Decode::decode(r)
+                    .context("Failed to read field `slot` while decoding a Item particle packet")?;
+                Particle::Item(slot)
+            }
+            40 => {
+                let position_source_type: String = Decode::decode(r).context(
+                    "Failed to read field `position_source_type` when decoding a Vibration \
+                     particle packet",
+                )?;
+                match position_source_type.as_str() {
+                    "block" => {
+                        let block_pos: BlockPos = Decode::decode(r).context(
+                            "Failed to read field `block_pos` while decoding a VibrationBlock \
+                             particle packet",
+                        )?;
+                        let ticks: VarInt = Decode::decode(r).context(
+                            "Failed to read field `ticks` while decoding a VibrationBlock \
+                             particle packet",
+                        )?;
+                        Particle::VibrationBlock {
+                            block_pos,
+                            ticks: ticks.0,
+                        }
+                    }
+                    "entity" => {
+                        let entity_id: VarInt = Decode::decode(r).context(
+                            "Failed to read field `entity_id` while decoding a VibrationEntity \
+                             particle packet",
+                        )?;
+                        let entity_eye_height: f32 = Decode::decode(r).context(
+                            "Failed to read field `entity_eye_height` while decoding a \
+                             VibrationEntity particle packet",
+                        )?;
+                        let ticks: VarInt = Decode::decode(r).context(
+                            "Failed to read field `ticks` while decoding a VibrationEntity \
+                             particle packet",
+                        )?;
+                        Particle::VibrationEntity {
+                            entity_id: entity_id.0,
+                            entity_eye_height,
+                            ticks: ticks.0,
+                        }
+                    }
+                    _ => {
+                        bail!("Invalid position_source_type");
+                    }
+                }
+            }
+            41 => Particle::ItemSlime,
+            42 => Particle::ItemSnowball,
+            43 => Particle::LargeSmoke,
+            44 => Particle::Lava,
+            45 => Particle::Mycelium,
+            46 => Particle::Note,
+            47 => Particle::Poof,
+            48 => Particle::Portal,
+            49 => Particle::Rain,
+            50 => Particle::Smoke,
+            51 => Particle::Sneeze,
+            52 => Particle::Spit,
+            53 => Particle::SquidInk,
+            54 => Particle::SweepAttack,
+            55 => Particle::TotemOfUndying,
+            56 => Particle::Underwater,
+            57 => Particle::Splash,
+            58 => Particle::Witch,
+            59 => Particle::BubblePop,
+            60 => Particle::CurrentDown,
+            61 => Particle::BubbleColumnUp,
+            62 => Particle::Nautilus,
+            63 => Particle::Dolphin,
+            64 => Particle::CampfireCosySmoke,
+            65 => Particle::CampfireSignalSmoke,
+            66 => Particle::DrippingHoney,
+            67 => Particle::FallingHoney,
+            68 => Particle::LandingHoney,
+            69 => Particle::FallingNectar,
+            70 => Particle::FallingSporeBlossom,
+            71 => Particle::Ash,
+            72 => Particle::CrimsonSpore,
+            73 => Particle::WarpedSpore,
+            74 => Particle::SporeBlossomAir,
+            75 => Particle::DrippingObsidianTear,
+            76 => Particle::FallingObsidianTear,
+            77 => Particle::LandingObsidianTear,
+            78 => Particle::ReversePortal,
+            79 => Particle::WhiteAsh,
+            80 => Particle::SmallFlame,
+            81 => Particle::Snowflake,
+            82 => Particle::DrippingDripstoneLava,
+            83 => Particle::FallingDripstoneLava,
+            84 => Particle::DrippingDripstoneWater,
+            85 => Particle::FallingDripstoneWater,
+            86 => Particle::GlowSquidInk,
+            87 => Particle::Glow,
+            88 => Particle::WaxOn,
+            89 => Particle::WaxOff,
+            90 => Particle::ElectricSpark,
+            91 => Particle::Scrape,
+            _ => {
+                bail!("Invalid particle id");
+            }
+        };
+        let particle_packet: ParticleS2c = ParticleS2c {
+            particle_type: particle,
+            long_distance,
+            position,
+            offset,
+            max_speed,
+            particle_count,
+        };
+        Ok(particle_packet)
     }
 }
