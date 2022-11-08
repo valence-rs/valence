@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use anyhow::{bail, Context};
+use anyhow::bail;
 use vek::{Rgb, Vec3};
 
 use crate::block::{BlockPos, BlockState};
@@ -333,20 +333,13 @@ impl Particle {
 impl Encode for ParticleS2c {
     fn encode(&self, _w: &mut impl Write) -> anyhow::Result<()> {
         let particle_id: VarInt = VarInt(self.particle_type.id());
-        Encode::encode(&particle_id, _w)
-            .context("failed to write particle id from struct `ParticleS2c`")?;
-        Encode::encode(&self.long_distance, _w)
-            .context("failed to write field `long_distance` from struct `ParticleS2c`")?;
-        Encode::encode(&self.position, _w)
-            .context("failed to write field `position` from struct `ParticleS2c`")?;
-        Encode::encode(&self.offset, _w)
-            .context("failed to write field `offset` from struct `ParticleS2c`")?;
-        Encode::encode(&self.max_speed, _w)
-            .context("failed to write field `max_speed` from struct `ParticleS2c`")?;
-        Encode::encode(&self.particle_count, _w)
-            .context("failed to write field `particle_count` from struct `ParticleS2c`")?;
-        Encode::encode(&self.particle_type, _w)
-            .context("failed to write field `particle_type` from struct `ParticleS2c`")?;
+        Encode::encode(&particle_id, _w)?;
+        Encode::encode(&self.long_distance, _w)?;
+        Encode::encode(&self.position, _w)?;
+        Encode::encode(&self.offset, _w)?;
+        Encode::encode(&self.max_speed, _w)?;
+        Encode::encode(&self.particle_count, _w)?;
+        Encode::encode(&self.particle_type, _w)?;
         Ok(())
     }
 
@@ -364,82 +357,48 @@ impl Encode for Particle {
     fn encode(&self, _w: &mut impl Write) -> anyhow::Result<()> {
         match self {
             Particle::Block(block_state) => {
-                Encode::encode(block_state, _w)
-                    .context("failed to write field `block_state` from struct `Particle::Block`")?;
+                Encode::encode(block_state, _w)?;
             }
             Particle::BlockMarker(block_state) => {
-                Encode::encode(block_state, _w).context(
-                    "failed to write field `block_state` from struct `Particle::BlockMarker`",
-                )?;
+                Encode::encode(block_state, _w)?;
             }
             Particle::Dust { rgb, scale } => {
-                Encode::encode(rgb, _w)
-                    .context("failed to write field `rgb` from struct `Particle::Dust`")?;
-                Encode::encode(scale, _w)
-                    .context("failed to write field `scale` from struct `Particle::Dust`")?;
+                Encode::encode(rgb, _w)?;
+                Encode::encode(scale, _w)?;
             }
             Particle::DustColorTransition {
                 from_rgb,
                 scale,
                 to_rgb,
             } => {
-                Encode::encode(from_rgb, _w).context(
-                    "failed to write field `from_rgb` from struct `Particle::DustColorTransition`",
-                )?;
-                Encode::encode(scale, _w).context(
-                    "failed to write field `scale` from struct `Particle::DustColorTransition`",
-                )?;
-                Encode::encode(to_rgb, _w).context(
-                    "failed to write field `to_rgb` from struct `Particle::DustColorTransition`",
-                )?;
+                Encode::encode(from_rgb, _w)?;
+                Encode::encode(scale, _w)?;
+                Encode::encode(to_rgb, _w)?;
             }
             Particle::FallingDust(block_state) => {
-                Encode::encode(block_state, _w).context(
-                    "failed to write field `block_state` from struct `Particle::FallingDust`",
-                )?;
+                Encode::encode(block_state, _w)?;
             }
             Particle::SculkCharge { roll } => {
-                Encode::encode(roll, _w).context(
-                    "failed to write field `block_state` from struct `Particle::FallingDust`",
-                )?;
+                Encode::encode(roll, _w)?;
             }
             Particle::Item(stack) => {
                 let slot: &Slot = stack;
-                Encode::encode(slot, _w).context(
-                    "failed to write field `block_state` from struct `Particle::FallingDust`",
-                )?;
+                Encode::encode(slot, _w)?;
             }
             Particle::VibrationBlock { block_pos, ticks } => {
-                Encode::encode("block", _w).context(
-                    "failed to write field `position_source_type` from struct \
-                     `Particle::VibrationBlock`",
-                )?;
-                Encode::encode(block_pos, _w).context(
-                    "failed to write field `block_pos` from struct `Particle::VibrationBlock`",
-                )?;
-                Encode::encode(&VarInt(*ticks), _w).context(
-                    "failed to write field `ticks` from struct `Particle::VibrationBlock`",
-                )?;
+                Encode::encode("block", _w)?;
+                Encode::encode(block_pos, _w)?;
+                Encode::encode(&VarInt(*ticks), _w)?;
             }
             Particle::VibrationEntity {
                 entity_id,
                 entity_eye_height,
                 ticks,
             } => {
-                Encode::encode("entity", _w).context(
-                    "failed to write field `position_source_type` from struct \
-                     `Particle::VibrationEntity`",
-                )?;
-                Encode::encode(&VarInt(*entity_id), _w).context(
-                    "failed to write field `entity_id` from struct `Particle::VibrationEntity`",
-                )?;
-                Encode::encode(entity_eye_height, _w).context(
-                    "failed to write field `entity_eye_height` from struct \
-                     `Particle::VibrationEntity`",
-                )?;
-                Encode::encode(&VarInt(*ticks), _w).context(
-                    "failed to write field `ticks` from struct `Particle::VibrationEntity`",
-                )?;
+                Encode::encode("entity", _w)?;
+                Encode::encode(&VarInt(*entity_id), _w)?;
+                Encode::encode(entity_eye_height, _w)?;
+                Encode::encode(&VarInt(*ticks), _w)?;
             }
             _ => {}
         }
@@ -480,32 +439,21 @@ impl Encode for Particle {
 
 impl Decode for ParticleS2c {
     fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
-        let particle_id: VarInt = Decode::decode(r)
-            .context("Failed to read field `particle_id` from struct `Particle`")?;
-        let long_distance: bool = Decode::decode(r)
-            .context("Failed to read field `long_distance` from struct `Particle`")?;
-        let position: Vec3<f64> =
-            Decode::decode(r).context("Failed to read field `position` from struct `Particle`")?;
-        let offset: Vec3<f32> =
-            Decode::decode(r).context("Failed to read field `offset` from struct `Particle`")?;
-        let max_speed: f32 =
-            Decode::decode(r).context("Failed to read field `max_speed` from struct `Particle`")?;
-        let particle_count: u32 = Decode::decode(r)
-            .context("Failed to read field `particle_count` from struct `Particle`")?;
+        let particle_id: VarInt = Decode::decode(r)?;
+        let long_distance: bool = Decode::decode(r)?;
+        let position: Vec3<f64> = Decode::decode(r)?;
+        let offset: Vec3<f32> = Decode::decode(r)?;
+        let max_speed: f32 = Decode::decode(r)?;
+        let particle_count: u32 = Decode::decode(r)?;
         let particle = match particle_id.0 {
             0 => Particle::AmbientEntityEffect,
             1 => Particle::AngryVillager,
             2 => {
-                let block_state: BlockState = Decode::decode(r).context(
-                    "Failed to read field `block_state` while decoding a Block particle packet",
-                )?;
+                let block_state: BlockState = Decode::decode(r)?;
                 Particle::Block(block_state)
             }
             3 => {
-                let block_state: BlockState = Decode::decode(r).context(
-                    "Failed to read field `block_state` while decoding a BlockMarker particle \
-                     packet",
-                )?;
+                let block_state: BlockState = Decode::decode(r)?;
                 Particle::BlockMarker(block_state)
             }
             4 => Particle::Bubble,
@@ -519,23 +467,14 @@ impl Decode for ParticleS2c {
             12 => Particle::DrippingWater,
             13 => Particle::FallingWater,
             14 => {
-                let rgb: Rgb<f32> = Decode::decode(r)
-                    .context("Failed to read field `rgb` while decoding a Dust particle packet")?;
-                let scale: f32 = Decode::decode(r).context(
-                    "Failed to read field `block_state` while decoding a Dust particle packet",
-                )?;
+                let rgb: Rgb<f32> = Decode::decode(r)?;
+                let scale: f32 = Decode::decode(r)?;
                 Particle::Dust { rgb, scale }
             }
             15 => {
-                let from_rgb: Rgb<f32> = Decode::decode(r).context(
-                    "Failed to read field `from_rgb` while decoding a DustColorTransition packet",
-                )?;
-                let scale: f32 = Decode::decode(r).context(
-                    "Failed to read field `scale` while decoding a DustColorTransition packet",
-                )?;
-                let to_rgb: Rgb<f32> = Decode::decode(r).context(
-                    "Failed to read field `to_rgb` while decoding a DustColorTransition packet",
-                )?;
+                let from_rgb: Rgb<f32> = Decode::decode(r)?;
+                let scale: f32 = Decode::decode(r)?;
+                let to_rgb: Rgb<f32> = Decode::decode(r)?;
                 Particle::DustColorTransition {
                     from_rgb,
                     scale,
@@ -552,9 +491,7 @@ impl Decode for ParticleS2c {
             23 => Particle::Explosion,
             24 => Particle::SonicBoom,
             25 => {
-                let block_state: BlockState = Decode::decode(r).context(
-                    "Failed to read field `block_state` while decoding a SonicBoom particle packet",
-                )?;
+                let block_state: BlockState = Decode::decode(r)?;
                 Particle::FallingDust(block_state)
             }
             26 => Particle::Firework,
@@ -562,9 +499,7 @@ impl Decode for ParticleS2c {
             28 => Particle::Flame,
             29 => Particle::SculkSoul,
             30 => {
-                let roll: f32 = Decode::decode(r).context(
-                    "Failed to read field `roll` while decoding a SculkSoul particle packet",
-                )?;
+                let roll: f32 = Decode::decode(r)?;
                 Particle::SculkCharge { roll }
             }
             31 => Particle::SculkChargePop,
@@ -576,43 +511,24 @@ impl Decode for ParticleS2c {
             37 => Particle::Heart,
             38 => Particle::InstantEffect,
             39 => {
-                let slot: Slot = Decode::decode(r)
-                    .context("Failed to read field `slot` while decoding a Item particle packet")?;
+                let slot: Slot = Decode::decode(r)?;
                 Particle::Item(slot)
             }
             40 => {
-                let position_source_type: String = Decode::decode(r).context(
-                    "Failed to read field `position_source_type` when decoding a Vibration \
-                     particle packet",
-                )?;
+                let position_source_type: String = Decode::decode(r)?;
                 match position_source_type.as_str() {
                     "block" => {
-                        let block_pos: BlockPos = Decode::decode(r).context(
-                            "Failed to read field `block_pos` while decoding a VibrationBlock \
-                             particle packet",
-                        )?;
-                        let ticks: VarInt = Decode::decode(r).context(
-                            "Failed to read field `ticks` while decoding a VibrationBlock \
-                             particle packet",
-                        )?;
+                        let block_pos: BlockPos = Decode::decode(r)?;
+                        let ticks: VarInt = Decode::decode(r)?;
                         Particle::VibrationBlock {
                             block_pos,
                             ticks: ticks.0,
                         }
                     }
                     "entity" => {
-                        let entity_id: VarInt = Decode::decode(r).context(
-                            "Failed to read field `entity_id` while decoding a VibrationEntity \
-                             particle packet",
-                        )?;
-                        let entity_eye_height: f32 = Decode::decode(r).context(
-                            "Failed to read field `entity_eye_height` while decoding a \
-                             VibrationEntity particle packet",
-                        )?;
-                        let ticks: VarInt = Decode::decode(r).context(
-                            "Failed to read field `ticks` while decoding a VibrationEntity \
-                             particle packet",
-                        )?;
+                        let entity_id: VarInt = Decode::decode(r)?;
+                        let entity_eye_height: f32 = Decode::decode(r)?;
+                        let ticks: VarInt = Decode::decode(r)?;
                         Particle::VibrationEntity {
                             entity_id: entity_id.0,
                             entity_eye_height,
