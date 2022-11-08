@@ -88,9 +88,6 @@
     clippy::comparison_chain
 )]
 
-// Allows us to use our own proc macros internally.
-extern crate self as valence;
-
 /// Used on [`Config`](config::Config) to allow for async methods in traits.
 ///
 /// For more information see the [async_trait] crate.
@@ -129,14 +126,6 @@ pub mod text;
 pub mod username;
 pub mod util;
 pub mod world;
-
-/// Used only by proc macros. Not public API.
-#[doc(hidden)]
-pub mod __private {
-    pub use anyhow::{anyhow, bail, Context, Result};
-
-    pub use crate::protocol::{Decode, Encode, VarInt};
-}
 
 /// Use `valence::prelude::*` to import the most commonly used items from the
 /// library.

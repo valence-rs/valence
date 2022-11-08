@@ -29,8 +29,6 @@ pub use var_int::VarInt;
 pub use var_long::VarLong;
 use vek::{Vec2, Vec3, Vec4};
 
-pub use valence_derive::{Encode, Decode};
-
 use crate::entity::EntityId;
 use crate::nbt;
 
