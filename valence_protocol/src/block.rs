@@ -9,7 +9,7 @@ use anyhow::Context;
 
 use crate::item::ItemKind;
 use crate::var_int::VarInt;
-use crate::{Decode, Encode};
+use crate::{Decode, Encode, Result};
 
 include!(concat!(env!("OUT_DIR"), "/block.rs"));
 
@@ -52,7 +52,7 @@ fn fmt_block_state(bs: BlockState, f: &mut fmt::Formatter) -> fmt::Result {
 }
 
 impl Encode for BlockState {
-    fn encode(&self, w: impl Write) -> anyhow::Result<()> {
+    fn encode(&self, w: impl Write) -> Result<()> {
         VarInt(self.0 as i32).encode(w)
     }
 
@@ -62,7 +62,7 @@ impl Encode for BlockState {
 }
 
 impl Decode<'_> for BlockState {
-    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
+    fn decode(r: &mut &[u8]) -> Result<Self> {
         let id = VarInt::decode(r)?.0;
         let errmsg = "invalid block state ID";
 
@@ -73,17 +73,17 @@ impl Decode<'_> for BlockState {
 #[derive(Copy, Clone, PartialEq, Eq, Encode, Decode)]
 pub enum BlockFace {
     /// -Y
-    Bottom = 0,
+    Bottom,
     /// +Y
-    Top = 1,
+    Top,
     /// -Z
-    North = 2,
+    North,
     /// +Z
-    South = 3,
+    South,
     /// -X
-    West = 4,
+    West,
     /// +X
-    East = 5,
+    East,
 }
 
 #[cfg(test)]

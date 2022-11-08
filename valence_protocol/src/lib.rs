@@ -25,35 +25,38 @@ extern crate self as valence_protocol;
 
 use std::io::Write;
 
+use anyhow::ensure;
 pub use anyhow::{Error, Result};
-pub use valence_derive::{Decode, Encode};
+pub use valence_derive::{Decode, Encode, Packet};
 pub use valence_nbt as nbt;
 
 use crate::byte_counter::ByteCounter;
 
 pub mod block;
+pub mod block_pos;
 pub mod bounded;
 pub mod byte_angle;
 mod byte_counter;
 pub mod codec;
 pub mod enchant;
+pub mod encoded_buf;
 pub mod ident;
 mod impls;
 pub mod item;
+pub mod packets;
 pub mod raw_bytes;
 pub mod text;
 pub mod username;
 pub mod var_int;
 pub mod var_long;
-pub mod block_pos;
 
 /// Used only by proc macros. Not public API.
 #[doc(hidden)]
 pub mod __private {
-    pub use anyhow::{anyhow, bail, Context, Result};
+    pub use anyhow::{anyhow, bail, ensure, Context, Result};
 
     pub use crate::var_int::VarInt;
-    pub use crate::{Decode, Encode};
+    pub use crate::{Decode, DerivedPacketDecode, DerivedPacketEncode, Encode};
 }
 
 /// The maximum number of bytes in a single Minecraft packet.
@@ -123,8 +126,8 @@ pub trait Packet {
     fn packet_name(&self) -> &'static str;
 }
 
-/// Packets which obtained [`Encode`] and [`Packet`] implementations via the
-/// [`Encode`][macro] derive macro.
+/// Packets which obtained [`Encode`] implementations via the [`Encode`][macro]
+/// derive macro with the `#[packet_id = ...]` attribute.
 ///
 /// Along with [`DerivedPacketDecode`], this trait can be occasionally useful
 /// for automating tasks such as defining large packet enums. Otherwise, this
@@ -135,13 +138,15 @@ pub trait Packet {
 pub trait DerivedPacketEncode: Packet + Encode {
     /// The ID of this packet specified with `#[packet_id = ...]`.
     const ID: i32;
+    /// The name of the `Self` type.
+    const NAME: &'static str;
 
     fn encode_without_id(&self, w: impl Write) -> Result<()>;
     fn encoded_len_without_id(&self) -> usize;
 }
 
-/// Packets which obtained [`Decode`] and [`Packet`] implementations via the
-/// [`Decode`][macro] derive macro.
+/// Packets which obtained [`Decode`] implementations via the [`Decode`][macro]
+/// derive macro with the `#[packet_id = ...]` attribute.
 ///
 /// Along with [`DerivedPacketEncode`], this trait can be occasionally useful
 /// for automating tasks such as defining large packet enums. Otherwise, this
@@ -152,6 +157,93 @@ pub trait DerivedPacketEncode: Packet + Encode {
 pub trait DerivedPacketDecode<'a>: Packet + Decode<'a> {
     /// The ID of this packet specified with `#[packet_id = ...]`.
     const ID: i32;
+    /// The name of the `Self` type.
+    const NAME: &'static str;
 
     fn decode_without_id(r: &mut &'a [u8]) -> Result<Self>;
+}
+
+pub fn test_encode_decode<T>(t: &T) -> Result<()>
+where
+    T: Encode + for<'a> Decode<'a>,
+{
+    let len = t.encoded_len();
+    let mut buf = Vec::with_capacity(len);
+
+    if let Err(_) = t.encode(&mut buf) {
+        ensure!(
+            buf.len() <= len,
+            "number of written bytes is larger than expected"
+        );
+        return Ok(());
+    }
+
+    let mut r = buf.as_slice();
+
+    match T::decode(&mut r) {
+        Ok(_) => {
+            ensure!(
+                r.is_empty(),
+                "not all bytes were read after successful decode ({} bytes remain)",
+                r.len()
+            );
+            Ok(())
+        }
+        Err(e) => Err(e.context("failed to decode after successfully encoding")),
+    }
+}
+
+#[allow(dead_code)]
+mod derive_tests {
+    use crate::{Decode, Encode, Packet};
+
+    #[derive(Encode, Decode, Packet)]
+    #[packet_id = 1]
+    struct RegularStruct {
+        foo: i32,
+        bar: bool,
+        baz: f64,
+    }
+
+    #[derive(Encode, Decode, Packet)]
+    #[packet_id = 2]
+    struct UnitStruct;
+
+    #[derive(Encode, Decode, Packet)]
+    #[packet_id = 3]
+    struct EmptyStruct {}
+
+    #[derive(Encode, Decode, Packet)]
+    #[packet_id = 4]
+    struct TupleStruct(i32, bool, f64);
+
+    #[derive(Encode, Decode, Packet)]
+    #[packet_id = 5]
+    struct StructWithLifetime<'z> {
+        foo: &'z str,
+    }
+
+    #[derive(Encode, Decode, Packet)]
+    #[packet_id = 6]
+    struct TupleStructWithLifetime<'z>(&'z str, i32);
+
+    #[derive(Encode, Decode, Packet)]
+    #[packet_id = 7]
+    enum RegularEnum {
+        Empty,
+        Tuple(i32, bool, f64),
+        Fields { foo: i32, bar: bool, baz: f64 },
+    }
+
+    #[derive(Encode, Decode, Packet)]
+    #[packet_id = 8]
+    enum EmptyEnum {}
+
+    #[derive(Encode, Decode, Packet)]
+    #[packet_id = 0xbeef]
+    enum EnumWithLifetime<'z> {
+        First { foo: &'z str },
+        Second(&'z str),
+        Third,
+    }
 }

@@ -3,34 +3,51 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::spanned::Spanned;
 use syn::{
-    parse2, parse_quote, Data, DeriveInput, Error, Fields, GenericParam, Generics, Lifetime,
-    LifetimeDef, LitInt, Result,
+    parse2, parse_quote, Attribute, Data, DeriveInput, Error, Fields, GenericParam, Generics,
+    Lifetime, LifetimeDef, Lit, LitInt, Meta, Result,
 };
 
-#[proc_macro_derive(Encode)]
+#[proc_macro_derive(Encode, attributes(packet_id))]
 pub fn derive_encode(item: StdTokenStream) -> StdTokenStream {
-    match derive_encode_impl(item.into()) {
+    match derive_encode_inner(item.into()) {
         Ok(tokens) => tokens.into(),
         Err(e) => e.into_compile_error().into(),
     }
 }
 
-#[proc_macro_derive(Decode)]
+#[proc_macro_derive(Decode, attributes(packet_id))]
 pub fn derive_decode(item: StdTokenStream) -> StdTokenStream {
-    match derive_decode_impl(item.into()) {
+    match derive_decode_inner(item.into()) {
         Ok(tokens) => tokens.into(),
         Err(e) => e.into_compile_error().into(),
     }
 }
 
-fn derive_encode_impl(item: TokenStream) -> Result<TokenStream> {
+#[proc_macro_derive(Packet)]
+pub fn derive_packet(item: StdTokenStream) -> StdTokenStream {
+    match derive_packet_inner(item.into()) {
+        Ok(tokens) => tokens.into(),
+        Err(e) => e.into_compile_error().into(),
+    }
+}
+
+fn derive_encode_inner(item: TokenStream) -> Result<TokenStream> {
     let mut input = parse2::<DeriveInput>(item)?;
 
     let name = input.ident;
+    let string_name = name.to_string();
+
+    let packet_id = find_packet_id_attr(&input.attrs)?
+        .into_iter()
+        .map(|l| l.to_token_stream())
+        .collect::<Vec<_>>();
 
     match input.data {
         Data::Struct(s) => {
-            add_trait_bounds(&mut input.generics, quote!(::valence_protocol::__private::Encode));
+            add_trait_bounds(
+                &mut input.generics,
+                quote!(::valence_protocol::__private::Encode),
+            );
 
             let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
@@ -80,9 +97,15 @@ fn derive_encode_impl(item: TokenStream) -> Result<TokenStream> {
 
             Ok(quote! {
                 #[allow(unused_imports)]
-                impl #impl_generics ::valence_protocol::__private::Encode for #name #ty_generics #where_clause {
+                impl #impl_generics ::valence_protocol::__private::Encode for #name #ty_generics
+                #where_clause
+                {
                     fn encode(&self, mut _w: impl ::std::io::Write) -> ::valence_protocol::__private::Result<()> {
-                        use ::valence_protocol::__private::{Encode, Context};
+                        use ::valence_protocol::__private::{Encode, Context, VarInt};
+
+                        #(
+                            VarInt(#packet_id).encode(&mut _w)?;
+                        )*
 
                         #encode_fields
 
@@ -90,15 +113,42 @@ fn derive_encode_impl(item: TokenStream) -> Result<TokenStream> {
                     }
 
                     fn encoded_len(&self) -> usize {
-                        use ::valence_protocol::__private::{Encode, Context};
+                        use ::valence_protocol::__private::{Encode, Context, VarInt};
 
-                        0 #encoded_len_fields
+                        0 #(+ VarInt(#packet_id).encoded_len())* #encoded_len_fields
                     }
                 }
+
+                #(
+                    #[allow(unused_imports)]
+                    impl #impl_generics ::valence_protocol::__private::DerivedPacketEncode for #name #ty_generics
+                    #where_clause
+                    {
+                        const ID: i32 = #packet_id;
+                        const NAME: &'static str = #string_name;
+
+                        fn encode_without_id(&self, mut _w: impl ::std::io::Write) -> ::valence_protocol::__private::Result<()> {
+                            use ::valence_protocol::__private::{Encode, Context, VarInt};
+
+                            #encode_fields
+
+                            Ok(())
+                        }
+
+                        fn encoded_len_without_id(&self) -> usize {
+                            use ::valence_protocol::__private::{Encode, Context, VarInt};
+
+                            0 #encoded_len_fields
+                        }
+                    }
+                )*
             })
         }
         Data::Enum(e) => {
-            add_trait_bounds(&mut input.generics, quote!(::valence_protocol::__private::Encode));
+            add_trait_bounds(
+                &mut input.generics,
+                quote!(::valence_protocol::__private::Encode),
+            );
 
             let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
@@ -121,6 +171,7 @@ fn derive_encode_impl(item: TokenStream) -> Result<TokenStream> {
                                     #(
                                         #fields.encode(&mut _w)?; // TODO: anyhow context.
                                     )*
+                                    Ok(())
                                 }
                             }
                         }
@@ -136,11 +187,12 @@ fn derive_encode_impl(item: TokenStream) -> Result<TokenStream> {
                                     #(
                                         #fields.encode(&mut _w)?; // TODO: anyhow context.
                                     )*
+                                    Ok(())
                                 }
                             }
                         }
                         Fields::Unit => quote! {
-                            Self::#name => VarInt(#variant_index).encode(&mut _w)?,
+                            Self::#name => Ok(VarInt(#variant_index).encode(&mut _w)?),
                         },
                     }
                 })
@@ -198,10 +250,7 @@ fn derive_encode_impl(item: TokenStream) -> Result<TokenStream> {
                             #encode_arms
                             _ => unreachable!(),
                         }
-
-                        Ok(())
                     }
-                    #[allow(unused_imports)]
                     fn encoded_len(&self) -> usize {
                         use ::valence_protocol::__private::{Encode, Context, VarInt};
 
@@ -220,10 +269,16 @@ fn derive_encode_impl(item: TokenStream) -> Result<TokenStream> {
     }
 }
 
-fn derive_decode_impl(item: TokenStream) -> Result<TokenStream> {
+fn derive_decode_inner(item: TokenStream) -> Result<TokenStream> {
     let mut input = parse2::<DeriveInput>(item)?;
 
     let name = input.ident;
+    let string_name = name.to_string();
+
+    let packet_id = find_packet_id_attr(&input.attrs)?
+        .into_iter()
+        .map(|l| l.to_token_stream())
+        .collect::<Vec<_>>();
 
     if input.generics.lifetimes().count() > 1 {
         return Err(Error::new(
@@ -274,7 +329,10 @@ fn derive_decode_impl(item: TokenStream) -> Result<TokenStream> {
                 Fields::Unit => quote!(Self),
             };
 
-            add_trait_bounds(&mut input.generics, quote!(::valence_protocol::Decode<#lifetime>));
+            add_trait_bounds(
+                &mut input.generics,
+                quote!(::valence_protocol::Decode<#lifetime>),
+            );
 
             let (impl_generics, ty_generics, where_clause) =
                 decode_split_for_impl(input.generics, lifetime.clone());
@@ -285,7 +343,12 @@ fn derive_decode_impl(item: TokenStream) -> Result<TokenStream> {
                 #where_clause
                 {
                     fn decode(_r: &mut &#lifetime [u8]) -> ::valence_protocol::__private::Result<Self> {
-                        use ::valence_protocol::__private::{Decode, Context, VarInt};
+                        use ::valence_protocol::__private::{Decode, Context, VarInt, ensure};
+
+                        #(
+                            let id = VarInt::decode(_r)?.0;
+                            ensure!(id == #packet_id, "unexpected packet ID {} (expected {})", id, #packet_id);
+                        )*
 
                         Ok(#decode_fields)
                     }
@@ -330,7 +393,10 @@ fn derive_decode_impl(item: TokenStream) -> Result<TokenStream> {
                 })
                 .collect::<TokenStream>();
 
-            add_trait_bounds(&mut input.generics, quote!(::valence_protocol::Decode<#lifetime>));
+            add_trait_bounds(
+                &mut input.generics,
+                quote!(::valence_protocol::Decode<#lifetime>),
+            );
 
             let (impl_generics, ty_generics, where_clause) =
                 decode_split_for_impl(input.generics, lifetime.clone());
@@ -341,7 +407,12 @@ fn derive_decode_impl(item: TokenStream) -> Result<TokenStream> {
                 #where_clause
                 {
                     fn decode(_r: &mut &#lifetime [u8]) -> ::valence_protocol::__private::Result<Self> {
-                        use ::valence_protocol::__private::{Decode, Context, VarInt, bail};
+                        use ::valence_protocol::__private::{Decode, Context, VarInt, bail, ensure};
+
+                        #(
+                            let id = VarInt::decode(_r)?.0;
+                            ensure!(id == #packet_id, "unexpected packet ID {} (expected {})", id, #packet_id);
+                        )*
 
                         // TODO: anyhow context.
                         let disc = VarInt::decode(_r)?.0;
@@ -351,6 +422,27 @@ fn derive_decode_impl(item: TokenStream) -> Result<TokenStream> {
                         }
                     }
                 }
+
+                #(
+                    #[allow(unused_imports)]
+                    impl #impl_generics ::valence_protocol::DerivedPacketDecode<#lifetime> for #name #ty_generics
+                    #where_clause
+                    {
+                        const ID: i32 = #packet_id;
+                        const NAME: &'static str = #string_name;
+
+                        fn decode_without_id(_r: &mut &#lifetime [u8]) -> ::valence_protocol::__private::Result<Self> {
+                            use ::valence_protocol::__private::{Decode, Context, VarInt, bail};
+
+                            // TODO: anyhow context.
+                            let disc = VarInt::decode(_r)?.0;
+                            match disc {
+                                #decode_arms
+                                n => bail!("unexpected enum discriminant {}", disc),
+                            }
+                        }
+                    }
+                )*
             })
         }
         Data::Union(u) => Err(Error::new(
@@ -358,6 +450,41 @@ fn derive_decode_impl(item: TokenStream) -> Result<TokenStream> {
             "cannot derive `Decode` on unions",
         )),
     }
+}
+
+fn derive_packet_inner(item: TokenStream) -> Result<TokenStream> {
+    let input = parse2::<DeriveInput>(item)?;
+
+    let name = input.ident;
+    let string_name = name.to_string();
+
+    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
+
+    Ok(quote! {
+        impl #impl_generics ::valence_protocol::Packet for #name #ty_generics
+        #where_clause
+        {
+            fn packet_name(&self) -> &'static str {
+                #string_name
+            }
+        }
+    })
+}
+
+fn find_packet_id_attr(attrs: &[Attribute]) -> Result<Option<LitInt>> {
+    for attr in attrs {
+        if let Meta::NameValue(nv) = attr.parse_meta()? {
+            if nv.path.is_ident("packet_id") {
+                let span = nv.lit.span();
+                return match nv.lit {
+                    Lit::Int(i) => Ok(Some(i)),
+                    _ => Err(Error::new(span, "packet ID must be an integer literal")),
+                };
+            }
+        }
+    }
+
+    Ok(None)
 }
 
 /// Adding our lifetime to the generics before calling `.split_for_impl()` would

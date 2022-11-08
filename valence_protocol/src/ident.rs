@@ -239,7 +239,7 @@ where
     S: Decode<'a> + AsRef<str>,
 {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
-        Ident::new(S::decode(r)?).map_err(|e| anyhow!("{e}"))
+        Ident::new(S::decode(r)?).map_err(|e| anyhow!("{e:#}"))
     }
 }
 
