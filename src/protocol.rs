@@ -644,6 +644,12 @@ impl<T: Decode> Decode for Vec3<T> {
     }
 }
 
+impl<T: Decode> Decode for Rgb<T> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
+        Ok(Rgb::new(T::decode(r)?, T::decode(r)?, T::decode(r)?))
+    }
+}
+
 impl<T: Decode> Decode for Vec4<T> {
     fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         Ok(Vec4::new(
