@@ -619,8 +619,8 @@ impl Decode for ParticleS2c {
                             ticks: ticks.0,
                         }
                     }
-                    _ => {
-                        bail!("Invalid position_source_type");
+                    invalid => {
+                        bail!("invalid position_source_type {invalid}");
                     }
                 }
             }
