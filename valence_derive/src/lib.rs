@@ -4,10 +4,10 @@ use quote::{quote, ToTokens};
 use syn::spanned::Spanned;
 use syn::{
     parse2, parse_quote, Attribute, Data, DeriveInput, Error, Fields, GenericParam, Generics,
-    Lifetime, LifetimeDef, Lit, LitInt, Meta, Result,
+    Lifetime, LifetimeDef, Lit, LitInt, Meta, Result, Variant,
 };
 
-#[proc_macro_derive(Encode, attributes(packet_id))]
+#[proc_macro_derive(Encode, attributes(packet_id, tag))]
 pub fn derive_encode(item: StdTokenStream) -> StdTokenStream {
     match derive_encode_inner(item.into()) {
         Ok(tokens) => tokens.into(),
@@ -15,7 +15,7 @@ pub fn derive_encode(item: StdTokenStream) -> StdTokenStream {
     }
 }
 
-#[proc_macro_derive(Decode, attributes(packet_id))]
+#[proc_macro_derive(Decode, attributes(packet_id, tag))]
 pub fn derive_decode(item: StdTokenStream) -> StdTokenStream {
     match derive_decode_inner(item.into()) {
         Ok(tokens) => tokens.into(),
@@ -43,7 +43,7 @@ fn derive_encode_inner(item: TokenStream) -> Result<TokenStream> {
         .collect::<Vec<_>>();
 
     match input.data {
-        Data::Struct(s) => {
+        Data::Struct(struct_) => {
             add_trait_bounds(
                 &mut input.generics,
                 quote!(::valence_protocol::__private::Encode),
@@ -51,7 +51,7 @@ fn derive_encode_inner(item: TokenStream) -> Result<TokenStream> {
 
             let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
-            let encode_fields = match &s.fields {
+            let encode_fields = match &struct_.fields {
                 Fields::Named(fields) => fields
                     .named
                     .iter()
@@ -73,7 +73,7 @@ fn derive_encode_inner(item: TokenStream) -> Result<TokenStream> {
                 Fields::Unit => TokenStream::new(),
             };
 
-            let encoded_len_fields = match &s.fields {
+            let encoded_len_fields = match &struct_.fields {
                 Fields::Named(fields) => fields
                     .named
                     .iter()
@@ -144,7 +144,7 @@ fn derive_encode_inner(item: TokenStream) -> Result<TokenStream> {
                 )*
             })
         }
-        Data::Enum(e) => {
+        Data::Enum(enum_) => {
             add_trait_bounds(
                 &mut input.generics,
                 quote!(::valence_protocol::__private::Encode),
@@ -152,13 +152,12 @@ fn derive_encode_inner(item: TokenStream) -> Result<TokenStream> {
 
             let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
-            let encode_arms = e
-                .variants
+            let variants = pair_variants_with_discriminants(enum_.variants.into_iter())?;
+
+            let encode_arms = variants
                 .iter()
-                .enumerate()
-                .map(|(variant_index, variant)| {
+                .map(|(disc, variant)| {
                     let name = &variant.ident;
-                    let variant_index = variant_index as i32;
 
                     match &variant.fields {
                         Fields::Named(fields) => {
@@ -166,7 +165,7 @@ fn derive_encode_inner(item: TokenStream) -> Result<TokenStream> {
 
                             quote! {
                                 Self::#name { #(#fields,)* } => {
-                                    VarInt(#variant_index).encode(&mut _w)?; // TODO: anyhow context
+                                    VarInt(#disc).encode(&mut _w)?; // TODO: anyhow context
 
                                     #(
                                         #fields.encode(&mut _w)?; // TODO: anyhow context.
@@ -182,7 +181,7 @@ fn derive_encode_inner(item: TokenStream) -> Result<TokenStream> {
 
                             quote! {
                                 Self::#name(#(#fields,)*) => {
-                                    VarInt(#variant_index).encode(&mut _w)?;
+                                    VarInt(#disc).encode(&mut _w)?;
 
                                     #(
                                         #fields.encode(&mut _w)?; // TODO: anyhow context.
@@ -192,19 +191,16 @@ fn derive_encode_inner(item: TokenStream) -> Result<TokenStream> {
                             }
                         }
                         Fields::Unit => quote! {
-                            Self::#name => Ok(VarInt(#variant_index).encode(&mut _w)?),
+                            Self::#name => Ok(VarInt(#disc).encode(&mut _w)?),
                         },
                     }
                 })
                 .collect::<TokenStream>();
 
-            let encoded_len_arms = e
-                .variants
+            let encoded_len_arms = variants
                 .iter()
-                .enumerate()
-                .map(|(variant_index, variant)| {
+                .map(|(disc, variant)| {
                     let name = &variant.ident;
-                    let variant_index = variant_index as i32;
 
                     match &variant.fields {
                         Fields::Named(fields) => {
@@ -212,7 +208,7 @@ fn derive_encode_inner(item: TokenStream) -> Result<TokenStream> {
 
                             quote! {
                                 Self::#name { #(#fields,)* } => {
-                                    VarInt(#variant_index).encoded_len()
+                                    VarInt(#disc).encoded_len()
 
                                     #(+ #fields.encoded_len())*
                                 }
@@ -225,7 +221,7 @@ fn derive_encode_inner(item: TokenStream) -> Result<TokenStream> {
 
                             quote! {
                                 Self::#name(#(#fields,)*) => {
-                                    VarInt(#variant_index).encoded_len()
+                                    VarInt(#disc).encoded_len()
 
                                     #(+ #fields.encoded_len())*
                                 }
@@ -233,7 +229,7 @@ fn derive_encode_inner(item: TokenStream) -> Result<TokenStream> {
                         }
                         Fields::Unit => {
                             quote! {
-                                Self::#name => VarInt(#variant_index).encoded_len(),
+                                Self::#name => VarInt(#disc).encoded_len(),
                             }
                         }
                     }
@@ -330,8 +326,8 @@ fn derive_decode_inner(item: TokenStream) -> Result<TokenStream> {
         .unwrap_or_else(|| parse_quote!('a));
 
     match input.data {
-        Data::Struct(s) => {
-            let decode_fields = match s.fields {
+        Data::Struct(struct_) => {
+            let decode_fields = match struct_.fields {
                 Fields::Named(fields) => {
                     let init = fields.named.iter().map(|f| {
                         let name = &f.ident;
@@ -404,14 +400,13 @@ fn derive_decode_inner(item: TokenStream) -> Result<TokenStream> {
                 )*
             })
         }
-        Data::Enum(e) => {
-            let decode_arms = e
-                .variants
+        Data::Enum(enum_) => {
+            let variants = pair_variants_with_discriminants(enum_.variants.into_iter())?;
+
+            let decode_arms = variants
                 .iter()
-                .enumerate()
-                .map(|(variant_index, variant)| {
+                .map(|(disc, variant)| {
                     let name = &variant.ident;
-                    let variant_index = variant_index as i32;
 
                     match &variant.fields {
                         Fields::Named(fields) => {
@@ -425,7 +420,7 @@ fn derive_decode_inner(item: TokenStream) -> Result<TokenStream> {
                                 .collect::<TokenStream>();
 
                             quote! {
-                                #variant_index => Ok(Self::#name { #fields }),
+                                #disc => Ok(Self::#name { #fields }),
                             }
                         }
                         Fields::Unnamed(fields) => {
@@ -434,7 +429,7 @@ fn derive_decode_inner(item: TokenStream) -> Result<TokenStream> {
                                 .collect::<TokenStream>();
 
                             quote! {
-                                #variant_index => Ok(Self::#name(#init)),
+                                #disc => Ok(Self::#name(#init)),
                             }
                         }
                         Fields::Unit => TokenStream::new(),
@@ -504,6 +499,14 @@ fn derive_decode_inner(item: TokenStream) -> Result<TokenStream> {
 fn derive_packet_inner(item: TokenStream) -> Result<TokenStream> {
     let input = parse2::<DeriveInput>(item)?;
 
+    if find_packet_id_attr(&input.attrs)?.is_none() {
+        return Err(Error::new(
+            Span::call_site(),
+            "cannot derive `Packet` without `#[packet_id = ...]` attribute. Consider implementing \
+             the trait manually",
+        ));
+    }
+
     let name = input.ident;
     let string_name = name.to_string();
 
@@ -528,6 +531,43 @@ fn find_packet_id_attr(attrs: &[Attribute]) -> Result<Option<LitInt>> {
                 return match nv.lit {
                     Lit::Int(i) => Ok(Some(i)),
                     _ => Err(Error::new(span, "packet ID must be an integer literal")),
+                };
+            }
+        }
+    }
+
+    Ok(None)
+}
+
+fn pair_variants_with_discriminants(
+    variants: impl IntoIterator<Item = Variant>,
+) -> Result<Vec<(i32, Variant)>> {
+    let mut discriminant = 0;
+    variants
+        .into_iter()
+        .map(|v| {
+            if let Some(i) = find_tag_attr(&v.attrs)? {
+                discriminant = i;
+            }
+
+            let pair = (discriminant, v);
+            discriminant += 1;
+            Ok(pair)
+        })
+        .collect::<Result<_>>()
+}
+
+fn find_tag_attr(attrs: &[Attribute]) -> Result<Option<i32>> {
+    for attr in attrs {
+        if let Meta::NameValue(nv) = attr.parse_meta()? {
+            if nv.path.is_ident("tag") {
+                let span = nv.lit.span();
+                return match nv.lit {
+                    Lit::Int(lit) => Ok(Some(lit.base10_parse::<i32>()?)),
+                    _ => Err(Error::new(
+                        span,
+                        "discriminant value must be an integer literal",
+                    )),
                 };
             }
         }
