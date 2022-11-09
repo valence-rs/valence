@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use crate::Compound;
 
 /// Represents an arbitrary NBT value.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, PartialOrd, Debug)]
 pub enum Value {
     Byte(i8),
     Short(i16),
@@ -31,7 +31,7 @@ pub enum Value {
 ///
 /// Every possible element type has its own variant in this enum. As a result,
 /// heterogeneous lists are unrepresentable.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, PartialOrd, Debug)]
 pub enum List {
     Byte(Vec<i8>),
     Short(Vec<i16>),

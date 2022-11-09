@@ -239,9 +239,9 @@ impl Decode<'_> for f64 {
     }
 }
 
-// ==== Indirect ==== //
+// ==== Pointer ==== //
 
-impl<T: Encode> Encode for &T {
+impl<T: Encode + ?Sized> Encode for &T {
     fn encode(&self, w: impl Write) -> Result<()> {
         (**self).encode(w)
     }
@@ -251,7 +251,7 @@ impl<T: Encode> Encode for &T {
     }
 }
 
-impl<T: Encode> Encode for &mut T {
+impl<T: Encode + ?Sized> Encode for &mut T {
     fn encode(&self, w: impl Write) -> Result<()> {
         (**self).encode(w)
     }
@@ -261,7 +261,7 @@ impl<T: Encode> Encode for &mut T {
     }
 }
 
-impl<T: Encode> Encode for Box<T> {
+impl<T: Encode + ?Sized> Encode for Box<T> {
     fn encode(&self, w: impl Write) -> Result<()> {
         self.as_ref().encode(w)
     }
@@ -277,7 +277,7 @@ impl<'a, T: Decode<'a>> Decode<'a> for Box<T> {
     }
 }
 
-impl<T: Encode> Encode for Rc<T> {
+impl<T: Encode + ?Sized> Encode for Rc<T> {
     fn encode(&self, w: impl Write) -> Result<()> {
         self.as_ref().encode(w)
     }
@@ -293,7 +293,7 @@ impl<'a, T: Decode<'a>> Decode<'a> for Rc<T> {
     }
 }
 
-impl<T: Encode> Encode for Arc<T> {
+impl<T: Encode + ?Sized> Encode for Arc<T> {
     fn encode(&self, w: impl Write) -> Result<()> {
         self.as_ref().encode(w)
     }
@@ -445,16 +445,6 @@ impl<'a, T: Decode<'a>> Decode<'a> for Vec<T> {
     }
 }
 
-impl<T: Encode> Encode for Box<[T]> {
-    fn encode(&self, w: impl Write) -> Result<()> {
-        self[..].encode(w)
-    }
-
-    fn encoded_len(&self) -> usize {
-        self[..].encoded_len()
-    }
-}
-
 impl<'a, T: Decode<'a>> Decode<'a> for Box<[T]> {
     fn decode(r: &mut &'a [u8]) -> Result<Self> {
         Ok(Vec::decode(r)?.into_boxed_slice())
@@ -507,16 +497,6 @@ impl Encode for String {
 impl Decode<'_> for String {
     fn decode(r: &mut &[u8]) -> Result<Self> {
         Ok(<&str>::decode(r)?.into())
-    }
-}
-
-impl Encode for Box<str> {
-    fn encode(&self, w: impl Write) -> Result<()> {
-        self.as_ref().encode(w)
-    }
-
-    fn encoded_len(&self) -> usize {
-        self.as_ref().encoded_len()
     }
 }
 

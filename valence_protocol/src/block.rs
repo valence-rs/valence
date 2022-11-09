@@ -70,7 +70,7 @@ impl Decode<'_> for BlockState {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Encode, Decode)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
 pub enum BlockFace {
     /// -Y
     Bottom,

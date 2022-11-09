@@ -1,3 +1,4 @@
+/*
 // TODO: implement BoundedFloat when floats are permitted in const generics.
 
 use std::io::Write;
@@ -104,3 +105,4 @@ where
         Ok(Self(s))
     }
 }
+*/

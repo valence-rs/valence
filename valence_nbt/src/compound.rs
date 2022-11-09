@@ -7,7 +7,7 @@ use crate::to_binary_writer::encoded_len;
 use crate::Value;
 
 /// A map type with [`String`] keys and [`Value`] values.
-#[derive(Clone, PartialEq, Default, Debug)]
+#[derive(Clone, PartialEq, PartialOrd, Default, Debug)]
 pub struct Compound {
     map: Map,
 }

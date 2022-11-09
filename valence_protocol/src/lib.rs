@@ -49,6 +49,7 @@ pub mod text;
 pub mod username;
 pub mod var_int;
 pub mod var_long;
+pub mod client;
 
 /// Used only by proc macros. Not public API.
 #[doc(hidden)]
@@ -138,7 +139,7 @@ pub trait Packet {
 pub trait DerivedPacketEncode: Packet + Encode {
     /// The ID of this packet specified with `#[packet_id = ...]`.
     const ID: i32;
-    /// The name of the `Self` type.
+    /// The name of the type implementing this trait.
     const NAME: &'static str;
 
     fn encode_without_id(&self, w: impl Write) -> Result<()>;
@@ -157,7 +158,7 @@ pub trait DerivedPacketEncode: Packet + Encode {
 pub trait DerivedPacketDecode<'a>: Packet + Decode<'a> {
     /// The ID of this packet specified with `#[packet_id = ...]`.
     const ID: i32;
-    /// The name of the `Self` type.
+    /// The name of the type implementing this trait.
     const NAME: &'static str;
 
     fn decode_without_id(r: &mut &'a [u8]) -> Result<Self>;
@@ -170,7 +171,7 @@ where
     let len = t.encoded_len();
     let mut buf = Vec::with_capacity(len);
 
-    if let Err(_) = t.encode(&mut buf) {
+    if t.encode(&mut buf).is_err() {
         ensure!(
             buf.len() <= len,
             "number of written bytes is larger than expected"
@@ -194,8 +195,9 @@ where
 }
 
 #[allow(dead_code)]
+#[cfg(test)]
 mod derive_tests {
-    use crate::{Decode, Encode, Packet};
+    use crate::{Decode, DerivedPacketDecode, DerivedPacketEncode, Encode, Packet};
 
     #[derive(Encode, Decode, Packet)]
     #[packet_id = 1]
@@ -219,13 +221,14 @@ mod derive_tests {
 
     #[derive(Encode, Decode, Packet)]
     #[packet_id = 5]
-    struct StructWithLifetime<'z> {
+    struct StructWithGenerics<'z, T = ()> {
         foo: &'z str,
+        bar: T,
     }
 
     #[derive(Encode, Decode, Packet)]
     #[packet_id = 6]
-    struct TupleStructWithLifetime<'z>(&'z str, i32);
+    struct TupleStructWithGenerics<'z, T = ()>(&'z str, i32, T);
 
     #[derive(Encode, Decode, Packet)]
     #[packet_id = 7]
@@ -241,9 +244,29 @@ mod derive_tests {
 
     #[derive(Encode, Decode, Packet)]
     #[packet_id = 0xbeef]
-    enum EnumWithLifetime<'z> {
+    enum EnumWithGenericsAndTags<'z, T = ()> {
+        #[tag = 5]
         First { foo: &'z str },
         Second(&'z str),
+        #[tag = 0xff]
         Third,
+        #[tag = 0]
+        Fourth(T),
+    }
+
+    #[allow(unconditional_recursion)]
+    fn has_impls<'a, T>()
+    where
+        T: Encode + Decode<'a> + DerivedPacketEncode + DerivedPacketDecode<'a> + Packet,
+    {
+        has_impls::<RegularStruct>();
+        has_impls::<UnitStruct>();
+        has_impls::<EmptyStruct>();
+        has_impls::<TupleStruct>();
+        has_impls::<StructWithGenerics>();
+        has_impls::<TupleStructWithGenerics>();
+        has_impls::<RegularEnum>();
+        has_impls::<EmptyEnum>();
+        has_impls::<EnumWithGenericsAndTags>();
     }
 }
