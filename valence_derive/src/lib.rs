@@ -241,10 +241,16 @@ fn derive_encode_inner(item: TokenStream) -> Result<TokenStream> {
                 .collect::<TokenStream>();
 
             Ok(quote! {
-                #[allow(unused_imports)]
-                impl #impl_generics ::valence_protocol::Encode for #name #ty_generics #where_clause {
+                #[allow(unused_imports, unreachable_code)]
+                impl #impl_generics ::valence_protocol::Encode for #name #ty_generics
+                #where_clause
+                {
                     fn encode(&self, mut _w: impl ::std::io::Write) -> ::valence_protocol::__private::Result<()> {
                         use ::valence_protocol::__private::{Encode, VarInt, Context};
+
+                        #(
+                            VarInt(#packet_id).encode(&mut _w)?;
+                        )*
 
                         match self {
                             #encode_arms
@@ -254,12 +260,39 @@ fn derive_encode_inner(item: TokenStream) -> Result<TokenStream> {
                     fn encoded_len(&self) -> usize {
                         use ::valence_protocol::__private::{Encode, Context, VarInt};
 
-                        match self {
+                        #(VarInt(#packet_id).encoded_len() +)* match self {
                             #encoded_len_arms
-                            _ => unreachable!(),
+                            _ => unreachable!() as usize,
                         }
                     }
                 }
+
+                #(
+                    #[allow(unused_imports)]
+                    impl #impl_generics ::valence_protocol::DerivedPacketEncode for #name #ty_generics
+                    #where_clause
+                    {
+                        const ID: i32 = #packet_id;
+                        const NAME: &'static str = #string_name;
+
+                        fn encode_without_id(&self, mut _w: impl ::std::io::Write) -> ::valence_protocol::__private::Result<()> {
+                            use ::valence_protocol::__private::{Encode, VarInt, Context};
+
+                            match self {
+                                #encode_arms
+                                _ => unreachable!(),
+                            }
+                        }
+                        fn encoded_len_without_id(&self) -> usize {
+                            use ::valence_protocol::__private::{Encode, Context, VarInt};
+
+                            match self {
+                                #encoded_len_arms
+                                _ => unreachable!(),
+                            }
+                        }
+                    }
+                )*
             })
         }
         Data::Union(u) => Err(Error::new(
@@ -353,6 +386,22 @@ fn derive_decode_inner(item: TokenStream) -> Result<TokenStream> {
                         Ok(#decode_fields)
                     }
                 }
+
+                #(
+                    #[allow(unused_imports)]
+                    impl #impl_generics ::valence_protocol::DerivedPacketDecode<#lifetime> for #name #ty_generics
+                    #where_clause
+                    {
+                        const ID: i32 = #packet_id;
+                        const NAME: &'static str = #string_name;
+
+                        fn decode_without_id(_r: &mut &#lifetime [u8]) -> ::valence_protocol::__private::Result<Self> {
+                            use ::valence_protocol::__private::{Decode, Context, VarInt, ensure};
+
+                            Ok(#decode_fields)
+                        }
+                    }
+                )*
             })
         }
         Data::Enum(e) => {
