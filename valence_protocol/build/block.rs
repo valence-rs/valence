@@ -82,7 +82,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .map(|b| {
             let min = b.min_state_id();
             let max = b.max_state_id();
-            let name = ident(&b.name.to_pascal_case());
+            let name = ident(b.name.to_pascal_case());
             quote! {
                 #min..=#max => BlockKind::#name,
             }
