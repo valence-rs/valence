@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use tokio::io;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use tokio::runtime::Handle;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 
@@ -91,6 +92,7 @@ where
         mut self,
         incoming_limit: usize,
         outgoing_limit: usize,
+        handle: Handle,
     ) -> PlayPacketController
     where
         R: Send + 'static,
@@ -144,6 +146,7 @@ where
             recv: incoming_receiver,
             reader_task,
             writer_task: Some(writer_task),
+            handle,
         }
     }
 }
@@ -158,6 +161,7 @@ pub struct PlayPacketController {
     recv: ByteReceiver,
     reader_task: JoinHandle<()>,
     writer_task: Option<JoinHandle<()>>,
+    handle: Handle,
 }
 
 impl PlayPacketController {
@@ -214,8 +218,11 @@ impl Drop for PlayPacketController {
 
         if let Some(writer_task) = self.writer_task.take() {
             if !writer_task.is_finished() {
+                let _guard = self.handle.enter();
+
                 // Give any unsent packets a moment to send before we cut the connection.
-                tokio::spawn(timeout(Duration::from_secs(1), writer_task));
+                self.handle
+                    .spawn(timeout(Duration::from_secs(1), writer_task));
             }
         }
     }
