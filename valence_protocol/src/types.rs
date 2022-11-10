@@ -1,5 +1,6 @@
 //! Miscellaneous type definitions used in packets.
 
+use bitfield_struct::bitfield;
 use uuid::Uuid;
 use valence_nbt::Compound;
 use valence_protocol::text::Text;
@@ -304,4 +305,58 @@ pub struct PlayerInfoAddPlayer<'a> {
     pub ping: VarInt,
     pub display_name: Option<Text>,
     pub sig_data: Option<PublicKeyData<'a>>,
+}
+
+#[bitfield(u8)]
+#[derive(PartialEq, Eq, Debug, Encode, Decode)]
+pub struct DisplayedSkinParts {
+    pub cape: bool,
+    pub jacket: bool,
+    pub left_sleeve: bool,
+    pub right_sleeve: bool,
+    pub left_pants_leg: bool,
+    pub right_pants_leg: bool,
+    pub hat: bool,
+    _pad: bool,
+}
+
+#[bitfield(u8)]
+#[derive(PartialEq, Eq, Debug, Encode, Decode)]
+pub struct PlayerInputFlags {
+    pub jump: bool,
+    pub unmount: bool,
+    #[bits(6)]
+    _pad: u8,
+}
+
+#[bitfield(u8)]
+#[derive(PartialEq, Eq, Debug, Encode, Decode)]
+pub struct CommandBlockFlags {
+    pub track_output: bool,
+    pub conditional: bool,
+    pub automatic: bool,
+    #[bits(5)]
+    _pad: u8,
+}
+
+#[bitfield(u8)]
+#[derive(PartialEq, Eq, Debug, Encode, Decode)]
+pub struct StructureBlockFlags {
+    pub ignore_entities: bool,
+    pub show_air: bool,
+    pub show_bounding_box: bool,
+    #[bits(5)]
+    _pad: u8,
+}
+
+#[bitfield(u8)]
+#[derive(PartialEq, Eq, Debug, Encode, Decode)]
+pub struct SyncPlayerPosLookFlags {
+    pub x: bool,
+    pub y: bool,
+    pub z: bool,
+    pub y_rot: bool,
+    pub x_rot: bool,
+    #[bits(3)]
+    _pad: u8,
 }

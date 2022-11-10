@@ -11,6 +11,7 @@ use crate::text::Text;
 use crate::types::{
     Animation, AttributeProperty, BossBarAction, ChunkDataBlockEntity, DeathLocation, Difficulty,
     GameMode, GameStateChangeReason, PlayerInfoAddPlayer, SignedProperty, SoundCategory,
+    SyncPlayerPosLookFlags,
 };
 use crate::username::Username;
 use crate::var_int::VarInt;
@@ -400,8 +401,7 @@ pub mod play {
         pub position: [f64; 3],
         pub yaw: f32,
         pub pitch: f32,
-        // TODO: SyncPlayerPosLookFlags
-        pub flags: u8,
+        pub flags: SyncPlayerPosLookFlags,
         pub teleport_id: VarInt,
         pub dismount_vehicle: bool,
     }

@@ -6,9 +6,10 @@ use crate::ident::Ident;
 use crate::item::ItemStack;
 use crate::raw_bytes::RawBytes;
 use crate::types::{
-    Action, ChatMode, ClickContainerMode, CommandArgumentSignature, CommandBlockMode,
-    DiggingStatus, EntityInteraction, Hand, HandshakeNextState, MessageAcknowledgment,
-    MsgSigOrVerifyToken, PublicKeyData, RecipeBookId, StructureBlockAction, StructureBlockMirror,
+    Action, ChatMode, ClickContainerMode, CommandArgumentSignature, CommandBlockFlags,
+    CommandBlockMode, DiggingStatus, DisplayedSkinParts, EntityInteraction, Hand,
+    HandshakeNextState, MessageAcknowledgment, MsgSigOrVerifyToken, PlayerInputFlags,
+    PublicKeyData, RecipeBookId, StructureBlockAction, StructureBlockFlags, StructureBlockMirror,
     StructureBlockMode, StructureBlockRotation,
 };
 use crate::username::Username;
@@ -164,8 +165,7 @@ pub mod play {
         pub view_distance: u8,
         pub chat_mode: ChatMode,
         pub chat_colors: bool,
-        // TODO: DisplayedSkinParts type in client.rs
-        pub displayed_skin_parts: u8,
+        pub displayed_skin_parts: DisplayedSkinParts,
         pub main_hand: Hand,
         pub enable_text_filtering: bool,
         pub allow_server_listings: bool,
@@ -337,8 +337,7 @@ pub mod play {
     pub struct PlayerInput {
         pub sideways: f32,
         pub forward: f32,
-        // TODO: PlayerInputFlags bitfield.
-        pub flags: u8,
+        pub flags: PlayerInputFlags,
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
@@ -408,8 +407,7 @@ pub mod play {
         pub location: BlockPos,
         pub command: &'a str,
         pub mode: CommandBlockMode,
-        // TODO: CommandBlockFlags bitfield.
-        pub flags: i8,
+        pub flags: CommandBlockFlags,
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
@@ -452,8 +450,7 @@ pub mod play {
         pub metadata: &'a str,
         pub integrity: f32,
         pub seed: VarLong,
-        // TODO: StructureBlockFlags bitfield.
-        pub flags: i8,
+        pub flags: StructureBlockFlags,
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
