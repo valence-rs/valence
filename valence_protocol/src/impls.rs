@@ -389,7 +389,7 @@ impl<'a, const N: usize> Decode<'a> for &'a [u8; N] {
             "not enough data to decode u8 array of length {N}"
         );
 
-        let (remaining, res) = r.split_at(N);
+        let (res, remaining) = r.split_at(N);
         let arr = <&[u8; N]>::try_from(res).unwrap();
         *r = remaining;
         Ok(arr)
