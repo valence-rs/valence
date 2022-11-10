@@ -46,10 +46,10 @@ pub mod item;
 pub mod packets;
 pub mod raw_bytes;
 pub mod text;
+pub mod types;
 pub mod username;
 pub mod var_int;
 pub mod var_long;
-pub mod client;
 
 /// Used only by proc macros. Not public API.
 #[doc(hidden)]
@@ -246,7 +246,9 @@ mod derive_tests {
     #[packet_id = 0xbeef]
     enum EnumWithGenericsAndTags<'z, T = ()> {
         #[tag = 5]
-        First { foo: &'z str },
+        First {
+            foo: &'z str,
+        },
         Second(&'z str),
         #[tag = 0xff]
         Third,

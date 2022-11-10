@@ -6,6 +6,7 @@ macro_rules! packet_enum {
             $($packet:ident $(<$life:lifetime>)?),* $(,)?
         }
     ) => {
+        $(#[$attrs])*
         pub enum $enum_name<$enum_life> {
             $(
                 $packet($packet $(<$life>)?),
@@ -74,6 +75,7 @@ macro_rules! packet_enum {
             $($packet:ident),* $(,)?
         }
     ) => {
+        $(#[$attrs])*
         pub enum $enum_name {
             $(
                 $packet($packet),

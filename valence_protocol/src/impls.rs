@@ -381,6 +381,21 @@ impl<'a, const N: usize, T: Decode<'a>> Decode<'a> for [T; N] {
     }
 }
 
+/// References to fixed-length arrays are not length prefixed.
+impl<'a, const N: usize> Decode<'a> for &'a [u8; N] {
+    fn decode(r: &mut &'a [u8]) -> Result<Self> {
+        ensure!(
+            r.len() >= N,
+            "not enough data to decode u8 array of length {N}"
+        );
+
+        let (remaining, res) = r.split_at(N);
+        let arr = <&[u8; N]>::try_from(res).unwrap();
+        *r = remaining;
+        Ok(arr)
+    }
+}
+
 impl<T: Encode> Encode for [T] {
     fn encode(&self, mut w: impl Write) -> Result<()> {
         let len = self.len();

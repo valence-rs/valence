@@ -2,15 +2,15 @@ use uuid::Uuid;
 
 use crate::block::BlockFace;
 use crate::block_pos::BlockPos;
-use crate::client::{
+use crate::ident::Ident;
+use crate::item::ItemStack;
+use crate::raw_bytes::RawBytes;
+use crate::types::{
     Action, ChatMode, ClickContainerMode, CommandArgumentSignature, CommandBlockMode,
     DiggingStatus, EntityInteraction, Hand, HandshakeNextState, MessageAcknowledgment,
     MsgSigOrVerifyToken, PublicKeyData, RecipeBookId, StructureBlockAction, StructureBlockMirror,
     StructureBlockMode, StructureBlockRotation,
 };
-use crate::ident::Ident;
-use crate::item::ItemStack;
-use crate::raw_bytes::RawBytes;
 use crate::username::Username;
 use crate::var_int::VarInt;
 use crate::var_long::VarLong;
@@ -29,6 +29,7 @@ pub mod handshake {
     }
 
     packet_enum! {
+        #[derive(Clone, Debug)]
         C2sHandshakePacket<'a> {
             Handshake<'a>
         }
@@ -49,6 +50,7 @@ pub mod status {
     }
 
     packet_enum! {
+        #[derive(Clone, Debug)]
         C2sStatusPacket {
             StatusRequest,
             PingRequest,
@@ -82,6 +84,7 @@ pub mod login {
     }
 
     packet_enum! {
+        #[derive(Clone, Debug)]
         C2sLoginPacket<'a> {
             LoginStart<'a>,
             EncryptionResponse<'a>,
@@ -489,6 +492,7 @@ pub mod play {
     }
 
     packet_enum! {
+        #[derive(Clone, Debug)]
         C2sPlayPacket<'a> {
             ConfirmTeleport,
             QueryBlockEntityTag,
