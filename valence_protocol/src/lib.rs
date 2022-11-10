@@ -50,6 +50,7 @@ pub mod types;
 pub mod username;
 pub mod var_int;
 pub mod var_long;
+pub mod entity_meta;
 
 /// Used only by proc macros. Not public API.
 #[doc(hidden)]

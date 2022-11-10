@@ -57,9 +57,10 @@ pub enum ChatMode {
     Hidden,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default, Encode, Decode)]
 pub enum MainHand {
     Left,
+    #[default]
     Right,
 }
 
