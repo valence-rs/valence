@@ -88,8 +88,10 @@ struct SharedServerInner<C: Config> {
     max_connections: usize,
     incoming_capacity: usize,
     outgoing_capacity: usize,
+    /// The tokio handle used by the server.
     tokio_handle: Handle,
-    /// Store this here so we don't drop it.
+    /// Holding a runtime handle is not enough to keep tokio working. We need
+    /// to store the runtime here so we don't drop it.
     _tokio_runtime: Option<Runtime>,
     dimensions: Vec<Dimension>,
     biomes: Vec<Biome>,
@@ -254,8 +256,8 @@ impl<C: Config> SharedServer<C> {
 
 /// Consumes the configuration and starts the server.
 ///
-/// The function returns once the server has shut down, a runtime error
-/// occurs, or the configuration is found to be invalid.
+/// This function blocks the current thread and returns once the server has shut
+/// down, a runtime error occurs, or the configuration is found to be invalid.
 pub fn start_server<C: Config>(config: C, data: C::ServerState) -> ShutdownResult {
     let shared = setup_server(config)
         .context("failed to initialize server")
@@ -522,6 +524,7 @@ async fn handle_connection(
                     ctrl: ctrl.into_play_packet_controller(
                         server.0.incoming_capacity,
                         server.0.outgoing_capacity,
+                        server.tokio_handle().clone(),
                     ),
                 };
 
