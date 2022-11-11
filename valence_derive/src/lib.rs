@@ -1,3 +1,8 @@
+//! This crate provides derive macros for [`Encode`], [`Decode`], and
+//! [`Packet`].
+//!
+//! See `valence_protocol`'s documentation for more information.
+
 use proc_macro::TokenStream as StdTokenStream;
 use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};

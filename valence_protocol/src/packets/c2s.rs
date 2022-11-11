@@ -397,7 +397,7 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x28]
-    pub struct SetHeldItemS2c {
+    pub struct SetHeldItemC2s {
         pub slot: i16,
     }
 
@@ -531,7 +531,7 @@ pub mod play {
             SeenAdvancements<'a>,
             SelectTrade,
             SetBeaconEffect,
-            SetHeldItemS2c,
+            SetHeldItemC2s,
             ProgramCommandBlock<'a>,
             ProgramCommandBlockMinecart<'a>,
             SetCreativeModeSlot,

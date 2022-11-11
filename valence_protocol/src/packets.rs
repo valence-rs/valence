@@ -1,3 +1,17 @@
+//! Contains client-to-server ([`c2s`]) and server-to-client ([`s2c`]) packets
+//! for the current version of the game.
+//!
+//! If the packets as defined do not meet your needs, consider using the tools
+//! in this library to redefine the packets yourself.
+
+pub use c2s::handshake::C2sHandshakePacket;
+pub use c2s::login::C2sLoginPacket;
+pub use c2s::play::C2sPlayPacket;
+pub use c2s::status::C2sStatusPacket;
+pub use s2c::login::S2cLoginPacket;
+pub use s2c::play::S2cPlayPacket;
+pub use s2c::status::S2cStatusPacket;
+
 /// Defines an enum of packets.
 macro_rules! packet_enum {
     (

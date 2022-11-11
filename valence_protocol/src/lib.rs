@@ -1,3 +1,52 @@
+//! A library for interacting with the Minecraft (Java Edition) network
+//! protocol.
+//!
+//! The API is centered around the [`Encode`] and [`Decode`] traits. Clientbound
+//! and serverbound packets are defined in the [`packets`] module. Packets are
+//! encoded and decoded using the [`PacketEncoder`] and [`PacketDecoder`] types.
+//!
+//! # Examples
+//!
+//! ```
+//! use valence_protocol::codec::{PacketDecoder, PacketEncoder};
+//! use valence_protocol::packets::c2s::play::RenameItem;
+//!
+//! let mut enc = PacketEncoder::new();
+//!
+//! let outgoing = RenameItem {
+//!     item_name: "Hello!",
+//! };
+//!
+//! enc.append_packet(&outgoing).unwrap();
+//!
+//! let mut dec = PacketDecoder::new();
+//!
+//! dec.queue_bytes(enc.take());
+//!
+//! let incoming = dec.try_next_packet::<RenameItem>().unwrap().unwrap();
+//!
+//! assert_eq!(outgoing.item_name, incoming.item_name);
+//! ```
+//!
+//! # Stability
+//!
+//! The Minecraft protocol is not stable. Updates to Minecraft may change the
+//! protocol in subtle or drastic ways. In response to this, `valence_protocol`
+//! aims to support only the most recent version of the game (excluding
+//! snapshots, pre-releases, etc). An update to Minecraft often requires a
+//! breaking change to the library.
+//!
+//! `valence_protocol` is versioned in lockstep with `valence`. The currently
+//! supported Minecraft version can be checked with the [`PROTOCOL_VERSION`] or
+//! [`MINECRAFT_VERSION`] constants.
+//!
+//! # Feature Flags
+//!
+//! TODO
+//!
+//! [`PacketEncoder`]: codec::PacketEncoder
+//! [`PacketDecoder`]: codec::PacketDecoder
+
 #![forbid(unsafe_code)]
 #![deny(
     rustdoc::broken_intra_doc_links,
@@ -25,12 +74,17 @@ extern crate self as valence_protocol;
 
 use std::io::Write;
 
-use anyhow::ensure;
 pub use anyhow::{Error, Result};
 pub use valence_derive::{Decode, Encode, Packet};
 pub use valence_nbt as nbt;
 
 use crate::byte_counter::ByteCounter;
+
+/// The Minecraft protocol version this library currently targets.
+pub const PROTOCOL_VERSION: i32 = 760;
+
+/// The stringized name of the Minecraft version this library currently targets.
+pub const MINECRAFT_VERSION: &str = "1.19.2";
 
 pub mod block;
 pub mod block_pos;
@@ -67,26 +121,78 @@ pub const MAX_PACKET_SIZE: i32 = 2097152;
 /// The `Encode` trait allows objects to be written to the Minecraft protocol.
 /// It is the inverse of [`Decode`].
 ///
-/// This trait can be implemented automatically by using the [`Encode`][macro]
-/// derive macro.
+/// # Deriving
+///
+/// This trait can be implemented automatically for structs and enums by using
+/// the [`Encode`][macro] derive macro. All components of the type must
+/// implement `Encode`. Components are encoded in the order they appear in the
+/// type definition.
+///
+/// If a `#[packet_id = ...]` attribute is present, encoding the type begins by
+/// writing the specified constant [`VarInt`] value before any of the
+/// components.
+///
+/// For enums, the variant to encode is marked by a leading [`VarInt`]
+/// discriminant (tag). The discriminant value can be changed using the `#[tag =
+/// ...]` attribute on the variant in question. Discriminant values are assigned
+/// to variants using rules similar to regular enum discriminants.
+///
+/// [`VarInt`]: var_int::VarInt
+///
+/// ```
+/// use valence_protocol::Encode;
+///
+/// #[derive(Encode)]
+/// #[packet_id = 42]
+/// struct MyStruct<'a> {
+///     first: i32,
+///     second: &'a str,
+///     third: [f64; 3],
+/// }
+///
+/// #[derive(Encode)]
+/// enum MyEnum {
+///     First,  // tag = 0
+///     Second, // tag = 1
+///     #[tag = 25]
+///     Third, // tag = 25
+///     Fourth, // tag = 26
+/// }
+///
+/// let value = MyStruct {
+///     first: 10,
+///     second: "hello",
+///     third: [1.5, 3.14, 2.718],
+/// };
+///
+/// let mut buf = Vec::new();
+/// value.encode(&mut buf).unwrap();
+///
+/// println!("{buf:?}");
+/// ```
 ///
 /// [macro]: valence_derive::Encode
 pub trait Encode {
     /// Writes this object to the provided writer.
     ///
-    /// TODO: mention that on success, Decode must always succeed.
+    /// If this type also implements [`Decode`] then successful calls to this
+    /// function returning `Ok(())` must always successfully [`decode`] using
+    /// the data that was written to the writer. The exact number of bytes
+    /// that were originally written must be consumed during the decoding.
     ///
-    /// This method must be pure. In other words, successive calls to `encode`
-    /// must write the same bytes to the writer argument assuming no write
-    /// error occurs. This property can be broken by using internal
-    /// mutability, global state, or other tricks.
+    /// Additionally, this function must be pure. If no write error occurs,
+    /// successive calls to `encode` must write the same bytes to the writer
+    /// argument. This property can be broken by using internal mutability,
+    /// global state, or other tricks.
+    ///
+    /// [`decode`]: Decode::decode
     fn encode(&self, w: impl Write) -> Result<()>;
 
     /// Returns the number of bytes that will be written when [`Self::encode`]
     /// is called.
     ///
-    /// If [`Self::encode`] results in `Ok`, the exact number of bytes reported
-    /// by this function must be written to the writer argument.
+    /// If [`Self::encode`] returns `Ok`, then the exact number of bytes
+    /// reported by this function must be written to the writer argument.
     ///
     /// If the result is `Err`, then the number of written bytes must be less
     /// than or equal to the count returned by this function.
@@ -105,11 +211,64 @@ pub trait Encode {
 /// The `Decode` trait allows objects to be read from the Minecraft protocol. It
 /// is the inverse of [`Encode`].
 ///
-/// This trait can be implemented automatically by using the [`Decode`][macro]
-/// derive macro.
+/// `Decode` is parameterized by a lifetime. This allows the decoded value to
+/// borrow data from the byte slice it was read from.
+///
+/// # Deriving
+///
+/// This trait can be implemented automatically for structs and enums by using
+/// the [`Decode`][macro] derive macro. All components of the type must
+/// implement `Decode`. Components are decoded in the order they appear in the
+/// type definition.
+///
+/// If a `#[packet_id = ...]` attribute is present, encoding the type begins by
+/// reading the specified constant [`VarInt`] value before any of the
+/// components.
+///
+/// For enums, the variant to decode is determined by a leading [`VarInt`]
+/// discriminant (tag). The discriminant value can be changed using the `#[tag =
+/// ...]` attribute on the variant in question. Discriminant values are assigned
+/// to variants using rules similar to regular enum discriminants.
+///
+/// [`VarInt`]: var_int::VarInt
+///
+/// ```
+/// use valence_protocol::Decode;
+///
+/// #[derive(PartialEq, Debug, Decode)]
+/// #[packet_id = 5]
+/// struct MyStruct {
+///     first: i32,
+///     second: MyEnum,
+/// }
+///
+/// #[derive(PartialEq, Debug, Decode)]
+/// enum MyEnum {
+///     First,  // tag = 0
+///     Second, // tag = 1
+///     #[tag = 25]
+///     Third, // tag = 25
+///     Fourth, // tag = 26
+/// }
+///
+/// let mut r: &[u8] = &[5, 0, 0, 0, 0, 26];
+///
+/// let value = MyStruct::decode(&mut r).unwrap();
+/// let expected = MyStruct {
+///     first: 0,
+///     second: MyEnum::Fourth,
+/// };
+///
+/// assert_eq!(value, expected);
+/// assert!(r.is_empty());
+/// ```
 ///
 /// [macro]: valence_derive::Decode
 pub trait Decode<'a>: Sized {
+    /// Reads this object from the provided byte slice.
+    ///
+    /// Implementations of `Decode` are expected to shrink the slice from the
+    /// front as bytes are read.
     fn decode(r: &mut &'a [u8]) -> Result<Self>;
 }
 
@@ -137,13 +296,17 @@ pub trait Packet {
 ///
 /// [macro]: valence_derive::Encode
 #[doc(hidden)]
-pub trait DerivedPacketEncode: Packet + Encode {
+pub trait DerivedPacketEncode: Encode {
     /// The ID of this packet specified with `#[packet_id = ...]`.
     const ID: i32;
     /// The name of the type implementing this trait.
     const NAME: &'static str;
 
+    /// Like [`Encode::encode`], but does not write a leading [`VarInt`] packet
+    /// ID.
     fn encode_without_id(&self, w: impl Write) -> Result<()>;
+    /// Like [`Encode::encoded_len`], but does not count a leading [`VarInt`]
+    /// packet ID.
     fn encoded_len_without_id(&self) -> usize;
 }
 
@@ -156,49 +319,21 @@ pub trait DerivedPacketEncode: Packet + Encode {
 ///
 /// [macro]: valence_derive::Decode
 #[doc(hidden)]
-pub trait DerivedPacketDecode<'a>: Packet + Decode<'a> {
+pub trait DerivedPacketDecode<'a>: Decode<'a> {
     /// The ID of this packet specified with `#[packet_id = ...]`.
     const ID: i32;
     /// The name of the type implementing this trait.
     const NAME: &'static str;
 
+    /// Like [`Decode::decode`], but does not decode a leading [`VarInt`] packet
+    /// ID.
     fn decode_without_id(r: &mut &'a [u8]) -> Result<Self>;
-}
-
-pub fn test_encode_decode<T>(t: &T) -> Result<()>
-where
-    T: Encode + for<'a> Decode<'a>,
-{
-    let len = t.encoded_len();
-    let mut buf = Vec::with_capacity(len);
-
-    if t.encode(&mut buf).is_err() {
-        ensure!(
-            buf.len() <= len,
-            "number of written bytes is larger than expected"
-        );
-        return Ok(());
-    }
-
-    let mut r = buf.as_slice();
-
-    match T::decode(&mut r) {
-        Ok(_) => {
-            ensure!(
-                r.is_empty(),
-                "not all bytes were read after successful decode ({} bytes remain)",
-                r.len()
-            );
-            Ok(())
-        }
-        Err(e) => Err(e.context("failed to decode after successfully encoding")),
-    }
 }
 
 #[allow(dead_code)]
 #[cfg(test)]
 mod derive_tests {
-    use crate::{Decode, DerivedPacketDecode, DerivedPacketEncode, Encode, Packet};
+    use super::*;
 
     #[derive(Encode, Decode, Packet)]
     #[packet_id = 1]
