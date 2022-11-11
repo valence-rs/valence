@@ -158,7 +158,7 @@ pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
                                 #disc => Ok(Self::#name(#init)),
                             }
                         }
-                        Fields::Unit => TokenStream::new(),
+                        Fields::Unit => quote!(#disc => Ok(Self::#name),),
                     }
                 })
                 .collect::<TokenStream>();

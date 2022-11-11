@@ -22,16 +22,14 @@ impl BlockPos {
     /// Returns the block position a point is contained within.
     pub fn at(pos: impl Into<[f64; 3]>) -> Self {
         pos.into().map(|a| a.floor() as i32).into()
-
-        // pos.into().floor().as_::<i32>().into()
     }
 
     /// Get a new [`BlockPos`] that is adjacent to this position in `dir`
     /// direction.
     ///
     /// ```
-    /// use valence::block::BlockPos;
-    /// use valence::client::BlockFace;
+    /// use valence_protocol::block::BlockFace;
+    /// use valence_protocol::block_pos::BlockPos;
     ///
     /// let pos = BlockPos::new(0, 0, 0);
     /// let adj = pos.get_in_direction(BlockFace::South);

@@ -204,7 +204,11 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
                             }
                         }
                         Fields::Unit => quote! {
-                            Self::#variant_name => Ok(VarInt(#disc).encode(&mut _w)?),
+                            Self::#variant_name => Ok(
+                                VarInt(#disc)
+                                    .encode(&mut _w)
+                                    .context(#disc_ctx)?
+                            ),
                         },
                     }
                 })

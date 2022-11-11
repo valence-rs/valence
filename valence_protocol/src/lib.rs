@@ -40,6 +40,7 @@ mod byte_counter;
 pub mod codec;
 pub mod enchant;
 pub mod encoded_buf;
+pub mod entity_meta;
 pub mod ident;
 mod impls;
 pub mod item;
@@ -50,7 +51,6 @@ pub mod types;
 pub mod username;
 pub mod var_int;
 pub mod var_long;
-pub mod entity_meta;
 
 /// Used only by proc macros. Not public API.
 #[doc(hidden)]

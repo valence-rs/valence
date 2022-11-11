@@ -186,6 +186,7 @@ fn move_forward_by(bytes: &mut BytesMut, count: usize) -> &mut [u8] {
 #[derive(Default)]
 pub struct PacketDecoder {
     buf: BytesMut,
+    cursor: usize,
     decompress_buf: Vec<u8>,
     compression: bool,
     cipher: Option<Cipher>,
@@ -196,10 +197,13 @@ impl PacketDecoder {
         Self::default()
     }
 
-    pub fn try_next_packet<P>(&mut self) -> Result<Option<P>>
+    pub fn try_next_packet<'a, P>(&'a mut self) -> Result<Option<P>>
     where
-        P: for<'a> Decode<'a> + Packet + 'static, // TODO: change
+        P: Decode<'a> + Packet,
     {
+        self.buf.advance(self.cursor);
+        self.cursor = 0;
+
         let mut r = &self.buf[..];
 
         let packet_len = match VarInt::decode_partial(&mut r) {
@@ -252,8 +256,7 @@ impl PacketDecoder {
         }
 
         let total_packet_len = VarInt(packet_len).encoded_len() + packet_len as usize;
-
-        self.buf.advance(total_packet_len);
+        self.cursor = total_packet_len;
 
         Ok(Some(packet))
     }
@@ -267,7 +270,7 @@ impl PacketDecoder {
 
         let mut cipher = Cipher::new(key.into(), key.into());
         // Don't forget to decrypt the data we already have.
-        cipher.decrypt(&mut self.buf);
+        cipher.decrypt(&mut self.buf[self.cursor..]);
         self.cipher = Some(cipher);
     }
 
@@ -302,62 +305,62 @@ impl PacketDecoder {
 
 #[cfg(test)]
 mod tests {
-    use std::io::Write;
-
-    use anyhow::Context;
-
     use super::*;
+    use crate::block_pos::BlockPos;
+    use crate::entity_meta::PaintingKind;
+    use crate::ident::Ident;
+    use crate::item::{ItemKind, ItemStack};
+    use crate::text::{Text, TextFormat};
+    use crate::username::Username;
+    use crate::var_long::VarLong;
 
     const CRYPT_KEY: [u8; 16] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 
-    #[derive(Clone, PartialEq, Eq, Debug)]
-    struct TestPacket {
-        string: String,
-        vec_of_u16: Vec<u16>,
-        u64: u64,
+    #[derive(PartialEq, Debug, Encode, Decode, Packet)]
+    #[packet_id = 42]
+    struct TestPacket<'a> {
+        a: bool,
+        b: u8,
+        c: i32,
+        d: f32,
+        e: f64,
+        f: BlockPos,
+        g: PaintingKind,
+        h: Ident<&'a str>,
+        i: Option<ItemStack>,
+        j: Text,
+        k: Username<&'a str>,
+        l: VarInt,
+        m: VarLong,
+        n: &'a str,
+        o: &'a [u8; 10],
+        p: [u128; 3],
     }
 
-    impl PacketName for TestPacket {
-        fn packet_name(&self) -> &'static str {
-            "TestPacket"
-        }
-    }
-
-    impl EncodePacket for TestPacket {
-        fn encode_packet(&self, w: &mut impl Write) -> Result<()> {
-            self.string.encode(w)?;
-            self.vec_of_u16.encode(w)?;
-            self.u64.encode(w)
-        }
-
-        fn encoded_packet_len(&self) -> usize {
-            self.string.encoded_len() + self.vec_of_u16.encoded_len() + self.u64.encoded_len()
-        }
-    }
-
-    impl DecodePacket for TestPacket {
-        fn decode_packet(r: &mut &[u8]) -> Result<Self> {
-            Ok(TestPacket {
-                string: String::decode(r).context("decoding string field")?,
-                vec_of_u16: Vec::decode(r).context("decoding vec of u16 field")?,
-                u64: u64::decode(r).context("decoding u64 field")?,
-            })
-        }
-    }
-
-    impl TestPacket {
-        fn new(s: impl Into<String>) -> Self {
+    impl<'a> TestPacket<'a> {
+        fn new(n: &'a str) -> Self {
             Self {
-                string: s.into(),
-                vec_of_u16: vec![0x1234, 0xabcd],
-                u64: 0x1122334455667788,
+                a: true,
+                b: 12,
+                c: -999,
+                d: 5.001,
+                e: 1e10,
+                f: BlockPos::new(1, 2, 3),
+                g: PaintingKind::DonkeyKong,
+                h: Ident::new("minecraft:whatever").unwrap(),
+                i: Some(ItemStack::new(ItemKind::WoodenSword, 12, None)),
+                j: "my ".into_text() + "fancy".italic() + " text",
+                k: Username::new("00a").unwrap(),
+                l: VarInt(123),
+                m: VarLong(456),
+                n,
+                o: &[7; 10],
+                p: [123456789; 3],
             }
         }
 
-        fn check(&self, s: impl AsRef<str>) {
-            assert_eq!(&self.string, s.as_ref());
-            assert_eq!(&self.vec_of_u16, &[0x1234, 0xabcd]);
-            assert_eq!(self.u64, 0x1122334455667788);
+        fn check(&self, n: &'a str) {
+            assert_eq!(self, &Self::new(n));
         }
     }
 
