@@ -9,7 +9,7 @@ use crate::{Decode, Encode, Result};
 
 include!(concat!(env!("OUT_DIR"), "/item.rs"));
 
-#[derive(Clone, PartialEq, PartialOrd, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct ItemStack {
     pub item: ItemKind,
     count: u8,
