@@ -31,7 +31,7 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
                     .iter()
                     .map(|f| {
                         let name = &f.ident.as_ref().unwrap();
-                        let ctx = format!("failed to encode field {}", name.to_string());
+                        let ctx = format!("failed to encode field `{name}`");
                         quote! {
                             self.#name.encode(&mut _w).context(#ctx)?;
                         }
@@ -40,7 +40,7 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
                 Fields::Unnamed(fields) => (0..fields.unnamed.len())
                     .map(|i| {
                         let lit = LitInt::new(&i.to_string(), Span::call_site());
-                        let ctx = format!("failed to encode field {}", lit.to_string());
+                        let ctx = format!("failed to encode field `{lit}`");
                         quote! {
                             self.#lit.encode(&mut _w).context(#ctx)?;
                         }
@@ -138,8 +138,7 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
                     let variant_name = &variant.ident;
 
                     let disc_ctx = format!(
-                        "failed to encode enum discriminant {disc} for variant {}",
-                        variant_name.to_string()
+                        "failed to encode enum discriminant {disc} for variant `{variant_name}`",
                     );
 
                     match &variant.fields {
@@ -154,9 +153,8 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
                                 .iter()
                                 .map(|name| {
                                     let ctx = format!(
-                                        "failed to encode field {} in variant {}",
-                                        name.to_string(),
-                                        variant_name.to_string()
+                                        "failed to encode field `{name}` in variant \
+                                         `{variant_name}`",
                                     );
 
                                     quote! {
@@ -183,9 +181,8 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
                                 .iter()
                                 .map(|name| {
                                     let ctx = format!(
-                                        "failed to encode field {} in variant {}",
-                                        name.to_string(),
-                                        variant_name.to_string()
+                                        "failed to encode field `{name}` in variant \
+                                         `{variant_name}`"
                                     );
 
                                     quote! {

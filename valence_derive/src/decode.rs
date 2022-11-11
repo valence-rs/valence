@@ -40,7 +40,7 @@ pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
                 Fields::Named(fields) => {
                     let init = fields.named.iter().map(|f| {
                         let name = f.ident.as_ref().unwrap();
-                        let ctx = format!("failed to decode field {}", name.to_string());
+                        let ctx = format!("failed to decode field `{name}`");
                         quote! {
                             #name: Decode::decode(_r).context(#ctx)?,
                         }
@@ -55,7 +55,7 @@ pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
                 Fields::Unnamed(fields) => {
                     let init = (0..fields.unnamed.len())
                         .map(|i| {
-                            let ctx = format!("failed to decode field {i}");
+                            let ctx = format!("failed to decode field `{i}`");
                             quote! {
                                 Decode::decode(_r).context(#ctx)?,
                             }
@@ -127,9 +127,7 @@ pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
                                 .map(|f| {
                                     let field = f.ident.as_ref().unwrap();
                                     let ctx = format!(
-                                        "failed to decode field {} in variant {}",
-                                        field.to_string(),
-                                        name.to_string()
+                                        "failed to decode field `{field}` in variant `{name}`",
                                     );
                                     quote! {
                                         #field: Decode::decode(_r).context(#ctx)?,
@@ -145,8 +143,7 @@ pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
                             let init = (0..fields.unnamed.len())
                                 .map(|i| {
                                     let ctx = format!(
-                                        "failed to decode field {i} in variant {}",
-                                        name.to_string()
+                                        "failed to decode field `{i}` in variant `{name}`",
                                     );
                                     quote! {
                                         Decode::decode(_r).context(#ctx)?,
