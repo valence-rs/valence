@@ -56,17 +56,19 @@ fn derive_encode_inner(item: TokenStream) -> Result<TokenStream> {
                     .named
                     .iter()
                     .map(|f| {
-                        let name = &f.ident;
+                        let name = &f.ident.as_ref().unwrap();
+                        let ctx = format!("failed to encode field {}", name.to_string());
                         quote! {
-                            self.#name.encode(&mut _w)?; // TODO: add anyhow context.
+                            self.#name.encode(&mut _w).context(#ctx)?;
                         }
                     })
                     .collect(),
                 Fields::Unnamed(fields) => (0..fields.unnamed.len())
                     .map(|i| {
                         let lit = LitInt::new(&i.to_string(), Span::call_site());
+                        let ctx = format!("failed to encode field {}", lit.to_string());
                         quote! {
-                            self.#lit.encode(&mut _w)?; // TODO: add anyhow context.
+                            self.#lit.encode(&mut _w).context(#ctx)?;
                         }
                     })
                     .collect(),
@@ -104,7 +106,9 @@ fn derive_encode_inner(item: TokenStream) -> Result<TokenStream> {
                         use ::valence_protocol::__private::{Encode, Context, VarInt};
 
                         #(
-                            VarInt(#packet_id).encode(&mut _w)?;
+                            VarInt(#packet_id)
+                                .encode(&mut _w)
+                                .context("failed to encode packet ID")?;
                         )*
 
                         #encode_fields
@@ -157,41 +161,76 @@ fn derive_encode_inner(item: TokenStream) -> Result<TokenStream> {
             let encode_arms = variants
                 .iter()
                 .map(|(disc, variant)| {
-                    let name = &variant.ident;
+                    let variant_name = &variant.ident;
+
+                    let disc_ctx = format!(
+                        "failed to encode enum discriminant {disc} for variant {}",
+                        variant_name.to_string()
+                    );
 
                     match &variant.fields {
                         Fields::Named(fields) => {
-                            let fields = fields.named.iter().map(|f| &f.ident).collect::<Vec<_>>();
+                            let field_names = fields
+                                .named
+                                .iter()
+                                .map(|f| f.ident.as_ref().unwrap())
+                                .collect::<Vec<_>>();
+
+                            let encode_fields = field_names
+                                .iter()
+                                .map(|name| {
+                                    let ctx = format!(
+                                        "failed to encode field {} in variant {}",
+                                        name.to_string(),
+                                        variant_name.to_string()
+                                    );
+
+                                    quote! {
+                                        #name.encode(&mut _w).context(#ctx)?;
+                                    }
+                                })
+                                .collect::<TokenStream>();
 
                             quote! {
-                                Self::#name { #(#fields,)* } => {
-                                    VarInt(#disc).encode(&mut _w)?; // TODO: anyhow context
+                                Self::#variant_name { #(#field_names,)* } => {
+                                    VarInt(#disc).encode(&mut _w).context(#disc_ctx)?;
 
-                                    #(
-                                        #fields.encode(&mut _w)?; // TODO: anyhow context.
-                                    )*
+                                    #encode_fields
                                     Ok(())
                                 }
                             }
                         }
                         Fields::Unnamed(fields) => {
-                            let fields = (0..fields.unnamed.len())
+                            let field_names = (0..fields.unnamed.len())
                                 .map(|i| Ident::new(&format!("_{i}"), Span::call_site()))
                                 .collect::<Vec<_>>();
 
-                            quote! {
-                                Self::#name(#(#fields,)*) => {
-                                    VarInt(#disc).encode(&mut _w)?;
+                            let encode_fields = field_names
+                                .iter()
+                                .map(|name| {
+                                    let ctx = format!(
+                                        "failed to encode field {} in variant {}",
+                                        name.to_string(),
+                                        variant_name.to_string()
+                                    );
 
-                                    #(
-                                        #fields.encode(&mut _w)?; // TODO: anyhow context.
-                                    )*
+                                    quote! {
+                                        #name.encode(&mut _w).context(#ctx)?;
+                                    }
+                                })
+                                .collect::<TokenStream>();
+
+                            quote! {
+                                Self::#variant_name(#(#field_names,)*) => {
+                                    VarInt(#disc).encode(&mut _w).context(#disc_ctx)?;
+
+                                    #encode_fields
                                     Ok(())
                                 }
                             }
                         }
                         Fields::Unit => quote! {
-                            Self::#name => Ok(VarInt(#disc).encode(&mut _w)?),
+                            Self::#variant_name => Ok(VarInt(#disc).encode(&mut _w)?),
                         },
                     }
                 })
@@ -245,7 +284,9 @@ fn derive_encode_inner(item: TokenStream) -> Result<TokenStream> {
                         use ::valence_protocol::__private::{Encode, VarInt, Context};
 
                         #(
-                            VarInt(#packet_id).encode(&mut _w)?;
+                            VarInt(#packet_id)
+                                .encode(&mut _w)
+                                .context("failed to encode packet ID")?;
                         )*
 
                         match self {
@@ -330,9 +371,10 @@ fn derive_decode_inner(item: TokenStream) -> Result<TokenStream> {
             let decode_fields = match struct_.fields {
                 Fields::Named(fields) => {
                     let init = fields.named.iter().map(|f| {
-                        let name = &f.ident;
+                        let name = f.ident.as_ref().unwrap();
+                        let ctx = format!("failed to decode field {}", name.to_string());
                         quote! {
-                            #name: Decode::decode(_r)?,
+                            #name: Decode::decode(_r).context(#ctx)?,
                         }
                     });
 
@@ -344,9 +386,10 @@ fn derive_decode_inner(item: TokenStream) -> Result<TokenStream> {
                 }
                 Fields::Unnamed(fields) => {
                     let init = (0..fields.unnamed.len())
-                        .map(|_| {
+                        .map(|i| {
+                            let ctx = format!("failed to decode field {i}");
                             quote! {
-                                Decode::decode(_r)?,
+                                Decode::decode(_r).context(#ctx)?,
                             }
                         })
                         .collect::<TokenStream>();
@@ -375,7 +418,7 @@ fn derive_decode_inner(item: TokenStream) -> Result<TokenStream> {
                         use ::valence_protocol::__private::{Decode, Context, VarInt, ensure};
 
                         #(
-                            let id = VarInt::decode(_r)?.0;
+                            let id = VarInt::decode(_r).context("failed to decode packet ID")?.0;
                             ensure!(id == #packet_id, "unexpected packet ID {} (expected {})", id, #packet_id);
                         )*
 
@@ -414,8 +457,15 @@ fn derive_decode_inner(item: TokenStream) -> Result<TokenStream> {
                                 .named
                                 .iter()
                                 .map(|f| {
-                                    let field = &f.ident;
-                                    quote!(#field: Decode::decode(_r)?,)
+                                    let field = f.ident.as_ref().unwrap();
+                                    let ctx = format!(
+                                        "failed to decode field {} in variant {}",
+                                        field.to_string(),
+                                        name.to_string()
+                                    );
+                                    quote! {
+                                        #field: Decode::decode(_r).context(#ctx)?,
+                                    }
                                 })
                                 .collect::<TokenStream>();
 
@@ -425,7 +475,15 @@ fn derive_decode_inner(item: TokenStream) -> Result<TokenStream> {
                         }
                         Fields::Unnamed(fields) => {
                             let init = (0..fields.unnamed.len())
-                                .map(|_| quote!(Decode::decode(_r)?,))
+                                .map(|i| {
+                                    let ctx = format!(
+                                        "failed to decode field {i} in variant {}",
+                                        name.to_string()
+                                    );
+                                    quote! {
+                                        Decode::decode(_r).context(#ctx)?,
+                                    }
+                                })
                                 .collect::<TokenStream>();
 
                             quote! {
@@ -454,12 +512,11 @@ fn derive_decode_inner(item: TokenStream) -> Result<TokenStream> {
                         use ::valence_protocol::__private::{Decode, Context, VarInt, bail, ensure};
 
                         #(
-                            let id = VarInt::decode(_r)?.0;
+                            let id = VarInt::decode(_r).context("failed to decode packet ID")?.0;
                             ensure!(id == #packet_id, "unexpected packet ID {} (expected {})", id, #packet_id);
                         )*
 
-                        // TODO: anyhow context.
-                        let disc = VarInt::decode(_r)?.0;
+                        let disc = VarInt::decode(_r).context("failed to decode enum discriminant")?.0;
                         match disc {
                             #decode_arms
                             n => bail!("unexpected enum discriminant {}", disc),
@@ -478,8 +535,7 @@ fn derive_decode_inner(item: TokenStream) -> Result<TokenStream> {
                         fn decode_without_id(_r: &mut &#lifetime [u8]) -> ::valence_protocol::__private::Result<Self> {
                             use ::valence_protocol::__private::{Decode, Context, VarInt, bail};
 
-                            // TODO: anyhow context.
-                            let disc = VarInt::decode(_r)?.0;
+                            let disc = VarInt::decode(_r).context("failed to decode enum discriminant")?.0;
                             match disc {
                                 #decode_arms
                                 n => bail!("unexpected enum discriminant {}", disc),
