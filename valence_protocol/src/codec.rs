@@ -1,7 +1,7 @@
+#[cfg(feature = "encryption")]
+use aes::cipher::{AsyncStreamCipher, NewCipher};
 use anyhow::{bail, ensure};
 use bytes::{Buf, BufMut, BytesMut};
-#[cfg(feature = "encryption")]
-use aes::cipher::{NewCipher, AsyncStreamCipher};
 
 use crate::var_int::{VarInt, VarIntDecodeError};
 use crate::{Decode, Encode, Packet, Result, MAX_PACKET_SIZE};
@@ -242,9 +242,10 @@ impl PacketDecoder {
             );
 
             if data_len != 0 {
-                use flate2::bufread::ZlibDecoder;
-                use anyhow::Context;
                 use std::io::Read;
+
+                use anyhow::Context;
+                use flate2::bufread::ZlibDecoder;
 
                 self.decompress_buf.clear();
                 self.decompress_buf.reserve_exact(data_len as usize);
