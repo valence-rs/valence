@@ -54,7 +54,7 @@ where
 
     pub async fn recv_packet<'a, P>(&'a mut self) -> Result<P>
     where
-        P: Decode<'a> + Packet + ?Sized,
+        P: Decode<'a> + Packet,
     {
         timeout(self.timeout, async {
             loop {
