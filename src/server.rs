@@ -382,7 +382,7 @@ fn make_registry_codec(dimensions: &[Dimension], biomes: &[Biome]) -> Compound {
             }
 
         },
-        ident!("chat_type_registry") => compound! {
+        ident!("chat_type") => compound! {
             "type" => ident!("chat_type"),
             "value" => List::Compound(Vec::new()),
         },
