@@ -2,9 +2,10 @@ use std::array;
 use std::io::Write;
 
 use arrayvec::ArrayVec;
+use valence_protocol::var_int::VarInt;
+use valence_protocol::Encode;
 
 use crate::chunk::{compact_u64s_len, encode_compact_u64s};
-use crate::protocol::{Encode, VarInt};
 use crate::util::bits_needed;
 
 /// `HALF_LEN` must be equal to `ceil(LEN / 2)`.

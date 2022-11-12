@@ -1,6 +1,7 @@
 //! Miscellaneous type definitions used in packets.
 
 use bitfield_struct::bitfield;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valence_nbt::Compound;
 use valence_protocol::text::Text;
@@ -8,7 +9,6 @@ use valence_protocol::text::Text;
 use crate::__private::VarInt;
 use crate::block_pos::BlockPos;
 use crate::ident::Ident;
-use crate::username::Username;
 use crate::{Decode, Encode};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Encode, Decode)]
@@ -83,18 +83,9 @@ pub enum Hand {
 
 #[derive(Copy, Clone, PartialEq, Debug, Encode, Decode)]
 pub enum EntityInteraction {
-    Interact {
-        hand: Hand,
-        sneaking: bool,
-    },
-    Attack {
-        sneaking: bool,
-    },
-    InteractAt {
-        target: [f32; 3],
-        hand: Hand,
-        sneaking: bool,
-    },
+    Interact(Hand),
+    Attack,
+    InteractAt { target: [f32; 3], hand: Hand },
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
@@ -167,11 +158,18 @@ pub enum StructureBlockRotation {
     Counterclockwise90,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Serialize, Deserialize)]
 pub struct SignedProperty<'a> {
     pub name: &'a str,
     pub value: &'a str,
     pub signature: Option<&'a str>,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, Serialize, Deserialize)]
+pub struct SignedPropertyOwned {
+    pub name: String,
+    pub value: String,
+    pub signature: Option<String>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
@@ -191,15 +189,13 @@ pub enum BossBarAction {
         health: f32,
         color: BossBarColor,
         division: BossBarDivision,
-        // TODO: BossBarFlags bitfield.
-        flags: u8,
+        flags: BossBarFlags,
     },
     Remove,
     UpdateHealth(f32),
     UpdateTitle(Text),
     UpdateStyle(BossBarColor, BossBarDivision),
-    // TODO: BossBarFlags
-    UpdateFlags(u8),
+    UpdateFlags(BossBarFlags),
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
@@ -220,6 +216,16 @@ pub enum BossBarDivision {
     TenNotches,
     TwelveNotches,
     TwentyNotches,
+}
+
+#[bitfield(u8)]
+#[derive(PartialEq, Eq, Debug, Encode, Decode)]
+pub struct BossBarFlags {
+    pub darken_sky: bool,
+    pub dragon_bar: bool,
+    pub create_fog: bool,
+    #[bits(5)]
+    _pad: u8,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
@@ -300,7 +306,7 @@ pub struct AttributeModifier {
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
 pub struct PlayerInfoAddPlayer<'a> {
     pub uuid: Uuid,
-    pub username: Username<&'a str>,
+    pub username: &'a str,
     pub properties: Vec<SignedProperty<'a>>,
     pub game_mode: GameMode,
     pub ping: VarInt,

@@ -1,13 +1,14 @@
 use std::io::ErrorKind;
 use std::time::Duration;
 
+use anyhow::Result;
 use tokio::io;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
+use valence_protocol::codec::{PacketDecoder, PacketEncoder};
+use valence_protocol::{Decode, Encode, Packet};
 
-use crate::protocol::codec::{PacketDecoder, PacketEncoder};
-use crate::protocol::packets::{DecodePacket, EncodePacket};
 use crate::server::byte_channel::{byte_channel, ByteReceiver, ByteSender, TryRecvError};
 
 pub struct InitialPacketController<R, W> {
@@ -41,9 +42,9 @@ where
         }
     }
 
-    pub async fn send_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
+    pub async fn send_packet<P>(&mut self, pkt: &P) -> Result<()>
     where
-        P: EncodePacket + ?Sized,
+        P: Encode + Packet + ?Sized,
     {
         self.enc.append_packet(pkt)?;
         let bytes = self.enc.take();
@@ -51,9 +52,9 @@ where
         Ok(())
     }
 
-    pub async fn recv_packet<P>(&mut self) -> anyhow::Result<P>
+    pub async fn recv_packet<'a, P>(&'a mut self) -> Result<P>
     where
-        P: DecodePacket,
+        P: Decode<'a> + Packet + ?Sized,
     {
         timeout(self.timeout, async {
             loop {
@@ -161,23 +162,23 @@ pub struct PlayPacketController {
 }
 
 impl PlayPacketController {
-    pub fn append_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
+    pub fn append_packet<P>(&mut self, pkt: &P) -> Result<()>
     where
-        P: EncodePacket + ?Sized,
+        P: Encode + Packet + ?Sized,
     {
         self.enc.append_packet(pkt)
     }
 
-    pub fn prepend_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
+    pub fn prepend_packet<P>(&mut self, pkt: &P) -> Result<()>
     where
-        P: EncodePacket + ?Sized,
+        P: Encode + Packet + ?Sized,
     {
         self.enc.prepend_packet(pkt)
     }
 
-    pub fn try_next_packet<P>(&mut self) -> anyhow::Result<Option<P>>
+    pub fn try_next_packet<'a, P>(&'a mut self) -> Result<Option<P>>
     where
-        P: DecodePacket,
+        P: Decode<'a> + Packet,
     {
         self.dec.try_next_packet()
     }
@@ -199,7 +200,7 @@ impl PlayPacketController {
         self.enc.set_compression(threshold)
     }
 
-    pub fn flush(&mut self) -> anyhow::Result<()> {
+    pub fn flush(&mut self) -> Result<()> {
         let bytes = self.enc.take();
         self.send.try_send(bytes)?;
         Ok(())

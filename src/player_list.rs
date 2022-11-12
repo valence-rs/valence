@@ -5,18 +5,15 @@ use std::collections::{HashMap, HashSet};
 
 use bitfield_struct::bitfield;
 use uuid::Uuid;
+use valence_protocol::packets::s2c::play::{PlayerInfo, SetTabListHeaderAndFooter};
+use valence_protocol::text::Text;
+use valence_protocol::types::{GameMode, PlayerInfoAddPlayer, SignedProperty};
+use valence_protocol::var_int::VarInt;
 
-use crate::client::GameMode;
 use crate::config::Config;
 use crate::player_textures::SignedPlayerTextures;
-use crate::protocol::packets::s2c::play::{
-    PlayerInfo, PlayerListAddPlayer, SetTabListHeaderAndFooter,
-};
-use crate::protocol::packets::Property;
-use crate::protocol::VarInt;
 use crate::server::PlayPacketController;
 use crate::slab_rc::{Key, SlabRc};
-use crate::text::Text;
 
 /// A container for all [`PlayerList`]s on a server.
 pub struct PlayerLists<C: Config> {
@@ -126,7 +123,7 @@ impl<C: Config> PlayerList<C> {
         textures: Option<SignedPlayerTextures>,
         game_mode: GameMode,
         ping: i32,
-        display_name: impl Into<Option<Text>>,
+        display_name: Option<Text>,
     ) -> bool {
         match self.entries.entry(uuid) {
             Entry::Occupied(mut oe) => {
@@ -141,7 +138,7 @@ impl<C: Config> PlayerList<C> {
                         textures,
                         game_mode,
                         ping,
-                        display_name: display_name.into(),
+                        display_name,
                         bits: EntryBits::new().with_created_this_tick(true),
                     });
                 } else {
@@ -157,7 +154,7 @@ impl<C: Config> PlayerList<C> {
                     textures,
                     game_mode,
                     ping,
-                    display_name: display_name.into(),
+                    display_name,
                     bits: EntryBits::new().with_created_this_tick(true),
                 });
                 true
@@ -247,20 +244,23 @@ impl<C: Config> PlayerList<C> {
         self.entries.iter_mut().map(|(k, v)| (*k, v))
     }
 
-    pub(crate) fn initial_packets(&self, ctrl: &mut PlayPacketController) -> anyhow::Result<()> {
+    pub(crate) fn queue_initial_packets(
+        &self,
+        ctrl: &mut PlayPacketController,
+    ) -> anyhow::Result<()> {
         let add_player: Vec<_> = self
             .entries
             .iter()
-            .map(|(&uuid, e)| PlayerListAddPlayer {
+            .map(|(&uuid, e)| PlayerInfoAddPlayer {
                 uuid,
-                username: e.username.clone().into(),
+                username: &e.username,
                 properties: {
                     let mut properties = Vec::new();
                     if let Some(textures) = &e.textures {
-                        properties.push(Property {
-                            name: "textures".into(),
-                            value: base64::encode(textures.payload()),
-                            signature: Some(base64::encode(textures.signature())),
+                        properties.push(SignedProperty {
+                            name: "textures",
+                            value: textures.payload(),
+                            signature: Some(textures.signature()),
                         });
                     }
                     properties
@@ -286,7 +286,15 @@ impl<C: Config> PlayerList<C> {
         Ok(())
     }
 
-    pub(crate) fn update_packets(&self, ctrl: &mut PlayPacketController) -> anyhow::Result<()> {
+    pub(crate) fn queue_update_packets(
+        &self,
+        ctrl: &mut PlayPacketController,
+    ) -> anyhow::Result<()> {
+        todo!()
+    }
+
+    /*
+    pub(crate) fn queue_update_packets(&self, ctrl: &mut PlayPacketController) -> anyhow::Result<()> {
         if !self.removed.is_empty() {
             ctrl.append_packet(&PlayerInfo::RemovePlayer(
                 self.removed.iter().cloned().collect(),
@@ -302,7 +310,7 @@ impl<C: Config> PlayerList<C> {
             if e.bits.created_this_tick() {
                 let mut properties = Vec::new();
                 if let Some(textures) = &e.textures {
-                    properties.push(Property {
+                    properties.push(SignedProperty {
                         name: "textures".into(),
                         value: base64::encode(textures.payload()),
                         signature: Some(base64::encode(textures.signature())),
@@ -360,8 +368,12 @@ impl<C: Config> PlayerList<C> {
 
         Ok(())
     }
+     */
 
-    pub(crate) fn clear_packets(&self, ctrl: &mut PlayPacketController) -> anyhow::Result<()> {
+    pub(crate) fn queue_clear_packets(
+        &self,
+        ctrl: &mut PlayPacketController,
+    ) -> anyhow::Result<()> {
         ctrl.append_packet(&PlayerInfo::RemovePlayer(
             self.entries.keys().cloned().collect(),
         ))

@@ -10,9 +10,33 @@ pub use bitfield_struct::bitfield;
 pub use event::*;
 use rayon::iter::ParallelIterator;
 use uuid::Uuid;
+use valence_protocol::block_pos::BlockPos;
+use valence_protocol::byte_angle::ByteAngle;
+use valence_protocol::ident::Ident;
+use valence_protocol::item::ItemStack;
+use valence_protocol::packets::c2s::play::ClientCommand;
+use valence_protocol::packets::s2c::play::{
+    AcknowledgeBlockChange, ClearTitles, CombatDeath, CustomSoundEffect, DisconnectPlay,
+    EntityAnimationS2c, EntityEvent, GameEvent, KeepAliveS2c, LoginPlayOwned, OpenScreen,
+    PluginMessageS2c, RemoveEntities, ResourcePackS2c, RespawnOwned, SetActionBarText,
+    SetCenterChunk, SetContainerContent, SetDefaultSpawnPosition, SetEntityMetadata,
+    SetEntityVelocity, SetExperience, SetHeadRotation, SetHealth, SetRenderDistance,
+    SetSubtitleText, SetTitleAnimationTimes, SetTitleText, SynchronizePlayerPosition,
+    SystemChatMessage, TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
+    UpdateEntityPositionAndRotation, UpdateEntityRotation, UpdateTime,
+};
+use valence_protocol::packets::C2sPlayPacket;
+use valence_protocol::raw_bytes::RawBytes;
+use valence_protocol::text::Text;
+use valence_protocol::types::{
+    Action, AttributeProperty, GameMode, GameStateChangeReason, SoundCategory,
+    SyncPlayerPosLookFlags,
+};
+use valence_protocol::username::Username;
+use valence_protocol::var_int::VarInt;
+use valence_protocol::{ident, types, Encode, Packet};
 use vek::Vec3;
 
-use crate::block_pos::BlockPos;
 use crate::chunk_pos::ChunkPos;
 use crate::config::Config;
 use crate::dimension::DimensionId;
@@ -20,37 +44,17 @@ use crate::entity::data::Player;
 use crate::entity::{
     self, velocity_to_packet_units, Entities, EntityId, EntityKind, StatusOrAnimation,
 };
-use crate::ident::Ident;
 use crate::inventory::{
     Inventories, Inventory, InventoryDirtyable, InventoryError, InventoryId, PlayerInventory,
-    WindowInventory,
+    SlotId, WindowInventory,
 };
-use crate::item::ItemStack;
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
-use crate::protocol::packets::c2s::play::{
-    self, C2sPlayPacket, ClientCommand, InteractKind, PlayerCommandId,
-};
-pub use crate::protocol::packets::s2c::play::SetTitleAnimationTimes;
-use crate::protocol::packets::s2c::play::{
-    AcknowledgeBlockChange, ClearTitles, CombatDeath, CustomSoundEffect, DisconnectPlay,
-    EntityAnimationS2c, EntityAttributesProperty, EntityEvent, GameEvent, GameStateChangeReason,
-    KeepAliveS2c, LoginPlay, OpenScreen, PlayerPositionLookFlags, PluginMessageS2c, RemoveEntities,
-    ResourcePackS2c, Respawn, SetActionBarText, SetCenterChunk, SetContainerContent,
-    SetDefaultSpawnPosition, SetEntityMetadata, SetEntityVelocity, SetExperience, SetHeadRotation,
-    SetHealth, SetRenderDistance, SetSubtitleText, SetTitleText, SoundCategory,
-    SynchronizePlayerPosition, SystemChatMessage, TeleportEntity, UnloadChunk, UpdateAttributes,
-    UpdateEntityPosition, UpdateEntityPositionAndRotation, UpdateEntityRotation, UpdateTime,
-};
-use crate::protocol::packets::{EncodePacket, PacketName};
-use crate::protocol::{BoundedInt, BoundedString, ByteAngle, RawBytes, SlotId, VarInt};
 use crate::server::{NewClientData, PlayPacketController, SharedServer};
 use crate::slab_versioned::{Key, VersionedSlab};
-use crate::text::Text;
-use crate::username::Username;
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::world::{WorldId, Worlds};
-use crate::{ident, LIBRARY_NAMESPACE};
+use crate::LIBRARY_NAMESPACE;
 
 /// Contains the [`ClientEvent`] enum and related data types.
 mod event;
@@ -222,7 +226,7 @@ pub struct Client<C: Config> {
     death_location: Option<(DimensionId, BlockPos)>,
     events: VecDeque<ClientEvent>,
     /// The ID of the last keepalive sent.
-    last_keepalive_id: i64,
+    last_keepalive_id: u64,
     /// Entities that were visible to this client at the end of the last tick.
     /// This is used to determine what entity create/destroy packets should be
     /// sent.
@@ -232,10 +236,6 @@ pub struct Client<C: Config> {
     old_game_mode: GameMode,
     settings: Option<Settings>,
     block_change_sequence: i32,
-    /// Should be sent after login packet.
-    msgs_to_send: Vec<Text>,
-    bar_to_send: Option<Text>,
-    resource_pack_to_send: Option<ResourcePackS2c>,
     attack_speed: f64,
     movement_speed: f64,
     pub inventory: PlayerInventory, // TODO: make private or pub(crate)
@@ -303,9 +303,6 @@ impl<C: Config> Client<C> {
             old_game_mode: GameMode::Survival,
             settings: None,
             block_change_sequence: 0,
-            msgs_to_send: Vec::new(),
-            bar_to_send: None,
-            resource_pack_to_send: None,
             attack_speed: 4.0,
             movement_speed: 0.7,
             inventory: PlayerInventory::new(),
@@ -325,7 +322,7 @@ impl<C: Config> Client<C> {
     /// effect if the client is disconnected.
     pub fn queue_packet<P>(&mut self, pkt: &P)
     where
-        P: EncodePacket + ?Sized,
+        P: Encode + Packet + ?Sized,
     {
         if let Some(ctrl) = &mut self.ctrl {
             if let Err(e) = ctrl.append_packet(pkt) {
@@ -404,12 +401,13 @@ impl<C: Config> Client<C> {
     /// Sends a system message to the player which is visible in the chat. The
     /// message is only visible to this client.
     pub fn send_message(&mut self, msg: impl Into<Text>) {
-        // We buffer messages because weird things happen if we send them before the
-        // login packet.
-        self.msgs_to_send.push(msg.into());
+        self.queue_packet(&SystemChatMessage {
+            chat: msg.into(),
+            kind: VarInt(0),
+        });
     }
 
-    pub fn send_plugin_message(&mut self, channel: Ident<String>, data: Vec<u8>) {
+    pub fn send_plugin_message(&mut self, channel: Ident<&str>, data: &[u8]) {
         self.queue_packet(&PluginMessageS2c {
             channel,
             data: RawBytes(data),
@@ -545,7 +543,7 @@ impl<C: Config> Client<C> {
     /// Plays a sound to the client at a given position.
     pub fn play_sound(
         &mut self,
-        name: Ident<String>,
+        name: Ident<&str>,
         category: SoundCategory,
         pos: Vec3<f64>,
         volume: f32,
@@ -554,7 +552,7 @@ impl<C: Config> Client<C> {
         self.queue_packet(&CustomSoundEffect {
             name,
             category,
-            position: pos.as_() * 8,
+            position: (pos.as_() * 8).into_array(),
             volume,
             pitch,
             seed: 0,
@@ -576,12 +574,10 @@ impl<C: Config> Client<C> {
         let title = title.into();
         let subtitle = subtitle.into();
 
-        self.queue_packet(&SetTitleText { text: title });
+        self.queue_packet(&SetTitleText(title));
 
         if !subtitle.is_empty() {
-            self.queue_packet(&SetSubtitleText {
-                subtitle_text: subtitle,
-            });
+            self.queue_packet(&SetSubtitleText(subtitle));
         }
 
         if let Some(anim) = animation.into() {
@@ -591,7 +587,7 @@ impl<C: Config> Client<C> {
 
     /// Sets the action bar for this client.
     pub fn set_action_bar(&mut self, text: impl Into<Text>) {
-        self.bar_to_send = Some(text.into());
+        self.queue_packet(&SetActionBarText(text.into()));
     }
 
     /// Gets the attack cooldown speed.
@@ -761,14 +757,14 @@ impl<C: Config> Client<C> {
     ///   dialog.
     pub fn set_resource_pack(
         &mut self,
-        url: impl Into<String>,
-        hash: impl Into<String>,
+        url: &str,
+        hash: &str,
         forced: bool,
         prompt_message: impl Into<Option<Text>>,
     ) {
-        self.resource_pack_to_send = Some(ResourcePackS2c {
-            url: url.into(),
-            hash: BoundedString(hash.into()),
+        self.queue_packet(&ResourcePackS2c {
+            url,
+            hash,
             forced,
             prompt_message: prompt_message.into(),
         });
@@ -915,10 +911,10 @@ impl<C: Config> Client<C> {
             }
             C2sPlayPacket::QueryBlockEntityTag(_) => {}
             C2sPlayPacket::ChangeDifficulty(_) => {}
-            C2sPlayPacket::MessageAcknowledgment(_) => {}
+            C2sPlayPacket::MessageAcknowledgmentC2s(_) => {}
             C2sPlayPacket::ChatCommand(_) => {}
             C2sPlayPacket::ChatMessage(p) => self.events.push_back(ClientEvent::ChatMessage {
-                message: p.message.0,
+                message: p.message.into(),
                 timestamp: Duration::from_millis(p.timestamp),
             }),
             C2sPlayPacket::ChatPreviewC2s(_) => {}
@@ -930,8 +926,8 @@ impl<C: Config> Client<C> {
             },
             C2sPlayPacket::ClientInformation(p) => {
                 self.events.push_back(ClientEvent::SettingsChanged {
-                    locale: p.locale.0,
-                    view_distance: p.view_distance.0,
+                    locale: p.locale.into(),
+                    view_distance: p.view_distance,
                     chat_mode: p.chat_mode,
                     chat_colors: p.chat_colors,
                     main_hand: p.main_hand,
@@ -973,13 +969,7 @@ impl<C: Config> Client<C> {
                     self.events.push_back(ClientEvent::InteractWithEntity {
                         id,
                         sneaking: p.sneaking,
-                        kind: match p.kind {
-                            InteractKind::Interact(hand) => InteractWithEntityKind::Interact(hand),
-                            InteractKind::Attack => InteractWithEntityKind::Attack,
-                            InteractKind::InteractAt((target, hand)) => {
-                                InteractWithEntityKind::InteractAt { target, hand }
-                            }
-                        },
+                        interact: p.interact,
                     });
                 }
             }
@@ -1001,22 +991,22 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::LockDifficulty(_) => {}
             C2sPlayPacket::SetPlayerPosition(p) => {
                 if self.pending_teleports == 0 {
-                    self.position = p.position;
+                    self.position = p.position.into();
 
                     self.events.push_back(ClientEvent::MovePosition {
-                        position: p.position,
+                        position: p.position.into(),
                         on_ground: p.on_ground,
                     });
                 }
             }
             C2sPlayPacket::SetPlayerPositionAndRotation(p) => {
                 if self.pending_teleports == 0 {
-                    self.position = p.position;
+                    self.position = p.position.into();
                     self.yaw = p.yaw;
                     self.pitch = p.pitch;
 
                     self.events.push_back(ClientEvent::MovePositionAndRotation {
-                        position: p.position,
+                        position: p.position.into(),
                         yaw: p.yaw,
                         pitch: p.pitch,
                         on_ground: p.on_ground,
@@ -1037,19 +1027,18 @@ impl<C: Config> Client<C> {
             }
             C2sPlayPacket::SetPlayerOnGround(p) => {
                 if self.pending_teleports == 0 {
-                    self.events.push_back(ClientEvent::MoveOnGround {
-                        on_ground: p.on_ground,
-                    });
+                    self.events
+                        .push_back(ClientEvent::MoveOnGround { on_ground: p.0 });
                 }
             }
             C2sPlayPacket::MoveVehicleC2s(p) => {
                 if self.pending_teleports == 0 {
-                    self.position = p.position;
+                    self.position = p.position.into();
                     self.yaw = p.yaw;
                     self.pitch = p.pitch;
 
                     self.events.push_back(ClientEvent::MoveVehicle {
-                        position: p.position,
+                        position: p.position.into(),
                         yaw: p.yaw,
                         pitch: p.pitch,
                     });
@@ -1070,40 +1059,40 @@ impl<C: Config> Client<C> {
                 }
 
                 self.events.push_back(match p.status {
-                    play::DiggingStatus::StartedDigging => ClientEvent::Digging {
+                    types::DiggingStatus::StartedDigging => ClientEvent::Digging {
                         status: DiggingStatus::Start,
                         position: p.location,
                         face: p.face,
                     },
-                    play::DiggingStatus::CancelledDigging => ClientEvent::Digging {
+                    types::DiggingStatus::CancelledDigging => ClientEvent::Digging {
                         status: DiggingStatus::Cancel,
                         position: p.location,
                         face: p.face,
                     },
-                    play::DiggingStatus::FinishedDigging => ClientEvent::Digging {
+                    types::DiggingStatus::FinishedDigging => ClientEvent::Digging {
                         status: DiggingStatus::Finish,
                         position: p.location,
                         face: p.face,
                     },
-                    play::DiggingStatus::DropItemStack => return Ok(()),
-                    play::DiggingStatus::DropItem => ClientEvent::DropItem,
-                    play::DiggingStatus::ShootArrowOrFinishEating => return Ok(()),
-                    play::DiggingStatus::SwapItemInHand => return Ok(()),
+                    types::DiggingStatus::DropItemStack => return Ok(()),
+                    types::DiggingStatus::DropItem => ClientEvent::DropItem,
+                    types::DiggingStatus::ShootArrowOrFinishEating => return Ok(()),
+                    types::DiggingStatus::SwapItemInHand => return Ok(()),
                 });
             }
             C2sPlayPacket::PlayerCommand(c) => {
                 self.events.push_back(match c.action_id {
-                    PlayerCommandId::StartSneaking => ClientEvent::StartSneaking,
-                    PlayerCommandId::StopSneaking => ClientEvent::StopSneaking,
-                    PlayerCommandId::LeaveBed => ClientEvent::LeaveBed,
-                    PlayerCommandId::StartSprinting => ClientEvent::StartSprinting,
-                    PlayerCommandId::StopSprinting => ClientEvent::StopSprinting,
-                    PlayerCommandId::StartJumpWithHorse => ClientEvent::StartJumpWithHorse {
-                        jump_boost: c.jump_boost.0 .0 as u8,
+                    Action::StartSneaking => ClientEvent::StartSneaking,
+                    Action::StopSneaking => ClientEvent::StopSneaking,
+                    Action::LeaveBed => ClientEvent::LeaveBed,
+                    Action::StartSprinting => ClientEvent::StartSprinting,
+                    Action::StopSprinting => ClientEvent::StopSprinting,
+                    Action::StartJumpWithHorse => ClientEvent::StartJumpWithHorse {
+                        jump_boost: c.jump_boost.0 as u8,
                     },
-                    PlayerCommandId::StopJumpWithHorse => ClientEvent::StopJumpWithHorse,
-                    PlayerCommandId::OpenHorseInventory => ClientEvent::OpenHorseInventory,
-                    PlayerCommandId::StartFlyingWithElytra => ClientEvent::StartFlyingWithElytra,
+                    Action::StopJumpWithHorse => ClientEvent::StopJumpWithHorse,
+                    Action::OpenHorseInventory => ClientEvent::OpenHorseInventory,
+                    Action::StartFlyingWithElytra => ClientEvent::StartFlyingWithElytra,
                 });
             }
             C2sPlayPacket::PlayerInput(_) => {}
@@ -1117,9 +1106,9 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::SeenAdvancements(_) => {}
             C2sPlayPacket::SelectTrade(_) => {}
             C2sPlayPacket::SetBeaconEffect(_) => {}
-            C2sPlayPacket::SetHeldItemS2c(e) => {
+            C2sPlayPacket::SetHeldItemC2s(e) => {
                 self.selected_hotbar_slot =
-                    PlayerInventory::hotbar_to_slot(e.slot.0).unwrap_or(self.selected_hotbar_slot);
+                    PlayerInventory::hotbar_to_slot(e.slot).unwrap_or(self.selected_hotbar_slot);
             }
             C2sPlayPacket::ProgramCommandBlock(_) => {}
             C2sPlayPacket::ProgramCommandBlockMinecart(_) => {}
@@ -1139,14 +1128,14 @@ impl<C: Config> Client<C> {
             }
             C2sPlayPacket::PluginMessageC2s(p) => {
                 self.events.push_back(ClientEvent::PluginMessageReceived {
-                    channel: p.channel,
-                    data: p.data,
+                    channel: p.channel.to_owned_ident(),
+                    data: p.data.0.to_vec(),
                 });
             }
             C2sPlayPacket::ProgramJigsawBlock(_) => {}
             C2sPlayPacket::ProgramStructureBlock(_) => {}
             C2sPlayPacket::UpdateSign(_) => {}
-            C2sPlayPacket::SwingArm(p) => self.events.push_back(ClientEvent::ArmSwing(p.hand)),
+            C2sPlayPacket::SwingArm(p) => self.events.push_back(ClientEvent::ArmSwing(p.0)),
             C2sPlayPacket::TeleportToEntity(_) => {}
             C2sPlayPacket::UseItemOn(p) => {
                 if p.sequence.0 != 0 {
@@ -1157,7 +1146,7 @@ impl<C: Config> Client<C> {
                     hand: p.hand,
                     location: p.location,
                     face: p.face,
-                    cursor_pos: p.cursor_pos,
+                    cursor_pos: p.cursor_pos.into(),
                     head_inside_block: p.head_inside_block,
                     sequence: p.sequence,
                 })
@@ -1233,18 +1222,18 @@ impl<C: Config> Client<C> {
             // The login packet is prepended so that it is sent before all the other
             // packets. Some packets don't work correctly when sent before the login packet,
             // which is why we're doing this.
-            ctrl.prepend_packet(&LoginPlay {
+            ctrl.prepend_packet(&LoginPlayOwned {
                 entity_id: 0, // EntityId 0 is reserved for clients.
                 is_hardcore: self.bits.hardcore(),
-                gamemode: self.new_game_mode,
-                previous_gamemode: self.old_game_mode,
+                game_mode: self.new_game_mode,
+                previous_game_mode: -1,
                 dimension_names,
                 registry_codec: shared.registry_codec().clone(),
                 dimension_type_name: world.meta.dimension().dimension_type_name(),
                 dimension_name: world.meta.dimension().dimension_name(),
                 hashed_seed: 10,
                 max_players: VarInt(0),
-                view_distance: BoundedInt(VarInt(self.view_distance() as i32)),
+                view_distance: VarInt(self.view_distance() as i32),
                 simulation_distance: VarInt(16),
                 reduced_debug_info: false,
                 enable_respawn_screen: false,
@@ -1256,7 +1245,7 @@ impl<C: Config> Client<C> {
             })?;
 
             if let Some(id) = &self.player_list {
-                player_lists.get(id).initial_packets(ctrl)?;
+                player_lists.get(id).queue_initial_packets(ctrl)?;
             }
 
             self.teleport(self.position(), self.yaw(), self.pitch());
@@ -1266,26 +1255,29 @@ impl<C: Config> Client<C> {
                 self.loaded_entities.clear();
                 self.loaded_chunks.clear();
 
+                let dimension_type_name = DimensionId(0).dimension_type_name();
+                let dimension_name = ident!("{LIBRARY_NAMESPACE}:dummy_dimension");
+
                 // Client bug workaround: send the client to a dummy dimension first.
                 // TODO: is there actually a bug?
-                ctrl.append_packet(&Respawn {
+                ctrl.append_packet(&RespawnOwned {
                     dimension_type_name: DimensionId(0).dimension_type_name(),
                     dimension_name: ident!("{LIBRARY_NAMESPACE}:dummy_dimension"),
                     hashed_seed: 0,
                     game_mode: self.game_mode(),
-                    previous_game_mode: self.game_mode(),
+                    previous_game_mode: -1,
                     is_debug: false,
                     is_flat: self.bits.flat(),
                     copy_metadata: true,
                     last_death_location: None,
                 })?;
 
-                ctrl.append_packet(&Respawn {
+                ctrl.append_packet(&RespawnOwned {
                     dimension_type_name: world.meta.dimension().dimension_type_name(),
                     dimension_name: world.meta.dimension().dimension_name(),
                     hashed_seed: 0,
                     game_mode: self.game_mode(),
-                    previous_game_mode: self.game_mode(),
+                    previous_game_mode: -1,
                     is_debug: false,
                     is_flat: self.bits.flat(),
                     copy_metadata: true,
@@ -1310,18 +1302,18 @@ impl<C: Config> Client<C> {
             if self.old_player_list != self.player_list {
                 // Delete existing entries from old player list.
                 if let Some(id) = &self.old_player_list {
-                    player_lists.get(id).clear_packets(ctrl)?;
+                    player_lists.get(id).queue_clear_packets(ctrl)?;
                 }
 
                 // Get initial packets for new player list.
                 if let Some(id) = &self.player_list {
-                    player_lists.get(id).initial_packets(ctrl)?;
+                    player_lists.get(id).queue_initial_packets(ctrl)?;
                 }
 
                 self.old_player_list = self.player_list.clone();
             } else if let Some(id) = &self.player_list {
                 // Update current player list.
-                player_lists.get(id).update_packets(ctrl)?;
+                player_lists.get(id).queue_update_packets(ctrl)?;
             }
         }
 
@@ -1331,8 +1323,8 @@ impl<C: Config> Client<C> {
 
             ctrl.append_packet(&UpdateAttributes {
                 entity_id: VarInt(0),
-                properties: vec![EntityAttributesProperty {
-                    key: ident!("generic.attack_speed"),
+                properties: vec![AttributeProperty {
+                    key: Ident::new("generic.attack_speed").unwrap(),
                     value: self.attack_speed,
                     modifiers: Vec::new(),
                 }],
@@ -1344,8 +1336,8 @@ impl<C: Config> Client<C> {
 
             ctrl.append_packet(&UpdateAttributes {
                 entity_id: VarInt(0),
-                properties: vec![EntityAttributesProperty {
-                    key: ident!("generic.movement_speed"),
+                properties: vec![AttributeProperty {
+                    key: Ident::new("generic.movement_speed").unwrap(),
                     value: self.movement_speed,
                     modifiers: Vec::new(),
                 }],
@@ -1367,9 +1359,7 @@ impl<C: Config> Client<C> {
             self.bits.set_view_distance_modified(false);
 
             if !self.created_this_tick() {
-                ctrl.append_packet(&SetRenderDistance {
-                    view_distance: BoundedInt(VarInt(self.view_distance() as i32)),
-                })?;
+                ctrl.append_packet(&SetRenderDistance(VarInt(self.view_distance() as i32)))?;
             }
         }
 
@@ -1449,10 +1439,10 @@ impl<C: Config> Client<C> {
             self.bits.set_teleported_this_tick(false);
 
             ctrl.append_packet(&SynchronizePlayerPosition {
-                position: self.position,
+                position: self.position.into_array(),
                 yaw: self.yaw,
                 pitch: self.pitch,
-                flags: PlayerPositionLookFlags::new(false, false, false, false, false),
+                flags: SyncPlayerPosLookFlags::new(),
                 teleport_id: VarInt(self.teleport_id_counter as i32),
                 dismount_vehicle: false,
             })?;
@@ -1473,26 +1463,8 @@ impl<C: Config> Client<C> {
 
             ctrl.append_packet(&SetEntityVelocity {
                 entity_id: VarInt(0),
-                velocity: velocity_to_packet_units(self.velocity),
+                velocity: velocity_to_packet_units(self.velocity).into_array(),
             })?;
-        }
-
-        // Send chat messages.
-        for msg in self.msgs_to_send.drain(..) {
-            ctrl.append_packet(&SystemChatMessage {
-                chat: msg,
-                kind: VarInt(0),
-            })?;
-        }
-
-        // Set action bar.
-        if let Some(bar) = self.bar_to_send.take() {
-            ctrl.append_packet(&SetActionBarText { text: bar })?;
-        }
-
-        // Send resource pack prompt.
-        if let Some(p) = self.resource_pack_to_send.take() {
-            ctrl.append_packet(&p)?;
         }
 
         let mut entities_to_unload = Vec::new();
@@ -1518,7 +1490,7 @@ impl<C: Config> Client<C> {
                     {
                         let _ = ctrl.append_packet(&UpdateEntityPositionAndRotation {
                             entity_id: VarInt(id.to_network_id()),
-                            delta: (position_delta * 4096.0).as_(),
+                            delta: (position_delta * 4096.0).as_::<i16>().into_array(),
                             yaw: ByteAngle::from_degrees(entity.yaw()),
                             pitch: ByteAngle::from_degrees(entity.pitch()),
                             on_ground: entity.on_ground(),
@@ -1527,7 +1499,7 @@ impl<C: Config> Client<C> {
                         if entity.position() != entity.old_position() && !needs_teleport {
                             let _ = ctrl.append_packet(&UpdateEntityPosition {
                                 entity_id: VarInt(id.to_network_id()),
-                                delta: (position_delta * 4096.0).as_(),
+                                delta: (position_delta * 4096.0).as_::<i16>().into_array(),
                                 on_ground: entity.on_ground(),
                             });
                         }
@@ -1545,7 +1517,7 @@ impl<C: Config> Client<C> {
                     if needs_teleport {
                         let _ = ctrl.append_packet(&TeleportEntity {
                             entity_id: VarInt(id.to_network_id()),
-                            position: entity.position(),
+                            position: entity.position().into_array(),
                             yaw: ByteAngle::from_degrees(entity.yaw()),
                             pitch: ByteAngle::from_degrees(entity.pitch()),
                             on_ground: entity.on_ground(),
@@ -1555,7 +1527,7 @@ impl<C: Config> Client<C> {
                     if flags.velocity_modified() {
                         let _ = ctrl.append_packet(&SetEntityVelocity {
                             entity_id: VarInt(id.to_network_id()),
-                            velocity: velocity_to_packet_units(entity.velocity()),
+                            velocity: velocity_to_packet_units(entity.velocity()).into_array(),
                         });
                     }
 
@@ -1578,7 +1550,7 @@ impl<C: Config> Client<C> {
 
         if !entities_to_unload.is_empty() {
             ctrl.append_packet(&RemoveEntities {
-                entities: entities_to_unload,
+                entity_ids: entities_to_unload,
             })?;
         }
 
@@ -1591,7 +1563,7 @@ impl<C: Config> Client<C> {
 
             ctrl.append_packet(&SetEntityMetadata {
                 entity_id: VarInt(0),
-                metadata: RawBytes(data),
+                metadata: RawBytes(&data),
             })?;
         }
 

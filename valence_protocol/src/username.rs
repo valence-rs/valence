@@ -59,16 +59,18 @@ impl<S: AsRef<str>> Username<S> {
         Username(self.0.as_ref())
     }
 
+    pub fn into_inner(self) -> S {
+        self.0
+    }
+}
+
+impl<'a, S: ?Sized> Username<&'a S> {
     pub fn to_owned_username(&self) -> Username<S::Owned>
     where
         S: ToOwned,
         S::Owned: AsRef<str>,
     {
         Username(self.0.to_owned())
-    }
-
-    pub fn into_inner(self) -> S {
-        self.0
     }
 }
 

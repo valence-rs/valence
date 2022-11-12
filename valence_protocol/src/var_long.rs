@@ -7,7 +7,7 @@ use crate::{Decode, Encode, Result};
 
 /// An `i64` encoded with variable length.
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub struct VarLong(pub(crate) i64);
+pub struct VarLong(pub i64);
 
 impl VarLong {
     /// The maximum number of bytes a `VarLong` can occupy when read from and

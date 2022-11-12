@@ -45,6 +45,16 @@ pub struct VillagerData {
     pub level: i32,
 }
 
+impl VillagerData {
+    pub const fn new(kind: VillagerKind, profession: VillagerProfession, level: i32) -> Self {
+        Self {
+            kind,
+            profession,
+            level,
+        }
+    }
+}
+
 impl Default for VillagerData {
     fn default() -> Self {
         Self {
@@ -174,4 +184,11 @@ pub enum PaintingKind {
     Water,
     Fire,
     DonkeyKong,
+}
+
+// TODO: remove
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Encode, Decode)]
+pub enum Particle {
+    #[tag = 21]
+    EntityEffect,
 }

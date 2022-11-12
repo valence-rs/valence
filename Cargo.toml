@@ -12,18 +12,13 @@ build = "build/main.rs"
 authors = ["Ryan Johnson <ryanj00a@gmail.com>"]
 
 [dependencies]
-aes = "0.7.5"
 anyhow = "1.0.65"
 approx = "0.5.1"
 arrayvec = "0.7.2"
 async-trait = "0.1.57"
 base64 = "0.13.0"
 bitfield-struct = "0.1.7"
-bitvec = "1.0.1"
-byteorder = "1.4.3"
 bytes = "1.2.1"
-cfb8 = "0.7.1"
-flate2 = "1.0.24"
 flume = "0.10.14"
 futures = "0.3.24"
 hmac = "0.12.1"
@@ -41,7 +36,8 @@ sha2 = "0.10.6"
 thiserror = "1.0.35"
 url = { version = "2.2.2", features = ["serde"] }
 uuid = { version = "1.1.2", features = ["serde"] }
-valence_nbt = "0.4.0"
+valence_nbt = { version = "0.4.0", path = "valence_nbt" }
+valence_protocol = { version = "0.1.0", path = "valence_protocol", features = ["encryption", "compression"] }
 vek = "0.15.8"
 
 [dependencies.tokio]

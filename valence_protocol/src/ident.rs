@@ -97,6 +97,18 @@ impl<S: AsRef<str>> Ident<S> {
         }
     }
 
+    /// Consumes the identifier and returns the underlying string.
+    pub fn into_inner(self) -> S {
+        self.string
+    }
+
+    /// Consumes the identifier and returns the underlying string.
+    pub fn get(self) -> S {
+        self.string
+    }
+}
+
+impl<'a, S: ?Sized> Ident<&'a S> {
     /// Converts the underlying string to its owned representation and returns
     /// it as an `Ident`. This operation is infallible and no checks need to be
     /// performed.
@@ -109,16 +121,6 @@ impl<S: AsRef<str>> Ident<S> {
             string: self.string.to_owned(),
             path_start: self.path_start,
         }
-    }
-
-    /// Consumes the identifier and returns the underlying string.
-    pub fn into_inner(self) -> S {
-        self.string
-    }
-
-    /// Consumes the identifier and returns the underlying string.
-    pub fn get(self) -> S {
-        self.string
     }
 }
 

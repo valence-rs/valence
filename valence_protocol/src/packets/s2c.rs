@@ -9,8 +9,8 @@ use crate::item::ItemStack;
 use crate::raw_bytes::RawBytes;
 use crate::text::Text;
 use crate::types::{
-    Animation, AttributeProperty, BossBarAction, ChunkDataBlockEntity, DeathLocation, Difficulty,
-    GameMode, GameStateChangeReason, PlayerInfoAddPlayer, SignedProperty, SoundCategory,
+    AttributeProperty, BossBarAction, ChunkDataBlockEntity, DeathLocation, Difficulty, GameMode,
+    GameStateChangeReason, PlayerInfoAddPlayer, SignedProperty, SoundCategory,
     SyncPlayerPosLookFlags,
 };
 use crate::username::Username;
@@ -132,7 +132,7 @@ pub mod play {
     #[packet_id = 0x03]
     pub struct EntityAnimationS2c {
         pub entity_id: VarInt,
-        pub animation: Animation,
+        pub animation: u8, // TODO: use Animation enum.
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
@@ -279,7 +279,7 @@ pub mod play {
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x20]
     pub struct KeepAliveS2c {
-        pub id: i64,
+        pub id: u64,
     }
 
     #[derive(Clone, Debug, Encode, Decode, Packet)]
@@ -332,6 +332,29 @@ pub mod play {
         pub is_debug: bool,
         pub is_flat: bool,
         pub last_death_location: Option<DeathLocation<'a>>,
+    }
+
+    // TODO: remove this.
+    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[packet_id = 0x25]
+    pub struct LoginPlayOwned {
+        pub entity_id: i32,
+        pub is_hardcore: bool,
+        pub game_mode: GameMode,
+        pub previous_game_mode: i8,
+        pub dimension_names: Vec<Ident<String>>,
+        pub registry_codec: Compound,
+        pub dimension_type_name: Ident<String>,
+        pub dimension_name: Ident<String>,
+        pub hashed_seed: i64,
+        pub max_players: VarInt,
+        pub view_distance: VarInt,
+        pub simulation_distance: VarInt,
+        pub reduced_debug_info: bool,
+        pub enable_respawn_screen: bool,
+        pub is_debug: bool,
+        pub is_flat: bool,
+        pub last_death_location: Option<(Ident<String>, BlockPos)>,
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
@@ -435,6 +458,21 @@ pub mod play {
         pub last_death_location: Option<DeathLocation<'a>>,
     }
 
+    // TODO: remove
+    #[derive(Clone, PartialEq, Debug, Encode, Decode, Packet)]
+    #[packet_id = 0x3e]
+    pub struct RespawnOwned {
+        pub dimension_type_name: Ident<String>,
+        pub dimension_name: Ident<String>,
+        pub hashed_seed: u64,
+        pub game_mode: GameMode,
+        pub previous_game_mode: i8,
+        pub is_debug: bool,
+        pub is_flat: bool,
+        pub copy_metadata: bool,
+        pub last_death_location: Option<(Ident<String>, BlockPos)>,
+    }
+
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x3f]
     pub struct SetHeadRotation {
@@ -481,15 +519,15 @@ pub mod play {
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x50]
     pub struct SetEntityMetadata<'a> {
-        entity_id: VarInt,
-        metadata: RawBytes<'a>,
+        pub entity_id: VarInt,
+        pub metadata: RawBytes<'a>,
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x52]
     pub struct SetEntityVelocity {
-        entity_id: VarInt,
-        velocity: [i16; 3],
+        pub entity_id: VarInt,
+        pub velocity: [i16; 3],
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]

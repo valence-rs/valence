@@ -9,14 +9,16 @@ use bitfield_struct::bitfield;
 pub use data::{EntityKind, TrackedData};
 use rayon::iter::ParallelIterator;
 use uuid::Uuid;
+use valence_protocol::byte_angle::ByteAngle;
+use valence_protocol::entity_meta::{Facing, PaintingKind, Pose};
+use valence_protocol::packets::s2c::play::{
+    SetEntityMetadata, SetHeadRotation, SpawnEntity, SpawnExperienceOrb, SpawnPlayer,
+};
+use valence_protocol::raw_bytes::RawBytes;
+use valence_protocol::var_int::VarInt;
 use vek::{Aabb, Vec3};
 
 use crate::config::Config;
-use crate::entity::types::{Facing, PaintingKind, Pose};
-use crate::protocol::packets::s2c::play::{
-    SetEntityMetadata, SetHeadRotation, SpawnEntity, SpawnExperienceOrb, SpawnPlayer,
-};
-use crate::protocol::{ByteAngle, RawBytes, VarInt};
 use crate::server::PlayPacketController;
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::util::aabb_from_bottom_and_size;
@@ -24,7 +26,6 @@ use crate::world::WorldId;
 use crate::STANDARD_TPS;
 
 pub mod data;
-pub mod types;
 
 include!(concat!(env!("OUT_DIR"), "/entity_event.rs"));
 
@@ -240,7 +241,7 @@ impl EntityId {
     /// The value of the default entity ID which is always invalid.
     pub const NULL: Self = Self(Key::NULL);
 
-    pub(crate) fn to_network_id(self) -> i32 {
+    pub fn to_network_id(self) -> i32 {
         self.0.version().get() as i32
     }
 }
@@ -714,11 +715,12 @@ impl<C: Config> Entity<C> {
         &self,
         this_id: EntityId,
     ) -> Option<SetEntityMetadata> {
+        // TODO: cache tracked data buffer?
         self.variants
             .initial_tracked_data()
             .map(|meta| SetEntityMetadata {
                 entity_id: VarInt(this_id.to_network_id()),
-                metadata: RawBytes(meta),
+                metadata: RawBytes(&meta),
             })
     }
 
@@ -730,11 +732,12 @@ impl<C: Config> Entity<C> {
         &self,
         this_id: EntityId,
     ) -> Option<SetEntityMetadata> {
+        // TODO: cache tracked data buffer?
         self.variants
             .updated_tracked_data()
             .map(|meta| SetEntityMetadata {
                 entity_id: VarInt(this_id.to_network_id()),
-                metadata: RawBytes(meta),
+                metadata: RawBytes(&meta),
             })
     }
 
@@ -748,26 +751,26 @@ impl<C: Config> Entity<C> {
             entity_id: VarInt(this_id.to_network_id()),
             object_uuid: self.uuid,
             kind: VarInt(self.kind() as i32),
-            position: self.new_position,
+            position: self.new_position.into_array(),
             pitch: ByteAngle::from_degrees(self.pitch),
             yaw: ByteAngle::from_degrees(self.yaw),
             head_yaw: ByteAngle::from_degrees(self.head_yaw),
             data: VarInt(data),
-            velocity: velocity_to_packet_units(self.velocity),
+            velocity: velocity_to_packet_units(self.velocity).into_array(),
         };
 
         match &self.variants {
             TrackedData::Marker(_) => {}
             TrackedData::ExperienceOrb(_) => ctrl.append_packet(&SpawnExperienceOrb {
                 entity_id: VarInt(this_id.to_network_id()),
-                position: self.new_position,
+                position: self.new_position.into_array(),
                 count: 0, // TODO
             })?,
             TrackedData::Player(_) => {
                 ctrl.append_packet(&SpawnPlayer {
                     entity_id: VarInt(this_id.to_network_id()),
                     player_uuid: self.uuid,
-                    position: self.new_position,
+                    position: self.new_position.into_array(),
                     yaw: ByteAngle::from_degrees(self.yaw),
                     pitch: ByteAngle::from_degrees(self.pitch),
                 })?;

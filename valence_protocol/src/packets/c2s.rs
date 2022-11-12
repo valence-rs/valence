@@ -8,7 +8,7 @@ use crate::raw_bytes::RawBytes;
 use crate::types::{
     Action, ChatMode, ClickContainerMode, CommandArgumentSignature, CommandBlockFlags,
     CommandBlockMode, DiggingStatus, DisplayedSkinParts, EntityInteraction, Hand,
-    HandshakeNextState, MessageAcknowledgment, MsgSigOrVerifyToken, PlayerInputFlags,
+    HandshakeNextState, MainHand, MessageAcknowledgment, MsgSigOrVerifyToken, PlayerInputFlags,
     PublicKeyData, RecipeBookId, StructureBlockAction, StructureBlockFlags, StructureBlockMirror,
     StructureBlockMode, StructureBlockRotation,
 };
@@ -25,6 +25,15 @@ pub mod handshake {
     pub struct Handshake<'a> {
         pub protocol_version: VarInt,
         pub server_address: &'a str,
+        pub server_port: u16,
+        pub next_state: HandshakeNextState,
+    }
+
+    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[packet_id = 0x00]
+    pub struct HandshakeOwned {
+        pub protocol_version: VarInt,
+        pub server_address: String,
         pub server_port: u16,
         pub next_state: HandshakeNextState,
     }
@@ -166,7 +175,7 @@ pub mod play {
         pub chat_mode: ChatMode,
         pub chat_colors: bool,
         pub displayed_skin_parts: DisplayedSkinParts,
-        pub main_hand: Hand,
+        pub main_hand: MainHand,
         pub enable_text_filtering: bool,
         pub allow_server_listings: bool,
     }
@@ -185,7 +194,7 @@ pub mod play {
         pub button_id: i8,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x0b]
     pub struct ClickContainer {
         pub window_id: u8,
@@ -193,6 +202,8 @@ pub mod play {
         pub slot_idx: i16,
         pub button: i8,
         pub mode: ClickContainerMode,
+        pub slots: Vec<(i16, Option<ItemStack>)>,
+        pub carried_item: Option<ItemStack>,
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
@@ -228,6 +239,7 @@ pub mod play {
     pub struct Interact {
         pub entity_id: VarInt,
         pub interact: EntityInteraction,
+        pub sneaking: bool,
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
@@ -330,6 +342,7 @@ pub mod play {
     pub struct PlayerCommand {
         pub entity_id: VarInt,
         pub action_id: Action,
+        pub jump_boost: VarInt,
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
