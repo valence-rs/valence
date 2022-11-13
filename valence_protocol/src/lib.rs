@@ -98,7 +98,6 @@ pub mod entity_meta;
 pub mod ident;
 mod impls;
 pub mod item;
-pub mod iter_list;
 pub mod packets;
 pub mod raw_bytes;
 pub mod text;
