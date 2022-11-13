@@ -12,3 +12,4 @@ Cargo.lock
 flamegraph.svg
 perf.data
 perf.data.old
+/valence_anvil/.asset_cache/
