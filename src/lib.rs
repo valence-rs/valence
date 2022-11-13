@@ -130,7 +130,7 @@ pub mod prelude {
     pub use dimension::{Dimension, DimensionId};
     pub use entity::{Entities, Entity, EntityEvent, EntityId, EntityKind, TrackedData};
     pub use inventory::{
-        ConfigurableInventory, Inventories, Inventory, InventoryId, PlayerInventory,
+        ConfigurableInventory, Inventories, Inventory, InventoryId, PlayerInventory, SlotId,
     };
     pub use player_list::{PlayerList, PlayerListEntry, PlayerListId, PlayerLists};
     pub use server::{NewClientData, Server, SharedServer, ShutdownResult};
@@ -142,10 +142,12 @@ pub mod prelude {
     pub use valence_nbt::Compound;
     pub use valence_protocol::block::{BlockKind, BlockState, PropName, PropValue};
     pub use valence_protocol::block_pos::BlockPos;
+    pub use valence_protocol::entity_meta::Pose;
     pub use valence_protocol::ident::{Ident, IdentError};
     pub use valence_protocol::item::{ItemKind, ItemStack};
+    pub use valence_protocol::packets::s2c::play::SetTitleAnimationTimes;
     pub use valence_protocol::text::{Color, Text, TextFormat};
-    pub use valence_protocol::types::GameMode;
+    pub use valence_protocol::types::{GameMode, Hand, SoundCategory};
     pub use valence_protocol::username::Username;
     pub use valence_protocol::{ident, MINECRAFT_VERSION, PROTOCOL_VERSION};
     pub use vek::{Aabb, Mat2, Mat3, Mat4, Vec2, Vec3, Vec4};

@@ -4,10 +4,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use log::LevelFilter;
 use num::Integer;
 pub use valence::prelude::*;
-// TODO: remove protocol imports.
-use valence::protocol::packets::c2s::play::ClickContainerMode;
-use valence::protocol::packets::s2c::play::SoundCategory;
-use valence::protocol::SlotId;
+use valence_protocol::types::ClickContainerMode;
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()
@@ -220,7 +217,7 @@ fn play_note(client: &mut Client<Game>, player: &mut Entity<Game>, clicked_slot:
             + PITCH_MIN;
         client.send_message(format!("playing note with pitch: {}", pitch));
         client.play_sound(
-            ident!("block.note_block.harp"),
+            Ident::new("block.note_block.harp").unwrap(),
             SoundCategory::Block,
             player.position(),
             10.0,

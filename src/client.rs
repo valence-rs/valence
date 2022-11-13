@@ -1478,7 +1478,6 @@ impl<C: Config> Client<C> {
             if let Some(entity) = entities.get(id) {
                 debug_assert!(entity.kind() != EntityKind::Marker);
                 if self.position.distance(entity.position()) <= self.view_distance as f64 * 16.0 {
-
                     let _ = entity.send_updated_tracked_data(ctrl, id);
 
                     let position_delta = entity.position() - entity.old_position();

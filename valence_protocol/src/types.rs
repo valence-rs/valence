@@ -64,7 +64,7 @@ pub enum MainHand {
     Right,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum ClickContainerMode {
     Click,
     ShiftClick,

@@ -296,19 +296,6 @@ impl<C: Config> PlayerList<C> {
             ))?;
         }
 
-        // TODO
-
-        Ok(())
-    }
-
-    /*
-    pub(crate) fn queue_update_packets(&self, ctrl: &mut PlayPacketController) -> anyhow::Result<()> {
-        if !self.removed.is_empty() {
-            ctrl.append_packet(&PlayerInfo::RemovePlayer(
-                self.removed.iter().cloned().collect(),
-            ))?;
-        }
-
         let mut add_player = Vec::new();
         let mut game_mode = Vec::new();
         let mut ping = Vec::new();
@@ -319,15 +306,15 @@ impl<C: Config> PlayerList<C> {
                 let mut properties = Vec::new();
                 if let Some(textures) = &e.textures {
                     properties.push(SignedProperty {
-                        name: "textures".into(),
-                        value: base64::encode(textures.payload()),
-                        signature: Some(base64::encode(textures.signature())),
+                        name: "textures",
+                        value: textures.payload(),
+                        signature: Some(textures.signature()),
                     });
                 }
 
-                add_player.push(PlayerListAddPlayer {
+                add_player.push(PlayerInfoAddPlayer {
                     uuid,
-                    username: e.username.clone().into(),
+                    username: e.username(),
                     properties,
                     game_mode: e.game_mode,
                     ping: VarInt(e.ping),
@@ -376,7 +363,6 @@ impl<C: Config> PlayerList<C> {
 
         Ok(())
     }
-     */
 
     pub(crate) fn queue_clear_packets(
         &self,

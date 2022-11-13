@@ -707,7 +707,8 @@ impl<C: Config> Entity<C> {
         aabb_from_bottom_and_size(self.new_position, dimensions.into())
     }
 
-    /// Queues the tracked data packet to send to clients after this entity has been spawned.
+    /// Queues the tracked data packet to send to clients after this entity has
+    /// been spawned.
     pub(crate) fn send_initial_tracked_data(
         &self,
         ctrl: &mut PlayPacketController,
@@ -717,14 +718,15 @@ impl<C: Config> Entity<C> {
         if let Some(metadata) = self.variants.initial_tracked_data() {
             ctrl.append_packet(&SetEntityMetadata {
                 entity_id: VarInt(this_id.to_network_id()),
-                metadata: RawBytes(&metadata)
+                metadata: RawBytes(&metadata),
             })?;
         }
 
         Ok(())
     }
 
-    /// Queues the tracked data packet to send to clients when the entity is modified.
+    /// Queues the tracked data packet to send to clients when the entity is
+    /// modified.
     pub(crate) fn send_updated_tracked_data(
         &self,
         ctrl: &mut PlayPacketController,
@@ -734,7 +736,7 @@ impl<C: Config> Entity<C> {
         if let Some(metadata) = self.variants.updated_tracked_data() {
             ctrl.append_packet(&SetEntityMetadata {
                 entity_id: VarInt(this_id.to_network_id()),
-                metadata: RawBytes(&metadata)
+                metadata: RawBytes(&metadata),
             })?;
         }
 

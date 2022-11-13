@@ -65,7 +65,7 @@ pub(super) async fn online(
             let verify_token = server
                 .0
                 .rsa_key
-                .decrypt(PaddingScheme::PKCS1v15Encrypt, &encrypted_verify_token)
+                .decrypt(PaddingScheme::PKCS1v15Encrypt, encrypted_verify_token)
                 .context("failed to decrypt verify token")?;
 
             ensure!(

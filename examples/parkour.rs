@@ -6,10 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use log::LevelFilter;
 use rand::seq::SliceRandom;
 use rand::Rng;
-use valence::client::SetTitleAnimationTimes;
 use valence::prelude::*;
-// TODO: remove protocol imports.
-use valence::protocol::packets::s2c::play::SoundCategory;
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()
@@ -238,7 +235,7 @@ impl Config for Game {
                     }
 
                     client.play_sound(
-                        ident!("minecraft:block.note_block.bass"),
+                        Ident::new("minecraft:block.note_block.bass").unwrap(),
                         SoundCategory::Master,
                         client.position(),
                         1f32,
