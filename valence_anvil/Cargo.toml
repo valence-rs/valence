@@ -21,6 +21,12 @@ futures = "0.3.24"
 thiserror = "1.0.37"
 
 [dev-dependencies]
+reqwest = { version  = "0.11.12", features = ["blocking", "stream"] }
+tempfile = "3.3.0"
+zip = "0.5"
+fs_extra = "1.2.0"
+zip-extensions = "0.6.1"
+
 criterion = { version = "0.4.0", features = ["async", "async_tokio"] }
 
 [[bench]]
