@@ -15,22 +15,22 @@ use sha1::Sha1;
 use sha2::{Digest, Sha256};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use uuid::Uuid;
-
-use crate::config::Config;
-use crate::ident;
-use crate::player_textures::SignedPlayerTextures;
-use crate::protocol::packets::c2s::login::{
-    EncryptionResponse, LoginPluginResponse, VerifyTokenOrMsgSig,
-};
-use crate::protocol::packets::s2c::login::{
+use valence_protocol::ident::Ident;
+use valence_protocol::packets::c2s::login::{EncryptionResponse, LoginPluginResponse};
+use valence_protocol::packets::s2c::login::{
     DisconnectLogin, EncryptionRequest, LoginPluginRequest,
 };
-use crate::protocol::packets::Property;
-use crate::protocol::{BoundedArray, Decode, RawBytes, VarInt};
+use valence_protocol::raw_bytes::RawBytes;
+use valence_protocol::text::Text;
+use valence_protocol::types::{MsgSigOrVerifyToken, SignedProperty, SignedPropertyOwned};
+use valence_protocol::username::Username;
+use valence_protocol::var_int::VarInt;
+use valence_protocol::Decode;
+
+use crate::config::Config;
+use crate::player_textures::SignedPlayerTextures;
 use crate::server::packet_controller::InitialPacketController;
 use crate::server::{NewClientData, SharedServer};
-use crate::text::Text;
-use crate::username::Username;
 
 /// Login sequence for
 /// [`ConnectionMode::Online`](crate::config::ConnectionMode).
@@ -43,38 +43,37 @@ pub(super) async fn online(
     let my_verify_token: [u8; 16] = rand::random();
 
     ctrl.send_packet(&EncryptionRequest {
-        server_id: Default::default(), // Always empty
-        public_key: server.0.public_key_der.to_vec(),
-        verify_token: my_verify_token.to_vec().into(),
+        server_id: "", // Always empty
+        public_key: &server.0.public_key_der,
+        verify_token: &my_verify_token,
     })
     .await?;
 
     let EncryptionResponse {
-        shared_secret: BoundedArray(encrypted_shared_secret),
-        token_or_sig,
+        shared_secret,
+        sig_or_token,
     } = ctrl.recv_packet().await?;
 
     let shared_secret = server
         .0
         .rsa_key
-        .decrypt(PaddingScheme::PKCS1v15Encrypt, &encrypted_shared_secret)
+        .decrypt(PaddingScheme::PKCS1v15Encrypt, shared_secret)
         .context("failed to decrypt shared secret")?;
 
-    let _opt_signature = match token_or_sig {
-        VerifyTokenOrMsgSig::VerifyToken(BoundedArray(encrypted_verify_token)) => {
+    match sig_or_token {
+        MsgSigOrVerifyToken::VerifyToken(encrypted_verify_token) => {
             let verify_token = server
                 .0
                 .rsa_key
-                .decrypt(PaddingScheme::PKCS1v15Encrypt, &encrypted_verify_token)
+                .decrypt(PaddingScheme::PKCS1v15Encrypt, encrypted_verify_token)
                 .context("failed to decrypt verify token")?;
 
             ensure!(
                 my_verify_token.as_slice() == verify_token,
                 "verify tokens do not match"
             );
-            None
         }
-        VerifyTokenOrMsgSig::MsgSig(sig) => Some(sig),
+        MsgSigOrVerifyToken::MsgSig { .. } => {}
     };
 
     let crypt_key: [u8; 16] = shared_secret
@@ -83,13 +82,6 @@ pub(super) async fn online(
         .context("shared secret has the wrong length")?;
 
     ctrl.enable_encryption(&crypt_key);
-
-    #[derive(Debug, Deserialize)]
-    struct AuthResponse {
-        id: String,
-        name: Username<String>,
-        properties: Vec<Property>,
-    }
 
     let hash = Sha1::new()
         .chain(&shared_secret)
@@ -115,6 +107,13 @@ pub(super) async fn online(
         status => {
             bail!("session server GET request failed (status code {status})");
         }
+    }
+
+    #[derive(Debug, Deserialize)]
+    struct AuthResponse {
+        id: String,
+        name: Username<String>,
+        properties: Vec<SignedPropertyOwned>,
     }
 
     let data: AuthResponse = resp.json().await?;
@@ -169,7 +168,7 @@ pub(super) fn bungeecord(
         .map_err(|_| anyhow!("malformed BungeeCord server address data"))?;
 
     // Read properties and get textures
-    let properties: Vec<Property> =
+    let properties: Vec<SignedProperty> =
         serde_json::from_str(properties).context("failed to parse BungeeCord player properties")?;
 
     let mut textures = None;
@@ -212,8 +211,8 @@ pub(super) async fn velocity(
     // Send Player Info Request into the Plugin Channel
     ctrl.send_packet(&LoginPluginRequest {
         message_id: VarInt(message_id),
-        channel: ident!("velocity:player_info"),
-        data: RawBytes(vec![VELOCITY_MIN_SUPPORTED_VERSION]),
+        channel: Ident::new("velocity:player_info").unwrap(),
+        data: RawBytes(&[VELOCITY_MIN_SUPPORTED_VERSION]),
     })
     .await?;
 
@@ -258,7 +257,7 @@ pub(super) async fn velocity(
 
     // Read properties and get textures
     let mut textures = None;
-    for prop in Vec::<Property>::decode(&mut data_without_signature)
+    for prop in Vec::<SignedProperty>::decode(&mut data_without_signature)
         .context("failed to decode velocity player properties")?
     {
         if prop.name == "textures" {

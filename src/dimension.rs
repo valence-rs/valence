@@ -2,9 +2,10 @@
 
 use anyhow::ensure;
 use valence_nbt::{compound, Compound};
+use valence_protocol::ident;
+use valence_protocol::ident::Ident;
 
-use crate::ident::Ident;
-use crate::{ident, LIBRARY_NAMESPACE};
+use crate::LIBRARY_NAMESPACE;
 
 /// Identifies a particular [`Dimension`] on the server.
 ///

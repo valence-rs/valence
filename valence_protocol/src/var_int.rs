@@ -4,7 +4,7 @@ use anyhow::bail;
 use byteorder::{ReadBytesExt, WriteBytesExt};
 use thiserror::Error;
 
-use crate::protocol::{Decode, Encode};
+use crate::{Decode, Encode};
 
 /// An `i32` encoded with variable length.
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -15,7 +15,7 @@ impl VarInt {
     /// written to the Minecraft protocol.
     pub const MAX_SIZE: usize = 5;
 
-    pub(crate) fn decode_partial(mut r: impl Read) -> Result<i32, VarIntDecodeError> {
+    pub fn decode_partial(mut r: impl Read) -> Result<i32, VarIntDecodeError> {
         let mut val = 0;
         for i in 0..Self::MAX_SIZE {
             let byte = r.read_u8().map_err(|_| VarIntDecodeError::Incomplete)?;
@@ -30,7 +30,7 @@ impl VarInt {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Error)]
-pub(crate) enum VarIntDecodeError {
+pub enum VarIntDecodeError {
     #[error("incomplete VarInt decode")]
     Incomplete,
     #[error("VarInt is too large")]
@@ -38,7 +38,7 @@ pub(crate) enum VarIntDecodeError {
 }
 
 impl Encode for VarInt {
-    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+    fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         let mut val = self.0 as u32;
         loop {
             if val & 0b11111111111111111111111110000000 == 0 {
@@ -58,7 +58,7 @@ impl Encode for VarInt {
     }
 }
 
-impl Decode for VarInt {
+impl Decode<'_> for VarInt {
     fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         let mut val = 0;
         for i in 0..Self::MAX_SIZE {
@@ -72,21 +72,15 @@ impl Decode for VarInt {
     }
 }
 
-impl From<VarInt> for i32 {
-    fn from(i: VarInt) -> Self {
-        i.0
-    }
-}
-
-impl From<VarInt> for i64 {
-    fn from(i: VarInt) -> Self {
-        i.0 as i64
-    }
-}
-
 impl From<i32> for VarInt {
     fn from(i: i32) -> Self {
         VarInt(i)
+    }
+}
+
+impl From<VarInt> for i32 {
+    fn from(i: VarInt) -> Self {
+        i.0
     }
 }
 

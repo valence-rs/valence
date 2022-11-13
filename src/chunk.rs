@@ -11,20 +11,21 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::iter::FusedIterator;
 
-use bitvec::vec::BitVec;
 use paletted_container::PalettedContainer;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use valence_nbt::compound;
-
-use crate::biome::BiomeId;
-use crate::block::BlockState;
-use crate::block_pos::BlockPos;
-pub use crate::chunk_pos::ChunkPos;
-use crate::config::Config;
-use crate::protocol::packets::s2c::play::{
+use valence_protocol::block::BlockState;
+use valence_protocol::block_pos::BlockPos;
+use valence_protocol::packets::s2c::play::{
     BlockUpdate, ChunkDataAndUpdateLight, UpdateSectionBlocks,
 };
-use crate::protocol::{Encode, VarInt, VarLong};
+use valence_protocol::var_int::VarInt;
+use valence_protocol::var_long::VarLong;
+use valence_protocol::Encode;
+
+use crate::biome::BiomeId;
+pub use crate::chunk_pos::ChunkPos;
+use crate::config::Config;
 use crate::server::PlayPacketController;
 use crate::util::bits_needed;
 
@@ -540,61 +541,56 @@ impl<C: Config> LoadedChunk<C> {
         self.created_this_tick
     }
 
-    /// Gets the chunk data packet for this chunk with the given position.
+    /// Queues the chunk data packet for this chunk with the given position.
     pub(crate) fn chunk_data_packet(
         &self,
+        ctrl: &mut PlayPacketController,
+        scratch: &mut Vec<u8>,
         pos: ChunkPos,
         biome_registry_len: usize,
-    ) -> ChunkDataAndUpdateLight {
-        let mut blocks_and_biomes = Vec::new();
+    ) -> anyhow::Result<()> {
+        scratch.clear();
 
         for sect in self.sections.iter() {
-            sect.non_air_count.encode(&mut blocks_and_biomes).unwrap();
+            sect.non_air_count.encode(&mut *scratch)?;
 
-            sect.block_states
-                .encode_mc_format(
-                    &mut blocks_and_biomes,
-                    |b| b.to_raw().into(),
-                    4,
-                    8,
-                    bits_needed(BlockState::max_raw().into()),
-                )
-                .unwrap();
+            sect.block_states.encode_mc_format(
+                &mut *scratch,
+                |b| b.to_raw().into(),
+                4,
+                8,
+                bits_needed(BlockState::max_raw().into()),
+            )?;
 
-            sect.biomes
-                .encode_mc_format(
-                    &mut blocks_and_biomes,
-                    |b| b.0.into(),
-                    0,
-                    3,
-                    bits_needed(biome_registry_len - 1),
-                )
-                .unwrap();
+            sect.biomes.encode_mc_format(
+                &mut *scratch,
+                |b| b.0.into(),
+                0,
+                3,
+                bits_needed(biome_registry_len - 1),
+            )?;
         }
 
-        ChunkDataAndUpdateLight {
+        ctrl.append_packet(&ChunkDataAndUpdateLight {
             chunk_x: pos.x,
             chunk_z: pos.z,
             heightmaps: compound! {
                 // TODO: placeholder heightmap.
                 "MOTION_BLOCKING" => vec![0_i64; 37],
             },
-            blocks_and_biomes,
+            blocks_and_biomes: scratch,
             block_entities: vec![], // TODO
             trust_edges: true,
-            // sky_light_mask: bitvec![u64, _; 1; section_count + 2],
-            sky_light_mask: BitVec::new(),
-            block_light_mask: BitVec::new(),
-            empty_sky_light_mask: BitVec::new(),
-            empty_block_light_mask: BitVec::new(),
-            // sky_light_arrays: vec![[0xff; 2048]; section_count + 2],
+            sky_light_mask: Vec::new(),
+            block_light_mask: Vec::new(),
+            empty_sky_light_mask: Vec::new(),
+            empty_block_light_mask: Vec::new(),
             sky_light_arrays: vec![],
             block_light_arrays: vec![],
-        }
+        })
     }
 
-    /// Returns changes to this chunk as block change packets through the
-    /// provided closure.
+    /// Queues block change packets for this chunk.
     pub(crate) fn block_change_packets(
         &self,
         pos: ChunkPos,
@@ -786,7 +782,7 @@ fn compact_u64s_len(vals_count: usize, bits_per_val: usize) -> usize {
 
 #[inline]
 fn encode_compact_u64s(
-    w: &mut impl Write,
+    mut w: impl Write,
     mut vals: impl Iterator<Item = u64>,
     bits_per_val: usize,
 ) -> anyhow::Result<()> {
@@ -802,11 +798,11 @@ fn encode_compact_u64s(
                     debug_assert!(val < 2_u128.pow(bits_per_val as _) as _);
                     n |= val << (i * bits_per_val);
                 }
-                None if i > 0 => return n.encode(w),
+                None if i > 0 => return n.encode(&mut w),
                 None => return Ok(()),
             }
         }
-        n.encode(w)?;
+        n.encode(&mut w)?;
     }
 }
 

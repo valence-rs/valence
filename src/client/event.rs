@@ -1,21 +1,21 @@
 use std::time::Duration;
 
+use valence_protocol::block::BlockFace;
+use valence_protocol::block_pos::BlockPos;
+use valence_protocol::entity_meta::Pose;
+use valence_protocol::ident::Ident;
+use valence_protocol::item::ItemStack;
+use valence_protocol::packets::c2s::play::ResourcePackC2s;
+use valence_protocol::types::{
+    ChatMode, ClickContainerMode, DisplayedSkinParts, EntityInteraction, Hand, MainHand,
+};
+use valence_protocol::var_int::VarInt;
 use vek::Vec3;
 
 use super::Client;
-use crate::block_pos::BlockPos;
 use crate::config::Config;
-use crate::entity::types::Pose;
 use crate::entity::{Entity, EntityEvent, EntityId, TrackedData};
-use crate::ident::Ident;
-use crate::inventory::{Inventory, InventoryDirtyable};
-use crate::item::ItemStack;
-use crate::protocol::packets::c2s::play::ClickContainerMode;
-pub use crate::protocol::packets::c2s::play::{
-    BlockFace, ChatMode, DisplayedSkinParts, Hand, MainHand, ResourcePackC2s as ResourcePackStatus,
-};
-pub use crate::protocol::packets::s2c::play::GameMode;
-use crate::protocol::{RawBytes, Slot, SlotId, VarInt};
+use crate::inventory::{Inventory, InventoryDirtyable, SlotId};
 
 /// Represents an action performed by a client.
 ///
@@ -104,7 +104,7 @@ pub enum ClientEvent {
         /// If the client was sneaking during the interaction.
         sneaking: bool,
         /// The kind of interaction that occurred.
-        kind: InteractWithEntityKind,
+        interact: EntityInteraction,
     },
     SteerBoat {
         left_paddle_turning: bool,
@@ -134,9 +134,9 @@ pub enum ClientEvent {
     },
     PluginMessageReceived {
         channel: Ident<String>,
-        data: RawBytes,
+        data: Vec<u8>,
     },
-    ResourcePackStatusChanged(ResourcePackStatus),
+    ResourcePackStatusChanged(ResourcePackC2s),
     /// The client closed a screen. This occurs when the client closes their
     /// inventory, closes a chest inventory, etc.
     CloseScreen {
@@ -160,7 +160,7 @@ pub enum ClientEvent {
         /// The slot number that the client is trying to set.
         slot_id: SlotId,
         /// The contents of the slot.
-        slot: Slot,
+        slot: Option<ItemStack>,
     },
     /// The client is in survival mode, and is trying to modify an inventory.
     ClickContainer {
@@ -174,9 +174,9 @@ pub enum ClientEvent {
         ///
         /// It's not safe to blindly trust the contents of this. Servers need to
         /// validate it if they want to prevent item duping.
-        slot_changes: Vec<(SlotId, Slot)>,
+        slot_changes: Vec<(SlotId, Option<ItemStack>)>,
         /// The item that is now being carried by the user's cursor
-        carried_item: Slot,
+        carried_item: Option<ItemStack>,
     },
     RespawnRequest,
 }
@@ -195,13 +195,6 @@ pub struct Settings {
     pub main_hand: MainHand,
     pub displayed_skin_parts: DisplayedSkinParts,
     pub allow_server_listings: bool,
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub enum InteractWithEntityKind {
-    Interact(Hand),
-    InteractAt { target: Vec3<f32>, hand: Hand },
-    Attack,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]

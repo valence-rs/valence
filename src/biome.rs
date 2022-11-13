@@ -4,9 +4,8 @@ use std::collections::HashSet;
 
 use anyhow::ensure;
 use valence_nbt::{compound, Compound};
-
-use crate::ident;
-use crate::ident::Ident;
+use valence_protocol::ident;
+use valence_protocol::ident::Ident;
 
 /// Identifies a particular [`Biome`] on the server.
 ///

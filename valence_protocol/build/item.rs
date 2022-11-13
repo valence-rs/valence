@@ -29,7 +29,7 @@ struct FoodComponent {
 }
 
 pub fn build() -> anyhow::Result<TokenStream> {
-    let items = serde_json::from_str::<Vec<Item>>(include_str!("../extracted/items.json"))?;
+    let items = serde_json::from_str::<Vec<Item>>(include_str!("../../extracted/items.json"))?;
 
     let item_kind_count = items.len();
 

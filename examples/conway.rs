@@ -5,11 +5,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use log::LevelFilter;
 use num::Integer;
 use rayon::prelude::*;
-use valence::client::Hand;
-use valence::entity::types::Pose;
 use valence::prelude::*;
-// TODO: re-export this somewhere in valence.
-use valence::protocol::packets::s2c::play::SoundCategory;
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()
@@ -192,9 +188,9 @@ impl Config for Game {
 
                             if !server.state.board[index] {
                                 client.play_sound(
-                                    ident!("minecraft:block.note_block.banjo"),
+                                    Ident::new("minecraft:block.note_block.banjo").unwrap(),
                                     SoundCategory::Block,
-                                    Vec3::<i32>::from(position).as_(),
+                                    Vec3::new(position.x, position.y, position.z).as_(),
                                     0.5f32,
                                     1f32,
                                 );
@@ -217,7 +213,7 @@ impl Config for Game {
                 if sneaking != server.state.paused {
                     server.state.paused = sneaking;
                     client.play_sound(
-                        ident!("block.note_block.pling"),
+                        Ident::new("block.note_block.pling").unwrap(),
                         SoundCategory::Block,
                         client.position(),
                         0.5f32,
