@@ -65,27 +65,6 @@ impl State {
         P: Decode<'a> + Encode + Packet + fmt::Debug,
     {
         timeout(TIMEOUT, async {
-            // loop {
-            //     if let Some(pkt) = self.dec.try_next_packet()? {
-            //         self.enc.append_packet(&pkt)?;
-            //
-            //         let bytes = self.enc.take();
-            //         self.write.write_all(&bytes).await?;
-            //
-            //         self.print(&pkt);
-            //         return Ok(pkt);
-            //     }
-            //
-            //     self.dec.reserve(4096);
-            //     let mut buf = self.dec.take_capacity();
-            //
-            //     if self.read.read_buf(&mut buf).await? == 0 {
-            //         return Err(io::Error::from(ErrorKind::UnexpectedEof).into());
-            //     }
-            //
-            //     self.dec.queue_bytes(buf);
-            // }
-
             while !self.dec.has_next_packet()? {
                 self.dec.reserve(4096);
                 let mut buf = self.dec.take_capacity();
