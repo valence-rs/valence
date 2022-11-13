@@ -277,8 +277,9 @@ pub struct InventoryError;
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use valence_protocol::item::{ItemKind, ItemStack};
+
+    use super::*;
 
     #[test]
     fn test_get_set_slots() {
