@@ -15,9 +15,9 @@ like a minigame server without need for vanilla game mechanics, you can depend o
 Valence aims to be the following:
 
 * **Complete**. Abstractions for the full breadth of the Minecraft protocol.
-* **Flexible**. Your use case should be achievable without manually sending and receiving packets or other hacks.
+* **Flexible**. Valence provides direct access to Minecraft's protocol when necessary.
 * **Minimal**. The API surface is small with only the necessities exposed. Opinionated features such as a
-  standalone executable, plugin system, and reimplementation of vanilla mechanics should be built in a separate crate on
+  standalone executable, plugin system, and reimplementation of vanilla mechanics should be built in a separate project on
   top of the foundation that Valence provides.
 * **Intuitive**. An API that is easy to use and difficult to misuse. Extensive documentation is important.
 * **Efficient**. Optimal use of system resources with multiple CPU cores in mind.
