@@ -154,14 +154,12 @@ pub mod prelude {
     pub use world::{World, WorldId, WorldMeta, Worlds};
 
     use super::*;
-    pub use crate::{async_trait, nbt, vek, Ticks, LIBRARY_NAMESPACE, STANDARD_TPS};
+    pub use crate::{async_trait, nbt, vek, Ticks, STANDARD_TPS};
 }
 
 /// The namespace for this library used internally for
-/// [identifiers](crate::ident::Ident).
-///
-/// You should avoid using this namespace in your own identifiers.
-pub const LIBRARY_NAMESPACE: &str = "valence";
+/// [identifiers](valence_protocol::ident::Ident).
+const LIBRARY_NAMESPACE: &str = "valence";
 
 /// The most recent version of the [Velocity] proxy which has been tested to
 /// work with Valence. The elements of the tuple are (major, minor, patch)
