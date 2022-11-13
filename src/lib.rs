@@ -145,6 +145,7 @@ pub mod prelude {
     pub use valence_protocol::ident::{Ident, IdentError};
     pub use valence_protocol::item::{ItemKind, ItemStack};
     pub use valence_protocol::text::{Color, Text, TextFormat};
+    pub use valence_protocol::types::GameMode;
     pub use valence_protocol::username::Username;
     pub use valence_protocol::{ident, MINECRAFT_VERSION, PROTOCOL_VERSION};
     pub use vek::{Aabb, Mat2, Mat3, Mat4, Vec2, Vec3, Vec4};

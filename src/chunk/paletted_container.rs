@@ -176,7 +176,7 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
                 VarInt(to_bits(*val) as i32).encode(&mut writer)?;
 
                 // Number of longs
-                VarInt(0).encode(&mut writer)?;
+                VarInt(0).encode(writer)?;
             }
             Self::Indirect(ind) => {
                 let bits_per_entry = min_indirect_bits.max(bits_needed(ind.palette.len() - 1));
@@ -190,7 +190,7 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
                     VarInt(compact_u64s_len(LEN, direct_bits) as _).encode(&mut writer)?;
                     // Data array
                     encode_compact_u64s(
-                        &mut writer,
+                        writer,
                         (0..LEN).map(|i| to_bits(ind.get(i))),
                         direct_bits,
                     )?;
@@ -209,7 +209,7 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
                     VarInt(compact_u64s_len(LEN, bits_per_entry) as _).encode(&mut writer)?;
                     // Data array
                     encode_compact_u64s(
-                        &mut writer,
+                        writer,
                         ind.indices
                             .iter()
                             .cloned()
@@ -227,7 +227,7 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
                 // Number of longs in data array.
                 VarInt(compact_u64s_len(LEN, direct_bits) as _).encode(&mut writer)?;
                 // Data array
-                encode_compact_u64s(&mut writer, dir.iter().cloned().map(to_bits), direct_bits)?;
+                encode_compact_u64s(writer, dir.iter().cloned().map(to_bits), direct_bits)?;
             }
         }
 

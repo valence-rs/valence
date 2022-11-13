@@ -1245,7 +1245,7 @@ impl<C: Config> Client<C> {
             })?;
 
             if let Some(id) = &self.player_list {
-                player_lists.get(id).queue_initial_packets(ctrl)?;
+                player_lists.get(id).send_initial_packets(ctrl)?;
             }
 
             self.teleport(self.position(), self.yaw(), self.pitch());
@@ -1254,9 +1254,6 @@ impl<C: Config> Client<C> {
                 self.bits.set_spawn(false);
                 self.loaded_entities.clear();
                 self.loaded_chunks.clear();
-
-                let dimension_type_name = DimensionId(0).dimension_type_name();
-                let dimension_name = ident!("{LIBRARY_NAMESPACE}:dummy_dimension");
 
                 // Client bug workaround: send the client to a dummy dimension first.
                 // TODO: is there actually a bug?
@@ -1307,13 +1304,13 @@ impl<C: Config> Client<C> {
 
                 // Get initial packets for new player list.
                 if let Some(id) = &self.player_list {
-                    player_lists.get(id).queue_initial_packets(ctrl)?;
+                    player_lists.get(id).send_initial_packets(ctrl)?;
                 }
 
                 self.old_player_list = self.player_list.clone();
             } else if let Some(id) = &self.player_list {
                 // Update current player list.
-                player_lists.get(id).queue_update_packets(ctrl)?;
+                player_lists.get(id).send_update_packets(ctrl)?;
             }
         }
 
@@ -1414,10 +1411,15 @@ impl<C: Config> Client<C> {
         });
 
         // Load new chunks within the view distance
-        for pos in chunks_in_view_distance(center, self.view_distance) {
-            if let Some(chunk) = world.chunks.get(pos) {
-                if self.loaded_chunks.insert(pos) {
-                    ctrl.append_packet(&chunk.chunk_data_packet(pos, shared.biomes().len()))?;
+        {
+            let mut scratch = Vec::new();
+            let biome_registry_len = shared.biomes().len();
+
+            for pos in chunks_in_view_distance(center, self.view_distance) {
+                if let Some(chunk) = world.chunks.get(pos) {
+                    if self.loaded_chunks.insert(pos) {
+                        chunk.chunk_data_packet(ctrl, &mut scratch, pos, biome_registry_len)?;
+                    }
                 }
             }
         }
@@ -1476,9 +1478,8 @@ impl<C: Config> Client<C> {
             if let Some(entity) = entities.get(id) {
                 debug_assert!(entity.kind() != EntityKind::Marker);
                 if self.position.distance(entity.position()) <= self.view_distance as f64 * 16.0 {
-                    if let Some(meta) = entity.updated_tracked_data_packet(id) {
-                        let _ = ctrl.append_packet(&meta);
-                    }
+
+                    let _ = entity.send_updated_tracked_data(ctrl, id);
 
                     let position_delta = entity.position() - entity.old_position();
                     let needs_teleport = position_delta.map(f64::abs).reduce_partial_max() >= 8.0;
@@ -1592,14 +1593,12 @@ impl<C: Config> Client<C> {
                     && entity.uuid() != self.uuid
                     && self.loaded_entities.insert(id)
                 {
-                    if let Err(e) = entity.spawn_packets(id, ctrl) {
+                    if let Err(e) = entity.send_spawn_packets(id, ctrl) {
                         return Some(e);
                     }
 
-                    if let Some(meta) = entity.initial_tracked_data_packet(id) {
-                        if let Err(e) = ctrl.append_packet(&meta) {
-                            return Some(e);
-                        }
+                    if let Err(e) = entity.send_initial_tracked_data(ctrl, id) {
+                        return Some(e);
                     }
 
                     if let Err(e) = send_entity_events(ctrl, id.to_network_id(), entity.events()) {

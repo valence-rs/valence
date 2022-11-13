@@ -244,7 +244,7 @@ impl<C: Config> PlayerList<C> {
         self.entries.iter_mut().map(|(k, v)| (*k, v))
     }
 
-    pub(crate) fn queue_initial_packets(
+    pub(crate) fn send_initial_packets(
         &self,
         ctrl: &mut PlayPacketController,
     ) -> anyhow::Result<()> {
@@ -286,11 +286,19 @@ impl<C: Config> PlayerList<C> {
         Ok(())
     }
 
-    pub(crate) fn queue_update_packets(
+    pub(crate) fn send_update_packets(
         &self,
         ctrl: &mut PlayPacketController,
     ) -> anyhow::Result<()> {
-        todo!()
+        if !self.removed.is_empty() {
+            ctrl.append_packet(&PlayerInfo::RemovePlayer(
+                self.removed.iter().cloned().collect(),
+            ))?;
+        }
+
+        // TODO
+
+        Ok(())
     }
 
     /*

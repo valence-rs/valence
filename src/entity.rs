@@ -707,42 +707,42 @@ impl<C: Config> Entity<C> {
         aabb_from_bottom_and_size(self.new_position, dimensions.into())
     }
 
-    /// Gets the tracked data packet to send to clients after this entity has
-    /// been spawned.
-    ///
-    /// Returns `None` if all the tracked data is at its default values.
-    pub(crate) fn initial_tracked_data_packet(
+    /// Queues the tracked data packet to send to clients after this entity has been spawned.
+    pub(crate) fn send_initial_tracked_data(
         &self,
+        ctrl: &mut PlayPacketController,
         this_id: EntityId,
-    ) -> Option<SetEntityMetadata> {
-        // TODO: cache tracked data buffer?
-        self.variants
-            .initial_tracked_data()
-            .map(|meta| SetEntityMetadata {
+    ) -> anyhow::Result<()> {
+        // TODO: cache metadata buffer?
+        if let Some(metadata) = self.variants.initial_tracked_data() {
+            ctrl.append_packet(&SetEntityMetadata {
                 entity_id: VarInt(this_id.to_network_id()),
-                metadata: RawBytes(&meta),
-            })
+                metadata: RawBytes(&metadata)
+            })?;
+        }
+
+        Ok(())
     }
 
-    /// Gets the tracked data packet to send to clients when the entity is
-    /// modified.
-    ///
-    /// Returns `None` if this entity's tracked data has not been modified.
-    pub(crate) fn updated_tracked_data_packet(
+    /// Queues the tracked data packet to send to clients when the entity is modified.
+    pub(crate) fn send_updated_tracked_data(
         &self,
+        ctrl: &mut PlayPacketController,
         this_id: EntityId,
-    ) -> Option<SetEntityMetadata> {
-        // TODO: cache tracked data buffer?
-        self.variants
-            .updated_tracked_data()
-            .map(|meta| SetEntityMetadata {
+    ) -> anyhow::Result<()> {
+        // TODO: cache metadata buffer?
+        if let Some(metadata) = self.variants.updated_tracked_data() {
+            ctrl.append_packet(&SetEntityMetadata {
                 entity_id: VarInt(this_id.to_network_id()),
-                metadata: RawBytes(&meta),
-            })
+                metadata: RawBytes(&metadata)
+            })?;
+        }
+
+        Ok(())
     }
 
     /// Sends the appropriate packets to spawn the entity.
-    pub(crate) fn spawn_packets(
+    pub(crate) fn send_spawn_packets(
         &self,
         this_id: EntityId,
         ctrl: &mut PlayPacketController,

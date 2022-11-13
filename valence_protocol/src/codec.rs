@@ -278,6 +278,16 @@ impl PacketDecoder {
         Ok(Some(packet))
     }
 
+    pub fn has_next_packet(&self) -> Result<bool> {
+        let mut r = &self.buf[self.cursor..];
+
+        match VarInt::decode_partial(&mut r) {
+            Ok(_) => Ok(true),
+            Err(VarIntDecodeError::Incomplete) => Ok(false),
+            Err(VarIntDecodeError::TooLarge) => bail!("malformed packet length VarInt"),
+        }
+    }
+
     #[cfg(feature = "compression")]
     pub fn set_compression(&mut self, enabled: bool) {
         self.compression_enabled = enabled;
