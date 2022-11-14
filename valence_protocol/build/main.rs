@@ -10,7 +10,7 @@ mod enchant;
 mod item;
 
 pub fn main() -> anyhow::Result<()> {
-    println!("cargo:rerun-if-changed=extracted/");
+    println!("cargo:rerun-if-changed=../extracted/");
 
     let generators = [
         (block::build as fn() -> _, "block.rs"),
