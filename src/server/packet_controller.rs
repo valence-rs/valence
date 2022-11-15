@@ -7,8 +7,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::runtime::Handle;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
-use valence_protocol::codec::{PacketDecoder, PacketEncoder};
-use valence_protocol::{Decode, Encode, Packet};
+use valence_protocol::{Decode, Encode, Packet, PacketDecoder, PacketEncoder};
 
 use crate::server::byte_channel::{byte_channel, ByteReceiver, ByteSender, TryRecvError};
 

@@ -10,10 +10,6 @@ pub use bitfield_struct::bitfield;
 pub use event::*;
 use rayon::iter::ParallelIterator;
 use uuid::Uuid;
-use valence_protocol::block_pos::BlockPos;
-use valence_protocol::byte_angle::ByteAngle;
-use valence_protocol::ident::Ident;
-use valence_protocol::item::ItemStack;
 use valence_protocol::packets::c2s::play::ClientCommand;
 use valence_protocol::packets::s2c::play::{
     AcknowledgeBlockChange, ClearTitles, CombatDeath, CustomSoundEffect, DisconnectPlay,
@@ -26,15 +22,14 @@ use valence_protocol::packets::s2c::play::{
     UpdateEntityPositionAndRotation, UpdateEntityRotation, UpdateTime,
 };
 use valence_protocol::packets::C2sPlayPacket;
-use valence_protocol::raw_bytes::RawBytes;
-use valence_protocol::text::Text;
 use valence_protocol::types::{
     Action, AttributeProperty, GameMode, GameStateChangeReason, SoundCategory,
     SyncPlayerPosLookFlags,
 };
-use valence_protocol::username::Username;
-use valence_protocol::var_int::VarInt;
-use valence_protocol::{ident, types, Encode, Packet};
+use valence_protocol::{
+    ident, types, BlockPos, ByteAngle, Encode, Ident, ItemStack, Packet, RawBytes, Text, Username,
+    VarInt,
+};
 use vek::Vec3;
 
 use crate::chunk_pos::ChunkPos;

@@ -4,12 +4,8 @@ use bitfield_struct::bitfield;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valence_nbt::Compound;
-use valence_protocol::text::Text;
 
-use crate::__private::VarInt;
-use crate::block_pos::BlockPos;
-use crate::ident::Ident;
-use crate::{Decode, Encode};
+use crate::{BlockPos, Decode, Encode, Ident, Text, VarInt};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum HandshakeNextState {

@@ -1,8 +1,7 @@
 use std::ops::Range;
 
 use thiserror::Error;
-use valence_protocol::item::ItemStack;
-use valence_protocol::var_int::VarInt;
+use valence_protocol::{ItemStack, VarInt};
 
 use crate::slab_versioned::{Key, VersionedSlab};
 
@@ -277,7 +276,7 @@ pub struct InventoryError;
 
 #[cfg(test)]
 mod test {
-    use valence_protocol::item::{ItemKind, ItemStack};
+    use valence_protocol::{ItemKind, ItemStack};
 
     use super::*;
 

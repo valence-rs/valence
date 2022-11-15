@@ -1,4 +1,4 @@
-use valence_protocol::block_pos::BlockPos;
+use valence_protocol::BlockPos;
 
 /// The X and Z position of a chunk in a world.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]

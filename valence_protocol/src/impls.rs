@@ -10,8 +10,7 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use uuid::Uuid;
 use valence_nbt::Compound;
 
-use crate::var_int::VarInt;
-use crate::{Decode, Encode, Result, MAX_PACKET_SIZE};
+use crate::{Decode, Encode, Result, VarInt, MAX_PACKET_SIZE};
 
 // ==== Primitive ==== //
 

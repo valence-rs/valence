@@ -8,9 +8,7 @@ use serde::de::Visitor;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::byte_counter::ByteCounter;
-use crate::ident::Ident;
-use crate::var_int::VarInt;
-use crate::{Decode, Encode, Result};
+use crate::{Decode, Encode, Ident, Result, VarInt};
 
 /// Represents formatted text in Minecraft's JSON text format.
 ///
