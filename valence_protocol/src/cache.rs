@@ -18,6 +18,7 @@ use crate::{Decode, Encode, Result};
 ///
 /// [`EncodedBuf<T>`]: EncodedBuf
 /// [^note]: Assuming `T` does not use internal mutability.
+#[derive(Debug)]
 pub struct Cached<T> {
     val: T,
     buf: EncodedBuf<T>,
@@ -101,6 +102,7 @@ where
 ///
 /// [`Text`]: crate::text::Text
 /// [`Compound`]: valence_nbt::Compound
+#[derive(Debug)]
 pub struct EncodedBuf<T: ?Sized> {
     buf: Vec<u8>,
     res: Result<()>,

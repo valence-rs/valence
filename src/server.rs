@@ -22,16 +22,15 @@ use tokio::runtime::{Handle, Runtime};
 use tokio::sync::Semaphore;
 use uuid::Uuid;
 use valence_nbt::{compound, Compound, List};
-use valence_protocol::codec::{PacketDecoder, PacketEncoder};
 use valence_protocol::packets::c2s::handshake::HandshakeOwned;
 use valence_protocol::packets::c2s::login::LoginStart;
 use valence_protocol::packets::c2s::status::{PingRequest, StatusRequest};
 use valence_protocol::packets::s2c::login::{DisconnectLogin, LoginSuccess, SetCompression};
 use valence_protocol::packets::s2c::status::{PingResponse, StatusResponse};
 use valence_protocol::types::HandshakeNextState;
-use valence_protocol::username::Username;
-use valence_protocol::var_int::VarInt;
-use valence_protocol::{ident, MINECRAFT_VERSION, PROTOCOL_VERSION};
+use valence_protocol::{
+    ident, PacketDecoder, PacketEncoder, Username, VarInt, MINECRAFT_VERSION, PROTOCOL_VERSION,
+};
 
 use crate::biome::{validate_biomes, Biome, BiomeId};
 use crate::client::{Client, Clients};

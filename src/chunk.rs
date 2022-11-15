@@ -14,14 +14,10 @@ use std::iter::FusedIterator;
 use paletted_container::PalettedContainer;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use valence_nbt::compound;
-use valence_protocol::block::BlockState;
-use valence_protocol::block_pos::BlockPos;
 use valence_protocol::packets::s2c::play::{
     BlockUpdate, ChunkDataAndUpdateLight, UpdateSectionBlocks,
 };
-use valence_protocol::var_int::VarInt;
-use valence_protocol::var_long::VarLong;
-use valence_protocol::Encode;
+use valence_protocol::{BlockPos, BlockState, Encode, VarInt, VarLong};
 
 use crate::biome::BiomeId;
 pub use crate::chunk_pos::ChunkPos;

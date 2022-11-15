@@ -1,15 +1,11 @@
 use std::time::Duration;
 
-use valence_protocol::block::BlockFace;
-use valence_protocol::block_pos::BlockPos;
 use valence_protocol::entity_meta::Pose;
-use valence_protocol::ident::Ident;
-use valence_protocol::item::ItemStack;
 use valence_protocol::packets::c2s::play::ResourcePackC2s;
 use valence_protocol::types::{
     ChatMode, ClickContainerMode, DisplayedSkinParts, EntityInteraction, Hand, MainHand,
 };
-use valence_protocol::var_int::VarInt;
+use valence_protocol::{BlockFace, BlockPos, Ident, ItemStack, VarInt};
 use vek::Vec3;
 
 use super::Client;

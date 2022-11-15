@@ -9,13 +9,11 @@ use bitfield_struct::bitfield;
 pub use data::{EntityKind, TrackedData};
 use rayon::iter::ParallelIterator;
 use uuid::Uuid;
-use valence_protocol::byte_angle::ByteAngle;
 use valence_protocol::entity_meta::{Facing, PaintingKind, Pose};
 use valence_protocol::packets::s2c::play::{
     SetEntityMetadata, SetHeadRotation, SpawnEntity, SpawnExperienceOrb, SpawnPlayer,
 };
-use valence_protocol::raw_bytes::RawBytes;
-use valence_protocol::var_int::VarInt;
+use valence_protocol::{ByteAngle, RawBytes, VarInt};
 use vek::{Aabb, Vec3};
 
 use crate::config::Config;

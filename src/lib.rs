@@ -140,16 +140,16 @@ pub mod prelude {
     };
     pub use uuid::Uuid;
     pub use valence_nbt::Compound;
-    pub use valence_protocol::block::{BlockKind, BlockState, PropName, PropValue};
-    pub use valence_protocol::block_pos::BlockPos;
+    pub use valence_protocol::block::{PropName, PropValue};
     pub use valence_protocol::entity_meta::Pose;
-    pub use valence_protocol::ident::{Ident, IdentError};
-    pub use valence_protocol::item::{ItemKind, ItemStack};
+    pub use valence_protocol::ident::IdentError;
     pub use valence_protocol::packets::s2c::play::SetTitleAnimationTimes;
-    pub use valence_protocol::text::{Color, Text, TextFormat};
+    pub use valence_protocol::text::Color;
     pub use valence_protocol::types::{GameMode, Hand, SoundCategory};
-    pub use valence_protocol::username::Username;
-    pub use valence_protocol::{ident, MINECRAFT_VERSION, PROTOCOL_VERSION};
+    pub use valence_protocol::{
+        ident, BlockKind, BlockPos, BlockState, Ident, ItemKind, ItemStack, Text, TextFormat,
+        Username, MINECRAFT_VERSION, PROTOCOL_VERSION,
+    };
     pub use vek::{Aabb, Mat2, Mat3, Mat4, Vec2, Vec3, Vec4};
     pub use world::{World, WorldId, WorldMeta, Worlds};
 

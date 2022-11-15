@@ -15,7 +15,6 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
-use valence_protocol::codec::{PacketDecoder, PacketEncoder};
 use valence_protocol::packets::c2s::handshake::Handshake;
 use valence_protocol::packets::c2s::login::{EncryptionResponse, LoginStart};
 use valence_protocol::packets::c2s::play::C2sPlayPacket;
@@ -24,7 +23,7 @@ use valence_protocol::packets::s2c::login::{LoginSuccess, S2cLoginPacket};
 use valence_protocol::packets::s2c::play::S2cPlayPacket;
 use valence_protocol::packets::s2c::status::{PingResponse, StatusResponse};
 use valence_protocol::types::HandshakeNextState;
-use valence_protocol::{Decode, Encode, Packet};
+use valence_protocol::{Decode, Encode, Packet, PacketDecoder, PacketEncoder};
 
 #[derive(Parser, Clone, Debug)]
 #[clap(author, version, about)]

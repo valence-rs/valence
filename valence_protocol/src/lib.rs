@@ -8,8 +8,8 @@
 //! # Examples
 //!
 //! ```
-//! use valence_protocol::codec::{PacketDecoder, PacketEncoder};
 //! use valence_protocol::packets::c2s::play::RenameItem;
+//! use valence_protocol::{PacketDecoder, PacketEncoder};
 //!
 //! let mut enc = PacketEncoder::new();
 //!
@@ -75,31 +75,45 @@ extern crate self as valence_protocol;
 use std::io::Write;
 
 pub use anyhow::{Error, Result};
+pub use block::{BlockFace, BlockKind, BlockState};
+pub use block_pos::BlockPos;
+pub use byte_angle::ByteAngle;
+pub use cache::{Cached, EncodedBuf};
+pub use codec::{PacketDecoder, PacketEncoder};
+pub use ident::Ident;
+pub use item::{ItemKind, ItemStack};
+pub use raw_bytes::RawBytes;
+pub use text::{Text, TextFormat};
+pub use username::Username;
+pub use uuid::Uuid;
 pub use valence_derive::{Decode, Encode, Packet};
-pub use valence_nbt as nbt;
+pub use var_int::VarInt;
+pub use var_long::VarLong;
+pub use {uuid, valence_nbt as nbt};
 
 use crate::byte_counter::ByteCounter;
 
 /// The Minecraft protocol version this library currently targets.
 pub const PROTOCOL_VERSION: i32 = 760;
 
-/// The stringized name of the Minecraft version this library currently targets.
+/// The stringified name of the Minecraft version this library currently
+/// targets.
 pub const MINECRAFT_VERSION: &str = "1.19.2";
 
 pub mod block;
-pub mod block_pos;
-pub mod bounded;
-pub mod byte_angle;
+mod block_pos;
+mod bounded;
+mod byte_angle;
 mod byte_counter;
-pub mod cache;
-pub mod codec;
+mod cache;
+mod codec;
 pub mod enchant;
 pub mod entity_meta;
 pub mod ident;
 mod impls;
-pub mod item;
+mod item;
 pub mod packets;
-pub mod raw_bytes;
+mod raw_bytes;
 pub mod text;
 pub mod types;
 pub mod username;
