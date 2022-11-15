@@ -238,8 +238,8 @@ pub fn build() -> anyhow::Result<TokenStream> {
     let spawn_classes = class_spawn_fields.values();
 
     Ok(quote! {
-        use valence::biome::{Biome,BiomeGrassColorModifier,BiomePrecipitation};
-        use valence::ident::{Ident,IdentError};
+        use valence::biome::{Biome, BiomeGrassColorModifier, BiomePrecipitation};
+        use valence::protocol::ident::{Ident, IdentError};
         use std::str::FromStr;
 
         #[derive(Debug, Clone, PartialEq, Eq, PartialOrd)]
