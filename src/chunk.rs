@@ -575,8 +575,7 @@ impl<C: Config> LoadedChunk<C> {
             chunk_x: pos.x,
             chunk_z: pos.z,
             heightmaps: compound! {
-                // TODO: placeholder heightmap.
-                "MOTION_BLOCKING" => vec![0_i64; 37],
+                // TODO: MOTION_BLOCKING heightmap
             },
             blocks_and_biomes: scratch,
             block_entities: vec![], // TODO
