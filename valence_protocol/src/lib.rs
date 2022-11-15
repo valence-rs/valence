@@ -43,9 +43,6 @@
 //! # Feature Flags
 //!
 //! TODO
-//!
-//! [`PacketEncoder`]: codec::PacketEncoder
-//! [`PacketDecoder`]: codec::PacketDecoder
 
 #![forbid(unsafe_code)]
 #![deny(
@@ -244,8 +241,6 @@ pub trait Encode {
 /// ...]` attribute on the variant in question. Discriminant values are assigned
 /// to variants using rules similar to regular enum discriminants.
 ///
-/// [`VarInt`]: var_int::VarInt
-///
 /// ```
 /// use valence_protocol::Decode;
 ///
@@ -291,8 +286,6 @@ pub trait Decode<'a>: Sized {
 /// A complete packet is data starting with a [`VarInt`] packet ID. [`Encode`]
 /// and [`Decode`] implementations on `Self`, if present, are expected to handle
 /// this leading `VarInt`.
-///
-/// [`VarInt`]: var_int::VarInt
 pub trait Packet {
     /// The name of this packet.
     ///

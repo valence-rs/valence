@@ -86,8 +86,7 @@ where
 /// # Examples
 ///
 /// ```
-/// use valence_protocol::cache::EncodedBuf;
-/// use valence_protocol::Encode;
+/// use valence_protocol::{Encode, EncodedBuf};
 ///
 /// let mut buf1 = Vec::new();
 /// let mut buf2 = Vec::new();
