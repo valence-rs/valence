@@ -2,7 +2,6 @@ use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
-use valence::client::InteractWithEntityKind;
 use valence::prelude::*;
 
 pub fn main() -> ShutdownResult {
@@ -203,11 +202,7 @@ impl Config for Game {
                     Some(ClientEvent::StopSprinting) => {
                         client.state.extra_knockback = false;
                     }
-                    Some(ClientEvent::InteractWithEntity {
-                        id,
-                        kind: InteractWithEntityKind::Attack,
-                        ..
-                    }) => {
+                    Some(ClientEvent::InteractWithEntity { id, .. }) => {
                         if let Some(target) = server.entities.get_mut(id) {
                             if !target.state.attacked
                                 && current_tick - target.state.last_attack_time >= 10

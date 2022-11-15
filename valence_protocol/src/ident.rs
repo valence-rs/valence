@@ -8,11 +8,11 @@ use std::hash::{Hash, Hasher};
 use std::io::Write;
 use std::str::FromStr;
 
+use anyhow::anyhow;
 use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::nbt;
-use crate::protocol::{Decode, Encode};
+use crate::{nbt, Decode, Encode};
 
 /// A wrapper around a string type `S` which guarantees the wrapped string is a
 /// valid resource identifier.
@@ -97,6 +97,18 @@ impl<S: AsRef<str>> Ident<S> {
         }
     }
 
+    /// Consumes the identifier and returns the underlying string.
+    pub fn into_inner(self) -> S {
+        self.string
+    }
+
+    /// Consumes the identifier and returns the underlying string.
+    pub fn get(self) -> S {
+        self.string
+    }
+}
+
+impl<'a, S: ?Sized> Ident<&'a S> {
     /// Converts the underlying string to its owned representation and returns
     /// it as an `Ident`. This operation is infallible and no checks need to be
     /// performed.
@@ -109,16 +121,6 @@ impl<S: AsRef<str>> Ident<S> {
             string: self.string.to_owned(),
             path_start: self.path_start,
         }
-    }
-
-    /// Consumes the identifier and returns the underlying string.
-    pub fn into_inner(self) -> S {
-        self.string
-    }
-
-    /// Consumes the identifier and returns the underlying string.
-    pub fn get(self) -> S {
-        self.string
     }
 }
 
@@ -225,7 +227,7 @@ where
 }
 
 impl<S: Encode> Encode for Ident<S> {
-    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+    fn encode(&self, w: impl Write) -> anyhow::Result<()> {
         self.string.encode(w)
     }
 
@@ -234,12 +236,12 @@ impl<S: Encode> Encode for Ident<S> {
     }
 }
 
-impl<S> Decode for Ident<S>
+impl<'a, S> Decode<'a> for Ident<S>
 where
-    S: Decode + AsRef<str> + Send + Sync + 'static,
+    S: Decode<'a> + AsRef<str>,
 {
-    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
-        Ok(Ident::new(S::decode(r)?)?)
+    fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
+        Ident::new(S::decode(r)?).map_err(|e| anyhow!("{e:#}"))
     }
 }
 
@@ -292,7 +294,7 @@ impl<S> Error for IdentError<S> where S: AsRef<str> {}
 /// # Examples
 ///
 /// ```
-/// use valence::ident;
+/// use valence_protocol::ident;
 ///
 /// let namespace = "my_namespace";
 /// let path = "my_path";

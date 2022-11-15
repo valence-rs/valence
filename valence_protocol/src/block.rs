@@ -1,16 +1,13 @@
-//! Blocks and related types.
+#![allow(clippy::all)] // TODO: block build script creates many warnings.
 
-#![allow(clippy::all, missing_docs)]
-
-use std::fmt::{self, Display};
+use std::fmt;
+use std::fmt::Display;
 use std::io::Write;
 use std::iter::FusedIterator;
 
 use anyhow::Context;
 
-pub use crate::block_pos::BlockPos;
-use crate::item::ItemKind;
-use crate::protocol::{Decode, Encode, VarInt};
+use crate::{Decode, Encode, ItemKind, Result, VarInt};
 
 include!(concat!(env!("OUT_DIR"), "/block.rs"));
 
@@ -53,7 +50,7 @@ fn fmt_block_state(bs: BlockState, f: &mut fmt::Formatter) -> fmt::Result {
 }
 
 impl Encode for BlockState {
-    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+    fn encode(&self, w: impl Write) -> Result<()> {
         VarInt(self.0 as i32).encode(w)
     }
 
@@ -62,13 +59,29 @@ impl Encode for BlockState {
     }
 }
 
-impl Decode for BlockState {
-    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
+impl Decode<'_> for BlockState {
+    fn decode(r: &mut &[u8]) -> Result<Self> {
         let id = VarInt::decode(r)?.0;
         let errmsg = "invalid block state ID";
 
         BlockState::from_raw(id.try_into().context(errmsg)?).context(errmsg)
     }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
+pub enum BlockFace {
+    /// -Y
+    Bottom,
+    /// +Y
+    Top,
+    /// -Z
+    North,
+    /// +Z
+    South,
+    /// -X
+    West,
+    /// +X
+    East,
 }
 
 #[cfg(test)]

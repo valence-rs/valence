@@ -2,8 +2,8 @@ use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
-use valence::entity::types::{Facing, PaintingKind, Pose};
 use valence::prelude::*;
+use valence_protocol::entity_meta::{Facing, PaintingKind};
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()

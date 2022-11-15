@@ -5,10 +5,11 @@ use std::fmt::Formatter;
 use std::io::Write;
 use std::str::FromStr;
 
+use anyhow::anyhow;
 use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::protocol::{Decode, Encode};
+use crate::{Decode, Encode, Result};
 
 /// A newtype wrapper around a string type `S` which guarantees the wrapped
 /// string meets the criteria for a valid Minecraft username.
@@ -26,7 +27,7 @@ use crate::protocol::{Decode, Encode};
 /// # Examples
 ///
 /// ```
-/// use valence::prelude::*;
+/// use valence_protocol::username::Username;
 ///
 /// assert!(Username::new("00a").is_ok());
 /// assert!(Username::new("jeb_").is_ok());
@@ -58,16 +59,18 @@ impl<S: AsRef<str>> Username<S> {
         Username(self.0.as_ref())
     }
 
+    pub fn into_inner(self) -> S {
+        self.0
+    }
+}
+
+impl<'a, S: ?Sized> Username<&'a S> {
     pub fn to_owned_username(&self) -> Username<S::Owned>
     where
         S: ToOwned,
         S::Owned: AsRef<str>,
     {
         Username(self.0.to_owned())
-    }
-
-    pub fn into_inner(self) -> S {
-        self.0
     }
 }
 
@@ -127,7 +130,7 @@ impl<S> Encode for Username<S>
 where
     S: Encode,
 {
-    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+    fn encode(&self, w: impl Write) -> Result<()> {
         self.0.encode(w)
     }
 
@@ -136,12 +139,12 @@ where
     }
 }
 
-impl<S> Decode for Username<S>
+impl<'a, S> Decode<'a> for Username<S>
 where
-    S: Decode + AsRef<str> + Send + Sync + 'static,
+    S: Decode<'a> + AsRef<str>,
 {
-    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
-        Ok(Username::new(S::decode(r)?)?)
+    fn decode(r: &mut &'a [u8]) -> Result<Self> {
+        Username::new(S::decode(r)?).map_err(|e| anyhow!("{e:#}"))
     }
 }
 

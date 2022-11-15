@@ -29,7 +29,7 @@ pub struct EnchantmentSources {
 
 pub fn build() -> anyhow::Result<TokenStream> {
     let enchants: Vec<Enchantment> =
-        serde_json::from_str(include_str!("../extracted/enchants.json"))?;
+        serde_json::from_str(include_str!("../../extracted/enchants.json"))?;
 
     let enchantmentkind_definitions = enchants
         .iter()

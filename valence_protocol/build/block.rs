@@ -62,7 +62,7 @@ struct Shape {
 
 pub fn build() -> anyhow::Result<TokenStream> {
     let TopLevel { blocks, shapes } =
-        serde_json::from_str(include_str!("../extracted/blocks.json"))?;
+        serde_json::from_str(include_str!("../../extracted/blocks.json"))?;
 
     let max_state_id = blocks.iter().map(|b| b.max_state_id()).max().unwrap();
 
@@ -82,7 +82,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .map(|b| {
             let min = b.min_state_id();
             let max = b.max_state_id();
-            let name = ident(&b.name.to_pascal_case());
+            let name = ident(b.name.to_pascal_case());
             quote! {
                 #min..=#max => BlockKind::#name,
             }
@@ -541,19 +541,13 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 #(#shapes,)*
             ];
 
-            pub fn collision_shapes(self) -> impl ExactSizeIterator<Item = vek::Aabb<f64>> + FusedIterator + Clone {
+            pub fn collision_shapes(self) -> impl ExactSizeIterator<Item = [f64; 6]> + FusedIterator + Clone {
                 let shape_idxs: &'static [u16] = match self.0 {
                     #state_to_collision_shapes_arms
                     _ => &[],
                 };
 
-                shape_idxs.iter().map(|idx| {
-                    let [min_x, min_y, min_z, max_x, max_y, max_z] = Self::SHAPES[*idx as usize];
-                    vek::Aabb {
-                        min: vek::Vec3::new(min_x, min_y, min_z),
-                        max: vek::Vec3::new(max_x, max_y, max_z),
-                    }
-                })
+                shape_idxs.into_iter().map(|idx| Self::SHAPES[*idx as usize])
             }
 
             pub const fn luminance(self) -> u8 {

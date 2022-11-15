@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
 use num::Integer;
-use valence::client::{DiggingStatus, Hand};
+use valence::client::DiggingStatus;
 use valence::prelude::*;
 
 pub fn main() -> ShutdownResult {

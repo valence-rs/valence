@@ -3,11 +3,11 @@ use std::io::Write;
 use anyhow::bail;
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
-use crate::protocol::{Decode, Encode};
+use crate::{Decode, Encode, Result};
 
 /// An `i64` encoded with variable length.
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub struct VarLong(pub(crate) i64);
+pub struct VarLong(pub i64);
 
 impl VarLong {
     /// The maximum number of bytes a `VarLong` can occupy when read from and
@@ -16,7 +16,7 @@ impl VarLong {
 }
 
 impl Encode for VarLong {
-    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+    fn encode(&self, mut w: impl Write) -> Result<()> {
         let mut val = self.0 as u64;
         loop {
             if val & 0b1111111111111111111111111111111111111111111111111111111110000000 == 0 {
@@ -36,8 +36,8 @@ impl Encode for VarLong {
     }
 }
 
-impl Decode for VarLong {
-    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
+impl Decode<'_> for VarLong {
+    fn decode(r: &mut &[u8]) -> Result<Self> {
         let mut val = 0;
         for i in 0..Self::MAX_SIZE {
             let byte = r.read_u8()?;

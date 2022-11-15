@@ -1,10 +1,8 @@
 use std::io::Write;
 
 use anyhow::bail;
-use vek::Vec3;
 
-use crate::client::BlockFace;
-use crate::protocol::{Decode, Encode};
+use crate::{BlockFace, Decode, Encode};
 
 /// Represents an absolute block position in world space.
 #[derive(Clone, Copy, Default, PartialEq, Eq, Hash, Debug)]
@@ -21,16 +19,15 @@ impl BlockPos {
     }
 
     /// Returns the block position a point is contained within.
-    pub fn at(pos: impl Into<Vec3<f64>>) -> Self {
-        pos.into().floor().as_::<i32>().into()
+    pub fn at(pos: impl Into<[f64; 3]>) -> Self {
+        pos.into().map(|a| a.floor() as i32).into()
     }
 
     /// Get a new [`BlockPos`] that is adjacent to this position in `dir`
     /// direction.
     ///
-    /// ```rust
-    /// use valence::block::BlockPos;
-    /// use valence::client::BlockFace;
+    /// ```
+    /// use valence_protocol::{BlockFace, BlockPos};
     ///
     /// let pos = BlockPos::new(0, 0, 0);
     /// let adj = pos.get_in_direction(BlockFace::South);
@@ -49,7 +46,7 @@ impl BlockPos {
 }
 
 impl Encode for BlockPos {
-    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
+    fn encode(&self, w: impl Write) -> anyhow::Result<()> {
         match (self.x, self.y, self.z) {
             (-0x2000000..=0x1ffffff, -0x800..=0x7ff, -0x2000000..=0x1ffffff) => {
                 let (x, y, z) = (self.x as u64, self.y as u64, self.z as u64);
@@ -64,7 +61,7 @@ impl Encode for BlockPos {
     }
 }
 
-impl Decode for BlockPos {
+impl Decode<'_> for BlockPos {
     fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         // Use arithmetic right shift to determine sign.
         let val = i64::decode(r)?;
@@ -100,18 +97,6 @@ impl From<[i32; 3]> for BlockPos {
 impl From<BlockPos> for [i32; 3] {
     fn from(pos: BlockPos) -> Self {
         [pos.x, pos.y, pos.z]
-    }
-}
-
-impl From<Vec3<i32>> for BlockPos {
-    fn from(pos: Vec3<i32>) -> Self {
-        Self::new(pos.x, pos.y, pos.z)
-    }
-}
-
-impl From<BlockPos> for Vec3<i32> {
-    fn from(pos: BlockPos) -> Self {
-        Vec3::new(pos.x, pos.y, pos.z)
     }
 }
 

@@ -1,10 +1,11 @@
 use std::ops::Range;
 
 use thiserror::Error;
+use valence_protocol::{ItemStack, VarInt};
 
-use crate::item::ItemStack;
-use crate::protocol::{SlotId, VarInt};
 use crate::slab_versioned::{Key, VersionedSlab};
+
+pub type SlotId = i16;
 
 pub trait Inventory {
     fn slot(&self, slot_id: SlotId) -> Option<&ItemStack>;
@@ -269,14 +270,15 @@ impl Inventories {
     }
 }
 
-#[derive(Debug, Error)]
+#[derive(Copy, Clone, Debug, Error)]
 #[error("InventoryError")]
 pub struct InventoryError;
 
 #[cfg(test)]
 mod test {
+    use valence_protocol::{ItemKind, ItemStack};
+
     use super::*;
-    use crate::item::{ItemKind, ItemStack};
 
     #[test]
     fn test_get_set_slots() {
