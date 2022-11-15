@@ -1,7 +1,7 @@
 use std::io;
 
 use thiserror::Error;
-use valence::ident::{Ident, IdentError};
+use valence::protocol::ident::{Ident, IdentError};
 
 #[derive(Error, Debug)]
 pub enum Error {

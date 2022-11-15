@@ -9,7 +9,7 @@ use tokio::sync::{Mutex, MutexGuard};
 use valence::biome::{Biome, BiomeId};
 use valence::chunk::{ChunkPos, UnloadedChunk};
 use valence::config::Config;
-use valence::ident::Ident;
+use valence::protocol::Ident;
 
 use crate::error::Error;
 

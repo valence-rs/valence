@@ -1,3 +1,4 @@
+use std::fmt::{self, Debug, Formatter};
 use std::io::SeekFrom;
 use std::path::{Path, PathBuf};
 
@@ -6,12 +7,10 @@ use tokio::fs::File;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeek, AsyncSeekExt};
 use tokio::sync::Mutex;
 use valence::biome::BiomeId;
-use valence::block::{BlockKind, BlockState, PropName, PropValue};
 use valence::chunk::{Chunk, ChunkPos, UnloadedChunk};
-use valence::ident::Ident;
 use valence::nbt::{Compound, List, Value};
-use valence::prelude::vek::serde::__private::fmt::{Debug, Result as FmtResult};
-use valence::prelude::vek::serde::__private::Formatter;
+use valence::protocol::block::{BlockKind, BlockState, PropName, PropValue};
+use valence::protocol::Ident;
 
 use crate::compression::CompressionScheme;
 use crate::error::{DataFormatError, Error, NbtFormatError};
@@ -430,7 +429,7 @@ impl ChunkSeekLocation {
 pub struct ChunkTimestamp(u32);
 
 impl Debug for ChunkTimestamp {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}s", self.0)
     }
 }
