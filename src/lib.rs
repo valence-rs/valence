@@ -96,34 +96,27 @@
 pub use async_trait::async_trait;
 #[doc(inline)]
 pub use server::start_server;
+pub use valence_protocol as protocol;
 #[doc(inline)]
 pub use {uuid, valence_nbt as nbt, vek};
 
 pub mod biome;
-pub mod block;
-mod block_pos;
 mod bvh;
 pub mod chunk;
 mod chunk_pos;
 pub mod client;
 pub mod config;
 pub mod dimension;
-pub mod enchant;
 pub mod entity;
-pub mod ident;
 pub mod inventory;
-pub mod item;
 pub mod player_list;
 pub mod player_textures;
 #[doc(hidden)]
-pub mod protocol;
 pub mod server;
 mod slab;
 mod slab_rc;
 mod slab_versioned;
 pub mod spatial_index;
-pub mod text;
-pub mod username;
 pub mod util;
 pub mod world;
 
@@ -131,49 +124,42 @@ pub mod world;
 /// library.
 pub mod prelude {
     pub use biome::{Biome, BiomeId};
-    pub use block::{BlockKind, BlockPos, BlockState, PropName, PropValue};
     pub use chunk::{Chunk, ChunkPos, Chunks, LoadedChunk, UnloadedChunk};
-    pub use client::{handle_event_default, Client, ClientEvent, ClientId, Clients, GameMode};
+    pub use client::{handle_event_default, Client, ClientEvent, ClientId, Clients};
     pub use config::{Config, ConnectionMode, PlayerSampleEntry, ServerListPing};
     pub use dimension::{Dimension, DimensionId};
     pub use entity::{Entities, Entity, EntityEvent, EntityId, EntityKind, TrackedData};
-    pub use ident::{Ident, IdentError};
     pub use inventory::{
-        ConfigurableInventory, Inventories, Inventory, InventoryId, PlayerInventory,
+        ConfigurableInventory, Inventories, Inventory, InventoryId, PlayerInventory, SlotId,
     };
-    pub use item::{ItemKind, ItemStack};
     pub use player_list::{PlayerList, PlayerListEntry, PlayerListId, PlayerLists};
     pub use server::{NewClientData, Server, SharedServer, ShutdownResult};
     pub use spatial_index::{RaycastHit, SpatialIndex};
-    pub use text::{Color, Text, TextFormat};
-    pub use username::Username;
     pub use util::{
         chunks_in_view_distance, from_yaw_and_pitch, is_chunk_in_view_distance, to_yaw_and_pitch,
     };
     pub use uuid::Uuid;
     pub use valence_nbt::Compound;
+    pub use valence_protocol::block::{PropName, PropValue};
+    pub use valence_protocol::entity_meta::Pose;
+    pub use valence_protocol::ident::IdentError;
+    pub use valence_protocol::packets::s2c::play::SetTitleAnimationTimes;
+    pub use valence_protocol::text::Color;
+    pub use valence_protocol::types::{GameMode, Hand, SoundCategory};
+    pub use valence_protocol::{
+        ident, BlockKind, BlockPos, BlockState, Ident, ItemKind, ItemStack, Text, TextFormat,
+        Username, MINECRAFT_VERSION, PROTOCOL_VERSION,
+    };
     pub use vek::{Aabb, Mat2, Mat3, Mat4, Vec2, Vec3, Vec4};
     pub use world::{World, WorldId, WorldMeta, Worlds};
 
     use super::*;
-    pub use crate::{
-        async_trait, ident, nbt, vek, Ticks, LIBRARY_NAMESPACE, PROTOCOL_VERSION, STANDARD_TPS,
-        VERSION_NAME,
-    };
+    pub use crate::{async_trait, nbt, vek, Ticks, STANDARD_TPS};
 }
 
-/// The Minecraft protocol version this library currently targets.
-pub const PROTOCOL_VERSION: i32 = 760;
-
-/// The name of the Minecraft version this library currently targets, e.g.
-/// "1.8.2"
-pub const VERSION_NAME: &str = "1.19.2";
-
 /// The namespace for this library used internally for
-/// [identifiers](crate::ident::Ident).
-///
-/// You should avoid using this namespace in your own identifiers.
-pub const LIBRARY_NAMESPACE: &str = "valence";
+/// [identifiers](valence_protocol::ident::Ident).
+const LIBRARY_NAMESPACE: &str = "valence";
 
 /// The most recent version of the [Velocity] proxy which has been tested to
 /// work with Valence. The elements of the tuple are (major, minor, patch)

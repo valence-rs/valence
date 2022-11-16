@@ -22,6 +22,15 @@ use tokio::runtime::{Handle, Runtime};
 use tokio::sync::Semaphore;
 use uuid::Uuid;
 use valence_nbt::{compound, Compound, List};
+use valence_protocol::packets::c2s::handshake::HandshakeOwned;
+use valence_protocol::packets::c2s::login::LoginStart;
+use valence_protocol::packets::c2s::status::{PingRequest, StatusRequest};
+use valence_protocol::packets::s2c::login::{DisconnectLogin, LoginSuccess, SetCompression};
+use valence_protocol::packets::s2c::status::{PingResponse, StatusResponse};
+use valence_protocol::types::HandshakeNextState;
+use valence_protocol::{
+    ident, PacketDecoder, PacketEncoder, Username, VarInt, MINECRAFT_VERSION, PROTOCOL_VERSION,
+};
 
 use crate::biome::{validate_biomes, Biome, BiomeId};
 use crate::client::{Client, Clients};
@@ -31,17 +40,9 @@ use crate::entity::Entities;
 use crate::inventory::Inventories;
 use crate::player_list::PlayerLists;
 use crate::player_textures::SignedPlayerTextures;
-use crate::protocol::codec::{PacketDecoder, PacketEncoder};
-use crate::protocol::packets::c2s::handshake::{Handshake, HandshakeNextState};
-use crate::protocol::packets::c2s::login::LoginStart;
-use crate::protocol::packets::c2s::status::{PingRequest, StatusRequest};
-use crate::protocol::packets::s2c::login::{DisconnectLogin, LoginSuccess, SetCompression};
-use crate::protocol::packets::s2c::status::{PingResponse, StatusResponse};
-use crate::protocol::VarInt;
 use crate::server::packet_controller::InitialPacketController;
-use crate::username::Username;
 use crate::world::Worlds;
-use crate::{ident, Ticks, PROTOCOL_VERSION, VERSION_NAME};
+use crate::Ticks;
 
 mod byte_channel;
 mod login;
@@ -88,8 +89,10 @@ struct SharedServerInner<C: Config> {
     max_connections: usize,
     incoming_capacity: usize,
     outgoing_capacity: usize,
+    /// The tokio handle used by the server.
     tokio_handle: Handle,
-    /// Store this here so we don't drop it.
+    /// Holding a runtime handle is not enough to keep tokio working. We need
+    /// to store the runtime here so we don't drop it.
     _tokio_runtime: Option<Runtime>,
     dimensions: Vec<Dimension>,
     biomes: Vec<Biome>,
@@ -254,8 +257,8 @@ impl<C: Config> SharedServer<C> {
 
 /// Consumes the configuration and starts the server.
 ///
-/// The function returns once the server has shut down, a runtime error
-/// occurs, or the configuration is found to be invalid.
+/// This function blocks the current thread and returns once the server has shut
+/// down, a runtime error occurs, or the configuration is found to be invalid.
 pub fn start_server<C: Config>(config: C, data: C::ServerState) -> ShutdownResult {
     let shared = setup_server(config)
         .context("failed to initialize server")
@@ -380,7 +383,7 @@ fn make_registry_codec(dimensions: &[Dimension], biomes: &[Biome]) -> Compound {
             }
 
         },
-        ident!("chat_type_registry") => compound! {
+        ident!("chat_type") => compound! {
             "type" => ident!("chat_type"),
             "value" => List::Compound(Vec::new()),
         },
@@ -500,7 +503,7 @@ async fn handle_connection(
 
     // TODO: peek stream for 0xFE legacy ping
 
-    let handshake: Handshake = ctrl.recv_packet().await?;
+    let handshake = ctrl.recv_packet::<HandshakeOwned>().await?;
 
     ensure!(
         matches!(server.connection_mode(), ConnectionMode::BungeeCord)
@@ -522,6 +525,7 @@ async fn handle_connection(
                     ctrl: ctrl.into_play_packet_controller(
                         server.0.incoming_capacity,
                         server.0.outgoing_capacity,
+                        server.tokio_handle().clone(),
                     ),
                 };
 
@@ -537,7 +541,7 @@ async fn handle_status(
     server: SharedServer<impl Config>,
     mut ctrl: InitialPacketController<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
-    handshake: Handshake,
+    handshake: HandshakeOwned,
 ) -> anyhow::Result<()> {
     ctrl.recv_packet::<StatusRequest>().await?;
 
@@ -556,7 +560,7 @@ async fn handle_status(
         } => {
             let mut json = json!({
                 "version": {
-                    "name": VERSION_NAME,
+                    "name": MINECRAFT_VERSION,
                     "protocol": PROTOCOL_VERSION
                 },
                 "players": {
@@ -576,7 +580,7 @@ async fn handle_status(
             }
 
             ctrl.send_packet(&StatusResponse {
-                json_response: json.to_string(),
+                json: &json.to_string(),
             })
             .await?;
         }
@@ -595,7 +599,7 @@ async fn handle_login(
     server: &SharedServer<impl Config>,
     ctrl: &mut InitialPacketController<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
-    handshake: Handshake,
+    handshake: HandshakeOwned,
 ) -> anyhow::Result<Option<NewClientData>> {
     if handshake.protocol_version.0 != PROTOCOL_VERSION {
         // TODO: send translated disconnect msg?
@@ -607,6 +611,8 @@ async fn handle_login(
         sig_data: _,   // TODO
         profile_id: _, // TODO
     } = ctrl.recv_packet().await?;
+
+    let username = username.to_owned_username();
 
     let ncd = match server.connection_mode() {
         ConnectionMode::Online => login::online(server, ctrl, remote_addr, username).await?,
@@ -632,7 +638,7 @@ async fn handle_login(
 
     ctrl.send_packet(&LoginSuccess {
         uuid: ncd.uuid,
-        username: ncd.username.clone(),
+        username: ncd.username.as_str_username(),
         properties: Vec::new(),
     })
     .await?;

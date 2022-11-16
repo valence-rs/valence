@@ -5,22 +5,24 @@ use std::{env, fs};
 use anyhow::Context;
 use proc_macro2::{Ident, Span};
 
-mod entity;
-mod entity_event;
+mod block;
+mod enchant;
+mod item;
 
 pub fn main() -> anyhow::Result<()> {
-    println!("cargo:rerun-if-changed=extracted/");
+    println!("cargo:rerun-if-changed=../extracted/");
 
     let generators = [
-        (entity::build as fn() -> _, "entity.rs"),
-        (entity_event::build, "entity_event.rs"),
+        (block::build as fn() -> _, "block.rs"),
+        (item::build, "item.rs"),
+        (enchant::build, "enchant.rs"),
     ];
 
-    let out_dir = env::var_os("OUT_DIR").context("can't get OUT_DIR env var")?;
+    let out_dir = env::var_os("OUT_DIR").context("failed to get OUT_DIR env var")?;
 
-    for (g, file_name) in generators {
+    for (gen, file_name) in generators {
         let path = Path::new(&out_dir).join(file_name);
-        let code = g()?.to_string();
+        let code = gen()?.to_string();
         fs::write(&path, code)?;
 
         // Format the output for debugging purposes.

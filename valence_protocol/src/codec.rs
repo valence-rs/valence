@@ -1,28 +1,24 @@
-use std::io::Read;
-
+#[cfg(feature = "encryption")]
 use aes::cipher::{AsyncStreamCipher, NewCipher};
-use aes::Aes128;
-use anyhow::{bail, ensure, Context};
+use anyhow::{bail, ensure};
 use bytes::{Buf, BufMut, BytesMut};
-use cfb8::Cfb8;
-use flate2::bufread::ZlibDecoder;
-use flate2::write::ZlibEncoder;
-use flate2::Compression;
-use log::log_enabled;
 
-use crate::protocol::packets::{DecodePacket, EncodePacket};
-use crate::protocol::var_int::VarIntDecodeError;
-use crate::protocol::{Decode, Encode, VarInt, MAX_PACKET_SIZE};
+use crate::var_int::{VarInt, VarIntDecodeError};
+use crate::{Decode, Encode, Packet, Result, MAX_PACKET_SIZE};
 
 /// The AES block cipher with a 128 bit key, using the CFB-8 mode of
 /// operation.
-type Cipher = Cfb8<Aes128>;
+#[cfg(feature = "encryption")]
+type Cipher = cfb8::Cfb8<aes::Aes128>;
 
 #[derive(Default)]
 pub struct PacketEncoder {
     buf: BytesMut,
+    #[cfg(feature = "compression")]
     compress_buf: Vec<u8>,
+    #[cfg(feature = "compression")]
     compression_threshold: Option<u32>,
+    #[cfg(feature = "encryption")]
     cipher: Option<Cipher>,
 }
 
@@ -31,30 +27,34 @@ impl PacketEncoder {
         Self::default()
     }
 
-    pub fn append_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
+    pub fn append_packet<P>(&mut self, pkt: &P) -> Result<()>
     where
-        P: EncodePacket + ?Sized,
+        P: Encode + Packet + ?Sized,
     {
         self.append_or_prepend_packet::<true>(pkt)
     }
 
-    pub fn prepend_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
+    pub fn prepend_packet<P>(&mut self, pkt: &P) -> Result<()>
     where
-        P: EncodePacket + ?Sized,
+        P: Encode + Packet + ?Sized,
     {
         self.append_or_prepend_packet::<false>(pkt)
     }
 
     fn append_or_prepend_packet<const APPEND: bool>(
         &mut self,
-        pkt: &(impl EncodePacket + ?Sized),
-    ) -> anyhow::Result<()> {
-        let data_len = pkt.encoded_packet_len();
+        pkt: &(impl Encode + Packet + ?Sized),
+    ) -> Result<()> {
+        let data_len = pkt.encoded_len();
 
+        #[cfg(feature = "compression")]
         if let Some(threshold) = self.compression_threshold {
+            use flate2::write::ZlibEncoder;
+            use flate2::Compression;
+
             if data_len >= threshold as usize {
                 let mut z = ZlibEncoder::new(&mut self.compress_buf, Compression::new(4));
-                pkt.encode_packet(&mut z)?;
+                pkt.encode(&mut z)?;
                 drop(z);
 
                 let packet_len = VarInt(data_len as i32).encoded_len() + self.compress_buf.len();
@@ -96,7 +96,7 @@ impl PacketEncoder {
                 if APPEND {
                     VarInt(packet_len as i32).encode(&mut writer)?;
                     VarInt(0).encode(&mut writer)?; // 0 for no compression on this packet.
-                    pkt.encode_packet(&mut writer)?;
+                    pkt.encode(&mut writer)?;
                 } else {
                     let mut slice = move_forward_by(
                         &mut self.buf,
@@ -105,7 +105,7 @@ impl PacketEncoder {
 
                     VarInt(packet_len as i32).encode(&mut slice)?;
                     VarInt(0).encode(&mut slice)?;
-                    pkt.encode_packet(&mut slice)?;
+                    pkt.encode(&mut slice)?;
 
                     debug_assert!(
                         slice.is_empty(),
@@ -117,36 +117,37 @@ impl PacketEncoder {
                     );
                 }
             }
-        } else {
-            let packet_len = data_len;
 
-            ensure!(
-                packet_len <= MAX_PACKET_SIZE as usize,
-                "packet exceeds maximum length"
+            return Ok(());
+        }
+
+        let packet_len = data_len;
+
+        ensure!(
+            packet_len <= MAX_PACKET_SIZE as usize,
+            "packet exceeds maximum length"
+        );
+
+        if APPEND {
+            let mut writer = (&mut self.buf).writer();
+            VarInt(packet_len as i32).encode(&mut writer)?;
+            pkt.encode(&mut writer)?;
+        } else {
+            let mut slice = move_forward_by(
+                &mut self.buf,
+                VarInt(packet_len as i32).encoded_len() + packet_len,
             );
 
-            if APPEND {
-                let mut writer = (&mut self.buf).writer();
-                VarInt(packet_len as i32).encode(&mut writer)?;
-                pkt.encode_packet(&mut writer)?;
-            } else {
-                let mut slice = move_forward_by(
-                    &mut self.buf,
-                    VarInt(packet_len as i32).encoded_len() + packet_len,
-                );
+            VarInt(packet_len as i32).encode(&mut slice)?;
+            pkt.encode(&mut slice)?;
 
-                VarInt(packet_len as i32).encode(&mut slice)?;
-                pkt.encode_packet(&mut slice)?;
-
-                debug_assert!(
-                    slice.is_empty(),
-                    "actual size of {} packet differs from reported size (actual = {}, reported = \
-                     {})",
-                    pkt.packet_name(),
-                    data_len - slice.len(),
-                    data_len,
-                );
-            }
+            debug_assert!(
+                slice.is_empty(),
+                "actual size of {} packet differs from reported size (actual = {}, reported = {})",
+                pkt.packet_name(),
+                data_len - slice.len(),
+                data_len,
+            );
         }
 
         Ok(())
@@ -155,6 +156,7 @@ impl PacketEncoder {
     /// Takes all the packets written so far and encrypts them if encryption is
     /// enabled.
     pub fn take(&mut self) -> BytesMut {
+        #[cfg(feature = "encryption")]
         if let Some(cipher) = &mut self.cipher {
             cipher.encrypt(&mut self.buf);
         }
@@ -162,14 +164,16 @@ impl PacketEncoder {
         self.buf.split()
     }
 
+    #[cfg(feature = "compression")]
     pub fn set_compression(&mut self, threshold: Option<u32>) {
         self.compression_threshold = threshold;
     }
 
-    /// Enables encryption for all future packets **and any packets that have
+    /// Encrypts all future packets **and any packets that have
     /// not been [taken] yet.**
     ///
     /// [taken]: Self::take
+    #[cfg(feature = "encryption")]
     pub fn enable_encryption(&mut self, key: &[u8; 16]) {
         assert!(self.cipher.is_none(), "encryption is already enabled");
         self.cipher = Some(NewCipher::new(key.into(), key.into()));
@@ -188,8 +192,12 @@ fn move_forward_by(bytes: &mut BytesMut, count: usize) -> &mut [u8] {
 #[derive(Default)]
 pub struct PacketDecoder {
     buf: BytesMut,
+    cursor: usize,
+    #[cfg(feature = "compression")]
     decompress_buf: Vec<u8>,
-    compression: bool,
+    #[cfg(feature = "compression")]
+    compression_enabled: bool,
+    #[cfg(feature = "encryption")]
     cipher: Option<Cipher>,
 }
 
@@ -198,10 +206,13 @@ impl PacketDecoder {
         Self::default()
     }
 
-    pub fn try_next_packet<P>(&mut self) -> anyhow::Result<Option<P>>
+    pub fn try_next_packet<'a, P>(&'a mut self) -> Result<Option<P>>
     where
-        P: DecodePacket,
+        P: Decode<'a> + Packet,
     {
+        self.buf.advance(self.cursor);
+        self.cursor = 0;
+
         let mut r = &self.buf[..];
 
         let packet_len = match VarInt::decode_partial(&mut r) {
@@ -221,7 +232,8 @@ impl PacketDecoder {
 
         r = &r[..packet_len as usize];
 
-        let packet = if self.compression {
+        #[cfg(feature = "compression")]
+        let packet = if self.compression_enabled {
             let data_len = VarInt::decode(&mut r)?.0;
 
             ensure!(
@@ -230,6 +242,11 @@ impl PacketDecoder {
             );
 
             if data_len != 0 {
+                use std::io::Read;
+
+                use anyhow::Context;
+                use flate2::bufread::ZlibDecoder;
+
                 self.decompress_buf.clear();
                 self.decompress_buf.reserve_exact(data_len as usize);
                 let mut z = ZlibDecoder::new(r).take(data_len as u64);
@@ -238,46 +255,58 @@ impl PacketDecoder {
                     .context("decompressing packet")?;
 
                 r = &self.decompress_buf;
-                P::decode_packet(&mut r)?
+                P::decode(&mut r)?
             } else {
-                P::decode_packet(&mut r)?
+                P::decode(&mut r)?
             }
         } else {
-            P::decode_packet(&mut r)?
+            P::decode(&mut r)?
         };
 
-        if !r.is_empty() {
-            if log_enabled!(log::Level::Debug) {
-                log::debug!("packet after partial decode: {packet:?}");
-            }
+        #[cfg(not(feature = "compression"))]
+        let packet = P::decode(&mut r)?;
 
-            bail!(
-                "packet contents were not read completely ({} bytes remain)",
-                r.len()
-            );
-        }
+        ensure!(
+            r.is_empty(),
+            "packet contents were not read completely ({} bytes remain)",
+            r.len()
+        );
 
         let total_packet_len = VarInt(packet_len).encoded_len() + packet_len as usize;
-
-        self.buf.advance(total_packet_len);
+        self.cursor = total_packet_len;
 
         Ok(Some(packet))
     }
 
-    pub fn set_compression(&mut self, compression: bool) {
-        self.compression = compression;
+    pub fn has_next_packet(&self) -> Result<bool> {
+        let mut r = &self.buf[self.cursor..];
+
+        match VarInt::decode_partial(&mut r) {
+            Ok(_) => Ok(true),
+            Err(VarIntDecodeError::Incomplete) => Ok(false),
+            Err(VarIntDecodeError::TooLarge) => bail!("malformed packet length VarInt"),
+        }
     }
 
+    #[cfg(feature = "compression")]
+    pub fn set_compression(&mut self, enabled: bool) {
+        self.compression_enabled = enabled;
+    }
+
+    #[cfg(feature = "encryption")]
     pub fn enable_encryption(&mut self, key: &[u8; 16]) {
         assert!(self.cipher.is_none(), "encryption is already enabled");
 
         let mut cipher = Cipher::new(key.into(), key.into());
         // Don't forget to decrypt the data we already have.
-        cipher.decrypt(&mut self.buf);
+        cipher.decrypt(&mut self.buf[self.cursor..]);
         self.cipher = Some(cipher);
     }
 
     pub fn queue_bytes(&mut self, mut bytes: BytesMut) {
+        #![allow(unused_mut)]
+
+        #[cfg(feature = "encryption")]
         if let Some(cipher) = &mut self.cipher {
             cipher.decrypt(&mut bytes);
         }
@@ -286,8 +315,12 @@ impl PacketDecoder {
     }
 
     pub fn queue_slice(&mut self, bytes: &[u8]) {
+        #[cfg(feature = "encryption")]
         let len = self.buf.len();
+
         self.buf.extend_from_slice(bytes);
+
+        #[cfg(feature = "encryption")]
         if let Some(cipher) = &mut self.cipher {
             cipher.decrypt(&mut self.buf[len..]);
         }
@@ -308,64 +341,63 @@ impl PacketDecoder {
 
 #[cfg(test)]
 mod tests {
-    use std::io::Write;
-
-    use anyhow::Context;
-
     use super::*;
-    use crate::protocol::packets::{DecodePacket, EncodePacket, PacketName};
-    use crate::protocol::{Decode, Encode};
+    use crate::block_pos::BlockPos;
+    use crate::entity_meta::PaintingKind;
+    use crate::ident::Ident;
+    use crate::item::{ItemKind, ItemStack};
+    use crate::text::{Text, TextFormat};
+    use crate::username::Username;
+    use crate::var_long::VarLong;
 
+    #[cfg(feature = "encryption")]
     const CRYPT_KEY: [u8; 16] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 
-    #[derive(Clone, PartialEq, Eq, Debug)]
-    struct TestPacket {
-        string: String,
-        vec_of_u16: Vec<u16>,
-        u64: u64,
+    #[derive(PartialEq, Debug, Encode, Decode, Packet)]
+    #[packet_id = 42]
+    struct TestPacket<'a> {
+        a: bool,
+        b: u8,
+        c: i32,
+        d: f32,
+        e: f64,
+        f: BlockPos,
+        g: PaintingKind,
+        h: Ident<&'a str>,
+        i: Option<ItemStack>,
+        j: Text,
+        k: Username<&'a str>,
+        l: VarInt,
+        m: VarLong,
+        n: &'a str,
+        o: &'a [u8; 10],
+        p: [u128; 3],
     }
 
-    impl PacketName for TestPacket {
-        fn packet_name(&self) -> &'static str {
-            "TestPacket"
-        }
-    }
-
-    impl EncodePacket for TestPacket {
-        fn encode_packet(&self, w: &mut impl Write) -> anyhow::Result<()> {
-            self.string.encode(w)?;
-            self.vec_of_u16.encode(w)?;
-            self.u64.encode(w)
-        }
-
-        fn encoded_packet_len(&self) -> usize {
-            self.string.encoded_len() + self.vec_of_u16.encoded_len() + self.u64.encoded_len()
-        }
-    }
-
-    impl DecodePacket for TestPacket {
-        fn decode_packet(r: &mut &[u8]) -> anyhow::Result<Self> {
-            Ok(TestPacket {
-                string: String::decode(r).context("decoding string field")?,
-                vec_of_u16: Vec::decode(r).context("decoding vec of u16 field")?,
-                u64: u64::decode(r).context("decoding u64 field")?,
-            })
-        }
-    }
-
-    impl TestPacket {
-        fn new(s: impl Into<String>) -> Self {
+    impl<'a> TestPacket<'a> {
+        fn new(n: &'a str) -> Self {
             Self {
-                string: s.into(),
-                vec_of_u16: vec![0x1234, 0xabcd],
-                u64: 0x1122334455667788,
+                a: true,
+                b: 12,
+                c: -999,
+                d: 5.001,
+                e: 1e10,
+                f: BlockPos::new(1, 2, 3),
+                g: PaintingKind::DonkeyKong,
+                h: Ident::new("minecraft:whatever").unwrap(),
+                i: Some(ItemStack::new(ItemKind::WoodenSword, 12, None)),
+                j: "my ".into_text() + "fancy".italic() + " text",
+                k: Username::new("00a").unwrap(),
+                l: VarInt(123),
+                m: VarLong(456),
+                n,
+                o: &[7; 10],
+                p: [123456789; 3],
             }
         }
 
-        fn check(&self, s: impl AsRef<str>) {
-            assert_eq!(&self.string, s.as_ref());
-            assert_eq!(&self.vec_of_u16, &[0x1234, 0xabcd]);
-            assert_eq!(self.u64, 0x1122334455667788);
+        fn check(&self, n: &'a str) {
+            assert_eq!(self, &Self::new(n));
         }
     }
 
@@ -376,9 +408,11 @@ mod tests {
         let mut enc = PacketEncoder::new();
 
         enc.append_packet(&TestPacket::new("first")).unwrap();
+        #[cfg(feature = "compression")]
         enc.set_compression(Some(0));
         enc.append_packet(&TestPacket::new("second")).unwrap();
         buf.unsplit(enc.take());
+        #[cfg(feature = "encryption")]
         enc.enable_encryption(&CRYPT_KEY);
         enc.append_packet(&TestPacket::new("third")).unwrap();
         enc.prepend_packet(&TestPacket::new("fourth")).unwrap();
@@ -391,11 +425,13 @@ mod tests {
             .unwrap()
             .unwrap()
             .check("first");
+        #[cfg(feature = "compression")]
         dec.set_compression(true);
         dec.try_next_packet::<TestPacket>()
             .unwrap()
             .unwrap()
             .check("second");
+        #[cfg(feature = "encryption")]
         dec.enable_encryption(&CRYPT_KEY);
         dec.try_next_packet::<TestPacket>()
             .unwrap()

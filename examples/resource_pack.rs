@@ -2,8 +2,9 @@ use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use log::LevelFilter;
-use valence::client::{InteractWithEntityKind, ResourcePackStatus};
 use valence::prelude::*;
+use valence_protocol::packets::c2s::play::ResourcePackC2s;
+use valence_protocol::types::EntityInteraction;
 
 pub fn main() -> ShutdownResult {
     env_logger::Builder::new()
@@ -160,8 +161,8 @@ impl Config for Game {
 
             while let Some(event) = handle_event_default(client, player) {
                 match event {
-                    ClientEvent::InteractWithEntity { kind, id, .. } => {
-                        if kind == InteractWithEntityKind::Attack
+                    ClientEvent::InteractWithEntity { id, interact, .. } => {
+                        if interact == EntityInteraction::Attack
                             && Some(id) == server.state.sheep_id
                         {
                             set_example_pack(client);
@@ -169,13 +170,13 @@ impl Config for Game {
                     }
                     ClientEvent::ResourcePackStatusChanged(s) => {
                         let message = match s {
-                            ResourcePackStatus::SuccessfullyLoaded => {
+                            ResourcePackC2s::SuccessfullyLoaded => {
                                 "The resource pack was successfully loaded!".color(Color::GREEN)
                             }
-                            ResourcePackStatus::Declined => {
+                            ResourcePackC2s::Declined => {
                                 "You declined the resource pack :(".color(Color::RED)
                             }
-                            ResourcePackStatus::FailedDownload => {
+                            ResourcePackC2s::FailedDownload => {
                                 "The resource pack download failed.".color(Color::RED)
                             }
                             _ => continue,

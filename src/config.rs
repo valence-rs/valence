@@ -7,13 +7,13 @@ use async_trait::async_trait;
 use serde::Serialize;
 use tokio::runtime::Handle as TokioHandle;
 use uuid::Uuid;
+use valence_protocol::text::Text;
+use valence_protocol::username::Username;
+use valence_protocol::MAX_PACKET_SIZE;
 
 use crate::biome::Biome;
 use crate::dimension::Dimension;
-use crate::protocol::MAX_PACKET_SIZE;
 use crate::server::{NewClientData, Server, SharedServer};
-use crate::text::Text;
-use crate::username::Username;
 use crate::{Ticks, STANDARD_TPS};
 
 /// A trait for the configuration of a server.

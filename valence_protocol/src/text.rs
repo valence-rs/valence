@@ -7,8 +7,8 @@ use std::io::Write;
 use serde::de::Visitor;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::ident::Ident;
-use crate::protocol::{BoundedString, Decode, Encode};
+use crate::byte_counter::ByteCounter;
+use crate::{Decode, Encode, Ident, Result, VarInt};
 
 /// Represents formatted text in Minecraft's JSON text format.
 ///
@@ -26,7 +26,7 @@ use crate::protocol::{BoundedString, Decode, Encode};
 ///
 /// With [`TextFormat`] in scope, you can write the following:
 /// ```
-/// use valence::text::{Color, Text, TextFormat};
+/// use valence_protocol::text::{Color, Text, TextFormat};
 ///
 /// let txt = "The text is ".into_text()
 ///     + "Red".color(Color::RED)
@@ -753,21 +753,24 @@ impl fmt::Display for Text {
     }
 }
 
+/// Encode implementation for Text is not very fast. Beware.
 impl Encode for Text {
-    fn encode(&self, w: &mut impl Write) -> anyhow::Result<()> {
-        BoundedString::<0, 262144>(serde_json::to_string(self)?).encode(w)
+    fn encode(&self, w: impl Write) -> Result<()> {
+        serde_json::to_string(self)?.encode(w)
     }
 
     fn encoded_len(&self) -> usize {
-        // TODO: This is obviously not ideal. This will be fixed later.
-        serde_json::to_string(self).map_or(0, |s| s.encoded_len())
+        let mut counter = ByteCounter::new();
+        let _ = serde_json::to_writer(&mut counter, self);
+
+        VarInt(counter.0.try_into().unwrap_or(i32::MAX)).encoded_len() + counter.0
     }
 }
 
-impl Decode for Text {
-    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
-        let string = BoundedString::<0, 262144>::decode(r)?;
-        Ok(serde_json::from_str(&string.0)?)
+impl Decode<'_> for Text {
+    fn decode(r: &mut &[u8]) -> Result<Self> {
+        let string = <&str>::decode(r)?;
+        Ok(serde_json::from_str(string)?)
     }
 }
 
