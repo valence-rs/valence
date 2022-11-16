@@ -20,6 +20,7 @@ use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::{Handle, Runtime};
 use tokio::sync::Semaphore;
+use tracing::{error, info, trace};
 use uuid::Uuid;
 use valence_nbt::{compound, Compound, List};
 use valence_protocol::packets::c2s::handshake::HandshakeOwned;
@@ -445,7 +446,7 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
 }
 
 async fn do_accept_loop(server: SharedServer<impl Config>) {
-    log::trace!("entering accept loop");
+    trace!("entering accept loop");
 
     let listener = match TcpListener::bind(server.0.address).await {
         Ok(listener) => listener,
@@ -462,7 +463,7 @@ async fn do_accept_loop(server: SharedServer<impl Config>) {
                     let server = server.clone();
                     tokio::spawn(async move {
                         if let Err(e) = stream.set_nodelay(true) {
-                            log::error!("failed to set TCP_NODELAY: {e}");
+                            error!("failed to set TCP_NODELAY: {e}");
                         }
 
                         if let Err(e) = handle_connection(server, stream, remote_addr).await {
@@ -471,13 +472,13 @@ async fn do_accept_loop(server: SharedServer<impl Config>) {
                                     return;
                                 }
                             }
-                            log::error!("connection to {remote_addr} ended: {e:#}");
+                            error!("connection to {remote_addr} ended: {e:#}");
                         }
                         drop(permit);
                     });
                 }
                 Err(e) => {
-                    log::error!("failed to accept incoming connection: {e}");
+                    error!("failed to accept incoming connection: {e}");
                 }
             },
             // Closed semaphore indicates server shutdown.
@@ -631,7 +632,7 @@ async fn handle_login(
     }
 
     if let Err(reason) = server.0.cfg.login(server, &ncd).await {
-        log::info!("Disconnect at login: \"{reason}\"");
+        info!("Disconnect at login: \"{reason}\"");
         ctrl.send_packet(&DisconnectLogin { reason }).await?;
         return Ok(None);
     }

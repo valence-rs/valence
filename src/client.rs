@@ -9,6 +9,7 @@ use anyhow::{bail, Context};
 pub use bitfield_struct::bitfield;
 pub use event::*;
 use rayon::iter::ParallelIterator;
+use tracing::{error, info, warn};
 use uuid::Uuid;
 use valence_protocol::packets::c2s::play::ClientCommand;
 use valence_protocol::packets::s2c::play::{
@@ -321,7 +322,7 @@ impl<C: Config> Client<C> {
     {
         if let Some(ctrl) = &mut self.ctrl {
             if let Err(e) = ctrl.append_packet(pkt) {
-                log::warn!(
+                warn!(
                     "failed to queue packet {} for client {}: {e:#}",
                     pkt.packet_name(),
                     &self.username
@@ -817,7 +818,7 @@ impl<C: Config> Client<C> {
     pub fn disconnect(&mut self, reason: impl Into<Text>) {
         if self.ctrl.is_some() {
             let txt = reason.into();
-            log::info!("disconnecting client '{}': \"{txt}\"", self.username);
+            info!("disconnecting client '{}': \"{txt}\"", self.username);
 
             self.queue_packet(&DisconnectPlay { reason: txt });
 
@@ -829,7 +830,7 @@ impl<C: Config> Client<C> {
     /// displayed.
     pub fn disconnect_no_reason(&mut self) {
         if self.ctrl.is_some() {
-            log::info!("disconnecting client '{}'", self.username);
+            info!("disconnecting client '{}'", self.username);
             self.ctrl = None;
         }
     }
@@ -859,7 +860,7 @@ impl<C: Config> Client<C> {
                     Ok(Some(pkt)) => {
                         let name = pkt.packet_name();
                         if let Err(e) = self.handle_serverbound_packet(entities, pkt) {
-                            log::error!(
+                            error!(
                                 "failed to handle {name} packet from client {}: {e:#}",
                                 &self.username
                             );
@@ -871,7 +872,7 @@ impl<C: Config> Client<C> {
                         return;
                     }
                     Err(e) => {
-                        log::error!(
+                        error!(
                             "failed to read next serverbound packet from client {}: {e:#}",
                             &self.username
                         );
@@ -1175,7 +1176,7 @@ impl<C: Config> Client<C> {
             ) {
                 Ok(()) => self.ctrl = Some(ctrl),
                 Err(e) => {
-                    log::warn!("error updating client '{}': {e:#}", &self.username);
+                    warn!("error updating client '{}': {e:#}", &self.username);
                 }
             }
         }
