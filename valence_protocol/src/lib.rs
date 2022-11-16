@@ -114,16 +114,15 @@ mod raw_bytes;
 pub mod text;
 pub mod types;
 pub mod username;
-pub mod var_int;
-pub mod var_long;
+mod var_int;
+mod var_long;
 
 /// Used only by proc macros. Not public API.
 #[doc(hidden)]
 pub mod __private {
     pub use anyhow::{anyhow, bail, ensure, Context, Result};
 
-    pub use crate::var_int::VarInt;
-    pub use crate::{Decode, DerivedPacketDecode, DerivedPacketEncode, Encode};
+    pub use crate::{Decode, DerivedPacketDecode, DerivedPacketEncode, Encode, VarInt};
 }
 
 /// The maximum number of bytes in a single Minecraft packet.

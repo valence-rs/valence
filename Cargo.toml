@@ -51,7 +51,7 @@ default-features = false
 features = ["rustls-tls", "json"]
 
 [dev-dependencies]
-env_logger = "0.9.1"
+tracing-subscriber = "0.3.16"
 noise = "0.7.0"
 
 [build-dependencies]

@@ -9,7 +9,7 @@ use anyhow::{bail, Context};
 pub use bitfield_struct::bitfield;
 pub use event::*;
 use rayon::iter::ParallelIterator;
-use tracing::{error, info, warn};
+use tracing::{error, info, instrument, warn};
 use uuid::Uuid;
 use valence_protocol::packets::c2s::play::ClientCommand;
 use valence_protocol::packets::s2c::play::{
@@ -82,14 +82,24 @@ impl<C: Config> Clients<C> {
     /// and the client is deleted. Otherwise, `None` is returned and the
     /// function has no effect.
     pub fn remove(&mut self, client: ClientId) -> Option<C::ClientState> {
-        self.slab.remove(client.0).map(|c| c.state)
+        self.slab.remove(client.0).map(|c| {
+            info!(username = %c.username, uuid = %c.uuid, "removing client");
+            c.state
+        })
     }
 
     /// Deletes all clients from the server for which `f` returns `false`.
     ///
     /// All clients are visited in an unspecified order.
     pub fn retain(&mut self, mut f: impl FnMut(ClientId, &mut Client<C>) -> bool) {
-        self.slab.retain(|k, v| f(ClientId(k), v))
+        self.slab.retain(|k, v| {
+            if !f(ClientId(k), v) {
+                info!(username = %v.username, uuid = %v.uuid, "removing client");
+                false
+            } else {
+                true
+            }
+        })
     }
 
     /// Returns the number of clients on the server. This includes clients for
@@ -323,9 +333,9 @@ impl<C: Config> Client<C> {
         if let Some(ctrl) = &mut self.ctrl {
             if let Err(e) = ctrl.append_packet(pkt) {
                 warn!(
-                    "failed to queue packet {} for client {}: {e:#}",
-                    pkt.packet_name(),
-                    &self.username
+                    username = %self.username,
+                    uuid = %self.uuid,
+                    "failed to queue packet: {e:#}"
                 );
                 self.ctrl = None;
             }
@@ -1157,6 +1167,7 @@ impl<C: Config> Client<C> {
         Ok(())
     }
 
+    #[instrument(skip_all, fields(username = %self.username, uuid = %self.uuid))]
     pub(crate) fn update(
         &mut self,
         shared: &SharedServer<C>,
@@ -1176,7 +1187,7 @@ impl<C: Config> Client<C> {
             ) {
                 Ok(()) => self.ctrl = Some(ctrl),
                 Err(e) => {
-                    warn!("error updating client '{}': {e:#}", &self.username);
+                    error!("{e:#}");
                 }
             }
         }
@@ -1198,7 +1209,7 @@ impl<C: Config> Client<C> {
     ) -> anyhow::Result<()> {
         let world = match worlds.get(self.world) {
             Some(world) => world,
-            None => bail!("client is in an invalid world and must be disconnected",),
+            None => bail!("client is in an invalid world and must be disconnected"),
         };
 
         let current_tick = shared.current_tick();

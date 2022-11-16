@@ -7,7 +7,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::runtime::Handle;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
-use tracing::warn;
+use tracing::debug;
 use valence_protocol::{Decode, Encode, Packet, PacketDecoder, PacketEncoder};
 
 use crate::server::byte_channel::{byte_channel, ByteReceiver, ByteSender, TryRecvError};
@@ -130,7 +130,7 @@ where
                 match self.reader.read_buf(&mut buf).await {
                     Ok(0) => break,
                     Err(e) => {
-                        warn!("error reading packet data: {e}");
+                        debug!("error reading packet data: {e}");
                         break;
                     }
                     _ => {}
@@ -138,7 +138,7 @@ where
 
                 // This should always be an O(1) unsplit because we reserved space earlier.
                 if let Err(e) = incoming_sender.send_async(buf).await {
-                    warn!("error sending packet data: {e}");
+                    debug!("error sending packet data: {e}");
                     break;
                 }
             }
@@ -151,13 +151,13 @@ where
                 let bytes = match outgoing_receiver.recv_async().await {
                     Ok(bytes) => bytes,
                     Err(e) => {
-                        warn!("error receiving packet data: {e}");
+                        debug!("error receiving packet data: {e}");
                         break;
                     }
                 };
 
                 if let Err(e) = self.writer.write_all(&bytes).await {
-                    warn!("error writing packet data: {e}");
+                    debug!("error writing packet data: {e}");
                 }
             }
         });
