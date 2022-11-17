@@ -2,8 +2,7 @@ use std::array;
 use std::io::Write;
 
 use arrayvec::ArrayVec;
-use valence_protocol::var_int::VarInt;
-use valence_protocol::Encode;
+use valence_protocol::{Encode, VarInt};
 
 use crate::chunk::{compact_u64s_len, encode_compact_u64s};
 use crate::util::bits_needed;

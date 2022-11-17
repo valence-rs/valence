@@ -1,14 +1,10 @@
 use std::net::SocketAddr;
 use std::time::Instant;
 
-use log::LevelFilter;
 use valence::prelude::*;
 
 pub fn main() -> ShutdownResult {
-    env_logger::Builder::new()
-        .filter_module("valence", LevelFilter::Trace)
-        .parse_default_env()
-        .init();
+    tracing_subscriber::fmt().init();
 
     valence::start_server(
         Game,
@@ -119,8 +115,6 @@ impl Config for Game {
 
         server.clients.retain(|_, client| {
             if client.created_this_tick() {
-                log::info!("Client \"{}\" joined", client.username());
-
                 client.spawn(world_id);
                 client.set_flat(true);
                 client.teleport([0.0, 1.0, 0.0], 0.0, 0.0);
@@ -152,8 +146,6 @@ impl Config for Game {
             }
 
             if client.is_disconnected() {
-                log::info!("Client \"{}\" disconnected", client.username());
-
                 if WITH_PLAYER_ENTITIES {
                     if let Some(id) = &server.state.player_list {
                         server.player_lists.get_mut(id).remove(client.uuid());

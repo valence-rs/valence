@@ -9,6 +9,7 @@ use anyhow::{bail, Context};
 pub use bitfield_struct::bitfield;
 pub use event::*;
 use rayon::iter::ParallelIterator;
+use tracing::{error, info, warn};
 use uuid::Uuid;
 use valence_protocol::packets::c2s::play::ClientCommand;
 use valence_protocol::packets::s2c::play::{
@@ -81,14 +82,24 @@ impl<C: Config> Clients<C> {
     /// and the client is deleted. Otherwise, `None` is returned and the
     /// function has no effect.
     pub fn remove(&mut self, client: ClientId) -> Option<C::ClientState> {
-        self.slab.remove(client.0).map(|c| c.state)
+        self.slab.remove(client.0).map(|c| {
+            info!(username = %c.username, uuid = %c.uuid, "removing client");
+            c.state
+        })
     }
 
     /// Deletes all clients from the server for which `f` returns `false`.
     ///
     /// All clients are visited in an unspecified order.
     pub fn retain(&mut self, mut f: impl FnMut(ClientId, &mut Client<C>) -> bool) {
-        self.slab.retain(|k, v| f(ClientId(k), v))
+        self.slab.retain(|k, v| {
+            if !f(ClientId(k), v) {
+                info!(username = %v.username, uuid = %v.uuid, "removing client");
+                false
+            } else {
+                true
+            }
+        })
     }
 
     /// Returns the number of clients on the server. This includes clients for
@@ -321,10 +332,10 @@ impl<C: Config> Client<C> {
     {
         if let Some(ctrl) = &mut self.ctrl {
             if let Err(e) = ctrl.append_packet(pkt) {
-                log::warn!(
-                    "failed to queue packet {} for client {}: {e:#}",
-                    pkt.packet_name(),
-                    &self.username
+                warn!(
+                    username = %self.username,
+                    uuid = %self.uuid,
+                    "failed to queue packet: {e:#}"
                 );
                 self.ctrl = None;
             }
@@ -817,7 +828,7 @@ impl<C: Config> Client<C> {
     pub fn disconnect(&mut self, reason: impl Into<Text>) {
         if self.ctrl.is_some() {
             let txt = reason.into();
-            log::info!("disconnecting client '{}': \"{txt}\"", self.username);
+            info!("disconnecting client '{}': \"{txt}\"", self.username);
 
             self.queue_packet(&DisconnectPlay { reason: txt });
 
@@ -829,7 +840,7 @@ impl<C: Config> Client<C> {
     /// displayed.
     pub fn disconnect_no_reason(&mut self) {
         if self.ctrl.is_some() {
-            log::info!("disconnecting client '{}'", self.username);
+            info!("disconnecting client '{}'", self.username);
             self.ctrl = None;
         }
     }
@@ -859,7 +870,7 @@ impl<C: Config> Client<C> {
                     Ok(Some(pkt)) => {
                         let name = pkt.packet_name();
                         if let Err(e) = self.handle_serverbound_packet(entities, pkt) {
-                            log::error!(
+                            error!(
                                 "failed to handle {name} packet from client {}: {e:#}",
                                 &self.username
                             );
@@ -871,7 +882,7 @@ impl<C: Config> Client<C> {
                         return;
                     }
                     Err(e) => {
-                        log::error!(
+                        error!(
                             "failed to read next serverbound packet from client {}: {e:#}",
                             &self.username
                         );
@@ -1175,7 +1186,11 @@ impl<C: Config> Client<C> {
             ) {
                 Ok(()) => self.ctrl = Some(ctrl),
                 Err(e) => {
-                    log::warn!("error updating client '{}': {e:#}", &self.username);
+                    error!(
+                        username = %self.username,
+                        uuid = %self.uuid,
+                        "error updating client: {e:#}"
+                    );
                 }
             }
         }
@@ -1197,7 +1212,7 @@ impl<C: Config> Client<C> {
     ) -> anyhow::Result<()> {
         let world = match worlds.get(self.world) {
             Some(world) => world,
-            None => bail!("client is in an invalid world and must be disconnected",),
+            None => bail!("client is in an invalid world and must be disconnected"),
         };
 
         let current_tick = shared.current_tick();

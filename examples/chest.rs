@@ -1,16 +1,12 @@
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use log::LevelFilter;
 use num::Integer;
 use valence::prelude::*;
-use valence_protocol::var_int::VarInt;
+use valence::protocol::VarInt;
 
 pub fn main() -> ShutdownResult {
-    env_logger::Builder::new()
-        .filter_module("valence", LevelFilter::Trace)
-        .parse_default_env()
-        .init();
+    tracing_subscriber::fmt().init();
 
     valence::start_server(
         Game {
