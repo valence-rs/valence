@@ -2,17 +2,13 @@ use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::SystemTime;
 
-use log::LevelFilter;
 use noise::{NoiseFn, Seedable, SuperSimplex};
 use rayon::iter::ParallelIterator;
 pub use valence::prelude::*;
 use vek::Lerp;
 
 pub fn main() -> ShutdownResult {
-    env_logger::Builder::new()
-        .filter_module("valence", LevelFilter::Trace)
-        .parse_default_env()
-        .init();
+    tracing_subscriber::fmt().init();
 
     let seconds_per_day = 86_400;
 

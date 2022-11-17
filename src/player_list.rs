@@ -6,9 +6,8 @@ use std::collections::{HashMap, HashSet};
 use bitfield_struct::bitfield;
 use uuid::Uuid;
 use valence_protocol::packets::s2c::play::{PlayerInfo, SetTabListHeaderAndFooter};
-use valence_protocol::text::Text;
 use valence_protocol::types::{GameMode, PlayerInfoAddPlayer, SignedProperty};
-use valence_protocol::var_int::VarInt;
+use valence_protocol::{Text, VarInt};
 
 use crate::config::Config;
 use crate::player_textures::SignedPlayerTextures;

@@ -3,6 +3,7 @@
 use std::collections::HashSet;
 
 use anyhow::ensure;
+use tracing::warn;
 use valence_nbt::{compound, Compound};
 use valence_protocol::ident;
 use valence_protocol::ident::Ident;
@@ -157,7 +158,7 @@ pub(crate) fn validate_biomes(biomes: &[Biome]) -> anyhow::Result<()> {
     }
 
     if !names.contains(&ident!("plains")) {
-        log::warn!(
+        warn!(
             "A biome named \"plains\" is missing from the biome registry! Due to a bug in the \
              vanilla client, players may not be able to join the game!"
         );

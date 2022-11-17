@@ -20,6 +20,7 @@ use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::{Handle, Runtime};
 use tokio::sync::Semaphore;
+use tracing::{error, info, info_span, instrument, trace, warn};
 use uuid::Uuid;
 use valence_nbt::{compound, Compound, List};
 use valence_protocol::packets::c2s::handshake::HandshakeOwned;
@@ -63,6 +64,7 @@ pub struct Server<C: Config> {
     pub worlds: Worlds<C>,
     /// All of the player lists on the server.
     pub player_lists: PlayerLists<C>,
+    /// All of the inventories on the server.
     pub inventories: Inventories,
 }
 
@@ -276,13 +278,14 @@ pub fn start_server<C: Config>(config: C, data: C::ServerState) -> ShutdownResul
         inventories: Inventories::new(),
     };
 
-    shared.config().init(&mut server);
+    info_span!("configured_init").in_scope(|| shared.config().init(&mut server));
 
     tokio::spawn(do_accept_loop(shared));
 
     do_update_loop(&mut server)
 }
 
+#[instrument(skip_all)]
 fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
     let max_connections = cfg.max_connections();
     let address = cfg.address();
@@ -381,7 +384,6 @@ fn make_registry_codec(dimensions: &[Dimension], biomes: &[Biome]) -> Compound {
                     .map(|(id, biome)| biome.to_biome_registry_item(id as i32))
                     .collect())
             }
-
         },
         ident!("chat_type") => compound! {
             "type" => ident!("chat_type"),
@@ -392,25 +394,36 @@ fn make_registry_codec(dimensions: &[Dimension], biomes: &[Biome]) -> Compound {
 
 fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
     let mut tick_start = Instant::now();
-
+    let mut current_tick = 0;
     let shared = server.shared.clone();
+
     loop {
+        let _span = info_span!("update_loop", tick = current_tick).entered();
+
         if let Some(res) = shared.0.shutdown_result.lock().unwrap().take() {
             return res;
         }
 
         while let Ok(msg) = shared.0.new_clients_rx.try_recv() {
+            info!(
+                username = %msg.ncd.username,
+                uuid = %msg.ncd.uuid,
+                ip = %msg.ncd.remote_addr,
+                "inserting client"
+            );
+
             server
                 .clients
                 .insert(Client::new(msg.ctrl, msg.ncd, Default::default()));
         }
 
         // Get serverbound packets first so they are not dealt with a tick late.
+
         server.clients.par_iter_mut().for_each(|(_, client)| {
             client.handle_serverbound_packets(&server.entities);
         });
 
-        shared.config().update(server);
+        info_span!("configured_update").in_scope(|| shared.config().update(server));
 
         server.worlds.par_iter_mut().for_each(|(id, world)| {
             world.spatial_index.update(&server.entities, id);
@@ -433,6 +446,7 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
         });
 
         server.player_lists.update();
+
         server.inventories.update();
 
         // Sleep for the remainder of the tick.
@@ -440,13 +454,12 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
         thread::sleep(tick_duration.saturating_sub(tick_start.elapsed()));
 
         tick_start = Instant::now();
-        shared.0.tick_counter.fetch_add(1, Ordering::SeqCst);
+        current_tick = shared.0.tick_counter.fetch_add(1, Ordering::SeqCst) + 1;
     }
 }
 
+#[instrument(skip_all)]
 async fn do_accept_loop(server: SharedServer<impl Config>) {
-    log::trace!("entering accept loop");
-
     let listener = match TcpListener::bind(server.0.address).await {
         Ok(listener) => listener,
         Err(e) => {
@@ -461,23 +474,12 @@ async fn do_accept_loop(server: SharedServer<impl Config>) {
                 Ok((stream, remote_addr)) => {
                     let server = server.clone();
                     tokio::spawn(async move {
-                        if let Err(e) = stream.set_nodelay(true) {
-                            log::error!("failed to set TCP_NODELAY: {e}");
-                        }
-
-                        if let Err(e) = handle_connection(server, stream, remote_addr).await {
-                            if let Some(e) = e.downcast_ref::<io::Error>() {
-                                if e.kind() == io::ErrorKind::UnexpectedEof {
-                                    return;
-                                }
-                            }
-                            log::error!("connection to {remote_addr} ended: {e:#}");
-                        }
+                        handle_connection(server, stream, remote_addr).await;
                         drop(permit);
                     });
                 }
                 Err(e) => {
-                    log::error!("failed to accept incoming connection: {e}");
+                    error!("failed to accept incoming connection: {e}");
                 }
             },
             // Closed semaphore indicates server shutdown.
@@ -486,14 +488,21 @@ async fn do_accept_loop(server: SharedServer<impl Config>) {
     }
 }
 
+#[instrument(skip(server, stream))]
 async fn handle_connection(
     server: SharedServer<impl Config>,
     stream: TcpStream,
     remote_addr: SocketAddr,
-) -> anyhow::Result<()> {
+) {
+    trace!("handling connection");
+
+    if let Err(e) = stream.set_nodelay(true) {
+        error!("failed to set TCP_NODELAY: {e}");
+    }
+
     let (read, write) = stream.into_split();
 
-    let mut ctrl = InitialPacketController::new(
+    let ctrl = InitialPacketController::new(
         read,
         write,
         PacketEncoder::new(),
@@ -503,6 +512,23 @@ async fn handle_connection(
 
     // TODO: peek stream for 0xFE legacy ping
 
+    if let Err(e) = handle_handshake(server, ctrl, remote_addr).await {
+        // EOF can happen if the client disconnects while joining, which isn't
+        // very erroneous.
+        if let Some(e) = e.downcast_ref::<io::Error>() {
+            if e.kind() == io::ErrorKind::UnexpectedEof {
+                return;
+            }
+        }
+        warn!("connection ended with error: {e:#}");
+    }
+}
+
+async fn handle_handshake(
+    server: SharedServer<impl Config>,
+    mut ctrl: InitialPacketController<OwnedReadHalf, OwnedWriteHalf>,
+    remote_addr: SocketAddr,
+) -> anyhow::Result<()> {
     let handshake = ctrl.recv_packet::<HandshakeOwned>().await?;
 
     ensure!(
@@ -514,10 +540,10 @@ async fn handle_connection(
     match handshake.next_state {
         HandshakeNextState::Status => handle_status(server, ctrl, remote_addr, handshake)
             .await
-            .context("error during status"),
+            .context("error handling status"),
         HandshakeNextState::Login => match handle_login(&server, &mut ctrl, remote_addr, handshake)
             .await
-            .context("error during login")?
+            .context("error handling login")?
         {
             Some(ncd) => {
                 let msg = NewClientMessage {
@@ -631,7 +657,7 @@ async fn handle_login(
     }
 
     if let Err(reason) = server.0.cfg.login(server, &ncd).await {
-        log::info!("Disconnect at login: \"{reason}\"");
+        info!("disconnect at login: \"{reason}\"");
         ctrl.send_packet(&DisconnectLogin { reason }).await?;
         return Ok(None);
     }
