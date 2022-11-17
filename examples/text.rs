@@ -1,13 +1,9 @@
 use std::net::SocketAddr;
 
-use log::LevelFilter;
 use valence::prelude::*;
 
 pub fn main() -> ShutdownResult {
-    env_logger::Builder::new()
-        .filter_module("valence", LevelFilter::Trace)
-        .parse_default_env()
-        .init();
+    tracing_subscriber::fmt().init();
 
     valence::start_server(Game::default(), ServerState::default())
 }
@@ -193,8 +189,12 @@ fn create_world(server: &mut Server<Game>) -> WorldId {
 
     let (world_id, world) = server.worlds.insert(dimension.0, ());
 
-    // Create chunk
-    world.chunks.insert([0, 0], UnloadedChunk::default(), ());
+    // Create chunks
+    for z in -3..3 {
+        for x in -3..3 {
+            world.chunks.insert([x, z], UnloadedChunk::default(), ());
+        }
+    }
 
     // Create platform
     let platform_block = BlockState::GLASS;
