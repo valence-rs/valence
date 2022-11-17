@@ -278,7 +278,7 @@ pub fn start_server<C: Config>(config: C, data: C::ServerState) -> ShutdownResul
         inventories: Inventories::new(),
     };
 
-    info_span!("configured init").in_scope(|| shared.config().init(&mut server));
+    info_span!("configured_init").in_scope(|| shared.config().init(&mut server));
 
     tokio::spawn(do_accept_loop(shared));
 
@@ -399,7 +399,7 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
     let shared = server.shared.clone();
 
     loop {
-        let _span = info_span!("update", tick = current_tick).entered();
+        let _span = info_span!("update_loop", tick = current_tick).entered();
 
         if let Some(res) = shared.0.shutdown_result.lock().unwrap().take() {
             return res;
@@ -419,43 +419,36 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
         }
 
         // Get serverbound packets first so they are not dealt with a tick late.
-        info_span!("handle serverbound packets").in_scope(|| {
-            server.clients.par_iter_mut().for_each(|(_, client)| {
-                client.handle_serverbound_packets(&server.entities);
-            })
+
+        server.clients.par_iter_mut().for_each(|(_, client)| {
+            client.handle_serverbound_packets(&server.entities);
         });
 
-        info_span!("configured update").in_scope(|| shared.config().update(server));
+        info_span!("configured_update").in_scope(|| shared.config().update(server));
 
-        info_span!("update spatial index").in_scope(|| {
-            server.worlds.par_iter_mut().for_each(|(id, world)| {
-                world.spatial_index.update(&server.entities, id);
-            })
+        server.worlds.par_iter_mut().for_each(|(id, world)| {
+            world.spatial_index.update(&server.entities, id);
         });
 
-        info_span!("update clients").in_scope(|| {
-            server.clients.par_iter_mut().for_each(|(_, client)| {
-                client.update(
-                    &shared,
-                    &server.entities,
-                    &server.worlds,
-                    &server.player_lists,
-                    &server.inventories,
-                );
-            })
+        server.clients.par_iter_mut().for_each(|(_, client)| {
+            client.update(
+                &shared,
+                &server.entities,
+                &server.worlds,
+                &server.player_lists,
+                &server.inventories,
+            );
         });
 
-        info_span!("update entites").in_scope(|| server.entities.update());
+        server.entities.update();
 
-        info_span!("update chunks").in_scope(|| {
-            server.worlds.par_iter_mut().for_each(|(_, world)| {
-                world.chunks.update();
-            })
+        server.worlds.par_iter_mut().for_each(|(_, world)| {
+            world.chunks.update();
         });
 
-        info_span!("update player lists").in_scope(|| server.player_lists.update());
+        server.player_lists.update();
 
-        info_span!("update inventories").in_scope(|| server.inventories.update());
+        server.inventories.update();
 
         // Sleep for the remainder of the tick.
         let tick_duration = Duration::from_secs_f64((shared.0.tick_rate as f64).recip());

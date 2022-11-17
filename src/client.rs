@@ -9,7 +9,7 @@ use anyhow::{bail, Context};
 pub use bitfield_struct::bitfield;
 pub use event::*;
 use rayon::iter::ParallelIterator;
-use tracing::{error, info, instrument, warn};
+use tracing::{error, info, warn};
 use uuid::Uuid;
 use valence_protocol::packets::c2s::play::ClientCommand;
 use valence_protocol::packets::s2c::play::{
@@ -1167,7 +1167,6 @@ impl<C: Config> Client<C> {
         Ok(())
     }
 
-    #[instrument(skip_all, fields(username = %self.username, uuid = %self.uuid))]
     pub(crate) fn update(
         &mut self,
         shared: &SharedServer<C>,
@@ -1187,7 +1186,11 @@ impl<C: Config> Client<C> {
             ) {
                 Ok(()) => self.ctrl = Some(ctrl),
                 Err(e) => {
-                    error!("{e:#}");
+                    error!(
+                        username = %self.username,
+                        uuid = %self.uuid,
+                        "error updating client: {e:#}"
+                    );
                 }
             }
         }
