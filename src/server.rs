@@ -392,7 +392,6 @@ fn make_registry_codec(dimensions: &[Dimension], biomes: &[Biome]) -> Compound {
     }
 }
 
-#[instrument(skip_all)]
 fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
     let mut tick_start = Instant::now();
     let mut current_tick = 0;
