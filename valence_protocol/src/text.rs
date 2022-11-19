@@ -848,6 +848,7 @@ fn color_from_str(s: &str) -> Option<Color> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ident;
 
     #[test]
     fn text_round_trip() {
@@ -891,5 +892,85 @@ mod tests {
         let txt = "".into_text() + Text::translate("", []) + ("".italic().color(Color::RED) + "");
         assert!(txt.is_empty());
         assert!(txt.to_string().is_empty());
+    }
+
+    #[test]
+    fn translate() {
+        let txt = Text::translate("key", ["arg1".into(), "arg2".into()]);
+        let serialized = serde_json::to_string(&txt).unwrap();
+        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(
+            serialized,
+            "{\"translate\":\"key\",\"with\":[{\"text\":\"arg1\"},{\"text\":\"arg2\"}]}"
+        );
+        assert_eq!(txt, deserialized);
+    }
+
+    #[test]
+    fn score() {
+        let txt = Text::score("foo", "bar", Some(Cow::from("baz")));
+        let serialized = serde_json::to_string(&txt).unwrap();
+        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(
+            serialized,
+            "{\"score\":{\"name\":\"foo\",\"objective\":\"bar\",\"value\":\"baz\"}}"
+        );
+        assert_eq!(txt, deserialized);
+    }
+
+    #[test]
+    fn selector() {
+        let separator = Text::text("bar").color(Color::RED).bold();
+        let txt = Text::selector("foo", Some(separator));
+        let serialized = serde_json::to_string(&txt).unwrap();
+        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(
+            serialized,
+            "{\"selector\":\"foo\",\"separator\":{\"text\":\"bar\",\"color\":\"#ff5555\",\"bold\":\
+             true}}"
+        );
+        assert_eq!(txt, deserialized);
+    }
+
+    #[test]
+    fn keybind() {
+        let txt = Text::keybind("foo");
+        let serialized = serde_json::to_string(&txt).unwrap();
+        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(serialized, "{\"keybind\":\"foo\"}");
+        assert_eq!(txt, deserialized);
+    }
+
+    #[test]
+    fn block_nbt() {
+        let txt = Text::block_nbt("foo", "bar", Some(true), Some("baz".into()));
+        let serialized = serde_json::to_string(&txt).unwrap();
+        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        let expected = "{\"block\":\"foo\",\"nbt\":\"bar\",\"interpret\":true,\"separator\":{\"\
+                        text\":\"baz\"}}";
+        assert_eq!(serialized, expected);
+        assert_eq!(txt, deserialized);
+    }
+
+    #[test]
+    fn entity_nbt() {
+        let txt = Text::entity_nbt("foo", "bar", Some(true), Some("baz".into()));
+        let serialized = serde_json::to_string(&txt).unwrap();
+        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        let expected = "{\"entity\":\"foo\",\"nbt\":\"bar\",\"interpret\":true,\"separator\":{\"\
+                        text\":\"baz\"}}";
+        assert_eq!(serialized, expected);
+        assert_eq!(txt, deserialized);
+    }
+
+    #[test]
+    fn storage_nbt() {
+        let txt = Text::storage_nbt(ident!("foo"), "bar", Some(true), Some("baz".into()));
+        let serialized = serde_json::to_string(&txt).unwrap();
+        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        let expected = "{\"storage\":\"foo\",\"nbt\":\"bar\",\"interpret\":true,\"separator\":{\"\
+                        text\":\"baz\"}}";
+        assert_eq!(serialized, expected);
+        assert_eq!(txt, deserialized);
     }
 }

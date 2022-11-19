@@ -149,6 +149,10 @@ impl Config for Game {
                 client.send_message(
                     " - Entity NBT: ".into_text() + Text::entity_nbt("{}", "@a", None, None),
                 );
+                client.send_message(
+                    " - Storage NBT: ".into_text()
+                        + Text::storage_nbt(ident!("storage.key"), "@a", None, None),
+                );
 
                 client.send_message(
                     "\n\n↑ ".into_text().bold().color(Color::GOLD)
