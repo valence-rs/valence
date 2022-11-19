@@ -167,11 +167,7 @@ impl Config for Game {
 
             let player = server.entities.get_mut(client.state.entity_id).unwrap();
 
-            while let Some(event) = handle_event_default(client, player) {
-                match event {
-                    _ => {}
-                }
-            }
+            while handle_event_default(client, player).is_some() {}
 
             true
         });
