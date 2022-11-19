@@ -342,12 +342,16 @@ impl Text {
                     w.write_str(translate.as_ref())?;
 
                     if !with.is_empty() {
-                        w.write_char('{')?;
-                        for slot in with {
+                        w.write_char('[')?;
+                        for (i, slot) in with.iter().enumerate() {
+                            if i > 0 {
+                                w.write_str(", ")?;
+                            }
+                            w.write_char(char::from_digit((i + 1) as u32, 10).unwrap_or('?'))?;
+                            w.write_char('=')?;
                             write_string_inner(slot, w)?;
-                            w.write_char(',')?;
                         }
-                        w.write_char('}')?;
+                        w.write_char(']')?;
                     }
                 }
                 TextContent::ScoreboardValue { score } => {
