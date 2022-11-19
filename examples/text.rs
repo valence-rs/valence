@@ -106,36 +106,33 @@ impl Config for Game {
                 client.send_message("\nTranslated Text");
                 client.send_message(
                     " - 'chat.type.advancement.task': ".into_text()
-                        + Text::translate("chat.type.advancement.task"),
+                        + Text::translate("chat.type.advancement.task", []),
                 );
                 client.send_message(
                     " - 'chat.type.advancement.task' with slots: ".into_text()
-                        + Text::translate_with_slots(
+                        + Text::translate(
                             "chat.type.advancement.task",
-                            [Text::text("arg1"), Text::text("arg2")],
+                            ["arg1".into(), "arg2".into()],
                         ),
                 );
 
                 // Scoreboard value example
                 client.send_message("\nScoreboard Values");
-                client.send_message(" - Score: ".into_text() + Text::score("*", "objective"));
+                client.send_message(" - Score: ".into_text() + Text::score("*", "objective", None));
                 client.send_message(
                     " - Score with custom value: ".into_text()
-                        + Text::score_with_value("*", "objective", Some("value")),
+                        + Text::score("*", "objective", Some("value".into())),
                 );
 
                 // Entity names example
-                client.send_message("\nEntity Names");
-                client.send_message(" - Nearest player: ".into_text() + Text::entity_names("@p"));
-                client.send_message(" - Random player: ".into_text() + Text::entity_names("@r"));
-                client.send_message(" - All players: ".into_text() + Text::entity_names("@a"));
-                client.send_message(" - All entities: ".into_text() + Text::entity_names("@e"));
+                client.send_message("\nEntity Names (Selector)");
+                client.send_message(" - Nearest player: ".into_text() + Text::selector("@p", None));
+                client.send_message(" - Random player: ".into_text() + Text::selector("@r", None));
+                client.send_message(" - All players: ".into_text() + Text::selector("@a", None));
+                client.send_message(" - All entities: ".into_text() + Text::selector("@e", None));
                 client.send_message(
                     " - All entities with custom separator: ".into_text()
-                        + Text::entity_names_with_separator(
-                            "@e",
-                            Some(Text::text(", ").color(Color::GOLD)),
-                        ),
+                        + Text::selector("@e", Some(", ".into_text().color(Color::GOLD))),
                 );
 
                 // Keybind example
@@ -147,12 +144,10 @@ impl Config for Game {
                 // NBT examples
                 client.send_message("\nNBT");
                 client.send_message(
-                    " - Block NBT: ".into_text()
-                        + Text::block_nbt("{}", "0 1 0", None, None::<Text>),
+                    " - Block NBT: ".into_text() + Text::block_nbt("{}", "0 1 0", None, None),
                 );
                 client.send_message(
-                    " - Entity NBT: ".into_text()
-                        + Text::entity_nbt("{}", "@a", None, None::<Text>),
+                    " - Entity NBT: ".into_text() + Text::entity_nbt("{}", "@a", None, None),
                 );
 
                 client.send_message(
