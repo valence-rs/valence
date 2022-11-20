@@ -78,7 +78,7 @@ impl Config for Game {
                 let world_id = server.state.world;
 
                 client.set_flat(true);
-                client.spawn(world_id);
+                client.respawn(world_id);
                 client.teleport(SPAWN_POS, -90.0, 0.0);
                 client.set_game_mode(GameMode::Creative);
 

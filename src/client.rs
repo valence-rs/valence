@@ -235,7 +235,6 @@ pub struct Client<C: Config> {
     loaded_entities: HashSet<EntityId>,
     loaded_chunks: HashSet<ChunkPos>,
     game_mode: GameMode,
-    settings: Option<Settings>,
     block_change_sequence: i32,
     pub inventory: PlayerInventory, // TODO: make private or pub(crate)
     pub open_inventory: Option<WindowInventory>, // TODO: make private or pub(crate)
@@ -292,7 +291,6 @@ impl<C: Config> Client<C> {
             loaded_entities: HashSet::new(),
             loaded_chunks: HashSet::new(),
             game_mode: GameMode::Survival,
-            settings: None,
             block_change_sequence: 0,
             inventory: PlayerInventory::new(),
             open_inventory: None,
@@ -782,11 +780,6 @@ impl<C: Config> Client<C> {
             world_age,
             time_of_day,
         });
-    }
-
-    /// Gets the client's current settings.
-    pub fn settings(&self) -> Option<&Settings> {
-        self.settings.as_ref()
     }
 
     /// The slot that the client has selected in their hotbar.
