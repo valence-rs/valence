@@ -414,7 +414,7 @@ impl<C: Config> Client<C> {
     /// Changes the position and rotation of this client in the world it is
     /// located in.
     ///
-    /// If you want to change the client's world, use [`Self::spawn`].
+    /// If you want to change the client's world, use [`Self::respawn`].
     pub fn teleport(&mut self, pos: impl Into<Vec3<f64>>, yaw: f32, pitch: f32) {
         self.position = pos.into();
         self.yaw = yaw;
