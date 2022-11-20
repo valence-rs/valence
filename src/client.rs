@@ -2,6 +2,7 @@
 
 use std::collections::{HashSet, VecDeque};
 use std::iter::FusedIterator;
+use std::net::IpAddr;
 use std::time::Duration;
 use std::{cmp, mem};
 
@@ -28,8 +29,7 @@ use valence_protocol::types::{
     SyncPlayerPosLookFlags,
 };
 use valence_protocol::{
-    ident, types, BlockPos, ByteAngle, Encode, Ident, ItemStack, Packet, RawBytes, Text, Username,
-    VarInt,
+    types, BlockPos, ByteAngle, Encode, Ident, ItemStack, Packet, RawBytes, Text, Username, VarInt,
 };
 use vek::Vec3;
 
@@ -50,7 +50,6 @@ use crate::server::{NewClientData, PlayPacketController, SharedServer};
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::world::{WorldId, Worlds};
-use crate::LIBRARY_NAMESPACE;
 
 /// Contains the [`ClientEvent`] enum and related data types.
 mod event;
@@ -83,7 +82,7 @@ impl<C: Config> Clients<C> {
     /// function has no effect.
     pub fn remove(&mut self, client: ClientId) -> Option<C::ClientState> {
         self.slab.remove(client.0).map(|c| {
-            info!(username = %c.username, uuid = %c.uuid, "removing client");
+            info!(username = %c.username, uuid = %c.uuid, ip = %c.ip, "removing client");
             c.state
         })
     }
@@ -94,7 +93,7 @@ impl<C: Config> Clients<C> {
     pub fn retain(&mut self, mut f: impl FnMut(ClientId, &mut Client<C>) -> bool) {
         self.slab.retain(|k, v| {
             if !f(ClientId(k), v) {
-                info!(username = %v.username, uuid = %v.uuid, "removing client");
+                info!(username = %v.username, uuid = %v.uuid, ip = %v.ip, "removing client");
                 false
             } else {
                 true
@@ -204,8 +203,9 @@ pub struct Client<C: Config> {
     ///
     /// Is `None` when the client is disconnected.
     ctrl: Option<PlayPacketController>,
-    uuid: Uuid,
     username: Username<String>,
+    uuid: Uuid,
+    ip: IpAddr,
     textures: Option<SignedPlayerTextures>,
     /// World client is currently in. Default value is **invalid** and must
     /// be set by calling [`Client::spawn`].
@@ -214,8 +214,6 @@ pub struct Client<C: Config> {
     old_player_list: Option<PlayerListId>,
     position: Vec3<f64>,
     old_position: Vec3<f64>,
-    /// Measured in m/s.
-    velocity: Vec3<f32>,
     /// Measured in degrees
     yaw: f32,
     /// Measured in degrees
@@ -227,8 +225,6 @@ pub struct Client<C: Config> {
     /// confirmation. Inbound client position packets are ignored while this
     /// is nonzero.
     pending_teleports: u32,
-    spawn_position: BlockPos,
-    spawn_position_yaw: f32,
     death_location: Option<(DimensionId, BlockPos)>,
     events: VecDeque<ClientEvent>,
     /// The ID of the last keepalive sent.
@@ -238,40 +234,32 @@ pub struct Client<C: Config> {
     /// sent.
     loaded_entities: HashSet<EntityId>,
     loaded_chunks: HashSet<ChunkPos>,
-    new_game_mode: GameMode,
-    old_game_mode: GameMode,
+    game_mode: GameMode,
     settings: Option<Settings>,
     block_change_sequence: i32,
-    attack_speed: f64,
-    movement_speed: f64,
     pub inventory: PlayerInventory, // TODO: make private or pub(crate)
     pub open_inventory: Option<WindowInventory>, // TODO: make private or pub(crate)
-    bits: ClientBits,
-    /// The data for the client's own player entity.
-    player_data: Player,
-    entity_events: Vec<entity::EntityEvent>,
     /// The item currently being held by the client's cursor in an inventory
     /// screen. Does not work for creative mode.
     pub cursor_held_item: Option<ItemStack>, // TODO: make private or pub(crate)
     selected_hotbar_slot: SlotId,
+    bits: ClientBits,
+    /// The data for the client's own player entity.
+    player_data: Player,
+    entity_events: Vec<entity::EntityEvent>,
 }
 
-#[bitfield(u16)]
+#[bitfield(u8)]
 struct ClientBits {
-    spawn: bool,
-    flat: bool,
+    created_this_tick: bool,
+    respawn: bool,
     teleported_this_tick: bool,
-    /// If spawn_position or spawn_position_yaw were modified this tick.
-    modified_spawn_position: bool,
     /// If the last sent keepalive got a response.
     got_keepalive: bool,
     hardcore: bool,
-    attack_speed_modified: bool,
-    movement_speed_modified: bool,
-    velocity_modified: bool,
-    created_this_tick: bool,
-    view_distance_modified: bool,
-    #[bits(5)]
+    flat: bool,
+    respawn_screen: bool,
+    #[bits(1)]
     _pad: u8,
 }
 
@@ -284,48 +272,44 @@ impl<C: Config> Client<C> {
         Self {
             state,
             ctrl: Some(ctrl),
-            uuid: ncd.uuid,
             username: ncd.username,
+            uuid: ncd.uuid,
+            ip: ncd.remote_addr,
             textures: ncd.textures,
             world: WorldId::default(),
-            old_player_list: None,
             player_list: None,
+            old_player_list: None,
             position: Vec3::default(),
             old_position: Vec3::default(),
-            velocity: Vec3::default(),
             yaw: 0.0,
             pitch: 0.0,
             view_distance: 2,
             teleport_id_counter: 0,
             pending_teleports: 0,
-            spawn_position: BlockPos::default(),
-            spawn_position_yaw: 0.0,
             death_location: None,
             events: VecDeque::new(),
             last_keepalive_id: 0,
             loaded_entities: HashSet::new(),
             loaded_chunks: HashSet::new(),
-            new_game_mode: GameMode::Survival,
-            old_game_mode: GameMode::Survival,
+            game_mode: GameMode::Survival,
             settings: None,
             block_change_sequence: 0,
-            attack_speed: 4.0,
-            movement_speed: 0.7,
             inventory: PlayerInventory::new(),
             open_inventory: None,
+            cursor_held_item: None,
+            selected_hotbar_slot: PlayerInventory::HOTBAR_SLOTS.start,
             bits: ClientBits::new()
-                .with_modified_spawn_position(true)
                 .with_got_keepalive(true)
                 .with_created_this_tick(true),
             player_data: Player::new(),
             entity_events: Vec::new(),
-            cursor_held_item: None,
-            selected_hotbar_slot: PlayerInventory::HOTBAR_SLOTS.start,
         }
     }
 
-    /// Attempts to enqueue a play packet to be sent to this client. Has no
-    /// effect if the client is disconnected.
+    /// Attempts to enqueue a play packet to be sent to this client.
+    ///
+    /// If encoding the packet fails, the client is disconnected. Has no
+    /// effect if the client is already disconnected.
     pub fn queue_packet<P>(&mut self, pkt: &P)
     where
         P: Encode + Packet + ?Sized,
@@ -335,6 +319,7 @@ impl<C: Config> Client<C> {
                 warn!(
                     username = %self.username,
                     uuid = %self.uuid,
+                    ip = %self.ip,
                     "failed to queue packet: {e:#}"
                 );
                 self.ctrl = None;
@@ -399,9 +384,11 @@ impl<C: Config> Client<C> {
     ///
     /// The given [`WorldId`] must be valid. Otherwise, the client is
     /// disconnected.
-    pub fn spawn(&mut self, world: WorldId) {
-        self.world = world;
-        self.bits.set_spawn(true);
+    pub fn respawn(&mut self, world: WorldId) {
+        if self.world != world {
+            self.world = world;
+            self.bits.set_respawn(true);
+        }
     }
 
     /// Sends a system message to the player which is visible in the chat. The
@@ -438,15 +425,12 @@ impl<C: Config> Client<C> {
         self.bits.set_teleported_this_tick(true);
     }
 
-    /// Gets the most recently set velocity of this client in m/s.
-    pub fn velocity(&self) -> Vec3<f32> {
-        self.velocity
-    }
-
     /// Sets the client's velocity in m/s.
     pub fn set_velocity(&mut self, velocity: impl Into<Vec3<f32>>) {
-        self.velocity = velocity.into();
-        self.bits.set_velocity_modified(true);
+        self.queue_packet(&SetEntityVelocity {
+            entity_id: VarInt(0),
+            velocity: velocity_to_packet_units(velocity.into()).into_array(),
+        })
     }
 
     /// Gets this client's yaw.
@@ -459,21 +443,13 @@ impl<C: Config> Client<C> {
         self.pitch
     }
 
-    /// Gets the spawn position. The client will see `minecraft:compass` items
-    /// point at the returned position.
-    pub fn spawn_position(&self) -> BlockPos {
-        self.spawn_position
-    }
-
     /// Sets the spawn position. The client will see `minecraft:compass` items
     /// point at the provided position.
     pub fn set_spawn_position(&mut self, pos: impl Into<BlockPos>, yaw_degrees: f32) {
-        let pos = pos.into();
-        if pos != self.spawn_position || yaw_degrees != self.spawn_position_yaw {
-            self.spawn_position = pos;
-            self.spawn_position_yaw = yaw_degrees;
-            self.bits.set_modified_spawn_position(true);
-        }
+        self.queue_packet(&SetDefaultSpawnPosition {
+            location: pos.into(),
+            angle: yaw_degrees,
+        });
     }
 
     /// Gets the last death location of this client. The client will see
@@ -500,12 +476,21 @@ impl<C: Config> Client<C> {
 
     /// Gets the client's game mode.
     pub fn game_mode(&self) -> GameMode {
-        self.new_game_mode
+        self.game_mode
     }
 
     /// Sets the client's game mode.
     pub fn set_game_mode(&mut self, game_mode: GameMode) {
-        self.new_game_mode = game_mode;
+        if self.game_mode != game_mode {
+            self.game_mode = game_mode;
+
+            if !self.created_this_tick() {
+                self.queue_packet(&GameEvent {
+                    reason: GameStateChangeReason::ChangeGameMode,
+                    value: game_mode as i32 as f32,
+                });
+            }
+        }
     }
 
     /// Sets whether or not the client sees rain.
@@ -561,7 +546,7 @@ impl<C: Config> Client<C> {
             position: (pos.as_() * 8).into_array(),
             volume,
             pitch,
-            seed: 0,
+            seed: rand::random(),
         });
     }
 
@@ -596,30 +581,28 @@ impl<C: Config> Client<C> {
         self.queue_packet(&SetActionBarText(text.into()));
     }
 
-    /// Gets the attack cooldown speed.
-    pub fn attack_speed(&self) -> f64 {
-        self.attack_speed
-    }
-
     /// Sets the attack cooldown speed.
     pub fn set_attack_speed(&mut self, speed: f64) {
-        if self.attack_speed != speed {
-            self.attack_speed = speed;
-            self.bits.set_attack_speed_modified(true);
-        }
-    }
-
-    /// Gets the speed at which the client can run on the ground.
-    pub fn movement_speed(&self) -> f64 {
-        self.movement_speed
+        self.queue_packet(&UpdateAttributes {
+            entity_id: VarInt(0),
+            properties: vec![AttributeProperty {
+                key: Ident::new("generic.attack_speed").unwrap(),
+                value: speed,
+                modifiers: Vec::new(),
+            }],
+        });
     }
 
     /// Sets the speed at which the client can run on the ground.
     pub fn set_movement_speed(&mut self, speed: f64) {
-        if self.movement_speed != speed {
-            self.movement_speed = speed;
-            self.bits.set_movement_speed_modified(true);
-        }
+        self.queue_packet(&UpdateAttributes {
+            entity_id: VarInt(0),
+            properties: vec![AttributeProperty {
+                key: Ident::new("generic.movement_speed").unwrap(),
+                value: speed,
+                modifiers: Vec::new(),
+            }],
+        });
     }
 
     /// Removes the current title from the client's screen.
@@ -676,12 +659,22 @@ impl<C: Config> Client<C> {
         });
     }
 
+    pub fn has_respawn_screen(&self) -> bool {
+        self.bits.respawn_screen()
+    }
+
     /// Sets whether respawn screen should be displayed after client's death.
     pub fn set_respawn_screen(&mut self, enable: bool) {
-        self.queue_packet(&GameEvent {
-            reason: GameStateChangeReason::EnableRespawnScreen,
-            value: if enable { 0.0 } else { 1.0 },
-        });
+        if self.bits.respawn_screen() != enable {
+            self.bits.set_respawn_screen(enable);
+
+            if !self.created_this_tick() {
+                self.queue_packet(&GameEvent {
+                    reason: GameStateChangeReason::EnableRespawnScreen,
+                    value: if enable { 0.0 } else { 1.0 },
+                });
+            }
+        }
     }
 
     /// Gets whether or not the client is connected to the server.
@@ -734,7 +727,11 @@ impl<C: Config> Client<C> {
 
         if self.view_distance != dist {
             self.view_distance = dist;
-            self.bits.set_view_distance_modified(true);
+
+            if !self.created_this_tick() {
+                // Change the render distance fog.
+                self.queue_packet(&SetRenderDistance(VarInt(dist as i32)));
+            }
         }
     }
 
@@ -1217,36 +1214,35 @@ impl<C: Config> Client<C> {
 
         let current_tick = shared.current_tick();
 
-        // Send the join game packet and other initial packets. We defer this until now
-        // so that the user can set the client's initial location, game mode, etc.
+        // Send the login (play) packet and other initial packets. We defer this until
+        // now so that the user can set the client's initial location, game
+        // mode, etc.
         if self.created_this_tick() {
-            self.bits.set_spawn(false);
+            self.bits.set_respawn(false);
 
-            let mut dimension_names: Vec<_> = shared
+            let dimension_names: Vec<_> = shared
                 .dimensions()
                 .map(|(id, _)| id.dimension_name())
                 .collect();
-
-            dimension_names.push(ident!("{LIBRARY_NAMESPACE}:dummy_dimension"));
 
             // The login packet is prepended so that it is sent before all the other
             // packets. Some packets don't work correctly when sent before the login packet,
             // which is why we're doing this.
             ctrl.prepend_packet(&LoginPlayOwned {
-                entity_id: 0, // EntityId 0 is reserved for clients.
+                entity_id: 0, // ID 0 is reserved for clients.
                 is_hardcore: self.bits.hardcore(),
-                game_mode: self.new_game_mode,
+                game_mode: self.game_mode,
                 previous_game_mode: -1,
                 dimension_names,
                 registry_codec: shared.registry_codec().clone(),
                 dimension_type_name: world.meta.dimension().dimension_type_name(),
                 dimension_name: world.meta.dimension().dimension_name(),
                 hashed_seed: 10,
-                max_players: VarInt(0),
+                max_players: VarInt(0), // Unused
                 view_distance: VarInt(self.view_distance() as i32),
                 simulation_distance: VarInt(16),
                 reduced_debug_info: false,
-                enable_respawn_screen: false,
+                enable_respawn_screen: self.bits.respawn_screen(),
                 is_debug: false,
                 is_flat: self.bits.flat(),
                 last_death_location: self
@@ -1258,13 +1254,16 @@ impl<C: Config> Client<C> {
                 player_lists.get(id).send_initial_packets(ctrl)?;
             }
 
-            self.teleport(self.position(), self.yaw(), self.pitch());
+            // Important for closing the "downloading terrain" screen.
+            self.bits.set_teleported_this_tick(true);
         } else {
-            if self.bits.spawn() {
-                self.bits.set_spawn(false);
+            if self.bits.respawn() {
+                self.bits.set_respawn(false);
+
                 self.loaded_entities.clear();
                 self.loaded_chunks.clear();
 
+                /*
                 // Client bug workaround: send the client to a dummy dimension first.
                 // TODO: is there actually a bug?
                 ctrl.append_packet(&RespawnOwned {
@@ -1278,6 +1277,7 @@ impl<C: Config> Client<C> {
                     copy_metadata: true,
                     last_death_location: None,
                 })?;
+                 */
 
                 ctrl.append_packet(&RespawnOwned {
                     dimension_type_name: world.meta.dimension().dimension_type_name(),
@@ -1293,16 +1293,8 @@ impl<C: Config> Client<C> {
                         .map(|(id, pos)| (id.dimension_name(), pos)),
                 })?;
 
-                self.teleport(self.position(), self.yaw(), self.pitch());
-            }
-
-            // Update game mode
-            if self.old_game_mode != self.new_game_mode {
-                self.old_game_mode = self.new_game_mode;
-                ctrl.append_packet(&GameEvent {
-                    reason: GameStateChangeReason::ChangeGameMode,
-                    value: self.new_game_mode as i32 as f32,
-                })?;
+                // Important for closing the "downloading terrain" screen.
+                self.bits.set_teleported_this_tick(true);
             }
 
             // If the player list was changed...
@@ -1319,54 +1311,8 @@ impl<C: Config> Client<C> {
 
                 self.old_player_list = self.player_list.clone();
             } else if let Some(id) = &self.player_list {
-                // Update current player list.
+                // Otherwise, update current player list.
                 player_lists.get(id).send_update_packets(ctrl)?;
-            }
-        }
-
-        // Set player attributes
-        if self.bits.attack_speed_modified() {
-            self.bits.set_attack_speed_modified(false);
-
-            ctrl.append_packet(&UpdateAttributes {
-                entity_id: VarInt(0),
-                properties: vec![AttributeProperty {
-                    key: Ident::new("generic.attack_speed").unwrap(),
-                    value: self.attack_speed,
-                    modifiers: Vec::new(),
-                }],
-            })?;
-        }
-
-        if self.bits.movement_speed_modified() {
-            self.bits.set_movement_speed_modified(false);
-
-            ctrl.append_packet(&UpdateAttributes {
-                entity_id: VarInt(0),
-                properties: vec![AttributeProperty {
-                    key: Ident::new("generic.movement_speed").unwrap(),
-                    value: self.movement_speed,
-                    modifiers: Vec::new(),
-                }],
-            })?;
-        }
-
-        // Update the players spawn position (compass position)
-        if self.bits.modified_spawn_position() {
-            self.bits.set_modified_spawn_position(false);
-
-            ctrl.append_packet(&SetDefaultSpawnPosition {
-                location: self.spawn_position,
-                angle: self.spawn_position_yaw,
-            })?;
-        }
-
-        // Update view distance fog on the client.
-        if self.bits.view_distance_modified() {
-            self.bits.set_view_distance_modified(false);
-
-            if !self.created_this_tick() {
-                ctrl.append_packet(&SetRenderDistance(VarInt(self.view_distance() as i32)))?;
             }
         }
 
@@ -1466,17 +1412,6 @@ impl<C: Config> Client<C> {
             }
 
             self.teleport_id_counter = self.teleport_id_counter.wrapping_add(1);
-        }
-
-        // Set velocity. Do this after teleporting since teleporting sets velocity to
-        // zero.
-        if self.bits.velocity_modified() {
-            self.bits.set_velocity_modified(false);
-
-            ctrl.append_packet(&SetEntityVelocity {
-                entity_id: VarInt(0),
-                velocity: velocity_to_packet_units(self.velocity).into_array(),
-            })?;
         }
 
         let mut entities_to_unload = Vec::new();

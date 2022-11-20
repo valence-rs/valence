@@ -131,7 +131,7 @@ impl Config for Game {
                     }
                 }
 
-                client.spawn(world_id);
+                client.respawn(world_id);
                 client.set_flat(true);
                 // client.teleport(spawn_pos, 0.0, 0.0);
                 client.set_player_list(server.state.player_list.clone());

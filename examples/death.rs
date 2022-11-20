@@ -150,7 +150,7 @@ impl Config for Game {
                 client.set_spawn_position(FIRST_WORLD_SPAWN_BLOCK, 0.0);
 
                 client.set_flat(true);
-                client.spawn(first_world_id);
+                client.respawn(first_world_id);
                 client.teleport(client.state.respawn_location.1, 0.0, 0.0);
 
                 client.set_player_list(first_world.state.player_list.clone());
@@ -253,7 +253,7 @@ impl Config for Game {
 
                         // You can store respawn however you want, for example in `Client`'s state.
                         let spawn = client.state.respawn_location;
-                        client.spawn(spawn.0);
+                        client.respawn(spawn.0);
                         client.teleport(spawn.1, 0.0, 0.0);
                         client.state.can_respawn = false;
                     }

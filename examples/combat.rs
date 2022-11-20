@@ -133,7 +133,7 @@ impl Config for Game {
                 client.state.player = player_id;
                 client.state.extra_knockback = true;
 
-                client.spawn(world_id);
+                client.respawn(world_id);
                 client.set_flat(true);
                 client.set_game_mode(GameMode::Survival);
                 client.teleport(

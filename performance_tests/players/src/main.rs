@@ -115,7 +115,7 @@ impl Config for Game {
 
         server.clients.retain(|_, client| {
             if client.created_this_tick() {
-                client.spawn(world_id);
+                client.respawn(world_id);
                 client.set_flat(true);
                 client.teleport([0.0, 1.0, 0.0], 0.0, 0.0);
 

@@ -115,7 +115,7 @@ impl Config for Game {
                     }
                 }
 
-                client.spawn(world_id);
+                client.respawn(world_id);
                 client.set_flat(true);
                 client.set_game_mode(GameMode::Creative);
                 client.teleport(
