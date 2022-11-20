@@ -17,9 +17,6 @@ use crate::{Decode, Encode, Ident, Result, VarInt};
 ///
 /// For more information, see the relevant [Minecraft Wiki article].
 ///
-/// Note that the current [`Deserialize`] implementation on this type recognizes
-/// only a subset of the full JSON chat component format.
-///
 /// [Minecraft Wiki article]: https://minecraft.fandom.com/wiki/Raw_JSON_text_format
 ///
 /// # Examples
@@ -39,13 +36,17 @@ use crate::{Decode, Encode, Ident, Result, VarInt};
 ///     + ".";
 ///
 /// assert_eq!(
-///     txt.to_plain(),
+///     txt.to_string(),
 ///     "The text is Red, Green, and also Blue!\nAnd maybe even Italic."
 /// );
 /// ```
 #[derive(Clone, PartialEq, Default, Debug, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct Text(Box<TextInner>);
+
+#[derive(Clone, PartialEq, Default, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct Text {
+struct TextInner {
     #[serde(flatten)]
     content: TextContent,
 
@@ -83,274 +84,92 @@ pub struct Text {
     extra: Vec<Text>,
 }
 
-#[allow(clippy::self_named_constructors)]
-impl Text {
-    /// Constructs a new plain text object.
-    pub fn text(plain: impl Into<Cow<'static, str>>) -> Self {
-        Self {
-            content: TextContent::Text { text: plain.into() },
-            ..Self::default()
-        }
-    }
-
-    /// Create translated text based on the given translation key.
-    pub fn translate(key: impl Into<Cow<'static, str>>) -> Self {
-        Self {
-            content: TextContent::Translate {
-                translate: key.into(),
-            },
-            ..Self::default()
-        }
-    }
-
-    /// Gets this text object as plain text without any formatting.
-    pub fn to_plain(&self) -> String {
-        let mut res = String::new();
-        self.write_plain(&mut res)
-            .expect("failed to write plain text");
-        res
-    }
-
-    /// Writes this text object as plain text to the provided writer.
-    pub fn write_plain(&self, mut w: impl fmt::Write) -> fmt::Result {
-        fn write_plain_impl(this: &Text, w: &mut impl fmt::Write) -> fmt::Result {
-            match &this.content {
-                TextContent::Text { text } => w.write_str(text.as_ref())?,
-                TextContent::Translate { translate } => w.write_str(translate.as_ref())?,
-            }
-
-            for child in &this.extra {
-                write_plain_impl(child, w)?;
-            }
-
-            Ok(())
-        }
-
-        write_plain_impl(self, &mut w)
-    }
-
-    /// Returns `true` if the text contains no characters. Returns `false`
-    /// otherwise.
-    pub fn is_empty(&self) -> bool {
-        for extra in &self.extra {
-            if !extra.is_empty() {
-                return false;
-            }
-        }
-
-        match &self.content {
-            TextContent::Text { text } => text.is_empty(),
-            TextContent::Translate { translate } => translate.is_empty(),
-        }
-    }
-}
-
-/// Provides the methods necessary for working with [`Text`] objects.
-///
-/// This trait exists to allow using `Into<Text>` types without having to first
-/// convert the type into [`Text`]. A blanket implementation exists for all
-/// `Into<Text>` types, including [`Text`] itself.
-pub trait TextFormat: Into<Text> {
-    /// Converts this type into a [`Text`] object.
-    fn into_text(self) -> Text {
-        self.into()
-    }
-
-    fn color(self, color: Color) -> Text {
-        let mut t = self.into();
-        t.color = Some(color);
-        t
-    }
-
-    fn clear_color(self) -> Text {
-        let mut t = self.into();
-        t.color = None;
-        t
-    }
-
-    fn font(self, font: impl Into<Cow<'static, str>>) -> Text {
-        let mut t = self.into();
-        t.font = Some(font.into());
-        t
-    }
-
-    fn clear_font(self) -> Text {
-        let mut t = self.into();
-        t.font = None;
-        t
-    }
-
-    fn bold(self) -> Text {
-        let mut t = self.into();
-        t.bold = Some(true);
-        t
-    }
-
-    fn not_bold(self) -> Text {
-        let mut t = self.into();
-        t.bold = Some(false);
-        t
-    }
-
-    fn clear_bold(self) -> Text {
-        let mut t = self.into();
-        t.bold = None;
-        t
-    }
-
-    fn italic(self) -> Text {
-        let mut t = self.into();
-        t.italic = Some(true);
-        t
-    }
-
-    fn not_italic(self) -> Text {
-        let mut t = self.into();
-        t.italic = Some(false);
-        t
-    }
-
-    fn clear_italic(self) -> Text {
-        let mut t = self.into();
-        t.italic = None;
-        t
-    }
-
-    fn underlined(self) -> Text {
-        let mut t = self.into();
-        t.underlined = Some(true);
-        t
-    }
-
-    fn not_underlined(self) -> Text {
-        let mut t = self.into();
-        t.underlined = Some(false);
-        t
-    }
-
-    fn clear_underlined(self) -> Text {
-        let mut t = self.into();
-        t.underlined = None;
-        t
-    }
-
-    fn strikethrough(self) -> Text {
-        let mut t = self.into();
-        t.strikethrough = Some(true);
-        t
-    }
-
-    fn not_strikethrough(self) -> Text {
-        let mut t = self.into();
-        t.strikethrough = Some(false);
-        t
-    }
-
-    fn clear_strikethrough(self) -> Text {
-        let mut t = self.into();
-        t.strikethrough = None;
-        t
-    }
-
-    fn obfuscated(self) -> Text {
-        let mut t = self.into();
-        t.obfuscated = Some(true);
-        t
-    }
-
-    fn not_obfuscated(self) -> Text {
-        let mut t = self.into();
-        t.obfuscated = Some(false);
-        t
-    }
-
-    fn clear_obfuscated(self) -> Text {
-        let mut t = self.into();
-        t.obfuscated = None;
-        t
-    }
-
-    fn insertion(self, insertion: impl Into<Cow<'static, str>>) -> Text {
-        let mut t = self.into();
-        t.insertion = Some(insertion.into());
-        t
-    }
-
-    fn clear_insertion(self) -> Text {
-        let mut t = self.into();
-        t.insertion = None;
-        t
-    }
-
-    fn on_click_open_url(self, url: impl Into<Cow<'static, str>>) -> Text {
-        let mut t = self.into();
-        t.click_event = Some(ClickEvent::OpenUrl(url.into()));
-        t
-    }
-
-    fn on_click_run_command(self, command: impl Into<Cow<'static, str>>) -> Text {
-        let mut t = self.into();
-        t.click_event = Some(ClickEvent::RunCommand(command.into()));
-        t
-    }
-
-    fn on_click_suggest_command(self, command: impl Into<Cow<'static, str>>) -> Text {
-        let mut t = self.into();
-        t.click_event = Some(ClickEvent::SuggestCommand(command.into()));
-        t
-    }
-
-    fn on_click_change_page(self, page: impl Into<i32>) -> Text {
-        let mut t = self.into();
-        t.click_event = Some(ClickEvent::ChangePage(page.into()));
-        t
-    }
-
-    fn on_click_copy_to_clipboard(self, text: impl Into<Cow<'static, str>>) -> Text {
-        let mut t = self.into();
-        t.click_event = Some(ClickEvent::CopyToClipboard(text.into()));
-        t
-    }
-
-    fn clear_click_event(self) -> Text {
-        let mut t = self.into();
-        t.click_event = None;
-        t
-    }
-
-    fn on_hover_show_text(self, text: impl Into<Text>) -> Text {
-        let mut t = self.into();
-        t.hover_event = Some(HoverEvent::ShowText(Box::new(text.into())));
-        t
-    }
-
-    fn clear_hover_event(self) -> Text {
-        let mut t = self.into();
-        t.hover_event = None;
-        t
-    }
-
-    fn add_child(self, text: impl Into<Text>) -> Text {
-        let mut t = self.into();
-        t.extra.push(text.into());
-        t
-    }
-}
-
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 enum TextContent {
     Text {
         text: Cow<'static, str>,
     },
+    /// A piece of text that will be translated on the client based on the
+    /// client language. If no corresponding translation can be found, the
+    /// identifier itself is used as the translated text.
     Translate {
+        /// A translation identifier, corresponding to the identifiers found in
+        /// loaded language files.
         translate: Cow<'static, str>,
-        // TODO: 'with' field
+        /// Optional list of text components to be inserted into slots in the
+        /// translation text. Ignored if `translate` is not present.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        with: Vec<Text>,
     },
-    // TODO: score
-    // TODO: entity names
-    // TODO: keybind
-    // TODO: nbt
+    /// Displays a score holder's current score in an objective.
+    ScoreboardValue {
+        score: ScoreboardValueContent,
+    },
+    /// Displays the name of one or more entities found by a [`selector`].
+    ///
+    /// [`selector`]: https://minecraft.fandom.com/wiki/Target_selectors
+    EntityNames {
+        /// A string containing a [`selector`].
+        ///
+        /// [`selector`]: https://minecraft.fandom.com/wiki/Target_selectors
+        selector: Cow<'static, str>,
+        /// An optional custom separator used when the selector returns multiple
+        /// entities. Defaults to the ", " text with gray color.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        separator: Option<Text>,
+    },
+    /// Displays the name of the button that is currently bound to a certain
+    /// configurable control on the client.
+    Keybind {
+        /// A [`keybind identifier`], to be displayed as the name of the button
+        /// that is currently bound to that action.
+        ///
+        /// [`keybind identifier`]: https://minecraft.fandom.com/wiki/Controls#Configurable_controls
+        keybind: Cow<'static, str>,
+    },
+    /// Displays NBT values from block entities.
+    BlockNbt {
+        block: Cow<'static, str>,
+        nbt: Cow<'static, str>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        interpret: Option<bool>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        separator: Option<Text>,
+    },
+    /// Displays NBT values from entities.
+    EntityNbt {
+        entity: Cow<'static, str>,
+        nbt: Cow<'static, str>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        interpret: Option<bool>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        separator: Option<Text>,
+    },
+    /// Displays NBT values from command storage.
+    StorageNbt {
+        storage: Ident<String>,
+        nbt: Cow<'static, str>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        interpret: Option<bool>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        separator: Option<Text>,
+    },
+}
+
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+struct ScoreboardValueContent {
+    /// The name of the score holder whose score should be displayed. This
+    /// can be a [`selector`] or an explicit name.
+    ///
+    /// [`selector`]: https://minecraft.fandom.com/wiki/Target_selectors
+    name: Cow<'static, str>,
+    /// The internal name of the objective to display the player's score in.
+    objective: Cow<'static, str>,
+    /// If present, this value is displayed regardless of what the score
+    /// would have been.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    value: Option<Cow<'static, str>>,
 }
 
 /// Text color
@@ -380,18 +199,491 @@ enum ClickEvent {
 #[serde(tag = "action", content = "contents", rename_all = "snake_case")]
 #[allow(clippy::enum_variant_names)]
 enum HoverEvent {
-    ShowText(Box<Text>),
+    ShowText(Text),
     ShowItem {
         id: Ident<String>,
         count: Option<i32>,
         // TODO: tag
     },
     ShowEntity {
-        name: Box<Text>,
+        name: Text,
         #[serde(rename = "type")]
         kind: Ident<String>,
         // TODO: id (hyphenated entity UUID as a string)
     },
+}
+
+#[allow(clippy::self_named_constructors)]
+impl Text {
+    /// Constructs a new plain text object.
+    pub fn text(plain: impl Into<Cow<'static, str>>) -> Self {
+        Self(Box::new(TextInner {
+            content: TextContent::Text { text: plain.into() },
+            ..Default::default()
+        }))
+    }
+
+    /// Create translated text based on the given translation key, with extra
+    /// text components to be inserted into the slots of the translation text.
+    pub fn translate(key: impl Into<Cow<'static, str>>, with: impl Into<Vec<Text>>) -> Self {
+        Self(Box::new(TextInner {
+            content: TextContent::Translate {
+                translate: key.into(),
+                with: with.into(),
+            },
+            ..Default::default()
+        }))
+    }
+
+    /// Create a score from the scoreboard with an optional custom value.
+    pub fn score(
+        name: impl Into<Cow<'static, str>>,
+        objective: impl Into<Cow<'static, str>>,
+        value: Option<Cow<'static, str>>,
+    ) -> Self {
+        Self(Box::new(TextInner {
+            content: TextContent::ScoreboardValue {
+                score: ScoreboardValueContent {
+                    name: name.into(),
+                    objective: objective.into(),
+                    value,
+                },
+            },
+            ..Default::default()
+        }))
+    }
+
+    /// Creates a text component for selecting entity names with an optional
+    /// custom separator.
+    pub fn selector(selector: impl Into<Cow<'static, str>>, separator: Option<Text>) -> Self {
+        Self(Box::new(TextInner {
+            content: TextContent::EntityNames {
+                selector: selector.into(),
+                separator,
+            },
+            ..Default::default()
+        }))
+    }
+
+    /// Creates a text component for a keybind. The keybind should be a valid
+    /// [`keybind identifier`].
+    ///
+    /// [`keybind identifier`]: https://minecraft.fandom.com/wiki/Controls#Configurable_controls
+    pub fn keybind(keybind: impl Into<Cow<'static, str>>) -> Self {
+        Self(Box::new(TextInner {
+            content: TextContent::Keybind {
+                keybind: keybind.into(),
+            },
+            ..Default::default()
+        }))
+    }
+
+    /// Creates a text component for a block NBT tag.
+    pub fn block_nbt(
+        block: impl Into<Cow<'static, str>>,
+        nbt: impl Into<Cow<'static, str>>,
+        interpret: Option<bool>,
+        separator: Option<Text>,
+    ) -> Self {
+        Self(Box::new(TextInner {
+            content: TextContent::BlockNbt {
+                block: block.into(),
+                nbt: nbt.into(),
+                interpret,
+                separator,
+            },
+            ..Default::default()
+        }))
+    }
+
+    /// Creates a text component for an entity NBT tag.
+    pub fn entity_nbt(
+        entity: impl Into<Cow<'static, str>>,
+        nbt: impl Into<Cow<'static, str>>,
+        interpret: Option<bool>,
+        separator: Option<Text>,
+    ) -> Self {
+        Self(Box::new(TextInner {
+            content: TextContent::EntityNbt {
+                entity: entity.into(),
+                nbt: nbt.into(),
+                interpret,
+                separator,
+            },
+            ..Default::default()
+        }))
+    }
+
+    /// Creates a text component for a command storage NBT tag.
+    pub fn storage_nbt(
+        storage: impl Into<Ident<String>>,
+        nbt: impl Into<Cow<'static, str>>,
+        interpret: Option<bool>,
+        separator: Option<Text>,
+    ) -> Self {
+        Self(Box::new(TextInner {
+            content: TextContent::StorageNbt {
+                storage: storage.into(),
+                nbt: nbt.into(),
+                interpret,
+                separator,
+            },
+            ..Default::default()
+        }))
+    }
+
+    /// Writes the string representation of this text object to the provided
+    /// writer.
+    pub fn write_string(&self, mut w: impl fmt::Write) -> fmt::Result {
+        fn write_string_inner(this: &Text, w: &mut impl fmt::Write) -> fmt::Result {
+            match &this.0.content {
+                TextContent::Text { text } => w.write_str(text.as_ref())?,
+                TextContent::Translate { translate, with } => {
+                    w.write_str(translate.as_ref())?;
+
+                    if !with.is_empty() {
+                        w.write_char('[')?;
+                        for (i, slot) in with.iter().enumerate() {
+                            if i > 0 {
+                                w.write_str(", ")?;
+                            }
+                            w.write_char(char::from_digit((i + 1) as u32, 10).unwrap_or('?'))?;
+                            w.write_char('=')?;
+                            write_string_inner(slot, w)?;
+                        }
+                        w.write_char(']')?;
+                    }
+                }
+                TextContent::ScoreboardValue { score } => {
+                    let ScoreboardValueContent {
+                        name,
+                        objective,
+                        value,
+                    } = score;
+
+                    write!(w, "scoreboard_value[name={name}, objective={objective}")?;
+
+                    if let Some(value) = value {
+                        if !value.is_empty() {
+                            w.write_str(", value=")?;
+                            w.write_str(value)?;
+                        }
+                    }
+
+                    w.write_char(']')?;
+                }
+                TextContent::EntityNames {
+                    selector,
+                    separator,
+                } => {
+                    write!(w, "entity_names[selector={selector}")?;
+
+                    if let Some(separator) = separator {
+                        if !separator.is_empty() {
+                            w.write_str(", separator={separator}")?;
+                        }
+                    }
+
+                    w.write_char(']')?;
+                }
+                TextContent::Keybind { keybind } => write!(w, "keybind[{keybind}]")?,
+                TextContent::BlockNbt {
+                    block,
+                    nbt,
+                    interpret,
+                    separator,
+                } => {
+                    write!(w, "block_nbt[nbt={nbt}")?;
+
+                    if let Some(interpret) = interpret {
+                        write!(w, ", interpret={interpret}")?;
+                    }
+
+                    if let Some(separator) = separator {
+                        if !separator.is_empty() {
+                            write!(w, "separator={separator}")?;
+                        }
+                    }
+
+                    write!(w, "block={block}")?;
+
+                    w.write_char(']')?;
+                }
+                TextContent::EntityNbt {
+                    entity,
+                    nbt,
+                    interpret,
+                    separator,
+                } => {
+                    write!(w, "entity_nbt[nbt={nbt}")?;
+
+                    if let Some(interpret) = interpret {
+                        write!(w, ", interpret={interpret}")?;
+                    }
+
+                    if let Some(separator) = separator {
+                        if !separator.is_empty() {
+                            write!(w, "separator={separator}")?;
+                        }
+                    }
+
+                    write!(w, ", entity={entity}")?;
+
+                    w.write_char(']')?;
+                }
+                TextContent::StorageNbt {
+                    storage,
+                    nbt,
+                    interpret,
+                    separator,
+                } => {
+                    write!(w, "storage_nbt[nbt={nbt}")?;
+
+                    if let Some(interpret) = interpret {
+                        write!(w, ", interpret={interpret}")?;
+                    }
+
+                    if let Some(separator) = separator {
+                        if !separator.is_empty() {
+                            write!(w, "separator=")?;
+                            write_string_inner(separator, w)?;
+                        }
+                    }
+
+                    write!(w, ", storage={storage}")?;
+
+                    w.write_char(']')?;
+                }
+            }
+
+            for child in &this.0.extra {
+                write_string_inner(child, w)?;
+            }
+
+            Ok(())
+        }
+
+        write_string_inner(self, &mut w)
+    }
+
+    /// Returns `true` if the text contains no characters. Returns `false`
+    /// otherwise.
+    pub fn is_empty(&self) -> bool {
+        for extra in &self.0.extra {
+            if !extra.is_empty() {
+                return false;
+            }
+        }
+
+        match &self.0.content {
+            TextContent::Text { text } => text.is_empty(),
+            TextContent::Translate { translate, .. } => translate.is_empty(),
+            TextContent::ScoreboardValue { score } => {
+                let ScoreboardValueContent {
+                    name, objective, ..
+                } = score;
+
+                name.is_empty() || objective.is_empty()
+            }
+            TextContent::EntityNames { selector, .. } => selector.is_empty(),
+            TextContent::Keybind { keybind } => keybind.is_empty(),
+            TextContent::BlockNbt { nbt, .. } => nbt.is_empty(),
+            TextContent::EntityNbt { nbt, .. } => nbt.is_empty(),
+            TextContent::StorageNbt { nbt, .. } => nbt.is_empty(),
+        }
+    }
+}
+
+/// Provides the methods necessary for working with [`Text`] objects.
+///
+/// This trait exists to allow using `Into<Text>` types without having to first
+/// convert the type into [`Text`]. A blanket implementation exists for all
+/// `Into<Text>` types, including [`Text`] itself.
+pub trait TextFormat: Into<Text> {
+    /// Converts this type into a [`Text`] object.
+    fn into_text(self) -> Text {
+        self.into()
+    }
+
+    fn color(self, color: Color) -> Text {
+        let mut t = self.into();
+        t.0.color = Some(color);
+        t
+    }
+
+    fn clear_color(self) -> Text {
+        let mut t = self.into();
+        t.0.color = None;
+        t
+    }
+
+    fn font(self, font: impl Into<Cow<'static, str>>) -> Text {
+        let mut t = self.into();
+        t.0.font = Some(font.into());
+        t
+    }
+
+    fn clear_font(self) -> Text {
+        let mut t = self.into();
+        t.0.font = None;
+        t
+    }
+
+    fn bold(self) -> Text {
+        let mut t = self.into();
+        t.0.bold = Some(true);
+        t
+    }
+
+    fn not_bold(self) -> Text {
+        let mut t = self.into();
+        t.0.bold = Some(false);
+        t
+    }
+
+    fn clear_bold(self) -> Text {
+        let mut t = self.into();
+        t.0.bold = None;
+        t
+    }
+
+    fn italic(self) -> Text {
+        let mut t = self.into();
+        t.0.italic = Some(true);
+        t
+    }
+
+    fn not_italic(self) -> Text {
+        let mut t = self.into();
+        t.0.italic = Some(false);
+        t
+    }
+
+    fn clear_italic(self) -> Text {
+        let mut t = self.into();
+        t.0.italic = None;
+        t
+    }
+
+    fn underlined(self) -> Text {
+        let mut t = self.into();
+        t.0.underlined = Some(true);
+        t
+    }
+
+    fn not_underlined(self) -> Text {
+        let mut t = self.into();
+        t.0.underlined = Some(false);
+        t
+    }
+
+    fn clear_underlined(self) -> Text {
+        let mut t = self.into();
+        t.0.underlined = None;
+        t
+    }
+
+    fn strikethrough(self) -> Text {
+        let mut t = self.into();
+        t.0.strikethrough = Some(true);
+        t
+    }
+
+    fn not_strikethrough(self) -> Text {
+        let mut t = self.into();
+        t.0.strikethrough = Some(false);
+        t
+    }
+
+    fn clear_strikethrough(self) -> Text {
+        let mut t = self.into();
+        t.0.strikethrough = None;
+        t
+    }
+
+    fn obfuscated(self) -> Text {
+        let mut t = self.into();
+        t.0.obfuscated = Some(true);
+        t
+    }
+
+    fn not_obfuscated(self) -> Text {
+        let mut t = self.into();
+        t.0.obfuscated = Some(false);
+        t
+    }
+
+    fn clear_obfuscated(self) -> Text {
+        let mut t = self.into();
+        t.0.obfuscated = None;
+        t
+    }
+
+    fn insertion(self, insertion: impl Into<Cow<'static, str>>) -> Text {
+        let mut t = self.into();
+        t.0.insertion = Some(insertion.into());
+        t
+    }
+
+    fn clear_insertion(self) -> Text {
+        let mut t = self.into();
+        t.0.insertion = None;
+        t
+    }
+
+    fn on_click_open_url(self, url: impl Into<Cow<'static, str>>) -> Text {
+        let mut t = self.into();
+        t.0.click_event = Some(ClickEvent::OpenUrl(url.into()));
+        t
+    }
+
+    fn on_click_run_command(self, command: impl Into<Cow<'static, str>>) -> Text {
+        let mut t = self.into();
+        t.0.click_event = Some(ClickEvent::RunCommand(command.into()));
+        t
+    }
+
+    fn on_click_suggest_command(self, command: impl Into<Cow<'static, str>>) -> Text {
+        let mut t = self.into();
+        t.0.click_event = Some(ClickEvent::SuggestCommand(command.into()));
+        t
+    }
+
+    fn on_click_change_page(self, page: impl Into<i32>) -> Text {
+        let mut t = self.into();
+        t.0.click_event = Some(ClickEvent::ChangePage(page.into()));
+        t
+    }
+
+    fn on_click_copy_to_clipboard(self, text: impl Into<Cow<'static, str>>) -> Text {
+        let mut t = self.into();
+        t.0.click_event = Some(ClickEvent::CopyToClipboard(text.into()));
+        t
+    }
+
+    fn clear_click_event(self) -> Text {
+        let mut t = self.into();
+        t.0.click_event = None;
+        t
+    }
+
+    fn on_hover_show_text(self, text: impl Into<Text>) -> Text {
+        let mut t = self.into();
+        t.0.hover_event = Some(HoverEvent::ShowText(text.into()));
+        t
+    }
+
+    fn clear_hover_event(self) -> Text {
+        let mut t = self.into();
+        t.0.hover_event = None;
+        t
+    }
+
+    fn add_child(self, text: impl Into<Text>) -> Text {
+        let mut t = self.into();
+        t.0.extra.push(text.into());
+        t
+    }
 }
 
 impl<T: Into<Text>> TextFormat for T {}
@@ -406,7 +698,7 @@ impl<T: Into<Text>> std::ops::Add<T> for Text {
 
 impl<T: Into<Text>> std::ops::AddAssign<T> for Text {
     fn add_assign(&mut self, rhs: T) {
-        self.extra.push(rhs.into());
+        self.0.extra.push(rhs.into());
     }
 }
 
@@ -434,21 +726,9 @@ impl From<Cow<'static, str>> for Text {
     }
 }
 
-impl<'a> From<&'a Text> for String {
-    fn from(t: &'a Text) -> Self {
-        t.to_plain()
-    }
-}
-
-impl<'a, 'b> From<&'a Text> for Cow<'b, str> {
-    fn from(t: &'a Text) -> Self {
-        String::from(t).into()
-    }
-}
-
 impl fmt::Display for Text {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.write_plain(f)
+        self.write_string(f)
     }
 }
 
@@ -568,14 +848,15 @@ fn color_from_str(s: &str) -> Option<Color> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ident;
 
     #[test]
-    fn serialize_deserialize() {
+    fn text_round_trip() {
         let before = "foo".color(Color::RED).bold()
             + ("bar".obfuscated().color(Color::YELLOW)
                 + "baz".underlined().not_bold().italic().color(Color::BLACK));
 
-        assert_eq!(before.to_plain(), "foobarbaz");
+        assert_eq!(before.to_string(), "foobarbaz");
 
         let json = serde_json::to_string_pretty(&before).unwrap();
 
@@ -587,11 +868,11 @@ mod tests {
         println!("{after:#?}");
 
         assert_eq!(before, after);
-        assert_eq!(before.to_plain(), after.to_plain());
+        assert_eq!(before.to_string(), after.to_string());
     }
 
     #[test]
-    fn color() {
+    fn text_color() {
         assert_eq!(
             color_from_str("#aBcDeF"),
             Some(Color::new(0xab, 0xcd, 0xef))
@@ -605,11 +886,91 @@ mod tests {
     }
 
     #[test]
-    fn empty() {
+    fn text_empty() {
         assert!("".into_text().is_empty());
 
-        let txt = "".into_text() + Text::translate("") + ("".italic().color(Color::RED) + "");
+        let txt = "".into_text() + Text::translate("", []) + ("".italic().color(Color::RED) + "");
         assert!(txt.is_empty());
-        assert!(txt.to_plain().is_empty());
+        assert!(txt.to_string().is_empty());
+    }
+
+    #[test]
+    fn translate() {
+        let txt = Text::translate("key", ["arg1".into(), "arg2".into()]);
+        let serialized = serde_json::to_string(&txt).unwrap();
+        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(
+            serialized,
+            "{\"translate\":\"key\",\"with\":[{\"text\":\"arg1\"},{\"text\":\"arg2\"}]}"
+        );
+        assert_eq!(txt, deserialized);
+    }
+
+    #[test]
+    fn score() {
+        let txt = Text::score("foo", "bar", Some(Cow::from("baz")));
+        let serialized = serde_json::to_string(&txt).unwrap();
+        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(
+            serialized,
+            "{\"score\":{\"name\":\"foo\",\"objective\":\"bar\",\"value\":\"baz\"}}"
+        );
+        assert_eq!(txt, deserialized);
+    }
+
+    #[test]
+    fn selector() {
+        let separator = Text::text("bar").color(Color::RED).bold();
+        let txt = Text::selector("foo", Some(separator));
+        let serialized = serde_json::to_string(&txt).unwrap();
+        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(
+            serialized,
+            "{\"selector\":\"foo\",\"separator\":{\"text\":\"bar\",\"color\":\"#ff5555\",\"bold\":\
+             true}}"
+        );
+        assert_eq!(txt, deserialized);
+    }
+
+    #[test]
+    fn keybind() {
+        let txt = Text::keybind("foo");
+        let serialized = serde_json::to_string(&txt).unwrap();
+        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        assert_eq!(serialized, "{\"keybind\":\"foo\"}");
+        assert_eq!(txt, deserialized);
+    }
+
+    #[test]
+    fn block_nbt() {
+        let txt = Text::block_nbt("foo", "bar", Some(true), Some("baz".into()));
+        let serialized = serde_json::to_string(&txt).unwrap();
+        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        let expected = "{\"block\":\"foo\",\"nbt\":\"bar\",\"interpret\":true,\"separator\":{\"\
+                        text\":\"baz\"}}";
+        assert_eq!(serialized, expected);
+        assert_eq!(txt, deserialized);
+    }
+
+    #[test]
+    fn entity_nbt() {
+        let txt = Text::entity_nbt("foo", "bar", Some(true), Some("baz".into()));
+        let serialized = serde_json::to_string(&txt).unwrap();
+        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        let expected = "{\"entity\":\"foo\",\"nbt\":\"bar\",\"interpret\":true,\"separator\":{\"\
+                        text\":\"baz\"}}";
+        assert_eq!(serialized, expected);
+        assert_eq!(txt, deserialized);
+    }
+
+    #[test]
+    fn storage_nbt() {
+        let txt = Text::storage_nbt(ident!("foo"), "bar", Some(true), Some("baz".into()));
+        let serialized = serde_json::to_string(&txt).unwrap();
+        let deserialized: Text = serde_json::from_str(&serialized).unwrap();
+        let expected = "{\"storage\":\"foo\",\"nbt\":\"bar\",\"interpret\":true,\"separator\":{\"\
+                        text\":\"baz\"}}";
+        assert_eq!(serialized, expected);
+        assert_eq!(txt, deserialized);
     }
 }
