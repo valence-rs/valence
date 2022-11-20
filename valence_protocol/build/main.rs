@@ -8,14 +8,21 @@ use proc_macro2::{Ident, Span};
 mod block;
 mod enchant;
 mod item;
+mod translation_key;
 
 pub fn main() -> anyhow::Result<()> {
     println!("cargo:rerun-if-changed=../extracted/");
 
     let generators = [
         (block::build as fn() -> _, "block.rs"),
-        (item::build, "item.rs"),
         (enchant::build, "enchant.rs"),
+        (item::build, "item.rs"),
+        (translation_key::build_consts, "translation_key_consts.rs"),
+        (translation_key::build_enum, "translation_key_enum.rs"),
+        (
+            translation_key::build_enum_display,
+            "translation_key_enum_display.rs",
+        ),
     ];
 
     let out_dir = env::var_os("OUT_DIR").context("failed to get OUT_DIR env var")?;

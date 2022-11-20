@@ -106,13 +106,20 @@ impl Config for Game {
                 client.send_message("\nTranslated Text");
                 client.send_message(
                     " - 'chat.type.advancement.task': ".into_text()
-                        + Text::translate("chat.type.advancement.task", []),
+                        + Text::translate(TranslationKey::ChatTypeAdvancementTask, []),
                 );
                 client.send_message(
                     " - 'chat.type.advancement.task' with slots: ".into_text()
                         + Text::translate(
-                            "chat.type.advancement.task",
+                            TranslationKey::ChatTypeAdvancementTask,
                             ["arg1".into(), "arg2".into()],
+                        ),
+                );
+                client.send_message(
+                    " - 'custom.translation_key': ".into_text()
+                        + Text::translate(
+                            TranslationKey::Custom("custom.translation_key".to_owned()),
+                            [],
                         ),
                 );
 

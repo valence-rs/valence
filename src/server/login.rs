@@ -19,6 +19,7 @@ use valence_protocol::packets::c2s::login::{EncryptionResponse, LoginPluginRespo
 use valence_protocol::packets::s2c::login::{
     DisconnectLogin, EncryptionRequest, LoginPluginRequest,
 };
+use valence_protocol::translation_key::TranslationKey;
 use valence_protocol::types::{MsgSigOrVerifyToken, SignedProperty, SignedPropertyOwned};
 use valence_protocol::{Decode, Ident, RawBytes, Text, Username, VarInt};
 
@@ -95,7 +96,8 @@ pub(super) async fn online(
     match resp.status() {
         StatusCode::OK => {}
         StatusCode::NO_CONTENT => {
-            let reason = Text::translate("multiplayer.disconnect.unverified_username", []);
+            let reason =
+                Text::translate(TranslationKey::MultiplayerDisconnectUnverifiedUsername, []);
             ctrl.send_packet(&DisconnectLogin { reason }).await?;
             bail!("session server could not verify username");
         }

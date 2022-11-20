@@ -8,6 +8,7 @@ use serde::de::Visitor;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::byte_counter::ByteCounter;
+use crate::translation_key::TranslationKey;
 use crate::{Decode, Encode, Ident, Result, VarInt};
 
 /// Represents formatted text in Minecraft's JSON text format.
@@ -225,10 +226,10 @@ impl Text {
 
     /// Create translated text based on the given translation key, with extra
     /// text components to be inserted into the slots of the translation text.
-    pub fn translate(key: impl Into<Cow<'static, str>>, with: impl Into<Vec<Text>>) -> Self {
+    pub fn translate(key: TranslationKey, with: impl Into<Vec<Text>>) -> Self {
         Self(Box::new(TextInner {
             content: TextContent::Translate {
-                translate: key.into(),
+                translate: key.translation_key().to_string().into(),
                 with: with.into(),
             },
             ..Default::default()
@@ -886,22 +887,17 @@ mod tests {
     }
 
     #[test]
-    fn text_empty() {
-        assert!("".into_text().is_empty());
-
-        let txt = "".into_text() + Text::translate("", []) + ("".italic().color(Color::RED) + "");
-        assert!(txt.is_empty());
-        assert!(txt.to_string().is_empty());
-    }
-
-    #[test]
     fn translate() {
-        let txt = Text::translate("key", ["arg1".into(), "arg2".into()]);
+        let txt = Text::translate(
+            TranslationKey::ChatTypeAdvancementTask,
+            ["arg1".into(), "arg2".into()],
+        );
         let serialized = serde_json::to_string(&txt).unwrap();
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
         assert_eq!(
             serialized,
-            "{\"translate\":\"key\",\"with\":[{\"text\":\"arg1\"},{\"text\":\"arg2\"}]}"
+            "{\"translate\":\"chat.type.advancement.task\",\"with\":[{\"text\":\"arg1\"},{\"text\"\
+             :\"arg2\"}]}"
         );
         assert_eq!(txt, deserialized);
     }

@@ -145,6 +145,7 @@ pub mod prelude {
     pub use valence_protocol::ident::IdentError;
     pub use valence_protocol::packets::s2c::play::SetTitleAnimationTimes;
     pub use valence_protocol::text::Color;
+    pub use valence_protocol::translation_key::TranslationKey;
     pub use valence_protocol::types::{GameMode, Hand, SoundCategory};
     pub use valence_protocol::{
         ident, BlockKind, BlockPos, BlockState, Ident, ItemKind, ItemStack, Text, TextFormat,
