@@ -213,6 +213,7 @@ pub struct Client<C: Config> {
     player_list: Option<PlayerListId>,
     old_player_list: Option<PlayerListId>,
     position: Vec3<f64>,
+    /// Position from the previous tick.
     old_position: Vec3<f64>,
     /// Measured in degrees
     yaw: f32,
@@ -330,14 +331,19 @@ impl<C: Config> Client<C> {
         self.bits.created_this_tick()
     }
 
-    /// Gets the client's UUID.
+    /// Gets the username of this client.
+    pub fn username(&self) -> Username<&str> {
+        self.username.as_str_username()
+    }
+
+    /// Gets the UUID of this client.
     pub fn uuid(&self) -> Uuid {
         self.uuid
     }
 
-    /// Gets the username of this client.
-    pub fn username(&self) -> Username<&str> {
-        self.username.as_str_username()
+    /// Gets the IP address of this client.
+    pub fn ip(&self) -> IpAddr {
+        self.ip
     }
 
     /// Gets the player textures of this client. If the client does not have
@@ -644,7 +650,7 @@ impl<C: Config> Client<C> {
     pub fn kill(&mut self, killer: Option<EntityId>, message: impl Into<Text>) {
         self.queue_packet(&CombatDeath {
             player_id: VarInt(0),
-            entity_id: killer.map_or(-1, |k| k.to_network_id()),
+            entity_id: killer.map_or(-1, |k| k.to_raw_id()),
             message: message.into(),
         });
     }
@@ -918,7 +924,7 @@ impl<C: Config> Client<C> {
                 ClientCommand::PerformRespawn => {
                     self.events.push_back(ClientEvent::RespawnRequest);
                 }
-                ClientCommand::RequestStatus => (),
+                ClientCommand::RequestStats => (),
             },
             C2sPlayPacket::ClientInformation(p) => {
                 self.events.push_back(ClientEvent::SettingsChanged {
@@ -961,7 +967,7 @@ impl<C: Config> Client<C> {
             C2sPlayPacket::EditBook(_) => {}
             C2sPlayPacket::QueryEntityTag(_) => {}
             C2sPlayPacket::Interact(p) => {
-                if let Some(id) = entities.get_with_network_id(p.entity_id.0) {
+                if let Some(id) = entities.get_with_raw_id(p.entity_id.0) {
                     self.events.push_back(ClientEvent::InteractWithEntity {
                         id,
                         sneaking: p.sneaking,
@@ -1176,7 +1182,7 @@ impl<C: Config> Client<C> {
             ) {
                 Ok(()) => self.ctrl = Some(ctrl),
                 Err(e) => {
-                    error!(
+                    warn!(
                         username = %self.username,
                         uuid = %self.uuid,
                         "error updating client: {e:#}"
@@ -1427,7 +1433,7 @@ impl<C: Config> Client<C> {
                         && flags.yaw_or_pitch_modified()
                     {
                         let _ = ctrl.append_packet(&UpdateEntityPositionAndRotation {
-                            entity_id: VarInt(id.to_network_id()),
+                            entity_id: VarInt(id.to_raw_id()),
                             delta: (position_delta * 4096.0).as_::<i16>().into_array(),
                             yaw: ByteAngle::from_degrees(entity.yaw()),
                             pitch: ByteAngle::from_degrees(entity.pitch()),
@@ -1436,7 +1442,7 @@ impl<C: Config> Client<C> {
                     } else {
                         if entity.position() != entity.old_position() && !needs_teleport {
                             let _ = ctrl.append_packet(&UpdateEntityPosition {
-                                entity_id: VarInt(id.to_network_id()),
+                                entity_id: VarInt(id.to_raw_id()),
                                 delta: (position_delta * 4096.0).as_::<i16>().into_array(),
                                 on_ground: entity.on_ground(),
                             });
@@ -1444,7 +1450,7 @@ impl<C: Config> Client<C> {
 
                         if flags.yaw_or_pitch_modified() {
                             let _ = ctrl.append_packet(&UpdateEntityRotation {
-                                entity_id: VarInt(id.to_network_id()),
+                                entity_id: VarInt(id.to_raw_id()),
                                 yaw: ByteAngle::from_degrees(entity.yaw()),
                                 pitch: ByteAngle::from_degrees(entity.pitch()),
                                 on_ground: entity.on_ground(),
@@ -1454,7 +1460,7 @@ impl<C: Config> Client<C> {
 
                     if needs_teleport {
                         let _ = ctrl.append_packet(&TeleportEntity {
-                            entity_id: VarInt(id.to_network_id()),
+                            entity_id: VarInt(id.to_raw_id()),
                             position: entity.position().into_array(),
                             yaw: ByteAngle::from_degrees(entity.yaw()),
                             pitch: ByteAngle::from_degrees(entity.pitch()),
@@ -1464,25 +1470,25 @@ impl<C: Config> Client<C> {
 
                     if flags.velocity_modified() {
                         let _ = ctrl.append_packet(&SetEntityVelocity {
-                            entity_id: VarInt(id.to_network_id()),
+                            entity_id: VarInt(id.to_raw_id()),
                             velocity: velocity_to_packet_units(entity.velocity()).into_array(),
                         });
                     }
 
                     if flags.head_yaw_modified() {
                         let _ = ctrl.append_packet(&SetHeadRotation {
-                            entity_id: VarInt(id.to_network_id()),
+                            entity_id: VarInt(id.to_raw_id()),
                             head_yaw: ByteAngle::from_degrees(entity.head_yaw()),
                         });
                     }
 
-                    let _ = send_entity_events(ctrl, id.to_network_id(), entity.events());
+                    let _ = send_entity_events(ctrl, id.to_raw_id(), entity.events());
 
                     return true;
                 }
             }
 
-            entities_to_unload.push(VarInt(id.to_network_id()));
+            entities_to_unload.push(VarInt(id.to_raw_id()));
             false
         });
 
@@ -1538,7 +1544,7 @@ impl<C: Config> Client<C> {
                         return Some(e);
                     }
 
-                    if let Err(e) = send_entity_events(ctrl, id.to_network_id(), entity.events()) {
+                    if let Err(e) = send_entity_events(ctrl, id.to_raw_id(), entity.events()) {
                         return Some(e);
                     }
                 }

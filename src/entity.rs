@@ -40,7 +40,7 @@ include!(concat!(env!("OUT_DIR"), "/entity_event.rs"));
 pub struct Entities<C: Config> {
     slab: VersionedSlab<Entity<C>>,
     uuid_to_entity: HashMap<Uuid, EntityId>,
-    network_id_to_entity: HashMap<NonZeroU32, u32>,
+    raw_id_to_entity: HashMap<NonZeroU32, u32>,
 }
 
 impl<C: Config> Entities<C> {
@@ -48,7 +48,7 @@ impl<C: Config> Entities<C> {
         Self {
             slab: VersionedSlab::new(),
             uuid_to_entity: HashMap::new(),
-            network_id_to_entity: HashMap::new(),
+            raw_id_to_entity: HashMap::new(),
         }
     }
 
@@ -93,7 +93,7 @@ impl<C: Config> Entities<C> {
                 });
 
                 // TODO check for overflowing version?
-                self.network_id_to_entity.insert(k.version(), k.index());
+                self.raw_id_to_entity.insert(k.version(), k.index());
 
                 ve.insert(EntityId(k));
 
@@ -113,7 +113,7 @@ impl<C: Config> Entities<C> {
                 .remove(&e.uuid)
                 .expect("UUID should have been in UUID map");
 
-            self.network_id_to_entity
+            self.raw_id_to_entity
                 .remove(&entity.0.version())
                 .expect("network ID should have been in the network ID map");
 
@@ -133,7 +133,7 @@ impl<C: Config> Entities<C> {
                     .remove(&v.uuid)
                     .expect("UUID should have been in UUID map");
 
-                self.network_id_to_entity
+                self.raw_id_to_entity
                     .remove(&k.version())
                     .expect("network ID should have been in the network ID map");
 
@@ -174,9 +174,9 @@ impl<C: Config> Entities<C> {
         self.slab.get_mut(entity.0)
     }
 
-    pub(crate) fn get_with_network_id(&self, network_id: i32) -> Option<EntityId> {
-        let version = NonZeroU32::new(network_id as u32)?;
-        let index = *self.network_id_to_entity.get(&version)?;
+    pub fn get_with_raw_id(&self, raw_id: i32) -> Option<EntityId> {
+        let version = NonZeroU32::new(raw_id as u32)?;
+        let index = *self.raw_id_to_entity.get(&version)?;
         Some(EntityId(Key::new(index, version)))
     }
 
@@ -239,7 +239,7 @@ impl EntityId {
     /// The value of the default entity ID which is always invalid.
     pub const NULL: Self = Self(Key::NULL);
 
-    pub fn to_network_id(self) -> i32 {
+    pub fn to_raw_id(self) -> i32 {
         self.0.version().get() as i32
     }
 }
@@ -715,7 +715,7 @@ impl<C: Config> Entity<C> {
         // TODO: cache metadata buffer?
         if let Some(metadata) = self.variants.initial_tracked_data() {
             ctrl.append_packet(&SetEntityMetadata {
-                entity_id: VarInt(this_id.to_network_id()),
+                entity_id: VarInt(this_id.to_raw_id()),
                 metadata: RawBytes(&metadata),
             })?;
         }
@@ -733,7 +733,7 @@ impl<C: Config> Entity<C> {
         // TODO: cache metadata buffer?
         if let Some(metadata) = self.variants.updated_tracked_data() {
             ctrl.append_packet(&SetEntityMetadata {
-                entity_id: VarInt(this_id.to_network_id()),
+                entity_id: VarInt(this_id.to_raw_id()),
                 metadata: RawBytes(&metadata),
             })?;
         }
@@ -748,7 +748,7 @@ impl<C: Config> Entity<C> {
         ctrl: &mut PlayPacketController,
     ) -> anyhow::Result<()> {
         let with_object_data = |data| SpawnEntity {
-            entity_id: VarInt(this_id.to_network_id()),
+            entity_id: VarInt(this_id.to_raw_id()),
             object_uuid: self.uuid,
             kind: VarInt(self.kind() as i32),
             position: self.new_position.into_array(),
@@ -762,13 +762,13 @@ impl<C: Config> Entity<C> {
         match &self.variants {
             TrackedData::Marker(_) => {}
             TrackedData::ExperienceOrb(_) => ctrl.append_packet(&SpawnExperienceOrb {
-                entity_id: VarInt(this_id.to_network_id()),
+                entity_id: VarInt(this_id.to_raw_id()),
                 position: self.new_position.into_array(),
                 count: 0, // TODO
             })?,
             TrackedData::Player(_) => {
                 ctrl.append_packet(&SpawnPlayer {
-                    entity_id: VarInt(this_id.to_network_id()),
+                    entity_id: VarInt(this_id.to_raw_id()),
                     player_uuid: self.uuid,
                     position: self.new_position.into_array(),
                     yaw: ByteAngle::from_degrees(self.yaw),
@@ -777,7 +777,7 @@ impl<C: Config> Entity<C> {
 
                 // Player spawn packet doesn't include head yaw for some reason.
                 ctrl.append_packet(&SetHeadRotation {
-                    entity_id: VarInt(this_id.to_network_id()),
+                    entity_id: VarInt(this_id.to_raw_id()),
                     head_yaw: ByteAngle::from_degrees(self.head_yaw),
                 })?;
             }
@@ -838,7 +838,7 @@ mod tests {
         assert!(entities.get(entity_id).is_none());
         assert!(entities.get_mut(entity_id).is_none());
         assert!(entities.get_with_uuid(uuid).is_none());
-        assert!(entities.get_with_network_id(network_id).is_none());
+        assert!(entities.get_with_raw_id(network_id).is_none());
     }
 
     #[test]
@@ -881,14 +881,14 @@ mod tests {
         let (cat_id, cat_entity) = entities.insert(EntityKind::Cat, 75);
         assert_eq!(cat_entity.state, 75);
         let maybe_boat_id = entities
-            .get_with_network_id(boat_id.0.version.get() as i32)
+            .get_with_raw_id(boat_id.0.version.get() as i32)
             .expect("Network id lookup failed on item already added to this collection");
         let maybe_boat = entities
             .get(maybe_boat_id)
             .expect("Failed to look up item already added to collection");
         assert_eq!(maybe_boat.state, 12);
         let maybe_cat_id = entities
-            .get_with_network_id(cat_id.0.version.get() as i32)
+            .get_with_raw_id(cat_id.0.version.get() as i32)
             .expect("Network id lookup failed on item already added to this collection");
         let maybe_cat = entities
             .get(maybe_cat_id)

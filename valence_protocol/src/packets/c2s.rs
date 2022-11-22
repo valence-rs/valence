@@ -164,7 +164,7 @@ pub mod play {
     #[packet_id = 0x07]
     pub enum ClientCommand {
         PerformRespawn,
-        RequestStatus,
+        RequestStats,
     }
 
     #[derive(Clone, Debug, Encode, Decode, Packet)]
