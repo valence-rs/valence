@@ -46,7 +46,9 @@ use crate::inventory::{
 };
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
-use crate::server::{NewClientData, PlayPacketController, SharedServer};
+use crate::server::{
+    NewClientData, PlayPacketReceiver, PlayPacketSender, SharedServer,
+};
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::world::{WorldId, Worlds};
@@ -199,10 +201,8 @@ impl ClientId {
 pub struct Client<C: Config> {
     /// Custom state.
     pub state: C::ClientState,
-    /// Used for sending and receiving packets.
-    ///
-    /// Is `None` when the client is disconnected.
-    ctrl: Option<PlayPacketController>,
+    send: Option<PlayPacketSender>,
+    recv: Option<PlayPacketReceiver>,
     username: Username<String>,
     uuid: Uuid,
     ip: IpAddr,
@@ -265,16 +265,18 @@ struct ClientBits {
 
 impl<C: Config> Client<C> {
     pub(crate) fn new(
-        ctrl: PlayPacketController,
+        send: PlayPacketSender,
+        recv: PlayPacketReceiver,
         ncd: NewClientData,
         state: C::ClientState,
     ) -> Self {
         Self {
             state,
-            ctrl: Some(ctrl),
+            send: Some(send),
+            recv: Some(recv),
             username: ncd.username,
             uuid: ncd.uuid,
-            ip: ncd.remote_addr,
+            ip: ncd.ip,
             textures: ncd.textures,
             world: WorldId::default(),
             player_list: None,
@@ -313,15 +315,16 @@ impl<C: Config> Client<C> {
     where
         P: Encode + Packet + ?Sized,
     {
-        if let Some(ctrl) = &mut self.ctrl {
-            if let Err(e) = ctrl.append_packet(pkt) {
+        if let Some(send) = &mut self.send {
+            if let Err(e) = send.append_packet(pkt) {
                 warn!(
                     username = %self.username,
                     uuid = %self.uuid,
                     ip = %self.ip,
                     "failed to queue packet: {e:#}"
                 );
-                self.ctrl = None;
+                self.send = None;
+                self.recv = None;
             }
         }
     }
@@ -687,7 +690,7 @@ impl<C: Config> Client<C> {
     /// responsibility to remove disconnected clients from the [`Clients`]
     /// container.
     pub fn is_disconnected(&self) -> bool {
-        self.ctrl.is_none()
+        self.send.is_none()
     }
 
     /// Returns an iterator over all pending client events in the order they
@@ -767,13 +770,13 @@ impl<C: Config> Client<C> {
         url: &str,
         hash: &str,
         forced: bool,
-        prompt_message: impl Into<Option<Text>>,
+        prompt_message: Option<Text>,
     ) {
         self.queue_packet(&ResourcePackS2c {
             url,
             hash,
             forced,
-            prompt_message: prompt_message.into(),
+            prompt_message,
         });
     }
 
@@ -822,23 +825,17 @@ impl<C: Config> Client<C> {
     ///
     /// All future calls to [`Self::is_disconnected`] will return `true`.
     pub fn disconnect(&mut self, reason: impl Into<Text>) {
-        if self.ctrl.is_some() {
-            let txt = reason.into();
-            info!("disconnecting client '{}': \"{txt}\"", self.username);
-
-            self.queue_packet(&DisconnectPlay { reason: txt });
-
-            self.ctrl = None;
-        }
+        self.queue_packet(&DisconnectPlay {
+            reason: reason.into(),
+        });
+        self.disconnect_abrupt();
     }
 
     /// Like [`Self::disconnect`], but no reason for the disconnect is
-    /// displayed.
-    pub fn disconnect_no_reason(&mut self) {
-        if self.ctrl.is_some() {
-            info!("disconnecting client '{}'", self.username);
-            self.ctrl = None;
-        }
+    /// sent to the client.
+    pub fn disconnect_abrupt(&mut self) {
+        self.send = None;
+        self.recv = None;
     }
 
     /// Returns an immutable reference to the client's own [`Player`] data.
@@ -853,7 +850,22 @@ impl<C: Config> Client<C> {
         &mut self.player_data
     }
 
+    /*
+    pub fn handle_serverbound_packets(
+        &mut self,
+        config: &C,
+        entities: &Entities<C>,
+        worlds: &Worlds<C>,
+        player_lists: &PlayerLists<C>,
+        inventories: &Inventories,
+    ) {
+
+    }
+     */
+
     pub(crate) fn handle_serverbound_packets(&mut self, entities: &Entities<C>) {
+        todo!()
+        /*
         self.events.clear();
 
         if let Some(mut ctrl) = self.ctrl.take() {
@@ -866,7 +878,7 @@ impl<C: Config> Client<C> {
                     Ok(Some(pkt)) => {
                         let name = pkt.packet_name();
                         if let Err(e) = self.handle_serverbound_packet(entities, pkt) {
-                            error!(
+                            warn!(
                                 "failed to handle {name} packet from client {}: {e:#}",
                                 &self.username
                             );
@@ -878,7 +890,7 @@ impl<C: Config> Client<C> {
                         return;
                     }
                     Err(e) => {
-                        error!(
+                        warn!(
                             "failed to read next serverbound packet from client {}: {e:#}",
                             &self.username
                         );
@@ -887,6 +899,7 @@ impl<C: Config> Client<C> {
                 }
             }
         }
+         */
     }
 
     fn handle_serverbound_packet(
@@ -1171,20 +1184,22 @@ impl<C: Config> Client<C> {
         player_lists: &PlayerLists<C>,
         inventories: &Inventories,
     ) {
-        if let Some(mut ctrl) = self.ctrl.take() {
+        if let Some(mut send) = self.send.take() {
             match self.update_fallible(
-                &mut ctrl,
+                &mut send,
                 shared,
                 entities,
                 worlds,
                 player_lists,
                 inventories,
             ) {
-                Ok(()) => self.ctrl = Some(ctrl),
+                Ok(()) => self.send = Some(send),
                 Err(e) => {
+                    self.recv = None;
                     warn!(
                         username = %self.username,
                         uuid = %self.uuid,
+                        ip = %self.ip,
                         "error updating client: {e:#}"
                     );
                 }
@@ -1199,7 +1214,7 @@ impl<C: Config> Client<C> {
     /// the error is reported.
     fn update_fallible(
         &mut self,
-        ctrl: &mut PlayPacketController,
+        send: &mut PlayPacketSender,
         shared: &SharedServer<C>,
         entities: &Entities<C>,
         worlds: &Worlds<C>,
@@ -1227,7 +1242,7 @@ impl<C: Config> Client<C> {
             // The login packet is prepended so that it is sent before all the other
             // packets. Some packets don't work correctly when sent before the login packet,
             // which is why we're doing this.
-            ctrl.prepend_packet(&LoginPlayOwned {
+            send.prepend_packet(&LoginPlayOwned {
                 entity_id: 0, // ID 0 is reserved for clients.
                 is_hardcore: self.bits.hardcore(),
                 game_mode: self.game_mode,
@@ -1250,7 +1265,7 @@ impl<C: Config> Client<C> {
             })?;
 
             if let Some(id) = &self.player_list {
-                player_lists.get(id).send_initial_packets(ctrl)?;
+                player_lists.get(id).send_initial_packets(send)?;
             }
 
             // Important for closing the "downloading terrain" screen.
@@ -1265,7 +1280,7 @@ impl<C: Config> Client<C> {
                 /*
                 // Client bug workaround: send the client to a dummy dimension first.
                 // TODO: is there actually a bug?
-                ctrl.append_packet(&RespawnOwned {
+                send.append_packet(&RespawnOwned {
                     dimension_type_name: DimensionId(0).dimension_type_name(),
                     dimension_name: ident!("{LIBRARY_NAMESPACE}:dummy_dimension"),
                     hashed_seed: 0,
@@ -1278,7 +1293,7 @@ impl<C: Config> Client<C> {
                 })?;
                  */
 
-                ctrl.append_packet(&RespawnOwned {
+                send.append_packet(&RespawnOwned {
                     dimension_type_name: world.meta.dimension().dimension_type_name(),
                     dimension_name: world.meta.dimension().dimension_name(),
                     hashed_seed: 0,
@@ -1300,18 +1315,18 @@ impl<C: Config> Client<C> {
             if self.old_player_list != self.player_list {
                 // Delete existing entries from old player list.
                 if let Some(id) = &self.old_player_list {
-                    player_lists.get(id).queue_clear_packets(ctrl)?;
+                    player_lists.get(id).queue_clear_packets(send)?;
                 }
 
                 // Get initial packets for new player list.
                 if let Some(id) = &self.player_list {
-                    player_lists.get(id).send_initial_packets(ctrl)?;
+                    player_lists.get(id).send_initial_packets(send)?;
                 }
 
                 self.old_player_list = self.player_list.clone();
             } else if let Some(id) = &self.player_list {
                 // Otherwise, update current player list.
-                player_lists.get(id).send_update_packets(ctrl)?;
+                player_lists.get(id).send_update_packets(send)?;
             }
         }
 
@@ -1319,7 +1334,7 @@ impl<C: Config> Client<C> {
         if current_tick % (shared.tick_rate() * 8) == 0 {
             if self.bits.got_keepalive() {
                 let id = rand::random();
-                ctrl.append_packet(&KeepAliveS2c { id })?;
+                send.append_packet(&KeepAliveS2c { id })?;
                 self.last_keepalive_id = id;
                 self.bits.set_got_keepalive(false);
             } else {
@@ -1332,7 +1347,7 @@ impl<C: Config> Client<C> {
         // Send the update view position packet if the client changes the chunk they're
         // in.
         if ChunkPos::at(self.old_position.x, self.old_position.z) != center {
-            ctrl.append_packet(&SetCenterChunk {
+            send.append_packet(&SetCenterChunk {
                 chunk_x: VarInt(center.x),
                 chunk_z: VarInt(center.z),
             })?;
@@ -1352,12 +1367,12 @@ impl<C: Config> Client<C> {
                 if is_chunk_in_view_distance(center, pos, self.view_distance + cache)
                     && !chunk.created_this_tick()
                 {
-                    let _ = chunk.block_change_packets(pos, dimension.min_y, ctrl);
+                    let _ = chunk.block_change_packets(pos, dimension.min_y, send);
                     return true;
                 }
             }
 
-            let _ = ctrl.append_packet(&UnloadChunk {
+            let _ = send.append_packet(&UnloadChunk {
                 chunk_x: pos.x,
                 chunk_z: pos.z,
             });
@@ -1373,7 +1388,7 @@ impl<C: Config> Client<C> {
             for pos in chunks_in_view_distance(center, self.view_distance) {
                 if let Some(chunk) = world.chunks.get(pos) {
                     if self.loaded_chunks.insert(pos) {
-                        chunk.chunk_data_packet(ctrl, &mut scratch, pos, biome_registry_len)?;
+                        chunk.chunk_data_packet(send, &mut scratch, pos, biome_registry_len)?;
                     }
                 }
             }
@@ -1381,7 +1396,7 @@ impl<C: Config> Client<C> {
 
         // Acknowledge broken/placed blocks.
         if self.block_change_sequence != 0 {
-            ctrl.append_packet(&AcknowledgeBlockChange {
+            send.append_packet(&AcknowledgeBlockChange {
                 sequence: VarInt(self.block_change_sequence),
             })?;
 
@@ -1395,7 +1410,7 @@ impl<C: Config> Client<C> {
         if self.bits.teleported_this_tick() {
             self.bits.set_teleported_this_tick(false);
 
-            ctrl.append_packet(&SynchronizePlayerPosition {
+            send.append_packet(&SynchronizePlayerPosition {
                 position: self.position.into_array(),
                 yaw: self.yaw,
                 pitch: self.pitch,
@@ -1422,7 +1437,7 @@ impl<C: Config> Client<C> {
             if let Some(entity) = entities.get(id) {
                 debug_assert!(entity.kind() != EntityKind::Marker);
                 if self.position.distance(entity.position()) <= self.view_distance as f64 * 16.0 {
-                    let _ = entity.send_updated_tracked_data(ctrl, id);
+                    let _ = entity.send_updated_tracked_data(send, id);
 
                     let position_delta = entity.position() - entity.old_position();
                     let needs_teleport = position_delta.map(f64::abs).reduce_partial_max() >= 8.0;
@@ -1432,7 +1447,7 @@ impl<C: Config> Client<C> {
                         && !needs_teleport
                         && flags.yaw_or_pitch_modified()
                     {
-                        let _ = ctrl.append_packet(&UpdateEntityPositionAndRotation {
+                        let _ = send.append_packet(&UpdateEntityPositionAndRotation {
                             entity_id: VarInt(id.to_raw_id()),
                             delta: (position_delta * 4096.0).as_::<i16>().into_array(),
                             yaw: ByteAngle::from_degrees(entity.yaw()),
@@ -1441,7 +1456,7 @@ impl<C: Config> Client<C> {
                         });
                     } else {
                         if entity.position() != entity.old_position() && !needs_teleport {
-                            let _ = ctrl.append_packet(&UpdateEntityPosition {
+                            let _ = send.append_packet(&UpdateEntityPosition {
                                 entity_id: VarInt(id.to_raw_id()),
                                 delta: (position_delta * 4096.0).as_::<i16>().into_array(),
                                 on_ground: entity.on_ground(),
@@ -1449,7 +1464,7 @@ impl<C: Config> Client<C> {
                         }
 
                         if flags.yaw_or_pitch_modified() {
-                            let _ = ctrl.append_packet(&UpdateEntityRotation {
+                            let _ = send.append_packet(&UpdateEntityRotation {
                                 entity_id: VarInt(id.to_raw_id()),
                                 yaw: ByteAngle::from_degrees(entity.yaw()),
                                 pitch: ByteAngle::from_degrees(entity.pitch()),
@@ -1459,7 +1474,7 @@ impl<C: Config> Client<C> {
                     }
 
                     if needs_teleport {
-                        let _ = ctrl.append_packet(&TeleportEntity {
+                        let _ = send.append_packet(&TeleportEntity {
                             entity_id: VarInt(id.to_raw_id()),
                             position: entity.position().into_array(),
                             yaw: ByteAngle::from_degrees(entity.yaw()),
@@ -1469,20 +1484,20 @@ impl<C: Config> Client<C> {
                     }
 
                     if flags.velocity_modified() {
-                        let _ = ctrl.append_packet(&SetEntityVelocity {
+                        let _ = send.append_packet(&SetEntityVelocity {
                             entity_id: VarInt(id.to_raw_id()),
                             velocity: velocity_to_packet_units(entity.velocity()).into_array(),
                         });
                     }
 
                     if flags.head_yaw_modified() {
-                        let _ = ctrl.append_packet(&SetHeadRotation {
+                        let _ = send.append_packet(&SetHeadRotation {
                             entity_id: VarInt(id.to_raw_id()),
                             head_yaw: ByteAngle::from_degrees(entity.head_yaw()),
                         });
                     }
 
-                    let _ = send_entity_events(ctrl, id.to_raw_id(), entity.events());
+                    let _ = send_entity_events(send, id.to_raw_id(), entity.events());
 
                     return true;
                 }
@@ -1493,7 +1508,7 @@ impl<C: Config> Client<C> {
         });
 
         if !entities_to_unload.is_empty() {
-            ctrl.append_packet(&RemoveEntities {
+            send.append_packet(&RemoveEntities {
                 entity_ids: entities_to_unload,
             })?;
         }
@@ -1505,7 +1520,7 @@ impl<C: Config> Client<C> {
         if !data.is_empty() {
             data.push(0xff);
 
-            ctrl.append_packet(&SetEntityMetadata {
+            send.append_packet(&SetEntityMetadata {
                 entity_id: VarInt(0),
                 metadata: RawBytes(&data),
             })?;
@@ -1536,15 +1551,15 @@ impl<C: Config> Client<C> {
                     && entity.uuid() != self.uuid
                     && self.loaded_entities.insert(id)
                 {
-                    if let Err(e) = entity.send_spawn_packets(id, ctrl) {
+                    if let Err(e) = entity.send_spawn_packets(id, send) {
                         return Some(e);
                     }
 
-                    if let Err(e) = entity.send_initial_tracked_data(ctrl, id) {
+                    if let Err(e) = entity.send_initial_tracked_data(send, id) {
                         return Some(e);
                     }
 
-                    if let Err(e) = send_entity_events(ctrl, id.to_raw_id(), entity.events()) {
+                    if let Err(e) = send_entity_events(send, id.to_raw_id(), entity.events()) {
                         return Some(e);
                     }
                 }
@@ -1555,7 +1570,7 @@ impl<C: Config> Client<C> {
             return Err(e);
         }
 
-        send_entity_events(ctrl, 0, &self.entity_events)?;
+        send_entity_events(send, 0, &self.entity_events)?;
         self.entity_events.clear();
 
         self.player_data.clear_modifications();
@@ -1564,7 +1579,7 @@ impl<C: Config> Client<C> {
 
         // Update the player's inventory
         if self.inventory.is_dirty() {
-            ctrl.append_packet(&SetContainerContent {
+            send.append_packet(&SetContainerContent {
                 window_id: 0,
                 state_id: VarInt(self.inventory.state_id),
                 slots: self
@@ -1597,7 +1612,7 @@ impl<C: Config> Client<C> {
                         .map(|s| s.cloned())
                         .collect();
                     let carried_item = self.cursor_held_item.clone();
-                    ctrl.append_packet(&SetContainerContent {
+                    send.append_packet(&SetContainerContent {
                         window_id,
                         state_id: VarInt(1),
                         slots,
@@ -1607,24 +1622,24 @@ impl<C: Config> Client<C> {
             }
         }
 
-        ctrl.flush().context("failed to flush packet queue")?;
+        send.flush().context("failed to flush packet queue")?;
 
         Ok(())
     }
 }
 
 fn send_entity_events(
-    ctrl: &mut PlayPacketController,
+    send: &mut PlayPacketSender,
     entity_id: i32,
     events: &[entity::EntityEvent],
 ) -> anyhow::Result<()> {
     for &event in events {
         match event.status_or_animation() {
-            StatusOrAnimation::Status(code) => ctrl.append_packet(&EntityEvent {
+            StatusOrAnimation::Status(code) => send.append_packet(&EntityEvent {
                 entity_id,
                 entity_status: code,
             })?,
-            StatusOrAnimation::Animation(code) => ctrl.append_packet(&EntityAnimationS2c {
+            StatusOrAnimation::Animation(code) => send.append_packet(&EntityAnimationS2c {
                 entity_id: VarInt(entity_id),
                 animation: code,
             })?,

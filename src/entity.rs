@@ -17,7 +17,7 @@ use valence_protocol::{ByteAngle, RawBytes, VarInt};
 use vek::{Aabb, Vec3};
 
 use crate::config::Config;
-use crate::server::PlayPacketController;
+use crate::server::PlayPacketSender;
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::util::aabb_from_bottom_and_size;
 use crate::world::WorldId;
@@ -709,12 +709,12 @@ impl<C: Config> Entity<C> {
     /// been spawned.
     pub(crate) fn send_initial_tracked_data(
         &self,
-        ctrl: &mut PlayPacketController,
+        send: &mut PlayPacketSender,
         this_id: EntityId,
     ) -> anyhow::Result<()> {
         // TODO: cache metadata buffer?
         if let Some(metadata) = self.variants.initial_tracked_data() {
-            ctrl.append_packet(&SetEntityMetadata {
+            send.append_packet(&SetEntityMetadata {
                 entity_id: VarInt(this_id.to_raw_id()),
                 metadata: RawBytes(&metadata),
             })?;
@@ -727,12 +727,12 @@ impl<C: Config> Entity<C> {
     /// modified.
     pub(crate) fn send_updated_tracked_data(
         &self,
-        ctrl: &mut PlayPacketController,
+        send: &mut PlayPacketSender,
         this_id: EntityId,
     ) -> anyhow::Result<()> {
         // TODO: cache metadata buffer?
         if let Some(metadata) = self.variants.updated_tracked_data() {
-            ctrl.append_packet(&SetEntityMetadata {
+            send.append_packet(&SetEntityMetadata {
                 entity_id: VarInt(this_id.to_raw_id()),
                 metadata: RawBytes(&metadata),
             })?;
@@ -745,7 +745,7 @@ impl<C: Config> Entity<C> {
     pub(crate) fn send_spawn_packets(
         &self,
         this_id: EntityId,
-        ctrl: &mut PlayPacketController,
+        send: &mut PlayPacketSender,
     ) -> anyhow::Result<()> {
         let with_object_data = |data| SpawnEntity {
             entity_id: VarInt(this_id.to_raw_id()),
@@ -761,13 +761,13 @@ impl<C: Config> Entity<C> {
 
         match &self.variants {
             TrackedData::Marker(_) => {}
-            TrackedData::ExperienceOrb(_) => ctrl.append_packet(&SpawnExperienceOrb {
+            TrackedData::ExperienceOrb(_) => send.append_packet(&SpawnExperienceOrb {
                 entity_id: VarInt(this_id.to_raw_id()),
                 position: self.new_position.into_array(),
                 count: 0, // TODO
             })?,
             TrackedData::Player(_) => {
-                ctrl.append_packet(&SpawnPlayer {
+                send.append_packet(&SpawnPlayer {
                     entity_id: VarInt(this_id.to_raw_id()),
                     player_uuid: self.uuid,
                     position: self.new_position.into_array(),
@@ -776,17 +776,17 @@ impl<C: Config> Entity<C> {
                 })?;
 
                 // Player spawn packet doesn't include head yaw for some reason.
-                ctrl.append_packet(&SetHeadRotation {
+                send.append_packet(&SetHeadRotation {
                     entity_id: VarInt(this_id.to_raw_id()),
                     head_yaw: ByteAngle::from_degrees(self.head_yaw),
                 })?;
             }
-            TrackedData::ItemFrame(e) => ctrl.append_packet(&with_object_data(e.get_rotation()))?,
+            TrackedData::ItemFrame(e) => send.append_packet(&with_object_data(e.get_rotation()))?,
             TrackedData::GlowItemFrame(e) => {
-                ctrl.append_packet(&with_object_data(e.get_rotation()))?
+                send.append_packet(&with_object_data(e.get_rotation()))?
             }
 
-            TrackedData::Painting(_) => ctrl.append_packet(&with_object_data(
+            TrackedData::Painting(_) => send.append_packet(&with_object_data(
                 match ((self.yaw + 45.0).rem_euclid(360.0) / 90.0) as u8 {
                     0 => 3,
                     1 => 4,
@@ -795,14 +795,14 @@ impl<C: Config> Entity<C> {
                 },
             ))?,
             // TODO: set block state ID for falling block.
-            TrackedData::FallingBlock(_) => ctrl.append_packet(&with_object_data(1))?,
+            TrackedData::FallingBlock(_) => send.append_packet(&with_object_data(1))?,
             TrackedData::FishingBobber(e) => {
-                ctrl.append_packet(&with_object_data(e.get_hook_entity_id()))?
+                send.append_packet(&with_object_data(e.get_hook_entity_id()))?
             }
             TrackedData::Warden(e) => {
-                ctrl.append_packet(&with_object_data((e.get_pose() == Pose::Emerging).into()))?
+                send.append_packet(&with_object_data((e.get_pose() == Pose::Emerging).into()))?
             }
-            _ => ctrl.append_packet(&with_object_data(0))?,
+            _ => send.append_packet(&with_object_data(0))?,
         }
 
         Ok(())

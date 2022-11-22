@@ -11,7 +11,7 @@ use valence_protocol::{Text, VarInt};
 
 use crate::config::Config;
 use crate::player_textures::SignedPlayerTextures;
-use crate::server::PlayPacketController;
+use crate::server::PlayPacketSender;
 use crate::slab_rc::{Key, SlabRc};
 
 /// A container for all [`PlayerList`]s on a server.
@@ -245,7 +245,7 @@ impl<C: Config> PlayerList<C> {
 
     pub(crate) fn send_initial_packets(
         &self,
-        ctrl: &mut PlayPacketController,
+        send: &mut PlayPacketSender,
     ) -> anyhow::Result<()> {
         let add_player: Vec<_> = self
             .entries
@@ -272,11 +272,11 @@ impl<C: Config> PlayerList<C> {
             .collect();
 
         if !add_player.is_empty() {
-            ctrl.append_packet(&PlayerInfo::AddPlayer(add_player))?;
+            send.append_packet(&PlayerInfo::AddPlayer(add_player))?;
         }
 
         if self.header != Text::default() || self.footer != Text::default() {
-            ctrl.append_packet(&SetTabListHeaderAndFooter {
+            send.append_packet(&SetTabListHeaderAndFooter {
                 header: self.header.clone(),
                 footer: self.footer.clone(),
             })?;
@@ -287,10 +287,10 @@ impl<C: Config> PlayerList<C> {
 
     pub(crate) fn send_update_packets(
         &self,
-        ctrl: &mut PlayPacketController,
+        send: &mut PlayPacketSender,
     ) -> anyhow::Result<()> {
         if !self.removed.is_empty() {
-            ctrl.append_packet(&PlayerInfo::RemovePlayer(
+            send.append_packet(&PlayerInfo::RemovePlayer(
                 self.removed.iter().cloned().collect(),
             ))?;
         }
@@ -338,23 +338,23 @@ impl<C: Config> PlayerList<C> {
         }
 
         if !add_player.is_empty() {
-            ctrl.append_packet(&PlayerInfo::AddPlayer(add_player))?;
+            send.append_packet(&PlayerInfo::AddPlayer(add_player))?;
         }
 
         if !game_mode.is_empty() {
-            ctrl.append_packet(&PlayerInfo::UpdateGameMode(game_mode))?;
+            send.append_packet(&PlayerInfo::UpdateGameMode(game_mode))?;
         }
 
         if !ping.is_empty() {
-            ctrl.append_packet(&PlayerInfo::UpdateLatency(ping))?;
+            send.append_packet(&PlayerInfo::UpdateLatency(ping))?;
         }
 
         if !display_name.is_empty() {
-            ctrl.append_packet(&PlayerInfo::UpdateDisplayName(display_name))?;
+            send.append_packet(&PlayerInfo::UpdateDisplayName(display_name))?;
         }
 
         if self.modified_header_or_footer {
-            ctrl.append_packet(&SetTabListHeaderAndFooter {
+            send.append_packet(&SetTabListHeaderAndFooter {
                 header: self.header.clone(),
                 footer: self.footer.clone(),
             })?;
@@ -365,7 +365,7 @@ impl<C: Config> PlayerList<C> {
 
     pub(crate) fn queue_clear_packets(
         &self,
-        ctrl: &mut PlayPacketController,
+        ctrl: &mut PlayPacketSender,
     ) -> anyhow::Result<()> {
         ctrl.append_packet(&PlayerInfo::RemovePlayer(
             self.entries.keys().cloned().collect(),
