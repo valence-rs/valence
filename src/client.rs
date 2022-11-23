@@ -708,27 +708,6 @@ impl<C: Config> Client<C> {
         self.send.is_none()
     }
 
-    /*
-    /// Returns an iterator over all pending client events in the order they
-    /// will be removed from the queue.
-    pub fn events(
-        &self,
-    ) -> impl DoubleEndedIterator<Item = &ClientEvent> + ExactSizeIterator + FusedIterator + Clone + '_
-    {
-        self.events.iter()
-    }
-
-    /// Removes a [`ClientEvent`] from the event queue.
-    ///
-    /// If there are no remaining events, `None` is returned.
-    ///
-    /// Any remaining client events are deleted at the end of the
-    /// current tick.
-    pub fn pop_event(&mut self) -> Option<ClientEvent> {
-        self.events.pop_front()
-    }
-    */
-
     /// Sends an entity event for the client's own player data.
     pub fn send_entity_event(&mut self, event: entity::EntityEvent) {
         match event.status_or_animation() {

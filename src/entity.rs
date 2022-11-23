@@ -174,10 +174,22 @@ impl<C: Config> Entities<C> {
         self.slab.get_mut(entity.0)
     }
 
-    pub fn get_with_raw_id(&self, raw_id: i32) -> Option<EntityId> {
+    pub fn get_with_raw_id(&self, raw_id: i32) -> Option<(EntityId, &Entity<C>)> {
         let version = NonZeroU32::new(raw_id as u32)?;
         let index = *self.raw_id_to_entity.get(&version)?;
-        Some(EntityId(Key::new(index, version)))
+
+        let id = EntityId(Key::new(index, version));
+        let entity = self.get(id)?;
+        Some((id, entity))
+    }
+
+    pub fn get_with_raw_id_mut(&mut self, raw_id: i32) -> Option<(EntityId, &mut Entity<C>)> {
+        let version = NonZeroU32::new(raw_id as u32)?;
+        let index = *self.raw_id_to_entity.get(&version)?;
+
+        let id = EntityId(Key::new(index, version));
+        let entity = self.get_mut(id)?;
+        Some((id, entity))
     }
 
     /// Returns an iterator over all entities on the server in an unspecified
@@ -828,17 +840,17 @@ mod tests {
     #[test]
     fn entities_has_valid_new_state() {
         let mut entities: Entities<MockConfig> = Entities::new();
-        let network_id: i32 = 8675309;
+        let raw_id: i32 = 8675309;
         let entity_id = EntityId(Key::new(
             202298,
-            NonZeroU32::new(network_id as u32).expect("Value given should never be zero!"),
+            NonZeroU32::new(raw_id as u32).expect("Value given should never be zero!"),
         ));
         let uuid = Uuid::from_bytes([2; 16]);
         assert!(entities.is_empty());
         assert!(entities.get(entity_id).is_none());
         assert!(entities.get_mut(entity_id).is_none());
         assert!(entities.get_with_uuid(uuid).is_none());
-        assert!(entities.get_with_raw_id(network_id).is_none());
+        assert!(entities.get_with_raw_id(raw_id).is_none());
     }
 
     #[test]
@@ -873,7 +885,7 @@ mod tests {
     }
 
     #[test]
-    fn entities_can_be_set_and_get_with_network_id() {
+    fn entities_can_be_set_and_get_with_raw_id() {
         let mut entities: Entities<MockConfig> = Entities::new();
         assert!(entities.is_empty());
         let (boat_id, boat_entity) = entities.insert(EntityKind::Boat, 12);

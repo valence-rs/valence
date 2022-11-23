@@ -7,10 +7,10 @@ use async_trait::async_trait;
 use serde::Serialize;
 use tokio::runtime::Handle as TokioHandle;
 use uuid::Uuid;
+use valence_protocol::packets::S2cPlayPacket;
 use valence_protocol::text::Text;
 use valence_protocol::username::Username;
 use valence_protocol::MAX_PACKET_SIZE;
-use valence_protocol::packets::S2cPlayPacket;
 
 use crate::biome::Biome;
 use crate::client::{Client, ClientId};

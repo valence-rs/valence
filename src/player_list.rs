@@ -243,10 +243,7 @@ impl<C: Config> PlayerList<C> {
         self.entries.iter_mut().map(|(k, v)| (*k, v))
     }
 
-    pub(crate) fn send_initial_packets(
-        &self,
-        send: &mut PlayPacketSender,
-    ) -> anyhow::Result<()> {
+    pub(crate) fn send_initial_packets(&self, send: &mut PlayPacketSender) -> anyhow::Result<()> {
         let add_player: Vec<_> = self
             .entries
             .iter()
@@ -285,10 +282,7 @@ impl<C: Config> PlayerList<C> {
         Ok(())
     }
 
-    pub(crate) fn send_update_packets(
-        &self,
-        send: &mut PlayPacketSender,
-    ) -> anyhow::Result<()> {
+    pub(crate) fn send_update_packets(&self, send: &mut PlayPacketSender) -> anyhow::Result<()> {
         if !self.removed.is_empty() {
             send.append_packet(&PlayerInfo::RemovePlayer(
                 self.removed.iter().cloned().collect(),
@@ -363,10 +357,7 @@ impl<C: Config> PlayerList<C> {
         Ok(())
     }
 
-    pub(crate) fn queue_clear_packets(
-        &self,
-        ctrl: &mut PlayPacketSender,
-    ) -> anyhow::Result<()> {
+    pub(crate) fn queue_clear_packets(&self, ctrl: &mut PlayPacketSender) -> anyhow::Result<()> {
         ctrl.append_packet(&PlayerInfo::RemovePlayer(
             self.entries.keys().cloned().collect(),
         ))
