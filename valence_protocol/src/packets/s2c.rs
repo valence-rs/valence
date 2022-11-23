@@ -145,14 +145,14 @@ pub mod play {
     #[packet_id = 0x06]
     pub struct SetBlockDestroyStage {
         pub entity_id: VarInt,
-        pub location: BlockPos,
+        pub position: BlockPos,
         pub destroy_stage: u8,
     }
 
     #[derive(Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x07]
     pub struct BlockEntityData {
-        pub location: BlockPos,
+        pub position: BlockPos,
         // TODO: BlockEntityKind enum?
         pub kind: VarInt,
         pub data: Compound,
@@ -161,7 +161,7 @@ pub mod play {
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x09]
     pub struct BlockUpdate {
-        pub location: BlockPos,
+        pub position: BlockPos,
         pub block_id: VarInt,
     }
 
@@ -512,7 +512,7 @@ pub mod play {
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x4d]
     pub struct SetDefaultSpawnPosition {
-        pub location: BlockPos,
+        pub position: BlockPos,
         pub angle: f32,
     }
 

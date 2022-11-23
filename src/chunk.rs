@@ -612,7 +612,7 @@ impl<C: Config> LoadedChunk<C> {
                 let global_z = pos.z * 16 + (idx / 16 % 16) as i32;
 
                 send.append_packet(&BlockUpdate {
-                    location: BlockPos::new(global_x, global_y, global_z),
+                    position: BlockPos::new(global_x, global_y, global_z),
                     block_id: VarInt(block.to_raw() as _),
                 })?;
             } else if sect.modified_blocks_count > 1 {

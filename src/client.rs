@@ -8,6 +8,7 @@ use std::{cmp, mem};
 
 use anyhow::{bail, Context};
 pub use bitfield_struct::bitfield;
+pub use event::ClientEvent;
 use rayon::iter::ParallelIterator;
 use tracing::{error, info, warn};
 use uuid::Uuid;
@@ -24,7 +25,7 @@ use valence_protocol::packets::s2c::play::{
 };
 use valence_protocol::packets::{C2sPlayPacket, S2cPlayPacket};
 use valence_protocol::types::{
-    Action, AttributeProperty, GameMode, GameStateChangeReason, SoundCategory,
+    Action, AttributeProperty, DisplayedSkinParts, GameMode, GameStateChangeReason, SoundCategory,
     SyncPlayerPosLookFlags,
 };
 use valence_protocol::{
@@ -49,6 +50,8 @@ use crate::server::{NewClientData, PlayPacketReceiver, PlayPacketSender, SharedS
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::world::{WorldId, Worlds};
+
+mod event;
 
 /// A container for all [`Client`]s on a [`Server`](crate::server::Server).
 ///
@@ -217,8 +220,8 @@ pub struct Client<C: Config> {
     /// Counts up as teleports are made.
     teleport_id_counter: u32,
     /// The number of pending client teleports that have yet to receive a
-    /// confirmation. Inbound client position packets are ignored while this
-    /// is nonzero.
+    /// confirmation. Inbound client position packets should be ignored while
+    /// this is nonzero.
     pending_teleports: u32,
     death_location: Option<(DimensionId, BlockPos)>,
     /// The ID of the last keepalive sent.
@@ -230,9 +233,9 @@ pub struct Client<C: Config> {
     loaded_chunks: HashSet<ChunkPos>,
     game_mode: GameMode,
     block_change_sequence: i32,
-    bits: ClientBits,
     /// The data for the client's own player entity.
     player_data: Player,
+    bits: ClientBits,
 }
 
 #[bitfield(u8)]
@@ -280,10 +283,10 @@ impl<C: Config> Client<C> {
             loaded_chunks: HashSet::new(),
             game_mode: GameMode::Survival,
             block_change_sequence: 0,
+            player_data: Player::new(),
             bits: ClientBits::new()
                 .with_got_keepalive(true)
                 .with_created_this_tick(true),
-            player_data: Player::new(),
         }
     }
 
@@ -372,6 +375,10 @@ impl<C: Config> Client<C> {
         self.bits.flat()
     }
 
+    pub fn has_pending_teleport(&self) -> bool {
+        self.pending_teleports > 0
+    }
+
     /// Changes the world this client is located in and respawns the client.
     /// This can be used to respawn the client after death.
     ///
@@ -440,7 +447,7 @@ impl<C: Config> Client<C> {
     /// point at the provided position.
     pub fn set_spawn_position(&mut self, pos: impl Into<BlockPos>, yaw_degrees: f32) {
         self.queue_packet(&SetDefaultSpawnPosition {
-            location: pos.into(),
+            position: pos.into(),
             angle: yaw_degrees,
         });
     }
@@ -546,9 +553,9 @@ impl<C: Config> Client<C> {
     /// Sets the title this client sees.
     ///
     /// A title is a large piece of text displayed in the center of the screen
-    /// which may also include a subtitle underneath it. The title
-    /// can be configured to fade in and out using the
-    /// [`SetTitleAnimationTimes`] struct.
+    /// which may also include a subtitle underneath it. The title can be
+    /// configured to fade in and out using the [`SetTitleAnimationTimes`]
+    /// struct.
     pub fn set_title(
         &mut self,
         title: impl Into<Text>,
@@ -668,6 +675,28 @@ impl<C: Config> Client<C> {
                 });
             }
         }
+    }
+
+    pub fn skin_parts(&self) -> DisplayedSkinParts {
+        DisplayedSkinParts::new()
+            .with_cape(self.player_data.get_cape())
+            .with_jacket(self.player_data.get_jacket())
+            .with_left_sleeve(self.player_data.get_left_sleeve())
+            .with_right_sleeve(self.player_data.get_right_sleeve())
+            .with_left_pants_leg(self.player_data.get_left_pants_leg())
+            .with_right_pants_leg(self.player_data.get_right_pants_leg())
+            .with_hat(self.player_data.get_hat())
+    }
+
+    pub fn set_skin_parts(&mut self, parts: DisplayedSkinParts) {
+        self.player_data.set_cape(parts.cape());
+        self.player_data.set_jacket(parts.jacket());
+        self.player_data.set_left_sleeve(parts.left_sleeve());
+        self.player_data.set_right_sleeve(parts.right_sleeve());
+        self.player_data.set_left_pants_leg(parts.left_pants_leg());
+        self.player_data
+            .set_right_pants_leg(parts.right_pants_leg());
+        self.player_data.set_hat(parts.hat());
     }
 
     /// Gets whether or not the client is connected to the server.
@@ -848,7 +877,12 @@ impl<C: Config> Client<C> {
         &mut self.player_data
     }
 
-    pub fn next_packet(&mut self) -> (Option<C2sPlayPacket>, &mut C::ClientState) {
+    pub fn next_event(&mut self) -> (Option<ClientEvent>, &mut C::ClientState) {
+        let (pkt, state) = self.next_packet();
+        (pkt.map(|p| p.into()), state)
+    }
+
+    fn next_packet(&mut self) -> (Option<C2sPlayPacket>, &mut C::ClientState) {
         match self.recv.try_next_packet() {
             Ok(Some(pkt)) => {
                 let mut handle_packet = || match &pkt {
@@ -940,7 +974,6 @@ impl<C: Config> Client<C> {
             ) {
                 Ok(()) => self.send = Some(send),
                 Err(e) => {
-                    // self.recv = None;
                     warn!(
                         username = %self.username,
                         uuid = %self.uuid,
@@ -966,6 +999,14 @@ impl<C: Config> Client<C> {
         player_lists: &PlayerLists<C>,
         inventories: &Inventories,
     ) -> anyhow::Result<()> {
+        // Handle any packets that weren't handled by the user.
+        while self.next_packet().0.is_some() {}
+
+        // Handling the packets might have disconnected the client.
+        if self.is_disconnected() {
+            return Ok(());
+        }
+
         let world = match worlds.get(self.world) {
             Some(world) => world,
             None => bail!("client is in an invalid world and must be disconnected"),

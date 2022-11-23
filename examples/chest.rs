@@ -180,7 +180,7 @@ impl Config for Game {
 
             while let Some(event) = handle_event_default(client, player) {
                 match event {
-                    ClientEvent::InteractWithBlock { hand, location, .. } => {
+                    ClientEvent::UseItemOnBlock { hand, location, .. } => {
                         if hand == Hand::Main
                             && world.chunks.block_state(location) == Some(BlockState::CHEST)
                         {

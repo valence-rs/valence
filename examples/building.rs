@@ -184,7 +184,7 @@ impl Config for Game {
                             _ => {}
                         }
                     }
-                    ClientEvent::InteractWithBlock {
+                    ClientEvent::UseItemOnBlock {
                         hand,
                         location,
                         face,

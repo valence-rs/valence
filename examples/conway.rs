@@ -195,7 +195,7 @@ impl Config for Game {
                             server.state.board[index] = true;
                         }
                     }
-                    ClientEvent::InteractWithBlock { hand, .. } => {
+                    ClientEvent::UseItemOnBlock { hand, .. } => {
                         if hand == Hand::Main {
                             client.send_message("I said left click, not right click!".italic());
                         }
