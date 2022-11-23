@@ -125,7 +125,7 @@ pub mod world;
 pub mod prelude {
     pub use biome::{Biome, BiomeId};
     pub use chunk::{Chunk, ChunkPos, Chunks, LoadedChunk, UnloadedChunk};
-    pub use client::{handle_event_default, Client, ClientEvent, ClientId, Clients};
+    pub use client::{Client, ClientId, Clients};
     pub use config::{Config, ConnectionMode, PlayerSampleEntry, ServerListPing};
     pub use dimension::{Dimension, DimensionId};
     pub use entity::{Entities, Entity, EntityEvent, EntityId, EntityKind, TrackedData};

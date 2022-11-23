@@ -8,7 +8,6 @@ use std::{cmp, mem};
 
 use anyhow::{bail, Context};
 pub use bitfield_struct::bitfield;
-pub use event::*;
 use rayon::iter::ParallelIterator;
 use tracing::{error, info, warn};
 use uuid::Uuid;
@@ -23,7 +22,7 @@ use valence_protocol::packets::s2c::play::{
     SystemChatMessage, TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
     UpdateEntityPositionAndRotation, UpdateEntityRotation, UpdateTime,
 };
-use valence_protocol::packets::C2sPlayPacket;
+use valence_protocol::packets::{C2sPlayPacket, S2cPlayPacket};
 use valence_protocol::types::{
     Action, AttributeProperty, GameMode, GameStateChangeReason, SoundCategory,
     SyncPlayerPosLookFlags,
@@ -46,15 +45,10 @@ use crate::inventory::{
 };
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
-use crate::server::{
-    NewClientData, PlayPacketReceiver, PlayPacketSender, SharedServer,
-};
+use crate::server::{NewClientData, PlayPacketReceiver, PlayPacketSender, SharedServer};
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::util::{chunks_in_view_distance, is_chunk_in_view_distance};
 use crate::world::{WorldId, Worlds};
-
-/// Contains the [`ClientEvent`] enum and related data types.
-mod event;
 
 /// A container for all [`Client`]s on a [`Server`](crate::server::Server).
 ///
@@ -202,7 +196,7 @@ pub struct Client<C: Config> {
     /// Custom state.
     pub state: C::ClientState,
     send: Option<PlayPacketSender>,
-    recv: Option<PlayPacketReceiver>,
+    recv: PlayPacketReceiver,
     username: Username<String>,
     uuid: Uuid,
     ip: IpAddr,
@@ -227,7 +221,6 @@ pub struct Client<C: Config> {
     /// is nonzero.
     pending_teleports: u32,
     death_location: Option<(DimensionId, BlockPos)>,
-    events: VecDeque<ClientEvent>,
     /// The ID of the last keepalive sent.
     last_keepalive_id: u64,
     /// Entities that were visible to this client at the end of the last tick.
@@ -237,16 +230,9 @@ pub struct Client<C: Config> {
     loaded_chunks: HashSet<ChunkPos>,
     game_mode: GameMode,
     block_change_sequence: i32,
-    pub inventory: PlayerInventory, // TODO: make private or pub(crate)
-    pub open_inventory: Option<WindowInventory>, // TODO: make private or pub(crate)
-    /// The item currently being held by the client's cursor in an inventory
-    /// screen. Does not work for creative mode.
-    pub cursor_held_item: Option<ItemStack>, // TODO: make private or pub(crate)
-    selected_hotbar_slot: SlotId,
     bits: ClientBits,
     /// The data for the client's own player entity.
     player_data: Player,
-    entity_events: Vec<entity::EntityEvent>,
 }
 
 #[bitfield(u8)]
@@ -273,7 +259,7 @@ impl<C: Config> Client<C> {
         Self {
             state,
             send: Some(send),
-            recv: Some(recv),
+            recv,
             username: ncd.username,
             uuid: ncd.uuid,
             ip: ncd.ip,
@@ -289,21 +275,15 @@ impl<C: Config> Client<C> {
             teleport_id_counter: 0,
             pending_teleports: 0,
             death_location: None,
-            events: VecDeque::new(),
             last_keepalive_id: 0,
             loaded_entities: HashSet::new(),
             loaded_chunks: HashSet::new(),
             game_mode: GameMode::Survival,
             block_change_sequence: 0,
-            inventory: PlayerInventory::new(),
-            open_inventory: None,
-            cursor_held_item: None,
-            selected_hotbar_slot: PlayerInventory::HOTBAR_SLOTS.start,
             bits: ClientBits::new()
                 .with_got_keepalive(true)
                 .with_created_this_tick(true),
             player_data: Player::new(),
-            entity_events: Vec::new(),
         }
     }
 
@@ -324,8 +304,14 @@ impl<C: Config> Client<C> {
                     "failed to queue packet: {e:#}"
                 );
                 self.send = None;
-                self.recv = None;
+                // self.recv = None;
             }
+        }
+    }
+
+    pub(crate) fn prepare_c2s_packets(&mut self) {
+        if !self.recv.try_recv() {
+            self.disconnect_abrupt();
         }
     }
 
@@ -693,6 +679,7 @@ impl<C: Config> Client<C> {
         self.send.is_none()
     }
 
+    /*
     /// Returns an iterator over all pending client events in the order they
     /// will be removed from the queue.
     pub fn events(
@@ -711,10 +698,20 @@ impl<C: Config> Client<C> {
     pub fn pop_event(&mut self) -> Option<ClientEvent> {
         self.events.pop_front()
     }
+    */
 
-    /// Pushes an entity event to the queue.
-    pub fn push_entity_event(&mut self, event: entity::EntityEvent) {
-        self.entity_events.push(event);
+    /// Sends an entity event for the client's own player data.
+    pub fn send_entity_event(&mut self, event: entity::EntityEvent) {
+        match event.status_or_animation() {
+            StatusOrAnimation::Status(code) => self.queue_packet(&EntityEvent {
+                entity_id: 0,
+                entity_status: code,
+            }),
+            StatusOrAnimation::Animation(code) => self.queue_packet(&EntityAnimationS2c {
+                entity_id: VarInt(0),
+                animation: code,
+            }),
+        }
     }
 
     /// The current view distance of this client measured in chunks. The client
@@ -791,6 +788,7 @@ impl<C: Config> Client<C> {
         });
     }
 
+    /*
     /// The slot that the client has selected in their hotbar.
     pub fn held_item(&self) -> Option<&ItemStack> {
         self.inventory.slot(self.selected_hotbar_slot)
@@ -819,6 +817,7 @@ impl<C: Config> Client<C> {
             self.open_inventory = Some(window);
         }
     }
+     */
 
     /// Disconnects this client from the server with the provided reason. This
     /// has no effect if the client is already disconnected.
@@ -835,7 +834,6 @@ impl<C: Config> Client<C> {
     /// sent to the client.
     pub fn disconnect_abrupt(&mut self) {
         self.send = None;
-        self.recv = None;
     }
 
     /// Returns an immutable reference to the client's own [`Player`] data.
@@ -850,330 +848,77 @@ impl<C: Config> Client<C> {
         &mut self.player_data
     }
 
-    /*
-    pub fn handle_serverbound_packets(
-        &mut self,
-        config: &C,
-        entities: &Entities<C>,
-        worlds: &Worlds<C>,
-        player_lists: &PlayerLists<C>,
-        inventories: &Inventories,
-    ) {
-
-    }
-     */
-
-    pub(crate) fn handle_serverbound_packets(&mut self, entities: &Entities<C>) {
-        todo!()
-        /*
-        self.events.clear();
-
-        if let Some(mut ctrl) = self.ctrl.take() {
-            if !ctrl.try_recv() {
-                return;
-            }
-
-            loop {
-                match ctrl.try_next_packet::<C2sPlayPacket>() {
-                    Ok(Some(pkt)) => {
-                        let name = pkt.packet_name();
-                        if let Err(e) = self.handle_serverbound_packet(entities, pkt) {
-                            warn!(
-                                "failed to handle {name} packet from client {}: {e:#}",
-                                &self.username
-                            );
-                            return;
+    pub fn next_packet(&mut self) -> (Option<C2sPlayPacket>, &mut C::ClientState) {
+        match self.recv.try_next_packet() {
+            Ok(Some(pkt)) => {
+                let mut handle_packet = || match &pkt {
+                    C2sPlayPacket::ConfirmTeleport(p) => {
+                        if self.pending_teleports == 0 {
+                            bail!("unexpected teleport confirmation");
                         }
-                    }
-                    Ok(None) => {
-                        self.ctrl = Some(ctrl);
-                        return;
-                    }
-                    Err(e) => {
-                        warn!(
-                            "failed to read next serverbound packet from client {}: {e:#}",
-                            &self.username
-                        );
-                        return;
-                    }
-                }
-            }
-        }
-         */
-    }
 
-    fn handle_serverbound_packet(
-        &mut self,
-        entities: &Entities<C>,
-        pkt: C2sPlayPacket,
-    ) -> anyhow::Result<()> {
-        match pkt {
-            C2sPlayPacket::ConfirmTeleport(p) => {
-                if self.pending_teleports == 0 {
-                    bail!("unexpected teleport confirmation");
-                }
+                        let got = p.teleport_id.0 as u32;
+                        let expected = self
+                            .teleport_id_counter
+                            .wrapping_sub(self.pending_teleports);
 
-                let got = p.teleport_id.0 as u32;
-                let expected = self
-                    .teleport_id_counter
-                    .wrapping_sub(self.pending_teleports);
+                        if got == expected {
+                            self.pending_teleports -= 1;
+                        } else {
+                            bail!("unexpected teleport ID (expected {expected}, got {got}");
+                        }
 
-                if got == expected {
-                    self.pending_teleports -= 1;
-                } else {
-                    bail!("unexpected teleport ID (expected {expected}, got {got}");
-                }
-            }
-            C2sPlayPacket::QueryBlockEntityTag(_) => {}
-            C2sPlayPacket::ChangeDifficulty(_) => {}
-            C2sPlayPacket::MessageAcknowledgmentC2s(_) => {}
-            C2sPlayPacket::ChatCommand(_) => {}
-            C2sPlayPacket::ChatMessage(p) => self.events.push_back(ClientEvent::ChatMessage {
-                message: p.message.into(),
-                timestamp: Duration::from_millis(p.timestamp),
-            }),
-            C2sPlayPacket::ChatPreviewC2s(_) => {}
-            C2sPlayPacket::ClientCommand(p) => match p {
-                ClientCommand::PerformRespawn => {
-                    self.events.push_back(ClientEvent::RespawnRequest);
-                }
-                ClientCommand::RequestStats => (),
-            },
-            C2sPlayPacket::ClientInformation(p) => {
-                self.events.push_back(ClientEvent::SettingsChanged {
-                    locale: p.locale.into(),
-                    view_distance: p.view_distance,
-                    chat_mode: p.chat_mode,
-                    chat_colors: p.chat_colors,
-                    main_hand: p.main_hand,
-                    displayed_skin_parts: p.displayed_skin_parts,
-                    allow_server_listings: p.allow_server_listings,
-                })
-            }
-            C2sPlayPacket::CommandSuggestionsRequest(_) => {}
-            C2sPlayPacket::ClickContainerButton(_) => {}
-            C2sPlayPacket::ClickContainer(p) => {
-                if p.slot_idx == -999 {
-                    // client is trying to drop the currently held stack
-                    let held = mem::replace(&mut self.cursor_held_item, None);
-                    match held {
-                        None => {}
-                        Some(stack) => self.events.push_back(ClientEvent::DropItemStack { stack }),
+                        Ok(())
                     }
-                } else {
-                    self.cursor_held_item = p.carried_item.clone();
-                    self.events.push_back(ClientEvent::ClickContainer {
-                        window_id: p.window_id,
-                        state_id: p.state_id,
-                        slot_id: p.slot_idx,
-                        mode: p.mode,
-                        slot_changes: p.slots,
-                        carried_item: p.carried_item,
-                    });
-                }
-            }
-            C2sPlayPacket::CloseContainerC2s(c) => {
-                self.events.push_back(ClientEvent::CloseScreen {
-                    window_id: c.window_id,
-                })
-            }
-            C2sPlayPacket::EditBook(_) => {}
-            C2sPlayPacket::QueryEntityTag(_) => {}
-            C2sPlayPacket::Interact(p) => {
-                if let Some(id) = entities.get_with_raw_id(p.entity_id.0) {
-                    self.events.push_back(ClientEvent::InteractWithEntity {
-                        id,
-                        sneaking: p.sneaking,
-                        interact: p.interact,
-                    });
-                }
-            }
-            C2sPlayPacket::JigsawGenerate(_) => {}
-            C2sPlayPacket::KeepAliveC2s(p) => {
-                let last_keepalive_id = self.last_keepalive_id;
-                if self.bits.got_keepalive() {
-                    bail!("unexpected keepalive");
-                } else if p.id != last_keepalive_id {
-                    bail!(
-                        "keepalive IDs don't match (expected {}, got {})",
-                        last_keepalive_id,
-                        p.id
+                    C2sPlayPacket::PlayerAction(p) => {
+                        if p.sequence.0 != 0 {
+                            self.block_change_sequence =
+                                cmp::max(p.sequence.0, self.block_change_sequence);
+                        }
+                        Ok(())
+                    }
+                    C2sPlayPacket::UseItemOn(p) => {
+                        if p.sequence.0 != 0 {
+                            self.block_change_sequence =
+                                cmp::max(p.sequence.0, self.block_change_sequence);
+                        }
+                        Ok(())
+                    }
+                    C2sPlayPacket::UseItem(p) => {
+                        if p.sequence.0 != 0 {
+                            self.block_change_sequence =
+                                cmp::max(p.sequence.0, self.block_change_sequence);
+                        }
+                        Ok(())
+                    }
+                    _ => Ok(()),
+                };
+
+                if let Err(e) = handle_packet() {
+                    let name = pkt.packet_name();
+                    warn!(
+                        username = %self.username,
+                        uuid = %self.uuid,
+                        ip = %self.ip,
+                        "failed to handle {name} packet: {e:#}"
                     );
-                } else {
-                    self.bits.set_got_keepalive(true);
-                }
-            }
-            C2sPlayPacket::LockDifficulty(_) => {}
-            C2sPlayPacket::SetPlayerPosition(p) => {
-                if self.pending_teleports == 0 {
-                    self.position = p.position.into();
-
-                    self.events.push_back(ClientEvent::MovePosition {
-                        position: p.position.into(),
-                        on_ground: p.on_ground,
-                    });
-                }
-            }
-            C2sPlayPacket::SetPlayerPositionAndRotation(p) => {
-                if self.pending_teleports == 0 {
-                    self.position = p.position.into();
-                    self.yaw = p.yaw;
-                    self.pitch = p.pitch;
-
-                    self.events.push_back(ClientEvent::MovePositionAndRotation {
-                        position: p.position.into(),
-                        yaw: p.yaw,
-                        pitch: p.pitch,
-                        on_ground: p.on_ground,
-                    });
-                }
-            }
-            C2sPlayPacket::SetPlayerRotation(p) => {
-                if self.pending_teleports == 0 {
-                    self.yaw = p.yaw;
-                    self.pitch = p.pitch;
-
-                    self.events.push_back(ClientEvent::MoveRotation {
-                        yaw: p.yaw,
-                        pitch: p.pitch,
-                        on_ground: p.on_ground,
-                    });
-                }
-            }
-            C2sPlayPacket::SetPlayerOnGround(p) => {
-                if self.pending_teleports == 0 {
-                    self.events
-                        .push_back(ClientEvent::MoveOnGround { on_ground: p.0 });
-                }
-            }
-            C2sPlayPacket::MoveVehicleC2s(p) => {
-                if self.pending_teleports == 0 {
-                    self.position = p.position.into();
-                    self.yaw = p.yaw;
-                    self.pitch = p.pitch;
-
-                    self.events.push_back(ClientEvent::MoveVehicle {
-                        position: p.position.into(),
-                        yaw: p.yaw,
-                        pitch: p.pitch,
-                    });
-                }
-            }
-            C2sPlayPacket::PaddleBoat(p) => {
-                self.events.push_back(ClientEvent::SteerBoat {
-                    left_paddle_turning: p.left_paddle_turning,
-                    right_paddle_turning: p.right_paddle_turning,
-                });
-            }
-            C2sPlayPacket::PickItem(_) => {}
-            C2sPlayPacket::PlaceRecipe(_) => {}
-            C2sPlayPacket::PlayerAbilitiesC2s(_) => {}
-            C2sPlayPacket::PlayerAction(p) => {
-                if p.sequence.0 != 0 {
-                    self.block_change_sequence = cmp::max(p.sequence.0, self.block_change_sequence);
+                    self.send = None;
                 }
 
-                self.events.push_back(match p.status {
-                    types::DiggingStatus::StartedDigging => ClientEvent::Digging {
-                        status: DiggingStatus::Start,
-                        position: p.location,
-                        face: p.face,
-                    },
-                    types::DiggingStatus::CancelledDigging => ClientEvent::Digging {
-                        status: DiggingStatus::Cancel,
-                        position: p.location,
-                        face: p.face,
-                    },
-                    types::DiggingStatus::FinishedDigging => ClientEvent::Digging {
-                        status: DiggingStatus::Finish,
-                        position: p.location,
-                        face: p.face,
-                    },
-                    types::DiggingStatus::DropItemStack => return Ok(()),
-                    types::DiggingStatus::DropItem => ClientEvent::DropItem,
-                    types::DiggingStatus::ShootArrowOrFinishEating => return Ok(()),
-                    types::DiggingStatus::SwapItemInHand => return Ok(()),
-                });
+                (Some(pkt), &mut self.state)
             }
-            C2sPlayPacket::PlayerCommand(c) => {
-                self.events.push_back(match c.action_id {
-                    Action::StartSneaking => ClientEvent::StartSneaking,
-                    Action::StopSneaking => ClientEvent::StopSneaking,
-                    Action::LeaveBed => ClientEvent::LeaveBed,
-                    Action::StartSprinting => ClientEvent::StartSprinting,
-                    Action::StopSprinting => ClientEvent::StopSprinting,
-                    Action::StartJumpWithHorse => ClientEvent::StartJumpWithHorse {
-                        jump_boost: c.jump_boost.0 as u8,
-                    },
-                    Action::StopJumpWithHorse => ClientEvent::StopJumpWithHorse,
-                    Action::OpenHorseInventory => ClientEvent::OpenHorseInventory,
-                    Action::StartFlyingWithElytra => ClientEvent::StartFlyingWithElytra,
-                });
-            }
-            C2sPlayPacket::PlayerInput(_) => {}
-            C2sPlayPacket::PongPlay(_) => {}
-            C2sPlayPacket::ChangeRecipeBookSettings(_) => {}
-            C2sPlayPacket::SetSeenRecipe(_) => {}
-            C2sPlayPacket::RenameItem(_) => {}
-            C2sPlayPacket::ResourcePackC2s(p) => self
-                .events
-                .push_back(ClientEvent::ResourcePackStatusChanged(p)),
-            C2sPlayPacket::SeenAdvancements(_) => {}
-            C2sPlayPacket::SelectTrade(_) => {}
-            C2sPlayPacket::SetBeaconEffect(_) => {}
-            C2sPlayPacket::SetHeldItemC2s(e) => {
-                self.selected_hotbar_slot =
-                    PlayerInventory::hotbar_to_slot(e.slot).unwrap_or(self.selected_hotbar_slot);
-            }
-            C2sPlayPacket::ProgramCommandBlock(_) => {}
-            C2sPlayPacket::ProgramCommandBlockMinecart(_) => {}
-            C2sPlayPacket::SetCreativeModeSlot(e) => {
-                if e.slot == -1 {
-                    // The client is trying to drop a stack of items
-                    match e.clicked_item {
-                        None => bail!("creative client tried to drop a stack of nothing."),
-                        Some(stack) => self.events.push_back(ClientEvent::DropItemStack { stack }),
-                    }
-                } else {
-                    self.events.push_back(ClientEvent::SetSlotCreative {
-                        slot_id: e.slot,
-                        slot: e.clicked_item,
-                    })
-                }
-            }
-            C2sPlayPacket::PluginMessageC2s(p) => {
-                self.events.push_back(ClientEvent::PluginMessageReceived {
-                    channel: p.channel.to_owned_ident(),
-                    data: p.data.0.to_vec(),
-                });
-            }
-            C2sPlayPacket::ProgramJigsawBlock(_) => {}
-            C2sPlayPacket::ProgramStructureBlock(_) => {}
-            C2sPlayPacket::UpdateSign(_) => {}
-            C2sPlayPacket::SwingArm(p) => self.events.push_back(ClientEvent::ArmSwing(p.0)),
-            C2sPlayPacket::TeleportToEntity(_) => {}
-            C2sPlayPacket::UseItemOn(p) => {
-                if p.sequence.0 != 0 {
-                    self.block_change_sequence = cmp::max(p.sequence.0, self.block_change_sequence);
-                }
-
-                self.events.push_back(ClientEvent::InteractWithBlock {
-                    hand: p.hand,
-                    location: p.location,
-                    face: p.face,
-                    cursor_pos: p.cursor_pos.into(),
-                    head_inside_block: p.head_inside_block,
-                    sequence: p.sequence,
-                })
-            }
-            C2sPlayPacket::UseItem(p) => {
-                if p.sequence.0 != 0 {
-                    self.block_change_sequence = cmp::max(p.sequence.0, self.block_change_sequence);
-                }
+            Ok(None) => (None, &mut self.state),
+            Err(e) => {
+                warn!(
+                    username = %self.username,
+                    uuid = %self.uuid,
+                    ip = %self.ip,
+                    "failed to decode packet: {e:#}"
+                );
+                self.send = None;
+                (None, &mut self.state)
             }
         }
-
-        Ok(())
     }
 
     pub(crate) fn update(
@@ -1195,7 +940,7 @@ impl<C: Config> Client<C> {
             ) {
                 Ok(()) => self.send = Some(send),
                 Err(e) => {
-                    self.recv = None;
+                    // self.recv = None;
                     warn!(
                         username = %self.username,
                         uuid = %self.uuid,
@@ -1570,13 +1315,10 @@ impl<C: Config> Client<C> {
             return Err(e);
         }
 
-        send_entity_events(send, 0, &self.entity_events)?;
-        self.entity_events.clear();
-
         self.player_data.clear_modifications();
         self.old_position = self.position;
-        self.bits.set_created_this_tick(false);
 
+        /*
         // Update the player's inventory
         if self.inventory.is_dirty() {
             send.append_packet(&SetContainerContent {
@@ -1621,6 +1363,7 @@ impl<C: Config> Client<C> {
                 }
             }
         }
+         */
 
         send.flush().context("failed to flush packet queue")?;
 

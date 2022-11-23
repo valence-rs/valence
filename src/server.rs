@@ -50,7 +50,11 @@ mod login;
 mod packet_manager;
 
 /// Contains the entire state of a running Minecraft server, accessible from
-/// within the [update](crate::config::Config::update) loop.
+/// within the [init] and [update] functions.
+///
+/// [init]: crate::config::Config::init
+/// [update]: crate::config::Config::update
+#[non_exhaustive]
 pub struct Server<C: Config> {
     /// Custom state.
     pub state: C::ServerState,
@@ -419,10 +423,9 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
         }
 
         // Get serverbound packets first so they are not dealt with a tick late.
-
-        server.clients.par_iter_mut().for_each(|(_, client)| {
-            client.handle_serverbound_packets(&server.entities);
-        });
+        for (_, client) in server.clients.iter_mut() {
+            client.prepare_c2s_packets();
+        }
 
         info_span!("configured_update").in_scope(|| shared.config().update(server));
 
@@ -476,6 +479,7 @@ async fn do_accept_loop(server: SharedServer<impl Config>) {
                     let server = server.clone();
                     tokio::spawn(async move {
                         handle_connection(server, stream, remote_addr).await;
+                        // TODO: store permit in client struct.
                         drop(permit);
                     });
                 }

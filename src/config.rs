@@ -10,10 +10,16 @@ use uuid::Uuid;
 use valence_protocol::text::Text;
 use valence_protocol::username::Username;
 use valence_protocol::MAX_PACKET_SIZE;
+use valence_protocol::packets::S2cPlayPacket;
 
 use crate::biome::Biome;
+use crate::client::{Client, ClientId};
 use crate::dimension::Dimension;
+use crate::entity::Entities;
+use crate::inventory::Inventories;
+use crate::player_list::PlayerLists;
 use crate::server::{NewClientData, Server, SharedServer};
+use crate::world::Worlds;
 use crate::{Ticks, STANDARD_TPS};
 
 /// A trait for the configuration of a server.
@@ -305,7 +311,6 @@ pub trait Config: Sized + Send + Sync + 'static {
 }
 
 /// The result of the [`server_list_ping`](Config::server_list_ping) callback.
-#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug)]
 pub enum ServerListPing<'a> {
     /// Responds to the server list ping with the given information.
@@ -329,6 +334,18 @@ pub enum ServerListPing<'a> {
     },
     /// Ignores the query and disconnects from the client.
     Ignore,
+}
+
+/// Represents an individual entry in the player sample.
+#[derive(Clone, Debug, Serialize)]
+pub struct PlayerSampleEntry<'a> {
+    /// The name of the player.
+    ///
+    /// This string can contain
+    /// [legacy formatting codes](https://minecraft.fandom.com/wiki/Formatting_codes).
+    pub name: Cow<'a, str>,
+    /// The player UUID.
+    pub id: Uuid,
 }
 
 /// Describes how new connections to the server are handled.
@@ -384,18 +401,6 @@ pub enum ConnectionMode {
         /// The proxy and Valence must be configured to use the same secret key.
         secret: String,
     },
-}
-
-/// Represents an individual entry in the player sample.
-#[derive(Clone, Debug, Serialize)]
-pub struct PlayerSampleEntry<'a> {
-    /// The name of the player.
-    ///
-    /// This string can contain
-    /// [legacy formatting codes](https://minecraft.fandom.com/wiki/Formatting_codes).
-    pub name: Cow<'a, str>,
-    /// The player UUID.
-    pub id: Uuid,
 }
 
 /// A minimal `Config` implementation for testing purposes.
