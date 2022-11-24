@@ -18,6 +18,9 @@ use crate::client::Client;
 use crate::config::Config;
 use crate::entity::{Entity, EntityEvent, EntityId, TrackedData};
 
+pub type ClientEventOwned = ClientEvent<Box<str>, Box<[u8]>>;
+pub type ClientEventBorrowed<'a> = ClientEvent<&'a str, &'a [u8]>;
+
 /// A discrete action performed by a client.
 ///
 /// Client events are a more convenient representation of the data contained in
@@ -25,7 +28,7 @@ use crate::entity::{Entity, EntityEvent, EntityId, TrackedData};
 ///
 /// [`C2sPlayPacket`]: valence::protocol::packets::C2sPlayPacket
 #[derive(Clone, Debug)]
-pub enum ClientEvent<'a> {
+pub enum ClientEvent<S, B> {
     ConfirmTeleport {
         teleport_id: i32,
     },
@@ -35,15 +38,15 @@ pub enum ClientEvent<'a> {
     },
     ChangeDifficulty(Difficulty),
     MessageAcknowledgment {
-        last_seen: Vec<MessageAcknowledgmentEntry<'a>>,
-        last_received: Option<MessageAcknowledgmentEntry<'a>>,
+        last_seen: Vec<(Uuid, B)>,
+        last_received: Option<(Uuid, B)>,
     },
     ChatCommand {
-        command: &'a str,
+        command: S,
         timestamp: u64,
     },
     ChatMessage {
-        message: &'a str,
+        message: S,
         timestamp: u64,
     },
     ChatPreview,
@@ -51,7 +54,7 @@ pub enum ClientEvent<'a> {
     RequestStats,
     UpdateSettings {
         /// e.g. en_US
-        locale: &'a str,
+        locale: S,
         /// The client side render distance, in chunks.
         ///
         /// The value is always in `2..=32`.
@@ -66,7 +69,7 @@ pub enum ClientEvent<'a> {
     },
     CommandSuggestionsRequest {
         transaction_id: i32,
-        text: &'a str,
+        text: S,
     },
     ClickContainerButton {
         window_id: i8,
@@ -85,13 +88,13 @@ pub enum ClientEvent<'a> {
         window_id: i8,
     },
     PluginMessage {
-        channel: Ident<&'a str>,
-        data: &'a [u8],
+        channel: Ident<S>,
+        data: B,
     },
     EditBook {
         slot: i32,
-        entries: Vec<&'a str>,
-        title: Option<&'a str>,
+        entries: Vec<S>,
+        title: Option<S>,
     },
     QueryEntity {
         transaction_id: i32,
@@ -160,7 +163,7 @@ pub enum ClientEvent<'a> {
     },
     PlaceRecipe {
         window_id: i8,
-        recipe: Ident<&'a str>,
+        recipe: Ident<S>,
         make_all: bool,
     },
     StopFlying,
@@ -200,17 +203,17 @@ pub enum ClientEvent<'a> {
         filter_active: bool,
     },
     SetSeenRecipe {
-        recipe_id: Ident<&'a str>,
+        recipe_id: Ident<S>,
     },
     RenameItem {
-        name: &'a str,
+        name: S,
     },
     ResourcePackLoaded,
     ResourcePackDeclined,
     ResourcePackFailedDownload,
     ResourcePackAccepted,
     OpenAdvancementTab {
-        tab_id: Ident<&'a str>,
+        tab_id: Ident<S>,
     },
     CloseAdvancementScreen,
     SelectTrade {
@@ -225,7 +228,7 @@ pub enum ClientEvent<'a> {
     },
     ProgramCommandBlock {
         position: BlockPos,
-        command: &'a str,
+        command: S,
         mode: CommandBlockMode,
         track_output: bool,
         conditional: bool,
@@ -233,7 +236,7 @@ pub enum ClientEvent<'a> {
     },
     ProgramCommandBlockMinecart {
         entity_id: i32,
-        command: &'a str,
+        command: S,
         track_output: bool,
     },
     SetCreativeModeSlot {
@@ -242,29 +245,29 @@ pub enum ClientEvent<'a> {
     },
     ProgramJigsawBlock {
         position: BlockPos,
-        name: Ident<&'a str>,
-        target: Ident<&'a str>,
-        pool: Ident<&'a str>,
-        final_state: &'a str,
-        joint_type: &'a str,
+        name: Ident<S>,
+        target: Ident<S>,
+        pool: Ident<S>,
+        final_state: S,
+        joint_type: S,
     },
     ProgramStructureBlock {
         position: BlockPos,
         action: StructureBlockAction,
         mode: StructureBlockMode,
-        name: &'a str,
+        name: S,
         offset_xyz: [i8; 3],
         size_xyz: [i8; 3],
         mirror: StructureBlockMirror,
         rotation: StructureBlockRotation,
-        metadata: &'a str,
+        metadata: S,
         integrity: f32,
         seed: VarLong,
         flags: StructureBlockFlags,
     },
     UpdateSign {
         position: BlockPos,
-        lines: [&'a str; 4],
+        lines: [S; 4],
     },
     SwingArm(Hand),
     TeleportToEntity {
@@ -290,7 +293,12 @@ pub enum ClientEvent<'a> {
     },
 }
 
-impl<'a> From<C2sPlayPacket<'a>> for ClientEvent<'a> {
+impl<'a, S, B> From<C2sPlayPacket<'a>> for ClientEvent<S, B>
+where
+    S: From<&'a str>,
+    Ident<&'a str>: Into<Ident<S>>,
+    B: From<&'a [u8]>,
+{
     fn from(pkt: C2sPlayPacket<'a>) -> Self {
         match pkt {
             C2sPlayPacket::ConfirmTeleport(p) => ClientEvent::ConfirmTeleport {
@@ -302,15 +310,23 @@ impl<'a> From<C2sPlayPacket<'a>> for ClientEvent<'a> {
             },
             C2sPlayPacket::ChangeDifficulty(p) => ClientEvent::ChangeDifficulty(p.0),
             C2sPlayPacket::MessageAcknowledgmentC2s(p) => ClientEvent::MessageAcknowledgment {
-                last_seen: p.0.last_seen,
-                last_received: p.0.last_received,
+                last_seen: p
+                    .0
+                    .last_seen
+                    .into_iter()
+                    .map(|entry| (entry.profile_id, entry.signature.into()))
+                    .collect(),
+                last_received: p
+                    .0
+                    .last_received
+                    .map(|entry| (entry.profile_id, entry.signature.into())),
             },
             C2sPlayPacket::ChatCommand(p) => ClientEvent::ChatCommand {
-                command: p.command,
+                command: p.command.into(),
                 timestamp: p.timestamp,
             },
             C2sPlayPacket::ChatMessage(p) => ClientEvent::ChatMessage {
-                message: p.message,
+                message: p.message.into(),
                 timestamp: p.timestamp,
             },
             C2sPlayPacket::ChatPreviewC2s(_) => ClientEvent::ChatPreview,
@@ -319,7 +335,7 @@ impl<'a> From<C2sPlayPacket<'a>> for ClientEvent<'a> {
                 ClientCommand::RequestStats => ClientEvent::RequestStats,
             },
             C2sPlayPacket::ClientInformation(p) => ClientEvent::UpdateSettings {
-                locale: p.locale,
+                locale: p.locale.into(),
                 view_distance: p.view_distance,
                 chat_mode: p.chat_mode,
                 chat_colors: p.chat_colors,
@@ -350,13 +366,13 @@ impl<'a> From<C2sPlayPacket<'a>> for ClientEvent<'a> {
                 window_id: p.window_id,
             },
             C2sPlayPacket::PluginMessageC2s(p) => ClientEvent::PluginMessage {
-                channel: p.channel,
-                data: p.data.0,
+                channel: p.channel.into(),
+                data: p.data.0.into(),
             },
             C2sPlayPacket::EditBook(p) => ClientEvent::EditBook {
                 slot: p.slot.0,
-                entries: p.entries,
-                title: p.title,
+                entries: p.entries.into_iter().map(From::from).collect(),
+                title: p.title.map(From::from),
             },
             C2sPlayPacket::QueryEntityTag(p) => ClientEvent::QueryEntity {
                 transaction_id: p.transaction_id.0,
@@ -419,7 +435,7 @@ impl<'a> From<C2sPlayPacket<'a>> for ClientEvent<'a> {
             },
             C2sPlayPacket::PlaceRecipe(p) => ClientEvent::PlaceRecipe {
                 window_id: p.window_id,
-                recipe: p.recipe,
+                recipe: p.recipe.into(),
                 make_all: p.make_all,
             },
             C2sPlayPacket::PlayerAbilitiesC2s(p) => match p {
@@ -460,9 +476,11 @@ impl<'a> From<C2sPlayPacket<'a>> for ClientEvent<'a> {
                 filter_active: p.filter_active,
             },
             C2sPlayPacket::SetSeenRecipe(p) => ClientEvent::SetSeenRecipe {
-                recipe_id: p.recipe_id,
+                recipe_id: p.recipe_id.into(),
             },
-            C2sPlayPacket::RenameItem(p) => ClientEvent::RenameItem { name: p.item_name },
+            C2sPlayPacket::RenameItem(p) => ClientEvent::RenameItem {
+                name: p.item_name.into(),
+            },
             C2sPlayPacket::ResourcePackC2s(p) => match p {
                 ResourcePackC2s::SuccessfullyLoaded => ClientEvent::ResourcePackLoaded,
                 ResourcePackC2s::Declined => ClientEvent::ResourcePackDeclined,
@@ -470,9 +488,9 @@ impl<'a> From<C2sPlayPacket<'a>> for ClientEvent<'a> {
                 ResourcePackC2s::Accepted => ClientEvent::ResourcePackAccepted,
             },
             C2sPlayPacket::SeenAdvancements(p) => match p {
-                SeenAdvancements::OpenedTab { tab_id } => {
-                    ClientEvent::OpenAdvancementTab { tab_id }
-                }
+                SeenAdvancements::OpenedTab { tab_id } => ClientEvent::OpenAdvancementTab {
+                    tab_id: tab_id.into(),
+                },
                 SeenAdvancements::ClosedScreen => ClientEvent::CloseAdvancementScreen,
             },
             C2sPlayPacket::SelectTrade(p) => ClientEvent::SelectTrade {
@@ -485,7 +503,7 @@ impl<'a> From<C2sPlayPacket<'a>> for ClientEvent<'a> {
             C2sPlayPacket::SetHeldItemC2s(p) => ClientEvent::SetHeldItem { slot: p.slot },
             C2sPlayPacket::ProgramCommandBlock(p) => ClientEvent::ProgramCommandBlock {
                 position: p.position,
-                command: p.command,
+                command: p.command.into(),
                 mode: p.mode,
                 track_output: p.flags.track_output(),
                 conditional: p.flags.conditional(),
@@ -494,7 +512,7 @@ impl<'a> From<C2sPlayPacket<'a>> for ClientEvent<'a> {
             C2sPlayPacket::ProgramCommandBlockMinecart(p) => {
                 ClientEvent::ProgramCommandBlockMinecart {
                     entity_id: p.entity_id.0,
-                    command: p.command,
+                    command: p.command.into(),
                     track_output: p.track_output,
                 }
             }
@@ -504,29 +522,29 @@ impl<'a> From<C2sPlayPacket<'a>> for ClientEvent<'a> {
             },
             C2sPlayPacket::ProgramJigsawBlock(p) => ClientEvent::ProgramJigsawBlock {
                 position: p.position,
-                name: p.name,
-                target: p.target,
-                pool: p.pool,
-                final_state: p.final_state,
-                joint_type: p.joint_type,
+                name: p.name.into(),
+                target: p.target.into(),
+                pool: p.pool.into(),
+                final_state: p.final_state.into(),
+                joint_type: p.joint_type.into(),
             },
             C2sPlayPacket::ProgramStructureBlock(p) => ClientEvent::ProgramStructureBlock {
                 position: p.position,
                 action: p.action,
                 mode: p.mode,
-                name: p.name,
+                name: p.name.into(),
                 offset_xyz: p.offset_xyz,
                 size_xyz: p.size_xyz,
                 mirror: p.mirror,
                 rotation: p.rotation,
-                metadata: p.metadata,
+                metadata: p.metadata.into(),
                 integrity: p.integrity,
                 seed: p.seed,
                 flags: p.flags,
             },
             C2sPlayPacket::UpdateSign(p) => ClientEvent::UpdateSign {
                 position: p.position,
-                lines: p.lines,
+                lines: p.lines.map(From::from),
             },
             C2sPlayPacket::SwingArm(p) => ClientEvent::SwingArm(p.0),
             C2sPlayPacket::TeleportToEntity(p) => {
@@ -548,7 +566,7 @@ impl<'a> From<C2sPlayPacket<'a>> for ClientEvent<'a> {
     }
 }
 
-impl<'a> ClientEvent<'a> {
+impl<S, B> ClientEvent<S, B> {
     /// Takes a client event, a client, and an entity representing the client
     /// and expresses the event in a reasonable way.
     ///

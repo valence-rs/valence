@@ -191,6 +191,36 @@ impl Config for Game {
                     .get_mut(client.state.player)
                     .expect("missing player entity");
 
+                if let Some(event) = client.next_event().0 {
+                    match event {
+                        ClientEvent::StartSprinting => {
+                            client.state.extra_knockback = true;
+                        }
+                        ClientEvent::StopSprinting => {
+                            client.state.extra_knockback = false;
+                        }
+                        ClientEvent::InteractWithEntity { entity_id, .. } => {
+                            if let Some((id, target)) = server.entities.get_with_raw_id_mut(entity_id) {
+                                if !target.state.attacked
+                                    && current_tick - target.state.last_attack_time >= 10
+                                    && id != client.state.player
+                                {
+                                    target.state.attacked = true;
+                                    target.state.attacker_pos = client.position();
+                                    target.state.extra_knockback = client.state.extra_knockback;
+                                    target.state.last_attack_time = current_tick;
+
+                                    client.state.extra_knockback = false;
+                                }
+                            }
+                        }
+                        other => other.handle_default(client, player)
+                    }
+                } else {
+                    break;
+                }
+
+                /*
                 match handle_event_default(client, player) {
                     Some(ClientEvent::StartSprinting) => {
                         client.state.extra_knockback = true;
@@ -216,6 +246,7 @@ impl Config for Game {
                     Some(_) => {}
                     None => break,
                 }
+                 */
             }
 
             true
@@ -247,8 +278,8 @@ impl Config for Game {
 
                     entity.push_event(EntityEvent::DamageFromGenericSource);
                     entity.push_event(EntityEvent::Damage);
-                    victim.push_entity_event(EntityEvent::DamageFromGenericSource);
-                    victim.push_entity_event(EntityEvent::Damage);
+                    victim.send_entity_event(EntityEvent::DamageFromGenericSource);
+                    victim.send_entity_event(EntityEvent::Damage);
                 }
             }
         }

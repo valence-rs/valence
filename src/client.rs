@@ -34,6 +34,7 @@ use valence_protocol::{
 use vek::Vec3;
 
 use crate::chunk_pos::ChunkPos;
+use crate::client::event::{ClientEventBorrowed, ClientEventOwned};
 use crate::config::Config;
 use crate::dimension::DimensionId;
 use crate::entity::data::Player;
@@ -307,14 +308,7 @@ impl<C: Config> Client<C> {
                     "failed to queue packet: {e:#}"
                 );
                 self.send = None;
-                // self.recv = None;
             }
-        }
-    }
-
-    pub(crate) fn prepare_c2s_packets(&mut self) {
-        if !self.recv.try_recv() {
-            self.disconnect_abrupt();
         }
     }
 
@@ -856,9 +850,12 @@ impl<C: Config> Client<C> {
         &mut self.player_data
     }
 
-    pub fn next_event(&mut self) -> (Option<ClientEvent>, &mut C::ClientState) {
-        let (pkt, state) = self.next_packet();
-        (pkt.map(|p| p.into()), state)
+    pub fn next_event(&mut self) -> Option<ClientEventBorrowed> {
+        self.next_packet().0.map(From::from)
+    }
+
+    pub fn next_event_owned(&mut self) -> Option<ClientEventOwned> {
+        self.next_packet().0.map(From::from)
     }
 
     fn next_packet(&mut self) -> (Option<C2sPlayPacket>, &mut C::ClientState) {
@@ -934,6 +931,12 @@ impl<C: Config> Client<C> {
         }
     }
 
+    pub(crate) fn prepare_c2s_packets(&mut self) {
+        if !self.recv.try_recv() {
+            self.disconnect_abrupt();
+        }
+    }
+
     pub(crate) fn update(
         &mut self,
         shared: &SharedServer<C>,
@@ -953,6 +956,7 @@ impl<C: Config> Client<C> {
             ) {
                 Ok(()) => self.send = Some(send),
                 Err(e) => {
+                    let _ = send.append_packet(&DisconnectPlay { reason: "".into() });
                     warn!(
                         username = %self.username,
                         uuid = %self.uuid,
@@ -978,14 +982,6 @@ impl<C: Config> Client<C> {
         player_lists: &PlayerLists<C>,
         inventories: &Inventories,
     ) -> anyhow::Result<()> {
-        // Handle any packets that weren't handled by the user.
-        while self.next_packet().0.is_some() {}
-
-        // Handling the packets might have disconnected the client.
-        if self.is_disconnected() {
-            return Ok(());
-        }
-
         let world = match worlds.get(self.world) {
             Some(world) => world,
             None => bail!("client is in an invalid world and must be disconnected"),

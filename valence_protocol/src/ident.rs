@@ -1,5 +1,6 @@
 //! Resource identifiers.
 
+use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::error::Error;
 use std::fmt;
@@ -101,11 +102,6 @@ impl<S: AsRef<str>> Ident<S> {
     pub fn into_inner(self) -> S {
         self.string
     }
-
-    /// Consumes the identifier and returns the underlying string.
-    pub fn get(self) -> S {
-        self.string
-    }
 }
 
 impl<'a, S: ?Sized> Ident<&'a S> {
@@ -120,6 +116,39 @@ impl<'a, S: ?Sized> Ident<&'a S> {
         Ident {
             string: self.string.to_owned(),
             path_start: self.path_start,
+        }
+    }
+}
+
+impl<'a> From<Ident<&'a str>> for Ident<String> {
+    fn from(value: Ident<&'a str>) -> Self {
+        value.to_owned_ident()
+    }
+}
+
+impl<'a> From<Ident<&'a str>> for Ident<Box<str>> {
+    fn from(value: Ident<&'a str>) -> Self {
+        Ident {
+            string: value.string.into(),
+            path_start: value.path_start,
+        }
+    }
+}
+
+impl<'a> From<Ident<&'a str>> for Ident<Cow<'a, str>> {
+    fn from(value: Ident<&'a str>) -> Self {
+        Ident {
+            string: Cow::Borrowed(value.string),
+            path_start: value.path_start,
+        }
+    }
+}
+
+impl<'a> From<Ident<Cow<'a, str>>> for Ident<String> {
+    fn from(value: Ident<Cow<'a, str>>) -> Self {
+        Ident {
+            string: value.string.into_owned(),
+            path_start: value.path_start,
         }
     }
 }
