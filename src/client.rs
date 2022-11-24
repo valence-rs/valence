@@ -880,6 +880,50 @@ impl<C: Config> Client<C> {
 
                         Ok(())
                     }
+                    C2sPlayPacket::KeepAliveC2s(p) => {
+                        if self.bits.got_keepalive() {
+                            bail!("unexpected keepalive");
+                        } else if p.id != self.last_keepalive_id {
+                            bail!(
+                                "keepalive IDs don't match (expected {}, got {})",
+                                self.last_keepalive_id,
+                                p.id
+                            );
+                        } else {
+                            self.bits.set_got_keepalive(true);
+                        }
+
+                        Ok(())
+                    }
+                    C2sPlayPacket::SetPlayerPosition(p) => {
+                        if self.pending_teleports == 0 {
+                            self.position = p.position.into();
+                        }
+                        Ok(())
+                    }
+                    C2sPlayPacket::SetPlayerPositionAndRotation(p) => {
+                        if self.pending_teleports == 0 {
+                            self.position = p.position.into();
+                            self.yaw = p.yaw;
+                            self.pitch = p.pitch;
+                        }
+                        Ok(())
+                    }
+                    C2sPlayPacket::SetPlayerRotation(p) => {
+                        if self.pending_teleports == 0 {
+                            self.yaw = p.yaw;
+                            self.pitch = p.pitch;
+                        }
+                        Ok(())
+                    }
+                    C2sPlayPacket::MoveVehicleC2s(p) => {
+                        if self.pending_teleports == 0 {
+                            self.position = p.position.into();
+                            self.yaw = p.yaw;
+                            self.pitch = p.pitch;
+                        }
+                        Ok(())
+                    }
                     C2sPlayPacket::PlayerAction(p) => {
                         if p.sequence.0 != 0 {
                             self.block_change_sequence =
@@ -1092,7 +1136,7 @@ impl<C: Config> Client<C> {
         }
 
         // Check if it's time to send another keepalive.
-        if current_tick % (shared.tick_rate() * 8) == 0 {
+        if current_tick % (shared.tick_rate() * 10) == 0 {
             if self.bits.got_keepalive() {
                 let id = rand::random();
                 send.append_packet(&KeepAliveS2c { id })?;
