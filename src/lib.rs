@@ -145,11 +145,10 @@ pub mod prelude {
     pub use valence_protocol::ident::IdentError;
     pub use valence_protocol::packets::s2c::play::SetTitleAnimationTimes;
     pub use valence_protocol::text::Color;
-    pub use valence_protocol::translation_key::TranslationKey;
     pub use valence_protocol::types::{GameMode, Hand, SoundCategory};
     pub use valence_protocol::{
-        ident, BlockKind, BlockPos, BlockState, Ident, ItemKind, ItemStack, Text, TextFormat,
-        Username, MINECRAFT_VERSION, PROTOCOL_VERSION,
+        ident, translation_key, BlockKind, BlockPos, BlockState, Ident, ItemKind, ItemStack, Text,
+        TextFormat, Username, MINECRAFT_VERSION, PROTOCOL_VERSION,
     };
     pub use vek::{Aabb, Mat2, Mat3, Mat4, Vec2, Vec3, Vec4};
     pub use world::{World, WorldId, WorldMeta, Worlds};

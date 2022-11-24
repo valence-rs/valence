@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 
 use valence::prelude::*;
+use valence_protocol::translation_key;
 
 pub fn main() -> ShutdownResult {
     tracing_subscriber::fmt().init();
@@ -106,21 +107,18 @@ impl Config for Game {
                 client.send_message("\nTranslated Text");
                 client.send_message(
                     " - 'chat.type.advancement.task': ".into_text()
-                        + Text::translate(TranslationKey::ChatTypeAdvancementTask, []),
+                        + Text::translate(translation_key::CHAT_TYPE_ADVANCEMENT_TASK, []),
                 );
                 client.send_message(
                     " - 'chat.type.advancement.task' with slots: ".into_text()
                         + Text::translate(
-                            TranslationKey::ChatTypeAdvancementTask,
+                            translation_key::CHAT_TYPE_ADVANCEMENT_TASK,
                             ["arg1".into(), "arg2".into()],
                         ),
                 );
                 client.send_message(
                     " - 'custom.translation_key': ".into_text()
-                        + Text::translate(
-                            TranslationKey::Custom("custom.translation_key".to_owned()),
-                            [],
-                        ),
+                        + Text::translate("custom.translation_key", []),
                 );
 
                 // Scoreboard value example

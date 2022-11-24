@@ -19,9 +19,8 @@ use valence_protocol::packets::c2s::login::{EncryptionResponse, LoginPluginRespo
 use valence_protocol::packets::s2c::login::{
     DisconnectLogin, EncryptionRequest, LoginPluginRequest,
 };
-use valence_protocol::translation_key::TranslationKey;
 use valence_protocol::types::{MsgSigOrVerifyToken, SignedProperty, SignedPropertyOwned};
-use valence_protocol::{Decode, Ident, RawBytes, Text, Username, VarInt};
+use valence_protocol::{translation_key, Decode, Ident, RawBytes, Text, Username, VarInt};
 
 use crate::config::Config;
 use crate::player_textures::SignedPlayerTextures;
@@ -96,8 +95,10 @@ pub(super) async fn online(
     match resp.status() {
         StatusCode::OK => {}
         StatusCode::NO_CONTENT => {
-            let reason =
-                Text::translate(TranslationKey::MultiplayerDisconnectUnverifiedUsername, []);
+            let reason = Text::translate(
+                translation_key::MULTIPLAYER_DISCONNECT_UNVERIFIED_USERNAME,
+                [],
+            );
             ctrl.send_packet(&DisconnectLogin { reason }).await?;
             bail!("session server could not verify username");
         }

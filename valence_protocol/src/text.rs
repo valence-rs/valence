@@ -8,7 +8,6 @@ use serde::de::Visitor;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::byte_counter::ByteCounter;
-use crate::translation_key::TranslationKey;
 use crate::{Decode, Encode, Ident, Result, VarInt};
 
 /// Represents formatted text in Minecraft's JSON text format.
@@ -226,10 +225,10 @@ impl Text {
 
     /// Create translated text based on the given translation key, with extra
     /// text components to be inserted into the slots of the translation text.
-    pub fn translate(key: TranslationKey, with: impl Into<Vec<Text>>) -> Self {
+    pub fn translate(key: impl Into<Cow<'static, str>>, with: impl Into<Vec<Text>>) -> Self {
         Self(Box::new(TextInner {
             content: TextContent::Translate {
-                translate: key.translation_key().to_string().into(),
+                translate: key.into(),
                 with: with.into(),
             },
             ..Default::default()
@@ -889,7 +888,7 @@ mod tests {
     #[test]
     fn translate() {
         let txt = Text::translate(
-            TranslationKey::ChatTypeAdvancementTask,
+            valence_protocol::translation_key::CHAT_TYPE_ADVANCEMENT_TASK,
             ["arg1".into(), "arg2".into()],
         );
         let serialized = serde_json::to_string(&txt).unwrap();
