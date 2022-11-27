@@ -344,6 +344,11 @@ impl Config for Game {
                 );
             }
 
+            let entity = server.entities.get_mut(client.state.player).unwrap();
+            while let Some(event) = client.next_event_owned() {
+                event.handle_default(client, entity);
+            }
+
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
                 if let Some(id) = &server.state {
@@ -388,13 +393,6 @@ impl Config for Game {
                 server.entities.remove(client.state.shulker_bullet);
                 client.set_action_bar("No Intersection".color(Color::RED));
             }
-
-            while handle_event_default(
-                client,
-                server.entities.get_mut(client.state.player).unwrap(),
-            )
-            .is_some()
-            {}
 
             true
         });

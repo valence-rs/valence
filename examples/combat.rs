@@ -1,10 +1,13 @@
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use tracing::Level;
 use valence::prelude::*;
 
 pub fn main() -> ShutdownResult {
-    tracing_subscriber::fmt().init();
+    tracing_subscriber::fmt()
+        .with_max_level(Level::DEBUG)
+        .init();
 
     valence::start_server(
         Game {
@@ -164,6 +167,45 @@ impl Config for Game {
                 }
             }
 
+            loop {
+                let player = server
+                    .entities
+                    .get_mut(client.state.player)
+                    .expect("missing player entity");
+
+                if let Some(event) = client.next_event_owned() {
+                    event.handle_default(client, player);
+                    match event {
+                        ClientEvent::StartSprinting => {
+                            client.state.extra_knockback = true;
+                        }
+                        ClientEvent::StopSprinting => {
+                            client.state.extra_knockback = false;
+                        }
+                        ClientEvent::InteractWithEntity { entity_id, .. } => {
+                            if let Some((id, target)) =
+                                server.entities.get_with_raw_id_mut(entity_id)
+                            {
+                                if !target.state.attacked
+                                    && current_tick - target.state.last_attack_time >= 10
+                                    && id != client.state.player
+                                {
+                                    target.state.attacked = true;
+                                    target.state.attacker_pos = client.position();
+                                    target.state.extra_knockback = client.state.extra_knockback;
+                                    target.state.last_attack_time = current_tick;
+
+                                    client.state.extra_knockback = false;
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                } else {
+                    break;
+                }
+            }
+
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
                 server.entities.remove(client.state.player);
@@ -183,70 +225,6 @@ impl Config for Game {
                     client.yaw(),
                     client.pitch(),
                 );
-            }
-
-            loop {
-                let player = server
-                    .entities
-                    .get_mut(client.state.player)
-                    .expect("missing player entity");
-
-                if let Some(event) = client.next_event().0 {
-                    match event {
-                        ClientEvent::StartSprinting => {
-                            client.state.extra_knockback = true;
-                        }
-                        ClientEvent::StopSprinting => {
-                            client.state.extra_knockback = false;
-                        }
-                        ClientEvent::InteractWithEntity { entity_id, .. } => {
-                            if let Some((id, target)) = server.entities.get_with_raw_id_mut(entity_id) {
-                                if !target.state.attacked
-                                    && current_tick - target.state.last_attack_time >= 10
-                                    && id != client.state.player
-                                {
-                                    target.state.attacked = true;
-                                    target.state.attacker_pos = client.position();
-                                    target.state.extra_knockback = client.state.extra_knockback;
-                                    target.state.last_attack_time = current_tick;
-
-                                    client.state.extra_knockback = false;
-                                }
-                            }
-                        }
-                        other => other.handle_default(client, player)
-                    }
-                } else {
-                    break;
-                }
-
-                /*
-                match handle_event_default(client, player) {
-                    Some(ClientEvent::StartSprinting) => {
-                        client.state.extra_knockback = true;
-                    }
-                    Some(ClientEvent::StopSprinting) => {
-                        client.state.extra_knockback = false;
-                    }
-                    Some(ClientEvent::InteractWithEntity { id, .. }) => {
-                        if let Some(target) = server.entities.get_mut(id) {
-                            if !target.state.attacked
-                                && current_tick - target.state.last_attack_time >= 10
-                                && id != client.state.player
-                            {
-                                target.state.attacked = true;
-                                target.state.attacker_pos = client.position();
-                                target.state.extra_knockback = client.state.extra_knockback;
-                                target.state.last_attack_time = current_tick;
-
-                                client.state.extra_knockback = false;
-                            }
-                        }
-                    }
-                    Some(_) => {}
-                    None => break,
-                }
-                 */
             }
 
             true

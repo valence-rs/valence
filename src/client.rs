@@ -243,13 +243,12 @@ pub struct Client<C: Config> {
 struct ClientBits {
     created_this_tick: bool,
     respawn: bool,
-    teleported_this_tick: bool,
     /// If the last sent keepalive got a response.
     got_keepalive: bool,
     hardcore: bool,
     flat: bool,
     respawn_screen: bool,
-    #[bits(1)]
+    #[bits(2)]
     _pad: u8,
 }
 
@@ -416,7 +415,17 @@ impl<C: Config> Client<C> {
         self.yaw = yaw;
         self.pitch = pitch;
 
-        self.bits.set_teleported_this_tick(true);
+        self.queue_packet(&SynchronizePlayerPosition {
+            position: self.position.into_array(),
+            yaw,
+            pitch,
+            flags: SyncPlayerPosLookFlags::new(),
+            teleport_id: VarInt(self.teleport_id_counter as i32),
+            dismount_vehicle: false,
+        });
+
+        self.pending_teleports = self.pending_teleports.wrapping_add(1);
+        self.teleport_id_counter = self.teleport_id_counter.wrapping_add(1);
     }
 
     /// Sets the client's velocity in m/s.
@@ -851,11 +860,11 @@ impl<C: Config> Client<C> {
     }
 
     pub fn next_event(&mut self) -> Option<ClientEventBorrowed> {
-        self.next_packet().0.map(From::from)
+        self.next_packet().0.map(ClientEvent::from_packet)
     }
 
     pub fn next_event_owned(&mut self) -> Option<ClientEventOwned> {
-        self.next_packet().0.map(From::from)
+        self.next_packet().0.map(ClientEvent::from_packet)
     }
 
     fn next_packet(&mut self) -> (Option<C2sPlayPacket>, &mut C::ClientState) {
@@ -1072,9 +1081,6 @@ impl<C: Config> Client<C> {
             if let Some(id) = &self.player_list {
                 player_lists.get(id).send_initial_packets(send)?;
             }
-
-            // Important for closing the "downloading terrain" screen.
-            self.bits.set_teleported_this_tick(true);
         } else {
             if self.bits.respawn() {
                 self.bits.set_respawn(false);
@@ -1111,9 +1117,6 @@ impl<C: Config> Client<C> {
                         .death_location
                         .map(|(id, pos)| (id.dimension_name(), pos)),
                 })?;
-
-                // Important for closing the "downloading terrain" screen.
-                self.bits.set_teleported_this_tick(true);
             }
 
             // If the player list was changed...
@@ -1206,31 +1209,6 @@ impl<C: Config> Client<C> {
             })?;
 
             self.block_change_sequence = 0;
-        }
-
-        // Teleport the player.
-        //
-        // This is done after the chunks are loaded so that the "downloading terrain"
-        // screen is closed at the appropriate time.
-        if self.bits.teleported_this_tick() {
-            self.bits.set_teleported_this_tick(false);
-
-            send.append_packet(&SynchronizePlayerPosition {
-                position: self.position.into_array(),
-                yaw: self.yaw,
-                pitch: self.pitch,
-                flags: SyncPlayerPosLookFlags::new(),
-                teleport_id: VarInt(self.teleport_id_counter as i32),
-                dismount_vehicle: false,
-            })?;
-
-            self.pending_teleports = self.pending_teleports.wrapping_add(1);
-
-            if self.pending_teleports == 0 {
-                bail!("too many pending teleports");
-            }
-
-            self.teleport_id_counter = self.teleport_id_counter.wrapping_add(1);
         }
 
         let mut entities_to_unload = Vec::new();
@@ -1334,23 +1312,14 @@ impl<C: Config> Client<C> {
         // Spawn new entities within the view distance.
         let pos = self.position();
         let view_dist = self.view_distance;
+        self.player_data.clear_modifications();
+
         if let Some(e) = world.spatial_index.query(
             |bb| bb.projected_point(pos).distance(pos) <= view_dist as f64 * 16.0,
             |id, _| {
                 let entity = entities
                     .get(id)
                     .expect("entity IDs in spatial index should be valid at this point");
-
-                // Skip spawning players not in the player list because they would be invisible
-                // otherwise.
-                // TODO: this can be removed in 1.19.3
-                if entity.kind() == EntityKind::Player {
-                    if let Some(list_id) = &self.player_list {
-                        player_lists.get(list_id).entry(entity.uuid())?;
-                    } else {
-                        return None;
-                    }
-                }
 
                 if entity.kind() != EntityKind::Marker
                     && entity.uuid() != self.uuid
@@ -1374,9 +1343,6 @@ impl<C: Config> Client<C> {
         ) {
             return Err(e);
         }
-
-        self.player_data.clear_modifications();
-        self.old_position = self.position;
 
         /*
         // Update the player's inventory
@@ -1424,6 +1390,8 @@ impl<C: Config> Client<C> {
             }
         }
          */
+
+        self.old_position = self.position;
 
         send.flush().context("failed to flush packet queue")?;
 

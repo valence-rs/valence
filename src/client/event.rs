@@ -293,13 +293,13 @@ pub enum ClientEvent<S, B> {
     },
 }
 
-impl<'a, S, B> From<C2sPlayPacket<'a>> for ClientEvent<S, B>
-where
-    S: From<&'a str>,
-    Ident<&'a str>: Into<Ident<S>>,
-    B: From<&'a [u8]>,
-{
-    fn from(pkt: C2sPlayPacket<'a>) -> Self {
+impl<S, B> ClientEvent<S, B> {
+    pub(super) fn from_packet<'a>(pkt: C2sPlayPacket<'a>) -> Self
+    where
+        S: From<&'a str>,
+        Ident<&'a str>: Into<Ident<S>>,
+        B: From<&'a [u8]>,
+    {
         match pkt {
             C2sPlayPacket::ConfirmTeleport(p) => ClientEvent::ConfirmTeleport {
                 teleport_id: p.teleport_id.0,
@@ -564,9 +564,7 @@ where
             },
         }
     }
-}
 
-impl<S, B> ClientEvent<S, B> {
     /// Takes a client event, a client, and an entity representing the client
     /// and expresses the event in a reasonable way.
     ///
