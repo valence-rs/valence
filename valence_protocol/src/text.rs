@@ -886,22 +886,17 @@ mod tests {
     }
 
     #[test]
-    fn text_empty() {
-        assert!("".into_text().is_empty());
-
-        let txt = "".into_text() + Text::translate("", []) + ("".italic().color(Color::RED) + "");
-        assert!(txt.is_empty());
-        assert!(txt.to_string().is_empty());
-    }
-
-    #[test]
     fn translate() {
-        let txt = Text::translate("key", ["arg1".into(), "arg2".into()]);
+        let txt = Text::translate(
+            valence_protocol::translation_key::CHAT_TYPE_ADVANCEMENT_TASK,
+            ["arg1".into(), "arg2".into()],
+        );
         let serialized = serde_json::to_string(&txt).unwrap();
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
         assert_eq!(
             serialized,
-            "{\"translate\":\"key\",\"with\":[{\"text\":\"arg1\"},{\"text\":\"arg2\"}]}"
+            "{\"translate\":\"chat.type.advancement.task\",\"with\":[{\"text\":\"arg1\"},{\"text\"\
+             :\"arg2\"}]}"
         );
         assert_eq!(txt, deserialized);
     }
