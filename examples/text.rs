@@ -1,7 +1,6 @@
 use std::net::SocketAddr;
 
 use valence::prelude::*;
-use valence_protocol::translation_key;
 
 pub fn main() -> ShutdownResult {
     tracing_subscriber::fmt().init();
