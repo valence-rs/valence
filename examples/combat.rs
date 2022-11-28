@@ -185,7 +185,7 @@ impl Config for Game {
                     .get_mut(client.state.player)
                     .expect("missing player entity");
 
-                if let Some(event) = client.next_event_owned() {
+                if let Some(event) = client.next_event() {
                     event.handle_default(client, player);
                     match event {
                         ClientEvent::StartSprinting => {
@@ -226,14 +226,6 @@ impl Config for Game {
                 }
                 return false;
             }
-
-            // let tick = server.shared.current_tick();
-            // if tick % 40 == 0 {
-            //     client.replace_slot(
-            //         ItemStack::new(ItemKind::Apple, 1, None),
-            //         9 + (tick / 40 % 20) as u16,
-            //     );
-            // }
 
             if client.position().y <= 0.0 {
                 client.teleport(

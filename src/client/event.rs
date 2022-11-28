@@ -1,5 +1,8 @@
+use std::cmp;
 use std::ops::Deref;
 
+use anyhow::bail;
+use tracing::warn;
 use uuid::Uuid;
 use valence_protocol::entity_meta::Pose;
 use valence_protocol::packets::c2s::play::{
@@ -8,18 +11,15 @@ use valence_protocol::packets::c2s::play::{
 use valence_protocol::packets::C2sPlayPacket;
 use valence_protocol::types::{
     Action, ChatMode, ClickContainerMode, CommandBlockMode, Difficulty, DiggingStatus,
-    DisplayedSkinParts, EntityInteraction, Hand, MainHand,
-    PlayerInputFlags, RecipeBookId, StructureBlockAction, StructureBlockFlags,
-    StructureBlockMirror, StructureBlockMode, StructureBlockRotation,
+    DisplayedSkinParts, EntityInteraction, Hand, MainHand, PlayerInputFlags, RecipeBookId,
+    StructureBlockAction, StructureBlockFlags, StructureBlockMirror, StructureBlockMode,
+    StructureBlockRotation,
 };
 use valence_protocol::{BlockFace, BlockPos, Ident, ItemStack, VarLong};
 
 use crate::client::Client;
 use crate::config::Config;
 use crate::entity::{Entity, EntityEvent, EntityId, TrackedData};
-
-pub type ClientEventOwned = ClientEvent<Box<str>, Box<[u8]>>;
-pub type ClientEventBorrowed<'a> = ClientEvent<&'a str, &'a [u8]>;
 
 /// A discrete action performed by a client.
 ///
@@ -28,25 +28,22 @@ pub type ClientEventBorrowed<'a> = ClientEvent<&'a str, &'a [u8]>;
 ///
 /// [`C2sPlayPacket`]: valence::protocol::packets::C2sPlayPacket
 #[derive(Clone, Debug)]
-pub enum ClientEvent<S, B> {
-    ConfirmTeleport {
-        teleport_id: i32,
-    },
+pub enum ClientEvent {
     QueryBlockEntity {
         position: BlockPos,
         transaction_id: i32,
     },
     ChangeDifficulty(Difficulty),
     MessageAcknowledgment {
-        last_seen: Vec<(Uuid, B)>,
-        last_received: Option<(Uuid, B)>,
+        last_seen: Vec<(Uuid, Box<[u8]>)>,
+        last_received: Option<(Uuid, Box<[u8]>)>,
     },
     ChatCommand {
-        command: S,
+        command: Box<str>,
         timestamp: u64,
     },
     ChatMessage {
-        message: S,
+        message: Box<str>,
         timestamp: u64,
     },
     ChatPreview,
@@ -54,7 +51,7 @@ pub enum ClientEvent<S, B> {
     RequestStats,
     UpdateSettings {
         /// e.g. en_US
-        locale: S,
+        locale: Box<str>,
         /// The client side render distance, in chunks.
         ///
         /// The value is always in `2..=32`.
@@ -69,7 +66,7 @@ pub enum ClientEvent<S, B> {
     },
     CommandSuggestionsRequest {
         transaction_id: i32,
-        text: S,
+        text: Box<str>,
     },
     ClickContainerButton {
         window_id: i8,
@@ -88,13 +85,13 @@ pub enum ClientEvent<S, B> {
         window_id: i8,
     },
     PluginMessage {
-        channel: Ident<S>,
-        data: B,
+        channel: Ident<Box<str>>,
+        data: Box<[u8]>,
     },
     EditBook {
         slot: i32,
-        entries: Vec<S>,
-        title: Option<S>,
+        entries: Vec<Box<str>>,
+        title: Option<Box<str>>,
     },
     QueryEntity {
         transaction_id: i32,
@@ -114,10 +111,8 @@ pub enum ClientEvent<S, B> {
         levels: i32,
         keep_jigsaws: bool,
     },
-    KeepAlive {
-        id: u64,
-    },
     LockDifficulty(bool),
+    // TODO: combine movement events?
     SetPlayerPosition {
         position: [f64; 3],
         on_ground: bool,
@@ -162,7 +157,7 @@ pub enum ClientEvent<S, B> {
     },
     PlaceRecipe {
         window_id: i8,
-        recipe: Ident<S>,
+        recipe: Ident<Box<str>>,
         make_all: bool,
     },
     StopFlying,
@@ -202,17 +197,17 @@ pub enum ClientEvent<S, B> {
         filter_active: bool,
     },
     SetSeenRecipe {
-        recipe_id: Ident<S>,
+        recipe_id: Ident<Box<str>>,
     },
     RenameItem {
-        name: S,
+        name: Box<str>,
     },
     ResourcePackLoaded,
     ResourcePackDeclined,
     ResourcePackFailedDownload,
     ResourcePackAccepted,
     OpenAdvancementTab {
-        tab_id: Ident<S>,
+        tab_id: Ident<Box<str>>,
     },
     CloseAdvancementScreen,
     SelectTrade {
@@ -227,7 +222,7 @@ pub enum ClientEvent<S, B> {
     },
     ProgramCommandBlock {
         position: BlockPos,
-        command: S,
+        command: Box<str>,
         mode: CommandBlockMode,
         track_output: bool,
         conditional: bool,
@@ -235,7 +230,7 @@ pub enum ClientEvent<S, B> {
     },
     ProgramCommandBlockMinecart {
         entity_id: i32,
-        command: S,
+        command: Box<str>,
         track_output: bool,
     },
     SetCreativeModeSlot {
@@ -244,29 +239,29 @@ pub enum ClientEvent<S, B> {
     },
     ProgramJigsawBlock {
         position: BlockPos,
-        name: Ident<S>,
-        target: Ident<S>,
-        pool: Ident<S>,
-        final_state: S,
-        joint_type: S,
+        name: Ident<Box<str>>,
+        target: Ident<Box<str>>,
+        pool: Ident<Box<str>>,
+        final_state: Box<str>,
+        joint_type: Box<str>,
     },
     ProgramStructureBlock {
         position: BlockPos,
         action: StructureBlockAction,
         mode: StructureBlockMode,
-        name: S,
+        name: Box<str>,
         offset_xyz: [i8; 3],
         size_xyz: [i8; 3],
         mirror: StructureBlockMirror,
         rotation: StructureBlockRotation,
-        metadata: S,
+        metadata: Box<str>,
         integrity: f32,
         seed: VarLong,
         flags: StructureBlockFlags,
     },
     UpdateSign {
         position: BlockPos,
-        lines: [S; 4],
+        lines: [Box<str>; 4],
     },
     SwingArm(Hand),
     TeleportToEntity {
@@ -292,17 +287,33 @@ pub enum ClientEvent<S, B> {
     },
 }
 
-impl<S, B> ClientEvent<S, B> {
-    pub(super) fn from_packet<'a>(pkt: C2sPlayPacket<'a>) -> Self
-    where
-        S: From<&'a str>,
-        Ident<&'a str>: Into<Ident<S>>,
-        B: From<&'a [u8]>,
-    {
-        match pkt {
-            C2sPlayPacket::ConfirmTeleport(p) => ClientEvent::ConfirmTeleport {
-                teleport_id: p.teleport_id.0,
-            },
+pub(super) fn next_event_fallible<C: Config>(
+    client: &mut Client<C>,
+) -> anyhow::Result<Option<ClientEvent>> {
+    loop {
+        let Some(pkt) = client.recv.try_next_packet::<C2sPlayPacket>()? else {
+            return Ok(None)
+        };
+
+        return Ok(Some(match pkt {
+            C2sPlayPacket::ConfirmTeleport(p) => {
+                if client.pending_teleports == 0 {
+                    bail!("unexpected teleport confirmation");
+                }
+
+                let got = p.teleport_id.0 as u32;
+                let expected = client
+                    .teleport_id_counter
+                    .wrapping_sub(client.pending_teleports);
+
+                if got == expected {
+                    client.pending_teleports -= 1;
+                } else {
+                    bail!("unexpected teleport ID (expected {expected}, got {got}");
+                }
+
+                continue;
+            }
             C2sPlayPacket::QueryBlockEntityTag(p) => ClientEvent::QueryBlockEntity {
                 position: p.position,
                 transaction_id: p.transaction_id.0,
@@ -343,7 +354,6 @@ impl<S, B> ClientEvent<S, B> {
                 enable_text_filtering: p.enable_text_filtering,
                 allow_server_listings: p.allow_server_listings,
             },
-
             C2sPlayPacket::CommandSuggestionsRequest(p) => ClientEvent::CommandSuggestionsRequest {
                 transaction_id: p.transaction_id.0,
                 text: p.text.into(),
@@ -387,13 +397,43 @@ impl<S, B> ClientEvent<S, B> {
                 levels: p.levels.0,
                 keep_jigsaws: p.keep_jigsaws,
             },
-            C2sPlayPacket::KeepAliveC2s(p) => ClientEvent::KeepAlive { id: p.id },
+            C2sPlayPacket::KeepAliveC2s(p) => {
+                if client.bits.got_keepalive() {
+                    bail!("unexpected keepalive");
+                } else if p.id != client.last_keepalive_id {
+                    bail!(
+                        "keepalive IDs don't match (expected {}, got {})",
+                        client.last_keepalive_id,
+                        p.id
+                    );
+                } else {
+                    client.bits.set_got_keepalive(true);
+                }
+
+                continue;
+            }
             C2sPlayPacket::LockDifficulty(p) => ClientEvent::LockDifficulty(p.0),
-            C2sPlayPacket::SetPlayerPosition(p) => ClientEvent::SetPlayerPosition {
-                position: p.position,
-                on_ground: p.on_ground,
-            },
+            C2sPlayPacket::SetPlayerPosition(p) => {
+                if client.pending_teleports != 0 {
+                    continue;
+                }
+
+                client.position = p.position.into();
+
+                ClientEvent::SetPlayerPosition {
+                    position: p.position,
+                    on_ground: p.on_ground,
+                }
+            }
             C2sPlayPacket::SetPlayerPositionAndRotation(p) => {
+                if client.pending_teleports != 0 {
+                    continue;
+                }
+
+                client.position = p.position.into();
+                client.yaw = p.yaw;
+                client.pitch = p.pitch;
+
                 ClientEvent::SetPlayerPositionAndRotation {
                     position: p.position,
                     yaw: p.yaw,
@@ -401,17 +441,42 @@ impl<S, B> ClientEvent<S, B> {
                     on_ground: p.on_ground,
                 }
             }
-            C2sPlayPacket::SetPlayerRotation(p) => ClientEvent::SetPlayerRotation {
-                yaw: p.yaw,
-                pitch: p.pitch,
-                on_ground: false,
-            },
-            C2sPlayPacket::SetPlayerOnGround(p) => ClientEvent::SetPlayerOnGround(p.0),
-            C2sPlayPacket::MoveVehicleC2s(p) => ClientEvent::MoveVehicle {
-                position: p.position,
-                yaw: p.yaw,
-                pitch: p.pitch,
-            },
+            C2sPlayPacket::SetPlayerRotation(p) => {
+                if client.pending_teleports != 0 {
+                    continue;
+                }
+
+                client.yaw = p.yaw;
+                client.pitch = p.pitch;
+
+                ClientEvent::SetPlayerRotation {
+                    yaw: p.yaw,
+                    pitch: p.pitch,
+                    on_ground: false,
+                }
+            }
+            C2sPlayPacket::SetPlayerOnGround(p) => {
+                if client.pending_teleports != 0 {
+                    continue;
+                }
+
+                ClientEvent::SetPlayerOnGround(p.0)
+            }
+            C2sPlayPacket::MoveVehicleC2s(p) => {
+                if client.pending_teleports != 0 {
+                    continue;
+                }
+
+                client.position = p.position.into();
+                client.yaw = p.yaw;
+                client.pitch = p.pitch;
+
+                ClientEvent::MoveVehicle {
+                    position: p.position,
+                    yaw: p.yaw,
+                    pitch: p.pitch,
+                }
+            }
             C2sPlayPacket::PlayerCommand(p) => match p.action_id {
                 Action::StartSneaking => ClientEvent::StartSneaking,
                 Action::StopSneaking => ClientEvent::StopSneaking,
@@ -441,27 +506,34 @@ impl<S, B> ClientEvent<S, B> {
                 PlayerAbilitiesC2s::StopFlying => ClientEvent::StopFlying,
                 PlayerAbilitiesC2s::StartFlying => ClientEvent::StartFlying,
             },
-            C2sPlayPacket::PlayerAction(p) => match p.status {
-                DiggingStatus::StartedDigging => ClientEvent::StartDigging {
-                    position: p.position,
-                    face: p.face,
-                    sequence: p.sequence.0,
-                },
-                DiggingStatus::CancelledDigging => ClientEvent::CancelDigging {
-                    position: p.position,
-                    face: p.face,
-                    sequence: p.sequence.0,
-                },
-                DiggingStatus::FinishedDigging => ClientEvent::FinishDigging {
-                    position: p.position,
-                    face: p.face,
-                    sequence: p.sequence.0,
-                },
-                DiggingStatus::DropItemStack => ClientEvent::DropItemStack,
-                DiggingStatus::DropItem => ClientEvent::DropItem,
-                DiggingStatus::UpdateHeldItemState => ClientEvent::UpdateHeldItemState,
-                DiggingStatus::SwapItemInHand => ClientEvent::SwapItemInHand,
-            },
+            C2sPlayPacket::PlayerAction(p) => {
+                if p.sequence.0 != 0 {
+                    client.block_change_sequence =
+                        cmp::max(p.sequence.0, client.block_change_sequence);
+                }
+
+                match p.status {
+                    DiggingStatus::StartedDigging => ClientEvent::StartDigging {
+                        position: p.position,
+                        face: p.face,
+                        sequence: p.sequence.0,
+                    },
+                    DiggingStatus::CancelledDigging => ClientEvent::CancelDigging {
+                        position: p.position,
+                        face: p.face,
+                        sequence: p.sequence.0,
+                    },
+                    DiggingStatus::FinishedDigging => ClientEvent::FinishDigging {
+                        position: p.position,
+                        face: p.face,
+                        sequence: p.sequence.0,
+                    },
+                    DiggingStatus::DropItemStack => ClientEvent::DropItemStack,
+                    DiggingStatus::DropItem => ClientEvent::DropItem,
+                    DiggingStatus::UpdateHeldItemState => ClientEvent::UpdateHeldItemState,
+                    DiggingStatus::SwapItemInHand => ClientEvent::SwapItemInHand,
+                }
+            }
             C2sPlayPacket::PlayerInput(p) => ClientEvent::PlayerInput {
                 sideways: p.sideways,
                 forward: p.forward,
@@ -549,21 +621,37 @@ impl<S, B> ClientEvent<S, B> {
             C2sPlayPacket::TeleportToEntity(p) => {
                 ClientEvent::TeleportToEntity { target: p.target }
             }
-            C2sPlayPacket::UseItemOn(p) => ClientEvent::UseItemOnBlock {
-                hand: p.hand,
-                position: p.position,
-                face: p.face,
-                cursor_pos: p.cursor_pos,
-                head_inside_block: p.head_inside_block,
-                sequence: p.sequence.0,
-            },
-            C2sPlayPacket::UseItem(p) => ClientEvent::UseItem {
-                hand: p.hand,
-                sequence: p.sequence.0,
-            },
-        }
-    }
+            C2sPlayPacket::UseItemOn(p) => {
+                if p.sequence.0 != 0 {
+                    client.block_change_sequence =
+                        cmp::max(p.sequence.0, client.block_change_sequence);
+                }
 
+                ClientEvent::UseItemOnBlock {
+                    hand: p.hand,
+                    position: p.position,
+                    face: p.face,
+                    cursor_pos: p.cursor_pos,
+                    head_inside_block: p.head_inside_block,
+                    sequence: p.sequence.0,
+                }
+            }
+            C2sPlayPacket::UseItem(p) => {
+                if p.sequence.0 != 0 {
+                    client.block_change_sequence =
+                        cmp::max(p.sequence.0, client.block_change_sequence);
+                }
+
+                ClientEvent::UseItem {
+                    hand: p.hand,
+                    sequence: p.sequence.0,
+                }
+            }
+        }));
+    }
+}
+
+impl ClientEvent {
     /// Takes a client event, a client, and an entity representing the client
     /// and expresses the event in a reasonable way.
     ///
@@ -615,10 +703,8 @@ impl<S, B> ClientEvent<S, B> {
                 position,
                 on_ground,
             } => {
-                if !client.has_pending_teleport() {
-                    entity.set_position(*position);
-                    entity.set_on_ground(*on_ground);
-                }
+                entity.set_position(*position);
+                entity.set_on_ground(*on_ground);
             }
             ClientEvent::SetPlayerPositionAndRotation {
                 position,
@@ -626,25 +712,21 @@ impl<S, B> ClientEvent<S, B> {
                 pitch,
                 on_ground,
             } => {
-                if !client.has_pending_teleport() {
-                    entity.set_position(*position);
-                    entity.set_yaw(*yaw);
-                    entity.set_head_yaw(*yaw);
-                    entity.set_pitch(*pitch);
-                    entity.set_on_ground(*on_ground);
-                }
+                entity.set_position(*position);
+                entity.set_yaw(*yaw);
+                entity.set_head_yaw(*yaw);
+                entity.set_pitch(*pitch);
+                entity.set_on_ground(*on_ground);
             }
             ClientEvent::SetPlayerRotation {
                 yaw,
                 pitch,
                 on_ground,
             } => {
-                if !client.has_pending_teleport() {
-                    entity.set_yaw(*yaw);
-                    entity.set_head_yaw(*yaw);
-                    entity.set_pitch(*pitch);
-                    entity.set_on_ground(*on_ground);
-                }
+                entity.set_yaw(*yaw);
+                entity.set_head_yaw(*yaw);
+                entity.set_pitch(*pitch);
+                entity.set_on_ground(*on_ground);
             }
             ClientEvent::SetPlayerOnGround(on_ground) => entity.set_on_ground(*on_ground),
             ClientEvent::MoveVehicle {
@@ -652,11 +734,9 @@ impl<S, B> ClientEvent<S, B> {
                 yaw,
                 pitch,
             } => {
-                if !client.has_pending_teleport() {
-                    entity.set_position(*position);
-                    entity.set_yaw(*yaw);
-                    entity.set_pitch(*pitch);
-                }
+                entity.set_position(*position);
+                entity.set_yaw(*yaw);
+                entity.set_pitch(*pitch);
             }
             ClientEvent::StartSneaking => {
                 if let TrackedData::Player(player) = entity.data_mut() {

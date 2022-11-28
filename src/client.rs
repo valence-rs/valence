@@ -34,7 +34,7 @@ use valence_protocol::{
 use vek::Vec3;
 
 use crate::chunk_pos::ChunkPos;
-use crate::client::event::{ClientEventBorrowed, ClientEventOwned};
+use crate::client::event::{next_event_fallible};
 use crate::config::Config;
 use crate::dimension::DimensionId;
 use crate::entity::data::Player;
@@ -387,10 +387,6 @@ impl<C: Config> Client<C> {
     /// a horizon line lower than normal worlds.
     pub fn is_flat(&self) -> bool {
         self.bits.flat()
-    }
-
-    pub fn has_pending_teleport(&self) -> bool {
-        self.pending_teleports > 0
     }
 
     /// Changes the world this client is located in and respawns the client.
@@ -897,131 +893,18 @@ impl<C: Config> Client<C> {
         }
     }
 
-    pub fn next_event(&mut self) -> Option<ClientEventBorrowed> {
-        self.next_packet().0.map(ClientEvent::from_packet)
-    }
-
-    pub fn next_event_owned(&mut self) -> Option<ClientEventOwned> {
-        self.next_packet().0.map(ClientEvent::from_packet)
-    }
-
-    fn next_packet(&mut self) -> (Option<C2sPlayPacket>, &mut C::ClientState) {
-        match self.recv.try_next_packet() {
-            Ok(Some(pkt)) => {
-                let mut handle_packet = || match &pkt {
-                    C2sPlayPacket::ConfirmTeleport(p) => {
-                        if self.pending_teleports == 0 {
-                            bail!("unexpected teleport confirmation");
-                        }
-
-                        let got = p.teleport_id.0 as u32;
-                        let expected = self
-                            .teleport_id_counter
-                            .wrapping_sub(self.pending_teleports);
-
-                        if got == expected {
-                            self.pending_teleports -= 1;
-                        } else {
-                            bail!("unexpected teleport ID (expected {expected}, got {got}");
-                        }
-
-                        Ok(())
-                    }
-                    C2sPlayPacket::ClickContainer(p) => {
-                        dbg!(p);
-                        Ok(())
-                    }
-                    C2sPlayPacket::KeepAliveC2s(p) => {
-                        if self.bits.got_keepalive() {
-                            bail!("unexpected keepalive");
-                        } else if p.id != self.last_keepalive_id {
-                            bail!(
-                                "keepalive IDs don't match (expected {}, got {})",
-                                self.last_keepalive_id,
-                                p.id
-                            );
-                        } else {
-                            self.bits.set_got_keepalive(true);
-                        }
-
-                        Ok(())
-                    }
-                    C2sPlayPacket::SetPlayerPosition(p) => {
-                        if self.pending_teleports == 0 {
-                            self.position = p.position.into();
-                        }
-                        Ok(())
-                    }
-                    C2sPlayPacket::SetPlayerPositionAndRotation(p) => {
-                        if self.pending_teleports == 0 {
-                            self.position = p.position.into();
-                            self.yaw = p.yaw;
-                            self.pitch = p.pitch;
-                        }
-                        Ok(())
-                    }
-                    C2sPlayPacket::SetPlayerRotation(p) => {
-                        if self.pending_teleports == 0 {
-                            self.yaw = p.yaw;
-                            self.pitch = p.pitch;
-                        }
-                        Ok(())
-                    }
-                    C2sPlayPacket::MoveVehicleC2s(p) => {
-                        if self.pending_teleports == 0 {
-                            self.position = p.position.into();
-                            self.yaw = p.yaw;
-                            self.pitch = p.pitch;
-                        }
-                        Ok(())
-                    }
-                    C2sPlayPacket::PlayerAction(p) => {
-                        if p.sequence.0 != 0 {
-                            self.block_change_sequence =
-                                cmp::max(p.sequence.0, self.block_change_sequence);
-                        }
-                        Ok(())
-                    }
-                    C2sPlayPacket::UseItemOn(p) => {
-                        if p.sequence.0 != 0 {
-                            self.block_change_sequence =
-                                cmp::max(p.sequence.0, self.block_change_sequence);
-                        }
-                        Ok(())
-                    }
-                    C2sPlayPacket::UseItem(p) => {
-                        if p.sequence.0 != 0 {
-                            self.block_change_sequence =
-                                cmp::max(p.sequence.0, self.block_change_sequence);
-                        }
-                        Ok(())
-                    }
-                    _ => Ok(()),
-                };
-
-                if let Err(e) = handle_packet() {
-                    let name = pkt.packet_name();
-                    warn!(
-                        username = %self.username,
-                        uuid = %self.uuid,
-                        ip = %self.ip,
-                        "failed to handle {name} packet: {e:#}"
-                    );
-                    self.send = None;
-                }
-
-                (Some(pkt), &mut self.state)
-            }
-            Ok(None) => (None, &mut self.state),
+    pub fn next_event(&mut self) -> Option<ClientEvent> {
+        match next_event_fallible(self) {
+            Ok(event) => event,
             Err(e) => {
                 warn!(
                     username = %self.username,
                     uuid = %self.uuid,
                     ip = %self.ip,
-                    "failed to decode packet: {e:#}"
+                    "failed to get next event: {e:#}"
                 );
                 self.send = None;
-                (None, &mut self.state)
+                None
             }
         }
     }
