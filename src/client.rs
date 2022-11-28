@@ -34,7 +34,7 @@ use valence_protocol::{
 use vek::Vec3;
 
 use crate::chunk_pos::ChunkPos;
-use crate::client::event::{next_event_fallible};
+use crate::client::event::next_event_fallible;
 use crate::config::Config;
 use crate::dimension::DimensionId;
 use crate::entity::data::Player;
@@ -1325,12 +1325,12 @@ impl<C: Config> Client<C> {
                 send.append_packet(&OpenScreen {
                     window_id: VarInt(self.window_id.into()),
                     window_type: VarInt(inv.kind() as i32),
-                    window_title: inv.title().clone()
+                    window_title: inv.title().clone(),
                 })?;
 
                 send.append_packet(&SetContainerContentEncode {
                     window_id: self.window_id as u8,
-                    state_id: VarInt(self. inv_state_id.0),
+                    state_id: VarInt(self.inv_state_id.0),
                     slots: inv.slot_slice(),
                     carried_item: &self.cursor_item,
                 })?;

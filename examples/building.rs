@@ -125,7 +125,7 @@ impl Config for Game {
                     Some((id, entity)) => {
                         entity.set_world(world_id);
                         client.state.entity_id = id
-                    },
+                    }
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;

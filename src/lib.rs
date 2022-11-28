@@ -144,8 +144,8 @@ pub mod prelude {
     pub use valence_protocol::text::Color;
     pub use valence_protocol::types::{GameMode, Hand, SoundCategory};
     pub use valence_protocol::{
-        ident, BlockKind, BlockPos, BlockState, Ident, InventoryKind, ItemKind, ItemStack, Text,
-        TextFormat, Username, MINECRAFT_VERSION, PROTOCOL_VERSION,
+        ident, translation_key, BlockKind, BlockPos, BlockState, Ident, InventoryKind, ItemKind,
+        ItemStack, Text, TextFormat, Username, MINECRAFT_VERSION, PROTOCOL_VERSION,
     };
     pub use vek::{Aabb, Mat2, Mat3, Mat4, Vec2, Vec3, Vec4};
     pub use world::{World, WorldId, WorldMeta, Worlds};

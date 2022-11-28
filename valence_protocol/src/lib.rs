@@ -114,6 +114,7 @@ mod item;
 pub mod packets;
 mod raw_bytes;
 pub mod text;
+pub mod translation_key;
 pub mod types;
 pub mod username;
 mod var_int;
