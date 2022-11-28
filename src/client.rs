@@ -1,10 +1,10 @@
 //! Connections to the server after logging in.
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::HashSet;
 use std::iter::FusedIterator;
 use std::net::IpAddr;
 use std::num::Wrapping;
-use std::{array, cmp, mem};
+use std::{array, mem};
 
 use anyhow::{bail, Context};
 pub use bitfield_struct::bitfield;
@@ -16,20 +16,18 @@ use valence_protocol::packets::s2c::play::{
     AcknowledgeBlockChange, ClearTitles, CombatDeath, CustomSoundEffect, DisconnectPlay,
     EntityAnimationS2c, EntityEvent, GameEvent, KeepAliveS2c, LoginPlayOwned, OpenScreen,
     PluginMessageS2c, RemoveEntities, ResourcePackS2c, RespawnOwned, SetActionBarText,
-    SetCenterChunk, SetContainerContent, SetContainerContentEncode, SetContainerSlot,
-    SetContainerSlotEncode, SetDefaultSpawnPosition, SetEntityMetadata, SetEntityVelocity,
-    SetExperience, SetHeadRotation, SetHealth, SetRenderDistance, SetSubtitleText,
-    SetTitleAnimationTimes, SetTitleText, SynchronizePlayerPosition, SystemChatMessage,
-    TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
-    UpdateEntityPositionAndRotation, UpdateEntityRotation, UpdateTime,
+    SetCenterChunk, SetContainerContentEncode, SetContainerSlotEncode, SetDefaultSpawnPosition,
+    SetEntityMetadata, SetEntityVelocity, SetExperience, SetHeadRotation, SetHealth,
+    SetRenderDistance, SetSubtitleText, SetTitleAnimationTimes, SetTitleText,
+    SynchronizePlayerPosition, SystemChatMessage, TeleportEntity, UnloadChunk, UpdateAttributes,
+    UpdateEntityPosition, UpdateEntityPositionAndRotation, UpdateEntityRotation, UpdateTime,
 };
-use valence_protocol::packets::{C2sPlayPacket, S2cPlayPacket};
 use valence_protocol::types::{
-    Action, AttributeProperty, DisplayedSkinParts, GameMode, GameStateChangeReason, SoundCategory,
+    AttributeProperty, DisplayedSkinParts, GameMode, GameStateChangeReason, SoundCategory,
     SyncPlayerPosLookFlags,
 };
 use valence_protocol::{
-    types, BlockPos, ByteAngle, Encode, Ident, ItemStack, Packet, RawBytes, Text, Username, VarInt,
+    BlockPos, ByteAngle, Encode, Ident, ItemStack, Packet, RawBytes, Text, Username, VarInt,
 };
 use vek::Vec3;
 

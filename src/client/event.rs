@@ -1,8 +1,6 @@
 use std::cmp;
-use std::ops::Deref;
 
 use anyhow::bail;
-use tracing::warn;
 use uuid::Uuid;
 use valence_protocol::entity_meta::Pose;
 use valence_protocol::packets::c2s::play::{
@@ -11,15 +9,14 @@ use valence_protocol::packets::c2s::play::{
 use valence_protocol::packets::C2sPlayPacket;
 use valence_protocol::types::{
     Action, ChatMode, ClickContainerMode, CommandBlockMode, Difficulty, DiggingStatus,
-    DisplayedSkinParts, EntityInteraction, Hand, MainHand, PlayerInputFlags, RecipeBookId,
-    StructureBlockAction, StructureBlockFlags, StructureBlockMirror, StructureBlockMode,
-    StructureBlockRotation,
+    DisplayedSkinParts, EntityInteraction, Hand, MainHand, RecipeBookId, StructureBlockAction,
+    StructureBlockFlags, StructureBlockMirror, StructureBlockMode, StructureBlockRotation,
 };
 use valence_protocol::{BlockFace, BlockPos, Ident, ItemStack, VarLong};
 
 use crate::client::Client;
 use crate::config::Config;
-use crate::entity::{Entity, EntityEvent, EntityId, TrackedData};
+use crate::entity::{Entity, EntityEvent, TrackedData};
 
 /// A discrete action performed by a client.
 ///
