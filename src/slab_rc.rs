@@ -10,7 +10,7 @@ use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelI
 use crate::slab::Slab;
 
 #[derive(Clone, Debug)]
-pub struct SlabRc<T> {
+pub struct RcSlab<T> {
     slab: Slab<Slot<T>>,
 }
 
@@ -56,7 +56,7 @@ impl Hash for Key {
     }
 }
 
-impl<T> SlabRc<T> {
+impl<T> RcSlab<T> {
     pub const fn new() -> Self {
         Self { slab: Slab::new() }
     }

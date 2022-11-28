@@ -178,6 +178,8 @@ impl Config for Game {
                 client.set_game_mode(GameMode::Creative);
             }
 
+            while client.next_event().is_some() {}
+
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
                 server.entities.remove(client.state.entity_id);

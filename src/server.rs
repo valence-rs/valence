@@ -69,7 +69,7 @@ pub struct Server<C: Config> {
     /// All of the player lists on the server.
     pub player_lists: PlayerLists<C>,
     /// All of the inventories on the server.
-    pub inventories: Inventories,
+    pub inventories: Inventories<C>,
 }
 
 /// A handle to a Minecraft server containing the subset of functionality which

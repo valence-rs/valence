@@ -12,11 +12,11 @@ use valence_protocol::{Text, VarInt};
 use crate::config::Config;
 use crate::player_textures::SignedPlayerTextures;
 use crate::server::PlayPacketSender;
-use crate::slab_rc::{Key, SlabRc};
+use crate::slab_rc::{Key, RcSlab};
 
 /// A container for all [`PlayerList`]s on a server.
 pub struct PlayerLists<C: Config> {
-    slab: SlabRc<PlayerList<C>>,
+    slab: RcSlab<PlayerList<C>>,
 }
 
 /// An identifier for a [`PlayerList`] on the server.
@@ -33,7 +33,7 @@ pub struct PlayerListId(Key);
 impl<C: Config> PlayerLists<C> {
     pub(crate) fn new() -> Self {
         Self {
-            slab: SlabRc::new(),
+            slab: RcSlab::new(),
         }
     }
 

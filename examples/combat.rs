@@ -3,11 +3,11 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use tracing::Level;
 use valence::prelude::*;
+use valence_protocol::packets::s2c::play::{OpenScreen, SetContainerSlot};
+use valence_protocol::VarInt;
 
 pub fn main() -> ShutdownResult {
-    tracing_subscriber::fmt()
-        .with_max_level(Level::DEBUG)
-        .init();
+    tracing_subscriber::fmt().init();
 
     valence::start_server(
         Game {
@@ -50,6 +50,7 @@ impl Config for Game {
     type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
+    type InventoryState = ();
 
     async fn server_list_ping(
         &self,
@@ -131,10 +132,10 @@ impl Config for Game {
                     }
                 };
 
+                player.set_world(world_id);
                 player.state.client = client_id;
 
                 client.state.player = player_id;
-                client.state.extra_knockback = true;
 
                 client.respawn(world_id);
                 client.set_flat(true);
@@ -165,6 +166,17 @@ impl Config for Game {
                 if self.player_count.load(Ordering::SeqCst) <= 1 {
                     client.send_message("Have another player join the game with you.".italic());
                 }
+
+                let (inv_id, inv) =
+                    server
+                        .inventories
+                        .insert(InventoryKind::Generic9x2, "this is the title", ());
+
+                inv.replace_slot(0, ItemStack::new(ItemKind::Apple, 3, None));
+
+                client.set_open_inventory(inv_id);
+
+                client.replace_slot(ItemStack::new(ItemKind::Apple, 1, None), 9);
             }
 
             loop {
@@ -214,6 +226,14 @@ impl Config for Game {
                 }
                 return false;
             }
+
+            // let tick = server.shared.current_tick();
+            // if tick % 40 == 0 {
+            //     client.replace_slot(
+            //         ItemStack::new(ItemKind::Apple, 1, None),
+            //         9 + (tick / 40 % 20) as u16,
+            //     );
+            // }
 
             if client.position().y <= 0.0 {
                 client.teleport(

@@ -128,9 +128,7 @@ pub mod prelude {
     pub use config::{Config, ConnectionMode, PlayerSampleEntry, ServerListPing};
     pub use dimension::{Dimension, DimensionId};
     pub use entity::{Entities, Entity, EntityEvent, EntityId, EntityKind, TrackedData};
-    pub use inventory::{
-        ConfigurableInventory, Inventories, Inventory, InventoryId, PlayerInventory, SlotId,
-    };
+    pub use inventory::{Inventories, Inventory, InventoryId};
     pub use player_list::{PlayerList, PlayerListEntry, PlayerListId, PlayerLists};
     pub use server::{NewClientData, Server, SharedServer, ShutdownResult};
     pub use spatial_index::{RaycastHit, SpatialIndex};
@@ -146,8 +144,8 @@ pub mod prelude {
     pub use valence_protocol::text::Color;
     pub use valence_protocol::types::{GameMode, Hand, SoundCategory};
     pub use valence_protocol::{
-        ident, BlockKind, BlockPos, BlockState, Ident, ItemKind, ItemStack, Text, TextFormat,
-        Username, MINECRAFT_VERSION, PROTOCOL_VERSION,
+        ident, BlockKind, BlockPos, BlockState, Ident, InventoryKind, ItemKind, ItemStack, Text,
+        TextFormat, Username, MINECRAFT_VERSION, PROTOCOL_VERSION,
     };
     pub use vek::{Aabb, Mat2, Mat3, Mat4, Vec2, Vec3, Vec4};
     pub use world::{World, WorldId, WorldMeta, Worlds};

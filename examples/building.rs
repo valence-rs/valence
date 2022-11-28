@@ -2,7 +2,6 @@ use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use num::Integer;
-use valence::client::DiggingStatus;
 use valence::prelude::*;
 
 pub fn main() -> ShutdownResult {
@@ -123,7 +122,10 @@ impl Config for Game {
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => client.state.entity_id = id,
+                    Some((id, entity)) => {
+                        entity.set_world(world_id);
+                        client.state.entity_id = id
+                    },
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;
@@ -165,28 +167,22 @@ impl Config for Game {
                 client.teleport(spawn_pos, client.yaw(), client.pitch());
             }
 
-            while let Some(event) = handle_event_default(client, player) {
+            while let Some(event) = client.next_event_owned() {
+                event.handle_default(client, player);
                 match event {
-                    ClientEvent::Digging {
-                        position, status, ..
-                    } => {
-                        match status {
-                            DiggingStatus::Start => {
-                                // Allows clients in creative mode to break blocks.
-                                if client.game_mode() == GameMode::Creative {
-                                    world.chunks.set_block_state(position, BlockState::AIR);
-                                }
-                            }
-                            DiggingStatus::Finish => {
-                                // Allows clients in survival mode to break blocks.
-                                world.chunks.set_block_state(position, BlockState::AIR);
-                            }
-                            _ => {}
+                    ClientEvent::StartDigging { position, .. } => {
+                        // Allows clients in creative mode to break blocks.
+                        if client.game_mode() == GameMode::Creative {
+                            world.chunks.set_block_state(position, BlockState::AIR);
                         }
+                    }
+                    ClientEvent::FinishDigging { position, .. } => {
+                        // Allows clients in survival mode to break blocks.
+                        world.chunks.set_block_state(position, BlockState::AIR);
                     }
                     ClientEvent::UseItemOnBlock {
                         hand,
-                        location,
+                        position,
                         face,
                         ..
                     } => {
@@ -200,13 +196,13 @@ impl Config for Game {
                                     {
                                         if world
                                             .chunks
-                                            .block_state(location)
+                                            .block_state(position)
                                             .map(|s| s.is_replaceable())
                                             .unwrap_or(false)
                                         {
-                                            world.chunks.set_block_state(location, block_to_place);
+                                            world.chunks.set_block_state(position, block_to_place);
                                         } else {
-                                            let place_at = location.get_in_direction(face);
+                                            let place_at = position.get_in_direction(face);
                                             world.chunks.set_block_state(place_at, block_to_place);
                                         }
                                     }

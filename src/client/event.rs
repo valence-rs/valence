@@ -8,11 +8,11 @@ use valence_protocol::packets::c2s::play::{
 use valence_protocol::packets::C2sPlayPacket;
 use valence_protocol::types::{
     Action, ChatMode, ClickContainerMode, CommandBlockMode, Difficulty, DiggingStatus,
-    DisplayedSkinParts, EntityInteraction, Hand, MainHand, MessageAcknowledgmentEntry,
+    DisplayedSkinParts, EntityInteraction, Hand, MainHand,
     PlayerInputFlags, RecipeBookId, StructureBlockAction, StructureBlockFlags,
     StructureBlockMirror, StructureBlockMode, StructureBlockRotation,
 };
-use valence_protocol::{BlockFace, BlockPos, Ident, ItemStack, VarInt, VarLong};
+use valence_protocol::{BlockFace, BlockPos, Ident, ItemStack, VarLong};
 
 use crate::client::Client;
 use crate::config::Config;
@@ -150,7 +150,6 @@ pub enum ClientEvent<S, B> {
     },
     /// A jump while on a horse stopped.
     StopJumpWithHorse,
-    /// The client left a bed.
     /// The inventory was opened while on a horse.
     OpenHorseInventory,
     StartFlyingWithElytra,

@@ -74,6 +74,7 @@ where
             Ok(self
                 .dec
                 .try_next_packet()?
+                // TODO: this panicked after a timeout.
                 .expect("decoder said it had another packet"))
 
             // The following is what I want to write but can't due to borrow

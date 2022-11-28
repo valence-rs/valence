@@ -15,9 +15,6 @@ use valence_protocol::MAX_PACKET_SIZE;
 use crate::biome::Biome;
 use crate::client::{Client, ClientId};
 use crate::dimension::Dimension;
-use crate::entity::Entities;
-use crate::inventory::Inventories;
-use crate::player_list::PlayerLists;
 use crate::server::{NewClientData, Server, SharedServer};
 use crate::world::Worlds;
 use crate::{Ticks, STANDARD_TPS};
@@ -46,6 +43,9 @@ pub trait Config: Sized + Send + Sync + 'static {
     /// Custom state to store with every
     /// [`PlayerList`](crate::player_list::PlayerList).
     type PlayerListState: Send + Sync;
+    /// Custom state to store with every
+    /// [`Inventory`](crate::inventory::Inventory).
+    type InventoryState: Send + Sync;
 
     /// Called once at startup to get the maximum number of simultaneous
     /// connections allowed to the server. This includes all

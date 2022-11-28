@@ -1,26 +1,26 @@
 //! Connections to the server after logging in.
 
-use std::collections::{HashSet, VecDeque};
+use std::collections::{BTreeMap, HashSet};
 use std::iter::FusedIterator;
 use std::net::IpAddr;
-use std::time::Duration;
-use std::{cmp, mem};
+use std::num::Wrapping;
+use std::{array, cmp, mem};
 
 use anyhow::{bail, Context};
 pub use bitfield_struct::bitfield;
 pub use event::ClientEvent;
 use rayon::iter::ParallelIterator;
-use tracing::{error, info, warn};
+use tracing::{info, warn};
 use uuid::Uuid;
-use valence_protocol::packets::c2s::play::ClientCommand;
 use valence_protocol::packets::s2c::play::{
     AcknowledgeBlockChange, ClearTitles, CombatDeath, CustomSoundEffect, DisconnectPlay,
     EntityAnimationS2c, EntityEvent, GameEvent, KeepAliveS2c, LoginPlayOwned, OpenScreen,
     PluginMessageS2c, RemoveEntities, ResourcePackS2c, RespawnOwned, SetActionBarText,
-    SetCenterChunk, SetContainerContent, SetDefaultSpawnPosition, SetEntityMetadata,
-    SetEntityVelocity, SetExperience, SetHeadRotation, SetHealth, SetRenderDistance,
-    SetSubtitleText, SetTitleAnimationTimes, SetTitleText, SynchronizePlayerPosition,
-    SystemChatMessage, TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
+    SetCenterChunk, SetContainerContent, SetContainerContentEncode, SetContainerSlot,
+    SetContainerSlotEncode, SetDefaultSpawnPosition, SetEntityMetadata, SetEntityVelocity,
+    SetExperience, SetHeadRotation, SetHealth, SetRenderDistance, SetSubtitleText,
+    SetTitleAnimationTimes, SetTitleText, SynchronizePlayerPosition, SystemChatMessage,
+    TeleportEntity, UnloadChunk, UpdateAttributes, UpdateEntityPosition,
     UpdateEntityPositionAndRotation, UpdateEntityRotation, UpdateTime,
 };
 use valence_protocol::packets::{C2sPlayPacket, S2cPlayPacket};
@@ -41,10 +41,7 @@ use crate::entity::data::Player;
 use crate::entity::{
     self, velocity_to_packet_units, Entities, EntityId, EntityKind, StatusOrAnimation,
 };
-use crate::inventory::{
-    Inventories, Inventory, InventoryDirtyable, InventoryError, InventoryId, PlayerInventory,
-    SlotId, WindowInventory,
-};
+use crate::inventory::{Inventories, InventoryId};
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
 use crate::server::{NewClientData, PlayPacketReceiver, PlayPacketSender, SharedServer};
@@ -209,6 +206,7 @@ pub struct Client<C: Config> {
     /// be set by calling [`Client::spawn`].
     world: WorldId,
     player_list: Option<PlayerListId>,
+    /// Player list from the previous tick.
     old_player_list: Option<PlayerListId>,
     position: Vec3<f64>,
     /// Position from the previous tick.
@@ -236,6 +234,21 @@ pub struct Client<C: Config> {
     block_change_sequence: i32,
     /// The data for the client's own player entity.
     player_data: Player,
+    /// The client's inventory slots.
+    slots: Box<[Option<ItemStack>; 45]>,
+    /// Contains a set bit for each modified slot in `slots` made by the server
+    /// this tick.
+    modified_slots: u64,
+    /// Counts up as inventory modifications are made by the server. Used to
+    /// prevent desync.
+    inv_state_id: Wrapping<i32>,
+    /// The item currently held by the client's cursor in the inventory.
+    cursor_item: Option<ItemStack>,
+    /// The currently open inventory. The client can close the screen, making
+    /// this [`InventoryId::NULL`].
+    open_inventory: InventoryId,
+    /// The current window ID. Incremented when inventories are opened.
+    window_id: i8,
     bits: ClientBits,
 }
 
@@ -248,8 +261,10 @@ struct ClientBits {
     hardcore: bool,
     flat: bool,
     respawn_screen: bool,
-    #[bits(2)]
-    _pad: u8,
+    cursor_item_modified: bool,
+    open_inventory_modified: bool,
+    //#[bits(1)]
+    //_pad: u8,
 }
 
 impl<C: Config> Client<C> {
@@ -284,6 +299,12 @@ impl<C: Config> Client<C> {
             game_mode: GameMode::Survival,
             block_change_sequence: 0,
             player_data: Player::new(),
+            slots: Box::new(array::from_fn(|_| None)),
+            modified_slots: 0,
+            inv_state_id: Wrapping(0),
+            cursor_item: None,
+            open_inventory: InventoryId::NULL,
+            window_id: 1,
             bits: ClientBits::new()
                 .with_got_keepalive(true)
                 .with_created_this_tick(true),
@@ -799,37 +820,6 @@ impl<C: Config> Client<C> {
         });
     }
 
-    /*
-    /// The slot that the client has selected in their hotbar.
-    pub fn held_item(&self) -> Option<&ItemStack> {
-        self.inventory.slot(self.selected_hotbar_slot)
-    }
-
-    /// Consume items from the stack in the client's inventory that the client
-    /// is holding.
-    pub fn consume_held_item(&mut self, amount: impl Into<u8>) -> Result<(), InventoryError> {
-        self.inventory.consume(self.selected_hotbar_slot, amount)
-    }
-
-    /// Makes the client open a window displaying the given inventory.
-    pub fn open_inventory(
-        &mut self,
-        inventories: &Inventories,
-        id: InventoryId,
-        window_title: impl Into<Text>,
-    ) {
-        if let Some(inv) = inventories.get(id) {
-            let window = WindowInventory::new(1, id);
-            self.queue_packet(&OpenScreen {
-                window_id: VarInt(window.window_id.into()),
-                window_type: inv.window_type,
-                window_title: window_title.into(),
-            });
-            self.open_inventory = Some(window);
-        }
-    }
-     */
-
     /// Disconnects this client from the server with the provided reason. This
     /// has no effect if the client is already disconnected.
     ///
@@ -857,6 +847,54 @@ impl<C: Config> Client<C> {
     /// Changes made to this data is only visible to this client.
     pub fn player_mut(&mut self) -> &mut Player {
         &mut self.player_data
+    }
+
+    pub fn slot(&self, idx: u16) -> Option<&ItemStack> {
+        self.slots
+            .get(idx as usize)
+            .expect("slot index out of range")
+            .as_ref()
+    }
+
+    pub fn replace_slot(
+        &mut self,
+        item: impl Into<Option<ItemStack>>,
+        idx: u16,
+    ) -> Option<ItemStack> {
+        assert!((idx as usize) < self.slots.len(), "slot index out of range");
+
+        let new = item.into();
+        let old = &mut self.slots[idx as usize];
+
+        if new != *old {
+            self.modified_slots |= 1 << idx;
+        }
+
+        mem::replace(old, new)
+    }
+
+    pub fn cursor_item(&self) -> Option<&ItemStack> {
+        self.cursor_item.as_ref()
+    }
+
+    pub fn replace_cursor_item(&mut self, item: impl Into<Option<ItemStack>>) -> Option<ItemStack> {
+        let new = item.into();
+        if self.cursor_item != new {
+            todo!("set cursor item bit");
+        }
+
+        mem::replace(&mut self.cursor_item, new)
+    }
+
+    pub fn open_inventory(&self) -> InventoryId {
+        self.open_inventory
+    }
+
+    pub fn set_open_inventory(&mut self, id: InventoryId) {
+        if self.open_inventory != id {
+            self.bits.set_open_inventory_modified(true);
+            self.open_inventory = id;
+        }
     }
 
     pub fn next_event(&mut self) -> Option<ClientEventBorrowed> {
@@ -887,6 +925,10 @@ impl<C: Config> Client<C> {
                             bail!("unexpected teleport ID (expected {expected}, got {got}");
                         }
 
+                        Ok(())
+                    }
+                    C2sPlayPacket::ClickContainer(p) => {
+                        dbg!(p);
                         Ok(())
                     }
                     C2sPlayPacket::KeepAliveC2s(p) => {
@@ -996,7 +1038,7 @@ impl<C: Config> Client<C> {
         entities: &Entities<C>,
         worlds: &Worlds<C>,
         player_lists: &PlayerLists<C>,
-        inventories: &Inventories,
+        inventories: &Inventories<C>,
     ) {
         if let Some(mut send) = self.send.take() {
             match self.update_fallible(
@@ -1033,7 +1075,7 @@ impl<C: Config> Client<C> {
         entities: &Entities<C>,
         worlds: &Worlds<C>,
         player_lists: &PlayerLists<C>,
-        inventories: &Inventories,
+        inventories: &Inventories<C>,
     ) -> anyhow::Result<()> {
         let world = match worlds.get(self.world) {
             Some(world) => world,
@@ -1344,52 +1386,83 @@ impl<C: Config> Client<C> {
             return Err(e);
         }
 
-        /*
-        // Update the player's inventory
-        if self.inventory.is_dirty() {
-            send.append_packet(&SetContainerContent {
-                window_id: 0,
-                state_id: VarInt(self.inventory.state_id),
-                slots: self
-                        .inventory
-                        .slots()
-                        .into_iter()
-                        // FIXME: cloning is necessary here to build the packet.
-                        // However, it should be possible to avoid the clone if this packet
-                        // could consume refs
-                        .map(|s| s.cloned())
-                        .collect(),
-                carried_item: self.cursor_held_item.clone(),
-            })?;
-            self.inventory.state_id = self.inventory.state_id.wrapping_add(1);
-            self.inventory.mark_dirty(false);
-        }
+        // Update the client's own inventory.
+        if self.modified_slots != 0 {
+            if self.created_this_tick()
+                || self.modified_slots == u64::MAX && self.bits.cursor_item_modified()
+            {
+                // Update the whole inventory.
+                send.append_packet(&SetContainerContentEncode {
+                    window_id: 0,
+                    state_id: VarInt(self.inv_state_id.0),
+                    slots: self.slots.as_slice(),
+                    carried_item: &self.cursor_item,
+                })?;
 
-        // Update the client's UI if they have an open inventory.
-        if let Some(window) = self.open_inventory.as_ref() {
-            // this client has an inventory open
-            let obj_inv_id = window.object_inventory;
-            if let Some(obj_inv) = inventories.get(obj_inv_id) {
-                if obj_inv.is_dirty() {
-                    let window_id = window.window_id;
-                    let slots = window.slots(obj_inv, &self.inventory)
-                        .into_iter()
-                        // FIXME: cloning is necessary here to build the packet.
-                        // However, it should be possible to avoid the clone if this packet
-                        // could consume refs
-                        .map(|s| s.cloned())
-                        .collect();
-                    let carried_item = self.cursor_held_item.clone();
-                    send.append_packet(&SetContainerContent {
-                        window_id,
-                        state_id: VarInt(1),
-                        slots,
-                        carried_item,
-                    })?;
+                self.inv_state_id += 1;
+                self.bits.set_cursor_item_modified(false);
+            } else {
+                // Update only the slots that were modified.
+                for (i, slot) in self.slots.iter().enumerate() {
+                    if (self.modified_slots >> i) & 1 == 1 {
+                        send.append_packet(&SetContainerSlotEncode {
+                            window_id: 0,
+                            state_id: VarInt(self.inv_state_id.0),
+                            slot_idx: i as i16,
+                            slot_data: slot.as_ref(),
+                        })?;
+
+                        self.inv_state_id += 1;
+                    }
                 }
             }
+
+            self.modified_slots = 0;
         }
-         */
+
+        if self.bits.cursor_item_modified() {
+            self.bits.set_cursor_item_modified(false);
+
+            send.append_packet(&SetContainerSlotEncode {
+                window_id: -1,
+                state_id: VarInt(self.inv_state_id.0),
+                slot_idx: -1,
+                slot_data: self.cursor_item.as_ref(),
+            })?;
+
+            self.inv_state_id += 1;
+        }
+
+        // Update the window the client has opened.
+        if self.bits.open_inventory_modified() {
+            // Open a new window.
+            self.bits.set_open_inventory_modified(false);
+
+            if let Some(inv) = inventories.get(self.open_inventory) {
+                send.append_packet(&OpenScreen {
+                    window_id: VarInt(self.window_id.into()),
+                    window_type: VarInt(inv.kind() as i32),
+                    window_title: inv.title().clone()
+                })?;
+
+                send.append_packet(&SetContainerContentEncode {
+                    window_id: self.window_id as u8,
+                    state_id: VarInt(self. inv_state_id.0),
+                    slots: inv.slot_slice(),
+                    carried_item: &self.cursor_item,
+                })?;
+
+                self.window_id = self.window_id % 100 + 1;
+                self.inv_state_id += 1;
+            }
+        } else {
+            // Update an already open window.
+            if let Some(inv) = inventories.get(self.open_inventory) {
+                inv.send_update(send, self.window_id, &mut self.inv_state_id)?;
+            }
+        }
+
+        // TODO: send close screen packet under what circumstances?
 
         self.old_position = self.position;
 
