@@ -40,6 +40,7 @@ impl Config for Game {
     type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
+    type InventoryState = ();
 
     fn dimensions(&self) -> Vec<Dimension> {
         vec![Dimension {
@@ -152,7 +153,10 @@ impl Config for Game {
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => client.state.entity_id = id,
+                    Some((id, entity)) => {
+                        entity.set_world(world_id);
+                        client.state.entity_id = id
+                    }
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;

@@ -55,7 +55,7 @@ impl<C: Config> Chunks<C> {
     ///
     /// **Note**: For the vanilla Minecraft client to see a chunk, all chunks
     /// adjacent to it must also be loaded. Clients should not be spawned within
-    /// unloaded chunks via [`spawn`](crate::client::Client::spawn).
+    /// unloaded chunks via [`respawn`](crate::client::Client::respawn).
     pub fn insert(
         &mut self,
         pos: impl Into<ChunkPos>,
@@ -201,38 +201,48 @@ impl<C: Config> Chunks<C> {
         }
     }
 
-    /// Sets the block state at an absolute block position in world space.
+    /// Sets the block state at an absolute block position in world space. The
+    /// previous block state at the position is returned.
     ///
-    /// If the position is inside of a chunk, then `true` is returned and the
-    /// block is set. Otherwise, `false` is returned and the function has no
-    /// effect.
+    /// If the given position is not inside of a loaded chunk, then a new chunk
+    /// is created at the position before the block is set.
     ///
-    /// **Note**: if you need to set a large number of blocks, it may be more
-    /// efficient write to the chunks directly with
-    /// [`Chunk::set_block_state`].
-    pub fn set_block_state(&mut self, pos: impl Into<BlockPos>, block: BlockState) -> bool {
+    /// If the position is completely out of bounds, then no new chunk is
+    /// created and [`BlockState::AIR`] is returned.
+    pub fn set_block_state(&mut self, pos: impl Into<BlockPos>, block: BlockState) -> BlockState
+    where
+        C::ChunkState: Default,
+    {
         let pos = pos.into();
-        let chunk_pos = ChunkPos::from(pos);
 
-        if let Some(chunk) = self.chunks.get_mut(&chunk_pos) {
-            if let Some(y) = pos
-                .y
-                .checked_sub(self.dimension_min_y)
-                .and_then(|y| y.try_into().ok())
-            {
-                if y < chunk.height() {
-                    chunk.set_block_state(
-                        pos.x.rem_euclid(16) as usize,
-                        y,
-                        pos.z.rem_euclid(16) as usize,
-                        block,
-                    );
-                    return true;
-                }
-            }
+        let Some(y) = pos.y.checked_sub(self.dimension_min_y).and_then(|y| y.try_into().ok()) else {
+            return BlockState::AIR;
+        };
+
+        if y >= self.dimension_height as usize {
+            return BlockState::AIR;
         }
 
-        false
+        let chunk = match self.chunks.entry(ChunkPos::from(pos)) {
+            Entry::Occupied(oe) => oe.into_mut(),
+            Entry::Vacant(ve) => {
+                let dimension_section_count = (self.dimension_height / 16) as usize;
+                let chunk = ve.insert(LoadedChunk::new(
+                    UnloadedChunk::default(),
+                    dimension_section_count,
+                    Default::default(),
+                ));
+
+                chunk
+            }
+        };
+
+        chunk.set_block_state(
+            pos.x.rem_euclid(16) as usize,
+            y,
+            pos.z.rem_euclid(16) as usize,
+            block,
+        )
     }
 
     pub(crate) fn update(&mut self) {

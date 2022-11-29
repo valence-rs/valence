@@ -67,11 +67,8 @@ impl<C: Config> Worlds<C> {
     /// Note that any entities located in the world are not deleted.
     /// Additionally, clients that are still in the deleted world at the end
     /// of the tick are disconnected.
-    ///
-    /// Returns `true` if the world was deleted. Otherwise, `false` is returned
-    /// and the function has no effect.
-    pub fn remove(&mut self, world: WorldId) -> bool {
-        self.slab.remove(world.0).is_some()
+    pub fn remove(&mut self, world: WorldId) -> Option<C::WorldState> {
+        self.slab.remove(world.0).map(|w| w.state)
     }
 
     /// Removes all worlds from the server for which `f` returns `false`.

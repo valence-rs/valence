@@ -402,12 +402,12 @@ pub enum ConnectionMode {
 
 /// A minimal `Config` implementation for testing purposes.
 #[cfg(test)]
-pub(crate) struct MockConfig<S = (), Cl = (), E = (), W = (), Ch = (), P = ()> {
-    _marker: std::marker::PhantomData<(S, Cl, E, W, Ch, P)>,
+pub(crate) struct MockConfig<S = (), Cl = (), E = (), W = (), Ch = (), P = (), I = ()> {
+    _marker: std::marker::PhantomData<(S, Cl, E, W, Ch, P, I)>,
 }
 
 #[cfg(test)]
-impl<S, Cl, E, W, Ch, P> Config for MockConfig<S, Cl, E, W, Ch, P>
+impl<S, Cl, E, W, Ch, P, I> Config for MockConfig<S, Cl, E, W, Ch, P, I>
 where
     S: Send + Sync + 'static,
     Cl: Default + Send + Sync + 'static,
@@ -415,6 +415,7 @@ where
     W: Send + Sync + 'static,
     Ch: Send + Sync + 'static,
     P: Send + Sync + 'static,
+    I: Send + Sync + 'static,
 {
     type ServerState = S;
     type ClientState = Cl;
@@ -422,4 +423,5 @@ where
     type WorldState = W;
     type ChunkState = Ch;
     type PlayerListState = P;
+    type InventoryState = I;
 }

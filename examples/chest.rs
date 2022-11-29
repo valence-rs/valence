@@ -1,3 +1,8 @@
+pub fn main() {
+    todo!("reimplement when inventories are re-added");
+}
+
+/*
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -49,6 +54,7 @@ impl Config for Game {
     type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
+    type InventoryState = ();
 
     fn dimensions(&self) -> Vec<Dimension> {
         vec![Dimension {
@@ -101,7 +107,11 @@ impl Config for Game {
 
         // create chest inventory
         let inv = ConfigurableInventory::new(27, VarInt(2), None);
-        let (id, _inv) = server.inventories.insert(inv);
+        let title = "Extra".italic()
+            + " Chesty".not_italic().bold().color(Color::RED)
+            + " Chest".not_italic();
+
+        let (id, _inv) = server.inventories.insert(inv, title, ());
         server.state.chest = id;
     }
 
@@ -137,7 +147,10 @@ impl Config for Game {
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => client.state.entity_id = id,
+                    Some((id, entity)) => {
+                        entity.set_world(world_id);
+                        client.state.entity_id = id
+                    }
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;
@@ -163,35 +176,17 @@ impl Config for Game {
                 client.send_message("Welcome to Valence! Sneak to give yourself an item.".italic());
             }
 
-            if client.is_disconnected() {
-                self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.remove(client.state.entity_id);
-                if let Some(id) = &server.state.player_list {
-                    server.player_lists.get_mut(id).remove(client.uuid());
-                }
-                return false;
-            }
-
             let player = server.entities.get_mut(client.state.entity_id).unwrap();
 
-            if client.position().y <= -20.0 {
-                client.teleport(spawn_pos, client.yaw(), client.pitch());
-            }
-
-            while let Some(event) = handle_event_default(client, player) {
+            while let Some(event) = client.next_event() {
+                event.handle_default(client, player);
                 match event {
-                    ClientEvent::UseItemOnBlock { hand, location, .. } => {
+                    ClientEvent::UseItemOnBlock { hand, position, .. } => {
                         if hand == Hand::Main
-                            && world.chunks.block_state(location) == Some(BlockState::CHEST)
+                            && world.chunks.block_state(position) == Some(BlockState::CHEST)
                         {
                             client.send_message("Opening chest!");
-                            client.open_inventory(
-                                &server.inventories,
-                                server.state.chest,
-                                "Extra".italic()
-                                    + " Chesty".not_italic().bold().color(Color::RED)
-                                    + " Chest".not_italic(),
-                            );
+                            client.open_inventory(server.state.chest);
                         }
                     }
                     ClientEvent::CloseScreen { window_id } => {
@@ -207,6 +202,7 @@ impl Config for Game {
                         mode,
                         slot_changes,
                         carried_item,
+                        ..
                     } => {
                         println!(
                             "window_id: {:?}, state_id: {:?}, slot_id: {:?}, mode: {:?}, \
@@ -244,6 +240,19 @@ impl Config for Game {
                 }
             }
 
+            if client.is_disconnected() {
+                self.player_count.fetch_sub(1, Ordering::SeqCst);
+                server.entities.remove(client.state.entity_id);
+                if let Some(id) = &server.state.player_list {
+                    server.player_lists.get_mut(id).remove(client.uuid());
+                }
+                return false;
+            }
+
+            if client.position().y <= -20.0 {
+                client.teleport(spawn_pos, client.yaw(), client.pitch());
+            }
+
             true
         });
     }
@@ -256,3 +265,4 @@ fn rotate_items(inv: &mut ConfigurableInventory) {
         inv.set_slot((i - 1) as SlotId, b);
     }
 }
+*/

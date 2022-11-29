@@ -3,7 +3,6 @@ use std::f64::consts::TAU;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use uuid::Uuid;
 use valence::prelude::*;
 
 pub fn main() -> ShutdownResult {
@@ -41,6 +40,7 @@ impl Config for Game {
     type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
+    type InventoryState = ();
 
     async fn server_list_ping(
         &self,
@@ -108,7 +108,10 @@ impl Config for Game {
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => client.state = id,
+                    Some((id, entity)) => {
+                        entity.set_world(world_id);
+                        client.state = id
+                    }
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;
@@ -156,7 +159,9 @@ impl Config for Game {
                 .get_mut(client.state)
                 .expect("missing player entity");
 
-            while handle_event_default(client, entity).is_some() {}
+            while let Some(event) = client.next_event() {
+                event.handle_default(client, entity);
+            }
 
             true
         });
@@ -204,9 +209,9 @@ impl Config for Game {
 
 /// Distributes N points on the surface of a unit sphere.
 fn fibonacci_spiral(n: usize) -> impl Iterator<Item = Vec3<f64>> {
-    (0..n).map(move |i| {
-        let golden_ratio = (1.0 + 5_f64.sqrt()) / 2.0;
+    let golden_ratio = (1.0 + 5_f64.sqrt()) / 2.0;
 
+    (0..n).map(move |i| {
         // Map to unit square
         let x = i as f64 / golden_ratio % 1.0;
         let y = i as f64 / n as f64;

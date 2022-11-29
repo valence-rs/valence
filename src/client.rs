@@ -685,7 +685,7 @@ impl<C: Config> Client<C> {
     pub fn kill(&mut self, killer: Option<EntityId>, message: impl Into<Text>) {
         self.queue_packet(&CombatDeath {
             player_id: VarInt(0),
-            entity_id: killer.map_or(-1, |k| k.to_raw_id()),
+            entity_id: killer.map_or(-1, |k| k.to_raw()),
             message: message.into(),
         });
     }
@@ -1178,7 +1178,7 @@ impl<C: Config> Client<C> {
                         && flags.yaw_or_pitch_modified()
                     {
                         let _ = send.append_packet(&UpdateEntityPositionAndRotation {
-                            entity_id: VarInt(id.to_raw_id()),
+                            entity_id: VarInt(id.to_raw()),
                             delta: (position_delta * 4096.0).as_::<i16>().into_array(),
                             yaw: ByteAngle::from_degrees(entity.yaw()),
                             pitch: ByteAngle::from_degrees(entity.pitch()),
@@ -1187,7 +1187,7 @@ impl<C: Config> Client<C> {
                     } else {
                         if entity.position() != entity.old_position() && !needs_teleport {
                             let _ = send.append_packet(&UpdateEntityPosition {
-                                entity_id: VarInt(id.to_raw_id()),
+                                entity_id: VarInt(id.to_raw()),
                                 delta: (position_delta * 4096.0).as_::<i16>().into_array(),
                                 on_ground: entity.on_ground(),
                             });
@@ -1195,7 +1195,7 @@ impl<C: Config> Client<C> {
 
                         if flags.yaw_or_pitch_modified() {
                             let _ = send.append_packet(&UpdateEntityRotation {
-                                entity_id: VarInt(id.to_raw_id()),
+                                entity_id: VarInt(id.to_raw()),
                                 yaw: ByteAngle::from_degrees(entity.yaw()),
                                 pitch: ByteAngle::from_degrees(entity.pitch()),
                                 on_ground: entity.on_ground(),
@@ -1205,7 +1205,7 @@ impl<C: Config> Client<C> {
 
                     if needs_teleport {
                         let _ = send.append_packet(&TeleportEntity {
-                            entity_id: VarInt(id.to_raw_id()),
+                            entity_id: VarInt(id.to_raw()),
                             position: entity.position().into_array(),
                             yaw: ByteAngle::from_degrees(entity.yaw()),
                             pitch: ByteAngle::from_degrees(entity.pitch()),
@@ -1215,25 +1215,25 @@ impl<C: Config> Client<C> {
 
                     if flags.velocity_modified() {
                         let _ = send.append_packet(&SetEntityVelocity {
-                            entity_id: VarInt(id.to_raw_id()),
+                            entity_id: VarInt(id.to_raw()),
                             velocity: velocity_to_packet_units(entity.velocity()).into_array(),
                         });
                     }
 
                     if flags.head_yaw_modified() {
                         let _ = send.append_packet(&SetHeadRotation {
-                            entity_id: VarInt(id.to_raw_id()),
+                            entity_id: VarInt(id.to_raw()),
                             head_yaw: ByteAngle::from_degrees(entity.head_yaw()),
                         });
                     }
 
-                    let _ = send_entity_events(send, id.to_raw_id(), entity.events());
+                    let _ = send_entity_events(send, id.to_raw(), entity.events());
 
                     return true;
                 }
             }
 
-            entities_to_unload.push(VarInt(id.to_raw_id()));
+            entities_to_unload.push(VarInt(id.to_raw()));
             false
         });
 
@@ -1280,7 +1280,7 @@ impl<C: Config> Client<C> {
                         return Some(e);
                     }
 
-                    if let Err(e) = send_entity_events(send, id.to_raw_id(), entity.events()) {
+                    if let Err(e) = send_entity_events(send, id.to_raw(), entity.events()) {
                         return Some(e);
                     }
                 }

@@ -74,6 +74,7 @@ impl Config for Game {
     type WorldState = WorldState;
     type ChunkState = ();
     type PlayerListState = ();
+    type InventoryState = ();
 
     fn dimensions(&self) -> Vec<Dimension> {
         vec![
@@ -131,7 +132,10 @@ impl Config for Game {
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => client.state.entity_id = id,
+                    Some((id, entity)) => {
+                        entity.set_world(server.state.first_world);
+                        client.state.entity_id = id
+                    }
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;
@@ -177,17 +181,6 @@ impl Config for Game {
             }
 
             // TODO after inventory support is added, show interaction with compass.
-
-            if client.is_disconnected() {
-                self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.remove(client.state.entity_id);
-
-                if let Some(list) = client.player_list() {
-                    server.player_lists.get_mut(list).remove(client.uuid());
-                }
-
-                return false;
-            }
 
             // Handling respawn locations
             if !client.state.can_respawn {
@@ -241,11 +234,12 @@ impl Config for Game {
 
             let player = server.entities.get_mut(client.state.entity_id).unwrap();
 
-            while let Some(event) = handle_event_default(client, player) {
+            while let Some(event) = client.next_event() {
+                event.handle_default(client, player);
                 match event {
-                    ClientEvent::RespawnRequest => {
+                    ClientEvent::PerformRespawn => {
                         if !client.state.can_respawn {
-                            client.disconnect("Unexpected RespawnRequest");
+                            client.disconnect("Unexpected PerformRespawn");
                             return false;
                         }
                         // Let's respawn our player. `spawn` will load the world, but we are
@@ -254,6 +248,7 @@ impl Config for Game {
                         // You can store respawn however you want, for example in `Client`'s state.
                         let spawn = client.state.respawn_location;
                         client.respawn(spawn.0);
+                        player.set_world(spawn.0);
                         client.teleport(spawn.1, 0.0, 0.0);
                         client.state.can_respawn = false;
                     }
@@ -264,6 +259,17 @@ impl Config for Game {
                     }
                     _ => {}
                 }
+            }
+
+            if client.is_disconnected() {
+                self.player_count.fetch_sub(1, Ordering::SeqCst);
+                server.entities.remove(client.state.entity_id);
+
+                if let Some(list) = client.player_list() {
+                    server.player_lists.get_mut(list).remove(client.uuid());
+                }
+
+                return false;
             }
 
             true

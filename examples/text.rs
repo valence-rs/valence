@@ -34,10 +34,7 @@ impl Config for Game {
     type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
-
-    fn max_connections(&self) -> usize {
-        64
-    }
+    type InventoryState = ();
 
     async fn server_list_ping(
         &self,
@@ -164,18 +161,20 @@ impl Config for Game {
                 );
             }
 
-            if client.is_disconnected() {
-                server.entities.remove(client.state.entity_id);
-                return false;
-            }
-
             if client.position().y < 0.0 {
                 client.teleport(SPAWN_POS, 0.0, 0.0);
             }
 
             let player = server.entities.get_mut(client.state.entity_id).unwrap();
 
-            while handle_event_default(client, player).is_some() {}
+            while let Some(event) = client.next_event() {
+                event.handle_default(client, player);
+            }
+
+            if client.is_disconnected() {
+                server.entities.remove(client.state.entity_id);
+                return false;
+            }
 
             true
         });

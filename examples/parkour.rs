@@ -59,6 +59,7 @@ impl Config for Game {
     /// If the chunk should stay loaded at the end of the tick.
     type ChunkState = bool;
     type PlayerListState = ();
+    type InventoryState = ();
 
     async fn server_list_ping(
         &self,
@@ -80,8 +81,6 @@ impl Config for Game {
     }
 
     fn update(&self, server: &mut Server<Self>) {
-        //let (world_id, world) = server.worlds.iter_mut().next().unwrap();
-
         server.clients.retain(|_, client| {
             if client.created_this_tick() {
                 if self
@@ -95,11 +94,15 @@ impl Config for Game {
                     return false;
                 }
 
+                let (world_id, world) = server.worlds.insert(DimensionId::default(), ());
+
                 match server
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => {
+                    Some((id, entity)) => {
+                        entity.set_world(world_id);
+
                         // create client state
                         client.state = ClientState {
                             entity_id: id,
@@ -108,18 +111,15 @@ impl Config for Game {
                             combo: 0,
                             last_block_timestamp: 0,
                             target_y: 0,
-                            world_id: WorldId::NULL,
+                            world_id,
                         };
                     }
                     None => {
                         client.disconnect("Conflicting UUID");
+                        server.worlds.remove(world_id);
                         return false;
                     }
                 }
-
-                let (world_id, world) = server.worlds.insert(DimensionId::default(), ());
-
-                client.state.world_id = world_id;
 
                 for chunk_z in -1..3 {
                     for chunk_x in -2..2 {
@@ -133,7 +133,6 @@ impl Config for Game {
 
                 client.respawn(world_id);
                 client.set_flat(true);
-                // client.teleport(spawn_pos, 0.0, 0.0);
                 client.set_player_list(server.state.player_list.clone());
 
                 if let Some(id) = &server.state.player_list {
@@ -152,27 +151,8 @@ impl Config for Game {
                 reset(client, world);
             }
 
-            let (world_id, world) = server
-                .worlds
-                .iter_mut()
-                .find(|w| w.0 == client.state.world_id)
-                .unwrap();
-
-            if client.is_disconnected() {
-                self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.remove(client.state.entity_id);
-                if let Some(id) = &server.state.player_list {
-                    server.player_lists.get_mut(id).remove(client.uuid());
-                }
-                for block in &client.state.blocks {
-                    world.chunks.set_block_state(*block, BlockState::AIR);
-                }
-                client.state.blocks.clear();
-                client.state.score = 0;
-
-                server.worlds.remove(world_id);
-                return false;
-            }
+            let world_id = client.state.world_id;
+            let world = server.worlds.get_mut(world_id).unwrap();
 
             let p = client.position();
             for pos in chunks_in_view_distance(ChunkPos::at(p.x, p.z), 3) {
@@ -199,9 +179,9 @@ impl Config for Game {
             }
 
             let pos_under_player = BlockPos::new(
-                (client.position().x - 0.5f64).round() as i32,
+                (client.position().x - 0.5).round() as i32,
                 client.position().y as i32 - 1,
-                (client.position().z - 0.5f64).round() as i32,
+                (client.position().z - 0.5).round() as i32,
             );
 
             if let Some(index) = client
@@ -254,12 +234,11 @@ impl Config for Game {
                 }
             }
 
-            while handle_event_default(
-                client,
-                server.entities.get_mut(client.state.entity_id).unwrap(),
-            )
-            .is_some()
-            {}
+            let player = server.entities.get_mut(client.state.entity_id).unwrap();
+
+            while let Some(event) = client.next_event() {
+                event.handle_default(client, player);
+            }
 
             // Remove chunks outside the view distance of players.
             world.chunks.retain(|_, chunk| {
@@ -270,6 +249,17 @@ impl Config for Game {
                     false
                 }
             });
+
+            if client.is_disconnected() {
+                self.player_count.fetch_sub(1, Ordering::SeqCst);
+                server.entities.remove(client.state.entity_id);
+                if let Some(id) = &server.state.player_list {
+                    server.player_lists.get_mut(id).remove(client.uuid());
+                }
+
+                server.worlds.remove(world_id);
+                return false;
+            }
 
             true
         });

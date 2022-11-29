@@ -35,6 +35,7 @@ impl Config for Game {
     type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
+    type InventoryState = ();
 
     fn max_connections(&self) -> usize {
         MAX_PLAYERS + 64
@@ -157,12 +158,14 @@ impl Config for Game {
             }
 
             if WITH_PLAYER_ENTITIES {
-                if let Some(entity) = server.entities.get_mut(client.state) {
-                    while handle_event_default(client, entity).is_some() {}
+                if let Some(player) = server.entities.get_mut(client.state) {
+                    while let Some(event) = client.next_event() {
+                        event.handle_default(client, player);
+                    }
                 }
             } else {
-                while let Some(event) = client.pop_event() {
-                    if let ClientEvent::SettingsChanged { view_distance, .. } = event {
+                while let Some(event) = client.next_event() {
+                    if let ClientEvent::UpdateSettings { view_distance, .. } = event {
                         client.set_view_distance(view_distance);
                     }
                 }

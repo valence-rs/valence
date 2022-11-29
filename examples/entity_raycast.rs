@@ -42,6 +42,7 @@ impl Config for Game {
     type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
+    type InventoryState = ();
 
     async fn server_list_ping(
         &self,
@@ -305,7 +306,10 @@ impl Config for Game {
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => client.state.player = id,
+                    Some((id, entity)) => {
+                        entity.set_world(world_id);
+                        client.state.player = id
+                    }
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;
@@ -345,7 +349,7 @@ impl Config for Game {
             }
 
             let entity = server.entities.get_mut(client.state.player).unwrap();
-            while let Some(event) = client.next_event_owned() {
+            while let Some(event) = client.next_event() {
                 event.handle_default(client, entity);
             }
 

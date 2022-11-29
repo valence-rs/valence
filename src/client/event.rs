@@ -23,7 +23,7 @@ use crate::entity::{Entity, EntityEvent, TrackedData};
 /// Client events are a more convenient representation of the data contained in
 /// a [`C2sPlayPacket`].
 ///
-/// [`C2sPlayPacket`]: valence::protocol::packets::C2sPlayPacket
+/// [`C2sPlayPacket`]: crate::protocol::packets::C2sPlayPacket
 #[derive(Clone, Debug)]
 pub enum ClientEvent {
     QueryBlockEntity {
@@ -72,10 +72,10 @@ pub enum ClientEvent {
     ClickContainer {
         window_id: u8,
         state_id: i32,
-        slot_idx: i16,
+        slot_id: i16,
         button: i8,
         mode: ClickContainerMode,
-        slots: Vec<(i16, Option<ItemStack>)>,
+        slot_changes: Vec<(i16, Option<ItemStack>)>,
         carried_item: Option<ItemStack>,
     },
     CloseContainer {
@@ -371,10 +371,10 @@ pub(super) fn next_event_fallible<C: Config>(
                 ClientEvent::ClickContainer {
                     window_id: p.window_id,
                     state_id: p.state_id.0,
-                    slot_idx: p.slot_idx,
+                    slot_id: p.slot_idx,
                     button: p.button,
                     mode: p.mode,
-                    slots: p.slots,
+                    slot_changes: p.slots,
                     carried_item: p.carried_item,
                 }
             }

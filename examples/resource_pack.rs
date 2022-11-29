@@ -2,7 +2,6 @@ use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use valence::prelude::*;
-use valence_protocol::packets::c2s::play::ResourcePackC2s;
 use valence_protocol::types::EntityInteraction;
 
 pub fn main() -> ShutdownResult {
@@ -14,7 +13,7 @@ pub fn main() -> ShutdownResult {
         },
         ServerState {
             player_list: None,
-            sheep_id: None,
+            sheep_id: EntityId::NULL,
         },
     )
 }
@@ -25,7 +24,7 @@ struct Game {
 
 struct ServerState {
     player_list: Option<PlayerListId>,
-    sheep_id: Option<EntityId>,
+    sheep_id: EntityId,
 }
 
 #[derive(Default)]
@@ -45,6 +44,7 @@ impl Config for Game {
     type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
+    type InventoryState = ();
 
     async fn server_list_ping(
         &self,
@@ -73,7 +73,7 @@ impl Config for Game {
         }
 
         let (sheep_id, sheep) = server.entities.insert(EntityKind::Sheep, ());
-        server.state.sheep_id = Some(sheep_id);
+        server.state.sheep_id = sheep_id;
         sheep.set_world(world_id);
         sheep.set_position([
             SPAWN_POS.x as f64 + 0.5,
@@ -140,6 +140,10 @@ impl Config for Game {
                     );
                 }
 
+                client.send_message(
+                    "Hit the sheep above you to prompt for the resource pack again.".italic(),
+                );
+
                 set_example_pack(client);
             }
 
@@ -155,37 +159,30 @@ impl Config for Game {
 
             let player = server.entities.get_mut(client.state.entity_id).unwrap();
 
-            while let Some(event) = handle_event_default(client, player) {
+            while let Some(event) = client.next_event() {
+                event.handle_default(client, player);
                 match event {
-                    ClientEvent::InteractWithEntity { id, interact, .. } => {
+                    ClientEvent::InteractWithEntity {
+                        entity_id,
+                        interact,
+                        ..
+                    } => {
                         if interact == EntityInteraction::Attack
-                            && Some(id) == server.state.sheep_id
+                            && entity_id == server.state.sheep_id.to_raw()
                         {
                             set_example_pack(client);
                         }
                     }
-                    ClientEvent::ResourcePackStatusChanged(s) => {
-                        let message = match s {
-                            ResourcePackC2s::SuccessfullyLoaded => {
-                                "The resource pack was successfully loaded!".color(Color::GREEN)
-                            }
-                            ResourcePackC2s::Declined => {
-                                "You declined the resource pack :(".color(Color::RED)
-                            }
-                            ResourcePackC2s::FailedDownload => {
-                                "The resource pack download failed.".color(Color::RED)
-                            }
-                            _ => continue,
-                        };
-
-                        client.send_message(message.italic());
-                        client.send_message(
-                            "Hit the sheep above you to prompt the resource pack again."
-                                .color(Color::GRAY)
-                                .italic(),
-                        );
+                    ClientEvent::ResourcePackLoaded => {
+                        client.send_message("Resource pack loaded!".color(Color::GREEN));
                     }
-                    _ => (),
+                    ClientEvent::ResourcePackDeclined => {
+                        client.send_message("Resource pack declined.".color(Color::RED));
+                    }
+                    ClientEvent::ResourcePackFailedDownload => {
+                        client.send_message("Resource pack download failed.".color(Color::RED));
+                    }
+                    _ => {}
                 }
             }
 

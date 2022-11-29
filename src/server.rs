@@ -3,11 +3,11 @@
 use std::error::Error;
 use std::iter::FusedIterator;
 use std::net::{IpAddr, SocketAddr};
+use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use std::{io, thread};
-use std::ops::{Deref, DerefMut};
 
 use anyhow::{ensure, Context};
 use flume::{Receiver, Sender};

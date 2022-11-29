@@ -252,7 +252,7 @@ impl EntityId {
     /// The value of the default entity ID which is always invalid.
     pub const NULL: Self = Self(Key::NULL);
 
-    pub fn to_raw_id(self) -> i32 {
+    pub fn to_raw(self) -> i32 {
         self.0.version().get() as i32
     }
 }
@@ -742,7 +742,7 @@ impl<C: Config> Entity<C> {
         // TODO: cache metadata buffer?
         if let Some(metadata) = self.variants.initial_tracked_data() {
             send.append_packet(&SetEntityMetadata {
-                entity_id: VarInt(this_id.to_raw_id()),
+                entity_id: VarInt(this_id.to_raw()),
                 metadata: RawBytes(&metadata),
             })?;
         }
@@ -760,7 +760,7 @@ impl<C: Config> Entity<C> {
         // TODO: cache metadata buffer?
         if let Some(metadata) = self.variants.updated_tracked_data() {
             send.append_packet(&SetEntityMetadata {
-                entity_id: VarInt(this_id.to_raw_id()),
+                entity_id: VarInt(this_id.to_raw()),
                 metadata: RawBytes(&metadata),
             })?;
         }
@@ -775,7 +775,7 @@ impl<C: Config> Entity<C> {
         send: &mut PlayPacketSender,
     ) -> anyhow::Result<()> {
         let with_object_data = |data| SpawnEntity {
-            entity_id: VarInt(this_id.to_raw_id()),
+            entity_id: VarInt(this_id.to_raw()),
             object_uuid: self.uuid,
             kind: VarInt(self.kind() as i32),
             position: self.new_position.into_array(),
@@ -789,13 +789,13 @@ impl<C: Config> Entity<C> {
         match &self.variants {
             TrackedData::Marker(_) => {}
             TrackedData::ExperienceOrb(_) => send.append_packet(&SpawnExperienceOrb {
-                entity_id: VarInt(this_id.to_raw_id()),
+                entity_id: VarInt(this_id.to_raw()),
                 position: self.new_position.into_array(),
                 count: 0, // TODO
             })?,
             TrackedData::Player(_) => {
                 send.append_packet(&SpawnPlayer {
-                    entity_id: VarInt(this_id.to_raw_id()),
+                    entity_id: VarInt(this_id.to_raw()),
                     player_uuid: self.uuid,
                     position: self.new_position.into_array(),
                     yaw: ByteAngle::from_degrees(self.yaw),
@@ -804,7 +804,7 @@ impl<C: Config> Entity<C> {
 
                 // Player spawn packet doesn't include head yaw for some reason.
                 send.append_packet(&SetHeadRotation {
-                    entity_id: VarInt(this_id.to_raw_id()),
+                    entity_id: VarInt(this_id.to_raw()),
                     head_yaw: ByteAngle::from_degrees(self.head_yaw),
                 })?;
             }
@@ -858,7 +858,7 @@ mod tests {
         let raw_id: i32 = 8675309;
         let entity_id = EntityId(Key::new(
             202298,
-            NonZeroU32::new(raw_id as u32).expect("Value given should never be zero!"),
+            NonZeroU32::new(raw_id as u32).expect("value given should never be zero!"),
         ));
         let uuid = Uuid::from_bytes([2; 16]);
         assert!(entities.is_empty());
@@ -877,7 +877,7 @@ mod tests {
         assert_eq!(entities.get(player_id).unwrap().state, 1);
         let mut_player_entity = entities
             .get_mut(player_id)
-            .expect("Failed to get mutable reference");
+            .expect("failed to get mutable reference");
         mut_player_entity.state = 100;
         assert_eq!(entities.get(player_id).unwrap().state, 100);
         assert_eq!(entities.len(), 1);
@@ -890,11 +890,11 @@ mod tests {
         assert!(entities.is_empty());
         let (zombie_id, zombie_entity) = entities
             .insert_with_uuid(EntityKind::Zombie, uuid, 1)
-            .expect("Unexpected Uuid collision when inserting to an empty collection");
+            .expect("unexpected Uuid collision when inserting to an empty collection");
         assert_eq!(zombie_entity.state, 1);
         let maybe_zombie = entities
             .get_with_uuid(uuid)
-            .expect("Uuid lookup failed on item already added to this collection");
+            .expect("UUID lookup failed on item already added to this collection");
         assert_eq!(zombie_id, maybe_zombie);
         assert_eq!(entities.len(), 1);
     }
@@ -909,17 +909,19 @@ mod tests {
         assert_eq!(cat_entity.state, 75);
         let maybe_boat_id = entities
             .get_with_raw_id(boat_id.0.version.get() as i32)
-            .expect("Network id lookup failed on item already added to this collection");
+            .expect("raw id lookup failed on item already added to this collection")
+            .0;
         let maybe_boat = entities
             .get(maybe_boat_id)
-            .expect("Failed to look up item already added to collection");
+            .expect("failed to look up item already added to collection");
         assert_eq!(maybe_boat.state, 12);
         let maybe_cat_id = entities
             .get_with_raw_id(cat_id.0.version.get() as i32)
-            .expect("Network id lookup failed on item already added to this collection");
+            .expect("raw id lookup failed on item already added to this collection")
+            .0;
         let maybe_cat = entities
             .get(maybe_cat_id)
-            .expect("Failed to look up item already added to collection");
+            .expect("failed to look up item already added to collection");
         assert_eq!(maybe_cat.state, 75);
         assert_eq!(entities.len(), 2);
     }
@@ -931,7 +933,7 @@ mod tests {
         let (player_id, _) = entities.insert(EntityKind::Player, 1);
         let player_state = entities
             .remove(player_id)
-            .expect("Failed to remove an item from the collection");
+            .expect("failed to remove an item from the collection");
         assert_eq!(player_state, 1);
     }
 

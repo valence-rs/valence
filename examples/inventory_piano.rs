@@ -1,3 +1,8 @@
+pub fn main() {
+    todo!("reimplement when inventories are re-added");
+}
+
+/*
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -47,6 +52,7 @@ impl Config for Game {
     type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
+    type InventoryState = ();
 
     fn dimensions(&self) -> Vec<Dimension> {
         vec![Dimension {
@@ -227,3 +233,4 @@ fn play_note(client: &mut Client<Game>, player: &mut Entity<Game>, clicked_slot:
         });
     }
 }
+*/
