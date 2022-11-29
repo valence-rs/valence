@@ -19,7 +19,7 @@ use serde_json::{json, Value};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::{Handle, Runtime};
-use tokio::sync::Semaphore;
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tracing::{error, info, info_span, instrument, trace, warn};
 use uuid::Uuid;
 use valence_nbt::{compound, Compound, List};
@@ -126,7 +126,7 @@ struct SharedServerInner<C: Config> {
     http_client: ReqwestClient,
 }
 
-/// Contains information about a new client.
+/// Contains information about a new client joining the server.
 #[non_exhaustive]
 pub struct NewClientData {
     /// The username of the new client.
@@ -144,6 +144,7 @@ struct NewClientMessage {
     ncd: NewClientData,
     send: PlayPacketSender,
     recv: PlayPacketReceiver,
+    permit: OwnedSemaphorePermit,
 }
 
 /// The result type returned from [`start_server`].
@@ -417,9 +418,13 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
                 "inserting client"
             );
 
-            server
-                .clients
-                .insert(Client::new(msg.send, msg.recv, msg.ncd, Default::default()));
+            server.clients.insert(Client::new(
+                msg.send,
+                msg.recv,
+                msg.permit,
+                msg.ncd,
+                Default::default(),
+            ));
         }
 
         // Get serverbound packets first so they are not dealt with a tick late.
@@ -476,12 +481,12 @@ async fn do_accept_loop(server: SharedServer<impl Config>) {
         match server.0.connection_sema.clone().acquire_owned().await {
             Ok(permit) => match listener.accept().await {
                 Ok((stream, remote_addr)) => {
-                    let server = server.clone();
-                    tokio::spawn(async move {
-                        handle_connection(server, stream, remote_addr).await;
-                        // TODO: store permit in client struct.
-                        drop(permit);
-                    });
+                    tokio::spawn(handle_connection(
+                        server.clone(),
+                        stream,
+                        remote_addr,
+                        permit,
+                    ));
                 }
                 Err(e) => {
                     error!("failed to accept incoming connection: {e}");
@@ -498,6 +503,7 @@ async fn handle_connection(
     server: SharedServer<impl Config>,
     stream: TcpStream,
     remote_addr: SocketAddr,
+    permit: OwnedSemaphorePermit,
 ) {
     trace!("handling connection");
 
@@ -513,6 +519,7 @@ async fn handle_connection(
         PacketEncoder::new(),
         PacketDecoder::new(),
         Duration::from_secs(5),
+        permit,
     );
 
     // TODO: peek stream for 0xFE legacy ping
@@ -551,13 +558,18 @@ async fn handle_handshake(
             .context("error handling login")?
         {
             Some(ncd) => {
-                let (send, recv) = mngr.into_play(
+                let (send, recv, permit) = mngr.into_play(
                     server.0.incoming_capacity,
                     server.0.outgoing_capacity,
                     server.tokio_handle().clone(),
                 );
 
-                let msg = NewClientMessage { ncd, send, recv };
+                let msg = NewClientMessage {
+                    ncd,
+                    send,
+                    recv,
+                    permit,
+                };
 
                 let _ = server.0.new_clients_tx.send_async(msg).await;
                 Ok(())

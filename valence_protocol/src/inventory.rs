@@ -33,7 +33,7 @@ impl InventoryKind {
     /// inventory slots.
     pub const fn slot_count(self) -> usize {
         match self {
-            InventoryKind::Generic9x1 => 9 * 1,
+            InventoryKind::Generic9x1 => 9,
             InventoryKind::Generic9x2 => 9 * 2,
             InventoryKind::Generic9x3 => 9 * 3,
             InventoryKind::Generic9x4 => 9 * 4,

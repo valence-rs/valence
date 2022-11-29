@@ -359,15 +359,25 @@ pub(super) fn next_event_fallible<C: Config>(
                 window_id: p.window_id,
                 button_id: p.button_id,
             },
-            C2sPlayPacket::ClickContainer(p) => ClientEvent::ClickContainer {
-                window_id: p.window_id,
-                state_id: p.state_id.0,
-                slot_idx: p.slot_idx,
-                button: p.button,
-                mode: p.mode,
-                slots: p.slots,
-                carried_item: p.carried_item,
-            },
+            C2sPlayPacket::ClickContainer(p) => {
+                // TODO: check that the slot modifications are legal.
+                // TODO: update cursor item.
+
+                for (idx, item) in &p.slots {
+                    // TODO: check bounds on indices.
+                    client.slots[*idx as usize] = item.clone();
+                }
+
+                ClientEvent::ClickContainer {
+                    window_id: p.window_id,
+                    state_id: p.state_id.0,
+                    slot_idx: p.slot_idx,
+                    button: p.button,
+                    mode: p.mode,
+                    slots: p.slots,
+                    carried_item: p.carried_item,
+                }
+            }
             C2sPlayPacket::CloseContainerC2s(p) => ClientEvent::CloseContainer {
                 window_id: p.window_id,
             },

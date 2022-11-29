@@ -10,6 +10,7 @@ use anyhow::{bail, Context};
 pub use bitfield_struct::bitfield;
 pub use event::ClientEvent;
 use rayon::iter::ParallelIterator;
+use tokio::sync::OwnedSemaphorePermit;
 use tracing::{info, warn};
 use uuid::Uuid;
 use valence_protocol::packets::s2c::play::{
@@ -196,6 +197,9 @@ pub struct Client<C: Config> {
     pub state: C::ClientState,
     send: Option<PlayPacketSender>,
     recv: PlayPacketReceiver,
+    /// Ensures that we don't allow more connections to the server until the
+    /// client is dropped.
+    _permit: OwnedSemaphorePermit,
     username: Username<String>,
     uuid: Uuid,
     ip: IpAddr,
@@ -246,7 +250,7 @@ pub struct Client<C: Config> {
     /// this [`InventoryId::NULL`].
     open_inventory: InventoryId,
     /// The current window ID. Incremented when inventories are opened.
-    window_id: i8,
+    window_id: u8,
     bits: ClientBits,
 }
 
@@ -269,6 +273,7 @@ impl<C: Config> Client<C> {
     pub(crate) fn new(
         send: PlayPacketSender,
         recv: PlayPacketReceiver,
+        permit: OwnedSemaphorePermit,
         ncd: NewClientData,
         state: C::ClientState,
     ) -> Self {
@@ -276,6 +281,7 @@ impl<C: Config> Client<C> {
             state,
             send: Some(send),
             recv,
+            _permit: permit,
             username: ncd.username,
             uuid: ncd.uuid,
             ip: ncd.ip,
@@ -302,7 +308,7 @@ impl<C: Config> Client<C> {
             inv_state_id: Wrapping(0),
             cursor_item: None,
             open_inventory: InventoryId::NULL,
-            window_id: 1,
+            window_id: 0,
             bits: ClientBits::new()
                 .with_got_keepalive(true)
                 .with_created_this_tick(true),
@@ -852,8 +858,8 @@ impl<C: Config> Client<C> {
 
     pub fn replace_slot(
         &mut self,
-        item: impl Into<Option<ItemStack>>,
         idx: u16,
+        item: impl Into<Option<ItemStack>>,
     ) -> Option<ItemStack> {
         assert!((idx as usize) < self.slots.len(), "slot index out of range");
 
@@ -1320,6 +1326,9 @@ impl<C: Config> Client<C> {
             self.bits.set_open_inventory_modified(false);
 
             if let Some(inv) = inventories.get(self.open_inventory) {
+                self.window_id = self.window_id % 100 + 1;
+                self.inv_state_id += 1;
+
                 send.append_packet(&OpenScreen {
                     window_id: VarInt(self.window_id.into()),
                     window_type: VarInt(inv.kind() as i32),
@@ -1327,14 +1336,11 @@ impl<C: Config> Client<C> {
                 })?;
 
                 send.append_packet(&SetContainerContentEncode {
-                    window_id: self.window_id as u8,
+                    window_id: self.window_id,
                     state_id: VarInt(self.inv_state_id.0),
                     slots: inv.slot_slice(),
                     carried_item: &self.cursor_item,
                 })?;
-
-                self.window_id = self.window_id % 100 + 1;
-                self.inv_state_id += 1;
             }
         } else {
             // Update an already open window.

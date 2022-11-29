@@ -5,6 +5,7 @@ use anyhow::Result;
 use tokio::io;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::runtime::Handle;
+use tokio::sync::OwnedSemaphorePermit;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 use tracing::debug;
@@ -18,6 +19,7 @@ pub struct InitialPacketManager<R, W> {
     enc: PacketEncoder,
     dec: PacketDecoder,
     timeout: Duration,
+    permit: OwnedSemaphorePermit,
 }
 
 const READ_BUF_SIZE: usize = 4096;
@@ -33,6 +35,7 @@ where
         enc: PacketEncoder,
         dec: PacketDecoder,
         timeout: Duration,
+        permit: OwnedSemaphorePermit,
     ) -> Self {
         Self {
             reader,
@@ -40,6 +43,7 @@ where
             enc,
             dec,
             timeout,
+            permit,
         }
     }
 
@@ -117,7 +121,7 @@ where
         incoming_limit: usize,
         outgoing_limit: usize,
         handle: Handle,
-    ) -> (PlayPacketSender, PlayPacketReceiver)
+    ) -> (PlayPacketSender, PlayPacketReceiver, OwnedSemaphorePermit)
     where
         R: Send + 'static,
         W: Send + 'static,
@@ -175,6 +179,7 @@ where
                 recv: incoming_receiver,
                 reader_task,
             },
+            self.permit,
         )
     }
 }

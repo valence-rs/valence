@@ -134,6 +134,7 @@ impl<C: Config> Inventory<C> {
     }
 
     pub fn replace_title(&mut self, title: impl Into<Text>) -> Text {
+        // TODO: set title modified flag
         mem::replace(&mut self.title, title.into())
     }
 
@@ -144,20 +145,20 @@ impl<C: Config> Inventory<C> {
     pub(crate) fn send_update(
         &self,
         send: &mut PlayPacketSender,
-        window_id: i8,
+        window_id: u8,
         state_id: &mut Wrapping<i32>,
     ) -> anyhow::Result<()> {
         if self.modified != 0 {
             for (idx, slot) in self.slots.iter().enumerate() {
                 if (self.modified >> idx) & 1 == 1 {
+                    *state_id += 1;
+
                     send.append_packet(&SetContainerSlotEncode {
-                        window_id,
+                        window_id: window_id as i8,
                         state_id: VarInt(state_id.0),
                         slot_idx: idx as i16,
                         slot_data: slot.as_ref(),
                     })?;
-
-                    *state_id += 1;
                 }
             }
         }
