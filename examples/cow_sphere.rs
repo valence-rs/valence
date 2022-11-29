@@ -28,6 +28,11 @@ struct ServerState {
     cows: Vec<EntityId>,
 }
 
+#[derive(Default)]
+struct ClientState {
+    entity_id: EntityId,
+}
+
 const MAX_PLAYERS: usize = 10;
 
 const SPAWN_POS: BlockPos = BlockPos::new(0, 100, -25);
@@ -35,7 +40,7 @@ const SPAWN_POS: BlockPos = BlockPos::new(0, 100, -25);
 #[async_trait]
 impl Config for Game {
     type ServerState = ServerState;
-    type ClientState = EntityId;
+    type ClientState = ClientState;
     type EntityState = ();
     type WorldState = ();
     type ChunkState = ();
@@ -110,7 +115,7 @@ impl Config for Game {
                 {
                     Some((id, entity)) => {
                         entity.set_world(world_id);
-                        client.state = id
+                        client.entity_id = id
                     }
                     None => {
                         client.disconnect("Conflicting UUID");
@@ -149,14 +154,14 @@ impl Config for Game {
                 if let Some(id) = &server.state.player_list {
                     server.player_lists.get_mut(id).remove(client.uuid());
                 }
-                server.entities.remove(client.state);
+                server.entities.remove(client.entity_id);
 
                 return false;
             }
 
             let entity = server
                 .entities
-                .get_mut(client.state)
+                .get_mut(client.entity_id)
                 .expect("missing player entity");
 
             while let Some(event) = client.next_event() {

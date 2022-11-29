@@ -227,13 +227,11 @@ impl<C: Config> Chunks<C> {
             Entry::Occupied(oe) => oe.into_mut(),
             Entry::Vacant(ve) => {
                 let dimension_section_count = (self.dimension_height / 16) as usize;
-                let chunk = ve.insert(LoadedChunk::new(
+                ve.insert(LoadedChunk::new(
                     UnloadedChunk::default(),
                     dimension_section_count,
                     Default::default(),
-                ));
-
-                chunk
+                ))
             }
         };
 

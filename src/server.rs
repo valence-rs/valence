@@ -3,7 +3,6 @@
 use std::error::Error;
 use std::iter::FusedIterator;
 use std::net::{IpAddr, SocketAddr};
-use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -71,20 +70,6 @@ pub struct Server<C: Config> {
     pub player_lists: PlayerLists<C>,
     /// All of the inventories on the server.
     pub inventories: Inventories<C>,
-}
-
-impl<C: Config> Deref for Server<C> {
-    type Target = C::ServerState;
-
-    fn deref(&self) -> &Self::Target {
-        &self.state
-    }
-}
-
-impl<C: Config> DerefMut for Server<C> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.state
-    }
 }
 
 /// A handle to a Minecraft server containing the subset of functionality which

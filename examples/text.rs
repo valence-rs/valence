@@ -65,7 +65,7 @@ impl Config for Game {
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => client.state.entity_id = id,
+                    Some((id, _)) => client.entity_id = id,
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;
@@ -165,14 +165,14 @@ impl Config for Game {
                 client.teleport(SPAWN_POS, 0.0, 0.0);
             }
 
-            let player = server.entities.get_mut(client.state.entity_id).unwrap();
+            let player = server.entities.get_mut(client.entity_id).unwrap();
 
             while let Some(event) = client.next_event() {
                 event.handle_default(client, player);
             }
 
             if client.is_disconnected() {
-                server.entities.remove(client.state.entity_id);
+                server.entities.remove(client.entity_id);
                 return false;
             }
 

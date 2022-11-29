@@ -308,7 +308,7 @@ impl Config for Game {
                 {
                     Some((id, entity)) => {
                         entity.set_world(world_id);
-                        client.state.player = id
+                        client.player = id
                     }
                     None => {
                         client.disconnect("Conflicting UUID");
@@ -348,7 +348,7 @@ impl Config for Game {
                 );
             }
 
-            let entity = server.entities.get_mut(client.state.player).unwrap();
+            let entity = server.entities.get_mut(client.player).unwrap();
             while let Some(event) = client.next_event() {
                 event.handle_default(client, entity);
             }
@@ -358,7 +358,7 @@ impl Config for Game {
                 if let Some(id) = &server.state {
                     server.player_lists.get_mut(id).remove(client.uuid());
                 }
-                server.entities.remove(client.state.player);
+                server.entities.remove(client.player);
 
                 return false;
             }
@@ -368,22 +368,21 @@ impl Config for Game {
             let origin = Vec3::new(client_pos.x, client_pos.y + PLAYER_EYE_HEIGHT, client_pos.z);
             let direction = from_yaw_and_pitch(client.yaw() as f64, client.pitch() as f64);
             let not_self_or_bullet = |hit: &RaycastHit| {
-                hit.entity != client.state.player && hit.entity != client.state.shulker_bullet
+                hit.entity != client.player && hit.entity != client.shulker_bullet
             };
 
             if let Some(hit) = world
                 .spatial_index
                 .raycast(origin, direction, not_self_or_bullet)
             {
-                let bullet =
-                    if let Some(bullet) = server.entities.get_mut(client.state.shulker_bullet) {
-                        bullet
-                    } else {
-                        let (id, bullet) = server.entities.insert(EntityKind::ShulkerBullet, ());
-                        client.state.shulker_bullet = id;
-                        bullet.set_world(world_id);
-                        bullet
-                    };
+                let bullet = if let Some(bullet) = server.entities.get_mut(client.shulker_bullet) {
+                    bullet
+                } else {
+                    let (id, bullet) = server.entities.insert(EntityKind::ShulkerBullet, ());
+                    client.shulker_bullet = id;
+                    bullet.set_world(world_id);
+                    bullet
+                };
 
                 let mut hit_pos = origin + direction * hit.near;
                 let hitbox = bullet.hitbox();
@@ -394,7 +393,7 @@ impl Config for Game {
 
                 client.set_action_bar("Intersection".color(Color::GREEN));
             } else {
-                server.entities.remove(client.state.shulker_bullet);
+                server.entities.remove(client.shulker_bullet);
                 client.set_action_bar("No Intersection".color(Color::RED));
             }
 

@@ -155,7 +155,7 @@ impl Config for Game {
                 {
                     Some((id, entity)) => {
                         entity.set_world(world_id);
-                        client.state.entity_id = id
+                        client.entity_id = id
                     }
                     None => {
                         client.disconnect("Conflicting UUID");
@@ -186,7 +186,7 @@ impl Config for Game {
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.remove(client.state.entity_id);
+                server.entities.remove(client.entity_id);
                 if let Some(id) = &server.state.player_list {
                     server.player_lists.get_mut(id).remove(client.uuid());
                 }

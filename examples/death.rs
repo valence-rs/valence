@@ -27,12 +27,9 @@ struct ClientState {
     can_respawn: bool,
 }
 
-struct WorldState {
-    player_list: PlayerListId,
-}
-
 #[derive(Default)]
 struct ServerState {
+    player_list: Option<PlayerListId>,
     first_world: WorldId,
     second_world: WorldId,
     third_world: WorldId,
@@ -71,7 +68,7 @@ impl Config for Game {
     type ServerState = ServerState;
     type ClientState = ClientState;
     type EntityState = ();
-    type WorldState = WorldState;
+    type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
     type InventoryState = ();
@@ -108,6 +105,7 @@ impl Config for Game {
         // We created server with meaningless default state.
         // Let's create three worlds and create new ServerState.
         server.state = ServerState {
+            player_list: Some(server.player_lists.insert(()).0),
             first_world: create_world(server, FIRST_WORLD_SPAWN_BLOCK, WhichWorld::First),
             second_world: create_world(server, SECOND_WORLD_SPAWN_BLOCK, WhichWorld::Second),
             third_world: create_world(server, THIRD_WORLD_SPAWN_BLOCK, WhichWorld::Third),
@@ -134,7 +132,7 @@ impl Config for Game {
                 {
                     Some((id, entity)) => {
                         entity.set_world(server.state.first_world);
-                        client.state.entity_id = id
+                        client.entity_id = id
                     }
                     None => {
                         client.disconnect("Conflicting UUID");
@@ -142,10 +140,7 @@ impl Config for Game {
                     }
                 }
 
-                let first_world_id = server.state.first_world;
-                let first_world = server.worlds.get(first_world_id).unwrap();
-
-                client.state.respawn_location = (
+                client.respawn_location = (
                     server.state.first_world,
                     block_pos_to_vec(FIRST_WORLD_SPAWN_BLOCK),
                 );
@@ -154,14 +149,14 @@ impl Config for Game {
                 client.set_spawn_position(FIRST_WORLD_SPAWN_BLOCK, 0.0);
 
                 client.set_flat(true);
-                client.respawn(first_world_id);
-                client.teleport(client.state.respawn_location.1, 0.0, 0.0);
+                client.respawn(server.state.first_world);
+                client.teleport(client.respawn_location.1, 0.0, 0.0);
 
-                client.set_player_list(first_world.state.player_list.clone());
+                client.set_player_list(server.state.player_list.clone());
 
                 server
                     .player_lists
-                    .get_mut(&first_world.state.player_list)
+                    .get_mut(server.state.player_list.as_ref().unwrap())
                     .insert(
                         client.uuid(),
                         client.username(),
@@ -183,16 +178,16 @@ impl Config for Game {
             // TODO after inventory support is added, show interaction with compass.
 
             // Handling respawn locations
-            if !client.state.can_respawn {
+            if !client.can_respawn {
                 if client.position().y < 0.0 {
-                    client.state.can_respawn = true;
+                    client.can_respawn = true;
                     client.kill(None, "You fell");
                     // You could have also killed the player with `Client::set_health_and_food`,
                     // however you cannot send a message to the death screen
                     // that way
                     if client.world() == server.state.third_world {
                         // Falling in third world gets you back to the first world
-                        client.state.respawn_location = (
+                        client.respawn_location = (
                             server.state.first_world,
                             block_pos_to_vec(FIRST_WORLD_SPAWN_BLOCK),
                         );
@@ -200,7 +195,7 @@ impl Config for Game {
                     } else {
                         // falling in first and second world will cause player to spawn in third
                         // world
-                        client.state.respawn_location = (
+                        client.respawn_location = (
                             server.state.third_world,
                             block_pos_to_vec(THIRD_WORLD_SPAWN_BLOCK),
                         );
@@ -215,15 +210,15 @@ impl Config for Game {
 
                     if client.position().x >= LEFT_DEATH_LINE as f64 {
                         // Client went to the left, he dies
-                        client.state.can_respawn = true;
+                        client.can_respawn = true;
                         client.kill(None, death_msg);
                     }
 
                     if client.position().x <= RIGHT_DEATH_LINE as f64 {
                         // Client went to the right, he dies and spawns in world2
-                        client.state.can_respawn = true;
+                        client.can_respawn = true;
                         client.kill(None, death_msg);
-                        client.state.respawn_location = (
+                        client.respawn_location = (
                             server.state.second_world,
                             block_pos_to_vec(SECOND_WORLD_SPAWN_BLOCK),
                         );
@@ -232,13 +227,13 @@ impl Config for Game {
                 }
             }
 
-            let player = server.entities.get_mut(client.state.entity_id).unwrap();
+            let player = server.entities.get_mut(client.entity_id).unwrap();
 
             while let Some(event) = client.next_event() {
                 event.handle_default(client, player);
                 match event {
                     ClientEvent::PerformRespawn => {
-                        if !client.state.can_respawn {
+                        if !client.can_respawn {
                             client.disconnect("Unexpected PerformRespawn");
                             return false;
                         }
@@ -246,15 +241,15 @@ impl Config for Game {
                         // responsible for teleporting the player.
 
                         // You can store respawn however you want, for example in `Client`'s state.
-                        let spawn = client.state.respawn_location;
+                        let spawn = client.respawn_location;
                         client.respawn(spawn.0);
                         player.set_world(spawn.0);
                         client.teleport(spawn.1, 0.0, 0.0);
-                        client.state.can_respawn = false;
+                        client.can_respawn = false;
                     }
                     ClientEvent::StartSneaking => {
                         // Roll the credits, respawn after
-                        client.state.can_respawn = true;
+                        client.can_respawn = true;
                         client.win_game(true);
                     }
                     _ => {}
@@ -263,7 +258,7 @@ impl Config for Game {
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.remove(client.state.entity_id);
+                server.entities.remove(client.entity_id);
 
                 if let Some(list) = client.player_list() {
                     server.player_lists.get_mut(list).remove(client.uuid());
@@ -285,10 +280,7 @@ fn create_world(server: &mut Server<Game>, spawn_pos: BlockPos, world_type: Whic
         WhichWorld::Third => server.shared.dimensions().nth(1).unwrap(),
     };
 
-    let player_list = server.player_lists.insert(()).0;
-    let (world_id, world) = server
-        .worlds
-        .insert(dimension.0, WorldState { player_list });
+    let (world_id, world) = server.worlds.insert(dimension.0, ());
 
     // Create chunks
     for chunk_z in -3..3 {

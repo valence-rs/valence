@@ -130,9 +130,9 @@ impl Config for Game {
                 };
 
                 player.set_world(world_id);
-                player.state.client = client_id;
+                player.client = client_id;
 
-                client.state.player = player_id;
+                client.player = player_id;
 
                 client.respawn(world_id);
                 client.set_flat(true);
@@ -168,29 +168,29 @@ impl Config for Game {
             while let Some(event) = client.next_event() {
                 let player = server
                     .entities
-                    .get_mut(client.state.player)
+                    .get_mut(client.player)
                     .expect("missing player entity");
 
                 event.handle_default(client, player);
                 match event {
                     ClientEvent::StartSprinting => {
-                        client.state.extra_knockback = true;
+                        client.extra_knockback = true;
                     }
                     ClientEvent::StopSprinting => {
-                        client.state.extra_knockback = false;
+                        client.extra_knockback = false;
                     }
                     ClientEvent::InteractWithEntity { entity_id, .. } => {
                         if let Some((id, target)) = server.entities.get_with_raw_id_mut(entity_id) {
-                            if !target.state.attacked
-                                && current_tick - target.state.last_attack_time >= 10
-                                && id != client.state.player
+                            if !target.attacked
+                                && current_tick - target.last_attack_time >= 10
+                                && id != client.player
                             {
-                                target.state.attacked = true;
-                                target.state.attacker_pos = client.position();
-                                target.state.extra_knockback = client.state.extra_knockback;
-                                target.state.last_attack_time = current_tick;
+                                target.attacked = true;
+                                target.attacker_pos = client.position();
+                                target.extra_knockback = client.extra_knockback;
+                                target.last_attack_time = current_tick;
 
-                                client.state.extra_knockback = false;
+                                client.extra_knockback = false;
                             }
                         }
                     }
@@ -200,7 +200,7 @@ impl Config for Game {
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.remove(client.state.player);
+                server.entities.remove(client.player);
                 if let Some(id) = &server.state {
                     server.player_lists.get_mut(id).remove(client.uuid());
                 }
@@ -223,25 +223,16 @@ impl Config for Game {
         });
 
         for (_, entity) in server.entities.iter_mut() {
-            if entity.state.attacked {
-                entity.state.attacked = false;
-                if let Some(victim) = server.clients.get_mut(entity.state.client) {
+            if entity.attacked {
+                entity.attacked = false;
+                if let Some(victim) = server.clients.get_mut(entity.client) {
                     let victim_pos = Vec2::new(victim.position().x, victim.position().z);
-                    let attacker_pos =
-                        Vec2::new(entity.state.attacker_pos.x, entity.state.attacker_pos.z);
+                    let attacker_pos = Vec2::new(entity.attacker_pos.x, entity.attacker_pos.z);
 
                     let dir = (victim_pos - attacker_pos).normalized();
 
-                    let knockback_xz = if entity.state.extra_knockback {
-                        18.0
-                    } else {
-                        8.0
-                    };
-                    let knockback_y = if entity.state.extra_knockback {
-                        8.432
-                    } else {
-                        6.432
-                    };
+                    let knockback_xz = if entity.extra_knockback { 18.0 } else { 8.0 };
+                    let knockback_y = if entity.extra_knockback { 8.432 } else { 6.432 };
 
                     let vel = Vec3::new(dir.x * knockback_xz, knockback_y, dir.y * knockback_xz);
                     victim.set_velocity(vel.as_());
