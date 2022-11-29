@@ -1,6 +1,7 @@
 //! A space on a server for objects to occupy.
 
 use std::iter::FusedIterator;
+use std::ops::{Deref, DerefMut};
 
 use rayon::iter::ParallelIterator;
 
@@ -141,6 +142,20 @@ pub struct World<C: Config> {
     pub chunks: Chunks<C>,
     /// This world's metadata.
     pub meta: WorldMeta,
+}
+
+impl<C: Config> Deref for World<C> {
+    type Target = C::WorldState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
+}
+
+impl<C: Config> DerefMut for World<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.state
+    }
 }
 
 /// Contains miscellaneous data about the world.

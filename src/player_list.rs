@@ -2,6 +2,7 @@
 
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
+use std::ops::{Deref, DerefMut};
 
 use bitfield_struct::bitfield;
 use uuid::Uuid;
@@ -108,6 +109,20 @@ pub struct PlayerList<C: Config> {
     header: Text,
     footer: Text,
     modified_header_or_footer: bool,
+}
+
+impl<C: Config> Deref for PlayerList<C> {
+    type Target = C::PlayerListState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
+}
+
+impl<C: Config> DerefMut for PlayerList<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.state
+    }
 }
 
 impl<C: Config> PlayerList<C> {

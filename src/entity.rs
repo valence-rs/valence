@@ -4,6 +4,7 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::iter::FusedIterator;
 use std::num::NonZeroU32;
+use std::ops::{Deref, DerefMut};
 
 use bitfield_struct::bitfield;
 pub use data::{EntityKind, TrackedData};
@@ -289,6 +290,20 @@ pub(crate) struct EntityBits {
     pub on_ground: bool,
     #[bits(4)]
     _pad: u8,
+}
+
+impl<C: Config> Deref for Entity<C> {
+    type Target = C::EntityState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
+}
+
+impl<C: Config> DerefMut for Entity<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.state
+    }
 }
 
 impl<C: Config> Entity<C> {

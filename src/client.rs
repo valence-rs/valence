@@ -5,6 +5,7 @@ use std::iter::FusedIterator;
 use std::net::IpAddr;
 use std::num::Wrapping;
 use std::{array, mem};
+use std::ops::{Deref, DerefMut};
 
 use anyhow::{bail, Context};
 pub use bitfield_struct::bitfield;
@@ -267,6 +268,20 @@ struct ClientBits {
     open_inventory_modified: bool,
     //#[bits(1)]
     //_pad: u8,
+}
+
+impl<C: Config> Deref for Client<C> {
+    type Target = C::ClientState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
+}
+
+impl<C: Config> DerefMut for Client<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.state
+    }
 }
 
 impl<C: Config> Client<C> {

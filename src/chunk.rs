@@ -10,6 +10,7 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::io::Write;
 use std::iter::FusedIterator;
+use std::ops::{Deref, DerefMut};
 
 use paletted_container::PalettedContainer;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
@@ -470,6 +471,20 @@ pub struct LoadedChunk<C: Config> {
     // TODO block_entities: BTreeMap<u32, BlockEntity>,
     // TODO: motion_blocking_heightmap: Box<[u16; 256]>,
     created_this_tick: bool,
+}
+
+impl<C: Config> Deref for LoadedChunk<C> {
+    type Target = C::ChunkState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
+}
+
+impl<C: Config> DerefMut for LoadedChunk<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.state
+    }
 }
 
 /// A 16x16x16 meter volume of blocks, biomes, and light in a chunk.

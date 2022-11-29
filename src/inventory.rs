@@ -1,6 +1,7 @@
 use std::iter::FusedIterator;
 use std::mem;
 use std::num::Wrapping;
+use std::ops::{Deref, DerefMut};
 
 use valence_protocol::packets::s2c::play::SetContainerSlotEncode;
 use valence_protocol::{InventoryKind, ItemStack, Text, VarInt};
@@ -84,6 +85,20 @@ pub struct Inventory<C: Config> {
     slots: Box<[Option<ItemStack>]>,
     /// Contains a set bit for each modified slot in `slots`.
     modified: u64,
+}
+
+impl<C: Config> Deref for Inventory<C> {
+    type Target = C::InventoryState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
+}
+
+impl<C: Config> DerefMut for Inventory<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.state
+    }
 }
 
 impl<C: Config> Inventory<C> {
