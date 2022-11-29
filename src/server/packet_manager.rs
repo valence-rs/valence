@@ -5,6 +5,7 @@ use anyhow::Result;
 use tokio::io;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::runtime::Handle;
+use tokio::sync::OwnedSemaphorePermit;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 use tracing::debug;
@@ -12,17 +13,18 @@ use valence_protocol::{Decode, Encode, Packet, PacketDecoder, PacketEncoder};
 
 use crate::server::byte_channel::{byte_channel, ByteReceiver, ByteSender, TryRecvError};
 
-pub struct InitialPacketController<R, W> {
+pub struct InitialPacketManager<R, W> {
     reader: R,
     writer: W,
     enc: PacketEncoder,
     dec: PacketDecoder,
     timeout: Duration,
+    permit: OwnedSemaphorePermit,
 }
 
 const READ_BUF_SIZE: usize = 4096;
 
-impl<R, W> InitialPacketController<R, W>
+impl<R, W> InitialPacketManager<R, W>
 where
     R: AsyncRead + Unpin,
     W: AsyncWrite + Unpin,
@@ -33,6 +35,7 @@ where
         enc: PacketEncoder,
         dec: PacketDecoder,
         timeout: Duration,
+        permit: OwnedSemaphorePermit,
     ) -> Self {
         Self {
             reader,
@@ -40,6 +43,7 @@ where
             enc,
             dec,
             timeout,
+            permit,
         }
     }
 
@@ -74,6 +78,7 @@ where
             Ok(self
                 .dec
                 .try_next_packet()?
+                // TODO: this panicked after a timeout.
                 .expect("decoder said it had another packet"))
 
             // The following is what I want to write but can't due to borrow
@@ -111,12 +116,12 @@ where
         self.dec.enable_encryption(key);
     }
 
-    pub fn into_play_packet_controller(
+    pub fn into_play(
         mut self,
         incoming_limit: usize,
         outgoing_limit: usize,
         handle: Handle,
-    ) -> PlayPacketController
+    ) -> (PlayPacketSender, PlayPacketReceiver, OwnedSemaphorePermit)
     where
         R: Send + 'static,
         W: Send + 'static,
@@ -162,32 +167,33 @@ where
             }
         });
 
-        PlayPacketController {
-            enc: self.enc,
-            dec: self.dec,
-            send: outgoing_sender,
-            recv: incoming_receiver,
-            reader_task,
-            writer_task: Some(writer_task),
-            handle,
-        }
+        (
+            PlayPacketSender {
+                enc: self.enc,
+                send: outgoing_sender,
+                writer_task: Some(writer_task),
+                handle,
+            },
+            PlayPacketReceiver {
+                dec: self.dec,
+                recv: incoming_receiver,
+                reader_task,
+            },
+            self.permit,
+        )
     }
 }
 
-/// A convenience structure for managing a pair of packet encoder/decoders and
-/// the byte channels from which to send and receive the packet data during the
-/// play state.
-pub struct PlayPacketController {
+/// Manages a packet encoder and a byte channel to send the encoded packets
+/// through.
+pub struct PlayPacketSender {
     enc: PacketEncoder,
-    dec: PacketDecoder,
     send: ByteSender,
-    recv: ByteReceiver,
-    reader_task: JoinHandle<()>,
     writer_task: Option<JoinHandle<()>>,
     handle: Handle,
 }
 
-impl PlayPacketController {
+impl PlayPacketSender {
     pub fn append_packet<P>(&mut self, pkt: &P) -> Result<()>
     where
         P: Encode + Packet + ?Sized,
@@ -202,6 +208,42 @@ impl PlayPacketController {
         self.enc.prepend_packet(pkt)
     }
 
+    #[allow(dead_code)]
+    pub fn set_compression(&mut self, threshold: Option<u32>) {
+        self.enc.set_compression(threshold)
+    }
+
+    pub fn flush(&mut self) -> Result<()> {
+        let bytes = self.enc.take();
+        self.send.try_send(bytes)?;
+        Ok(())
+    }
+}
+
+impl Drop for PlayPacketSender {
+    fn drop(&mut self) {
+        let _ = self.flush();
+
+        if let Some(writer_task) = self.writer_task.take() {
+            if !writer_task.is_finished() {
+                let _guard = self.handle.enter();
+
+                // Give any unsent packets a moment to send before we cut the connection.
+                self.handle
+                    .spawn(timeout(Duration::from_secs(1), writer_task));
+            }
+        }
+    }
+}
+
+/// Manages a packet decoder and a byte channel to receive the encoded packets.
+pub struct PlayPacketReceiver {
+    dec: PacketDecoder,
+    recv: ByteReceiver,
+    reader_task: JoinHandle<()>,
+}
+
+impl PlayPacketReceiver {
     pub fn try_next_packet<'a, P>(&'a mut self) -> Result<Option<P>>
     where
         P: Decode<'a> + Packet,
@@ -220,33 +262,10 @@ impl PlayPacketController {
             Err(TryRecvError::Disconnected) => false,
         }
     }
-
-    #[allow(dead_code)]
-    pub fn set_compression(&mut self, threshold: Option<u32>) {
-        self.enc.set_compression(threshold)
-    }
-
-    pub fn flush(&mut self) -> Result<()> {
-        let bytes = self.enc.take();
-        self.send.try_send(bytes)?;
-        Ok(())
-    }
 }
 
-impl Drop for PlayPacketController {
+impl Drop for PlayPacketReceiver {
     fn drop(&mut self) {
         self.reader_task.abort();
-
-        let _ = self.flush();
-
-        if let Some(writer_task) = self.writer_task.take() {
-            if !writer_task.is_finished() {
-                let _guard = self.handle.enter();
-
-                // Give any unsent packets a moment to send before we cut the connection.
-                self.handle
-                    .spawn(timeout(Duration::from_secs(1), writer_task));
-            }
-        }
     }
 }

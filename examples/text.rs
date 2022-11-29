@@ -34,10 +34,7 @@ impl Config for Game {
     type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
-
-    fn max_connections(&self) -> usize {
-        64
-    }
+    type InventoryState = ();
 
     async fn server_list_ping(
         &self,
@@ -68,7 +65,7 @@ impl Config for Game {
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => client.state.entity_id = id,
+                    Some((id, _)) => client.entity_id = id,
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;
@@ -78,7 +75,7 @@ impl Config for Game {
                 let world_id = server.state.world;
 
                 client.set_flat(true);
-                client.spawn(world_id);
+                client.respawn(world_id);
                 client.teleport(SPAWN_POS, -90.0, 0.0);
                 client.set_game_mode(GameMode::Creative);
 
@@ -164,18 +161,20 @@ impl Config for Game {
                 );
             }
 
-            if client.is_disconnected() {
-                server.entities.remove(client.state.entity_id);
-                return false;
-            }
-
             if client.position().y < 0.0 {
                 client.teleport(SPAWN_POS, 0.0, 0.0);
             }
 
-            let player = server.entities.get_mut(client.state.entity_id).unwrap();
+            let player = server.entities.get_mut(client.entity_id).unwrap();
 
-            while handle_event_default(client, player).is_some() {}
+            while let Some(event) = client.next_event() {
+                event.handle_default(client, player);
+            }
+
+            if client.is_disconnected() {
+                server.entities.remove(client.entity_id);
+                return false;
+            }
 
             true
         });

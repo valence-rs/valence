@@ -24,14 +24,14 @@ use valence_protocol::{translation_key, Decode, Ident, RawBytes, Text, Username,
 
 use crate::config::Config;
 use crate::player_textures::SignedPlayerTextures;
-use crate::server::packet_controller::InitialPacketController;
+use crate::server::packet_manager::InitialPacketManager;
 use crate::server::{NewClientData, SharedServer};
 
 /// Login sequence for
 /// [`ConnectionMode::Online`](crate::config::ConnectionMode).
 pub(super) async fn online(
     server: &SharedServer<impl Config>,
-    ctrl: &mut InitialPacketController<OwnedReadHalf, OwnedWriteHalf>,
+    ctrl: &mut InitialPacketManager<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
     username: Username<String>,
 ) -> anyhow::Result<NewClientData> {
@@ -132,7 +132,7 @@ pub(super) async fn online(
         uuid,
         username,
         textures: Some(textures),
-        remote_addr: remote_addr.ip(),
+        ip: remote_addr.ip(),
     })
 }
 
@@ -147,7 +147,7 @@ pub(super) fn offline(
         uuid: Uuid::from_slice(&Sha256::digest(username.as_str())[..16])?,
         username,
         textures: None,
-        remote_addr: remote_addr.ip(),
+        ip: remote_addr.ip(),
     })
 }
 
@@ -188,7 +188,7 @@ pub(super) fn bungeecord(
         uuid: uuid.parse()?,
         username,
         textures,
-        remote_addr: client_ip.parse()?,
+        ip: client_ip.parse()?,
     })
 }
 
@@ -197,7 +197,7 @@ fn auth_digest(bytes: &[u8]) -> String {
 }
 
 pub(super) async fn velocity(
-    ctrl: &mut InitialPacketController<OwnedReadHalf, OwnedWriteHalf>,
+    ctrl: &mut InitialPacketManager<OwnedReadHalf, OwnedWriteHalf>,
     username: Username<String>,
     velocity_secret: &str,
 ) -> anyhow::Result<NewClientData> {
@@ -279,7 +279,7 @@ pub(super) async fn velocity(
         uuid,
         username,
         textures,
-        remote_addr,
+        ip: remote_addr,
     })
 }
 

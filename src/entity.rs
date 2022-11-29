@@ -4,6 +4,7 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::iter::FusedIterator;
 use std::num::NonZeroU32;
+use std::ops::{Deref, DerefMut};
 
 use bitfield_struct::bitfield;
 pub use data::{EntityKind, TrackedData};
@@ -17,7 +18,7 @@ use valence_protocol::{ByteAngle, RawBytes, VarInt};
 use vek::{Aabb, Vec3};
 
 use crate::config::Config;
-use crate::server::PlayPacketController;
+use crate::server::PlayPacketSender;
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::util::aabb_from_bottom_and_size;
 use crate::world::WorldId;
@@ -40,7 +41,7 @@ include!(concat!(env!("OUT_DIR"), "/entity_event.rs"));
 pub struct Entities<C: Config> {
     slab: VersionedSlab<Entity<C>>,
     uuid_to_entity: HashMap<Uuid, EntityId>,
-    network_id_to_entity: HashMap<NonZeroU32, u32>,
+    raw_id_to_entity: HashMap<NonZeroU32, u32>,
 }
 
 impl<C: Config> Entities<C> {
@@ -48,7 +49,7 @@ impl<C: Config> Entities<C> {
         Self {
             slab: VersionedSlab::new(),
             uuid_to_entity: HashMap::new(),
-            network_id_to_entity: HashMap::new(),
+            raw_id_to_entity: HashMap::new(),
         }
     }
 
@@ -93,7 +94,7 @@ impl<C: Config> Entities<C> {
                 });
 
                 // TODO check for overflowing version?
-                self.network_id_to_entity.insert(k.version(), k.index());
+                self.raw_id_to_entity.insert(k.version(), k.index());
 
                 ve.insert(EntityId(k));
 
@@ -113,7 +114,7 @@ impl<C: Config> Entities<C> {
                 .remove(&e.uuid)
                 .expect("UUID should have been in UUID map");
 
-            self.network_id_to_entity
+            self.raw_id_to_entity
                 .remove(&entity.0.version())
                 .expect("network ID should have been in the network ID map");
 
@@ -133,7 +134,7 @@ impl<C: Config> Entities<C> {
                     .remove(&v.uuid)
                     .expect("UUID should have been in UUID map");
 
-                self.network_id_to_entity
+                self.raw_id_to_entity
                     .remove(&k.version())
                     .expect("network ID should have been in the network ID map");
 
@@ -174,10 +175,22 @@ impl<C: Config> Entities<C> {
         self.slab.get_mut(entity.0)
     }
 
-    pub(crate) fn get_with_network_id(&self, network_id: i32) -> Option<EntityId> {
-        let version = NonZeroU32::new(network_id as u32)?;
-        let index = *self.network_id_to_entity.get(&version)?;
-        Some(EntityId(Key::new(index, version)))
+    pub fn get_with_raw_id(&self, raw_id: i32) -> Option<(EntityId, &Entity<C>)> {
+        let version = NonZeroU32::new(raw_id as u32)?;
+        let index = *self.raw_id_to_entity.get(&version)?;
+
+        let id = EntityId(Key::new(index, version));
+        let entity = self.get(id)?;
+        Some((id, entity))
+    }
+
+    pub fn get_with_raw_id_mut(&mut self, raw_id: i32) -> Option<(EntityId, &mut Entity<C>)> {
+        let version = NonZeroU32::new(raw_id as u32)?;
+        let index = *self.raw_id_to_entity.get(&version)?;
+
+        let id = EntityId(Key::new(index, version));
+        let entity = self.get_mut(id)?;
+        Some((id, entity))
     }
 
     /// Returns an iterator over all entities on the server in an unspecified
@@ -239,7 +252,7 @@ impl EntityId {
     /// The value of the default entity ID which is always invalid.
     pub const NULL: Self = Self(Key::NULL);
 
-    pub fn to_network_id(self) -> i32 {
+    pub fn to_raw(self) -> i32 {
         self.0.version().get() as i32
     }
 }
@@ -277,6 +290,20 @@ pub(crate) struct EntityBits {
     pub on_ground: bool,
     #[bits(4)]
     _pad: u8,
+}
+
+impl<C: Config> Deref for Entity<C> {
+    type Target = C::EntityState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
+}
+
+impl<C: Config> DerefMut for Entity<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.state
+    }
 }
 
 impl<C: Config> Entity<C> {
@@ -709,13 +736,13 @@ impl<C: Config> Entity<C> {
     /// been spawned.
     pub(crate) fn send_initial_tracked_data(
         &self,
-        ctrl: &mut PlayPacketController,
+        send: &mut PlayPacketSender,
         this_id: EntityId,
     ) -> anyhow::Result<()> {
         // TODO: cache metadata buffer?
         if let Some(metadata) = self.variants.initial_tracked_data() {
-            ctrl.append_packet(&SetEntityMetadata {
-                entity_id: VarInt(this_id.to_network_id()),
+            send.append_packet(&SetEntityMetadata {
+                entity_id: VarInt(this_id.to_raw()),
                 metadata: RawBytes(&metadata),
             })?;
         }
@@ -727,13 +754,13 @@ impl<C: Config> Entity<C> {
     /// modified.
     pub(crate) fn send_updated_tracked_data(
         &self,
-        ctrl: &mut PlayPacketController,
+        send: &mut PlayPacketSender,
         this_id: EntityId,
     ) -> anyhow::Result<()> {
         // TODO: cache metadata buffer?
         if let Some(metadata) = self.variants.updated_tracked_data() {
-            ctrl.append_packet(&SetEntityMetadata {
-                entity_id: VarInt(this_id.to_network_id()),
+            send.append_packet(&SetEntityMetadata {
+                entity_id: VarInt(this_id.to_raw()),
                 metadata: RawBytes(&metadata),
             })?;
         }
@@ -745,10 +772,10 @@ impl<C: Config> Entity<C> {
     pub(crate) fn send_spawn_packets(
         &self,
         this_id: EntityId,
-        ctrl: &mut PlayPacketController,
+        send: &mut PlayPacketSender,
     ) -> anyhow::Result<()> {
         let with_object_data = |data| SpawnEntity {
-            entity_id: VarInt(this_id.to_network_id()),
+            entity_id: VarInt(this_id.to_raw()),
             object_uuid: self.uuid,
             kind: VarInt(self.kind() as i32),
             position: self.new_position.into_array(),
@@ -761,14 +788,14 @@ impl<C: Config> Entity<C> {
 
         match &self.variants {
             TrackedData::Marker(_) => {}
-            TrackedData::ExperienceOrb(_) => ctrl.append_packet(&SpawnExperienceOrb {
-                entity_id: VarInt(this_id.to_network_id()),
+            TrackedData::ExperienceOrb(_) => send.append_packet(&SpawnExperienceOrb {
+                entity_id: VarInt(this_id.to_raw()),
                 position: self.new_position.into_array(),
                 count: 0, // TODO
             })?,
             TrackedData::Player(_) => {
-                ctrl.append_packet(&SpawnPlayer {
-                    entity_id: VarInt(this_id.to_network_id()),
+                send.append_packet(&SpawnPlayer {
+                    entity_id: VarInt(this_id.to_raw()),
                     player_uuid: self.uuid,
                     position: self.new_position.into_array(),
                     yaw: ByteAngle::from_degrees(self.yaw),
@@ -776,17 +803,17 @@ impl<C: Config> Entity<C> {
                 })?;
 
                 // Player spawn packet doesn't include head yaw for some reason.
-                ctrl.append_packet(&SetHeadRotation {
-                    entity_id: VarInt(this_id.to_network_id()),
+                send.append_packet(&SetHeadRotation {
+                    entity_id: VarInt(this_id.to_raw()),
                     head_yaw: ByteAngle::from_degrees(self.head_yaw),
                 })?;
             }
-            TrackedData::ItemFrame(e) => ctrl.append_packet(&with_object_data(e.get_rotation()))?,
+            TrackedData::ItemFrame(e) => send.append_packet(&with_object_data(e.get_rotation()))?,
             TrackedData::GlowItemFrame(e) => {
-                ctrl.append_packet(&with_object_data(e.get_rotation()))?
+                send.append_packet(&with_object_data(e.get_rotation()))?
             }
 
-            TrackedData::Painting(_) => ctrl.append_packet(&with_object_data(
+            TrackedData::Painting(_) => send.append_packet(&with_object_data(
                 match ((self.yaw + 45.0).rem_euclid(360.0) / 90.0) as u8 {
                     0 => 3,
                     1 => 4,
@@ -795,14 +822,14 @@ impl<C: Config> Entity<C> {
                 },
             ))?,
             // TODO: set block state ID for falling block.
-            TrackedData::FallingBlock(_) => ctrl.append_packet(&with_object_data(1))?,
+            TrackedData::FallingBlock(_) => send.append_packet(&with_object_data(1))?,
             TrackedData::FishingBobber(e) => {
-                ctrl.append_packet(&with_object_data(e.get_hook_entity_id()))?
+                send.append_packet(&with_object_data(e.get_hook_entity_id()))?
             }
             TrackedData::Warden(e) => {
-                ctrl.append_packet(&with_object_data((e.get_pose() == Pose::Emerging).into()))?
+                send.append_packet(&with_object_data((e.get_pose() == Pose::Emerging).into()))?
             }
-            _ => ctrl.append_packet(&with_object_data(0))?,
+            _ => send.append_packet(&with_object_data(0))?,
         }
 
         Ok(())
@@ -828,17 +855,17 @@ mod tests {
     #[test]
     fn entities_has_valid_new_state() {
         let mut entities: Entities<MockConfig> = Entities::new();
-        let network_id: i32 = 8675309;
+        let raw_id: i32 = 8675309;
         let entity_id = EntityId(Key::new(
             202298,
-            NonZeroU32::new(network_id as u32).expect("Value given should never be zero!"),
+            NonZeroU32::new(raw_id as u32).expect("value given should never be zero!"),
         ));
         let uuid = Uuid::from_bytes([2; 16]);
         assert!(entities.is_empty());
         assert!(entities.get(entity_id).is_none());
         assert!(entities.get_mut(entity_id).is_none());
         assert!(entities.get_with_uuid(uuid).is_none());
-        assert!(entities.get_with_network_id(network_id).is_none());
+        assert!(entities.get_with_raw_id(raw_id).is_none());
     }
 
     #[test]
@@ -850,7 +877,7 @@ mod tests {
         assert_eq!(entities.get(player_id).unwrap().state, 1);
         let mut_player_entity = entities
             .get_mut(player_id)
-            .expect("Failed to get mutable reference");
+            .expect("failed to get mutable reference");
         mut_player_entity.state = 100;
         assert_eq!(entities.get(player_id).unwrap().state, 100);
         assert_eq!(entities.len(), 1);
@@ -863,17 +890,17 @@ mod tests {
         assert!(entities.is_empty());
         let (zombie_id, zombie_entity) = entities
             .insert_with_uuid(EntityKind::Zombie, uuid, 1)
-            .expect("Unexpected Uuid collision when inserting to an empty collection");
+            .expect("unexpected Uuid collision when inserting to an empty collection");
         assert_eq!(zombie_entity.state, 1);
         let maybe_zombie = entities
             .get_with_uuid(uuid)
-            .expect("Uuid lookup failed on item already added to this collection");
+            .expect("UUID lookup failed on item already added to this collection");
         assert_eq!(zombie_id, maybe_zombie);
         assert_eq!(entities.len(), 1);
     }
 
     #[test]
-    fn entities_can_be_set_and_get_with_network_id() {
+    fn entities_can_be_set_and_get_with_raw_id() {
         let mut entities: Entities<MockConfig> = Entities::new();
         assert!(entities.is_empty());
         let (boat_id, boat_entity) = entities.insert(EntityKind::Boat, 12);
@@ -881,18 +908,20 @@ mod tests {
         let (cat_id, cat_entity) = entities.insert(EntityKind::Cat, 75);
         assert_eq!(cat_entity.state, 75);
         let maybe_boat_id = entities
-            .get_with_network_id(boat_id.0.version.get() as i32)
-            .expect("Network id lookup failed on item already added to this collection");
+            .get_with_raw_id(boat_id.0.version.get() as i32)
+            .expect("raw id lookup failed on item already added to this collection")
+            .0;
         let maybe_boat = entities
             .get(maybe_boat_id)
-            .expect("Failed to look up item already added to collection");
+            .expect("failed to look up item already added to collection");
         assert_eq!(maybe_boat.state, 12);
         let maybe_cat_id = entities
-            .get_with_network_id(cat_id.0.version.get() as i32)
-            .expect("Network id lookup failed on item already added to this collection");
+            .get_with_raw_id(cat_id.0.version.get() as i32)
+            .expect("raw id lookup failed on item already added to this collection")
+            .0;
         let maybe_cat = entities
             .get(maybe_cat_id)
-            .expect("Failed to look up item already added to collection");
+            .expect("failed to look up item already added to collection");
         assert_eq!(maybe_cat.state, 75);
         assert_eq!(entities.len(), 2);
     }
@@ -904,7 +933,7 @@ mod tests {
         let (player_id, _) = entities.insert(EntityKind::Player, 1);
         let player_state = entities
             .remove(player_id)
-            .expect("Failed to remove an item from the collection");
+            .expect("failed to remove an item from the collection");
         assert_eq!(player_state, 1);
     }
 

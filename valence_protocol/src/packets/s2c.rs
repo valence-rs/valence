@@ -145,14 +145,14 @@ pub mod play {
     #[packet_id = 0x06]
     pub struct SetBlockDestroyStage {
         pub entity_id: VarInt,
-        pub location: BlockPos,
+        pub position: BlockPos,
         pub destroy_stage: u8,
     }
 
     #[derive(Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x07]
     pub struct BlockEntityData {
-        pub location: BlockPos,
+        pub position: BlockPos,
         // TODO: BlockEntityKind enum?
         pub kind: VarInt,
         pub data: Compound,
@@ -161,7 +161,7 @@ pub mod play {
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x09]
     pub struct BlockUpdate {
-        pub location: BlockPos,
+        pub position: BlockPos,
         pub block_id: VarInt,
     }
 
@@ -194,6 +194,15 @@ pub mod play {
         pub carried_item: Option<ItemStack>,
     }
 
+    #[derive(Copy, Clone, Debug, Encode, Packet)]
+    #[packet_id = 0x11]
+    pub struct SetContainerContentEncode<'a> {
+        pub window_id: u8,
+        pub state_id: VarInt,
+        pub slots: &'a [Option<ItemStack>],
+        pub carried_item: &'a Option<ItemStack>,
+    }
+
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x12]
     pub struct SetContainerProperty {
@@ -209,6 +218,15 @@ pub mod play {
         pub state_id: VarInt,
         pub slot_idx: i16,
         pub slot_data: Option<ItemStack>,
+    }
+
+    #[derive(Clone, Debug, Encode, Packet)]
+    #[packet_id = 0x13]
+    pub struct SetContainerSlotEncode<'a> {
+        pub window_id: i8,
+        pub state_id: VarInt,
+        pub slot_idx: i16,
+        pub slot_data: Option<&'a ItemStack>,
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
@@ -512,7 +530,7 @@ pub mod play {
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x4d]
     pub struct SetDefaultSpawnPosition {
-        pub location: BlockPos,
+        pub position: BlockPos,
         pub angle: f32,
     }
 

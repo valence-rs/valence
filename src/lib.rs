@@ -111,7 +111,6 @@ pub mod entity;
 pub mod inventory;
 pub mod player_list;
 pub mod player_textures;
-#[doc(hidden)]
 pub mod server;
 mod slab;
 mod slab_rc;
@@ -125,13 +124,11 @@ pub mod world;
 pub mod prelude {
     pub use biome::{Biome, BiomeId};
     pub use chunk::{Chunk, ChunkPos, Chunks, LoadedChunk, UnloadedChunk};
-    pub use client::{handle_event_default, Client, ClientEvent, ClientId, Clients};
+    pub use client::{Client, ClientEvent, ClientId, Clients};
     pub use config::{Config, ConnectionMode, PlayerSampleEntry, ServerListPing};
     pub use dimension::{Dimension, DimensionId};
     pub use entity::{Entities, Entity, EntityEvent, EntityId, EntityKind, TrackedData};
-    pub use inventory::{
-        ConfigurableInventory, Inventories, Inventory, InventoryId, PlayerInventory, SlotId,
-    };
+    pub use inventory::{Inventories, Inventory, InventoryId};
     pub use player_list::{PlayerList, PlayerListEntry, PlayerListId, PlayerLists};
     pub use server::{NewClientData, Server, SharedServer, ShutdownResult};
     pub use spatial_index::{RaycastHit, SpatialIndex};
@@ -147,8 +144,8 @@ pub mod prelude {
     pub use valence_protocol::text::Color;
     pub use valence_protocol::types::{GameMode, Hand, SoundCategory};
     pub use valence_protocol::{
-        ident, translation_key, BlockKind, BlockPos, BlockState, Ident, ItemKind, ItemStack, Text,
-        TextFormat, Username, MINECRAFT_VERSION, PROTOCOL_VERSION,
+        ident, translation_key, BlockKind, BlockPos, BlockState, Ident, InventoryKind, ItemKind,
+        ItemStack, Text, TextFormat, Username, MINECRAFT_VERSION, PROTOCOL_VERSION,
     };
     pub use vek::{Aabb, Mat2, Mat3, Mat4, Vec2, Vec3, Vec4};
     pub use world::{World, WorldId, WorldMeta, Worlds};

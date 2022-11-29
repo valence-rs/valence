@@ -40,6 +40,7 @@ impl Config for Game {
     type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
+    type InventoryState = ();
 
     fn dimensions(&self) -> Vec<Dimension> {
         vec![Dimension {
@@ -152,14 +153,17 @@ impl Config for Game {
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => client.state.entity_id = id,
+                    Some((id, entity)) => {
+                        entity.set_world(world_id);
+                        client.entity_id = id
+                    }
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;
                     }
                 }
 
-                client.spawn(world_id);
+                client.respawn(world_id);
                 client.set_flat(true);
                 client.teleport(spawn_pos, 0.0, 0.0);
                 client.set_player_list(server.state.player_list.clone());
@@ -178,9 +182,11 @@ impl Config for Game {
                 client.set_game_mode(GameMode::Creative);
             }
 
+            while client.next_event().is_some() {}
+
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.remove(client.state.entity_id);
+                server.entities.remove(client.entity_id);
                 if let Some(id) = &server.state.player_list {
                     server.player_lists.get_mut(id).remove(client.uuid());
                 }

@@ -39,8 +39,18 @@ impl ItemStack {
 }
 
 impl Encode for Option<ItemStack> {
+    fn encode(&self, w: impl Write) -> Result<()> {
+        self.as_ref().encode(w)
+    }
+
+    fn encoded_len(&self) -> usize {
+        self.as_ref().encoded_len()
+    }
+}
+
+impl<'a> Encode for Option<&'a ItemStack> {
     fn encode(&self, mut w: impl Write) -> Result<()> {
-        match self {
+        match *self {
             None => false.encode(w),
             Some(s) => {
                 true.encode(&mut w)?;
@@ -55,7 +65,7 @@ impl Encode for Option<ItemStack> {
     }
 
     fn encoded_len(&self) -> usize {
-        match self {
+        match *self {
             None => 1,
             Some(s) => {
                 1 + s.item.encoded_len()

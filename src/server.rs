@@ -10,16 +10,16 @@ use std::{io, thread};
 
 use anyhow::{ensure, Context};
 use flume::{Receiver, Sender};
-pub(crate) use packet_controller::PlayPacketController;
+pub(crate) use packet_manager::{PlayPacketReceiver, PlayPacketSender};
 use rand::rngs::OsRng;
 use rayon::iter::ParallelIterator;
-use reqwest::Client as HttpClient;
+use reqwest::Client as ReqwestClient;
 use rsa::{PublicKeyParts, RsaPrivateKey};
 use serde_json::{json, Value};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::{Handle, Runtime};
-use tokio::sync::Semaphore;
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tracing::{error, info, info_span, instrument, trace, warn};
 use uuid::Uuid;
 use valence_nbt::{compound, Compound, List};
@@ -41,16 +41,20 @@ use crate::entity::Entities;
 use crate::inventory::Inventories;
 use crate::player_list::PlayerLists;
 use crate::player_textures::SignedPlayerTextures;
-use crate::server::packet_controller::InitialPacketController;
+use crate::server::packet_manager::InitialPacketManager;
 use crate::world::Worlds;
 use crate::Ticks;
 
 mod byte_channel;
 mod login;
-mod packet_controller;
+mod packet_manager;
 
 /// Contains the entire state of a running Minecraft server, accessible from
-/// within the [update](crate::config::Config::update) loop.
+/// within the [init] and [update] functions.
+///
+/// [init]: crate::config::Config::init
+/// [update]: crate::config::Config::update
+#[non_exhaustive]
 pub struct Server<C: Config> {
     /// Custom state.
     pub state: C::ServerState,
@@ -65,7 +69,7 @@ pub struct Server<C: Config> {
     /// All of the player lists on the server.
     pub player_lists: PlayerLists<C>,
     /// All of the inventories on the server.
-    pub inventories: Inventories,
+    pub inventories: Inventories<C>,
 }
 
 /// A handle to a Minecraft server containing the subset of functionality which
@@ -119,26 +123,28 @@ struct SharedServerInner<C: Config> {
     /// This is sent to clients during the authentication process.
     public_key_der: Box<[u8]>,
     /// For session server requests.
-    http_client: HttpClient,
+    http_client: ReqwestClient,
 }
 
-/// Contains information about a new client.
+/// Contains information about a new client joining the server.
 #[non_exhaustive]
 pub struct NewClientData {
-    /// The UUID of the new client.
-    pub uuid: Uuid,
     /// The username of the new client.
     pub username: Username<String>,
+    /// The UUID of the new client.
+    pub uuid: Uuid,
+    /// The remote address of the new client.
+    pub ip: IpAddr,
     /// The new client's player textures. May be `None` if the client does not
     /// have a skin or cape.
     pub textures: Option<SignedPlayerTextures>,
-    /// The remote address of the new client.
-    pub remote_addr: IpAddr,
 }
 
 struct NewClientMessage {
     ncd: NewClientData,
-    ctrl: PlayPacketController,
+    send: PlayPacketSender,
+    recv: PlayPacketReceiver,
+    permit: OwnedSemaphorePermit,
 }
 
 /// The result type returned from [`start_server`].
@@ -359,7 +365,7 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         shutdown_result: Mutex::new(None),
         rsa_key,
         public_key_der,
-        http_client: HttpClient::new(),
+        http_client: ReqwestClient::new(),
     };
 
     Ok(SharedServer(Arc::new(server)))
@@ -408,20 +414,23 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
             info!(
                 username = %msg.ncd.username,
                 uuid = %msg.ncd.uuid,
-                ip = %msg.ncd.remote_addr,
+                ip = %msg.ncd.ip,
                 "inserting client"
             );
 
-            server
-                .clients
-                .insert(Client::new(msg.ctrl, msg.ncd, Default::default()));
+            server.clients.insert(Client::new(
+                msg.send,
+                msg.recv,
+                msg.permit,
+                msg.ncd,
+                Default::default(),
+            ));
         }
 
         // Get serverbound packets first so they are not dealt with a tick late.
-
-        server.clients.par_iter_mut().for_each(|(_, client)| {
-            client.handle_serverbound_packets(&server.entities);
-        });
+        for (_, client) in server.clients.iter_mut() {
+            client.prepare_c2s_packets();
+        }
 
         info_span!("configured_update").in_scope(|| shared.config().update(server));
 
@@ -472,11 +481,12 @@ async fn do_accept_loop(server: SharedServer<impl Config>) {
         match server.0.connection_sema.clone().acquire_owned().await {
             Ok(permit) => match listener.accept().await {
                 Ok((stream, remote_addr)) => {
-                    let server = server.clone();
-                    tokio::spawn(async move {
-                        handle_connection(server, stream, remote_addr).await;
-                        drop(permit);
-                    });
+                    tokio::spawn(handle_connection(
+                        server.clone(),
+                        stream,
+                        remote_addr,
+                        permit,
+                    ));
                 }
                 Err(e) => {
                     error!("failed to accept incoming connection: {e}");
@@ -493,6 +503,7 @@ async fn handle_connection(
     server: SharedServer<impl Config>,
     stream: TcpStream,
     remote_addr: SocketAddr,
+    permit: OwnedSemaphorePermit,
 ) {
     trace!("handling connection");
 
@@ -502,17 +513,18 @@ async fn handle_connection(
 
     let (read, write) = stream.into_split();
 
-    let ctrl = InitialPacketController::new(
+    let mngr = InitialPacketManager::new(
         read,
         write,
         PacketEncoder::new(),
         PacketDecoder::new(),
         Duration::from_secs(5),
+        permit,
     );
 
     // TODO: peek stream for 0xFE legacy ping
 
-    if let Err(e) = handle_handshake(server, ctrl, remote_addr).await {
+    if let Err(e) = handle_handshake(server, mngr, remote_addr).await {
         // EOF can happen if the client disconnects while joining, which isn't
         // very erroneous.
         if let Some(e) = e.downcast_ref::<io::Error>() {
@@ -526,10 +538,10 @@ async fn handle_connection(
 
 async fn handle_handshake(
     server: SharedServer<impl Config>,
-    mut ctrl: InitialPacketController<OwnedReadHalf, OwnedWriteHalf>,
+    mut mngr: InitialPacketManager<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
 ) -> anyhow::Result<()> {
-    let handshake = ctrl.recv_packet::<HandshakeOwned>().await?;
+    let handshake = mngr.recv_packet::<HandshakeOwned>().await?;
 
     ensure!(
         matches!(server.connection_mode(), ConnectionMode::BungeeCord)
@@ -538,21 +550,25 @@ async fn handle_handshake(
     );
 
     match handshake.next_state {
-        HandshakeNextState::Status => handle_status(server, ctrl, remote_addr, handshake)
+        HandshakeNextState::Status => handle_status(server, mngr, remote_addr, handshake)
             .await
             .context("error handling status"),
-        HandshakeNextState::Login => match handle_login(&server, &mut ctrl, remote_addr, handshake)
+        HandshakeNextState::Login => match handle_login(&server, &mut mngr, remote_addr, handshake)
             .await
             .context("error handling login")?
         {
             Some(ncd) => {
+                let (send, recv, permit) = mngr.into_play(
+                    server.0.incoming_capacity,
+                    server.0.outgoing_capacity,
+                    server.tokio_handle().clone(),
+                );
+
                 let msg = NewClientMessage {
                     ncd,
-                    ctrl: ctrl.into_play_packet_controller(
-                        server.0.incoming_capacity,
-                        server.0.outgoing_capacity,
-                        server.tokio_handle().clone(),
-                    ),
+                    send,
+                    recv,
+                    permit,
                 };
 
                 let _ = server.0.new_clients_tx.send_async(msg).await;
@@ -565,11 +581,11 @@ async fn handle_handshake(
 
 async fn handle_status(
     server: SharedServer<impl Config>,
-    mut ctrl: InitialPacketController<OwnedReadHalf, OwnedWriteHalf>,
+    mut mngr: InitialPacketManager<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
     handshake: HandshakeOwned,
 ) -> anyhow::Result<()> {
-    ctrl.recv_packet::<StatusRequest>().await?;
+    mngr.recv_packet::<StatusRequest>().await?;
 
     match server
         .0
@@ -605,7 +621,7 @@ async fn handle_status(
                     .insert("favicon".to_owned(), Value::String(buf));
             }
 
-            ctrl.send_packet(&StatusResponse {
+            mngr.send_packet(&StatusResponse {
                 json: &json.to_string(),
             })
             .await?;
@@ -613,9 +629,9 @@ async fn handle_status(
         ServerListPing::Ignore => return Ok(()),
     }
 
-    let PingRequest { payload } = ctrl.recv_packet().await?;
+    let PingRequest { payload } = mngr.recv_packet().await?;
 
-    ctrl.send_packet(&PingResponse { payload }).await?;
+    mngr.send_packet(&PingResponse { payload }).await?;
 
     Ok(())
 }
@@ -623,7 +639,7 @@ async fn handle_status(
 /// Handle the login process and return the new client's data if successful.
 async fn handle_login(
     server: &SharedServer<impl Config>,
-    ctrl: &mut InitialPacketController<OwnedReadHalf, OwnedWriteHalf>,
+    mngr: &mut InitialPacketManager<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
     handshake: HandshakeOwned,
 ) -> anyhow::Result<Option<NewClientData>> {
@@ -636,33 +652,33 @@ async fn handle_login(
         username,
         sig_data: _,   // TODO
         profile_id: _, // TODO
-    } = ctrl.recv_packet().await?;
+    } = mngr.recv_packet().await?;
 
     let username = username.to_owned_username();
 
     let ncd = match server.connection_mode() {
-        ConnectionMode::Online => login::online(server, ctrl, remote_addr, username).await?,
+        ConnectionMode::Online => login::online(server, mngr, remote_addr, username).await?,
         ConnectionMode::Offline => login::offline(remote_addr, username)?,
         ConnectionMode::BungeeCord => login::bungeecord(&handshake.server_address, username)?,
-        ConnectionMode::Velocity { secret } => login::velocity(ctrl, username, secret).await?,
+        ConnectionMode::Velocity { secret } => login::velocity(mngr, username, secret).await?,
     };
 
     if let Some(threshold) = server.0.cfg.compression_threshold() {
-        ctrl.send_packet(&SetCompression {
+        mngr.send_packet(&SetCompression {
             threshold: VarInt(threshold as i32),
         })
         .await?;
 
-        ctrl.set_compression(Some(threshold));
+        mngr.set_compression(Some(threshold));
     }
 
     if let Err(reason) = server.0.cfg.login(server, &ncd).await {
         info!("disconnect at login: \"{reason}\"");
-        ctrl.send_packet(&DisconnectLogin { reason }).await?;
+        mngr.send_packet(&DisconnectLogin { reason }).await?;
         return Ok(None);
     }
 
-    ctrl.send_packet(&LoginSuccess {
+    mngr.send_packet(&LoginSuccess {
         uuid: ncd.uuid,
         username: ncd.username.as_str_username(),
         properties: Vec::new(),

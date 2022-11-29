@@ -7,7 +7,7 @@ use crate::item::ItemStack;
 use crate::raw_bytes::RawBytes;
 use crate::types::{
     Action, ChatMode, ClickContainerMode, CommandArgumentSignature, CommandBlockFlags,
-    CommandBlockMode, DiggingStatus, DisplayedSkinParts, EntityInteraction, Hand,
+    CommandBlockMode, Difficulty, DiggingStatus, DisplayedSkinParts, EntityInteraction, Hand,
     HandshakeNextState, MainHand, MessageAcknowledgment, MsgSigOrVerifyToken, PlayerInputFlags,
     PublicKeyData, RecipeBookId, StructureBlockAction, StructureBlockFlags, StructureBlockMirror,
     StructureBlockMode, StructureBlockRotation,
@@ -116,17 +116,12 @@ pub mod play {
     #[packet_id = 0x01]
     pub struct QueryBlockEntityTag {
         pub transaction_id: VarInt,
-        pub location: BlockPos,
+        pub position: BlockPos,
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x02]
-    pub enum ChangeDifficulty {
-        Peaceful,
-        Easy,
-        Normal,
-        Hard,
-    }
+    pub struct ChangeDifficulty(pub Difficulty);
 
     #[derive(Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x03]
@@ -164,7 +159,7 @@ pub mod play {
     #[packet_id = 0x07]
     pub enum ClientCommand {
         PerformRespawn,
-        RequestStatus,
+        RequestStats,
     }
 
     #[derive(Clone, Debug, Encode, Decode, Packet)]
@@ -209,7 +204,7 @@ pub mod play {
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x0c]
     pub struct CloseContainerC2s {
-        pub window_id: u8,
+        pub window_id: i8,
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
@@ -245,7 +240,7 @@ pub mod play {
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x11]
     pub struct JigsawGenerate {
-        pub location: BlockPos,
+        pub position: BlockPos,
         pub levels: VarInt,
         pub keep_jigsaws: bool,
     }
@@ -258,9 +253,7 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x13]
-    pub struct LockDifficulty {
-        pub locked: bool,
-    }
+    pub struct LockDifficulty(pub bool);
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x14]
@@ -332,7 +325,7 @@ pub mod play {
     #[packet_id = 0x1d]
     pub struct PlayerAction {
         pub status: DiggingStatus,
-        pub location: BlockPos,
+        pub position: BlockPos,
         pub face: BlockFace,
         pub sequence: VarInt,
     }
@@ -417,7 +410,7 @@ pub mod play {
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x29]
     pub struct ProgramCommandBlock<'a> {
-        pub location: BlockPos,
+        pub position: BlockPos,
         pub command: &'a str,
         pub mode: CommandBlockMode,
         pub flags: CommandBlockFlags,
@@ -441,7 +434,7 @@ pub mod play {
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x2c]
     pub struct ProgramJigsawBlock<'a> {
-        pub location: BlockPos,
+        pub position: BlockPos,
         pub name: Ident<&'a str>,
         pub target: Ident<&'a str>,
         pub pool: Ident<&'a str>,
@@ -452,7 +445,7 @@ pub mod play {
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x2d]
     pub struct ProgramStructureBlock<'a> {
-        pub location: BlockPos,
+        pub position: BlockPos,
         pub action: StructureBlockAction,
         pub mode: StructureBlockMode,
         pub name: &'a str,
@@ -469,7 +462,7 @@ pub mod play {
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x2e]
     pub struct UpdateSign<'a> {
-        pub location: BlockPos,
+        pub position: BlockPos,
         pub lines: [&'a str; 4],
     }
 
@@ -487,7 +480,7 @@ pub mod play {
     #[packet_id = 0x31]
     pub struct UseItemOn {
         pub hand: Hand,
-        pub location: BlockPos,
+        pub position: BlockPos,
         pub face: BlockFace,
         pub cursor_pos: [f32; 3],
         pub head_inside_block: bool,

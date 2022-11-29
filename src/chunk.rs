@@ -10,6 +10,7 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::io::Write;
 use std::iter::FusedIterator;
+use std::ops::{Deref, DerefMut};
 
 use paletted_container::PalettedContainer;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
@@ -22,7 +23,7 @@ use valence_protocol::{BlockPos, BlockState, Encode, VarInt, VarLong};
 use crate::biome::BiomeId;
 pub use crate::chunk_pos::ChunkPos;
 use crate::config::Config;
-use crate::server::PlayPacketController;
+use crate::server::PlayPacketSender;
 use crate::util::bits_needed;
 
 mod paletted_container;
@@ -54,7 +55,7 @@ impl<C: Config> Chunks<C> {
     ///
     /// **Note**: For the vanilla Minecraft client to see a chunk, all chunks
     /// adjacent to it must also be loaded. Clients should not be spawned within
-    /// unloaded chunks via [`spawn`](crate::client::Client::spawn).
+    /// unloaded chunks via [`respawn`](crate::client::Client::respawn).
     pub fn insert(
         &mut self,
         pos: impl Into<ChunkPos>,
@@ -200,38 +201,46 @@ impl<C: Config> Chunks<C> {
         }
     }
 
-    /// Sets the block state at an absolute block position in world space.
+    /// Sets the block state at an absolute block position in world space. The
+    /// previous block state at the position is returned.
     ///
-    /// If the position is inside of a chunk, then `true` is returned and the
-    /// block is set. Otherwise, `false` is returned and the function has no
-    /// effect.
+    /// If the given position is not inside of a loaded chunk, then a new chunk
+    /// is created at the position before the block is set.
     ///
-    /// **Note**: if you need to set a large number of blocks, it may be more
-    /// efficient write to the chunks directly with
-    /// [`Chunk::set_block_state`].
-    pub fn set_block_state(&mut self, pos: impl Into<BlockPos>, block: BlockState) -> bool {
+    /// If the position is completely out of bounds, then no new chunk is
+    /// created and [`BlockState::AIR`] is returned.
+    pub fn set_block_state(&mut self, pos: impl Into<BlockPos>, block: BlockState) -> BlockState
+    where
+        C::ChunkState: Default,
+    {
         let pos = pos.into();
-        let chunk_pos = ChunkPos::from(pos);
 
-        if let Some(chunk) = self.chunks.get_mut(&chunk_pos) {
-            if let Some(y) = pos
-                .y
-                .checked_sub(self.dimension_min_y)
-                .and_then(|y| y.try_into().ok())
-            {
-                if y < chunk.height() {
-                    chunk.set_block_state(
-                        pos.x.rem_euclid(16) as usize,
-                        y,
-                        pos.z.rem_euclid(16) as usize,
-                        block,
-                    );
-                    return true;
-                }
-            }
+        let Some(y) = pos.y.checked_sub(self.dimension_min_y).and_then(|y| y.try_into().ok()) else {
+            return BlockState::AIR;
+        };
+
+        if y >= self.dimension_height as usize {
+            return BlockState::AIR;
         }
 
-        false
+        let chunk = match self.chunks.entry(ChunkPos::from(pos)) {
+            Entry::Occupied(oe) => oe.into_mut(),
+            Entry::Vacant(ve) => {
+                let dimension_section_count = (self.dimension_height / 16) as usize;
+                ve.insert(LoadedChunk::new(
+                    UnloadedChunk::default(),
+                    dimension_section_count,
+                    Default::default(),
+                ))
+            }
+        };
+
+        chunk.set_block_state(
+            pos.x.rem_euclid(16) as usize,
+            y,
+            pos.z.rem_euclid(16) as usize,
+            block,
+        )
     }
 
     pub(crate) fn update(&mut self) {
@@ -472,6 +481,20 @@ pub struct LoadedChunk<C: Config> {
     created_this_tick: bool,
 }
 
+impl<C: Config> Deref for LoadedChunk<C> {
+    type Target = C::ChunkState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
+}
+
+impl<C: Config> DerefMut for LoadedChunk<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.state
+    }
+}
+
 /// A 16x16x16 meter volume of blocks, biomes, and light in a chunk.
 #[derive(Clone)]
 struct ChunkSection {
@@ -540,7 +563,7 @@ impl<C: Config> LoadedChunk<C> {
     /// Queues the chunk data packet for this chunk with the given position.
     pub(crate) fn chunk_data_packet(
         &self,
-        ctrl: &mut PlayPacketController,
+        send: &mut PlayPacketSender,
         scratch: &mut Vec<u8>,
         pos: ChunkPos,
         biome_registry_len: usize,
@@ -567,7 +590,7 @@ impl<C: Config> LoadedChunk<C> {
             )?;
         }
 
-        ctrl.append_packet(&ChunkDataAndUpdateLight {
+        send.append_packet(&ChunkDataAndUpdateLight {
             chunk_x: pos.x,
             chunk_z: pos.z,
             heightmaps: compound! {
@@ -590,7 +613,7 @@ impl<C: Config> LoadedChunk<C> {
         &self,
         pos: ChunkPos,
         min_y: i32,
-        ctrl: &mut PlayPacketController,
+        send: &mut PlayPacketSender,
     ) -> anyhow::Result<()> {
         for (sect_y, sect) in self.sections.iter().enumerate() {
             if sect.modified_blocks_count == 1 {
@@ -611,8 +634,8 @@ impl<C: Config> LoadedChunk<C> {
                 let global_y = sect_y as i32 * 16 + (idx / (16 * 16)) as i32 + min_y;
                 let global_z = pos.z * 16 + (idx / 16 % 16) as i32;
 
-                ctrl.append_packet(&BlockUpdate {
-                    location: BlockPos::new(global_x, global_y, global_z),
+                send.append_packet(&BlockUpdate {
+                    position: BlockPos::new(global_x, global_y, global_z),
                     block_id: VarInt(block.to_raw() as _),
                 })?;
             } else if sect.modified_blocks_count > 1 {
@@ -637,7 +660,7 @@ impl<C: Config> LoadedChunk<C> {
                     | (pos.z as i64 & 0x3fffff) << 20
                     | (sect_y as i64 + min_y.div_euclid(16) as i64) & 0xfffff;
 
-                ctrl.append_packet(&UpdateSectionBlocks {
+                send.append_packet(&UpdateSectionBlocks {
                     chunk_section_position,
                     invert_trust_edges: false,
                     blocks,

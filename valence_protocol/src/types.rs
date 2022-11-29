@@ -91,7 +91,7 @@ pub enum DiggingStatus {
     FinishedDigging,
     DropItemStack,
     DropItem,
-    ShootArrowOrFinishEating,
+    UpdateHeldItemState,
     SwapItemInHand,
 }
 
