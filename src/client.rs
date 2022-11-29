@@ -4,8 +4,8 @@ use std::collections::HashSet;
 use std::iter::FusedIterator;
 use std::net::IpAddr;
 use std::num::Wrapping;
-use std::{array, mem};
 use std::ops::{Deref, DerefMut};
+use std::{array, mem};
 
 use anyhow::{bail, Context};
 pub use bitfield_struct::bitfield;
@@ -178,7 +178,7 @@ impl ClientId {
 ///
 /// By default, clients have no influence over the worlds they reside in. They
 /// cannot break blocks, hurt entities, or see other clients. Interactions with
-/// the server must be handled explicitly with [`Self::pop_event`].
+/// the server must be handled explicitly with [`Self::next_event`].
 ///
 /// Additionally, clients possess [`Player`] entity data which is only visible
 /// to themselves. This can be accessed with [`Self::player`] and
@@ -206,7 +206,7 @@ pub struct Client<C: Config> {
     ip: IpAddr,
     textures: Option<SignedPlayerTextures>,
     /// World client is currently in. Default value is **invalid** and must
-    /// be set by calling [`Client::spawn`].
+    /// be set by calling [`Client::respawn`].
     world: WorldId,
     player_list: Option<PlayerListId>,
     /// Player list from the previous tick.
@@ -1029,7 +1029,8 @@ impl<C: Config> Client<C> {
             if self.bits.respawn() {
                 self.bits.set_respawn(false);
 
-                self.loaded_entities.clear();
+                // TODO: changing worlds didn't unload entities?
+                //self.loaded_entities.clear();
                 self.loaded_chunks.clear();
 
                 /*
@@ -1163,7 +1164,9 @@ impl<C: Config> Client<C> {
         self.loaded_entities.retain(|&id| {
             if let Some(entity) = entities.get(id) {
                 debug_assert!(entity.kind() != EntityKind::Marker);
-                if self.position.distance(entity.position()) <= self.view_distance as f64 * 16.0 {
+                if self.world == entity.world()
+                    && self.position.distance(entity.position()) <= self.view_distance as f64 * 16.0
+                {
                     let _ = entity.send_updated_tracked_data(send, id);
 
                     let position_delta = entity.position() - entity.old_position();
