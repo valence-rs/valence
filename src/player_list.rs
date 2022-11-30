@@ -56,16 +56,6 @@ impl<C: Config> PlayerLists<C> {
         (PlayerListId(key), pl)
     }
 
-    /// Returns the number of player lists.
-    pub fn len(&self) -> usize {
-        self.slab.len()
-    }
-
-    /// Returns `true` if there are no player lists.
-    pub fn is_empty(&self) -> bool {
-        self.slab.len() == 0
-    }
-
     /// Gets a shared reference to the player list with the given player list
     /// ID.
     ///
@@ -83,8 +73,7 @@ impl<C: Config> PlayerLists<C> {
     }
 
     pub(crate) fn update(&mut self) {
-        self.slab.collect_garbage();
-        for (_, pl) in self.slab.iter_mut() {
+        for pl in self.slab.iter_mut() {
             for entry in pl.entries.values_mut() {
                 entry.bits = EntryBits::new();
             }
