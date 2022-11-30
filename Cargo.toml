@@ -70,9 +70,9 @@ members = [
     "valence_nbt",
     "valence_protocol",
     "packet_inspector",
-    "performance_tests/players"
+    "benchmarks/bench_players"
 ]
-exclude = ["performance_tests/rust-mc-bot"]
+exclude = ["benchmarks/rust-mc-bot"]
 
 [profile.dev.package."*"]
 opt-level = 3

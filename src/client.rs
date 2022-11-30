@@ -201,6 +201,8 @@ pub struct Client<C: Config> {
     /// Ensures that we don't allow more connections to the server until the
     /// client is dropped.
     _permit: OwnedSemaphorePermit,
+    /// General purpose reusable buffer.
+    scratch: Vec<u8>,
     username: Username<String>,
     uuid: Uuid,
     ip: IpAddr,
@@ -297,6 +299,7 @@ impl<C: Config> Client<C> {
             send: Some(send),
             recv,
             _permit: permit,
+            scratch: Vec::new(),
             username: ncd.username,
             uuid: ncd.uuid,
             ip: ncd.ip,
@@ -979,6 +982,8 @@ impl<C: Config> Client<C> {
         player_lists: &PlayerLists<C>,
         inventories: &Inventories<C>,
     ) -> anyhow::Result<()> {
+        debug_assert!(self.scratch.is_empty());
+
         let world = match worlds.get(self.world) {
             Some(world) => world,
             None => bail!("client is in an invalid world and must be disconnected"),
@@ -1135,13 +1140,17 @@ impl<C: Config> Client<C> {
 
         // Load new chunks within the view distance
         {
-            let mut scratch = Vec::new();
             let biome_registry_len = shared.biomes().len();
-
             for pos in chunks_in_view_distance(center, self.view_distance) {
                 if let Some(chunk) = world.chunks.get(pos) {
                     if self.loaded_chunks.insert(pos) {
-                        chunk.chunk_data_packet(send, &mut scratch, pos, biome_registry_len)?;
+                        chunk.send_chunk_data_packet(
+                            send,
+                            &mut self.scratch,
+                            pos,
+                            biome_registry_len,
+                        )?;
+                        self.scratch.clear();
                     }
                 }
             }
@@ -1167,7 +1176,8 @@ impl<C: Config> Client<C> {
                 if self.world == entity.world()
                     && self.position.distance(entity.position()) <= self.view_distance as f64 * 16.0
                 {
-                    let _ = entity.send_updated_tracked_data(send, id);
+                    let _ = entity.send_updated_tracked_data(send, &mut self.scratch, id);
+                    self.scratch.clear();
 
                     let position_delta = entity.position() - entity.old_position();
                     let needs_teleport = position_delta.map(f64::abs).reduce_partial_max() >= 8.0;
@@ -1244,16 +1254,16 @@ impl<C: Config> Client<C> {
         }
 
         // Update the client's own player metadata.
-        let mut data = Vec::new();
-        self.player_data.updated_tracked_data(&mut data);
-
-        if !data.is_empty() {
-            data.push(0xff);
+        self.player_data.updated_tracked_data(&mut self.scratch);
+        if !self.scratch.is_empty() {
+            self.scratch.push(0xff);
 
             send.append_packet(&SetEntityMetadata {
                 entity_id: VarInt(0),
-                metadata: RawBytes(&data),
+                metadata: RawBytes(&self.scratch),
             })?;
+
+            self.scratch.clear();
         }
 
         // Spawn new entities within the view distance.
@@ -1276,9 +1286,10 @@ impl<C: Config> Client<C> {
                         return Some(e);
                     }
 
-                    if let Err(e) = entity.send_initial_tracked_data(send, id) {
+                    if let Err(e) = entity.send_initial_tracked_data(send, &mut self.scratch, id) {
                         return Some(e);
                     }
+                    self.scratch.clear();
 
                     if let Err(e) = send_entity_events(send, id.to_raw(), entity.events()) {
                         return Some(e);

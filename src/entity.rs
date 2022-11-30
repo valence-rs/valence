@@ -737,13 +737,14 @@ impl<C: Config> Entity<C> {
     pub(crate) fn send_initial_tracked_data(
         &self,
         send: &mut PlayPacketSender,
+        scratch: &mut Vec<u8>,
         this_id: EntityId,
     ) -> anyhow::Result<()> {
-        // TODO: cache metadata buffer?
-        if let Some(metadata) = self.variants.initial_tracked_data() {
+        self.variants.write_initial_tracked_data(scratch);
+        if !scratch.is_empty() {
             send.append_packet(&SetEntityMetadata {
                 entity_id: VarInt(this_id.to_raw()),
-                metadata: RawBytes(&metadata),
+                metadata: RawBytes(scratch),
             })?;
         }
 
@@ -755,13 +756,14 @@ impl<C: Config> Entity<C> {
     pub(crate) fn send_updated_tracked_data(
         &self,
         send: &mut PlayPacketSender,
+        scratch: &mut Vec<u8>,
         this_id: EntityId,
     ) -> anyhow::Result<()> {
-        // TODO: cache metadata buffer?
-        if let Some(metadata) = self.variants.updated_tracked_data() {
+        self.variants.write_updated_tracked_data(scratch);
+        if !scratch.is_empty() {
             send.append_packet(&SetEntityMetadata {
                 entity_id: VarInt(this_id.to_raw()),
-                metadata: RawBytes(&metadata),
+                metadata: RawBytes(scratch),
             })?;
         }
 

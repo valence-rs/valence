@@ -460,33 +460,27 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            pub(super) fn initial_tracked_data(&self) -> Option<Vec<u8>> {
-                let mut data = Vec::new();
+            pub(super) fn write_initial_tracked_data(&self, buf: &mut Vec<u8>) {
+                debug_assert!(buf.is_empty());
 
                 match self {
-                    #(Self::#concrete_entity_names(e) => e.initial_tracked_data(&mut data),)*
+                    #(Self::#concrete_entity_names(e) => e.initial_tracked_data(buf),)*
                 }
 
-                if data.is_empty() {
-                    None
-                } else {
-                    data.push(0xff);
-                    Some(data)
+                if !buf.is_empty() {
+                    buf.push(0xff);
                 }
             }
 
-            pub(super) fn updated_tracked_data(&self) -> Option<Vec<u8>> {
-                let mut data = Vec::new();
+            pub(super) fn write_updated_tracked_data(&self, buf: &mut Vec<u8>) {
+                debug_assert!(buf.is_empty());
 
                 match self {
-                    #(Self::#concrete_entity_names(e) => e.updated_tracked_data(&mut data),)*
+                    #(Self::#concrete_entity_names(e) => e.updated_tracked_data(buf),)*
                 }
 
-                if data.is_empty() {
-                    None
-                } else {
-                    data.push(0xff);
-                    Some(data)
+                if !buf.is_empty() {
+                    buf.push(0xff);
                 }
             }
 
