@@ -561,14 +561,14 @@ impl<C: Config> LoadedChunk<C> {
     }
 
     /// Queues the chunk data packet for this chunk with the given position.
-    pub(crate) fn chunk_data_packet(
+    pub(crate) fn send_chunk_data_packet(
         &self,
         send: &mut PlayPacketSender,
         scratch: &mut Vec<u8>,
         pos: ChunkPos,
         biome_registry_len: usize,
     ) -> anyhow::Result<()> {
-        scratch.clear();
+        debug_assert!(scratch.is_empty());
 
         for sect in self.sections.iter() {
             sect.non_air_count.encode(&mut *scratch)?;

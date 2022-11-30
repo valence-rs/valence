@@ -17,7 +17,6 @@ pub fn main() -> ShutdownResult {
 }
 
 const WITH_PLAYER_ENTITIES: bool = true;
-const MAX_PLAYERS: usize = 10_000;
 
 struct Game;
 
@@ -38,7 +37,7 @@ impl Config for Game {
     type InventoryState = ();
 
     fn max_connections(&self) -> usize {
-        MAX_PLAYERS + 64
+        10_000
     }
 
     fn connection_mode(&self) -> ConnectionMode {
@@ -70,7 +69,7 @@ impl Config for Game {
             online_players: -1,
             max_players: -1,
             player_sample: Default::default(),
-            description: "Test server!".into(),
+            description: "Player Benchmark Server".into(),
             favicon_png: None,
         }
     }
@@ -137,7 +136,10 @@ impl Config for Game {
                         .entities
                         .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                     {
-                        Some((id, _)) => client.state = id,
+                        Some((id, entity)) => {
+                            entity.set_world(world_id);
+                            client.state = id
+                        }
                         None => {
                             client.disconnect("Conflicting UUID");
                             return false;
