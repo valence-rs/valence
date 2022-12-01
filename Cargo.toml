@@ -68,6 +68,7 @@ num = "0.4.0"
 members = [
     "valence_derive",
     "valence_nbt",
+    "valence_anvil",
     "valence_protocol",
     "packet_inspector",
     "valence_anvil",
