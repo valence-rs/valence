@@ -71,7 +71,6 @@ members = [
     "valence_anvil",
     "valence_protocol",
     "packet_inspector",
-    "valence_anvil",
     "benchmarks/bench_players"
 ]
 exclude = ["benchmarks/rust-mc-bot"]
