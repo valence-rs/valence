@@ -25,6 +25,7 @@ impl Config for BenchmarkConfig {
     type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
+    type InventoryState = ();
 }
 
 fn criterion_benchmark(c: &mut Criterion) {

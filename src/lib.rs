@@ -118,7 +118,6 @@ mod slab_versioned;
 pub mod spatial_index;
 pub mod util;
 pub mod world;
-pub mod biomes;
 
 /// Use `valence::prelude::*` to import the most commonly used items from the
 /// library.

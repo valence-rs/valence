@@ -65,6 +65,7 @@ impl Config for Game {
     /// If the chunk should stay loaded at the end of the tick.
     type ChunkState = bool;
     type PlayerListState = ();
+    type InventoryState = ();
 
     fn biomes(&self) -> Vec<Biome> {
         BiomeKind::ALL.iter().map(|b| b.biome().unwrap()).collect()
@@ -124,7 +125,7 @@ impl Config for Game {
                     }
                 }
 
-                client.spawn(world_id);
+                client.respawn(world_id);
                 client.set_flat(true);
                 client.set_game_mode(GameMode::Spectator);
                 client.teleport([0.0, 200.0, 0.0], 0.0, 0.0);
@@ -160,7 +161,9 @@ impl Config for Game {
             }
 
             if let Some(entity) = server.entities.get_mut(client.state.id) {
-                while handle_event_default(client, entity).is_some() {}
+                while let Some(event) = client.next_event() {
+                    event.handle_default(client, entity);
+                }
             }
 
             let dist = client.view_distance();
