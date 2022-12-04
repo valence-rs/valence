@@ -9,7 +9,7 @@ use valence_anvil::AnvilWorld;
 criterion_group!(benches, criterion_benchmark);
 criterion_main!(benches);
 
-#[path="../tests/assets.rs"]
+#[path = "../tests/assets.rs"]
 pub mod assets;
 
 const BENCHMARK_WORLD_ASSET: assets::WebAsset<&'static str, &'static str> = assets::WebAsset::zipped_directory(

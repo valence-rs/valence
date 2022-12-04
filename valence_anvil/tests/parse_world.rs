@@ -1,11 +1,11 @@
+use tokio::runtime::Builder;
 use valence::biome::BiomeId;
 use valence::chunk::ChunkPos;
 use valence::config::Config;
 use valence_anvil::biome::BiomeKind;
 use valence_anvil::AnvilWorld;
-use tokio::runtime::Builder;
 
-#[path="../tests/assets.rs"]
+#[path = "../tests/assets.rs"]
 pub mod assets;
 
 const BENCHMARK_WORLD_ASSET: assets::WebAsset<&'static str, &'static str> = assets::WebAsset::zipped_directory(
@@ -26,7 +26,7 @@ impl Config for TestConfig {
 }
 
 #[test]
-pub fn parse_world(){
+pub fn parse_world() {
     let world_directory = BENCHMARK_WORLD_ASSET.load_blocking_panic();
     let world = AnvilWorld::new::<TestConfig, _>(
         world_directory,
@@ -46,11 +46,13 @@ pub fn parse_world(){
         .build()
         .expect("Creating runtime failed");
 
-    for (chunk_pos, chunk) in runtime.block_on(world.load_chunks(load_targets.into_iter())).unwrap() {
+    for (chunk_pos, chunk) in runtime
+        .block_on(world.load_chunks(load_targets.into_iter()))
+        .unwrap()
+    {
         assert!(
             chunk.is_some(),
-            "Chunk at {chunk_pos:?} returned 'None'. Is this section of the world \
-         generated?"
+            "Chunk at {chunk_pos:?} returned 'None'. Is this section of the world generated?"
         );
     }
 }
