@@ -28,7 +28,6 @@ pub struct AnvilWorld {
 }
 
 impl AnvilWorld {
-    //noinspection ALL
     ///  Creates an `AnvilWorld` instance.
     ///
     /// # Arguments
@@ -42,7 +41,7 @@ impl AnvilWorld {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// impl Config for Game {
     ///     fn init(&self, server: &mut Server<Self>) {
     ///         server.worlds.insert(
@@ -67,7 +66,6 @@ impl AnvilWorld {
         }
     }
 
-    //noinspection ALL
     /// Load chunks from the available region files within the world directory.
     /// This operation will temporarily block operations on all region files
     /// within `AnvilWorld`.
@@ -81,7 +79,7 @@ impl AnvilWorld {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// use valence::prelude::*;
     ///
     /// let to_load = chunks_in_view_distance(ChunkPos::at(p.x, p.z), dist);
