@@ -1,3 +1,5 @@
+use std::iter::FusedIterator;
+
 use valence_protocol::BlockPos;
 
 /// The X and Z position of a chunk in a world.
@@ -9,6 +11,8 @@ pub struct ChunkPos {
     pub z: i32,
 }
 
+const EXTRA_VIEW_RADIUS: i32 = 1;
+
 impl ChunkPos {
     /// Constructs a new chunk position.
     pub const fn new(x: i32, z: i32) -> Self {
@@ -19,6 +23,28 @@ impl ChunkPos {
     /// containing the point.
     pub fn at(x: f64, z: f64) -> Self {
         Self::new((x / 16.0).floor() as i32, (z / 16.0).floor() as i32)
+    }
+
+    /// Checks if two chunk positions are within a view distance (render
+    /// distance) of each other such that a client standing in `self` would
+    /// be able to see `other`.
+    pub fn is_in_view(self, other: Self, view_dist: u8) -> bool {
+        let dist = view_dist as i64 + EXTRA_VIEW_RADIUS as i64;
+
+        let diff_x = other.x as i64 - self.x as i64;
+        let diff_z = other.z as i64 - self.z as i64;
+
+        diff_x.pow(2) + diff_z.pow(2) <= dist.pow(2)
+    }
+
+    /// Returns an iterator over all chunk positions within a view distance
+    /// centered on `self`. The `self` position is included in the output.
+    pub fn in_view(self, view_dist: u8) -> impl FusedIterator<Item = Self> {
+        let dist = view_dist as i32 + EXTRA_VIEW_RADIUS;
+
+        (self.z - dist..=self.z + dist)
+            .flat_map(move |z| (self.x - dist..=self.x + dist).map(move |x| Self { x, z }))
+            .filter(move |&p| self.is_in_view(p, dist as u8))
     }
 }
 

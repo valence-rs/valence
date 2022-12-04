@@ -453,6 +453,12 @@ pub mod play {
         pub entity_ids: Vec<VarInt>,
     }
 
+    #[derive(Copy, Clone, PartialEq, Debug, Encode, Packet)]
+    #[packet_id = 0x3b]
+    pub struct RemoveEntitiesEncode<'a> {
+        pub entity_ids: &'a [VarInt],
+    }
+
     #[derive(Clone, PartialEq, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x3d]
     pub struct ResourcePackS2c<'a> {

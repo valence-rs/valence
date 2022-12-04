@@ -103,11 +103,11 @@ pub use {uuid, valence_nbt as nbt, vek};
 pub mod biome;
 mod bvh;
 pub mod chunk;
-mod chunk_pos;
 pub mod client;
 pub mod config;
 pub mod dimension;
 pub mod entity;
+mod entity_partition;
 pub mod inventory;
 pub mod player_list;
 pub mod player_textures;
@@ -132,9 +132,7 @@ pub mod prelude {
     pub use player_list::{PlayerList, PlayerListEntry, PlayerListId, PlayerLists};
     pub use server::{NewClientData, Server, SharedServer, ShutdownResult};
     pub use spatial_index::{RaycastHit, SpatialIndex};
-    pub use util::{
-        chunks_in_view_distance, from_yaw_and_pitch, is_chunk_in_view_distance, to_yaw_and_pitch,
-    };
+    pub use util::{from_yaw_and_pitch, to_yaw_and_pitch};
     pub use uuid::Uuid;
     pub use valence_nbt::Compound;
     pub use valence_protocol::block::{PropName, PropValue};
@@ -148,7 +146,7 @@ pub mod prelude {
         ItemStack, Text, TextFormat, Username, MINECRAFT_VERSION, PROTOCOL_VERSION,
     };
     pub use vek::{Aabb, Mat2, Mat3, Mat4, Vec2, Vec3, Vec4};
-    pub use world::{World, WorldId, WorldMeta, Worlds};
+    pub use world::{World, WorldId, Worlds};
 
     use super::*;
     pub use crate::{async_trait, nbt, vek, Ticks, STANDARD_TPS};

@@ -153,7 +153,7 @@ impl Config for Game {
                     if let Some(id) = &server.state.player_list {
                         server.player_lists.get_mut(id).remove(client.uuid());
                     }
-                    server.entities.remove(client.state);
+                    server.entities[client.state].set_deleted(true);
                 }
 
                 return false;

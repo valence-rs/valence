@@ -149,20 +149,17 @@ impl Config for Game {
                 }
             }
 
+            let entity = &mut server.entities[client.entity_id];
+
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
                 if let Some(id) = &server.state.player_list {
                     server.player_lists.get_mut(id).remove(client.uuid());
                 }
-                server.entities.remove(client.entity_id);
+                entity.set_deleted(true);
 
                 return false;
             }
-
-            let entity = server
-                .entities
-                .get_mut(client.entity_id)
-                .expect("missing player entity");
 
             while let Some(event) = client.next_event() {
                 event.handle_default(client, entity);

@@ -38,6 +38,7 @@ use crate::client::{Client, Clients};
 use crate::config::{Config, ConnectionMode, ServerListPing};
 use crate::dimension::{validate_dimensions, Dimension, DimensionId};
 use crate::entity::Entities;
+use crate::entity_partition::update_entity_partition;
 use crate::inventory::Inventories;
 use crate::player_list::PlayerLists;
 use crate::player_textures::SignedPlayerTextures;
@@ -434,9 +435,7 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
 
         info_span!("configured_update").in_scope(|| shared.config().update(server));
 
-        server.worlds.par_iter_mut().for_each(|(id, world)| {
-            world.spatial_index.update(&server.entities, id);
-        });
+        update_entity_partition(&server.entities, &mut server.worlds);
 
         server.clients.par_iter_mut().for_each(|(_, client)| {
             client.update(
@@ -450,9 +449,7 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
 
         server.entities.update();
 
-        server.worlds.par_iter_mut().for_each(|(_, world)| {
-            world.chunks.update();
-        });
+        server.worlds.update();
 
         server.player_lists.update();
 

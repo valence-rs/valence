@@ -122,7 +122,7 @@ impl Config for Game {
                 client.send_message("Welcome to the terrain example!".italic());
             }
 
-            let player = server.entities.get_mut(client.state).unwrap();
+            let player = &mut server.entities[client.state];
             while let Some(event) = client.next_event() {
                 event.handle_default(client, player);
             }
@@ -130,7 +130,7 @@ impl Config for Game {
             let dist = client.view_distance();
             let p = client.position();
 
-            for pos in chunks_in_view_distance(ChunkPos::at(p.x, p.z), dist) {
+            for pos in ChunkPos::at(p.x, p.z).in_view(dist) {
                 if let Some(chunk) = world.chunks.get_mut(pos) {
                     chunk.state = true;
                 } else {
@@ -143,7 +143,7 @@ impl Config for Game {
                 if let Some(id) = &server.state {
                     server.player_lists.get_mut(id).remove(client.uuid());
                 }
-                server.entities.remove(client.state);
+                player.set_deleted(true);
 
                 return false;
             }
@@ -152,14 +152,10 @@ impl Config for Game {
         });
 
         // Remove chunks outside the view distance of players.
-        world.chunks.retain(|_, chunk| {
-            if chunk.state {
-                chunk.state = false;
-                true
-            } else {
-                false
-            }
-        });
+        for (_, chunk) in world.chunks.iter_mut() {
+            chunk.set_deleted(!chunk.state);
+            chunk.state = false;
+        }
 
         // Generate chunk data for chunks created this tick.
         world.chunks.par_iter_mut().for_each(|(pos, chunk)| {

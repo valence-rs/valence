@@ -1,3 +1,4 @@
+use std::fmt;
 use std::io::ErrorKind;
 use std::time::Duration;
 
@@ -196,14 +197,14 @@ pub struct PlayPacketSender {
 impl PlayPacketSender {
     pub fn append_packet<P>(&mut self, pkt: &P) -> Result<()>
     where
-        P: Encode + Packet + ?Sized,
+        P: Encode + Packet + fmt::Debug + ?Sized,
     {
         self.enc.append_packet(pkt)
     }
 
     pub fn prepend_packet<P>(&mut self, pkt: &P) -> Result<()>
     where
-        P: Encode + Packet + ?Sized,
+        P: Encode + Packet + fmt::Debug + ?Sized,
     {
         self.enc.prepend_packet(pkt)
     }

@@ -1,33 +1,8 @@
 //! Miscellaneous utilities.
 
-use std::iter::FusedIterator;
-
 use num::cast::AsPrimitive;
 use num::Float;
 use vek::{Aabb, Vec3};
-
-use crate::chunk_pos::ChunkPos;
-
-const EXTRA_RADIUS: i32 = 3;
-
-/// Returns an iterator over all chunk positions within a view distance,
-/// centered on a particular chunk position.
-pub fn chunks_in_view_distance(
-    center: ChunkPos,
-    distance: u8,
-) -> impl FusedIterator<Item = ChunkPos> {
-    let dist = distance as i32 + EXTRA_RADIUS;
-    (center.z - dist..=center.z + dist)
-        .flat_map(move |z| (center.x - dist..=center.x + dist).map(move |x| ChunkPos { x, z }))
-        .filter(move |&p| is_chunk_in_view_distance(center, p, distance))
-}
-
-/// Checks if two chunks are within a view distance of each other such that a
-/// client standing in one chunk would be able to see the other.
-pub fn is_chunk_in_view_distance(p0: ChunkPos, p1: ChunkPos, distance: u8) -> bool {
-    (p0.x as f64 - p1.x as f64).powi(2) + (p0.z as f64 - p1.z as f64).powi(2)
-        <= (distance as f64 + EXTRA_RADIUS as f64).powi(2)
-}
 
 pub(crate) fn aabb_from_bottom_and_size<T>(bottom: Vec3<T>, size: Vec3<T>) -> Aabb<T>
 where
@@ -109,7 +84,7 @@ pub fn ray_box_intersect(ro: Vec3<f64>, rd: Vec3<f64>, bb: Aabb<f64>) -> Option<
 /// Also known as `floor(log2(n)) + 1`.
 ///
 /// This returns `0` if `n` is `0`.
-pub(crate) const fn bits_needed(n: usize) -> usize {
+pub(crate) const fn bit_width(n: usize) -> usize {
     (usize::BITS - n.leading_zeros()) as _
 }
 

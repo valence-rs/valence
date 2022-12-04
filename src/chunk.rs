@@ -10,9 +10,11 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::io::Write;
 use std::iter::FusedIterator;
+use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use paletted_container::PalettedContainer;
+pub use pos::ChunkPos;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use valence_nbt::compound;
 use valence_protocol::packets::s2c::play::{
@@ -21,12 +23,12 @@ use valence_protocol::packets::s2c::play::{
 use valence_protocol::{BlockPos, BlockState, Encode, VarInt, VarLong};
 
 use crate::biome::BiomeId;
-pub use crate::chunk_pos::ChunkPos;
 use crate::config::Config;
 use crate::server::PlayPacketSender;
-use crate::util::bits_needed;
+use crate::util::bit_width;
 
 mod paletted_container;
+mod pos;
 
 /// A container for all [`LoadedChunk`]s in a [`World`](crate::world::World).
 pub struct Chunks<C: Config> {
@@ -74,25 +76,6 @@ impl<C: Config> Chunks<C> {
         }
     }
 
-    /// Removes a chunk at the provided position.
-    ///
-    /// If a chunk exists at the position, then it is removed from the world and
-    /// its content is returned. Otherwise, `None` is returned.
-    pub fn remove(&mut self, pos: impl Into<ChunkPos>) -> Option<(UnloadedChunk, C::ChunkState)> {
-        let loaded = self.chunks.remove(&pos.into())?;
-
-        let mut unloaded = UnloadedChunk {
-            sections: loaded.sections.into(),
-        };
-
-        for sect in &mut unloaded.sections {
-            sect.modified_blocks.fill(0);
-            sect.modified_blocks_count = 0;
-        }
-
-        Some((unloaded, loaded.state))
-    }
-
     /// Returns the height of all loaded chunks in the world. This returns the
     /// same value as [`Chunk::height`] for all loaded chunks.
     pub fn height(&self) -> usize {
@@ -128,18 +111,6 @@ impl<C: Config> Chunks<C> {
     /// If there is no chunk at the position, then `None` is returned.
     pub fn get_mut(&mut self, pos: impl Into<ChunkPos>) -> Option<&mut LoadedChunk<C>> {
         self.chunks.get_mut(&pos.into())
-    }
-
-    /// Removes all chunks for which `f` returns `false`.
-    ///
-    /// All chunks are visited in an unspecified order.
-    pub fn retain(&mut self, mut f: impl FnMut(ChunkPos, &mut LoadedChunk<C>) -> bool) {
-        self.chunks.retain(|&pos, chunk| f(pos, chunk))
-    }
-
-    /// Deletes all chunks.
-    pub fn clear(&mut self) {
-        self.chunks.clear();
     }
 
     /// Returns an iterator over all chunks in the world in an unspecified
@@ -244,9 +215,21 @@ impl<C: Config> Chunks<C> {
     }
 
     pub(crate) fn update(&mut self) {
-        for (_, chunk) in self.chunks.iter_mut() {
-            chunk.update();
-        }
+        self.chunks.retain(|_, chunk| {
+            if chunk.deleted {
+                false
+            } else {
+                for sect in chunk.sections.iter_mut() {
+                    if sect.modified_blocks_count > 0 {
+                        sect.modified_blocks_count = 0;
+                        sect.modified_blocks.fill(0);
+                    }
+                }
+                chunk.created_this_tick = false;
+
+                true
+            }
+        });
     }
 }
 
@@ -479,6 +462,7 @@ pub struct LoadedChunk<C: Config> {
     // TODO block_entities: BTreeMap<u32, BlockEntity>,
     // TODO: motion_blocking_heightmap: Box<[u16; 256]>,
     created_this_tick: bool,
+    deleted: bool,
 }
 
 impl<C: Config> Deref for LoadedChunk<C> {
@@ -550,14 +534,33 @@ impl<C: Config> LoadedChunk<C> {
 
         Self {
             state,
-            sections: chunk.sections.into_boxed_slice(),
+            sections: chunk.sections.into(),
             created_this_tick: true,
+            deleted: false,
         }
+    }
+
+    pub fn take(&mut self) -> UnloadedChunk {
+        let unloaded = UnloadedChunk {
+            sections: mem::take(&mut self.sections).into(),
+        };
+
+        self.created_this_tick = true;
+
+        unloaded
     }
 
     /// Returns `true` if this chunk was created during the current tick.
     pub fn created_this_tick(&self) -> bool {
         self.created_this_tick
+    }
+
+    pub fn deleted(&self) -> bool {
+        self.deleted
+    }
+
+    pub fn set_deleted(&mut self, deleted: bool) {
+        self.deleted = deleted;
     }
 
     /// Queues the chunk data packet for this chunk with the given position.
@@ -573,12 +576,14 @@ impl<C: Config> LoadedChunk<C> {
         for sect in self.sections.iter() {
             sect.non_air_count.encode(&mut *scratch)?;
 
+            // TODO: cache blocks and biomes?
+
             sect.block_states.encode_mc_format(
                 &mut *scratch,
                 |b| b.to_raw().into(),
                 4,
                 8,
-                bits_needed(BlockState::max_raw().into()),
+                bit_width(BlockState::max_raw().into()),
             )?;
 
             sect.biomes.encode_mc_format(
@@ -586,7 +591,7 @@ impl<C: Config> LoadedChunk<C> {
                 |b| b.0.into(),
                 0,
                 3,
-                bits_needed(biome_registry_len - 1),
+                bit_width(biome_registry_len - 1),
             )?;
         }
 
@@ -609,11 +614,11 @@ impl<C: Config> LoadedChunk<C> {
     }
 
     /// Queues block change packets for this chunk.
-    pub(crate) fn block_change_packets(
+    pub(crate) fn send_block_change_packets(
         &self,
+        send: &mut PlayPacketSender,
         pos: ChunkPos,
         min_y: i32,
-        send: &mut PlayPacketSender,
     ) -> anyhow::Result<()> {
         for (sect_y, sect) in self.sections.iter().enumerate() {
             if sect.modified_blocks_count == 1 {
@@ -669,16 +674,6 @@ impl<C: Config> LoadedChunk<C> {
         }
 
         Ok(())
-    }
-
-    fn update(&mut self) {
-        for sect in self.sections.iter_mut() {
-            if sect.modified_blocks_count > 0 {
-                sect.modified_blocks_count = 0;
-                sect.modified_blocks.fill(0);
-            }
-        }
-        self.created_this_tick = false;
     }
 }
 

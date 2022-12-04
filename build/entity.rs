@@ -405,8 +405,6 @@ pub fn build() -> anyhow::Result<TokenStream> {
                     }
                 }
 
-                // TODO: remove this
-                #[allow(unused)]
                 pub(crate) fn clear_modifications(&mut self) {
                     self.__modified_flags = 0;
                 }
@@ -486,7 +484,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
             pub(super) fn clear_modifications(&mut self) {
                 match self {
-                    #(Self::#concrete_entity_names(e) => e.__modified_flags = 0,)*
+                    #(Self::#concrete_entity_names(e) => e.clear_modifications(),)*
                 }
             }
         }
