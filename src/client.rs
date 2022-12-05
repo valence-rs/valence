@@ -1,6 +1,5 @@
 //! Connections to the server after logging in.
 
-use std::collections::HashSet;
 use std::iter::FusedIterator;
 use std::net::IpAddr;
 use std::num::Wrapping;
@@ -17,19 +16,18 @@ use uuid::Uuid;
 use valence_protocol::packets::s2c::play::{
     AcknowledgeBlockChange, ClearTitles, CombatDeath, CustomSoundEffect, DisconnectPlay,
     EntityAnimationS2c, EntityEvent, GameEvent, KeepAliveS2c, LoginPlayOwned, OpenScreen,
-    PluginMessageS2c, RemoveEntities, RemoveEntitiesEncode, ResourcePackS2c, RespawnOwned,
-    SetActionBarText, SetCenterChunk, SetContainerContentEncode, SetContainerSlotEncode,
-    SetDefaultSpawnPosition, SetEntityMetadata, SetEntityVelocity, SetExperience, SetHeadRotation,
-    SetHealth, SetRenderDistance, SetSubtitleText, SetTitleAnimationTimes, SetTitleText,
-    SynchronizePlayerPosition, SystemChatMessage, TeleportEntity, UnloadChunk, UpdateAttributes,
-    UpdateEntityPosition, UpdateEntityPositionAndRotation, UpdateEntityRotation, UpdateTime,
+    PluginMessageS2c, RemoveEntitiesEncode, ResourcePackS2c, RespawnOwned, SetActionBarText,
+    SetCenterChunk, SetContainerContentEncode, SetContainerSlotEncode, SetDefaultSpawnPosition,
+    SetEntityMetadata, SetEntityVelocity, SetExperience, SetHealth, SetRenderDistance,
+    SetSubtitleText, SetTitleAnimationTimes, SetTitleText, SynchronizePlayerPosition,
+    SystemChatMessage, UnloadChunk, UpdateAttributes, UpdateTime,
 };
 use valence_protocol::types::{
     AttributeProperty, DisplayedSkinParts, GameMode, GameStateChangeReason, SoundCategory,
     SyncPlayerPosLookFlags,
 };
 use valence_protocol::{
-    BlockPos, ByteAngle, Encode, Ident, ItemStack, Packet, RawBytes, Text, Username, VarInt,
+    BlockPos, Encode, Ident, ItemStack, Packet, RawBytes, Text, Username, VarInt,
 };
 use vek::Vec3;
 
@@ -39,7 +37,7 @@ use crate::config::Config;
 use crate::dimension::DimensionId;
 use crate::entity::data::Player;
 use crate::entity::{
-    self, velocity_to_packet_units, Entities, EntityId, EntityKind, StatusOrAnimation,
+    self, velocity_to_packet_units, Entities, EntityId, StatusOrAnimation,
 };
 use crate::inventory::{Inventories, InventoryId};
 use crate::player_list::{PlayerListId, PlayerLists};
@@ -1169,7 +1167,6 @@ impl<C: Config> Client<C> {
             }
         }
 
-        let dimension = shared.dimension(world.dimension());
         let chunk_pos = ChunkPos::at(self.position.x, self.position.z);
 
         if self.old_world != self.world {
@@ -1287,6 +1284,13 @@ impl<C: Config> Client<C> {
                     }
                 }
             }
+        }
+
+        if old_chunk_pos != chunk_pos {
+            send.append_packet(&SetCenterChunk {
+                chunk_x: VarInt(chunk_pos.x),
+                chunk_z: VarInt(chunk_pos.z),
+            })?;
         }
 
         // Update the client's own player metadata.

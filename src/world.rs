@@ -11,7 +11,6 @@ use crate::dimension::DimensionId;
 use crate::entity_partition::EntityPartition;
 use crate::server::SharedServer;
 use crate::slab_versioned::{Key, VersionedSlab};
-use crate::spatial_index::SpatialIndex;
 
 /// A container for all [`World`]s on a [`Server`](crate::server::Server).
 pub struct Worlds<C: Config> {
