@@ -101,7 +101,6 @@ pub use valence_protocol as protocol;
 pub use {uuid, valence_nbt as nbt, vek};
 
 pub mod biome;
-mod bvh;
 pub mod chunk;
 pub mod client;
 pub mod config;
@@ -115,7 +114,6 @@ pub mod server;
 mod slab;
 mod slab_rc;
 mod slab_versioned;
-pub mod spatial_index;
 pub mod util;
 pub mod world;
 
@@ -131,7 +129,6 @@ pub mod prelude {
     pub use inventory::{Inventories, Inventory, InventoryId};
     pub use player_list::{PlayerList, PlayerListEntry, PlayerListId, PlayerLists};
     pub use server::{NewClientData, Server, SharedServer, ShutdownResult};
-    pub use spatial_index::{RaycastHit, SpatialIndex};
     pub use util::{from_yaw_and_pitch, to_yaw_and_pitch};
     pub use uuid::Uuid;
     pub use valence_nbt::Compound;

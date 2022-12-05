@@ -287,10 +287,6 @@ impl<C: Config> DerefMut for Entity<C> {
 }
 
 impl<C: Config> Entity<C> {
-    pub(crate) fn bits(&self) -> EntityBits {
-        self.bits
-    }
-
     /// Returns a shared reference to this entity's tracked data.
     pub fn data(&self) -> &TrackedData {
         &self.variants
@@ -309,10 +305,6 @@ impl<C: Config> Entity<C> {
     /// Triggers an entity event for this entity.
     pub fn push_event(&mut self, event: EntityEvent) {
         self.events.push(event);
-    }
-
-    pub(crate) fn events(&self) -> &[EntityEvent] {
-        &self.events
     }
 
     /// Gets the [`WorldId`](crate::world::WorldId) of the world this entity is

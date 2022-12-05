@@ -13,7 +13,6 @@ authors = ["Ryan Johnson <ryanj00a@gmail.com>"]
 
 [dependencies]
 anyhow = "1.0.65"
-approx = "0.5.1"
 arrayvec = "0.7.2"
 async-trait = "0.1.57"
 base64 = "0.13.0"
@@ -51,8 +50,9 @@ default-features = false
 features = ["rustls-tls", "json"]
 
 [dev-dependencies]
+approx = "0.5.1"
 tracing-subscriber = "0.3.16"
-noise = "0.7.0"
+noise = "0.8.2"
 
 [build-dependencies]
 anyhow = "1.0.65"
@@ -69,6 +69,7 @@ members = [
     "valence_derive",
     "valence_nbt",
     "valence_protocol",
+    "valence_spatial_index",
     "packet_inspector",
     "benchmarks/bench_players"
 ]

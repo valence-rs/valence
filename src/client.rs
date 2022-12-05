@@ -36,9 +36,7 @@ use crate::client::event::next_event_fallible;
 use crate::config::Config;
 use crate::dimension::DimensionId;
 use crate::entity::data::Player;
-use crate::entity::{
-    self, velocity_to_packet_units, Entities, EntityId, StatusOrAnimation,
-};
+use crate::entity::{self, velocity_to_packet_units, Entities, EntityId, StatusOrAnimation};
 use crate::inventory::{Inventories, InventoryId};
 use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
