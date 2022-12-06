@@ -34,11 +34,11 @@ use valence_protocol::{
 };
 
 use crate::biome::{validate_biomes, Biome, BiomeId};
+use crate::chunk::entity_partition::update_entity_partition;
 use crate::client::{Client, Clients};
 use crate::config::{Config, ConnectionMode, ServerListPing};
 use crate::dimension::{validate_dimensions, Dimension, DimensionId};
 use crate::entity::Entities;
-use crate::entity_partition::update_entity_partition;
 use crate::inventory::Inventories;
 use crate::player_list::PlayerLists;
 use crate::player_textures::SignedPlayerTextures;

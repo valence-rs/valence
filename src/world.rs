@@ -8,7 +8,6 @@ use rayon::iter::ParallelIterator;
 use crate::chunk::Chunks;
 use crate::config::Config;
 use crate::dimension::DimensionId;
-use crate::entity_partition::EntityPartition;
 use crate::server::SharedServer;
 use crate::slab_versioned::{Key, VersionedSlab};
 
@@ -55,7 +54,6 @@ impl<C: Config> Worlds<C> {
         let (id, world) = self.slab.insert(World {
             state,
             chunks: Chunks::new(dim.height, dim.min_y),
-            entity_partition: EntityPartition::new(),
             dimension,
             deleted: false,
         });
@@ -134,7 +132,6 @@ impl<C: Config> Worlds<C> {
 
         self.par_iter_mut().for_each(|(_, world)| {
             world.chunks.update();
-            world.entity_partition.clear_for_next_tick();
         });
     }
 }
@@ -144,7 +141,6 @@ pub struct World<C: Config> {
     /// Custom state.
     pub state: C::WorldState,
     pub chunks: Chunks<C>,
-    pub(crate) entity_partition: EntityPartition,
     dimension: DimensionId,
     deleted: bool,
 }

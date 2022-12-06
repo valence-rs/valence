@@ -13,6 +13,7 @@ use std::iter::FusedIterator;
 use std::mem;
 use std::ops::{Deref, DerefMut};
 
+use entity_partition::PartitionCell;
 use paletted_container::PalettedContainer;
 pub use pos::ChunkPos;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
@@ -27,12 +28,16 @@ use crate::config::Config;
 use crate::server::PlayPacketSender;
 use crate::util::bit_width;
 
+pub(crate) mod entity_partition;
 mod paletted_container;
 mod pos;
 
 /// A container for all [`LoadedChunk`]s in a [`World`](crate::world::World).
 pub struct Chunks<C: Config> {
-    chunks: HashMap<ChunkPos, LoadedChunk<C>>,
+    /// Maps chunk positions to chunks. We store both loaded chunks and
+    /// partition cells here so we can get both in a single hashmap lookup
+    /// during the client update procedure.
+    chunks: HashMap<ChunkPos, (Option<LoadedChunk<C>>, PartitionCell)>,
     dimension_height: i32,
     dimension_min_y: i32,
 }
@@ -69,10 +74,14 @@ impl<C: Config> Chunks<C> {
 
         match self.chunks.entry(pos.into()) {
             Entry::Occupied(mut oe) => {
-                oe.insert(loaded);
-                oe.into_mut()
+                oe.get_mut().0 = Some(loaded);
+                oe.into_mut().0.as_mut().unwrap()
             }
-            Entry::Vacant(ve) => ve.insert(loaded),
+            Entry::Vacant(ve) => ve
+                .insert((Some(loaded), PartitionCell::new()))
+                .0
+                .as_mut()
+                .unwrap(),
         }
     }
 
@@ -89,45 +98,45 @@ impl<C: Config> Chunks<C> {
         self.dimension_min_y
     }
 
-    /// Returns the number of loaded chunks.
-    pub fn len(&self) -> usize {
-        self.chunks.len()
-    }
-
-    /// Returns `true` if there are no loaded chunks.
-    pub fn is_empty(&self) -> bool {
-        self.chunks.len() == 0
-    }
-
     /// Gets a shared reference to the chunk at the provided position.
     ///
     /// If there is no chunk at the position, then `None` is returned.
     pub fn get(&self, pos: impl Into<ChunkPos>) -> Option<&LoadedChunk<C>> {
-        self.chunks.get(&pos.into())
+        self.chunks.get(&pos.into())?.0.as_ref()
+    }
+
+    pub(crate) fn get_full(
+        &self,
+        pos: ChunkPos,
+    ) -> Option<&(Option<LoadedChunk<C>>, PartitionCell)> {
+        self.chunks.get(&pos)
+    }
+
+    fn cell_mut(&mut self, pos: ChunkPos) -> Option<&mut PartitionCell> {
+        self.chunks.get_mut(&pos).map(|(_, cell)| cell)
     }
 
     /// Gets an exclusive reference to the chunk at the provided position.
     ///
     /// If there is no chunk at the position, then `None` is returned.
     pub fn get_mut(&mut self, pos: impl Into<ChunkPos>) -> Option<&mut LoadedChunk<C>> {
-        self.chunks.get_mut(&pos.into())
+        self.chunks.get_mut(&pos.into())?.0.as_mut()
     }
 
     /// Returns an iterator over all chunks in the world in an unspecified
     /// order.
-    pub fn iter(
-        &self,
-    ) -> impl ExactSizeIterator<Item = (ChunkPos, &LoadedChunk<C>)> + FusedIterator + Clone + '_
-    {
-        self.chunks.iter().map(|(&pos, chunk)| (pos, chunk))
+    pub fn iter(&self) -> impl FusedIterator<Item = (ChunkPos, &LoadedChunk<C>)> + Clone + '_ {
+        self.chunks
+            .iter()
+            .filter_map(|(&pos, (chunk, _))| chunk.as_ref().map(|c| (pos, c)))
     }
 
     /// Returns a mutable iterator over all chunks in the world in an
     /// unspecified order.
-    pub fn iter_mut(
-        &mut self,
-    ) -> impl ExactSizeIterator<Item = (ChunkPos, &mut LoadedChunk<C>)> + FusedIterator + '_ {
-        self.chunks.iter_mut().map(|(&pos, chunk)| (pos, chunk))
+    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (ChunkPos, &mut LoadedChunk<C>)> + '_ {
+        self.chunks
+            .iter_mut()
+            .filter_map(|(&pos, (chunk, _))| chunk.as_mut().map(|c| (pos, c)))
     }
 
     /// Returns a parallel iterator over all chunks in the world in an
@@ -135,7 +144,9 @@ impl<C: Config> Chunks<C> {
     pub fn par_iter(
         &self,
     ) -> impl ParallelIterator<Item = (ChunkPos, &LoadedChunk<C>)> + Clone + '_ {
-        self.chunks.par_iter().map(|(&pos, chunk)| (pos, chunk))
+        self.chunks
+            .par_iter()
+            .filter_map(|(&pos, (chunk, _))| chunk.as_ref().map(|c| (pos, c)))
     }
 
     /// Returns a parallel mutable iterator over all chunks in the world in an
@@ -143,7 +154,9 @@ impl<C: Config> Chunks<C> {
     pub fn par_iter_mut(
         &mut self,
     ) -> impl ParallelIterator<Item = (ChunkPos, &mut LoadedChunk<C>)> + '_ {
-        self.chunks.par_iter_mut().map(|(&pos, chunk)| (pos, chunk))
+        self.chunks
+            .par_iter_mut()
+            .filter_map(|(&pos, (chunk, _))| chunk.as_mut().map(|c| (pos, c)))
     }
 
     /// Gets the block state at an absolute block position in world space.
@@ -195,14 +208,26 @@ impl<C: Config> Chunks<C> {
         }
 
         let chunk = match self.chunks.entry(ChunkPos::from(pos)) {
-            Entry::Occupied(oe) => oe.into_mut(),
-            Entry::Vacant(ve) => {
+            Entry::Occupied(oe) => oe.into_mut().0.get_or_insert_with(|| {
                 let dimension_section_count = (self.dimension_height / 16) as usize;
-                ve.insert(LoadedChunk::new(
+                LoadedChunk::new(
                     UnloadedChunk::default(),
                     dimension_section_count,
                     Default::default(),
-                ))
+                )
+            }),
+            Entry::Vacant(ve) => {
+                let dimension_section_count = (self.dimension_height / 16) as usize;
+                let loaded = LoadedChunk::new(
+                    UnloadedChunk::default(),
+                    dimension_section_count,
+                    Default::default(),
+                );
+
+                ve.insert((Some(loaded), PartitionCell::new()))
+                    .0
+                    .as_mut()
+                    .unwrap()
             }
         };
 
@@ -215,20 +240,24 @@ impl<C: Config> Chunks<C> {
     }
 
     pub(crate) fn update(&mut self) {
-        self.chunks.retain(|_, chunk| {
-            if chunk.deleted {
-                false
-            } else {
-                for sect in chunk.sections.iter_mut() {
-                    if sect.modified_blocks_count > 0 {
-                        sect.modified_blocks_count = 0;
-                        sect.modified_blocks.fill(0);
+        self.chunks.retain(|_, (chunk_opt, cell)| {
+            if let Some(chunk) = chunk_opt {
+                if chunk.deleted {
+                    *chunk_opt = None;
+                } else {
+                    for sect in chunk.sections.iter_mut() {
+                        if sect.modified_blocks_count > 0 {
+                            sect.modified_blocks_count = 0;
+                            sect.modified_blocks.fill(0);
+                        }
                     }
+                    chunk.created_this_tick = false;
                 }
-                chunk.created_this_tick = false;
-
-                true
             }
+
+            cell.clear_incoming_outgoing();
+
+            chunk_opt.is_some() || cell.entities().len() > 0
         });
     }
 }

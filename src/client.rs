@@ -1084,38 +1084,39 @@ impl<C: Config> Client<C> {
             let old_dimension = shared.dimension(old_world.dimension());
 
             for pos in old_chunk_pos.in_view(self.old_view_distance) {
-                if let Some(chunk) = old_world.chunks.get(pos) {
-                    // Decide if the chunk should be loaded, unloaded, or updated.
-                    match (chunk.created_this_tick(), chunk.deleted()) {
-                        (false, false) => {
-                            // Update the chunk.
-                            chunk.send_block_change_packets(send, pos, old_dimension.min_y)?;
-                        }
-                        (true, false) => {
-                            // Chunk needs initialization. Send packet to load it.
-                            chunk.send_chunk_data_packet(
-                                send,
-                                &mut self.scratch,
-                                pos,
-                                biome_registry_len,
-                            )?;
-                            self.scratch.clear();
-                        }
-                        (false, true) => {
-                            // Chunk was previously loaded and is now deleted.
-                            send.append_packet(&UnloadChunk {
-                                chunk_x: pos.x,
-                                chunk_z: pos.z,
-                            })?;
-                        }
-                        (true, true) => {
-                            // Chunk was created and deleted this tick, so we
-                            // don't need to do anything.
+                if let Some((chunk, cell)) = old_world.chunks.get_full(pos) {
+                    if let Some(chunk) = chunk {
+                        // Decide if the chunk should be loaded, unloaded, or updated.
+                        match (chunk.created_this_tick(), chunk.deleted()) {
+                            (false, false) => {
+                                // Update the chunk.
+                                chunk.send_block_change_packets(send, pos, old_dimension.min_y)?;
+                            }
+                            (true, false) => {
+                                // Chunk needs initialization. Send packet to load it.
+                                chunk.send_chunk_data_packet(
+                                    send,
+                                    &mut self.scratch,
+                                    pos,
+                                    biome_registry_len,
+                                )?;
+                                self.scratch.clear();
+                            }
+                            (false, true) => {
+                                // Chunk was previously loaded and is now deleted.
+                                send.append_packet(&UnloadChunk {
+                                    chunk_x: pos.x,
+                                    chunk_z: pos.z,
+                                })?;
+                            }
+                            (true, true) => {
+                                // Chunk was created and deleted this tick, so
+                                // we don't need
+                                // to do anything.
+                            }
                         }
                     }
-                }
 
-                if let Some(cell) = old_world.entity_partition.get(pos) {
                     // Send entity spawn packets for entities entering the client's view.
                     for &(id, src_pos) in cell.incoming() {
                         if src_pos.map_or(true, |p| {
@@ -1175,17 +1176,17 @@ impl<C: Config> Client<C> {
                 // TODO: only send unload packets when old dimension == new dimension, since the
                 //       client will do the unloading for us in that case?
                 for pos in old_chunk_pos.in_view(self.old_view_distance) {
-                    if let Some(chunk) = old_world.chunks.get(pos) {
-                        // Deleted chunks were already unloaded above.
-                        if !chunk.deleted() {
-                            send.append_packet(&UnloadChunk {
-                                chunk_x: pos.x,
-                                chunk_z: pos.z,
-                            })?;
+                    if let Some((chunk, cell)) = old_world.chunks.get_full(pos) {
+                        if let Some(chunk) = chunk {
+                            // Deleted chunks were already unloaded above.
+                            if !chunk.deleted() {
+                                send.append_packet(&UnloadChunk {
+                                    chunk_x: pos.x,
+                                    chunk_z: pos.z,
+                                })?;
+                            }
                         }
-                    }
 
-                    if let Some(cell) = old_world.entity_partition.get(pos) {
                         entities_to_unload.extend(cell.entities().map(|id| VarInt(id.to_raw())));
                     }
                 }
@@ -1200,19 +1201,19 @@ impl<C: Config> Client<C> {
 
             // Load all chunks and entities in new view.
             for pos in chunk_pos.in_view(self.view_distance) {
-                if let Some(chunk) = world.chunks.get(pos) {
-                    if !chunk.deleted() {
-                        chunk.send_chunk_data_packet(
-                            send,
-                            &mut self.scratch,
-                            pos,
-                            biome_registry_len,
-                        )?;
-                        self.scratch.clear();
+                if let Some((chunk, cell)) = world.chunks.get_full(pos) {
+                    if let Some(chunk) = chunk {
+                        if !chunk.deleted() {
+                            chunk.send_chunk_data_packet(
+                                send,
+                                &mut self.scratch,
+                                pos,
+                                biome_registry_len,
+                            )?;
+                            self.scratch.clear();
+                        }
                     }
-                }
 
-                if let Some(cell) = world.entity_partition.get(pos) {
                     for id in cell.entities() {
                         let entity = &entities[id]; // TODO: directly index into slab.
                         debug_assert!(!entity.deleted());
@@ -1232,17 +1233,17 @@ impl<C: Config> Client<C> {
 
             for pos in old_chunk_pos.in_view(self.old_view_distance) {
                 if !pos.is_in_view(chunk_pos, self.view_distance) {
-                    if let Some(chunk) = world.chunks.get(pos) {
-                        // Deleted chunks were already unloaded above.
-                        if !chunk.deleted() {
-                            send.append_packet(&UnloadChunk {
-                                chunk_x: pos.x,
-                                chunk_z: pos.z,
-                            })?;
+                    if let Some((chunk, cell)) = world.chunks.get_full(pos) {
+                        if let Some(chunk) = chunk {
+                            // Deleted chunks were already unloaded above.
+                            if !chunk.deleted() {
+                                send.append_packet(&UnloadChunk {
+                                    chunk_x: pos.x,
+                                    chunk_z: pos.z,
+                                })?;
+                            }
                         }
-                    }
 
-                    if let Some(cell) = world.entity_partition.get(pos) {
                         entities_to_unload.extend(cell.entities().map(|id| VarInt(id.to_raw())));
                     }
                 }
@@ -1257,19 +1258,19 @@ impl<C: Config> Client<C> {
 
             for pos in chunk_pos.in_view(self.view_distance) {
                 if !pos.is_in_view(old_chunk_pos, self.old_view_distance) {
-                    if let Some(chunk) = world.chunks.get(pos) {
-                        if !chunk.deleted() {
-                            chunk.send_chunk_data_packet(
-                                send,
-                                &mut self.scratch,
-                                pos,
-                                biome_registry_len,
-                            )?;
-                            self.scratch.clear();
+                    if let Some((chunk, cell)) = world.chunks.get_full(pos) {
+                        if let Some(chunk) = chunk {
+                            if !chunk.deleted() {
+                                chunk.send_chunk_data_packet(
+                                    send,
+                                    &mut self.scratch,
+                                    pos,
+                                    biome_registry_len,
+                                )?;
+                                self.scratch.clear();
+                            }
                         }
-                    }
 
-                    if let Some(cell) = world.entity_partition.get(pos) {
                         for id in cell.entities() {
                             let entity = &entities[id]; // TODO: directly index into slab.
                             debug_assert!(!entity.deleted());

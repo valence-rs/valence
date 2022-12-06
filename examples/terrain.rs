@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::SystemTime;
 
-use noise::{NoiseFn, Seedable, SuperSimplex};
+use noise::{NoiseFn, SuperSimplex};
 use rayon::iter::ParallelIterator;
 pub use valence::prelude::*;
 use vek::Lerp;
@@ -20,11 +20,11 @@ pub fn main() -> ShutdownResult {
     valence::start_server(
         Game {
             player_count: AtomicUsize::new(0),
-            density_noise: SuperSimplex::new().set_seed(seed),
-            hilly_noise: SuperSimplex::new().set_seed(seed.wrapping_add(1)),
-            stone_noise: SuperSimplex::new().set_seed(seed.wrapping_add(2)),
-            gravel_noise: SuperSimplex::new().set_seed(seed.wrapping_add(3)),
-            grass_noise: SuperSimplex::new().set_seed(seed.wrapping_add(4)),
+            density_noise: SuperSimplex::new(seed),
+            hilly_noise: SuperSimplex::new(seed.wrapping_add(1)),
+            stone_noise: SuperSimplex::new(seed.wrapping_add(2)),
+            gravel_noise: SuperSimplex::new(seed.wrapping_add(3)),
+            grass_noise: SuperSimplex::new(seed.wrapping_add(4)),
         },
         None,
     )

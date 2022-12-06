@@ -106,7 +106,6 @@ pub mod client;
 pub mod config;
 pub mod dimension;
 pub mod entity;
-mod entity_partition;
 pub mod inventory;
 pub mod player_list;
 pub mod player_textures;

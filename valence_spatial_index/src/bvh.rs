@@ -7,7 +7,7 @@ use rayon::iter::{
 };
 use vek::{Aabb, Vec3};
 
-use crate::{Bounded3D, ray_box_intersect, RaycastHit, SpatialIndex};
+use crate::{ray_box_intersect, Bounded3D, RaycastHit, SpatialIndex};
 
 #[derive(Clone, Debug)]
 pub struct Bvh<T> {
@@ -356,12 +356,7 @@ impl<O: Bounded3D + Send + Sync> SpatialIndex for Bvh<O> {
         query_rec(self.traverse()?, &mut collides, &mut f)
     }
 
-    fn raycast<F>(
-        &self,
-        origin: Vec3<f64>,
-        direction: Vec3<f64>,
-        mut f: F,
-    ) -> Option<RaycastHit<O>>
+    fn raycast<F>(&self, origin: Vec3<f64>, direction: Vec3<f64>, mut f: F) -> Option<RaycastHit<O>>
     where
         F: FnMut(RaycastHit<O>) -> bool,
     {
