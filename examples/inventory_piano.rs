@@ -1,19 +1,17 @@
+pub fn main() {
+    todo!("reimplement when inventories are re-added");
+}
+
+/*
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use log::LevelFilter;
 use num::Integer;
 pub use valence::prelude::*;
-// TODO: remove protocol imports.
-use valence::protocol::packets::c2s::play::ClickContainerMode;
-use valence::protocol::packets::s2c::play::SoundCategory;
-use valence::protocol::SlotId;
+use valence_protocol::types::ClickContainerMode;
 
 pub fn main() -> ShutdownResult {
-    env_logger::Builder::new()
-        .filter_module("valence", LevelFilter::Trace)
-        .parse_default_env()
-        .init();
+    tracing_subscriber::fmt().init();
 
     valence::start_server(
         Game {
@@ -54,6 +52,7 @@ impl Config for Game {
     type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
+    type InventoryState = ();
 
     fn dimensions(&self) -> Vec<Dimension> {
         vec![Dimension {
@@ -142,7 +141,7 @@ impl Config for Game {
                     }
                 }
 
-                client.spawn(world_id);
+                client.respawn(world_id);
                 client.set_flat(true);
                 client.teleport(spawn_pos, 0.0, 0.0);
                 client.set_player_list(server.state.player_list.clone());
@@ -220,7 +219,7 @@ fn play_note(client: &mut Client<Game>, player: &mut Entity<Game>, clicked_slot:
             + PITCH_MIN;
         client.send_message(format!("playing note with pitch: {}", pitch));
         client.play_sound(
-            ident!("block.note_block.harp"),
+            Ident::new("block.note_block.harp").unwrap(),
             SoundCategory::Block,
             player.position(),
             10.0,
@@ -234,3 +233,4 @@ fn play_note(client: &mut Client<Game>, player: &mut Entity<Game>, clicked_slot:
         });
     }
 }
+*/

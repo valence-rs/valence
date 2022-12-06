@@ -5,38 +5,88 @@ use std::hash::{Hash, Hasher};
 use std::iter::FusedIterator;
 use std::sync::Arc;
 
-use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
-
-use crate::slab::Slab;
-
-#[derive(Clone, Debug)]
-pub struct SlabRc<T> {
-    slab: Slab<Slot<T>>,
-}
+use flume::{Receiver, Sender};
 
 #[derive(Debug)]
-struct Slot<T> {
-    value: T,
-    key: Key,
+pub struct RcSlab<T> {
+    entries: Vec<T>,
+    free_send: Sender<usize>,
+    free_recv: Receiver<usize>,
 }
 
-impl<T: Clone> Clone for Slot<T> {
-    fn clone(&self) -> Self {
+impl<T> RcSlab<T> {
+    pub fn new() -> Self {
+        let (free_send, free_recv) = flume::unbounded();
+
         Self {
-            value: self.value.clone(),
-            key: Key(Arc::new(*self.key.0)),
+            entries: Vec::new(),
+            free_send,
+            free_recv,
         }
+    }
+
+    pub fn insert(&mut self, value: T) -> (Key, &mut T) {
+        match self.free_recv.try_recv() {
+            Ok(idx) => {
+                self.entries[idx] = value;
+                let k = Key(Arc::new(KeyInner {
+                    index: idx,
+                    free_send: self.free_send.clone(),
+                }));
+
+                (k, &mut self.entries[idx])
+            }
+            Err(_) => {
+                let idx = self.entries.len();
+                self.entries.push(value);
+                let k = Key(Arc::new(KeyInner {
+                    index: idx,
+                    free_send: self.free_send.clone(),
+                }));
+                (k, &mut self.entries[idx])
+            }
+        }
+    }
+
+    pub fn get(&self, key: &Key) -> &T {
+        &self.entries[key.0.index]
+    }
+
+    pub fn get_mut(&mut self, key: &Key) -> &mut T {
+        &mut self.entries[key.0.index]
+    }
+
+    pub fn iter(&self) -> impl FusedIterator<Item = &T> + Clone + '_ {
+        self.entries.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> impl FusedIterator<Item = &mut T> + '_ {
+        self.entries.iter_mut()
     }
 }
 
-#[derive(Clone, Eq, Debug)]
-pub struct Key(Arc<usize>);
+#[derive(Clone, Debug)]
+pub struct Key(Arc<KeyInner>);
+
+#[derive(Debug)]
+struct KeyInner {
+    index: usize,
+    free_send: Sender<usize>,
+}
+
+impl Drop for KeyInner {
+    fn drop(&mut self) {
+        let _ = self.free_send.send(self.index);
+    }
+}
 
 impl PartialEq for Key {
     fn eq(&self, other: &Self) -> bool {
         Arc::as_ptr(&self.0) == Arc::as_ptr(&other.0)
     }
 }
+
+impl Eq for Key {}
 
 impl PartialOrd for Key {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -56,70 +106,23 @@ impl Hash for Key {
     }
 }
 
-impl<T> SlabRc<T> {
-    pub const fn new() -> Self {
-        Self { slab: Slab::new() }
-    }
+#[cfg(test)]
+pub mod tests {
+    use super::*;
 
-    pub fn get(&self, key: &Key) -> &T {
-        let slot = self.slab.get(*key.0).expect("invalid key");
-        debug_assert_eq!(&slot.key, key, "invalid key");
+    #[test]
+    fn rc_slab_insert() {
+        let mut slab = RcSlab::new();
+        let (k, v) = slab.insert(123);
+        assert_eq!(*v, 123);
 
-        &slot.value
-    }
+        let k2 = slab.insert(456).0;
+        assert_ne!(k, k2);
+        assert_eq!(slab.entries.len(), 2);
 
-    pub fn get_mut(&mut self, key: &Key) -> &mut T {
-        let slot = self.slab.get_mut(*key.0).expect("invalid key");
-        debug_assert_eq!(&slot.key, key, "invalid key");
-
-        &mut slot.value
-    }
-
-    pub fn len(&self) -> usize {
-        self.slab.len()
-    }
-
-    pub fn insert(&mut self, value: T) -> (Key, &mut T) {
-        let (_, slot) = self.slab.insert_with(|idx| Slot {
-            value,
-            key: Key(Arc::new(idx)),
-        });
-
-        (slot.key.clone(), &mut slot.value)
-    }
-
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&Key, &T)> + FusedIterator + Clone + '_ {
-        self.slab.iter().map(|(_, slot)| (&slot.key, &slot.value))
-    }
-
-    pub fn iter_mut(
-        &mut self,
-    ) -> impl ExactSizeIterator<Item = (&Key, &mut T)> + FusedIterator + '_ {
-        self.slab
-            .iter_mut()
-            .map(|(_, slot)| (&slot.key, &mut slot.value))
-    }
-
-    pub fn par_iter(&self) -> impl ParallelIterator<Item = (&Key, &T)> + Clone + '_
-    where
-        T: Sync,
-    {
-        self.slab
-            .par_iter()
-            .map(|(_, slot)| (&slot.key, &slot.value))
-    }
-
-    pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (&Key, &mut T)> + '_
-    where
-        T: Send + Sync,
-    {
-        self.slab
-            .par_iter_mut()
-            .map(|(_, slot)| (&slot.key, &mut slot.value))
-    }
-
-    pub fn collect_garbage(&mut self) {
-        self.slab
-            .retain(|_, slot| Arc::strong_count(&slot.key.0) > 1);
+        drop(k);
+        drop(k2);
+        slab.insert(789);
+        assert_eq!(slab.entries.len(), 2);
     }
 }

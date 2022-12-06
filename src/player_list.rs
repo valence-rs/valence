@@ -2,25 +2,22 @@
 
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
+use std::ops::{Deref, DerefMut};
 
 use bitfield_struct::bitfield;
 use uuid::Uuid;
+use valence_protocol::packets::s2c::play::{PlayerInfo, SetTabListHeaderAndFooter};
+use valence_protocol::types::{GameMode, PlayerInfoAddPlayer, SignedProperty};
+use valence_protocol::{Text, VarInt};
 
-use crate::client::GameMode;
 use crate::config::Config;
 use crate::player_textures::SignedPlayerTextures;
-use crate::protocol::packets::s2c::play::{
-    PlayerInfo, PlayerListAddPlayer, SetTabListHeaderAndFooter,
-};
-use crate::protocol::packets::Property;
-use crate::protocol::VarInt;
-use crate::server::PlayPacketController;
-use crate::slab_rc::{Key, SlabRc};
-use crate::text::Text;
+use crate::server::PlayPacketSender;
+use crate::slab_rc::{Key, RcSlab};
 
 /// A container for all [`PlayerList`]s on a server.
 pub struct PlayerLists<C: Config> {
-    slab: SlabRc<PlayerList<C>>,
+    slab: RcSlab<PlayerList<C>>,
 }
 
 /// An identifier for a [`PlayerList`] on the server.
@@ -37,7 +34,7 @@ pub struct PlayerListId(Key);
 impl<C: Config> PlayerLists<C> {
     pub(crate) fn new() -> Self {
         Self {
-            slab: SlabRc::new(),
+            slab: RcSlab::new(),
         }
     }
 
@@ -59,16 +56,6 @@ impl<C: Config> PlayerLists<C> {
         (PlayerListId(key), pl)
     }
 
-    /// Returns the number of player lists.
-    pub fn len(&self) -> usize {
-        self.slab.len()
-    }
-
-    /// Returns `true` if there are no player lists.
-    pub fn is_empty(&self) -> bool {
-        self.slab.len() == 0
-    }
-
     /// Gets a shared reference to the player list with the given player list
     /// ID.
     ///
@@ -86,8 +73,7 @@ impl<C: Config> PlayerLists<C> {
     }
 
     pub(crate) fn update(&mut self) {
-        self.slab.collect_garbage();
-        for (_, pl) in self.slab.iter_mut() {
+        for pl in self.slab.iter_mut() {
             for entry in pl.entries.values_mut() {
                 entry.bits = EntryBits::new();
             }
@@ -114,6 +100,20 @@ pub struct PlayerList<C: Config> {
     modified_header_or_footer: bool,
 }
 
+impl<C: Config> Deref for PlayerList<C> {
+    type Target = C::PlayerListState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
+}
+
+impl<C: Config> DerefMut for PlayerList<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.state
+    }
+}
+
 impl<C: Config> PlayerList<C> {
     /// Inserts a player into the player list.
     ///
@@ -126,7 +126,7 @@ impl<C: Config> PlayerList<C> {
         textures: Option<SignedPlayerTextures>,
         game_mode: GameMode,
         ping: i32,
-        display_name: impl Into<Option<Text>>,
+        display_name: Option<Text>,
     ) -> bool {
         match self.entries.entry(uuid) {
             Entry::Occupied(mut oe) => {
@@ -141,7 +141,7 @@ impl<C: Config> PlayerList<C> {
                         textures,
                         game_mode,
                         ping,
-                        display_name: display_name.into(),
+                        display_name,
                         bits: EntryBits::new().with_created_this_tick(true),
                     });
                 } else {
@@ -157,7 +157,7 @@ impl<C: Config> PlayerList<C> {
                     textures,
                     game_mode,
                     ping,
-                    display_name: display_name.into(),
+                    display_name,
                     bits: EntryBits::new().with_created_this_tick(true),
                 });
                 true
@@ -247,20 +247,20 @@ impl<C: Config> PlayerList<C> {
         self.entries.iter_mut().map(|(k, v)| (*k, v))
     }
 
-    pub(crate) fn initial_packets(&self, ctrl: &mut PlayPacketController) -> anyhow::Result<()> {
+    pub(crate) fn send_initial_packets(&self, send: &mut PlayPacketSender) -> anyhow::Result<()> {
         let add_player: Vec<_> = self
             .entries
             .iter()
-            .map(|(&uuid, e)| PlayerListAddPlayer {
+            .map(|(&uuid, e)| PlayerInfoAddPlayer {
                 uuid,
-                username: e.username.clone().into(),
+                username: &e.username,
                 properties: {
                     let mut properties = Vec::new();
                     if let Some(textures) = &e.textures {
-                        properties.push(Property {
-                            name: "textures".into(),
-                            value: base64::encode(textures.payload()),
-                            signature: Some(base64::encode(textures.signature())),
+                        properties.push(SignedProperty {
+                            name: "textures",
+                            value: textures.payload(),
+                            signature: Some(textures.signature()),
                         });
                     }
                     properties
@@ -273,11 +273,11 @@ impl<C: Config> PlayerList<C> {
             .collect();
 
         if !add_player.is_empty() {
-            ctrl.append_packet(&PlayerInfo::AddPlayer(add_player))?;
+            send.append_packet(&PlayerInfo::AddPlayer(add_player))?;
         }
 
         if self.header != Text::default() || self.footer != Text::default() {
-            ctrl.append_packet(&SetTabListHeaderAndFooter {
+            send.append_packet(&SetTabListHeaderAndFooter {
                 header: self.header.clone(),
                 footer: self.footer.clone(),
             })?;
@@ -286,9 +286,9 @@ impl<C: Config> PlayerList<C> {
         Ok(())
     }
 
-    pub(crate) fn update_packets(&self, ctrl: &mut PlayPacketController) -> anyhow::Result<()> {
+    pub(crate) fn send_update_packets(&self, send: &mut PlayPacketSender) -> anyhow::Result<()> {
         if !self.removed.is_empty() {
-            ctrl.append_packet(&PlayerInfo::RemovePlayer(
+            send.append_packet(&PlayerInfo::RemovePlayer(
                 self.removed.iter().cloned().collect(),
             ))?;
         }
@@ -302,16 +302,16 @@ impl<C: Config> PlayerList<C> {
             if e.bits.created_this_tick() {
                 let mut properties = Vec::new();
                 if let Some(textures) = &e.textures {
-                    properties.push(Property {
-                        name: "textures".into(),
-                        value: base64::encode(textures.payload()),
-                        signature: Some(base64::encode(textures.signature())),
+                    properties.push(SignedProperty {
+                        name: "textures",
+                        value: textures.payload(),
+                        signature: Some(textures.signature()),
                     });
                 }
 
-                add_player.push(PlayerListAddPlayer {
+                add_player.push(PlayerInfoAddPlayer {
                     uuid,
-                    username: e.username.clone().into(),
+                    username: e.username(),
                     properties,
                     game_mode: e.game_mode,
                     ping: VarInt(e.ping),
@@ -336,23 +336,23 @@ impl<C: Config> PlayerList<C> {
         }
 
         if !add_player.is_empty() {
-            ctrl.append_packet(&PlayerInfo::AddPlayer(add_player))?;
+            send.append_packet(&PlayerInfo::AddPlayer(add_player))?;
         }
 
         if !game_mode.is_empty() {
-            ctrl.append_packet(&PlayerInfo::UpdateGameMode(game_mode))?;
+            send.append_packet(&PlayerInfo::UpdateGameMode(game_mode))?;
         }
 
         if !ping.is_empty() {
-            ctrl.append_packet(&PlayerInfo::UpdateLatency(ping))?;
+            send.append_packet(&PlayerInfo::UpdateLatency(ping))?;
         }
 
         if !display_name.is_empty() {
-            ctrl.append_packet(&PlayerInfo::UpdateDisplayName(display_name))?;
+            send.append_packet(&PlayerInfo::UpdateDisplayName(display_name))?;
         }
 
         if self.modified_header_or_footer {
-            ctrl.append_packet(&SetTabListHeaderAndFooter {
+            send.append_packet(&SetTabListHeaderAndFooter {
                 header: self.header.clone(),
                 footer: self.footer.clone(),
             })?;
@@ -361,7 +361,7 @@ impl<C: Config> PlayerList<C> {
         Ok(())
     }
 
-    pub(crate) fn clear_packets(&self, ctrl: &mut PlayPacketController) -> anyhow::Result<()> {
+    pub(crate) fn queue_clear_packets(&self, ctrl: &mut PlayPacketSender) -> anyhow::Result<()> {
         ctrl.append_packet(&PlayerInfo::RemovePlayer(
             self.entries.keys().cloned().collect(),
         ))

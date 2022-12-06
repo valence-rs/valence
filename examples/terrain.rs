@@ -2,17 +2,13 @@ use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::SystemTime;
 
-use log::LevelFilter;
 use noise::{NoiseFn, Seedable, SuperSimplex};
 use rayon::iter::ParallelIterator;
 pub use valence::prelude::*;
 use vek::Lerp;
 
 pub fn main() -> ShutdownResult {
-    env_logger::Builder::new()
-        .filter_module("valence", LevelFilter::Trace)
-        .parse_default_env()
-        .init();
+    tracing_subscriber::fmt().init();
 
     let seconds_per_day = 86_400;
 
@@ -54,6 +50,7 @@ impl Config for Game {
     /// If the chunk should stay loaded at the end of the tick.
     type ChunkState = bool;
     type PlayerListState = ();
+    type InventoryState = ();
 
     async fn server_list_ping(
         &self,
@@ -95,14 +92,17 @@ impl Config for Game {
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => client.state = id,
+                    Some((id, entity)) => {
+                        entity.set_world(world_id);
+                        client.state = id
+                    }
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;
                     }
                 }
 
-                client.spawn(world_id);
+                client.respawn(world_id);
                 client.set_flat(true);
                 client.set_game_mode(GameMode::Creative);
                 client.teleport([0.0, 200.0, 0.0], 0.0, 0.0);
@@ -122,18 +122,9 @@ impl Config for Game {
                 client.send_message("Welcome to the terrain example!".italic());
             }
 
-            if client.is_disconnected() {
-                self.player_count.fetch_sub(1, Ordering::SeqCst);
-                if let Some(id) = &server.state {
-                    server.player_lists.get_mut(id).remove(client.uuid());
-                }
-                server.entities.remove(client.state);
-
-                return false;
-            }
-
-            if let Some(entity) = server.entities.get_mut(client.state) {
-                while handle_event_default(client, entity).is_some() {}
+            let player = server.entities.get_mut(client.state).unwrap();
+            while let Some(event) = client.next_event() {
+                event.handle_default(client, player);
             }
 
             let dist = client.view_distance();
@@ -145,6 +136,16 @@ impl Config for Game {
                 } else {
                     world.chunks.insert(pos, UnloadedChunk::default(), true);
                 }
+            }
+
+            if client.is_disconnected() {
+                self.player_count.fetch_sub(1, Ordering::SeqCst);
+                if let Some(id) = &server.state {
+                    server.player_lists.get_mut(id).remove(client.uuid());
+                }
+                server.entities.remove(client.state);
+
+                return false;
             }
 
             true

@@ -15,15 +15,15 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
-use valence::protocol::codec::{PacketDecoder, PacketEncoder};
-use valence::protocol::packets::c2s::handshake::{Handshake, HandshakeNextState};
-use valence::protocol::packets::c2s::login::{EncryptionResponse, LoginStart};
-use valence::protocol::packets::c2s::play::C2sPlayPacket;
-use valence::protocol::packets::c2s::status::{PingRequest, StatusRequest};
-use valence::protocol::packets::s2c::login::{LoginSuccess, S2cLoginPacket};
-use valence::protocol::packets::s2c::play::S2cPlayPacket;
-use valence::protocol::packets::s2c::status::{PingResponse, StatusResponse};
-use valence::protocol::packets::{DecodePacket, EncodePacket, PacketName};
+use valence_protocol::packets::c2s::handshake::Handshake;
+use valence_protocol::packets::c2s::login::{EncryptionResponse, LoginStart};
+use valence_protocol::packets::c2s::play::C2sPlayPacket;
+use valence_protocol::packets::c2s::status::{PingRequest, StatusRequest};
+use valence_protocol::packets::s2c::login::{LoginSuccess, S2cLoginPacket};
+use valence_protocol::packets::s2c::play::S2cPlayPacket;
+use valence_protocol::packets::s2c::status::{PingResponse, StatusResponse};
+use valence_protocol::types::HandshakeNextState;
+use valence_protocol::{Decode, Encode, Packet, PacketDecoder, PacketEncoder};
 
 #[derive(Parser, Clone, Debug)]
 #[clap(author, version, about)]
@@ -59,22 +59,12 @@ struct State {
 const TIMEOUT: Duration = Duration::from_secs(10);
 
 impl State {
-    pub async fn rw_packet<P>(&mut self) -> anyhow::Result<P>
+    pub async fn rw_packet<'a, P>(&'a mut self) -> anyhow::Result<P>
     where
-        P: DecodePacket + EncodePacket,
+        P: Decode<'a> + Encode + Packet + fmt::Debug,
     {
         timeout(TIMEOUT, async {
-            loop {
-                if let Some(pkt) = self.dec.try_next_packet()? {
-                    self.enc.append_packet(&pkt)?;
-
-                    let bytes = self.enc.take();
-                    self.write.write_all(&bytes).await?;
-
-                    self.print(&pkt);
-                    return Ok(pkt);
-                }
-
+            while !self.dec.has_next_packet()? {
                 self.dec.reserve(4096);
                 let mut buf = self.dec.take_capacity();
 
@@ -84,26 +74,30 @@ impl State {
 
                 self.dec.queue_bytes(buf);
             }
+
+            let pkt: P = self.dec.try_next_packet()?.unwrap();
+
+            self.enc.append_packet(&pkt)?;
+
+            let bytes = self.enc.take();
+            self.write.write_all(&bytes).await?;
+
+            if let Some(r) = &self.cli.regex {
+                if !r.is_match(pkt.packet_name()) {
+                    return Ok(pkt);
+                }
+            }
+
+            if self.cli.timestamp {
+                let now: DateTime<Utc> = Utc::now();
+                println!("{now} {pkt:#?}");
+            } else {
+                println!("{pkt:#?}");
+            }
+
+            Ok(pkt)
         })
         .await?
-    }
-
-    fn print<P>(&self, pkt: &P)
-    where
-        P: fmt::Debug + PacketName + ?Sized,
-    {
-        if let Some(r) = &self.cli.regex {
-            if !r.is_match(pkt.packet_name()) {
-                return;
-            }
-        }
-
-        if self.cli.timestamp {
-            let now: DateTime<Utc> = Utc::now();
-            println!("{now} {pkt:#?}");
-        } else {
-            println!("{pkt:#?}");
-        }
     }
 }
 

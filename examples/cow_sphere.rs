@@ -3,15 +3,10 @@ use std::f64::consts::TAU;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use log::LevelFilter;
-use uuid::Uuid;
 use valence::prelude::*;
 
 pub fn main() -> ShutdownResult {
-    env_logger::Builder::new()
-        .filter_module("valence", LevelFilter::Trace)
-        .parse_default_env()
-        .init();
+    tracing_subscriber::fmt().init();
 
     valence::start_server(
         Game {
@@ -33,6 +28,11 @@ struct ServerState {
     cows: Vec<EntityId>,
 }
 
+#[derive(Default)]
+struct ClientState {
+    entity_id: EntityId,
+}
+
 const MAX_PLAYERS: usize = 10;
 
 const SPAWN_POS: BlockPos = BlockPos::new(0, 100, -25);
@@ -40,11 +40,12 @@ const SPAWN_POS: BlockPos = BlockPos::new(0, 100, -25);
 #[async_trait]
 impl Config for Game {
     type ServerState = ServerState;
-    type ClientState = EntityId;
+    type ClientState = ClientState;
     type EntityState = ();
     type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
+    type InventoryState = ();
 
     async fn server_list_ping(
         &self,
@@ -112,14 +113,17 @@ impl Config for Game {
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => client.state = id,
+                    Some((id, entity)) => {
+                        entity.set_world(world_id);
+                        client.entity_id = id
+                    }
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;
                     }
                 }
 
-                client.spawn(world_id);
+                client.respawn(world_id);
                 client.set_flat(true);
                 client.set_game_mode(GameMode::Creative);
                 client.teleport(
@@ -150,17 +154,19 @@ impl Config for Game {
                 if let Some(id) = &server.state.player_list {
                     server.player_lists.get_mut(id).remove(client.uuid());
                 }
-                server.entities.remove(client.state);
+                server.entities.remove(client.entity_id);
 
                 return false;
             }
 
             let entity = server
                 .entities
-                .get_mut(client.state)
+                .get_mut(client.entity_id)
                 .expect("missing player entity");
 
-            while handle_event_default(client, entity).is_some() {}
+            while let Some(event) = client.next_event() {
+                event.handle_default(client, entity);
+            }
 
             true
         });
@@ -208,9 +214,9 @@ impl Config for Game {
 
 /// Distributes N points on the surface of a unit sphere.
 fn fibonacci_spiral(n: usize) -> impl Iterator<Item = Vec3<f64>> {
-    (0..n).map(move |i| {
-        let golden_ratio = (1.0 + 5_f64.sqrt()) / 2.0;
+    let golden_ratio = (1.0 + 5_f64.sqrt()) / 2.0;
 
+    (0..n).map(move |i| {
         // Map to unit square
         let x = i as f64 / golden_ratio % 1.0;
         let y = i as f64 / n as f64;

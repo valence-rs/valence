@@ -10,22 +10,20 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::io::Write;
 use std::iter::FusedIterator;
+use std::ops::{Deref, DerefMut};
 
-use bitvec::vec::BitVec;
 use paletted_container::PalettedContainer;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use valence_nbt::compound;
-
-use crate::biome::BiomeId;
-use crate::block::BlockState;
-use crate::block_pos::BlockPos;
-pub use crate::chunk_pos::ChunkPos;
-use crate::config::Config;
-use crate::protocol::packets::s2c::play::{
+use valence_protocol::packets::s2c::play::{
     BlockUpdate, ChunkDataAndUpdateLight, UpdateSectionBlocks,
 };
-use crate::protocol::{Encode, VarInt, VarLong};
-use crate::server::PlayPacketController;
+use valence_protocol::{BlockPos, BlockState, Encode, VarInt, VarLong};
+
+use crate::biome::BiomeId;
+pub use crate::chunk_pos::ChunkPos;
+use crate::config::Config;
+use crate::server::PlayPacketSender;
 use crate::util::bits_needed;
 
 mod paletted_container;
@@ -57,7 +55,7 @@ impl<C: Config> Chunks<C> {
     ///
     /// **Note**: For the vanilla Minecraft client to see a chunk, all chunks
     /// adjacent to it must also be loaded. Clients should not be spawned within
-    /// unloaded chunks via [`spawn`](crate::client::Client::spawn).
+    /// unloaded chunks via [`respawn`](crate::client::Client::respawn).
     pub fn insert(
         &mut self,
         pos: impl Into<ChunkPos>,
@@ -203,38 +201,46 @@ impl<C: Config> Chunks<C> {
         }
     }
 
-    /// Sets the block state at an absolute block position in world space.
+    /// Sets the block state at an absolute block position in world space. The
+    /// previous block state at the position is returned.
     ///
-    /// If the position is inside of a chunk, then `true` is returned and the
-    /// block is set. Otherwise, `false` is returned and the function has no
-    /// effect.
+    /// If the given position is not inside of a loaded chunk, then a new chunk
+    /// is created at the position before the block is set.
     ///
-    /// **Note**: if you need to set a large number of blocks, it may be more
-    /// efficient write to the chunks directly with
-    /// [`Chunk::set_block_state`].
-    pub fn set_block_state(&mut self, pos: impl Into<BlockPos>, block: BlockState) -> bool {
+    /// If the position is completely out of bounds, then no new chunk is
+    /// created and [`BlockState::AIR`] is returned.
+    pub fn set_block_state(&mut self, pos: impl Into<BlockPos>, block: BlockState) -> BlockState
+    where
+        C::ChunkState: Default,
+    {
         let pos = pos.into();
-        let chunk_pos = ChunkPos::from(pos);
 
-        if let Some(chunk) = self.chunks.get_mut(&chunk_pos) {
-            if let Some(y) = pos
-                .y
-                .checked_sub(self.dimension_min_y)
-                .and_then(|y| y.try_into().ok())
-            {
-                if y < chunk.height() {
-                    chunk.set_block_state(
-                        pos.x.rem_euclid(16) as usize,
-                        y,
-                        pos.z.rem_euclid(16) as usize,
-                        block,
-                    );
-                    return true;
-                }
-            }
+        let Some(y) = pos.y.checked_sub(self.dimension_min_y).and_then(|y| y.try_into().ok()) else {
+            return BlockState::AIR;
+        };
+
+        if y >= self.dimension_height as usize {
+            return BlockState::AIR;
         }
 
-        false
+        let chunk = match self.chunks.entry(ChunkPos::from(pos)) {
+            Entry::Occupied(oe) => oe.into_mut(),
+            Entry::Vacant(ve) => {
+                let dimension_section_count = (self.dimension_height / 16) as usize;
+                ve.insert(LoadedChunk::new(
+                    UnloadedChunk::default(),
+                    dimension_section_count,
+                    Default::default(),
+                ))
+            }
+        };
+
+        chunk.set_block_state(
+            pos.x.rem_euclid(16) as usize,
+            y,
+            pos.z.rem_euclid(16) as usize,
+            block,
+        )
     }
 
     pub(crate) fn update(&mut self) {
@@ -475,6 +481,20 @@ pub struct LoadedChunk<C: Config> {
     created_this_tick: bool,
 }
 
+impl<C: Config> Deref for LoadedChunk<C> {
+    type Target = C::ChunkState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
+}
+
+impl<C: Config> DerefMut for LoadedChunk<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.state
+    }
+}
+
 /// A 16x16x16 meter volume of blocks, biomes, and light in a chunk.
 #[derive(Clone)]
 struct ChunkSection {
@@ -540,66 +560,60 @@ impl<C: Config> LoadedChunk<C> {
         self.created_this_tick
     }
 
-    /// Gets the chunk data packet for this chunk with the given position.
-    pub(crate) fn chunk_data_packet(
+    /// Queues the chunk data packet for this chunk with the given position.
+    pub(crate) fn send_chunk_data_packet(
         &self,
+        send: &mut PlayPacketSender,
+        scratch: &mut Vec<u8>,
         pos: ChunkPos,
         biome_registry_len: usize,
-    ) -> ChunkDataAndUpdateLight {
-        let mut blocks_and_biomes = Vec::new();
+    ) -> anyhow::Result<()> {
+        debug_assert!(scratch.is_empty());
 
         for sect in self.sections.iter() {
-            sect.non_air_count.encode(&mut blocks_and_biomes).unwrap();
+            sect.non_air_count.encode(&mut *scratch)?;
 
-            sect.block_states
-                .encode_mc_format(
-                    &mut blocks_and_biomes,
-                    |b| b.to_raw().into(),
-                    4,
-                    8,
-                    bits_needed(BlockState::max_raw().into()),
-                )
-                .unwrap();
+            sect.block_states.encode_mc_format(
+                &mut *scratch,
+                |b| b.to_raw().into(),
+                4,
+                8,
+                bits_needed(BlockState::max_raw().into()),
+            )?;
 
-            sect.biomes
-                .encode_mc_format(
-                    &mut blocks_and_biomes,
-                    |b| b.0.into(),
-                    0,
-                    3,
-                    bits_needed(biome_registry_len - 1),
-                )
-                .unwrap();
+            sect.biomes.encode_mc_format(
+                &mut *scratch,
+                |b| b.0.into(),
+                0,
+                3,
+                bits_needed(biome_registry_len - 1),
+            )?;
         }
 
-        ChunkDataAndUpdateLight {
+        send.append_packet(&ChunkDataAndUpdateLight {
             chunk_x: pos.x,
             chunk_z: pos.z,
             heightmaps: compound! {
-                // TODO: placeholder heightmap.
-                "MOTION_BLOCKING" => vec![0_i64; 37],
+                // TODO: MOTION_BLOCKING heightmap
             },
-            blocks_and_biomes,
+            blocks_and_biomes: scratch,
             block_entities: vec![], // TODO
             trust_edges: true,
-            // sky_light_mask: bitvec![u64, _; 1; section_count + 2],
-            sky_light_mask: BitVec::new(),
-            block_light_mask: BitVec::new(),
-            empty_sky_light_mask: BitVec::new(),
-            empty_block_light_mask: BitVec::new(),
-            // sky_light_arrays: vec![[0xff; 2048]; section_count + 2],
+            sky_light_mask: Vec::new(),
+            block_light_mask: Vec::new(),
+            empty_sky_light_mask: Vec::new(),
+            empty_block_light_mask: Vec::new(),
             sky_light_arrays: vec![],
             block_light_arrays: vec![],
-        }
+        })
     }
 
-    /// Returns changes to this chunk as block change packets through the
-    /// provided closure.
+    /// Queues block change packets for this chunk.
     pub(crate) fn block_change_packets(
         &self,
         pos: ChunkPos,
         min_y: i32,
-        ctrl: &mut PlayPacketController,
+        send: &mut PlayPacketSender,
     ) -> anyhow::Result<()> {
         for (sect_y, sect) in self.sections.iter().enumerate() {
             if sect.modified_blocks_count == 1 {
@@ -620,8 +634,8 @@ impl<C: Config> LoadedChunk<C> {
                 let global_y = sect_y as i32 * 16 + (idx / (16 * 16)) as i32 + min_y;
                 let global_z = pos.z * 16 + (idx / 16 % 16) as i32;
 
-                ctrl.append_packet(&BlockUpdate {
-                    location: BlockPos::new(global_x, global_y, global_z),
+                send.append_packet(&BlockUpdate {
+                    position: BlockPos::new(global_x, global_y, global_z),
                     block_id: VarInt(block.to_raw() as _),
                 })?;
             } else if sect.modified_blocks_count > 1 {
@@ -646,7 +660,7 @@ impl<C: Config> LoadedChunk<C> {
                     | (pos.z as i64 & 0x3fffff) << 20
                     | (sect_y as i64 + min_y.div_euclid(16) as i64) & 0xfffff;
 
-                ctrl.append_packet(&UpdateSectionBlocks {
+                send.append_packet(&UpdateSectionBlocks {
                     chunk_section_position,
                     invert_trust_edges: false,
                     blocks,
@@ -786,7 +800,7 @@ fn compact_u64s_len(vals_count: usize, bits_per_val: usize) -> usize {
 
 #[inline]
 fn encode_compact_u64s(
-    w: &mut impl Write,
+    mut w: impl Write,
     mut vals: impl Iterator<Item = u64>,
     bits_per_val: usize,
 ) -> anyhow::Result<()> {
@@ -802,11 +816,11 @@ fn encode_compact_u64s(
                     debug_assert!(val < 2_u128.pow(bits_per_val as _) as _);
                     n |= val << (i * bits_per_val);
                 }
-                None if i > 0 => return n.encode(w),
+                None if i > 0 => return n.encode(&mut w),
                 None => return Ok(()),
             }
         }
-        n.encode(w)?;
+        n.encode(&mut w)?;
     }
 }
 

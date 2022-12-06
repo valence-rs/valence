@@ -3,19 +3,12 @@ use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use log::LevelFilter;
 use rand::seq::SliceRandom;
 use rand::Rng;
-use valence::client::SetTitleAnimationTimes;
 use valence::prelude::*;
-// TODO: remove protocol imports.
-use valence::protocol::packets::s2c::play::SoundCategory;
 
 pub fn main() -> ShutdownResult {
-    env_logger::Builder::new()
-        .filter_module("valence", LevelFilter::Trace)
-        .parse_default_env()
-        .init();
+    tracing_subscriber::fmt().init();
 
     valence::start_server(
         Game {
@@ -31,6 +24,11 @@ struct Game {
 
 struct ServerState {
     player_list: Option<PlayerListId>,
+}
+
+#[derive(Default)]
+struct ChunkState {
+    keep_loaded: bool,
 }
 
 #[derive(Default)]
@@ -63,9 +61,9 @@ impl Config for Game {
     type ClientState = ClientState;
     type EntityState = ();
     type WorldState = ();
-    /// If the chunk should stay loaded at the end of the tick.
-    type ChunkState = bool;
+    type ChunkState = ChunkState;
     type PlayerListState = ();
+    type InventoryState = ();
 
     async fn server_list_ping(
         &self,
@@ -87,8 +85,6 @@ impl Config for Game {
     }
 
     fn update(&self, server: &mut Server<Self>) {
-        //let (world_id, world) = server.worlds.iter_mut().next().unwrap();
-
         server.clients.retain(|_, client| {
             if client.created_this_tick() {
                 if self
@@ -102,11 +98,15 @@ impl Config for Game {
                     return false;
                 }
 
+                let (world_id, world) = server.worlds.insert(DimensionId::default(), ());
+
                 match server
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => {
+                    Some((id, entity)) => {
+                        entity.set_world(world_id);
+
                         // create client state
                         client.state = ClientState {
                             entity_id: id,
@@ -115,32 +115,28 @@ impl Config for Game {
                             combo: 0,
                             last_block_timestamp: 0,
                             target_y: 0,
-                            world_id: WorldId::NULL,
+                            world_id,
                         };
                     }
                     None => {
                         client.disconnect("Conflicting UUID");
+                        server.worlds.remove(world_id);
                         return false;
                     }
                 }
-
-                let (world_id, world) = server.worlds.insert(DimensionId::default(), ());
-
-                client.state.world_id = world_id;
 
                 for chunk_z in -1..3 {
                     for chunk_x in -2..2 {
                         world.chunks.insert(
                             (chunk_x as i32, chunk_z as i32),
                             UnloadedChunk::default(),
-                            true,
+                            ChunkState { keep_loaded: true },
                         );
                     }
                 }
 
-                client.spawn(world_id);
+                client.respawn(world_id);
                 client.set_flat(true);
-                // client.teleport(spawn_pos, 0.0, 0.0);
                 client.set_player_list(server.state.player_list.clone());
 
                 if let Some(id) = &server.state.player_list {
@@ -159,34 +155,19 @@ impl Config for Game {
                 reset(client, world);
             }
 
-            let (world_id, world) = server
-                .worlds
-                .iter_mut()
-                .find(|w| w.0 == client.state.world_id)
-                .unwrap();
-
-            if client.is_disconnected() {
-                self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.remove(client.state.entity_id);
-                if let Some(id) = &server.state.player_list {
-                    server.player_lists.get_mut(id).remove(client.uuid());
-                }
-                for block in &client.state.blocks {
-                    world.chunks.set_block_state(*block, BlockState::AIR);
-                }
-                client.state.blocks.clear();
-                client.state.score = 0;
-
-                server.worlds.remove(world_id);
-                return false;
-            }
+            let world_id = client.world_id;
+            let world = server.worlds.get_mut(world_id).unwrap();
 
             let p = client.position();
             for pos in chunks_in_view_distance(ChunkPos::at(p.x, p.z), 3) {
                 if let Some(chunk) = world.chunks.get_mut(pos) {
-                    chunk.state = true;
+                    chunk.keep_loaded = true;
                 } else {
-                    world.chunks.insert(pos, UnloadedChunk::default(), true);
+                    world.chunks.insert(
+                        pos,
+                        UnloadedChunk::default(),
+                        ChunkState { keep_loaded: true },
+                    );
                 }
             }
 
@@ -194,7 +175,6 @@ impl Config for Game {
                 client.send_message(
                     "Your score was ".italic()
                         + client
-                            .state
                             .score
                             .to_string()
                             .color(Color::GOLD)
@@ -206,39 +186,38 @@ impl Config for Game {
             }
 
             let pos_under_player = BlockPos::new(
-                (client.position().x - 0.5f64).round() as i32,
+                (client.position().x - 0.5).round() as i32,
                 client.position().y as i32 - 1,
-                (client.position().z - 0.5f64).round() as i32,
+                (client.position().z - 0.5).round() as i32,
             );
 
             if let Some(index) = client
-                .state
                 .blocks
                 .iter()
                 .position(|block| *block == pos_under_player)
             {
                 if index > 0 {
-                    let power_result = 2.0f32.powf((client.state.combo as f32) / 45.0);
+                    let power_result = 2.0f32.powf((client.combo as f32) / 45.0);
                     let max_time_taken = (1000.0f32 * (index as f32) / power_result) as u128;
 
                     let current_time_millis = SystemTime::now()
                         .duration_since(UNIX_EPOCH)
                         .unwrap()
                         .as_millis();
-                    if current_time_millis - client.state.last_block_timestamp < max_time_taken {
-                        client.state.combo += index as u32
+                    if current_time_millis - client.last_block_timestamp < max_time_taken {
+                        client.combo += index as u32
                     } else {
-                        client.state.combo = 0
+                        client.combo = 0
                     }
 
-                    let pitch = 0.9 + ((client.state.combo as f32) - 1.0) * 0.05;
+                    let pitch = 0.9 + ((client.combo as f32) - 1.0) * 0.05;
 
                     for _ in 0..index {
                         generate_next_block(client, world, true)
                     }
 
                     client.play_sound(
-                        ident!("minecraft:block.note_block.bass"),
+                        Ident::new("minecraft:block.note_block.bass").unwrap(),
                         SoundCategory::Master,
                         client.position(),
                         1f32,
@@ -246,12 +225,7 @@ impl Config for Game {
                     );
                     client.set_title(
                         "",
-                        client
-                            .state
-                            .score
-                            .to_string()
-                            .color(Color::LIGHT_PURPLE)
-                            .bold(),
+                        client.score.to_string().color(Color::LIGHT_PURPLE).bold(),
                         SetTitleAnimationTimes {
                             fade_in: 0,
                             stay: 7,
@@ -261,22 +235,32 @@ impl Config for Game {
                 }
             }
 
-            while handle_event_default(
-                client,
-                server.entities.get_mut(client.state.entity_id).unwrap(),
-            )
-            .is_some()
-            {}
+            let player = server.entities.get_mut(client.entity_id).unwrap();
+
+            while let Some(event) = client.next_event() {
+                event.handle_default(client, player);
+            }
 
             // Remove chunks outside the view distance of players.
             world.chunks.retain(|_, chunk| {
-                if chunk.state {
-                    chunk.state = false;
+                if chunk.keep_loaded {
+                    chunk.keep_loaded = false;
                     true
                 } else {
                     false
                 }
             });
+
+            if client.is_disconnected() {
+                self.player_count.fetch_sub(1, Ordering::SeqCst);
+                server.entities.remove(client.entity_id);
+                if let Some(id) = &server.state.player_list {
+                    server.player_lists.get_mut(id).remove(client.uuid());
+                }
+
+                server.worlds.remove(world_id);
+                return false;
+            }
 
             true
         });
@@ -290,19 +274,19 @@ fn reset(client: &mut Client<Game>, world: &mut World<Game>) {
             world.chunks.insert(
                 (chunk_x as i32, chunk_z as i32),
                 UnloadedChunk::default(),
-                true,
+                ChunkState { keep_loaded: true },
             );
         }
     }
 
-    client.state.score = 0;
-    client.state.combo = 0;
+    client.score = 0;
+    client.combo = 0;
 
-    for block in &client.state.blocks {
+    for block in &client.blocks {
         world.chunks.set_block_state(*block, BlockState::AIR);
     }
-    client.state.blocks.clear();
-    client.state.blocks.push_back(START_POS);
+    client.blocks.clear();
+    client.blocks.push_back(START_POS);
     world.chunks.set_block_state(START_POS, BlockState::STONE);
 
     for _ in 0..10 {
@@ -322,19 +306,19 @@ fn reset(client: &mut Client<Game>, world: &mut World<Game>) {
 
 fn generate_next_block(client: &mut Client<Game>, world: &mut World<Game>, in_game: bool) {
     if in_game {
-        let removed_block = client.state.blocks.pop_front().unwrap();
+        let removed_block = client.blocks.pop_front().unwrap();
         world.chunks.set_block_state(removed_block, BlockState::AIR);
 
-        client.state.score += 1
+        client.score += 1
     }
 
-    let last_pos = *client.state.blocks.back().unwrap();
-    let block_pos = generate_random_block(last_pos, client.state.target_y);
+    let last_pos = *client.blocks.back().unwrap();
+    let block_pos = generate_random_block(last_pos, client.target_y);
 
     if last_pos.y == START_POS.y {
-        client.state.target_y = 0
+        client.target_y = 0
     } else if last_pos.y < START_POS.y - 30 || last_pos.y > START_POS.y + 30 {
-        client.state.target_y = START_POS.y;
+        client.target_y = START_POS.y;
     }
 
     let mut rng = rand::thread_rng();
@@ -342,10 +326,10 @@ fn generate_next_block(client: &mut Client<Game>, world: &mut World<Game>, in_ga
     world
         .chunks
         .set_block_state(block_pos, *BLOCK_TYPES.choose(&mut rng).unwrap());
-    client.state.blocks.push_back(block_pos);
+    client.blocks.push_back(block_pos);
 
     // Combo System
-    client.state.last_block_timestamp = SystemTime::now()
+    client.last_block_timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_millis();

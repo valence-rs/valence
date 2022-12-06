@@ -9,19 +9,27 @@ use url::Url;
 /// by the server.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct SignedPlayerTextures {
-    payload: Box<[u8]>,
-    signature: Box<[u8]>,
+    payload: Box<str>,
+    signature: Box<str>,
     skin_url: Box<str>,
     cape_url: Option<Box<str>>,
 }
 
 impl SignedPlayerTextures {
+    /// Constructs the signed player textures from payload and signature
+    /// components in base64.
+    ///
+    /// Note that this does not validate that the signature is valid for the
+    /// given payload.
     pub(crate) fn from_base64(
-        payload: impl AsRef<str>,
-        signature: impl AsRef<str>,
+        payload: impl Into<Box<str>>,
+        signature: impl Into<Box<str>>,
     ) -> anyhow::Result<Self> {
-        let payload = base64::decode(payload.as_ref())?;
-        let signature = base64::decode(signature.as_ref())?;
+        let payload = payload.into();
+        let signature = signature.into();
+
+        let payload_decoded = base64::decode(payload.as_bytes())?;
+        base64::decode(signature.as_bytes())?;
 
         #[derive(Debug, Deserialize)]
         struct Textures {
@@ -41,21 +49,23 @@ impl SignedPlayerTextures {
             url: Url,
         }
 
-        let textures: Textures = serde_json::from_slice(&payload)?;
+        let textures: Textures = serde_json::from_slice(&payload_decoded)?;
 
         Ok(Self {
-            payload: payload.into(),
-            signature: signature.into(),
+            payload,
+            signature,
             skin_url: String::from(textures.textures.skin.url).into(),
             cape_url: textures.textures.cape.map(|t| String::from(t.url).into()),
         })
     }
 
-    pub(crate) fn payload(&self) -> &[u8] {
+    /// The payload in base64.
+    pub(crate) fn payload(&self) -> &str {
         &self.payload
     }
 
-    pub(crate) fn signature(&self) -> &[u8] {
+    /// The signature in base64.
+    pub(crate) fn signature(&self) -> &str {
         &self.signature
     }
 
