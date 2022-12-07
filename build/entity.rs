@@ -459,7 +459,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }
 
             pub(super) fn write_initial_tracked_data(&self, buf: &mut Vec<u8>) {
-                debug_assert!(buf.is_empty());
+                buf.clear();
 
                 match self {
                     #(Self::#concrete_entity_names(e) => e.initial_tracked_data(buf),)*
@@ -471,7 +471,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }
 
             pub(super) fn write_updated_tracked_data(&self, buf: &mut Vec<u8>) {
-                debug_assert!(buf.is_empty());
+                buf.clear();
 
                 match self {
                     #(Self::#concrete_entity_names(e) => e.updated_tracked_data(buf),)*

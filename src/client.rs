@@ -969,8 +969,6 @@ impl<C: Config> Client<C> {
         player_lists: &PlayerLists<C>,
         inventories: &Inventories<C>,
     ) -> anyhow::Result<()> {
-        debug_assert!(self.scratch.is_empty());
-
         let Some(world) = worlds.get(self.world) else {
             bail!("client is in an invalid world")
         };
@@ -1084,7 +1082,7 @@ impl<C: Config> Client<C> {
             let old_dimension = shared.dimension(old_world.dimension());
 
             for pos in old_chunk_pos.in_view(self.old_view_distance) {
-                if let Some((chunk, cell)) = old_world.chunks.get_full(pos) {
+                if let Some((chunk, cell)) = old_world.chunks.chunk_and_cell(pos) {
                     if let Some(chunk) = chunk {
                         // Decide if the chunk should be loaded, unloaded, or updated.
                         match (chunk.created_this_tick(), chunk.deleted()) {
@@ -1100,7 +1098,6 @@ impl<C: Config> Client<C> {
                                     pos,
                                     biome_registry_len,
                                 )?;
-                                self.scratch.clear();
                             }
                             (false, true) => {
                                 // Chunk was previously loaded and is now deleted.
@@ -1111,8 +1108,7 @@ impl<C: Config> Client<C> {
                             }
                             (true, true) => {
                                 // Chunk was created and deleted this tick, so
-                                // we don't need
-                                // to do anything.
+                                // we don't need to do anything.
                             }
                         }
                     }
@@ -1128,8 +1124,14 @@ impl<C: Config> Client<C> {
                             debug_assert!(!entity.deleted());
 
                             if entity.uuid() != self.uuid {
-                                entity.send_init_packets(send, id, &mut self.scratch)?;
-                                self.scratch.clear();
+                                // Spawn the entity at the old position so that relative entity
+                                // movement packets will not set the entity to the wrong position.
+                                entity.send_init_packets(
+                                    send,
+                                    entity.old_position(),
+                                    id,
+                                    &mut self.scratch,
+                                )?;
                             }
                         }
                     }
@@ -1146,15 +1148,18 @@ impl<C: Config> Client<C> {
                     }
 
                     // Update all the entities.
+
+                    send.append_bytes(cell.cached_update_packets());
+
+                    /*
                     for id in cell.entities() {
                         let entity = &entities[id]; // TODO: directly index into slab.
                         debug_assert!(!entity.deleted());
 
                         if entity.uuid() != self.uuid {
-                            entity.send_update_packets(send, id, &mut self.scratch)?;
-                            self.scratch.clear();
+                            entity.write_update_packets(&mut *send, id, &mut self.scratch)?;
                         }
-                    }
+                    }*/
                 }
             }
 
@@ -1176,7 +1181,7 @@ impl<C: Config> Client<C> {
                 // TODO: only send unload packets when old dimension == new dimension, since the
                 //       client will do the unloading for us in that case?
                 for pos in old_chunk_pos.in_view(self.old_view_distance) {
-                    if let Some((chunk, cell)) = old_world.chunks.get_full(pos) {
+                    if let Some((chunk, cell)) = old_world.chunks.chunk_and_cell(pos) {
                         if let Some(chunk) = chunk {
                             // Deleted chunks were already unloaded above.
                             if !chunk.deleted() {
@@ -1201,7 +1206,7 @@ impl<C: Config> Client<C> {
 
             // Load all chunks and entities in new view.
             for pos in chunk_pos.in_view(self.view_distance) {
-                if let Some((chunk, cell)) = world.chunks.get_full(pos) {
+                if let Some((chunk, cell)) = world.chunks.chunk_and_cell(pos) {
                     if let Some(chunk) = chunk {
                         if !chunk.deleted() {
                             chunk.send_chunk_data_packet(
@@ -1210,7 +1215,6 @@ impl<C: Config> Client<C> {
                                 pos,
                                 biome_registry_len,
                             )?;
-                            self.scratch.clear();
                         }
                     }
 
@@ -1219,8 +1223,12 @@ impl<C: Config> Client<C> {
                         debug_assert!(!entity.deleted());
 
                         if entity.uuid() != self.uuid {
-                            entity.send_init_packets(send, id, &mut self.scratch)?;
-                            self.scratch.clear();
+                            entity.send_init_packets(
+                                send,
+                                entity.position(),
+                                id,
+                                &mut self.scratch,
+                            )?;
                         }
                     }
                 }
@@ -1233,7 +1241,7 @@ impl<C: Config> Client<C> {
 
             for pos in old_chunk_pos.in_view(self.old_view_distance) {
                 if !pos.is_in_view(chunk_pos, self.view_distance) {
-                    if let Some((chunk, cell)) = world.chunks.get_full(pos) {
+                    if let Some((chunk, cell)) = world.chunks.chunk_and_cell(pos) {
                         if let Some(chunk) = chunk {
                             // Deleted chunks were already unloaded above.
                             if !chunk.deleted() {
@@ -1258,7 +1266,7 @@ impl<C: Config> Client<C> {
 
             for pos in chunk_pos.in_view(self.view_distance) {
                 if !pos.is_in_view(old_chunk_pos, self.old_view_distance) {
-                    if let Some((chunk, cell)) = world.chunks.get_full(pos) {
+                    if let Some((chunk, cell)) = world.chunks.chunk_and_cell(pos) {
                         if let Some(chunk) = chunk {
                             if !chunk.deleted() {
                                 chunk.send_chunk_data_packet(
@@ -1267,7 +1275,6 @@ impl<C: Config> Client<C> {
                                     pos,
                                     biome_registry_len,
                                 )?;
-                                self.scratch.clear();
                             }
                         }
 
@@ -1276,8 +1283,12 @@ impl<C: Config> Client<C> {
                             debug_assert!(!entity.deleted());
 
                             if entity.uuid() != self.uuid {
-                                entity.send_init_packets(send, id, &mut self.scratch)?;
-                                self.scratch.clear();
+                                entity.send_init_packets(
+                                    send,
+                                    entity.position(),
+                                    id,
+                                    &mut self.scratch,
+                                )?;
                             }
                         }
                     }
@@ -1293,6 +1304,7 @@ impl<C: Config> Client<C> {
         }
 
         // Update the client's own player metadata.
+        self.scratch.clear();
         self.player_data.updated_tracked_data(&mut self.scratch);
         if !self.scratch.is_empty() {
             self.scratch.push(0xff);
@@ -1301,8 +1313,6 @@ impl<C: Config> Client<C> {
                 entity_id: VarInt(0),
                 metadata: RawBytes(&self.scratch),
             })?;
-
-            self.scratch.clear();
         }
 
         // Acknowledge broken/placed blocks.

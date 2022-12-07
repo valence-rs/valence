@@ -4,6 +4,7 @@ use std::collections::BTreeSet;
 use crate::chunk::ChunkPos;
 use crate::config::Config;
 use crate::entity::{Entities, EntityId};
+use crate::packet::PacketBuf;
 use crate::world::Worlds;
 
 pub struct PartitionCell {
@@ -17,6 +18,8 @@ pub struct PartitionCell {
     /// Entities that have left the chunk this tick, paired with the cell
     /// position in this world they arrived at.
     outgoing: Vec<(EntityId, Option<ChunkPos>)>,
+    /// A cache of packets needed to update all the `entities` in this chunk.
+    cached_update_packets: Vec<u8>,
 }
 
 impl PartitionCell {
@@ -25,6 +28,7 @@ impl PartitionCell {
             entities: BTreeSet::new(),
             incoming: Vec::new(),
             outgoing: Vec::new(),
+            cached_update_packets: Vec::new(),
         }
     }
 
@@ -40,6 +44,10 @@ impl PartitionCell {
         &self.outgoing
     }
 
+    pub fn cached_update_packets(&self) -> &[u8] {
+        &self.cached_update_packets
+    }
+
     pub(super) fn clear_incoming_outgoing(&mut self) {
         self.incoming.clear();
         self.outgoing.clear();
@@ -48,7 +56,11 @@ impl PartitionCell {
 
 /// Prepares the entity partitions in all worlds for the client update
 /// procedure.
-pub fn update_entity_partition<C: Config>(entities: &Entities<C>, worlds: &mut Worlds<C>) {
+pub fn update_entity_partition<C: Config>(
+    entities: &Entities<C>,
+    worlds: &mut Worlds<C>,
+    compression_threshold: Option<u32>,
+) {
     for (entity_id, entity) in entities.iter() {
         let pos = ChunkPos::at(entity.position().x, entity.position().z);
         let old_pos = ChunkPos::at(entity.old_position().x, entity.old_position().z);
@@ -67,6 +79,8 @@ pub fn update_entity_partition<C: Config>(entities: &Entities<C>, worlds: &mut W
                 }
             }
         } else if old_world != world {
+            // TODO: skip marker entity.
+
             // Entity changed the world it is in. Remove it from old chunk and
             // insert it in the new chunk.
             if let Some(old_world) = worlds.get_mut(old_world) {
@@ -90,6 +104,7 @@ pub fn update_entity_partition<C: Config>(entities: &Entities<C>, worlds: &mut W
                             entities: BTreeSet::from([entity_id]),
                             incoming: vec![(entity_id, None)],
                             outgoing: Vec::new(),
+                            cached_update_packets: Vec::new(),
                         };
 
                         ve.insert((None, cell));
@@ -97,6 +112,8 @@ pub fn update_entity_partition<C: Config>(entities: &Entities<C>, worlds: &mut W
                 }
             }
         } else if pos != old_pos {
+            // TODO: skip marker entity.
+
             // Entity changed its chunk position without changing worlds. Remove
             // it from old chunk and insert it in new chunk.
             if let Some(world) = worlds.get_mut(world) {
@@ -118,6 +135,7 @@ pub fn update_entity_partition<C: Config>(entities: &Entities<C>, worlds: &mut W
                             entities: BTreeSet::from([entity_id]),
                             incoming: vec![(entity_id, Some(old_pos))],
                             outgoing: Vec::new(),
+                            cached_update_packets: Vec::new(),
                         };
 
                         ve.insert((None, cell));
@@ -127,6 +145,26 @@ pub fn update_entity_partition<C: Config>(entities: &Entities<C>, worlds: &mut W
         } else {
             // The entity didn't change its chunk position so there is nothing
             // we need to do.
+        }
+    }
+
+    // Cache the entity update packets.
+    let mut scratch = Vec::new();
+    for (_, world) in worlds.iter_mut() {
+        for cell in world.chunks.cells_mut() {
+            cell.cached_update_packets.clear();
+
+            for &id in &cell.entities {
+                let buf = PacketBuf::new(
+                    &mut cell.cached_update_packets,
+                    compression_threshold,
+                    Vec::new(),
+                );
+
+                entities[id]
+                    .write_update_packets(buf, id, &mut scratch)
+                    .unwrap();
+            }
         }
     }
 }

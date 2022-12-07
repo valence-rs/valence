@@ -20,6 +20,7 @@ use valence_protocol::{ByteAngle, RawBytes, VarInt};
 use vek::{Aabb, Vec3};
 
 use crate::config::Config;
+use crate::packet::WritePacket;
 use crate::server::PlayPacketSender;
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::util::aabb_from_bottom_and_size;
@@ -249,7 +250,7 @@ pub struct Entity<C: Config> {
     pub state: C::EntityState,
     variants: TrackedData,
     bits: EntityBits,
-    events: Vec<EntityEvent>,
+    events: Vec<EntityEvent>, // TODO: store this info in bits?
     world: WorldId,
     old_world: WorldId,
     position: Vec3<f64>,
@@ -719,16 +720,15 @@ impl<C: Config> Entity<C> {
     pub(crate) fn send_init_packets(
         &self,
         send: &mut PlayPacketSender,
+        position: Vec3<f64>,
         this_id: EntityId,
         scratch: &mut Vec<u8>,
     ) -> anyhow::Result<()> {
-        debug_assert!(scratch.is_empty());
-
         let with_object_data = |data| SpawnEntity {
             entity_id: VarInt(this_id.to_raw()),
             object_uuid: self.uuid,
             kind: VarInt(self.kind() as i32),
-            position: self.position.into_array(),
+            position: position.into_array(),
             pitch: ByteAngle::from_degrees(self.pitch),
             yaw: ByteAngle::from_degrees(self.yaw),
             head_yaw: ByteAngle::from_degrees(self.head_yaw),
@@ -740,14 +740,14 @@ impl<C: Config> Entity<C> {
             TrackedData::Marker(_) => {}
             TrackedData::ExperienceOrb(_) => send.append_packet(&SpawnExperienceOrb {
                 entity_id: VarInt(this_id.to_raw()),
-                position: self.position.into_array(),
+                position: position.into_array(),
                 count: 0, // TODO
             })?,
             TrackedData::Player(_) => {
                 send.append_packet(&SpawnPlayer {
                     entity_id: VarInt(this_id.to_raw()),
                     player_uuid: self.uuid,
-                    position: self.position.into_array(),
+                    position: position.into_array(),
                     yaw: ByteAngle::from_degrees(self.yaw),
                     pitch: ByteAngle::from_degrees(self.pitch),
                 })?;
@@ -782,6 +782,7 @@ impl<C: Config> Entity<C> {
             _ => send.append_packet(&with_object_data(0))?,
         }
 
+        scratch.clear();
         self.variants.write_initial_tracked_data(scratch);
         if !scratch.is_empty() {
             send.append_packet(&SetEntityMetadata {
@@ -793,16 +794,14 @@ impl<C: Config> Entity<C> {
         Ok(())
     }
 
-    /// Sends the appropriate packets to update the entity (Position, tracked
+    /// Writes the appropriate packets to update the entity (Position, tracked
     /// data, and event packets).
-    pub(crate) fn send_update_packets(
+    pub(crate) fn write_update_packets(
         &self,
-        send: &mut PlayPacketSender,
+        mut writer: impl WritePacket,
         this_id: EntityId,
         scratch: &mut Vec<u8>,
     ) -> anyhow::Result<()> {
-        debug_assert!(scratch.is_empty());
-
         let entity_id = VarInt(this_id.to_raw());
 
         let position_delta = self.position - self.old_position;
@@ -810,7 +809,7 @@ impl<C: Config> Entity<C> {
         let changed_position = self.position != self.old_position;
 
         if changed_position && !needs_teleport && self.bits.yaw_or_pitch_modified() {
-            send.append_packet(&UpdateEntityPositionAndRotation {
+            writer.write_packet(&UpdateEntityPositionAndRotation {
                 entity_id,
                 delta: (position_delta * 4096.0).as_::<i16>().into_array(),
                 yaw: ByteAngle::from_degrees(self.yaw),
@@ -819,7 +818,7 @@ impl<C: Config> Entity<C> {
             })?;
         } else {
             if changed_position && !needs_teleport {
-                send.append_packet(&UpdateEntityPosition {
+                writer.write_packet(&UpdateEntityPosition {
                     entity_id,
                     delta: (position_delta * 4096.0).as_::<i16>().into_array(),
                     on_ground: self.bits.on_ground(),
@@ -827,7 +826,7 @@ impl<C: Config> Entity<C> {
             }
 
             if self.bits.yaw_or_pitch_modified() {
-                send.append_packet(&UpdateEntityRotation {
+                writer.write_packet(&UpdateEntityRotation {
                     entity_id,
                     yaw: ByteAngle::from_degrees(self.yaw),
                     pitch: ByteAngle::from_degrees(self.pitch),
@@ -837,7 +836,7 @@ impl<C: Config> Entity<C> {
         }
 
         if needs_teleport {
-            send.append_packet(&TeleportEntity {
+            writer.write_packet(&TeleportEntity {
                 entity_id,
                 position: self.position.into_array(),
                 yaw: ByteAngle::from_degrees(self.yaw),
@@ -847,36 +846,35 @@ impl<C: Config> Entity<C> {
         }
 
         if self.bits.velocity_modified() {
-            send.append_packet(&SetEntityVelocity {
+            writer.write_packet(&SetEntityVelocity {
                 entity_id,
                 velocity: velocity_to_packet_units(self.velocity).into_array(),
             })?;
         }
 
         if self.bits.head_yaw_modified() {
-            send.append_packet(&SetHeadRotation {
+            writer.write_packet(&SetHeadRotation {
                 entity_id,
                 head_yaw: ByteAngle::from_degrees(self.head_yaw),
             })?;
         }
 
+        scratch.clear();
         self.variants.write_updated_tracked_data(scratch);
         if !scratch.is_empty() {
-            send.append_packet(&SetEntityMetadata {
+            writer.write_packet(&SetEntityMetadata {
                 entity_id,
                 metadata: RawBytes(scratch),
             })?;
-
-            scratch.clear();
         }
 
         for &event in &self.events {
             match event.status_or_animation() {
-                StatusOrAnimation::Status(code) => send.append_packet(&EntityEventPacket {
+                StatusOrAnimation::Status(code) => writer.write_packet(&EntityEventPacket {
                     entity_id: entity_id.0,
                     entity_status: code,
                 })?,
-                StatusOrAnimation::Animation(code) => send.append_packet(&EntityAnimationS2c {
+                StatusOrAnimation::Animation(code) => writer.write_packet(&EntityAnimationS2c {
                     entity_id,
                     animation: code,
                 })?,

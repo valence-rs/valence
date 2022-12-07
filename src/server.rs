@@ -93,6 +93,7 @@ struct SharedServerInner<C: Config> {
     address: SocketAddr,
     tick_rate: Ticks,
     connection_mode: ConnectionMode,
+    compression_threshold: Option<u32>,
     max_connections: usize,
     incoming_capacity: usize,
     outgoing_capacity: usize,
@@ -109,8 +110,8 @@ struct SharedServerInner<C: Config> {
     /// The instant the server was started.
     start_instant: Instant,
     /// Receiver for new clients past the login stage.
-    new_clients_rx: Receiver<NewClientMessage>,
-    new_clients_tx: Sender<NewClientMessage>,
+    new_clients_send: Sender<NewClientMessage>,
+    new_clients_recv: Receiver<NewClientMessage>,
     /// Incremented on every game tick.
     tick_counter: AtomicI64,
     /// A semaphore used to limit the number of simultaneous connections to the
@@ -316,6 +317,8 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         "outgoing packet capacity must be nonzero"
     );
 
+    let compression_threshold = cfg.compression_threshold();
+
     let tokio_handle = cfg.tokio_handle();
 
     let dimensions = cfg.dimensions();
@@ -330,7 +333,7 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         rsa_der::public_key_to_der(&rsa_key.n().to_bytes_be(), &rsa_key.e().to_bytes_be())
             .into_boxed_slice();
 
-    let (new_clients_tx, new_clients_rx) = flume::bounded(1024);
+    let (new_clients_send, new_clients_recv) = flume::bounded(64);
 
     let runtime = if tokio_handle.is_none() {
         Some(Runtime::new()?)
@@ -350,6 +353,7 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         address,
         tick_rate,
         connection_mode,
+        compression_threshold,
         max_connections,
         incoming_capacity: incoming_packet_capacity,
         outgoing_capacity: outgoing_packet_capacity,
@@ -359,8 +363,8 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         biomes,
         registry_codec,
         start_instant: Instant::now(),
-        new_clients_rx,
-        new_clients_tx,
+        new_clients_send,
+        new_clients_recv,
         tick_counter: AtomicI64::new(0),
         connection_sema: Arc::new(Semaphore::new(max_connections)),
         shutdown_result: Mutex::new(None),
@@ -411,7 +415,11 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
             return res;
         }
 
-        while let Ok(msg) = shared.0.new_clients_rx.try_recv() {
+        for _ in 0..shared.0.new_clients_recv.len() {
+            let Ok(msg) = shared.0.new_clients_recv.try_recv() else {
+                break
+            };
+
             info!(
                 username = %msg.ncd.username,
                 uuid = %msg.ncd.uuid,
@@ -435,7 +443,11 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
 
         info_span!("configured_update").in_scope(|| shared.config().update(server));
 
-        update_entity_partition(&server.entities, &mut server.worlds);
+        update_entity_partition(
+            &server.entities,
+            &mut server.worlds,
+            shared.0.compression_threshold,
+        );
 
         server.clients.par_iter_mut().for_each(|(_, client)| {
             client.update(
@@ -568,7 +580,7 @@ async fn handle_handshake(
                     permit,
                 };
 
-                let _ = server.0.new_clients_tx.send_async(msg).await;
+                let _ = server.0.new_clients_send.send_async(msg).await;
                 Ok(())
             }
             None => Ok(()),
@@ -660,7 +672,7 @@ async fn handle_login(
         ConnectionMode::Velocity { secret } => login::velocity(mngr, username, secret).await?,
     };
 
-    if let Some(threshold) = server.0.cfg.compression_threshold() {
+    if let Some(threshold) = server.0.compression_threshold {
         mngr.send_packet(&SetCompression {
             threshold: VarInt(threshold as i32),
         })

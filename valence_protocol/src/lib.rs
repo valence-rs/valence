@@ -76,7 +76,7 @@ pub use block::{BlockFace, BlockKind, BlockState};
 pub use block_pos::BlockPos;
 pub use byte_angle::ByteAngle;
 pub use cache::{Cached, EncodedBuf};
-pub use codec::{PacketDecoder, PacketEncoder};
+pub use codec::*;
 pub use ident::Ident;
 pub use inventory::InventoryKind;
 pub use item::{ItemKind, ItemStack};

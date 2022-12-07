@@ -1,3 +1,5 @@
+use std::io::Write;
+
 #[cfg(feature = "encryption")]
 use aes::cipher::{AsyncStreamCipher, NewCipher};
 use anyhow::{bail, ensure};
@@ -32,6 +34,10 @@ impl PacketEncoder {
         P: Encode + Packet + ?Sized,
     {
         self.append_or_prepend_packet::<true>(pkt)
+    }
+
+    pub fn append_bytes(&mut self, bytes: &[u8]) {
+        self.buf.extend_from_slice(bytes)
     }
 
     pub fn prepend_packet<P>(&mut self, pkt: &P) -> Result<()>
@@ -187,6 +193,71 @@ fn move_forward_by(bytes: &mut BytesMut, count: usize) -> &mut [u8] {
     bytes.put_bytes(0, count);
     bytes.copy_within(..len, count);
     &mut bytes[..count]
+}
+
+pub fn write_packet<W, P>(mut writer: W, packet: &P) -> Result<()>
+where
+    W: Write,
+    P: Encode + Packet + ?Sized,
+{
+    let packet_len = packet.encoded_len();
+
+    ensure!(
+        packet_len <= MAX_PACKET_SIZE as usize,
+        "packet exceeds maximum length"
+    );
+
+    VarInt(packet_len as i32).encode(&mut writer)?;
+    packet.encode(&mut writer)
+}
+
+#[cfg(feature = "compression")]
+pub fn write_packet_compressed<W, P>(
+    mut writer: W,
+    threshold: u32,
+    scratch: &mut Vec<u8>,
+    packet: &P,
+) -> Result<()>
+where
+    W: Write,
+    P: Encode + Packet + ?Sized,
+{
+    use flate2::write::ZlibEncoder;
+    use flate2::Compression;
+
+    let data_len = packet.encoded_len();
+
+    if data_len > threshold as usize {
+        scratch.clear();
+
+        let mut z = ZlibEncoder::new(&mut *scratch, Compression::new(4));
+        packet.encode(&mut z)?;
+        drop(z);
+
+        let packet_len = VarInt(data_len as i32).encoded_len() + scratch.len();
+
+        ensure!(
+            packet_len <= MAX_PACKET_SIZE as usize,
+            "packet exceeds maximum length"
+        );
+
+        VarInt(packet_len as i32).encode(&mut writer)?;
+        VarInt(data_len as i32).encode(&mut writer)?;
+        writer.write_all(scratch)?;
+    } else {
+        let packet_len = VarInt(0).encoded_len() + data_len;
+
+        ensure!(
+            packet_len <= MAX_PACKET_SIZE as usize,
+            "packet exceeds maximum length"
+        );
+
+        VarInt(packet_len as i32).encode(&mut writer)?;
+        VarInt(0).encode(&mut writer)?; // 0 for no compression on this packet.
+        packet.encode(&mut writer)?;
+    }
+
+    Ok(())
 }
 
 #[derive(Default)]

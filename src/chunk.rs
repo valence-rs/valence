@@ -105,7 +105,7 @@ impl<C: Config> Chunks<C> {
         self.chunks.get(&pos.into())?.0.as_ref()
     }
 
-    pub(crate) fn get_full(
+    pub(crate) fn chunk_and_cell(
         &self,
         pos: ChunkPos,
     ) -> Option<&(Option<LoadedChunk<C>>, PartitionCell)> {
@@ -137,6 +137,12 @@ impl<C: Config> Chunks<C> {
         self.chunks
             .iter_mut()
             .filter_map(|(&pos, (chunk, _))| chunk.as_mut().map(|c| (pos, c)))
+    }
+
+    fn cells_mut(
+        &mut self,
+    ) -> impl ExactSizeIterator<Item = &mut PartitionCell> + FusedIterator + '_ {
+        self.chunks.iter_mut().map(|(_, (_, cell))| cell)
     }
 
     /// Returns a parallel iterator over all chunks in the world in an
@@ -600,7 +606,7 @@ impl<C: Config> LoadedChunk<C> {
         pos: ChunkPos,
         biome_registry_len: usize,
     ) -> anyhow::Result<()> {
-        debug_assert!(scratch.is_empty());
+        scratch.clear();
 
         for sect in self.sections.iter() {
             sect.non_air_count.encode(&mut *scratch)?;
