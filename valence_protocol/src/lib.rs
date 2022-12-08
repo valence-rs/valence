@@ -178,7 +178,7 @@ pub const MAX_PACKET_SIZE: i32 = 2097152;
 ///     third: [1.5, 3.14, 2.718],
 /// };
 ///
-/// let mut buf = Vec::new();
+/// let mut buf = vec![];
 /// value.encode(&mut buf).unwrap();
 ///
 /// println!("{buf:?}");

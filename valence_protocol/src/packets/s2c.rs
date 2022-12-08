@@ -512,6 +512,14 @@ pub mod play {
         pub blocks: Vec<VarLong>,
     }
 
+    #[derive(Clone, Debug, Encode, Packet)]
+    #[packet_id = 0x40]
+    pub struct UpdateSectionBlocksEncode<'a> {
+        pub chunk_section_position: i64,
+        pub invert_trust_edges: bool,
+        pub blocks: &'a [VarLong],
+    }
+
     #[derive(Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x43]
     pub struct SetActionBarText(pub Text);

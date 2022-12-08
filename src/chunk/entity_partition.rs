@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 use crate::chunk::ChunkPos;
 use crate::config::Config;
 use crate::entity::{Entities, EntityId};
-use crate::packet::PacketBuf;
+use crate::packet::PacketWriter;
 use crate::world::Worlds;
 
 pub struct PartitionCell {
@@ -26,9 +26,9 @@ impl PartitionCell {
     pub(super) fn new() -> Self {
         Self {
             entities: BTreeSet::new(),
-            incoming: Vec::new(),
-            outgoing: Vec::new(),
-            cached_update_packets: Vec::new(),
+            incoming: vec![],
+            outgoing: vec![],
+            cached_update_packets: vec![],
         }
     }
 
@@ -103,8 +103,8 @@ pub fn update_entity_partition<C: Config>(
                         let cell = PartitionCell {
                             entities: BTreeSet::from([entity_id]),
                             incoming: vec![(entity_id, None)],
-                            outgoing: Vec::new(),
-                            cached_update_packets: Vec::new(),
+                            outgoing: vec![],
+                            cached_update_packets: vec![],
                         };
 
                         ve.insert((None, cell));
@@ -134,8 +134,8 @@ pub fn update_entity_partition<C: Config>(
                         let cell = PartitionCell {
                             entities: BTreeSet::from([entity_id]),
                             incoming: vec![(entity_id, Some(old_pos))],
-                            outgoing: Vec::new(),
-                            cached_update_packets: Vec::new(),
+                            outgoing: vec![],
+                            cached_update_packets: vec![],
                         };
 
                         ve.insert((None, cell));
@@ -149,7 +149,9 @@ pub fn update_entity_partition<C: Config>(
     }
 
     // Cache the entity update packets.
-    let mut scratch = Vec::new();
+    let mut scratch = vec![];
+    let mut compression_scratch = vec![];
+
     for (_, world) in worlds.iter_mut() {
         for cell in world.chunks.cells_mut() {
             cell.cached_update_packets.clear();
@@ -157,15 +159,17 @@ pub fn update_entity_partition<C: Config>(
             for &id in &cell.entities {
                 let start = cell.cached_update_packets.len();
 
-                let buf = PacketBuf::new(
+                let writer = PacketWriter::new(
                     &mut cell.cached_update_packets,
                     compression_threshold,
-                    Vec::new(),
+                    &mut compression_scratch,
                 );
 
                 let entity = &mut entities[id];
 
-                entity.write_update_packets(buf, id, &mut scratch).unwrap();
+                entity
+                    .write_update_packets(writer, id, &mut scratch)
+                    .unwrap();
 
                 let end = cell.cached_update_packets.len();
                 entity.self_update_range = start..end;

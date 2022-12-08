@@ -5,7 +5,7 @@ const ROOT_NAME: &str = "The root name‽";
 
 #[test]
 fn round_trip() {
-    let mut buf = Vec::new();
+    let mut buf = vec![];
 
     let compound = example_compound();
 
@@ -26,7 +26,7 @@ fn check_min_sizes() {
         const COMPOUND_OVERHEAD: usize = 1 + 2 + 1 + 2 + 1;
 
         let dbg = format!("{min_val:?}");
-        let mut buf = Vec::new();
+        let mut buf = vec![];
 
         to_binary_writer(&mut buf, &compound!("" => min_val), "").unwrap();
 
@@ -91,7 +91,7 @@ fn deeply_nested_list_decode() {
 fn correct_length() {
     let c = example_compound();
 
-    let mut buf = Vec::new();
+    let mut buf = vec![];
     to_binary_writer(&mut buf, &c, "abc").unwrap();
 
     assert_eq!(c.binary_encoded_len("abc"), buf.len());

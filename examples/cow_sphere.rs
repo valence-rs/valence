@@ -14,7 +14,7 @@ pub fn main() -> ShutdownResult {
         },
         ServerState {
             player_list: None,
-            cows: Vec::new(),
+            cows: vec![],
         },
     )
 }

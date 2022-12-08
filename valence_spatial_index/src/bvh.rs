@@ -29,8 +29,8 @@ type NodeIdx = u32;
 impl<T: Bounded3D + Send + Sync> Bvh<T> {
     pub fn new() -> Self {
         Self {
-            internal_nodes: Vec::new(),
-            leaf_nodes: Vec::new(),
+            internal_nodes: vec![],
+            leaf_nodes: vec![],
             root: NodeIdx::MAX,
         }
     }

@@ -295,8 +295,8 @@ impl<C: Config> Client<C> {
             send: Some(send),
             recv,
             _permit: permit,
-            scratch: Vec::new(),
-            entities_to_unload: Vec::new(),
+            scratch: vec![],
+            entities_to_unload: vec![],
             self_entity: EntityId::NULL,
             username: ncd.username,
             uuid: ncd.uuid,
@@ -626,7 +626,7 @@ impl<C: Config> Client<C> {
             properties: vec![AttributeProperty {
                 key: Ident::new("generic.attack_speed").unwrap(),
                 value: speed,
-                modifiers: Vec::new(),
+                modifiers: vec![],
             }],
         });
     }
@@ -638,7 +638,7 @@ impl<C: Config> Client<C> {
             properties: vec![AttributeProperty {
                 key: Ident::new("generic.movement_speed").unwrap(),
                 value: speed,
-                modifiers: Vec::new(),
+                modifiers: vec![],
             }],
         });
     }
@@ -1082,8 +1082,6 @@ impl<C: Config> Client<C> {
 
         let old_chunk_pos = ChunkPos::at(self.old_position.x, self.old_position.z);
 
-        let biome_registry_len = shared.biomes().len();
-
         let mut self_entity_pos = ChunkPos::new(0, 0);
         let mut self_update_range = 0..0;
 
@@ -1100,8 +1098,6 @@ impl<C: Config> Client<C> {
 
         // Iterate over all visible chunks from the previous tick.
         if let Some(old_world) = worlds.get(self.old_world) {
-            let old_dimension = shared.dimension(old_world.dimension());
-
             for pos in old_chunk_pos.in_view(self.old_view_distance) {
                 if let Some((chunk, cell)) = old_world.chunks.chunk_and_cell(pos) {
                     if let Some(chunk) = chunk {
@@ -1109,16 +1105,11 @@ impl<C: Config> Client<C> {
                         match (chunk.created_this_tick(), chunk.deleted()) {
                             (false, false) => {
                                 // Update the chunk.
-                                chunk.send_block_change_packets(send, pos, old_dimension.min_y)?;
+                                chunk.write_block_change_packets(&mut *send)?;
                             }
                             (true, false) => {
                                 // Chunk needs initialization. Send packet to load it.
-                                chunk.send_chunk_data_packet(
-                                    send,
-                                    &mut self.scratch,
-                                    pos,
-                                    biome_registry_len,
-                                )?;
+                                chunk.write_chunk_data_packet(&mut *send)?;
                             }
                             (false, true) => {
                                 // Chunk was previously loaded and is now deleted.
@@ -1232,12 +1223,7 @@ impl<C: Config> Client<C> {
                 if let Some((chunk, cell)) = world.chunks.chunk_and_cell(pos) {
                     if let Some(chunk) = chunk {
                         if !chunk.deleted() {
-                            chunk.send_chunk_data_packet(
-                                send,
-                                &mut self.scratch,
-                                pos,
-                                biome_registry_len,
-                            )?;
+                            chunk.write_chunk_data_packet(&mut *send)?;
                         }
                     }
 
@@ -1296,12 +1282,7 @@ impl<C: Config> Client<C> {
                     if let Some((chunk, cell)) = world.chunks.chunk_and_cell(pos) {
                         if let Some(chunk) = chunk {
                             if !chunk.deleted() {
-                                chunk.send_chunk_data_packet(
-                                    send,
-                                    &mut self.scratch,
-                                    pos,
-                                    biome_registry_len,
-                                )?;
+                                chunk.write_chunk_data_packet(&mut *send)?;
                             }
                         }
 

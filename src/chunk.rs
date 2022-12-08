@@ -19,13 +19,13 @@ pub use pos::ChunkPos;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use valence_nbt::compound;
 use valence_protocol::packets::s2c::play::{
-    BlockUpdate, ChunkDataAndUpdateLight, UpdateSectionBlocks,
+    BlockUpdate, ChunkDataAndUpdateLight, UpdateSectionBlocksEncode,
 };
 use valence_protocol::{BlockPos, BlockState, Encode, VarInt, VarLong};
 
 use crate::biome::BiomeId;
 use crate::config::Config;
-use crate::server::PlayPacketSender;
+use crate::packet::{PacketWriter, WritePacket};
 use crate::util::bit_width;
 
 pub(crate) mod entity_partition;
@@ -245,18 +245,181 @@ impl<C: Config> Chunks<C> {
         )
     }
 
+    pub(crate) fn update_caches(
+        &mut self,
+        compression_threshold: Option<u32>,
+        biome_registry_len: usize,
+    ) {
+        let min_y = self.dimension_min_y;
+
+        self.par_iter_mut().for_each(|(pos, chunk)| {
+            let mut compression_scratch = vec![];
+            let mut blocks = vec![];
+
+            if chunk.deleted {
+                // Deleted chunks are not sending packets to anyone.
+                return;
+            }
+
+            chunk.cached_update_packets.clear();
+            let mut any_blocks_modified = false;
+
+            for (sect_y, sect) in chunk.sections.iter_mut().enumerate() {
+                let modified_blocks_count: u32 = sect
+                    .modified_blocks
+                    .iter()
+                    .map(|&bits| bits.count_ones())
+                    .sum();
+
+                // If the chunk is created this tick, clients are only going to be sent the
+                // chunk data packet so there is no need to cache the modified blocks packets.
+                if !chunk.created_this_tick {
+                    if modified_blocks_count == 1 {
+                        let (i, bits) = sect
+                            .modified_blocks
+                            .iter()
+                            .cloned()
+                            .enumerate()
+                            .find(|(_, n)| *n > 0)
+                            .expect("invalid modified count");
+
+                        debug_assert_eq!(bits.count_ones(), 1);
+
+                        let idx = i * USIZE_BITS + bits.trailing_zeros() as usize;
+                        let block = sect.block_states.get(idx);
+
+                        let global_x = pos.x * 16 + (idx % 16) as i32;
+                        let global_y = sect_y as i32 * 16 + (idx / (16 * 16)) as i32 + min_y;
+                        let global_z = pos.z * 16 + (idx / 16 % 16) as i32;
+
+                        let mut writer = PacketWriter {
+                            writer: &mut chunk.cached_update_packets,
+                            threshold: compression_threshold,
+                            scratch: &mut compression_scratch,
+                        };
+
+                        writer
+                            .write_packet(&BlockUpdate {
+                                position: BlockPos::new(global_x, global_y, global_z),
+                                block_id: VarInt(block.to_raw() as _),
+                            })
+                            .unwrap();
+                    } else if modified_blocks_count > 1 {
+                        blocks.clear();
+
+                        for y in 0..16 {
+                            for z in 0..16 {
+                                for x in 0..16 {
+                                    let idx = x as usize + z as usize * 16 + y as usize * 16 * 16;
+
+                                    if sect.is_block_modified(idx) {
+                                        let block_id = sect.block_states.get(idx).to_raw();
+                                        let compact =
+                                            (block_id as i64) << 12 | (x << 8 | z << 4 | y);
+
+                                        blocks.push(VarLong(compact));
+                                    }
+                                }
+                            }
+                        }
+
+                        let chunk_section_position = (pos.x as i64) << 42
+                            | (pos.z as i64 & 0x3fffff) << 20
+                            | (sect_y as i64 + min_y.div_euclid(16) as i64) & 0xfffff;
+
+                        let mut writer = PacketWriter {
+                            writer: &mut chunk.cached_update_packets,
+                            threshold: compression_threshold,
+                            scratch: &mut compression_scratch,
+                        };
+
+                        writer
+                            .write_packet(&UpdateSectionBlocksEncode {
+                                chunk_section_position,
+                                invert_trust_edges: false,
+                                blocks: &blocks,
+                            })
+                            .unwrap();
+                    }
+                }
+
+                if modified_blocks_count > 0 {
+                    any_blocks_modified = true;
+                    sect.modified_blocks.fill(0);
+                }
+            }
+
+            // Regenerate the chunk data packet if the cache was invalidated.
+            if any_blocks_modified || chunk.any_biomes_modified || chunk.created_this_tick {
+                chunk.any_biomes_modified = false;
+                chunk.cached_init_packet.clear();
+
+                let mut scratch = vec![];
+
+                for sect in chunk.sections.iter() {
+                    sect.non_air_count
+                        .encode(&mut scratch)
+                        .unwrap();
+
+                    sect.block_states
+                        .encode_mc_format(
+                            &mut scratch,
+                            |b| b.to_raw().into(),
+                            4,
+                            8,
+                            bit_width(BlockState::max_raw().into()),
+                        )
+                        .unwrap();
+
+                    sect.biomes
+                        .encode_mc_format(
+                            &mut scratch,
+                            |b| b.0.into(),
+                            0,
+                            3,
+                            bit_width(biome_registry_len - 1),
+                        )
+                        .unwrap();
+                }
+
+                let mut writer = PacketWriter {
+                    writer: &mut chunk.cached_init_packet,
+                    threshold: compression_threshold,
+                    scratch: &mut compression_scratch,
+                };
+
+                writer
+                    .write_packet(&ChunkDataAndUpdateLight {
+                        chunk_x: pos.x,
+                        chunk_z: pos.z,
+                        heightmaps: compound! {
+                            // TODO: MOTION_BLOCKING heightmap
+                        },
+                        blocks_and_biomes: &scratch,
+                        block_entities: vec![],
+                        trust_edges: true,
+                        sky_light_mask: vec![],
+                        block_light_mask: vec![],
+                        empty_sky_light_mask: vec![],
+                        empty_block_light_mask: vec![],
+                        sky_light_arrays: vec![],
+                        block_light_arrays: vec![],
+                    })
+                    .unwrap();
+            }
+
+            debug_assert!(!chunk.cached_init_packet.is_empty());
+        });
+    }
+
+    /// Clears changes to partition cells and removes deleted chunks and
+    /// partition cells.
     pub(crate) fn update(&mut self) {
         self.chunks.retain(|_, (chunk_opt, cell)| {
             if let Some(chunk) = chunk_opt {
                 if chunk.deleted {
                     *chunk_opt = None;
                 } else {
-                    for sect in chunk.sections.iter_mut() {
-                        if sect.modified_blocks_count > 0 {
-                            sect.modified_blocks_count = 0;
-                            sect.modified_blocks.fill(0);
-                        }
-                    }
                     chunk.created_this_tick = false;
                 }
             }
@@ -362,9 +525,7 @@ impl UnloadedChunk {
     /// Panics if the value of `height` does not meet the following criteria:
     /// `height % 16 == 0 && height <= 4064`.
     pub fn new(height: usize) -> Self {
-        let mut chunk = Self {
-            sections: Vec::new(),
-        };
+        let mut chunk = Self { sections: vec![] };
 
         chunk.resize(height);
         chunk
@@ -496,6 +657,10 @@ pub struct LoadedChunk<C: Config> {
     sections: Box<[ChunkSection]>,
     // TODO block_entities: BTreeMap<u32, BlockEntity>,
     // TODO: motion_blocking_heightmap: Box<[u16; 256]>,
+    cached_init_packet: Vec<u8>,
+    cached_update_packets: Vec<u8>,
+    /// If any of the biomes in this chunk were modified this tick.
+    any_biomes_modified: bool,
     created_this_tick: bool,
     deleted: bool,
 }
@@ -521,9 +686,6 @@ struct ChunkSection {
     /// Contains a set bit for every block that has been modified in this
     /// section this tick. Ignored in unloaded chunks.
     modified_blocks: [usize; SECTION_BLOCK_COUNT / USIZE_BITS],
-    /// The number of blocks that have been modified in this section this tick.
-    /// Ignored in unloaded chunks.
-    modified_blocks_count: u16,
     /// Number of non-air blocks in this section.
     non_air_count: u16,
     biomes: PalettedContainer<BiomeId, 64, 32>,
@@ -534,9 +696,8 @@ impl Default for ChunkSection {
     fn default() -> Self {
         Self {
             block_states: Default::default(),
-            modified_blocks: [Default::default(); SECTION_BLOCK_COUNT / USIZE_BITS],
-            modified_blocks_count: Default::default(),
-            non_air_count: Default::default(),
+            modified_blocks: [0; SECTION_BLOCK_COUNT / USIZE_BITS],
+            non_air_count: 0,
             biomes: Default::default(),
         }
     }
@@ -547,15 +708,11 @@ const USIZE_BITS: usize = usize::BITS as _;
 
 impl ChunkSection {
     fn mark_block_as_modified(&mut self, idx: usize) {
-        if !self.is_block_modified(idx) {
-            self.modified_blocks[idx / USIZE_BITS] |= 1 << (idx % USIZE_BITS);
-            self.modified_blocks_count += 1;
-        }
+        self.modified_blocks[idx / USIZE_BITS] |= 1 << (idx % USIZE_BITS);
     }
 
     fn mark_all_blocks_as_modified(&mut self) {
         self.modified_blocks.fill(usize::MAX);
-        self.modified_blocks_count = SECTION_BLOCK_COUNT as u16;
     }
 
     fn is_block_modified(&self, idx: usize) -> bool {
@@ -570,6 +727,9 @@ impl<C: Config> LoadedChunk<C> {
         Self {
             state,
             sections: chunk.sections.into(),
+            cached_init_packet: vec![],
+            cached_update_packets: vec![],
+            any_biomes_modified: false,
             created_this_tick: true,
             deleted: false,
         }
@@ -599,116 +759,21 @@ impl<C: Config> LoadedChunk<C> {
     }
 
     /// Queues the chunk data packet for this chunk with the given position.
-    pub(crate) fn send_chunk_data_packet(
+    ///
+    /// This will initialize the chunk for the client.
+    pub(crate) fn write_chunk_data_packet(
         &self,
-        send: &mut PlayPacketSender,
-        scratch: &mut Vec<u8>,
-        pos: ChunkPos,
-        biome_registry_len: usize,
+        mut writer: impl WritePacket,
     ) -> anyhow::Result<()> {
-        scratch.clear();
-
-        for sect in self.sections.iter() {
-            sect.non_air_count.encode(&mut *scratch)?;
-
-            // TODO: cache blocks and biomes?
-
-            sect.block_states.encode_mc_format(
-                &mut *scratch,
-                |b| b.to_raw().into(),
-                4,
-                8,
-                bit_width(BlockState::max_raw().into()),
-            )?;
-
-            sect.biomes.encode_mc_format(
-                &mut *scratch,
-                |b| b.0.into(),
-                0,
-                3,
-                bit_width(biome_registry_len - 1),
-            )?;
-        }
-
-        send.append_packet(&ChunkDataAndUpdateLight {
-            chunk_x: pos.x,
-            chunk_z: pos.z,
-            heightmaps: compound! {
-                // TODO: MOTION_BLOCKING heightmap
-            },
-            blocks_and_biomes: scratch,
-            block_entities: vec![], // TODO
-            trust_edges: true,
-            sky_light_mask: Vec::new(),
-            block_light_mask: Vec::new(),
-            empty_sky_light_mask: Vec::new(),
-            empty_block_light_mask: Vec::new(),
-            sky_light_arrays: vec![],
-            block_light_arrays: vec![],
-        })
+        writer.write_bytes(&self.cached_init_packet)
     }
 
     /// Queues block change packets for this chunk.
-    pub(crate) fn send_block_change_packets(
+    pub(crate) fn write_block_change_packets(
         &self,
-        send: &mut PlayPacketSender,
-        pos: ChunkPos,
-        min_y: i32,
+        mut writer: impl WritePacket,
     ) -> anyhow::Result<()> {
-        for (sect_y, sect) in self.sections.iter().enumerate() {
-            if sect.modified_blocks_count == 1 {
-                let (i, bits) = sect
-                    .modified_blocks
-                    .iter()
-                    .cloned()
-                    .enumerate()
-                    .find(|(_, n)| *n > 0)
-                    .expect("invalid modified count");
-
-                debug_assert_eq!(bits.count_ones(), 1);
-
-                let idx = i * USIZE_BITS + bits.trailing_zeros() as usize;
-                let block = sect.block_states.get(idx);
-
-                let global_x = pos.x * 16 + (idx % 16) as i32;
-                let global_y = sect_y as i32 * 16 + (idx / (16 * 16)) as i32 + min_y;
-                let global_z = pos.z * 16 + (idx / 16 % 16) as i32;
-
-                send.append_packet(&BlockUpdate {
-                    position: BlockPos::new(global_x, global_y, global_z),
-                    block_id: VarInt(block.to_raw() as _),
-                })?;
-            } else if sect.modified_blocks_count > 1 {
-                let mut blocks = Vec::with_capacity(sect.modified_blocks_count.into());
-
-                for y in 0..16 {
-                    for z in 0..16 {
-                        for x in 0..16 {
-                            let idx = x as usize + z as usize * 16 + y as usize * 16 * 16;
-
-                            if sect.is_block_modified(idx) {
-                                let block_id = sect.block_states.get(idx).to_raw();
-                                let compact = (block_id as i64) << 12 | (x << 8 | z << 4 | y);
-
-                                blocks.push(VarLong(compact));
-                            }
-                        }
-                    }
-                }
-
-                let chunk_section_position = (pos.x as i64) << 42
-                    | (pos.z as i64 & 0x3fffff) << 20
-                    | (sect_y as i64 + min_y.div_euclid(16) as i64) & 0xfffff;
-
-                send.append_packet(&UpdateSectionBlocks {
-                    chunk_section_position,
-                    invert_trust_edges: false,
-                    blocks,
-                })?;
-            }
-        }
-
-        Ok(())
+        writer.write_bytes(&self.cached_update_packets)
     }
 }
 
@@ -797,15 +862,24 @@ impl<C: Config> Chunk for LoadedChunk<C> {
             "chunk biome offsets of ({x}, {y}, {z}) are out of bounds"
         );
 
-        self.sections[y / 4]
+        let old_biome = self.sections[y / 4]
             .biomes
-            .set(x + z * 4 + y % 4 * 4 * 4, biome)
+            .set(x + z * 4 + y % 4 * 4 * 4, biome);
+
+        if biome != old_biome {
+            self.any_biomes_modified = true;
+        }
+
+        old_biome
     }
 
     fn fill_biomes(&mut self, biome: BiomeId) {
         for sect in self.sections.iter_mut() {
             sect.biomes.fill(biome);
         }
+
+        // TODO: this is set to true unconditionally, but it doesn't have to be.
+        self.any_biomes_modified = true;
     }
 
     fn optimize(&mut self) {
@@ -813,6 +887,9 @@ impl<C: Config> Chunk for LoadedChunk<C> {
             sect.block_states.optimize();
             sect.biomes.optimize();
         }
+
+        self.cached_init_packet.shrink_to_fit();
+        self.cached_update_packets.shrink_to_fit();
     }
 }
 

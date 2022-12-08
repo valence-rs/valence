@@ -255,7 +255,7 @@ impl<C: Config> PlayerList<C> {
                 uuid,
                 username: &e.username,
                 properties: {
-                    let mut properties = Vec::new();
+                    let mut properties = vec![];
                     if let Some(textures) = &e.textures {
                         properties.push(SignedProperty {
                             name: "textures",
@@ -293,14 +293,14 @@ impl<C: Config> PlayerList<C> {
             ))?;
         }
 
-        let mut add_player = Vec::new();
-        let mut game_mode = Vec::new();
-        let mut ping = Vec::new();
-        let mut display_name = Vec::new();
+        let mut add_player = vec![];
+        let mut game_mode = vec![];
+        let mut ping = vec![];
+        let mut display_name = vec![];
 
         for (&uuid, e) in self.entries.iter() {
             if e.bits.created_this_tick() {
-                let mut properties = Vec::new();
+                let mut properties = vec![];
                 if let Some(textures) = &e.textures {
                     properties.push(SignedProperty {
                         name: "textures",

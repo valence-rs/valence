@@ -503,7 +503,7 @@ fn collect_all_fields<'a>(entity_name: &str, entities: &'a Entities) -> Vec<&'a 
         }
     }
 
-    let mut fields = Vec::new();
+    let mut fields = vec![];
     rec(entity_name, entities, &mut fields);
 
     fields.sort_by_key(|f| f.index);

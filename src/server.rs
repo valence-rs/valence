@@ -398,7 +398,7 @@ fn make_registry_codec(dimensions: &[Dimension], biomes: &[Biome]) -> Compound {
         },
         ident!("chat_type") => compound! {
             "type" => ident!("chat_type"),
-            "value" => List::Compound(Vec::new()),
+            "value" => List::Compound(vec![]),
         },
     }
 }
@@ -407,6 +407,9 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
     let mut tick_start = Instant::now();
     let mut current_tick = 0;
     let shared = server.shared.clone();
+
+    let biome_registry_len = shared.0.biomes.len();
+    let compression_threshold = shared.0.compression_threshold;
 
     loop {
         let _span = info_span!("update_loop", tick = current_tick).entered();
@@ -446,8 +449,14 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
         update_entity_partition(
             &mut server.entities,
             &mut server.worlds,
-            shared.0.compression_threshold,
+            compression_threshold,
         );
+
+        for (_, world) in server.worlds.iter_mut() {
+            world
+                .chunks
+                .update_caches(compression_threshold, biome_registry_len);
+        }
 
         server.clients.par_iter_mut().for_each(|(_, client)| {
             client.update(
@@ -690,7 +699,7 @@ async fn handle_login(
     mngr.send_packet(&LoginSuccess {
         uuid: ncd.uuid,
         username: ncd.username.as_str_username(),
-        properties: Vec::new(),
+        properties: vec![],
     })
     .await?;
 

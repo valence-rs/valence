@@ -23,14 +23,14 @@ impl<W: WritePacket> WritePacket for &mut W {
     }
 }
 
-pub struct PacketBuf<W> {
+pub struct PacketWriter<'a, W> {
     pub writer: W,
     pub threshold: Option<u32>,
-    pub scratch: Vec<u8>,
+    pub scratch: &'a mut Vec<u8>,
 }
 
-impl<W: Write> PacketBuf<W> {
-    pub fn new(writer: W, threshold: Option<u32>, scratch: Vec<u8>) -> Self {
+impl<'a, W: Write> PacketWriter<'a, W> {
+    pub fn new(writer: W, threshold: Option<u32>, scratch: &'a mut Vec<u8>) -> PacketWriter<W> {
         Self {
             writer,
             threshold,
@@ -39,13 +39,13 @@ impl<W: Write> PacketBuf<W> {
     }
 }
 
-impl<W: Write> WritePacket for PacketBuf<W> {
+impl<W: Write> WritePacket for PacketWriter<'_, W> {
     fn write_packet<P>(&mut self, packet: &P) -> anyhow::Result<()>
     where
         P: Encode + Packet + ?Sized,
     {
         if let Some(threshold) = self.threshold {
-            write_packet_compressed(&mut self.writer, threshold, &mut self.scratch, packet)
+            write_packet_compressed(&mut self.writer, threshold, self.scratch, packet)
         } else {
             write_packet(&mut self.writer, packet)
         }

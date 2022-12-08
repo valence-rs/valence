@@ -85,7 +85,7 @@ impl<C: Config> Entities<C> {
                     state,
                     variants: TrackedData::new(kind),
                     self_update_range: 0..0,
-                    events: Vec::new(),
+                    events: vec![],
                     bits: EntityBits::new(),
                     world: WorldId::NULL,
                     old_world: WorldId::NULL,
