@@ -317,6 +317,23 @@ pub mod play {
         pub block_light_arrays: Vec<(VarInt, [u8; 2048])>,
     }
 
+    #[derive(Clone, Debug, Encode, Packet)]
+    #[packet_id = 0x21]
+    pub struct ChunkDataAndUpdateLightEncode<'a> {
+        pub chunk_x: i32,
+        pub chunk_z: i32,
+        pub heightmaps: &'a Compound,
+        pub blocks_and_biomes: &'a [u8],
+        pub block_entities: &'a [ChunkDataBlockEntity],
+        pub trust_edges: bool,
+        pub sky_light_mask: &'a [u64],
+        pub block_light_mask: &'a [u64],
+        pub empty_sky_light_mask: &'a [u64],
+        pub empty_block_light_mask: &'a [u64],
+        pub sky_light_arrays: &'a [(VarInt, [u8; 2048])],
+        pub block_light_arrays: &'a [(VarInt, [u8; 2048])],
+    }
+
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x23]
     pub struct ParticleS2c<'a> {

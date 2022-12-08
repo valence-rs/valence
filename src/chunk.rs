@@ -19,7 +19,7 @@ pub use pos::ChunkPos;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 use valence_nbt::compound;
 use valence_protocol::packets::s2c::play::{
-    BlockUpdate, ChunkDataAndUpdateLight, UpdateSectionBlocksEncode,
+    BlockUpdate, ChunkDataAndUpdateLightEncode, UpdateSectionBlocksEncode,
 };
 use valence_protocol::{BlockPos, BlockState, Encode, VarInt, VarLong};
 
@@ -40,14 +40,28 @@ pub struct Chunks<C: Config> {
     chunks: HashMap<ChunkPos, (Option<LoadedChunk<C>>, PartitionCell)>,
     dimension_height: i32,
     dimension_min_y: i32,
+    dummy_sky_light_mask: Box<[u64]>,
+    /// Sending sky light bits full of ones causes the vanilla client to lag
+    /// less. Hopefully we can remove this in the future.
+    dummy_sky_light_arrays: Box<[(VarInt, [u8; 2048])]>,
 }
 
 impl<C: Config> Chunks<C> {
     pub(crate) fn new(dimension_height: i32, dimension_min_y: i32) -> Self {
+        let section_count = (dimension_height / 16 + 2) as usize;
+
+        let mut sky_light_mask = vec![0; num::Integer::div_ceil(&section_count, &16)];
+
+        for i in 0..section_count {
+            sky_light_mask[i / 64] |= 1 << (i % 64);
+        }
+
         Self {
             chunks: HashMap::new(),
             dimension_height,
             dimension_min_y,
+            dummy_sky_light_mask: sky_light_mask.into(),
+            dummy_sky_light_arrays: vec![(VarInt(2048), [0xff; 2048]); section_count].into(),
         }
     }
 
@@ -252,14 +266,18 @@ impl<C: Config> Chunks<C> {
     ) {
         let min_y = self.dimension_min_y;
 
-        self.par_iter_mut().for_each(|(pos, chunk)| {
-            let mut compression_scratch = vec![];
-            let mut blocks = vec![];
+        self.chunks.par_iter_mut().for_each(|(&pos, (chunk, _))| {
+            let Some(chunk) = chunk else {
+                return;
+            };
 
             if chunk.deleted {
                 // Deleted chunks are not sending packets to anyone.
                 return;
             }
+
+            let mut compression_scratch = vec![];
+            let mut blocks = vec![];
 
             chunk.cached_update_packets.clear();
             let mut any_blocks_modified = false;
@@ -357,9 +375,7 @@ impl<C: Config> Chunks<C> {
                 let mut scratch = vec![];
 
                 for sect in chunk.sections.iter() {
-                    sect.non_air_count
-                        .encode(&mut scratch)
-                        .unwrap();
+                    sect.non_air_count.encode(&mut scratch).unwrap();
 
                     sect.block_states
                         .encode_mc_format(
@@ -389,21 +405,21 @@ impl<C: Config> Chunks<C> {
                 };
 
                 writer
-                    .write_packet(&ChunkDataAndUpdateLight {
+                    .write_packet(&ChunkDataAndUpdateLightEncode {
                         chunk_x: pos.x,
                         chunk_z: pos.z,
-                        heightmaps: compound! {
+                        heightmaps: &compound! {
                             // TODO: MOTION_BLOCKING heightmap
                         },
                         blocks_and_biomes: &scratch,
-                        block_entities: vec![],
+                        block_entities: &[],
                         trust_edges: true,
-                        sky_light_mask: vec![],
-                        block_light_mask: vec![],
-                        empty_sky_light_mask: vec![],
-                        empty_block_light_mask: vec![],
-                        sky_light_arrays: vec![],
-                        block_light_arrays: vec![],
+                        sky_light_mask: &self.dummy_sky_light_mask,
+                        block_light_mask: &[],
+                        empty_sky_light_mask: &[],
+                        empty_block_light_mask: &[],
+                        sky_light_arrays: &self.dummy_sky_light_arrays,
+                        block_light_arrays: &[],
                     })
                     .unwrap();
             }
