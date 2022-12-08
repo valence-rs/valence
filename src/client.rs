@@ -198,6 +198,10 @@ pub struct Client<C: Config> {
     _permit: OwnedSemaphorePermit,
     /// General purpose reusable buffer.
     scratch: Vec<u8>,
+    /// Reused buffer for unloading entities.
+    entities_to_unload: Vec<VarInt>,
+    /// The entity with the same UUID as this client.
+    self_entity: EntityId,
     username: Username<String>,
     uuid: Uuid,
     ip: IpAddr,
@@ -292,6 +296,8 @@ impl<C: Config> Client<C> {
             recv,
             _permit: permit,
             scratch: Vec::new(),
+            entities_to_unload: Vec::new(),
+            self_entity: EntityId::NULL,
             username: ncd.username,
             uuid: ncd.uuid,
             ip: ncd.ip,
@@ -969,6 +975,8 @@ impl<C: Config> Client<C> {
         player_lists: &PlayerLists<C>,
         inventories: &Inventories<C>,
     ) -> anyhow::Result<()> {
+        debug_assert!(self.entities_to_unload.is_empty());
+
         let Some(world) = worlds.get(self.world) else {
             bail!("client is in an invalid world")
         };
@@ -1074,8 +1082,21 @@ impl<C: Config> Client<C> {
 
         let old_chunk_pos = ChunkPos::at(self.old_position.x, self.old_position.z);
 
-        let mut entities_to_unload = Vec::new();
         let biome_registry_len = shared.biomes().len();
+
+        let mut self_entity_pos = ChunkPos::new(0, 0);
+        let mut self_update_range = 0..0;
+
+        // Get the entity with the same UUID as the client (if it exists).
+        if let Some(entity) = entities.get(self.self_entity) {
+            self_entity_pos = ChunkPos::at(entity.position().x, entity.position().z);
+            self_update_range = entity.self_update_range.clone();
+        } else if let Some(id) = entities.get_with_uuid(self.uuid) {
+            self.self_entity = id;
+            let entity = &entities[id];
+            self_entity_pos = ChunkPos::at(entity.position().x, entity.position().z);
+            self_update_range = entity.self_update_range.clone();
+        }
 
         // Iterate over all visible chunks from the previous tick.
         if let Some(old_world) = worlds.get(self.old_world) {
@@ -1120,7 +1141,7 @@ impl<C: Config> Client<C> {
                         }) {
                             // The incoming entity originated from outside the view distance, so it
                             // must be spawned.
-                            let entity = &entities[id]; // TODO: directly index into slab.
+                            let entity = &entities[id];
                             debug_assert!(!entity.deleted());
 
                             if entity.uuid() != self.uuid {
@@ -1138,36 +1159,34 @@ impl<C: Config> Client<C> {
 
                     // Send entity despawn packets for entities exiting the client's view.
                     for &(id, dest_pos) in cell.outgoing() {
-                        if dest_pos.map_or(true, |p| {
-                            !old_chunk_pos.is_in_view(p, self.old_view_distance)
-                        }) {
+                        if id != self.self_entity
+                            && dest_pos.map_or(true, |p| {
+                                !old_chunk_pos.is_in_view(p, self.old_view_distance)
+                            })
+                        {
                             // The outgoing entity moved outside the view distance, so it must be
                             // despawned.
-                            entities_to_unload.push(VarInt(id.to_raw()));
+                            self.entities_to_unload.push(VarInt(id.to_raw()));
                         }
                     }
 
-                    // Update all the entities.
-
-                    send.append_bytes(cell.cached_update_packets());
-
-                    /*
-                    for id in cell.entities() {
-                        let entity = &entities[id]; // TODO: directly index into slab.
-                        debug_assert!(!entity.deleted());
-
-                        if entity.uuid() != self.uuid {
-                            entity.write_update_packets(&mut *send, id, &mut self.scratch)?;
-                        }
-                    }*/
+                    // Update all the entities in the chunk.
+                    if pos == self_entity_pos {
+                        // Don't update the entity with the same UUID as the client.
+                        let bytes = cell.cached_update_packets();
+                        send.append_bytes(&bytes[..self_update_range.start]);
+                        send.append_bytes(&bytes[self_update_range.end..]);
+                    } else {
+                        send.append_bytes(cell.cached_update_packets());
+                    }
                 }
             }
 
-            if !entities_to_unload.is_empty() {
+            if !self.entities_to_unload.is_empty() {
                 send.append_packet(&RemoveEntitiesEncode {
-                    entity_ids: &entities_to_unload,
+                    entity_ids: &self.entities_to_unload,
                 })?;
-                entities_to_unload.clear();
+                self.entities_to_unload.clear();
             }
         }
 
@@ -1192,15 +1211,19 @@ impl<C: Config> Client<C> {
                             }
                         }
 
-                        entities_to_unload.extend(cell.entities().map(|id| VarInt(id.to_raw())));
+                        self.entities_to_unload.extend(
+                            cell.entities()
+                                .filter(|&id| id != self.self_entity)
+                                .map(|id| VarInt(id.to_raw())),
+                        );
                     }
                 }
 
-                if !entities_to_unload.is_empty() {
+                if !self.entities_to_unload.is_empty() {
                     send.append_packet(&RemoveEntitiesEncode {
-                        entity_ids: &entities_to_unload,
+                        entity_ids: &self.entities_to_unload,
                     })?;
-                    entities_to_unload.clear();
+                    self.entities_to_unload.clear();
                 }
             }
 
@@ -1219,7 +1242,7 @@ impl<C: Config> Client<C> {
                     }
 
                     for id in cell.entities() {
-                        let entity = &entities[id]; // TODO: directly index into slab.
+                        let entity = &entities[id];
                         debug_assert!(!entity.deleted());
 
                         if entity.uuid() != self.uuid {
@@ -1252,16 +1275,20 @@ impl<C: Config> Client<C> {
                             }
                         }
 
-                        entities_to_unload.extend(cell.entities().map(|id| VarInt(id.to_raw())));
+                        self.entities_to_unload.extend(
+                            cell.entities()
+                                .filter(|&id| id != self.self_entity)
+                                .map(|id| VarInt(id.to_raw())),
+                        );
                     }
                 }
             }
 
-            if !entities_to_unload.is_empty() {
+            if !self.entities_to_unload.is_empty() {
                 send.append_packet(&RemoveEntitiesEncode {
-                    entity_ids: &entities_to_unload,
+                    entity_ids: &self.entities_to_unload,
                 })?;
-                entities_to_unload.clear();
+                self.entities_to_unload.clear();
             }
 
             for pos in chunk_pos.in_view(self.view_distance) {
@@ -1279,7 +1306,7 @@ impl<C: Config> Client<C> {
                         }
 
                         for id in cell.entities() {
-                            let entity = &entities[id]; // TODO: directly index into slab.
+                            let entity = &entities[id];
                             debug_assert!(!entity.deleted());
 
                             if entity.uuid() != self.uuid {

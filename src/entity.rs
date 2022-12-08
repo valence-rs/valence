@@ -4,7 +4,7 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::iter::FusedIterator;
 use std::num::NonZeroU32;
-use std::ops::{Deref, DerefMut, Index, IndexMut};
+use std::ops::{Deref, DerefMut, Index, IndexMut, Range};
 
 use bitfield_struct::bitfield;
 pub use data::{EntityKind, TrackedData};
@@ -84,6 +84,7 @@ impl<C: Config> Entities<C> {
                 let (k, e) = self.slab.insert(Entity {
                     state,
                     variants: TrackedData::new(kind),
+                    self_update_range: 0..0,
                     events: Vec::new(),
                     bits: EntityBits::new(),
                     world: WorldId::NULL,
@@ -250,6 +251,9 @@ pub struct Entity<C: Config> {
     pub state: C::EntityState,
     variants: TrackedData,
     bits: EntityBits,
+    /// The range of bytes in the partition cell containing this entity's update
+    /// packets.
+    pub(crate) self_update_range: Range<usize>,
     events: Vec<EntityEvent>, // TODO: store this info in bits?
     world: WorldId,
     old_world: WorldId,

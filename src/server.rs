@@ -444,7 +444,7 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
         info_span!("configured_update").in_scope(|| shared.config().update(server));
 
         update_entity_partition(
-            &server.entities,
+            &mut server.entities,
             &mut server.worlds,
             shared.0.compression_threshold,
         );

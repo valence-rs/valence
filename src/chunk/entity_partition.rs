@@ -57,7 +57,7 @@ impl PartitionCell {
 /// Prepares the entity partitions in all worlds for the client update
 /// procedure.
 pub fn update_entity_partition<C: Config>(
-    entities: &Entities<C>,
+    entities: &mut Entities<C>,
     worlds: &mut Worlds<C>,
     compression_threshold: Option<u32>,
 ) {
@@ -155,15 +155,20 @@ pub fn update_entity_partition<C: Config>(
             cell.cached_update_packets.clear();
 
             for &id in &cell.entities {
+                let start = cell.cached_update_packets.len();
+
                 let buf = PacketBuf::new(
                     &mut cell.cached_update_packets,
                     compression_threshold,
                     Vec::new(),
                 );
 
-                entities[id]
-                    .write_update_packets(buf, id, &mut scratch)
-                    .unwrap();
+                let entity = &mut entities[id];
+
+                entity.write_update_packets(buf, id, &mut scratch).unwrap();
+
+                let end = cell.cached_update_packets.len();
+                entity.self_update_range = start..end;
             }
         }
     }

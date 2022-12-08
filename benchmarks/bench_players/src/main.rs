@@ -118,6 +118,7 @@ impl Config for Game {
                 client.respawn(world_id);
                 client.set_flat(true);
                 client.teleport([0.0, 1.0, 0.0], 0.0, 0.0);
+                client.set_game_mode(GameMode::Creative);
 
                 if WITH_PLAYER_ENTITIES {
                     client.set_player_list(server.state.player_list.clone());
