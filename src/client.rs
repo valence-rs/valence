@@ -42,6 +42,7 @@ use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
 use crate::server::{NewClientData, PlayPacketReceiver, PlayPacketSender, SharedServer};
 use crate::slab_versioned::{Key, VersionedSlab};
+use crate::Ticks;
 use crate::world::{WorldId, Worlds};
 
 mod event;
@@ -932,6 +933,7 @@ impl<C: Config> Client<C> {
 
     pub(crate) fn update(
         &mut self,
+        current_tick: Ticks,
         shared: &SharedServer<C>,
         entities: &Entities<C>,
         worlds: &Worlds<C>,
@@ -941,6 +943,7 @@ impl<C: Config> Client<C> {
         if let Some(mut send) = self.send.take() {
             match self.update_fallible(
                 &mut send,
+                current_tick,
                 shared,
                 entities,
                 worlds,
@@ -969,6 +972,7 @@ impl<C: Config> Client<C> {
     fn update_fallible(
         &mut self,
         send: &mut PlayPacketSender,
+        current_tick: Ticks,
         shared: &SharedServer<C>,
         entities: &Entities<C>,
         worlds: &Worlds<C>,
@@ -1064,9 +1068,6 @@ impl<C: Config> Client<C> {
                 player_lists.get(id).send_update_packets(send)?;
             }
         }
-
-        // TODO: pass in current tick as fn arg.
-        let current_tick = shared.current_tick();
 
         // Check if it's time to send another keepalive.
         if current_tick % (shared.tick_rate() * 10) == 0 {

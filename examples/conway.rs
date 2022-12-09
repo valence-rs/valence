@@ -100,6 +100,7 @@ impl Config for Game {
     }
 
     fn update(&self, server: &mut Server<Self>) {
+        let current_tick = server.current_tick();
         let (world_id, world) = server.worlds.iter_mut().next().unwrap();
 
         let spawn_pos = [
@@ -229,7 +230,7 @@ impl Config for Game {
             true
         });
 
-        if !server.state.paused && server.shared.current_tick() % 2 == 0 {
+        if !server.state.paused && current_tick % 2 == 0 {
             server
                 .state
                 .board_buf

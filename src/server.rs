@@ -3,7 +3,7 @@
 use std::error::Error;
 use std::iter::FusedIterator;
 use std::net::{IpAddr, SocketAddr};
-use std::sync::atomic::{AtomicI64, Ordering};
+use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use std::{io, thread};
@@ -55,7 +55,6 @@ mod packet_manager;
 ///
 /// [init]: crate::config::Config::init
 /// [update]: crate::config::Config::update
-#[non_exhaustive]
 pub struct Server<C: Config> {
     /// Custom state.
     pub state: C::ServerState,
@@ -71,6 +70,36 @@ pub struct Server<C: Config> {
     pub player_lists: PlayerLists<C>,
     /// All of the inventories on the server.
     pub inventories: Inventories<C>,
+    /// Incremented on every game tick.
+    current_tick: Ticks,
+    last_tick_duration: Duration,
+}
+
+impl<C: Config> Server<C> {
+    /// Returns the number of ticks that have elapsed since the server began.
+    pub fn current_tick(&self) -> Ticks {
+        self.current_tick
+    }
+
+    /// Returns the amount of time taken to execute the previous tick, not
+    /// including the time spent sleeping.
+    pub fn last_tick_duration(&mut self) -> Duration {
+        self.last_tick_duration
+    }
+}
+
+impl<C: Config> Deref for Server<C> {
+    type Target = C::ServerState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
+}
+
+impl<C: Config> DerefMut for Server<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.state
+    }
 }
 
 /// A handle to a Minecraft server containing the subset of functionality which
@@ -112,8 +141,6 @@ struct SharedServerInner<C: Config> {
     /// Receiver for new clients past the login stage.
     new_clients_send: Sender<NewClientMessage>,
     new_clients_recv: Receiver<NewClientMessage>,
-    /// Incremented on every game tick.
-    tick_counter: AtomicI64,
     /// A semaphore used to limit the number of simultaneous connections to the
     /// server. Closing this semaphore stops new connections.
     connection_sema: Arc<Semaphore>,
@@ -246,11 +273,6 @@ impl<C: Config> SharedServer<C> {
         self.0.start_instant
     }
 
-    /// Returns the number of ticks that have elapsed since the server began.
-    pub fn current_tick(&self) -> Ticks {
-        self.0.tick_counter.load(Ordering::SeqCst)
-    }
-
     /// Immediately stops new connections to the server and initiates server
     /// shutdown. The given result is returned through [`start_server`].
     ///
@@ -284,6 +306,8 @@ pub fn start_server<C: Config>(config: C, data: C::ServerState) -> ShutdownResul
         worlds: Worlds::new(shared.clone()),
         player_lists: PlayerLists::new(),
         inventories: Inventories::new(),
+        current_tick: 0,
+        last_tick_duration: Default::default(),
     };
 
     info_span!("configured_init").in_scope(|| shared.config().init(&mut server));
@@ -365,7 +389,6 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         start_instant: Instant::now(),
         new_clients_send,
         new_clients_recv,
-        tick_counter: AtomicI64::new(0),
         connection_sema: Arc::new(Semaphore::new(max_connections)),
         shutdown_result: Mutex::new(None),
         rsa_key,
@@ -405,14 +428,13 @@ fn make_registry_codec(dimensions: &[Dimension], biomes: &[Biome]) -> Compound {
 
 fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
     let mut tick_start = Instant::now();
-    let mut current_tick = 0;
     let shared = server.shared.clone();
 
     let biome_registry_len = shared.0.biomes.len();
     let compression_threshold = shared.0.compression_threshold;
 
     loop {
-        let _span = info_span!("update_loop", tick = current_tick).entered();
+        let _span = info_span!("update_loop", tick = server.current_tick).entered();
 
         if let Some(res) = shared.0.shutdown_result.lock().unwrap().take() {
             return res;
@@ -460,6 +482,7 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
 
         server.clients.par_iter_mut().for_each(|(_, client)| {
             client.update(
+                server.current_tick,
                 &shared,
                 &server.entities,
                 &server.worlds,
@@ -478,10 +501,11 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
 
         // Sleep for the remainder of the tick.
         let tick_duration = Duration::from_secs_f64((shared.0.tick_rate as f64).recip());
-        thread::sleep(tick_duration.saturating_sub(tick_start.elapsed()));
+        server.last_tick_duration = tick_start.elapsed();
+        thread::sleep(tick_duration.saturating_sub(server.last_tick_duration));
 
         tick_start = Instant::now();
-        current_tick = shared.0.tick_counter.fetch_add(1, Ordering::SeqCst) + 1;
+        server.current_tick += 1;
     }
 }
 

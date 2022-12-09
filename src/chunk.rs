@@ -671,8 +671,8 @@ pub struct LoadedChunk<C: Config> {
     /// Custom state.
     pub state: C::ChunkState,
     sections: Box<[ChunkSection]>,
-    // TODO block_entities: BTreeMap<u32, BlockEntity>,
-    // TODO: motion_blocking_heightmap: Box<[u16; 256]>,
+    // TODO: block_entities: BTreeMap<u32, BlockEntity>,
+    // TODO: rebuild init packet lazily?
     cached_init_packet: Vec<u8>,
     cached_update_packets: Vec<u8>,
     /// If any of the biomes in this chunk were modified this tick.
@@ -826,8 +826,6 @@ impl<C: Config> Chunk for LoadedChunk<C> {
                 (false, true) => sect.non_air_count += 1,
                 _ => {}
             }
-
-            // TODO: adjust MOTION_BLOCKING here.
 
             sect.mark_block_as_modified(idx);
         }

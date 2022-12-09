@@ -94,6 +94,7 @@ impl Config for Game {
     }
 
     fn update(&self, server: &mut Server<Self>) {
+        let current_tick = server.current_tick();
         let (world_id, _) = server.worlds.iter_mut().next().expect("missing world");
 
         server.clients.retain(|_, client| {
@@ -168,7 +169,7 @@ impl Config for Game {
             true
         });
 
-        let time = server.shared.current_tick() as f64 / server.shared.tick_rate() as f64;
+        let time = current_tick as f64 / server.shared.tick_rate() as f64;
 
         let rot = Mat3::rotation_x(time * TAU * 0.1)
             .rotated_y(time * TAU * 0.2)
