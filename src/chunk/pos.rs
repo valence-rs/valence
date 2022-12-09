@@ -50,7 +50,7 @@ impl ChunkPos {
 
 impl From<(i32, i32)> for ChunkPos {
     fn from((x, z): (i32, i32)) -> Self {
-        ChunkPos { x, z }
+        Self { x, z }
     }
 }
 
@@ -62,7 +62,7 @@ impl From<ChunkPos> for (i32, i32) {
 
 impl From<[i32; 2]> for ChunkPos {
     fn from([x, z]: [i32; 2]) -> Self {
-        (x, z).into()
+        Self { x, z }
     }
 }
 
@@ -89,6 +89,7 @@ mod tests {
         for dist in 2..=32 {
             for pos in center.in_view(dist) {
                 assert!(center.is_in_view(pos, dist));
+                assert!(pos.is_in_view(center, dist));
             }
         }
     }

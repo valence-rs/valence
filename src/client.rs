@@ -779,13 +779,7 @@ impl<C: Config> Client<C> {
     ///
     /// The new view distance is measured in chunks and is clamped to `2..=32`.
     pub fn set_view_distance(&mut self, dist: u8) {
-        let dist = dist.clamp(2, 32);
-
-        self.view_distance = dist;
-
-        if self.view_distance != dist {
-            self.view_distance = dist;
-        }
+        self.view_distance = dist.clamp(2, 32);
     }
 
     /// Enables hardcore mode. This changes the design of the client's hearts.
@@ -1086,8 +1080,6 @@ impl<C: Config> Client<C> {
             }
         }
 
-        let old_chunk_pos = ChunkPos::at(self.old_position.x, self.old_position.z);
-
         let self_entity_pos;
         let self_update_range;
 
@@ -1107,6 +1099,18 @@ impl<C: Config> Client<C> {
             self_update_range = 0..0;
         }
 
+        let old_chunk_pos = ChunkPos::at(self.old_position.x, self.old_position.z);
+        let chunk_pos = ChunkPos::at(self.position.x, self.position.z);
+
+        // Make sure the center chunk is set before loading chunks!
+        if old_chunk_pos != chunk_pos {
+            // TODO: does the client initialize the center chunk to (0, 0)?
+            send.append_packet(&SetCenterChunk {
+                chunk_x: VarInt(chunk_pos.x),
+                chunk_z: VarInt(chunk_pos.z),
+            })?;
+        }
+
         // Iterate over all visible chunks from the previous tick.
         if let Some(old_world) = worlds.get(self.old_world) {
             for pos in old_chunk_pos.in_view(self.old_view_distance) {
@@ -1121,7 +1125,9 @@ impl<C: Config> Client<C> {
                             (true, false) => {
                                 // Chunk needs initialization. Send packet to load it.
                                 chunk.write_chunk_data_packet(&mut *send)?;
-                                debug_assert!(self.loaded_chunks.insert(pos));
+
+                                #[cfg(debug_assertions)]
+                                assert!(self.loaded_chunks.insert(pos));
                             }
                             (false, true) => {
                                 // Chunk was previously loaded and is now deleted.
@@ -1129,7 +1135,9 @@ impl<C: Config> Client<C> {
                                     chunk_x: pos.x,
                                     chunk_z: pos.z,
                                 })?;
-                                debug_assert!(self.loaded_chunks.remove(&pos));
+
+                                #[cfg(debug_assertions)]
+                                assert!(self.loaded_chunks.remove(&pos));
                             }
                             (true, true) => {
                                 // Chunk was created and deleted this tick, so
@@ -1194,8 +1202,6 @@ impl<C: Config> Client<C> {
             }
         }
 
-        let chunk_pos = ChunkPos::at(self.position.x, self.position.z);
-
         if self.old_world != self.world {
             // Client changed the world they're in.
 
@@ -1213,7 +1219,9 @@ impl<C: Config> Client<C> {
                                     chunk_x: pos.x,
                                     chunk_z: pos.z,
                                 })?;
-                                debug_assert!(self.loaded_chunks.remove(&pos));
+
+                                #[cfg(debug_assertions)]
+                                assert!(self.loaded_chunks.remove(&pos));
                             }
                         }
 
@@ -1239,7 +1247,9 @@ impl<C: Config> Client<C> {
                     if let Some(chunk) = chunk {
                         if !chunk.deleted() {
                             chunk.write_chunk_data_packet(&mut *send)?;
-                            debug_assert!(self.loaded_chunks.insert(pos));
+
+                            #[cfg(debug_assertions)]
+                            assert!(self.loaded_chunks.insert(pos));
                         }
                     }
 
@@ -1274,7 +1284,9 @@ impl<C: Config> Client<C> {
                                     chunk_x: pos.x,
                                     chunk_z: pos.z,
                                 })?;
-                                debug_assert!(self.loaded_chunks.remove(&pos));
+
+                                #[cfg(debug_assertions)]
+                                assert!(self.loaded_chunks.remove(&pos));
                             }
                         }
 
@@ -1300,7 +1312,9 @@ impl<C: Config> Client<C> {
                         if let Some(chunk) = chunk {
                             if !chunk.deleted() {
                                 chunk.write_chunk_data_packet(&mut *send)?;
-                                debug_assert!(self.loaded_chunks.insert(pos));
+
+                                #[cfg(debug_assertions)]
+                                assert!(self.loaded_chunks.insert(pos));
                             }
                         }
 
@@ -1320,13 +1334,6 @@ impl<C: Config> Client<C> {
                     }
                 }
             }
-        }
-
-        if old_chunk_pos != chunk_pos {
-            send.append_packet(&SetCenterChunk {
-                chunk_x: VarInt(chunk_pos.x),
-                chunk_z: VarInt(chunk_pos.z),
-            })?;
         }
 
         // Update the client's own player metadata.
