@@ -193,6 +193,10 @@ pub struct Client<C: Config> {
     pub state: C::ClientState,
     send: Option<PlayPacketSender>,
     recv: PlayPacketReceiver,
+    /// To make sure we're not loading already loaded chunks, or unloading
+    /// unloaded chunks.
+    #[cfg(debug_assertions)]
+    loaded_chunks: std::collections::HashSet<ChunkPos>,
     /// Ensures that we don't allow more connections to the server until the
     /// client is dropped.
     _permit: OwnedSemaphorePermit,
@@ -294,6 +298,8 @@ impl<C: Config> Client<C> {
             state,
             send: Some(send),
             recv,
+            #[cfg(debug_assertions)]
+            loaded_chunks: Default::default(),
             _permit: permit,
             scratch: vec![],
             entities_to_unload: vec![],
@@ -1082,8 +1088,8 @@ impl<C: Config> Client<C> {
 
         let old_chunk_pos = ChunkPos::at(self.old_position.x, self.old_position.z);
 
-        let mut self_entity_pos = ChunkPos::new(0, 0);
-        let mut self_update_range = 0..0;
+        let self_entity_pos;
+        let self_update_range;
 
         // Get the entity with the same UUID as the client (if it exists).
         if let Some(entity) = entities.get(self.self_entity) {
@@ -1094,6 +1100,11 @@ impl<C: Config> Client<C> {
             let entity = &entities[id];
             self_entity_pos = ChunkPos::at(entity.position().x, entity.position().z);
             self_update_range = entity.self_update_range.clone();
+        } else {
+            // There is no entity with the same UUID as the client. A range of 0..0 has no
+            // effect.
+            self_entity_pos = ChunkPos::new(0, 0);
+            self_update_range = 0..0;
         }
 
         // Iterate over all visible chunks from the previous tick.
@@ -1110,6 +1121,7 @@ impl<C: Config> Client<C> {
                             (true, false) => {
                                 // Chunk needs initialization. Send packet to load it.
                                 chunk.write_chunk_data_packet(&mut *send)?;
+                                debug_assert!(self.loaded_chunks.insert(pos));
                             }
                             (false, true) => {
                                 // Chunk was previously loaded and is now deleted.
@@ -1117,6 +1129,7 @@ impl<C: Config> Client<C> {
                                     chunk_x: pos.x,
                                     chunk_z: pos.z,
                                 })?;
+                                debug_assert!(self.loaded_chunks.remove(&pos));
                             }
                             (true, true) => {
                                 // Chunk was created and deleted this tick, so
@@ -1190,6 +1203,7 @@ impl<C: Config> Client<C> {
             if let Some(old_world) = worlds.get(self.old_world) {
                 // TODO: only send unload packets when old dimension == new dimension, since the
                 //       client will do the unloading for us in that case?
+
                 for pos in old_chunk_pos.in_view(self.old_view_distance) {
                     if let Some((chunk, cell)) = old_world.chunks.chunk_and_cell(pos) {
                         if let Some(chunk) = chunk {
@@ -1199,6 +1213,7 @@ impl<C: Config> Client<C> {
                                     chunk_x: pos.x,
                                     chunk_z: pos.z,
                                 })?;
+                                debug_assert!(self.loaded_chunks.remove(&pos));
                             }
                         }
 
@@ -1224,6 +1239,7 @@ impl<C: Config> Client<C> {
                     if let Some(chunk) = chunk {
                         if !chunk.deleted() {
                             chunk.write_chunk_data_packet(&mut *send)?;
+                            debug_assert!(self.loaded_chunks.insert(pos));
                         }
                     }
 
@@ -1258,6 +1274,7 @@ impl<C: Config> Client<C> {
                                     chunk_x: pos.x,
                                     chunk_z: pos.z,
                                 })?;
+                                debug_assert!(self.loaded_chunks.remove(&pos));
                             }
                         }
 
@@ -1283,6 +1300,7 @@ impl<C: Config> Client<C> {
                         if let Some(chunk) = chunk {
                             if !chunk.deleted() {
                                 chunk.write_chunk_data_packet(&mut *send)?;
+                                debug_assert!(self.loaded_chunks.insert(pos));
                             }
                         }
 

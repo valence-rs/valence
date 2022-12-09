@@ -172,7 +172,7 @@ impl Config for Game {
             }
 
             if client.is_disconnected() {
-                server.entities.remove(client.entity_id);
+                player.set_deleted(true);
                 return false;
             }
 

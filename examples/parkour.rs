@@ -159,7 +159,7 @@ impl Config for Game {
             let world = server.worlds.get_mut(world_id).unwrap();
 
             let p = client.position();
-            for pos in chunks_in_view_distance(ChunkPos::at(p.x, p.z), 3) {
+            for pos in ChunkPos::at(p.x, p.z).in_view(3) {
                 if let Some(chunk) = world.chunks.get_mut(pos) {
                     chunk.keep_loaded = true;
                 } else {
@@ -250,6 +250,11 @@ impl Config for Game {
                     false
                 }
             });
+
+            for (_, chunk) in world.chunks.iter_mut() {
+                chunk.set_deleted(!chunk.keep_loaded);
+                chunk.keep_loaded = false;
+            }
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);

@@ -3,7 +3,7 @@ use std::iter::FusedIterator;
 use valence_protocol::BlockPos;
 
 /// The X and Z position of a chunk in a world.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash, Debug)]
 pub struct ChunkPos {
     /// The X position of the chunk.
     pub x: i32,
@@ -11,7 +11,7 @@ pub struct ChunkPos {
     pub z: i32,
 }
 
-const EXTRA_VIEW_RADIUS: i32 = 1;
+const EXTRA_VIEW_RADIUS: i32 = 2;
 
 impl ChunkPos {
     /// Constructs a new chunk position.
@@ -44,7 +44,7 @@ impl ChunkPos {
 
         (self.z - dist..=self.z + dist)
             .flat_map(move |z| (self.x - dist..=self.x + dist).map(move |x| Self { x, z }))
-            .filter(move |&p| self.is_in_view(p, dist as u8))
+            .filter(move |&p| self.is_in_view(p, view_dist))
     }
 }
 
@@ -75,5 +75,21 @@ impl From<ChunkPos> for [i32; 2] {
 impl From<BlockPos> for ChunkPos {
     fn from(pos: BlockPos) -> Self {
         Self::new(pos.x.div_euclid(16), pos.z.div_euclid(16))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn all_in_view() {
+        let center = ChunkPos::new(42, 24);
+
+        for dist in 2..=32 {
+            for pos in center.in_view(dist) {
+                assert!(center.is_in_view(pos, dist));
+            }
+        }
     }
 }

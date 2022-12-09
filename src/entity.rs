@@ -910,12 +910,7 @@ pub(crate) fn velocity_to_packet_units(vel: Vec3<f32>) -> Vec3<i16> {
 
 #[cfg(test)]
 mod tests {
-    use std::num::NonZeroU32;
-
-    use uuid::Uuid;
-
-    use super::{Entities, EntityId, EntityKind};
-    use crate::slab_versioned::Key;
+    use super::*;
 
     type MockConfig = crate::config::MockConfig<(), (), u8>;
 
@@ -991,35 +986,5 @@ mod tests {
             .expect("failed to look up item already added to collection");
         assert_eq!(maybe_cat.state, 75);
         assert_eq!(entities.len(), 2);
-    }
-
-    #[test]
-    fn entities_can_be_removed() {
-        let mut entities: Entities<MockConfig> = Entities::new();
-        assert!(entities.is_empty());
-        let (player_id, _) = entities.insert(EntityKind::Player, 1);
-        let player_state = entities
-            .remove(player_id)
-            .expect("failed to remove an item from the collection");
-        assert_eq!(player_state, 1);
-    }
-
-    #[test]
-    fn entities_can_be_retained() {
-        let mut entities: Entities<MockConfig> = Entities::new();
-        assert!(entities.is_empty());
-        let (blaze_id, _) = entities.insert(EntityKind::Blaze, 10);
-        let (fox_id, _) = entities.insert(EntityKind::Fox, 110);
-        let (turtle_id, _) = entities.insert(EntityKind::Turtle, 20);
-        let (goat_id, _) = entities.insert(EntityKind::Goat, 120);
-        let (horse_id, _) = entities.insert(EntityKind::Horse, 30);
-        assert_eq!(entities.len(), 5);
-        entities.retain(|_id, entity| entity.state > 100);
-        assert_eq!(entities.len(), 2);
-        assert!(entities.get(fox_id).is_some());
-        assert!(entities.get(goat_id).is_some());
-        assert!(entities.get(blaze_id).is_none());
-        assert!(entities.get(turtle_id).is_none());
-        assert!(entities.get(horse_id).is_none());
     }
 }

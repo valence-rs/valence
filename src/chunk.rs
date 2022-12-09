@@ -957,15 +957,6 @@ mod tests {
     fn check_invariants(sections: &[ChunkSection]) {
         for sect in sections {
             assert_eq!(
-                sect.modified_blocks
-                    .iter()
-                    .map(|bits| bits.count_ones() as u16)
-                    .sum::<u16>(),
-                sect.modified_blocks_count,
-                "number of modified blocks does not match counter"
-            );
-
-            assert_eq!(
                 (0..SECTION_BLOCK_COUNT)
                     .filter(|&i| !sect.block_states.get(i).is_air())
                     .count(),
