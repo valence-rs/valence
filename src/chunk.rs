@@ -7,7 +7,6 @@
 //! Every 4x4x4 segment of blocks in a chunk corresponds to a biome.
 
 use std::collections::hash_map::Entry;
-use std::collections::HashMap;
 use std::io::Write;
 use std::iter::FusedIterator;
 use std::mem;
@@ -17,6 +16,7 @@ use entity_partition::PartitionCell;
 use paletted_container::PalettedContainer;
 pub use pos::ChunkPos;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
+use rustc_hash::FxHashMap;
 use valence_nbt::compound;
 use valence_protocol::packets::s2c::play::{
     BlockUpdate, ChunkDataAndUpdateLightEncode, UpdateSectionBlocksEncode,
@@ -37,7 +37,7 @@ pub struct Chunks<C: Config> {
     /// Maps chunk positions to chunks. We store both loaded chunks and
     /// partition cells here so we can get both in a single hashmap lookup
     /// during the client update procedure.
-    chunks: HashMap<ChunkPos, (Option<LoadedChunk<C>>, PartitionCell)>,
+    chunks: FxHashMap<ChunkPos, (Option<LoadedChunk<C>>, PartitionCell)>,
     dimension_height: i32,
     dimension_min_y: i32,
     dummy_sky_light_mask: Box<[u64]>,
@@ -57,7 +57,7 @@ impl<C: Config> Chunks<C> {
         }
 
         Self {
-            chunks: HashMap::new(),
+            chunks: FxHashMap::default(),
             dimension_height,
             dimension_min_y,
             dummy_sky_light_mask: sky_light_mask.into(),
