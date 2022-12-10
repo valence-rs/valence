@@ -215,7 +215,7 @@ pub enum BossBarDivision {
 }
 
 #[bitfield(u8)]
-#[derive(PartialEq, Eq, Debug, Encode, Decode)]
+#[derive(PartialEq, Eq, Encode, Decode)]
 pub struct BossBarFlags {
     pub darken_sky: bool,
     pub dragon_bar: bool,
@@ -311,7 +311,7 @@ pub struct PlayerInfoAddPlayer<'a> {
 }
 
 #[bitfield(u8)]
-#[derive(PartialEq, Eq, Debug, Encode, Decode)]
+#[derive(PartialEq, Eq, Encode, Decode)]
 pub struct DisplayedSkinParts {
     pub cape: bool,
     pub jacket: bool,
@@ -324,7 +324,7 @@ pub struct DisplayedSkinParts {
 }
 
 #[bitfield(u8)]
-#[derive(PartialEq, Eq, Debug, Encode, Decode)]
+#[derive(PartialEq, Eq, Encode, Decode)]
 pub struct PlayerInputFlags {
     pub jump: bool,
     pub unmount: bool,
@@ -333,7 +333,7 @@ pub struct PlayerInputFlags {
 }
 
 #[bitfield(u8)]
-#[derive(PartialEq, Eq, Debug, Encode, Decode)]
+#[derive(PartialEq, Eq, Encode, Decode)]
 pub struct CommandBlockFlags {
     pub track_output: bool,
     pub conditional: bool,
@@ -343,7 +343,7 @@ pub struct CommandBlockFlags {
 }
 
 #[bitfield(u8)]
-#[derive(PartialEq, Eq, Debug, Encode, Decode)]
+#[derive(PartialEq, Eq, Encode, Decode)]
 pub struct StructureBlockFlags {
     pub ignore_entities: bool,
     pub show_air: bool,
@@ -353,7 +353,7 @@ pub struct StructureBlockFlags {
 }
 
 #[bitfield(u8)]
-#[derive(PartialEq, Eq, Debug, Encode, Decode)]
+#[derive(PartialEq, Eq, Encode, Decode)]
 pub struct SyncPlayerPosLookFlags {
     pub x: bool,
     pub y: bool,
