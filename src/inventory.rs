@@ -126,6 +126,21 @@ impl<C: Config> Inventory<C> {
         mem::replace(old, new)
     }
 
+    pub fn swap_slot(&mut self, idx_a: u16, idx_b: u16) {
+        assert!(idx_a < self.slot_count(), "slot index out of range");
+        assert!(idx_b < self.slot_count(), "slot index out of range");
+
+        if idx_a == idx_b || self.slots[idx_a as usize] == self.slots[idx_b as usize] {
+            // Nothing to do here, ignore.
+            return;
+        }
+
+        self.modified |= 1 << idx_a;
+        self.modified |= 1 << idx_b;
+
+        self.slots.swap(idx_a as usize, idx_b as usize);
+    }
+
     pub fn slot_count(&self) -> u16 {
         self.slots.len() as u16
     }
