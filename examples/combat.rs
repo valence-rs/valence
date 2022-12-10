@@ -100,9 +100,8 @@ impl Config for Game {
     }
 
     fn update(&self, server: &mut Server<Self>) {
+        let current_tick = server.current_tick();
         let (world_id, _) = server.worlds.iter_mut().next().unwrap();
-
-        let current_tick = server.shared.current_tick();
 
         server.clients.retain(|client_id, client| {
             if client.created_this_tick() {

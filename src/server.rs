@@ -431,7 +431,7 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
     let shared = server.shared.clone();
 
     let biome_registry_len = shared.0.biomes.len();
-    let compression_threshold = shared.0.compression_threshold;
+    let threshold = shared.0.compression_threshold;
 
     loop {
         let _span = info_span!("update_loop", tick = server.current_tick).entered();
@@ -468,17 +468,13 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
 
         info_span!("configured_update").in_scope(|| shared.config().update(server));
 
-        update_entity_partition(
-            &mut server.entities,
-            &mut server.worlds,
-            compression_threshold,
-        );
+        update_entity_partition(&mut server.entities, &mut server.worlds, threshold);
 
         for (_, world) in server.worlds.iter_mut() {
-            world
-                .chunks
-                .update_caches(compression_threshold, biome_registry_len);
+            world.chunks.update_caches(threshold, biome_registry_len);
         }
+
+        server.player_lists.update_caches(threshold);
 
         server.clients.par_iter_mut().for_each(|(_, client)| {
             client.update(
@@ -495,7 +491,7 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
 
         server.worlds.update();
 
-        server.player_lists.update();
+        server.player_lists.clear_removed();
 
         server.inventories.update();
 

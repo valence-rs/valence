@@ -969,6 +969,7 @@ impl<C: Config> Client<C> {
     /// Called by [`Self::update`] with the possibility of exiting early with an
     /// error. If an error does occur, the client is abruptly disconnected and
     /// the error is logged.
+    #[allow(clippy::too_many_arguments)]
     fn update_fallible(
         &mut self,
         send: &mut PlayPacketSender,
@@ -1024,7 +1025,7 @@ impl<C: Config> Client<C> {
             })?;
 
             if let Some(id) = &self.player_list {
-                player_lists.get(id).send_initial_packets(send)?;
+                player_lists.get(id).write_init_packets(&mut *send)?;
             }
         } else {
             if self.view_distance != self.old_view_distance {
@@ -1054,18 +1055,18 @@ impl<C: Config> Client<C> {
             if self.old_player_list != self.player_list {
                 // Delete existing entries from old player list.
                 if let Some(id) = &self.old_player_list {
-                    player_lists.get(id).queue_clear_packets(send)?;
+                    player_lists.get(id).write_clear_packets(&mut *send)?;
                 }
 
                 // Get initial packets for new player list.
                 if let Some(id) = &self.player_list {
-                    player_lists.get(id).send_initial_packets(send)?;
+                    player_lists.get(id).write_init_packets(&mut *send)?;
                 }
 
                 self.old_player_list = self.player_list.clone();
             } else if let Some(id) = &self.player_list {
                 // Otherwise, update current player list.
-                player_lists.get(id).send_update_packets(send)?;
+                player_lists.get(id).write_update_packets(&mut *send)?;
             }
         }
 

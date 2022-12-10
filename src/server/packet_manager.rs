@@ -229,7 +229,8 @@ impl WritePacket for PlayPacketSender {
     }
 
     fn write_bytes(&mut self, bytes: &[u8]) -> Result<()> {
-        Ok(self.append_bytes(bytes))
+        self.append_bytes(bytes);
+        Ok(())
     }
 }
 
