@@ -46,6 +46,25 @@ impl ChunkPos {
             .flat_map(move |z| (self.x - dist..=self.x + dist).map(move |x| Self { x, z }))
             .filter(move |&p| self.is_in_view(p, view_dist))
     }
+
+    // `in_view` wasn't optimizing well so we're using this for now.
+    #[inline(always)]
+    pub(crate) fn try_for_each_in_view<F>(self, view_dist: u8, mut f: F) -> anyhow::Result<()>
+    where
+        F: FnMut(ChunkPos) -> anyhow::Result<()>
+    {
+        let dist = view_dist as i32 + EXTRA_VIEW_RADIUS;
+        for z in self.z - dist..=self.z + dist {
+            for x in self.x - dist..=self.x + dist {
+                let p = Self { x, z };
+                if self.is_in_view(p, view_dist) {
+                    f(p)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 impl From<(i32, i32)> for ChunkPos {

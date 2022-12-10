@@ -42,8 +42,8 @@ use crate::player_list::{PlayerListId, PlayerLists};
 use crate::player_textures::SignedPlayerTextures;
 use crate::server::{NewClientData, PlayPacketReceiver, PlayPacketSender, SharedServer};
 use crate::slab_versioned::{Key, VersionedSlab};
-use crate::Ticks;
 use crate::world::{WorldId, Worlds};
+use crate::Ticks;
 
 mod event;
 
@@ -1115,7 +1115,7 @@ impl<C: Config> Client<C> {
 
         // Iterate over all visible chunks from the previous tick.
         if let Some(old_world) = worlds.get(self.old_world) {
-            for pos in old_chunk_pos.in_view(self.old_view_distance) {
+            old_chunk_pos.try_for_each_in_view(self.old_view_distance, |pos| {
                 if let Some((chunk, cell)) = old_world.chunks.chunk_and_cell(pos) {
                     if let Some(chunk) = chunk {
                         // Decide if the chunk should be loaded, unloaded, or updated.
@@ -1194,7 +1194,9 @@ impl<C: Config> Client<C> {
                         send.append_bytes(cell.cached_update_packets());
                     }
                 }
-            }
+
+                Ok(())
+            })?;
 
             if !self.entities_to_unload.is_empty() {
                 send.append_packet(&RemoveEntitiesEncode {
@@ -1212,7 +1214,7 @@ impl<C: Config> Client<C> {
                 // TODO: only send unload packets when old dimension == new dimension, since the
                 //       client will do the unloading for us in that case?
 
-                for pos in old_chunk_pos.in_view(self.old_view_distance) {
+                old_chunk_pos.try_for_each_in_view(self.old_view_distance, |pos| {
                     if let Some((chunk, cell)) = old_world.chunks.chunk_and_cell(pos) {
                         if let Some(chunk) = chunk {
                             // Deleted chunks were already unloaded above.
@@ -1233,7 +1235,9 @@ impl<C: Config> Client<C> {
                                 .map(|id| VarInt(id.to_raw())),
                         );
                     }
-                }
+
+                    Ok(())
+                })?;
 
                 if !self.entities_to_unload.is_empty() {
                     send.append_packet(&RemoveEntitiesEncode {
@@ -1244,7 +1248,7 @@ impl<C: Config> Client<C> {
             }
 
             // Load all chunks and entities in new view.
-            for pos in chunk_pos.in_view(self.view_distance) {
+            chunk_pos.try_for_each_in_view(self.view_distance, |pos| {
                 if let Some((chunk, cell)) = world.chunks.chunk_and_cell(pos) {
                     if let Some(chunk) = chunk {
                         if !chunk.deleted() {
@@ -1269,14 +1273,16 @@ impl<C: Config> Client<C> {
                         }
                     }
                 }
-            }
+
+                Ok(())
+            })?;
         } else if old_chunk_pos != chunk_pos || self.old_view_distance != self.view_distance {
             // Client changed their view without changing the world.
             // We need to unload chunks and entities in the old view and load
             // chunks and entities in the new view. We don't need to do any
             // work where the old and new view overlap.
 
-            for pos in old_chunk_pos.in_view(self.old_view_distance) {
+            old_chunk_pos.try_for_each_in_view(self.old_view_distance, |pos| {
                 if !pos.is_in_view(chunk_pos, self.view_distance) {
                     if let Some((chunk, cell)) = world.chunks.chunk_and_cell(pos) {
                         if let Some(chunk) = chunk {
@@ -1299,7 +1305,9 @@ impl<C: Config> Client<C> {
                         );
                     }
                 }
-            }
+
+                Ok(())
+            })?;
 
             if !self.entities_to_unload.is_empty() {
                 send.append_packet(&RemoveEntitiesEncode {
@@ -1308,7 +1316,7 @@ impl<C: Config> Client<C> {
                 self.entities_to_unload.clear();
             }
 
-            for pos in chunk_pos.in_view(self.view_distance) {
+            chunk_pos.try_for_each_in_view(self.view_distance, |pos| {
                 if !pos.is_in_view(old_chunk_pos, self.old_view_distance) {
                     if let Some((chunk, cell)) = world.chunks.chunk_and_cell(pos) {
                         if let Some(chunk) = chunk {
@@ -1335,7 +1343,9 @@ impl<C: Config> Client<C> {
                         }
                     }
                 }
-            }
+
+                Ok(())
+            })?;
         }
 
         // Update the client's own player metadata.
