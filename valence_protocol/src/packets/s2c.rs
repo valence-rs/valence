@@ -185,6 +185,13 @@ pub mod play {
         pub reset: bool,
     }
 
+    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[packet_id = 0x10]
+    pub struct CloseContainerS2c {
+        /// Ignored by notchian clients.
+        pub window_id: u8,
+    }
+
     #[derive(Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x11]
     pub struct SetContainerContent {
@@ -661,6 +668,7 @@ pub mod play {
             BossBar,
             SetDifficulty,
             ClearTitles,
+            CloseContainerS2c,
             SetContainerContent,
             SetContainerProperty,
             SetContainerSlot,
