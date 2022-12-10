@@ -1,8 +1,3 @@
-pub fn main() {
-    todo!("reimplement when inventories are re-added");
-}
-
-/*
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -39,8 +34,8 @@ const MAX_PLAYERS: usize = 10;
 const SIZE_X: usize = 100;
 const SIZE_Z: usize = 100;
 
-const SLOT_MIN: SlotId = 36;
-const SLOT_MAX: SlotId = 43;
+const SLOT_MIN: i16 = 36;
+const SLOT_MAX: i16 = 43;
 const PITCH_MIN: f32 = 0.5;
 const PITCH_MAX: f32 = 1.0;
 
@@ -184,16 +179,16 @@ impl Config for Game {
                 client.teleport(spawn_pos, client.yaw(), client.pitch());
             }
 
-            while let Some(event) = handle_event_default(client, player) {
+            while let Some(event) = client.next_event() {
                 match event {
-                    ClientEvent::CloseScreen { .. } => {
+                    ClientEvent::CloseContainer { .. } => {
                         client.send_message("Done already?");
                     }
-                    ClientEvent::SetSlotCreative { slot_id, .. } => {
+                    ClientEvent::SetCreativeModeSlot { slot, .. } => {
                         client.send_message(format!("{:#?}", event));
                         // If the user does a double click, 3 notes will be played.
                         // This is not possible to fix :(
-                        play_note(client, player, slot_id);
+                        play_note(client, player, slot);
                     }
                     ClientEvent::ClickContainer { slot_id, mode, .. } => {
                         client.send_message(format!("{:#?}", event));
@@ -212,7 +207,7 @@ impl Config for Game {
     }
 }
 
-fn play_note(client: &mut Client<Game>, player: &mut Entity<Game>, clicked_slot: SlotId) {
+fn play_note(client: &mut Client<Game>, player: &mut Entity<Game>, clicked_slot: i16) {
     if (SLOT_MIN..=SLOT_MAX).contains(&clicked_slot) {
         let pitch = (clicked_slot - SLOT_MIN) as f32 * (PITCH_MAX - PITCH_MIN)
             / (SLOT_MAX - SLOT_MIN) as f32
@@ -233,4 +228,3 @@ fn play_note(client: &mut Client<Game>, player: &mut Entity<Game>, clicked_slot:
         });
     }
 }
-*/
