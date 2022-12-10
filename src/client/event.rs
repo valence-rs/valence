@@ -17,6 +17,7 @@ use valence_protocol::{BlockFace, BlockPos, Ident, ItemStack, VarLong};
 use crate::client::Client;
 use crate::config::Config;
 use crate::entity::{Entity, EntityEvent, TrackedData};
+use crate::prelude::InventoryId;
 
 /// A discrete action performed by a client.
 ///
@@ -378,9 +379,14 @@ pub(super) fn next_event_fallible<C: Config>(
                     carried_item: p.carried_item,
                 }
             }
-            C2sPlayPacket::CloseContainerC2s(p) => ClientEvent::CloseContainer {
-                window_id: p.window_id,
-            },
+            C2sPlayPacket::CloseContainerC2s(p) => {
+                if client.window_id == p.window_id as u8 {
+                    client.set_open_inventory(InventoryId::NULL);
+                }
+                ClientEvent::CloseContainer {
+                    window_id: p.window_id,
+                }
+            }
             C2sPlayPacket::PluginMessageC2s(p) => ClientEvent::PluginMessage {
                 channel: p.channel.into(),
                 data: p.data.0.into(),
