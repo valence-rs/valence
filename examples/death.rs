@@ -258,7 +258,7 @@ impl Config for Game {
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.remove(client.entity_id);
+                server.entities[client.entity_id].set_deleted(true);
 
                 if let Some(list) = client.player_list() {
                     server.player_lists.get_mut(list).remove(client.uuid());

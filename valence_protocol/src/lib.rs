@@ -76,7 +76,7 @@ pub use block::{BlockFace, BlockKind, BlockState};
 pub use block_pos::BlockPos;
 pub use byte_angle::ByteAngle;
 pub use cache::{Cached, EncodedBuf};
-pub use codec::{PacketDecoder, PacketEncoder};
+pub use codec::*;
 pub use ident::Ident;
 pub use inventory::InventoryKind;
 pub use item::{ItemKind, ItemStack};
@@ -178,7 +178,7 @@ pub const MAX_PACKET_SIZE: i32 = 2097152;
 ///     third: [1.5, 3.14, 2.718],
 /// };
 ///
-/// let mut buf = Vec::new();
+/// let mut buf = vec![];
 /// value.encode(&mut buf).unwrap();
 ///
 /// println!("{buf:?}");

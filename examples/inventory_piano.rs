@@ -142,7 +142,7 @@ impl Config for Game {
                 client.set_player_list(server.state.player_list.clone());
 
                 if let Some(id) = &server.state.player_list {
-                    server.player_lists.get_mut(id).insert(
+                    server.player_lists[id].insert(
                         client.uuid(),
                         client.username(),
                         client.textures().cloned(),
@@ -164,16 +164,16 @@ impl Config for Game {
                 );
             }
 
+            let player = server.entities.get_mut(client.state.entity_id).unwrap();
+
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.remove(client.state.entity_id);
+                player.set_deleted(true);
                 if let Some(id) = &server.state.player_list {
-                    server.player_lists.get_mut(id).remove(client.uuid());
+                    server.player_lists[id].remove(client.uuid());
                 }
                 return false;
             }
-
-            let player = server.entities.get_mut(client.state.entity_id).unwrap();
 
             if client.position().y <= -20.0 {
                 client.teleport(spawn_pos, client.yaw(), client.pitch());

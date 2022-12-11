@@ -19,7 +19,7 @@ impl<T> RcSlab<T> {
         let (free_send, free_recv) = flume::unbounded();
 
         Self {
-            entries: Vec::new(),
+            entries: vec![],
             free_send,
             free_recv,
         }

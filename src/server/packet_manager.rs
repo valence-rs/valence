@@ -11,6 +11,7 @@ use tokio::time::timeout;
 use tracing::debug;
 use valence_protocol::{Decode, Encode, Packet, PacketDecoder, PacketEncoder};
 
+use crate::packet::WritePacket;
 use crate::server::byte_channel::{byte_channel, ByteReceiver, ByteSender, TryRecvError};
 
 pub struct InitialPacketManager<R, W> {
@@ -201,6 +202,10 @@ impl PlayPacketSender {
         self.enc.append_packet(pkt)
     }
 
+    pub fn append_bytes(&mut self, bytes: &[u8]) {
+        self.enc.append_bytes(bytes)
+    }
+
     pub fn prepend_packet<P>(&mut self, pkt: &P) -> Result<()>
     where
         P: Encode + Packet + ?Sized,
@@ -208,14 +213,23 @@ impl PlayPacketSender {
         self.enc.prepend_packet(pkt)
     }
 
-    #[allow(dead_code)]
-    pub fn set_compression(&mut self, threshold: Option<u32>) {
-        self.enc.set_compression(threshold)
-    }
-
     pub fn flush(&mut self) -> Result<()> {
         let bytes = self.enc.take();
         self.send.try_send(bytes)?;
+        Ok(())
+    }
+}
+
+impl WritePacket for PlayPacketSender {
+    fn write_packet<P>(&mut self, packet: &P) -> Result<()>
+    where
+        P: Encode + Packet + ?Sized,
+    {
+        self.append_packet(packet)
+    }
+
+    fn write_bytes(&mut self, bytes: &[u8]) -> Result<()> {
+        self.append_bytes(bytes);
         Ok(())
     }
 }
