@@ -1,5 +1,4 @@
 use std::net::SocketAddr;
-use std::time::Instant;
 
 use valence::prelude::*;
 
@@ -10,7 +9,6 @@ pub fn main() -> ShutdownResult {
         Game,
         ServerState {
             player_list: None,
-            time: None,
             millis_sum: 0.0,
         },
     )
@@ -22,7 +20,6 @@ struct Game;
 
 struct ServerState {
     player_list: Option<PlayerListId>,
-    time: Option<Instant>,
     millis_sum: f64,
 }
 
@@ -95,21 +92,20 @@ impl Config for Game {
     }
 
     fn update(&self, server: &mut Server<Self>) {
-        if let Some(time) = &mut server.state.time {
-            let millis = time.elapsed().as_secs_f64() * 1000.0;
-            let tick = server.shared.current_tick();
+        {
+            let millis = server.last_tick_duration().as_secs_f64() * 1000.0;
+            let tick = server.current_tick();
             let players = server.clients.len();
             let delay = 20;
 
-            server.state.millis_sum += millis;
+            server.millis_sum += millis;
 
             if tick % delay == 0 {
-                let avg = server.state.millis_sum / delay as f64;
-                println!("Avg delta: {avg:.3}ms tick={tick} players={players}");
-                server.state.millis_sum = 0.0;
+                let avg = server.millis_sum / delay as f64;
+                println!("Avg MSPT: {avg:.3}ms, Tick={tick}, Players={players}");
+                server.millis_sum = 0.0;
             }
         }
-        server.state.time = Some(Instant::now());
 
         let (world_id, _) = server.worlds.iter_mut().next().unwrap();
 
@@ -118,11 +114,12 @@ impl Config for Game {
                 client.respawn(world_id);
                 client.set_flat(true);
                 client.teleport([0.0, 1.0, 0.0], 0.0, 0.0);
+                client.set_game_mode(GameMode::Creative);
 
                 if WITH_PLAYER_ENTITIES {
                     client.set_player_list(server.state.player_list.clone());
                     if let Some(id) = &server.state.player_list {
-                        server.player_lists.get_mut(id).insert(
+                        server.player_lists[id].insert(
                             client.uuid(),
                             client.username(),
                             client.textures().cloned(),
@@ -151,9 +148,9 @@ impl Config for Game {
             if client.is_disconnected() {
                 if WITH_PLAYER_ENTITIES {
                     if let Some(id) = &server.state.player_list {
-                        server.player_lists.get_mut(id).remove(client.uuid());
+                        server.player_lists[id].remove(client.uuid());
                     }
-                    server.entities.remove(client.state);
+                    server.entities[client.state].set_deleted(true);
                 }
 
                 return false;

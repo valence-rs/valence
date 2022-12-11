@@ -125,22 +125,12 @@ impl Config for Game {
                     }
                 }
 
-                for chunk_z in -1..3 {
-                    for chunk_x in -2..2 {
-                        world.chunks.insert(
-                            (chunk_x as i32, chunk_z as i32),
-                            UnloadedChunk::default(),
-                            ChunkState { keep_loaded: true },
-                        );
-                    }
-                }
-
                 client.respawn(world_id);
                 client.set_flat(true);
                 client.set_player_list(server.state.player_list.clone());
 
                 if let Some(id) = &server.state.player_list {
-                    server.player_lists.get_mut(id).insert(
+                    server.player_lists[id].insert(
                         client.uuid(),
                         client.username(),
                         client.textures().cloned(),
@@ -156,10 +146,10 @@ impl Config for Game {
             }
 
             let world_id = client.world_id;
-            let world = server.worlds.get_mut(world_id).unwrap();
+            let world = &mut server.worlds[world_id];
 
             let p = client.position();
-            for pos in chunks_in_view_distance(ChunkPos::at(p.x, p.z), 3) {
+            for pos in ChunkPos::at(p.x, p.z).in_view(3) {
                 if let Some(chunk) = world.chunks.get_mut(pos) {
                     chunk.keep_loaded = true;
                 } else {
@@ -242,22 +232,17 @@ impl Config for Game {
             }
 
             // Remove chunks outside the view distance of players.
-            world.chunks.retain(|_, chunk| {
-                if chunk.keep_loaded {
-                    chunk.keep_loaded = false;
-                    true
-                } else {
-                    false
-                }
-            });
+            for (_, chunk) in world.chunks.iter_mut() {
+                chunk.set_deleted(!chunk.keep_loaded);
+                chunk.keep_loaded = false;
+            }
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.remove(client.entity_id);
+                player.set_deleted(true);
                 if let Some(id) = &server.state.player_list {
-                    server.player_lists.get_mut(id).remove(client.uuid());
+                    server.player_lists[id].remove(client.uuid());
                 }
-
                 server.worlds.remove(world_id);
                 return false;
             }
