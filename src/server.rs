@@ -3,7 +3,7 @@
 use std::error::Error;
 use std::iter::FusedIterator;
 use std::net::{IpAddr, SocketAddr};
-use std::sync::atomic::{AtomicI64, Ordering};
+use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use std::{io, thread};
@@ -34,6 +34,7 @@ use valence_protocol::{
 };
 
 use crate::biome::{validate_biomes, Biome, BiomeId};
+use crate::chunk::entity_partition::update_entity_partition;
 use crate::client::{Client, Clients};
 use crate::config::{Config, ConnectionMode, ServerListPing};
 use crate::dimension::{validate_dimensions, Dimension, DimensionId};
@@ -54,7 +55,6 @@ mod packet_manager;
 ///
 /// [init]: crate::config::Config::init
 /// [update]: crate::config::Config::update
-#[non_exhaustive]
 pub struct Server<C: Config> {
     /// Custom state.
     pub state: C::ServerState,
@@ -70,6 +70,36 @@ pub struct Server<C: Config> {
     pub player_lists: PlayerLists<C>,
     /// All of the inventories on the server.
     pub inventories: Inventories<C>,
+    /// Incremented on every game tick.
+    current_tick: Ticks,
+    last_tick_duration: Duration,
+}
+
+impl<C: Config> Server<C> {
+    /// Returns the number of ticks that have elapsed since the server began.
+    pub fn current_tick(&self) -> Ticks {
+        self.current_tick
+    }
+
+    /// Returns the amount of time taken to execute the previous tick, not
+    /// including the time spent sleeping.
+    pub fn last_tick_duration(&mut self) -> Duration {
+        self.last_tick_duration
+    }
+}
+
+impl<C: Config> Deref for Server<C> {
+    type Target = C::ServerState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
+}
+
+impl<C: Config> DerefMut for Server<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.state
+    }
 }
 
 /// A handle to a Minecraft server containing the subset of functionality which
@@ -92,6 +122,7 @@ struct SharedServerInner<C: Config> {
     address: SocketAddr,
     tick_rate: Ticks,
     connection_mode: ConnectionMode,
+    compression_threshold: Option<u32>,
     max_connections: usize,
     incoming_capacity: usize,
     outgoing_capacity: usize,
@@ -108,10 +139,8 @@ struct SharedServerInner<C: Config> {
     /// The instant the server was started.
     start_instant: Instant,
     /// Receiver for new clients past the login stage.
-    new_clients_rx: Receiver<NewClientMessage>,
-    new_clients_tx: Sender<NewClientMessage>,
-    /// Incremented on every game tick.
-    tick_counter: AtomicI64,
+    new_clients_send: Sender<NewClientMessage>,
+    new_clients_recv: Receiver<NewClientMessage>,
     /// A semaphore used to limit the number of simultaneous connections to the
     /// server. Closing this semaphore stops new connections.
     connection_sema: Arc<Semaphore>,
@@ -244,11 +273,6 @@ impl<C: Config> SharedServer<C> {
         self.0.start_instant
     }
 
-    /// Returns the number of ticks that have elapsed since the server began.
-    pub fn current_tick(&self) -> Ticks {
-        self.0.tick_counter.load(Ordering::SeqCst)
-    }
-
     /// Immediately stops new connections to the server and initiates server
     /// shutdown. The given result is returned through [`start_server`].
     ///
@@ -282,6 +306,8 @@ pub fn start_server<C: Config>(config: C, data: C::ServerState) -> ShutdownResul
         worlds: Worlds::new(shared.clone()),
         player_lists: PlayerLists::new(),
         inventories: Inventories::new(),
+        current_tick: 0,
+        last_tick_duration: Default::default(),
     };
 
     info_span!("configured_init").in_scope(|| shared.config().init(&mut server));
@@ -315,6 +341,8 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         "outgoing packet capacity must be nonzero"
     );
 
+    let compression_threshold = cfg.compression_threshold();
+
     let tokio_handle = cfg.tokio_handle();
 
     let dimensions = cfg.dimensions();
@@ -329,7 +357,7 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         rsa_der::public_key_to_der(&rsa_key.n().to_bytes_be(), &rsa_key.e().to_bytes_be())
             .into_boxed_slice();
 
-    let (new_clients_tx, new_clients_rx) = flume::bounded(1024);
+    let (new_clients_send, new_clients_recv) = flume::bounded(64);
 
     let runtime = if tokio_handle.is_none() {
         Some(Runtime::new()?)
@@ -349,6 +377,7 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         address,
         tick_rate,
         connection_mode,
+        compression_threshold,
         max_connections,
         incoming_capacity: incoming_packet_capacity,
         outgoing_capacity: outgoing_packet_capacity,
@@ -358,9 +387,8 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         biomes,
         registry_codec,
         start_instant: Instant::now(),
-        new_clients_rx,
-        new_clients_tx,
-        tick_counter: AtomicI64::new(0),
+        new_clients_send,
+        new_clients_recv,
         connection_sema: Arc::new(Semaphore::new(max_connections)),
         shutdown_result: Mutex::new(None),
         rsa_key,
@@ -393,24 +421,30 @@ fn make_registry_codec(dimensions: &[Dimension], biomes: &[Biome]) -> Compound {
         },
         ident!("chat_type") => compound! {
             "type" => ident!("chat_type"),
-            "value" => List::Compound(Vec::new()),
+            "value" => List::Compound(vec![]),
         },
     }
 }
 
 fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
     let mut tick_start = Instant::now();
-    let mut current_tick = 0;
     let shared = server.shared.clone();
 
+    let biome_registry_len = shared.0.biomes.len();
+    let threshold = shared.0.compression_threshold;
+
     loop {
-        let _span = info_span!("update_loop", tick = current_tick).entered();
+        let _span = info_span!("update_loop", tick = server.current_tick).entered();
 
         if let Some(res) = shared.0.shutdown_result.lock().unwrap().take() {
             return res;
         }
 
-        while let Ok(msg) = shared.0.new_clients_rx.try_recv() {
+        for _ in 0..shared.0.new_clients_recv.len() {
+            let Ok(msg) = shared.0.new_clients_recv.try_recv() else {
+                break
+            };
+
             info!(
                 username = %msg.ncd.username,
                 uuid = %msg.ncd.uuid,
@@ -434,12 +468,17 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
 
         info_span!("configured_update").in_scope(|| shared.config().update(server));
 
-        server.worlds.par_iter_mut().for_each(|(id, world)| {
-            world.spatial_index.update(&server.entities, id);
-        });
+        update_entity_partition(&mut server.entities, &mut server.worlds, threshold);
+
+        for (_, world) in server.worlds.iter_mut() {
+            world.chunks.update_caches(threshold, biome_registry_len);
+        }
+
+        server.player_lists.update_caches(threshold);
 
         server.clients.par_iter_mut().for_each(|(_, client)| {
             client.update(
+                server.current_tick,
                 &shared,
                 &server.entities,
                 &server.worlds,
@@ -450,20 +489,19 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
 
         server.entities.update();
 
-        server.worlds.par_iter_mut().for_each(|(_, world)| {
-            world.chunks.update();
-        });
+        server.worlds.update();
 
-        server.player_lists.update();
+        server.player_lists.clear_removed();
 
         server.inventories.update();
 
         // Sleep for the remainder of the tick.
         let tick_duration = Duration::from_secs_f64((shared.0.tick_rate as f64).recip());
-        thread::sleep(tick_duration.saturating_sub(tick_start.elapsed()));
+        server.last_tick_duration = tick_start.elapsed();
+        thread::sleep(tick_duration.saturating_sub(server.last_tick_duration));
 
         tick_start = Instant::now();
-        current_tick = shared.0.tick_counter.fetch_add(1, Ordering::SeqCst) + 1;
+        server.current_tick += 1;
     }
 }
 
@@ -571,7 +609,7 @@ async fn handle_handshake(
                     permit,
                 };
 
-                let _ = server.0.new_clients_tx.send_async(msg).await;
+                let _ = server.0.new_clients_send.send_async(msg).await;
                 Ok(())
             }
             None => Ok(()),
@@ -663,7 +701,7 @@ async fn handle_login(
         ConnectionMode::Velocity { secret } => login::velocity(mngr, username, secret).await?,
     };
 
-    if let Some(threshold) = server.0.cfg.compression_threshold() {
+    if let Some(threshold) = server.0.compression_threshold {
         mngr.send_packet(&SetCompression {
             threshold: VarInt(threshold as i32),
         })
@@ -681,7 +719,7 @@ async fn handle_login(
     mngr.send_packet(&LoginSuccess {
         uuid: ncd.uuid,
         username: ncd.username.as_str_username(),
-        properties: Vec::new(),
+        properties: vec![],
     })
     .await?;
 

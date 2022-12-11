@@ -1,7 +1,7 @@
 use std::iter::FusedIterator;
 use std::mem;
 use std::num::Wrapping;
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref, DerefMut, Index, IndexMut};
 
 use valence_protocol::packets::s2c::play::SetContainerSlotEncode;
 use valence_protocol::{InventoryKind, ItemStack, Text, VarInt};
@@ -67,6 +67,20 @@ impl<C: Config> Inventories<C> {
         for (_, inv) in self.iter_mut() {
             inv.modified = 0;
         }
+    }
+}
+
+impl<C: Config> Index<InventoryId> for Inventories<C> {
+    type Output = Inventory<C>;
+
+    fn index(&self, index: InventoryId) -> &Self::Output {
+        self.get(index).expect("invalid inventory ID")
+    }
+}
+
+impl<C: Config> IndexMut<InventoryId> for Inventories<C> {
+    fn index_mut(&mut self, index: InventoryId) -> &mut Self::Output {
+        self.get_mut(index).expect("invalid inventory ID")
     }
 }
 

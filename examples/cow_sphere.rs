@@ -14,7 +14,7 @@ pub fn main() -> ShutdownResult {
         },
         ServerState {
             player_list: None,
-            cows: Vec::new(),
+            cows: vec![],
         },
     )
 }
@@ -94,6 +94,7 @@ impl Config for Game {
     }
 
     fn update(&self, server: &mut Server<Self>) {
+        let current_tick = server.current_tick();
         let (world_id, _) = server.worlds.iter_mut().next().expect("missing world");
 
         server.clients.retain(|_, client| {
@@ -138,7 +139,7 @@ impl Config for Game {
                 client.set_player_list(server.state.player_list.clone());
 
                 if let Some(id) = &server.state.player_list {
-                    server.player_lists.get_mut(id).insert(
+                    server.player_lists[id].insert(
                         client.uuid(),
                         client.username(),
                         client.textures().cloned(),
@@ -149,20 +150,17 @@ impl Config for Game {
                 }
             }
 
+            let entity = &mut server.entities[client.entity_id];
+
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
                 if let Some(id) = &server.state.player_list {
-                    server.player_lists.get_mut(id).remove(client.uuid());
+                    server.player_lists[id].remove(client.uuid());
                 }
-                server.entities.remove(client.entity_id);
+                entity.set_deleted(true);
 
                 return false;
             }
-
-            let entity = server
-                .entities
-                .get_mut(client.entity_id)
-                .expect("missing player entity");
 
             while let Some(event) = client.next_event() {
                 event.handle_default(client, entity);
@@ -171,7 +169,7 @@ impl Config for Game {
             true
         });
 
-        let time = server.shared.current_tick() as f64 / server.shared.tick_rate() as f64;
+        let time = current_tick as f64 / server.shared.tick_rate() as f64;
 
         let rot = Mat3::rotation_x(time * TAU * 0.1)
             .rotated_y(time * TAU * 0.2)

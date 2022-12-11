@@ -88,8 +88,8 @@ where
 /// ```
 /// use valence_protocol::{Encode, EncodedBuf};
 ///
-/// let mut buf1 = Vec::new();
-/// let mut buf2 = Vec::new();
+/// let mut buf1 = vec![];
+/// let mut buf2 = vec![];
 ///
 /// "hello".encode(&mut buf1).unwrap();
 ///
@@ -110,7 +110,7 @@ pub struct EncodedBuf<T: ?Sized> {
 
 impl<T: Encode + ?Sized> EncodedBuf<T> {
     pub fn new(t: &T) -> Self {
-        let mut buf = Vec::new();
+        let mut buf = vec![];
         let res = t.encode(&mut buf);
 
         Self {

@@ -113,7 +113,7 @@ pub fn encoded_len(text: &str) -> usize {
 #[test]
 fn equivalence() {
     fn check(s: &str) {
-        let mut ours = Vec::new();
+        let mut ours = vec![];
 
         let theirs = cesu8::to_java_cesu8(s);
         write_modified_utf8(&mut ours, s).unwrap();
