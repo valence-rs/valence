@@ -2,6 +2,7 @@ use std::iter::FusedIterator;
 use std::num::NonZeroU32;
 
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
+use tracing::warn;
 
 use crate::slab::Slab;
 
@@ -87,7 +88,7 @@ impl<T> VersionedSlab<T> {
     pub fn insert_with(&mut self, f: impl FnOnce(Key) -> T) -> (Key, &mut T) {
         let version = self.version;
         self.version = NonZeroU32::new(version.get().wrapping_add(1)).unwrap_or_else(|| {
-            log::warn!("slab version overflow");
+            warn!("slab version overflow");
             ONE
         });
 

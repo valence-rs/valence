@@ -5,11 +5,8 @@ use std::{env, fs};
 use anyhow::Context;
 use proc_macro2::{Ident, Span};
 
-mod block;
-mod enchant;
 mod entity;
 mod entity_event;
-mod item;
 
 pub fn main() -> anyhow::Result<()> {
     println!("cargo:rerun-if-changed=extracted/");
@@ -17,9 +14,6 @@ pub fn main() -> anyhow::Result<()> {
     let generators = [
         (entity::build as fn() -> _, "entity.rs"),
         (entity_event::build, "entity_event.rs"),
-        (block::build, "block.rs"),
-        (item::build, "item.rs"),
-        (enchant::build, "enchant.rs"),
     ];
 
     let out_dir = env::var_os("OUT_DIR").context("can't get OUT_DIR env var")?;
@@ -27,7 +21,7 @@ pub fn main() -> anyhow::Result<()> {
     for (g, file_name) in generators {
         let path = Path::new(&out_dir).join(file_name);
         let code = g()?.to_string();
-        fs::write(&path, &code)?;
+        fs::write(&path, code)?;
 
         // Format the output for debugging purposes.
         // Doesn't matter if rustfmt is unavailable.

@@ -1,21 +1,23 @@
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use log::LevelFilter;
-use valence::entity::types::{Facing, PaintingKind, Pose};
 use valence::prelude::*;
+use valence_protocol::entity_meta::{Facing, PaintingKind};
+use valence_spatial_index::bvh::Bvh;
+use valence_spatial_index::{RaycastHit, SpatialIndex, WithAabb};
 
 pub fn main() -> ShutdownResult {
-    env_logger::Builder::new()
-        .filter_module("valence", LevelFilter::Trace)
-        .parse_default_env()
-        .init();
+    tracing_subscriber::fmt().init();
 
     valence::start_server(
         Game {
             player_count: AtomicUsize::new(0),
         },
-        None,
+        ServerState {
+            player_list: None,
+            bvh: Bvh::new(),
+            world: WorldId::NULL,
+        },
     )
 }
 
@@ -38,14 +40,21 @@ const PLAYER_EYE_HEIGHT: f64 = 1.62;
 // TODO
 // const PLAYER_SNEAKING_EYE_HEIGHT: f64 = 1.495;
 
+struct ServerState {
+    player_list: Option<PlayerListId>,
+    bvh: Bvh<WithAabb<EntityId>>,
+    world: WorldId,
+}
+
 #[async_trait]
 impl Config for Game {
-    type ServerState = Option<PlayerListId>;
+    type ServerState = ServerState;
     type ClientState = ClientState;
     type EntityState = ();
     type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
+    type InventoryState = ();
 
     async fn server_list_ping(
         &self,
@@ -64,8 +73,10 @@ impl Config for Game {
 
     fn init(&self, server: &mut Server<Self>) {
         let (world_id, world) = server.worlds.insert(DimensionId::default(), ());
+        server.state.world = world_id;
+
         let (player_list_id, player_list) = server.player_lists.insert(());
-        server.state = Some(player_list_id);
+        server.state.player_list = Some(player_list_id);
 
         let size = 5;
         for z in -size..size {
@@ -290,7 +301,15 @@ impl Config for Game {
     }
 
     fn update(&self, server: &mut Server<Self>) {
-        let (world_id, world) = server.worlds.iter_mut().next().unwrap();
+        let world_id = server.state.world;
+
+        // Rebuild our BVH every tick. All of the entities are in the same world.
+        server.state.bvh.rebuild(
+            server
+                .entities
+                .iter()
+                .map(|(id, entity)| WithAabb::new(id, entity.hitbox())),
+        );
 
         server.clients.retain(|_, client| {
             if client.created_this_tick() {
@@ -309,14 +328,17 @@ impl Config for Game {
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => client.state.player = id,
+                    Some((id, entity)) => {
+                        entity.set_world(world_id);
+                        client.player = id
+                    }
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;
                     }
                 }
 
-                client.spawn(world_id);
+                client.respawn(world_id);
                 client.set_flat(true);
                 client.set_game_mode(GameMode::Creative);
                 client.teleport(
@@ -328,10 +350,10 @@ impl Config for Game {
                     0.0,
                     0.0,
                 );
-                client.set_player_list(server.state.clone());
+                client.set_player_list(server.state.player_list.clone());
 
-                if let Some(id) = &server.state {
-                    server.player_lists.get_mut(id).insert(
+                if let Some(id) = &server.state.player_list {
+                    server.player_lists[id].insert(
                         client.uuid(),
                         client.username(),
                         client.textures().cloned(),
@@ -348,12 +370,18 @@ impl Config for Game {
                 );
             }
 
+            let player = &mut server.entities[client.player];
+
+            while let Some(event) = client.next_event() {
+                event.handle_default(client, player);
+            }
+
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
-                if let Some(id) = &server.state {
-                    server.player_lists.get_mut(id).remove(client.uuid());
+                if let Some(id) = &server.state.player_list {
+                    server.player_lists[id].remove(client.uuid());
                 }
-                server.entities.remove(client.state.player);
+                player.set_deleted(true);
 
                 return false;
             }
@@ -362,23 +390,23 @@ impl Config for Game {
 
             let origin = Vec3::new(client_pos.x, client_pos.y + PLAYER_EYE_HEIGHT, client_pos.z);
             let direction = from_yaw_and_pitch(client.yaw() as f64, client.pitch() as f64);
-            let not_self_or_bullet = |hit: &RaycastHit| {
-                hit.entity != client.state.player && hit.entity != client.state.shulker_bullet
+            let not_self_or_bullet = |hit: RaycastHit<WithAabb<EntityId>>| {
+                hit.object.object != client.player && hit.object.object != client.shulker_bullet
             };
 
-            if let Some(hit) = world
-                .spatial_index
+            if let Some(hit) = server
+                .state
+                .bvh
                 .raycast(origin, direction, not_self_or_bullet)
             {
-                let bullet =
-                    if let Some(bullet) = server.entities.get_mut(client.state.shulker_bullet) {
-                        bullet
-                    } else {
-                        let (id, bullet) = server.entities.insert(EntityKind::ShulkerBullet, ());
-                        client.state.shulker_bullet = id;
-                        bullet.set_world(world_id);
-                        bullet
-                    };
+                let bullet = if let Some(bullet) = server.entities.get_mut(client.shulker_bullet) {
+                    bullet
+                } else {
+                    let (id, bullet) = server.entities.insert(EntityKind::ShulkerBullet, ());
+                    client.shulker_bullet = id;
+                    bullet.set_world(world_id);
+                    bullet
+                };
 
                 let mut hit_pos = origin + direction * hit.near;
                 let hitbox = bullet.hitbox();
@@ -389,16 +417,9 @@ impl Config for Game {
 
                 client.set_action_bar("Intersection".color(Color::GREEN));
             } else {
-                server.entities.remove(client.state.shulker_bullet);
+                server.entities.delete(client.shulker_bullet);
                 client.set_action_bar("No Intersection".color(Color::RED));
             }
-
-            while handle_event_default(
-                client,
-                server.entities.get_mut(client.state.player).unwrap(),
-            )
-            .is_some()
-            {}
 
             true
         });

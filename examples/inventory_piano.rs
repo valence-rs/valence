@@ -1,19 +1,12 @@
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use log::LevelFilter;
 use num::Integer;
 pub use valence::prelude::*;
-// TODO: remove protocol imports.
-use valence::protocol::packets::c2s::play::ClickContainerMode;
-use valence::protocol::packets::s2c::play::SoundCategory;
-use valence::protocol::SlotId;
+use valence_protocol::types::ClickContainerMode;
 
 pub fn main() -> ShutdownResult {
-    env_logger::Builder::new()
-        .filter_module("valence", LevelFilter::Trace)
-        .parse_default_env()
-        .init();
+    tracing_subscriber::fmt().init();
 
     valence::start_server(
         Game {
@@ -41,8 +34,8 @@ const MAX_PLAYERS: usize = 10;
 const SIZE_X: usize = 100;
 const SIZE_Z: usize = 100;
 
-const SLOT_MIN: SlotId = 36;
-const SLOT_MAX: SlotId = 43;
+const SLOT_MIN: i16 = 36;
+const SLOT_MAX: i16 = 43;
 const PITCH_MIN: f32 = 0.5;
 const PITCH_MAX: f32 = 1.0;
 
@@ -54,6 +47,7 @@ impl Config for Game {
     type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
+    type InventoryState = ();
 
     fn dimensions(&self) -> Vec<Dimension> {
         vec![Dimension {
@@ -142,13 +136,13 @@ impl Config for Game {
                     }
                 }
 
-                client.spawn(world_id);
+                client.respawn(world_id);
                 client.set_flat(true);
                 client.teleport(spawn_pos, 0.0, 0.0);
                 client.set_player_list(server.state.player_list.clone());
 
                 if let Some(id) = &server.state.player_list {
-                    server.player_lists.get_mut(id).insert(
+                    server.player_lists[id].insert(
                         client.uuid(),
                         client.username(),
                         client.textures().cloned(),
@@ -170,34 +164,34 @@ impl Config for Game {
                 );
             }
 
+            let player = server.entities.get_mut(client.state.entity_id).unwrap();
+
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.remove(client.state.entity_id);
+                player.set_deleted(true);
                 if let Some(id) = &server.state.player_list {
-                    server.player_lists.get_mut(id).remove(client.uuid());
+                    server.player_lists[id].remove(client.uuid());
                 }
                 return false;
             }
-
-            let player = server.entities.get_mut(client.state.entity_id).unwrap();
 
             if client.position().y <= -20.0 {
                 client.teleport(spawn_pos, client.yaw(), client.pitch());
             }
 
-            while let Some(event) = handle_event_default(client, player) {
+            while let Some(event) = client.next_event() {
                 match event {
-                    ClientEvent::CloseScreen { .. } => {
+                    ClientEvent::CloseContainer { .. } => {
                         client.send_message("Done already?");
                     }
-                    ClientEvent::SetSlotCreative { slot_id, .. } => {
-                        client.send_message(format!("{:#?}", event));
+                    ClientEvent::SetCreativeModeSlot { slot, .. } => {
+                        client.send_message(format!("{event:#?}"));
                         // If the user does a double click, 3 notes will be played.
                         // This is not possible to fix :(
-                        play_note(client, player, slot_id);
+                        play_note(client, player, slot);
                     }
                     ClientEvent::ClickContainer { slot_id, mode, .. } => {
-                        client.send_message(format!("{:#?}", event));
+                        client.send_message(format!("{event:#?}"));
                         if mode != ClickContainerMode::Click {
                             // Prevent notes from being played twice if the user clicks quickly
                             continue;
@@ -213,14 +207,14 @@ impl Config for Game {
     }
 }
 
-fn play_note(client: &mut Client<Game>, player: &mut Entity<Game>, clicked_slot: SlotId) {
+fn play_note(client: &mut Client<Game>, player: &mut Entity<Game>, clicked_slot: i16) {
     if (SLOT_MIN..=SLOT_MAX).contains(&clicked_slot) {
         let pitch = (clicked_slot - SLOT_MIN) as f32 * (PITCH_MAX - PITCH_MIN)
             / (SLOT_MAX - SLOT_MIN) as f32
             + PITCH_MIN;
         client.send_message(format!("playing note with pitch: {}", pitch));
         client.play_sound(
-            ident!("block.note_block.harp"),
+            Ident::new("block.note_block.harp").unwrap(),
             SoundCategory::Block,
             player.position(),
             10.0,

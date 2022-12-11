@@ -359,8 +359,8 @@ pub fn build() -> anyhow::Result<TokenStream> {
             quote! {
                 if self.#field_name != (#default_expr) {
                     data.push(#field_index);
-                    VarInt(#type_id).encode(data).unwrap();
-                    #encodable.encode(data).unwrap();
+                    VarInt(#type_id).encode(&mut *data).unwrap();
+                    #encodable.encode(&mut *data).unwrap();
                 }
             }
         });
@@ -374,8 +374,8 @@ pub fn build() -> anyhow::Result<TokenStream> {
             quote! {
                 if (self.__modified_flags >> #field_index as #modified_flags_type) & 1 == 1 {
                     data.push(#field_index);
-                    VarInt(#type_id).encode(data).unwrap();
-                    #encodable.encode(data).unwrap();
+                    VarInt(#type_id).encode(&mut *data).unwrap();
+                    #encodable.encode(&mut *data).unwrap();
                 }
             }
         });
@@ -405,8 +405,6 @@ pub fn build() -> anyhow::Result<TokenStream> {
                     }
                 }
 
-                // TODO: remove this
-                #[allow(unused)]
                 pub(crate) fn clear_modifications(&mut self) {
                     self.__modified_flags = 0;
                 }
@@ -460,39 +458,33 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            pub(super) fn initial_tracked_data(&self) -> Option<Vec<u8>> {
-                let mut data = Vec::new();
+            pub(super) fn write_initial_tracked_data(&self, buf: &mut Vec<u8>) {
+                buf.clear();
 
                 match self {
-                    #(Self::#concrete_entity_names(e) => e.initial_tracked_data(&mut data),)*
+                    #(Self::#concrete_entity_names(e) => e.initial_tracked_data(buf),)*
                 }
 
-                if data.is_empty() {
-                    None
-                } else {
-                    data.push(0xff);
-                    Some(data)
+                if !buf.is_empty() {
+                    buf.push(0xff);
                 }
             }
 
-            pub(super) fn updated_tracked_data(&self) -> Option<Vec<u8>> {
-                let mut data = Vec::new();
+            pub(super) fn write_updated_tracked_data(&self, buf: &mut Vec<u8>) {
+                buf.clear();
 
                 match self {
-                    #(Self::#concrete_entity_names(e) => e.updated_tracked_data(&mut data),)*
+                    #(Self::#concrete_entity_names(e) => e.updated_tracked_data(buf),)*
                 }
 
-                if data.is_empty() {
-                    None
-                } else {
-                    data.push(0xff);
-                    Some(data)
+                if !buf.is_empty() {
+                    buf.push(0xff);
                 }
             }
 
             pub(super) fn clear_modifications(&mut self) {
                 match self {
-                    #(Self::#concrete_entity_names(e) => e.__modified_flags = 0,)*
+                    #(Self::#concrete_entity_names(e) => e.clear_modifications(),)*
                 }
             }
         }
@@ -511,7 +503,7 @@ fn collect_all_fields<'a>(entity_name: &str, entities: &'a Entities) -> Vec<&'a 
         }
     }
 
-    let mut fields = Vec::new();
+    let mut fields = vec![];
     rec(entity_name, entities, &mut fields);
 
     fields.sort_by_key(|f| f.index);

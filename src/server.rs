@@ -3,27 +3,38 @@
 use std::error::Error;
 use std::iter::FusedIterator;
 use std::net::{IpAddr, SocketAddr};
-use std::sync::atomic::{AtomicI64, Ordering};
+use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use std::{io, thread};
 
 use anyhow::{ensure, Context};
 use flume::{Receiver, Sender};
-pub(crate) use packet_controller::PlayPacketController;
+pub(crate) use packet_manager::{PlayPacketReceiver, PlayPacketSender};
 use rand::rngs::OsRng;
 use rayon::iter::ParallelIterator;
-use reqwest::Client as HttpClient;
+use reqwest::Client as ReqwestClient;
 use rsa::{PublicKeyParts, RsaPrivateKey};
 use serde_json::{json, Value};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::{Handle, Runtime};
-use tokio::sync::Semaphore;
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
+use tracing::{error, info, info_span, instrument, trace, warn};
 use uuid::Uuid;
 use valence_nbt::{compound, Compound, List};
+use valence_protocol::packets::c2s::handshake::HandshakeOwned;
+use valence_protocol::packets::c2s::login::LoginStart;
+use valence_protocol::packets::c2s::status::{PingRequest, StatusRequest};
+use valence_protocol::packets::s2c::login::{DisconnectLogin, LoginSuccess, SetCompression};
+use valence_protocol::packets::s2c::status::{PingResponse, StatusResponse};
+use valence_protocol::types::HandshakeNextState;
+use valence_protocol::{
+    ident, PacketDecoder, PacketEncoder, Username, VarInt, MINECRAFT_VERSION, PROTOCOL_VERSION,
+};
 
 use crate::biome::{validate_biomes, Biome, BiomeId};
+use crate::chunk::entity_partition::update_entity_partition;
 use crate::client::{Client, Clients};
 use crate::config::{Config, ConnectionMode, ServerListPing};
 use crate::dimension::{validate_dimensions, Dimension, DimensionId};
@@ -31,24 +42,19 @@ use crate::entity::Entities;
 use crate::inventory::Inventories;
 use crate::player_list::PlayerLists;
 use crate::player_textures::SignedPlayerTextures;
-use crate::protocol::codec::{PacketDecoder, PacketEncoder};
-use crate::protocol::packets::c2s::handshake::{Handshake, HandshakeNextState};
-use crate::protocol::packets::c2s::login::LoginStart;
-use crate::protocol::packets::c2s::status::{PingRequest, StatusRequest};
-use crate::protocol::packets::s2c::login::{DisconnectLogin, LoginSuccess, SetCompression};
-use crate::protocol::packets::s2c::status::{PingResponse, StatusResponse};
-use crate::protocol::VarInt;
-use crate::server::packet_controller::InitialPacketController;
-use crate::username::Username;
+use crate::server::packet_manager::InitialPacketManager;
 use crate::world::Worlds;
-use crate::{ident, Ticks, PROTOCOL_VERSION, VERSION_NAME};
+use crate::Ticks;
 
 mod byte_channel;
 mod login;
-mod packet_controller;
+mod packet_manager;
 
 /// Contains the entire state of a running Minecraft server, accessible from
-/// within the [update](crate::config::Config::update) loop.
+/// within the [init] and [update] functions.
+///
+/// [init]: crate::config::Config::init
+/// [update]: crate::config::Config::update
 pub struct Server<C: Config> {
     /// Custom state.
     pub state: C::ServerState,
@@ -62,7 +68,38 @@ pub struct Server<C: Config> {
     pub worlds: Worlds<C>,
     /// All of the player lists on the server.
     pub player_lists: PlayerLists<C>,
-    pub inventories: Inventories,
+    /// All of the inventories on the server.
+    pub inventories: Inventories<C>,
+    /// Incremented on every game tick.
+    current_tick: Ticks,
+    last_tick_duration: Duration,
+}
+
+impl<C: Config> Server<C> {
+    /// Returns the number of ticks that have elapsed since the server began.
+    pub fn current_tick(&self) -> Ticks {
+        self.current_tick
+    }
+
+    /// Returns the amount of time taken to execute the previous tick, not
+    /// including the time spent sleeping.
+    pub fn last_tick_duration(&mut self) -> Duration {
+        self.last_tick_duration
+    }
+}
+
+impl<C: Config> Deref for Server<C> {
+    type Target = C::ServerState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
+}
+
+impl<C: Config> DerefMut for Server<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.state
+    }
 }
 
 /// A handle to a Minecraft server containing the subset of functionality which
@@ -85,11 +122,14 @@ struct SharedServerInner<C: Config> {
     address: SocketAddr,
     tick_rate: Ticks,
     connection_mode: ConnectionMode,
+    compression_threshold: Option<u32>,
     max_connections: usize,
     incoming_capacity: usize,
     outgoing_capacity: usize,
+    /// The tokio handle used by the server.
     tokio_handle: Handle,
-    /// Store this here so we don't drop it.
+    /// Holding a runtime handle is not enough to keep tokio working. We need
+    /// to store the runtime here so we don't drop it.
     _tokio_runtime: Option<Runtime>,
     dimensions: Vec<Dimension>,
     biomes: Vec<Biome>,
@@ -99,10 +139,8 @@ struct SharedServerInner<C: Config> {
     /// The instant the server was started.
     start_instant: Instant,
     /// Receiver for new clients past the login stage.
-    new_clients_rx: Receiver<NewClientMessage>,
-    new_clients_tx: Sender<NewClientMessage>,
-    /// Incremented on every game tick.
-    tick_counter: AtomicI64,
+    new_clients_send: Sender<NewClientMessage>,
+    new_clients_recv: Receiver<NewClientMessage>,
     /// A semaphore used to limit the number of simultaneous connections to the
     /// server. Closing this semaphore stops new connections.
     connection_sema: Arc<Semaphore>,
@@ -114,26 +152,28 @@ struct SharedServerInner<C: Config> {
     /// This is sent to clients during the authentication process.
     public_key_der: Box<[u8]>,
     /// For session server requests.
-    http_client: HttpClient,
+    http_client: ReqwestClient,
 }
 
-/// Contains information about a new client.
+/// Contains information about a new client joining the server.
 #[non_exhaustive]
 pub struct NewClientData {
-    /// The UUID of the new client.
-    pub uuid: Uuid,
     /// The username of the new client.
     pub username: Username<String>,
+    /// The UUID of the new client.
+    pub uuid: Uuid,
+    /// The remote address of the new client.
+    pub ip: IpAddr,
     /// The new client's player textures. May be `None` if the client does not
     /// have a skin or cape.
     pub textures: Option<SignedPlayerTextures>,
-    /// The remote address of the new client.
-    pub remote_addr: IpAddr,
 }
 
 struct NewClientMessage {
     ncd: NewClientData,
-    ctrl: PlayPacketController,
+    send: PlayPacketSender,
+    recv: PlayPacketReceiver,
+    permit: OwnedSemaphorePermit,
 }
 
 /// The result type returned from [`start_server`].
@@ -233,11 +273,6 @@ impl<C: Config> SharedServer<C> {
         self.0.start_instant
     }
 
-    /// Returns the number of ticks that have elapsed since the server began.
-    pub fn current_tick(&self) -> Ticks {
-        self.0.tick_counter.load(Ordering::SeqCst)
-    }
-
     /// Immediately stops new connections to the server and initiates server
     /// shutdown. The given result is returned through [`start_server`].
     ///
@@ -254,8 +289,8 @@ impl<C: Config> SharedServer<C> {
 
 /// Consumes the configuration and starts the server.
 ///
-/// The function returns once the server has shut down, a runtime error
-/// occurs, or the configuration is found to be invalid.
+/// This function blocks the current thread and returns once the server has shut
+/// down, a runtime error occurs, or the configuration is found to be invalid.
 pub fn start_server<C: Config>(config: C, data: C::ServerState) -> ShutdownResult {
     let shared = setup_server(config)
         .context("failed to initialize server")
@@ -271,15 +306,18 @@ pub fn start_server<C: Config>(config: C, data: C::ServerState) -> ShutdownResul
         worlds: Worlds::new(shared.clone()),
         player_lists: PlayerLists::new(),
         inventories: Inventories::new(),
+        current_tick: 0,
+        last_tick_duration: Default::default(),
     };
 
-    shared.config().init(&mut server);
+    info_span!("configured_init").in_scope(|| shared.config().init(&mut server));
 
     tokio::spawn(do_accept_loop(shared));
 
     do_update_loop(&mut server)
 }
 
+#[instrument(skip_all)]
 fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
     let max_connections = cfg.max_connections();
     let address = cfg.address();
@@ -303,6 +341,8 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         "outgoing packet capacity must be nonzero"
     );
 
+    let compression_threshold = cfg.compression_threshold();
+
     let tokio_handle = cfg.tokio_handle();
 
     let dimensions = cfg.dimensions();
@@ -317,7 +357,7 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         rsa_der::public_key_to_der(&rsa_key.n().to_bytes_be(), &rsa_key.e().to_bytes_be())
             .into_boxed_slice();
 
-    let (new_clients_tx, new_clients_rx) = flume::bounded(1024);
+    let (new_clients_send, new_clients_recv) = flume::bounded(64);
 
     let runtime = if tokio_handle.is_none() {
         Some(Runtime::new()?)
@@ -337,6 +377,7 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         address,
         tick_rate,
         connection_mode,
+        compression_threshold,
         max_connections,
         incoming_capacity: incoming_packet_capacity,
         outgoing_capacity: outgoing_packet_capacity,
@@ -346,14 +387,13 @@ fn setup_server<C: Config>(cfg: C) -> anyhow::Result<SharedServer<C>> {
         biomes,
         registry_codec,
         start_instant: Instant::now(),
-        new_clients_rx,
-        new_clients_tx,
-        tick_counter: AtomicI64::new(0),
+        new_clients_send,
+        new_clients_recv,
         connection_sema: Arc::new(Semaphore::new(max_connections)),
         shutdown_result: Mutex::new(None),
         rsa_key,
         public_key_der,
-        http_client: HttpClient::new(),
+        http_client: ReqwestClient::new(),
     };
 
     Ok(SharedServer(Arc::new(server)))
@@ -378,43 +418,67 @@ fn make_registry_codec(dimensions: &[Dimension], biomes: &[Biome]) -> Compound {
                     .map(|(id, biome)| biome.to_biome_registry_item(id as i32))
                     .collect())
             }
-
         },
-        ident!("chat_type_registry") => compound! {
+        ident!("chat_type") => compound! {
             "type" => ident!("chat_type"),
-            "value" => List::Compound(Vec::new()),
+            "value" => List::Compound(vec![]),
         },
     }
 }
 
 fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
     let mut tick_start = Instant::now();
-
     let shared = server.shared.clone();
+
+    let biome_registry_len = shared.0.biomes.len();
+    let threshold = shared.0.compression_threshold;
+
     loop {
+        let _span = info_span!("update_loop", tick = server.current_tick).entered();
+
         if let Some(res) = shared.0.shutdown_result.lock().unwrap().take() {
             return res;
         }
 
-        while let Ok(msg) = shared.0.new_clients_rx.try_recv() {
-            server
-                .clients
-                .insert(Client::new(msg.ctrl, msg.ncd, Default::default()));
+        for _ in 0..shared.0.new_clients_recv.len() {
+            let Ok(msg) = shared.0.new_clients_recv.try_recv() else {
+                break
+            };
+
+            info!(
+                username = %msg.ncd.username,
+                uuid = %msg.ncd.uuid,
+                ip = %msg.ncd.ip,
+                "inserting client"
+            );
+
+            server.clients.insert(Client::new(
+                msg.send,
+                msg.recv,
+                msg.permit,
+                msg.ncd,
+                Default::default(),
+            ));
         }
 
         // Get serverbound packets first so they are not dealt with a tick late.
-        server.clients.par_iter_mut().for_each(|(_, client)| {
-            client.handle_serverbound_packets(&server.entities);
-        });
+        for (_, client) in server.clients.iter_mut() {
+            client.prepare_c2s_packets();
+        }
 
-        shared.config().update(server);
+        info_span!("configured_update").in_scope(|| shared.config().update(server));
 
-        server.worlds.par_iter_mut().for_each(|(id, world)| {
-            world.spatial_index.update(&server.entities, id);
-        });
+        update_entity_partition(&mut server.entities, &mut server.worlds, threshold);
+
+        for (_, world) in server.worlds.iter_mut() {
+            world.chunks.update_caches(threshold, biome_registry_len);
+        }
+
+        server.player_lists.update_caches(threshold);
 
         server.clients.par_iter_mut().for_each(|(_, client)| {
             client.update(
+                server.current_tick,
                 &shared,
                 &server.entities,
                 &server.worlds,
@@ -425,25 +489,24 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
 
         server.entities.update();
 
-        server.worlds.par_iter_mut().for_each(|(_, world)| {
-            world.chunks.update();
-        });
+        server.worlds.update();
 
-        server.player_lists.update();
+        server.player_lists.clear_removed();
+
         server.inventories.update();
 
         // Sleep for the remainder of the tick.
         let tick_duration = Duration::from_secs_f64((shared.0.tick_rate as f64).recip());
-        thread::sleep(tick_duration.saturating_sub(tick_start.elapsed()));
+        server.last_tick_duration = tick_start.elapsed();
+        thread::sleep(tick_duration.saturating_sub(server.last_tick_duration));
 
         tick_start = Instant::now();
-        shared.0.tick_counter.fetch_add(1, Ordering::SeqCst);
+        server.current_tick += 1;
     }
 }
 
+#[instrument(skip_all)]
 async fn do_accept_loop(server: SharedServer<impl Config>) {
-    log::trace!("entering accept loop");
-
     let listener = match TcpListener::bind(server.0.address).await {
         Ok(listener) => listener,
         Err(e) => {
@@ -456,25 +519,15 @@ async fn do_accept_loop(server: SharedServer<impl Config>) {
         match server.0.connection_sema.clone().acquire_owned().await {
             Ok(permit) => match listener.accept().await {
                 Ok((stream, remote_addr)) => {
-                    let server = server.clone();
-                    tokio::spawn(async move {
-                        if let Err(e) = stream.set_nodelay(true) {
-                            log::error!("failed to set TCP_NODELAY: {e}");
-                        }
-
-                        if let Err(e) = handle_connection(server, stream, remote_addr).await {
-                            if let Some(e) = e.downcast_ref::<io::Error>() {
-                                if e.kind() == io::ErrorKind::UnexpectedEof {
-                                    return;
-                                }
-                            }
-                            log::error!("connection to {remote_addr} ended: {e:#}");
-                        }
-                        drop(permit);
-                    });
+                    tokio::spawn(handle_connection(
+                        server.clone(),
+                        stream,
+                        remote_addr,
+                        permit,
+                    ));
                 }
                 Err(e) => {
-                    log::error!("failed to accept incoming connection: {e}");
+                    error!("failed to accept incoming connection: {e}");
                 }
             },
             // Closed semaphore indicates server shutdown.
@@ -483,24 +536,50 @@ async fn do_accept_loop(server: SharedServer<impl Config>) {
     }
 }
 
+#[instrument(skip(server, stream))]
 async fn handle_connection(
     server: SharedServer<impl Config>,
     stream: TcpStream,
     remote_addr: SocketAddr,
-) -> anyhow::Result<()> {
+    permit: OwnedSemaphorePermit,
+) {
+    trace!("handling connection");
+
+    if let Err(e) = stream.set_nodelay(true) {
+        error!("failed to set TCP_NODELAY: {e}");
+    }
+
     let (read, write) = stream.into_split();
 
-    let mut ctrl = InitialPacketController::new(
+    let mngr = InitialPacketManager::new(
         read,
         write,
         PacketEncoder::new(),
         PacketDecoder::new(),
         Duration::from_secs(5),
+        permit,
     );
 
     // TODO: peek stream for 0xFE legacy ping
 
-    let handshake: Handshake = ctrl.recv_packet().await?;
+    if let Err(e) = handle_handshake(server, mngr, remote_addr).await {
+        // EOF can happen if the client disconnects while joining, which isn't
+        // very erroneous.
+        if let Some(e) = e.downcast_ref::<io::Error>() {
+            if e.kind() == io::ErrorKind::UnexpectedEof {
+                return;
+            }
+        }
+        warn!("connection ended with error: {e:#}");
+    }
+}
+
+async fn handle_handshake(
+    server: SharedServer<impl Config>,
+    mut mngr: InitialPacketManager<OwnedReadHalf, OwnedWriteHalf>,
+    remote_addr: SocketAddr,
+) -> anyhow::Result<()> {
+    let handshake = mngr.recv_packet::<HandshakeOwned>().await?;
 
     ensure!(
         matches!(server.connection_mode(), ConnectionMode::BungeeCord)
@@ -509,23 +588,28 @@ async fn handle_connection(
     );
 
     match handshake.next_state {
-        HandshakeNextState::Status => handle_status(server, ctrl, remote_addr, handshake)
+        HandshakeNextState::Status => handle_status(server, mngr, remote_addr, handshake)
             .await
-            .context("error during status"),
-        HandshakeNextState::Login => match handle_login(&server, &mut ctrl, remote_addr, handshake)
+            .context("error handling status"),
+        HandshakeNextState::Login => match handle_login(&server, &mut mngr, remote_addr, handshake)
             .await
-            .context("error during login")?
+            .context("error handling login")?
         {
             Some(ncd) => {
+                let (send, recv, permit) = mngr.into_play(
+                    server.0.incoming_capacity,
+                    server.0.outgoing_capacity,
+                    server.tokio_handle().clone(),
+                );
+
                 let msg = NewClientMessage {
                     ncd,
-                    ctrl: ctrl.into_play_packet_controller(
-                        server.0.incoming_capacity,
-                        server.0.outgoing_capacity,
-                    ),
+                    send,
+                    recv,
+                    permit,
                 };
 
-                let _ = server.0.new_clients_tx.send_async(msg).await;
+                let _ = server.0.new_clients_send.send_async(msg).await;
                 Ok(())
             }
             None => Ok(()),
@@ -535,11 +619,11 @@ async fn handle_connection(
 
 async fn handle_status(
     server: SharedServer<impl Config>,
-    mut ctrl: InitialPacketController<OwnedReadHalf, OwnedWriteHalf>,
+    mut mngr: InitialPacketManager<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
-    handshake: Handshake,
+    handshake: HandshakeOwned,
 ) -> anyhow::Result<()> {
-    ctrl.recv_packet::<StatusRequest>().await?;
+    mngr.recv_packet::<StatusRequest>().await?;
 
     match server
         .0
@@ -556,7 +640,7 @@ async fn handle_status(
         } => {
             let mut json = json!({
                 "version": {
-                    "name": VERSION_NAME,
+                    "name": MINECRAFT_VERSION,
                     "protocol": PROTOCOL_VERSION
                 },
                 "players": {
@@ -575,17 +659,17 @@ async fn handle_status(
                     .insert("favicon".to_owned(), Value::String(buf));
             }
 
-            ctrl.send_packet(&StatusResponse {
-                json_response: json.to_string(),
+            mngr.send_packet(&StatusResponse {
+                json: &json.to_string(),
             })
             .await?;
         }
         ServerListPing::Ignore => return Ok(()),
     }
 
-    let PingRequest { payload } = ctrl.recv_packet().await?;
+    let PingRequest { payload } = mngr.recv_packet().await?;
 
-    ctrl.send_packet(&PingResponse { payload }).await?;
+    mngr.send_packet(&PingResponse { payload }).await?;
 
     Ok(())
 }
@@ -593,9 +677,9 @@ async fn handle_status(
 /// Handle the login process and return the new client's data if successful.
 async fn handle_login(
     server: &SharedServer<impl Config>,
-    ctrl: &mut InitialPacketController<OwnedReadHalf, OwnedWriteHalf>,
+    mngr: &mut InitialPacketManager<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
-    handshake: Handshake,
+    handshake: HandshakeOwned,
 ) -> anyhow::Result<Option<NewClientData>> {
     if handshake.protocol_version.0 != PROTOCOL_VERSION {
         // TODO: send translated disconnect msg?
@@ -606,34 +690,36 @@ async fn handle_login(
         username,
         sig_data: _,   // TODO
         profile_id: _, // TODO
-    } = ctrl.recv_packet().await?;
+    } = mngr.recv_packet().await?;
+
+    let username = username.to_owned_username();
 
     let ncd = match server.connection_mode() {
-        ConnectionMode::Online => login::online(server, ctrl, remote_addr, username).await?,
+        ConnectionMode::Online => login::online(server, mngr, remote_addr, username).await?,
         ConnectionMode::Offline => login::offline(remote_addr, username)?,
         ConnectionMode::BungeeCord => login::bungeecord(&handshake.server_address, username)?,
-        ConnectionMode::Velocity { secret } => login::velocity(ctrl, username, secret).await?,
+        ConnectionMode::Velocity { secret } => login::velocity(mngr, username, secret).await?,
     };
 
-    if let Some(threshold) = server.0.cfg.compression_threshold() {
-        ctrl.send_packet(&SetCompression {
+    if let Some(threshold) = server.0.compression_threshold {
+        mngr.send_packet(&SetCompression {
             threshold: VarInt(threshold as i32),
         })
         .await?;
 
-        ctrl.set_compression(Some(threshold));
+        mngr.set_compression(Some(threshold));
     }
 
     if let Err(reason) = server.0.cfg.login(server, &ncd).await {
-        log::info!("Disconnect at login: \"{reason}\"");
-        ctrl.send_packet(&DisconnectLogin { reason }).await?;
+        info!("disconnect at login: \"{reason}\"");
+        mngr.send_packet(&DisconnectLogin { reason }).await?;
         return Ok(None);
     }
 
-    ctrl.send_packet(&LoginSuccess {
+    mngr.send_packet(&LoginSuccess {
         uuid: ncd.uuid,
-        username: ncd.username.clone(),
-        properties: Vec::new(),
+        username: ncd.username.as_str_username(),
+        properties: vec![],
     })
     .await?;
 
