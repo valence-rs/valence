@@ -369,6 +369,8 @@ impl<C: Config> Chunks<C> {
 
             // Regenerate the chunk data packet if the cache was invalidated.
             if any_blocks_modified || chunk.any_biomes_modified || chunk.created_this_tick {
+                // TODO: build chunk data packet cache lazily.
+
                 chunk.any_biomes_modified = false;
                 chunk.cached_init_packet.clear();
 

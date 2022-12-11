@@ -1131,8 +1131,11 @@ impl<C: Config> Client<C> {
                                 // Chunk needs initialization. Send packet to load it.
                                 chunk.write_chunk_data_packet(&mut *send)?;
 
+                                // Don't assert that the chunk is already loaded in this case.
+                                // Chunks are allowed to be overwritten and their "created this
+                                // tick" flag will become true again.
                                 #[cfg(debug_assertions)]
-                                assert!(self.loaded_chunks.insert(pos));
+                                self.loaded_chunks.insert(pos);
                             }
                             (false, true) => {
                                 // Chunk was previously loaded and is now deleted.

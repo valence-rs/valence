@@ -125,16 +125,6 @@ impl Config for Game {
                     }
                 }
 
-                for chunk_z in -1..3 {
-                    for chunk_x in -2..2 {
-                        world.chunks.insert(
-                            (chunk_x as i32, chunk_z as i32),
-                            UnloadedChunk::default(),
-                            ChunkState { keep_loaded: true },
-                        );
-                    }
-                }
-
                 client.respawn(world_id);
                 client.set_flat(true);
                 client.set_player_list(server.state.player_list.clone());
