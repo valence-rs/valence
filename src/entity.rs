@@ -119,7 +119,7 @@ impl<C: Config> Entities<C> {
     }
 
     /// Gets the [`EntityId`] of the entity with the given UUID in an efficient
-    /// manner.
+    /// manner. The returned ID is guaranteed to be valid.
     ///
     /// If there is no entity with the UUID, `None` is returned.
     pub fn get_with_uuid(&self, uuid: Uuid) -> Option<EntityId> {
@@ -222,6 +222,20 @@ impl<C: Config> Entities<C> {
                 true
             }
         });
+    }
+}
+
+impl<C: Config> Index<EntityId> for Entities<C> {
+    type Output = Entity<C>;
+
+    fn index(&self, index: EntityId) -> &Self::Output {
+        self.get(index).expect("invalid entity ID")
+    }
+}
+
+impl<C: Config> IndexMut<EntityId> for Entities<C> {
+    fn index_mut(&mut self, index: EntityId) -> &mut Self::Output {
+        self.get_mut(index).expect("invalid entity ID")
     }
 }
 
@@ -895,20 +909,6 @@ impl<C: Config> Entity<C> {
         }
 
         Ok(())
-    }
-}
-
-impl<C: Config> Index<EntityId> for Entities<C> {
-    type Output = Entity<C>;
-
-    fn index(&self, index: EntityId) -> &Self::Output {
-        self.get(index).expect("invalid entity ID")
-    }
-}
-
-impl<C: Config> IndexMut<EntityId> for Entities<C> {
-    fn index_mut(&mut self, index: EntityId) -> &mut Self::Output {
-        self.get_mut(index).expect("invalid entity ID")
     }
 }
 

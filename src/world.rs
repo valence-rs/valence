@@ -1,7 +1,7 @@
 //! A space on a server for objects to occupy.
 
 use std::iter::FusedIterator;
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref, DerefMut, Index, IndexMut};
 
 use rayon::iter::ParallelIterator;
 
@@ -133,6 +133,20 @@ impl<C: Config> Worlds<C> {
         self.par_iter_mut().for_each(|(_, world)| {
             world.chunks.update();
         });
+    }
+}
+
+impl<C: Config> Index<WorldId> for Worlds<C> {
+    type Output = World<C>;
+
+    fn index(&self, index: WorldId) -> &Self::Output {
+        self.get(index).expect("invalid world ID")
+    }
+}
+
+impl<C: Config> IndexMut<WorldId> for Worlds<C> {
+    fn index_mut(&mut self, index: WorldId) -> &mut Self::Output {
+        self.get_mut(index).expect("invalid world ID")
     }
 }
 

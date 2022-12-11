@@ -10,7 +10,7 @@ use std::collections::hash_map::Entry;
 use std::io::Write;
 use std::iter::FusedIterator;
 use std::mem;
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref, DerefMut, Index, IndexMut};
 
 use entity_partition::PartitionCell;
 use paletted_container::PalettedContainer;
@@ -446,6 +446,24 @@ impl<C: Config> Chunks<C> {
 
             chunk_opt.is_some() || cell.entities().len() > 0
         });
+    }
+}
+
+impl<C: Config, P: Into<ChunkPos>> Index<P> for Chunks<C> {
+    type Output = LoadedChunk<C>;
+
+    fn index(&self, index: P) -> &Self::Output {
+        let ChunkPos { x, z } = index.into();
+        self.get((x, z))
+            .unwrap_or_else(|| panic!("missing chunk at ({x}, {z})"))
+    }
+}
+
+impl<C: Config, P: Into<ChunkPos>> IndexMut<P> for Chunks<C> {
+    fn index_mut(&mut self, index: P) -> &mut Self::Output {
+        let ChunkPos { x, z } = index.into();
+        self.get_mut((x, z))
+            .unwrap_or_else(|| panic!("missing chunk at ({x}, {z})"))
     }
 }
 

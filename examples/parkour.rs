@@ -130,7 +130,7 @@ impl Config for Game {
                 client.set_player_list(server.state.player_list.clone());
 
                 if let Some(id) = &server.state.player_list {
-                    server.player_lists.get_mut(id).insert(
+                    server.player_lists[id].insert(
                         client.uuid(),
                         client.username(),
                         client.textures().cloned(),
@@ -146,7 +146,7 @@ impl Config for Game {
             }
 
             let world_id = client.world_id;
-            let world = server.worlds.get_mut(world_id).unwrap();
+            let world = &mut server.worlds[world_id];
 
             let p = client.position();
             for pos in ChunkPos::at(p.x, p.z).in_view(3) {
@@ -241,9 +241,8 @@ impl Config for Game {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
                 player.set_deleted(true);
                 if let Some(id) = &server.state.player_list {
-                    server.player_lists.get_mut(id).remove(client.uuid());
+                    server.player_lists[id].remove(client.uuid());
                 }
-
                 server.worlds.remove(world_id);
                 return false;
             }

@@ -1025,7 +1025,7 @@ impl<C: Config> Client<C> {
             })?;
 
             if let Some(id) = &self.player_list {
-                player_lists.get(id).write_init_packets(&mut *send)?;
+                player_lists[id].write_init_packets(&mut *send)?;
             }
         } else {
             if self.view_distance != self.old_view_distance {
@@ -1055,18 +1055,18 @@ impl<C: Config> Client<C> {
             if self.old_player_list != self.player_list {
                 // Delete existing entries from old player list.
                 if let Some(id) = &self.old_player_list {
-                    player_lists.get(id).write_clear_packets(&mut *send)?;
+                    player_lists[id].write_clear_packets(&mut *send)?;
                 }
 
                 // Get initial packets for new player list.
                 if let Some(id) = &self.player_list {
-                    player_lists.get(id).write_init_packets(&mut *send)?;
+                    player_lists[id].write_init_packets(&mut *send)?;
                 }
 
                 self.old_player_list = self.player_list.clone();
             } else if let Some(id) = &self.player_list {
                 // Otherwise, update current player list.
-                player_lists.get(id).write_update_packets(&mut *send)?;
+                player_lists[id].write_update_packets(&mut *send)?;
             }
         }
 

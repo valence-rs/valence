@@ -2,7 +2,7 @@
 
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref, DerefMut, Index, IndexMut};
 
 use bitfield_struct::bitfield;
 use uuid::Uuid;
@@ -177,6 +177,20 @@ impl<C: Config> PlayerLists<C> {
         for pl in self.slab.iter_mut() {
             pl.removed.clear();
         }
+    }
+}
+
+impl<'a, C: Config> Index<&'a PlayerListId> for PlayerLists<C> {
+    type Output = PlayerList<C>;
+
+    fn index(&self, index: &'a PlayerListId) -> &Self::Output {
+        self.get(index)
+    }
+}
+
+impl<'a, C: Config> IndexMut<&'a PlayerListId> for PlayerLists<C> {
+    fn index_mut(&mut self, index: &'a PlayerListId) -> &mut Self::Output {
+        self.get_mut(index)
     }
 }
 
