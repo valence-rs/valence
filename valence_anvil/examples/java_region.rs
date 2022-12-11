@@ -100,9 +100,9 @@ impl Config for Game {
     }
 
     fn update(&self, server: &mut Server<Self>) {
-        let (world_id, world) = server.worlds.iter_mut().next().unwrap();
+        let (world_id, world): (WorldId, &mut World<_>) = server.worlds.iter_mut().next().unwrap();
 
-        server.clients.retain(|_, client| {
+        server.clients.retain(|_, client: &mut Client<_>| {
             if client.created_this_tick() {
                 if self
                     .player_count
@@ -156,7 +156,7 @@ impl Config for Game {
                 if let Some(id) = &server.state {
                     server.player_lists.get_mut(id).remove(client.uuid());
                 }
-                server.entities.remove(client.state.id);
+                server.entities.delete(client.id);
 
                 return false;
             }
@@ -170,9 +170,8 @@ impl Config for Game {
             let dist = client.view_distance();
             let p = client.position();
 
-            let required_chunks = chunks_in_view_distance(ChunkPos::at(p.x, p.z), dist);
             let mut new_chunks = Vec::new();
-            for pos in required_chunks {
+            for pos in ChunkPos::at(p.x, p.z).in_view(dist) {
                 if let Some(existing) = world.chunks.get_mut(pos) {
                     existing.state = true;
                 } else {
@@ -195,14 +194,10 @@ impl Config for Game {
             true
         });
 
-        // Remove chunks outside the view distance of players.
-        world.chunks.retain(|_, chunk| {
-            if chunk.state {
-                chunk.state = false;
-                true
-            } else {
-                false
+        for (_, chunk) in world.chunks.iter_mut(){
+            if !chunk.state {
+                chunk.set_deleted(true)
             }
-        });
+        }
     }
 }
