@@ -1083,22 +1083,25 @@ impl<C: Config> Client<C> {
         }
 
         let self_entity_pos;
-        let self_update_range;
+        let self_entity_world;
+        let self_entity_range;
 
         // Get the entity with the same UUID as the client (if it exists).
         if let Some(entity) = entities.get(self.self_entity) {
             self_entity_pos = ChunkPos::at(entity.position().x, entity.position().z);
-            self_update_range = entity.self_update_range.clone();
+            self_entity_world = entity.world();
+            self_entity_range = entity.self_update_range.clone();
         } else if let Some(id) = entities.get_with_uuid(self.uuid) {
             self.self_entity = id;
             let entity = &entities[id];
             self_entity_pos = ChunkPos::at(entity.position().x, entity.position().z);
-            self_update_range = entity.self_update_range.clone();
+            self_entity_world = entity.world();
+            self_entity_range = entity.self_update_range.clone();
         } else {
-            // There is no entity with the same UUID as the client. A range of 0..0 has no
-            // effect.
+            // There is no entity with the same UUID as the client.
             self_entity_pos = ChunkPos::new(0, 0);
-            self_update_range = 0..0;
+            self_entity_world = WorldId::NULL;
+            self_entity_range = 0..0;
         }
 
         let old_chunk_pos = ChunkPos::at(self.old_position.x, self.old_position.z);
@@ -1185,11 +1188,11 @@ impl<C: Config> Client<C> {
                     }
 
                     // Update all the entities in the chunk.
-                    if pos == self_entity_pos {
+                    if pos == self_entity_pos && self.old_world == self_entity_world {
                         // Don't update the entity with the same UUID as the client.
                         let bytes = cell.cached_update_packets();
-                        send.append_bytes(&bytes[..self_update_range.start]);
-                        send.append_bytes(&bytes[self_update_range.end..]);
+                        send.append_bytes(&bytes[..self_entity_range.start]);
+                        send.append_bytes(&bytes[self_entity_range.end..]);
                     } else {
                         send.append_bytes(cell.cached_update_packets());
                     }

@@ -28,13 +28,14 @@ impl ChunkPos {
     /// Checks if two chunk positions are within a view distance (render
     /// distance) of each other such that a client standing in `self` would
     /// be able to see `other`.
+    #[inline]
     pub fn is_in_view(self, other: Self, view_dist: u8) -> bool {
         let dist = view_dist as i64 + EXTRA_VIEW_RADIUS as i64;
 
         let diff_x = other.x as i64 - self.x as i64;
         let diff_z = other.z as i64 - self.z as i64;
 
-        diff_x.pow(2) + diff_z.pow(2) <= dist.pow(2)
+        diff_x * diff_x + diff_z * diff_z <= dist * dist
     }
 
     /// Returns an iterator over all chunk positions within a view distance
