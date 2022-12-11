@@ -4,6 +4,7 @@ use valence::chunk::ChunkPos;
 use valence::config::Config;
 use valence_anvil::biome::BiomeKind;
 use valence_anvil::AnvilWorld;
+use valence::prelude::Dimension;
 
 #[path = "../tests/assets.rs"]
 pub mod assets;
@@ -29,6 +30,7 @@ impl Config for TestConfig {
 pub fn parse_world() {
     let world_directory = BENCHMARK_WORLD_ASSET.load_blocking_panic();
     let world = AnvilWorld::new::<TestConfig, _>(
+        &Dimension::default(),
         world_directory,
         BiomeKind::ALL
             .iter()

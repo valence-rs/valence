@@ -5,6 +5,7 @@ use valence::chunk::ChunkPos;
 use valence::config::Config;
 use valence_anvil::biome::BiomeKind;
 use valence_anvil::AnvilWorld;
+use valence::dimension::Dimension;
 
 criterion_group!(benches, criterion_benchmark);
 criterion_main!(benches);
@@ -33,6 +34,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     let world_directory = BENCHMARK_WORLD_ASSET.load_blocking_panic();
 
     let world = AnvilWorld::new::<BenchmarkConfig, _>(
+        &Dimension::default(),
         world_directory,
         BiomeKind::ALL
             .iter()

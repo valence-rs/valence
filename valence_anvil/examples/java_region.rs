@@ -93,7 +93,7 @@ impl Config for Game {
         for (id, dimension) in server.shared.dimensions() {
             server.worlds.insert(
                 id,
-                AnvilWorld::new::<Game, _>(&dimension, &self.world_dir, server.shared.biomes()),
+                AnvilWorld::new::<Game, _>(dimension, &self.world_dir, server.shared.biomes()),
             );
         }
         server.state = Some(server.player_lists.insert(()).0);

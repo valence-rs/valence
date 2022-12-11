@@ -66,7 +66,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .into_iter()
         .map(|biome| RenamedBiome {
             id: biome.id,
-            rustified_name: ident(&biome.name.replace("minecraft:", "").to_pascal_case()),
+            rustified_name: ident(biome.name.replace("minecraft:", "").to_pascal_case()),
             name: biome.name,
             climate: biome.climate,
             color: biome.color,
@@ -171,14 +171,14 @@ pub fn build() -> anyhow::Result<TokenStream> {
         .map(|biome| {
             let rustified_name = &biome.rustified_name;
             let name = &biome.name;
-            let precipitation = ident(&biome.climate.precipitation.to_pascal_case());
+            let precipitation = ident(biome.climate.precipitation.to_pascal_case());
             let sky_color = &biome.color.sky;
             let water_fog = &biome.color.water_fog;
             let fog = &biome.color.fog;
             let water_color = &biome.color.water;
             let foliage_color = option_to_quote(&biome.color.foliage);
             let grass_color = option_to_quote(&biome.color.grass);
-            let grass_modifier = ident(&biome.color.grass_modifier.to_pascal_case());
+            let grass_modifier = ident(biome.color.grass_modifier.to_pascal_case());
             quote! {
                 Self::#rustified_name => Ok(Biome{
                     name: Ident::from_str(#name)?,
