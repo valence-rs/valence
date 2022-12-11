@@ -3,9 +3,9 @@ use tokio::runtime::Builder;
 use valence::biome::BiomeId;
 use valence::chunk::ChunkPos;
 use valence::config::Config;
+use valence::dimension::Dimension;
 use valence_anvil::biome::BiomeKind;
 use valence_anvil::AnvilWorld;
-use valence::dimension::Dimension;
 
 criterion_group!(benches, criterion_benchmark);
 criterion_main!(benches);

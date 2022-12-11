@@ -2,9 +2,9 @@ use tokio::runtime::Builder;
 use valence::biome::BiomeId;
 use valence::chunk::ChunkPos;
 use valence::config::Config;
+use valence::prelude::Dimension;
 use valence_anvil::biome::BiomeKind;
 use valence_anvil::AnvilWorld;
-use valence::prelude::Dimension;
 
 #[path = "../tests/assets.rs"]
 pub mod assets;

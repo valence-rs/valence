@@ -194,7 +194,7 @@ impl Config for Game {
             true
         });
 
-        for (_, chunk) in world.chunks.iter_mut(){
+        for (_, chunk) in world.chunks.iter_mut() {
             if !chunk.state {
                 chunk.set_deleted(true)
             }
