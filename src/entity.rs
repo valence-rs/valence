@@ -140,6 +140,15 @@ impl<C: Config> Entities<C> {
         self.slab.get_mut(entity.0)
     }
 
+    pub fn delete(&mut self, entity: EntityId) -> bool {
+        if let Some(entity) = self.get_mut(entity) {
+            entity.set_deleted(true);
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn get_with_raw_id(&self, raw_id: i32) -> Option<(EntityId, &Entity<C>)> {
         let version = NonZeroU32::new(raw_id as u32)?;
         let index = *self.raw_id_to_entity.get(&version)?;

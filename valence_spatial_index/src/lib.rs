@@ -82,6 +82,12 @@ pub struct WithAabb<O, N = f64> {
     pub aabb: Aabb<N>,
 }
 
+impl<O, N> WithAabb<O, N> {
+    pub fn new(object: O, aabb: Aabb<N>) -> Self {
+        Self { object, aabb }
+    }
+}
+
 impl<O, N: Clone> Bounded3D<N> for WithAabb<O, N> {
     fn aabb(&self) -> Aabb<N> {
         self.aabb.clone()

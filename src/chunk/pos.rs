@@ -51,9 +51,10 @@ impl ChunkPos {
     #[inline(always)]
     pub(crate) fn try_for_each_in_view<F>(self, view_dist: u8, mut f: F) -> anyhow::Result<()>
     where
-        F: FnMut(ChunkPos) -> anyhow::Result<()>
+        F: FnMut(ChunkPos) -> anyhow::Result<()>,
     {
         let dist = view_dist as i32 + EXTRA_VIEW_RADIUS;
+
         for z in self.z - dist..=self.z + dist {
             for x in self.x - dist..=self.x + dist {
                 let p = Self { x, z };

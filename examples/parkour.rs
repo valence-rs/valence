@@ -242,15 +242,6 @@ impl Config for Game {
             }
 
             // Remove chunks outside the view distance of players.
-            world.chunks.retain(|_, chunk| {
-                if chunk.keep_loaded {
-                    chunk.keep_loaded = false;
-                    true
-                } else {
-                    false
-                }
-            });
-
             for (_, chunk) in world.chunks.iter_mut() {
                 chunk.set_deleted(!chunk.keep_loaded);
                 chunk.keep_loaded = false;
@@ -258,7 +249,7 @@ impl Config for Game {
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.remove(client.entity_id);
+                player.set_deleted(true);
                 if let Some(id) = &server.state.player_list {
                     server.player_lists.get_mut(id).remove(client.uuid());
                 }
