@@ -1,18 +1,190 @@
 use std::ops::BitXor;
 
-use crate::error::{DataFormatError, Error};
+use valence::nbt::{Compound, List, Value};
+use valence::prelude::*;
+
+use crate::error::{DataFormatError, Error, NbtFormatError};
 
 pub enum DataFormat<T> {
     All(T),
     Palette(usize, T),
 }
 
-pub fn parse_palette<T: Copy, F: (FnMut(DataFormat<T>) -> Result<(), Error>)>(
+pub fn parse_palette_identities_with_properties<
+    T: Copy,
+    FT: FnMut(Ident<String>) -> Result<T, Error>,
+    FP: FnMut(T, PropName, PropValue) -> Result<T, Error>,
+    F: FnMut(DataFormat<T>) -> Result<(), Error>,
+>(
+    palette_container: Compound,
+    min_bits: usize,
+    expected_len: usize,
+    mut loader: FT,
+    mut applicator: FP,
+    handler: F,
+) -> Result<(), Error> {
+    parse_compound_palette(
+        palette_container,
+        min_bits,
+        expected_len,
+        |mut nbt| match (nbt.remove("Name"), nbt.remove("Properties")) {
+            (Some(Value::String(identity)), None) => loader(Ident::new(identity.to_string())?),
+            (Some(Value::String(identity)), Some(Value::Compound(properties))) => {
+                let mut object = loader(Ident::new(identity.to_string())?)?;
+                for (property_name_raw, property_value) in &properties {
+                    if let Value::String(property_value) = property_value {
+                        match (
+                            PropName::from_str(property_name_raw),
+                            PropValue::from_str(property_value),
+                        ) {
+                            (Some(name), Some(value)) => {
+                                object = applicator(object, name, value)?;
+                            }
+                            _ => {
+                                return Err(Error::DataFormatError(
+                                    DataFormatError::PropertyLoadError {
+                                        name: property_name_raw.to_string(),
+                                        value: property_value.to_string(),
+                                    },
+                                ))
+                            }
+                        }
+                    } else {
+                        return Err(Error::NbtFormatError(NbtFormatError::InvalidType {
+                            tag: Some(properties),
+                            key: "Name".to_string(),
+                        }));
+                    }
+                }
+                Ok(object)
+            }
+            (Some(_), Some(Value::Compound(_))) => {
+                return Err(Error::NbtFormatError(NbtFormatError::InvalidType {
+                    tag: None,
+                    key: "Name".to_string(),
+                }))
+            }
+            (None, Some(Value::Compound(_))) => {
+                return Err(Error::NbtFormatError(NbtFormatError::MissingKey {
+                    tag: None,
+                    key: "Name".to_string(),
+                }))
+            }
+            (_, Some(_)) => {
+                return Err(Error::NbtFormatError(NbtFormatError::InvalidType {
+                    tag: None,
+                    key: "Properties".to_string(),
+                }))
+            }
+            (_, None) => {
+                return Err(Error::NbtFormatError(NbtFormatError::MissingKey {
+                    tag: None,
+                    key: "Properties".to_string(),
+                }))
+            }
+        },
+        handler,
+    )
+}
+
+pub fn parse_compound_palette<
+    T: Copy,
+    FT: FnMut(Compound) -> Result<T, Error>,
+    F: FnMut(DataFormat<T>) -> Result<(), Error>,
+>(
+    mut palette_container: Compound,
+    min_bits: usize,
+    expected_len: usize,
+    mut loader: FT,
+    handler: F,
+) -> Result<(), Error> {
+    match palette_container.remove("palette") {
+        Some(Value::List(List::Compound(nbt_palette_vec))) => {
+            let iter = nbt_palette_vec.into_iter();
+            let mut keys = Vec::<T>::with_capacity(iter.len());
+            for tag in iter {
+                keys.push(loader(tag)?)
+            }
+            match palette_container.remove("data") {
+                Some(Value::LongArray(data)) => {
+                    decode_palette(&keys, Some(data), min_bits, expected_len, handler)
+                }
+                Some(data) => {
+                    palette_container.insert("data", data);
+                    return Err(Error::NbtFormatError(NbtFormatError::InvalidType {
+                        tag: Some(palette_container),
+                        key: "data".to_string(),
+                    }));
+                }
+                None => decode_palette(&keys, None, min_bits, expected_len, handler),
+            }
+        }
+        Some(value) => {
+            palette_container.insert("palette", value);
+            Err(Error::NbtFormatError(NbtFormatError::InvalidType {
+                tag: Some(palette_container),
+                key: "palette".to_string(),
+            }))
+        }
+        None => Err(Error::NbtFormatError(NbtFormatError::MissingKey {
+            tag: Some(palette_container),
+            key: "palette".to_string(),
+        })),
+    }
+}
+
+pub fn parse_identity_list_palette<
+    T: Copy,
+    FT: FnMut(Ident<String>) -> Result<T, Error>,
+    F: FnMut(DataFormat<T>) -> Result<(), Error>,
+>(
+    mut palette_container: Compound,
+    min_bits: usize,
+    expected_len: usize,
+    mut loader: FT,
+    handler: F,
+) -> Result<(), Error> {
+    match palette_container.remove("palette") {
+        Some(Value::List(List::String(nbt_palette_vec))) => {
+            let iter = nbt_palette_vec.into_iter();
+            let mut keys = Vec::<T>::with_capacity(iter.len());
+            for tag in iter {
+                keys.push(loader(Ident::new(tag)?)?)
+            }
+            match palette_container.remove("data") {
+                Some(Value::LongArray(data)) => {
+                    decode_palette(&keys, Some(data), min_bits, expected_len, handler)
+                }
+                Some(data) => {
+                    palette_container.insert("data", data);
+                    return Err(Error::NbtFormatError(NbtFormatError::InvalidType {
+                        tag: Some(palette_container),
+                        key: "data".to_string(),
+                    }));
+                }
+                None => decode_palette(&keys, None, min_bits, expected_len, handler),
+            }
+        }
+        Some(value) => {
+            palette_container.insert("palette", value);
+            Err(Error::NbtFormatError(NbtFormatError::InvalidType {
+                tag: Some(palette_container),
+                key: "palette".to_string(),
+            }))
+        }
+        None => Err(Error::NbtFormatError(NbtFormatError::MissingKey {
+            tag: Some(palette_container),
+            key: "palette".to_string(),
+        })),
+    }
+}
+
+pub fn decode_palette<T: Copy, F: (FnMut(DataFormat<T>) -> Result<(), Error>)>(
     source: &Vec<T>,
     data: Option<Vec<i64>>,
     min_bits: usize,
     expected_len: usize,
-    fun: &mut F,
+    mut fun: F,
 ) -> Result<(), Error> {
     let palette_len = source.len();
     if palette_len == 0 {

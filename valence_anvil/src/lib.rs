@@ -9,7 +9,9 @@ use tokio::sync::{Mutex, MutexGuard};
 use valence::biome::{Biome, BiomeId};
 use valence::chunk::{ChunkPos, UnloadedChunk};
 use valence::config::Config;
+use valence::dimension::Dimension;
 use valence::protocol::Ident;
+use valence::vek::num_traits::FromPrimitive;
 
 use crate::error::Error;
 
@@ -17,12 +19,15 @@ pub mod biome;
 pub mod compression;
 pub mod error;
 
+mod chunk;
 mod palette;
 mod region;
 
 #[derive(Debug)]
 pub struct AnvilWorld {
     world_root: PathBuf,
+    min_y: isize,
+    height: usize,
     biomes: BTreeMap<Ident<String>, BiomeId>,
     region_files: Mutex<BTreeMap<RegionPos, Option<Region<File>>>>,
 }
@@ -44,14 +49,17 @@ impl AnvilWorld {
     /// ```ignore
     /// impl Config for Game {
     ///     fn init(&self, server: &mut Server<Self>) {
-    ///         server.worlds.insert(
-    ///             DimensionId::default(),
-    ///             AnvilWorld::new::<Game, _>(&self.world_dir, server.shared.biomes()),
-    ///         );
+    ///         for (id, dimension) in server.shared.dimensions() {
+    ///             server.worlds.insert(
+    ///                 id,
+    ///                 AnvilWorld::new::<Game, _>(&dimension, &self.world_dir, server.shared.biomes()),
+    ///             );
+    ///         }
     ///     }
     /// }
     /// ```
     pub fn new<C: Config, BIOME: Borrow<Biome>>(
+        dimension: &Dimension,
         directory: impl Into<PathBuf>,
         server_biomes: impl Iterator<Item = (BiomeId, BIOME)>,
     ) -> Self {
@@ -61,6 +69,10 @@ impl AnvilWorld {
         }
         Self {
             world_root: directory.into(),
+            min_y: isize::from_i32(dimension.min_y)
+                .expect("Dimension min_y could not be converted to isize from i32."),
+            height: usize::from_i32(dimension.height)
+                .expect("Dimension height could not be converted to usize from i32."),
             biomes,
             region_files: Mutex::new(BTreeMap::new()),
         }

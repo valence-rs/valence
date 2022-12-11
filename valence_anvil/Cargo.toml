@@ -19,6 +19,7 @@ byteorder = "1.4.3"
 tokio = { version = "1.21.2", features = ["fs", "io-util"] }
 futures = "0.3.24"
 thiserror = "1.0.37"
+num-traits = "0.2.15"
 
 [dev-dependencies]
 tempfile = "3.3.0"
