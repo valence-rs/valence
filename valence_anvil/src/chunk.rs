@@ -68,11 +68,7 @@ impl ChunkStatus {
     }
 
     pub fn is_fully_generated(&self) -> bool {
-        if let ChunkStatus::Full = self {
-            true
-        } else {
-            false
-        }
+        matches!(self, ChunkStatus::Full)
     }
 
     pub fn raw_status(&self) -> &str {
@@ -258,9 +254,9 @@ pub fn parse_chunk_nbt(mut nbt: Compound, world: &AnvilWorld) -> Result<Unloaded
         }
         Ok(chunk)
     } else {
-        return Err(Error::DataFormatError(DataFormatError::MissingChunkNBT {
+        Err(Error::DataFormatError(DataFormatError::MissingChunkNBT {
             key: "sections",
             tag: Some(nbt),
-        }));
+        }))
     }
 }

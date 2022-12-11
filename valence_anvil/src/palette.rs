@@ -28,9 +28,9 @@ pub fn parse_palette_identities_with_properties<
         min_bits,
         expected_len,
         |mut nbt| match (nbt.remove("Name"), nbt.remove("Properties")) {
-            (Some(Value::String(identity)), None) => loader(Ident::new(identity.to_string())?),
+            (Some(Value::String(identity)), None) => loader(Ident::new(identity)?),
             (Some(Value::String(identity)), Some(Value::Compound(properties))) => {
-                let mut object = loader(Ident::new(identity.to_string())?)?;
+                let mut object = loader(Ident::new(identity)?)?;
                 for (property_name_raw, property_value) in &properties {
                     if let Value::String(property_value) = property_value {
                         match (
@@ -59,29 +59,25 @@ pub fn parse_palette_identities_with_properties<
                 Ok(object)
             }
             (Some(_), Some(Value::Compound(_))) => {
-                return Err(Error::NbtFormatError(NbtFormatError::InvalidType {
+                Err(Error::NbtFormatError(NbtFormatError::InvalidType {
                     tag: None,
                     key: "Name".to_string(),
                 }))
             }
             (None, Some(Value::Compound(_))) => {
-                return Err(Error::NbtFormatError(NbtFormatError::MissingKey {
+                Err(Error::NbtFormatError(NbtFormatError::MissingKey {
                     tag: None,
                     key: "Name".to_string(),
                 }))
             }
-            (_, Some(_)) => {
-                return Err(Error::NbtFormatError(NbtFormatError::InvalidType {
-                    tag: None,
-                    key: "Properties".to_string(),
-                }))
-            }
-            (_, None) => {
-                return Err(Error::NbtFormatError(NbtFormatError::MissingKey {
-                    tag: None,
-                    key: "Properties".to_string(),
-                }))
-            }
+            (_, Some(_)) => Err(Error::NbtFormatError(NbtFormatError::InvalidType {
+                tag: None,
+                key: "Properties".to_string(),
+            })),
+            (_, None) => Err(Error::NbtFormatError(NbtFormatError::MissingKey {
+                tag: None,
+                key: "Properties".to_string(),
+            })),
         },
         handler,
     )
@@ -111,10 +107,10 @@ pub fn parse_compound_palette<
                 }
                 Some(data) => {
                     palette_container.insert("data", data);
-                    return Err(Error::NbtFormatError(NbtFormatError::InvalidType {
+                    Err(Error::NbtFormatError(NbtFormatError::InvalidType {
                         tag: Some(palette_container),
                         key: "data".to_string(),
-                    }));
+                    }))
                 }
                 None => decode_palette(&keys, None, min_bits, expected_len, handler),
             }
@@ -157,10 +153,10 @@ pub fn parse_identity_list_palette<
                 }
                 Some(data) => {
                     palette_container.insert("data", data);
-                    return Err(Error::NbtFormatError(NbtFormatError::InvalidType {
+                    Err(Error::NbtFormatError(NbtFormatError::InvalidType {
                         tag: Some(palette_container),
                         key: "data".to_string(),
-                    }));
+                    }))
                 }
                 None => decode_palette(&keys, None, min_bits, expected_len, handler),
             }
