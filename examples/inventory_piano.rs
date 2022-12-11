@@ -185,13 +185,13 @@ impl Config for Game {
                         client.send_message("Done already?");
                     }
                     ClientEvent::SetCreativeModeSlot { slot, .. } => {
-                        client.send_message(format!("{:#?}", event));
+                        client.send_message(format!("{event:#?}"));
                         // If the user does a double click, 3 notes will be played.
                         // This is not possible to fix :(
                         play_note(client, player, slot);
                     }
                     ClientEvent::ClickContainer { slot_id, mode, .. } => {
-                        client.send_message(format!("{:#?}", event));
+                        client.send_message(format!("{event:#?}"));
                         if mode != ClickContainerMode::Click {
                             // Prevent notes from being played twice if the user clicks quickly
                             continue;
