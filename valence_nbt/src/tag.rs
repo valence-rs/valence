@@ -1,7 +1,7 @@
 use std::fmt;
 use std::fmt::Formatter;
 
-use crate::Value;
+use crate::{Compound, List, Value};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Tag {
@@ -62,4 +62,56 @@ impl fmt::Display for Tag {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name())
     }
+}
+
+pub trait NbtType {
+    const TAG: Tag;
+}
+
+impl NbtType for i8 {
+    const TAG: Tag = Tag::Byte;
+}
+
+impl NbtType for i16 {
+    const TAG: Tag = Tag::Short;
+}
+
+impl NbtType for i32 {
+    const TAG: Tag = Tag::Int;
+}
+
+impl NbtType for i64 {
+    const TAG: Tag = Tag::Long;
+}
+
+impl NbtType for f32 {
+    const TAG: Tag = Tag::Float;
+}
+
+impl NbtType for f64 {
+    const TAG: Tag = Tag::Double;
+}
+
+impl NbtType for Vec<i8> {
+    const TAG: Tag = Tag::ByteArray;
+}
+
+impl NbtType for String {
+    const TAG: Tag = Tag::String;
+}
+
+impl NbtType for List {
+    const TAG: Tag = Tag::List;
+}
+
+impl NbtType for Compound {
+    const TAG: Tag = Tag::Compound;
+}
+
+impl NbtType for Vec<i32> {
+    const TAG: Tag = Tag::IntArray;
+}
+
+impl NbtType for Vec<i64> {
+    const TAG: Tag = Tag::LongArray;
 }

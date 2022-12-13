@@ -1,5 +1,8 @@
 use std::borrow::Cow;
+use std::fmt::{Display, Formatter};
+use std::marker::PhantomData;
 
+use crate::tag::{NbtType, Tag};
 use crate::Compound;
 
 /// Represents an arbitrary NBT value.
@@ -235,122 +238,151 @@ impl From<Vec<Vec<i64>>> for List {
     }
 }
 
-impl From<Value> for Option<i8> {
-    fn from(value: Value) -> Self {
-        if let Value::Byte(b) = value {
-            Some(b)
-        } else {
-            None
+#[derive(Debug)]
+pub struct InvalidTypeError<T: NbtType> {
+    expected: PhantomData<T>,
+    pub value: Value,
+}
+
+impl<T: NbtType> Display for InvalidTypeError<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Expected {}, found value: {:?}", T::TAG, self.value)
+    }
+}
+
+impl<T: NbtType> InvalidTypeError<T> {
+    pub fn new(value: Value) -> Self {
+        Self {
+            expected: PhantomData,
+            value,
+        }
+    }
+
+    pub fn value(self) -> Value {
+        self.value
+    }
+
+    pub fn expected(&self) -> Tag {
+        T::TAG
+    }
+}
+
+impl TryFrom<Value> for i8 {
+    type Error = InvalidTypeError<i8>;
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value {
+            Value::Byte(b) => Ok(b),
+            value => Err(InvalidTypeError::new(value)),
         }
     }
 }
 
-impl From<Value> for Option<i16> {
-    fn from(value: Value) -> Self {
-        if let Value::Short(val) = value {
-            Some(val)
-        } else {
-            None
+impl TryFrom<Value> for i16 {
+    type Error = InvalidTypeError<i16>;
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value {
+            Value::Short(val) => Ok(val),
+            value => Err(InvalidTypeError::new(value)),
         }
     }
 }
 
-impl From<Value> for Option<i32> {
-    fn from(value: Value) -> Self {
-        if let Value::Int(val) = value {
-            Some(val)
-        } else {
-            None
+impl TryFrom<Value> for i32 {
+    type Error = InvalidTypeError<i32>;
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value {
+            Value::Int(val) => Ok(val),
+            value => Err(InvalidTypeError::new(value)),
         }
     }
 }
 
-impl From<Value> for Option<i64> {
-    fn from(value: Value) -> Self {
-        if let Value::Long(val) = value {
-            Some(val)
-        } else {
-            None
+impl TryFrom<Value> for i64 {
+    type Error = InvalidTypeError<i64>;
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value {
+            Value::Long(val) => Ok(val),
+            value => Err(InvalidTypeError::new(value)),
         }
     }
 }
 
-impl From<Value> for Option<f32> {
-    fn from(value: Value) -> Self {
-        if let Value::Float(val) = value {
-            Some(val)
-        } else {
-            None
+impl TryFrom<Value> for f32 {
+    type Error = InvalidTypeError<f32>;
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value {
+            Value::Float(val) => Ok(val),
+            value => Err(InvalidTypeError::new(value)),
         }
     }
 }
 
-impl From<Value> for Option<f64> {
-    fn from(value: Value) -> Self {
-        if let Value::Double(val) = value {
-            Some(val)
-        } else {
-            None
+impl TryFrom<Value> for f64 {
+    type Error = InvalidTypeError<f64>;
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value {
+            Value::Double(val) => Ok(val),
+            value => Err(InvalidTypeError::new(value)),
         }
     }
 }
 
-impl From<Value> for Option<Vec<i8>> {
-    fn from(value: Value) -> Self {
-        if let Value::ByteArray(val) = value {
-            Some(val)
-        } else {
-            None
+impl TryFrom<Value> for Vec<i8> {
+    type Error = InvalidTypeError<Vec<i8>>;
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value {
+            Value::ByteArray(val) => Ok(val),
+            value => Err(InvalidTypeError::new(value)),
         }
     }
 }
 
-impl From<Value> for Option<String> {
-    fn from(value: Value) -> Self {
-        if let Value::String(val) = value {
-            Some(val)
-        } else {
-            None
+impl TryFrom<Value> for String {
+    type Error = InvalidTypeError<String>;
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value {
+            Value::String(val) => Ok(val),
+            value => Err(InvalidTypeError::new(value)),
         }
     }
 }
 
-impl From<Value> for Option<List> {
-    fn from(value: Value) -> Self {
-        if let Value::List(val) = value {
-            Some(val)
-        } else {
-            None
+impl TryFrom<Value> for List {
+    type Error = InvalidTypeError<List>;
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value {
+            Value::List(val) => Ok(val),
+            value => Err(InvalidTypeError::new(value)),
         }
     }
 }
 
-impl From<Value> for Option<Compound> {
-    fn from(value: Value) -> Self {
-        if let Value::Compound(val) = value {
-            Some(val)
-        } else {
-            None
+impl TryFrom<Value> for Compound {
+    type Error = InvalidTypeError<Compound>;
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value {
+            Value::Compound(val) => Ok(val),
+            value => Err(InvalidTypeError::new(value)),
         }
     }
 }
 
-impl From<Value> for Option<Vec<i32>> {
-    fn from(value: Value) -> Self {
-        if let Value::IntArray(val) = value {
-            Some(val)
-        } else {
-            None
+impl TryFrom<Value> for Vec<i32> {
+    type Error = InvalidTypeError<Vec<i32>>;
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value {
+            Value::IntArray(val) => Ok(val),
+            value => Err(InvalidTypeError::new(value)),
         }
     }
 }
 
-impl From<Value> for Option<Vec<i64>> {
-    fn from(value: Value) -> Self {
-        if let Value::LongArray(val) = value {
-            Some(val)
-        } else {
-            None
+impl TryFrom<Value> for Vec<i64> {
+    type Error = InvalidTypeError<Vec<i64>>;
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        match value {
+            Value::LongArray(val) => Ok(val),
+            value => Err(InvalidTypeError::new(value)),
         }
     }
 }
