@@ -16,6 +16,7 @@ use crate::types::{
 use crate::username::Username;
 use crate::var_int::VarInt;
 use crate::var_long::VarLong;
+use crate::LengthPrefixedArray;
 
 pub mod status {
     use super::*;
@@ -313,8 +314,8 @@ pub mod play {
         pub block_light_mask: Vec<u64>,
         pub empty_sky_light_mask: Vec<u64>,
         pub empty_block_light_mask: Vec<u64>,
-        pub sky_light_arrays: Vec<(VarInt, [u8; 2048])>,
-        pub block_light_arrays: Vec<(VarInt, [u8; 2048])>,
+        pub sky_light_arrays: Vec<LengthPrefixedArray<u8, 2048>>,
+        pub block_light_arrays: Vec<LengthPrefixedArray<u8, 2048>>,
     }
 
     #[derive(Clone, Debug, Encode, Packet)]
@@ -330,8 +331,8 @@ pub mod play {
         pub block_light_mask: &'a [u64],
         pub empty_sky_light_mask: &'a [u64],
         pub empty_block_light_mask: &'a [u64],
-        pub sky_light_arrays: &'a [(VarInt, [u8; 2048])],
-        pub block_light_arrays: &'a [(VarInt, [u8; 2048])],
+        pub sky_light_arrays: &'a [LengthPrefixedArray<u8, 2048>],
+        pub block_light_arrays: &'a [LengthPrefixedArray<u8, 2048>],
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]

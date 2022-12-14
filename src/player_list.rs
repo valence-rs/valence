@@ -80,11 +80,11 @@ impl<C: Config> PlayerLists<C> {
         for pl in self.slab.iter_mut() {
             pl.cached_update_packets.clear();
 
-            let mut writer = PacketWriter {
-                writer: &mut pl.cached_update_packets,
-                threshold: compression_threshold,
-                scratch: &mut scratch,
-            };
+            let mut writer = PacketWriter::new(
+                &mut pl.cached_update_packets,
+                compression_threshold,
+                &mut scratch,
+            );
 
             if !pl.removed.is_empty() {
                 writer

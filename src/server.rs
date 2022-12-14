@@ -200,6 +200,12 @@ impl<C: Config> SharedServer<C> {
         &self.0.connection_mode
     }
 
+    /// Gets the compression threshold for packets. `None` indicates no
+    /// compression.
+    pub fn compression_threshold(&self) -> Option<u32> {
+        self.0.compression_threshold
+    }
+
     /// Gets the maximum number of connections allowed to the server at once.
     pub fn max_connections(&self) -> usize {
         self.0.max_connections
@@ -430,7 +436,6 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
     let mut tick_start = Instant::now();
     let shared = server.shared.clone();
 
-    let biome_registry_len = shared.0.biomes.len();
     let threshold = shared.0.compression_threshold;
 
     loop {
@@ -471,7 +476,7 @@ fn do_update_loop(server: &mut Server<impl Config>) -> ShutdownResult {
         update_entity_partition(&mut server.entities, &mut server.worlds, threshold);
 
         for (_, world) in server.worlds.iter_mut() {
-            world.chunks.update_caches(threshold, biome_registry_len);
+            world.chunks.update_caches();
         }
 
         server.player_lists.update_caches(threshold);
