@@ -1,8 +1,5 @@
 use std::borrow::Cow;
-use std::fmt::{Display, Formatter};
-use std::marker::PhantomData;
 
-use crate::tag::{NbtType, Tag};
 use crate::Compound;
 
 /// Represents an arbitrary NBT value.
@@ -72,6 +69,56 @@ impl List {
     /// Returns `true` if this list has no elements. `false` otherwise.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+}
+
+/// We can not create new identities in stable Rust using macros, so we provide
+/// them in the macro invocation itself.
+macro_rules! nbt_conversion {
+    ( $($nbt_type:ident = $value_type:ty => $is_function:ident $as_function:ident $as_mut_function:ident $take_function:ident)+ ) => {
+        $(
+            pub fn $is_function(&self) -> bool {
+                self.$as_function().is_some()
+            }
+
+            pub fn $as_function(&self) -> Option<&$value_type> {
+                match self {
+                    Self::$nbt_type(value) => Some(value),
+                    _ => None
+                }
+            }
+
+            pub fn $as_mut_function(&mut self) -> Option<&mut $value_type> {
+                match self {
+                    Self::$nbt_type(value) => Some(value),
+                    _ => None
+                }
+            }
+
+            pub fn $take_function(self) -> Option<$value_type> {
+                match self {
+                    Self::$nbt_type(value) => Some(value),
+                    _ => None
+                }
+            }
+        )*
+    };
+}
+
+impl Value {
+    nbt_conversion! {
+        Byte = i8 => is_byte as_byte as_byte_mut take_byte
+        Short = i16 => is_short as_short as_short_mut take_short
+        Int = i32 => is_int as_int as_int_mut take_int
+        Long = i64 => is_long as_long as_long_mut take_long
+        Float = f32 => is_float as_float as_float_mut take_float
+        Double = f64 => is_double as_double as_double_mut take_double
+        ByteArray = Vec<i8> => is_byte_array as_byte_array as_byte_array_mut take_byte_array
+        String = String => is_string as_string as_string_mut take_string
+        List = List => is_list as_list as_list_mut take_list
+        Compound = Compound => is_compound as_compound as_compound_mut take_compound
+        IntArray = Vec<i32> => is_int_array as_int_array as_int_array_mut take_int_array
+        LongArray = Vec<i64> => is_long_array as_long_array as_long_array_mut take_long_array
     }
 }
 
@@ -235,154 +282,5 @@ impl From<Vec<Vec<i32>>> for List {
 impl From<Vec<Vec<i64>>> for List {
     fn from(v: Vec<Vec<i64>>) -> Self {
         List::LongArray(v)
-    }
-}
-
-#[derive(Debug)]
-pub struct InvalidTypeError<T: NbtType> {
-    expected: PhantomData<T>,
-    pub value: Value,
-}
-
-impl<T: NbtType> Display for InvalidTypeError<T> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Expected {}, found value: {:?}", T::TAG, self.value)
-    }
-}
-
-impl<T: NbtType> InvalidTypeError<T> {
-    pub fn new(value: Value) -> Self {
-        Self {
-            expected: PhantomData,
-            value,
-        }
-    }
-
-    pub fn value(self) -> Value {
-        self.value
-    }
-
-    pub fn expected(&self) -> Tag {
-        T::TAG
-    }
-}
-
-impl TryFrom<Value> for i8 {
-    type Error = InvalidTypeError<i8>;
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
-        match value {
-            Value::Byte(b) => Ok(b),
-            value => Err(InvalidTypeError::new(value)),
-        }
-    }
-}
-
-impl TryFrom<Value> for i16 {
-    type Error = InvalidTypeError<i16>;
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
-        match value {
-            Value::Short(val) => Ok(val),
-            value => Err(InvalidTypeError::new(value)),
-        }
-    }
-}
-
-impl TryFrom<Value> for i32 {
-    type Error = InvalidTypeError<i32>;
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
-        match value {
-            Value::Int(val) => Ok(val),
-            value => Err(InvalidTypeError::new(value)),
-        }
-    }
-}
-
-impl TryFrom<Value> for i64 {
-    type Error = InvalidTypeError<i64>;
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
-        match value {
-            Value::Long(val) => Ok(val),
-            value => Err(InvalidTypeError::new(value)),
-        }
-    }
-}
-
-impl TryFrom<Value> for f32 {
-    type Error = InvalidTypeError<f32>;
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
-        match value {
-            Value::Float(val) => Ok(val),
-            value => Err(InvalidTypeError::new(value)),
-        }
-    }
-}
-
-impl TryFrom<Value> for f64 {
-    type Error = InvalidTypeError<f64>;
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
-        match value {
-            Value::Double(val) => Ok(val),
-            value => Err(InvalidTypeError::new(value)),
-        }
-    }
-}
-
-impl TryFrom<Value> for Vec<i8> {
-    type Error = InvalidTypeError<Vec<i8>>;
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
-        match value {
-            Value::ByteArray(val) => Ok(val),
-            value => Err(InvalidTypeError::new(value)),
-        }
-    }
-}
-
-impl TryFrom<Value> for String {
-    type Error = InvalidTypeError<String>;
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
-        match value {
-            Value::String(val) => Ok(val),
-            value => Err(InvalidTypeError::new(value)),
-        }
-    }
-}
-
-impl TryFrom<Value> for List {
-    type Error = InvalidTypeError<List>;
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
-        match value {
-            Value::List(val) => Ok(val),
-            value => Err(InvalidTypeError::new(value)),
-        }
-    }
-}
-
-impl TryFrom<Value> for Compound {
-    type Error = InvalidTypeError<Compound>;
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
-        match value {
-            Value::Compound(val) => Ok(val),
-            value => Err(InvalidTypeError::new(value)),
-        }
-    }
-}
-
-impl TryFrom<Value> for Vec<i32> {
-    type Error = InvalidTypeError<Vec<i32>>;
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
-        match value {
-            Value::IntArray(val) => Ok(val),
-            value => Err(InvalidTypeError::new(value)),
-        }
-    }
-}
-
-impl TryFrom<Value> for Vec<i64> {
-    type Error = InvalidTypeError<Vec<i64>>;
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
-        match value {
-            Value::LongArray(val) => Ok(val),
-            value => Err(InvalidTypeError::new(value)),
-        }
     }
 }
