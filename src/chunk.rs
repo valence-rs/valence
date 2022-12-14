@@ -834,11 +834,8 @@ impl<C: Config> LoadedChunk<C> {
 
             let mut compression_scratch = vec![];
 
-            let mut writer = PacketWriter::new(
-                &mut *lck,
-                compression_threshold,
-                &mut compression_scratch,
-            );
+            let mut writer =
+                PacketWriter::new(&mut *lck, compression_threshold, &mut compression_scratch);
 
             writer
                 .write_packet(&ChunkDataAndUpdateLightEncode {
