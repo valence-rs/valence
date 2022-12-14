@@ -92,11 +92,11 @@ pub use {uuid, valence_nbt as nbt};
 use crate::byte_counter::ByteCounter;
 
 /// The Minecraft protocol version this library currently targets.
-pub const PROTOCOL_VERSION: i32 = 760;
+pub const PROTOCOL_VERSION: i32 = 761;
 
 /// The stringified name of the Minecraft version this library currently
 /// targets.
-pub const MINECRAFT_VERSION: &str = "1.19.2";
+pub const MINECRAFT_VERSION: &str = "1.19.3";
 
 mod array;
 pub mod block;

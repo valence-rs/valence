@@ -14,7 +14,7 @@ use tokio::sync::OwnedSemaphorePermit;
 use tracing::{info, warn};
 use uuid::Uuid;
 use valence_protocol::packets::s2c::play::{
-    AcknowledgeBlockChange, ClearTitles, CombatDeath, CustomSoundEffect, DisconnectPlay,
+    AcknowledgeBlockChange, ClearTitles, CombatDeath, DisconnectPlay,
     EntityAnimationS2c, EntityEvent, GameEvent, KeepAliveS2c, LoginPlayOwned, OpenScreen,
     PluginMessageS2c, RemoveEntitiesEncode, ResourcePackS2c, RespawnOwned, SetActionBarText,
     SetCenterChunk, SetContainerContentEncode, SetContainerSlotEncode, SetDefaultSpawnPosition,
@@ -573,25 +573,6 @@ impl<C: Config> Client<C> {
         self.queue_packet(&GameEvent {
             reason: GameStateChangeReason::ThunderLevelChange,
             value: thunder_level.clamp(0.0, 1.0),
-        });
-    }
-
-    /// Plays a sound to the client at a given position.
-    pub fn play_sound(
-        &mut self,
-        name: Ident<&str>,
-        category: SoundCategory,
-        pos: Vec3<f64>,
-        volume: f32,
-        pitch: f32,
-    ) {
-        self.queue_packet(&CustomSoundEffect {
-            name,
-            category,
-            position: (pos.as_() * 8).into_array(),
-            volume,
-            pitch,
-            seed: rand::random(),
         });
     }
 

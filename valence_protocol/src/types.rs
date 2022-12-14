@@ -22,12 +22,6 @@ pub struct PublicKeyData<'a> {
     pub signature: &'a [u8],
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
-pub enum MsgSigOrVerifyToken<'a> {
-    MsgSig { salt: u64, sig: &'a [u8] },
-    VerifyToken(&'a [u8]),
-}
-
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct MessageAcknowledgment<'a> {
     pub last_seen: Vec<MessageAcknowledgmentEntry<'a>>,
@@ -280,7 +274,7 @@ pub enum GameMode {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
-pub struct DeathLocation<'a> {
+pub struct GlobalPos<'a> {
     pub dimension_name: Ident<&'a str>,
     pub position: BlockPos,
 }
@@ -307,7 +301,6 @@ pub struct PlayerInfoAddPlayer<'a> {
     pub game_mode: GameMode,
     pub ping: VarInt,
     pub display_name: Option<Text>,
-    pub sig_data: Option<PublicKeyData<'a>>,
 }
 
 #[bitfield(u8)]

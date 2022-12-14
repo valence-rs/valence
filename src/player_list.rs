@@ -117,7 +117,6 @@ impl<C: Config> PlayerLists<C> {
                         game_mode: entry.game_mode,
                         ping: entry.ping.into(),
                         display_name: entry.display_name.clone(),
-                        sig_data: None,
                     });
                 } else {
                     if entry.bits.modified_game_mode() {
@@ -383,7 +382,6 @@ impl<C: Config> PlayerList<C> {
                 game_mode: entry.game_mode,
                 ping: entry.ping.into(),
                 display_name: entry.display_name.clone(),
-                sig_data: None,
             })
             .collect();
 

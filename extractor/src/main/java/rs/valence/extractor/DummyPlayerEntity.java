@@ -27,7 +27,7 @@ public class DummyPlayerEntity extends PlayerEntity {
     }
 
     private DummyPlayerEntity(World world, BlockPos pos, float yaw, GameProfile gameProfile, @Nullable PlayerPublicKey publicKey) {
-        super(world, pos, yaw, gameProfile, publicKey);
+        super(world, pos, yaw, gameProfile);
     }
 
     @Override

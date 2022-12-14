@@ -3,7 +3,7 @@ package rs.valence.extractor.extractors;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.minecraft.util.registry.Registry;
+import net.minecraft.registry.Registries;
 import rs.valence.extractor.Main;
 
 public class Items implements Main.Extractor {
@@ -19,10 +19,10 @@ public class Items implements Main.Extractor {
     public JsonElement extract() throws Exception {
         var itemsJson = new JsonArray();
 
-        for (var item : Registry.ITEM) {
+        for (var item : Registries.ITEM) {
             var itemJson = new JsonObject();
-            itemJson.addProperty("id", Registry.ITEM.getRawId(item));
-            itemJson.addProperty("name", Registry.ITEM.getId(item).getPath());
+            itemJson.addProperty("id", Registries.ITEM.getRawId(item));
+            itemJson.addProperty("name", Registries.ITEM.getId(item).getPath());
             itemJson.addProperty("translation_key", item.getTranslationKey());
             itemJson.addProperty("max_stack", item.getMaxCount());
             itemJson.addProperty("max_durability", item.getMaxDamage());

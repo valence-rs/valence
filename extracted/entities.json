@@ -1,7 +1,12 @@
 {
   "AbstractDecorationEntity": {
     "parent": "Entity",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.0,
+      "size_y": 0.0,
+      "size_z": 0.0
+    }
   },
   "AbstractDonkeyEntity": {
     "parent": "AbstractHorseEntity",
@@ -13,7 +18,12 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.8999999761581421,
+      "size_y": 1.8700000047683716,
+      "size_z": 0.8999999761581421
+    }
   },
   "AbstractFireballEntity": {
     "parent": "ExplosiveProjectileEntity",
@@ -25,7 +35,12 @@
         "default_value": "1 air",
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 1.0,
+      "size_y": 1.0,
+      "size_z": 1.0
+    }
   },
   "AbstractHorseEntity": {
     "parent": "AnimalEntity",
@@ -69,7 +84,12 @@
         "default_value": null,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 1.396484375,
+      "size_y": 1.600000023841858,
+      "size_z": 1.396484375
+    }
   },
   "AbstractMinecartEntity": {
     "parent": "Entity",
@@ -116,7 +136,12 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.9800000190734863,
+      "size_y": 0.699999988079071,
+      "size_z": 0.9800000190734863
+    }
   },
   "AbstractPiglinEntity": {
     "parent": "HostileEntity",
@@ -128,11 +153,21 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9500000476837158,
+      "size_z": 0.6000000238418579
+    }
   },
   "AbstractSkeletonEntity": {
     "parent": "HostileEntity",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.699999988079071,
+      "size_y": 2.4000000953674316,
+      "size_z": 0.699999988079071
+    }
   },
   "AllayEntity": {
     "parent": "PathAwareEntity",
@@ -153,15 +188,30 @@
         "default_value": true,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.3499999940395355,
+      "size_y": 0.6000000238418579,
+      "size_z": 0.3499999940395355
+    }
   },
   "AmbientEntity": {
     "parent": "MobEntity",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.5,
+      "size_y": 0.8999999761581421,
+      "size_z": 0.5
+    }
   },
   "AnimalEntity": {
     "parent": "PassiveEntity",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.75,
+      "size_y": 0.41999998688697815,
+      "size_z": 0.75
+    }
   },
   "AreaEffectCloudEntity": {
     "parent": "Entity",
@@ -196,7 +246,12 @@
         "default_value": "entity_effect",
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 6.0,
+      "size_y": 0.5,
+      "size_z": 6.0
+    }
   },
   "ArmorStandEntity": {
     "parent": "LivingEntity",
@@ -293,7 +348,12 @@
         },
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.5,
+      "size_y": 1.975000023841858,
+      "size_z": 0.5
+    }
   },
   "ArrowEntity": {
     "parent": "PersistentProjectileEntity",
@@ -307,7 +367,12 @@
         "default_value": -1,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.5,
+      "size_y": 0.5,
+      "size_z": 0.5
+    }
   },
   "AxolotlEntity": {
     "parent": "AnimalEntity",
@@ -335,7 +400,12 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.75,
+      "size_y": 0.41999998688697815,
+      "size_z": 0.75
+    }
   },
   "BatEntity": {
     "parent": "AmbientEntity",
@@ -354,7 +424,12 @@
           }
         ]
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.5,
+      "size_y": 0.8999999761581421,
+      "size_z": 0.5
+    }
   },
   "BeeEntity": {
     "parent": "AnimalEntity",
@@ -388,7 +463,12 @@
         "default_value": 0,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.699999988079071,
+      "size_y": 0.6000000238418579,
+      "size_z": 0.699999988079071
+    }
   },
   "BlazeEntity": {
     "parent": "HostileEntity",
@@ -407,7 +487,12 @@
           }
         ]
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.7999999523162842,
+      "size_z": 0.6000000238418579
+    }
   },
   "BoatEntity": {
     "parent": "Entity",
@@ -463,7 +548,38 @@
         "default_value": 0,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 1.375,
+      "size_y": 0.5625,
+      "size_z": 1.375
+    }
+  },
+  "CamelEntity": {
+    "parent": "AbstractHorseEntity",
+    "type": "camel",
+    "translation_key": "entity.minecraft.camel",
+    "fields": [
+      {
+        "name": "dashing",
+        "index": 19,
+        "type": "boolean",
+        "default_value": false,
+        "bits": []
+      },
+      {
+        "name": "last_pose_tick",
+        "index": 20,
+        "type": "long",
+        "default_value": -52,
+        "bits": []
+      }
+    ],
+    "default_bounding_box": {
+      "size_x": 1.7000000476837158,
+      "size_y": 2.375,
+      "size_z": 1.7000000476837158
+    }
   },
   "CatEntity": {
     "parent": "TameableEntity",
@@ -498,37 +614,67 @@
         "default_value": 14,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 0.699999988079071,
+      "size_z": 0.6000000238418579
+    }
   },
   "CaveSpiderEntity": {
     "parent": "SpiderEntity",
     "type": "cave_spider",
     "translation_key": "entity.minecraft.cave_spider",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.699999988079071,
+      "size_y": 0.5,
+      "size_z": 0.699999988079071
+    }
   },
   "ChestBoatEntity": {
     "parent": "BoatEntity",
     "type": "chest_boat",
     "translation_key": "entity.minecraft.chest_boat",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 1.375,
+      "size_y": 0.5625,
+      "size_z": 1.375
+    }
   },
   "ChestMinecartEntity": {
     "parent": "StorageMinecartEntity",
     "type": "chest_minecart",
     "translation_key": "entity.minecraft.chest_minecart",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.9800000190734863,
+      "size_y": 0.699999988079071,
+      "size_z": 0.9800000190734863
+    }
   },
   "ChickenEntity": {
     "parent": "AnimalEntity",
     "type": "chicken",
     "translation_key": "entity.minecraft.chicken",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.4000000059604645,
+      "size_y": 0.699999988079071,
+      "size_z": 0.4000000059604645
+    }
   },
   "CodEntity": {
     "parent": "SchoolingFishEntity",
     "type": "cod",
     "translation_key": "entity.minecraft.cod",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.5,
+      "size_y": 0.30000001192092896,
+      "size_z": 0.5
+    }
   },
   "CommandBlockMinecartEntity": {
     "parent": "AbstractMinecartEntity",
@@ -549,13 +695,23 @@
         "default_value": "",
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.9800000190734863,
+      "size_y": 0.699999988079071,
+      "size_z": 0.9800000190734863
+    }
   },
   "CowEntity": {
     "parent": "AnimalEntity",
     "type": "cow",
     "translation_key": "entity.minecraft.cow",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.8999999761581421,
+      "size_y": 1.399999976158142,
+      "size_z": 0.8999999761581421
+    }
   },
   "CreeperEntity": {
     "parent": "HostileEntity",
@@ -583,7 +739,12 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.7000000476837158,
+      "size_z": 0.6000000238418579
+    }
   },
   "DolphinEntity": {
     "parent": "WaterCreatureEntity",
@@ -615,37 +776,67 @@
         "default_value": 2400,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.8999999761581421,
+      "size_y": 0.6000000238418579,
+      "size_z": 0.8999999761581421
+    }
   },
   "DonkeyEntity": {
     "parent": "AbstractDonkeyEntity",
     "type": "donkey",
     "translation_key": "entity.minecraft.donkey",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 1.396484375,
+      "size_y": 1.5,
+      "size_z": 1.396484375
+    }
   },
   "DragonFireballEntity": {
     "parent": "ExplosiveProjectileEntity",
     "type": "dragon_fireball",
     "translation_key": "entity.minecraft.dragon_fireball",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 1.0,
+      "size_y": 1.0,
+      "size_z": 1.0
+    }
   },
   "DrownedEntity": {
     "parent": "ZombieEntity",
     "type": "drowned",
     "translation_key": "entity.minecraft.drowned",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9500000476837158,
+      "size_z": 0.6000000238418579
+    }
   },
   "EggEntity": {
     "parent": "ThrownItemEntity",
     "type": "egg",
     "translation_key": "entity.minecraft.egg",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.25,
+      "size_y": 0.25,
+      "size_z": 0.25
+    }
   },
   "ElderGuardianEntity": {
     "parent": "GuardianEntity",
     "type": "elder_guardian",
     "translation_key": "entity.minecraft.elder_guardian",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 1.997499942779541,
+      "size_y": 1.997499942779541,
+      "size_z": 1.997499942779541
+    }
   },
   "EndCrystalEntity": {
     "parent": "Entity",
@@ -666,7 +857,12 @@
         "default_value": true,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 2.0,
+      "size_y": 2.0,
+      "size_z": 2.0
+    }
   },
   "EnderDragonEntity": {
     "parent": "MobEntity",
@@ -680,13 +876,23 @@
         "default_value": 10,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 16.0,
+      "size_y": 8.0,
+      "size_z": 16.0
+    }
   },
   "EnderPearlEntity": {
     "parent": "ThrownItemEntity",
     "type": "ender_pearl",
     "translation_key": "entity.minecraft.ender_pearl",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.25,
+      "size_y": 0.25,
+      "size_z": 0.25
+    }
   },
   "EndermanEntity": {
     "parent": "HostileEntity",
@@ -714,13 +920,23 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 2.9000000953674316,
+      "size_z": 0.6000000238418579
+    }
   },
   "EndermiteEntity": {
     "parent": "HostileEntity",
     "type": "endermite",
     "translation_key": "entity.minecraft.endermite",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.4000000059604645,
+      "size_y": 0.30000001192092896,
+      "size_z": 0.4000000059604645
+    }
   },
   "Entity": {
     "fields": [
@@ -809,35 +1025,65 @@
         "default_value": 0,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 1.396484375,
+      "size_y": 1.399999976158142,
+      "size_z": 1.396484375
+    }
   },
   "EvokerEntity": {
     "parent": "SpellcastingIllagerEntity",
     "type": "evoker",
     "translation_key": "entity.minecraft.evoker",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9500000476837158,
+      "size_z": 0.6000000238418579
+    }
   },
   "EvokerFangsEntity": {
     "parent": "Entity",
     "type": "evoker_fangs",
     "translation_key": "entity.minecraft.evoker_fangs",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.5,
+      "size_y": 0.800000011920929,
+      "size_z": 0.5
+    }
   },
   "ExperienceBottleEntity": {
     "parent": "ThrownItemEntity",
     "type": "experience_bottle",
     "translation_key": "entity.minecraft.experience_bottle",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.25,
+      "size_y": 0.25,
+      "size_z": 0.25
+    }
   },
   "ExperienceOrbEntity": {
     "parent": "Entity",
     "type": "experience_orb",
     "translation_key": "entity.minecraft.experience_orb",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.5,
+      "size_y": 0.5,
+      "size_z": 0.5
+    }
   },
   "ExplosiveProjectileEntity": {
     "parent": "ProjectileEntity",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 1.0,
+      "size_y": 1.0,
+      "size_z": 1.0
+    }
   },
   "EyeOfEnderEntity": {
     "parent": "Entity",
@@ -851,7 +1097,12 @@
         "default_value": "1 air",
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.25,
+      "size_y": 0.25,
+      "size_z": 0.25
+    }
   },
   "FallingBlockEntity": {
     "parent": "Entity",
@@ -869,13 +1120,23 @@
         },
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.9800000190734863,
+      "size_y": 0.9800000190734863,
+      "size_z": 0.9800000190734863
+    }
   },
   "FireballEntity": {
     "parent": "AbstractFireballEntity",
     "type": "fireball",
     "translation_key": "entity.minecraft.fireball",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 1.0,
+      "size_y": 1.0,
+      "size_z": 1.0
+    }
   },
   "FireworkRocketEntity": {
     "parent": "ProjectileEntity",
@@ -903,7 +1164,12 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.25,
+      "size_y": 0.25,
+      "size_z": 0.25
+    }
   },
   "FishEntity": {
     "parent": "WaterCreatureEntity",
@@ -915,7 +1181,12 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.5,
+      "size_y": 0.4000000059604645,
+      "size_z": 0.5
+    }
   },
   "FishingBobberEntity": {
     "parent": "ProjectileEntity",
@@ -936,11 +1207,21 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.25,
+      "size_y": 0.25,
+      "size_z": 0.25
+    }
   },
   "FlyingEntity": {
     "parent": "MobEntity",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.8999999761581421,
+      "size_y": 0.5,
+      "size_z": 0.8999999761581421
+    }
   },
   "FoxEntity": {
     "parent": "AnimalEntity",
@@ -1004,7 +1285,12 @@
         "default_value": null,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 0.699999988079071,
+      "size_z": 0.6000000238418579
+    }
   },
   "FrogEntity": {
     "parent": "AnimalEntity",
@@ -1025,7 +1311,12 @@
         "default_value": null,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.5,
+      "size_y": 0.5,
+      "size_z": 0.5
+    }
   },
   "FurnaceMinecartEntity": {
     "parent": "AbstractMinecartEntity",
@@ -1039,7 +1330,12 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.9800000190734863,
+      "size_y": 0.699999988079071,
+      "size_z": 0.9800000190734863
+    }
   },
   "GhastEntity": {
     "parent": "FlyingEntity",
@@ -1053,19 +1349,34 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 4.0,
+      "size_y": 4.0,
+      "size_z": 4.0
+    }
   },
   "GiantEntity": {
     "parent": "HostileEntity",
     "type": "giant",
     "translation_key": "entity.minecraft.giant",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 3.5999999046325684,
+      "size_y": 12.0,
+      "size_z": 3.5999999046325684
+    }
   },
   "GlowItemFrameEntity": {
     "parent": "ItemFrameEntity",
     "type": "glow_item_frame",
     "translation_key": "entity.minecraft.glow_item_frame",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.0,
+      "size_y": 0.0,
+      "size_z": 0.0
+    }
   },
   "GlowSquidEntity": {
     "parent": "SquidEntity",
@@ -1079,7 +1390,12 @@
         "default_value": 0,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.800000011920929,
+      "size_y": 0.800000011920929,
+      "size_z": 0.800000011920929
+    }
   },
   "GoatEntity": {
     "parent": "AnimalEntity",
@@ -1107,11 +1423,21 @@
         "default_value": true,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.8999999761581421,
+      "size_y": 1.2999999523162842,
+      "size_z": 0.8999999761581421
+    }
   },
   "GolemEntity": {
     "parent": "PathAwareEntity",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 1.0,
+      "size_y": 1.0,
+      "size_z": 1.0
+    }
   },
   "GuardianEntity": {
     "parent": "HostileEntity",
@@ -1132,7 +1458,12 @@
         "default_value": 0,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.8500000238418579,
+      "size_y": 0.8500000238418579,
+      "size_z": 0.8500000238418579
+    }
   },
   "HoglinEntity": {
     "parent": "AnimalEntity",
@@ -1146,13 +1477,23 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 1.396484375,
+      "size_y": 1.399999976158142,
+      "size_z": 1.396484375
+    }
   },
   "HopperMinecartEntity": {
     "parent": "StorageMinecartEntity",
     "type": "hopper_minecart",
     "translation_key": "entity.minecraft.hopper_minecart",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.9800000190734863,
+      "size_y": 0.699999988079071,
+      "size_z": 0.9800000190734863
+    }
   },
   "HorseEntity": {
     "parent": "AbstractHorseEntity",
@@ -1166,27 +1507,52 @@
         "default_value": 0,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 1.396484375,
+      "size_y": 1.600000023841858,
+      "size_z": 1.396484375
+    }
   },
   "HostileEntity": {
     "parent": "PathAwareEntity",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 1.396484375,
+      "size_y": 1.399999976158142,
+      "size_z": 1.396484375
+    }
   },
   "HuskEntity": {
     "parent": "ZombieEntity",
     "type": "husk",
     "translation_key": "entity.minecraft.husk",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9500000476837158,
+      "size_z": 0.6000000238418579
+    }
   },
   "IllagerEntity": {
     "parent": "RaiderEntity",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9500000476837158,
+      "size_z": 0.6000000238418579
+    }
   },
   "IllusionerEntity": {
     "parent": "SpellcastingIllagerEntity",
     "type": "illusioner",
     "translation_key": "entity.minecraft.illusioner",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9500000476837158,
+      "size_z": 0.6000000238418579
+    }
   },
   "IronGolemEntity": {
     "parent": "GolemEntity",
@@ -1205,7 +1571,12 @@
           }
         ]
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 1.399999976158142,
+      "size_y": 2.700000047683716,
+      "size_z": 1.399999976158142
+    }
   },
   "ItemEntity": {
     "parent": "Entity",
@@ -1219,7 +1590,12 @@
         "default_value": "1 air",
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.25,
+      "size_y": 0.25,
+      "size_z": 0.25
+    }
   },
   "ItemFrameEntity": {
     "parent": "AbstractDecorationEntity",
@@ -1240,19 +1616,34 @@
         "default_value": 0,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.0,
+      "size_y": 0.0,
+      "size_z": 0.0
+    }
   },
   "LeashKnotEntity": {
     "parent": "AbstractDecorationEntity",
     "type": "leash_knot",
     "translation_key": "entity.minecraft.leash_knot",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.375,
+      "size_y": 0.5,
+      "size_z": 0.375
+    }
   },
   "LightningEntity": {
     "parent": "Entity",
     "type": "lightning_bolt",
     "translation_key": "entity.minecraft.lightning_bolt",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.0,
+      "size_y": 0.0,
+      "size_z": 0.0
+    }
   },
   "LivingEntity": {
     "parent": "Entity",
@@ -1281,7 +1672,7 @@
         "name": "health",
         "index": 9,
         "type": "float",
-        "default_value": 20.0,
+        "default_value": 40.0,
         "bits": []
       },
       {
@@ -1319,7 +1710,12 @@
         "default_value": null,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 1.396484375,
+      "size_y": 1.399999976158142,
+      "size_z": 1.396484375
+    }
   },
   "LlamaEntity": {
     "parent": "AbstractDonkeyEntity",
@@ -1347,25 +1743,45 @@
         "default_value": 0,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.8999999761581421,
+      "size_y": 1.8700000047683716,
+      "size_z": 0.8999999761581421
+    }
   },
   "LlamaSpitEntity": {
     "parent": "ProjectileEntity",
     "type": "llama_spit",
     "translation_key": "entity.minecraft.llama_spit",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.25,
+      "size_y": 0.25,
+      "size_z": 0.25
+    }
   },
   "MagmaCubeEntity": {
     "parent": "SlimeEntity",
     "type": "magma_cube",
     "translation_key": "entity.minecraft.magma_cube",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 2.0399999618530273,
+      "size_y": 2.0399999618530273,
+      "size_z": 2.0399999618530273
+    }
   },
   "MarkerEntity": {
     "parent": "Entity",
     "type": "marker",
     "translation_key": "entity.minecraft.marker",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.0,
+      "size_y": 0.0,
+      "size_z": 0.0
+    }
   },
   "MerchantEntity": {
     "parent": "PassiveEntity",
@@ -1377,13 +1793,23 @@
         "default_value": 0,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9500000476837158,
+      "size_z": 0.6000000238418579
+    }
   },
   "MinecartEntity": {
     "parent": "AbstractMinecartEntity",
     "type": "minecart",
     "translation_key": "entity.minecraft.minecart",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.9800000190734863,
+      "size_y": 0.699999988079071,
+      "size_z": 0.9800000190734863
+    }
   },
   "MobEntity": {
     "parent": "LivingEntity",
@@ -1408,7 +1834,12 @@
           }
         ]
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 1.396484375,
+      "size_y": 1.399999976158142,
+      "size_z": 1.396484375
+    }
   },
   "MooshroomEntity": {
     "parent": "CowEntity",
@@ -1422,13 +1853,23 @@
         "default_value": "red",
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.8999999761581421,
+      "size_y": 1.399999976158142,
+      "size_z": 0.8999999761581421
+    }
   },
   "MuleEntity": {
     "parent": "AbstractDonkeyEntity",
     "type": "mule",
     "translation_key": "entity.minecraft.mule",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 1.396484375,
+      "size_y": 1.600000023841858,
+      "size_z": 1.396484375
+    }
   },
   "OcelotEntity": {
     "parent": "AnimalEntity",
@@ -1442,7 +1883,12 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 0.699999988079071,
+      "size_z": 0.6000000238418579
+    }
   },
   "PaintingEntity": {
     "parent": "AbstractDecorationEntity",
@@ -1456,7 +1902,12 @@
         "default_value": "kebab",
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.0,
+      "size_y": 0.0,
+      "size_z": 0.0
+    }
   },
   "PandaEntity": {
     "parent": "AnimalEntity",
@@ -1522,7 +1973,12 @@
           }
         ]
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 1.2999999523162842,
+      "size_y": 1.25,
+      "size_z": 1.2999999523162842
+    }
   },
   "ParrotEntity": {
     "parent": "TameableShoulderEntity",
@@ -1536,7 +1992,12 @@
         "default_value": 0,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.5,
+      "size_y": 0.8999999761581421,
+      "size_z": 0.5
+    }
   },
   "PassiveEntity": {
     "parent": "PathAwareEntity",
@@ -1548,15 +2009,30 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.75,
+      "size_y": 0.41999998688697815,
+      "size_z": 0.75
+    }
   },
   "PathAwareEntity": {
     "parent": "MobEntity",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 1.396484375,
+      "size_y": 1.399999976158142,
+      "size_z": 1.396484375
+    }
   },
   "PatrolEntity": {
     "parent": "HostileEntity",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9500000476837158,
+      "size_z": 0.6000000238418579
+    }
   },
   "PersistentProjectileEntity": {
     "parent": "ProjectileEntity",
@@ -1584,7 +2060,12 @@
         "default_value": 0,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.5,
+      "size_y": 0.5,
+      "size_z": 0.5
+    }
   },
   "PhantomEntity": {
     "parent": "FlyingEntity",
@@ -1598,7 +2079,12 @@
         "default_value": 0,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.8999999761581421,
+      "size_y": 0.5,
+      "size_z": 0.8999999761581421
+    }
   },
   "PigEntity": {
     "parent": "AnimalEntity",
@@ -1619,13 +2105,23 @@
         "default_value": 0,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.8999999761581421,
+      "size_y": 0.8999999761581421,
+      "size_z": 0.8999999761581421
+    }
   },
   "PiglinBruteEntity": {
     "parent": "AbstractPiglinEntity",
     "type": "piglin_brute",
     "translation_key": "entity.minecraft.piglin_brute",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9500000476837158,
+      "size_z": 0.6000000238418579
+    }
   },
   "PiglinEntity": {
     "parent": "AbstractPiglinEntity",
@@ -1653,7 +2149,12 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9500000476837158,
+      "size_z": 0.6000000238418579
+    }
   },
   "PillagerEntity": {
     "parent": "IllagerEntity",
@@ -1667,7 +2168,12 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9500000476837158,
+      "size_z": 0.6000000238418579
+    }
   },
   "PlayerEntity": {
     "parent": "LivingEntity",
@@ -1759,17 +2265,32 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 1.399999976158142,
+      "size_y": 1.399999976158142,
+      "size_z": 1.399999976158142
+    }
   },
   "PotionEntity": {
     "parent": "ThrownItemEntity",
     "type": "potion",
     "translation_key": "entity.minecraft.potion",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.25,
+      "size_y": 0.25,
+      "size_z": 0.25
+    }
   },
   "ProjectileEntity": {
     "parent": "Entity",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.5,
+      "size_y": 0.5,
+      "size_z": 0.5
+    }
   },
   "PufferfishEntity": {
     "parent": "FishEntity",
@@ -1783,7 +2304,12 @@
         "default_value": 0,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.3499999940395355,
+      "size_y": 0.3499999940395355,
+      "size_z": 0.3499999940395355
+    }
   },
   "RabbitEntity": {
     "parent": "AnimalEntity",
@@ -1797,7 +2323,12 @@
         "default_value": 0,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.4000000059604645,
+      "size_y": 0.5,
+      "size_z": 0.4000000059604645
+    }
   },
   "RaiderEntity": {
     "parent": "PatrolEntity",
@@ -1809,23 +2340,43 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9500000476837158,
+      "size_z": 0.6000000238418579
+    }
   },
   "RavagerEntity": {
     "parent": "RaiderEntity",
     "type": "ravager",
     "translation_key": "entity.minecraft.ravager",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 1.9500000476837158,
+      "size_y": 2.200000047683716,
+      "size_z": 1.9500000476837158
+    }
   },
   "SalmonEntity": {
     "parent": "SchoolingFishEntity",
     "type": "salmon",
     "translation_key": "entity.minecraft.salmon",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.699999988079071,
+      "size_y": 0.4000000059604645,
+      "size_z": 0.699999988079071
+    }
   },
   "SchoolingFishEntity": {
     "parent": "FishEntity",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.5,
+      "size_y": 0.4000000059604645,
+      "size_z": 0.5
+    }
   },
   "SheepEntity": {
     "parent": "AnimalEntity",
@@ -1839,13 +2390,23 @@
         "default_value": 0,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.8999999761581421,
+      "size_y": 1.2999999523162842,
+      "size_z": 0.8999999761581421
+    }
   },
   "ShulkerBulletEntity": {
     "parent": "ProjectileEntity",
     "type": "shulker_bullet",
     "translation_key": "entity.minecraft.shulker_bullet",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.3125,
+      "size_y": 0.3125,
+      "size_z": 0.3125
+    }
   },
   "ShulkerEntity": {
     "parent": "GolemEntity",
@@ -1873,13 +2434,23 @@
         "default_value": 16,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 1.0,
+      "size_y": 1.0,
+      "size_z": 1.0
+    }
   },
   "SilverfishEntity": {
     "parent": "HostileEntity",
     "type": "silverfish",
     "translation_key": "entity.minecraft.silverfish",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.4000000059604645,
+      "size_y": 0.30000001192092896,
+      "size_z": 0.4000000059604645
+    }
   },
   "SkeletonEntity": {
     "parent": "AbstractSkeletonEntity",
@@ -1893,13 +2464,23 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9900000095367432,
+      "size_z": 0.6000000238418579
+    }
   },
   "SkeletonHorseEntity": {
     "parent": "AbstractHorseEntity",
     "type": "skeleton_horse",
     "translation_key": "entity.minecraft.skeleton_horse",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 1.396484375,
+      "size_y": 1.600000023841858,
+      "size_z": 1.396484375
+    }
   },
   "SlimeEntity": {
     "parent": "MobEntity",
@@ -1913,13 +2494,23 @@
         "default_value": 1,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 2.0399999618530273,
+      "size_y": 2.0399999618530273,
+      "size_z": 2.0399999618530273
+    }
   },
   "SmallFireballEntity": {
     "parent": "AbstractFireballEntity",
     "type": "small_fireball",
     "translation_key": "entity.minecraft.small_fireball",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.3125,
+      "size_y": 0.3125,
+      "size_z": 0.3125
+    }
   },
   "SnowGolemEntity": {
     "parent": "GolemEntity",
@@ -1938,25 +2529,45 @@
           }
         ]
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.699999988079071,
+      "size_y": 1.899999976158142,
+      "size_z": 0.699999988079071
+    }
   },
   "SnowballEntity": {
     "parent": "ThrownItemEntity",
     "type": "snowball",
     "translation_key": "entity.minecraft.snowball",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.25,
+      "size_y": 0.25,
+      "size_z": 0.25
+    }
   },
   "SpawnerMinecartEntity": {
     "parent": "AbstractMinecartEntity",
     "type": "spawner_minecart",
     "translation_key": "entity.minecraft.spawner_minecart",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.9800000190734863,
+      "size_y": 0.699999988079071,
+      "size_z": 0.9800000190734863
+    }
   },
   "SpectralArrowEntity": {
     "parent": "PersistentProjectileEntity",
     "type": "spectral_arrow",
     "translation_key": "entity.minecraft.spectral_arrow",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.5,
+      "size_y": 0.5,
+      "size_z": 0.5
+    }
   },
   "SpellcastingIllagerEntity": {
     "parent": "IllagerEntity",
@@ -1968,7 +2579,12 @@
         "default_value": 0,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9500000476837158,
+      "size_z": 0.6000000238418579
+    }
   },
   "SpiderEntity": {
     "parent": "HostileEntity",
@@ -1987,23 +2603,43 @@
           }
         ]
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.699999988079071,
+      "size_y": 0.5,
+      "size_z": 0.699999988079071
+    }
   },
   "SquidEntity": {
     "parent": "WaterCreatureEntity",
     "type": "squid",
     "translation_key": "entity.minecraft.squid",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.800000011920929,
+      "size_y": 0.800000011920929,
+      "size_z": 0.800000011920929
+    }
   },
   "StorageMinecartEntity": {
     "parent": "AbstractMinecartEntity",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.9800000190734863,
+      "size_y": 0.699999988079071,
+      "size_z": 0.9800000190734863
+    }
   },
   "StrayEntity": {
     "parent": "AbstractSkeletonEntity",
     "type": "stray",
     "translation_key": "entity.minecraft.stray",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9900000095367432,
+      "size_z": 0.6000000238418579
+    }
   },
   "StriderEntity": {
     "parent": "AnimalEntity",
@@ -2031,13 +2667,23 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.8999999761581421,
+      "size_y": 1.7000000476837158,
+      "size_z": 0.8999999761581421
+    }
   },
   "TadpoleEntity": {
     "parent": "FishEntity",
     "type": "tadpole",
     "translation_key": "entity.minecraft.tadpole",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.4000000059604645,
+      "size_y": 0.30000001192092896,
+      "size_z": 0.4000000059604645
+    }
   },
   "TameableEntity": {
     "parent": "AnimalEntity",
@@ -2065,15 +2711,30 @@
         "default_value": null,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 0.699999988079071,
+      "size_z": 0.6000000238418579
+    }
   },
   "TameableShoulderEntity": {
     "parent": "TameableEntity",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.5,
+      "size_y": 0.8999999761581421,
+      "size_z": 0.5
+    }
   },
   "ThrownEntity": {
     "parent": "ProjectileEntity",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.25,
+      "size_y": 0.25,
+      "size_z": 0.25
+    }
   },
   "ThrownItemEntity": {
     "parent": "ThrownEntity",
@@ -2085,7 +2746,12 @@
         "default_value": "1 air",
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.25,
+      "size_y": 0.25,
+      "size_z": 0.25
+    }
   },
   "TntEntity": {
     "parent": "Entity",
@@ -2099,19 +2765,34 @@
         "default_value": 80,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.9800000190734863,
+      "size_y": 0.9800000190734863,
+      "size_z": 0.9800000190734863
+    }
   },
   "TntMinecartEntity": {
     "parent": "AbstractMinecartEntity",
     "type": "tnt_minecart",
     "translation_key": "entity.minecraft.tnt_minecart",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.9800000190734863,
+      "size_y": 0.699999988079071,
+      "size_z": 0.9800000190734863
+    }
   },
   "TraderLlamaEntity": {
     "parent": "LlamaEntity",
     "type": "trader_llama",
     "translation_key": "entity.minecraft.trader_llama",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.8999999761581421,
+      "size_y": 1.8700000047683716,
+      "size_z": 0.8999999761581421
+    }
   },
   "TridentEntity": {
     "parent": "PersistentProjectileEntity",
@@ -2132,7 +2813,12 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.5,
+      "size_y": 0.5,
+      "size_z": 0.5
+    }
   },
   "TropicalFishEntity": {
     "parent": "SchoolingFishEntity",
@@ -2146,7 +2832,12 @@
         "default_value": 0,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.5,
+      "size_y": 0.4000000059604645,
+      "size_z": 0.5
+    }
   },
   "TurtleEntity": {
     "parent": "AnimalEntity",
@@ -2203,7 +2894,12 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 1.2000000476837158,
+      "size_y": 0.4000000059604645,
+      "size_z": 1.2000000476837158
+    }
   },
   "VexEntity": {
     "parent": "HostileEntity",
@@ -2222,7 +2918,12 @@
           }
         ]
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.4000000059604645,
+      "size_y": 0.800000011920929,
+      "size_z": 0.4000000059604645
+    }
   },
   "VillagerEntity": {
     "parent": "MerchantEntity",
@@ -2240,19 +2941,34 @@
         },
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9500000476837158,
+      "size_z": 0.6000000238418579
+    }
   },
   "VindicatorEntity": {
     "parent": "IllagerEntity",
     "type": "vindicator",
     "translation_key": "entity.minecraft.vindicator",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9500000476837158,
+      "size_z": 0.6000000238418579
+    }
   },
   "WanderingTraderEntity": {
     "parent": "MerchantEntity",
     "type": "wandering_trader",
     "translation_key": "entity.minecraft.wandering_trader",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9500000476837158,
+      "size_z": 0.6000000238418579
+    }
   },
   "WardenEntity": {
     "parent": "HostileEntity",
@@ -2266,11 +2982,21 @@
         "default_value": 0,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.8999999761581421,
+      "size_y": 2.9000000953674316,
+      "size_z": 0.8999999761581421
+    }
   },
   "WaterCreatureEntity": {
     "parent": "PathAwareEntity",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.5,
+      "size_y": 0.4000000059604645,
+      "size_z": 0.5
+    }
   },
   "WitchEntity": {
     "parent": "RaiderEntity",
@@ -2284,7 +3010,12 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9500000476837158,
+      "size_z": 0.6000000238418579
+    }
   },
   "WitherEntity": {
     "parent": "HostileEntity",
@@ -2319,13 +3050,23 @@
         "default_value": 0,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.8999999761581421,
+      "size_y": 3.5,
+      "size_z": 0.8999999761581421
+    }
   },
   "WitherSkeletonEntity": {
     "parent": "AbstractSkeletonEntity",
     "type": "wither_skeleton",
     "translation_key": "entity.minecraft.wither_skeleton",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.699999988079071,
+      "size_y": 2.4000000953674316,
+      "size_z": 0.699999988079071
+    }
   },
   "WitherSkullEntity": {
     "parent": "ExplosiveProjectileEntity",
@@ -2339,7 +3080,12 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.3125,
+      "size_y": 0.3125,
+      "size_z": 0.3125
+    }
   },
   "WolfEntity": {
     "parent": "TameableEntity",
@@ -2367,7 +3113,12 @@
         "default_value": 0,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 0.8500000238418579,
+      "size_z": 0.6000000238418579
+    }
   },
   "ZoglinEntity": {
     "parent": "HostileEntity",
@@ -2381,7 +3132,12 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 1.396484375,
+      "size_y": 1.399999976158142,
+      "size_z": 1.396484375
+    }
   },
   "ZombieEntity": {
     "parent": "HostileEntity",
@@ -2409,13 +3165,23 @@
         "default_value": false,
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9500000476837158,
+      "size_z": 0.6000000238418579
+    }
   },
   "ZombieHorseEntity": {
     "parent": "AbstractHorseEntity",
     "type": "zombie_horse",
     "translation_key": "entity.minecraft.zombie_horse",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 1.396484375,
+      "size_y": 1.600000023841858,
+      "size_z": 1.396484375
+    }
   },
   "ZombieVillagerEntity": {
     "parent": "ZombieEntity",
@@ -2435,17 +3201,27 @@
         "type": "villager_data",
         "default_value": {
           "type": "plains",
-          "profession": "fisherman",
+          "profession": "mason",
           "level": 1
         },
         "bits": []
       }
-    ]
+    ],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9500000476837158,
+      "size_z": 0.6000000238418579
+    }
   },
   "ZombifiedPiglinEntity": {
     "parent": "ZombieEntity",
     "type": "zombified_piglin",
     "translation_key": "entity.minecraft.zombified_piglin",
-    "fields": []
+    "fields": [],
+    "default_bounding_box": {
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9500000476837158,
+      "size_z": 0.6000000238418579
+    }
   }
 }
