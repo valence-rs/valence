@@ -1129,7 +1129,12 @@ impl<C: Config> Client<C> {
                             }
                             (true, false) => {
                                 // Chunk needs initialization. Send packet to load it.
-                                chunk.write_chunk_data_packet(&mut *send)?;
+                                chunk.write_chunk_data_packet(
+                                    &mut *send,
+                                    &mut self.scratch,
+                                    pos,
+                                    &old_world.chunks,
+                                )?;
 
                                 // Don't assert that the chunk is already loaded in this case.
                                 // Chunks are allowed to be overwritten and their "created this
@@ -1258,7 +1263,12 @@ impl<C: Config> Client<C> {
                 if let Some((chunk, cell)) = world.chunks.chunk_and_cell(pos) {
                     if let Some(chunk) = chunk {
                         if !chunk.deleted() {
-                            chunk.write_chunk_data_packet(&mut *send)?;
+                            chunk.write_chunk_data_packet(
+                                &mut *send,
+                                &mut self.scratch,
+                                pos,
+                                &world.chunks,
+                            )?;
 
                             #[cfg(debug_assertions)]
                             assert!(self.loaded_chunks.insert(pos));
@@ -1327,7 +1337,12 @@ impl<C: Config> Client<C> {
                     if let Some((chunk, cell)) = world.chunks.chunk_and_cell(pos) {
                         if let Some(chunk) = chunk {
                             if !chunk.deleted() {
-                                chunk.write_chunk_data_packet(&mut *send)?;
+                                chunk.write_chunk_data_packet(
+                                    &mut *send,
+                                    &mut self.scratch,
+                                    pos,
+                                    &world.chunks,
+                                )?;
 
                                 #[cfg(debug_assertions)]
                                 assert!(self.loaded_chunks.insert(pos));

@@ -53,7 +53,12 @@ impl<C: Config> Worlds<C> {
 
         let (id, world) = self.slab.insert(World {
             state,
-            chunks: Chunks::new(dim.height, dim.min_y),
+            chunks: Chunks::new(
+                dim.height,
+                dim.min_y,
+                self.shared.biomes().len(),
+                self.shared.compression_threshold(),
+            ),
             dimension,
             deleted: false,
         });

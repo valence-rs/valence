@@ -50,6 +50,7 @@ impl Encode for VarInt {
         }
     }
 
+    #[inline]
     fn encoded_len(&self) -> usize {
         match self.0 {
             0 => 1,
