@@ -1,47 +1,42 @@
 use std::collections::{BTreeMap, HashMap};
+use std::fmt;
 
 use heck::{ToPascalCase, ToSnakeCase};
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::{Ident as TokenIdent, TokenStream};
 use quote::quote;
-use serde::Deserialize;
+use serde::de::Visitor;
+use serde::{Deserialize, Deserializer};
 
 use crate::ident;
 
 #[derive(Deserialize, Debug)]
-struct ParsedBiome {
+struct ParsedElement {
     id: u16,
-    name: String,
-    climate: ParsedBiomeClimate,
-    color: ParsedBiomeColor,
+    #[serde(deserialize_with = "parse_ident")]
+    name: ParsedName,
+    element: ParsedBiome,
+}
+
+#[derive(Deserialize, Debug)]
+struct ParsedBiome {
+    #[serde(deserialize_with = "parse_ident")]
+    precipitation: ParsedName,
+    temperature: f32,
+    downfall: f32,
+    effects: ParsedBiomeEffects,
     spawn_settings: ParsedBiomeSpawnRates,
 }
 
-#[derive(Debug)]
-struct RenamedBiome {
-    id: u16,
-    name: String,
-    rustified_name: Ident,
-    climate: ParsedBiomeClimate,
-    color: ParsedBiomeColor,
-    spawn_rates: ParsedBiomeSpawnRates,
-}
-
 #[derive(Deserialize, Debug)]
-struct ParsedBiomeClimate {
-    precipitation: String,
-    temperature: f32,
-    downfall: f32,
-}
-
-#[derive(Deserialize, Debug)]
-struct ParsedBiomeColor {
-    grass_modifier: String,
-    grass: Option<u32>,
-    foliage: Option<u32>,
-    fog: u32,
-    sky: u32,
-    water_fog: u32,
-    water: u32,
+struct ParsedBiomeEffects {
+    sky_color: u32,
+    water_fog_color: u32,
+    fog_color: u32,
+    water_color: u32,
+    #[serde(deserialize_with = "parse_ident")]
+    grass_color_modifier: ParsedName,
+    grass_color: Option<u32>,
+    foliage_color: Option<u32>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -52,42 +47,49 @@ struct ParsedBiomeSpawnRates {
 
 #[derive(Deserialize, Debug)]
 struct ParsedSpawnRate {
-    name: String,
+    #[serde(deserialize_with = "parse_ident")]
+    name: ParsedName,
     min_group_size: u32,
     max_group_size: u32,
     weight: i32,
 }
 
-pub fn build() -> anyhow::Result<TokenStream> {
-    let biomes: Vec<ParsedBiome> =
-        serde_json::from_str(include_str!("../../extracted/biomes.json"))?;
+#[derive(Debug)]
+struct ParsedName {
+    token: TokenIdent,
+    raw: String,
+}
 
-    let mut biomes = biomes
-        .into_iter()
-        .map(|biome| RenamedBiome {
-            id: biome.id,
-            rustified_name: ident(biome.name.replace("minecraft:", "").to_pascal_case()),
-            name: biome.name,
-            climate: biome.climate,
-            color: biome.color,
-            spawn_rates: biome.spawn_settings,
-        })
-        .collect::<Vec<RenamedBiome>>();
+fn parse_ident<'de, D>(deserializer: D) -> Result<ParsedName, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct IdentVisitor;
+    impl<'de> Visitor<'de> for IdentVisitor {
+        type Value = ParsedName;
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("a string containing a minecraft ID path")
+        }
+        fn visit_str<E>(self, id: &str) -> Result<Self::Value, E> {
+            Ok(ParsedName {
+                token: ident(id.to_pascal_case()),
+                raw: id.to_string(),
+            })
+        }
+    }
+    deserializer.deserialize_str(IdentVisitor)
+}
+
+pub fn build() -> anyhow::Result<TokenStream> {
+    let mut biomes: Vec<ParsedElement> =
+        serde_json::from_str(include_str!("../../extracted/biomes.json"))?;
 
     //Ensure biomes are sorted, even if the JSON changes later.
     biomes.sort_by(|one, two| one.id.cmp(&two.id));
 
-    let mut precipitation_types = BTreeMap::<&str, Ident>::new();
-    let mut grass_modifier_types = BTreeMap::<&str, Ident>::new();
-    let mut class_spawn_fields = BTreeMap::<&str, Ident>::new();
-    for biome in biomes.iter() {
-        precipitation_types
-            .entry(biome.climate.precipitation.as_str())
-            .or_insert_with(|| ident(biome.climate.precipitation.to_pascal_case()));
-        grass_modifier_types
-            .entry(biome.color.grass_modifier.as_str())
-            .or_insert_with(|| ident(biome.color.grass_modifier.to_pascal_case()));
-        for class in biome.spawn_rates.groups.keys() {
+    let mut class_spawn_fields = BTreeMap::<&str, TokenIdent>::new();
+    for biome in biomes.iter().map(|b| &b.element) {
+        for class in biome.spawn_settings.groups.keys() {
             class_spawn_fields
                 .entry(class)
                 .or_insert_with(|| ident(class.to_snake_case()));
@@ -104,10 +106,10 @@ pub fn build() -> anyhow::Result<TokenStream> {
     let biome_kind_enum_declare = biomes
         .iter()
         .map(|biome| {
-            let rustified_name = &biome.rustified_name;
+            let name = &biome.name.token;
             let id = biome.id as isize;
             quote! {
-                #rustified_name = #id,
+                #name = #id,
             }
         })
         .collect::<TokenStream>();
@@ -115,9 +117,9 @@ pub fn build() -> anyhow::Result<TokenStream> {
     let biome_kind_enum_names = biomes
         .iter()
         .map(|biome| {
-            let rustified_name = &biome.rustified_name;
+            let name = &biome.name.token;
             quote! {
-                #rustified_name
+                #name
             }
         })
         .collect::<Vec<TokenStream>>();
@@ -125,10 +127,10 @@ pub fn build() -> anyhow::Result<TokenStream> {
     let biomekind_id_to_variant_lookup = biomes
         .iter()
         .map(|biome| {
-            let rustified_name = &biome.rustified_name;
+            let name = &biome.name.token;
             let id = &biome.id;
             quote! {
-                #id => Some(Self::#rustified_name),
+                #id => Some(Self::#name),
             }
         })
         .collect::<TokenStream>();
@@ -136,10 +138,10 @@ pub fn build() -> anyhow::Result<TokenStream> {
     let biomekind_name_lookup = biomes
         .iter()
         .map(|biome| {
-            let rustified_name = &biome.rustified_name;
-            let name = &biome.name;
+            let name = &biome.name.token;
+            let raw = &biome.name.raw;
             quote! {
-                #name => Some(Self::#rustified_name),
+                #raw => Some(Self::#name),
             }
         })
         .collect::<TokenStream>();
@@ -147,10 +149,10 @@ pub fn build() -> anyhow::Result<TokenStream> {
     let biomekind_temperatures_arms = biomes
         .iter()
         .map(|biome| {
-            let rustified_name = &biome.rustified_name;
-            let temp = &biome.climate.temperature;
+            let name = &biome.name.token;
+            let temp = &biome.element.temperature;
             quote! {
-                Self::#rustified_name => #temp,
+                Self::#name => #temp,
             }
         })
         .collect::<TokenStream>();
@@ -158,10 +160,10 @@ pub fn build() -> anyhow::Result<TokenStream> {
     let biomekind_downfall_arms = biomes
         .iter()
         .map(|biome| {
-            let rustified_name = &biome.rustified_name;
-            let downfall = &biome.climate.downfall;
+            let name = &biome.name.token;
+            let downfall = &biome.element.downfall;
             quote! {
-                Self::#rustified_name => #downfall,
+                Self::#name => #downfall,
             }
         })
         .collect::<TokenStream>();
@@ -169,19 +171,19 @@ pub fn build() -> anyhow::Result<TokenStream> {
     let biomekind_to_biome = biomes
         .iter()
         .map(|biome| {
-            let rustified_name = &biome.rustified_name;
-            let name = &biome.name;
-            let precipitation = ident(biome.climate.precipitation.to_pascal_case());
-            let sky_color = &biome.color.sky;
-            let water_fog = &biome.color.water_fog;
-            let fog = &biome.color.fog;
-            let water_color = &biome.color.water;
-            let foliage_color = option_to_quote(&biome.color.foliage);
-            let grass_color = option_to_quote(&biome.color.grass);
-            let grass_modifier = ident(biome.color.grass_modifier.to_pascal_case());
+            let name = &biome.name.token;
+            let raw_name = &biome.name.raw;
+            let precipitation = &biome.element.precipitation.token;
+            let sky_color = &biome.element.effects.sky_color;
+            let water_fog = &biome.element.effects.water_fog_color;
+            let fog = &biome.element.effects.fog_color;
+            let water_color = &biome.element.effects.water_color;
+            let foliage_color = option_to_quote(&biome.element.effects.foliage_color);
+            let grass_color = option_to_quote(&biome.element.effects.grass_color);
+            let grass_modifier = &biome.element.effects.grass_color_modifier.token;
             quote! {
-                Self::#rustified_name => Ok(Biome{
-                    name: Ident::from_str(#name)?,
+                Self::#name => Ok(Biome{
+                    name: Ident::from_str(#raw_name)?,
                     precipitation: BiomePrecipitation::#precipitation,
                     sky_color: #sky_color,
                     water_fog_color: #water_fog,
@@ -203,31 +205,36 @@ pub fn build() -> anyhow::Result<TokenStream> {
     let biomekind_spawn_settings_arms = biomes
         .iter()
         .map(|biome| {
-            let rustified_name = &biome.rustified_name;
-            let probability = biome.spawn_rates.probability;
+            let name = &biome.name.token;
+            let probability = biome.element.spawn_settings.probability;
 
-            let fields = biome.spawn_rates.groups.iter().map(|(class, rates)| {
-                let rates = rates.iter().map(|spawn_rate| {
-                    let name = &spawn_rate.name;
-                    let min_group_size = &spawn_rate.min_group_size;
-                    let max_group_size = &spawn_rate.max_group_size;
-                    let weight = &spawn_rate.weight;
-                    quote! {
-                        SpawnProperty {
-                            name: #name,
-                            min_group_size: #min_group_size,
-                            max_group_size: #max_group_size,
-                            weight: #weight
+            let fields = biome
+                .element
+                .spawn_settings
+                .groups
+                .iter()
+                .map(|(class, rates)| {
+                    let rates = rates.iter().map(|spawn_rate| {
+                        let name_raw = &spawn_rate.name.raw;
+                        let min_group_size = &spawn_rate.min_group_size;
+                        let max_group_size = &spawn_rate.max_group_size;
+                        let weight = &spawn_rate.weight;
+                        quote! {
+                            SpawnProperty {
+                                name: #name_raw,
+                                min_group_size: #min_group_size,
+                                max_group_size: #max_group_size,
+                                weight: #weight
+                            }
                         }
+                    });
+                    let class = ident(class);
+                    quote! {
+                        #class: &[#( #rates ),*]
                     }
                 });
-                let class = ident(class);
-                quote! {
-                    #class: &[#( #rates ),*]
-                }
-            });
             quote! {
-                Self::#rustified_name => SpawnSettings {
+                Self::#name => SpawnSettings {
                     probability: #probability,
                     #( #fields ),*
                 },

@@ -38,6 +38,7 @@ public class Main implements ModInitializer {
         LOGGER.info("Starting extractors...");
 
         var extractors = new Extractor[]{
+               new Biomes(),
                new Blocks(),
                new Enchants(),
                new Entities(),

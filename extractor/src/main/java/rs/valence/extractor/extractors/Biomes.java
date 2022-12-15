@@ -1,38 +1,16 @@
 package rs.valence.extractor.extractors;
 
-import com.google.gson.*;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import net.minecraft.entity.SpawnGroup;
 import net.minecraft.util.collection.Weighted;
 import net.minecraft.util.registry.BuiltinRegistries;
 import net.minecraft.util.registry.Registry;
 import rs.valence.extractor.Main;
 
-import java.util.Optional;
-
 public class Biomes implements Main.Extractor {
     public Biomes() {
-    }
-
-    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-    private static <T> JsonElement optional_to_json(Optional<T> var) {
-        if (var.isEmpty()) {
-            return JsonNull.INSTANCE;
-        } else {
-            var value = var.get();
-            if (value instanceof Boolean b) {
-                return new JsonPrimitive(b);
-            } else if (value instanceof Integer i) {
-                return new JsonPrimitive(i);
-            } else if (value instanceof Float f) {
-                return new JsonPrimitive(f);
-            } else if (value instanceof Long l) {
-                return new JsonPrimitive(l);
-            } else if (value instanceof Number n) {
-                return new JsonPrimitive(n);
-            } else {
-                throw new UnsupportedOperationException("Could not convert " + value + " to primitive (" + value.getClass().toString() + ")");
-            }
-        }
     }
 
     @Override
@@ -46,21 +24,49 @@ public class Biomes implements Main.Extractor {
 
         for (var biome : BuiltinRegistries.BIOME) {
             var biomeIdent = BuiltinRegistries.BIOME.getId(biome);
+            assert biomeIdent != null;
 
-            var climateJson = new JsonObject();
-            climateJson.addProperty("precipitation", biome.getPrecipitation().getName());
-            climateJson.addProperty("temperature", biome.getTemperature());
-            climateJson.addProperty("downfall", biome.getDownfall());
+            var biomeJson = new JsonObject();
+            biomeJson.addProperty("precipitation", biome.getPrecipitation().getName());
+            biomeJson.addProperty("temperature", biome.getTemperature());
+            biomeJson.addProperty("downfall", biome.getDownfall());
 
-            var colorJson = new JsonObject();
+            var effectJson = new JsonObject();
             var biomeEffects = biome.getEffects();
-            colorJson.add("grass", optional_to_json(biomeEffects.getGrassColor()));
-            colorJson.addProperty("grass_modifier", biomeEffects.getGrassColorModifier().getName());
-            colorJson.add("foliage", optional_to_json(biomeEffects.getFoliageColor()));
-            colorJson.addProperty("fog", biomeEffects.getFogColor());
-            colorJson.addProperty("sky", biomeEffects.getSkyColor());
-            colorJson.addProperty("water_fog", biomeEffects.getWaterFogColor());
-            colorJson.addProperty("water", biomeEffects.getWaterColor());
+
+            effectJson.addProperty("sky_color", biomeEffects.getSkyColor());
+            effectJson.addProperty("water_fog_color", biomeEffects.getWaterFogColor());
+            effectJson.addProperty("fog_color", biomeEffects.getFogColor());
+            effectJson.addProperty("water_color", biomeEffects.getWaterColor());
+            biomeEffects.getFoliageColor().ifPresent(color -> effectJson.addProperty("foliage_color", color));
+            biomeEffects.getGrassColor().ifPresent(color -> effectJson.addProperty("grass_color", color));
+            effectJson.addProperty("grass_color_modifier", biomeEffects.getGrassColorModifier().getName());
+            biomeEffects.getMusic().ifPresent(biome_music -> {
+                var music = new JsonObject();
+                music.addProperty("replace_current_music", biome_music.shouldReplaceCurrentMusic());
+                music.addProperty("sound", biome_music.getSound().getId().getPath());
+                music.addProperty("max_delay", biome_music.getMaxDelay());
+                music.addProperty("min_delay", biome_music.getMinDelay());
+                effectJson.add("music", music);
+            });
+
+            biomeEffects.getLoopSound().ifPresent(soundEvent -> effectJson.addProperty("ambient_sound", soundEvent.getId().getPath()));
+            biomeEffects.getAdditionsSound().ifPresent(soundEvent -> {
+                var sound = new JsonObject();
+                sound.addProperty("sound", soundEvent.getSound().getId().getPath());
+                sound.addProperty("tick_chance", soundEvent.getChance());
+                effectJson.add("additions_sound", sound);
+            });
+            biomeEffects.getMoodSound().ifPresent(soundEvent -> {
+                var sound = new JsonObject();
+                sound.addProperty("sound", soundEvent.getSound().getId().getPath());
+                sound.addProperty("tick_delay", soundEvent.getCultivationTicks());
+                sound.addProperty("offset", soundEvent.getExtraDistance());
+                sound.addProperty("block_search_extent", soundEvent.getSpawnRange());
+
+                effectJson.add("mood_sound", sound);
+            });
+
 
             var spawnSettingsJson = new JsonObject();
             var spawnSettings = biome.getSpawnSettings();
@@ -81,14 +87,14 @@ public class Biomes implements Main.Extractor {
             }
             spawnSettingsJson.add("groups", spawnGroupsJson);
 
-            var biomeJson = new JsonObject();
-            biomeJson.addProperty("name", biomeIdent.getPath());
-            biomeJson.addProperty("id", BuiltinRegistries.BIOME.getRawId(biome));
-            biomeJson.add("climate", climateJson);
-            biomeJson.add("color", colorJson);
+            biomeJson.add("effects", effectJson);
             biomeJson.add("spawn_settings", spawnSettingsJson);
 
-            biomesJson.add(biomeJson);
+            var entryJson = new JsonObject();
+            entryJson.addProperty("name", biomeIdent.getPath());
+            entryJson.addProperty("id", BuiltinRegistries.BIOME.getRawId(biome));
+            entryJson.add("element", biomeJson);
+            biomesJson.add(entryJson);
         }
 
         return biomesJson;

@@ -3,7 +3,7 @@ use std::process::Command;
 use std::{env, fs};
 
 use anyhow::Context;
-use proc_macro2::{Ident, Span};
+use proc_macro2::{Ident as TokenIdent, Span};
 
 mod biome;
 
@@ -27,12 +27,12 @@ pub fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn ident(s: impl AsRef<str>) -> Ident {
+fn ident(s: impl AsRef<str>) -> TokenIdent {
     let s = s.as_ref().trim();
 
     match s.as_bytes() {
         // TODO: check for the other rust keywords.
-        [b'0'..=b'9', ..] | b"type" => Ident::new(&format!("_{s}"), Span::call_site()),
-        _ => Ident::new(s, Span::call_site()),
+        [b'0'..=b'9', ..] | b"type" => TokenIdent::new(&format!("_{s}"), Span::call_site()),
+        _ => TokenIdent::new(s, Span::call_site()),
     }
 }
