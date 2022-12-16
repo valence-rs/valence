@@ -53,7 +53,13 @@ macro_rules! packet_enum {
             }
 
             fn encoded_len(&self) -> usize {
-                todo!()
+                match self {
+                    $(
+                        Self::$packet(pkt) => {
+                            pkt.encoded_len()
+                        }
+                    )*
+                }
             }
         }
 
@@ -77,6 +83,16 @@ macro_rules! packet_enum {
                 match self {
                     $(
                         Self::$packet(pkt) => pkt.packet_name(),
+                    )*
+                }
+            }
+        }
+
+        impl<$enum_life> std::fmt::Debug for $enum_name<$enum_life> {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    $(
+                        Self::$packet(pkt) => pkt.fmt(f),
                     )*
                 }
             }
@@ -122,7 +138,13 @@ macro_rules! packet_enum {
             }
 
             fn encoded_len(&self) -> usize {
-                todo!()
+                match self {
+                    $(
+                        Self::$packet(pkt) => {
+                            pkt.encoded_len()
+                        }
+                    )*
+                }
             }
         }
 
@@ -146,6 +168,16 @@ macro_rules! packet_enum {
                 match self {
                     $(
                         Self::$packet(pkt) => pkt.packet_name(),
+                    )*
+                }
+            }
+        }
+
+        impl std::fmt::Debug for $enum_name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    $(
+                        Self::$packet(pkt) => pkt.fmt(f),
                     )*
                 }
             }

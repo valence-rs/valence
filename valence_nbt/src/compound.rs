@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::fmt;
 use std::hash::Hash;
 use std::iter::FusedIterator;
 use std::ops::{Index, IndexMut};
@@ -7,7 +8,7 @@ use crate::to_binary_writer::encoded_len;
 use crate::Value;
 
 /// A map type with [`String`] keys and [`Value`] values.
-#[derive(Clone, PartialEq, Default, Debug)]
+#[derive(Clone, PartialEq, Default)]
 pub struct Compound {
     map: Map,
 }
@@ -31,6 +32,12 @@ impl Compound {
     /// [`to_binary_writer`]: crate::to_binary_writer()
     pub fn binary_encoded_len(&self, root_name: &str) -> usize {
         encoded_len(self, root_name)
+    }
+}
+
+impl fmt::Debug for Compound {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.map.fmt(f)
     }
 }
 
