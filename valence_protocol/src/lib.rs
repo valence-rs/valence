@@ -72,10 +72,10 @@ extern crate self as valence_protocol;
 use std::io::Write;
 
 pub use anyhow::{Error, Result};
+pub use array::LengthPrefixedArray;
 pub use block::{BlockFace, BlockKind, BlockState};
 pub use block_pos::BlockPos;
 pub use byte_angle::ByteAngle;
-pub use cache::{Cached, EncodedBuf};
 pub use codec::*;
 pub use ident::Ident;
 pub use inventory::InventoryKind;
@@ -98,12 +98,12 @@ pub const PROTOCOL_VERSION: i32 = 760;
 /// targets.
 pub const MINECRAFT_VERSION: &str = "1.19.2";
 
+mod array;
 pub mod block;
 mod block_pos;
 mod bounded;
 mod byte_angle;
 mod byte_counter;
-mod cache;
 mod codec;
 pub mod enchant;
 pub mod entity_meta;

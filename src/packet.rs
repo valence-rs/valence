@@ -24,9 +24,9 @@ impl<W: WritePacket> WritePacket for &mut W {
 }
 
 pub struct PacketWriter<'a, W> {
-    pub writer: W,
-    pub threshold: Option<u32>,
-    pub scratch: &'a mut Vec<u8>,
+    writer: W,
+    threshold: Option<u32>,
+    scratch: &'a mut Vec<u8>,
 }
 
 impl<'a, W: Write> PacketWriter<'a, W> {

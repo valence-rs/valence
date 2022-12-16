@@ -72,6 +72,56 @@ impl List {
     }
 }
 
+/// We can not create new identities in stable Rust using macros, so we provide
+/// them in the macro invocation itself.
+macro_rules! nbt_conversion {
+    ( $($nbt_type:ident = $value_type:ty => $is_function:ident $as_function:ident $as_mut_function:ident $into_function:ident)+ ) => {
+        $(
+            pub fn $is_function(&self) -> bool {
+                self.$as_function().is_some()
+            }
+
+            pub fn $as_function(&self) -> Option<&$value_type> {
+                match self {
+                    Self::$nbt_type(value) => Some(value),
+                    _ => None
+                }
+            }
+
+            pub fn $as_mut_function(&mut self) -> Option<&mut $value_type> {
+                match self {
+                    Self::$nbt_type(value) => Some(value),
+                    _ => None
+                }
+            }
+
+            pub fn $into_function(self) -> Option<$value_type> {
+                match self {
+                    Self::$nbt_type(value) => Some(value),
+                    _ => None
+                }
+            }
+        )*
+    };
+}
+
+impl Value {
+    nbt_conversion! {
+        Byte = i8 => is_byte as_byte as_byte_mut into_byte
+        Short = i16 => is_short as_short as_short_mut into_short
+        Int = i32 => is_int as_int as_int_mut into_int
+        Long = i64 => is_long as_long as_long_mut into_long
+        Float = f32 => is_float as_float as_float_mut into_float
+        Double = f64 => is_double as_double as_double_mut into_double
+        ByteArray = Vec<i8> => is_byte_array as_byte_array as_byte_array_mut into_byte_array
+        String = String => is_string as_string as_string_mut into_string
+        List = List => is_list as_list as_list_mut into_list
+        Compound = Compound => is_compound as_compound as_compound_mut into_compound
+        IntArray = Vec<i32> => is_int_array as_int_array as_int_array_mut into_int_array
+        LongArray = Vec<i64> => is_long_array as_long_array as_long_array_mut into_long_array
+    }
+}
+
 impl From<i8> for Value {
     fn from(v: i8) -> Self {
         Self::Byte(v)
