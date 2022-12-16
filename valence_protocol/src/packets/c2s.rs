@@ -39,7 +39,7 @@ pub mod handshake {
     }
 
     packet_enum! {
-        #[derive(Clone, Debug)]
+        #[derive(Clone)]
         C2sHandshakePacket<'a> {
             Handshake<'a>
         }
@@ -60,7 +60,7 @@ pub mod status {
     }
 
     packet_enum! {
-        #[derive(Clone, Debug)]
+        #[derive(Clone)]
         C2sStatusPacket {
             StatusRequest,
             PingRequest,
@@ -94,7 +94,7 @@ pub mod login {
     }
 
     packet_enum! {
-        #[derive(Clone, Debug)]
+        #[derive(Clone)]
         C2sLoginPacket<'a> {
             LoginStart<'a>,
             EncryptionResponse<'a>,
@@ -495,7 +495,7 @@ pub mod play {
     }
 
     packet_enum! {
-        #[derive(Clone, Debug)]
+        #[derive(Clone)]
         C2sPlayPacket<'a> {
             ConfirmTeleport,
             QueryBlockEntityTag,

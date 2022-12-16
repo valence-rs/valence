@@ -24,12 +24,11 @@ cargo r -r -p packet_inspector -- 127.0.0.1:25566 127.0.0.1:25565
 
 The client must connect to `localhost:25566`. You should see the packets in `stdout`.
 
-The third argument to the packet inspector is an optional regular expression compatible with
-the [regex](https://docs.rs/regex/latest/regex/) crate. Packets with names that match the regex are printed while those
-that don't are ignored. If the regex is not provided then the empty string is assumed and all packets are considered
-matching.
+The `-i` and `-e` flags accept a regex to filter packets according to their name. The `-i` regex includes matching
+packets while the `-e` regex excludes matching packets.
 
-If you're only interested in packets `Foo`, `Bar`, and `Baz`, you can use a regex such as `^(Foo|Bar|Baz)$`.
+For instance, if you only want to print the packets `Foo`, `Bar`, and `Baz`, you can use a regex such
+as `^(Foo|Bar|Baz)$` with the `-i` flag.
 
 ```sh
 cargo r -r -p packet_inspector -- 127.0.0.1:25566 127.0.0.1:25565 '^(Foo|Bar|Baz)$'

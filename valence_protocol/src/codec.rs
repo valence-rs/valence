@@ -53,6 +53,24 @@ impl PacketEncoder {
     ) -> Result<()> {
         let data_len = pkt.encoded_len();
 
+        #[cfg(debug_assertions)]
+        {
+            use crate::byte_counter::ByteCounter;
+
+            let mut counter = ByteCounter::new();
+            pkt.encode(&mut counter)?;
+
+            let actual = counter.0;
+
+            assert_eq!(
+                actual,
+                data_len,
+                "actual encoded size of {} packet differs from reported size (actual = {actual}, \
+                 reported = {data_len})",
+                pkt.packet_name()
+            );
+        }
+
         #[cfg(feature = "compression")]
         if let Some(threshold) = self.compression_threshold {
             use flate2::write::ZlibEncoder;
@@ -112,15 +130,6 @@ impl PacketEncoder {
                     VarInt(packet_len as i32).encode(&mut slice)?;
                     VarInt(0).encode(&mut slice)?;
                     pkt.encode(&mut slice)?;
-
-                    debug_assert!(
-                        slice.is_empty(),
-                        "actual size of {} packet differs from reported size (actual = {}, \
-                         reported = {})",
-                        pkt.packet_name(),
-                        data_len - slice.len(),
-                        data_len,
-                    );
                 }
             }
 
@@ -293,7 +302,7 @@ impl PacketDecoder {
         };
 
         ensure!(
-            packet_len <= MAX_PACKET_SIZE,
+            (0..=MAX_PACKET_SIZE).contains(&packet_len),
             "packet length of {packet_len} is out of bounds"
         );
 
@@ -353,7 +362,14 @@ impl PacketDecoder {
         let mut r = &self.buf[self.cursor..];
 
         match VarInt::decode_partial(&mut r) {
-            Ok(_) => Ok(true),
+            Ok(packet_len) => {
+                ensure!(
+                    (0..=MAX_PACKET_SIZE).contains(&packet_len),
+                    "packet length of {packet_len} is out of bounds"
+                );
+
+                Ok(r.len() >= packet_len as usize)
+            }
             Err(VarIntDecodeError::Incomplete) => Ok(false),
             Err(VarIntDecodeError::TooLarge) => bail!("malformed packet length VarInt"),
         }

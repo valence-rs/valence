@@ -34,7 +34,7 @@ use crate::{nbt, Decode, Encode};
 ///   string is wrapped in `Ident` must return the same value.
 ///
 /// [borrow]: std::borrow::Borrow::borrow
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 pub struct Ident<S> {
     string: S,
     path_start: usize,
@@ -117,6 +117,12 @@ impl<'a, S: ?Sized> Ident<&'a S> {
             string: self.string.to_owned(),
             path_start: self.path_start,
         }
+    }
+}
+
+impl<S: fmt::Debug> fmt::Debug for Ident<S> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        self.string.fmt(f)
     }
 }
 
