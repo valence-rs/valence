@@ -8,9 +8,9 @@ use crate::raw_bytes::RawBytes;
 use crate::types::{
     Action, ChatMode, ClickContainerMode, CommandArgumentSignature, CommandBlockFlags,
     CommandBlockMode, Difficulty, DiggingStatus, DisplayedSkinParts, EntityInteraction, Hand,
-    HandshakeNextState, MainHand, MessageAcknowledgment, PlayerInputFlags,
-    RecipeBookId, StructureBlockAction, StructureBlockFlags, StructureBlockMirror,
-    StructureBlockMode, StructureBlockRotation,
+    HandshakeNextState, MainHand, MessageAcknowledgment, PlayerInputFlags, RecipeBookId,
+    StructureBlockAction, StructureBlockFlags, StructureBlockMirror, StructureBlockMode,
+    StructureBlockRotation,
 };
 use crate::username::Username;
 use crate::var_int::VarInt;
@@ -183,7 +183,7 @@ pub mod play {
     }
 
     #[derive(Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x0A]
+    #[packet_id = 0x0a]
     pub struct ClickContainer {
         pub window_id: u8,
         pub state_id: VarInt,
@@ -195,20 +195,20 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x0B]
+    #[packet_id = 0x0b]
     pub struct CloseContainerC2s {
         pub window_id: i8,
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x0C]
+    #[packet_id = 0x0c]
     pub struct PluginMessageC2s<'a> {
         pub channel: Ident<&'a str>,
         pub data: RawBytes<'a>,
     }
 
     #[derive(Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x0D]
+    #[packet_id = 0x0d]
     pub struct EditBook<'a> {
         pub slot: VarInt,
         pub entries: Vec<&'a str>,
@@ -216,14 +216,14 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x0E]
+    #[packet_id = 0x0e]
     pub struct QueryEntityTag {
         pub transaction_id: VarInt,
         pub entity_id: VarInt,
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x0F]
+    #[packet_id = 0x0f]
     pub struct Interact {
         pub entity_id: VarInt,
         pub interact: EntityInteraction,
@@ -298,7 +298,7 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x1A]
+    #[packet_id = 0x1a]
     pub struct PlaceRecipe<'a> {
         pub window_id: i8,
         pub recipe: Ident<&'a str>,
@@ -306,7 +306,7 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x1B]
+    #[packet_id = 0x1b]
     pub enum PlayerAbilitiesC2s {
         #[tag = 0b00]
         StopFlying,
@@ -315,7 +315,7 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x1C]
+    #[packet_id = 0x1c]
     pub struct PlayerAction {
         pub status: DiggingStatus,
         pub position: BlockPos,
@@ -324,7 +324,7 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x1D]
+    #[packet_id = 0x1d]
     pub struct PlayerCommand {
         pub entity_id: VarInt,
         pub action_id: Action,
@@ -332,7 +332,7 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x1E]
+    #[packet_id = 0x1e]
     pub struct PlayerInput {
         pub sideways: f32,
         pub forward: f32,
@@ -340,7 +340,7 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x1F]
+    #[packet_id = 0x1f]
     pub struct PongPlay {
         pub id: i32,
     }

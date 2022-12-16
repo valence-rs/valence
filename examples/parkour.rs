@@ -14,16 +14,12 @@ pub fn main() -> ShutdownResult {
         Game {
             player_count: AtomicUsize::new(0),
         },
-        ServerState { player_list: None },
+        (),
     )
 }
 
 struct Game {
     player_count: AtomicUsize,
-}
-
-struct ServerState {
-    player_list: Option<PlayerListId>,
 }
 
 #[derive(Default)]
@@ -57,7 +53,7 @@ const BLOCK_TYPES: [BlockState; 7] = [
 
 #[async_trait]
 impl Config for Game {
-    type ServerState = ServerState;
+    type ServerState = ();
     type ClientState = ClientState;
     type EntityState = ();
     type WorldState = ();
@@ -78,10 +74,6 @@ impl Config for Game {
             description: "Hello Valence!".color(Color::AQUA),
             favicon_png: Some(include_bytes!("../assets/logo-64x64.png").as_slice().into()),
         }
-    }
-
-    fn init(&self, server: &mut Server<Self>) {
-        server.state.player_list = Some(server.player_lists.insert(()).0);
     }
 
     fn update(&self, server: &mut Server<Self>) {
@@ -127,18 +119,6 @@ impl Config for Game {
 
                 client.respawn(world_id);
                 client.set_flat(true);
-                client.set_player_list(server.state.player_list.clone());
-
-                if let Some(id) = &server.state.player_list {
-                    server.player_lists[id].insert(
-                        client.uuid(),
-                        client.username(),
-                        client.textures().cloned(),
-                        client.game_mode(),
-                        0,
-                        None,
-                    );
-                }
 
                 client.send_message("Welcome to epic infinite parkour game!".italic());
                 client.set_game_mode(GameMode::Adventure);
@@ -206,13 +186,14 @@ impl Config for Game {
                         generate_next_block(client, world, true)
                     }
 
-                    client.play_sound(
-                        Ident::new("minecraft:block.note_block.bass").unwrap(),
-                        SoundCategory::Master,
-                        client.position(),
-                        1f32,
-                        pitch,
-                    );
+                    // client.play_sound(
+                    //     Ident::new("minecraft:block.note_block.bass").unwrap(),
+                    //     SoundCategory::Master,
+                    //     client.position(),
+                    //     1f32,
+                    //     pitch,
+                    // );
+
                     client.set_title(
                         "",
                         client.score.to_string().color(Color::LIGHT_PURPLE).bold(),
@@ -240,9 +221,6 @@ impl Config for Game {
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
                 player.set_deleted(true);
-                if let Some(id) = &server.state.player_list {
-                    server.player_lists[id].remove(client.uuid());
-                }
                 server.worlds.remove(world_id);
                 return false;
             }

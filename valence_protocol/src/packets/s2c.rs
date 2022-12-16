@@ -9,8 +9,8 @@ use crate::item::ItemStack;
 use crate::raw_bytes::RawBytes;
 use crate::text::Text;
 use crate::types::{
-    AttributeProperty, BossBarAction, ChunkDataBlockEntity, GlobalPos, Difficulty, GameMode,
-    GameStateChangeReason, PlayerInfoAddPlayer, SignedProperty, SoundCategory,
+    AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, GameMode,
+    GameStateChangeReason, GlobalPos, PlayerInfoAddPlayer, SignedProperty, SoundCategory,
     SyncPlayerPosLookFlags,
 };
 use crate::username::Username;
@@ -258,21 +258,21 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x1B]
+    #[packet_id = 0x1b]
     pub struct UnloadChunk {
         pub chunk_x: i32,
         pub chunk_z: i32,
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x1C]
+    #[packet_id = 0x1c]
     pub struct GameEvent {
         pub reason: GameStateChangeReason,
         pub value: f32,
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x1E]
+    #[packet_id = 0x1e]
     pub struct WorldBorderInitialize {
         pub x: f64,
         pub z: f64,
@@ -285,7 +285,7 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x1F]
+    #[packet_id = 0x1f]
     pub struct KeepAliveS2c {
         pub id: u64,
     }
@@ -410,7 +410,7 @@ pub mod play {
     }
 
     #[derive(Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x2C]
+    #[packet_id = 0x2c]
     pub struct OpenScreen {
         pub window_id: VarInt,
         pub window_type: VarInt,
@@ -460,19 +460,19 @@ pub mod play {
     }
 
     #[derive(Clone, PartialEq, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x3A]
+    #[packet_id = 0x3a]
     pub struct RemoveEntities {
         pub entity_ids: Vec<VarInt>,
     }
 
     #[derive(Copy, Clone, PartialEq, Debug, Encode, Packet)]
-    #[packet_id = 0x3A]
+    #[packet_id = 0x3a]
     pub struct RemoveEntitiesEncode<'a> {
         pub entity_ids: &'a [VarInt],
     }
 
     #[derive(Clone, PartialEq, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x3C]
+    #[packet_id = 0x3c]
     pub struct ResourcePackS2c<'a> {
         pub url: &'a str,
         pub hash: &'a str,
@@ -481,7 +481,7 @@ pub mod play {
     }
 
     #[derive(Clone, PartialEq, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x3D]
+    #[packet_id = 0x3d]
     pub struct Respawn<'a> {
         pub dimension_type_name: Ident<&'a str>,
         pub dimension_name: Ident<&'a str>,
@@ -496,7 +496,7 @@ pub mod play {
 
     // TODO: remove
     #[derive(Clone, PartialEq, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x3D]
+    #[packet_id = 0x3d]
     pub struct RespawnOwned {
         pub dimension_type_name: Ident<String>,
         pub dimension_name: Ident<String>,
@@ -510,14 +510,14 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x3E]
+    #[packet_id = 0x3e]
     pub struct SetHeadRotation {
         pub entity_id: VarInt,
         pub head_yaw: ByteAngle,
     }
 
     #[derive(Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x3F]
+    #[packet_id = 0x3f]
     pub struct UpdateSectionBlocks {
         pub chunk_section_position: i64,
         pub invert_trust_edges: bool,
@@ -525,7 +525,7 @@ pub mod play {
     }
 
     #[derive(Clone, Debug, Encode, Packet)]
-    #[packet_id = 0x3F]
+    #[packet_id = 0x3f]
     pub struct UpdateSectionBlocksEncode<'a> {
         pub chunk_section_position: i64,
         pub invert_trust_edges: bool,
@@ -543,25 +543,25 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x4A]
+    #[packet_id = 0x4a]
     pub struct SetCenterChunk {
         pub chunk_x: VarInt,
         pub chunk_z: VarInt,
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x4B]
+    #[packet_id = 0x4b]
     pub struct SetRenderDistance(pub VarInt);
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x4C]
+    #[packet_id = 0x4c]
     pub struct SetDefaultSpawnPosition {
         pub position: BlockPos,
         pub angle: f32,
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x4E]
+    #[packet_id = 0x4e]
     pub struct SetEntityMetadata<'a> {
         pub entity_id: VarInt,
         pub metadata: RawBytes<'a>,
@@ -595,7 +595,7 @@ pub mod play {
     pub struct SetSubtitleText(pub Text);
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x5A]
+    #[packet_id = 0x5a]
     pub struct UpdateTime {
         /// The age of the world in 1/20ths of a second.
         pub world_age: i64,
@@ -606,11 +606,11 @@ pub mod play {
     }
 
     #[derive(Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x5B]
+    #[packet_id = 0x5b]
     pub struct SetTitleText(pub Text);
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x5C]
+    #[packet_id = 0x5c]
     pub struct SetTitleAnimationTimes {
         /// Ticks to spend fading in.
         pub fade_in: i32,
@@ -621,7 +621,7 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x5D]
+    #[packet_id = 0x5d]
     pub struct EntitySoundEffect {
         pub id: VarInt,
         pub category: SoundCategory,
@@ -631,7 +631,7 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-    #[packet_id = 0x5E]
+    #[packet_id = 0x5e]
     pub struct SoundEffect {
         pub id: VarInt,
         pub category: SoundCategory,
