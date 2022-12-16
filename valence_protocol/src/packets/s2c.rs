@@ -34,7 +34,7 @@ pub mod status {
     }
 
     packet_enum! {
-        #[derive(Clone, Debug)]
+        #[derive(Clone)]
         S2cStatusPacket<'a> {
             StatusResponse<'a>,
             PingResponse,
@@ -82,7 +82,7 @@ pub mod login {
     }
 
     packet_enum! {
-        #[derive(Clone, Debug)]
+        #[derive(Clone)]
         S2cLoginPacket<'a> {
             DisconnectLogin,
             EncryptionRequest<'a>,
@@ -674,7 +674,7 @@ pub mod play {
     }
 
     packet_enum! {
-        #[derive(Clone, Debug)]
+        #[derive(Clone)]
         S2cPlayPacket<'a> {
             SpawnEntity,
             SpawnExperienceOrb,

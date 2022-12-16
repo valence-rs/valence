@@ -36,7 +36,7 @@ thiserror = "1.0.35"
 tracing = "0.1.37"
 url = { version = "2.2.2", features = ["serde"] }
 uuid = { version = "1.1.2", features = ["serde"] }
-valence_nbt = { version = "0.4.0", path = "valence_nbt" }
+valence_nbt = { version = "0.5.0", path = "valence_nbt" }
 valence_protocol = { version = "0.1.0", path = "valence_protocol", features = ["encryption", "compression"] }
 vek = "0.15.8"
 
