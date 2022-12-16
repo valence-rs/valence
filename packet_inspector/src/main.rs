@@ -79,10 +79,6 @@ impl State {
 
         let pkt: P = self.dec.try_next_packet()?.unwrap();
 
-        if pkt.packet_name() == "LoginPlay" {
-            tokio::time::sleep(std::time::Duration::from_secs(3)).await;
-        }
-
         self.enc.append_packet(&pkt)?;
 
         let bytes = self.enc.take();
