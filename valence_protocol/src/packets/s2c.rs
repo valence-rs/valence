@@ -16,6 +16,7 @@ use crate::types::{
 use crate::username::Username;
 use crate::var_int::VarInt;
 use crate::var_long::VarLong;
+use crate::LengthPrefixedArray;
 
 pub mod status {
     use super::*;
@@ -313,8 +314,25 @@ pub mod play {
         pub block_light_mask: Vec<u64>,
         pub empty_sky_light_mask: Vec<u64>,
         pub empty_block_light_mask: Vec<u64>,
-        pub sky_light_arrays: Vec<(VarInt, [u8; 2048])>,
-        pub block_light_arrays: Vec<(VarInt, [u8; 2048])>,
+        pub sky_light_arrays: Vec<LengthPrefixedArray<u8, 2048>>,
+        pub block_light_arrays: Vec<LengthPrefixedArray<u8, 2048>>,
+    }
+
+    #[derive(Clone, Debug, Encode, Packet)]
+    #[packet_id = 0x21]
+    pub struct ChunkDataAndUpdateLightEncode<'a> {
+        pub chunk_x: i32,
+        pub chunk_z: i32,
+        pub heightmaps: &'a Compound,
+        pub blocks_and_biomes: &'a [u8],
+        pub block_entities: &'a [ChunkDataBlockEntity],
+        pub trust_edges: bool,
+        pub sky_light_mask: &'a [u64],
+        pub block_light_mask: &'a [u64],
+        pub empty_sky_light_mask: &'a [u64],
+        pub empty_block_light_mask: &'a [u64],
+        pub sky_light_arrays: &'a [LengthPrefixedArray<u8, 2048>],
+        pub block_light_arrays: &'a [LengthPrefixedArray<u8, 2048>],
     }
 
     #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
@@ -453,6 +471,12 @@ pub mod play {
         pub entity_ids: Vec<VarInt>,
     }
 
+    #[derive(Copy, Clone, PartialEq, Debug, Encode, Packet)]
+    #[packet_id = 0x3b]
+    pub struct RemoveEntitiesEncode<'a> {
+        pub entity_ids: &'a [VarInt],
+    }
+
     #[derive(Clone, PartialEq, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x3d]
     pub struct ResourcePackS2c<'a> {
@@ -504,6 +528,14 @@ pub mod play {
         pub chunk_section_position: i64,
         pub invert_trust_edges: bool,
         pub blocks: Vec<VarLong>,
+    }
+
+    #[derive(Clone, Debug, Encode, Packet)]
+    #[packet_id = 0x40]
+    pub struct UpdateSectionBlocksEncode<'a> {
+        pub chunk_section_position: i64,
+        pub invert_trust_edges: bool,
+        pub blocks: &'a [VarLong],
     }
 
     #[derive(Clone, Debug, Encode, Decode, Packet)]

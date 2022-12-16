@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::SystemTime;
 
-use noise::{NoiseFn, Seedable, SuperSimplex};
+use noise::{NoiseFn, SuperSimplex};
 use rayon::iter::ParallelIterator;
 pub use valence::prelude::*;
 use vek::Lerp;
@@ -20,11 +20,11 @@ pub fn main() -> ShutdownResult {
     valence::start_server(
         Game {
             player_count: AtomicUsize::new(0),
-            density_noise: SuperSimplex::new().set_seed(seed),
-            hilly_noise: SuperSimplex::new().set_seed(seed.wrapping_add(1)),
-            stone_noise: SuperSimplex::new().set_seed(seed.wrapping_add(2)),
-            gravel_noise: SuperSimplex::new().set_seed(seed.wrapping_add(3)),
-            grass_noise: SuperSimplex::new().set_seed(seed.wrapping_add(4)),
+            density_noise: SuperSimplex::new(seed),
+            hilly_noise: SuperSimplex::new(seed.wrapping_add(1)),
+            stone_noise: SuperSimplex::new(seed.wrapping_add(2)),
+            gravel_noise: SuperSimplex::new(seed.wrapping_add(3)),
+            grass_noise: SuperSimplex::new(seed.wrapping_add(4)),
         },
         None,
     )
@@ -109,7 +109,7 @@ impl Config for Game {
                 client.set_player_list(server.state.clone());
 
                 if let Some(id) = &server.state {
-                    server.player_lists.get_mut(id).insert(
+                    server.player_lists[id].insert(
                         client.uuid(),
                         client.username(),
                         client.textures().cloned(),
@@ -122,7 +122,7 @@ impl Config for Game {
                 client.send_message("Welcome to the terrain example!".italic());
             }
 
-            let player = server.entities.get_mut(client.state).unwrap();
+            let player = &mut server.entities[client.state];
             while let Some(event) = client.next_event() {
                 event.handle_default(client, player);
             }
@@ -130,7 +130,7 @@ impl Config for Game {
             let dist = client.view_distance();
             let p = client.position();
 
-            for pos in chunks_in_view_distance(ChunkPos::at(p.x, p.z), dist) {
+            for pos in ChunkPos::at(p.x, p.z).in_view(dist) {
                 if let Some(chunk) = world.chunks.get_mut(pos) {
                     chunk.state = true;
                 } else {
@@ -141,9 +141,9 @@ impl Config for Game {
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
                 if let Some(id) = &server.state {
-                    server.player_lists.get_mut(id).remove(client.uuid());
+                    server.player_lists[id].remove(client.uuid());
                 }
-                server.entities.remove(client.state);
+                player.set_deleted(true);
 
                 return false;
             }
@@ -152,14 +152,10 @@ impl Config for Game {
         });
 
         // Remove chunks outside the view distance of players.
-        world.chunks.retain(|_, chunk| {
-            if chunk.state {
-                chunk.state = false;
-                true
-            } else {
-                false
-            }
-        });
+        for (_, chunk) in world.chunks.iter_mut() {
+            chunk.set_deleted(!chunk.state);
+            chunk.state = false;
+        }
 
         // Generate chunk data for chunks created this tick.
         world.chunks.par_iter_mut().for_each(|(pos, chunk)| {

@@ -50,6 +50,7 @@ impl Encode for VarInt {
         }
     }
 
+    #[inline]
     fn encoded_len(&self) -> usize {
         match self.0 {
             0 => 1,
@@ -93,7 +94,7 @@ mod tests {
     #[test]
     fn encoded_len_correct() {
         let mut rng = thread_rng();
-        let mut buf = Vec::new();
+        let mut buf = vec![];
 
         for n in (0..100_000)
             .map(|_| rng.gen())
@@ -109,7 +110,7 @@ mod tests {
     #[test]
     fn encode_decode() {
         let mut rng = thread_rng();
-        let mut buf = Vec::new();
+        let mut buf = vec![];
 
         for n in (0..1_000_000)
             .map(|_| rng.gen())

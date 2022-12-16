@@ -21,7 +21,7 @@
 //!     ]),
 //! };
 //!
-//! let mut buf = Vec::new();
+//! let mut buf = vec![];
 //!
 //! to_binary_writer(&mut buf, &c, "").unwrap();
 //! ```

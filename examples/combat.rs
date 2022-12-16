@@ -100,9 +100,8 @@ impl Config for Game {
     }
 
     fn update(&self, server: &mut Server<Self>) {
+        let current_tick = server.current_tick();
         let (world_id, _) = server.worlds.iter_mut().next().unwrap();
-
-        let current_tick = server.shared.current_tick();
 
         server.clients.retain(|client_id, client| {
             if client.created_this_tick() {
@@ -149,7 +148,7 @@ impl Config for Game {
                 client.set_player_list(server.state.clone());
 
                 if let Some(id) = &server.state {
-                    server.player_lists.get_mut(id).insert(
+                    server.player_lists[id].insert(
                         client.uuid(),
                         client.username(),
                         client.textures().cloned(),
@@ -200,9 +199,9 @@ impl Config for Game {
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.remove(client.player);
+                server.entities[client.player].set_deleted(true);
                 if let Some(id) = &server.state {
-                    server.player_lists.get_mut(id).remove(client.uuid());
+                    server.player_lists[id].remove(client.uuid());
                 }
                 return false;
             }

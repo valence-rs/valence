@@ -72,11 +72,11 @@ extern crate self as valence_protocol;
 use std::io::Write;
 
 pub use anyhow::{Error, Result};
+pub use array::LengthPrefixedArray;
 pub use block::{BlockFace, BlockKind, BlockState};
 pub use block_pos::BlockPos;
 pub use byte_angle::ByteAngle;
-pub use cache::{Cached, EncodedBuf};
-pub use codec::{PacketDecoder, PacketEncoder};
+pub use codec::*;
 pub use ident::Ident;
 pub use inventory::InventoryKind;
 pub use item::{ItemKind, ItemStack};
@@ -98,12 +98,12 @@ pub const PROTOCOL_VERSION: i32 = 760;
 /// targets.
 pub const MINECRAFT_VERSION: &str = "1.19.2";
 
+mod array;
 pub mod block;
 mod block_pos;
 mod bounded;
 mod byte_angle;
 mod byte_counter;
-mod cache;
 mod codec;
 pub mod enchant;
 pub mod entity_meta;
@@ -178,7 +178,7 @@ pub const MAX_PACKET_SIZE: i32 = 2097152;
 ///     third: [1.5, 3.14, 2.718],
 /// };
 ///
-/// let mut buf = Vec::new();
+/// let mut buf = vec![];
 /// value.encode(&mut buf).unwrap();
 ///
 /// println!("{buf:?}");
