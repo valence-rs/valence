@@ -5,7 +5,7 @@ use arrayvec::ArrayVec;
 use valence_protocol::{Encode, VarInt};
 
 use crate::chunk::{compact_u64s_len, encode_compact_u64s};
-use crate::util::bits_needed;
+use crate::util::bit_width;
 
 /// `HALF_LEN` must be equal to `ceil(LEN / 2)`.
 #[derive(Clone, Debug)]
@@ -178,7 +178,7 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
                 VarInt(0).encode(writer)?;
             }
             Self::Indirect(ind) => {
-                let bits_per_entry = min_indirect_bits.max(bits_needed(ind.palette.len() - 1));
+                let bits_per_entry = min_indirect_bits.max(bit_width(ind.palette.len() - 1));
 
                 // Encode as direct if necessary.
                 if bits_per_entry > max_indirect_bits {

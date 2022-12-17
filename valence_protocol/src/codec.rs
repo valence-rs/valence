@@ -1,3 +1,5 @@
+use std::io::Write;
+
 #[cfg(feature = "encryption")]
 use aes::cipher::{AsyncStreamCipher, NewCipher};
 use anyhow::{bail, ensure};
@@ -34,6 +36,10 @@ impl PacketEncoder {
         self.append_or_prepend_packet::<true>(pkt)
     }
 
+    pub fn append_bytes(&mut self, bytes: &[u8]) {
+        self.buf.extend_from_slice(bytes)
+    }
+
     pub fn prepend_packet<P>(&mut self, pkt: &P) -> Result<()>
     where
         P: Encode + Packet + ?Sized,
@@ -46,6 +52,24 @@ impl PacketEncoder {
         pkt: &(impl Encode + Packet + ?Sized),
     ) -> Result<()> {
         let data_len = pkt.encoded_len();
+
+        #[cfg(debug_assertions)]
+        {
+            use crate::byte_counter::ByteCounter;
+
+            let mut counter = ByteCounter::new();
+            pkt.encode(&mut counter)?;
+
+            let actual = counter.0;
+
+            assert_eq!(
+                actual,
+                data_len,
+                "actual encoded size of {} packet differs from reported size (actual = {actual}, \
+                 reported = {data_len})",
+                pkt.packet_name()
+            );
+        }
 
         #[cfg(feature = "compression")]
         if let Some(threshold) = self.compression_threshold {
@@ -106,15 +130,6 @@ impl PacketEncoder {
                     VarInt(packet_len as i32).encode(&mut slice)?;
                     VarInt(0).encode(&mut slice)?;
                     pkt.encode(&mut slice)?;
-
-                    debug_assert!(
-                        slice.is_empty(),
-                        "actual size of {} packet differs from reported size (actual = {}, \
-                         reported = {})",
-                        pkt.packet_name(),
-                        data_len - slice.len(),
-                        data_len,
-                    );
                 }
             }
 
@@ -189,6 +204,71 @@ fn move_forward_by(bytes: &mut BytesMut, count: usize) -> &mut [u8] {
     &mut bytes[..count]
 }
 
+pub fn write_packet<W, P>(mut writer: W, packet: &P) -> Result<()>
+where
+    W: Write,
+    P: Encode + Packet + ?Sized,
+{
+    let packet_len = packet.encoded_len();
+
+    ensure!(
+        packet_len <= MAX_PACKET_SIZE as usize,
+        "packet exceeds maximum length"
+    );
+
+    VarInt(packet_len as i32).encode(&mut writer)?;
+    packet.encode(&mut writer)
+}
+
+#[cfg(feature = "compression")]
+pub fn write_packet_compressed<W, P>(
+    mut writer: W,
+    threshold: u32,
+    scratch: &mut Vec<u8>,
+    packet: &P,
+) -> Result<()>
+where
+    W: Write,
+    P: Encode + Packet + ?Sized,
+{
+    use flate2::write::ZlibEncoder;
+    use flate2::Compression;
+
+    let data_len = packet.encoded_len();
+
+    if data_len > threshold as usize {
+        scratch.clear();
+
+        let mut z = ZlibEncoder::new(&mut *scratch, Compression::new(4));
+        packet.encode(&mut z)?;
+        drop(z);
+
+        let packet_len = VarInt(data_len as i32).encoded_len() + scratch.len();
+
+        ensure!(
+            packet_len <= MAX_PACKET_SIZE as usize,
+            "packet exceeds maximum length"
+        );
+
+        VarInt(packet_len as i32).encode(&mut writer)?;
+        VarInt(data_len as i32).encode(&mut writer)?;
+        writer.write_all(scratch)?;
+    } else {
+        let packet_len = VarInt(0).encoded_len() + data_len;
+
+        ensure!(
+            packet_len <= MAX_PACKET_SIZE as usize,
+            "packet exceeds maximum length"
+        );
+
+        VarInt(packet_len as i32).encode(&mut writer)?;
+        VarInt(0).encode(&mut writer)?; // 0 for no compression on this packet.
+        packet.encode(&mut writer)?;
+    }
+
+    Ok(())
+}
+
 #[derive(Default)]
 pub struct PacketDecoder {
     buf: BytesMut,
@@ -222,7 +302,7 @@ impl PacketDecoder {
         };
 
         ensure!(
-            packet_len <= MAX_PACKET_SIZE,
+            (0..=MAX_PACKET_SIZE).contains(&packet_len),
             "packet length of {packet_len} is out of bounds"
         );
 
@@ -282,7 +362,14 @@ impl PacketDecoder {
         let mut r = &self.buf[self.cursor..];
 
         match VarInt::decode_partial(&mut r) {
-            Ok(_) => Ok(true),
+            Ok(packet_len) => {
+                ensure!(
+                    (0..=MAX_PACKET_SIZE).contains(&packet_len),
+                    "packet length of {packet_len} is out of bounds"
+                );
+
+                Ok(r.len() >= packet_len as usize)
+            }
             Err(VarIntDecodeError::Incomplete) => Ok(false),
             Err(VarIntDecodeError::TooLarge) => bail!("malformed packet length VarInt"),
         }

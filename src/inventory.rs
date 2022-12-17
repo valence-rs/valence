@@ -1,7 +1,7 @@
 use std::iter::FusedIterator;
 use std::mem;
 use std::num::Wrapping;
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref, DerefMut, Index, IndexMut};
 
 use valence_protocol::packets::s2c::play::SetContainerSlotEncode;
 use valence_protocol::{InventoryKind, ItemStack, Text, VarInt};
@@ -70,6 +70,20 @@ impl<C: Config> Inventories<C> {
     }
 }
 
+impl<C: Config> Index<InventoryId> for Inventories<C> {
+    type Output = Inventory<C>;
+
+    fn index(&self, index: InventoryId) -> &Self::Output {
+        self.get(index).expect("invalid inventory ID")
+    }
+}
+
+impl<C: Config> IndexMut<InventoryId> for Inventories<C> {
+    fn index_mut(&mut self, index: InventoryId) -> &mut Self::Output {
+        self.get_mut(index).expect("invalid inventory ID")
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub struct InventoryId(Key);
 
@@ -124,6 +138,21 @@ impl<C: Config> Inventory<C> {
         }
 
         mem::replace(old, new)
+    }
+
+    pub fn swap_slot(&mut self, idx_a: u16, idx_b: u16) {
+        assert!(idx_a < self.slot_count(), "slot index out of range");
+        assert!(idx_b < self.slot_count(), "slot index out of range");
+
+        if idx_a == idx_b || self.slots[idx_a as usize] == self.slots[idx_b as usize] {
+            // Nothing to do here, ignore.
+            return;
+        }
+
+        self.modified |= 1 << idx_a;
+        self.modified |= 1 << idx_b;
+
+        self.slots.swap(idx_a as usize, idx_b as usize);
     }
 
     pub fn slot_count(&self) -> u16 {

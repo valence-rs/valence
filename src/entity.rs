@@ -4,7 +4,7 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::iter::FusedIterator;
 use std::num::NonZeroU32;
-use std::ops::{Deref, DerefMut};
+use std::ops::{Deref, DerefMut, Index, IndexMut, Range};
 
 use bitfield_struct::bitfield;
 pub use data::{EntityKind, TrackedData};
@@ -12,12 +12,15 @@ use rayon::iter::ParallelIterator;
 use uuid::Uuid;
 use valence_protocol::entity_meta::{Facing, PaintingKind, Pose};
 use valence_protocol::packets::s2c::play::{
-    SetEntityMetadata, SetHeadRotation, SpawnEntity, SpawnExperienceOrb, SpawnPlayer,
+    EntityAnimationS2c, EntityEvent as EntityEventPacket, SetEntityMetadata, SetEntityVelocity,
+    SetHeadRotation, SpawnEntity, SpawnExperienceOrb, SpawnPlayer, TeleportEntity,
+    UpdateEntityPosition, UpdateEntityPositionAndRotation, UpdateEntityRotation,
 };
 use valence_protocol::{ByteAngle, RawBytes, VarInt};
 use vek::{Aabb, Vec3};
 
 use crate::config::Config;
+use crate::packet::WritePacket;
 use crate::server::PlayPacketSender;
 use crate::slab_versioned::{Key, VersionedSlab};
 use crate::util::aabb_from_bottom_and_size;
@@ -81,10 +84,12 @@ impl<C: Config> Entities<C> {
                 let (k, e) = self.slab.insert(Entity {
                     state,
                     variants: TrackedData::new(kind),
-                    events: Vec::new(),
+                    self_update_range: 0..0,
+                    events: vec![],
                     bits: EntityBits::new(),
                     world: WorldId::NULL,
-                    new_position: Vec3::default(),
+                    old_world: WorldId::NULL,
+                    position: Vec3::default(),
                     old_position: Vec3::default(),
                     yaw: 0.0,
                     pitch: 0.0,
@@ -103,46 +108,6 @@ impl<C: Config> Entities<C> {
         }
     }
 
-    /// Removes an entity from the server.
-    ///
-    /// If the given entity ID is valid, the entity's `EntityState` is returned
-    /// and the entity is deleted. Otherwise, `None` is returned and the
-    /// function has no effect.
-    pub fn remove(&mut self, entity: EntityId) -> Option<C::EntityState> {
-        self.slab.remove(entity.0).map(|e| {
-            self.uuid_to_entity
-                .remove(&e.uuid)
-                .expect("UUID should have been in UUID map");
-
-            self.raw_id_to_entity
-                .remove(&entity.0.version())
-                .expect("network ID should have been in the network ID map");
-
-            e.state
-        })
-    }
-
-    /// Removes all entities from the server for which `f` returns `false`.
-    ///
-    /// All entities are visited in an unspecified order.
-    pub fn retain(&mut self, mut f: impl FnMut(EntityId, &mut Entity<C>) -> bool) {
-        self.slab.retain(|k, v| {
-            if f(EntityId(k), v) {
-                true
-            } else {
-                self.uuid_to_entity
-                    .remove(&v.uuid)
-                    .expect("UUID should have been in UUID map");
-
-                self.raw_id_to_entity
-                    .remove(&k.version())
-                    .expect("network ID should have been in the network ID map");
-
-                false
-            }
-        });
-    }
-
     /// Returns the number of entities in this container.
     pub fn len(&self) -> usize {
         self.slab.len()
@@ -154,7 +119,7 @@ impl<C: Config> Entities<C> {
     }
 
     /// Gets the [`EntityId`] of the entity with the given UUID in an efficient
-    /// manner.
+    /// manner. The returned ID is guaranteed to be valid.
     ///
     /// If there is no entity with the UUID, `None` is returned.
     pub fn get_with_uuid(&self, uuid: Uuid) -> Option<EntityId> {
@@ -173,6 +138,15 @@ impl<C: Config> Entities<C> {
     /// If the ID is invalid, `None` is returned.
     pub fn get_mut(&mut self, entity: EntityId) -> Option<&mut Entity<C>> {
         self.slab.get_mut(entity.0)
+    }
+
+    pub fn delete(&mut self, entity: EntityId) -> bool {
+        if let Some(entity) = self.get_mut(entity) {
+            entity.set_deleted(true);
+            true
+        } else {
+            false
+        }
     }
 
     pub fn get_with_raw_id(&self, raw_id: i32) -> Option<(EntityId, &Entity<C>)> {
@@ -224,15 +198,44 @@ impl<C: Config> Entities<C> {
     }
 
     pub(crate) fn update(&mut self) {
-        for (_, e) in self.iter_mut() {
-            e.old_position = e.new_position;
-            e.variants.clear_modifications();
-            e.events.clear();
+        self.slab.retain(|k, entity| {
+            if entity.deleted() {
+                self.uuid_to_entity
+                    .remove(&entity.uuid)
+                    .expect("UUID should have been in UUID map");
 
-            e.bits.set_yaw_or_pitch_modified(false);
-            e.bits.set_head_yaw_modified(false);
-            e.bits.set_velocity_modified(false);
-        }
+                self.raw_id_to_entity
+                    .remove(&k.version())
+                    .expect("raw ID should have been in the raw ID map");
+
+                false
+            } else {
+                entity.old_position = entity.position;
+                entity.old_world = entity.world;
+                entity.variants.clear_modifications();
+                entity.events.clear();
+
+                entity.bits.set_yaw_or_pitch_modified(false);
+                entity.bits.set_head_yaw_modified(false);
+                entity.bits.set_velocity_modified(false);
+
+                true
+            }
+        });
+    }
+}
+
+impl<C: Config> Index<EntityId> for Entities<C> {
+    type Output = Entity<C>;
+
+    fn index(&self, index: EntityId) -> &Self::Output {
+        self.get(index).expect("invalid entity ID")
+    }
+}
+
+impl<C: Config> IndexMut<EntityId> for Entities<C> {
+    fn index_mut(&mut self, index: EntityId) -> &mut Self::Output {
+        self.get_mut(index).expect("invalid entity ID")
     }
 }
 
@@ -271,9 +274,13 @@ pub struct Entity<C: Config> {
     pub state: C::EntityState,
     variants: TrackedData,
     bits: EntityBits,
-    events: Vec<EntityEvent>,
+    /// The range of bytes in the partition cell containing this entity's update
+    /// packets.
+    pub(crate) self_update_range: Range<usize>,
+    events: Vec<EntityEvent>, // TODO: store this info in bits?
     world: WorldId,
-    new_position: Vec3<f64>,
+    old_world: WorldId,
+    position: Vec3<f64>,
     old_position: Vec3<f64>,
     yaw: f32,
     pitch: f32,
@@ -288,7 +295,8 @@ pub(crate) struct EntityBits {
     pub head_yaw_modified: bool,
     pub velocity_modified: bool,
     pub on_ground: bool,
-    #[bits(4)]
+    pub deleted: bool,
+    #[bits(3)]
     _pad: u8,
 }
 
@@ -307,10 +315,6 @@ impl<C: Config> DerefMut for Entity<C> {
 }
 
 impl<C: Config> Entity<C> {
-    pub(crate) fn bits(&self) -> EntityBits {
-        self.bits
-    }
-
     /// Returns a shared reference to this entity's tracked data.
     pub fn data(&self) -> &TrackedData {
         &self.variants
@@ -331,10 +335,6 @@ impl<C: Config> Entity<C> {
         self.events.push(event);
     }
 
-    pub(crate) fn events(&self) -> &[EntityEvent] {
-        &self.events
-    }
-
     /// Gets the [`WorldId`](crate::world::WorldId) of the world this entity is
     /// located in.
     ///
@@ -349,12 +349,16 @@ impl<C: Config> Entity<C> {
         self.world = world;
     }
 
+    pub(crate) fn old_world(&self) -> WorldId {
+        self.old_world
+    }
+
     /// Gets the position of this entity in the world it inhabits.
     ///
     /// The position of an entity is located on the botton of its
     /// hitbox and not the center.
     pub fn position(&self) -> Vec3<f64> {
-        self.new_position
+        self.position
     }
 
     /// Sets the position of this entity in the world it inhabits.
@@ -362,7 +366,7 @@ impl<C: Config> Entity<C> {
     /// The position of an entity is located on the botton of its
     /// hitbox and not the center.
     pub fn set_position(&mut self, pos: impl Into<Vec3<f64>>) {
-        self.new_position = pos.into();
+        self.position = pos.into();
     }
 
     /// Returns the position of this entity as it existed at the end of the
@@ -537,9 +541,7 @@ impl<C: Config> Entity<C> {
             TrackedData::Fox(e) => baby(e.get_child(), [0.6, 0.7, 0.6]),
             TrackedData::Ghast(_) => [4.0, 4.0, 4.0],
             TrackedData::Giant(_) => [3.6, 12.0, 3.6],
-            TrackedData::GlowItemFrame(e) => {
-                return item_frame(self.new_position, e.get_rotation())
-            }
+            TrackedData::GlowItemFrame(e) => return item_frame(self.position, e.get_rotation()),
             TrackedData::GlowSquid(_) => [0.8, 0.8, 0.8],
             TrackedData::Goat(e) => {
                 if e.get_pose() == Pose::LongJumping {
@@ -555,7 +557,7 @@ impl<C: Config> Entity<C> {
             TrackedData::Illusioner(_) => [0.6, 1.95, 0.6],
             TrackedData::IronGolem(_) => [1.4, 2.7, 1.4],
             TrackedData::Item(_) => [0.25, 0.25, 0.25],
-            TrackedData::ItemFrame(e) => return item_frame(self.new_position, e.get_rotation()),
+            TrackedData::ItemFrame(e) => return item_frame(self.position, e.get_rotation()),
             TrackedData::Fireball(_) => [1.0, 1.0, 1.0],
             TrackedData::LeashKnot(_) => [0.375, 0.5, 0.375],
             TrackedData::Lightning(_) => [0.0, 0.0, 0.0],
@@ -611,7 +613,7 @@ impl<C: Config> Entity<C> {
                 }
                 .into();
 
-                let mut center_pos = self.new_position + 0.5;
+                let mut center_pos = self.position + 0.5;
 
                 let (facing_x, facing_z, cc_facing_x, cc_facing_z) =
                     match ((self.yaw + 45.0).rem_euclid(360.0) / 90.0) as u8 {
@@ -655,7 +657,7 @@ impl<C: Config> Entity<C> {
             TrackedData::Shulker(e) => {
                 const PI: f64 = std::f64::consts::PI;
 
-                let pos = self.new_position + 0.5;
+                let pos = self.position + 0.5;
                 let mut min = pos - 0.5;
                 let mut max = pos + 0.5;
 
@@ -729,58 +731,31 @@ impl<C: Config> Entity<C> {
             TrackedData::FishingBobber(_) => [0.25, 0.25, 0.25],
         };
 
-        aabb_from_bottom_and_size(self.new_position, dimensions.into())
+        aabb_from_bottom_and_size(self.position, dimensions.into())
     }
 
-    /// Queues the tracked data packet to send to clients after this entity has
-    /// been spawned.
-    pub(crate) fn send_initial_tracked_data(
+    pub fn deleted(&self) -> bool {
+        self.bits.deleted()
+    }
+
+    pub fn set_deleted(&mut self, deleted: bool) {
+        self.bits.set_deleted(deleted)
+    }
+
+    /// Sends the appropriate packets to initialize the entity. This will spawn
+    /// the entity and initialize tracked data.
+    pub(crate) fn send_init_packets(
         &self,
         send: &mut PlayPacketSender,
+        position: Vec3<f64>,
+        this_id: EntityId,
         scratch: &mut Vec<u8>,
-        this_id: EntityId,
-    ) -> anyhow::Result<()> {
-        self.variants.write_initial_tracked_data(scratch);
-        if !scratch.is_empty() {
-            send.append_packet(&SetEntityMetadata {
-                entity_id: VarInt(this_id.to_raw()),
-                metadata: RawBytes(scratch),
-            })?;
-        }
-
-        Ok(())
-    }
-
-    /// Queues the tracked data packet to send to clients when the entity is
-    /// modified.
-    pub(crate) fn send_updated_tracked_data(
-        &self,
-        send: &mut PlayPacketSender,
-        scratch: &mut Vec<u8>,
-        this_id: EntityId,
-    ) -> anyhow::Result<()> {
-        self.variants.write_updated_tracked_data(scratch);
-        if !scratch.is_empty() {
-            send.append_packet(&SetEntityMetadata {
-                entity_id: VarInt(this_id.to_raw()),
-                metadata: RawBytes(scratch),
-            })?;
-        }
-
-        Ok(())
-    }
-
-    /// Sends the appropriate packets to spawn the entity.
-    pub(crate) fn send_spawn_packets(
-        &self,
-        this_id: EntityId,
-        send: &mut PlayPacketSender,
     ) -> anyhow::Result<()> {
         let with_object_data = |data| SpawnEntity {
             entity_id: VarInt(this_id.to_raw()),
             object_uuid: self.uuid,
             kind: VarInt(self.kind() as i32),
-            position: self.new_position.into_array(),
+            position: position.into_array(),
             pitch: ByteAngle::from_degrees(self.pitch),
             yaw: ByteAngle::from_degrees(self.yaw),
             head_yaw: ByteAngle::from_degrees(self.head_yaw),
@@ -792,14 +767,14 @@ impl<C: Config> Entity<C> {
             TrackedData::Marker(_) => {}
             TrackedData::ExperienceOrb(_) => send.append_packet(&SpawnExperienceOrb {
                 entity_id: VarInt(this_id.to_raw()),
-                position: self.new_position.into_array(),
+                position: position.into_array(),
                 count: 0, // TODO
             })?,
             TrackedData::Player(_) => {
                 send.append_packet(&SpawnPlayer {
                     entity_id: VarInt(this_id.to_raw()),
                     player_uuid: self.uuid,
-                    position: self.new_position.into_array(),
+                    position: position.into_array(),
                     yaw: ByteAngle::from_degrees(self.yaw),
                     pitch: ByteAngle::from_degrees(self.pitch),
                 })?;
@@ -834,6 +809,105 @@ impl<C: Config> Entity<C> {
             _ => send.append_packet(&with_object_data(0))?,
         }
 
+        scratch.clear();
+        self.variants.write_initial_tracked_data(scratch);
+        if !scratch.is_empty() {
+            send.append_packet(&SetEntityMetadata {
+                entity_id: VarInt(this_id.to_raw()),
+                metadata: RawBytes(scratch),
+            })?;
+        }
+
+        Ok(())
+    }
+
+    /// Writes the appropriate packets to update the entity (Position, tracked
+    /// data, and event packets).
+    pub(crate) fn write_update_packets(
+        &self,
+        mut writer: impl WritePacket,
+        this_id: EntityId,
+        scratch: &mut Vec<u8>,
+    ) -> anyhow::Result<()> {
+        let entity_id = VarInt(this_id.to_raw());
+
+        let position_delta = self.position - self.old_position;
+        let needs_teleport = position_delta.map(f64::abs).reduce_partial_max() >= 8.0;
+        let changed_position = self.position != self.old_position;
+
+        if changed_position && !needs_teleport && self.bits.yaw_or_pitch_modified() {
+            writer.write_packet(&UpdateEntityPositionAndRotation {
+                entity_id,
+                delta: (position_delta * 4096.0).as_::<i16>().into_array(),
+                yaw: ByteAngle::from_degrees(self.yaw),
+                pitch: ByteAngle::from_degrees(self.pitch),
+                on_ground: self.bits.on_ground(),
+            })?;
+        } else {
+            if changed_position && !needs_teleport {
+                writer.write_packet(&UpdateEntityPosition {
+                    entity_id,
+                    delta: (position_delta * 4096.0).as_::<i16>().into_array(),
+                    on_ground: self.bits.on_ground(),
+                })?;
+            }
+
+            if self.bits.yaw_or_pitch_modified() {
+                writer.write_packet(&UpdateEntityRotation {
+                    entity_id,
+                    yaw: ByteAngle::from_degrees(self.yaw),
+                    pitch: ByteAngle::from_degrees(self.pitch),
+                    on_ground: self.bits.on_ground(),
+                })?;
+            }
+        }
+
+        if needs_teleport {
+            writer.write_packet(&TeleportEntity {
+                entity_id,
+                position: self.position.into_array(),
+                yaw: ByteAngle::from_degrees(self.yaw),
+                pitch: ByteAngle::from_degrees(self.pitch),
+                on_ground: self.bits.on_ground(),
+            })?;
+        }
+
+        if self.bits.velocity_modified() {
+            writer.write_packet(&SetEntityVelocity {
+                entity_id,
+                velocity: velocity_to_packet_units(self.velocity).into_array(),
+            })?;
+        }
+
+        if self.bits.head_yaw_modified() {
+            writer.write_packet(&SetHeadRotation {
+                entity_id,
+                head_yaw: ByteAngle::from_degrees(self.head_yaw),
+            })?;
+        }
+
+        scratch.clear();
+        self.variants.write_updated_tracked_data(scratch);
+        if !scratch.is_empty() {
+            writer.write_packet(&SetEntityMetadata {
+                entity_id,
+                metadata: RawBytes(scratch),
+            })?;
+        }
+
+        for &event in &self.events {
+            match event.status_or_animation() {
+                StatusOrAnimation::Status(code) => writer.write_packet(&EntityEventPacket {
+                    entity_id: entity_id.0,
+                    entity_status: code,
+                })?,
+                StatusOrAnimation::Animation(code) => writer.write_packet(&EntityAnimationS2c {
+                    entity_id,
+                    animation: code,
+                })?,
+            }
+        }
+
         Ok(())
     }
 }
@@ -845,12 +919,7 @@ pub(crate) fn velocity_to_packet_units(vel: Vec3<f32>) -> Vec3<i16> {
 
 #[cfg(test)]
 mod tests {
-    use std::num::NonZeroU32;
-
-    use uuid::Uuid;
-
-    use super::{Entities, EntityId, EntityKind};
-    use crate::slab_versioned::Key;
+    use super::*;
 
     type MockConfig = crate::config::MockConfig<(), (), u8>;
 
@@ -926,35 +995,5 @@ mod tests {
             .expect("failed to look up item already added to collection");
         assert_eq!(maybe_cat.state, 75);
         assert_eq!(entities.len(), 2);
-    }
-
-    #[test]
-    fn entities_can_be_removed() {
-        let mut entities: Entities<MockConfig> = Entities::new();
-        assert!(entities.is_empty());
-        let (player_id, _) = entities.insert(EntityKind::Player, 1);
-        let player_state = entities
-            .remove(player_id)
-            .expect("failed to remove an item from the collection");
-        assert_eq!(player_state, 1);
-    }
-
-    #[test]
-    fn entities_can_be_retained() {
-        let mut entities: Entities<MockConfig> = Entities::new();
-        assert!(entities.is_empty());
-        let (blaze_id, _) = entities.insert(EntityKind::Blaze, 10);
-        let (fox_id, _) = entities.insert(EntityKind::Fox, 110);
-        let (turtle_id, _) = entities.insert(EntityKind::Turtle, 20);
-        let (goat_id, _) = entities.insert(EntityKind::Goat, 120);
-        let (horse_id, _) = entities.insert(EntityKind::Horse, 30);
-        assert_eq!(entities.len(), 5);
-        entities.retain(|_id, entity| entity.state > 100);
-        assert_eq!(entities.len(), 2);
-        assert!(entities.get(fox_id).is_some());
-        assert!(entities.get(goat_id).is_some());
-        assert!(entities.get(blaze_id).is_none());
-        assert!(entities.get(turtle_id).is_none());
-        assert!(entities.get(horse_id).is_none());
     }
 }

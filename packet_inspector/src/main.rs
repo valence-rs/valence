@@ -2,7 +2,6 @@ use std::error::Error;
 use std::io::ErrorKind;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time::Duration;
 use std::{fmt, io};
 
 use anyhow::bail;
@@ -14,7 +13,6 @@ use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
-use tokio::time::timeout;
 use valence_protocol::packets::c2s::handshake::Handshake;
 use valence_protocol::packets::c2s::login::{EncryptionResponse, LoginStart};
 use valence_protocol::packets::c2s::play::C2sPlayPacket;
@@ -30,15 +28,22 @@ use valence_protocol::{Decode, Encode, Packet, PacketDecoder, PacketEncoder};
 struct Cli {
     /// The socket address to listen for connections on. This is the address
     /// clients should connect to.
-    client: SocketAddr,
+    client_addr: SocketAddr,
     /// The socket address the proxy will connect to. This is the address of the
     /// server.
-    server: SocketAddr,
-    /// The optional regular expression to use on packet names. Packet names
+    server_addr: SocketAddr,
+    /// An optional regular expression to use on packet names. Packet names
     /// matching the regex are printed while those that don't are ignored.
     ///
     /// If no regex is provided, all packets are considered matching.
-    regex: Option<Regex>,
+    #[clap(short, long)]
+    include_regex: Option<Regex>,
+    /// An optional regular expression to use on packet names. Packet names
+    /// matching the regex are ignored while those are don't are printed.
+    ///
+    /// If no regex is provided, all packets are not considered matching.
+    #[clap(short, long)]
+    exclude_regex: Option<Regex>,
     /// The maximum number of connections allowed to the proxy. By default,
     /// there is no limit.
     #[clap(short, long)]
@@ -56,48 +61,49 @@ struct State {
     write: OwnedWriteHalf,
 }
 
-const TIMEOUT: Duration = Duration::from_secs(10);
-
 impl State {
     pub async fn rw_packet<'a, P>(&'a mut self) -> anyhow::Result<P>
     where
         P: Decode<'a> + Encode + Packet + fmt::Debug,
     {
-        timeout(TIMEOUT, async {
-            while !self.dec.has_next_packet()? {
-                self.dec.reserve(4096);
-                let mut buf = self.dec.take_capacity();
+        while !self.dec.has_next_packet()? {
+            self.dec.reserve(4096);
+            let mut buf = self.dec.take_capacity();
 
-                if self.read.read_buf(&mut buf).await? == 0 {
-                    return Err(io::Error::from(ErrorKind::UnexpectedEof).into());
-                }
-
-                self.dec.queue_bytes(buf);
+            if self.read.read_buf(&mut buf).await? == 0 {
+                return Err(io::Error::from(ErrorKind::UnexpectedEof).into());
             }
 
-            let pkt: P = self.dec.try_next_packet()?.unwrap();
+            self.dec.queue_bytes(buf);
+        }
 
-            self.enc.append_packet(&pkt)?;
+        let pkt: P = self.dec.try_next_packet()?.unwrap();
 
-            let bytes = self.enc.take();
-            self.write.write_all(&bytes).await?;
+        self.enc.append_packet(&pkt)?;
 
-            if let Some(r) = &self.cli.regex {
-                if !r.is_match(pkt.packet_name()) {
-                    return Ok(pkt);
-                }
+        let bytes = self.enc.take();
+        self.write.write_all(&bytes).await?;
+
+        if let Some(r) = &self.cli.include_regex {
+            if !r.is_match(pkt.packet_name()) {
+                return Ok(pkt);
             }
+        }
 
-            if self.cli.timestamp {
-                let now: DateTime<Utc> = Utc::now();
-                println!("{now} {pkt:#?}");
-            } else {
-                println!("{pkt:#?}");
+        if let Some(r) = &self.cli.exclude_regex {
+            if r.is_match(pkt.packet_name()) {
+                return Ok(pkt);
             }
+        }
 
-            Ok(pkt)
-        })
-        .await?
+        if self.cli.timestamp {
+            let now: DateTime<Utc> = Utc::now();
+            println!("{now} {pkt:#?}");
+        } else {
+            println!("{pkt:#?}");
+        }
+
+        Ok(pkt)
     }
 }
 
@@ -107,8 +113,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let sema = Arc::new(Semaphore::new(cli.max_connections.unwrap_or(100_000)));
 
-    eprintln!("Waiting for connections on {}", cli.client);
-    let listen = TcpListener::bind(cli.client).await?;
+    eprintln!("Waiting for connections on {}", cli.client_addr);
+    let listen = TcpListener::bind(cli.client_addr).await?;
 
     while let Ok(permit) = sema.clone().acquire_owned().await {
         let (client, remote_client_addr) = listen.accept().await?;
@@ -133,9 +139,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 }
 
 async fn handle_connection(client: TcpStream, cli: Arc<Cli>) -> anyhow::Result<()> {
-    eprintln!("Connecting to {}", cli.server);
+    eprintln!("Connecting to {}", cli.server_addr);
 
-    let server = TcpStream::connect(cli.server).await?;
+    let server = TcpStream::connect(cli.server_addr).await?;
 
     if let Err(e) = server.set_nodelay(true) {
         eprintln!("Failed to set TCP_NODELAY: {e}");
@@ -226,16 +232,15 @@ async fn handle_connection(client: TcpStream, cli: Arc<Cli>) -> anyhow::Result<(
 }
 
 async fn passthrough(mut read: OwnedReadHalf, mut write: OwnedWriteHalf) -> anyhow::Result<()> {
-    let mut buf = vec![0u8; 8192].into_boxed_slice();
+    let mut buf = Box::new([0u8; 8192]);
     loop {
-        let bytes_read = read.read(&mut buf).await?;
+        let bytes_read = read.read(buf.as_mut_slice()).await?;
         let bytes = &mut buf[..bytes_read];
 
         if bytes.is_empty() {
-            break;
+            break Ok(());
         }
 
         write.write_all(bytes).await?;
     }
-    Ok(())
 }

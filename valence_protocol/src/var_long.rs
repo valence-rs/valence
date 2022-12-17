@@ -59,7 +59,7 @@ mod tests {
     #[test]
     fn encode_decode() {
         let mut rng = thread_rng();
-        let mut buf = Vec::new();
+        let mut buf = vec![];
 
         for n in (0..1_000_000)
             .map(|_| rng.gen())
