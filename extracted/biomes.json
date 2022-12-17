@@ -6502,6 +6502,10 @@
       "precipitation": "none",
       "temperature": 2.0,
       "downfall": 0.0,
+      "particle": {
+        "kind": "warped_spore",
+        "probability": 0.01428
+      },
       "effects": {
         "sky_color": 7254527,
         "water_fog_color": 329011,
@@ -6562,6 +6566,10 @@
       "precipitation": "none",
       "temperature": 2.0,
       "downfall": 0.0,
+      "particle": {
+        "kind": "crimson_spore",
+        "probability": 0.025
+      },
       "effects": {
         "sky_color": 7254527,
         "water_fog_color": 329011,
@@ -6634,6 +6642,10 @@
       "precipitation": "none",
       "temperature": 2.0,
       "downfall": 0.0,
+      "particle": {
+        "kind": "ash",
+        "probability": 0.00625
+      },
       "effects": {
         "sky_color": 7254527,
         "water_fog_color": 329011,
@@ -6706,6 +6718,10 @@
       "precipitation": "none",
       "temperature": 2.0,
       "downfall": 0.0,
+      "particle": {
+        "kind": "white_ash",
+        "probability": 0.118093334
+      },
       "effects": {
         "sky_color": 7254527,
         "water_fog_color": 329011,

@@ -4,10 +4,14 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.entity.SpawnGroup;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.collection.Weighted;
 import net.minecraft.util.registry.BuiltinRegistries;
 import net.minecraft.util.registry.Registry;
+import net.minecraft.world.biome.BiomeParticleConfig;
 import rs.valence.extractor.Main;
+
+import java.lang.reflect.Field;
 
 public class Biomes implements Main.Extractor {
     public Biomes() {
@@ -20,6 +24,16 @@ public class Biomes implements Main.Extractor {
 
     @Override
     public JsonElement extract() {
+        // The biome particle probability field is private.
+        // We have to resort to reflection, unfortunately.
+        Field particleConfigProbabilityField;
+        try {
+            particleConfigProbabilityField = BiomeParticleConfig.class.getDeclaredField("probability");
+            particleConfigProbabilityField.setAccessible(true);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
         var biomesJson = new JsonArray();
 
         for (var biome : BuiltinRegistries.BIOME) {
@@ -67,6 +81,18 @@ public class Biomes implements Main.Extractor {
                 effectJson.add("mood_sound", sound);
             });
 
+            biome.getParticleConfig().ifPresent(biomeParticleConfig -> {
+                try {
+                    var particleConfig = new JsonObject();
+                    // We must first convert it into an identifier, because asString() returns a resource identifier as string.
+                    Identifier id = new Identifier(biomeParticleConfig.getParticle().asString());
+                    particleConfig.addProperty("kind", id.getPath());
+                    particleConfig.addProperty("probability" ,particleConfigProbabilityField.getFloat(biomeParticleConfig));
+                    biomeJson.add("particle", particleConfig);
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException(e);
+                }
+            });
 
             var spawnSettingsJson = new JsonObject();
             var spawnSettings = biome.getSpawnSettings();

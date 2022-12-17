@@ -3,7 +3,7 @@ use std::fmt;
 
 use heck::{ToPascalCase, ToSnakeCase};
 use proc_macro2::{Ident as TokenIdent, TokenStream};
-use quote::quote;
+use quote::{quote, ToTokens};
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer};
 
@@ -12,18 +12,17 @@ use crate::ident;
 #[derive(Deserialize, Debug)]
 struct ParsedElement {
     id: u16,
-    #[serde(deserialize_with = "parse_ident")]
     name: ParsedName,
     element: ParsedBiome,
 }
 
 #[derive(Deserialize, Debug)]
 struct ParsedBiome {
-    #[serde(deserialize_with = "parse_ident")]
     precipitation: ParsedName,
     temperature: f32,
     downfall: f32,
     effects: ParsedBiomeEffects,
+    particle: Option<ParsedParticle>,
     spawn_settings: ParsedBiomeSpawnRates,
 }
 
@@ -33,10 +32,105 @@ struct ParsedBiomeEffects {
     water_fog_color: u32,
     fog_color: u32,
     water_color: u32,
-    #[serde(deserialize_with = "parse_ident")]
     grass_color_modifier: ParsedName,
     grass_color: Option<u32>,
     foliage_color: Option<u32>,
+    music: Option<ParsedMusic>,
+    ambient_sound: Option<ParsedName>,
+    additions_sound: Option<ParsedAdditionsMusic>,
+    mood_sound: Option<ParsedMoodSound>,
+}
+
+#[derive(Deserialize, Debug)]
+struct ParsedMusic {
+    replace_current_music: bool,
+    sound: ParsedName,
+    max_delay: i32,
+    min_delay: i32,
+}
+
+#[derive(Deserialize, Debug)]
+struct ParsedAdditionsMusic {
+    sound: ParsedName,
+    tick_chance: f64,
+}
+
+#[derive(Deserialize, Debug)]
+struct ParsedMoodSound {
+    sound: ParsedName,
+    tick_delay: i32,
+    offset: f64,
+    block_search_extent: i32,
+}
+
+#[derive(Deserialize, Debug)]
+struct ParsedParticle {
+    kind: ParsedName,
+    probability: f32,
+}
+
+impl ToTokens for ParsedMusic {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let replace_current_music = &self.replace_current_music;
+        let sound = &self.sound.raw;
+        let min_delay = &self.min_delay;
+        let max_delay = &self.max_delay;
+        quote! (
+            BiomeMusic {
+                replace_current_music: #replace_current_music,
+                sound: Ident::from_str(#sound)?,
+                min_delay: #min_delay,
+                max_delay: #max_delay
+            }
+        )
+        .to_tokens(tokens)
+    }
+}
+
+impl ToTokens for ParsedAdditionsMusic {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let sound = &self.sound.raw;
+        let tick_chance = &self.tick_chance;
+        quote! (
+            BiomeAdditionsSound {
+                sound: Ident::from_str(#sound)?,
+                tick_chance: #tick_chance,
+            }
+        )
+        .to_tokens(tokens)
+    }
+}
+
+impl ToTokens for ParsedMoodSound {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let sound = &self.sound.raw;
+        let block_search_extent = &self.block_search_extent;
+        let offset = &self.offset;
+        let tick_delay = &self.tick_delay;
+        quote! (
+            BiomeMoodSound {
+                sound: Ident::from_str(#sound)?,
+                block_search_extent: #block_search_extent,
+                offset: #offset,
+                tick_delay: #tick_delay
+            }
+        )
+        .to_tokens(tokens)
+    }
+}
+
+impl ToTokens for ParsedParticle {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let kind = &self.kind.raw;
+        let probability = &self.probability;
+        quote! (
+            BiomeParticle {
+                kind: Ident::from_str(#kind)?,
+                probability: #probability
+            }
+        )
+        .to_tokens(tokens)
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -47,7 +141,6 @@ struct ParsedBiomeSpawnRates {
 
 #[derive(Deserialize, Debug)]
 struct ParsedSpawnRate {
-    #[serde(deserialize_with = "parse_ident")]
     name: ParsedName,
     min_group_size: u32,
     max_group_size: u32,
@@ -60,24 +153,26 @@ struct ParsedName {
     raw: String,
 }
 
-fn parse_ident<'de, D>(deserializer: D) -> Result<ParsedName, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    struct IdentVisitor;
-    impl<'de> Visitor<'de> for IdentVisitor {
-        type Value = ParsedName;
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("a string containing a minecraft ID path")
+impl<'de> Deserialize<'de> for ParsedName {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct IdentVisitor;
+        impl<'de> Visitor<'de> for IdentVisitor {
+            type Value = ParsedName;
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a string containing a minecraft ID path")
+            }
+            fn visit_str<E>(self, id: &str) -> Result<Self::Value, E> {
+                Ok(ParsedName {
+                    token: ident(id.to_pascal_case()),
+                    raw: id.to_string(),
+                })
+            }
         }
-        fn visit_str<E>(self, id: &str) -> Result<Self::Value, E> {
-            Ok(ParsedName {
-                token: ident(id.to_pascal_case()),
-                raw: id.to_string(),
-            })
-        }
+        deserializer.deserialize_str(IdentVisitor)
     }
-    deserializer.deserialize_str(IdentVisitor)
 }
 
 pub fn build() -> anyhow::Result<TokenStream> {
@@ -181,6 +276,16 @@ pub fn build() -> anyhow::Result<TokenStream> {
             let foliage_color = option_to_quote(&biome.element.effects.foliage_color);
             let grass_color = option_to_quote(&biome.element.effects.grass_color);
             let grass_modifier = &biome.element.effects.grass_color_modifier.token;
+            let music = option_to_quote(&biome.element.effects.music);
+            let ambient_sound = option_to_quote({
+                &biome.element.effects.ambient_sound.as_ref().map(|n| {
+                    let raw = &n.raw;
+                    quote!(Ident::from_str(#raw)?)
+                })
+            });
+            let additions_sound = option_to_quote(&biome.element.effects.additions_sound);
+            let mood_sound = option_to_quote(&biome.element.effects.mood_sound);
+            let particle = option_to_quote(&biome.element.particle);
             quote! {
                 Self::#name => Ok(Biome{
                     name: Ident::from_str(#raw_name)?,
@@ -192,11 +297,11 @@ pub fn build() -> anyhow::Result<TokenStream> {
                     foliage_color: #foliage_color,
                     grass_color: #grass_color,
                     grass_color_modifier: BiomeGrassColorModifier::#grass_modifier,
-                    music: None,
-                    ambient_sound: None,
-                    additions_sound: None,
-                    mood_sound: None,
-                    particle: None,
+                    music: #music,
+                    ambient_sound: #ambient_sound,
+                    additions_sound: #additions_sound,
+                    mood_sound: #mood_sound,
+                    particle: #particle,
                 }),
             }
         })
@@ -245,7 +350,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
     let spawn_classes = class_spawn_fields.values();
 
     Ok(quote! {
-        use valence::biome::{Biome, BiomeGrassColorModifier, BiomePrecipitation};
+        use valence::biome::{Biome, BiomeMusic, BiomeAdditionsSound, BiomeMoodSound, BiomeParticle, BiomeGrassColorModifier, BiomePrecipitation};
         use valence::protocol::ident::{Ident, IdentError};
         use std::str::FromStr;
 
