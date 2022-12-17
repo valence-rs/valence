@@ -356,3 +356,14 @@ pub struct SyncPlayerPosLookFlags {
     #[bits(3)]
     _pad: u8,
 }
+
+#[bitfield(u8)]
+#[derive(PartialEq, Eq, Encode, Decode)]
+pub struct PlayerAbilitiesFlags {
+    pub invulnerable: bool,
+    pub flying: bool,
+    pub allow_flying: bool,
+    pub instant_break: bool,
+    #[bits(4)]
+    _pad: u8,
+}

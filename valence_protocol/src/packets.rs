@@ -73,7 +73,7 @@ macro_rules! packet_enum {
                     $(
                         $packet::ID => Self::$packet($packet::decode_without_id(r)?),
                     )*
-                    id => anyhow::bail!("unknown packet id {}", id),
+                    id => anyhow::bail!("unknown packet ID {:#02x} while decoding {}", id, stringify!($enum_name)),
                 })
             }
         }
@@ -158,7 +158,7 @@ macro_rules! packet_enum {
                     $(
                         $packet::ID => Self::$packet($packet::decode_without_id(r)?),
                     )*
-                    id => anyhow::bail!("unknown packet id {}", id),
+                    id => anyhow::bail!("unknown packet ID {:#02x} while decoding {}", id, stringify!($enum_name)),
                 })
             }
         }

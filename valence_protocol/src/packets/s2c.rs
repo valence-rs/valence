@@ -7,11 +7,12 @@ use crate::byte_angle::ByteAngle;
 use crate::ident::Ident;
 use crate::item::ItemStack;
 use crate::raw_bytes::RawBytes;
+use crate::recipe::DeclaredRecipe;
 use crate::text::Text;
 use crate::types::{
     AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, GameMode,
-    GameStateChangeReason, GlobalPos, PlayerInfoAddPlayer, SignedProperty, SoundCategory,
-    SyncPlayerPosLookFlags,
+    GameStateChangeReason, GlobalPos, PlayerAbilitiesFlags, PlayerInfoAddPlayer, SignedProperty,
+    SoundCategory, SyncPlayerPosLookFlags,
 };
 use crate::username::Username;
 use crate::var_int::VarInt;
@@ -418,6 +419,14 @@ pub mod play {
     }
 
     #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[packet_id = 0x30]
+    pub struct PlayerAbilitiesS2c {
+        pub flags: PlayerAbilitiesFlags,
+        pub flying_speed: f32,
+        pub fov_modifier: f32,
+    }
+
+    #[derive(Clone, Debug, Encode, Decode, Packet)]
     #[packet_id = 0x31]
     pub struct PlayerChatMessage<'a> {
         // TODO: A bunch of crap.
@@ -673,6 +682,12 @@ pub mod play {
         pub properties: Vec<AttributeProperty<'a>>,
     }
 
+    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[packet_id = 0x67]
+    pub struct FeatureFlags<'a> {
+        pub features: Vec<Ident<&'a str>>,
+    }
+
     packet_enum! {
         #[derive(Clone)]
         S2cPlayPacket<'a> {
@@ -705,6 +720,7 @@ pub mod play {
             UpdateEntityPositionAndRotation,
             UpdateEntityRotation,
             OpenScreen,
+            PlayerAbilitiesS2c,
             PlayerChatMessage<'a>,
             CombatDeath,
             PlayerInfoRemove,
@@ -734,6 +750,7 @@ pub mod play {
             SetTabListHeaderAndFooter,
             TeleportEntity,
             UpdateAttributes<'a>,
+            FeatureFlags<'a>,
         }
     }
 }

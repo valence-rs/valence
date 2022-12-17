@@ -15,16 +15,15 @@ use tracing::{info, warn};
 use uuid::Uuid;
 use valence_protocol::packets::s2c::play::{
     AcknowledgeBlockChange, ClearTitles, CombatDeath, DisconnectPlay, EntityAnimationS2c,
-    EntityEvent, GameEvent, KeepAliveS2c, LoginPlayOwned, OpenScreen, PluginMessageS2c,
-    RemoveEntitiesEncode, ResourcePackS2c, RespawnOwned, SetActionBarText, SetCenterChunk,
-    SetContainerContentEncode, SetContainerSlotEncode, SetDefaultSpawnPosition, SetEntityMetadata,
-    SetEntityVelocity, SetExperience, SetHealth, SetRenderDistance, SetSubtitleText,
-    SetTitleAnimationTimes, SetTitleText, SynchronizePlayerPosition, SystemChatMessage,
-    UnloadChunk, UpdateAttributes, UpdateTime,
+    EntityEvent, GameEvent, KeepAliveS2c, LoginPlayOwned, OpenScreen,
+    PluginMessageS2c, RemoveEntitiesEncode, ResourcePackS2c, RespawnOwned, SetActionBarText,
+    SetCenterChunk, SetContainerContentEncode, SetContainerSlotEncode, SetDefaultSpawnPosition,
+    SetEntityMetadata, SetEntityVelocity, SetExperience, SetHealth, SetRenderDistance,
+    SetSubtitleText, SetTitleAnimationTimes, SetTitleText, SynchronizePlayerPosition,
+    SystemChatMessage, UnloadChunk, UpdateAttributes, UpdateTime,
 };
 use valence_protocol::types::{
-    AttributeProperty, DisplayedSkinParts, GameMode, GameStateChangeReason, SoundCategory,
-    SyncPlayerPosLookFlags,
+    AttributeProperty, DisplayedSkinParts, GameMode, GameStateChangeReason, SyncPlayerPosLookFlags,
 };
 use valence_protocol::{
     BlockPos, Encode, Ident, ItemStack, Packet, RawBytes, Text, Username, VarInt,
@@ -1005,6 +1004,13 @@ impl<C: Config> Client<C> {
                     .map(|(id, pos)| (id.dimension_name(), pos)),
             })?;
 
+            /*
+            // TODO: enable all the features?
+            send.append_packet(&FeatureFlags {
+                features: vec![Ident::new("vanilla").unwrap()],
+            })?;
+            */
+
             if let Some(id) = &self.player_list {
                 player_lists[id].write_init_packets(&mut *send)?;
             }
@@ -1347,6 +1353,15 @@ impl<C: Config> Client<C> {
                 }
 
                 Ok(())
+            })?;
+        }
+
+        if self.bits.created_this_tick() {
+            // This closes the "downloading terrain" screen.
+            // Send this after the initial chunks are loaded.
+            send.append_packet(&SetDefaultSpawnPosition {
+                position: BlockPos::at(self.position.into_array()),
+                angle: self.yaw,
             })?;
         }
 
