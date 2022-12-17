@@ -17,7 +17,7 @@ pub fn main() -> anyhow::Result<()> {
     for (g, file_name) in generators {
         let path = Path::new(&out_dir).join(file_name);
         let code = g()?.to_string();
-        fs::write(&path, &code)?;
+        fs::write(&path, code)?;
 
         // Format the output for debugging purposes.
         // Doesn't matter if rustfmt is unavailable.
