@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use heck::{ToPascalCase, ToShoutySnakeCase};
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{quote, ToTokens};
 use serde::Deserialize;
 
 use crate::ident;
@@ -80,12 +80,22 @@ pub fn build() -> anyhow::Result<TokenStream> {
     let state_to_kind_arms = blocks
         .iter()
         .map(|b| {
-            let min = b.min_state_id();
-            let max = b.max_state_id();
             let name = ident(b.name.to_pascal_case());
-            quote! {
-                #min..=#max => BlockKind::#name,
+            let mut token_stream = TokenStream::new();
+
+            let min_id = b.min_state_id();
+            let max_id = b.max_state_id();
+
+            if min_id == max_id {
+                quote! (#min_id).to_tokens(&mut token_stream);
+            } else {
+                for id in min_id..max_id {
+                    quote! (#id | ).to_tokens(&mut token_stream);
+                }
+                quote! (#max_id).to_tokens(&mut token_stream);
             }
+            quote! ( => BlockKind::#name, ).to_tokens(&mut token_stream);
+            token_stream
         })
         .collect::<TokenStream>();
 
