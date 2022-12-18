@@ -179,9 +179,7 @@ impl Config for Game {
                 }
             }
 
-            let future = world.state.load_chunks(new_chunks.into_iter());
-
-            let parsed_chunks = futures::executor::block_on(future).unwrap();
+            let parsed_chunks = world.state.load_chunks(new_chunks.into_iter()).unwrap();
             for (pos, chunk) in parsed_chunks {
                 if let Some(chunk) = chunk {
                     world.chunks.insert(pos, chunk, true);

@@ -1,4 +1,3 @@
-use tokio::runtime::Builder;
 use valence::biome::BiomeId;
 use valence::chunk::ChunkPos;
 use valence::config::Config;
@@ -29,7 +28,7 @@ impl Config for TestConfig {
 #[test]
 pub fn parse_world() {
     let world_directory = BENCHMARK_WORLD_ASSET.load_blocking_panic();
-    let world = AnvilWorld::new::<TestConfig, _>(
+    let mut world = AnvilWorld::new::<TestConfig, _>(
         &Dimension::default(),
         world_directory,
         BiomeKind::ALL
@@ -43,15 +42,7 @@ pub fn parse_world() {
         }
     }
 
-    let runtime = Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .expect("Creating runtime failed");
-
-    for (chunk_pos, chunk) in runtime
-        .block_on(world.load_chunks(load_targets.into_iter()))
-        .unwrap()
-    {
+    for (chunk_pos, chunk) in world.load_chunks(load_targets.into_iter()).unwrap() {
         assert!(
             chunk.is_some(),
             "Chunk at {chunk_pos:?} returned 'None'. Is this section of the world generated?"

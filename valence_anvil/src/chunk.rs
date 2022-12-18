@@ -8,7 +8,7 @@ use crate::error::{DataFormatError, Error, NbtFormatError};
 use crate::palette::{
     parse_identity_list_palette, parse_palette_identities_with_properties, DataFormat,
 };
-use crate::AnvilWorld;
+use crate::AnvilWorldConfig;
 
 #[derive(Debug, Copy, Clone)]
 pub enum ChunkStatus {
@@ -96,7 +96,10 @@ impl fmt::Display for ChunkStatus {
     }
 }
 
-pub fn parse_chunk_nbt(mut nbt: Compound, world: &AnvilWorld) -> Result<UnloadedChunk, Error> {
+pub fn parse_chunk_nbt(
+    mut nbt: Compound,
+    world_config: &AnvilWorldConfig,
+) -> Result<UnloadedChunk, Error> {
     let status: ChunkStatus = ChunkStatus::from_nbt(&nbt)?;
     if !status.is_fully_generated() {
         return Err(Error::DataFormatError(
@@ -106,7 +109,7 @@ pub fn parse_chunk_nbt(mut nbt: Compound, world: &AnvilWorld) -> Result<Unloaded
 
     if let Some(Value::List(List::Compound(nbt_sections))) = nbt.remove("sections") {
         // Parsing sections
-        let mut chunk = UnloadedChunk::new(world.height);
+        let mut chunk = UnloadedChunk::new(world_config.height);
         for mut nbt_section in nbt_sections.into_iter() {
             let chunk_y_offset: isize = if let Some(Value::Byte(y)) = nbt_section.get("Y") {
                 match isize::from_i8(*y) {
@@ -152,7 +155,8 @@ pub fn parse_chunk_nbt(mut nbt: Compound, world: &AnvilWorld) -> Result<Unloaded
                                             for z in 0..16 {
                                                 chunk.set_block_state(
                                                     x,
-                                                    (y + chunk_y_offset - world.min_y) as usize,
+                                                    (y + chunk_y_offset - world_config.min_y)
+                                                        as usize,
                                                     z,
                                                     state,
                                                 );
@@ -168,7 +172,7 @@ pub fn parse_chunk_nbt(mut nbt: Compound, world: &AnvilWorld) -> Result<Unloaded
                                 let x = index & 0b1111;
                                 chunk.set_block_state(
                                     x,
-                                    (y + chunk_y_offset - world.min_y) as usize,
+                                    (y + chunk_y_offset - world_config.min_y) as usize,
                                     z,
                                     state,
                                 );
@@ -199,7 +203,7 @@ pub fn parse_chunk_nbt(mut nbt: Compound, world: &AnvilWorld) -> Result<Unloaded
                         0,
                         4 * 4 * 4,
                         |biome_identity: Ident<String>| {
-                            if let Some(biome) = world.biomes.get(&biome_identity) {
+                            if let Some(biome) = world_config.biomes.get(&biome_identity) {
                                 Ok(*biome)
                             } else {
                                 Err(Error::DataFormatError(DataFormatError::UnknownType(
@@ -215,7 +219,8 @@ pub fn parse_chunk_nbt(mut nbt: Compound, world: &AnvilWorld) -> Result<Unloaded
                                             for z in 0..4 {
                                                 chunk.set_biome(
                                                     x,
-                                                    (y + (chunk_y_offset / 4) - (world.min_y / 4))
+                                                    (y + (chunk_y_offset / 4)
+                                                        - (world_config.min_y / 4))
                                                         as usize,
                                                     z,
                                                     biome,
@@ -229,7 +234,8 @@ pub fn parse_chunk_nbt(mut nbt: Compound, world: &AnvilWorld) -> Result<Unloaded
                                     let z = index >> 2 & 0b11;
                                     let x = index & 0b11;
 
-                                    let final_y = y + (chunk_y_offset / 4) - (world.min_y / 4);
+                                    let final_y =
+                                        y + (chunk_y_offset / 4) - (world_config.min_y / 4);
                                     chunk.set_biome(x, final_y as usize, z, biome);
                                 }
                             }

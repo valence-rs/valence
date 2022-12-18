@@ -1,5 +1,4 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use tokio::runtime::Builder;
 use valence::biome::BiomeId;
 use valence::chunk::ChunkPos;
 use valence::config::Config;
@@ -33,7 +32,7 @@ impl Config for BenchmarkConfig {
 fn criterion_benchmark(c: &mut Criterion) {
     let world_directory = BENCHMARK_WORLD_ASSET.load_blocking_panic();
 
-    let world = AnvilWorld::new::<BenchmarkConfig, _>(
+    let mut world = AnvilWorld::new::<BenchmarkConfig, _>(
         &Dimension::default(),
         world_directory,
         BiomeKind::ALL
@@ -48,16 +47,11 @@ fn criterion_benchmark(c: &mut Criterion) {
         }
     }
 
-    let runtime = Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .expect("Creating runtime failed");
-
     c.bench_function("Load square 10x10", |b| {
-        b.to_async(&runtime).iter_with_setup(
+        b.iter_with_setup(
             || load_targets.clone().into_iter(),
-            |targets| async {
-                for (chunk_pos, chunk) in world.load_chunks(black_box(targets)).await.unwrap() {
+            |targets| {
+                for (chunk_pos, chunk) in world.load_chunks(black_box(targets)).unwrap() {
                     assert!(
                         chunk.is_some(),
                         "Chunk at {chunk_pos:?} returned 'None'. Is this section of the world \

@@ -1,21 +1,19 @@
 use std::fmt::{self, Debug, Formatter};
-use std::io::SeekFrom;
+use std::fs::File;
+use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 
-use byteorder::{BigEndian, ByteOrder};
-use tokio::fs::File;
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeek, AsyncSeekExt};
-use tokio::sync::Mutex;
+use byteorder::{BigEndian, ByteOrder, ReadBytesExt};
 use valence::chunk::{ChunkPos, UnloadedChunk};
 
 use crate::chunk::parse_chunk_nbt;
 use crate::compression::CompressionScheme;
 use crate::error::{DataFormatError, Error};
-use crate::AnvilWorld;
+use crate::AnvilWorldConfig;
 
 #[derive(Debug)]
 pub struct Region<S> {
-    source: Mutex<S>,
+    source: S,
     offset: u64,
     position: RegionPos,
     header: AnvilHeader,
@@ -24,23 +22,21 @@ pub struct Region<S> {
 impl Region<File> {
     /// Convenience method, creates a Region object from the given file and
     /// position.
-    pub async fn from_file(source: File, position: RegionPos) -> Result<Self, std::io::Error> {
-        Self::from_seek(Mutex::new(source), 0, position).await
+    pub fn from_file(source: File, position: RegionPos) -> Result<Self, std::io::Error> {
+        Self::from_seek(source, 0, position)
     }
 }
 
-impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
+impl<S: Read + Seek> Region<S> {
     /// Creates a Region object using the incoming stream. The offset defines
     /// the position of the header start.
-    pub async fn from_seek(
-        source: Mutex<S>,
+    pub fn from_seek(
+        mut source: S,
         offset: u64,
         position: RegionPos,
     ) -> Result<Self, std::io::Error> {
-        let mut lock = source.lock().await;
-        lock.seek(SeekFrom::Start(offset)).await?;
-        let header = AnvilHeader::parse(&mut *lock).await?;
-        drop(lock);
+        source.seek(SeekFrom::Start(offset))?;
+        let header = AnvilHeader::parse(&mut source)?;
 
         Ok(Self {
             source,
@@ -57,15 +53,13 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
             .into_option()
     }
 
-    async fn read_chunk_bytes(&self, chunk_pos: ChunkPos) -> Result<Option<Vec<u8>>, Error> {
+    fn read_chunk_bytes(&mut self, chunk_pos: ChunkPos) -> Result<Option<Vec<u8>>, Error> {
         let seek_pos = self
             .header
             .offset((chunk_pos.x & 31) as usize, (chunk_pos.z & 31) as usize);
 
-        let mut lock = self.source.lock().await;
-
-        lock.seek(SeekFrom::Start(seek_pos.offset() + self.offset))
-            .await?;
+        self.source
+            .seek(SeekFrom::Start(seek_pos.offset() + self.offset))?;
 
         if seek_pos.len() == 0 {
             return Ok(None);
@@ -73,7 +67,7 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
 
         let compressed_chunk_size = {
             let mut buf = [0u8; 4];
-            lock.read_exact(&mut buf).await?;
+            self.source.read_exact(&mut buf)?;
             BigEndian::read_u32(&buf) as usize
         };
 
@@ -83,16 +77,15 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
             )));
         }
 
-        let compression = CompressionScheme::from_raw(lock.read_u8().await?)?;
-        let uncompressed_buffer = compression
-            .read_to_vec(&mut *lock, compressed_chunk_size - 1)
-            .await?;
+        let compression = CompressionScheme::from_raw(self.source.read_u8()?)?;
+        let uncompressed_buffer =
+            compression.read_to_vec(&mut self.source, compressed_chunk_size - 1)?;
         Ok(Some(uncompressed_buffer))
     }
 
-    pub(crate) async fn parse_chunks<I: IntoIterator<Item = ChunkPos>>(
-        &self,
-        world: &AnvilWorld,
+    pub(crate) fn parse_chunks<I: IntoIterator<Item = ChunkPos>>(
+        &mut self,
+        world_config: &AnvilWorldConfig,
         positions: I,
     ) -> Result<impl Iterator<Item = (ChunkPos, Option<UnloadedChunk>)>, Error> {
         let mut results = Vec::<(ChunkPos, Option<UnloadedChunk>)>::new();
@@ -105,10 +98,10 @@ impl<S: AsyncRead + AsyncSeek + Unpin> Region<S> {
                 self.position
             );
 
-            let chunk_data = self.read_chunk_bytes(pos).await?;
+            let chunk_data = self.read_chunk_bytes(pos)?;
             if let Some(chunk_data) = chunk_data {
                 let nbt = valence::nbt::from_binary_slice(&mut chunk_data.as_slice())?.0;
-                match parse_chunk_nbt(nbt, world) {
+                match parse_chunk_nbt(nbt, world_config) {
                     Err(Error::DataFormatError(DataFormatError::MissingChunkNBT { .. }))
                     | Err(Error::DataFormatError(DataFormatError::UnexpectedChunkState(..))) => {
                         // The chunk is missing vital data and cannot be parsed.
@@ -136,17 +129,17 @@ struct AnvilHeader {
 
 impl AnvilHeader {
     /// Parses the header bytes from the current position
-    async fn parse<R: AsyncRead + Unpin>(source: &mut R) -> Result<Self, std::io::Error> {
+    fn parse<R: Read>(source: &mut R) -> Result<Self, std::io::Error> {
         let mut offsets = [ChunkSeekLocation::zero(); 1024];
         for offset in &mut offsets {
             let mut buf = [0u8; 4];
-            source.read_exact(&mut buf).await?;
+            source.read_exact(&mut buf)?;
             offset.load(buf);
         }
         let mut timestamps = [ChunkTimestamp::zero(); 1024];
         for timestamp in &mut timestamps {
             let mut buf = [0u8; 4];
-            source.read_exact(&mut buf).await?;
+            source.read_exact(&mut buf)?;
             timestamp.load(buf);
         }
         Ok(Self {

@@ -5,7 +5,7 @@ documentation = "https://docs.rs/valence_anvil/"
 repository = "https://github.com/valence_anvil/valence/tree/main/valence_anvil"
 readme = "README.md"
 license = "MIT"
-keywords = ["anvil", "minecraft", "serialization"]
+keywords = ["anvil", "minecraft", "deserialization"]
 version = "0.1.0"
 authors = ["Ryan Johnson <ryanj00a@gmail.com>", "TerminatorNL <TerminatorNL@users.noreply.github.com>"]
 build = "build/main.rs"
@@ -14,10 +14,8 @@ edition = "2021"
 [dependencies]
 valence = { version = "0.1.0", path = ".." }
 rayon = "1.5.3"
-async-compression = { version = "0.3.15", features = ["tokio", "gzip", "zlib"] }
+flate2 = "1.0.25"
 byteorder = "1.4.3"
-tokio = { version = "1.21.2", features = ["fs", "io-util"] }
-futures = "0.3.24"
 thiserror = "1.0.37"
 num-traits = "0.2.15"
 
@@ -25,8 +23,7 @@ num-traits = "0.2.15"
 tempfile = "3.3.0"
 zip = "0.5"
 fs_extra = "1.2.0"
-zip-extensions = "0.6.1"
-criterion = { version = "0.4.0", features = ["async", "async_tokio"] }
+criterion = "0.4.0"
 
 [dev-dependencies.reqwest]
 version = "0.11.12"

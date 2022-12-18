@@ -1,6 +1,6 @@
-use async_compression::tokio::bufread::ZlibDecoder;
-use async_compression::tokio::write::GzipDecoder;
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
+use std::io::Read;
+
+use flate2::read::{GzDecoder, ZlibDecoder};
 
 use crate::error::{DataFormatError, Error};
 
@@ -23,24 +23,24 @@ impl CompressionScheme {
         }
     }
 
-    pub(crate) async fn read_to_vec<R: AsyncRead + Unpin>(
+    pub(crate) fn read_to_vec<R: Read>(
         self,
         source: &mut R,
         length: usize,
     ) -> Result<Vec<u8>, std::io::Error> {
         let mut raw_data = vec![0u8; length];
-        source.read_exact(&mut raw_data).await?;
+        source.read_exact(&mut raw_data)?;
         match self {
             CompressionScheme::GZip => {
-                let mut decoder = GzipDecoder::new(Vec::<u8>::new());
-                decoder.write_all(&raw_data).await?;
-                decoder.shutdown().await?;
-                Ok(decoder.into_inner())
+                let mut decoder = GzDecoder::new(std::io::Cursor::new(raw_data));
+                let mut vec = Vec::<u8>::new();
+                decoder.read_to_end(&mut vec)?;
+                Ok(vec)
             }
             CompressionScheme::Zlib => {
                 let mut decoder = ZlibDecoder::new(std::io::Cursor::new(raw_data));
                 let mut vec = Vec::<u8>::new();
-                decoder.read_to_end(&mut vec).await?;
+                decoder.read_to_end(&mut vec)?;
                 Ok(vec)
             }
             CompressionScheme::Raw => Ok(raw_data),

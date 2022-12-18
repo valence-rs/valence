@@ -1,11 +1,10 @@
 use std::borrow::Borrow;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
+use std::fs::File;
 use std::path::PathBuf;
 
 use region::{ChunkTimestamp, Region, RegionPos};
-use tokio::fs::File;
-use tokio::sync::{Mutex, MutexGuard};
 use valence::biome::{Biome, BiomeId};
 use valence::chunk::{ChunkPos, UnloadedChunk};
 use valence::config::Config;
@@ -26,10 +25,15 @@ mod region;
 #[derive(Debug)]
 pub struct AnvilWorld {
     world_root: PathBuf,
-    min_y: isize,
-    height: usize,
-    biomes: BTreeMap<Ident<String>, BiomeId>,
-    region_files: Mutex<BTreeMap<RegionPos, Option<Region<File>>>>,
+    config: AnvilWorldConfig,
+    region_files: BTreeMap<RegionPos, Option<Region<File>>>,
+}
+
+#[derive(Debug)]
+pub struct AnvilWorldConfig {
+    pub min_y: isize,
+    pub height: usize,
+    pub biomes: BTreeMap<Ident<String>, BiomeId>,
 }
 
 impl AnvilWorld {
@@ -69,12 +73,14 @@ impl AnvilWorld {
         }
         Self {
             world_root: directory.into(),
-            min_y: isize::from_i32(dimension.min_y)
-                .expect("Dimension min_y could not be converted to isize from i32."),
-            height: usize::from_i32(dimension.height)
-                .expect("Dimension height could not be converted to usize from i32."),
-            biomes,
-            region_files: Mutex::new(BTreeMap::new()),
+            config: AnvilWorldConfig {
+                min_y: isize::from_i32(dimension.min_y)
+                    .expect("Dimension min_y could not be converted to isize from i32."),
+                height: usize::from_i32(dimension.height)
+                    .expect("Dimension height could not be converted to usize from i32."),
+                biomes,
+            },
+            region_files: BTreeMap::new(),
         }
     }
 
@@ -109,86 +115,81 @@ impl AnvilWorld {
     ///     }
     /// }
     /// ```
-    pub async fn load_chunks<I: Iterator<Item = ChunkPos>>(
-        &self,
+    pub fn load_chunks<I: Iterator<Item = ChunkPos>>(
+        &mut self,
         positions: I,
     ) -> Result<impl Iterator<Item = (ChunkPos, Option<UnloadedChunk>)>, Error> {
-        let mut map = BTreeMap::<RegionPos, Vec<ChunkPos>>::new();
-        for pos in positions {
-            let region_pos = RegionPos::from(pos);
-            map.entry(region_pos)
-                .and_modify(|v| v.push(pos))
-                .or_insert_with(|| vec![pos]);
+        let mut region_chunks = BTreeMap::<RegionPos, Vec<ChunkPos>>::new();
+        for chunk_pos in positions {
+            let region_pos = RegionPos::from(chunk_pos);
+            region_chunks
+                .entry(region_pos)
+                .and_modify(|v| v.push(chunk_pos))
+                .or_insert_with(|| vec![chunk_pos]);
         }
-
         let mut result_vec = Vec::<(ChunkPos, Option<UnloadedChunk>)>::new();
-        let mut lock = self.region_files.lock().await;
-        for (region_pos, chunk_pos_vec) in map.into_iter() {
-            if let Some(region) = self.access_region_mut(&mut lock, region_pos).await? {
+        for (region_pos, chunk_pos_vec) in region_chunks {
+            if let Some(region) = self.region_files.entry(region_pos).or_insert({
+                let path = region_pos.path(&self.world_root);
+                if path.exists() {
+                    Some(Region::from_file(File::open(&path)?, region_pos)?)
+                } else {
+                    None
+                }
+            }) {
                 // A region file exists, and it is loaded.
-                result_vec.extend(region.parse_chunks(self, chunk_pos_vec).await?);
+                result_vec.extend(region.parse_chunks(&self.config, chunk_pos_vec)?);
             } else {
                 // No region file exists, there is no data to load here.
                 result_vec.extend(chunk_pos_vec.into_iter().map(|pos| (pos, None)));
             }
         }
-
         Ok(result_vec.into_iter())
     }
 
-    /// Get the last time the chunk was modified in seconds since epoch.
-    /// This operation will temporarily block operations on all region files
-    /// within `AnvilWorld`.
-    ///
-    /// # Arguments
-    ///
-    /// * `positions`: An iterator of chunk positions
-    ///
-    /// returns: An iterator with `ChunkPos` and the respective
-    /// `Option<ChunkTimestamp>` as tuple.
-    pub async fn chunk_timestamps<I: Iterator<Item = ChunkPos>>(
-        &self,
+    // /// Get the last time the chunk was modified in seconds since epoch.
+    // /// This operation will temporarily block operations on all region files
+    // /// within `AnvilWorld`.
+    // ///
+    // /// # Arguments
+    // ///
+    // /// * `positions`: An iterator of chunk positions
+    // ///
+    // /// returns: An iterator with `ChunkPos` and the respective
+    // /// `Option<ChunkTimestamp>` as tuple.
+    pub fn chunk_timestamps<I: Iterator<Item = ChunkPos>>(
+        &mut self,
         positions: I,
     ) -> Result<impl IntoIterator<Item = (ChunkPos, Option<ChunkTimestamp>)>, Error> {
-        let mut map = BTreeMap::<RegionPos, Vec<ChunkPos>>::new();
-        for pos in positions {
-            let region_pos = RegionPos::from(pos);
-            map.entry(region_pos)
-                .and_modify(|v| v.push(pos))
-                .or_insert_with(|| vec![pos]);
+        let mut region_chunks = BTreeMap::<RegionPos, Vec<ChunkPos>>::new();
+        for chunk_pos in positions {
+            let region_pos = RegionPos::from(chunk_pos);
+            region_chunks
+                .entry(region_pos)
+                .and_modify(|v| v.push(chunk_pos))
+                .or_insert_with(|| vec![chunk_pos]);
         }
-
         let mut result_vec = Vec::<(ChunkPos, Option<ChunkTimestamp>)>::new();
-        let mut lock = self.region_files.lock().await;
-        for (region_pos, chunk_pos_vec) in map.into_iter() {
-            if let Some(region) = self.access_region_mut(&mut lock, region_pos).await? {
+        for (region_pos, chunk_pos_vec) in region_chunks {
+            if let Some(region) = self.region_files.entry(region_pos).or_insert({
+                let path = region_pos.path(&self.world_root);
+                if path.exists() {
+                    Some(Region::from_file(File::open(&path)?, region_pos)?)
+                } else {
+                    None
+                }
+            }) {
+                // A region file exists, and it is loaded.
                 for chunk_pos in chunk_pos_vec {
                     result_vec.push((chunk_pos, region.chunk_timestamp(chunk_pos)));
                 }
             } else {
+                // No region file exists, there is no data to load here.
                 for chunk_pos in chunk_pos_vec {
                     result_vec.push((chunk_pos, None));
                 }
             }
         }
         Ok(result_vec.into_iter())
-    }
-
-    async fn access_region_mut<'a>(
-        &self,
-        lock: &'a mut MutexGuard<'_, BTreeMap<RegionPos, Option<Region<File>>>>,
-        region_pos: RegionPos,
-    ) -> Result<Option<&'a mut Region<File>>, Error> {
-        Ok(lock
-            .entry(region_pos)
-            .or_insert({
-                let path = region_pos.path(&self.world_root);
-                if path.exists() {
-                    Some(Region::from_file(File::open(&path).await?, region_pos).await?)
-                } else {
-                    None
-                }
-            })
-            .as_mut())
     }
 }
