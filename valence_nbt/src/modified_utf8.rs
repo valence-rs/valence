@@ -77,6 +77,10 @@ fn encode_surrogate(surrogate: u16) -> [u8; 3] {
 }
 
 pub fn encoded_len(text: &str) -> usize {
+    if text.is_ascii() {
+        return text.len();
+    }
+
     let mut n = 0;
     let mut i = 0;
     let bytes = text.as_bytes();
