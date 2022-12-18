@@ -162,12 +162,12 @@ impl<'de> Deserialize<'de> for ParsedName {
         impl<'de> Visitor<'de> for IdentVisitor {
             type Value = ParsedName;
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a string containing a minecraft ID path")
+                formatter.write_str("a string containing a minecraft identifier path")
             }
-            fn visit_str<E>(self, id: &str) -> Result<Self::Value, E> {
+            fn visit_str<E>(self, identifier: &str) -> Result<Self::Value, E> {
                 Ok(ParsedName {
-                    token: ident(id.to_pascal_case()),
-                    raw: id.to_string(),
+                    token: ident(identifier.to_pascal_case()),
+                    raw: identifier.to_string(),
                 })
             }
         }
