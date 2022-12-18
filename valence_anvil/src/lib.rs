@@ -85,8 +85,6 @@ impl AnvilWorld {
     }
 
     /// Load chunks from the available region files within the world directory.
-    /// This operation will temporarily block operations on all region files
-    /// within `AnvilWorld`.
     ///
     /// # Arguments
     ///
@@ -100,9 +98,16 @@ impl AnvilWorld {
     /// ```ignore
     /// use valence::prelude::*;
     ///
-    /// let to_load = chunks_in_view_distance(ChunkPos::at(p.x, p.z), dist);
-    /// let future = world.state.load_chunks(to_load);
-    /// let parsed_chunks = futures::executor::block_on(future).unwrap();
+    /// let mut new_chunks = Vec::new();
+    /// for pos in ChunkPos::at(p.x, p.z).in_view(dist) {
+    ///     if let Some(existing) = world.chunks.get_mut(pos) {
+    ///         existing.state = true;
+    ///     } else {
+    ///         new_chunks.push(pos);
+    ///     }
+    /// }
+    ///
+    /// let parsed_chunks = world.state.load_chunks(new_chunks.into_iter()).unwrap();
     /// for (pos, chunk) in parsed_chunks {
     ///     if let Some(chunk) = chunk {
     ///         // A chunk has successfully loaded from the region file.
@@ -147,16 +152,14 @@ impl AnvilWorld {
         Ok(result_vec.into_iter())
     }
 
-    // /// Get the last time the chunk was modified in seconds since epoch.
-    // /// This operation will temporarily block operations on all region files
-    // /// within `AnvilWorld`.
-    // ///
-    // /// # Arguments
-    // ///
-    // /// * `positions`: An iterator of chunk positions
-    // ///
-    // /// returns: An iterator with `ChunkPos` and the respective
-    // /// `Option<ChunkTimestamp>` as tuple.
+    /// Get the last time the chunk was modified in seconds since epoch.
+    ///
+    /// # Arguments
+    ///
+    /// * `positions`: An iterator of chunk positions
+    ///
+    /// returns: An iterator with `ChunkPos` and the respective
+    /// `Option<ChunkTimestamp>` as tuple.
     pub fn chunk_timestamps<I: Iterator<Item = ChunkPos>>(
         &mut self,
         positions: I,
