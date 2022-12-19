@@ -86,7 +86,7 @@ impl Config for Game {
         for chunk_z in -2..Integer::div_ceil(&(SIZE_Z as i32), &16) + 2 {
             for chunk_x in -2..Integer::div_ceil(&(SIZE_X as i32), &16) + 2 {
                 world.chunks.insert(
-                    [chunk_x as i32, chunk_z as i32],
+                    [chunk_x, chunk_z],
                     UnloadedChunk::default(),
                     (),
                 );
