@@ -1,16 +1,16 @@
+use std::hint::black_box;
 use std::time::Duration;
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
+use valence_protocol::block::BlockKind;
 
 criterion_group! {
     name = benches;
     config = Criterion::default()
-        .measurement_time(Duration::from_secs(20));
+        .measurement_time(Duration::from_secs(5));
     targets = criterion_benchmark
 }
 criterion_main!(benches);
-
-use valence_protocol::block::BlockKind;
 
 fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("BlockState::to_kind", |b| {
