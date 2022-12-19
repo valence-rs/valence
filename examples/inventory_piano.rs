@@ -78,11 +78,9 @@ impl Config for Game {
         // initialize chunks
         for chunk_z in -2..Integer::div_ceil(&(SIZE_Z as i32), &16) + 2 {
             for chunk_x in -2..Integer::div_ceil(&(SIZE_X as i32), &16) + 2 {
-                world.chunks.insert(
-                    [chunk_x as i32, chunk_z as i32],
-                    UnloadedChunk::default(),
-                    (),
-                );
+                world
+                    .chunks
+                    .insert([chunk_x, chunk_z], UnloadedChunk::default(), ());
             }
         }
 
@@ -91,7 +89,7 @@ impl Config for Game {
             for chunk_z in 0..Integer::div_ceil(&SIZE_Z, &16) {
                 let chunk = world
                     .chunks
-                    .get_mut((chunk_x as i32, chunk_z as i32))
+                    .get_mut([chunk_x as i32, chunk_z as i32])
                     .unwrap();
                 for x in 0..16 {
                     for z in 0..16 {

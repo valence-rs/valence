@@ -285,11 +285,9 @@ fn create_world(server: &mut Server<Game>, spawn_pos: BlockPos, world_type: Whic
     // Create chunks
     for chunk_z in -3..3 {
         for chunk_x in -3..3 {
-            world.chunks.insert(
-                [chunk_x as i32, chunk_z as i32],
-                UnloadedChunk::default(),
-                (),
-            );
+            world
+                .chunks
+                .insert([chunk_x, chunk_z], UnloadedChunk::default(), ());
         }
     }
 
