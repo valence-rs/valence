@@ -87,14 +87,14 @@ pub fn build() -> anyhow::Result<TokenStream> {
             let max_id = b.max_state_id();
 
             if min_id == max_id {
-                quote! (#min_id).to_tokens(&mut token_stream);
+                quote!(#min_id).to_tokens(&mut token_stream);
             } else {
                 for id in min_id..max_id {
-                    quote! (#id | ).to_tokens(&mut token_stream);
+                    quote!(#id | ).to_tokens(&mut token_stream);
                 }
-                quote! (#max_id).to_tokens(&mut token_stream);
+                quote!(#max_id).to_tokens(&mut token_stream);
             }
-            quote! ( => BlockKind::#name, ).to_tokens(&mut token_stream);
+            quote!(=> BlockKind::#name,).to_tokens(&mut token_stream);
             token_stream
         })
         .collect::<TokenStream>();
