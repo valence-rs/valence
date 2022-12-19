@@ -14,13 +14,13 @@ use tokio::sync::OwnedSemaphorePermit;
 use tracing::{info, warn};
 use uuid::Uuid;
 use valence_protocol::packets::s2c::play::{
-    AcknowledgeBlockChange, ClearTitles, CombatDeath, CustomSoundEffect, DisconnectPlay,
-    EntityAnimationS2c, EntityEvent, GameEvent, KeepAliveS2c, LoginPlayOwned, OpenScreen,
-    PluginMessageS2c, RemoveEntitiesEncode, ResourcePackS2c, RespawnOwned, SetActionBarText,
-    SetCenterChunk, SetContainerContentEncode, SetContainerSlotEncode, SetDefaultSpawnPosition,
-    SetEntityMetadata, SetEntityVelocity, SetExperience, SetHealth, SetRenderDistance,
-    SetSubtitleText, SetTitleAnimationTimes, SetTitleText, SynchronizePlayerPosition,
-    SystemChatMessage, UnloadChunk, UpdateAttributes, UpdateTime,
+    AcknowledgeBlockChange, ClearTitles, CloseContainerS2c, CombatDeath, CustomSoundEffect,
+    DisconnectPlay, EntityAnimationS2c, EntityEvent, GameEvent, KeepAliveS2c, LoginPlayOwned,
+    OpenScreen, PluginMessageS2c, RemoveEntitiesEncode, ResourcePackS2c, RespawnOwned,
+    SetActionBarText, SetCenterChunk, SetContainerContentEncode, SetContainerSlotEncode,
+    SetDefaultSpawnPosition, SetEntityMetadata, SetEntityVelocity, SetExperience, SetHealth,
+    SetRenderDistance, SetSubtitleText, SetTitleAnimationTimes, SetTitleText,
+    SynchronizePlayerPosition, SystemChatMessage, UnloadChunk, UpdateAttributes, UpdateTime,
 };
 use valence_protocol::types::{
     AttributeProperty, DisplayedSkinParts, GameMode, GameStateChangeReason, SoundCategory,
@@ -251,8 +251,8 @@ pub struct Client<C: Config> {
     /// The item currently held by the client's cursor in the inventory.
     cursor_item: Option<ItemStack>,
     /// The currently open inventory. The client can close the screen, making
-    /// this [`InventoryId::NULL`].
-    open_inventory: InventoryId,
+    /// this [`Option::None`].
+    open_inventory: Option<InventoryId>,
     /// The current window ID. Incremented when inventories are opened.
     window_id: u8,
     bits: ClientBits,
@@ -330,7 +330,7 @@ impl<C: Config> Client<C> {
             modified_slots: 0,
             inv_state_id: Wrapping(0),
             cursor_item: None,
-            open_inventory: InventoryId::NULL,
+            open_inventory: None,
             window_id: 0,
             bits: ClientBits::new()
                 .with_got_keepalive(true)
@@ -898,14 +898,23 @@ impl<C: Config> Client<C> {
         mem::replace(&mut self.cursor_item, new)
     }
 
-    pub fn open_inventory(&self) -> InventoryId {
+    pub fn open_inventory(&self) -> Option<InventoryId> {
         self.open_inventory
     }
 
+    /// Marks the client's currently open inventory as the given inventory.
     pub fn set_open_inventory(&mut self, id: InventoryId) {
-        if self.open_inventory != id {
+        if self.open_inventory != Some(id) {
             self.bits.set_open_inventory_modified(true);
-            self.open_inventory = id;
+            self.open_inventory = Some(id);
+        }
+    }
+
+    /// Marks the client's currently open inventory as closed.
+    pub fn set_close_inventory(&mut self) {
+        if self.open_inventory.is_some() {
+            self.bits.set_open_inventory_modified(true);
+            self.open_inventory = None;
         }
     }
 
@@ -1440,31 +1449,37 @@ impl<C: Config> Client<C> {
         }
 
         // Update the window the client has opened.
-        if self.bits.open_inventory_modified() {
-            // Open a new window.
-            self.bits.set_open_inventory_modified(false);
+        if let Some(inv_id) = self.open_inventory {
+            if let Some(inv) = inventories.get(inv_id) {
+                if self.bits.open_inventory_modified() {
+                    // Open a new window.
+                    self.bits.set_open_inventory_modified(false);
 
-            if let Some(inv) = inventories.get(self.open_inventory) {
-                self.window_id = self.window_id % 100 + 1;
-                self.inv_state_id += 1;
+                    self.window_id = self.window_id % 100 + 1;
+                    self.inv_state_id += 1;
 
-                send.append_packet(&OpenScreen {
-                    window_id: VarInt(self.window_id.into()),
-                    window_type: VarInt(inv.kind() as i32),
-                    window_title: inv.title().clone(),
-                })?;
+                    send.append_packet(&OpenScreen {
+                        window_id: VarInt(self.window_id.into()),
+                        window_type: VarInt(inv.kind() as i32),
+                        window_title: inv.title().clone(),
+                    })?;
 
-                send.append_packet(&SetContainerContentEncode {
+                    send.append_packet(&SetContainerContentEncode {
+                        window_id: self.window_id,
+                        state_id: VarInt(self.inv_state_id.0),
+                        slots: inv.slot_slice(),
+                        carried_item: &self.cursor_item,
+                    })?;
+                } else {
+                    // Update an already open window.
+                    inv.send_update(send, self.window_id, &mut self.inv_state_id)?;
+                }
+            } else {
+                // the inventory no longer exists, so close the window
+                send.append_packet(&CloseContainerS2c {
                     window_id: self.window_id,
-                    state_id: VarInt(self.inv_state_id.0),
-                    slots: inv.slot_slice(),
-                    carried_item: &self.cursor_item,
                 })?;
-            }
-        } else {
-            // Update an already open window.
-            if let Some(inv) = inventories.get(self.open_inventory) {
-                inv.send_update(send, self.window_id, &mut self.inv_state_id)?;
+                self.open_inventory = None; // avoids setting the modified flag
             }
         }
 
