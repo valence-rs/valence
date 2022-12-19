@@ -257,7 +257,7 @@ fn reset(client: &mut Client<Game>, world: &mut World<Game>) {
     for chunk_z in -1..3 {
         for chunk_x in -2..2 {
             world.chunks.insert(
-                (chunk_x as i32, chunk_z as i32),
+                (chunk_x, chunk_z),
                 UnloadedChunk::default(),
                 ChunkState { keep_loaded: true },
             );
