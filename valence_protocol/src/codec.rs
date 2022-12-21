@@ -179,6 +179,10 @@ impl PacketEncoder {
         self.buf.split()
     }
 
+    pub fn clear(&mut self) {
+        self.buf.clear();
+    }
+
     #[cfg(feature = "compression")]
     pub fn set_compression(&mut self, threshold: Option<u32>) {
         self.compression_threshold = threshold;
