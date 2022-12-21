@@ -1,7 +1,6 @@
 use std::io::Write;
 
 use byteorder::{BigEndian, WriteBytesExt};
-use zerocopy::AsBytes;
 
 use crate::tag::Tag;
 use crate::{modified_utf8, Compound, Error, List, Result, Value};
@@ -135,7 +134,10 @@ impl<W: Write> EncodeState<W> {
             }
         }
 
-        Ok(self.writer.write_all(bytes.as_bytes())?)
+        // SAFETY: i8 has the same layout as u8.
+        let bytes: &[u8] = unsafe { std::mem::transmute(bytes) };
+
+        Ok(self.writer.write_all(bytes)?)
     }
 
     fn write_string(&mut self, s: &str) -> Result<()> {
@@ -177,7 +179,10 @@ impl<W: Write> EncodeState<W> {
                     }
                 }
 
-                Ok(self.writer.write_all(bl.as_bytes())?)
+                // SAFETY: i8 has the same layout as u8.
+                let bytes: &[u8] = unsafe { std::mem::transmute(bl.as_slice()) };
+
+                Ok(self.writer.write_all(bytes)?)
             }
             List::Short(sl) => self.write_list(sl, Tag::Short, |st, s| st.write_short(*s)),
             List::Int(il) => self.write_list(il, Tag::Int, |st, i| st.write_int(*i)),
