@@ -1,22 +1,24 @@
 use std::time::Duration;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use rand::Rng;
 use valence_nbt::{compound, List};
 use valence_protocol::block::{BlockKind, BlockState, PropName, PropValue};
 use valence_protocol::packets::s2c::play::{
     ChunkDataAndUpdateLight, ChunkDataAndUpdateLightEncode, SetTabListHeaderAndFooter,
+    TeleportEntity,
 };
 use valence_protocol::text::Color;
 use valence_protocol::{
-    write_packet, write_packet_compressed, ItemKind, LengthPrefixedArray, PacketDecoder,
-    PacketEncoder, TextFormat,
+    write_packet, write_packet_compressed, ByteAngle, Decode, Encode, ItemKind,
+    LengthPrefixedArray, PacketDecoder, PacketEncoder, TextFormat, VarInt,
 };
 
 criterion_group! {
     name = benches;
     config = Criterion::default()
         .measurement_time(Duration::from_secs(5)).confidence_level(0.99);
-    targets = blocks, packets
+    targets = blocks, packets, var_int
 }
 criterion_main!(benches);
 
@@ -137,6 +139,14 @@ fn packets(c: &mut Criterion) {
                threshold.",
     };
 
+    let teleport_entity_packet = TeleportEntity {
+        entity_id: VarInt(123456),
+        position: [123.0, 456.0, 789.0],
+        yaw: ByteAngle(42),
+        pitch: ByteAngle(69),
+        on_ground: true,
+    };
+
     c.bench_function("encode_chunk_data", |b| {
         b.iter(|| {
             let encoder = black_box(&mut encoder);
@@ -156,6 +166,17 @@ fn packets(c: &mut Criterion) {
             encoder
                 .append_packet(&tab_list_header_footer_packet)
                 .unwrap();
+
+            black_box(encoder);
+        });
+    });
+
+    c.bench_function("encode_teleport_entity", |b| {
+        b.iter(|| {
+            let encoder = black_box(&mut encoder);
+
+            encoder.clear();
+            encoder.append_packet(&teleport_entity_packet).unwrap();
 
             black_box(encoder);
         });
@@ -187,19 +208,27 @@ fn packets(c: &mut Criterion) {
         });
     });
 
-    let mut chunk_data = vec![];
-    let mut tab_list_header_footer = vec![];
+    c.bench_function("encode_teleport_entity_compressed", |b| {
+        b.iter(|| {
+            let encoder = black_box(&mut encoder);
 
-    write_packet(&mut chunk_data, &chunk_data_packet).unwrap();
-    write_packet(&mut tab_list_header_footer, &tab_list_header_footer_packet).unwrap();
+            encoder.clear();
+            encoder.append_packet(&teleport_entity_packet).unwrap();
+
+            black_box(encoder);
+        });
+    });
 
     let mut decoder = PacketDecoder::new();
+    let mut packet_buf = vec![];
+
+    write_packet(&mut packet_buf, &chunk_data_packet).unwrap();
 
     c.bench_function("decode_chunk_data", |b| {
         b.iter(|| {
             let decoder = black_box(&mut decoder);
 
-            decoder.queue_slice(&chunk_data);
+            decoder.queue_slice(&packet_buf);
             decoder
                 .try_next_packet::<ChunkDataAndUpdateLight>()
                 .unwrap();
@@ -208,14 +237,31 @@ fn packets(c: &mut Criterion) {
         });
     });
 
+    packet_buf.clear();
+    write_packet(&mut packet_buf, &tab_list_header_footer_packet).unwrap();
+
     c.bench_function("decode_tab_list_header_footer", |b| {
         b.iter(|| {
             let decoder = black_box(&mut decoder);
 
-            decoder.queue_slice(&tab_list_header_footer);
+            decoder.queue_slice(&packet_buf);
             decoder
                 .try_next_packet::<SetTabListHeaderAndFooter>()
                 .unwrap();
+
+            black_box(decoder);
+        });
+    });
+
+    packet_buf.clear();
+    write_packet(&mut packet_buf, &teleport_entity_packet).unwrap();
+
+    c.bench_function("decode_teleport_entity", |b| {
+        b.iter(|| {
+            let decoder = black_box(&mut decoder);
+
+            decoder.queue_slice(&packet_buf);
+            decoder.try_next_packet::<TeleportEntity>().unwrap();
 
             black_box(decoder);
         });
@@ -225,23 +271,14 @@ fn packets(c: &mut Criterion) {
 
     let mut scratch = vec![];
 
-    chunk_data.clear();
-    write_packet_compressed(&mut chunk_data, 256, &mut scratch, &chunk_data_packet).unwrap();
-
-    tab_list_header_footer.clear();
-    write_packet_compressed(
-        &mut tab_list_header_footer,
-        256,
-        &mut scratch,
-        &tab_list_header_footer_packet,
-    )
-    .unwrap();
+    packet_buf.clear();
+    write_packet_compressed(&mut packet_buf, 256, &mut scratch, &chunk_data_packet).unwrap();
 
     c.bench_function("decode_chunk_data_compressed", |b| {
         b.iter(|| {
             let decoder = black_box(&mut decoder);
 
-            decoder.queue_slice(&chunk_data);
+            decoder.queue_slice(&packet_buf);
             decoder
                 .try_next_packet::<ChunkDataAndUpdateLight>()
                 .unwrap();
@@ -250,16 +287,69 @@ fn packets(c: &mut Criterion) {
         });
     });
 
+    packet_buf.clear();
+    write_packet_compressed(
+        &mut packet_buf,
+        256,
+        &mut scratch,
+        &tab_list_header_footer_packet,
+    )
+    .unwrap();
+
     c.bench_function("decode_tab_list_header_footer_compressed", |b| {
         b.iter(|| {
             let decoder = black_box(&mut decoder);
 
-            decoder.queue_slice(&tab_list_header_footer);
+            decoder.queue_slice(&packet_buf);
             decoder
                 .try_next_packet::<SetTabListHeaderAndFooter>()
                 .unwrap();
 
             black_box(decoder);
         });
+    });
+
+    packet_buf.clear();
+    write_packet_compressed(&mut packet_buf, 256, &mut scratch, &teleport_entity_packet).unwrap();
+
+    c.bench_function("decode_teleport_entity_compressed", |b| {
+        b.iter(|| {
+            let decoder = black_box(&mut decoder);
+
+            decoder.queue_slice(&packet_buf);
+            decoder.try_next_packet::<TeleportEntity>().unwrap();
+
+            black_box(decoder);
+        });
+    });
+}
+
+fn var_int(c: &mut Criterion) {
+    let mut rng = rand::thread_rng();
+
+    c.bench_function("VarInt::encode", |b| {
+        b.iter_with_setup(
+            || rng.gen(),
+            |i| {
+                let i: i32 = black_box(i);
+
+                let mut buf = [0; VarInt::MAX_SIZE];
+                let _ = black_box(VarInt(i).encode(buf.as_mut_slice()));
+            },
+        );
+    });
+
+    c.bench_function("VarInt::decode", |b| {
+        b.iter_with_setup(
+            || {
+                let mut buf = [0; VarInt::MAX_SIZE];
+                VarInt(rng.gen()).encode(buf.as_mut_slice()).unwrap();
+                buf
+            },
+            |buf| {
+                let mut r = black_box(buf.as_slice());
+                let _ = black_box(VarInt::decode(&mut r));
+            },
+        )
     });
 }
