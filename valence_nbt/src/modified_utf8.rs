@@ -77,23 +77,19 @@ fn encode_surrogate(surrogate: u16) -> [u8; 3] {
 }
 
 pub fn encoded_len(text: &str) -> usize {
-    if text.is_ascii() {
-        return text.len();
-    }
-
     let mut n = 0;
     let mut i = 0;
     let bytes = text.as_bytes();
 
     while i < bytes.len() {
         match bytes[i] {
-            0 => {
-                n += 2;
-                i += 1;
-            }
             // Fast path for ASCII here makes a huge difference in benchmarks.
             1..=127 => {
                 n += 1;
+                i += 1;
+            }
+            0 => {
+                n += 2;
                 i += 1;
             }
             b => {
