@@ -1,11 +1,11 @@
 use std::borrow::Cow;
 use std::io::Write;
 use std::mem;
+use std::mem::MaybeUninit;
 use std::rc::Rc;
 use std::sync::Arc;
 
 use anyhow::ensure;
-use arrayvec::ArrayVec;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use uuid::Uuid;
 use valence_nbt::Compound;
@@ -352,9 +352,24 @@ impl_tuple!(A B C D E F G H I J K L);
 
 // ==== Sequence ==== //
 
+impl<const N: usize> Encode for [u8; N] {
+    fn encode(&self, mut w: impl Write) -> Result<()> {
+        w.write_all(self)?;
+        Ok(())
+    }
+}
+
+impl Encode for [u8] {
+    fn encode(&self, mut w: impl Write) -> Result<()> {
+        VarInt(self.len() as i32).encode(&mut w)?;
+        w.write_all(self)?;
+        Ok(())
+    }
+}
+
 /// Like tuples, arrays are encoded and decoded without a VarInt length prefix.
 impl<const N: usize, T: Encode> Encode for [T; N] {
-    fn encode(&self, mut w: impl Write) -> Result<()> {
+    default fn encode(&self, mut w: impl Write) -> Result<()> {
         for t in self {
             t.encode(&mut w)?;
         }
@@ -369,14 +384,28 @@ impl<const N: usize, T: Encode> Encode for [T; N] {
 
 impl<'a, const N: usize, T: Decode<'a>> Decode<'a> for [T; N] {
     fn decode(r: &mut &'a [u8]) -> Result<Self> {
-        // TODO: rewrite using std::array::try_from_fn when stabilized.
+        // TODO: rewrite using std::array::try_from_fn when stabilized?
+        // TODO: specialization for [f64; 3] improved performance.
 
-        let mut elems = ArrayVec::new();
-        for _ in 0..N {
-            elems.push(T::decode(r)?);
+        let mut data: [MaybeUninit<T>; N] = unsafe { MaybeUninit::uninit().assume_init() };
+
+        for (i, elem) in data.iter_mut().enumerate() {
+            match T::decode(r) {
+                Ok(val) => {
+                    elem.write(val);
+                }
+                Err(e) => {
+                    // Call destructors for values decoded so far.
+                    for elem in &mut data[..i] {
+                        unsafe { elem.assume_init_drop() };
+                    }
+                    return Err(e);
+                }
+            }
         }
 
-        elems.into_inner().map_err(|_| unreachable!())
+        // All values in `data` are initialized.
+        unsafe { Ok(mem::transmute_copy(&data)) }
     }
 }
 
@@ -396,7 +425,7 @@ impl<'a, const N: usize> Decode<'a> for &'a [u8; N] {
 }
 
 impl<T: Encode> Encode for [T] {
-    fn encode(&self, mut w: impl Write) -> Result<()> {
+    default fn encode(&self, mut w: impl Write) -> Result<()> {
         let len = self.len();
         ensure!(
             len <= i32::MAX as usize,

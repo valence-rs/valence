@@ -8,6 +8,7 @@ use crate::{Decode, Encode};
 
 /// An `i32` encoded with variable length.
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[repr(transparent)]
 pub struct VarInt(pub i32);
 
 impl VarInt {

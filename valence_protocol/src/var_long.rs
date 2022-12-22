@@ -7,6 +7,7 @@ use crate::{Decode, Encode, Result};
 
 /// An `i64` encoded with variable length.
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[repr(transparent)]
 pub struct VarLong(pub i64);
 
 impl VarLong {

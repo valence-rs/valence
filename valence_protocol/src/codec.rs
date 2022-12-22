@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{Read, Write};
 
 #[cfg(feature = "encryption")]
 use aes::cipher::{AsyncStreamCipher, NewCipher};
@@ -29,24 +29,27 @@ impl PacketEncoder {
         Self::default()
     }
 
+    /*
     pub fn append_packet<P>(&mut self, pkt: &P) -> Result<()>
     where
         P: Encode + Packet + ?Sized,
     {
         self.append_or_prepend_packet::<true>(pkt)
-    }
+    }*/
 
     pub fn append_bytes(&mut self, bytes: &[u8]) {
         self.buf.extend_from_slice(bytes)
     }
 
+    /*
     pub fn prepend_packet<P>(&mut self, pkt: &P) -> Result<()>
     where
         P: Encode + Packet + ?Sized,
     {
         self.append_or_prepend_packet::<false>(pkt)
-    }
+    }*/
 
+    /*
     fn append_or_prepend_packet<const APPEND: bool>(
         &mut self,
         pkt: &(impl Encode + Packet + ?Sized),
@@ -166,6 +169,111 @@ impl PacketEncoder {
         }
 
         Ok(())
+    }*/
+
+    pub fn prepend_packet<P>(&mut self, pkt: &P) -> Result<()>
+    where
+        P: Encode + Packet + ?Sized,
+    {
+        let start_len = self.buf.len();
+        self.append_packet(pkt)?;
+
+        let end_len = self.buf.len();
+        let total_packet_len = end_len - start_len;
+
+        // 1) Move everything back by the length of the packet.
+        // 2) Move the packet to the new space at the front.
+        // 3) Truncate the old packet away.
+        self.buf.put_bytes(0, total_packet_len);
+        self.buf.copy_within(..end_len, total_packet_len);
+        self.buf.copy_within(total_packet_len + start_len.., 0);
+        self.buf.truncate(end_len);
+
+        Ok(())
+    }
+
+    pub fn append_packet<P>(&mut self, pkt: &P) -> Result<()>
+    where
+        P: Encode + Packet + ?Sized,
+    {
+        let start_len = self.buf.len();
+
+        pkt.encode((&mut self.buf).writer())?;
+
+        let data_len = self.buf.len() - start_len;
+
+        #[cfg(feature = "compression")]
+        if let Some(threshold) = self.compression_threshold {
+            use flate2::bufread::ZlibEncoder;
+            use flate2::Compression;
+
+            if data_len > threshold as usize {
+                let mut z = ZlibEncoder::new(&self.buf[start_len..], Compression::new(4));
+
+                self.compress_buf.clear();
+
+                let data_len_size = VarInt(data_len as i32).encoded_len();
+
+                let packet_len = data_len_size + z.read_to_end(&mut self.compress_buf)?;
+
+                ensure!(
+                    packet_len <= MAX_PACKET_SIZE as usize,
+                    "packet exceeds maximum length"
+                );
+
+                drop(z);
+
+                self.buf.truncate(start_len);
+
+                let mut writer = (&mut self.buf).writer();
+
+                VarInt(packet_len as i32).encode(&mut writer)?;
+                VarInt(data_len as i32).encode(&mut writer)?;
+                self.buf.extend_from_slice(&self.compress_buf);
+            } else {
+                let data_len_size = 1;
+                let packet_len = data_len_size + data_len;
+
+                ensure!(
+                    packet_len <= MAX_PACKET_SIZE as usize,
+                    "packet exceeds maximum length"
+                );
+
+                let packet_len_size = VarInt(packet_len as i32).encoded_len();
+
+                let data_prefix_len = packet_len_size + data_len_size;
+
+                self.buf.put_bytes(0, data_prefix_len);
+                self.buf
+                    .copy_within(start_len..start_len + data_len, start_len + data_prefix_len);
+
+                let mut front = &mut self.buf[start_len..];
+
+                VarInt(packet_len as i32).encode(&mut front)?;
+                // Zero for no compression on this packet.
+                VarInt(0).encode(front)?;
+            }
+
+            return Ok(());
+        }
+
+        let packet_len = data_len;
+
+        ensure!(
+            packet_len <= MAX_PACKET_SIZE as usize,
+            "packet exceeds maximum length"
+        );
+
+        let packet_len_size = VarInt(packet_len as i32).encoded_len();
+
+        self.buf.put_bytes(0, packet_len_size);
+        self.buf
+            .copy_within(start_len..start_len + data_len, start_len + packet_len_size);
+
+        let front = &mut self.buf[start_len..];
+        VarInt(packet_len as i32).encode(front)?;
+
+        Ok(())
     }
 
     /// Takes all the packets written so far and encrypts them if encryption is
@@ -197,15 +305,6 @@ impl PacketEncoder {
         assert!(self.cipher.is_none(), "encryption is already enabled");
         self.cipher = Some(NewCipher::new(key.into(), key.into()));
     }
-}
-
-/// Move the bytes in `bytes` forward by `count` bytes and return a
-/// mutable reference to the new space at the front.
-fn move_forward_by(bytes: &mut BytesMut, count: usize) -> &mut [u8] {
-    let len = bytes.len();
-    bytes.put_bytes(0, count);
-    bytes.copy_within(..len, count);
-    &mut bytes[..count]
 }
 
 pub fn write_packet<W, P>(mut writer: W, packet: &P) -> Result<()>
@@ -326,8 +425,6 @@ impl PacketDecoder {
             );
 
             if data_len != 0 {
-                use std::io::Read;
-
                 use anyhow::Context;
                 use flate2::bufread::ZlibDecoder;
 
@@ -507,6 +604,7 @@ mod tests {
         enc.enable_encryption(&CRYPT_KEY);
         enc.append_packet(&TestPacket::new("third")).unwrap();
         enc.prepend_packet(&TestPacket::new("fourth")).unwrap();
+
         buf.unsplit(enc.take());
 
         let mut dec = PacketDecoder::new();

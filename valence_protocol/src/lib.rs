@@ -44,7 +44,7 @@
 //!
 //! TODO
 
-#![forbid(unsafe_code)]
+#![feature(min_specialization, array_try_from_fn)]
 #![deny(
     rustdoc::broken_intra_doc_links,
     rustdoc::private_intra_doc_links,
