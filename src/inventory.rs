@@ -1,7 +1,7 @@
 use std::iter::FusedIterator;
 use std::mem;
 use std::num::Wrapping;
-use std::ops::{Deref, DerefMut, Index, IndexMut};
+use std::ops::{Deref, DerefMut, Index, IndexMut, Range};
 
 use valence_protocol::packets::s2c::play::SetContainerSlotEncode;
 use valence_protocol::{InventoryKind, ItemStack, Text, VarInt};
@@ -9,6 +9,13 @@ use valence_protocol::{InventoryKind, ItemStack, Text, VarInt};
 use crate::config::Config;
 use crate::server::PlayPacketSender;
 use crate::slab_versioned::{Key, VersionedSlab};
+
+/// The range of slot ids that represent a player's general inventory, excluding the hotbar and offhand.
+pub const GENERAL_SLOTS: Range<u16> = 9..36;
+/// The range of slot ids that represent a player's hotbar inventory, excluding the offhand.
+pub const HOTBAR_SLOTS: Range<u16> = 36..44;
+/// The slot id that represents a player's offhand.
+pub const OFFHAND_SLOT: u16 = 45;
 
 pub struct Inventories<C: Config> {
     slab: VersionedSlab<Inventory<C>>,
