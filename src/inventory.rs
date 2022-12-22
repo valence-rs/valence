@@ -10,6 +10,8 @@ use crate::config::Config;
 use crate::server::PlayPacketSender;
 use crate::slab_versioned::{Key, VersionedSlab};
 
+/// The range of slot ids that represent all of a player's inventory.
+pub const PLAYER_INVENTORY_SLOTS: Range<u16> = 0..46;
 /// The range of slot ids that represent a player's general inventory, excluding the hotbar and offhand.
 pub const GENERAL_SLOTS: Range<u16> = 9..36;
 /// The range of slot ids that represent a player's hotbar inventory, excluding the offhand.
