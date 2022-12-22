@@ -1,14 +1,9 @@
-pub fn main() {
-    todo!("reimplement when inventories are re-added");
-}
-
-/*
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use num::Integer;
+use valence::inventory::{GENERAL_SLOTS, HOTBAR_SLOTS};
 use valence::prelude::*;
-use valence::protocol::VarInt;
 
 pub fn main() -> ShutdownResult {
     tracing_subscriber::fmt().init();
@@ -37,7 +32,8 @@ struct ServerState {
 
 #[derive(Default)]
 struct ClientState {
-    entity_id: EntityId,
+    /// The client's player entity.
+    player: EntityId,
     // open_inventory: Option<WindowInventory>,
 }
 
@@ -106,12 +102,11 @@ impl Config for Game {
         world.chunks.set_block_state((50, 1, 54), BlockState::CHEST);
 
         // create chest inventory
-        let inv = ConfigurableInventory::new(27, VarInt(2), None);
         let title = "Extra".italic()
             + " Chesty".not_italic().bold().color(Color::RED)
             + " Chest".not_italic();
 
-        let (id, _inv) = server.inventories.insert(inv, title, ());
+        let (id, _inv) = server.inventories.insert(InventoryKind::Generic9x3, title, ());
         server.state.chest = id;
     }
 
@@ -149,7 +144,7 @@ impl Config for Game {
                 {
                     Some((id, entity)) => {
                         entity.set_world(world_id);
-                        client.state.entity_id = id
+                        client.state.player = id
                     }
                     None => {
                         client.disconnect("Conflicting UUID");
@@ -176,7 +171,7 @@ impl Config for Game {
                 client.send_message("Welcome to Valence! Sneak to give yourself an item.".italic());
             }
 
-            let player = server.entities.get_mut(client.state.entity_id).unwrap();
+            let player = server.entities.get_mut(client.state.player).unwrap();
 
             while let Some(event) = client.next_event() {
                 event.handle_default(client, player);
@@ -186,10 +181,10 @@ impl Config for Game {
                             && world.chunks.block_state(position) == Some(BlockState::CHEST)
                         {
                             client.send_message("Opening chest!");
-                            client.open_inventory(server.state.chest);
+                            client.set_open_inventory(server.state.chest);
                         }
                     }
-                    ClientEvent::CloseScreen { window_id } => {
+                    ClientEvent::CloseContainer { window_id } => {
                         if window_id > 0 {
                             client.send_message(format!("Window closed: {}", window_id));
                             client.send_message(format!("Chest: {:?}", server.state.chest));
@@ -209,32 +204,31 @@ impl Config for Game {
                              slot_changes: {:?}, carried_item: {:?}",
                             window_id, state_id, slot_id, mode, slot_changes, carried_item
                         );
-                        client.cursor_held_item = carried_item;
-                        if let Some(window) = client.open_inventory.as_mut() {
+                        client.replace_cursor_item(carried_item);
+                        if let Some(id) = client.open_inventory() {
                             if let Some(obj_inv) =
-                                server.inventories.get_mut(window.object_inventory)
+                                server.inventories.get_mut(id)
                             {
                                 for (slot_id, slot) in slot_changes {
-                                    if slot_id < obj_inv.slot_count() as SlotId {
-                                        obj_inv.set_slot(slot_id, slot);
+                                    let slot_id = slot_id as u16;
+                                    if slot_id < obj_inv.slot_count() {
+                                        obj_inv.replace_slot(slot_id, slot);
                                     } else {
-                                        let offset = obj_inv.slot_count() as SlotId;
-                                        client.inventory.set_slot(
-                                            slot_id - offset + PlayerInventory::GENERAL_SLOTS.start,
-                                            slot,
-                                        );
+                                        let offset = obj_inv.slot_count();
+                                        let player_slot_id = slot_id - offset + GENERAL_SLOTS.start;
+                                        client.replace_slot(player_slot_id, slot);
                                     }
                                 }
                             }
                         }
                     }
                     ClientEvent::StartSneaking => {
-                        let slot_id: SlotId = PlayerInventory::HOTBAR_SLOTS.start;
-                        let stack = match client.inventory.slot(slot_id) {
+                        let slot_id = HOTBAR_SLOTS.start;
+                        let stack = match client.slot(slot_id) {
                             None => ItemStack::new(ItemKind::Stone, 1, None),
                             Some(s) => ItemStack::new(s.item, s.count() + 1, None),
                         };
-                        client.inventory.set_slot(slot_id, Some(stack));
+                        client.replace_slot(slot_id, Some(stack));
                     }
                     _ => {}
                 }
@@ -242,7 +236,7 @@ impl Config for Game {
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.remove(client.state.entity_id);
+                server.entities[client.player].set_deleted(true);
                 if let Some(id) = &server.state.player_list {
                     server.player_lists[id].remove(client.uuid());
                 }
@@ -258,11 +252,8 @@ impl Config for Game {
     }
 }
 
-fn rotate_items(inv: &mut ConfigurableInventory) {
+fn rotate_items<C: Config>(inv: &mut Inventory<C>) {
     for i in 1..inv.slot_count() {
-        let a = inv.slot((i - 1) as SlotId);
-        let b = inv.set_slot(i as SlotId, a.cloned());
-        inv.set_slot((i - 1) as SlotId, b);
+        inv.swap_slot(i - 1, i);
     }
 }
-*/
