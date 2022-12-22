@@ -44,7 +44,6 @@
 //!
 //! TODO
 
-#![feature(min_specialization, array_try_from_fn)]
 #![deny(
     rustdoc::broken_intra_doc_links,
     rustdoc::private_intra_doc_links,
@@ -69,6 +68,7 @@
 // Allows us to use our own proc macros internally.
 extern crate self as valence_protocol;
 
+use std::io;
 use std::io::Write;
 
 pub use anyhow::{Error, Result};
@@ -219,6 +219,18 @@ pub trait Encode {
         let _ = self.encode(&mut counter);
         counter.0
     }
+
+    #[doc(hidden)]
+    fn write_slice(slice: &[Self], w: impl Write) -> io::Result<()>
+    where
+        Self: Sized,
+    {
+        let _ = (slice, w);
+        unimplemented!("for internal use in valence_protocol only")
+    }
+
+    #[doc(hidden)]
+    const HAS_WRITE_SLICE: bool = false;
 }
 
 /// The `Decode` trait allows objects to be read from the Minecraft protocol. It

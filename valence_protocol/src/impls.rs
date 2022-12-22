@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 use std::io::Write;
-use std::mem;
 use std::mem::MaybeUninit;
 use std::rc::Rc;
 use std::sync::Arc;
+use std::{io, mem};
 
 use anyhow::ensure;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -22,6 +22,13 @@ impl Encode for bool {
     fn encoded_len(&self) -> usize {
         1
     }
+
+    fn write_slice(slice: &[bool], mut w: impl Write) -> io::Result<()> {
+        let bytes: &[u8] = unsafe { mem::transmute(slice) };
+        w.write_all(bytes)
+    }
+
+    const HAS_WRITE_SLICE: bool = true;
 }
 
 impl Decode<'_> for bool {
@@ -40,6 +47,12 @@ impl Encode for u8 {
     fn encoded_len(&self) -> usize {
         1
     }
+
+    fn write_slice(slice: &[u8], mut w: impl Write) -> io::Result<()> {
+        w.write_all(slice)
+    }
+
+    const HAS_WRITE_SLICE: bool = true;
 }
 
 impl Decode<'_> for u8 {
@@ -56,6 +69,16 @@ impl Encode for i8 {
     fn encoded_len(&self) -> usize {
         1
     }
+
+    fn write_slice(slice: &[i8], mut w: impl Write) -> io::Result<()>
+    where
+        Self: Sized,
+    {
+        let bytes: &[u8] = unsafe { mem::transmute(slice) };
+        w.write_all(bytes)
+    }
+
+    const HAS_WRITE_SLICE: bool = true;
 }
 
 impl Decode<'_> for i8 {
@@ -352,24 +375,13 @@ impl_tuple!(A B C D E F G H I J K L);
 
 // ==== Sequence ==== //
 
-impl<const N: usize> Encode for [u8; N] {
-    fn encode(&self, mut w: impl Write) -> Result<()> {
-        w.write_all(self)?;
-        Ok(())
-    }
-}
-
-impl Encode for [u8] {
-    fn encode(&self, mut w: impl Write) -> Result<()> {
-        VarInt(self.len() as i32).encode(&mut w)?;
-        w.write_all(self)?;
-        Ok(())
-    }
-}
-
 /// Like tuples, arrays are encoded and decoded without a VarInt length prefix.
 impl<const N: usize, T: Encode> Encode for [T; N] {
-    default fn encode(&self, mut w: impl Write) -> Result<()> {
+    fn encode(&self, mut w: impl Write) -> Result<()> {
+        if T::HAS_WRITE_SLICE {
+            return Ok(T::write_slice(self, w)?);
+        }
+
         for t in self {
             t.encode(&mut w)?;
         }
@@ -425,7 +437,7 @@ impl<'a, const N: usize> Decode<'a> for &'a [u8; N] {
 }
 
 impl<T: Encode> Encode for [T] {
-    default fn encode(&self, mut w: impl Write) -> Result<()> {
+    fn encode(&self, mut w: impl Write) -> Result<()> {
         let len = self.len();
         ensure!(
             len <= i32::MAX as usize,
@@ -433,6 +445,11 @@ impl<T: Encode> Encode for [T] {
         );
 
         VarInt(len as i32).encode(&mut w)?;
+
+        if T::HAS_WRITE_SLICE {
+            return Ok(T::write_slice(self, w)?);
+        }
+
         for t in self {
             t.encode(&mut w)?;
         }

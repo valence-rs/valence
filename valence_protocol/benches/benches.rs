@@ -9,7 +9,7 @@ use valence_protocol::packets::s2c::play::{
 };
 use valence_protocol::text::Color;
 use valence_protocol::{
-    write_packet, write_packet_compressed, ByteAngle, Decode, Encode, ItemKind,
+    encode_packet, encode_packet_compressed, ByteAngle, Decode, Encode, ItemKind,
     LengthPrefixedArray, PacketDecoder, PacketEncoder, TextFormat, VarInt,
 };
 
@@ -225,7 +225,7 @@ fn packets(c: &mut Criterion) {
     let mut decoder = PacketDecoder::new();
     let mut packet_buf = vec![];
 
-    write_packet(&mut packet_buf, &chunk_data_packet).unwrap();
+    encode_packet(&mut packet_buf, &chunk_data_packet).unwrap();
 
     c.bench_function("decode_chunk_data", |b| {
         b.iter(|| {
@@ -241,7 +241,7 @@ fn packets(c: &mut Criterion) {
     });
 
     packet_buf.clear();
-    write_packet(&mut packet_buf, &tab_list_header_footer_packet).unwrap();
+    encode_packet(&mut packet_buf, &tab_list_header_footer_packet).unwrap();
 
     c.bench_function("decode_tab_list_header_footer", |b| {
         b.iter(|| {
@@ -257,7 +257,7 @@ fn packets(c: &mut Criterion) {
     });
 
     packet_buf.clear();
-    write_packet(&mut packet_buf, &spawn_entity_packet).unwrap();
+    encode_packet(&mut packet_buf, &spawn_entity_packet).unwrap();
 
     c.bench_function("decode_spawn_entity", |b| {
         b.iter(|| {
@@ -275,7 +275,7 @@ fn packets(c: &mut Criterion) {
     let mut scratch = vec![];
 
     packet_buf.clear();
-    write_packet_compressed(&mut packet_buf, 256, &mut scratch, &chunk_data_packet).unwrap();
+    encode_packet_compressed(&mut packet_buf, &chunk_data_packet, 256, &mut scratch).unwrap();
 
     c.bench_function("decode_chunk_data_compressed", |b| {
         b.iter(|| {
@@ -291,11 +291,11 @@ fn packets(c: &mut Criterion) {
     });
 
     packet_buf.clear();
-    write_packet_compressed(
+    encode_packet_compressed(
         &mut packet_buf,
+        &tab_list_header_footer_packet,
         256,
         &mut scratch,
-        &tab_list_header_footer_packet,
     )
     .unwrap();
 
@@ -313,7 +313,7 @@ fn packets(c: &mut Criterion) {
     });
 
     packet_buf.clear();
-    write_packet_compressed(&mut packet_buf, 256, &mut scratch, &spawn_entity_packet).unwrap();
+    encode_packet_compressed(&mut packet_buf, &spawn_entity_packet, 256, &mut scratch).unwrap();
 
     c.bench_function("decode_spawn_entity_compressed", |b| {
         b.iter(|| {
@@ -368,5 +368,14 @@ fn decode_array(c: &mut Criterion) {
             let mut r = black_box(buf.as_slice());
             let _ = black_box(<[f64; 3]>::decode(&mut r));
         });
+    });
+
+    let bytes = [42; 4096];
+
+    c.bench_function("<[u8; 4096]>::decode", |b| {
+        b.iter(|| {
+            let mut r = black_box(bytes.as_slice());
+            let _ = black_box(<[u8; 4096]>::decode(&mut r));
+        })
     });
 }
