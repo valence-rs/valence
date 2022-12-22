@@ -892,7 +892,7 @@ impl<C: Config> Client<C> {
     pub fn replace_cursor_item(&mut self, item: impl Into<Option<ItemStack>>) -> Option<ItemStack> {
         let new = item.into();
         if self.cursor_item != new {
-            todo!("set cursor item bit");
+            self.bits.set_cursor_item_modified(true);
         }
 
         mem::replace(&mut self.cursor_item, new)
