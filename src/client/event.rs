@@ -17,6 +17,7 @@ use valence_protocol::{BlockFace, BlockPos, Ident, ItemStack, VarLong};
 use crate::client::Client;
 use crate::config::Config;
 use crate::entity::{Entity, EntityEvent, TrackedData};
+use crate::inventory::PLAYER_INVENTORY_SLOTS;
 
 /// A discrete action performed by a client.
 ///
@@ -361,11 +362,20 @@ pub(super) fn next_event_fallible<C: Config>(
             },
             C2sPlayPacket::ClickContainer(p) => {
                 // TODO: check that the slot modifications are legal.
-                // TODO: update cursor item.
 
-                for (idx, item) in &p.slots {
-                    // TODO: check bounds on indices.
-                    client.slots[*idx as usize] = item.clone();
+                client.replace_cursor_item(p.carried_item.clone());
+
+                // Because we don't have a reference to the server's Inventories,
+                // we can only safely update the client's slots if there is no inventory open.
+                // Implementation-wise, this means that users will have to manually implement
+                // slot changes with an open inventory.
+                // TODO: It might be a good idea to just have users implement all of it, or maybe provide a helper.
+                if client.open_inventory().is_none() {
+                    for (idx, item) in &p.slots {
+                        if PLAYER_INVENTORY_SLOTS.contains(&((*idx) as u16)) {
+                            client.slots[*idx as usize] = item.clone();
+                        }
+                    }
                 }
 
                 ClientEvent::ClickContainer {

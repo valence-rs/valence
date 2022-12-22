@@ -204,7 +204,7 @@ impl Config for Game {
                              slot_changes: {:?}, carried_item: {:?}",
                             window_id, state_id, slot_id, mode, slot_changes, carried_item
                         );
-                        client.replace_cursor_item(carried_item);
+                        // client.replace_cursor_item(carried_item); // unnecessary, handled automatically by valence
                         if let Some(id) = client.open_inventory() {
                             if let Some(obj_inv) =
                                 server.inventories.get_mut(id)
