@@ -390,6 +390,14 @@ impl<'a> Decode<'a> for &'a [u8] {
     }
 }
 
+impl<'a> Decode<'a> for &'a [i8] {
+    fn decode(r: &mut &'a [u8]) -> Result<Self> {
+        let unsigned_bytes = <&[u8]>::decode(r)?;
+        let signed_bytes: &[i8] = unsafe { mem::transmute(unsigned_bytes) };
+        Ok(signed_bytes)
+    }
+}
+
 impl<T: Encode> Encode for Vec<T> {
     fn encode(&self, w: impl Write) -> Result<()> {
         self.as_slice().encode(w)

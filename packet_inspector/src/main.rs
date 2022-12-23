@@ -1,11 +1,11 @@
 use std::error::Error;
+use std::fmt::Write;
 use std::io::ErrorKind;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::{fmt, io};
 
 use anyhow::bail;
-use chrono::{DateTime, Utc};
 use clap::Parser;
 use regex::Regex;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -21,7 +21,7 @@ use valence_protocol::packets::s2c::login::{LoginSuccess, S2cLoginPacket};
 use valence_protocol::packets::s2c::play::S2cPlayPacket;
 use valence_protocol::packets::s2c::status::{PingResponse, StatusResponse};
 use valence_protocol::types::HandshakeNextState;
-use valence_protocol::{Decode, Encode, Packet, PacketDecoder, PacketEncoder};
+use valence_protocol::{DecodePacket, EncodePacket, PacketDecoder, PacketEncoder};
 
 #[derive(Parser, Clone, Debug)]
 #[clap(author, version, about)]
@@ -48,9 +48,6 @@ struct Cli {
     /// there is no limit.
     #[clap(short, long)]
     max_connections: Option<usize>,
-    /// Print a timestamp before each packet.
-    #[clap(short, long)]
-    timestamp: bool,
 }
 
 struct State {
@@ -59,12 +56,13 @@ struct State {
     dec: PacketDecoder,
     read: OwnedReadHalf,
     write: OwnedWriteHalf,
+    buf: String,
 }
 
 impl State {
     pub async fn rw_packet<'a, P>(&'a mut self) -> anyhow::Result<P>
     where
-        P: Decode<'a> + Encode + Packet + fmt::Debug,
+        P: DecodePacket<'a> + EncodePacket + fmt::Debug,
     {
         while !self.dec.has_next_packet()? {
             self.dec.reserve(4096);
@@ -84,24 +82,24 @@ impl State {
         let bytes = self.enc.take();
         self.write.write_all(&bytes).await?;
 
+        self.buf.clear();
+        write!(&mut self.buf, "{pkt:?}")?;
+
+        let packet_name = self.buf.split_ascii_whitespace().next().unwrap();
+
         if let Some(r) = &self.cli.include_regex {
-            if !r.is_match(pkt.packet_name()) {
+            if !r.is_match(packet_name) {
                 return Ok(pkt);
             }
         }
 
         if let Some(r) = &self.cli.exclude_regex {
-            if r.is_match(pkt.packet_name()) {
+            if r.is_match(packet_name) {
                 return Ok(pkt);
             }
         }
 
-        if self.cli.timestamp {
-            let now: DateTime<Utc> = Utc::now();
-            println!("{now} {pkt:#?}");
-        } else {
-            println!("{pkt:#?}");
-        }
+        println!("{}", self.buf);
 
         Ok(pkt)
     }
@@ -156,6 +154,7 @@ async fn handle_connection(client: TcpStream, cli: Arc<Cli>) -> anyhow::Result<(
         dec: PacketDecoder::new(),
         read: server_read,
         write: client_write,
+        buf: String::new(),
     };
 
     let mut c2s = State {
@@ -164,6 +163,7 @@ async fn handle_connection(client: TcpStream, cli: Arc<Cli>) -> anyhow::Result<(
         dec: PacketDecoder::new(),
         read: client_read,
         write: server_write,
+        buf: String::new(),
     };
 
     let handshake: Handshake = c2s.rw_packet().await?;

@@ -4,7 +4,7 @@ use anyhow::{bail, ensure};
 use bytes::{Buf, BufMut, BytesMut};
 
 use crate::var_int::{VarInt, VarIntDecodeError};
-use crate::{Decode, Encode, Packet, Result, MAX_PACKET_SIZE};
+use crate::{DecodePacket, Encode, EncodePacket, Result, MAX_PACKET_SIZE};
 
 /// The AES block cipher with a 128 bit key, using the CFB-8 mode of
 /// operation.
@@ -33,7 +33,7 @@ impl PacketEncoder {
 
     pub fn prepend_packet<P>(&mut self, pkt: &P) -> Result<()>
     where
-        P: Encode + Packet + ?Sized,
+        P: EncodePacket + ?Sized,
     {
         let start_len = self.buf.len();
         self.append_packet(pkt)?;
@@ -54,11 +54,11 @@ impl PacketEncoder {
 
     pub fn append_packet<P>(&mut self, pkt: &P) -> Result<()>
     where
-        P: Encode + Packet + ?Sized,
+        P: EncodePacket + ?Sized,
     {
         let start_len = self.buf.len();
 
-        pkt.encode((&mut self.buf).writer())?;
+        pkt.encode_packet((&mut self.buf).writer())?;
 
         let data_len = self.buf.len() - start_len;
 
@@ -171,11 +171,11 @@ impl PacketEncoder {
 
 pub fn encode_packet<P>(buf: &mut Vec<u8>, pkt: &P) -> Result<()>
 where
-    P: Encode + Packet + ?Sized,
+    P: EncodePacket + ?Sized,
 {
     let start_len = buf.len();
 
-    pkt.encode(&mut *buf)?;
+    pkt.encode_packet(&mut *buf)?;
 
     let packet_len = buf.len() - start_len;
 
@@ -206,7 +206,7 @@ pub fn encode_packet_compressed<P>(
     scratch: &mut Vec<u8>,
 ) -> Result<()>
 where
-    P: Encode + Packet + ?Sized,
+    P: EncodePacket + ?Sized,
 {
     use std::io::Read;
 
@@ -215,7 +215,7 @@ where
 
     let start_len = buf.len();
 
-    pkt.encode(&mut *buf)?;
+    pkt.encode_packet(&mut *buf)?;
 
     let data_len = buf.len() - start_len;
 
@@ -285,7 +285,7 @@ impl PacketDecoder {
 
     pub fn try_next_packet<'a, P>(&'a mut self) -> Result<Option<P>>
     where
-        P: Decode<'a> + Packet,
+        P: DecodePacket<'a>,
     {
         self.buf.advance(self.cursor);
         self.cursor = 0;
@@ -316,6 +316,8 @@ impl PacketDecoder {
             use anyhow::Context;
             use flate2::bufread::ZlibDecoder;
 
+            use crate::Decode;
+
             let data_len = VarInt::decode(&mut r)?.0;
 
             ensure!(
@@ -332,16 +334,16 @@ impl PacketDecoder {
                     .context("decompressing packet")?;
 
                 r = &self.decompress_buf;
-                P::decode(&mut r)?
+                P::decode_packet(&mut r)?
             } else {
-                P::decode(&mut r)?
+                P::decode_packet(&mut r)?
             }
         } else {
-            P::decode(&mut r)?
+            P::decode_packet(&mut r)?
         };
 
         #[cfg(not(feature = "compression"))]
-        let packet = P::decode(&mut r)?;
+        let packet = P::decode_packet(&mut r)?;
 
         ensure!(
             r.is_empty(),
@@ -433,11 +435,12 @@ mod tests {
     use crate::text::{Text, TextFormat};
     use crate::username::Username;
     use crate::var_long::VarLong;
+    use crate::Decode;
 
     #[cfg(feature = "encryption")]
     const CRYPT_KEY: [u8; 16] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 
-    #[derive(PartialEq, Debug, Encode, Decode, Packet)]
+    #[derive(PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 42]
     struct TestPacket<'a> {
         a: bool,

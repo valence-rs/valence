@@ -27,7 +27,7 @@ use valence_protocol::types::{
     SyncPlayerPosLookFlags,
 };
 use valence_protocol::{
-    BlockPos, Encode, Ident, ItemStack, Packet, RawBytes, Text, Username, VarInt,
+    BlockPos, EncodePacket, Ident, ItemStack, RawBytes, Text, Username, VarInt,
 };
 use vek::Vec3;
 
@@ -344,7 +344,7 @@ impl<C: Config> Client<C> {
     /// effect if the client is already disconnected.
     pub fn queue_packet<P>(&mut self, pkt: &P)
     where
-        P: Encode + Packet + fmt::Debug + ?Sized,
+        P: EncodePacket + fmt::Debug + ?Sized,
     {
         if let Some(send) = &mut self.send {
             if let Err(e) = send.append_packet(pkt) {

@@ -9,7 +9,7 @@ use tokio::sync::OwnedSemaphorePermit;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 use tracing::debug;
-use valence_protocol::{Decode, Encode, Packet, PacketDecoder, PacketEncoder};
+use valence_protocol::{DecodePacket, EncodePacket, PacketDecoder, PacketEncoder};
 
 use crate::packet::WritePacket;
 use crate::server::byte_channel::{byte_channel, ByteReceiver, ByteSender, TryRecvError};
@@ -50,7 +50,7 @@ where
 
     pub async fn send_packet<P>(&mut self, pkt: &P) -> Result<()>
     where
-        P: Encode + Packet + ?Sized,
+        P: EncodePacket + ?Sized,
     {
         self.enc.append_packet(pkt)?;
         let bytes = self.enc.take();
@@ -60,7 +60,7 @@ where
 
     pub async fn recv_packet<'a, P>(&'a mut self) -> Result<P>
     where
-        P: Decode<'a> + Packet,
+        P: DecodePacket<'a>,
     {
         timeout(self.timeout, async {
             while !self.dec.has_next_packet()? {
@@ -196,7 +196,7 @@ pub struct PlayPacketSender {
 impl PlayPacketSender {
     pub fn append_packet<P>(&mut self, pkt: &P) -> Result<()>
     where
-        P: Encode + Packet + ?Sized,
+        P: EncodePacket + ?Sized,
     {
         self.enc.append_packet(pkt)
     }
@@ -207,7 +207,7 @@ impl PlayPacketSender {
 
     pub fn prepend_packet<P>(&mut self, pkt: &P) -> Result<()>
     where
-        P: Encode + Packet + ?Sized,
+        P: EncodePacket + ?Sized,
     {
         self.enc.prepend_packet(pkt)
     }
@@ -222,7 +222,7 @@ impl PlayPacketSender {
 impl WritePacket for PlayPacketSender {
     fn write_packet<P>(&mut self, packet: &P) -> Result<()>
     where
-        P: Encode + Packet + ?Sized,
+        P: EncodePacket + ?Sized,
     {
         self.append_packet(packet)
     }
@@ -259,7 +259,7 @@ pub struct PlayPacketReceiver {
 impl PlayPacketReceiver {
     pub fn try_next_packet<'a, P>(&'a mut self) -> Result<Option<P>>
     where
-        P: Decode<'a> + Packet,
+        P: DecodePacket<'a>,
     {
         self.dec.try_next_packet()
     }

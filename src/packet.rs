@@ -1,11 +1,11 @@
 use std::io::Write;
 
-use valence_protocol::{encode_packet, encode_packet_compressed, Encode, Packet};
+use valence_protocol::{encode_packet, encode_packet_compressed, EncodePacket};
 
 pub trait WritePacket {
     fn write_packet<P>(&mut self, packet: &P) -> anyhow::Result<()>
     where
-        P: Encode + Packet + ?Sized;
+        P: EncodePacket + ?Sized;
 
     fn write_bytes(&mut self, bytes: &[u8]) -> anyhow::Result<()>;
 }
@@ -13,7 +13,7 @@ pub trait WritePacket {
 impl<W: WritePacket> WritePacket for &mut W {
     fn write_packet<P>(&mut self, packet: &P) -> anyhow::Result<()>
     where
-        P: Encode + Packet + ?Sized,
+        P: EncodePacket + ?Sized,
     {
         (*self).write_packet(packet)
     }
@@ -42,7 +42,7 @@ impl<'a> PacketWriter<'a> {
 impl WritePacket for PacketWriter<'_> {
     fn write_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
     where
-        P: Encode + Packet + ?Sized,
+        P: EncodePacket + ?Sized,
     {
         if let Some(threshold) = self.threshold {
             encode_packet_compressed(self.buf, pkt, threshold, self.scratch)
