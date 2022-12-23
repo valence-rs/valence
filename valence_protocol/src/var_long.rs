@@ -14,6 +14,15 @@ impl VarLong {
     /// The maximum number of bytes a `VarLong` can occupy when read from and
     /// written to the Minecraft protocol.
     pub const MAX_SIZE: usize = 10;
+
+    /// Returns the exact number of bytes this varlong will write when
+    /// [`Encode::encode`] is called, assuming no error occurs.
+    pub fn written_size(self) -> usize {
+        match self.0 {
+            0 => 1,
+            n => (63 - n.leading_zeros() as usize) / 7 + 1,
+        }
+    }
 }
 
 impl Encode for VarLong {
@@ -26,13 +35,6 @@ impl Encode for VarLong {
             }
             w.write_u8(val as u8 & 0b01111111 | 0b10000000)?;
             val >>= 7;
-        }
-    }
-
-    fn encoded_len(&self) -> usize {
-        match self.0 {
-            0 => 1,
-            n => (63 - n.leading_zeros() as usize) / 7 + 1,
         }
     }
 }

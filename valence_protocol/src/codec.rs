@@ -74,7 +74,7 @@ impl PacketEncoder {
 
                 self.compress_buf.clear();
 
-                let data_len_size = VarInt(data_len as i32).encoded_len();
+                let data_len_size = VarInt(data_len as i32).written_size();
 
                 let packet_len = data_len_size + z.read_to_end(&mut self.compress_buf)?;
 
@@ -101,7 +101,7 @@ impl PacketEncoder {
                     "packet exceeds maximum length"
                 );
 
-                let packet_len_size = VarInt(packet_len as i32).encoded_len();
+                let packet_len_size = VarInt(packet_len as i32).written_size();
 
                 let data_prefix_len = packet_len_size + data_len_size;
 
@@ -126,7 +126,7 @@ impl PacketEncoder {
             "packet exceeds maximum length"
         );
 
-        let packet_len_size = VarInt(packet_len as i32).encoded_len();
+        let packet_len_size = VarInt(packet_len as i32).written_size();
 
         self.buf.put_bytes(0, packet_len_size);
         self.buf
@@ -184,7 +184,7 @@ where
         "packet exceeds maximum length"
     );
 
-    let packet_len_size = VarInt(packet_len as i32).encoded_len();
+    let packet_len_size = VarInt(packet_len as i32).written_size();
 
     buf.put_bytes(0, packet_len_size);
     buf.copy_within(
@@ -224,7 +224,7 @@ where
 
         scratch.clear();
 
-        let data_len_size = VarInt(data_len as i32).encoded_len();
+        let data_len_size = VarInt(data_len as i32).written_size();
 
         let packet_len = data_len_size + z.read_to_end(scratch)?;
 
@@ -249,7 +249,7 @@ where
             "packet exceeds maximum length"
         );
 
-        let packet_len_size = VarInt(packet_len as i32).encoded_len();
+        let packet_len_size = VarInt(packet_len as i32).written_size();
 
         let data_prefix_len = packet_len_size + data_len_size;
 
@@ -349,7 +349,7 @@ impl PacketDecoder {
             r.len()
         );
 
-        let total_packet_len = VarInt(packet_len).encoded_len() + packet_len as usize;
+        let total_packet_len = VarInt(packet_len).written_size() + packet_len as usize;
         self.cursor = total_packet_len;
 
         Ok(Some(packet))

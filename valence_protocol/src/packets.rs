@@ -51,16 +51,6 @@ macro_rules! packet_enum {
 
                 Ok(())
             }
-
-            fn encoded_len(&self) -> usize {
-                match self {
-                    $(
-                        Self::$packet(pkt) => {
-                            pkt.encoded_len()
-                        }
-                    )*
-                }
-            }
         }
 
         impl<$enum_life> crate::Decode<$enum_life> for $enum_name<$enum_life> {
@@ -135,16 +125,6 @@ macro_rules! packet_enum {
                 }
 
                 Ok(())
-            }
-
-            fn encoded_len(&self) -> usize {
-                match self {
-                    $(
-                        Self::$packet(pkt) => {
-                            pkt.encoded_len()
-                        }
-                    )*
-                }
             }
         }
 

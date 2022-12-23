@@ -29,10 +29,6 @@ where
 
         self.0.encode(w)
     }
-
-    fn encoded_len(&self) -> usize {
-        self.0.encoded_len()
-    }
 }
 
 impl<'a, T, const MIN: i128, const MAX: i128> Decode<'a> for BoundedInt<T, MIN, MAX>
@@ -81,10 +77,6 @@ where
         s.encode(w)?;
 
         Ok(())
-    }
-
-    fn encoded_len(&self) -> usize {
-        self.0.as_ref().encoded_len()
     }
 }
 

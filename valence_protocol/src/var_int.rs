@@ -16,6 +16,15 @@ impl VarInt {
     /// written to the Minecraft protocol.
     pub const MAX_SIZE: usize = 5;
 
+    /// Returns the exact number of bytes this varint will write when
+    /// [`Encode::encode`] is called, assuming no error occurs.
+    pub fn written_size(self) -> usize {
+        match self.0 {
+            0 => 1,
+            n => (31 - n.leading_zeros() as usize) / 7 + 1,
+        }
+    }
+
     pub fn decode_partial(mut r: impl Read) -> Result<i32, VarIntDecodeError> {
         let mut val = 0;
         for i in 0..Self::MAX_SIZE {
@@ -48,14 +57,6 @@ impl Encode for VarInt {
             }
             w.write_u8(val as u8 & 0b01111111 | 0b10000000)?;
             val >>= 7;
-        }
-    }
-
-    #[inline]
-    fn encoded_len(&self) -> usize {
-        match self.0 {
-            0 => 1,
-            n => (31 - n.leading_zeros() as usize) / 7 + 1,
         }
     }
 }
@@ -93,7 +94,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn encoded_len_correct() {
+    fn varint_written_size() {
         let mut rng = thread_rng();
         let mut buf = vec![];
 
@@ -104,12 +105,12 @@ mod tests {
         {
             buf.clear();
             n.encode(&mut buf).unwrap();
-            assert_eq!(buf.len(), n.encoded_len());
+            assert_eq!(buf.len(), n.written_size());
         }
     }
 
     #[test]
-    fn encode_decode() {
+    fn varint_round_trip() {
         let mut rng = thread_rng();
         let mut buf = vec![];
 

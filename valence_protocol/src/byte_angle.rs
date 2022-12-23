@@ -29,10 +29,6 @@ impl Encode for ByteAngle {
     fn encode(&self, w: impl Write) -> Result<()> {
         self.0.encode(w)
     }
-
-    fn encoded_len(&self) -> usize {
-        self.0.encoded_len()
-    }
 }
 
 impl Decode<'_> for ByteAngle {

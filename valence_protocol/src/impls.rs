@@ -19,10 +19,6 @@ impl Encode for bool {
         Ok(w.write_u8(*self as u8)?)
     }
 
-    fn encoded_len(&self) -> usize {
-        1
-    }
-
     fn write_slice(slice: &[bool], mut w: impl Write) -> io::Result<()> {
         let bytes: &[u8] = unsafe { mem::transmute(slice) };
         w.write_all(bytes)
@@ -44,10 +40,6 @@ impl Encode for u8 {
         Ok(w.write_u8(*self)?)
     }
 
-    fn encoded_len(&self) -> usize {
-        1
-    }
-
     fn write_slice(slice: &[u8], mut w: impl Write) -> io::Result<()> {
         w.write_all(slice)
     }
@@ -64,10 +56,6 @@ impl Decode<'_> for u8 {
 impl Encode for i8 {
     fn encode(&self, mut w: impl Write) -> Result<()> {
         Ok(w.write_i8(*self)?)
-    }
-
-    fn encoded_len(&self) -> usize {
-        1
     }
 
     fn write_slice(slice: &[i8], mut w: impl Write) -> io::Result<()>
@@ -91,10 +79,6 @@ impl Encode for u16 {
     fn encode(&self, mut w: impl Write) -> Result<()> {
         Ok(w.write_u16::<BigEndian>(*self)?)
     }
-
-    fn encoded_len(&self) -> usize {
-        2
-    }
 }
 
 impl Decode<'_> for u16 {
@@ -106,10 +90,6 @@ impl Decode<'_> for u16 {
 impl Encode for i16 {
     fn encode(&self, mut w: impl Write) -> Result<()> {
         Ok(w.write_i16::<BigEndian>(*self)?)
-    }
-
-    fn encoded_len(&self) -> usize {
-        2
     }
 }
 
@@ -123,10 +103,6 @@ impl Encode for u32 {
     fn encode(&self, mut w: impl Write) -> Result<()> {
         Ok(w.write_u32::<BigEndian>(*self)?)
     }
-
-    fn encoded_len(&self) -> usize {
-        4
-    }
 }
 
 impl Decode<'_> for u32 {
@@ -139,10 +115,6 @@ impl Encode for i32 {
     fn encode(&self, mut w: impl Write) -> Result<()> {
         Ok(w.write_i32::<BigEndian>(*self)?)
     }
-
-    fn encoded_len(&self) -> usize {
-        4
-    }
 }
 
 impl Decode<'_> for i32 {
@@ -154,10 +126,6 @@ impl Decode<'_> for i32 {
 impl Encode for u64 {
     fn encode(&self, mut w: impl Write) -> Result<()> {
         Ok(w.write_u64::<BigEndian>(*self)?)
-    }
-
-    fn encoded_len(&self) -> usize {
-        8
     }
 }
 
@@ -177,10 +145,6 @@ impl Encode for u128 {
     fn encode(&self, mut w: impl Write) -> Result<()> {
         Ok(w.write_u128::<BigEndian>(*self)?)
     }
-
-    fn encoded_len(&self) -> usize {
-        16
-    }
 }
 
 impl Decode<'_> for u128 {
@@ -192,10 +156,6 @@ impl Decode<'_> for u128 {
 impl Encode for i128 {
     fn encode(&self, mut w: impl Write) -> Result<()> {
         Ok(w.write_i128::<BigEndian>(*self)?)
-    }
-
-    fn encoded_len(&self) -> usize {
-        16
     }
 }
 
@@ -209,10 +169,6 @@ impl Encode for i64 {
     fn encode(&self, mut w: impl Write) -> Result<()> {
         Ok(w.write_i64::<BigEndian>(*self)?)
     }
-
-    fn encoded_len(&self) -> usize {
-        8
-    }
 }
 
 impl Encode for f32 {
@@ -223,10 +179,6 @@ impl Encode for f32 {
             self
         );
         Ok(w.write_f32::<BigEndian>(*self)?)
-    }
-
-    fn encoded_len(&self) -> usize {
-        4
     }
 }
 
@@ -247,10 +199,6 @@ impl Encode for f64 {
         );
         Ok(w.write_f64::<BigEndian>(*self)?)
     }
-
-    fn encoded_len(&self) -> usize {
-        8
-    }
 }
 
 impl Decode<'_> for f64 {
@@ -267,29 +215,17 @@ impl<T: Encode + ?Sized> Encode for &T {
     fn encode(&self, w: impl Write) -> Result<()> {
         (**self).encode(w)
     }
-
-    fn encoded_len(&self) -> usize {
-        (**self).encoded_len()
-    }
 }
 
 impl<T: Encode + ?Sized> Encode for &mut T {
     fn encode(&self, w: impl Write) -> Result<()> {
         (**self).encode(w)
     }
-
-    fn encoded_len(&self) -> usize {
-        (**self).encoded_len()
-    }
 }
 
 impl<T: Encode + ?Sized> Encode for Box<T> {
     fn encode(&self, w: impl Write) -> Result<()> {
         self.as_ref().encode(w)
-    }
-
-    fn encoded_len(&self) -> usize {
-        self.as_ref().encoded_len()
     }
 }
 
@@ -303,10 +239,6 @@ impl<T: Encode + ?Sized> Encode for Rc<T> {
     fn encode(&self, w: impl Write) -> Result<()> {
         self.as_ref().encode(w)
     }
-
-    fn encoded_len(&self) -> usize {
-        self.as_ref().encoded_len()
-    }
 }
 
 impl<'a, T: Decode<'a>> Decode<'a> for Rc<T> {
@@ -318,10 +250,6 @@ impl<'a, T: Decode<'a>> Decode<'a> for Rc<T> {
 impl<T: Encode + ?Sized> Encode for Arc<T> {
     fn encode(&self, w: impl Write) -> Result<()> {
         self.as_ref().encode(w)
-    }
-
-    fn encoded_len(&self) -> usize {
-        self.as_ref().encoded_len()
     }
 }
 
@@ -343,11 +271,6 @@ macro_rules! impl_tuple {
                     $ty.encode(&mut _w)?;
                 )*
                 Ok(())
-            }
-
-            fn encoded_len(&self) -> usize {
-                let ($($ty,)*) = self;
-                0 $(+ $ty.encoded_len())*
             }
         }
 
@@ -387,10 +310,6 @@ impl<const N: usize, T: Encode> Encode for [T; N] {
         }
 
         Ok(())
-    }
-
-    fn encoded_len(&self) -> usize {
-        self.iter().map(|t| t.encoded_len()).sum()
     }
 }
 
@@ -456,11 +375,6 @@ impl<T: Encode> Encode for [T] {
 
         Ok(())
     }
-
-    fn encoded_len(&self) -> usize {
-        let elems_len: usize = self.iter().map(|a| a.encoded_len()).sum();
-        VarInt(self.len().try_into().unwrap_or(i32::MAX)).encoded_len() + elems_len
-    }
 }
 
 impl<'a> Decode<'a> for &'a [u8] {
@@ -479,10 +393,6 @@ impl<'a> Decode<'a> for &'a [u8] {
 impl<T: Encode> Encode for Vec<T> {
     fn encode(&self, w: impl Write) -> Result<()> {
         self.as_slice().encode(w)
-    }
-
-    fn encoded_len(&self) -> usize {
-        self.as_slice().encoded_len()
     }
 }
 
@@ -524,10 +434,6 @@ impl Encode for str {
         VarInt(self.len() as i32).encode(&mut w)?;
         Ok(w.write_all(self.as_bytes())?)
     }
-
-    fn encoded_len(&self) -> usize {
-        VarInt(self.len().try_into().unwrap_or(i32::MAX)).encoded_len() + self.len()
-    }
 }
 
 impl<'a> Decode<'a> for &'a str {
@@ -547,10 +453,6 @@ impl<'a> Decode<'a> for &'a str {
 impl Encode for String {
     fn encode(&self, w: impl Write) -> Result<()> {
         self.as_str().encode(w)
-    }
-
-    fn encoded_len(&self) -> usize {
-        self.as_str().encoded_len()
     }
 }
 
@@ -578,10 +480,6 @@ impl<T: Encode> Encode for Option<T> {
             None => false.encode(w),
         }
     }
-
-    fn encoded_len(&self) -> usize {
-        1 + self.as_ref().map_or(0, |t| t.encoded_len())
-    }
 }
 
 impl<'a, T: Decode<'a>> Decode<'a> for Option<T> {
@@ -600,10 +498,6 @@ where
     fn encode(&self, w: impl Write) -> Result<()> {
         self.as_ref().encode(w)
     }
-
-    fn encoded_len(&self) -> usize {
-        self.as_ref().encoded_len()
-    }
 }
 
 impl<'a, B> Decode<'a> for Cow<'a, B>
@@ -620,10 +514,6 @@ impl Encode for Uuid {
     fn encode(&self, w: impl Write) -> Result<()> {
         self.as_u128().encode(w)
     }
-
-    fn encoded_len(&self) -> usize {
-        16
-    }
 }
 
 impl<'a> Decode<'a> for Uuid {
@@ -635,10 +525,6 @@ impl<'a> Decode<'a> for Uuid {
 impl Encode for Compound {
     fn encode(&self, w: impl Write) -> Result<()> {
         Ok(valence_nbt::to_binary_writer(w, self, "")?)
-    }
-
-    fn encoded_len(&self) -> usize {
-        self.binary_encoded_len("")
     }
 }
 

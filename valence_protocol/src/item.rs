@@ -42,10 +42,6 @@ impl Encode for Option<ItemStack> {
     fn encode(&self, w: impl Write) -> Result<()> {
         self.as_ref().encode(w)
     }
-
-    fn encoded_len(&self) -> usize {
-        self.as_ref().encoded_len()
-    }
 }
 
 impl<'a> Encode for Option<&'a ItemStack> {
@@ -60,17 +56,6 @@ impl<'a> Encode for Option<&'a ItemStack> {
                     Some(n) => n.encode(w),
                     None => 0u8.encode(w),
                 }
-            }
-        }
-    }
-
-    fn encoded_len(&self) -> usize {
-        match *self {
-            None => 1,
-            Some(s) => {
-                1 + s.item.encoded_len()
-                    + 1
-                    + s.nbt.as_ref().map(|nbt| nbt.encoded_len()).unwrap_or(1)
             }
         }
     }
@@ -105,10 +90,6 @@ impl Decode<'_> for Option<ItemStack> {
 impl Encode for ItemKind {
     fn encode(&self, w: impl Write) -> Result<()> {
         VarInt(self.to_raw() as i32).encode(w)
-    }
-
-    fn encoded_len(&self) -> usize {
-        VarInt(self.to_raw() as i32).encoded_len()
     }
 }
 

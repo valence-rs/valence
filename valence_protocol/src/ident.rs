@@ -265,10 +265,6 @@ impl<S: Encode> Encode for Ident<S> {
     fn encode(&self, w: impl Write) -> anyhow::Result<()> {
         self.string.encode(w)
     }
-
-    fn encoded_len(&self) -> usize {
-        self.string.encoded_len()
-    }
 }
 
 impl<'a, S> Decode<'a> for Ident<S>

@@ -89,8 +89,6 @@ pub use var_int::VarInt;
 pub use var_long::VarLong;
 pub use {uuid, valence_nbt as nbt};
 
-use crate::byte_counter::ByteCounter;
-
 /// The Minecraft protocol version this library currently targets.
 pub const PROTOCOL_VERSION: i32 = 760;
 
@@ -103,7 +101,6 @@ pub mod block;
 mod block_pos;
 mod bounded;
 mod byte_angle;
-mod byte_counter;
 mod codec;
 pub mod enchant;
 pub mod entity_meta;
@@ -117,7 +114,7 @@ pub mod text;
 pub mod translation_key;
 pub mod types;
 pub mod username;
-mod var_int;
+pub mod var_int;
 mod var_long;
 
 /// Used only by proc macros. Not public API.
@@ -201,25 +198,7 @@ pub trait Encode {
     /// [`decode`]: Decode::decode
     fn encode(&self, w: impl Write) -> Result<()>;
 
-    /// Returns the number of bytes that will be written when [`Self::encode`]
-    /// is called.
-    ///
-    /// If [`Self::encode`] returns `Ok`, then the exact number of bytes
-    /// reported by this function must be written to the writer argument.
-    ///
-    /// If the result is `Err`, then the number of written bytes must be less
-    /// than or equal to the count returned by this function.
-    ///
-    /// # Default Implementation
-    ///
-    /// Calls [`Self::encode`] to count the number of written bytes. This is
-    /// always correct, but is not always the most efficient approach.
-    fn encoded_len(&self) -> usize {
-        let mut counter = ByteCounter::new();
-        let _ = self.encode(&mut counter);
-        counter.0
-    }
-
+    // Hack to get around no specialization.
     #[doc(hidden)]
     fn write_slice(slice: &[Self], w: impl Write) -> io::Result<()>
     where
@@ -326,9 +305,6 @@ pub trait DerivedPacketEncode: Encode {
     /// Like [`Encode::encode`], but does not write a leading [`VarInt`] packet
     /// ID.
     fn encode_without_id(&self, w: impl Write) -> Result<()>;
-    /// Like [`Encode::encoded_len`], but does not count a leading [`VarInt`]
-    /// packet ID.
-    fn encoded_len_without_id(&self) -> usize;
 }
 
 /// Packets which obtained [`Decode`] implementations via the [`Decode`][macro]

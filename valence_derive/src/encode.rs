@@ -49,28 +49,6 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
                 Fields::Unit => TokenStream::new(),
             };
 
-            let encoded_len_fields = match &struct_.fields {
-                Fields::Named(fields) => fields
-                    .named
-                    .iter()
-                    .map(|f| {
-                        let name = &f.ident;
-                        quote! {
-                            + self.#name.encoded_len()
-                        }
-                    })
-                    .collect(),
-                Fields::Unnamed(fields) => (0..fields.unnamed.len())
-                    .map(|i| {
-                        let lit = LitInt::new(&i.to_string(), Span::call_site());
-                        quote! {
-                            + self.#lit.encoded_len()
-                        }
-                    })
-                    .collect(),
-                Fields::Unit => TokenStream::new(),
-            };
-
             Ok(quote! {
                 #[allow(unused_imports)]
                 impl #impl_generics ::valence_protocol::__private::Encode for #name #ty_generics
@@ -89,12 +67,6 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
 
                         Ok(())
                     }
-
-                    fn encoded_len(&self) -> usize {
-                        use ::valence_protocol::__private::{Encode, Context, VarInt};
-
-                        0 #(+ VarInt(#packet_id).encoded_len())* #encoded_len_fields
-                    }
                 }
 
                 #(
@@ -111,12 +83,6 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
                             #encode_fields
 
                             Ok(())
-                        }
-
-                        fn encoded_len_without_id(&self) -> usize {
-                            use ::valence_protocol::__private::{Encode, Context, VarInt};
-
-                            0 #encoded_len_fields
                         }
                     }
                 )*
@@ -211,45 +177,6 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
                 })
                 .collect::<TokenStream>();
 
-            let encoded_len_arms = variants
-                .iter()
-                .map(|(disc, variant)| {
-                    let name = &variant.ident;
-
-                    match &variant.fields {
-                        Fields::Named(fields) => {
-                            let fields = fields.named.iter().map(|f| &f.ident).collect::<Vec<_>>();
-
-                            quote! {
-                                Self::#name { #(#fields,)* } => {
-                                    VarInt(#disc).encoded_len()
-
-                                    #(+ #fields.encoded_len())*
-                                }
-                            }
-                        }
-                        Fields::Unnamed(fields) => {
-                            let fields = (0..fields.unnamed.len())
-                                .map(|i| Ident::new(&format!("_{i}"), Span::call_site()))
-                                .collect::<Vec<_>>();
-
-                            quote! {
-                                Self::#name(#(#fields,)*) => {
-                                    VarInt(#disc).encoded_len()
-
-                                    #(+ #fields.encoded_len())*
-                                }
-                            }
-                        }
-                        Fields::Unit => {
-                            quote! {
-                                Self::#name => VarInt(#disc).encoded_len(),
-                            }
-                        }
-                    }
-                })
-                .collect::<TokenStream>();
-
             Ok(quote! {
                 #[allow(unused_imports, unreachable_code)]
                 impl #impl_generics ::valence_protocol::Encode for #name #ty_generics
@@ -269,14 +196,6 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
                             _ => unreachable!(),
                         }
                     }
-                    fn encoded_len(&self) -> usize {
-                        use ::valence_protocol::__private::{Encode, Context, VarInt};
-
-                        #(VarInt(#packet_id).encoded_len() +)* match self {
-                            #encoded_len_arms
-                            _ => unreachable!() as usize,
-                        }
-                    }
                 }
 
                 #(
@@ -292,14 +211,6 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
 
                             match self {
                                 #encode_arms
-                                _ => unreachable!(),
-                            }
-                        }
-                        fn encoded_len_without_id(&self) -> usize {
-                            use ::valence_protocol::__private::{Encode, Context, VarInt};
-
-                            match self {
-                                #encoded_len_arms
                                 _ => unreachable!(),
                             }
                         }
