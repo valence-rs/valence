@@ -94,7 +94,7 @@ fn correct_length() {
     let mut buf = vec![];
     to_binary_writer(&mut buf, &c, "abc").unwrap();
 
-    assert_eq!(c.binary_encoded_len("abc"), buf.len());
+    assert_eq!(c.written_size("abc"), buf.len());
 }
 
 #[cfg(feature = "preserve_order")]

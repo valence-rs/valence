@@ -7,7 +7,6 @@ build = "build/main.rs"
 [dependencies]
 aes = { version = "0.7.5", optional = true }
 anyhow = "1.0.66"
-arrayvec = "0.7.2"
 bitfield-struct = "0.1.7"
 byteorder = "1.4.3"
 bytes = "1.2.1"

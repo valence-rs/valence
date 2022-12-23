@@ -22,7 +22,7 @@ pub fn to_binary_writer<W: Write>(writer: W, compound: &Compound, root_name: &st
     Ok(())
 }
 
-pub(crate) fn encoded_len(compound: &Compound, root_name: &str) -> usize {
+pub(crate) fn written_size(compound: &Compound, root_name: &str) -> usize {
     fn value_len(val: &Value) -> usize {
         match val {
             Value::Byte(_) => 1,

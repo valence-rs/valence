@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
+use quote::quote;
 use syn::spanned::Spanned;
 use syn::{parse2, parse_quote, Data, DeriveInput, Error, Fields, Result};
 
@@ -11,12 +11,6 @@ pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
     let mut input = parse2::<DeriveInput>(item)?;
 
     let name = input.ident;
-    let string_name = name.to_string();
-
-    let packet_id = find_packet_id_attr(&input.attrs)?
-        .into_iter()
-        .map(|l| l.to_token_stream())
-        .collect::<Vec<_>>();
 
     if input.generics.lifetimes().count() > 1 {
         return Err(Error::new(
@@ -79,36 +73,15 @@ pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
 
             Ok(quote! {
                 #[allow(unused_imports)]
-                impl #impl_generics ::valence_protocol::Decode<#lifetime> for #name #ty_generics
+                impl #impl_generics ::valence_protocol::__private::Decode<#lifetime> for #name #ty_generics
                 #where_clause
                 {
                     fn decode(_r: &mut &#lifetime [u8]) -> ::valence_protocol::__private::Result<Self> {
-                        use ::valence_protocol::__private::{Decode, Context, VarInt, ensure};
-
-                        #(
-                            let id = VarInt::decode(_r).context("failed to decode packet ID")?.0;
-                            ensure!(id == #packet_id, "unexpected packet ID {} (expected {})", id, #packet_id);
-                        )*
+                        use ::valence_protocol::__private::{Decode, Context, ensure};
 
                         Ok(#decode_fields)
                     }
                 }
-
-                #(
-                    #[allow(unused_imports)]
-                    impl #impl_generics ::valence_protocol::DerivedPacketDecode<#lifetime> for #name #ty_generics
-                    #where_clause
-                    {
-                        const ID: i32 = #packet_id;
-                        const NAME: &'static str = #string_name;
-
-                        fn decode_without_id(_r: &mut &#lifetime [u8]) -> ::valence_protocol::__private::Result<Self> {
-                            use ::valence_protocol::__private::{Decode, Context, VarInt, ensure};
-
-                            Ok(#decode_fields)
-                        }
-                    }
-                )*
             })
         }
         Data::Enum(enum_) => {
@@ -170,16 +143,11 @@ pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
 
             Ok(quote! {
                 #[allow(unused_imports)]
-                impl #impl_generics ::valence_protocol::Decode<#lifetime> for #name #ty_generics
+                impl #impl_generics ::valence_protocol::__private::Decode<#lifetime> for #name #ty_generics
                 #where_clause
                 {
                     fn decode(_r: &mut &#lifetime [u8]) -> ::valence_protocol::__private::Result<Self> {
-                        use ::valence_protocol::__private::{Decode, Context, VarInt, bail, ensure};
-
-                        #(
-                            let id = VarInt::decode(_r).context("failed to decode packet ID")?.0;
-                            ensure!(id == #packet_id, "unexpected packet ID {} (expected {})", id, #packet_id);
-                        )*
+                        use ::valence_protocol::__private::{Decode, Context, VarInt, bail};
 
                         let disc = VarInt::decode(_r).context("failed to decode enum discriminant")?.0;
                         match disc {
@@ -188,26 +156,6 @@ pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
                         }
                     }
                 }
-
-                #(
-                    #[allow(unused_imports)]
-                    impl #impl_generics ::valence_protocol::DerivedPacketDecode<#lifetime> for #name #ty_generics
-                    #where_clause
-                    {
-                        const ID: i32 = #packet_id;
-                        const NAME: &'static str = #string_name;
-
-                        fn decode_without_id(_r: &mut &#lifetime [u8]) -> ::valence_protocol::__private::Result<Self> {
-                            use ::valence_protocol::__private::{Decode, Context, VarInt, bail};
-
-                            let disc = VarInt::decode(_r).context("failed to decode enum discriminant")?.0;
-                            match disc {
-                                #decode_arms
-                                n => bail!("unexpected enum discriminant {}", disc),
-                            }
-                        }
-                    }
-                )*
             })
         }
         Data::Union(u) => Err(Error::new(
@@ -215,4 +163,49 @@ pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
             "cannot derive `Decode` on unions",
         )),
     }
+}
+
+pub fn derive_decode_packet(item: TokenStream) -> Result<TokenStream> {
+    let mut input = parse2::<DeriveInput>(item)?;
+
+    let Some(packet_id) = find_packet_id_attr(&input.attrs)? else {
+        return Err(Error::new(
+            input.ident.span(),
+            "cannot derive `DecodePacket` without `#[packet_id = ...]` helper attribute",
+        ))
+    };
+
+    let lifetime = input
+        .generics
+        .lifetimes()
+        .next()
+        .map(|l| l.lifetime.clone())
+        .unwrap_or_else(|| parse_quote!('a));
+
+    add_trait_bounds(
+        &mut input.generics,
+        quote!(::valence_protocol::__private::Decode<#lifetime>),
+    );
+
+    let (impl_generics, ty_generics, where_clause) =
+        decode_split_for_impl(input.generics, lifetime.clone());
+
+    let name = input.ident;
+
+    Ok(quote! {
+        impl #impl_generics ::valence_protocol::__private::DecodePacket<#lifetime> for #name #ty_generics
+        #where_clause
+        {
+            const PACKET_ID: i32 = #packet_id;
+
+            fn decode_packet(r: &mut &#lifetime [u8]) -> ::valence_protocol::__private::Result<Self> {
+                use ::valence_protocol::__private::{Decode, Context, VarInt, ensure};
+
+                let id = VarInt::decode(r).context("failed to decode packet ID")?.0;
+                ensure!(id == #packet_id, "unexpected packet ID {} (expected {})", id, #packet_id);
+
+                Self::decode(r)
+            }
+        }
+    })
 }

@@ -17,10 +17,6 @@ impl<T: Encode, const N: usize> Encode for LengthPrefixedArray<T, N> {
         VarInt(N as i32).encode(&mut w)?;
         self.0.encode(w)
     }
-
-    fn encoded_len(&self) -> usize {
-        VarInt(N as i32).encoded_len() + self.0.encoded_len()
-    }
 }
 
 impl<'a, T: Decode<'a>, const N: usize> Decode<'a> for LengthPrefixedArray<T, N> {

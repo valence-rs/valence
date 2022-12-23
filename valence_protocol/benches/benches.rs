@@ -5,12 +5,11 @@ use rand::Rng;
 use valence_nbt::{compound, List};
 use valence_protocol::block::{BlockKind, BlockState, PropName, PropValue};
 use valence_protocol::packets::s2c::play::{
-    ChunkDataAndUpdateLight, ChunkDataAndUpdateLightEncode, SetTabListHeaderAndFooter,
-    TeleportEntity,
+    ChunkDataAndUpdateLight, ChunkDataAndUpdateLightEncode, SetTabListHeaderAndFooter, SpawnEntity,
 };
 use valence_protocol::text::Color;
 use valence_protocol::{
-    write_packet, write_packet_compressed, ByteAngle, Decode, Encode, ItemKind,
+    encode_packet, encode_packet_compressed, ByteAngle, Decode, Encode, ItemKind,
     LengthPrefixedArray, PacketDecoder, PacketEncoder, TextFormat, VarInt,
 };
 
@@ -18,7 +17,7 @@ criterion_group! {
     name = benches;
     config = Criterion::default()
         .measurement_time(Duration::from_secs(5)).confidence_level(0.99);
-    targets = blocks, packets, var_int
+    targets = blocks, packets, var_int, decode_array
 }
 criterion_main!(benches);
 
@@ -139,12 +138,16 @@ fn packets(c: &mut Criterion) {
                threshold.",
     };
 
-    let teleport_entity_packet = TeleportEntity {
-        entity_id: VarInt(123456),
+    let spawn_entity_packet = SpawnEntity {
+        entity_id: VarInt(1234),
+        object_uuid: Default::default(),
+        kind: VarInt(5),
         position: [123.0, 456.0, 789.0],
-        yaw: ByteAngle(42),
-        pitch: ByteAngle(69),
-        on_ground: true,
+        pitch: ByteAngle(200),
+        yaw: ByteAngle(100),
+        head_yaw: ByteAngle(50),
+        data: VarInt(i32::MIN),
+        velocity: [12, 34, 56],
     };
 
     c.bench_function("encode_chunk_data", |b| {
@@ -171,12 +174,12 @@ fn packets(c: &mut Criterion) {
         });
     });
 
-    c.bench_function("encode_teleport_entity", |b| {
+    c.bench_function("encode_spawn_entity", |b| {
         b.iter(|| {
             let encoder = black_box(&mut encoder);
 
             encoder.clear();
-            encoder.append_packet(&teleport_entity_packet).unwrap();
+            encoder.append_packet(&spawn_entity_packet).unwrap();
 
             black_box(encoder);
         });
@@ -208,12 +211,12 @@ fn packets(c: &mut Criterion) {
         });
     });
 
-    c.bench_function("encode_teleport_entity_compressed", |b| {
+    c.bench_function("encode_spawn_entity_compressed", |b| {
         b.iter(|| {
             let encoder = black_box(&mut encoder);
 
             encoder.clear();
-            encoder.append_packet(&teleport_entity_packet).unwrap();
+            encoder.append_packet(&spawn_entity_packet).unwrap();
 
             black_box(encoder);
         });
@@ -222,7 +225,7 @@ fn packets(c: &mut Criterion) {
     let mut decoder = PacketDecoder::new();
     let mut packet_buf = vec![];
 
-    write_packet(&mut packet_buf, &chunk_data_packet).unwrap();
+    encode_packet(&mut packet_buf, &chunk_data_packet).unwrap();
 
     c.bench_function("decode_chunk_data", |b| {
         b.iter(|| {
@@ -238,7 +241,7 @@ fn packets(c: &mut Criterion) {
     });
 
     packet_buf.clear();
-    write_packet(&mut packet_buf, &tab_list_header_footer_packet).unwrap();
+    encode_packet(&mut packet_buf, &tab_list_header_footer_packet).unwrap();
 
     c.bench_function("decode_tab_list_header_footer", |b| {
         b.iter(|| {
@@ -254,14 +257,14 @@ fn packets(c: &mut Criterion) {
     });
 
     packet_buf.clear();
-    write_packet(&mut packet_buf, &teleport_entity_packet).unwrap();
+    encode_packet(&mut packet_buf, &spawn_entity_packet).unwrap();
 
-    c.bench_function("decode_teleport_entity", |b| {
+    c.bench_function("decode_spawn_entity", |b| {
         b.iter(|| {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decoder.try_next_packet::<TeleportEntity>().unwrap();
+            decoder.try_next_packet::<SpawnEntity>().unwrap();
 
             black_box(decoder);
         });
@@ -272,7 +275,7 @@ fn packets(c: &mut Criterion) {
     let mut scratch = vec![];
 
     packet_buf.clear();
-    write_packet_compressed(&mut packet_buf, 256, &mut scratch, &chunk_data_packet).unwrap();
+    encode_packet_compressed(&mut packet_buf, &chunk_data_packet, 256, &mut scratch).unwrap();
 
     c.bench_function("decode_chunk_data_compressed", |b| {
         b.iter(|| {
@@ -288,11 +291,11 @@ fn packets(c: &mut Criterion) {
     });
 
     packet_buf.clear();
-    write_packet_compressed(
+    encode_packet_compressed(
         &mut packet_buf,
+        &tab_list_header_footer_packet,
         256,
         &mut scratch,
-        &tab_list_header_footer_packet,
     )
     .unwrap();
 
@@ -310,14 +313,14 @@ fn packets(c: &mut Criterion) {
     });
 
     packet_buf.clear();
-    write_packet_compressed(&mut packet_buf, 256, &mut scratch, &teleport_entity_packet).unwrap();
+    encode_packet_compressed(&mut packet_buf, &spawn_entity_packet, 256, &mut scratch).unwrap();
 
-    c.bench_function("decode_teleport_entity_compressed", |b| {
+    c.bench_function("decode_spawn_entity_compressed", |b| {
         b.iter(|| {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decoder.try_next_packet::<TeleportEntity>().unwrap();
+            decoder.try_next_packet::<SpawnEntity>().unwrap();
 
             black_box(decoder);
         });
@@ -351,5 +354,28 @@ fn var_int(c: &mut Criterion) {
                 let _ = black_box(VarInt::decode(&mut r));
             },
         )
+    });
+}
+
+fn decode_array(c: &mut Criterion) {
+    let floats = [123.0, 456.0, 789.0];
+    let mut buf = [0u8; 24];
+
+    floats.encode(buf.as_mut_slice()).unwrap();
+
+    c.bench_function("<[f64; 3]>::decode", |b| {
+        b.iter(|| {
+            let mut r = black_box(buf.as_slice());
+            let _ = black_box(<[f64; 3]>::decode(&mut r));
+        });
+    });
+
+    let bytes = [42; 4096];
+
+    c.bench_function("<[u8; 4096]>::decode", |b| {
+        b.iter(|| {
+            let mut r = black_box(bytes.as_slice());
+            let _ = black_box(<[u8; 4096]>::decode(&mut r));
+        })
     });
 }
