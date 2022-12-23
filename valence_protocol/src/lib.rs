@@ -138,16 +138,10 @@ pub const MAX_PACKET_SIZE: i32 = 2097152;
 /// implement `Encode`. Components are encoded in the order they appear in the
 /// type definition.
 ///
-/// If a `#[packet_id = ...]` attribute is present, encoding the type begins by
-/// writing the specified constant [`VarInt`] value before any of the
-/// components.
-///
 /// For enums, the variant to encode is marked by a leading [`VarInt`]
 /// discriminant (tag). The discriminant value can be changed using the `#[tag =
 /// ...]` attribute on the variant in question. Discriminant values are assigned
 /// to variants using rules similar to regular enum discriminants.
-///
-/// [`VarInt`]: var_int::VarInt
 ///
 /// ```
 /// use valence_protocol::Encode;
@@ -220,10 +214,6 @@ pub trait Encode {
 /// implement `Decode`. Components are decoded in the order they appear in the
 /// type definition.
 ///
-/// If a `#[packet_id = ...]` attribute is present, encoding the type begins by
-/// reading the specified constant [`VarInt`] value before any of the
-/// components.
-///
 /// For enums, the variant to decode is determined by a leading [`VarInt`]
 /// discriminant (tag). The discriminant value can be changed using the `#[tag =
 /// ...]` attribute on the variant in question. Discriminant values are assigned
@@ -268,19 +258,79 @@ pub trait Decode<'a>: Sized {
     fn decode(r: &mut &'a [u8]) -> Result<Self>;
 }
 
+/// Like [`Encode`], but implementations must write a leading [`VarInt`] packet
+/// ID before any other data.
+///
+/// # Deriving
+///
+/// This trait can be implemented automatically by using the
+/// [`EncodePacket`][macro] derive macro. The trait is implemented by writing
+/// the packet ID provided in the `#[packet_id = ...]` helper attribute followed
+/// by a call to [`Encode::encode`].
+///
+/// ```
+/// use valence_protocol::{Encode, EncodePacket};
+///
+/// #[derive(Encode, EncodePacket)]
+/// #[packet_id = 42]
+/// struct MyStruct {
+///     first: i32,
+/// }
+///
+/// let value = MyStruct { first: 123 };
+/// let mut buf = vec![];
+///
+/// value.encode_packet(&mut buf).unwrap();
+/// println!("{buf:?}");
+/// ```
+///
+/// [macro]: valence_derive::DecodePacket
 pub trait EncodePacket {
     /// The packet ID that is written when [`Self::encode_packet`] is called. A
     /// negative value indicates that the packet ID is not statically known.
     const PACKET_ID: i32 = -1;
 
+    /// Like [`Encode::encode`], but a leading [`VarInt`] packet ID must be
+    /// written first.
     fn encode_packet(&self, w: impl Write) -> Result<()>;
 }
 
+/// Like [`Decode`], but implementations must read a leading [`VarInt`] packet
+/// ID before any other data.
+///
+/// # Deriving
+///
+/// This trait can be implemented automatically by using the
+/// [`DecodePacket`][macro] derive macro. The trait is implemented by reading
+/// the packet ID provided in the `#[packet_id = ...]` helper attribute followed
+/// by a call to [`Decode::decode`].
+///
+/// ```
+/// use valence_protocol::{Decode, DecodePacket};
+///
+/// #[derive(Decode, DecodePacket)]
+/// #[packet_id = 42]
+/// struct MyStruct {
+///     first: i32,
+/// }
+///
+/// let buf = [42, 0, 0, 0, 0];
+/// let mut r = buf.as_slice();
+///
+/// let value = MyStruct::decode_packet(&mut r).unwrap();
+///
+/// assert_eq!(value.first, 0);
+/// assert!(r.is_empty());
+/// ```
+///
+/// [macro]: valence_protocol::DecodePacket
 pub trait DecodePacket<'a>: Sized {
-    /// The packet ID that is written when [`Self::encode_packet`] is called. A
-    /// negative packet ID indicates that the packet ID is not statically known.
+    /// The packet ID that is read when [`Self::decode_packet`] is called. A
+    /// negative value indicates that the packet ID is not statically known.
     const PACKET_ID: i32 = -1;
 
+    /// Like [`Decode::decode`], but a leading [`VarInt`] packet ID must be read
+    /// first.
     fn decode_packet(r: &mut &'a [u8]) -> Result<Self>;
 }
 
