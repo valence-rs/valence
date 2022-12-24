@@ -1,5 +1,5 @@
-//! This crate provides derive macros for [`Encode`], [`Decode`], and
-//! [`Packet`].
+//! This crate provides derive macros for [`Encode`], [`Decode`],
+//! [`EncodePacket`], and [`DecodePacket`].
 //!
 //! See `valence_protocol`'s documentation for more information.
 
