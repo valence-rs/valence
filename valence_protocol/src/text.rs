@@ -7,8 +7,7 @@ use std::io::Write;
 use serde::de::Visitor;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::byte_counter::ByteCounter;
-use crate::{Decode, Encode, Ident, Result, VarInt};
+use crate::{Decode, Encode, Ident, Result};
 
 /// Represents formatted text in Minecraft's JSON text format.
 ///
@@ -732,17 +731,9 @@ impl fmt::Display for Text {
     }
 }
 
-/// Encode implementation for Text is not very fast. Beware.
 impl Encode for Text {
     fn encode(&self, w: impl Write) -> Result<()> {
         serde_json::to_string(self)?.encode(w)
-    }
-
-    fn encoded_len(&self) -> usize {
-        let mut counter = ByteCounter::new();
-        let _ = serde_json::to_writer(&mut counter, self);
-
-        VarInt(counter.0.try_into().unwrap_or(i32::MAX)).encoded_len() + counter.0
     }
 }
 

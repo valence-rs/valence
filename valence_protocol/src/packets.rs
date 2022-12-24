@@ -35,56 +35,35 @@ macro_rules! packet_enum {
             }
         )*
 
-        impl<$enum_life> crate::Encode for $enum_name<$enum_life> {
-            fn encode(&self, mut w: impl std::io::Write) -> crate::Result<()> {
-                use crate::DerivedPacketEncode;
-                use crate::var_int::VarInt;
+        impl<$enum_life> crate::EncodePacket for $enum_name<$enum_life> {
+            fn encode_packet(&self, mut w: impl std::io::Write) -> crate::Result<()> {
+                use crate::{Encode, VarInt};
 
                 match self {
                     $(
                         Self::$packet(pkt) => {
-                            VarInt($packet::ID).encode(&mut w)?;
-                            pkt.encode_without_id(w)?;
+                            VarInt(<$packet as crate::EncodePacket>::PACKET_ID).encode(&mut w)?;
+                            pkt.encode(w)?;
                         }
                     )*
                 }
 
                 Ok(())
             }
-
-            fn encoded_len(&self) -> usize {
-                match self {
-                    $(
-                        Self::$packet(pkt) => {
-                            pkt.encoded_len()
-                        }
-                    )*
-                }
-            }
         }
 
-        impl<$enum_life> crate::Decode<$enum_life> for $enum_name<$enum_life> {
-            fn decode(r: &mut &$enum_life [u8]) -> crate::Result<Self> {
-                use crate::DerivedPacketDecode;
-                use crate::var_int::VarInt;
+        impl<$enum_life> crate::DecodePacket<$enum_life> for $enum_name<$enum_life> {
+            fn decode_packet(r: &mut &$enum_life [u8]) -> crate::Result<Self> {
+                use crate::{Decode, VarInt};
 
                 let id = VarInt::decode(r)?.0;
                 Ok(match id {
                     $(
-                        $packet::ID => Self::$packet($packet::decode_without_id(r)?),
+                        <$packet as crate::DecodePacket>::PACKET_ID =>
+                            Self::$packet($packet::decode(r)?),
                     )*
                     id => anyhow::bail!("unknown packet ID {:#02x} while decoding {}", id, stringify!($enum_name)),
                 })
-            }
-        }
-
-        impl<$enum_life> crate::Packet for $enum_name<$enum_life> {
-            fn packet_name(&self) -> &'static str {
-                match self {
-                    $(
-                        Self::$packet(pkt) => pkt.packet_name(),
-                    )*
-                }
             }
         }
 
@@ -120,56 +99,35 @@ macro_rules! packet_enum {
             }
         )*
 
-        impl crate::Encode for $enum_name {
-            fn encode(&self, mut w: impl std::io::Write) -> crate::Result<()> {
-                use crate::DerivedPacketEncode;
-                use crate::var_int::VarInt;
+        impl crate::EncodePacket for $enum_name {
+            fn encode_packet(&self, mut w: impl std::io::Write) -> crate::Result<()> {
+                use crate::{Encode, VarInt};
 
                 match self {
                     $(
                         Self::$packet(pkt) => {
-                            VarInt($packet::ID).encode(&mut w)?;
-                            pkt.encode_without_id(w)?;
+                            VarInt(<$packet as crate::EncodePacket>::PACKET_ID).encode(&mut w)?;
+                            pkt.encode(w)?;
                         }
                     )*
                 }
 
                 Ok(())
             }
-
-            fn encoded_len(&self) -> usize {
-                match self {
-                    $(
-                        Self::$packet(pkt) => {
-                            pkt.encoded_len()
-                        }
-                    )*
-                }
-            }
         }
 
-        impl crate::Decode<'_> for $enum_name {
-            fn decode(r: &mut &[u8]) -> crate::Result<Self> {
-                use crate::DerivedPacketDecode;
-                use crate::var_int::VarInt;
+        impl crate::DecodePacket<'_> for $enum_name {
+            fn decode_packet(r: &mut &[u8]) -> crate::Result<Self> {
+                use crate::{Decode, VarInt};
 
                 let id = VarInt::decode(r)?.0;
                 Ok(match id {
                     $(
-                        $packet::ID => Self::$packet($packet::decode_without_id(r)?),
+                        <$packet as crate::DecodePacket>::PACKET_ID =>
+                            Self::$packet($packet::decode(r)?),
                     )*
                     id => anyhow::bail!("unknown packet ID {:#02x} while decoding {}", id, stringify!($enum_name)),
                 })
-            }
-        }
-
-        impl crate::Packet for $enum_name {
-            fn packet_name(&self) -> &'static str {
-                match self {
-                    $(
-                        Self::$packet(pkt) => pkt.packet_name(),
-                    )*
-                }
             }
         }
 

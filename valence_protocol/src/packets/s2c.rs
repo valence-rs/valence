@@ -1,5 +1,5 @@
 use uuid::Uuid;
-use valence_derive::{Decode, Encode, Packet};
+use valence_derive::{Decode, DecodePacket, Encode, EncodePacket};
 use valence_nbt::Compound;
 
 use crate::block_pos::BlockPos;
@@ -7,7 +7,6 @@ use crate::byte_angle::ByteAngle;
 use crate::ident::Ident;
 use crate::item::ItemStack;
 use crate::raw_bytes::RawBytes;
-use crate::recipe::DeclaredRecipe;
 use crate::text::Text;
 use crate::types::{
     AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, GameMode,
@@ -22,13 +21,13 @@ use crate::LengthPrefixedArray;
 pub mod status {
     use super::*;
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x00]
     pub struct StatusResponse<'a> {
         pub json: &'a str,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x01]
     pub struct PingResponse {
         pub payload: u64,
@@ -46,13 +45,13 @@ pub mod status {
 pub mod login {
     use super::*;
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x00]
     pub struct DisconnectLogin {
         pub reason: Text,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x01]
     pub struct EncryptionRequest<'a> {
         pub server_id: &'a str,
@@ -60,7 +59,7 @@ pub mod login {
         pub verify_token: &'a [u8],
     }
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x02]
     pub struct LoginSuccess<'a> {
         pub uuid: Uuid,
@@ -68,13 +67,13 @@ pub mod login {
         pub properties: Vec<SignedProperty<'a>>,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x03]
     pub struct SetCompression {
         pub threshold: VarInt,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x04]
     pub struct LoginPluginRequest<'a> {
         pub message_id: VarInt,
@@ -97,7 +96,7 @@ pub mod login {
 pub mod play {
     use super::*;
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x00]
     pub struct SpawnEntity {
         pub entity_id: VarInt,
@@ -112,7 +111,7 @@ pub mod play {
         pub velocity: [i16; 3],
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x01]
     pub struct SpawnExperienceOrb {
         pub entity_id: VarInt,
@@ -120,7 +119,7 @@ pub mod play {
         pub count: i16,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x02]
     pub struct SpawnPlayer {
         pub entity_id: VarInt,
@@ -130,20 +129,20 @@ pub mod play {
         pub pitch: ByteAngle,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x03]
     pub struct EntityAnimationS2c {
         pub entity_id: VarInt,
         pub animation: u8, // TODO: use Animation enum.
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x05]
     pub struct AcknowledgeBlockChange {
         pub sequence: VarInt,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x06]
     pub struct SetBlockDestroyStage {
         pub entity_id: VarInt,
@@ -151,7 +150,7 @@ pub mod play {
         pub destroy_stage: u8,
     }
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x07]
     pub struct BlockEntityData {
         pub position: BlockPos,
@@ -160,34 +159,41 @@ pub mod play {
         pub data: Compound,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x09]
     pub struct BlockUpdate {
         pub position: BlockPos,
         pub block_id: VarInt,
     }
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x0a]
     pub struct BossBar {
         pub id: Uuid,
         pub action: BossBarAction,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x0b]
     pub struct SetDifficulty {
         pub difficulty: Difficulty,
         pub locked: bool,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x0c]
     pub struct ClearTitles {
         pub reset: bool,
     }
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x0f]
+    pub struct CloseContainerS2c {
+        /// Ignored by notchian clients.
+        pub window_id: u8,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x10]
     pub struct SetContainerContent {
         pub window_id: u8,
@@ -196,7 +202,7 @@ pub mod play {
         pub carried_item: Option<ItemStack>,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket)]
     #[packet_id = 0x10]
     pub struct SetContainerContentEncode<'a> {
         pub window_id: u8,
@@ -205,7 +211,7 @@ pub mod play {
         pub carried_item: &'a Option<ItemStack>,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x11]
     pub struct SetContainerProperty {
         pub window_id: u8,
@@ -213,7 +219,7 @@ pub mod play {
         pub value: i16,
     }
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x12]
     pub struct SetContainerSlot {
         pub window_id: i8,
@@ -222,7 +228,7 @@ pub mod play {
         pub slot_data: Option<ItemStack>,
     }
 
-    #[derive(Clone, Debug, Encode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket)]
     #[packet_id = 0x12]
     pub struct SetContainerSlotEncode<'a> {
         pub window_id: i8,
@@ -231,48 +237,48 @@ pub mod play {
         pub slot_data: Option<&'a ItemStack>,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x13]
     pub struct SetCooldown {
         pub item_id: VarInt,
         pub cooldown_ticks: VarInt,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x15]
     pub struct PluginMessageS2c<'a> {
         pub channel: Ident<&'a str>,
         pub data: RawBytes<'a>,
     }
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x17]
     pub struct DisconnectPlay {
         pub reason: Text,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x19]
     pub struct EntityEvent {
         pub entity_id: i32,
         pub entity_status: u8,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x1b]
     pub struct UnloadChunk {
         pub chunk_x: i32,
         pub chunk_z: i32,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x1c]
     pub struct GameEvent {
         pub reason: GameStateChangeReason,
         pub value: f32,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x1e]
     pub struct WorldBorderInitialize {
         pub x: f64,
@@ -285,13 +291,13 @@ pub mod play {
         pub warning_time: VarInt,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x1f]
     pub struct KeepAliveS2c {
         pub id: u64,
     }
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x20]
     pub struct ChunkDataAndUpdateLight<'a> {
         pub chunk_x: i32,
@@ -308,7 +314,7 @@ pub mod play {
         pub block_light_arrays: Vec<LengthPrefixedArray<u8, 2048>>,
     }
 
-    #[derive(Clone, Debug, Encode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket)]
     #[packet_id = 0x20]
     pub struct ChunkDataAndUpdateLightEncode<'a> {
         pub chunk_x: i32,
@@ -325,7 +331,7 @@ pub mod play {
         pub block_light_arrays: &'a [LengthPrefixedArray<u8, 2048>],
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x22]
     pub struct ParticleS2c<'a> {
         pub particle_id: VarInt,
@@ -337,7 +343,7 @@ pub mod play {
         pub data: RawBytes<'a>,
     }
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x24]
     pub struct LoginPlay<'a> {
         pub entity_id: i32,
@@ -361,7 +367,7 @@ pub mod play {
     }
 
     // TODO: remove this.
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x24]
     pub struct LoginPlayOwned {
         pub entity_id: i32,
@@ -383,7 +389,7 @@ pub mod play {
         pub last_death_location: Option<(Ident<String>, BlockPos)>,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x27]
     pub struct UpdateEntityPosition {
         pub entity_id: VarInt,
@@ -391,7 +397,7 @@ pub mod play {
         pub on_ground: bool,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x28]
     pub struct UpdateEntityPositionAndRotation {
         pub entity_id: VarInt,
@@ -401,7 +407,7 @@ pub mod play {
         pub on_ground: bool,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x29]
     pub struct UpdateEntityRotation {
         pub entity_id: VarInt,
@@ -410,7 +416,7 @@ pub mod play {
         pub on_ground: bool,
     }
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x2c]
     pub struct OpenScreen {
         pub window_id: VarInt,
@@ -418,7 +424,7 @@ pub mod play {
         pub window_title: Text,
     }
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x30]
     pub struct PlayerAbilitiesS2c {
         pub flags: PlayerAbilitiesFlags,
@@ -426,14 +432,14 @@ pub mod play {
         pub fov_modifier: f32,
     }
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x31]
     pub struct PlayerChatMessage<'a> {
         // TODO: A bunch of crap.
         pub data: RawBytes<'a>,
     }
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x34]
     pub struct CombatDeath {
         pub player_id: VarInt,
@@ -442,11 +448,11 @@ pub mod play {
         pub message: Text,
     }
 
-    #[derive(Clone, PartialEq, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x35]
     pub struct PlayerInfoRemove(pub Vec<Uuid>);
 
-    #[derive(Clone, PartialEq, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x36]
     pub enum PlayerInfo<'a> {
         AddPlayer(Vec<PlayerInfoAddPlayer<'a>>),
@@ -457,7 +463,7 @@ pub mod play {
         RemovePlayer(Vec<Uuid>),
     }
 
-    #[derive(Copy, Clone, PartialEq, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x38]
     pub struct SynchronizePlayerPosition {
         pub position: [f64; 3],
@@ -468,19 +474,19 @@ pub mod play {
         pub dismount_vehicle: bool,
     }
 
-    #[derive(Clone, PartialEq, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x3a]
     pub struct RemoveEntities {
         pub entity_ids: Vec<VarInt>,
     }
 
-    #[derive(Copy, Clone, PartialEq, Debug, Encode, Packet)]
+    #[derive(Copy, Clone, PartialEq, Debug, Encode, EncodePacket)]
     #[packet_id = 0x3a]
     pub struct RemoveEntitiesEncode<'a> {
         pub entity_ids: &'a [VarInt],
     }
 
-    #[derive(Clone, PartialEq, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x3c]
     pub struct ResourcePackS2c<'a> {
         pub url: &'a str,
@@ -489,7 +495,7 @@ pub mod play {
         pub prompt_message: Option<Text>,
     }
 
-    #[derive(Clone, PartialEq, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x3d]
     pub struct Respawn<'a> {
         pub dimension_type_name: Ident<&'a str>,
@@ -504,7 +510,7 @@ pub mod play {
     }
 
     // TODO: remove
-    #[derive(Clone, PartialEq, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x3d]
     pub struct RespawnOwned {
         pub dimension_type_name: Ident<String>,
@@ -518,14 +524,14 @@ pub mod play {
         pub last_death_location: Option<(Ident<String>, BlockPos)>,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x3e]
     pub struct SetHeadRotation {
         pub entity_id: VarInt,
         pub head_yaw: ByteAngle,
     }
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x3f]
     pub struct UpdateSectionBlocks {
         pub chunk_section_position: i64,
@@ -533,7 +539,7 @@ pub mod play {
         pub blocks: Vec<VarLong>,
     }
 
-    #[derive(Clone, Debug, Encode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket)]
     #[packet_id = 0x3f]
     pub struct UpdateSectionBlocksEncode<'a> {
         pub chunk_section_position: i64,
@@ -541,49 +547,49 @@ pub mod play {
         pub blocks: &'a [VarLong],
     }
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x42]
     pub struct SetActionBarText(pub Text);
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x49]
     pub struct SetHeldItemS2c {
         pub slot: u8,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x4a]
     pub struct SetCenterChunk {
         pub chunk_x: VarInt,
         pub chunk_z: VarInt,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x4b]
     pub struct SetRenderDistance(pub VarInt);
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x4c]
     pub struct SetDefaultSpawnPosition {
         pub position: BlockPos,
         pub angle: f32,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x4e]
     pub struct SetEntityMetadata<'a> {
         pub entity_id: VarInt,
         pub metadata: RawBytes<'a>,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x50]
     pub struct SetEntityVelocity {
         pub entity_id: VarInt,
         pub velocity: [i16; 3],
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x52]
     pub struct SetExperience {
         pub bar: f32,
@@ -591,7 +597,7 @@ pub mod play {
         pub total_xp: VarInt,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x53]
     pub struct SetHealth {
         pub health: f32,
@@ -599,11 +605,11 @@ pub mod play {
         pub food_saturation: f32,
     }
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x59]
     pub struct SetSubtitleText(pub Text);
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x5a]
     pub struct UpdateTime {
         /// The age of the world in 1/20ths of a second.
@@ -614,11 +620,11 @@ pub mod play {
         pub time_of_day: i64,
     }
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x5b]
     pub struct SetTitleText(pub Text);
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x5c]
     pub struct SetTitleAnimationTimes {
         /// Ticks to spend fading in.
@@ -629,7 +635,7 @@ pub mod play {
         pub fade_out: i32,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x5d]
     pub struct EntitySoundEffect {
         pub id: VarInt,
@@ -639,7 +645,7 @@ pub mod play {
         pub pitch: f32,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x5e]
     pub struct SoundEffect {
         pub id: VarInt,
@@ -650,7 +656,7 @@ pub mod play {
         pub seed: i64,
     }
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x60]
     pub struct SystemChatMessage {
         pub chat: Text,
@@ -658,14 +664,14 @@ pub mod play {
         pub kind: VarInt,
     }
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x61]
     pub struct SetTabListHeaderAndFooter {
         pub header: Text,
         pub footer: Text,
     }
 
-    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x64]
     pub struct TeleportEntity {
         pub entity_id: VarInt,
@@ -675,14 +681,14 @@ pub mod play {
         pub on_ground: bool,
     }
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x66]
     pub struct UpdateAttributes<'a> {
         pub entity_id: VarInt,
         pub properties: Vec<AttributeProperty<'a>>,
     }
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x67]
     pub struct FeatureFlags<'a> {
         pub features: Vec<Ident<&'a str>>,
@@ -702,6 +708,7 @@ pub mod play {
             BossBar,
             SetDifficulty,
             ClearTitles,
+            CloseContainerS2c,
             SetContainerContent,
             SetContainerProperty,
             SetContainerSlot,
