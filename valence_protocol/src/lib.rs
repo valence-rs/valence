@@ -44,7 +44,6 @@
 //!
 //! TODO
 
-#![forbid(unsafe_code)]
 #![deny(
     rustdoc::broken_intra_doc_links,
     rustdoc::private_intra_doc_links,
@@ -69,6 +68,7 @@
 // Allows us to use our own proc macros internally.
 extern crate self as valence_protocol;
 
+use std::io;
 use std::io::Write;
 
 pub use anyhow::{Error, Result};
@@ -84,12 +84,10 @@ pub use raw_bytes::RawBytes;
 pub use text::{Text, TextFormat};
 pub use username::Username;
 pub use uuid::Uuid;
-pub use valence_derive::{Decode, Encode, Packet};
+pub use valence_derive::{Decode, DecodePacket, Encode, EncodePacket};
 pub use var_int::VarInt;
 pub use var_long::VarLong;
 pub use {uuid, valence_nbt as nbt};
-
-use crate::byte_counter::ByteCounter;
 
 /// The Minecraft protocol version this library currently targets.
 pub const PROTOCOL_VERSION: i32 = 760;
@@ -103,7 +101,6 @@ pub mod block;
 mod block_pos;
 mod bounded;
 mod byte_angle;
-mod byte_counter;
 mod codec;
 pub mod enchant;
 pub mod entity_meta;
@@ -117,7 +114,7 @@ pub mod text;
 pub mod translation_key;
 pub mod types;
 pub mod username;
-mod var_int;
+pub mod var_int;
 mod var_long;
 
 /// Used only by proc macros. Not public API.
@@ -125,7 +122,7 @@ mod var_long;
 pub mod __private {
     pub use anyhow::{anyhow, bail, ensure, Context, Result};
 
-    pub use crate::{Decode, DerivedPacketDecode, DerivedPacketEncode, Encode, VarInt};
+    pub use crate::{Decode, DecodePacket, Encode, EncodePacket, VarInt};
 }
 
 /// The maximum number of bytes in a single Minecraft packet.
@@ -141,22 +138,15 @@ pub const MAX_PACKET_SIZE: i32 = 2097152;
 /// implement `Encode`. Components are encoded in the order they appear in the
 /// type definition.
 ///
-/// If a `#[packet_id = ...]` attribute is present, encoding the type begins by
-/// writing the specified constant [`VarInt`] value before any of the
-/// components.
-///
 /// For enums, the variant to encode is marked by a leading [`VarInt`]
 /// discriminant (tag). The discriminant value can be changed using the `#[tag =
 /// ...]` attribute on the variant in question. Discriminant values are assigned
 /// to variants using rules similar to regular enum discriminants.
 ///
-/// [`VarInt`]: var_int::VarInt
-///
 /// ```
 /// use valence_protocol::Encode;
 ///
 /// #[derive(Encode)]
-/// #[packet_id = 42]
 /// struct MyStruct<'a> {
 ///     first: i32,
 ///     second: &'a str,
@@ -193,32 +183,22 @@ pub trait Encode {
     /// the data that was written to the writer. The exact number of bytes
     /// that were originally written must be consumed during the decoding.
     ///
-    /// Additionally, this function must be pure. If no write error occurs,
-    /// successive calls to `encode` must write the same bytes to the writer
-    /// argument. This property can be broken by using internal mutability,
-    /// global state, or other tricks.
-    ///
     /// [`decode`]: Decode::decode
     fn encode(&self, w: impl Write) -> Result<()>;
 
-    /// Returns the number of bytes that will be written when [`Self::encode`]
-    /// is called.
-    ///
-    /// If [`Self::encode`] returns `Ok`, then the exact number of bytes
-    /// reported by this function must be written to the writer argument.
-    ///
-    /// If the result is `Err`, then the number of written bytes must be less
-    /// than or equal to the count returned by this function.
-    ///
-    /// # Default Implementation
-    ///
-    /// Calls [`Self::encode`] to count the number of written bytes. This is
-    /// always correct, but is not always the most efficient approach.
-    fn encoded_len(&self) -> usize {
-        let mut counter = ByteCounter::new();
-        let _ = self.encode(&mut counter);
-        counter.0
+    /// Hack to get around the lack of specialization. Not public API.
+    #[doc(hidden)]
+    fn write_slice(slice: &[Self], w: impl Write) -> io::Result<()>
+    where
+        Self: Sized,
+    {
+        let _ = (slice, w);
+        unimplemented!("for internal use in valence_protocol only")
     }
+
+    /// Hack to get around the lack of specialization. Not public API.
+    #[doc(hidden)]
+    const HAS_WRITE_SLICE: bool = false;
 }
 
 /// The `Decode` trait allows objects to be read from the Minecraft protocol. It
@@ -234,10 +214,6 @@ pub trait Encode {
 /// implement `Decode`. Components are decoded in the order they appear in the
 /// type definition.
 ///
-/// If a `#[packet_id = ...]` attribute is present, encoding the type begins by
-/// reading the specified constant [`VarInt`] value before any of the
-/// components.
-///
 /// For enums, the variant to decode is determined by a leading [`VarInt`]
 /// discriminant (tag). The discriminant value can be changed using the `#[tag =
 /// ...]` attribute on the variant in question. Discriminant values are assigned
@@ -247,7 +223,6 @@ pub trait Encode {
 /// use valence_protocol::Decode;
 ///
 /// #[derive(PartialEq, Debug, Decode)]
-/// #[packet_id = 5]
 /// struct MyStruct {
 ///     first: i32,
 ///     second: MyEnum,
@@ -262,7 +237,7 @@ pub trait Encode {
 ///     Fourth, // tag = 26
 /// }
 ///
-/// let mut r: &[u8] = &[5, 0, 0, 0, 0, 26];
+/// let mut r: &[u8] = &[0, 0, 0, 0, 26];
 ///
 /// let value = MyStruct::decode(&mut r).unwrap();
 /// let expected = MyStruct {
@@ -283,60 +258,80 @@ pub trait Decode<'a>: Sized {
     fn decode(r: &mut &'a [u8]) -> Result<Self>;
 }
 
-/// Marker for types that are encoded or decoded as complete packets.
+/// Like [`Encode`], but implementations must write a leading [`VarInt`] packet
+/// ID before any other data.
 ///
-/// A complete packet is data starting with a [`VarInt`] packet ID. [`Encode`]
-/// and [`Decode`] implementations on `Self`, if present, are expected to handle
-/// this leading `VarInt`.
-pub trait Packet {
-    /// The name of this packet.
-    ///
-    /// This is usually the name of the type representing the packet without any
-    /// generic parameters or other decorations.
-    fn packet_name(&self) -> &'static str;
+/// # Deriving
+///
+/// This trait can be implemented automatically by using the
+/// [`EncodePacket`][macro] derive macro. The trait is implemented by writing
+/// the packet ID provided in the `#[packet_id = ...]` helper attribute followed
+/// by a call to [`Encode::encode`].
+///
+/// ```
+/// use valence_protocol::{Encode, EncodePacket};
+///
+/// #[derive(Encode, EncodePacket)]
+/// #[packet_id = 42]
+/// struct MyStruct {
+///     first: i32,
+/// }
+///
+/// let value = MyStruct { first: 123 };
+/// let mut buf = vec![];
+///
+/// value.encode_packet(&mut buf).unwrap();
+/// println!("{buf:?}");
+/// ```
+///
+/// [macro]: valence_derive::DecodePacket
+pub trait EncodePacket {
+    /// The packet ID that is written when [`Self::encode_packet`] is called. A
+    /// negative value indicates that the packet ID is not statically known.
+    const PACKET_ID: i32 = -1;
+
+    /// Like [`Encode::encode`], but a leading [`VarInt`] packet ID must be
+    /// written first.
+    fn encode_packet(&self, w: impl Write) -> Result<()>;
 }
 
-/// Packets which obtained [`Encode`] implementations via the [`Encode`][macro]
-/// derive macro with the `#[packet_id = ...]` attribute.
+/// Like [`Decode`], but implementations must read a leading [`VarInt`] packet
+/// ID before any other data.
 ///
-/// Along with [`DerivedPacketDecode`], this trait can be occasionally useful
-/// for automating tasks such as defining large packet enums. Otherwise, this
-/// trait should not be used and has thus been hidden from the documentation.
+/// # Deriving
 ///
-/// [macro]: valence_derive::Encode
-#[doc(hidden)]
-pub trait DerivedPacketEncode: Encode {
-    /// The ID of this packet specified with `#[packet_id = ...]`.
-    const ID: i32;
-    /// The name of the type implementing this trait.
-    const NAME: &'static str;
+/// This trait can be implemented automatically by using the
+/// [`DecodePacket`][macro] derive macro. The trait is implemented by reading
+/// the packet ID provided in the `#[packet_id = ...]` helper attribute followed
+/// by a call to [`Decode::decode`].
+///
+/// ```
+/// use valence_protocol::{Decode, DecodePacket};
+///
+/// #[derive(Decode, DecodePacket)]
+/// #[packet_id = 42]
+/// struct MyStruct {
+///     first: i32,
+/// }
+///
+/// let buf = [42, 0, 0, 0, 0];
+/// let mut r = buf.as_slice();
+///
+/// let value = MyStruct::decode_packet(&mut r).unwrap();
+///
+/// assert_eq!(value.first, 0);
+/// assert!(r.is_empty());
+/// ```
+///
+/// [macro]: valence_protocol::DecodePacket
+pub trait DecodePacket<'a>: Sized {
+    /// The packet ID that is read when [`Self::decode_packet`] is called. A
+    /// negative value indicates that the packet ID is not statically known.
+    const PACKET_ID: i32 = -1;
 
-    /// Like [`Encode::encode`], but does not write a leading [`VarInt`] packet
-    /// ID.
-    fn encode_without_id(&self, w: impl Write) -> Result<()>;
-    /// Like [`Encode::encoded_len`], but does not count a leading [`VarInt`]
-    /// packet ID.
-    fn encoded_len_without_id(&self) -> usize;
-}
-
-/// Packets which obtained [`Decode`] implementations via the [`Decode`][macro]
-/// derive macro with the `#[packet_id = ...]` attribute.
-///
-/// Along with [`DerivedPacketEncode`], this trait can be occasionally useful
-/// for automating tasks such as defining large packet enums. Otherwise, this
-/// trait should not be used and has thus been hidden from the documentation.
-///
-/// [macro]: valence_derive::Decode
-#[doc(hidden)]
-pub trait DerivedPacketDecode<'a>: Decode<'a> {
-    /// The ID of this packet specified with `#[packet_id = ...]`.
-    const ID: i32;
-    /// The name of the type implementing this trait.
-    const NAME: &'static str;
-
-    /// Like [`Decode::decode`], but does not decode a leading [`VarInt`] packet
-    /// ID.
-    fn decode_without_id(r: &mut &'a [u8]) -> Result<Self>;
+    /// Like [`Decode::decode`], but a leading [`VarInt`] packet ID must be read
+    /// first.
+    fn decode_packet(r: &mut &'a [u8]) -> Result<Self>;
 }
 
 #[allow(dead_code)]
@@ -344,7 +339,7 @@ pub trait DerivedPacketDecode<'a>: Decode<'a> {
 mod derive_tests {
     use super::*;
 
-    #[derive(Encode, Decode, Packet)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 1]
     struct RegularStruct {
         foo: i32,
@@ -352,30 +347,30 @@ mod derive_tests {
         baz: f64,
     }
 
-    #[derive(Encode, Decode, Packet)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 2]
     struct UnitStruct;
 
-    #[derive(Encode, Decode, Packet)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 3]
     struct EmptyStruct {}
 
-    #[derive(Encode, Decode, Packet)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 4]
     struct TupleStruct(i32, bool, f64);
 
-    #[derive(Encode, Decode, Packet)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 5]
     struct StructWithGenerics<'z, T = ()> {
         foo: &'z str,
         bar: T,
     }
 
-    #[derive(Encode, Decode, Packet)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 6]
     struct TupleStructWithGenerics<'z, T = ()>(&'z str, i32, T);
 
-    #[derive(Encode, Decode, Packet)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 7]
     enum RegularEnum {
         Empty,
@@ -383,11 +378,11 @@ mod derive_tests {
         Fields { foo: i32, bar: bool, baz: f64 },
     }
 
-    #[derive(Encode, Decode, Packet)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 8]
     enum EmptyEnum {}
 
-    #[derive(Encode, Decode, Packet)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0xbeef]
     enum EnumWithGenericsAndTags<'z, T = ()> {
         #[tag = 5]
@@ -404,7 +399,7 @@ mod derive_tests {
     #[allow(unconditional_recursion)]
     fn has_impls<'a, T>()
     where
-        T: Encode + Decode<'a> + DerivedPacketEncode + DerivedPacketDecode<'a> + Packet,
+        T: Encode + EncodePacket + Decode<'a> + DecodePacket<'a>,
     {
         has_impls::<RegularStruct>();
         has_impls::<UnitStruct>();

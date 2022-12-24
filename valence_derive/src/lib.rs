@@ -4,17 +4,17 @@
 //! See `valence_protocol`'s documentation for more information.
 
 use proc_macro::TokenStream as StdTokenStream;
-use proc_macro2::{Span, TokenStream};
-use quote::{quote, ToTokens};
+use proc_macro2::TokenStream;
+use quote::ToTokens;
 use syn::{
-    parse2, parse_quote, Attribute, DeriveInput, Error, GenericParam, Generics, Lifetime,
-    LifetimeDef, Lit, LitInt, Meta, Result, Variant,
+    parse_quote, Attribute, Error, GenericParam, Generics, Lifetime, LifetimeDef, Lit, LitInt,
+    Meta, Result, Variant,
 };
 
 mod decode;
 mod encode;
 
-#[proc_macro_derive(Encode, attributes(packet_id, tag))]
+#[proc_macro_derive(Encode, attributes(tag))]
 pub fn derive_encode(item: StdTokenStream) -> StdTokenStream {
     match encode::derive_encode(item.into()) {
         Ok(tokens) => tokens.into(),
@@ -22,7 +22,15 @@ pub fn derive_encode(item: StdTokenStream) -> StdTokenStream {
     }
 }
 
-#[proc_macro_derive(Decode, attributes(packet_id, tag))]
+#[proc_macro_derive(EncodePacket, attributes(packet_id))]
+pub fn derive_encode_packet(item: StdTokenStream) -> StdTokenStream {
+    match encode::derive_encode_packet(item.into()) {
+        Ok(tokens) => tokens.into(),
+        Err(e) => e.into_compile_error().into(),
+    }
+}
+
+#[proc_macro_derive(Decode, attributes(tag))]
 pub fn derive_decode(item: StdTokenStream) -> StdTokenStream {
     match decode::derive_decode(item.into()) {
         Ok(tokens) => tokens.into(),
@@ -30,39 +38,12 @@ pub fn derive_decode(item: StdTokenStream) -> StdTokenStream {
     }
 }
 
-#[proc_macro_derive(Packet)]
-pub fn derive_packet(item: StdTokenStream) -> StdTokenStream {
-    match derive_packet_inner(item.into()) {
+#[proc_macro_derive(DecodePacket, attributes(packet_id))]
+pub fn derive_decode_packet(item: StdTokenStream) -> StdTokenStream {
+    match decode::derive_decode_packet(item.into()) {
         Ok(tokens) => tokens.into(),
         Err(e) => e.into_compile_error().into(),
     }
-}
-
-fn derive_packet_inner(item: TokenStream) -> Result<TokenStream> {
-    let input = parse2::<DeriveInput>(item)?;
-
-    if find_packet_id_attr(&input.attrs)?.is_none() {
-        return Err(Error::new(
-            Span::call_site(),
-            "cannot derive `Packet` without `#[packet_id = ...]` attribute. Consider implementing \
-             the trait manually",
-        ));
-    }
-
-    let name = input.ident;
-    let string_name = name.to_string();
-
-    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
-
-    Ok(quote! {
-        impl #impl_generics ::valence_protocol::Packet for #name #ty_generics
-        #where_clause
-        {
-            fn packet_name(&self) -> &'static str {
-                #string_name
-            }
-        }
-    })
 }
 
 fn find_packet_id_attr(attrs: &[Attribute]) -> Result<Option<LitInt>> {

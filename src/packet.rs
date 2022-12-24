@@ -1,11 +1,11 @@
 use std::io::Write;
 
-use valence_protocol::{write_packet, write_packet_compressed, Encode, Packet};
+use valence_protocol::{encode_packet, encode_packet_compressed, EncodePacket};
 
 pub trait WritePacket {
     fn write_packet<P>(&mut self, packet: &P) -> anyhow::Result<()>
     where
-        P: Encode + Packet + ?Sized;
+        P: EncodePacket + ?Sized;
 
     fn write_bytes(&mut self, bytes: &[u8]) -> anyhow::Result<()>;
 }
@@ -13,7 +13,7 @@ pub trait WritePacket {
 impl<W: WritePacket> WritePacket for &mut W {
     fn write_packet<P>(&mut self, packet: &P) -> anyhow::Result<()>
     where
-        P: Encode + Packet + ?Sized,
+        P: EncodePacket + ?Sized,
     {
         (*self).write_packet(packet)
     }
@@ -23,35 +23,35 @@ impl<W: WritePacket> WritePacket for &mut W {
     }
 }
 
-pub struct PacketWriter<'a, W> {
-    writer: W,
+pub struct PacketWriter<'a> {
+    buf: &'a mut Vec<u8>,
     threshold: Option<u32>,
     scratch: &'a mut Vec<u8>,
 }
 
-impl<'a, W: Write> PacketWriter<'a, W> {
-    pub fn new(writer: W, threshold: Option<u32>, scratch: &'a mut Vec<u8>) -> PacketWriter<W> {
+impl<'a> PacketWriter<'a> {
+    pub fn new(buf: &'a mut Vec<u8>, threshold: Option<u32>, scratch: &'a mut Vec<u8>) -> Self {
         Self {
-            writer,
+            buf,
             threshold,
             scratch,
         }
     }
 }
 
-impl<W: Write> WritePacket for PacketWriter<'_, W> {
-    fn write_packet<P>(&mut self, packet: &P) -> anyhow::Result<()>
+impl WritePacket for PacketWriter<'_> {
+    fn write_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
     where
-        P: Encode + Packet + ?Sized,
+        P: EncodePacket + ?Sized,
     {
         if let Some(threshold) = self.threshold {
-            write_packet_compressed(&mut self.writer, threshold, self.scratch, packet)
+            encode_packet_compressed(self.buf, pkt, threshold, self.scratch)
         } else {
-            write_packet(&mut self.writer, packet)
+            encode_packet(self.buf, pkt)
         }
     }
 
     fn write_bytes(&mut self, bytes: &[u8]) -> anyhow::Result<()> {
-        Ok(self.writer.write_all(bytes)?)
+        Ok(self.buf.write_all(bytes)?)
     }
 }
