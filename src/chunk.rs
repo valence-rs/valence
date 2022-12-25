@@ -204,7 +204,7 @@ impl<C: Config> Chunks<C> {
 
         let y = pos.y.checked_sub(self.dimension_min_y)?.try_into().ok()?;
 
-        if y < chunk.height() {
+        if y < chunk.section_count() * 16 {
             Some(chunk.block_state(
                 pos.x.rem_euclid(16) as usize,
                 y,
@@ -437,42 +437,46 @@ impl<C: Config, P: Into<ChunkPos>> IndexMut<P> for Chunks<C> {
 /// Operations that can be performed on a chunk. [`LoadedChunk`] and
 /// [`UnloadedChunk`] implement this trait.
 pub trait Chunk {
-    /// Returns the height of this chunk in blocks. The result is always a
-    /// multiple of 16.
-    fn height(&self) -> usize;
+    /// Returns the number of sections in this chunk. To get the height of the
+    /// chunk in meters, multiply the result by 16.
+    fn section_count(&self) -> usize;
 
     /// Gets the block state at the provided offsets in the chunk.
     ///
     /// **Note**: The arguments to this function are offsets from the minimum
-    /// corner of the chunk in _chunk space_ rather than _world space_. You
-    /// might be looking for [`Chunks::block_state`] instead.
+    /// corner of the chunk in _chunk space_ rather than _world space_.
     ///
     /// # Panics
     ///
-    /// Panics if the offsets are outside the bounds of the chunk.
+    /// Panics if the offsets are outside the bounds of the chunk. `x` and `z`
+    /// must be less than 16 while `y` must be less than `section_count() * 16`.
     fn block_state(&self, x: usize, y: usize, z: usize) -> BlockState;
 
     /// Sets the block state at the provided offsets in the chunk. The previous
     /// block state at the position is returned.
     ///
     /// **Note**: The arguments to this function are offsets from the minimum
-    /// corner of the chunk in _chunk space_ rather than _world space_. You
-    /// might be looking for [`Chunks::set_block_state`] instead.
+    /// corner of the chunk in _chunk space_ rather than _world space_.
     ///
     /// # Panics
     ///
-    /// Panics if the offsets are outside the bounds of the chunk.
+    /// Panics if the offsets are outside the bounds of the chunk. `x` and `z`
+    /// must be less than 16 while `y` must be less than `section_count() * 16`.
     fn set_block_state(&mut self, x: usize, y: usize, z: usize, block: BlockState) -> BlockState;
 
-    /// Sets every block state in this chunk to the given block state.
+    /// Sets every block in a section to the given block state.
     ///
-    /// This is semantically equivalent to calling [`set_block_state`] on every
-    /// block in the chunk followed by a call to [`optimize`] at the end.
-    /// However, this function may be implemented more efficiently.
+    /// This is semantically equivalent to setting every block in the section
+    /// with [`set_block_state`]. However, this function may be implemented more
+    /// efficiently.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `sect_y` is out of bounds. `sect_y` must be less than the
+    /// section count.
     ///
     /// [`set_block_state`]: Self::set_block_state
-    /// [`optimize`]: Self::optimize
-    fn fill_block_states(&mut self, block: BlockState);
+    fn fill_block_states(&mut self, sect_y: usize, block: BlockState);
 
     /// Gets the biome at the provided biome offsets in the chunk.
     ///
@@ -481,7 +485,8 @@ pub trait Chunk {
     ///
     /// # Panics
     ///
-    /// Panics if the offsets are outside the bounds of the chunk.
+    /// Panics if the offsets are outside the bounds of the chunk. `x` and `z`
+    /// must be less than 4 while `y` must be less than `section_count() * 4`.
     fn biome(&self, x: usize, y: usize, z: usize) -> BiomeId;
 
     /// Sets the biome at the provided offsets in the chunk. The previous
@@ -492,18 +497,23 @@ pub trait Chunk {
     ///
     /// # Panics
     ///
-    /// Panics if the offsets are outside the bounds of the chunk.
+    /// Panics if the offsets are outside the bounds of the chunk. `x` and `z`
+    /// must be less than 4 while `y` must be less than `section_count() * 4`.
     fn set_biome(&mut self, x: usize, y: usize, z: usize, biome: BiomeId) -> BiomeId;
 
-    /// Sets every biome in this chunk to the given biome.
+    /// Sets every biome in a section to the given block state.
     ///
-    /// This is semantically equivalent to calling [`set_biome`] on every
-    /// biome in the chunk followed by a call to [`optimize`] at the end.
-    /// However, this function may be implemented more efficiently.
+    /// This is semantically equivalent to setting every biome in the section
+    /// with [`set_biome`]. However, this function may be implemented more
+    /// efficiently.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `sect_y` is out of bounds. `sect_y` must be less than the
+    /// section count.
     ///
     /// [`set_biome`]: Self::set_biome
-    /// [`optimize`]: Self::optimize
-    fn fill_biomes(&mut self, biome: BiomeId);
+    fn fill_biomes(&mut self, sect_y: usize, biome: BiomeId);
 
     /// Optimizes this chunk to use the minimum amount of memory possible. It
     /// should have no observable effect on the contents of the chunk.
@@ -521,44 +531,30 @@ pub struct UnloadedChunk {
 
 impl UnloadedChunk {
     /// Constructs a new unloaded chunk containing only [`BlockState::AIR`] and
-    /// [`BiomeId::default()`] with the given height in blocks.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the value of `height` does not meet the following criteria:
-    /// `height % 16 == 0 && height <= 4064`.
-    pub fn new(height: usize) -> Self {
+    /// [`BiomeId::default()`] with the given number of sections. A section is a
+    /// 16x16x16 meter volume.
+    pub fn new(section_count: usize) -> Self {
         let mut chunk = Self { sections: vec![] };
-
-        chunk.resize(height);
+        chunk.resize(section_count);
         chunk
     }
 
-    /// Changes the height of the chunk to `new_height`. This is a potentially
-    /// expensive operation that may involve copying.
+    /// Changes the section count of the chunk to `new_section_count`. This is a
+    /// potentially expensive operation that may involve copying.
     ///
     /// The chunk is extended and truncated from the top. New blocks are always
     /// [`BlockState::AIR`] and biomes are [`BiomeId::default()`].
-    ///
-    /// # Panics
-    ///
-    /// The constraints on `new_height` are the same as [`UnloadedChunk::new`].
-    pub fn resize(&mut self, new_height: usize) {
-        assert!(
-            new_height % 16 == 0 && new_height <= 4064,
-            "invalid chunk height of {new_height}"
-        );
+    pub fn resize(&mut self, new_section_count: usize) {
+        let old_section_count = self.section_count();
 
-        let old_height = self.sections.len() * 16;
-
-        if new_height > old_height {
-            let additional = (new_height - old_height) / 16;
-            self.sections.reserve_exact(additional);
+        if new_section_count > old_section_count {
             self.sections
-                .resize_with(new_height / 16, ChunkSection::default);
+                .reserve_exact(new_section_count - old_section_count);
+            self.sections
+                .resize_with(new_section_count, ChunkSection::default);
             debug_assert_eq!(self.sections.capacity(), self.sections.len());
-        } else if new_height < old_height {
-            self.sections.truncate(new_height / 16);
+        } else {
+            self.sections.truncate(new_section_count);
         }
     }
 }
@@ -571,13 +567,13 @@ impl Default for UnloadedChunk {
 }
 
 impl Chunk for UnloadedChunk {
-    fn height(&self) -> usize {
-        self.sections.len() * 16
+    fn section_count(&self) -> usize {
+        self.sections.len()
     }
 
     fn block_state(&self, x: usize, y: usize, z: usize) -> BlockState {
         assert!(
-            x < 16 && y < self.height() && z < 16,
+            x < 16 && y < self.section_count() * 16 && z < 16,
             "chunk block offsets of ({x}, {y}, {z}) are out of bounds"
         );
 
@@ -588,7 +584,7 @@ impl Chunk for UnloadedChunk {
 
     fn set_block_state(&mut self, x: usize, y: usize, z: usize, block: BlockState) -> BlockState {
         assert!(
-            x < 16 && y < self.height() && z < 16,
+            x < 16 && y < self.section_count() * 16 && z < 16,
             "chunk block offsets of ({x}, {y}, {z}) are out of bounds"
         );
 
@@ -605,23 +601,26 @@ impl Chunk for UnloadedChunk {
         old_block
     }
 
-    fn fill_block_states(&mut self, block: BlockState) {
-        for sect in self.sections.iter_mut() {
-            // TODO: adjust motion blocking here.
+    fn fill_block_states(&mut self, sect_y: usize, block: BlockState) {
+        let Some(sect) = self.sections.get_mut(sect_y) else {
+            panic!(
+                "section index {sect_y} out of bounds for chunk with {} sections",
+                self.section_count()
+            )
+        };
 
-            if block.is_air() {
-                sect.non_air_count = 0;
-            } else {
-                sect.non_air_count = SECTION_BLOCK_COUNT as u16;
-            }
-
-            sect.block_states.fill(block);
+        if block.is_air() {
+            sect.non_air_count = 0;
+        } else {
+            sect.non_air_count = SECTION_BLOCK_COUNT as u16;
         }
+
+        sect.block_states.fill(block);
     }
 
     fn biome(&self, x: usize, y: usize, z: usize) -> BiomeId {
         assert!(
-            x < 4 && y < self.height() / 4 && z < 4,
+            x < 4 && y < self.section_count() * 4 && z < 4,
             "chunk biome offsets of ({x}, {y}, {z}) are out of bounds"
         );
 
@@ -630,7 +629,7 @@ impl Chunk for UnloadedChunk {
 
     fn set_biome(&mut self, x: usize, y: usize, z: usize, biome: BiomeId) -> BiomeId {
         assert!(
-            x < 4 && y < self.height() / 4 && z < 4,
+            x < 4 && y < self.section_count() * 4 && z < 4,
             "chunk biome offsets of ({x}, {y}, {z}) are out of bounds"
         );
 
@@ -639,10 +638,15 @@ impl Chunk for UnloadedChunk {
             .set(x + z * 4 + y % 4 * 4 * 4, biome)
     }
 
-    fn fill_biomes(&mut self, biome: BiomeId) {
-        for sect in self.sections.iter_mut() {
-            sect.biomes.fill(biome);
-        }
+    fn fill_biomes(&mut self, sect_y: usize, biome: BiomeId) {
+        let Some(sect) = self.sections.get_mut(sect_y) else {
+            panic!(
+                "section index {sect_y} out of bounds for chunk with {} sections",
+                self.section_count()
+            )
+        };
+
+        sect.biomes.fill(biome);
     }
 
     fn optimize(&mut self) {
@@ -727,7 +731,7 @@ impl ChunkSection {
 
 impl<C: Config> LoadedChunk<C> {
     fn new(mut chunk: UnloadedChunk, dimension_section_count: usize, state: C::ChunkState) -> Self {
-        chunk.resize(dimension_section_count * 16);
+        chunk.resize(dimension_section_count);
 
         Self {
             state,
@@ -870,13 +874,13 @@ impl<C: Config> LoadedChunk<C> {
 }
 
 impl<C: Config> Chunk for LoadedChunk<C> {
-    fn height(&self) -> usize {
-        self.sections.len() * 16
+    fn section_count(&self) -> usize {
+        self.sections.len()
     }
 
     fn block_state(&self, x: usize, y: usize, z: usize) -> BlockState {
         assert!(
-            x < 16 && y < self.height() && z < 16,
+            x < 16 && y < self.section_count() * 16 && z < 16,
             "chunk block offsets of ({x}, {y}, {z}) are out of bounds"
         );
 
@@ -887,7 +891,7 @@ impl<C: Config> Chunk for LoadedChunk<C> {
 
     fn set_block_state(&mut self, x: usize, y: usize, z: usize, block: BlockState) -> BlockState {
         assert!(
-            x < 16 && y < self.height() && z < 16,
+            x < 16 && y < self.section_count() * 16 && z < 16,
             "chunk block offsets of ({x}, {y}, {z}) are out of bounds"
         );
 
@@ -909,37 +913,40 @@ impl<C: Config> Chunk for LoadedChunk<C> {
         old_block
     }
 
-    fn fill_block_states(&mut self, block: BlockState) {
-        for sect in self.sections.iter_mut() {
-            // Mark the appropriate blocks as modified.
-            // No need to iterate through all the blocks if we know they're all the same.
-            if let PalettedContainer::Single(single) = &sect.block_states {
-                if block != *single {
-                    sect.mark_all_blocks_as_modified();
-                }
-            } else {
-                for i in 0..SECTION_BLOCK_COUNT {
-                    if block != sect.block_states.get(i) {
-                        sect.mark_block_as_modified(i);
-                    }
+    fn fill_block_states(&mut self, sect_y: usize, block: BlockState) {
+        let Some(sect) = self.sections.get_mut(sect_y) else {
+            panic!(
+                "section index {sect_y} out of bounds for chunk with {} sections",
+                self.section_count()
+            )
+        };
+
+        // Mark the appropriate blocks as modified.
+        // No need to iterate through all the blocks if we know they're all the same.
+        if let PalettedContainer::Single(single) = &sect.block_states {
+            if block != *single {
+                sect.mark_all_blocks_as_modified();
+            }
+        } else {
+            for i in 0..SECTION_BLOCK_COUNT {
+                if block != sect.block_states.get(i) {
+                    sect.mark_block_as_modified(i);
                 }
             }
-
-            // TODO: adjust motion blocking here.
-
-            if block.is_air() {
-                sect.non_air_count = 0;
-            } else {
-                sect.non_air_count = SECTION_BLOCK_COUNT as u16;
-            }
-
-            sect.block_states.fill(block);
         }
+
+        if block.is_air() {
+            sect.non_air_count = 0;
+        } else {
+            sect.non_air_count = SECTION_BLOCK_COUNT as u16;
+        }
+
+        sect.block_states.fill(block);
     }
 
     fn biome(&self, x: usize, y: usize, z: usize) -> BiomeId {
         assert!(
-            x < 4 && y < self.height() / 4 && z < 4,
+            x < 4 && y < self.section_count() * 4 && z < 4,
             "chunk biome offsets of ({x}, {y}, {z}) are out of bounds"
         );
 
@@ -948,7 +955,7 @@ impl<C: Config> Chunk for LoadedChunk<C> {
 
     fn set_biome(&mut self, x: usize, y: usize, z: usize, biome: BiomeId) -> BiomeId {
         assert!(
-            x < 4 && y < self.height() / 4 && z < 4,
+            x < 4 && y < self.section_count() * 4 && z < 4,
             "chunk biome offsets of ({x}, {y}, {z}) are out of bounds"
         );
 
@@ -963,10 +970,15 @@ impl<C: Config> Chunk for LoadedChunk<C> {
         old_biome
     }
 
-    fn fill_biomes(&mut self, biome: BiomeId) {
-        for sect in self.sections.iter_mut() {
-            sect.biomes.fill(biome);
-        }
+    fn fill_biomes(&mut self, sect_y: usize, biome: BiomeId) {
+        let Some(sect) = self.sections.get_mut(sect_y) else {
+            panic!(
+                "section index {sect_y} out of bounds for chunk with {} sections",
+                self.section_count()
+            )
+        };
+
+        sect.biomes.fill(biome);
 
         // TODO: this is set to true unconditionally, but it doesn't have to be.
         self.any_biomes_modified = true;
@@ -982,13 +994,6 @@ impl<C: Config> Chunk for LoadedChunk<C> {
         self.cached_update_packets.shrink_to_fit();
     }
 }
-
-/*
-fn is_motion_blocking(b: BlockState) -> bool {
-    // TODO: use is_solid || is_fluid ?
-    !b.is_air()
-}
-*/
 
 fn compact_u64s_len(vals_count: usize, bits_per_val: usize) -> usize {
     let vals_per_u64 = 64 / bits_per_val;

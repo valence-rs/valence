@@ -1,10 +1,12 @@
 extern crate valence;
+
+use std::env;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use valence::prelude::*;
-use valence_anvil::biome::BiomeKind;
+// use valence_anvil::biome::BiomeKind;
 use valence_anvil::AnvilWorld;
 
 /// # IMPORTANT
@@ -14,32 +16,27 @@ use valence_anvil::AnvilWorld;
 /// commonly see `advancements`, `DIM1`, `DIM-1` and most importantly `region`
 /// subdirectories. Only the `region` directory is accessed.
 pub fn main() -> ShutdownResult {
-    let args: Vec<String> = std::env::args().collect();
-    if let Some(world_folder) = args.get(1) {
-        let world_folder = PathBuf::from(world_folder);
-        if world_folder.exists() && world_folder.is_dir() {
-            if !world_folder.join("region").exists() {
-                ShutdownResult::Err(
-                    "Could not find the `region` folder inside the world directory.".into(),
-                )
-            } else {
-                // This actually starts and runs the server.
-                valence::start_server(
-                    Game {
-                        world_dir: world_folder,
-                        player_count: AtomicUsize::new(0),
-                    },
-                    None,
-                )
-            }
-        } else {
-            ShutdownResult::Err(
-                "World directory argument is not valid: Must be a folder that exists.".into(),
-            )
-        }
-    } else {
-        ShutdownResult::Err("Please add the world directory as program argument.".into())
+    let Some(world_dir) = env::args().nth(1) else {
+        return Err("Please add the world directory as program argument.".into())
+    };
+
+    let world_dir = PathBuf::from(world_dir);
+
+    if !world_dir.exists() || !world_dir.is_dir() {
+        return Err("World argument must be a directory that exists".into())
     }
+
+    if !world_dir.join("region").exists() {
+        return Err("Could not find the \"region\" directory in the given world directory".into())
+    }
+
+    valence::start_server(
+        Game {
+            world_dir,
+            player_count: AtomicUsize::new(0),
+        },
+        None,
+    )
 }
 
 #[derive(Debug, Default)]
@@ -66,9 +63,9 @@ impl Config for Game {
     type PlayerListState = ();
     type InventoryState = ();
 
-    fn biomes(&self) -> Vec<Biome> {
-        BiomeKind::ALL.iter().map(|b| b.biome().unwrap()).collect()
-    }
+    // fn biomes(&self) -> Vec<Biome> {
+    //     BiomeKind::ALL.iter().map(|b| b.biome().unwrap()).collect()
+    // }
 
     async fn server_list_ping(
         &self,
@@ -91,18 +88,15 @@ impl Config for Game {
 
     fn init(&self, server: &mut Server<Self>) {
         for (id, dimension) in server.shared.dimensions() {
-            server.worlds.insert(
-                id,
-                AnvilWorld::new::<Game, _>(dimension, &self.world_dir, server.shared.biomes()),
-            );
+            server.worlds.insert(id, AnvilWorld::new(&self.world_dir));
         }
         server.state = Some(server.player_lists.insert(()).0);
     }
 
     fn update(&self, server: &mut Server<Self>) {
-        let (world_id, world): (WorldId, &mut World<_>) = server.worlds.iter_mut().next().unwrap();
+        let (world_id, world) = server.worlds.iter_mut().next().unwrap();
 
-        server.clients.retain(|_, client: &mut Client<_>| {
+        server.clients.retain(|_, client| {
             if client.created_this_tick() {
                 if self
                     .player_count
@@ -170,25 +164,39 @@ impl Config for Game {
             let dist = client.view_distance();
             let p = client.position();
 
-            let mut new_chunks = Vec::new();
             for pos in ChunkPos::at(p.x, p.z).in_view(dist) {
                 if let Some(existing) = world.chunks.get_mut(pos) {
                     existing.state = true;
                 } else {
-                    new_chunks.push(pos);
+                    match world.state.read_chunk(pos.x, pos.z) {
+                        Ok(Some(anvil_chunk)) => {
+                            let mut chunk = UnloadedChunk::new(24);
+
+                            if let Err(e) = valence_anvil::to_valence(
+                                &anvil_chunk.data,
+                                &mut chunk,
+                                0,
+                                |_| todo!(),
+                            ) {
+                                eprintln!(
+                                    "failed to convert chunk at ({}, {}): {e}",
+                                    pos.x, pos.z
+                                );
+                            }
+
+                            world.chunks.insert(pos, chunk, true);
+                        }
+                        Ok(None) => {
+                            // No chunk at this position.
+                            world.chunks.insert(pos, UnloadedChunk::default(), true);
+                        }
+                        Err(e) => {
+                            eprintln!("failed to read chunk at ({}, {}): {e}", pos.x, pos.z)
+                        }
+                    }
                 }
             }
 
-            let parsed_chunks = world.state.load_chunks(new_chunks.into_iter()).unwrap();
-            for (pos, chunk) in parsed_chunks {
-                if let Some(chunk) = chunk {
-                    world.chunks.insert(pos, chunk, true);
-                } else {
-                    let mut blank_chunk = UnloadedChunk::new(16);
-                    blank_chunk.set_block_state(0, 0, 0, BlockState::from_kind(BlockKind::Lava));
-                    world.chunks.insert(pos, blank_chunk, true);
-                }
-            }
             true
         });
 

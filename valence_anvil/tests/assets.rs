@@ -9,7 +9,7 @@ use reqwest::IntoUrl;
 /// Describes where to find the asset if it already has been downloaded and from
 /// which URL the asset can be downloaded. More asset types can be added on
 /// demand by modifying this enum.
-pub enum WebAsset<DestinationPath: AsRef<Path>, URL: IntoUrl> {
+pub enum WebAsset<DestinationPath, URL> {
     ZippedDirectory {
         destination_path: DestinationPath,
         remove_top_level_dir: bool,

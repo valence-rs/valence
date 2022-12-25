@@ -1,198 +1,170 @@
-use std::borrow::Borrow;
+use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
-use std::fmt::Debug;
 use std::fs::File;
+use std::io;
+use std::io::{ErrorKind, Read, Seek, SeekFrom};
 use std::path::PathBuf;
 
-use region::{ChunkTimestamp, Region, RegionPos};
-use valence::biome::{Biome, BiomeId};
-use valence::chunk::{ChunkPos, UnloadedChunk};
-use valence::config::Config;
-use valence::dimension::Dimension;
-use valence::protocol::Ident;
-use valence::vek::num_traits::FromPrimitive;
+use byteorder::{BigEndian, ReadBytesExt};
+use flate2::bufread::{GzDecoder, ZlibDecoder};
+use thiserror::Error;
+#[cfg(feature = "valence")]
+pub use to_valence::*;
+use valence_nbt::Compound;
 
-use crate::error::Error;
-
-pub mod biome;
-pub mod compression;
-pub mod error;
-
-mod chunk;
-mod palette;
-mod region;
+#[cfg(feature = "valence")]
+mod to_valence;
 
 #[derive(Debug)]
 pub struct AnvilWorld {
-    world_root: PathBuf,
-    config: AnvilWorldConfig,
-    region_files: BTreeMap<RegionPos, Option<Region<File>>>,
+    /// Path to the "region" subdirectory in the world root.
+    region_root: PathBuf,
+    /// Maps region (x, z) positions to region files.
+    regions: BTreeMap<(i32, i32), Region>,
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct AnvilChunk {
+    /// This chunk's NBT data.
+    pub data: Compound,
+    /// The time this chunk was last modified measured in seconds since the
+    /// epoch.
+    pub timestamp: u32,
+}
+
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum ReadChunkError {
+    #[error(transparent)]
+    Io(#[from] io::Error),
+    #[error(transparent)]
+    Nbt(#[from] valence_nbt::Error),
+    #[error("invalid chunk sector offset")]
+    BadSectorOffset,
+    #[error("invalid chunk size")]
+    BadChunkSize,
+    #[error("unknown compression scheme number of {0}")]
+    UnknownCompressionScheme(u8),
+    #[error("not all chunk NBT data was read")]
+    IncompleteNbtRead,
 }
 
 #[derive(Debug)]
-pub struct AnvilWorldConfig {
-    pub min_y: isize,
-    pub height: usize,
-    pub biomes: BTreeMap<Ident<String>, BiomeId>,
+struct Region {
+    file: File,
+    /// The first 8 KiB in the file. The header in the file and the in-memory
+    /// header must be kept in sync when writes occur.
+    header: [u8; SECTOR_SIZE * 2],
 }
 
+const SECTOR_SIZE: usize = 4096;
+
 impl AnvilWorld {
-    ///  Creates an `AnvilWorld` instance.
-    ///
-    /// # Arguments
-    ///
-    /// * `directory`: A path to the world folder. Inside this folder you should
-    ///   see the `region` directory.
-    /// * `server`: The shared server. This is used to initialize which biomes
-    ///   to use.
-    ///
-    /// returns: AnvilWorld
-    ///
-    /// # Examples
-    ///
-    /// ```ignore
-    /// impl Config for Game {
-    ///     fn init(&self, server: &mut Server<Self>) {
-    ///         for (id, dimension) in server.shared.dimensions() {
-    ///             server.worlds.insert(
-    ///                 id,
-    ///                 AnvilWorld::new::<Game, _>(&dimension, &self.world_dir, server.shared.biomes()),
-    ///             );
-    ///         }
-    ///     }
-    /// }
-    /// ```
-    pub fn new<C: Config, BIOME: Borrow<Biome>>(
-        dimension: &Dimension,
-        directory: impl Into<PathBuf>,
-        server_biomes: impl Iterator<Item = (BiomeId, BIOME)>,
-    ) -> Self {
-        let mut biomes = BTreeMap::new();
-        for (id, biome) in server_biomes {
-            biomes.insert(biome.borrow().name.clone(), id);
-        }
+    pub fn new(world_root: impl Into<PathBuf>) -> Self {
+        let mut region_root = world_root.into();
+        region_root.push("region");
+
         Self {
-            world_root: directory.into(),
-            config: AnvilWorldConfig {
-                min_y: isize::from_i32(dimension.min_y)
-                    .expect("Dimension min_y could not be converted to isize from i32."),
-                height: usize::from_i32(dimension.height)
-                    .expect("Dimension height could not be converted to usize from i32."),
-                biomes,
-            },
-            region_files: BTreeMap::new(),
+            region_root,
+            regions: BTreeMap::new(),
         }
     }
 
-    /// Load chunks from the available region files within the world directory.
-    ///
-    /// # Arguments
-    ///
-    /// * `positions`: Any iterator of `valence::chunk_pos::ChunkPos`
-    ///
-    /// returns: An iterator of the requested chunk positions and their
-    /// associated chunks
-    ///
-    /// # Examples
-    ///
-    /// ```ignore
-    /// use valence::prelude::*;
-    ///
-    /// let mut new_chunks = Vec::new();
-    /// for pos in ChunkPos::at(p.x, p.z).in_view(dist) {
-    ///     if let Some(existing) = world.chunks.get_mut(pos) {
-    ///         existing.state = true;
-    ///     } else {
-    ///         new_chunks.push(pos);
-    ///     }
-    /// }
-    ///
-    /// let parsed_chunks = world.state.load_chunks(new_chunks.into_iter()).unwrap();
-    /// for (pos, chunk) in parsed_chunks {
-    ///     if let Some(chunk) = chunk {
-    ///         // A chunk has successfully loaded from the region file.
-    ///         world.chunks.insert(pos, chunk, true);
-    ///     } else {
-    ///         // There is no information on this chunk in the region file.
-    ///         let mut blank_chunk = UnloadedChunk::new(16);
-    ///         blank_chunk.set_block_state(0, 0, 0, BlockState::from_kind(BlockKind::Lava));
-    ///         world.chunks.insert(pos, blank_chunk, true);
-    ///     }
-    /// }
-    /// ```
-    pub fn load_chunks<I: Iterator<Item = ChunkPos>>(
+    pub fn read_chunk(
         &mut self,
-        positions: I,
-    ) -> Result<impl Iterator<Item = (ChunkPos, Option<UnloadedChunk>)>, Error> {
-        let mut region_chunks = BTreeMap::<RegionPos, Vec<ChunkPos>>::new();
-        for chunk_pos in positions {
-            let region_pos = RegionPos::from(chunk_pos);
-            region_chunks
-                .entry(region_pos)
-                .and_modify(|v| v.push(chunk_pos))
-                .or_insert_with(|| vec![chunk_pos]);
-        }
-        let mut result_vec = Vec::<(ChunkPos, Option<UnloadedChunk>)>::new();
-        for (region_pos, chunk_pos_vec) in region_chunks {
-            if let Some(region) = self.region_files.entry(region_pos).or_insert({
-                let path = region_pos.path(&self.world_root);
-                if path.exists() {
-                    Some(Region::from_file(File::open(&path)?, region_pos)?)
-                } else {
-                    None
-                }
-            }) {
-                // A region file exists, and it is loaded.
-                result_vec.extend(region.parse_chunks(&self.config, chunk_pos_vec)?);
-            } else {
-                // No region file exists, there is no data to load here.
-                result_vec.extend(chunk_pos_vec.into_iter().map(|pos| (pos, None)));
-            }
-        }
-        Ok(result_vec.into_iter())
-    }
+        chunk_x: i32,
+        chunk_z: i32,
+    ) -> Result<Option<AnvilChunk>, ReadChunkError> {
+        let region_x = chunk_x.div_euclid(32);
+        let region_z = chunk_z.div_euclid(32);
 
-    /// Get the last time the chunk was modified in seconds since epoch.
-    ///
-    /// # Arguments
-    ///
-    /// * `positions`: An iterator of chunk positions
-    ///
-    /// returns: An iterator with `ChunkPos` and the respective
-    /// `Option<ChunkTimestamp>` as tuple.
-    pub fn chunk_timestamps<I: Iterator<Item = ChunkPos>>(
-        &mut self,
-        positions: I,
-    ) -> Result<impl IntoIterator<Item = (ChunkPos, Option<ChunkTimestamp>)>, Error> {
-        let mut region_chunks = BTreeMap::<RegionPos, Vec<ChunkPos>>::new();
-        for chunk_pos in positions {
-            let region_pos = RegionPos::from(chunk_pos);
-            region_chunks
-                .entry(region_pos)
-                .and_modify(|v| v.push(chunk_pos))
-                .or_insert_with(|| vec![chunk_pos]);
-        }
-        let mut result_vec = Vec::<(ChunkPos, Option<ChunkTimestamp>)>::new();
-        for (region_pos, chunk_pos_vec) in region_chunks {
-            if let Some(region) = self.region_files.entry(region_pos).or_insert({
-                let path = region_pos.path(&self.world_root);
-                if path.exists() {
-                    Some(Region::from_file(File::open(&path)?, region_pos)?)
-                } else {
-                    None
-                }
-            }) {
-                // A region file exists, and it is loaded.
-                for chunk_pos in chunk_pos_vec {
-                    result_vec.push((chunk_pos, region.chunk_timestamp(chunk_pos)));
-                }
-            } else {
-                // No region file exists, there is no data to load here.
-                for chunk_pos in chunk_pos_vec {
-                    result_vec.push((chunk_pos, None));
-                }
+        let region = match self.regions.entry((region_x, region_z)) {
+            Entry::Vacant(ve) => {
+                // Load the region file if it exists. Otherwise, the chunk is considered absent.
+
+                let path = self
+                    .region_root
+                    .join(format!("r.{region_x}.{region_z}.mca"));
+
+                let mut file = match File::options().read(true).write(true).open(path) {
+                    Ok(file) => file,
+                    Err(e) if e.kind() == ErrorKind::NotFound => return Ok(None),
+                    Err(e) => return Err(e.into()),
+                };
+
+                let mut header = [0; SECTOR_SIZE * 2];
+
+                file.read_exact(&mut header)?;
+
+                ve.insert(Region { file, header })
             }
+            Entry::Occupied(oe) => oe.into_mut(),
+        };
+
+        let chunk_idx = (chunk_x.rem_euclid(32) + chunk_z.rem_euclid(32) * 32) as usize;
+
+        let location_bytes = (&region.header[chunk_idx * 4..]).read_u32::<BigEndian>()?;
+        let timestamp = (&region.header[chunk_idx * 4 + SECTOR_SIZE..]).read_u32::<BigEndian>()?;
+
+        if location_bytes == 0 {
+            // No chunk exists at this position.
+            return Ok(None);
         }
-        Ok(result_vec.into_iter())
+
+        let sector_offset = (location_bytes >> 8) as u64;
+        let sector_count = (location_bytes & 0xff) as usize;
+
+        if sector_offset < 2 {
+            // If the sector offset was <2, then the chunk data would be inside the region
+            // header. That doesn't make any sense.
+            return Err(ReadChunkError::BadSectorOffset);
+        }
+
+        // Seek to the beginning of the chunk's data.
+        region
+            .file
+            .seek(SeekFrom::Start(sector_offset * SECTOR_SIZE as u64))?;
+
+        let exact_chunk_size = region.file.read_u32::<BigEndian>()? as usize;
+
+        if exact_chunk_size > sector_count * SECTOR_SIZE {
+            // Sector size of this chunk must always be >= the exact size.
+            return Err(ReadChunkError::BadChunkSize);
+        }
+
+        let mut data_buf = vec![0; exact_chunk_size].into_boxed_slice();
+        region.file.read_exact(&mut data_buf)?;
+
+        let mut r = data_buf.as_ref();
+
+        let mut decompress_buf = vec![];
+
+        // What compression does the chunk use?
+        let mut nbt_slice = match r.read_u8()? {
+            // GZip
+            1 => {
+                let mut z = GzDecoder::new(r);
+                z.read_to_end(&mut decompress_buf)?;
+                decompress_buf.as_slice()
+            }
+            // Zlib
+            2 => {
+                let mut z = ZlibDecoder::new(r);
+                z.read_to_end(&mut decompress_buf)?;
+                decompress_buf.as_slice()
+            }
+            // Uncompressed
+            3 => r,
+            // Unknown
+            b => return Err(ReadChunkError::UnknownCompressionScheme(b)),
+        };
+
+        let (data, _) = valence_nbt::from_binary_slice(&mut nbt_slice)?;
+
+        if !nbt_slice.is_empty() {
+            return Err(ReadChunkError::IncompleteNbtRead);
+        }
+
+        Ok(Some(AnvilChunk { data, timestamp }))
     }
 }
