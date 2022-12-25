@@ -1,9 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use valence::biome::BiomeId;
-use valence::chunk::ChunkPos;
-use valence::config::Config;
-use valence::dimension::Dimension;
-use valence_anvil::biome::BiomeKind;
+use valence::chunk::{ChunkPos, UnloadedChunk};
 use valence_anvil::AnvilWorld;
 
 criterion_group!(benches, criterion_benchmark);
@@ -18,27 +14,10 @@ const BENCHMARK_WORLD_ASSET: assets::WebAsset<&'static str, &'static str> = asse
     "https://github.com/valence-rs/valence-test-data/archive/refs/heads/asset/sp_world_1.19.2.zip",
 );
 
-struct BenchmarkConfig;
-impl Config for BenchmarkConfig {
-    type ServerState = ();
-    type ClientState = ();
-    type EntityState = ();
-    type WorldState = ();
-    type ChunkState = ();
-    type PlayerListState = ();
-    type InventoryState = ();
-}
-
 fn criterion_benchmark(c: &mut Criterion) {
-    let world_directory = BENCHMARK_WORLD_ASSET.load_blocking_panic();
+    let world_dir = BENCHMARK_WORLD_ASSET.load_blocking_panic();
 
-    let mut world = AnvilWorld::new::<BenchmarkConfig, _>(
-        &Dimension::default(),
-        world_directory,
-        BiomeKind::ALL
-            .iter()
-            .map(|b| (BiomeId::default(), b.biome().unwrap())),
-    );
+    let mut world = AnvilWorld::new(world_dir);
 
     let mut load_targets = Vec::new();
     for x in -5..5 {
@@ -48,18 +27,24 @@ fn criterion_benchmark(c: &mut Criterion) {
     }
 
     c.bench_function("Load square 10x10", |b| {
-        b.iter_with_setup(
-            || load_targets.clone().into_iter(),
-            |targets| {
-                for (chunk_pos, chunk) in world.load_chunks(black_box(targets)).unwrap() {
-                    assert!(
-                        chunk.is_some(),
-                        "Chunk at {chunk_pos:?} returned 'None'. Is this section of the world \
-                         generated?"
-                    );
+        b.iter(|| {
+            let world = black_box(&mut world);
+
+            for z in -5..5 {
+                for x in -5..5 {
+                    let nbt = world
+                        .read_chunk(x, z)
+                        .expect("failed to read chunk")
+                        .expect("missing chunk at position")
+                        .data;
+
+                    let mut chunk = UnloadedChunk::new(24);
+
+                    valence_anvil::to_valence(&nbt, &mut chunk, 4, |_| Default::default()).unwrap();
+
                     black_box(chunk);
                 }
-            },
-        );
+            }
+        });
     });
 }

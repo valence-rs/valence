@@ -123,7 +123,7 @@ impl Config for Game {
                 client.respawn(world_id);
                 client.set_flat(true);
                 client.set_game_mode(GameMode::Spectator);
-                client.teleport([0.0, 200.0, 0.0], 0.0, 0.0);
+                client.teleport([0.0, 125.0, 0.0], 0.0, 0.0);
                 client.set_player_list(server.state.clone());
 
                 if let Some(id) = &server.state {
@@ -175,8 +175,8 @@ impl Config for Game {
                             if let Err(e) = valence_anvil::to_valence(
                                 &anvil_chunk.data,
                                 &mut chunk,
-                                0,
-                                |_| todo!(),
+                                4,
+                                |_| BiomeId::default(),
                             ) {
                                 eprintln!(
                                     "failed to convert chunk at ({}, {}): {e}",
