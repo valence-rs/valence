@@ -110,7 +110,8 @@ impl<C: Config> Chunks<C> {
     }
 
     /// Returns the height of all loaded chunks in the world. This returns the
-    /// same value as [`Chunk::height`] for all loaded chunks.
+    /// same value as [`Chunk::section_count`] multiplied by 16 for all loaded
+    /// chunks.
     pub fn height(&self) -> usize {
         self.dimension_height as usize
     }
