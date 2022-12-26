@@ -60,7 +60,7 @@ fn get_world_asset(
 
     let asset_cache_dir = Path::new(".asset_cache");
 
-    create_dir_all(&asset_cache_dir).context("unable to create `.asset_cache` directory")?;
+    create_dir_all(asset_cache_dir).context("unable to create `.asset_cache` directory")?;
 
     let final_path = asset_cache_dir.join(dest_path);
 
@@ -102,7 +102,7 @@ fn get_world_asset(
         .extract(&temp_dir)
         .context("unable to unzip downloaded contents")?;
 
-    let mut entries = temp_dir.path().read_dir()?.into_iter();
+    let mut entries = temp_dir.path().read_dir()?;
 
     let top_level_dir = entries
         .next()
