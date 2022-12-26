@@ -52,8 +52,7 @@ pub enum ReadChunkError {
 #[derive(Debug)]
 struct Region {
     file: File,
-    /// The first 8 KiB in the file. The header in the file and the in-memory
-    /// header must be kept in sync when writes occur.
+    /// The first 8 KiB in the file.
     header: [u8; SECTOR_SIZE * 2],
 }
 
@@ -70,6 +69,8 @@ impl AnvilWorld {
         }
     }
 
+    /// Reads a chunk from the file system with the given chunk coordinates. If
+    /// no chunk exists at the position, then `None` is returned.
     pub fn read_chunk(
         &mut self,
         chunk_x: i32,

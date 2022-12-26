@@ -1,8 +1,9 @@
-use num::integer::div_ceil;
+use num_integer::div_ceil;
 use thiserror::Error;
 use valence::biome::BiomeId;
 use valence::chunk::Chunk;
 use valence::protocol::block::{BlockKind, PropName, PropValue};
+use valence::protocol::Ident;
 use valence_nbt::{Compound, List, Value};
 
 #[derive(Clone, Debug, Error)]
@@ -40,6 +41,8 @@ pub enum ToValenceError {
     MissingBiomePalette,
     #[error("invalid biome palette length")]
     BadBiomePaletteLen,
+    #[error("biome name is not a valid resource identifier")]
+    BadBiomeName,
     #[error("missing biome name")]
     MissingBiomeName,
     #[error("missing packed biome data in section")]
@@ -51,11 +54,19 @@ pub enum ToValenceError {
 }
 
 /// Reads an Anvil chunk in NBT form and writes its data to a Valence [`Chunk`].
+/// An error is returned if the NBT data does not match the expected structure
+/// for an Anvil chunk.
+///
+/// # Arguments
 ///
 /// - `nbt`: The Anvil chunk to read from. This is usually the value returned by
 ///   [`read_chunk`].
 /// - `chunk`: The Valence chunk to write to.
-/// - `sect_offset`:
+/// - `sect_offset`: A constant to add to all sector Y positions in `nbt`. After
+///   applying the offset, only the sectors in the range
+///   `0..chunk.sector_count()` are written.
+/// - `map_biome`: A function to map biome resource identifiers in the NBT data
+///   to Valence [`BiomeId`]s.
 ///
 /// [`read_chunk`]: crate::AnvilWorld::read_chunk
 pub fn to_valence<C, F>(
@@ -66,7 +77,7 @@ pub fn to_valence<C, F>(
 ) -> Result<(), ToValenceError>
 where
     C: Chunk,
-    F: FnMut(&str) -> BiomeId,
+    F: FnMut(Ident<&str>) -> BiomeId,
 {
     let Some(Value::List(List::Compound(sections))) = nbt.get("sections") else {
         return Err(ToValenceError::MissingSections)
@@ -135,7 +146,9 @@ where
 
         if converted_block_palette.len() == 1 {
             chunk.fill_block_states(adjusted_sect_y as usize, converted_block_palette[0]);
-        } else if converted_block_palette.len() > 1 {
+        } else {
+            debug_assert!(converted_block_palette.len() > 1);
+
             let Some(Value::LongArray(data)) = block_states.get("data") else {
                 return Err(ToValenceError::MissingBlockStateData)
             };
@@ -190,12 +203,18 @@ where
         converted_biome_palette.clear();
 
         for biome_name in palette {
-            converted_biome_palette.push(map_biome(biome_name));
+            let Ok(ident) = Ident::new(biome_name.as_str()) else {
+                return Err(ToValenceError::BadBiomeName)
+            };
+
+            converted_biome_palette.push(map_biome(ident));
         }
 
         if converted_biome_palette.len() == 1 {
             chunk.fill_biomes(adjusted_sect_y as usize, converted_biome_palette[0]);
-        } else if converted_biome_palette.len() > 1 {
+        } else {
+            debug_assert!(converted_biome_palette.len() > 1);
+
             let Some(Value::LongArray(data)) = biomes.get("data") else {
                 return Err(ToValenceError::MissingBiomeData)
             };
