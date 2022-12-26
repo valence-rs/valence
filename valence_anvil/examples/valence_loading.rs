@@ -1,3 +1,10 @@
+//! # IMPORTANT
+//!
+//! Run this example with one argument containing the path of the the following
+//! to the world directory you wish to load. Inside this directory you can
+//! commonly see `advancements`, `DIM1`, `DIM-1` and most importantly `region`
+//! subdirectories. Only the `region` directory is accessed.
+
 extern crate valence;
 
 use std::env;
@@ -6,28 +13,21 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use valence::prelude::*;
-// use valence_anvil::biome::BiomeKind;
 use valence_anvil::AnvilWorld;
 
-/// # IMPORTANT
-///
-/// Run this example with one argument containing the path of the the following
-/// to the world directory you wish to load. Inside this directory you can
-/// commonly see `advancements`, `DIM1`, `DIM-1` and most importantly `region`
-/// subdirectories. Only the `region` directory is accessed.
 pub fn main() -> ShutdownResult {
     let Some(world_dir) = env::args().nth(1) else {
-        return Err("Please add the world directory as program argument.".into())
+        return Err("please add the world directory as program argument.".into())
     };
 
     let world_dir = PathBuf::from(world_dir);
 
     if !world_dir.exists() || !world_dir.is_dir() {
-        return Err("World argument must be a directory that exists".into())
+        return Err("world argument must be a directory that exists".into());
     }
 
     if !world_dir.join("region").exists() {
-        return Err("Could not find the \"region\" directory in the given world directory".into())
+        return Err("could not find the \"region\" directory in the given world directory".into());
     }
 
     valence::start_server(
@@ -63,10 +63,6 @@ impl Config for Game {
     type PlayerListState = ();
     type InventoryState = ();
 
-    // fn biomes(&self) -> Vec<Biome> {
-    //     BiomeKind::ALL.iter().map(|b| b.biome().unwrap()).collect()
-    // }
-
     async fn server_list_ping(
         &self,
         _server: &SharedServer<Self>,
@@ -87,7 +83,7 @@ impl Config for Game {
     }
 
     fn init(&self, server: &mut Server<Self>) {
-        for (id, dimension) in server.shared.dimensions() {
+        for (id, _) in server.shared.dimensions() {
             server.worlds.insert(id, AnvilWorld::new(&self.world_dir));
         }
         server.state = Some(server.player_lists.insert(()).0);
@@ -172,16 +168,12 @@ impl Config for Game {
                         Ok(Some(anvil_chunk)) => {
                             let mut chunk = UnloadedChunk::new(24);
 
-                            if let Err(e) = valence_anvil::to_valence(
-                                &anvil_chunk.data,
-                                &mut chunk,
-                                4,
-                                |_| BiomeId::default(),
-                            ) {
-                                eprintln!(
-                                    "failed to convert chunk at ({}, {}): {e}",
-                                    pos.x, pos.z
-                                );
+                            if let Err(e) =
+                                valence_anvil::to_valence(&anvil_chunk.data, &mut chunk, 4, |_| {
+                                    BiomeId::default()
+                                })
+                            {
+                                eprintln!("Failed to convert chunk at ({}, {}): {e}", pos.x, pos.z);
                             }
 
                             world.chunks.insert(pos, chunk, true);
@@ -191,7 +183,7 @@ impl Config for Game {
                             world.chunks.insert(pos, UnloadedChunk::default(), true);
                         }
                         Err(e) => {
-                            eprintln!("failed to read chunk at ({}, {}): {e}", pos.x, pos.z)
+                            eprintln!("Failed to read chunk at ({}, {}): {e}", pos.x, pos.z)
                         }
                     }
                 }

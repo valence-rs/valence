@@ -16,6 +16,8 @@ pub enum ToValenceError {
     MissingBlockStates,
     #[error("missing block palette")]
     MissingBlockPalette,
+    #[error("invalid block palette length")]
+    BadBlockPaletteLen,
     #[error("missing block name in palette")]
     MissingBlockName,
     #[error("unknown block name of \"{0}\"")]
@@ -36,6 +38,8 @@ pub enum ToValenceError {
     MissingBiomes,
     #[error("missing biome palette")]
     MissingBiomePalette,
+    #[error("invalid biome palette length")]
+    BadBiomePaletteLen,
     #[error("missing biome name")]
     MissingBiomeName,
     #[error("missing packed biome data in section")]
@@ -90,6 +94,10 @@ where
         let Some(Value::List(List::Compound(palette))) = block_states.get("palette") else {
             return Err(ToValenceError::MissingBlockPalette)
         };
+
+        if !(1..BLOCKS_PER_SECTION).contains(&palette.len()) {
+            return Err(ToValenceError::BadBlockPaletteLen);
+        }
 
         converted_block_palette.clear();
 
@@ -174,6 +182,10 @@ where
         let Some(Value::List(List::String(palette))) = biomes.get("palette") else {
             return Err(ToValenceError::MissingBiomePalette)
         };
+
+        if !(1..BIOMES_PER_SECTION).contains(&palette.len()) {
+            return Err(ToValenceError::BadBiomePaletteLen);
+        }
 
         converted_biome_palette.clear();
 

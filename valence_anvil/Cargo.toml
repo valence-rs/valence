@@ -8,7 +8,6 @@ license = "MIT"
 keywords = ["anvil", "minecraft", "deserialization"]
 version = "0.1.0"
 authors = ["Ryan Johnson <ryanj00a@gmail.com>", "TerminatorNL <TerminatorNL@users.noreply.github.com>"]
-build = "build/main.rs"
 edition = "2021"
 
 [dependencies]
@@ -20,12 +19,13 @@ valence = { version = "0.1.0", path = "..", optional = true }
 valence_nbt = { version = "0.5.0", path = "../valence_nbt" }
 
 [dev-dependencies]
+anyhow = "1.0.68"
 criterion = "0.4.0"
 fs_extra = "1.2.0"
 tempfile = "3.3.0"
-zip = "0.6.3"
 valence = { version = "0.1.0", path = ".." }
 valence_anvil = { version = "0.1.0", path = ".", features = ["valence"] }
+zip = "0.6.3"
 
 [dev-dependencies.reqwest]
 version = "0.11.12"
