@@ -1085,8 +1085,14 @@ mod tests {
         check_invariants(&loaded.sections);
         check_invariants(&unloaded.sections);
 
-        loaded.fill_block_states(rand_block_state(&mut rng));
-        unloaded.fill_block_states(rand_block_state(&mut rng));
+        loaded.fill_block_states(
+            rng.gen_range(0..loaded.section_count()),
+            rand_block_state(&mut rng),
+        );
+        unloaded.fill_block_states(
+            rng.gen_range(0..loaded.section_count()),
+            rand_block_state(&mut rng),
+        );
 
         check_invariants(&loaded.sections);
         check_invariants(&unloaded.sections);
