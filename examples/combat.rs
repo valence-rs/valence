@@ -148,7 +148,6 @@ impl Config for Game {
                 client.set_player_list(server.state.clone());
 
                 if let Some(id) = &server.state {
-                    /*
                     server.player_lists[id].insert(
                         client.uuid(),
                         client.username(),
@@ -156,8 +155,8 @@ impl Config for Game {
                         client.game_mode(),
                         0,
                         None,
+                        true,
                     );
-                     */
                 }
 
                 client.send_message("Welcome to the arena.".italic());

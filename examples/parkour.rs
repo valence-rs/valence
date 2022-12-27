@@ -14,7 +14,7 @@ pub fn main() -> ShutdownResult {
         Game {
             player_count: AtomicUsize::new(0),
         },
-        (),
+        None,
     )
 }
 
@@ -53,7 +53,7 @@ const BLOCK_TYPES: [BlockState; 7] = [
 
 #[async_trait]
 impl Config for Game {
-    type ServerState = ();
+    type ServerState = Option<PlayerListId>;
     type ClientState = ClientState;
     type EntityState = ();
     type WorldState = ();
@@ -74,6 +74,10 @@ impl Config for Game {
             description: "Hello Valence!".color(Color::AQUA),
             favicon_png: Some(include_bytes!("../assets/logo-64x64.png").as_slice().into()),
         }
+    }
+
+    fn init(&self, server: &mut Server<Self>) {
+        server.state = Some(server.player_lists.insert(()).0);
     }
 
     fn update(&self, server: &mut Server<Self>) {
@@ -117,8 +121,21 @@ impl Config for Game {
                     }
                 }
 
+                if let Some(id) = &server.state {
+                    server.player_lists[id].insert(
+                        client.uuid(),
+                        client.username(),
+                        client.textures().cloned(),
+                        client.game_mode(),
+                        0,
+                        None,
+                        true,
+                    );
+                }
+
                 client.respawn(world_id);
                 client.set_flat(true);
+                client.set_player_list(server.state.clone());
 
                 client.send_message("Welcome to epic infinite parkour game!".italic());
                 client.set_game_mode(GameMode::Adventure);
@@ -180,12 +197,13 @@ impl Config for Game {
                         client.combo = 0
                     }
 
-                    let pitch = 0.9 + ((client.combo as f32) - 1.0) * 0.05;
+                    // let pitch = 0.9 + ((client.combo as f32) - 1.0) * 0.05;
 
                     for _ in 0..index {
                         generate_next_block(client, world, true)
                     }
 
+                    // TODO: add sounds again.
                     // client.play_sound(
                     //     Ident::new("minecraft:block.note_block.bass").unwrap(),
                     //     SoundCategory::Master,
@@ -220,6 +238,9 @@ impl Config for Game {
 
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
+                if let Some(id) = &server.state {
+                    server.player_lists[id].remove(client.uuid());
+                }
                 player.set_deleted(true);
                 server.worlds.remove(world_id);
                 return false;

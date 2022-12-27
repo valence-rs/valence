@@ -247,6 +247,7 @@ impl Config for Game {
                 GameMode::Survival,
                 0,
                 None,
+                true,
             );
 
             let (_, e) = server
@@ -360,6 +361,7 @@ impl Config for Game {
                         client.game_mode(),
                         0,
                         None,
+                        true,
                     );
                 }
 

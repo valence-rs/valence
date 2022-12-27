@@ -10,8 +10,8 @@ use crate::raw_bytes::RawBytes;
 use crate::text::Text;
 use crate::types::{
     AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, GameMode,
-    GameStateChangeReason, GlobalPos, PlayerAbilitiesFlags, PlayerInfoAddPlayer, SignedProperty,
-    SoundCategory, SyncPlayerPosLookFlags,
+    GameStateChangeReason, GlobalPos, PlayerAbilitiesFlags, SignedProperty, SoundCategory,
+    SyncPlayerPosLookFlags,
 };
 use crate::username::Username;
 use crate::var_int::VarInt;
@@ -95,6 +95,7 @@ pub mod login {
 
 pub mod play {
     use super::*;
+    pub use crate::player_list::PlayerInfoUpdate;
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x00]
@@ -452,17 +453,6 @@ pub mod play {
     #[packet_id = 0x35]
     pub struct PlayerInfoRemove(pub Vec<Uuid>);
 
-    #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x36]
-    pub enum PlayerInfo<'a> {
-        AddPlayer(Vec<PlayerInfoAddPlayer<'a>>),
-        InitializeChat(Vec<(Uuid, ())>), // TODO
-        UpdateGameMode(Vec<(Uuid, GameMode)>),
-        UpdateLatency(Vec<(Uuid, VarInt)>),
-        UpdateDisplayName(Vec<(Uuid, Option<Text>)>),
-        RemovePlayer(Vec<Uuid>),
-    }
-
     #[derive(Copy, Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x38]
     pub struct SynchronizePlayerPosition {
@@ -731,7 +721,7 @@ pub mod play {
             PlayerChatMessage<'a>,
             CombatDeath,
             PlayerInfoRemove,
-            PlayerInfo<'a>,
+            PlayerInfoUpdate<'a>,
             SynchronizePlayerPosition,
             RemoveEntities,
             ResourcePackS2c<'a>,

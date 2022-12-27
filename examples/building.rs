@@ -123,6 +123,7 @@ impl Config for Game {
                         client.game_mode(),
                         0,
                         None,
+                        true,
                     );
                 }
 

@@ -265,8 +265,9 @@ pub struct ChunkDataBlockEntity {
     pub data: Compound,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default, Encode, Decode)]
 pub enum GameMode {
+    #[default]
     Survival,
     Creative,
     Adventure,
@@ -291,16 +292,6 @@ pub struct AttributeModifier {
     pub uuid: Uuid,
     pub amount: f64,
     pub operation: u8,
-}
-
-#[derive(Clone, PartialEq, Debug, Encode, Decode)]
-pub struct PlayerInfoAddPlayer<'a> {
-    pub uuid: Uuid,
-    pub username: &'a str,
-    pub properties: Vec<SignedProperty<'a>>,
-    pub game_mode: GameMode,
-    pub ping: VarInt,
-    pub display_name: Option<Text>,
 }
 
 #[bitfield(u8)]

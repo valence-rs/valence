@@ -192,17 +192,17 @@ fn auth_digest(bytes: &[u8]) -> String {
 }
 
 pub(super) async fn velocity(
-    ctrl: &mut InitialPacketManager<OwnedReadHalf, OwnedWriteHalf>,
+    mngr: &mut InitialPacketManager<OwnedReadHalf, OwnedWriteHalf>,
     username: Username<String>,
     velocity_secret: &str,
 ) -> anyhow::Result<NewClientData> {
     const VELOCITY_MIN_SUPPORTED_VERSION: u8 = 1;
     const VELOCITY_MODERN_FORWARDING_WITH_KEY_V2: i32 = 3;
 
-    let message_id = 0;
+    let message_id: i32 = 0; // TODO: make this random?
 
     // Send Player Info Request into the Plugin Channel
-    ctrl.send_packet(&LoginPluginRequest {
+    mngr.send_packet(&LoginPluginRequest {
         message_id: VarInt(message_id),
         channel: Ident::new("velocity:player_info").unwrap(),
         data: RawBytes(&[VELOCITY_MIN_SUPPORTED_VERSION]),
@@ -210,7 +210,7 @@ pub(super) async fn velocity(
     .await?;
 
     // Get Response
-    let plugin_response: LoginPluginResponse = ctrl.recv_packet().await?;
+    let plugin_response: LoginPluginResponse = mngr.recv_packet().await?;
 
     ensure!(
         plugin_response.message_id.0 == message_id,
@@ -285,7 +285,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn auth_digest_correct() {
+    fn auth_digest_usernames() {
         assert_eq!(
             auth_digest(&Sha1::digest("Notch")),
             "4ed1f46bbe04bc756bcb17c0c7ce3e4632f06a48"
