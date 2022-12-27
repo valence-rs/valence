@@ -171,7 +171,7 @@ impl Config for Game {
                     let mut in_terrain = false;
                     let mut depth = 0;
 
-                    for y in (0..chunk.height()).rev() {
+                    for y in (0..chunk.section_count() * 16).rev() {
                         let b = terrain_column(
                             self,
                             block_x,
@@ -184,7 +184,7 @@ impl Config for Game {
                     }
 
                     // Add grass
-                    for y in (0..chunk.height()).rev() {
+                    for y in (0..chunk.section_count() * 16).rev() {
                         if chunk.block_state(x, y, z).is_air()
                             && chunk.block_state(x, y - 1, z) == BlockState::GRASS_BLOCK
                         {

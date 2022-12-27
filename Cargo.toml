@@ -41,7 +41,7 @@ valence_protocol = { version = "0.1.0", path = "valence_protocol", features = ["
 vek = "0.15.8"
 
 [dependencies.tokio]
-version = "1.21.1"
+version = "1.21.2"
 features = ["macros", "rt-multi-thread", "net", "io-util", "sync", "time"]
 
 [dependencies.reqwest]
@@ -70,6 +70,7 @@ num = "0.4.0"
 members = [
     "valence_derive",
     "valence_nbt",
+    "valence_anvil",
     "valence_protocol",
     "valence_spatial_index",
     "packet_inspector",
