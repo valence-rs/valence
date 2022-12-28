@@ -22,12 +22,6 @@ pub struct PublicKeyData<'a> {
     pub signature: &'a [u8],
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
-pub enum MsgSigOrVerifyToken<'a> {
-    MsgSig { salt: u64, sig: &'a [u8] },
-    VerifyToken(&'a [u8]),
-}
-
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct MessageAcknowledgment<'a> {
     pub last_seen: Vec<MessageAcknowledgmentEntry<'a>>,
@@ -271,8 +265,9 @@ pub struct ChunkDataBlockEntity {
     pub data: Compound,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default, Encode, Decode)]
 pub enum GameMode {
+    #[default]
     Survival,
     Creative,
     Adventure,
@@ -280,7 +275,7 @@ pub enum GameMode {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
-pub struct DeathLocation<'a> {
+pub struct GlobalPos<'a> {
     pub dimension_name: Ident<&'a str>,
     pub position: BlockPos,
 }
@@ -297,17 +292,6 @@ pub struct AttributeModifier {
     pub uuid: Uuid,
     pub amount: f64,
     pub operation: u8,
-}
-
-#[derive(Clone, PartialEq, Debug, Encode, Decode)]
-pub struct PlayerInfoAddPlayer<'a> {
-    pub uuid: Uuid,
-    pub username: &'a str,
-    pub properties: Vec<SignedProperty<'a>>,
-    pub game_mode: GameMode,
-    pub ping: VarInt,
-    pub display_name: Option<Text>,
-    pub sig_data: Option<PublicKeyData<'a>>,
 }
 
 #[bitfield(u8)]
@@ -361,5 +345,16 @@ pub struct SyncPlayerPosLookFlags {
     pub y_rot: bool,
     pub x_rot: bool,
     #[bits(3)]
+    _pad: u8,
+}
+
+#[bitfield(u8)]
+#[derive(PartialEq, Eq, Encode, Decode)]
+pub struct PlayerAbilitiesFlags {
+    pub invulnerable: bool,
+    pub flying: bool,
+    pub allow_flying: bool,
+    pub instant_break: bool,
+    #[bits(4)]
     _pad: u8,
 }

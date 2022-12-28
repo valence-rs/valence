@@ -693,7 +693,6 @@ async fn handle_login(
 
     let LoginStart {
         username,
-        sig_data: _,   // TODO
         profile_id: _, // TODO
     } = mngr.recv_packet().await?;
 

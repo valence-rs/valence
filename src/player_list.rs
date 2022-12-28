@@ -4,10 +4,10 @@ use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut, Index, IndexMut};
 
-use bitfield_struct::bitfield;
 use uuid::Uuid;
-use valence_protocol::packets::s2c::play::{PlayerInfo, SetTabListHeaderAndFooter};
-use valence_protocol::types::{GameMode, PlayerInfoAddPlayer, SignedProperty};
+use valence_protocol::packets::s2c::play::{PlayerInfoRemove, SetTabListHeaderAndFooter};
+use valence_protocol::player_list::{Actions, Entry as PacketEntry, PlayerInfoUpdate};
+use valence_protocol::types::{GameMode, SignedProperty};
 use valence_protocol::Text;
 
 use crate::config::Config;
@@ -76,7 +76,7 @@ impl<C: Config> PlayerLists<C> {
     pub(crate) fn update_caches(&mut self, compression_threshold: Option<u32>) {
         let mut scratch = vec![];
 
-        // Cache the update packets.
+        // Cache the update packets for each player list.
         for pl in self.slab.iter_mut() {
             pl.cached_update_packets.clear();
 
@@ -88,87 +88,111 @@ impl<C: Config> PlayerLists<C> {
 
             if !pl.removed.is_empty() {
                 writer
-                    .write_packet(&PlayerInfo::RemovePlayer(
-                        pl.removed.iter().cloned().collect(),
-                    ))
+                    .write_packet(&PlayerInfoRemove(pl.removed.iter().cloned().collect()))
                     .unwrap();
             }
-
-            let mut add_player = vec![];
-            let mut game_mode = vec![];
-            let mut ping = vec![];
-            let mut display_name = vec![];
 
             for (&uuid, entry) in pl.entries.iter_mut() {
-                if entry.bits.created_this_tick() {
-                    let mut properties = vec![];
-                    if let Some(textures) = &entry.textures {
-                        properties.push(SignedProperty {
-                            name: "textures",
-                            value: textures.payload(),
-                            signature: Some(textures.signature()),
-                        });
+                if entry.created_this_tick {
+                    // Send packets to initialize this entry.
+
+                    let mut actions = Actions::new().with_add_player(true);
+
+                    // We don't need to send data for fields if they have the default values.
+
+                    if entry.listed {
+                        actions.set_update_listed(true);
                     }
 
-                    add_player.push(PlayerInfoAddPlayer {
-                        uuid,
+                    // Negative pings indicate absence.
+                    if entry.ping >= 0 {
+                        actions.set_update_latency(true);
+                    }
+
+                    if entry.game_mode != GameMode::default() {
+                        actions.set_update_game_mode(true);
+                    }
+
+                    if entry.display_name.is_some() {
+                        actions.set_update_display_name(true);
+                    }
+
+                    // Don't forget to clear modified flags.
+                    entry.old_listed = entry.listed;
+                    entry.modified_ping = false;
+                    entry.modified_game_mode = false;
+                    entry.modified_display_name = false;
+                    entry.created_this_tick = false;
+
+                    let entries = vec![PacketEntry {
+                        player_uuid: uuid,
                         username: &entry.username,
-                        properties,
+                        properties: entry
+                            .textures
+                            .as_ref()
+                            .map(|textures| SignedProperty {
+                                name: "textures",
+                                value: textures.payload(),
+                                signature: Some(textures.signature()),
+                            })
+                            .into_iter()
+                            .collect(),
+                        chat_data: None,
+                        listed: entry.listed,
+                        ping: entry.ping,
                         game_mode: entry.game_mode,
-                        ping: entry.ping.into(),
                         display_name: entry.display_name.clone(),
-                        sig_data: None,
-                    });
+                    }];
+
+                    writer
+                        .write_packet(&PlayerInfoUpdate { actions, entries })
+                        .unwrap();
                 } else {
-                    if entry.bits.modified_game_mode() {
-                        game_mode.push((uuid, entry.game_mode));
+                    let mut actions = Actions::new();
+
+                    if entry.modified_ping {
+                        entry.modified_ping = false;
+                        actions.set_update_latency(true);
                     }
 
-                    if entry.bits.modified_ping() {
-                        ping.push((uuid, entry.ping.into()));
+                    if entry.modified_game_mode {
+                        entry.modified_game_mode = false;
+                        actions.set_update_game_mode(true);
                     }
 
-                    if entry.bits.modified_display_name() {
-                        display_name.push((uuid, entry.display_name.clone()));
+                    if entry.old_listed != entry.listed {
+                        entry.old_listed = entry.listed;
+                        actions.set_update_listed(true);
+                    }
+
+                    if entry.modified_ping {
+                        entry.modified_ping = false;
+                        actions.set_update_latency(true);
+                    }
+
+                    if entry.modified_display_name {
+                        entry.modified_display_name = false;
+                        actions.set_update_display_name(true);
+                    }
+
+                    if u8::from(actions) != 0 {
+                        writer
+                            .write_packet(&PlayerInfoUpdate {
+                                actions,
+                                entries: vec![PacketEntry {
+                                    player_uuid: uuid,
+                                    username: &entry.username,
+                                    properties: vec![],
+                                    chat_data: None,
+                                    listed: entry.listed,
+                                    ping: entry.ping,
+                                    game_mode: entry.game_mode,
+                                    display_name: entry.display_name.clone(),
+                                }],
+                            })
+                            .unwrap();
                     }
                 }
-
-                entry.bits = EntryBits::new();
-            }
-
-            if !add_player.is_empty() {
-                writer
-                    .write_packet(&PlayerInfo::AddPlayer(add_player))
-                    .unwrap();
-            }
-
-            if !game_mode.is_empty() {
-                writer
-                    .write_packet(&PlayerInfo::UpdateGameMode(game_mode))
-                    .unwrap();
-            }
-
-            if !ping.is_empty() {
-                writer
-                    .write_packet(&PlayerInfo::UpdateLatency(ping))
-                    .unwrap();
-            }
-
-            if !display_name.is_empty() {
-                writer
-                    .write_packet(&PlayerInfo::UpdateDisplayName(display_name))
-                    .unwrap();
-            }
-
-            if pl.modified_header_or_footer {
-                pl.modified_header_or_footer = false;
-
-                writer
-                    .write_packet(&SetTabListHeaderAndFooter {
-                        header: pl.header.clone(),
-                        footer: pl.footer.clone(),
-                    })
-                    .unwrap();
             }
         }
     }
@@ -206,6 +230,7 @@ pub struct PlayerList<C: Config> {
     pub state: C::PlayerListState,
     cached_update_packets: Vec<u8>,
     entries: HashMap<Uuid, PlayerListEntry>,
+    /// Contains entries that need to be removed.
     removed: HashSet<Uuid>,
     header: Text,
     footer: Text,
@@ -231,6 +256,7 @@ impl<C: Config> PlayerList<C> {
     ///
     /// If the given UUID conflicts with an existing entry, the entry is
     /// overwritten and `false` is returned. Otherwise, `true` is returned.
+    #[allow(clippy::too_many_arguments)]
     pub fn insert(
         &mut self,
         uuid: Uuid,
@@ -239,6 +265,7 @@ impl<C: Config> PlayerList<C> {
         game_mode: GameMode,
         ping: i32,
         display_name: Option<Text>,
+        listed: bool,
     ) -> bool {
         match self.entries.entry(uuid) {
             Entry::Occupied(mut oe) => {
@@ -246,7 +273,9 @@ impl<C: Config> PlayerList<C> {
                 let username = username.into();
 
                 if e.username() != username || e.textures != textures {
-                    if !e.bits.created_this_tick() {
+                    // Entries created this tick haven't been initialized by clients yet, so there
+                    // is nothing to remove.
+                    if !e.created_this_tick {
                         self.removed.insert(*oe.key());
                     }
 
@@ -256,13 +285,20 @@ impl<C: Config> PlayerList<C> {
                         game_mode,
                         ping,
                         display_name,
-                        bits: EntryBits::new().with_created_this_tick(true),
+                        old_listed: listed,
+                        listed,
+                        created_this_tick: true,
+                        modified_game_mode: false,
+                        modified_ping: false,
+                        modified_display_name: false,
                     });
                 } else {
                     e.set_game_mode(game_mode);
                     e.set_ping(ping);
                     e.set_display_name(display_name);
+                    e.set_listed(listed);
                 }
+
                 false
             }
             Entry::Vacant(ve) => {
@@ -272,8 +308,14 @@ impl<C: Config> PlayerList<C> {
                     game_mode,
                     ping,
                     display_name,
-                    bits: EntryBits::new().with_created_this_tick(true),
+                    old_listed: listed,
+                    listed,
+                    created_this_tick: true,
+                    modified_game_mode: false,
+                    modified_ping: false,
+                    modified_display_name: false,
                 });
+
                 true
             }
         }
@@ -363,43 +405,50 @@ impl<C: Config> PlayerList<C> {
 
     /// Writes the packets needed to completely initialize this player list.
     pub(crate) fn write_init_packets(&self, mut writer: impl WritePacket) -> anyhow::Result<()> {
-        let add_player: Vec<_> = self
+        let actions = Actions::new()
+            .with_add_player(true)
+            .with_update_game_mode(true)
+            .with_update_listed(true)
+            .with_update_latency(true)
+            .with_update_display_name(true);
+
+        let entries: Vec<_> = self
             .entries
             .iter()
-            .map(|(&uuid, entry)| PlayerInfoAddPlayer {
-                uuid,
-                username: &entry.username,
-                properties: {
-                    let mut properties = vec![];
-                    if let Some(textures) = &entry.textures {
-                        properties.push(SignedProperty {
-                            name: "textures",
-                            value: textures.payload(),
-                            signature: Some(textures.signature()),
-                        });
-                    }
-                    properties
-                },
-                game_mode: entry.game_mode,
-                ping: entry.ping.into(),
-                display_name: entry.display_name.clone(),
-                sig_data: None,
+            .map(|(&uuid, entry)| {
+                let properties = entry
+                    .textures
+                    .as_ref()
+                    .map(|textures| SignedProperty {
+                        name: "textures",
+                        value: textures.payload(),
+                        signature: Some(textures.signature()),
+                    })
+                    .into_iter()
+                    .collect();
+
+                PacketEntry {
+                    player_uuid: uuid,
+                    username: entry.username(),
+                    properties,
+                    chat_data: None,
+                    listed: entry.listed,
+                    ping: entry.ping,
+                    game_mode: entry.game_mode,
+                    display_name: entry.display_name.clone(),
+                }
             })
             .collect();
 
-        if !add_player.is_empty() {
-            writer
-                .write_packet(&PlayerInfo::AddPlayer(add_player))
-                .unwrap();
+        if !entries.is_empty() {
+            writer.write_packet(&PlayerInfoUpdate { actions, entries })?;
         }
 
-        if self.header.is_empty() || self.footer.is_empty() {
-            writer
-                .write_packet(&SetTabListHeaderAndFooter {
-                    header: self.header.clone(),
-                    footer: self.footer.clone(),
-                })
-                .unwrap();
+        if !self.header.is_empty() || !self.footer.is_empty() {
+            writer.write_packet(&SetTabListHeaderAndFooter {
+                header: self.header.clone(),
+                footer: self.footer.clone(),
+            })?;
         }
 
         Ok(())
@@ -420,7 +469,7 @@ impl<C: Config> PlayerList<C> {
             .chain(self.removed.iter().cloned())
             .collect();
 
-        writer.write_packet(&PlayerInfo::RemovePlayer(uuids))
+        writer.write_packet(&PlayerInfoRemove(uuids))
     }
 }
 
@@ -431,17 +480,12 @@ pub struct PlayerListEntry {
     game_mode: GameMode,
     ping: i32,
     display_name: Option<Text>,
-    bits: EntryBits,
-}
-
-#[bitfield(u8)]
-struct EntryBits {
+    old_listed: bool,
+    listed: bool,
     created_this_tick: bool,
     modified_game_mode: bool,
     modified_ping: bool,
     modified_display_name: bool,
-    #[bits(4)]
-    _pad: u8,
 }
 
 impl PlayerListEntry {
@@ -464,7 +508,8 @@ impl PlayerListEntry {
     pub fn set_game_mode(&mut self, game_mode: GameMode) {
         if self.game_mode != game_mode {
             self.game_mode = game_mode;
-            self.bits.set_modified_game_mode(true);
+            // TODO: replace modified_game_mode with old_game_mode
+            self.modified_game_mode = true;
         }
     }
 
@@ -477,7 +522,7 @@ impl PlayerListEntry {
     pub fn set_ping(&mut self, ping: i32) {
         if self.ping != ping {
             self.ping = ping;
-            self.bits.set_modified_ping(true);
+            self.modified_ping = true;
         }
     }
 
@@ -491,7 +536,17 @@ impl PlayerListEntry {
         let display_name = display_name.into();
         if self.display_name != display_name {
             self.display_name = display_name;
-            self.bits.set_modified_display_name(true);
+            self.modified_display_name = true;
         }
+    }
+
+    /// If this entry is visible on the player list.
+    pub fn is_listed(&self) -> bool {
+        self.listed
+    }
+
+    /// Sets if this entry is visible on the player list.
+    pub fn set_listed(&mut self, listed: bool) {
+        self.listed = listed;
     }
 }

@@ -19,7 +19,7 @@ use valence_protocol::packets::c2s::login::{EncryptionResponse, LoginPluginRespo
 use valence_protocol::packets::s2c::login::{
     DisconnectLogin, EncryptionRequest, LoginPluginRequest,
 };
-use valence_protocol::types::{MsgSigOrVerifyToken, SignedProperty, SignedPropertyOwned};
+use valence_protocol::types::{SignedProperty, SignedPropertyOwned};
 use valence_protocol::{translation_key, Decode, Ident, RawBytes, Text, Username, VarInt};
 
 use crate::config::Config;
@@ -31,13 +31,13 @@ use crate::server::{NewClientData, SharedServer};
 /// [`ConnectionMode::Online`](crate::config::ConnectionMode).
 pub(super) async fn online(
     server: &SharedServer<impl Config>,
-    ctrl: &mut InitialPacketManager<OwnedReadHalf, OwnedWriteHalf>,
+    mngr: &mut InitialPacketManager<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
     username: Username<String>,
 ) -> anyhow::Result<NewClientData> {
     let my_verify_token: [u8; 16] = rand::random();
 
-    ctrl.send_packet(&EncryptionRequest {
+    mngr.send_packet(&EncryptionRequest {
         server_id: "", // Always empty
         public_key: &server.0.public_key_der,
         verify_token: &my_verify_token,
@@ -46,8 +46,8 @@ pub(super) async fn online(
 
     let EncryptionResponse {
         shared_secret,
-        sig_or_token,
-    } = ctrl.recv_packet().await?;
+        verify_token: encrypted_verify_token,
+    } = mngr.recv_packet().await?;
 
     let shared_secret = server
         .0
@@ -55,28 +55,23 @@ pub(super) async fn online(
         .decrypt(PaddingScheme::PKCS1v15Encrypt, shared_secret)
         .context("failed to decrypt shared secret")?;
 
-    match sig_or_token {
-        MsgSigOrVerifyToken::VerifyToken(encrypted_verify_token) => {
-            let verify_token = server
-                .0
-                .rsa_key
-                .decrypt(PaddingScheme::PKCS1v15Encrypt, encrypted_verify_token)
-                .context("failed to decrypt verify token")?;
+    let verify_token = server
+        .0
+        .rsa_key
+        .decrypt(PaddingScheme::PKCS1v15Encrypt, encrypted_verify_token)
+        .context("failed to decrypt verify token")?;
 
-            ensure!(
-                my_verify_token.as_slice() == verify_token,
-                "verify tokens do not match"
-            );
-        }
-        MsgSigOrVerifyToken::MsgSig { .. } => {}
-    };
+    ensure!(
+        my_verify_token.as_slice() == verify_token,
+        "verify tokens do not match"
+    );
 
     let crypt_key: [u8; 16] = shared_secret
         .as_slice()
         .try_into()
         .context("shared secret has the wrong length")?;
 
-    ctrl.enable_encryption(&crypt_key);
+    mngr.enable_encryption(&crypt_key);
 
     let hash = Sha1::new()
         .chain(&shared_secret)
@@ -99,7 +94,7 @@ pub(super) async fn online(
                 translation_key::MULTIPLAYER_DISCONNECT_UNVERIFIED_USERNAME,
                 [],
             );
-            ctrl.send_packet(&DisconnectLogin { reason }).await?;
+            mngr.send_packet(&DisconnectLogin { reason }).await?;
             bail!("session server could not verify username");
         }
         status => {
@@ -131,8 +126,8 @@ pub(super) async fn online(
     Ok(NewClientData {
         uuid,
         username,
-        textures: Some(textures),
         ip: remote_addr.ip(),
+        textures: Some(textures),
     })
 }
 
@@ -197,17 +192,17 @@ fn auth_digest(bytes: &[u8]) -> String {
 }
 
 pub(super) async fn velocity(
-    ctrl: &mut InitialPacketManager<OwnedReadHalf, OwnedWriteHalf>,
+    mngr: &mut InitialPacketManager<OwnedReadHalf, OwnedWriteHalf>,
     username: Username<String>,
     velocity_secret: &str,
 ) -> anyhow::Result<NewClientData> {
     const VELOCITY_MIN_SUPPORTED_VERSION: u8 = 1;
     const VELOCITY_MODERN_FORWARDING_WITH_KEY_V2: i32 = 3;
 
-    let message_id = 0;
+    let message_id: i32 = 0; // TODO: make this random?
 
     // Send Player Info Request into the Plugin Channel
-    ctrl.send_packet(&LoginPluginRequest {
+    mngr.send_packet(&LoginPluginRequest {
         message_id: VarInt(message_id),
         channel: Ident::new("velocity:player_info").unwrap(),
         data: RawBytes(&[VELOCITY_MIN_SUPPORTED_VERSION]),
@@ -215,7 +210,7 @@ pub(super) async fn velocity(
     .await?;
 
     // Get Response
-    let plugin_response: LoginPluginResponse = ctrl.recv_packet().await?;
+    let plugin_response: LoginPluginResponse = mngr.recv_packet().await?;
 
     ensure!(
         plugin_response.message_id.0 == message_id,
@@ -290,7 +285,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn auth_digest_correct() {
+    fn auth_digest_usernames() {
         assert_eq!(
             auth_digest(&Sha1::digest("Notch")),
             "4ed1f46bbe04bc756bcb17c0c7ce3e4632f06a48"

@@ -188,6 +188,12 @@ pub enum ClientEvent {
     Pong {
         id: i32,
     },
+    PlayerSession {
+        session_id: Uuid,
+        expires_at: i64,
+        public_key_data: Box<[u8]>,
+        key_signature: Box<[u8]>,
+    },
     ChangeRecipeBookSettings {
         book_id: RecipeBookId,
         book_open: bool,
@@ -336,7 +342,6 @@ pub(super) fn next_event_fallible<C: Config>(
                 message: p.message.into(),
                 timestamp: p.timestamp,
             },
-            C2sPlayPacket::ChatPreviewC2s(_) => ClientEvent::ChatPreview,
             C2sPlayPacket::ClientCommand(p) => match p {
                 ClientCommand::PerformRespawn => ClientEvent::PerformRespawn,
                 ClientCommand::RequestStats => ClientEvent::RequestStats,
@@ -553,6 +558,12 @@ pub(super) fn next_event_fallible<C: Config>(
                 unmount: p.flags.unmount(),
             },
             C2sPlayPacket::PongPlay(p) => ClientEvent::Pong { id: p.id },
+            C2sPlayPacket::PlayerSession(p) => ClientEvent::PlayerSession {
+                session_id: p.session_id,
+                expires_at: p.expires_at,
+                public_key_data: p.public_key_data.into(),
+                key_signature: p.key_signature.into(),
+            },
             C2sPlayPacket::ChangeRecipeBookSettings(p) => ClientEvent::ChangeRecipeBookSettings {
                 book_id: p.book_id,
                 book_open: p.book_open,

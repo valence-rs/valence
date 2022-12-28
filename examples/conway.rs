@@ -147,6 +147,7 @@ impl Config for Game {
                         client.game_mode(),
                         0,
                         None,
+                        true,
                     );
                 }
 
@@ -169,13 +170,15 @@ impl Config for Game {
                             let index = position.x as usize + position.z as usize * SIZE_X;
 
                             if !server.state.board[index] {
-                                client.play_sound(
-                                    Ident::new("minecraft:block.note_block.banjo").unwrap(),
-                                    SoundCategory::Block,
-                                    Vec3::new(position.x, position.y, position.z).as_(),
-                                    0.5f32,
-                                    1f32,
-                                );
+                                // client.play_sound(
+                                //     Ident::new("minecraft:block.note_block.
+                                // banjo").unwrap(),
+                                //     SoundCategory::Block,
+                                //     Vec3::new(position.x, position.y,
+                                // position.z).as_(),
+                                //     0.5f32,
+                                //     1f32,
+                                // );
                             }
 
                             server.state.board[index] = true;
@@ -208,13 +211,13 @@ impl Config for Game {
                 let sneaking = data.get_pose() == Pose::Sneaking;
                 if sneaking != server.state.paused {
                     server.state.paused = sneaking;
-                    client.play_sound(
-                        Ident::new("block.note_block.pling").unwrap(),
-                        SoundCategory::Block,
-                        client.position(),
-                        0.5,
-                        if sneaking { 0.5 } else { 1.0 },
-                    );
+                    // client.play_sound(
+                    //     Ident::new("block.note_block.pling").unwrap(),
+                    //     SoundCategory::Block,
+                    //     client.position(),
+                    //     0.5,
+                    //     if sneaking { 0.5 } else { 1.0 },
+                    // );
                 }
             }
 

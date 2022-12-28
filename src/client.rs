@@ -14,17 +14,16 @@ use tokio::sync::OwnedSemaphorePermit;
 use tracing::{info, warn};
 use uuid::Uuid;
 use valence_protocol::packets::s2c::play::{
-    AcknowledgeBlockChange, ClearTitles, CloseContainerS2c, CombatDeath, CustomSoundEffect,
-    DisconnectPlay, EntityAnimationS2c, EntityEvent, GameEvent, KeepAliveS2c, LoginPlayOwned,
-    OpenScreen, PluginMessageS2c, RemoveEntitiesEncode, ResourcePackS2c, RespawnOwned,
-    SetActionBarText, SetCenterChunk, SetContainerContentEncode, SetContainerSlotEncode,
-    SetDefaultSpawnPosition, SetEntityMetadata, SetEntityVelocity, SetExperience, SetHealth,
-    SetRenderDistance, SetSubtitleText, SetTitleAnimationTimes, SetTitleText,
-    SynchronizePlayerPosition, SystemChatMessage, UnloadChunk, UpdateAttributes, UpdateTime,
+    AcknowledgeBlockChange, ClearTitles, CloseContainerS2c, CombatDeath, DisconnectPlay,
+    EntityAnimationS2c, EntityEvent, GameEvent, KeepAliveS2c, LoginPlayOwned, OpenScreen,
+    PluginMessageS2c, RemoveEntitiesEncode, ResourcePackS2c, RespawnOwned, SetActionBarText,
+    SetCenterChunk, SetContainerContentEncode, SetContainerSlotEncode, SetDefaultSpawnPosition,
+    SetEntityMetadata, SetEntityVelocity, SetExperience, SetHealth, SetRenderDistance,
+    SetSubtitleText, SetTitleAnimationTimes, SetTitleText, SynchronizePlayerPosition,
+    SystemChatMessage, UnloadChunk, UpdateAttributes, UpdateTime,
 };
 use valence_protocol::types::{
-    AttributeProperty, DisplayedSkinParts, GameMode, GameStateChangeReason, SoundCategory,
-    SyncPlayerPosLookFlags,
+    AttributeProperty, DisplayedSkinParts, GameMode, GameStateChangeReason, SyncPlayerPosLookFlags,
 };
 use valence_protocol::{
     BlockPos, EncodePacket, Ident, ItemStack, RawBytes, Text, Username, VarInt,
@@ -576,25 +575,6 @@ impl<C: Config> Client<C> {
         });
     }
 
-    /// Plays a sound to the client at a given position.
-    pub fn play_sound(
-        &mut self,
-        name: Ident<&str>,
-        category: SoundCategory,
-        pos: Vec3<f64>,
-        volume: f32,
-        pitch: f32,
-    ) {
-        self.queue_packet(&CustomSoundEffect {
-            name,
-            category,
-            position: (pos.as_() * 8).into_array(),
-            volume,
-            pitch,
-            seed: rand::random(),
-        });
-    }
-
     /// Sets the title this client sees.
     ///
     /// A title is a large piece of text displayed in the center of the screen
@@ -1033,6 +1013,13 @@ impl<C: Config> Client<C> {
                     .map(|(id, pos)| (id.dimension_name(), pos)),
             })?;
 
+            /*
+            // TODO: enable all the features?
+            send.append_packet(&FeatureFlags {
+                features: vec![Ident::new("vanilla").unwrap()],
+            })?;
+            */
+
             if let Some(id) = &self.player_list {
                 player_lists[id].write_init_packets(&mut *send)?;
             }
@@ -1375,6 +1362,15 @@ impl<C: Config> Client<C> {
                 }
 
                 Ok(())
+            })?;
+        }
+
+        if self.bits.created_this_tick() {
+            // This closes the "downloading terrain" screen.
+            // Send this after the initial chunks are loaded.
+            send.append_packet(&SetDefaultSpawnPosition {
+                position: BlockPos::at(self.position.into_array()),
+                angle: self.yaw,
             })?;
         }
 

@@ -135,6 +135,12 @@ impl Decode<'_> for u64 {
     }
 }
 
+impl Encode for i64 {
+    fn encode(&self, mut w: impl Write) -> Result<()> {
+        Ok(w.write_i64::<BigEndian>(*self)?)
+    }
+}
+
 impl Decode<'_> for i64 {
     fn decode(r: &mut &[u8]) -> Result<Self> {
         Ok(r.read_i64::<BigEndian>()?)
@@ -162,12 +168,6 @@ impl Encode for i128 {
 impl Decode<'_> for i128 {
     fn decode(r: &mut &'_ [u8]) -> Result<Self> {
         Ok(r.read_i128::<BigEndian>()?)
-    }
-}
-
-impl Encode for i64 {
-    fn encode(&self, mut w: impl Write) -> Result<()> {
-        Ok(w.write_i64::<BigEndian>(*self)?)
     }
 }
 

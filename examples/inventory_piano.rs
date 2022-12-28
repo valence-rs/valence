@@ -147,6 +147,7 @@ impl Config for Game {
                         client.game_mode(),
                         0,
                         None,
+                        true,
                     );
                 }
 
@@ -210,14 +211,17 @@ fn play_note(client: &mut Client<Game>, player: &mut Entity<Game>, clicked_slot:
         let pitch = (clicked_slot - SLOT_MIN) as f32 * (PITCH_MAX - PITCH_MIN)
             / (SLOT_MAX - SLOT_MIN) as f32
             + PITCH_MIN;
-        client.send_message(format!("playing note with pitch: {}", pitch));
-        client.play_sound(
-            Ident::new("block.note_block.harp").unwrap(),
-            SoundCategory::Block,
-            player.position(),
-            10.0,
-            pitch,
-        );
+
+        client.send_message(format!("playing note with pitch: {pitch}"));
+
+        let _ = player;
+        // client.play_sound(
+        //     Ident::new("block.note_block.harp").unwrap(),
+        //     SoundCategory::Block,
+        //     player.position(),
+        //     10.0,
+        //     pitch,
+        // );
     } else if clicked_slot == 44 {
         client.set_game_mode(match client.game_mode() {
             GameMode::Survival => GameMode::Creative,

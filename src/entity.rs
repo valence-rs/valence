@@ -517,6 +517,7 @@ impl<C: Config> Entity<C> {
             TrackedData::Bee(e) => baby(e.get_child(), [0.7, 0.6, 0.7]),
             TrackedData::Blaze(_) => [0.6, 1.8, 0.6],
             TrackedData::Boat(_) => [1.375, 0.5625, 1.375],
+            TrackedData::Camel(e) => baby(e.get_child(), [1.7, 2.375, 1.7]),
             TrackedData::Cat(_) => [0.6, 0.7, 0.6],
             TrackedData::CaveSpider(_) => [0.7, 0.5, 0.7],
             TrackedData::Chicken(e) => baby(e.get_child(), [0.4, 0.7, 0.4]),

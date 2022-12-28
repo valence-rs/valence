@@ -90,11 +90,11 @@ pub use var_long::VarLong;
 pub use {uuid, valence_nbt as nbt};
 
 /// The Minecraft protocol version this library currently targets.
-pub const PROTOCOL_VERSION: i32 = 760;
+pub const PROTOCOL_VERSION: i32 = 761;
 
 /// The stringified name of the Minecraft version this library currently
 /// targets.
-pub const MINECRAFT_VERSION: &str = "1.19.2";
+pub const MINECRAFT_VERSION: &str = "1.19.3";
 
 mod array;
 pub mod block;
@@ -109,6 +109,7 @@ mod impls;
 mod inventory;
 mod item;
 pub mod packets;
+pub mod player_list;
 mod raw_bytes;
 pub mod text;
 pub mod translation_key;
