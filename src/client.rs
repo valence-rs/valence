@@ -22,6 +22,7 @@ use valence_protocol::packets::s2c::play::{
     SetSubtitleText, SetTitleAnimationTimes, SetTitleText, SynchronizePlayerPosition,
     SystemChatMessage, UnloadChunk, UpdateAttributes, UpdateTime,
 };
+use valence_protocol::particle::{Particle, ParticleS2c};
 use valence_protocol::types::{
     AttributeProperty, DisplayedSkinParts, GameMode, GameStateChangeReason, SyncPlayerPosLookFlags,
 };
@@ -573,6 +574,25 @@ impl<C: Config> Client<C> {
             reason: GameStateChangeReason::ThunderLevelChange,
             value: thunder_level.clamp(0.0, 1.0),
         });
+    }
+
+    pub fn play_particle(
+        &mut self,
+        particle: &Particle,
+        long_distance: bool,
+        position: impl Into<Vec3<f64>>,
+        offset: impl Into<Vec3<f32>>,
+        max_speed: f32,
+        count: i32,
+    ) {
+        self.queue_packet(&ParticleS2c {
+            particle: particle.clone(),
+            long_distance,
+            position: position.into().into_array(),
+            offset: offset.into().into_array(),
+            max_speed,
+            count,
+        })
     }
 
     /// Sets the title this client sees.

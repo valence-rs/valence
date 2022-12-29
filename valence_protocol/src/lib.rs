@@ -109,6 +109,7 @@ mod impls;
 mod inventory;
 mod item;
 pub mod packets;
+pub mod particle;
 pub mod player_list;
 mod raw_bytes;
 pub mod text;

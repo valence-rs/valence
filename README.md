@@ -41,10 +41,10 @@ place. Here are some noteworthy achievements:
 - [x] A Fabric mod for extracting data from the game into JSON files. These files are processed by a build script to
   generate Rust code for the project. The JSON files can be used in other projects as well.
 - [x] Items
+- [x] Particles
 - [ ] Inventory
 - [ ] Block entities
 - [x] Proxy support ([Velocity](https://velocitypowered.com/), [Bungeecord](https://www.spigotmc.org/wiki/bungeecord/) and [Waterfall](https://docs.papermc.io/waterfall))
-- [ ] Sounds, particles, etc.
 - [ ] Utilities for continuous collision detection
 
 Here is a [short video](https://www.youtube.com/watch?v=6P072lKE01s) showing the examples and some of its current

@@ -1,8 +1,8 @@
 //! Formatted text.
 
 use std::borrow::Cow;
-use std::fmt;
 use std::io::Write;
+use std::{fmt, ops};
 
 use serde::de::Visitor;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
@@ -687,7 +687,7 @@ pub trait TextFormat: Into<Text> {
 
 impl<T: Into<Text>> TextFormat for T {}
 
-impl<T: Into<Text>> std::ops::Add<T> for Text {
+impl<T: Into<Text>> ops::Add<T> for Text {
     type Output = Self;
 
     fn add(self, rhs: T) -> Self::Output {
@@ -695,7 +695,7 @@ impl<T: Into<Text>> std::ops::Add<T> for Text {
     }
 }
 
-impl<T: Into<Text>> std::ops::AddAssign<T> for Text {
+impl<T: Into<Text>> ops::AddAssign<T> for Text {
     fn add_assign(&mut self, rhs: T) {
         self.0.extra.push(rhs.into());
     }

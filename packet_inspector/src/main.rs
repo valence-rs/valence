@@ -85,7 +85,11 @@ impl State {
         self.buf.clear();
         write!(&mut self.buf, "{pkt:?}")?;
 
-        let packet_name = self.buf.split_ascii_whitespace().next().unwrap();
+        let packet_name = self
+            .buf
+            .split_once(|ch: char| !ch.is_ascii_alphabetic())
+            .map(|(fst, _)| fst)
+            .unwrap_or(&self.buf);
 
         if let Some(r) = &self.cli.include_regex {
             if !r.is_match(packet_name) {
