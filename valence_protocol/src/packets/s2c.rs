@@ -95,6 +95,7 @@ pub mod login {
 
 pub mod play {
     use super::*;
+    pub use crate::particle::ParticleS2c;
     pub use crate::player_list::PlayerInfoUpdate;
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -330,18 +331,6 @@ pub mod play {
         pub empty_block_light_mask: &'a [u64],
         pub sky_light_arrays: &'a [LengthPrefixedArray<u8, 2048>],
         pub block_light_arrays: &'a [LengthPrefixedArray<u8, 2048>],
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x22]
-    pub struct ParticleS2c<'a> {
-        pub particle_id: VarInt,
-        pub long_distance: bool,
-        pub position: [f64; 3],
-        pub offset: [f32; 3],
-        pub max_speed: f32,
-        pub count: i32,
-        pub data: RawBytes<'a>,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -711,7 +700,7 @@ pub mod play {
             WorldBorderInitialize,
             KeepAliveS2c,
             ChunkDataAndUpdateLight<'a>,
-            ParticleS2c<'a>,
+            ParticleS2c,
             LoginPlay<'a>,
             UpdateEntityPosition,
             UpdateEntityPositionAndRotation,

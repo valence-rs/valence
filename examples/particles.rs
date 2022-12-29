@@ -1,17 +1,11 @@
+use std::fmt;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use log::LevelFilter;
-use valence::client::SetTitleAnimationTimes;
-use valence::entity::types::Pose;
 use valence::prelude::*;
-use vek::Rgb;
 
 pub fn main() -> ShutdownResult {
-    env_logger::Builder::new()
-        .filter_module("valence", LevelFilter::Trace)
-        .parse_default_env()
-        .init();
+    tracing_subscriber::fmt().init();
 
     valence::start_server(
         Game {
@@ -20,7 +14,7 @@ pub fn main() -> ShutdownResult {
         ServerState {
             player_list: None,
             particle_list: create_particle_vec(),
-            particle_index: 0,
+            particle_idx: 0,
         },
     )
 }
@@ -32,12 +26,12 @@ struct Game {
 struct ServerState {
     player_list: Option<PlayerListId>,
     particle_list: Vec<Particle>,
-    particle_index: usize,
+    particle_idx: usize,
 }
 
 const MAX_PLAYERS: usize = 10;
 
-const SPAWN_POS: BlockPos = BlockPos::new(0, 100, -25);
+const SPAWN_POS: BlockPos = BlockPos::new(0, 100, 0);
 
 #[async_trait]
 impl Config for Game {
@@ -47,6 +41,7 @@ impl Config for Game {
     type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
+    type InventoryState = ();
 
     async fn server_list_ping(
         &self,
@@ -64,7 +59,7 @@ impl Config for Game {
     }
 
     fn init(&self, server: &mut Server<Self>) {
-        let (_world_id, world) = server.worlds.insert(DimensionId::default(), ());
+        let (_, world) = server.worlds.insert(DimensionId::default(), ());
         server.state.player_list = Some(server.player_lists.insert(()).0);
 
         let size = 5;
@@ -104,7 +99,7 @@ impl Config for Game {
                     }
                 }
 
-                client.spawn(world_id);
+                client.respawn(world_id);
                 client.set_flat(true);
                 client.set_game_mode(GameMode::Creative);
                 client.teleport(
@@ -127,6 +122,7 @@ impl Config for Game {
                         client.game_mode(),
                         0,
                         None,
+                        true,
                     );
                 }
             }
@@ -134,9 +130,9 @@ impl Config for Game {
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
                 if let Some(id) = &server.state.player_list {
-                    server.player_lists.get_mut(id).remove(client.uuid());
+                    server.player_lists[id].remove(client.uuid());
                 }
-                server.entities.remove(client.state);
+                server.entities[client.state].set_deleted(true);
 
                 return false;
             }
@@ -146,49 +142,62 @@ impl Config for Game {
                 .get_mut(client.state)
                 .expect("missing player entity");
 
-            while handle_event_default(client, entity).is_some() {}
+            while let Some(event) = client.next_event() {
+                event.handle_default(client, entity);
+            }
 
             true
         });
 
         let players_are_sneaking = server.clients.iter().any(|(_, client)| -> bool {
-            let player = server.entities.get(client.state).unwrap();
+            let player = &server.entities[client.state];
             if let TrackedData::Player(data) = player.data() {
                 return data.get_pose() == Pose::Sneaking;
             }
             false
         });
-        let cycle_time: i64 = if players_are_sneaking { 5 } else { 30 };
-        if !server.clients.is_empty() && server.shared.current_tick() % cycle_time == 0 {
-            if server.state.particle_index == server.state.particle_list.len() {
-                server.state.particle_index = 0;
+
+        let cycle_time = if players_are_sneaking { 5 } else { 30 };
+
+        if !server.clients.is_empty() && server.current_tick() % cycle_time == 0 {
+            if server.state.particle_idx == server.state.particle_list.len() {
+                server.state.particle_idx = 0;
             }
-            let pos = Vec3::new(0.0, 100.0, -10.0);
-            let offset = Vec3::new(0.5, 0.5, 0.5);
-            let particle_type: &Particle = server
-                .state
-                .particle_list
-                .get(server.state.particle_index)
-                .expect("Invalid index to particle list");
-            println!("Current particle: {}", particle_type.name());
-            server.clients.iter_mut().for_each(|(_cid, client)| {
+
+            let pos = [
+                SPAWN_POS.x as f64 + 0.5,
+                SPAWN_POS.y as f64 + 2.0,
+                SPAWN_POS.z as f64 + 5.5,
+            ];
+            let offset = [0.5, 0.5, 0.5];
+            let particle = &server.state.particle_list[server.state.particle_idx];
+
+            server.clients.iter_mut().for_each(|(_, client)| {
                 client.set_title(
                     "",
-                    particle_type.name().to_string().bold(),
+                    dbg_name(particle).bold(),
                     SetTitleAnimationTimes {
                         fade_in: 0,
                         stay: 100,
                         fade_out: 2,
                     },
                 );
-                client.play_particle(particle_type.clone(), pos, offset, 0.1, 100, true);
+                client.play_particle(particle, true, pos, offset, 0.1, 100);
             });
-            server.state.particle_index += 1;
+            server.state.particle_idx += 1;
         }
     }
 }
 
-#[inline]
+fn dbg_name(dbg: &impl fmt::Debug) -> String {
+    let string = format!("{dbg:?}");
+
+    string
+        .split_once(|ch: char| !ch.is_ascii_alphabetic())
+        .map(|(fst, _)| fst.to_owned())
+        .unwrap_or(string)
+}
+
 fn create_particle_vec() -> Vec<Particle> {
     vec![
         Particle::AmbientEntityEffect,
@@ -206,13 +215,13 @@ fn create_particle_vec() -> Vec<Particle> {
         Particle::DrippingWater,
         Particle::FallingWater,
         Particle::Dust {
-            rgb: Rgb::new(1.0, 1.0, 0.0),
+            rgb: [1.0, 1.0, 0.0],
             scale: 2.0,
         },
         Particle::DustColorTransition {
-            from_rgb: Rgb::new(1.0, 0.0, 0.0),
+            from_rgb: [1.0, 0.0, 0.0],
             scale: 2.0,
-            to_rgb: Rgb::new(0.0, 1.0, 0.0),
+            to_rgb: [0.0, 1.0, 0.0],
         },
         Particle::Effect,
         Particle::ElderGuardian,

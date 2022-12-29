@@ -136,6 +136,7 @@ pub mod prelude {
     pub use valence_protocol::entity_meta::Pose;
     pub use valence_protocol::ident::IdentError;
     pub use valence_protocol::packets::s2c::play::SetTitleAnimationTimes;
+    pub use valence_protocol::particle::Particle;
     pub use valence_protocol::text::Color;
     pub use valence_protocol::types::{GameMode, Hand, SoundCategory};
     pub use valence_protocol::{
