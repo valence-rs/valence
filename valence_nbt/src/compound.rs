@@ -1,13 +1,14 @@
 use std::borrow::Borrow;
+use std::fmt;
 use std::hash::Hash;
 use std::iter::FusedIterator;
 use std::ops::{Index, IndexMut};
 
-use crate::to_binary_writer::encoded_len;
+use crate::to_binary_writer::written_size;
 use crate::Value;
 
 /// A map type with [`String`] keys and [`Value`] values.
-#[derive(Clone, PartialEq, Default, Debug)]
+#[derive(Clone, PartialEq, Default)]
 pub struct Compound {
     map: Map,
 }
@@ -19,18 +20,23 @@ type Map = std::collections::BTreeMap<String, Value>;
 type Map = indexmap::IndexMap<String, Value>;
 
 impl Compound {
-    /// Returns the number of bytes that will be written with
-    /// [`to_binary_writer`] when called with this compound and root name.
+    /// Returns the number of bytes that will be written when
+    /// [`to_binary_writer`] is called with this compound and root name.
     ///
     /// If [`to_binary_writer`] results in `Ok`, the exact number of bytes
-    /// reported by this function will have been written.
-    ///
-    /// If the result is `Err`, then the reported count will be greater than or
-    /// equal to the number of bytes that have actually been written.
+    /// reported by this function will have been written. If the result is
+    /// `Err`, then the reported count will be greater than or equal to the
+    /// number of bytes that have actually been written.
     ///
     /// [`to_binary_writer`]: crate::to_binary_writer()
-    pub fn binary_encoded_len(&self, root_name: &str) -> usize {
-        encoded_len(self, root_name)
+    pub fn written_size(&self, root_name: &str) -> usize {
+        written_size(self, root_name)
+    }
+}
+
+impl fmt::Debug for Compound {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.map.fmt(f)
     }
 }
 

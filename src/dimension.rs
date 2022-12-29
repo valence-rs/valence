@@ -2,9 +2,10 @@
 
 use anyhow::ensure;
 use valence_nbt::{compound, Compound};
+use valence_protocol::ident;
+use valence_protocol::ident::Ident;
 
-use crate::ident::Ident;
-use crate::{ident, LIBRARY_NAMESPACE};
+use crate::LIBRARY_NAMESPACE;
 
 /// Identifies a particular [`Dimension`] on the server.
 ///
@@ -70,18 +71,18 @@ pub struct Dimension {
     /// * `min_y + height <= 2032`
     pub height: i32,
     // TODO: The following fields should be added if they can affect the
-    // appearance of the dimension to clients.
-    // * infiniburn
-    // * monster_spawn_light_level
-    // * monster_spawn_block_light_level
-    // * respawn_anchor_works
-    // * has_skylight
-    // * bed_works
-    // * has_raids
-    // * logical_height
-    // * coordinate_scale
-    // * ultrawarm
-    // * has_ceiling
+    //       appearance of the dimension to clients.
+    //       * infiniburn
+    //       * monster_spawn_light_level
+    //       * monster_spawn_block_light_level
+    //       * respawn_anchor_works
+    //       * has_skylight
+    //       * bed_works
+    //       * has_raids
+    //       * logical_height
+    //       * coordinate_scale
+    //       * ultrawarm
+    //       * has_ceiling
 }
 
 impl Dimension {

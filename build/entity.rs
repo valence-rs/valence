@@ -35,6 +35,7 @@ struct Field {
 enum Value {
     Byte(u8),
     Integer(i32),
+    Long(i64),
     Float(f32),
     String(String),
     TextComponent(String),
@@ -85,27 +86,28 @@ impl Value {
         match self {
             Value::Byte(_) => 0,
             Value::Integer(_) => 1,
-            Value::Float(_) => 2,
-            Value::String(_) => 3,
-            Value::TextComponent(_) => 4,
-            Value::OptionalTextComponent(_) => 5,
-            Value::ItemStack(_) => 6,
-            Value::Boolean(_) => 7,
-            Value::Rotation { .. } => 8,
-            Value::BlockPos(_) => 9,
-            Value::OptionalBlockPos(_) => 10,
-            Value::Facing(_) => 11,
-            Value::OptionalUuid(_) => 12,
-            Value::OptionalBlockState(_) => 13,
-            Value::NbtCompound(_) => 14,
-            Value::Particle(_) => 15,
-            Value::VillagerData { .. } => 16,
-            Value::OptionalInt(_) => 17,
-            Value::EntityPose(_) => 18,
-            Value::CatVariant(_) => 19,
-            Value::FrogVariant(_) => 20,
-            Value::OptionalGlobalPos(_) => 21,
-            Value::PaintingVariant(_) => 22,
+            Value::Long(_) => 2,
+            Value::Float(_) => 3,
+            Value::String(_) => 4,
+            Value::TextComponent(_) => 5,
+            Value::OptionalTextComponent(_) => 6,
+            Value::ItemStack(_) => 7,
+            Value::Boolean(_) => 8,
+            Value::Rotation { .. } => 9,
+            Value::BlockPos(_) => 10,
+            Value::OptionalBlockPos(_) => 11,
+            Value::Facing(_) => 12,
+            Value::OptionalUuid(_) => 13,
+            Value::OptionalBlockState(_) => 14,
+            Value::NbtCompound(_) => 15,
+            Value::Particle(_) => 16,
+            Value::VillagerData { .. } => 17,
+            Value::OptionalInt(_) => 18,
+            Value::EntityPose(_) => 19,
+            Value::CatVariant(_) => 20,
+            Value::FrogVariant(_) => 21,
+            Value::OptionalGlobalPos(_) => 22,
+            Value::PaintingVariant(_) => 23,
         }
     }
 
@@ -113,6 +115,7 @@ impl Value {
         match self {
             Value::Byte(_) => quote!(u8),
             Value::Integer(_) => quote!(i32),
+            Value::Long(_) => quote!(i64),
             Value::Float(_) => quote!(f32),
             Value::String(_) => quote!(Box<str>),
             Value::TextComponent(_) => quote!(Text),
@@ -161,6 +164,7 @@ impl Value {
         match self {
             Value::Byte(b) => quote!(#b),
             Value::Integer(i) => quote!(#i),
+            Value::Long(l) => quote!(#l),
             Value::Float(f) => quote!(#f),
             Value::String(s) => quote!(#s.to_owned().into_boxed_str()),
             Value::TextComponent(_) => quote!(Text::default()), // TODO
@@ -359,8 +363,8 @@ pub fn build() -> anyhow::Result<TokenStream> {
             quote! {
                 if self.#field_name != (#default_expr) {
                     data.push(#field_index);
-                    VarInt(#type_id).encode(data).unwrap();
-                    #encodable.encode(data).unwrap();
+                    VarInt(#type_id).encode(&mut *data).unwrap();
+                    #encodable.encode(&mut *data).unwrap();
                 }
             }
         });
@@ -374,8 +378,8 @@ pub fn build() -> anyhow::Result<TokenStream> {
             quote! {
                 if (self.__modified_flags >> #field_index as #modified_flags_type) & 1 == 1 {
                     data.push(#field_index);
-                    VarInt(#type_id).encode(data).unwrap();
-                    #encodable.encode(data).unwrap();
+                    VarInt(#type_id).encode(&mut *data).unwrap();
+                    #encodable.encode(&mut *data).unwrap();
                 }
             }
         });
@@ -405,8 +409,6 @@ pub fn build() -> anyhow::Result<TokenStream> {
                     }
                 }
 
-                // TODO: remove this
-                #[allow(unused)]
                 pub(crate) fn clear_modifications(&mut self) {
                     self.__modified_flags = 0;
                 }
@@ -460,39 +462,33 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            pub(super) fn initial_tracked_data(&self) -> Option<Vec<u8>> {
-                let mut data = Vec::new();
+            pub(super) fn write_initial_tracked_data(&self, buf: &mut Vec<u8>) {
+                buf.clear();
 
                 match self {
-                    #(Self::#concrete_entity_names(e) => e.initial_tracked_data(&mut data),)*
+                    #(Self::#concrete_entity_names(e) => e.initial_tracked_data(buf),)*
                 }
 
-                if data.is_empty() {
-                    None
-                } else {
-                    data.push(0xff);
-                    Some(data)
+                if !buf.is_empty() {
+                    buf.push(0xff);
                 }
             }
 
-            pub(super) fn updated_tracked_data(&self) -> Option<Vec<u8>> {
-                let mut data = Vec::new();
+            pub(super) fn write_updated_tracked_data(&self, buf: &mut Vec<u8>) {
+                buf.clear();
 
                 match self {
-                    #(Self::#concrete_entity_names(e) => e.updated_tracked_data(&mut data),)*
+                    #(Self::#concrete_entity_names(e) => e.updated_tracked_data(buf),)*
                 }
 
-                if data.is_empty() {
-                    None
-                } else {
-                    data.push(0xff);
-                    Some(data)
+                if !buf.is_empty() {
+                    buf.push(0xff);
                 }
             }
 
             pub(super) fn clear_modifications(&mut self) {
                 match self {
-                    #(Self::#concrete_entity_names(e) => e.__modified_flags = 0,)*
+                    #(Self::#concrete_entity_names(e) => e.clear_modifications(),)*
                 }
             }
         }
@@ -511,7 +507,7 @@ fn collect_all_fields<'a>(entity_name: &str, entities: &'a Entities) -> Vec<&'a 
         }
     }
 
-    let mut fields = Vec::new();
+    let mut fields = vec![];
     rec(entity_name, entities, &mut fields);
 
     fields.sort_by_key(|f| f.index);

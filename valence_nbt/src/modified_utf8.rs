@@ -83,13 +83,13 @@ pub fn encoded_len(text: &str) -> usize {
 
     while i < bytes.len() {
         match bytes[i] {
-            0 => {
-                n += 2;
-                i += 1;
-            }
             // Fast path for ASCII here makes a huge difference in benchmarks.
             1..=127 => {
                 n += 1;
+                i += 1;
+            }
+            0 => {
+                n += 2;
                 i += 1;
             }
             b => {
@@ -113,7 +113,7 @@ pub fn encoded_len(text: &str) -> usize {
 #[test]
 fn equivalence() {
     fn check(s: &str) {
-        let mut ours = Vec::new();
+        let mut ours = vec![];
 
         let theirs = cesu8::to_java_cesu8(s);
         write_modified_utf8(&mut ours, s).unwrap();

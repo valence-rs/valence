@@ -1,6 +1,7 @@
 //! A space on a server for objects to occupy.
 
 use std::iter::FusedIterator;
+use std::ops::{Deref, DerefMut, Index, IndexMut};
 
 use rayon::iter::ParallelIterator;
 
@@ -9,7 +10,6 @@ use crate::config::Config;
 use crate::dimension::DimensionId;
 use crate::server::SharedServer;
 use crate::slab_versioned::{Key, VersionedSlab};
-use crate::spatial_index::SpatialIndex;
 
 /// A container for all [`World`]s on a [`Server`](crate::server::Server).
 pub struct Worlds<C: Config> {
@@ -53,9 +53,14 @@ impl<C: Config> Worlds<C> {
 
         let (id, world) = self.slab.insert(World {
             state,
-            spatial_index: SpatialIndex::new(),
-            chunks: Chunks::new(dim.height, dim.min_y),
-            meta: WorldMeta { dimension },
+            chunks: Chunks::new(
+                dim.height,
+                dim.min_y,
+                self.shared.biomes().len(),
+                self.shared.compression_threshold(),
+            ),
+            dimension,
+            deleted: false,
         });
 
         (WorldId(id), world)
@@ -66,11 +71,8 @@ impl<C: Config> Worlds<C> {
     /// Note that any entities located in the world are not deleted.
     /// Additionally, clients that are still in the deleted world at the end
     /// of the tick are disconnected.
-    ///
-    /// Returns `true` if the world was deleted. Otherwise, `false` is returned
-    /// and the function has no effect.
-    pub fn remove(&mut self, world: WorldId) -> bool {
-        self.slab.remove(world.0).is_some()
+    pub fn remove(&mut self, world: WorldId) -> Option<C::WorldState> {
+        self.slab.remove(world.0).map(|w| w.state)
     }
 
     /// Removes all worlds from the server for which `f` returns `false`.
@@ -129,28 +131,70 @@ impl<C: Config> Worlds<C> {
     pub fn par_iter_mut(&mut self) -> impl ParallelIterator<Item = (WorldId, &mut World<C>)> + '_ {
         self.slab.par_iter_mut().map(|(k, v)| (WorldId(k), v))
     }
+
+    pub(crate) fn update(&mut self) {
+        self.slab.retain(|_, world| !world.deleted);
+
+        self.par_iter_mut().for_each(|(_, world)| {
+            world.chunks.update();
+        });
+    }
+}
+
+impl<C: Config> Index<WorldId> for Worlds<C> {
+    type Output = World<C>;
+
+    fn index(&self, index: WorldId) -> &Self::Output {
+        self.get(index).expect("invalid world ID")
+    }
+}
+
+impl<C: Config> IndexMut<WorldId> for Worlds<C> {
+    fn index_mut(&mut self, index: WorldId) -> &mut Self::Output {
+        self.get_mut(index).expect("invalid world ID")
+    }
 }
 
 /// A space for chunks, entities, and clients to occupy.
 pub struct World<C: Config> {
     /// Custom state.
     pub state: C::WorldState,
-    /// Contains all of the entities in this world.
-    pub spatial_index: SpatialIndex,
-    /// All of the chunks in this world.
     pub chunks: Chunks<C>,
-    /// This world's metadata.
-    pub meta: WorldMeta,
-}
-
-/// Contains miscellaneous data about the world.
-pub struct WorldMeta {
     dimension: DimensionId,
+    deleted: bool,
 }
 
-impl WorldMeta {
+impl<C: Config> Deref for World<C> {
+    type Target = C::WorldState;
+
+    fn deref(&self) -> &Self::Target {
+        &self.state
+    }
+}
+
+impl<C: Config> DerefMut for World<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.state
+    }
+}
+
+impl<C: Config> World<C> {
     /// Gets the dimension the world was created with.
     pub fn dimension(&self) -> DimensionId {
         self.dimension
+    }
+
+    pub fn deleted(&self) -> bool {
+        self.deleted
+    }
+
+    /// Whether or not this world should be marked as deleted. Deleted worlds
+    /// are removed from the server at the end of the tick.
+    ///
+    /// Note that any entities located in the world are not deleted and their
+    /// location will not change. Additionally, clients that are still in
+    /// the deleted world at the end of the tick are disconnected.
+    pub fn set_deleted(&mut self, deleted: bool) {
+        self.deleted = deleted;
     }
 }

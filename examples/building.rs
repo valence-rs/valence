@@ -1,16 +1,10 @@
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use log::LevelFilter;
-use num::Integer;
-use valence::client::{DiggingStatus, Hand};
 use valence::prelude::*;
 
 pub fn main() -> ShutdownResult {
-    env_logger::Builder::new()
-        .filter_module("valence", LevelFilter::Trace)
-        .parse_default_env()
-        .init();
+    tracing_subscriber::fmt().init();
 
     valence::start_server(
         Game {
@@ -35,8 +29,8 @@ struct ClientState {
 
 const MAX_PLAYERS: usize = 10;
 
-const SIZE_X: usize = 100;
-const SIZE_Z: usize = 100;
+const SIZE_X: i32 = 100;
+const SIZE_Z: i32 = 100;
 
 #[async_trait]
 impl Config for Game {
@@ -46,6 +40,7 @@ impl Config for Game {
     type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
+    type InventoryState = ();
 
     fn dimensions(&self) -> Vec<Dimension> {
         vec![Dimension {
@@ -74,33 +69,11 @@ impl Config for Game {
         server.state.player_list = Some(server.player_lists.insert(()).0);
 
         // initialize chunks
-        for chunk_z in -2..Integer::div_ceil(&(SIZE_Z as i32), &16) + 2 {
-            for chunk_x in -2..Integer::div_ceil(&(SIZE_X as i32), &16) + 2 {
-                world.chunks.insert(
-                    [chunk_x as i32, chunk_z as i32],
-                    UnloadedChunk::default(),
-                    (),
-                );
-            }
-        }
-
-        // initialize blocks in the chunks
-        for chunk_x in 0..Integer::div_ceil(&SIZE_X, &16) {
-            for chunk_z in 0..Integer::div_ceil(&SIZE_Z, &16) {
-                let chunk = world
+        for z in 0..SIZE_Z {
+            for x in 0..SIZE_X {
+                world
                     .chunks
-                    .get_mut((chunk_x as i32, chunk_z as i32))
-                    .unwrap();
-                for x in 0..16 {
-                    for z in 0..16 {
-                        let cell_x = chunk_x * 16 + x;
-                        let cell_z = chunk_z * 16 + z;
-
-                        if cell_x < SIZE_X && cell_z < SIZE_Z {
-                            chunk.set_block_state(x, 63, z, BlockState::GRASS_BLOCK);
-                        }
-                    }
-                }
+                    .set_block_state([x, 0, z], BlockState::GRASS_BLOCK);
             }
         }
     }
@@ -127,26 +100,30 @@ impl Config for Game {
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => client.state.entity_id = id,
+                    Some((id, entity)) => {
+                        entity.set_world(world_id);
+                        client.entity_id = id
+                    }
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;
                     }
                 }
 
-                client.spawn(world_id);
+                client.respawn(world_id);
                 client.set_flat(true);
                 client.teleport(spawn_pos, 0.0, 0.0);
                 client.set_player_list(server.state.player_list.clone());
 
                 if let Some(id) = &server.state.player_list {
-                    server.player_lists.get_mut(id).insert(
+                    server.player_lists[id].insert(
                         client.uuid(),
                         client.username(),
                         client.textures().cloned(),
                         client.game_mode(),
                         0,
                         None,
+                        true,
                     );
                 }
 
@@ -154,46 +131,24 @@ impl Config for Game {
                 client.send_message("Welcome to Valence! Build something cool.".italic());
             }
 
-            if client.is_disconnected() {
-                self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.remove(client.state.entity_id);
-                if let Some(id) = &server.state.player_list {
-                    server.player_lists.get_mut(id).remove(client.uuid());
-                }
-                return false;
-            }
+            let player = server.entities.get_mut(client.entity_id).unwrap();
 
-            let player = server.entities.get_mut(client.state.entity_id).unwrap();
-
-            if client.position().y <= -20.0 {
-                client.teleport(spawn_pos, client.yaw(), client.pitch());
-            }
-
-            while let Some(event) = handle_event_default(client, player) {
+            while let Some(event) = client.next_event() {
+                event.handle_default(client, player);
                 match event {
-                    ClientEvent::Digging {
-                        position, status, ..
-                    } => {
-                        match status {
-                            DiggingStatus::Start => {
-                                // Allows clients in creative mode to break blocks.
-                                if client.game_mode() == GameMode::Creative {
-                                    world.chunks.set_block_state(position, BlockState::AIR);
-                                }
-                            }
-                            DiggingStatus::Finish => {
-                                // Allows clients in survival mode to break blocks.
-                                world.chunks.set_block_state(position, BlockState::AIR);
-                            }
-                            _ => {}
+                    ClientEvent::StartDigging { position, .. } => {
+                        // Allows clients in creative mode to break blocks.
+                        if client.game_mode() == GameMode::Creative {
+                            world.chunks.set_block_state(position, BlockState::AIR);
                         }
                     }
-                    ClientEvent::InteractWithBlock {
-                        hand,
-                        location,
-                        face,
-                        ..
-                    } => {
+                    ClientEvent::FinishDigging { position, .. } => {
+                        // Allows clients in survival mode to break blocks.
+                        world.chunks.set_block_state(position, BlockState::AIR);
+                    }
+                    ClientEvent::UseItemOnBlock { .. } => {
+                        // TODO: reimplement when inventories are re-added.
+                        /*
                         if hand == Hand::Main {
                             if let Some(stack) = client.held_item() {
                                 if let Some(held_block_kind) = stack.item.to_block_kind() {
@@ -204,22 +159,36 @@ impl Config for Game {
                                     {
                                         if world
                                             .chunks
-                                            .block_state(location)
+                                            .block_state(position)
                                             .map(|s| s.is_replaceable())
                                             .unwrap_or(false)
                                         {
-                                            world.chunks.set_block_state(location, block_to_place);
+                                            world.chunks.set_block_state(position, block_to_place);
                                         } else {
-                                            let place_at = location.get_in_direction(face);
+                                            let place_at = position.get_in_direction(face);
                                             world.chunks.set_block_state(place_at, block_to_place);
                                         }
                                     }
                                 }
                             }
                         }
+                         */
                     }
                     _ => {}
                 }
+            }
+
+            if client.is_disconnected() {
+                self.player_count.fetch_sub(1, Ordering::SeqCst);
+                player.set_deleted(true);
+                if let Some(id) = &server.state.player_list {
+                    server.player_lists[id].remove(client.uuid());
+                }
+                return false;
+            }
+
+            if client.position().y <= -20.0 {
+                client.teleport(spawn_pos, client.yaw(), client.pitch());
             }
 
             true

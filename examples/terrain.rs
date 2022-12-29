@@ -2,17 +2,13 @@ use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::SystemTime;
 
-use log::LevelFilter;
-use noise::{NoiseFn, Seedable, SuperSimplex};
+use noise::{NoiseFn, SuperSimplex};
 use rayon::iter::ParallelIterator;
 pub use valence::prelude::*;
 use vek::Lerp;
 
 pub fn main() -> ShutdownResult {
-    env_logger::Builder::new()
-        .filter_module("valence", LevelFilter::Trace)
-        .parse_default_env()
-        .init();
+    tracing_subscriber::fmt().init();
 
     let seconds_per_day = 86_400;
 
@@ -24,11 +20,11 @@ pub fn main() -> ShutdownResult {
     valence::start_server(
         Game {
             player_count: AtomicUsize::new(0),
-            density_noise: SuperSimplex::new().set_seed(seed),
-            hilly_noise: SuperSimplex::new().set_seed(seed.wrapping_add(1)),
-            stone_noise: SuperSimplex::new().set_seed(seed.wrapping_add(2)),
-            gravel_noise: SuperSimplex::new().set_seed(seed.wrapping_add(3)),
-            grass_noise: SuperSimplex::new().set_seed(seed.wrapping_add(4)),
+            density_noise: SuperSimplex::new(seed),
+            hilly_noise: SuperSimplex::new(seed.wrapping_add(1)),
+            stone_noise: SuperSimplex::new(seed.wrapping_add(2)),
+            gravel_noise: SuperSimplex::new(seed.wrapping_add(3)),
+            grass_noise: SuperSimplex::new(seed.wrapping_add(4)),
         },
         None,
     )
@@ -54,6 +50,7 @@ impl Config for Game {
     /// If the chunk should stay loaded at the end of the tick.
     type ChunkState = bool;
     type PlayerListState = ();
+    type InventoryState = ();
 
     async fn server_list_ping(
         &self,
@@ -95,51 +92,46 @@ impl Config for Game {
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => client.state = id,
+                    Some((id, entity)) => {
+                        entity.set_world(world_id);
+                        client.state = id
+                    }
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;
                     }
                 }
 
-                client.spawn(world_id);
+                client.respawn(world_id);
                 client.set_flat(true);
                 client.set_game_mode(GameMode::Creative);
                 client.teleport([0.0, 200.0, 0.0], 0.0, 0.0);
                 client.set_player_list(server.state.clone());
 
                 if let Some(id) = &server.state {
-                    server.player_lists.get_mut(id).insert(
+                    server.player_lists[id].insert(
                         client.uuid(),
                         client.username(),
                         client.textures().cloned(),
                         client.game_mode(),
                         0,
                         None,
+                        true,
                     );
                 }
 
                 client.send_message("Welcome to the terrain example!".italic());
             }
 
-            if client.is_disconnected() {
-                self.player_count.fetch_sub(1, Ordering::SeqCst);
-                if let Some(id) = &server.state {
-                    server.player_lists.get_mut(id).remove(client.uuid());
-                }
-                server.entities.remove(client.state);
-
-                return false;
-            }
-
-            if let Some(entity) = server.entities.get_mut(client.state) {
-                while handle_event_default(client, entity).is_some() {}
+            let player = &mut server.entities[client.state];
+            while let Some(event) = client.next_event() {
+                event.handle_default(client, player);
             }
 
             let dist = client.view_distance();
             let p = client.position();
 
-            for pos in chunks_in_view_distance(ChunkPos::at(p.x, p.z), dist) {
+            for pos in ChunkPos::at(p.x, p.z).in_view(dist) {
                 if let Some(chunk) = world.chunks.get_mut(pos) {
                     chunk.state = true;
                 } else {
@@ -147,18 +139,24 @@ impl Config for Game {
                 }
             }
 
+            if client.is_disconnected() {
+                self.player_count.fetch_sub(1, Ordering::SeqCst);
+                if let Some(id) = &server.state {
+                    server.player_lists[id].remove(client.uuid());
+                }
+                player.set_deleted(true);
+
+                return false;
+            }
+
             true
         });
 
         // Remove chunks outside the view distance of players.
-        world.chunks.retain(|_, chunk| {
-            if chunk.state {
-                chunk.state = false;
-                true
-            } else {
-                false
-            }
-        });
+        for (_, chunk) in world.chunks.iter_mut() {
+            chunk.set_deleted(!chunk.state);
+            chunk.state = false;
+        }
 
         // Generate chunk data for chunks created this tick.
         world.chunks.par_iter_mut().for_each(|(pos, chunk)| {
@@ -174,7 +172,7 @@ impl Config for Game {
                     let mut in_terrain = false;
                     let mut depth = 0;
 
-                    for y in (0..chunk.height()).rev() {
+                    for y in (0..chunk.section_count() * 16).rev() {
                         let b = terrain_column(
                             self,
                             block_x,
@@ -187,7 +185,7 @@ impl Config for Game {
                     }
 
                     // Add grass
-                    for y in (0..chunk.height()).rev() {
+                    for y in (0..chunk.section_count() * 16).rev() {
                         if chunk.block_state(x, y, z).is_air()
                             && chunk.block_state(x, y - 1, z) == BlockState::GRASS_BLOCK
                         {

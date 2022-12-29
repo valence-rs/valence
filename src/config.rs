@@ -7,13 +7,13 @@ use async_trait::async_trait;
 use serde::Serialize;
 use tokio::runtime::Handle as TokioHandle;
 use uuid::Uuid;
+use valence_protocol::text::Text;
+use valence_protocol::username::Username;
+use valence_protocol::MAX_PACKET_SIZE;
 
 use crate::biome::Biome;
 use crate::dimension::Dimension;
-use crate::protocol::MAX_PACKET_SIZE;
 use crate::server::{NewClientData, Server, SharedServer};
-use crate::text::Text;
-use crate::username::Username;
 use crate::{Ticks, STANDARD_TPS};
 
 /// A trait for the configuration of a server.
@@ -40,6 +40,9 @@ pub trait Config: Sized + Send + Sync + 'static {
     /// Custom state to store with every
     /// [`PlayerList`](crate::player_list::PlayerList).
     type PlayerListState: Send + Sync;
+    /// Custom state to store with every
+    /// [`Inventory`](crate::inventory::Inventory).
+    type InventoryState: Send + Sync;
 
     /// Called once at startup to get the maximum number of simultaneous
     /// connections allowed to the server. This includes all
@@ -305,7 +308,6 @@ pub trait Config: Sized + Send + Sync + 'static {
 }
 
 /// The result of the [`server_list_ping`](Config::server_list_ping) callback.
-#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Debug)]
 pub enum ServerListPing<'a> {
     /// Responds to the server list ping with the given information.
@@ -329,6 +331,18 @@ pub enum ServerListPing<'a> {
     },
     /// Ignores the query and disconnects from the client.
     Ignore,
+}
+
+/// Represents an individual entry in the player sample.
+#[derive(Clone, Debug, Serialize)]
+pub struct PlayerSampleEntry<'a> {
+    /// The name of the player.
+    ///
+    /// This string can contain
+    /// [legacy formatting codes](https://minecraft.fandom.com/wiki/Formatting_codes).
+    pub name: Cow<'a, str>,
+    /// The player UUID.
+    pub id: Uuid,
 }
 
 /// Describes how new connections to the server are handled.
@@ -386,26 +400,14 @@ pub enum ConnectionMode {
     },
 }
 
-/// Represents an individual entry in the player sample.
-#[derive(Clone, Debug, Serialize)]
-pub struct PlayerSampleEntry<'a> {
-    /// The name of the player.
-    ///
-    /// This string can contain
-    /// [legacy formatting codes](https://minecraft.fandom.com/wiki/Formatting_codes).
-    pub name: Cow<'a, str>,
-    /// The player UUID.
-    pub id: Uuid,
-}
-
 /// A minimal `Config` implementation for testing purposes.
 #[cfg(test)]
-pub(crate) struct MockConfig<S = (), Cl = (), E = (), W = (), Ch = (), P = ()> {
-    _marker: std::marker::PhantomData<(S, Cl, E, W, Ch, P)>,
+pub(crate) struct MockConfig<S = (), Cl = (), E = (), W = (), Ch = (), P = (), I = ()> {
+    _marker: std::marker::PhantomData<(S, Cl, E, W, Ch, P, I)>,
 }
 
 #[cfg(test)]
-impl<S, Cl, E, W, Ch, P> Config for MockConfig<S, Cl, E, W, Ch, P>
+impl<S, Cl, E, W, Ch, P, I> Config for MockConfig<S, Cl, E, W, Ch, P, I>
 where
     S: Send + Sync + 'static,
     Cl: Default + Send + Sync + 'static,
@@ -413,6 +415,7 @@ where
     W: Send + Sync + 'static,
     Ch: Send + Sync + 'static,
     P: Send + Sync + 'static,
+    I: Send + Sync + 'static,
 {
     type ServerState = S;
     type ClientState = Cl;
@@ -420,4 +423,5 @@ where
     type WorldState = W;
     type ChunkState = Ch;
     type PlayerListState = P;
+    type InventoryState = I;
 }

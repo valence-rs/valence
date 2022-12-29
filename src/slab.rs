@@ -26,7 +26,7 @@ enum Entry<T> {
 impl<T> Slab<T> {
     pub const fn new() -> Self {
         Self {
-            entries: Vec::new(),
+            entries: vec![],
             next_free_head: 0,
             len: 0,
         }

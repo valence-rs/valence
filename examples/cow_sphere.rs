@@ -3,15 +3,10 @@ use std::f64::consts::TAU;
 use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use log::LevelFilter;
-use uuid::Uuid;
 use valence::prelude::*;
 
 pub fn main() -> ShutdownResult {
-    env_logger::Builder::new()
-        .filter_module("valence", LevelFilter::Trace)
-        .parse_default_env()
-        .init();
+    tracing_subscriber::fmt().init();
 
     valence::start_server(
         Game {
@@ -19,7 +14,7 @@ pub fn main() -> ShutdownResult {
         },
         ServerState {
             player_list: None,
-            cows: Vec::new(),
+            cows: vec![],
         },
     )
 }
@@ -33,6 +28,11 @@ struct ServerState {
     cows: Vec<EntityId>,
 }
 
+#[derive(Default)]
+struct ClientState {
+    entity_id: EntityId,
+}
+
 const MAX_PLAYERS: usize = 10;
 
 const SPAWN_POS: BlockPos = BlockPos::new(0, 100, -25);
@@ -40,11 +40,12 @@ const SPAWN_POS: BlockPos = BlockPos::new(0, 100, -25);
 #[async_trait]
 impl Config for Game {
     type ServerState = ServerState;
-    type ClientState = EntityId;
+    type ClientState = ClientState;
     type EntityState = ();
     type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
+    type InventoryState = ();
 
     async fn server_list_ping(
         &self,
@@ -93,6 +94,7 @@ impl Config for Game {
     }
 
     fn update(&self, server: &mut Server<Self>) {
+        let current_tick = server.current_tick();
         let (world_id, _) = server.worlds.iter_mut().next().expect("missing world");
 
         server.clients.retain(|_, client| {
@@ -112,14 +114,17 @@ impl Config for Game {
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => client.state = id,
+                    Some((id, entity)) => {
+                        entity.set_world(world_id);
+                        client.entity_id = id
+                    }
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;
                     }
                 }
 
-                client.spawn(world_id);
+                client.respawn(world_id);
                 client.set_flat(true);
                 client.set_game_mode(GameMode::Creative);
                 client.teleport(
@@ -134,38 +139,38 @@ impl Config for Game {
                 client.set_player_list(server.state.player_list.clone());
 
                 if let Some(id) = &server.state.player_list {
-                    server.player_lists.get_mut(id).insert(
+                    server.player_lists[id].insert(
                         client.uuid(),
                         client.username(),
                         client.textures().cloned(),
                         client.game_mode(),
                         0,
                         None,
+                        true,
                     );
                 }
             }
 
+            let entity = &mut server.entities[client.entity_id];
+
             if client.is_disconnected() {
                 self.player_count.fetch_sub(1, Ordering::SeqCst);
                 if let Some(id) = &server.state.player_list {
-                    server.player_lists.get_mut(id).remove(client.uuid());
+                    server.player_lists[id].remove(client.uuid());
                 }
-                server.entities.remove(client.state);
+                entity.set_deleted(true);
 
                 return false;
             }
 
-            let entity = server
-                .entities
-                .get_mut(client.state)
-                .expect("missing player entity");
-
-            while handle_event_default(client, entity).is_some() {}
+            while let Some(event) = client.next_event() {
+                event.handle_default(client, entity);
+            }
 
             true
         });
 
-        let time = server.shared.current_tick() as f64 / server.shared.tick_rate() as f64;
+        let time = current_tick as f64 / server.shared.tick_rate() as f64;
 
         let rot = Mat3::rotation_x(time * TAU * 0.1)
             .rotated_y(time * TAU * 0.2)
@@ -208,9 +213,9 @@ impl Config for Game {
 
 /// Distributes N points on the surface of a unit sphere.
 fn fibonacci_spiral(n: usize) -> impl Iterator<Item = Vec3<f64>> {
-    (0..n).map(move |i| {
-        let golden_ratio = (1.0 + 5_f64.sqrt()) / 2.0;
+    let golden_ratio = (1.0 + 5_f64.sqrt()) / 2.0;
 
+    (0..n).map(move |i| {
         // Map to unit square
         let x = i as f64 / golden_ratio % 1.0;
         let y = i as f64 / n as f64;

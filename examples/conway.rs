@@ -1,21 +1,13 @@
 use std::mem;
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use log::LevelFilter;
 use num::Integer;
 use rayon::prelude::*;
-use valence::client::Hand;
-use valence::entity::types::Pose;
 use valence::prelude::*;
-// TODO: re-export this somewhere in valence.
-use valence::protocol::packets::s2c::play::SoundCategory;
 
 pub fn main() -> ShutdownResult {
-    env_logger::Builder::new()
-        .filter_module("valence", LevelFilter::Trace)
-        .parse_default_env()
-        .init();
+    tracing_subscriber::fmt().init();
 
     valence::start_server(
         Game {
@@ -60,10 +52,7 @@ impl Config for Game {
     type WorldState = ();
     type ChunkState = ();
     type PlayerListState = ();
-
-    fn address(&self) -> SocketAddr {
-        SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 25565).into() // TODO remove
-    }
+    type InventoryState = ();
 
     fn dimensions(&self) -> Vec<Dimension> {
         vec![Dimension {
@@ -101,16 +90,15 @@ impl Config for Game {
 
         for chunk_z in -2..Integer::div_ceil(&(SIZE_Z as i32), &16) + 2 {
             for chunk_x in -2..Integer::div_ceil(&(SIZE_X as i32), &16) + 2 {
-                world.chunks.insert(
-                    [chunk_x as i32, chunk_z as i32],
-                    UnloadedChunk::default(),
-                    (),
-                );
+                world
+                    .chunks
+                    .insert([chunk_x, chunk_z], UnloadedChunk::default(), ());
             }
         }
     }
 
     fn update(&self, server: &mut Server<Self>) {
+        let current_tick = server.current_tick();
         let (world_id, world) = server.worlds.iter_mut().next().unwrap();
 
         let spawn_pos = [
@@ -136,26 +124,30 @@ impl Config for Game {
                     .entities
                     .insert_with_uuid(EntityKind::Player, client.uuid(), ())
                 {
-                    Some((id, _)) => client.state.entity_id = id,
+                    Some((id, entity)) => {
+                        entity.set_world(world_id);
+                        client.entity_id = id
+                    }
                     None => {
                         client.disconnect("Conflicting UUID");
                         return false;
                     }
                 }
 
-                client.spawn(world_id);
+                client.respawn(world_id);
                 client.set_flat(true);
                 client.teleport(spawn_pos, 0.0, 0.0);
                 client.set_player_list(server.state.player_list.clone());
 
                 if let Some(id) = &server.state.player_list {
-                    server.player_lists.get_mut(id).insert(
+                    server.player_lists[id].insert(
                         client.uuid(),
                         client.username(),
                         client.textures().cloned(),
                         client.game_mode(),
                         0,
                         None,
+                        true,
                     );
                 }
 
@@ -165,25 +157,12 @@ impl Config for Game {
                 );
             }
 
-            if client.is_disconnected() {
-                self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.remove(client.state.entity_id);
-                if let Some(id) = &server.state.player_list {
-                    server.player_lists.get_mut(id).remove(client.uuid());
-                }
-                return false;
-            }
+            let player = server.entities.get_mut(client.entity_id).unwrap();
 
-            let player = server.entities.get_mut(client.state.entity_id).unwrap();
-
-            if client.position().y <= 0.0 {
-                client.teleport(spawn_pos, client.yaw(), client.pitch());
-                server.state.board.fill(false);
-            }
-
-            while let Some(event) = handle_event_default(client, player) {
+            while let Some(event) = client.next_event() {
+                event.handle_default(client, player);
                 match event {
-                    ClientEvent::Digging { position, .. } => {
+                    ClientEvent::StartDigging { position, .. } => {
                         if (0..SIZE_X as i32).contains(&position.x)
                             && (0..SIZE_Z as i32).contains(&position.z)
                             && position.y == BOARD_Y
@@ -191,19 +170,21 @@ impl Config for Game {
                             let index = position.x as usize + position.z as usize * SIZE_X;
 
                             if !server.state.board[index] {
-                                client.play_sound(
-                                    ident!("minecraft:block.note_block.banjo"),
-                                    SoundCategory::Block,
-                                    Vec3::<i32>::from(position).as_(),
-                                    0.5f32,
-                                    1f32,
-                                );
+                                // client.play_sound(
+                                //     Ident::new("minecraft:block.note_block.
+                                // banjo").unwrap(),
+                                //     SoundCategory::Block,
+                                //     Vec3::new(position.x, position.y,
+                                // position.z).as_(),
+                                //     0.5f32,
+                                //     1f32,
+                                // );
                             }
 
                             server.state.board[index] = true;
                         }
                     }
-                    ClientEvent::InteractWithBlock { hand, .. } => {
+                    ClientEvent::UseItemOnBlock { hand, .. } => {
                         if hand == Hand::Main {
                             client.send_message("I said left click, not right click!".italic());
                         }
@@ -212,17 +193,31 @@ impl Config for Game {
                 }
             }
 
+            if client.is_disconnected() {
+                self.player_count.fetch_sub(1, Ordering::SeqCst);
+                player.set_deleted(true);
+                if let Some(id) = &server.state.player_list {
+                    server.player_lists[id].remove(client.uuid());
+                }
+                return false;
+            }
+
+            if client.position().y <= 0.0 {
+                client.teleport(spawn_pos, client.yaw(), client.pitch());
+                server.state.board.fill(false);
+            }
+
             if let TrackedData::Player(data) = player.data() {
                 let sneaking = data.get_pose() == Pose::Sneaking;
                 if sneaking != server.state.paused {
                     server.state.paused = sneaking;
-                    client.play_sound(
-                        ident!("block.note_block.pling"),
-                        SoundCategory::Block,
-                        client.position(),
-                        0.5f32,
-                        if sneaking { 0.5f32 } else { 1f32 },
-                    );
+                    // client.play_sound(
+                    //     Ident::new("block.note_block.pling").unwrap(),
+                    //     SoundCategory::Block,
+                    //     client.position(),
+                    //     0.5,
+                    //     if sneaking { 0.5 } else { 1.0 },
+                    // );
                 }
             }
 
@@ -236,7 +231,7 @@ impl Config for Game {
             true
         });
 
-        if !server.state.paused && server.shared.current_tick() % 2 == 0 {
+        if !server.state.paused && current_tick % 2 == 0 {
             server
                 .state
                 .board_buf
@@ -275,7 +270,7 @@ impl Config for Game {
             for chunk_z in 0..Integer::div_ceil(&SIZE_Z, &16) {
                 let chunk = world
                     .chunks
-                    .get_mut((chunk_x as i32, chunk_z as i32))
+                    .get_mut([chunk_x as i32, chunk_z as i32])
                     .unwrap();
                 for x in 0..16 {
                     for z in 0..16 {
