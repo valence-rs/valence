@@ -46,7 +46,11 @@ impl Config for Game {
             online_players: -1,
             max_players: -1,
             description: "Hello Valence! ".into_text() + "Text Example".color(Color::AQUA),
-            favicon_png: Some(include_bytes!("../../../assets/logo-64x64.png").as_slice().into()),
+            favicon_png: Some(
+                include_bytes!("../../../assets/logo-64x64.png")
+                    .as_slice()
+                    .into(),
+            ),
             player_sample: Default::default(),
         }
     }

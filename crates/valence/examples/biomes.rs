@@ -82,7 +82,11 @@ impl Config for Game {
             max_players: MAX_PLAYERS as i32,
             player_sample: Default::default(),
             description: "Hello Valence!".color(Color::AQUA),
-            favicon_png: Some(include_bytes!("../../../assets/logo-64x64.png").as_slice().into()),
+            favicon_png: Some(
+                include_bytes!("../../../assets/logo-64x64.png")
+                    .as_slice()
+                    .into(),
+            ),
         }
     }
 
