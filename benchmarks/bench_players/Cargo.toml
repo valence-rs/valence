@@ -1,9 +1,0 @@
-[package]
-name = "bench_players"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-tracing-subscriber = "0.3.16"
-valence = { path = "../.." }
-
