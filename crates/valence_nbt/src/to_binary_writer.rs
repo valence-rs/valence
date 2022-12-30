@@ -172,7 +172,7 @@ impl<W: Write> EncodeState<W> {
                 // Length
                 self.writer.write_i32::<BigEndian>(0)?;
                 Ok(())
-            },
+            }
             List::Byte(bl) => {
                 self.write_tag(Tag::Byte)?;
 
