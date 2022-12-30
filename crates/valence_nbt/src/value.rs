@@ -33,6 +33,8 @@ pub enum Value {
 /// heterogeneous lists are unrepresentable.
 #[derive(Clone, PartialEq, Debug)]
 pub enum List {
+    /// The list with the element type of `TAG_End` and length of zero.
+    End,
     Byte(Vec<i8>),
     Short(Vec<i16>),
     Int(Vec<i32>),
@@ -51,6 +53,7 @@ impl List {
     /// Returns the length of this list.
     pub fn len(&self) -> usize {
         match self {
+            List::End => 0,
             List::Byte(l) => l.len(),
             List::Short(l) => l.len(),
             List::Int(l) => l.len(),

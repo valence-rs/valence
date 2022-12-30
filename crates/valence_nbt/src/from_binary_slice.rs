@@ -158,7 +158,7 @@ impl DecodeState<'_, '_> {
     fn read_any_list(&mut self) -> Result<List> {
         match self.read_tag()? {
             Tag::End => match self.read_int()? {
-                0 => Ok(List::Byte(vec![])),
+                0 => Ok(List::End),
                 len => Err(Error::new_owned(format!(
                     "TAG_End list with nonzero length of {len}"
                 ))),
