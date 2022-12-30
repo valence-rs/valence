@@ -1,13 +1,15 @@
 package rs.valence.extractor.extractors;
 
+// TODO: where is the biome registry in 1.19.3+?
+
+/*
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.entity.SpawnGroup;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.collection.Weighted;
-import net.minecraft.util.registry.BuiltinRegistries;
-import net.minecraft.util.registry.Registry;
+import net.minecraft.registry.Registries;
 import net.minecraft.world.biome.BiomeParticleConfig;
 import rs.valence.extractor.Main;
 
@@ -33,8 +35,6 @@ public class Biomes implements Main.Extractor {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-
-        var biomesJson = new JsonArray();
 
         for (var biome : BuiltinRegistries.BIOME) {
             var biomeIdent = BuiltinRegistries.BIOME.getId(biome);
@@ -126,3 +126,4 @@ public class Biomes implements Main.Extractor {
         return biomesJson;
     }
 }
+ */
