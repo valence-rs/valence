@@ -241,7 +241,7 @@ pub enum SoundCategory {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
-pub enum GameStateChangeReason {
+pub enum GameEventKind {
     NoRespawnBlockAvailable,
     EndRaining,
     BeginRaining,
@@ -357,4 +357,16 @@ pub struct PlayerAbilitiesFlags {
     pub instant_break: bool,
     #[bits(4)]
     _pad: u8,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode)]
+pub struct TagGroup<'a> {
+    pub kind: Ident<&'a str>,
+    pub tags: Vec<Tag<'a>>,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode)]
+pub struct Tag<'a> {
+    pub name: Ident<&'a str>,
+    pub entries: Vec<VarInt>,
 }

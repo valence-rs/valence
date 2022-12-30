@@ -1,4 +1,6 @@
 use std::borrow::Cow;
+use std::collections::{BTreeSet, HashSet};
+use std::hash::{BuildHasher, Hash};
 use std::io::Write;
 use std::mem::MaybeUninit;
 use std::rc::Rc;
@@ -426,6 +428,92 @@ impl<'a, T: Decode<'a>> Decode<'a> for Vec<T> {
 impl<'a, T: Decode<'a>> Decode<'a> for Box<[T]> {
     fn decode(r: &mut &'a [u8]) -> Result<Self> {
         Ok(Vec::decode(r)?.into_boxed_slice())
+    }
+}
+
+impl<T: Encode, S> Encode for HashSet<T, S> {
+    fn encode(&self, mut w: impl Write) -> Result<()> {
+        let len = self.len();
+
+        ensure!(
+            len <= i32::MAX as usize,
+            "length of hash set ({len}) exceeds i32::MAX"
+        );
+
+        VarInt(len as i32).encode(&mut w)?;
+
+        for val in self {
+            val.encode(&mut w)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<'a, T, S> Decode<'a> for HashSet<T, S>
+where
+    T: Eq + Hash + Decode<'a>,
+    S: BuildHasher + Default,
+{
+    fn decode(r: &mut &'a [u8]) -> Result<Self> {
+        let len = VarInt::decode(r)?.0;
+        ensure!(len >= 0, "attempt to decode hash set with negative length");
+        let len = len as usize;
+
+        // Don't allocate more memory than what would roughly fit in a single packet in
+        // case we get a malicious array length.
+        let cap = (MAX_PACKET_SIZE as usize / mem::size_of::<T>().max(1)).min(len);
+        let mut set = HashSet::with_capacity_and_hasher(cap, S::default());
+
+        for _ in 0..len {
+            ensure!(
+                set.insert(T::decode(r)?),
+                "encountered duplicate item while decoding hash set"
+            );
+        }
+
+        Ok(set)
+    }
+}
+
+impl<T: Encode> Encode for BTreeSet<T> {
+    fn encode(&self, mut w: impl Write) -> Result<()> {
+        let len = self.len();
+
+        ensure!(
+            len <= i32::MAX as usize,
+            "length of b-tree set ({len}) exceeds i32::MAX"
+        );
+
+        VarInt(len as i32).encode(&mut w)?;
+
+        for val in self {
+            val.encode(&mut w)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<'a, T: Ord + Decode<'a>> Decode<'a> for BTreeSet<T> {
+    fn decode(r: &mut &'a [u8]) -> Result<Self> {
+        let len = VarInt::decode(r)?.0;
+        ensure!(
+            len >= 0,
+            "attempt to decode b-tree set with negative length"
+        );
+        let len = len as usize;
+
+        let mut set = BTreeSet::new();
+
+        for _ in 0..len {
+            ensure!(
+                set.insert(T::decode(r)?),
+                "encountered duplicate item while decoding b-tree set"
+            );
+        }
+
+        Ok(set)
     }
 }
 

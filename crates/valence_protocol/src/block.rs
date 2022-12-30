@@ -51,7 +51,7 @@ fn fmt_block_state(bs: BlockState, f: &mut fmt::Formatter) -> fmt::Result {
 
 impl Encode for BlockState {
     fn encode(&self, w: impl Write) -> Result<()> {
-        VarInt(self.0 as i32).encode(w)
+        VarInt(self.to_raw() as i32).encode(w)
     }
 }
 
@@ -61,6 +61,21 @@ impl Decode<'_> for BlockState {
         let errmsg = "invalid block state ID";
 
         BlockState::from_raw(id.try_into().context(errmsg)?).context(errmsg)
+    }
+}
+
+impl Encode for BlockKind {
+    fn encode(&self, w: impl Write) -> Result<()> {
+        VarInt(self.to_raw() as i32).encode(w)
+    }
+}
+
+impl Decode<'_> for BlockKind {
+    fn decode(r: &mut &[u8]) -> Result<Self> {
+        let id = VarInt::decode(r)?.0;
+        let errmsg = "invalid block kind ID";
+
+        BlockKind::from_raw(id.try_into().context(errmsg)?).context(errmsg)
     }
 }
 

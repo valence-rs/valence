@@ -24,7 +24,7 @@ use valence_protocol::packets::s2c::play::{
 };
 use valence_protocol::particle::{Particle, ParticleS2c};
 use valence_protocol::types::{
-    AttributeProperty, DisplayedSkinParts, GameMode, GameStateChangeReason, SyncPlayerPosLookFlags,
+    AttributeProperty, DisplayedSkinParts, GameEventKind, GameMode, SyncPlayerPosLookFlags,
 };
 use valence_protocol::{
     BlockPos, EncodePacket, Ident, ItemStack, RawBytes, Text, Username, VarInt,
@@ -531,7 +531,7 @@ impl<C: Config> Client<C> {
 
             if !self.created_this_tick() {
                 self.queue_packet(&GameEvent {
-                    reason: GameStateChangeReason::ChangeGameMode,
+                    kind: GameEventKind::ChangeGameMode,
                     value: game_mode as i32 as f32,
                 });
             }
@@ -541,10 +541,10 @@ impl<C: Config> Client<C> {
     /// Sets whether or not the client sees rain.
     pub fn set_raining(&mut self, raining: bool) {
         self.queue_packet(&GameEvent {
-            reason: if raining {
-                GameStateChangeReason::BeginRaining
+            kind: if raining {
+                GameEventKind::BeginRaining
             } else {
-                GameStateChangeReason::EndRaining
+                GameEventKind::EndRaining
             },
             value: 0.0,
         });
@@ -556,7 +556,7 @@ impl<C: Config> Client<C> {
     /// The rain level is clamped between `0.0.` and `1.0`.
     pub fn set_rain_level(&mut self, rain_level: f32) {
         self.queue_packet(&GameEvent {
-            reason: GameStateChangeReason::RainLevelChange,
+            kind: GameEventKind::RainLevelChange,
             value: rain_level.clamp(0.0, 1.0),
         });
     }
@@ -571,7 +571,7 @@ impl<C: Config> Client<C> {
     /// The thunder level is clamped between `0.0` and `1.0`.
     pub fn set_thunder_level(&mut self, thunder_level: f32) {
         self.queue_packet(&GameEvent {
-            reason: GameStateChangeReason::ThunderLevelChange,
+            kind: GameEventKind::ThunderLevelChange,
             value: thunder_level.clamp(0.0, 1.0),
         });
     }
@@ -699,7 +699,7 @@ impl<C: Config> Client<C> {
     /// Respawns client. Optionally can roll the credits before respawning.
     pub fn win_game(&mut self, show_credits: bool) {
         self.queue_packet(&GameEvent {
-            reason: GameStateChangeReason::WinGame,
+            kind: GameEventKind::WinGame,
             value: if show_credits { 1.0 } else { 0.0 },
         });
     }
@@ -715,7 +715,7 @@ impl<C: Config> Client<C> {
 
             if !self.created_this_tick() {
                 self.queue_packet(&GameEvent {
-                    reason: GameStateChangeReason::EnableRespawnScreen,
+                    kind: GameEventKind::EnableRespawnScreen,
                     value: if enable { 0.0 } else { 1.0 },
                 });
             }

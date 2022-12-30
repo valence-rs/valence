@@ -10,7 +10,7 @@ use crate::{
 pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
     let mut input = parse2::<DeriveInput>(item)?;
 
-    let name = input.ident;
+    let input_name = input.ident;
 
     if input.generics.lifetimes().count() > 1 {
         return Err(Error::new(
@@ -34,7 +34,7 @@ pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
                 Fields::Named(fields) => {
                     let init = fields.named.iter().map(|f| {
                         let name = f.ident.as_ref().unwrap();
-                        let ctx = format!("failed to decode field `{name}`");
+                        let ctx = format!("failed to decode field `{name}` in `{input_name}`");
                         quote! {
                             #name: Decode::decode(_r).context(#ctx)?,
                         }
@@ -49,7 +49,7 @@ pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
                 Fields::Unnamed(fields) => {
                     let init = (0..fields.unnamed.len())
                         .map(|i| {
-                            let ctx = format!("failed to decode field `{i}`");
+                            let ctx = format!("failed to decode field `{i}` in `{input_name}`");
                             quote! {
                                 Decode::decode(_r).context(#ctx)?,
                             }
@@ -73,7 +73,7 @@ pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
 
             Ok(quote! {
                 #[allow(unused_imports)]
-                impl #impl_generics ::valence_protocol::__private::Decode<#lifetime> for #name #ty_generics
+                impl #impl_generics ::valence_protocol::__private::Decode<#lifetime> for #input_name #ty_generics
                 #where_clause
                 {
                     fn decode(_r: &mut &#lifetime [u8]) -> ::valence_protocol::__private::Result<Self> {
@@ -100,7 +100,8 @@ pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
                                 .map(|f| {
                                     let field = f.ident.as_ref().unwrap();
                                     let ctx = format!(
-                                        "failed to decode field `{field}` in variant `{name}`",
+                                        "failed to decode field `{field}` in variant `{name}` in \
+                                         `{input_name}`",
                                     );
                                     quote! {
                                         #field: Decode::decode(_r).context(#ctx)?,
@@ -116,7 +117,8 @@ pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
                             let init = (0..fields.unnamed.len())
                                 .map(|i| {
                                     let ctx = format!(
-                                        "failed to decode field `{i}` in variant `{name}`",
+                                        "failed to decode field `{i}` in variant `{name}` in \
+                                         `{input_name}`",
                                     );
                                     quote! {
                                         Decode::decode(_r).context(#ctx)?,
@@ -143,16 +145,17 @@ pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
 
             Ok(quote! {
                 #[allow(unused_imports)]
-                impl #impl_generics ::valence_protocol::__private::Decode<#lifetime> for #name #ty_generics
+                impl #impl_generics ::valence_protocol::__private::Decode<#lifetime> for #input_name #ty_generics
                 #where_clause
                 {
                     fn decode(_r: &mut &#lifetime [u8]) -> ::valence_protocol::__private::Result<Self> {
                         use ::valence_protocol::__private::{Decode, Context, VarInt, bail};
 
-                        let disc = VarInt::decode(_r).context("failed to decode enum discriminant")?.0;
+                        let ctx = concat!("failed to decode enum discriminant in `", stringify!(#input_name), "`");
+                        let disc = VarInt::decode(_r).context(ctx)?.0;
                         match disc {
                             #decode_arms
-                            n => bail!("unexpected enum discriminant {}", disc),
+                            n => bail!("unexpected enum discriminant {} in `{}`", disc, stringify!(#input_name)),
                         }
                     }
                 }

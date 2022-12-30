@@ -15,7 +15,6 @@ struct TopLevel {
 
 #[derive(Deserialize, Clone, Debug)]
 struct Block {
-    #[allow(unused)]
     id: u16,
     item_id: u16,
     translation_key: String,
@@ -362,6 +361,18 @@ pub fn build() -> anyhow::Result<TokenStream> {
         })
         .collect::<TokenStream>();
 
+    let block_kind_from_raw_arms = blocks
+        .iter()
+        .map(|block| {
+            let name = ident(block.name.to_pascal_case());
+            let id = block.id;
+
+            quote! {
+                #id => Some(BlockKind::#name),
+            }
+        })
+        .collect::<TokenStream>();
+
     let block_kind_count = blocks.len();
 
     let prop_names = blocks
@@ -640,6 +651,23 @@ pub fn build() -> anyhow::Result<TokenStream> {
                     #block_kind_from_item_kind_arms
                     _ => None,
                 }
+            }
+
+            /// Constructs a block kind from a raw block kind ID.
+            ///
+            /// If the given ID is invalid, `None` is returned.
+            pub const fn from_raw(id: u16) -> Option<Self> {
+                match id {
+                    #block_kind_from_raw_arms
+                    _ => None,
+                }
+            }
+
+            /// Converts this block kind to its underlying raw block state ID.
+            ///
+            /// The original block kind can be recovered with [`BlockKind::from_raw`].
+            pub const fn to_raw(self) -> u16 {
+                self as u16
             }
 
             /// An array of all block kinds.
