@@ -8,11 +8,11 @@ use crate::ident::Ident;
 use crate::item::ItemStack;
 use crate::raw_bytes::RawBytes;
 use crate::recipe::DeclaredRecipe;
-use crate::types::TagGroup;
 use crate::text::Text;
 use crate::types::{
     AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, GameEventKind, GameMode,
     GlobalPos, PlayerAbilitiesFlags, SignedProperty, SoundCategory, SyncPlayerPosLookFlags,
+    TagGroup,
 };
 use crate::username::Username;
 use crate::var_int::VarInt;
