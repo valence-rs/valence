@@ -8,7 +8,7 @@ use crate::{add_trait_bounds, find_packet_id_attr, pair_variants_with_discrimina
 pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
     let mut input = parse2::<DeriveInput>(item)?;
 
-    let name = input.ident;
+    let input_name = input.ident;
 
     add_trait_bounds(
         &mut input.generics,
@@ -25,7 +25,7 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
                     .iter()
                     .map(|f| {
                         let name = &f.ident.as_ref().unwrap();
-                        let ctx = format!("failed to encode field `{name}`");
+                        let ctx = format!("failed to encode field `{name}` in `{input_name}`");
                         quote! {
                             self.#name.encode(&mut _w).context(#ctx)?;
                         }
@@ -34,7 +34,7 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
                 Fields::Unnamed(fields) => (0..fields.unnamed.len())
                     .map(|i| {
                         let lit = LitInt::new(&i.to_string(), Span::call_site());
-                        let ctx = format!("failed to encode field `{lit}`");
+                        let ctx = format!("failed to encode field `{lit}` in `{input_name}`");
                         quote! {
                             self.#lit.encode(&mut _w).context(#ctx)?;
                         }
@@ -45,7 +45,7 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
 
             Ok(quote! {
                 #[allow(unused_imports)]
-                impl #impl_generics ::valence_protocol::__private::Encode for #name #ty_generics
+                impl #impl_generics ::valence_protocol::__private::Encode for #input_name #ty_generics
                 #where_clause
                 {
                     fn encode(&self, mut _w: impl ::std::io::Write) -> ::valence_protocol::__private::Result<()> {
@@ -67,7 +67,8 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
                     let variant_name = &variant.ident;
 
                     let disc_ctx = format!(
-                        "failed to encode enum discriminant {disc} for variant `{variant_name}`",
+                        "failed to encode enum discriminant {disc} for variant `{variant_name}` \
+                         in `{input_name}`",
                     );
 
                     match &variant.fields {
@@ -83,7 +84,7 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
                                 .map(|name| {
                                     let ctx = format!(
                                         "failed to encode field `{name}` in variant \
-                                         `{variant_name}`",
+                                         `{variant_name}` in `{input_name}`",
                                     );
 
                                     quote! {
@@ -111,7 +112,7 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
                                 .map(|name| {
                                     let ctx = format!(
                                         "failed to encode field `{name}` in variant \
-                                         `{variant_name}`"
+                                         `{variant_name}` in `{input_name}`"
                                     );
 
                                     quote! {
@@ -142,7 +143,7 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
 
             Ok(quote! {
                 #[allow(unused_imports, unreachable_code)]
-                impl #impl_generics ::valence_protocol::Encode for #name #ty_generics
+                impl #impl_generics ::valence_protocol::Encode for #input_name #ty_generics
                 #where_clause
                 {
                     fn encode(&self, mut _w: impl ::std::io::Write) -> ::valence_protocol::__private::Result<()> {

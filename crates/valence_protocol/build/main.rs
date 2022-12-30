@@ -11,7 +11,7 @@ mod item;
 mod translation_key;
 
 pub fn main() -> anyhow::Result<()> {
-    println!("cargo:rerun-if-changed=../extracted/");
+    println!("cargo:rerun-if-changed=../../extracted/");
 
     let generators = [
         (block::build as fn() -> _, "block.rs"),

@@ -7,11 +7,12 @@ use crate::byte_angle::ByteAngle;
 use crate::ident::Ident;
 use crate::item::ItemStack;
 use crate::raw_bytes::RawBytes;
+use crate::recipe::DeclaredRecipe;
 use crate::text::Text;
 use crate::types::{
-    AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, GameMode,
-    GameStateChangeReason, GlobalPos, PlayerAbilitiesFlags, SignedProperty, SoundCategory,
-    SyncPlayerPosLookFlags,
+    AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, GameEventKind, GameMode,
+    GlobalPos, PlayerAbilitiesFlags, SignedProperty, SoundCategory, SyncPlayerPosLookFlags,
+    TagGroup,
 };
 use crate::username::Username;
 use crate::var_int::VarInt;
@@ -276,7 +277,7 @@ pub mod play {
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x1c]
     pub struct GameEvent {
-        pub reason: GameStateChangeReason,
+        pub kind: GameEventKind,
         pub value: f32,
     }
 
@@ -673,6 +674,16 @@ pub mod play {
         pub features: Vec<Ident<&'a str>>,
     }
 
+    #[derive(Clone, Debug, Encode, Decode, EncodePacket, DecodePacket)]
+    #[packet_id = 0x69]
+    pub struct DeclareRecipes<'a> {
+        pub recipes: Vec<DeclaredRecipe<'a>>,
+    }
+
+    #[derive(Clone, Debug, Encode, Decode, EncodePacket, DecodePacket)]
+    #[packet_id = 0x6a]
+    pub struct UpdateTags<'a>(pub Vec<TagGroup<'a>>);
+
     packet_enum! {
         #[derive(Clone)]
         S2cPlayPacket<'a> {
@@ -737,6 +748,8 @@ pub mod play {
             TeleportEntity,
             UpdateAttributes<'a>,
             FeatureFlags<'a>,
+            DeclareRecipes<'a>,
+            UpdateTags<'a>,
         }
     }
 }

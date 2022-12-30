@@ -9,7 +9,7 @@ mod entity;
 mod entity_event;
 
 pub fn main() -> anyhow::Result<()> {
-    println!("cargo:rerun-if-changed=extracted/");
+    println!("cargo:rerun-if-changed=../../extracted/");
 
     let generators = [
         (entity::build as fn() -> _, "entity.rs"),
