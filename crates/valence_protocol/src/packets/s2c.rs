@@ -17,6 +17,7 @@ use crate::username::Username;
 use crate::var_int::VarInt;
 use crate::var_long::VarLong;
 use crate::LengthPrefixedArray;
+use crate::recipe::DeclaredRecipe;
 
 pub mod status {
     use super::*;
@@ -673,6 +674,12 @@ pub mod play {
         pub features: Vec<Ident<&'a str>>,
     }
 
+    #[derive(Clone, Debug, Encode, Decode, EncodePacket, DecodePacket)]
+    #[packet_id = 0x69]
+    pub struct DeclareRecipes<'a> {
+        pub recipes: Vec<DeclaredRecipe<'a>>,
+    }
+
     packet_enum! {
         #[derive(Clone)]
         S2cPlayPacket<'a> {
@@ -737,6 +744,7 @@ pub mod play {
             TeleportEntity,
             UpdateAttributes<'a>,
             FeatureFlags<'a>,
+            DeclareRecipes<'a>,
         }
     }
 }

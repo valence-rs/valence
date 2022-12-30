@@ -112,6 +112,7 @@ pub mod packets;
 pub mod particle;
 pub mod player_list;
 mod raw_bytes;
+pub mod recipe;
 pub mod text;
 pub mod translation_key;
 pub mod types;
