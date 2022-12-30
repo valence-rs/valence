@@ -23,7 +23,7 @@ pub fn to_binary_writer<W: Write>(writer: W, compound: &Compound, root_name: &st
 }
 
 pub(crate) fn written_size(compound: &Compound, root_name: &str) -> usize {
-    fn value_len(val: &Value) -> usize {
+    fn value_size(val: &Value) -> usize {
         match val {
             Value::Byte(_) => 1,
             Value::Short(_) => 2,
@@ -32,16 +32,17 @@ pub(crate) fn written_size(compound: &Compound, root_name: &str) -> usize {
             Value::Float(_) => 4,
             Value::Double(_) => 8,
             Value::ByteArray(ba) => 4 + ba.len(),
-            Value::String(s) => string_len(s),
-            Value::List(l) => list_len(l),
-            Value::Compound(c) => compound_len(c),
+            Value::String(s) => string_size(s),
+            Value::List(l) => list_size(l),
+            Value::Compound(c) => compound_size(c),
             Value::IntArray(ia) => 4 + ia.len() * 4,
             Value::LongArray(la) => 4 + la.len() * 8,
         }
     }
 
-    fn list_len(l: &List) -> usize {
-        let elems_len = match l {
+    fn list_size(l: &List) -> usize {
+        let elems_size = match l {
+            List::End => 0,
             List::Byte(b) => b.len(),
             List::Short(s) => s.len() * 2,
             List::Int(i) => i.len() * 4,
@@ -49,28 +50,28 @@ pub(crate) fn written_size(compound: &Compound, root_name: &str) -> usize {
             List::Float(f) => f.len() * 4,
             List::Double(d) => d.len() * 8,
             List::ByteArray(ba) => ba.iter().map(|b| 4 + b.len()).sum(),
-            List::String(s) => s.iter().map(|s| string_len(s)).sum(),
-            List::List(l) => l.iter().map(list_len).sum(),
-            List::Compound(c) => c.iter().map(compound_len).sum(),
+            List::String(s) => s.iter().map(|s| string_size(s)).sum(),
+            List::List(l) => l.iter().map(list_size).sum(),
+            List::Compound(c) => c.iter().map(compound_size).sum(),
             List::IntArray(i) => i.iter().map(|i| 4 + i.len() * 4).sum(),
             List::LongArray(l) => l.iter().map(|l| 4 + l.len() * 8).sum(),
         };
 
-        1 + 4 + elems_len
+        1 + 4 + elems_size
     }
 
-    fn string_len(s: &str) -> usize {
+    fn string_size(s: &str) -> usize {
         2 + modified_utf8::encoded_len(s)
     }
 
-    fn compound_len(c: &Compound) -> usize {
+    fn compound_size(c: &Compound) -> usize {
         c.iter()
-            .map(|(k, v)| 1 + string_len(k) + value_len(v))
+            .map(|(k, v)| 1 + string_size(k) + value_size(v))
             .sum::<usize>()
             + 1
     }
 
-    1 + string_len(root_name) + compound_len(compound)
+    1 + string_size(root_name) + compound_size(compound)
 }
 
 struct EncodeState<W> {
@@ -166,6 +167,12 @@ impl<W: Write> EncodeState<W> {
 
     fn write_any_list(&mut self, list: &List) -> Result<()> {
         match list {
+            List::End => {
+                self.write_tag(Tag::End)?;
+                // Length
+                self.writer.write_i32::<BigEndian>(0)?;
+                Ok(())
+            }
             List::Byte(bl) => {
                 self.write_tag(Tag::Byte)?;
 
@@ -204,7 +211,7 @@ impl<W: Write> EncodeState<W> {
         }
     }
 
-    fn write_list<T, F>(&mut self, list: &Vec<T>, elem_type: Tag, mut write_elem: F) -> Result<()>
+    fn write_list<T, F>(&mut self, list: &[T], elem_type: Tag, mut write_elem: F) -> Result<()>
     where
         F: FnMut(&mut Self, &T) -> Result<()>,
     {

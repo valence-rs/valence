@@ -130,6 +130,7 @@ fn example_compound() -> Compound {
             "bar".to_owned(),
             "baz".to_owned()
         ]),
+        "list_of_end" => List::End,
         "string" => "aé日",
         "compound" => inner(),
         "list_of_compound" => List::Compound(vec![
