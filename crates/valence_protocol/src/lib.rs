@@ -102,6 +102,7 @@ mod block_pos;
 mod bounded;
 mod byte_angle;
 mod codec;
+pub mod command;
 pub mod enchant;
 pub mod entity_meta;
 pub mod ident;

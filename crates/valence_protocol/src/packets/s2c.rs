@@ -96,6 +96,7 @@ pub mod login {
 
 pub mod play {
     use super::*;
+    use crate::command::Node;
     pub use crate::particle::ParticleS2c;
     pub use crate::player_list::PlayerInfoUpdate;
 
@@ -187,6 +188,13 @@ pub mod play {
     #[packet_id = 0x0c]
     pub struct ClearTitles {
         pub reset: bool,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x0e]
+    pub struct Commands<'a> {
+        pub commands: Vec<Node<'a>>,
+        pub root_index: VarInt,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -698,6 +706,7 @@ pub mod play {
             BossBar,
             SetDifficulty,
             ClearTitles,
+            Commands<'a>,
             CloseContainerS2c,
             SetContainerContent,
             SetContainerProperty,
