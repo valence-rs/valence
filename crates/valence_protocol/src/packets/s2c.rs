@@ -22,6 +22,7 @@ pub mod commands;
 pub mod declare_recipes;
 pub mod particle;
 pub mod player_info_update;
+pub mod update_recipe_book;
 
 pub mod status {
     use super::*;
@@ -102,9 +103,10 @@ pub mod play {
     use commands::Node;
     pub use particle::ParticleS2c;
     pub use player_info_update::PlayerInfoUpdate;
-    use crate::packets::s2c::declare_recipes::DeclaredRecipe;
+    pub use update_recipe_book::UpdateRecipeBook;
 
     use super::*;
+    use crate::packets::s2c::declare_recipes::DeclaredRecipe;
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x00]
@@ -738,6 +740,7 @@ pub mod play {
             PlayerInfoRemove,
             PlayerInfoUpdate<'a>,
             SynchronizePlayerPosition,
+            UpdateRecipeBook<'a>,
             RemoveEntities,
             ResourcePackS2c<'a>,
             Respawn<'a>,
