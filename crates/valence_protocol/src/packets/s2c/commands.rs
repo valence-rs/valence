@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use anyhow::bail;
+use anyhow::{bail, Context};
 use byteorder::WriteBytesExt;
 
 use crate::{Decode, Encode, Ident, VarInt};
@@ -56,7 +56,7 @@ pub enum Parser<'a> {
     Color,
     Component,
     Message,
-    Nbt,
+    NbtCompoundTag,
     NbtTag,
     NbtPath,
     Objective,
@@ -71,20 +71,20 @@ pub enum Parser<'a> {
     Team,
     ItemSlot,
     ResourceLocation,
-    MobEffect,
     Function,
     EntityAnchor,
     IntRange,
     FloatRange,
-    ItemEnchantment,
-    EntitySummon,
     Dimension,
-    NbtCompoundTag,
+    GameMode,
     Time,
     ResourceOrTag { registry: Ident<&'a str> },
+    ResourceOrTagKey { registry: Ident<&'a str> },
     Resource { registry: Ident<&'a str> },
+    ResourceKey { registry: Ident<&'a str> },
     TemplateMirror,
     TemplateRotation,
+    Uuid,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
@@ -277,7 +277,7 @@ impl Encode for Parser<'_> {
             Parser::Color => 16u8.encode(&mut w)?,
             Parser::Component => 17u8.encode(&mut w)?,
             Parser::Message => 18u8.encode(&mut w)?,
-            Parser::Nbt => 19u8.encode(&mut w)?,
+            Parser::NbtCompoundTag => 19u8.encode(&mut w)?,
             Parser::NbtTag => 20u8.encode(&mut w)?,
             Parser::NbtPath => 21u8.encode(&mut w)?,
             Parser::Objective => 22u8.encode(&mut w)?,
@@ -295,26 +295,32 @@ impl Encode for Parser<'_> {
             Parser::Team => 31u8.encode(&mut w)?,
             Parser::ItemSlot => 32u8.encode(&mut w)?,
             Parser::ResourceLocation => 33u8.encode(&mut w)?,
-            Parser::MobEffect => 34u8.encode(&mut w)?,
-            Parser::Function => 35u8.encode(&mut w)?,
-            Parser::EntityAnchor => 36u8.encode(&mut w)?,
-            Parser::IntRange => 37u8.encode(&mut w)?,
-            Parser::FloatRange => 38u8.encode(&mut w)?,
-            Parser::ItemEnchantment => 39u8.encode(&mut w)?,
-            Parser::EntitySummon => 40u8.encode(&mut w)?,
-            Parser::Dimension => 41u8.encode(&mut w)?,
-            Parser::NbtCompoundTag => 42u8.encode(&mut w)?,
-            Parser::Time => 43u8.encode(&mut w)?,
+            Parser::Function => 34u8.encode(&mut w)?,
+            Parser::EntityAnchor => 35u8.encode(&mut w)?,
+            Parser::IntRange => 36u8.encode(&mut w)?,
+            Parser::FloatRange => 37u8.encode(&mut w)?,
+            Parser::Dimension => 38u8.encode(&mut w)?,
+            Parser::GameMode => 39u8.encode(&mut w)?,
+            Parser::Time => 40u8.encode(&mut w)?,
             Parser::ResourceOrTag { registry } => {
-                44u8.encode(&mut w)?;
+                41u8.encode(&mut w)?;
+                registry.encode(&mut w)?;
+            }
+            Parser::ResourceOrTagKey { registry } => {
+                42u8.encode(&mut w)?;
                 registry.encode(&mut w)?;
             }
             Parser::Resource { registry } => {
-                45u8.encode(&mut w)?;
+                43u8.encode(&mut w)?;
                 registry.encode(&mut w)?;
             }
-            Parser::TemplateMirror => 46u8.encode(&mut w)?,
-            Parser::TemplateRotation => 47u8.encode(&mut w)?,
+            Parser::ResourceKey { registry } => {
+                44u8.encode(&mut w)?;
+                registry.encode(&mut w)?;
+            },
+            Parser::TemplateMirror => 45u8.encode(&mut w)?,
+            Parser::TemplateRotation => 46u8.encode(&mut w)?,
+            Parser::Uuid => 47u8.encode(&mut w)?,
         }
 
         Ok(())
@@ -343,7 +349,7 @@ impl<'a> Decode<'a> for Parser<'a> {
             Ok((min, max))
         }
 
-        Ok(match u8::decode(r)? {
+        Ok(match dbg!(u8::decode(r))? {
             0 => Self::Bool,
             1 => {
                 let (min, max) = decode_min_max(r)?;
@@ -381,7 +387,7 @@ impl<'a> Decode<'a> for Parser<'a> {
             16 => Self::Color,
             17 => Self::Component,
             18 => Self::Message,
-            19 => Self::Nbt,
+            19 => Self::NbtCompoundTag,
             20 => Self::NbtTag,
             21 => Self::NbtPath,
             22 => Self::Objective,
@@ -398,24 +404,24 @@ impl<'a> Decode<'a> for Parser<'a> {
             31 => Self::Team,
             32 => Self::ItemSlot,
             33 => Self::ResourceLocation,
-            34 => Self::MobEffect,
-            35 => Self::Function,
-            36 => Self::EntityAnchor,
-            37 => Self::IntRange,
-            38 => Self::FloatRange,
-            39 => Self::ItemEnchantment,
-            40 => Self::EntitySummon,
-            41 => Self::Dimension,
-            42 => Self::NbtCompoundTag,
-            43 => Self::Time,
-            44 => Self::ResourceOrTag {
+            34 => Self::Function,
+            35 => Self::EntityAnchor,
+            36 => Self::IntRange,
+            37 => Self::FloatRange,
+            38 => Self::Dimension,
+            39 => Self::GameMode,
+            40 => Self::Time,
+            41 => Self::ResourceOrTag {
                 registry: Ident::decode(r)?,
             },
-            45 => Self::Resource {
+            42 => Self::ResourceOrTagKey {
                 registry: Ident::decode(r)?,
             },
-            46 => Self::TemplateMirror,
-            47 => Self::TemplateRotation,
+            43 => Self::Resource { registry: Ident::decode(r)? },
+            44 => Self::ResourceKey { registry: Ident::decode(r)? },
+            45 => Self::TemplateMirror,
+            46 => Self::TemplateRotation,
+            47 => Self::Uuid,
             n => bail!("unknown command parser ID of {n}"),
         })
     }
