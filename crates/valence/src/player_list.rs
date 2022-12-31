@@ -6,7 +6,7 @@ use std::ops::{Deref, DerefMut, Index, IndexMut};
 
 use uuid::Uuid;
 use valence_protocol::packets::s2c::play::{PlayerInfoRemove, SetTabListHeaderAndFooter};
-use valence_protocol::player_list::{Actions, Entry as PacketEntry, PlayerInfoUpdate};
+use valence_protocol::player_info_update::{Actions, Entry as PacketEntry, PlayerInfoUpdate};
 use valence_protocol::types::{GameMode, SignedProperty};
 use valence_protocol::Text;
 

@@ -7,7 +7,6 @@ use crate::byte_angle::ByteAngle;
 use crate::ident::Ident;
 use crate::item::ItemStack;
 use crate::raw_bytes::RawBytes;
-use crate::recipe::DeclaredRecipe;
 use crate::text::Text;
 use crate::types::{
     AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, GameEventKind, GameMode,
@@ -18,6 +17,11 @@ use crate::username::Username;
 use crate::var_int::VarInt;
 use crate::var_long::VarLong;
 use crate::LengthPrefixedArray;
+
+pub mod commands;
+pub mod declare_recipes;
+pub mod particle;
+pub mod player_info_update;
 
 pub mod status {
     use super::*;
@@ -95,10 +99,12 @@ pub mod login {
 }
 
 pub mod play {
+    use commands::Node;
+    pub use particle::ParticleS2c;
+    pub use player_info_update::PlayerInfoUpdate;
+    use crate::packets::s2c::declare_recipes::DeclaredRecipe;
+
     use super::*;
-    use crate::command::Node;
-    pub use crate::particle::ParticleS2c;
-    pub use crate::player_list::PlayerInfoUpdate;
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x00]
