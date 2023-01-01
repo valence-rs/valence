@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use anyhow::{bail, Context};
+use anyhow::bail;
 use byteorder::WriteBytesExt;
 
 use crate::{Decode, Encode, Ident, VarInt};
@@ -111,9 +111,9 @@ impl Encode for Node<'_> {
         );
 
         let flags: u8 = node_type
-            | self.executable as u8 * 0x04
-            | self.redirect_node.is_some() as u8 * 0x08
-            | has_suggestion as u8 * 0x10;
+            | (self.executable as u8 * 0x04)
+            | (self.redirect_node.is_some() as u8 * 0x08)
+            | (has_suggestion as u8 * 0x10);
 
         w.write_u8(flags)?;
 
@@ -205,7 +205,7 @@ impl Encode for Parser<'_> {
             Parser::Float { min, max } => {
                 1u8.encode(&mut w)?;
 
-                (min.is_some() as u8 | max.is_some() as u8 * 0x2).encode(&mut w)?;
+                (min.is_some() as u8 | (max.is_some() as u8 * 0x2)).encode(&mut w)?;
 
                 if let Some(min) = min {
                     min.encode(&mut w)?;
@@ -218,7 +218,7 @@ impl Encode for Parser<'_> {
             Parser::Double { min, max } => {
                 2u8.encode(&mut w)?;
 
-                (min.is_some() as u8 | max.is_some() as u8 * 0x2).encode(&mut w)?;
+                (min.is_some() as u8 | (max.is_some() as u8 * 0x2)).encode(&mut w)?;
 
                 if let Some(min) = min {
                     min.encode(&mut w)?;
@@ -231,7 +231,7 @@ impl Encode for Parser<'_> {
             Parser::Integer { min, max } => {
                 3u8.encode(&mut w)?;
 
-                (min.is_some() as u8 | max.is_some() as u8 * 0x2).encode(&mut w)?;
+                (min.is_some() as u8 | (max.is_some() as u8 * 0x2)).encode(&mut w)?;
 
                 if let Some(min) = min {
                     min.encode(&mut w)?;
@@ -244,7 +244,7 @@ impl Encode for Parser<'_> {
             Parser::Long { min, max } => {
                 4u8.encode(&mut w)?;
 
-                (min.is_some() as u8 | max.is_some() as u8 * 0x2).encode(&mut w)?;
+                (min.is_some() as u8 | (max.is_some() as u8 * 0x2)).encode(&mut w)?;
 
                 if let Some(min) = min {
                     min.encode(&mut w)?;
@@ -263,7 +263,7 @@ impl Encode for Parser<'_> {
                 only_players,
             } => {
                 6u8.encode(&mut w)?;
-                (*single as u8 | *only_players as u8 * 0x2).encode(&mut w)?;
+                (*single as u8 | (*only_players as u8 * 0x2)).encode(&mut w)?;
             }
             Parser::GameProfile => 7u8.encode(&mut w)?,
             Parser::BlockPos => 8u8.encode(&mut w)?,
@@ -317,7 +317,7 @@ impl Encode for Parser<'_> {
             Parser::ResourceKey { registry } => {
                 44u8.encode(&mut w)?;
                 registry.encode(&mut w)?;
-            },
+            }
             Parser::TemplateMirror => 45u8.encode(&mut w)?,
             Parser::TemplateRotation => 46u8.encode(&mut w)?,
             Parser::Uuid => 47u8.encode(&mut w)?,
@@ -349,7 +349,7 @@ impl<'a> Decode<'a> for Parser<'a> {
             Ok((min, max))
         }
 
-        Ok(match dbg!(u8::decode(r))? {
+        Ok(match u8::decode(r)? {
             0 => Self::Bool,
             1 => {
                 let (min, max) = decode_min_max(r)?;
@@ -417,8 +417,12 @@ impl<'a> Decode<'a> for Parser<'a> {
             42 => Self::ResourceOrTagKey {
                 registry: Ident::decode(r)?,
             },
-            43 => Self::Resource { registry: Ident::decode(r)? },
-            44 => Self::ResourceKey { registry: Ident::decode(r)? },
+            43 => Self::Resource {
+                registry: Ident::decode(r)?,
+            },
+            44 => Self::ResourceKey {
+                registry: Ident::decode(r)?,
+            },
             45 => Self::TemplateMirror,
             46 => Self::TemplateRotation,
             47 => Self::Uuid,

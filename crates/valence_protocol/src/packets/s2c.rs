@@ -544,6 +544,14 @@ pub mod play {
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x41]
+    pub struct ServerData<'a> {
+        pub motd: Option<Text>,
+        pub icon: Option<&'a str>,
+        pub enforce_secure_chat: bool,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x42]
     pub struct SetActionBarText(pub Text);
 
@@ -746,6 +754,7 @@ pub mod play {
             Respawn<'a>,
             SetHeadRotation,
             UpdateSectionBlocks,
+            ServerData<'a>,
             SetActionBarText,
             SetHeldItemS2c,
             SetCenterChunk,

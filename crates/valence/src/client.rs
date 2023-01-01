@@ -13,6 +13,7 @@ use rayon::iter::ParallelIterator;
 use tokio::sync::OwnedSemaphorePermit;
 use tracing::{info, warn};
 use uuid::Uuid;
+use valence_protocol::packets::s2c::particle::{Particle, ParticleS2c};
 use valence_protocol::packets::s2c::play::{
     AcknowledgeBlockChange, ClearTitles, CloseContainerS2c, CombatDeath, DisconnectPlay,
     EntityAnimationS2c, EntityEvent, GameEvent, KeepAliveS2c, LoginPlayOwned, OpenScreen,
@@ -22,7 +23,6 @@ use valence_protocol::packets::s2c::play::{
     SetSubtitleText, SetTitleAnimationTimes, SetTitleText, SynchronizePlayerPosition,
     SystemChatMessage, UnloadChunk, UpdateAttributes, UpdateTime,
 };
-use valence_protocol::particle::{Particle, ParticleS2c};
 use valence_protocol::types::{
     AttributeProperty, DisplayedSkinParts, GameEventKind, GameMode, SyncPlayerPosLookFlags,
 };
