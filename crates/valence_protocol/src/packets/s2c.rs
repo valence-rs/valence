@@ -7,7 +7,6 @@ use crate::byte_angle::ByteAngle;
 use crate::ident::Ident;
 use crate::item::ItemStack;
 use crate::raw_bytes::RawBytes;
-use crate::recipe::DeclaredRecipe;
 use crate::text::Text;
 use crate::types::{
     AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, GameEventKind, GameMode,
@@ -18,6 +17,12 @@ use crate::username::Username;
 use crate::var_int::VarInt;
 use crate::var_long::VarLong;
 use crate::LengthPrefixedArray;
+
+pub mod commands;
+pub mod declare_recipes;
+pub mod particle;
+pub mod player_info_update;
+pub mod update_recipe_book;
 
 pub mod status {
     use super::*;
@@ -95,9 +100,13 @@ pub mod login {
 }
 
 pub mod play {
+    use commands::Node;
+    pub use particle::ParticleS2c;
+    pub use player_info_update::PlayerInfoUpdate;
+    pub use update_recipe_book::UpdateRecipeBook;
+
     use super::*;
-    pub use crate::particle::ParticleS2c;
-    pub use crate::player_list::PlayerInfoUpdate;
+    use crate::packets::s2c::declare_recipes::DeclaredRecipe;
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x00]
@@ -187,6 +196,13 @@ pub mod play {
     #[packet_id = 0x0c]
     pub struct ClearTitles {
         pub reset: bool,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x0e]
+    pub struct Commands<'a> {
+        pub commands: Vec<Node<'a>>,
+        pub root_index: VarInt,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -528,6 +544,14 @@ pub mod play {
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x41]
+    pub struct ServerData<'a> {
+        pub motd: Option<Text>,
+        pub icon: Option<&'a str>,
+        pub enforce_secure_chat: bool,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x42]
     pub struct SetActionBarText(pub Text);
 
@@ -698,6 +722,7 @@ pub mod play {
             BossBar,
             SetDifficulty,
             ClearTitles,
+            Commands<'a>,
             CloseContainerS2c,
             SetContainerContent,
             SetContainerProperty,
@@ -723,11 +748,13 @@ pub mod play {
             PlayerInfoRemove,
             PlayerInfoUpdate<'a>,
             SynchronizePlayerPosition,
+            UpdateRecipeBook<'a>,
             RemoveEntities,
             ResourcePackS2c<'a>,
             Respawn<'a>,
             SetHeadRotation,
             UpdateSectionBlocks,
+            ServerData<'a>,
             SetActionBarText,
             SetHeldItemS2c,
             SetCenterChunk,

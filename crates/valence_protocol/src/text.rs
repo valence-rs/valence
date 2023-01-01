@@ -4,6 +4,7 @@ use std::borrow::Cow;
 use std::io::Write;
 use std::{fmt, ops};
 
+use anyhow::Context;
 use serde::de::Visitor;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
@@ -740,7 +741,11 @@ impl Encode for Text {
 impl Decode<'_> for Text {
     fn decode(r: &mut &[u8]) -> Result<Self> {
         let string = <&str>::decode(r)?;
-        Ok(serde_json::from_str(string)?)
+        if string.is_empty() {
+            Ok(Self::default())
+        } else {
+            serde_json::from_str(string).context("decoding text JSON")
+        }
     }
 }
 
