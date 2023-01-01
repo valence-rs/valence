@@ -64,7 +64,6 @@
     clippy::unusual_byte_groupings,
     clippy::comparison_chain
 )]
-#![feature(try_blocks)]
 
 // Allows us to use our own proc macros internally.
 extern crate self as valence_protocol;
