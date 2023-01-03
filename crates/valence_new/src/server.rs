@@ -20,9 +20,7 @@ use valence_nbt::{compound, Compound, List};
 use valence_protocol::{ident, Username};
 
 use crate::biome::{Biome, BiomeId};
-use crate::client::event::{
-    dispatch_client_events, register_client_events,
-};
+use crate::client::event::{dispatch_client_events, register_client_events};
 use crate::client::Client;
 use crate::config::{AsyncCallbacks, Config, ConnectionMode};
 use crate::dimension::{Dimension, DimensionId};
@@ -320,6 +318,9 @@ pub fn run_server(
     let shared = server.shared.clone();
     let _guard = shared.tokio_handle().enter();
 
+    // Start accepting new connections.
+    tokio::spawn(do_accept_loop(shared.clone(), callbacks));
+
     // Insert resources.
     cfg.world.insert_resource(server);
     register_client_events(&mut cfg.world);
@@ -328,8 +329,7 @@ pub fn run_server(
 
     schedule.add_stage(
         "before user stage",
-        SystemStage::parallel()
-            .with_system(dispatch_client_events),
+        SystemStage::parallel().with_system(dispatch_client_events),
     );
 
     schedule.add_stage("user stage", stage);
@@ -339,15 +339,11 @@ pub fn run_server(
         SystemStage::parallel().with_system(despawn_entities),
     );
 
-    let callbacks = Arc::new(callbacks);
     let mut tick_start = Instant::now();
     let full_tick_duration = Duration::from_secs_f64((shared.tick_rate() as f64).recip());
 
     // The main tick/update loop.
     loop {
-        // Clear tracker state so that change detection works correctly.
-        cfg.world.clear_trackers();
-
         // Stop the server if it was shut down.
         if let Some(res) = shared.0.shutdown_result.lock().unwrap().take() {
             return res;
@@ -366,14 +362,10 @@ pub fn run_server(
         // Run the scheduled stages.
         schedule.run_once(&mut cfg.world);
 
-        let mut server = cfg.world.resource_mut::<Server>();
+        // Clear tracker state so that change detection works correctly.
+        cfg.world.clear_trackers();
 
-        // Initialize the accept loop after we run the schedule for the first time. This
-        // way, lengthy initialization work can happen on the first tick without any
-        // players connecting.
-        if server.current_tick == 0 {
-            tokio::spawn(do_accept_loop(shared.clone(), callbacks.clone()));
-        }
+        let mut server = cfg.world.resource_mut::<Server>();
 
         // Sleep until the next tick.
         server.last_tick_duration = tick_start.elapsed();

@@ -40,7 +40,7 @@ use crate::server::{NewClientInfo, NewClientMessage, SharedServer};
 
 /// Accepts new connections to the server as they occur.
 #[instrument(skip_all)]
-pub async fn do_accept_loop(shared: SharedServer, callbacks: Arc<impl AsyncCallbacks>) {
+pub async fn do_accept_loop(shared: SharedServer, callbacks: impl AsyncCallbacks) {
     let listener = match TcpListener::bind(shared.0.address).await {
         Ok(listener) => listener,
         Err(e) => {
@@ -48,6 +48,8 @@ pub async fn do_accept_loop(shared: SharedServer, callbacks: Arc<impl AsyncCallb
             return;
         }
     };
+
+    let callbacks = Arc::new(callbacks);
 
     loop {
         match shared.0.connection_sema.clone().acquire_owned().await {

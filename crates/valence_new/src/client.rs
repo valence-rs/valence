@@ -115,7 +115,7 @@ pub(crate) fn update_clients(
     // TODO: what batch size to use?
     clients.par_for_each_mut(1, |(mut client, change)| {
         if let Some(mut send) = client.send.take() {
-            match update_client(&mut client, change, &server) {
+            match update_client(&mut client, &mut send, change, &server) {
                 Ok(()) => client.send = Some(send),
                 Err(e) => {
                     let _ = send.append_packet(&DisconnectPlay { reason: "".into() });
@@ -133,6 +133,7 @@ pub(crate) fn update_clients(
 
 fn update_client(
     client: &mut Client,
+    send: &mut PlayPacketSender,
     change: ChangeTrackers<Client>,
     server: &Server,
 ) -> anyhow::Result<()> {

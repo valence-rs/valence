@@ -15,20 +15,20 @@ use crate::biome::Biome;
 use crate::dimension::Dimension;
 use crate::server::{NewClientInfo, SharedServer};
 
-/// The configuration for a Minecraft server.
+/// Contains basic server settings with reasonable defaults. Use [`run_server`]
+/// to consume the configuration and start the server.
 ///
-/// Use [`ServerConfig::start`] to start the server.
+/// [`run_server`]: crate::run_server.
 #[non_exhaustive]
 pub struct Config {
-    /// The Bevy ECS [`World`] to use for storing entities. This is unrelated to
-    /// Minecraft's concept of a "world."
+    /// The Bevy ECS [`World`] to use for storing entities. This can be used to
+    /// perform initialization work before the server starts. Note that this is
+    /// unrelated to Minecraft's concept of a "world."
     ///
     /// # Default Value
     ///
     /// `World::new()`
     pub world: World,
-    /// The schedule to use with the provided [`world`](Self::world).
-    pub schedule: Schedule,
     /// The [`Handle`] to the tokio runtime the server will use. If `None` is
     /// provided, the server will create its own tokio runtime at startup.
     ///
@@ -89,14 +89,6 @@ pub struct Config {
     ///
     /// Compression is enabled with an unspecified threshold.
     pub compression_threshold: Option<u32>,
-    /// Determines if IP validation should take place when authenticating
-    /// clients. When `true`, clients can no longer log-in if they connected to
-    /// the yggdrasil server using a different IP.
-    ///
-    /// # Default Value
-    ///
-    /// `false`
-    pub prevent_proxy_connections: bool,
     /// The maximum capacity (in bytes) of the buffer used to hold incoming
     /// packet data.
     ///
@@ -151,6 +143,74 @@ pub struct Config {
     ///
     /// `vec![Biome::default()]`.
     pub biomes: Vec<Biome>,
+}
+
+impl Config {
+    /// See [`Self::world`].
+    pub fn with_world(mut self, world: World) -> Self {
+        self.world = world;
+        self
+    }
+
+    /// See [`Self::tokio_handle`].
+    pub fn with_tokio_handle(mut self, tokio_handle: Option<Handle>) -> Self {
+        self.tokio_handle = tokio_handle;
+        self
+    }
+
+    /// See [`Self::max_connections`].
+    pub fn with_max_connections(mut self, max_connections: usize) -> Self {
+        self.max_connections = max_connections;
+        self
+    }
+
+    /// See [`Self::address`].
+    pub fn with_address(mut self, address: SocketAddr) -> Self {
+        self.address = address;
+        self
+    }
+
+    /// See [`Self::tick_rate`].
+    pub fn with_tick_rate(mut self, tick_rate: i64) -> Self {
+        self.tick_rate = tick_rate;
+        self
+    }
+
+    /// See [`Self::connection_mode`].
+    pub fn with_connection_mode(mut self, connection_mode: ConnectionMode) -> Self {
+        self.connection_mode = connection_mode;
+        self
+    }
+
+    /// See [`Self::compression_threshold`].
+    pub fn with_compression_threshold(mut self, compression_threshold: Option<u32>) -> Self {
+        self.compression_threshold = compression_threshold;
+        self
+    }
+
+    /// See [`Self::incoming_capacity`].
+    pub fn with_incoming_capacity(mut self, incoming_capacity: usize) -> Self {
+        self.incoming_capacity = incoming_capacity;
+        self
+    }
+
+    /// See [`Self::outgoing_capacity`].
+    pub fn with_outgoing_capacity(mut self, outgoing_capacity: usize) -> Self {
+        self.outgoing_capacity = outgoing_capacity;
+        self
+    }
+
+    /// See [`Self::dimensions`].
+    pub fn with_dimensions(mut self, dimensions: impl Into<Vec<Dimension>>) -> Self {
+        self.dimensions = dimensions.into();
+        self
+    }
+
+    /// See [`Self::biomes`].
+    pub fn with_biomes(mut self, biomes: impl Into<Vec<Biome>>) -> Self {
+        self.biomes = biomes.into();
+        self
+    }
 }
 
 #[async_trait]
@@ -241,7 +301,6 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             world: World::default(),
-            schedule: Schedule::default(),
             tokio_handle: None,
             max_connections: 1024,
             address: SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 25565).into(),
@@ -250,7 +309,6 @@ impl Default for Config {
                 prevent_proxy_connections: true,
             },
             compression_threshold: Some(256),
-            prevent_proxy_connections: true,
             incoming_capacity: 2097152, // 2 MiB
             outgoing_capacity: 8388608, // 8 MiB
             dimensions: vec![Dimension::default()],

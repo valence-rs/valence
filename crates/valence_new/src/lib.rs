@@ -9,6 +9,8 @@ pub mod dimension;
 mod packet;
 pub mod player_textures;
 pub mod server;
+pub mod instance;
+pub mod chunk_pos;
 
 /// A [`Component`] for marking entities that should be despawned at the end of the tick.
 ///

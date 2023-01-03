@@ -1,18 +1,23 @@
 use bevy_ecs::prelude::*;
-use bevy_ecs::schedule::ShouldRun;
 use valence_new::config::Config;
+use valence_new::dimension::DimensionId;
+use valence_new::instance::Instance;
 use valence_new::server::Server;
 
+#[derive(Resource)]
+struct GameState {
+    instance: Entity,
+}
+
 fn main() -> anyhow::Result<()> {
+    let mut world = World::new();
+    let instance = world.spawn(Instance::default()).id();
+
+    world.insert_resource(GameState { instance });
+
     valence_new::run_server(
-        Config::default(),
-        SystemStage::single_threaded().with_system(do_this_once.with_run_criteria(ShouldRun::once)),
+        Config::default().with_world(world),
+        SystemStage::parallel(),
         (),
     )
 }
-
-fn do_this_once() {
-    println!("this was done once!");
-}
-
-
