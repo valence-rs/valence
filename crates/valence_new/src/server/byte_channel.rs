@@ -1,3 +1,5 @@
+//! A channel specifically for sending/receiving batches of bytes.
+
 #![allow(dead_code)]
 
 use std::sync::{Arc, Mutex};

@@ -1,5 +1,6 @@
 use bevy_ecs::prelude::*;
-use bevy_ecs::schedule::ShouldRun;
+use bevy_ecs::system::SystemParam;
+use paste::paste;
 use uuid::Uuid;
 use valence_protocol::types::{
     ChatMode, ClickContainerMode, CommandBlockMode, Difficulty, DisplayedSkinParts,
@@ -7,6 +8,8 @@ use valence_protocol::types::{
     StructureBlockMirror, StructureBlockMode, StructureBlockRotation,
 };
 use valence_protocol::{BlockFace, BlockPos, Ident, ItemStack};
+
+use crate::client::Client;
 
 #[derive(Clone, Debug)]
 pub struct QueryBlockEntity {
@@ -507,93 +510,140 @@ pub struct UseItem {
 }
 
 macro_rules! events {
-    ($($name:ident)*) => {
+    (
+        $(
+            $group_number:tt {
+                $($name:ident)*
+            }
+        )*
+    ) => {
         /// Inserts [`Events`] resources into the world for each client event.
-        pub(crate) fn register_events(world: &mut World) {
+        pub(crate) fn register_client_events(world: &mut World) {
             $(
-                world.insert_resource(Events::<$name>::default());
+                $(
+                    world.insert_resource(Events::<$name>::default());
+                )*
             )*
         }
 
-        /// Returns a system set for updating all the client events every tick.
-        pub(crate) fn update_events_system_set() -> SystemSet {
-            SystemSet::new()
+        paste! {
+            fn update_all_event_buffers(events: &mut ClientEvents) {
+                $(
+                    let group = &mut events. $group_number;
+                    $(
+                        group.[< $name:snake >].update();
+                    )*
+                )*
+            }
+
+            pub(crate) type ClientEvents<'w, 's> = (
+                $(
+                    [< Group $group_number >]<'w, 's>,
+                )*
+            );
+
             $(
-                .with_system(Events::<$name>::update_system)
+                #[derive(SystemParam)]
+                pub(crate) struct [< Group $group_number >]<'w, 's> {
+                    $(
+                        [< $name:snake >]: ResMut<'w, Events<$name>>,
+                    )*
+                    #[system_param(ignore)]
+                    _marker: std::marker::PhantomData<&'s ()>,
+                }
             )*
         }
-    };
+    }
 }
 
+// Events are grouped to get around the 16 system parameter maximum.
 events! {
-    QueryBlockEntity
-    ChangeDifficulty
-    MessageAcknowledgment
-    ChatCommand
-    ChatMessage
-    ChatPreview
-    PerformRespawn
-    RequestStats
-    UpdateSettings
-    CommandSuggestionsRequest
-    ClickContainerButton
-    ClickContainer
-    CloseContainer
-    PluginMessage
-    EditBook
-    QueryEntity
-    InteractWithEntity
-    JigsawGenerate
-    LockDifficulty
-    SetPlayerPosition
-    SetPlayerPositionAndRotation
-    SetPlayerRotation
-    SetPlayerOnGround
-    MoveVehicle
-    StartSneaking
-    StopSneaking
-    LeaveBed
-    StartSprinting
-    StopSprinting
-    StartJumpWithHorse
-    StopJumpWithHorse
-    OpenHorseInventory
-    StartFlyingWithElytra
-    PaddleBoat
-    PickItem
-    PlaceRecipe
-    StopFlying
-    StartFlying
-    StartDigging
-    CancelDigging
-    FinishDigging
-    DropItem
-    DropItemStack
-    UpdateHeldItemState
-    SwapItemInHand
-    PlayerInput
-    Pong
-    PlayerSession
-    ChangeRecipeBookSettings
-    SetSeenRecipe
-    RenameItem
-    ResourcePackLoaded
-    ResourcePackDeclined
-    ResourcePackFailedDownload
-    ResourcePackAccepted
-    OpenAdvancementTab
-    CloseAdvancementScreen
-    SelectTrade
-    SetBeaconEffect
-    SetHeldItem
-    ProgramCommandBlock
-    ProgramCommandBlockMinecart
-    SetCreativeModeSlot
-    ProgramJigsawBlock
-    ProgramStructureBlock
-    UpdateSign
-    SwingArm
-    TeleportToEntity
-    UseItemOnBlock
-    UseItem
+    0 {
+        QueryBlockEntity
+        ChangeDifficulty
+        MessageAcknowledgment
+        ChatCommand
+        ChatMessage
+        ChatPreview
+        PerformRespawn
+        RequestStats
+        UpdateSettings
+        CommandSuggestionsRequest
+        ClickContainerButton
+        ClickContainer
+        CloseContainer
+        PluginMessage
+        EditBook
+        QueryEntity
+    }
+    1 {
+        InteractWithEntity
+        JigsawGenerate
+        LockDifficulty
+        SetPlayerPosition
+        SetPlayerPositionAndRotation
+        SetPlayerRotation
+        SetPlayerOnGround
+        MoveVehicle
+        StartSneaking
+        StopSneaking
+        LeaveBed
+        StartSprinting
+        StopSprinting
+        StartJumpWithHorse
+        StopJumpWithHorse
+        OpenHorseInventory
+    }
+    2 {
+        StartFlyingWithElytra
+        PaddleBoat
+        PickItem
+        PlaceRecipe
+        StopFlying
+        StartFlying
+        StartDigging
+        CancelDigging
+        FinishDigging
+        DropItem
+        DropItemStack
+        UpdateHeldItemState
+        SwapItemInHand
+        PlayerInput
+        Pong
+        PlayerSession
+    }
+    3 {
+        ChangeRecipeBookSettings
+        SetSeenRecipe
+        RenameItem
+        ResourcePackLoaded
+        ResourcePackDeclined
+        ResourcePackFailedDownload
+        ResourcePackAccepted
+        OpenAdvancementTab
+        CloseAdvancementScreen
+        SelectTrade
+        SetBeaconEffect
+        SetHeldItem
+        ProgramCommandBlock
+        ProgramCommandBlockMinecart
+        SetCreativeModeSlot
+        ProgramJigsawBlock
+    }
+    4 {
+        ProgramStructureBlock
+        UpdateSign
+        SwingArm
+        TeleportToEntity
+        UseItemOnBlock
+        UseItem
+    }
+}
+
+/// A system for handling serverbound packets and converting them into
+/// ECS events. We also update the event buffers before writing the events.
+pub(crate) fn dispatch_client_events(mut clients: Query<&mut Client>, mut events: ClientEvents) {
+    update_all_event_buffers(&mut events);
+
+    for client in clients.iter_mut() {}
 }
