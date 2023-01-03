@@ -1,3 +1,5 @@
+pub mod event;
+
 use bevy_ecs::prelude::*;
 
 #[derive(Component)]

@@ -28,7 +28,6 @@ use crate::server::packet_manager::{PlayPacketReceiver, PlayPacketSender};
 
 mod byte_channel;
 mod connect;
-mod login;
 mod packet_manager;
 
 /// Contains global server state accessible as a [`Resource`].
@@ -321,10 +320,8 @@ pub fn run_server(
 
     let mut schedule = Schedule::default();
 
+    // TODO: add systems.
     schedule.add_stage("user stage", stage);
-    // schedule.add_stage("after user stage", );
-
-    // TODO: add system to initialize accept loop.
 
     let callbacks = Arc::new(callbacks);
     let mut tick_start = Instant::now();
