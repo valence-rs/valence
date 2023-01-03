@@ -28,7 +28,7 @@ use crate::config::{AsyncCallbacks, Config, ConnectionMode};
 use crate::dimension::{Dimension, DimensionId};
 use crate::player_textures::SignedPlayerTextures;
 use crate::server::connect::do_accept_loop;
-use crate::Deleted;
+use crate::Despawned;
 
 mod byte_channel;
 mod connect;
@@ -336,7 +336,7 @@ pub fn run_server(
 
     schedule.add_stage(
         "after user stage",
-        SystemStage::parallel().with_system(despawn_deleted_entities),
+        SystemStage::parallel().with_system(despawn_entities),
     );
 
     let callbacks = Arc::new(callbacks);
@@ -383,7 +383,8 @@ pub fn run_server(
     }
 }
 
-fn despawn_deleted_entities(mut commands: Commands, entities: Query<Entity, With<Deleted>>) {
+/// Despawns all the entities marked as despawned.
+fn despawn_entities(mut commands: Commands, entities: Query<Entity, With<Despawned>>) {
     for entity in &entities {
         commands.entity(entity).despawn();
     }
