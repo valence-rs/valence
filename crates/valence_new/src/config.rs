@@ -1,19 +1,27 @@
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::borrow::Cow;
+use std::future::Future;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::Arc;
 
+use async_trait::async_trait;
 use bevy_ecs::schedule::Schedule;
 use bevy_ecs::world::World;
 use serde::Serialize;
 use tokio::runtime::Handle;
 use uuid::Uuid;
-use valence_protocol::Text;
+use valence_protocol::{Text, Username};
+
+use crate::biome::Biome;
+use crate::dimension::Dimension;
+use crate::server::{NewClientInfo, SharedServer};
 
 /// The configuration for a Minecraft server.
 ///
 /// Use [`ServerConfig::start`] to start the server.
 #[non_exhaustive]
 pub struct Config {
-    /// The Bevy ECS world to use.
+    /// The Bevy ECS [`World`] to use for storing entities. This is unrelated to
+    /// Minecraft's concept of a "world."
     ///
     /// # Default Value
     ///
@@ -125,7 +133,7 @@ pub struct Config {
     /// # Default Value
     ///
     /// `vec![Dimension::default()]`
-    pub dimensions: Vec<()>, // TODO
+    pub dimensions: Vec<Dimension>,
     /// The list of [`Biome`]s usable on the server.
     ///
     /// The biomes returned by [`SharedServer::biomes`] will be in the same
@@ -142,29 +150,92 @@ pub struct Config {
     /// # Default Value
     ///
     /// `vec![Biome::default()]`.
-    pub biomes: Vec<()>, // TODO
+    pub biomes: Vec<Biome>,
+}
+
+#[async_trait]
+pub trait AsyncCallbacks: Send + Sync + 'static {
     /// Called when the server receives a Server List Ping query.
     /// Data for the response can be provided or the query can be ignored.
     ///
     /// This function is called from within a tokio runtime.
     ///
-    /// # Default Value
+    /// # Default Implementation
     ///
-    /// A no-op function is used which returns [`ServerListPing::default()`].
-    pub server_list_ping_cb: Box<dyn Fn() -> ServerListPing>, // TODO
-    pub login_cb: Box<dyn Fn()>, // TODO
-}
+    /// A default placeholder response is returned.
+    async fn server_list_ping(
+        &self,
+        shared: &SharedServer,
+        remote_addr: SocketAddr,
+        protocol_version: i32,
+    ) -> ServerListPing {
+        #![allow(unused_variables)]
+        ServerListPing::Respond {
+            online_players: 0, // TODO: get online players.
+            max_players: -1,
+            player_sample: Cow::default(),
+            description: "A Valence Server".into(),
+            favicon_png: &[],
+        }
+    }
 
-impl Config {
-    /// Consumes the configuration and starts the server.
+    /// Called for each client after successful authentication (if online mode
+    /// is enabled) to determine if they can join the server. On success, a
+    /// new entity is spawned with the [`Client`] component. If this method
+    /// returns with `Err(reason)`, then the client is immediately
+    /// disconnected with `reason` as the displayed message.
     ///
-    /// This function blocks the current thread and returns once the server has
-    /// shut down, a runtime error occurs, or the configuration is found to
-    /// be invalid.
-    pub fn start(self) -> anyhow::Result<()> {
-        todo!()
+    /// This method is the appropriate place to perform asynchronous
+    /// operations such as database queries which may take some time to
+    /// complete.
+    ///
+    /// This method is called from within a tokio runtime.
+    ///
+    /// # Default Implementation
+    ///
+    /// The client is allowed to join unconditionally.
+    async fn login(&self, shared: &SharedServer, info: &NewClientInfo) -> Result<(), Text> {
+        #![allow(unused_variables)]
+        Ok(())
+    }
+
+    /// Called upon every client login to obtain the full URL to use for session
+    /// server requests. This is done to authenticate player accounts. This
+    /// method is not called unless [online mode] is enabled.
+    ///
+    /// It is assumed that upon successful request, a structure matching the
+    /// description in the [wiki](https://wiki.vg/Protocol_Encryption#Server) was obtained.
+    /// Providing a URL that does not return such a structure will result in a
+    /// disconnect for every client that connects.
+    ///
+    /// The arguments are described in the linked wiki article.
+    ///
+    /// # Default Implementation
+    ///
+    /// Uses the official Minecraft session server. This is formatted as
+    /// `https://sessionserver.mojang.com/session/minecraft/hasJoined?username=<username>&serverId=<auth-digest>&ip=<player-ip>`.
+    ///
+    /// [online mode]: crate::config::ConnectionMode::Online
+    fn session_server(
+        &self,
+        shared: &SharedServer,
+        username: Username<&str>,
+        auth_digest: &str,
+        player_ip: &IpAddr,
+    ) -> String {
+        if shared.connection_mode()
+            == (&ConnectionMode::Online {
+                prevent_proxy_connections: true,
+            })
+        {
+            format!("https://sessionserver.mojang.com/session/minecraft/hasJoined?username={username}&serverId={auth_digest}&ip={player_ip}")
+        } else {
+            format!("https://sessionserver.mojang.com/session/minecraft/hasJoined?username={username}&serverId={auth_digest}")
+        }
     }
 }
+
+impl AsyncCallbacks for () {}
 
 impl Default for Config {
     fn default() -> Self {
@@ -175,32 +246,43 @@ impl Default for Config {
             max_connections: 1024,
             address: SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 25565).into(),
             tick_rate: 20,
-            connection_mode: ConnectionMode::default(),
+            connection_mode: ConnectionMode::Online {
+                prevent_proxy_connections: true,
+            },
             compression_threshold: Some(256),
             prevent_proxy_connections: true,
             incoming_capacity: 2097152, // 2 MiB
             outgoing_capacity: 8388608, // 8 MiB
-            dimensions: vec![],         // TODO
-            biomes: vec![],             // TODO
-            server_list_ping_cb: Box::new(|| ServerListPing::default()),
-            login_cb: Box::new(|| ()),
+            dimensions: vec![Dimension::default()],
+            biomes: vec![Biome::default()],
         }
     }
 }
 
 /// Describes how new connections to the server are handled.
 #[non_exhaustive]
-#[derive(Clone, PartialEq, Default)]
+#[derive(Clone, PartialEq)]
 pub enum ConnectionMode {
     /// The "online mode" fetches all player data (username, UUID, and skin)
     /// from the [configured session server] and enables encryption.
     ///
-    /// This mode should be used for all publicly exposed servers which are not
+    /// This mode should be used by all publicly exposed servers which are not
     /// behind a proxy.
     ///
-    /// [configured session server]: Config::session_server
-    #[default]
-    Online,
+    /// [configured session server]: AsyncCallbacks::session_server
+    Online {
+        /// Determines if client IP validation should take place during
+        /// authentication.
+        ///
+        /// When `prevent_proxy_connections` is enabled, clients can no longer
+        /// log-in if they connected to the Yggdrasil server using a different
+        /// IP than the one used to connect to this server.
+        ///
+        /// This is used by the default implementation of
+        /// [`AsyncCallbacks::session_server`]. A different implementation may
+        /// choose to ignore this value.
+        prevent_proxy_connections: bool,
+    },
     /// Disables client authentication with the configured session server.
     /// Clients can join with any username and UUID they choose, potentially
     /// gaining privileges they would not otherwise have. Additionally,
@@ -250,7 +332,7 @@ pub const DEFAULT_TPS: i64 = 20;
 ///
 /// [Server List Ping]: Config::server_list_ping_cb
 #[derive(Clone, Default, Debug)]
-pub enum ServerListPing {
+pub enum ServerListPing<'a> {
     /// Responds to the server list ping with the given information.
     Respond {
         /// Displayed as the number of players on the server.
@@ -261,14 +343,14 @@ pub enum ServerListPing {
         /// The list of players visible by hovering over the player count.
         ///
         /// Has no effect if this list is empty.
-        player_sample: Vec<PlayerSampleEntry>,
+        player_sample: Cow<'a, [PlayerSampleEntry<'a>]>,
         /// A description of the server.
         description: Text,
         /// The server's icon as the bytes of a PNG image.
         /// The image must be 64x64 pixels.
         ///
-        /// No icon is used if the value is `None`.
-        favicon_png: Option<Arc<[u8]>>,
+        /// No icon is used if the slice is empty.
+        favicon_png: &'a [u8],
     },
     /// Ignores the query and disconnects from the client.
     #[default]
@@ -277,12 +359,12 @@ pub enum ServerListPing {
 
 /// Represents an individual entry in the player sample.
 #[derive(Clone, Debug, Serialize)]
-pub struct PlayerSampleEntry {
+pub struct PlayerSampleEntry<'a> {
     /// The name of the player.
     ///
     /// This string can contain
     /// [legacy formatting codes](https://minecraft.fandom.com/wiki/Formatting_codes).
-    pub name: String,
+    pub name: Cow<'a, str>,
     /// The player UUID.
     pub id: Uuid,
 }
