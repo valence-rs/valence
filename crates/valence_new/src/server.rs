@@ -1,4 +1,3 @@
-use std::error::Error;
 use std::iter::FusedIterator;
 use std::net::{IpAddr, SocketAddr};
 use std::ops::Deref;
@@ -14,14 +13,13 @@ use rand::rngs::OsRng;
 use rsa::{PublicKeyParts, RsaPrivateKey};
 use tokio::runtime::{Handle, Runtime};
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
-use tracing::instrument;
 use uuid::Uuid;
 use valence_nbt::{compound, Compound, List};
 use valence_protocol::{ident, Username};
 
 use crate::biome::{Biome, BiomeId};
 use crate::client::event::{dispatch_client_events, register_client_events};
-use crate::client::Client;
+use crate::client::{update_clients, Client};
 use crate::config::{AsyncCallbacks, Config, ConnectionMode};
 use crate::dimension::{Dimension, DimensionId};
 use crate::player_textures::SignedPlayerTextures;
@@ -296,8 +294,8 @@ pub fn run_server(
         outgoing_capacity: cfg.outgoing_capacity,
         tokio_handle,
         _tokio_runtime: runtime,
-        dimensions: vec![],
-        biomes: vec![],
+        dimensions: cfg.dimensions,
+        biomes: cfg.biomes,
         registry_codec,
         start_instant: Instant::now(),
         new_clients_send,
@@ -329,14 +327,17 @@ pub fn run_server(
 
     schedule.add_stage(
         "before user stage",
-        SystemStage::parallel().with_system(dispatch_client_events),
+        SystemStage::parallel()
+            .with_system(dispatch_client_events)
     );
 
     schedule.add_stage("user stage", stage);
 
     schedule.add_stage(
         "after user stage",
-        SystemStage::parallel().with_system(despawn_entities),
+        SystemStage::parallel()
+            .with_system(update_clients)
+            .with_system(despawn_entities.after(update_clients)),
     );
 
     let mut tick_start = Instant::now();

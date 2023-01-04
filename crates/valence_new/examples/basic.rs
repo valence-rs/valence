@@ -1,4 +1,5 @@
 use bevy_ecs::prelude::*;
+use valence_new::client::Client;
 use valence_new::config::Config;
 use valence_new::dimension::DimensionId;
 use valence_new::instance::Instance;
@@ -10,6 +11,8 @@ struct GameState {
 }
 
 fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt().init();
+
     let mut world = World::new();
     let instance = world.spawn(Instance::default()).id();
 
@@ -17,7 +20,13 @@ fn main() -> anyhow::Result<()> {
 
     valence_new::run_server(
         Config::default().with_world(world),
-        SystemStage::parallel(),
+        SystemStage::parallel().with_system(init_clients),
         (),
     )
+}
+
+fn init_clients(mut clients: Query<&mut Client, Added<Client>>, state: Res<GameState>) {
+    for mut client in &mut clients {
+        client.set_instance(state.instance);
+    }
 }

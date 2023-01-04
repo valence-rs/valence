@@ -1,10 +1,8 @@
 use std::borrow::Cow;
 use std::future::Future;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
-use std::sync::Arc;
 
 use async_trait::async_trait;
-use bevy_ecs::schedule::Schedule;
 use bevy_ecs::world::World;
 use serde::Serialize;
 use tokio::runtime::Handle;
@@ -276,7 +274,7 @@ pub trait AsyncCallbacks: Send + Sync + 'static {
     /// `https://sessionserver.mojang.com/session/minecraft/hasJoined?username=<username>&serverId=<auth-digest>&ip=<player-ip>`.
     ///
     /// [online mode]: crate::config::ConnectionMode::Online
-    fn session_server(
+    async fn session_server(
         &self,
         shared: &SharedServer,
         username: Username<&str>,

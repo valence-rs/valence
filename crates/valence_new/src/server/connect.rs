@@ -330,7 +330,7 @@ pub(super) async fn login_online(
         username.as_str_username(),
         &auth_digest(&hash),
         &remote_addr.ip(),
-    );
+    ).await;
 
     let resp = shared.0.http_client.get(url).send().await?;
 
