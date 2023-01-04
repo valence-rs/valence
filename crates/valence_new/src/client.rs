@@ -39,6 +39,7 @@ pub struct Client {
     yaw: f32,
     pitch: f32,
     game_mode: GameMode,
+    block_change_sequence: i32,
     /*
     /// To make sure we're not loading already loaded chunks, or unloading
     /// unloaded chunks.
@@ -86,6 +87,7 @@ impl Client {
             yaw: 0.0,
             pitch: 0.0,
             game_mode: GameMode::default(),
+            block_change_sequence: 0,
             view_distance: 2,
             old_view_distance: 2,
             death_location: None,
@@ -183,6 +185,16 @@ impl Client {
     /// Gets the position of this client at the end of the previous tick.
     pub fn old_position(&self) -> DVec3 {
         self.old_position
+    }
+
+    /// Gets this client's yaw (in degrees).
+    pub fn yaw(&self) -> f32 {
+        self.yaw
+    }
+
+    /// Gets this client's pitch (in degrees).
+    pub fn pitch(&self) -> f32 {
+        self.pitch
     }
 
     /// Changes the position and rotation of this client in the world it is
