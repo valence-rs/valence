@@ -17,8 +17,8 @@ use valence_protocol::{BlockPos, EncodePacket, Username, VarInt};
 
 use crate::dimension::DimensionId;
 use crate::instance::Instance;
-use crate::NULL_ENTITY;
 use crate::server::{NewClientInfo, PlayPacketReceiver, PlayPacketSender, Server};
+use crate::NULL_ENTITY;
 
 pub mod event;
 

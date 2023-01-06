@@ -325,12 +325,14 @@ pub(super) async fn login_online(
         .chain(&shared.0.public_key_der)
         .finalize();
 
-    let url = callbacks.session_server(
-        shared,
-        username.as_str_username(),
-        &auth_digest(&hash),
-        &remote_addr.ip(),
-    ).await;
+    let url = callbacks
+        .session_server(
+            shared,
+            username.as_str_username(),
+            &auth_digest(&hash),
+            &remote_addr.ip(),
+        )
+        .await;
 
     let resp = shared.0.http_client.get(url).send().await?;
 

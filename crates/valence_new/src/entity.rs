@@ -11,7 +11,11 @@ use glam::{DVec3, UVec3, Vec3};
 use tracing::warn;
 use uuid::Uuid;
 use valence_protocol::entity_meta::{Facing, PaintingKind, Pose};
-use valence_protocol::packets::s2c::play::{EntityAnimationS2c, SetEntityMetadata, SetEntityVelocity, SetHeadRotation, SpawnEntity, SpawnExperienceOrb, SpawnPlayer, TeleportEntity, UpdateEntityPosition, UpdateEntityPositionAndRotation, UpdateEntityRotation};
+use valence_protocol::packets::s2c::play::{
+    EntityAnimationS2c, SetEntityMetadata, SetEntityVelocity, SetHeadRotation, SpawnEntity,
+    SpawnExperienceOrb, SpawnPlayer, TeleportEntity, UpdateEntityPosition,
+    UpdateEntityPositionAndRotation, UpdateEntityRotation,
+};
 use valence_protocol::{ByteAngle, RawBytes, VarInt};
 
 use crate::config::DEFAULT_TPS;

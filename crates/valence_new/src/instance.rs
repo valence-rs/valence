@@ -138,7 +138,15 @@ impl Instance {
     }
 
     pub fn optimize(&mut self) {
-        todo!()
+        for cell in self.partition.values_mut() {
+            if let Some(chunk) = &mut cell.chunk {
+                chunk.optimize();
+            }
+            cell.incoming.shrink_to_fit();
+            cell.outgoing.shrink_to_fit();
+        }
+
+        self.partition.shrink_to_fit();
     }
 }
 

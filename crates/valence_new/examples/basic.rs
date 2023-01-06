@@ -5,8 +5,8 @@ use valence_new::client::Client;
 use valence_new::config::Config;
 use valence_new::dimension::DimensionId;
 use valence_new::instance::Instance;
-use valence_new::server::Server;
 use valence_new::protocol::types::GameMode;
+use valence_new::server::Server;
 
 #[derive(Resource)]
 struct GameState {

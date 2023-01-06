@@ -51,8 +51,8 @@ impl ChunkPos {
     // `in_view` wasn't optimizing well so we're using this for now.
     #[inline(always)]
     pub(crate) fn try_for_each_in_view<F>(self, view_dist: u8, mut f: F) -> anyhow::Result<()>
-        where
-            F: FnMut(ChunkPos) -> anyhow::Result<()>,
+    where
+        F: FnMut(ChunkPos) -> anyhow::Result<()>,
     {
         let dist = view_dist as i32 + EXTRA_VIEW_RADIUS;
 

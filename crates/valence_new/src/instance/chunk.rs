@@ -76,6 +76,8 @@ impl Chunk<false> {
     }
 
     pub(super) fn into_loaded(mut self) -> Chunk<true> {
+        debug_assert!(!self.track_changes);
+
         Chunk {
             sections: self.sections,
             cached_init_packets: self.cached_init_packets,
@@ -115,10 +117,9 @@ impl Chunk<true> {
             // We weren't tracking changes, so the init cache might be invalid.
             self.cached_init_packets.get_mut().unwrap().clear();
 
-            debug_assert!(self
-                .sections
-                .iter()
-                .all(|sect| sect.section_updates.is_empty()));
+            for sect in &mut self.sections {
+                sect.section_updates.clear();
+            }
 
             return;
         }
@@ -126,7 +127,7 @@ impl Chunk<true> {
         let mut init_cache_is_invalid = false;
 
         for (sect_y, sect) in &mut self.sections.iter_mut().enumerate() {
-            // TODO: sort and dedup section updates.
+            // TODO: sort and dedup section updates?
 
             if sect.section_updates.len() == 1 {
                 init_cache_is_invalid = true;
@@ -197,8 +198,6 @@ impl Chunk<true> {
             "chunks and/or position arguments are incorrect"
         );
 
-
-
         todo!()
     }
 }
@@ -206,7 +205,7 @@ impl Chunk<true> {
 impl<const LOADED: bool> Chunk<LOADED> {
     /// Returns the number of sections in this chunk. To get the height of the
     /// chunk in meters, multiply the result by 16.
-    fn section_count(&self) -> usize {
+    pub fn section_count(&self) -> usize {
         self.sections.len()
     }
 
@@ -219,7 +218,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
     ///
     /// Panics if the offsets are outside the bounds of the chunk. `x` and `z`
     /// must be less than 16 while `y` must be less than `section_count() * 16`.
-    fn block_state(&self, x: usize, y: usize, z: usize) -> BlockState {
+    pub fn block_state(&self, x: usize, y: usize, z: usize) -> BlockState {
         assert!(
             x < 16 && y < self.section_count() * 16 && z < 16,
             "chunk block offsets of ({x}, {y}, {z}) are out of bounds"
@@ -240,7 +239,13 @@ impl<const LOADED: bool> Chunk<LOADED> {
     ///
     /// Panics if the offsets are outside the bounds of the chunk. `x` and `z`
     /// must be less than 16 while `y` must be less than `section_count() * 16`.
-    fn set_block_state(&mut self, x: usize, y: usize, z: usize, block: BlockState) -> BlockState {
+    pub fn set_block_state(
+        &mut self,
+        x: usize,
+        y: usize,
+        z: usize,
+        block: BlockState,
+    ) -> BlockState {
         assert!(
             x < 16 && y < self.section_count() * 16 && z < 16,
             "chunk block offsets of ({x}, {y}, {z}) are out of bounds"
@@ -281,7 +286,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
     /// section count.
     ///
     /// [`set_block_state`]: Self::set_block_state
-    fn fill_block_states(&mut self, sect_y: usize, block: BlockState) {
+    pub fn fill_block_states(&mut self, sect_y: usize, block: BlockState) {
         let Some(sect) = self.sections.get_mut(sect_y) else {
             panic!(
                 "section index {sect_y} out of bounds for chunk with {} sections",
@@ -338,7 +343,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
     ///
     /// Panics if the offsets are outside the bounds of the chunk. `x` and `z`
     /// must be less than 4 while `y` must be less than `section_count() * 4`.
-    fn biome(&self, x: usize, y: usize, z: usize) -> BiomeId {
+    pub fn biome(&self, x: usize, y: usize, z: usize) -> BiomeId {
         assert!(
             x < 4 && y < self.section_count() * 4 && z < 4,
             "chunk biome offsets of ({x}, {y}, {z}) are out of bounds"
@@ -357,7 +362,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
     ///
     /// Panics if the offsets are outside the bounds of the chunk. `x` and `z`
     /// must be less than 4 while `y` must be less than `section_count() * 4`.
-    fn set_biome(&mut self, x: usize, y: usize, z: usize, biome: BiomeId) -> BiomeId {
+    pub fn set_biome(&mut self, x: usize, y: usize, z: usize, biome: BiomeId) -> BiomeId {
         assert!(
             x < 4 && y < self.section_count() * 4 && z < 4,
             "chunk biome offsets of ({x}, {y}, {z}) are out of bounds"
@@ -386,7 +391,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
     /// section count.
     ///
     /// [`set_biome`]: Self::set_biome
-    fn fill_biomes(&mut self, sect_y: usize, biome: BiomeId) {
+    pub fn fill_biomes(&mut self, sect_y: usize, biome: BiomeId) {
         let Some(sect) = self.sections.get_mut(sect_y) else {
             panic!(
                 "section index {sect_y} out of bounds for chunk with {} section(s)",
@@ -400,13 +405,20 @@ impl<const LOADED: bool> Chunk<LOADED> {
         self.track_changes = false;
     }
 
+    pub fn prepare_large_changes(&mut self) {
+        if LOADED {
+            self.track_changes = false;
+        }
+    }
+
+
     /// Optimizes this chunk to use the minimum amount of memory possible. It
     /// has no observable effect on the contents of the chunk.
     ///
     /// This is a potentially expensive operation. The function is most
     /// effective when a large number of blocks and biomes have changed states
     /// via [`Self::set_block_state`] and [`Self::set_biome`].
-    fn optimize(&mut self) {
+    pub fn optimize(&mut self) {
         self.sections.shrink_to_fit();
         self.cached_init_packets.get_mut().unwrap().shrink_to_fit();
 
@@ -415,5 +427,49 @@ impl<const LOADED: bool> Chunk<LOADED> {
             sect.block_states.optimize();
             sect.biomes.optimize();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use valence_protocol::block::BlockState;
+    use super::*;
+
+    fn check<const LOADED: bool>(chunk: &Chunk<LOADED>, total_expected_change_count: usize) {
+        assert!(chunk.track_changes, "changes should be tracked for the test");
+
+        let mut change_count = 0;
+
+        for sect in &chunk.sections {
+            assert_eq!(
+                (0..SECTION_BLOCK_COUNT)
+                    .filter(|&i| !sect.block_states.get(i).is_air())
+                    .count(),
+                sect.non_air_count as usize,
+                "number of non-air blocks does not match counter"
+            );
+
+            change_count += sect.section_updates.len();
+        }
+
+        assert_eq!(change_count, total_expected_change_count, "bad change count");
+    }
+
+    #[test]
+    fn block_state_changes() {
+        let mut chunk = Chunk::new(5).into_loaded();
+        chunk.track_changes = true;
+
+        chunk.set_block_state(0, 0, 0, BlockState::SPONGE);
+        check(&chunk, 1);
+        chunk.set_block_state(1, 0, 0, BlockState::CAVE_AIR);
+        check(&chunk, 2);
+        chunk.set_block_state(2, 0, 0, BlockState::MAGMA_BLOCK);
+        check(&chunk, 3);
+        chunk.set_block_state(2, 0, 0, BlockState::MAGMA_BLOCK);
+        check(&chunk, 3);
+
+        chunk.fill_block_states(0, BlockState::AIR);
+        check(&chunk, 6);
     }
 }
