@@ -1,18 +1,21 @@
-use bevy_ecs::component::Component;
+use bevy_ecs::prelude::*;
 pub use server::run_server;
-pub use {anyhow, bevy_ecs as ecs};
+pub use {anyhow, bevy_ecs as ecs, valence_nbt as nbt, valence_protocol as protocol};
 
 pub mod biome;
+pub mod chunk_pos;
 pub mod client;
 pub mod config;
 pub mod dimension;
+pub mod entity;
+pub mod instance;
+pub mod math;
 mod packet;
 pub mod player_textures;
 pub mod server;
-pub mod instance;
-pub mod chunk_pos;
 
-/// A [`Component`] for marking entities that should be despawned at the end of the tick.
+/// A [`Component`] for marking entities that should be despawned at the end of
+/// the tick.
 ///
 /// In Valence, some built-in components such as ... are not allowed to be
 /// removed from the [`World`] directly. Instead, you must give the entities you
@@ -25,3 +28,8 @@ pub mod chunk_pos;
 pub struct Despawned;
 
 const LIBRARY_NAMESPACE: &str = "valence";
+
+/// Let's pretend that [`NULL_ENTITY`] was created by spawning an entity,
+/// immediately despawning it, and then stealing its [`Entity`] ID. The user
+/// doesn't need to know about this.
+const NULL_ENTITY: Entity = Entity::from_bits(u64::MAX);

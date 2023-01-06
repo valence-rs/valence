@@ -17,6 +17,7 @@ use valence_protocol::{BlockPos, EncodePacket, Username, VarInt};
 
 use crate::dimension::DimensionId;
 use crate::instance::Instance;
+use crate::NULL_ENTITY;
 use crate::server::{NewClientInfo, PlayPacketReceiver, PlayPacketSender, Server};
 
 pub mod event;
@@ -32,8 +33,8 @@ pub struct Client {
     username: Username<String>,
     uuid: Uuid,
     ip: IpAddr,
-    instance: Option<Entity>,
-    old_instance: Option<Entity>,
+    instance: Entity,
+    old_instance: Entity,
     position: DVec3,
     old_position: DVec3,
     yaw: f32,
@@ -80,8 +81,8 @@ impl Client {
             username: info.username,
             uuid: info.uuid,
             ip: info.ip,
-            instance: None,
-            old_instance: None,
+            instance: NULL_ENTITY,
+            old_instance: NULL_ENTITY,
             position: DVec3::ZERO,
             old_position: DVec3::ZERO,
             yaw: 0.0,
@@ -160,9 +161,9 @@ impl Client {
         self.send.is_none()
     }
 
-    /// Gets the [`Instance`] entity this client is located in. Returns `None`
-    /// if this client has not had its instance set.
-    pub fn instance(&self) -> Option<Entity> {
+    /// Gets the [`Instance`] entity this client is located in. The client is
+    /// not in any instance when they first join.
+    pub fn instance(&self) -> Entity {
         self.instance
     }
 
@@ -172,7 +173,7 @@ impl Client {
     /// The given [`Entity`] must exist and have the [`Instance`] component.
     /// Otherwise, the client is disconnected at the end of the tick.
     pub fn set_instance(&mut self, instance: Entity) {
-        self.instance = Some(instance);
+        self.instance = instance;
         self.needs_respawn = true;
     }
 
@@ -263,6 +264,25 @@ impl Client {
         self.death_location
     }
 
+    /// Gets the client's game mode.
+    pub fn game_mode(&self) -> GameMode {
+        self.game_mode
+    }
+
+    /// Sets the client's game mode.
+    pub fn set_game_mode(&mut self, game_mode: GameMode) {
+        if self.game_mode != game_mode {
+            self.game_mode = game_mode;
+
+            if !self.is_new {
+                self.write_packet(&GameEvent {
+                    kind: GameEventKind::ChangeGameMode,
+                    value: game_mode as i32 as f32,
+                });
+            }
+        }
+    }
+
     /// Sets the last death location. The client will see
     /// `minecraft:recovery_compass` items point at the provided position.
     /// If the client's current dimension differs from the provided
@@ -309,7 +329,7 @@ fn update_one_client(
     server: &Server,
     instances: &Query<&Instance>,
 ) -> anyhow::Result<()> {
-    let Some(instance) = client.instance.and_then(|e| instances.get(e).ok()) else {
+    let Ok(instance) = instances.get(client.instance) else {
         bail!("the client is not in an instance")
     };
 

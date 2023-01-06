@@ -22,6 +22,7 @@ use crate::client::event::{dispatch_client_events, register_client_events};
 use crate::client::{update_clients, Client};
 use crate::config::{AsyncCallbacks, Config, ConnectionMode};
 use crate::dimension::{Dimension, DimensionId};
+use crate::instance::Instance;
 use crate::player_textures::SignedPlayerTextures;
 use crate::server::connect::do_accept_loop;
 use crate::Despawned;
@@ -110,6 +111,11 @@ struct SharedServerInner {
 }
 
 impl SharedServer {
+    /// Creates a new [`Instance`] with the given dimension.
+    pub fn new_instance(&self, dimension: DimensionId) -> Instance {
+        Instance::new(dimension, self)
+    }
+
     /// Gets the socket address this server is bound to.
     pub fn address(&self) -> SocketAddr {
         self.0.address
@@ -152,10 +158,6 @@ impl SharedServer {
     }
 
     /// Obtains a [`Dimension`] by using its corresponding [`DimensionId`].
-    ///
-    /// It is safe but unspecified behavior to call this function using a
-    /// [`DimensionId`] not originating from the configuration used to construct
-    /// the server.
     pub fn dimension(&self, id: DimensionId) -> &Dimension {
         self.0
             .dimensions
@@ -174,10 +176,6 @@ impl SharedServer {
     }
 
     /// Obtains a [`Biome`] by using its corresponding [`BiomeId`].
-    ///
-    /// It is safe but unspecified behavior to call this function using a
-    /// [`BiomeId`] not originating from the configuration used to construct
-    /// the server.
     pub fn biome(&self, id: BiomeId) -> &Biome {
         self.0.biomes.get(id.0 as usize).expect("invalid biome ID")
     }
@@ -327,8 +325,7 @@ pub fn run_server(
 
     schedule.add_stage(
         "before user stage",
-        SystemStage::parallel()
-            .with_system(dispatch_client_events)
+        SystemStage::single(dispatch_client_events),
     );
 
     schedule.add_stage("user stage", stage);
@@ -363,7 +360,8 @@ pub fn run_server(
         // Run the scheduled stages.
         schedule.run_once(&mut cfg.world);
 
-        // Clear tracker state so that change detection works correctly.
+        // Clear tracker state so that change detection works correctly. It's important
+        // that we do this last.
         cfg.world.clear_trackers();
 
         let mut server = cfg.world.resource_mut::<Server>();

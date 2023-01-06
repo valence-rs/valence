@@ -1,7 +1,15 @@
 [package]
 name = "valence_new"
-version = "0.1.0"
+version = "0.2.0+mc1.19.3"
 edition = "2021"
+description = "A framework for building Minecraft servers in Rust."
+repository = "https://github.com/rj00a/valence"
+readme = "README.md"
+license = "MIT"
+keywords = ["minecraft", "gamedev", "server", "ecs"]
+categories = ["game-engines"]
+build = "build/main.rs"
+authors = ["Ryan Johnson <ryanj00a@gmail.com>"]
 
 [dependencies]
 anyhow = "1.0.65"

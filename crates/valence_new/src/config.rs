@@ -19,8 +19,7 @@ use crate::server::{NewClientInfo, SharedServer};
 /// [`run_server`]: crate::run_server.
 #[non_exhaustive]
 pub struct Config {
-    /// The Bevy ECS [`World`] to use for storing entities. This can be used to
-    /// perform initialization work before the server starts. Note that this is
+    /// The Bevy ECS [`World`] to use for storing entities. Note that this is
     /// unrelated to Minecraft's concept of a "world."
     ///
     /// # Default Value
