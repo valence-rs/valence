@@ -9,13 +9,15 @@ use tokio::sync::OwnedSemaphorePermit;
 use tracing::warn;
 use uuid::Uuid;
 use valence_protocol::packets::s2c::play::{
-    DisconnectPlay, GameEvent, KeepAliveS2c, LoginPlayOwned, RespawnOwned, SetDefaultSpawnPosition,
-    SetRenderDistance, SynchronizePlayerPosition,
+    DisconnectPlay, GameEvent, KeepAliveS2c, LoginPlayOwned, RespawnOwned, SetCenterChunk,
+    SetDefaultSpawnPosition, SetRenderDistance, SynchronizePlayerPosition, UnloadChunk,
 };
 use valence_protocol::types::{GameEventKind, GameMode, SyncPlayerPosLookFlags};
 use valence_protocol::{BlockPos, EncodePacket, Username, VarInt};
 
+use crate::chunk_pos::ChunkPos;
 use crate::dimension::DimensionId;
+use crate::entity::McEntity;
 use crate::instance::Instance;
 use crate::server::{NewClientInfo, PlayPacketReceiver, PlayPacketSender, Server};
 use crate::NULL_ENTITY;
@@ -30,6 +32,8 @@ pub struct Client {
     /// Ensures that we don't allow more connections to the server until the
     /// client is dropped.
     _permit: OwnedSemaphorePermit,
+    #[cfg(debug_assertions)]
+    loaded_chunks: HashSet<ChunkPos>,
     username: Username<String>,
     uuid: Uuid,
     ip: IpAddr,
@@ -78,6 +82,8 @@ impl Client {
             send: Some(send),
             recv,
             _permit: permit,
+            #[cfg(debug_assertions)]
+            loaded_chunks: HashSet::new(),
             username: info.username,
             uuid: info.uuid,
             ip: info.ip,
@@ -298,14 +304,22 @@ impl Client {
 
 /// The system for updating clients.
 pub(crate) fn update_clients(
-    mut clients: Query<&mut Client>,
-    instances: Query<&Instance>,
+    mut clients: Query<(&mut Client, Option<&McEntity>)>,
     server: Res<Server>,
+    instances: Query<&Instance>,
+    entities: Query<&McEntity>,
 ) {
     // TODO: what batch size to use?
-    clients.par_for_each_mut(1, |mut client| {
+    clients.par_for_each_mut(1, |(mut client, self_entity)| {
         if let Some(mut send) = client.send.take() {
-            match update_one_client(&mut client, &mut send, &server, &instances) {
+            match update_one_client(
+                &mut client,
+                self_entity,
+                &mut send,
+                &server,
+                &instances,
+                &entities,
+            ) {
                 Ok(()) => client.send = Some(send),
                 Err(e) => {
                     let _ = send.append_packet(&DisconnectPlay { reason: "".into() });
@@ -325,9 +339,11 @@ pub(crate) fn update_clients(
 
 fn update_one_client(
     client: &mut Client,
+    self_entity: Option<&McEntity>,
     send: &mut PlayPacketSender,
     server: &Server,
     instances: &Query<&Instance>,
+    entities: &Query<&McEntity>,
 ) -> anyhow::Result<()> {
     let Ok(instance) = instances.get(client.instance) else {
         bail!("the client is not in an instance")
@@ -404,15 +420,6 @@ fn update_one_client(
         // TODO: update changed player list.
     }
 
-    if client.is_new {
-        // This closes the "downloading terrain" screen.
-        // Send this after the initial chunks are loaded.
-        send.append_packet(&SetDefaultSpawnPosition {
-            position: BlockPos::at(client.position),
-            angle: client.yaw,
-        })?;
-    }
-
     // Check if it's time to send another keepalive.
     if server.current_tick() % (server.tick_rate() * 10) == 0 {
         if client.got_keepalive {
@@ -423,6 +430,68 @@ fn update_one_client(
         } else {
             bail!("timed out (no keepalive response)");
         }
+    }
+
+    let self_entity_pos;
+    let self_entity_instance;
+    let self_entity_range;
+
+    // TODO: attempt to check if the client's self-entity was changed and respond
+    // accordingly.
+
+    if let Some(entity) = self_entity {
+        self_entity_pos = ChunkPos::at(entity.position().x, entity.position().z);
+        self_entity_instance = entity.instance();
+        self_entity_range = entity.self_update_range.clone();
+    } else {
+        // Client isn't associated with a McEntity.
+        self_entity_pos = ChunkPos::default();
+        self_entity_instance = NULL_ENTITY;
+        self_entity_range = 0..0;
+    }
+
+    // The client's own chunk pos.
+    let old_chunk_pos = ChunkPos::at(client.old_position.x, client.old_position.z);
+    let chunk_pos = ChunkPos::at(client.position.x, client.position.z);
+
+    // Make sure the center chunk is set /before/ loading chunks.
+    if old_chunk_pos != chunk_pos {
+        send.append_packet(&SetCenterChunk {
+            chunk_x: VarInt(chunk_pos.x),
+            chunk_z: VarInt(chunk_pos.z),
+        })?;
+    }
+
+    // Iterate over all visible chunks from the previous tick.
+    if let Ok(old_instance) = instances.get(client.old_instance) {
+        old_chunk_pos.try_for_each_in_view(client.old_view_distance, |pos| {
+            if let Some(cell) = old_instance.cell(pos) {
+                if let Some(chunk) = &cell.chunk {
+                    if chunk.needs_reinit() {
+
+
+                        #[cfg(debug_assertions)]
+                        client.loaded_chunks.insert(pos);
+                    } else {
+                        chunk.
+                    }
+                } else if cell.chunk_removed {
+                    send.append_packet(&UnloadChunk {
+                        chunk_x: pos.x,
+                        chunk_z: pos.z,
+                    })?;
+                }
+            }
+        })?;
+    }
+
+    if client.is_new {
+        // This closes the "downloading terrain" screen.
+        // Send this after the initial chunks are loaded.
+        send.append_packet(&SetDefaultSpawnPosition {
+            position: BlockPos::at(client.position),
+            angle: client.yaw,
+        })?;
     }
 
     client.old_instance = client.instance;

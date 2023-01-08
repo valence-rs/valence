@@ -2,12 +2,12 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Formatter;
-use std::num::Wrapping;
 use std::ops::Range;
 
 use bevy_ecs::prelude::*;
 pub use data::{EntityKind, TrackedData};
 use glam::{DVec3, UVec3, Vec3};
+use rustc_hash::FxHashMap;
 use tracing::warn;
 use uuid::Uuid;
 use valence_protocol::entity_meta::{Facing, PaintingKind, Pose};
@@ -29,23 +29,16 @@ pub mod data;
 /// components on the server.
 #[derive(Resource)]
 pub struct McEntityManager {
-    uuid_to_entity: HashMap<Uuid, Entity>,
-    protocol_id_to_entity: HashMap<i32, Entity>,
-    next_protocol_id: Wrapping<i32>,
+    protocol_id_to_entity: FxHashMap<i32, Entity>,
+    next_protocol_id: i32,
 }
 
 impl McEntityManager {
     pub(crate) fn new() -> Self {
         Self {
-            uuid_to_entity: HashMap::new(),
-            protocol_id_to_entity: HashMap::new(),
-            next_protocol_id: Wrapping(1),
+            protocol_id_to_entity: HashMap::default(),
+            next_protocol_id: 1,
         }
-    }
-
-    /// Gets the [`Entity`] of the [`McEntity`] with the given UUID.
-    pub fn get_with_uuid(&self, uuid: Uuid) -> Option<Entity> {
-        self.uuid_to_entity.get(&uuid).cloned()
     }
 
     /// Gets the [`Entity`] of the [`McEntity`] with the given protocol ID.
@@ -54,35 +47,19 @@ impl McEntityManager {
     }
 }
 
-/// Adds new entities to the entity manager and sets their protocol ID.
-pub(crate) fn init_new_entities(
-    mut commands: Commands,
-    mut entities: Query<(Entity, &mut McEntity), Added<McEntity>>,
+/// Sets the protocol ID of new entities.
+pub(crate) fn init_entities(
+    mut entities: Query<&mut McEntity, Added<McEntity>>,
     mut manager: ResMut<McEntityManager>,
 ) {
-    for (id, mut entity) in &mut entities {
-        assert!(entity.protocol_id == 0);
-
-        if manager.next_protocol_id.0 == 0 {
+    for mut entity in &mut entities {
+        if manager.next_protocol_id == 0 {
             warn!("entity protocol ID overflow");
-            manager.next_protocol_id = Wrapping(1);
+            manager.next_protocol_id = 1;
         }
 
-        let protocol_id = manager.next_protocol_id.0;
-        manager.next_protocol_id += 1;
-
-        match manager.uuid_to_entity.entry(entity.uuid) {
-            Entry::Occupied(_) => {
-                warn!(entity = ?*entity, "entity UUID collision");
-                // TODO: this might be problematic.
-                commands.entity(id).remove::<McEntity>();
-            }
-            Entry::Vacant(ve) => {
-                ve.insert(id);
-                entity.protocol_id = protocol_id;
-                manager.protocol_id_to_entity.insert(protocol_id, id);
-            }
-        }
+        entity.protocol_id = manager.next_protocol_id;
+        manager.next_protocol_id = manager.next_protocol_id.wrapping_add(1);
     }
 }
 
@@ -92,7 +69,6 @@ pub(crate) fn deinit_despawned_entities(
     mut manager: ResMut<McEntityManager>,
 ) {
     for entity in &entities {
-        manager.uuid_to_entity.remove(&entity.uuid);
         manager.protocol_id_to_entity.remove(&entity.protocol_id);
     }
 }
@@ -161,11 +137,7 @@ impl McEntity {
         Self::with_uuid(kind, instance, Uuid::from_u128(rand::random()))
     }
 
-    /// Like [`Self::new`], but allows specifying the UUID of the component.
-    ///
-    /// Spawned entities must not have UUIDs that conflict. If they do, the
-    /// newly spawned entity will have its [`McEntity`] component removed at the
-    /// end of the tick. To check that a UUID might conflict, use
+    /// Like [`Self::new`], but allows specifying the UUID of the entity.
     pub fn with_uuid(kind: EntityKind, instance: Entity, uuid: Uuid) -> Self {
         Self {
             variants: TrackedData::new(kind),

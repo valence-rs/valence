@@ -50,3 +50,8 @@ impl Aabb {
         self.max
     }
 }
+
+/// Returns the minimum number of bits needed to represent the integer `n`.
+pub(crate) const fn bit_width(n: usize) -> usize {
+    (usize::BITS - n.leading_zeros()) as _
+}

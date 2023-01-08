@@ -4,6 +4,8 @@ use std::io::Write;
 use arrayvec::ArrayVec;
 use valence_protocol::{Encode, VarInt};
 
+use crate::math::bit_width;
+
 /// `HALF_LEN` must be equal to `ceil(LEN / 2)`.
 #[derive(Clone, Debug)]
 pub enum PalettedContainer<T, const LEN: usize, const HALF_LEN: usize> {
@@ -251,11 +253,6 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize> Indirect<T
         *u8 = (*u8 & !(0b1111 << shift)) | ((palette_idx as u8) << shift);
         Some(old_val)
     }
-}
-
-/// Returns the minimum number of bits needed to represent the integer `n`.
-const fn bit_width(n: usize) -> usize {
-    (usize::BITS - n.leading_zeros()) as _
 }
 
 fn compact_u64s_len(vals_count: usize, bits_per_val: usize) -> usize {

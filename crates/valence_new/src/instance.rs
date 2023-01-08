@@ -25,6 +25,7 @@ pub struct Instance {
     dimension: DimensionId,
     section_count: usize,
     min_y: i32,
+    biome_registry_len: usize,
     compression_threshold: Option<u32>,
     filler_sky_light_mask: Box<[u64]>,
     /// Sending filler light data causes the vanilla client to lag
@@ -37,20 +38,20 @@ pub struct Instance {
 
 pub(crate) struct PartitionCell {
     /// The chunk in this cell.
-    chunk: Option<Chunk<true>>,
+    pub(crate) chunk: Option<Chunk<true>>,
     /// If the chunk went from `Some` to `None` this tick.
-    chunk_removed: bool,
+    pub(crate) chunk_removed: bool,
     /// Minecraft entities in this cell.
-    entities: BTreeSet<Entity>,
+    pub(crate) entities: BTreeSet<Entity>,
     /// Entities that have entered the cell this tick, paired with the cell
     /// position in this instance they came from.
-    incoming: Vec<(Entity, Option<ChunkPos>)>,
+    pub(crate) incoming: Vec<(Entity, Option<ChunkPos>)>,
     /// Entities that have left the cell this tick, paired with the cell
     /// position in this instance they arrived at.
-    outgoing: Vec<(Entity, Option<ChunkPos>)>,
+    pub(crate) outgoing: Vec<(Entity, Option<ChunkPos>)>,
     /// A cache of packets to send to all clients that are in view of this cell
     /// at the end of the tick.
-    packet_buf: Vec<u8>,
+    pub(crate) packet_buf: Vec<u8>,
 }
 
 impl Instance {
@@ -70,6 +71,7 @@ impl Instance {
             dimension,
             section_count: (dim.height / 16) as usize,
             min_y: dim.min_y,
+            biome_registry_len: shared.biomes().len(),
             compression_threshold: shared.compression_threshold(),
             filler_sky_light_mask: sky_light_mask.into(),
             filler_sky_light_arrays: vec![LengthPrefixedArray([0xff; 2048]); light_section_count]
@@ -86,7 +88,9 @@ impl Instance {
         self.section_count
     }
 
-    pub fn insert_chunk(&mut self, pos: ChunkPos, chunk: Chunk) -> Option<Chunk> {
+    pub fn insert_chunk(&mut self, pos: ChunkPos, mut chunk: Chunk) -> Option<Chunk> {
+        chunk.resize(self.section_count);
+
         match self.partition.entry(pos) {
             Entry::Occupied(oe) => {
                 let cell = oe.into_mut();
@@ -135,6 +139,10 @@ impl Instance {
         self.partition
             .iter_mut()
             .flat_map(|(&pos, par)| par.chunk.as_mut().map(|c| (pos, c)))
+    }
+
+    pub(crate) fn cell(&self, pos: ChunkPos) -> Option<&PartitionCell> {
+        self.partition.get(&pos)
     }
 
     pub fn optimize(&mut self) {

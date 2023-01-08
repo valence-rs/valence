@@ -1,21 +1,25 @@
 use std::sync::Mutex;
 
 use bevy_ecs::prelude::*;
+use valence_nbt::compound;
 use valence_protocol::block::BlockState;
-use valence_protocol::packets::s2c::play::{BlockUpdate, UpdateSectionBlocksEncode};
-use valence_protocol::{BlockPos, VarInt, VarLong};
+use valence_protocol::packets::s2c::play::{
+    BlockUpdate, ChunkDataAndUpdateLightEncode, UpdateSectionBlocksEncode,
+};
+use valence_protocol::{BlockPos, Encode, VarInt, VarLong};
 
 use crate::biome::BiomeId;
 use crate::chunk_pos::ChunkPos;
 use crate::instance::paletted_container::PalettedContainer;
 use crate::instance::Instance;
+use crate::math::bit_width;
 use crate::packet::{PacketWriter, WritePacket};
 
 /// A chunk is a 16x16-meter segment of a world with a variable height. Chunks
 /// primarily contain blocks, biomes, and block entities.
 ///
 /// All chunks in an instance have the same height.
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct Chunk<const LOADED: bool = false> {
     sections: Vec<Section>,
     cached_init_packets: Mutex<Vec<u8>>,
@@ -24,7 +28,7 @@ pub struct Chunk<const LOADED: bool = false> {
     uuid: uuid::Uuid,
 }
 
-#[derive(Default, Debug)]
+#[derive(Clone, Default, Debug)]
 struct Section {
     block_states: PalettedContainer<BlockState, SECTION_BLOCK_COUNT, { SECTION_BLOCK_COUNT / 2 }>,
     biomes: PalettedContainer<BiomeId, SECTION_BIOME_COUNT, { SECTION_BIOME_COUNT / 2 }>,
@@ -84,6 +88,24 @@ impl Chunk<false> {
             track_changes: false,
             #[cfg(debug_assertions)]
             uuid: self.uuid,
+        }
+    }
+}
+
+impl Default for Chunk {
+    fn default() -> Self {
+        Self::new(0)
+    }
+}
+
+impl Clone for Chunk {
+    fn clone(&self) -> Self {
+        Self {
+            sections: self.sections.clone(),
+            cached_init_packets: Mutex::new(vec![]),
+            track_changes: false,
+            #[cfg(debug_assertions)]
+            uuid: uuid::Uuid::from_u128(rand::random()),
         }
     }
 }
@@ -180,25 +202,80 @@ impl Chunk<true> {
         self.track_changes = true;
     }
 
+    /// Returns if the full chunk data packet needs to be sent for this chunk
+    /// because the chunk is new, biomes were modified, or some other reason.
     pub(crate) fn needs_reinit(&self) -> bool {
         self.track_changes
     }
 
+    /// Writes the chunk data packet for this chunk with the given position.
+    /// This will initialize the chunk for the client.
     pub(crate) fn write_init_packets(
         &self,
         pos: ChunkPos,
         instance: &Instance,
         mut writer: impl WritePacket,
         scratch: &mut Vec<u8>,
-    ) {
+    ) -> anyhow::Result<()> {
         #[cfg(debug_assertions)]
         assert_eq!(
             instance.chunk(pos).unwrap().uuid,
             self.uuid,
-            "chunks and/or position arguments are incorrect"
+            "instance and/or position arguments are incorrect"
         );
 
-        todo!()
+        let mut lck = self.cached_init_packets.lock().unwrap();
+
+        if lck.is_empty() {
+            scratch.clear();
+
+            for sect in &self.sections {
+                sect.non_air_count.encode(&mut *scratch).unwrap();
+
+                sect.block_states.encode_mc_format(
+                    &mut *scratch,
+                    |b| b.to_raw().into(),
+                    4,
+                    8,
+                    bit_width(BlockState::max_raw().into()),
+                )?;
+
+                sect.biomes.encode_mc_format(
+                    &mut *scratch,
+                    |b| b.0.into(),
+                    0,
+                    3,
+                    bit_width(instance.biome_registry_len - 1),
+                )?;
+            }
+
+            let mut compression_scratch = vec![];
+
+            let mut writer = PacketWriter::new(
+                &mut lck,
+                instance.compression_threshold,
+                &mut compression_scratch,
+            );
+
+            writer.write_packet(&ChunkDataAndUpdateLightEncode {
+                chunk_x: pos.x,
+                chunk_z: pos.z,
+                heightmaps: &compound! {
+                    // TODO: MOTION_BLOCKING heightmap
+                },
+                blocks_and_biomes: scratch,
+                block_entities: &[],
+                trust_edges: true,
+                sky_light_mask: &instance.filler_sky_light_mask,
+                block_light_mask: &[],
+                empty_sky_light_mask: &[],
+                empty_block_light_mask: &[],
+                sky_light_arrays: &instance.filler_sky_light_arrays,
+                block_light_arrays: &[],
+            })?;
+        }
+
+        writer.write_bytes(&lck)
     }
 }
 
@@ -411,7 +488,6 @@ impl<const LOADED: bool> Chunk<LOADED> {
         }
     }
 
-
     /// Optimizes this chunk to use the minimum amount of memory possible. It
     /// has no observable effect on the contents of the chunk.
     ///
@@ -432,11 +508,14 @@ impl<const LOADED: bool> Chunk<LOADED> {
 
 #[cfg(test)]
 mod tests {
-    use valence_protocol::block::BlockState;
     use super::*;
+    use crate::protocol::block::BlockState;
 
     fn check<const LOADED: bool>(chunk: &Chunk<LOADED>, total_expected_change_count: usize) {
-        assert!(chunk.track_changes, "changes should be tracked for the test");
+        assert!(
+            chunk.track_changes,
+            "changes should be tracked for the test"
+        );
 
         let mut change_count = 0;
 
@@ -452,7 +531,10 @@ mod tests {
             change_count += sect.section_updates.len();
         }
 
-        assert_eq!(change_count, total_expected_change_count, "bad change count");
+        assert_eq!(
+            change_count, total_expected_change_count,
+            "bad change count"
+        );
     }
 
     #[test]

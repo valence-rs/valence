@@ -2,7 +2,7 @@ use std::iter::FusedIterator;
 
 use valence_protocol::BlockPos;
 
-/// The X and Z position of a chunk in a world.
+/// The X and Z position of a chunk in an [`Instance`](crate::instance::Instance).
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash, Debug)]
 pub struct ChunkPos {
     /// The X position of the chunk.
