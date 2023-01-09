@@ -1,4 +1,3 @@
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Formatter;
@@ -576,7 +575,7 @@ impl McEntity {
     /// the entity and initialize tracked data.
     pub(crate) fn write_init_packets(
         &self,
-        send: &mut impl WritePacket,
+        mut writer: impl WritePacket,
         position: DVec3,
         scratch: &mut Vec<u8>,
     ) -> anyhow::Result<()> {
@@ -594,13 +593,13 @@ impl McEntity {
 
         match &self.variants {
             TrackedData::Marker(_) => {}
-            TrackedData::ExperienceOrb(_) => send.write_packet(&SpawnExperienceOrb {
+            TrackedData::ExperienceOrb(_) => writer.write_packet(&SpawnExperienceOrb {
                 entity_id: VarInt(self.protocol_id),
                 position: position.to_array(),
                 count: 0, // TODO
             })?,
             TrackedData::Player(_) => {
-                send.write_packet(&SpawnPlayer {
+                writer.write_packet(&SpawnPlayer {
                     entity_id: VarInt(self.protocol_id),
                     player_uuid: self.uuid,
                     position: position.to_array(),
@@ -609,17 +608,19 @@ impl McEntity {
                 })?;
 
                 // Player spawn packet doesn't include head yaw for some reason.
-                send.write_packet(&SetHeadRotation {
+                writer.write_packet(&SetHeadRotation {
                     entity_id: VarInt(self.protocol_id),
                     head_yaw: ByteAngle::from_degrees(self.head_yaw),
                 })?;
             }
-            TrackedData::ItemFrame(e) => send.write_packet(&with_object_data(e.get_rotation()))?,
+            TrackedData::ItemFrame(e) => {
+                writer.write_packet(&with_object_data(e.get_rotation()))?
+            }
             TrackedData::GlowItemFrame(e) => {
-                send.write_packet(&with_object_data(e.get_rotation()))?
+                writer.write_packet(&with_object_data(e.get_rotation()))?
             }
 
-            TrackedData::Painting(_) => send.write_packet(&with_object_data(
+            TrackedData::Painting(_) => writer.write_packet(&with_object_data(
                 match ((self.yaw + 45.0).rem_euclid(360.0) / 90.0) as u8 {
                     0 => 3,
                     1 => 4,
@@ -628,20 +629,20 @@ impl McEntity {
                 },
             ))?,
             // TODO: set block state ID for falling block.
-            TrackedData::FallingBlock(_) => send.write_packet(&with_object_data(1))?,
+            TrackedData::FallingBlock(_) => writer.write_packet(&with_object_data(1))?,
             TrackedData::FishingBobber(e) => {
-                send.write_packet(&with_object_data(e.get_hook_entity_id()))?
+                writer.write_packet(&with_object_data(e.get_hook_entity_id()))?
             }
             TrackedData::Warden(e) => {
-                send.write_packet(&with_object_data((e.get_pose() == Pose::Emerging).into()))?
+                writer.write_packet(&with_object_data((e.get_pose() == Pose::Emerging).into()))?
             }
-            _ => send.write_packet(&with_object_data(0))?,
+            _ => writer.write_packet(&with_object_data(0))?,
         }
 
         scratch.clear();
         self.variants.write_initial_tracked_data(scratch);
         if !scratch.is_empty() {
-            send.write_packet(&SetEntityMetadata {
+            writer.write_packet(&SetEntityMetadata {
                 entity_id: VarInt(self.protocol_id),
                 metadata: RawBytes(scratch),
             })?;

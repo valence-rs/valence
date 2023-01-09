@@ -2,7 +2,8 @@ use std::iter::FusedIterator;
 
 use valence_protocol::BlockPos;
 
-/// The X and Z position of a chunk in an [`Instance`](crate::instance::Instance).
+/// The X and Z position of a chunk in an
+/// [`Instance`](crate::instance::Instance).
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash, Debug)]
 pub struct ChunkPos {
     /// The X position of the chunk.
@@ -46,6 +47,23 @@ impl ChunkPos {
         (self.z - dist..=self.z + dist)
             .flat_map(move |z| (self.x - dist..=self.x + dist).map(move |x| Self { x, z }))
             .filter(move |&p| self.is_in_view(p, view_dist))
+    }
+
+    #[inline]
+    pub fn for_each_in_view<F>(self, view_dist: u8, mut f: F)
+    where
+        F: FnMut(ChunkPos),
+    {
+        let dist = view_dist as i32 + EXTRA_VIEW_RADIUS;
+
+        for z in self.z - dist..=self.z + dist {
+            for x in self.x - dist..=self.x + dist {
+                let p = Self { x, z };
+                if self.is_in_view(p, view_dist) {
+                    f(p);
+                }
+            }
+        }
     }
 
     // `in_view` wasn't optimizing well so we're using this for now.

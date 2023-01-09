@@ -12,9 +12,9 @@ use valence_protocol::packets::c2s::play::{
 };
 use valence_protocol::packets::C2sPlayPacket;
 use valence_protocol::types::{
-    ChatMode, ClickContainerMode, CommandBlockMode, Difficulty, DiggingStatus, DisplayedSkinParts,
-    EntityInteraction, Hand, MainHand, RecipeBookId, StructureBlockAction, StructureBlockFlags,
-    StructureBlockMirror, StructureBlockMode, StructureBlockRotation,
+    Action, ChatMode, ClickContainerMode, CommandBlockMode, Difficulty, DiggingStatus,
+    DisplayedSkinParts, EntityInteraction, Hand, MainHand, RecipeBookId, StructureBlockAction,
+    StructureBlockFlags, StructureBlockMirror, StructureBlockMode, StructureBlockRotation,
 };
 use valence_protocol::{BlockFace, BlockPos, Ident, ItemStack};
 
@@ -664,7 +664,7 @@ pub(crate) fn dispatch_client_events(
         // Receive packet data for decoding.
         if !client.recv.try_recv() {
             // Client is disconnected
-            client.send = None;
+            client.is_disconnected = true;
             continue;
         }
 
@@ -675,7 +675,7 @@ pub(crate) fn dispatch_client_events(
                 ip = %client.ip,
                 "failed to dispatch events: {e:#}"
             );
-            client.send = None;
+            client.is_disconnected = true;
         }
     }
 }
@@ -706,8 +706,8 @@ fn handle_client(
             C2sPlayPacket::QueryBlockEntityTag(p) => {
                 events.0.query_block_entity.send(QueryBlockEntity {
                     client: entity,
-                    position: Default::default(),
-                    transaction_id: 0,
+                    position: p.position,
+                    transaction_id: p.transaction_id.0,
                 });
             }
             C2sPlayPacket::ChangeDifficulty(p) => {
@@ -922,7 +922,42 @@ fn handle_client(
                     pitch: p.pitch,
                 });
             }
-            C2sPlayPacket::PlayerCommand(p) => {}
+            C2sPlayPacket::PlayerCommand(p) => match p.action_id {
+                Action::StartSneaking => events
+                    .1
+                    .start_sneaking
+                    .send(StartSneaking { client: entity }),
+                Action::StopSneaking => {
+                    events.1.stop_sneaking.send(StopSneaking { client: entity })
+                }
+                Action::LeaveBed => events.1.leave_bed.send(LeaveBed { client: entity }),
+                Action::StartSprinting => events
+                    .1
+                    .start_sprinting
+                    .send(StartSprinting { client: entity }),
+                Action::StopSprinting => events
+                    .1
+                    .stop_sprinting
+                    .send(StopSprinting { client: entity }),
+                Action::StartJumpWithHorse => {
+                    events.1.start_jump_with_horse.send(StartJumpWithHorse {
+                        client: entity,
+                        jump_boost: p.jump_boost.0 as u8,
+                    })
+                }
+                Action::StopJumpWithHorse => events
+                    .1
+                    .stop_jump_with_horse
+                    .send(StopJumpWithHorse { client: entity }),
+                Action::OpenHorseInventory => events
+                    .1
+                    .open_horse_inventory
+                    .send(OpenHorseInventory { client: entity }),
+                Action::StartFlyingWithElytra => events
+                    .2
+                    .start_flying_with_elytra
+                    .send(StartFlyingWithElytra { client: entity }),
+            },
             C2sPlayPacket::PaddleBoat(p) => {
                 events.2.paddle_boat.send(PaddleBoat {
                     client: entity,

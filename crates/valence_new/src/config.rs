@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::future::Future;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
 
 use async_trait::async_trait;

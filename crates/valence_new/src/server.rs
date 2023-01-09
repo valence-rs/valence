@@ -22,7 +22,8 @@ use crate::client::event::{dispatch_client_events, register_client_events};
 use crate::client::{update_clients, Client};
 use crate::config::{AsyncCallbacks, Config, ConnectionMode};
 use crate::dimension::{Dimension, DimensionId};
-use crate::instance::Instance;
+use crate::entity::{deinit_despawned_entities, init_entities, McEntityManager};
+use crate::instance::{update_instances_post_client, update_instances_pre_client, Instance};
 use crate::player_textures::SignedPlayerTextures;
 use crate::server::connect::do_accept_loop;
 use crate::Despawned;
@@ -319,6 +320,7 @@ pub fn run_server(
 
     // Insert resources.
     cfg.world.insert_resource(server);
+    cfg.world.insert_resource(McEntityManager::new());
     register_client_events(&mut cfg.world);
 
     let mut schedule = Schedule::default();
@@ -333,8 +335,12 @@ pub fn run_server(
     schedule.add_stage(
         "after user stage",
         SystemStage::parallel()
-            .with_system(update_clients)
-            .with_system(despawn_entities.after(update_clients)),
+            .with_system(init_entities)
+            .with_system(update_instances_pre_client.after(init_entities))
+            .with_system(update_clients.after(update_instances_pre_client))
+            .with_system(update_instances_post_client.after(update_clients))
+            .with_system(deinit_despawned_entities.after(update_instances_post_client))
+            .with_system(despawn_entities.after(deinit_despawned_entities)),
     );
 
     let mut tick_start = Instant::now();

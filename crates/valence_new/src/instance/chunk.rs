@@ -1,12 +1,10 @@
-use std::sync::Mutex;
-
 use bevy_ecs::prelude::*;
 use valence_nbt::compound;
 use valence_protocol::block::BlockState;
 use valence_protocol::packets::s2c::play::{
     BlockUpdate, ChunkDataAndUpdateLightEncode, UpdateSectionBlocksEncode,
 };
-use valence_protocol::{BlockPos, Encode, VarInt, VarLong};
+use valence_protocol::{BlockPos, Encode, LengthPrefixedArray, VarInt, VarLong};
 
 use crate::biome::BiomeId;
 use crate::chunk_pos::ChunkPos;
@@ -22,8 +20,12 @@ use crate::packet::{PacketWriter, WritePacket};
 #[derive(Debug)]
 pub struct Chunk<const LOADED: bool = false> {
     sections: Vec<Section>,
-    cached_init_packets: Mutex<Vec<u8>>,
-    track_changes: bool,
+    /// Cached bytes of the chunk data packet. The cache is considered
+    /// invalidated if empty.
+    cached_init_packets: Vec<u8>,
+    /// If clients should receive the chunk data packet instead of block change
+    /// packets on update.
+    refresh: bool,
     #[cfg(debug_assertions)]
     uuid: uuid::Uuid,
 }
@@ -50,8 +52,8 @@ impl Chunk<false> {
     pub fn new(section_count: usize) -> Self {
         let mut chunk = Self {
             sections: vec![],
-            cached_init_packets: Mutex::new(vec![]),
-            track_changes: false,
+            cached_init_packets: vec![],
+            refresh: true,
             #[cfg(debug_assertions)]
             uuid: uuid::Uuid::from_u128(rand::random()),
         };
@@ -65,8 +67,6 @@ impl Chunk<false> {
     /// The chunk is extended and truncated from the top. New blocks are always
     /// [`BlockState::AIR`] and biomes are [`BiomeId::default()`].
     pub fn resize(&mut self, new_section_count: usize) {
-        self.track_changes = false;
-
         let old_section_count = self.section_count();
 
         if new_section_count > old_section_count {
@@ -80,12 +80,12 @@ impl Chunk<false> {
     }
 
     pub(super) fn into_loaded(mut self) -> Chunk<true> {
-        debug_assert!(!self.track_changes);
+        debug_assert!(self.refresh);
 
         Chunk {
             sections: self.sections,
             cached_init_packets: self.cached_init_packets,
-            track_changes: false,
+            refresh: true,
             #[cfg(debug_assertions)]
             uuid: self.uuid,
         }
@@ -102,8 +102,8 @@ impl Clone for Chunk {
     fn clone(&self) -> Self {
         Self {
             sections: self.sections.clone(),
-            cached_init_packets: Mutex::new(vec![]),
-            track_changes: false,
+            cached_init_packets: vec![],
+            refresh: true,
             #[cfg(debug_assertions)]
             uuid: uuid::Uuid::from_u128(rand::random()),
         }
@@ -112,7 +112,7 @@ impl Clone for Chunk {
 
 impl Chunk<true> {
     pub(super) fn into_unloaded(mut self) -> Chunk<false> {
-        self.cached_init_packets.get_mut().unwrap().clear();
+        self.cached_init_packets.clear();
 
         for sect in &mut self.sections {
             sect.section_updates.clear();
@@ -121,97 +121,69 @@ impl Chunk<true> {
         Chunk {
             sections: self.sections,
             cached_init_packets: self.cached_init_packets,
-            track_changes: false,
+            refresh: true,
             #[cfg(debug_assertions)]
             uuid: self.uuid,
         }
     }
 
-    pub(super) fn update_pre_client(
+    pub(super) fn write_update_packets(
         &mut self,
+        mut writer: impl WritePacket,
+        scratch: &mut Vec<u8>,
         pos: ChunkPos,
         min_y: i32,
-        packet_buf: &mut Vec<u8>,
         compression_threshold: Option<u32>,
-        scratch: &mut Vec<u8>,
-    ) {
-        if !self.track_changes {
-            // We weren't tracking changes, so the init cache might be invalid.
-            self.cached_init_packets.get_mut().unwrap().clear();
+        biome_registry_len: usize,
+        filler_sky_light_mask: &[u64],
+        filler_sky_light_arrays: &[LengthPrefixedArray<u8, 2048>],
+    ) -> anyhow::Result<()> {
+        if self.refresh {
+            writer.write_bytes(self.get_init_packet_bytes(
+                pos,
+                scratch,
+                compression_threshold,
+                biome_registry_len,
+                filler_sky_light_mask,
+                filler_sky_light_arrays,
+            )?)
+        } else {
+            for (sect_y, sect) in &mut self.sections.iter_mut().enumerate() {
+                if sect.section_updates.len() == 1 {
+                    let packed = sect.section_updates[0].0 as u64;
+                    let offset_z = (packed >> 4) & 0xff;
+                    let offset_x = (packed >> 8) & 0xff;
+                    let block = packed >> 12;
 
-            for sect in &mut self.sections {
-                sect.section_updates.clear();
-            }
+                    let global_x = pos.x * 16 + offset_x as i32;
+                    let global_y = min_y + sect_y as i32 * 16;
+                    let global_z = pos.z * 16 + offset_z as i32;
 
-            return;
-        }
-
-        let mut init_cache_is_invalid = false;
-
-        for (sect_y, sect) in &mut self.sections.iter_mut().enumerate() {
-            // TODO: sort and dedup section updates?
-
-            if sect.section_updates.len() == 1 {
-                init_cache_is_invalid = true;
-
-                let packed = sect.section_updates[0].0 as u64;
-                let offset_z = (packed >> 4) & 0xff;
-                let offset_x = (packed >> 8) & 0xff;
-                let block = packed >> 12;
-
-                let global_x = pos.x * 16 + offset_x as i32;
-                let global_y = min_y + sect_y as i32 * 16;
-                let global_z = pos.z * 16 + offset_z as i32;
-
-                let mut writer = PacketWriter::new(packet_buf, compression_threshold, scratch);
-
-                writer
-                    .write_packet(&BlockUpdate {
+                    writer.write_packet(&BlockUpdate {
                         position: BlockPos::new(global_x, global_y, global_z),
                         block_id: VarInt(block as i32),
-                    })
-                    .unwrap();
-            } else if sect.section_updates.len() > 1 {
-                init_cache_is_invalid = true;
+                    })?
+                } else if sect.section_updates.len() > 1 {
+                    let chunk_section_position = (pos.x as i64) << 42
+                        | (pos.z as i64 & 0x3fffff) << 20
+                        | (sect_y as i64 + min_y.div_euclid(16) as i64) & 0xfffff;
 
-                let chunk_section_position = (pos.x as i64) << 42
-                    | (pos.z as i64 & 0x3fffff) << 20
-                    | (sect_y as i64 + min_y.div_euclid(16) as i64) & 0xfffff;
-
-                let mut writer = PacketWriter::new(packet_buf, compression_threshold, scratch);
-
-                writer
-                    .write_packet(&UpdateSectionBlocksEncode {
+                    writer.write_packet(&UpdateSectionBlocksEncode {
                         chunk_section_position,
                         invert_trust_edges: false,
                         blocks: &sect.section_updates,
-                    })
-                    .unwrap();
+                    })?;
+                }
             }
 
-            sect.section_updates.clear();
+            Ok(())
         }
-
-        if init_cache_is_invalid {
-            // The chunk was modified, so the chunk data packet will need to be rebuilt.
-            self.cached_init_packets.get_mut().unwrap().clear();
-        }
-    }
-
-    pub(super) fn update_post_client(&mut self) {
-        self.track_changes = true;
-    }
-
-    /// Returns if the full chunk data packet needs to be sent for this chunk
-    /// because the chunk is new, biomes were modified, or some other reason.
-    pub(crate) fn needs_reinit(&self) -> bool {
-        self.track_changes
     }
 
     /// Writes the chunk data packet for this chunk with the given position.
     /// This will initialize the chunk for the client.
     pub(crate) fn write_init_packets(
-        &self,
+        &mut self,
         pos: ChunkPos,
         instance: &Instance,
         mut writer: impl WritePacket,
@@ -224,9 +196,26 @@ impl Chunk<true> {
             "instance and/or position arguments are incorrect"
         );
 
-        let mut lck = self.cached_init_packets.lock().unwrap();
+        writer.write_bytes(self.get_init_packet_bytes(
+            pos,
+            scratch,
+            instance.compression_threshold,
+            instance.biome_registry_len,
+            &instance.filler_sky_light_mask,
+            &instance.filler_sky_light_arrays,
+        )?)
+    }
 
-        if lck.is_empty() {
+    pub fn get_init_packet_bytes(
+        &mut self,
+        pos: ChunkPos,
+        scratch: &mut Vec<u8>,
+        compression_threshold: Option<u32>,
+        biome_registry_len: usize,
+        filler_sky_light_mask: &[u64],
+        filler_sky_light_arrays: &[LengthPrefixedArray<u8, 2048>],
+    ) -> anyhow::Result<&[u8]> {
+        if self.cached_init_packets.is_empty() {
             scratch.clear();
 
             for sect in &self.sections {
@@ -245,15 +234,15 @@ impl Chunk<true> {
                     |b| b.0.into(),
                     0,
                     3,
-                    bit_width(instance.biome_registry_len - 1),
+                    bit_width(biome_registry_len - 1),
                 )?;
             }
 
             let mut compression_scratch = vec![];
 
             let mut writer = PacketWriter::new(
-                &mut lck,
-                instance.compression_threshold,
+                &mut self.cached_init_packets,
+                compression_threshold,
                 &mut compression_scratch,
             );
 
@@ -266,16 +255,24 @@ impl Chunk<true> {
                 blocks_and_biomes: scratch,
                 block_entities: &[],
                 trust_edges: true,
-                sky_light_mask: &instance.filler_sky_light_mask,
+                sky_light_mask: filler_sky_light_mask,
                 block_light_mask: &[],
                 empty_sky_light_mask: &[],
                 empty_block_light_mask: &[],
-                sky_light_arrays: &instance.filler_sky_light_arrays,
+                sky_light_arrays: filler_sky_light_arrays,
                 block_light_arrays: &[],
             })?;
         }
 
-        writer.write_bytes(&lck)
+        Ok(&self.cached_init_packets)
+    }
+
+    pub(super) fn update_post_client(&mut self) {
+        self.refresh = false;
+
+        for sect in &mut self.sections {
+            sect.section_updates.clear();
+        }
     }
 }
 
@@ -342,7 +339,8 @@ impl<const LOADED: bool> Chunk<LOADED> {
                 _ => {}
             }
 
-            if LOADED && self.track_changes {
+            if LOADED && !self.refresh {
+                self.cached_init_packets.clear();
                 let compact = (block.to_raw() as i64) << 12 | (x << 8 | z << 4 | sect_y) as i64;
                 sect.section_updates.push(VarLong(compact));
             }
@@ -371,9 +369,11 @@ impl<const LOADED: bool> Chunk<LOADED> {
             )
         };
 
-        if LOADED && self.track_changes {
+        if LOADED && !self.refresh {
             if let PalettedContainer::Single(single) = &sect.block_states {
                 if block != *single {
+                    self.cached_init_packets.clear();
+
                     // The whole section is being modified, so any previous modifications would be
                     // overwritten.
                     sect.section_updates.clear();
@@ -394,6 +394,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
                     for x in 0..16 {
                         let idx = x + z * 16 + sect_y * (16 * 16);
                         if block != sect.block_states.get(idx) {
+                            self.cached_init_packets.clear();
                             let packed = block_bits | (x << 8 | z << 4 | sect_y) as i64;
                             sect.section_updates.push(VarLong(packed));
                         }
@@ -450,7 +451,8 @@ impl<const LOADED: bool> Chunk<LOADED> {
             .set(x + z * 4 + y % 4 * 4 * 4, biome);
 
         if LOADED && biome != old_biome {
-            self.track_changes = false;
+            self.cached_init_packets.clear();
+            self.refresh = true;
         }
 
         old_biome
@@ -479,13 +481,8 @@ impl<const LOADED: bool> Chunk<LOADED> {
         sect.biomes.fill(biome);
 
         // TODO: this is set unconditionally, but it doesn't have to be.
-        self.track_changes = false;
-    }
-
-    pub fn prepare_large_changes(&mut self) {
-        if LOADED {
-            self.track_changes = false;
-        }
+        self.cached_init_packets.clear();
+        self.refresh = true;
     }
 
     /// Optimizes this chunk to use the minimum amount of memory possible. It
@@ -496,7 +493,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
     /// via [`Self::set_block_state`] and [`Self::set_biome`].
     pub fn optimize(&mut self) {
         self.sections.shrink_to_fit();
-        self.cached_init_packets.get_mut().unwrap().shrink_to_fit();
+        self.cached_init_packets.shrink_to_fit();
 
         for sect in &mut self.sections {
             sect.section_updates.shrink_to_fit();
@@ -512,10 +509,7 @@ mod tests {
     use crate::protocol::block::BlockState;
 
     fn check<const LOADED: bool>(chunk: &Chunk<LOADED>, total_expected_change_count: usize) {
-        assert!(
-            chunk.track_changes,
-            "changes should be tracked for the test"
-        );
+        assert!(!chunk.refresh, "chunk should not be refreshed for the test");
 
         let mut change_count = 0;
 
@@ -540,7 +534,7 @@ mod tests {
     #[test]
     fn block_state_changes() {
         let mut chunk = Chunk::new(5).into_loaded();
-        chunk.track_changes = true;
+        chunk.refresh = false;
 
         chunk.set_block_state(0, 0, 0, BlockState::SPONGE);
         check(&chunk, 1);

@@ -17,10 +17,10 @@ pub mod server;
 /// A [`Component`] for marking entities that should be despawned at the end of
 /// the tick.
 ///
-/// In Valence, some built-in components such as [`McEntity`] are not allowed to be
-/// removed from the [`World`] directly. Instead, you must give the entities you
-/// wish to despawn the `Despawned` component. At the end of the tick, Valence
-/// will despawn all entities with this component for you.
+/// In Valence, some built-in components such as [`McEntity`] are not allowed to
+/// be removed from the [`World`] directly. Instead, you must give the entities
+/// you wish to despawn the `Despawned` component. At the end of the tick,
+/// Valence will despawn all entities with this component for you.
 ///
 /// It is legal to remove components or delete entities that Valence does not
 /// know about at any time.

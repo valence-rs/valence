@@ -26,12 +26,14 @@ pub mod event;
 
 #[derive(Component)]
 pub struct Client {
-    /// Is `None` when the client is disconnected.
-    send: Option<PlayPacketSender>,
+    send: PlayPacketSender,
     recv: PlayPacketReceiver,
+    is_disconnected: bool,
     /// Ensures that we don't allow more connections to the server until the
     /// client is dropped.
     _permit: OwnedSemaphorePermit,
+    /// To make sure we're not loading already loaded chunks, or unloading
+    /// unloaded chunks.
     #[cfg(debug_assertions)]
     loaded_chunks: HashSet<ChunkPos>,
     username: Username<String>,
@@ -45,15 +47,10 @@ pub struct Client {
     pitch: f32,
     game_mode: GameMode,
     block_change_sequence: i32,
-    /*
-    /// To make sure we're not loading already loaded chunks, or unloading
-    /// unloaded chunks.
-    #[cfg(debug_assertions)]
-    loaded_chunks: HashSet<ChunkPos>,
-    */
     view_distance: u8,
     old_view_distance: u8,
     death_location: Option<(DimensionId, BlockPos)>,
+    entities_to_despawn: Vec<VarInt>,
     got_keepalive: bool,
     last_keepalive_id: u64,
     /// Counts up as teleports are made.
@@ -79,8 +76,9 @@ impl Client {
         info: NewClientInfo,
     ) -> Self {
         Self {
-            send: Some(send),
+            send,
             recv,
+            is_disconnected: false,
             _permit: permit,
             #[cfg(debug_assertions)]
             loaded_chunks: HashSet::new(),
@@ -98,6 +96,7 @@ impl Client {
             view_distance: 2,
             old_view_distance: 2,
             death_location: None,
+            entities_to_despawn: vec![],
             is_new: true,
             needs_respawn: false,
             is_hardcore: false,
@@ -119,15 +118,15 @@ impl Client {
     where
         P: EncodePacket + fmt::Debug + ?Sized,
     {
-        if let Some(send) = &mut self.send {
-            if let Err(e) = send.append_packet(pkt) {
+        if let Err(e) = self.send.append_packet(pkt) {
+            if !self.is_disconnected {
+                self.is_disconnected = true;
                 warn!(
                     username = %self.username,
                     uuid = %self.uuid,
                     ip = %self.ip,
                     "failed to write packet: {e:#}"
                 );
-                self.send = None;
             }
         }
     }
@@ -138,9 +137,11 @@ impl Client {
     ///
     /// [`write_packet`]: Self::write_packet
     pub fn write_packet_bytes(&mut self, bytes: &[u8]) {
-        if let Some(send) = &mut self.send {
-            send.append_bytes(bytes);
-        }
+        self.send.append_bytes(bytes);
+    }
+
+    pub(crate) fn despawn_entity(&mut self, protocol_id: i32) {
+        todo!("push protocol id to buffer");
     }
 
     /// Gets the username of this client.
@@ -164,7 +165,7 @@ impl Client {
     /// your responsibility to despawn disconnected client entities, since
     /// they will not be automatically despawned by Valence.
     pub fn is_disconnected(&self) -> bool {
-        self.send.is_none()
+        self.is_disconnected
     }
 
     /// Gets the [`Instance`] entity this client is located in. The client is
@@ -252,6 +253,10 @@ impl Client {
         self.view_distance
     }
 
+    pub(crate) fn old_view_distance(&self) -> u8 {
+        self.old_view_distance
+    }
+
     /// Sets the view distance. The client will not be able to see chunks and
     /// entities past this distance.
     ///
@@ -302,6 +307,204 @@ impl Client {
     }
 }
 
+pub(crate) fn update_clients(
+    server: Res<Server>,
+    mut clients: Query<(&mut Client, Option<&McEntity>)>,
+    instances: Query<&mut Instance>,
+    entities: Query<&McEntity>,
+) {
+    for (mut client, self_entity) in &mut clients {
+        if !client.is_disconnected() {
+            if let Err(e) =
+                update_one_client(&mut client, self_entity, &server, &instances, &entities)
+            {
+                let _ = client.write_packet(&DisconnectPlay { reason: "".into() });
+                client.is_disconnected = true;
+                warn!(
+                    username = %client.username,
+                    uuid = %client.uuid,
+                    ip = %client.ip,
+                    "error updating client: {e:#}"
+                );
+            }
+        }
+
+        client.is_new = false;
+    }
+}
+
+fn update_one_client(
+    client: &mut Client,
+    self_entity: Option<&McEntity>,
+    server: &Server,
+    instances: &Query<&mut Instance>,
+    entities: &Query<&McEntity>,
+) -> anyhow::Result<()> {
+    let Ok(instance) = instances.get(client.instance) else {
+        bail!("the client is not in an instance")
+    };
+
+    // Send the login (play) packet and other initial packets. We defer this until
+    // now so that the user can set the client's initial location, game
+    // mode, etc.
+    if client.is_new {
+        client.needs_respawn = false;
+
+        let dimension_names: Vec<_> = server
+            .dimensions()
+            .map(|(id, _)| id.dimension_name())
+            .collect();
+
+        // The login packet is prepended so that it is sent before all the other
+        // packets. Some packets don't work correctly when sent before the login packet,
+        // which is why we're doing this.
+        client.send.prepend_packet(&LoginPlayOwned {
+            entity_id: 0, // ID 0 is reserved for clients.
+            is_hardcore: client.is_hardcore,
+            game_mode: client.game_mode,
+            previous_game_mode: -1,
+            dimension_names,
+            registry_codec: server.registry_codec().clone(),
+            dimension_type_name: instance.dimension().dimension_type_name(),
+            dimension_name: instance.dimension().dimension_name(),
+            hashed_seed: 42,
+            max_players: VarInt(0), // Unused
+            view_distance: VarInt(client.view_distance() as i32),
+            simulation_distance: VarInt(16),
+            reduced_debug_info: false,
+            enable_respawn_screen: client.has_respawn_screen,
+            is_debug: false,
+            is_flat: client.is_flat,
+            last_death_location: client
+                .death_location
+                .map(|(id, pos)| (id.dimension_name(), pos)),
+        })?;
+
+        /*
+        // TODO: enable all the features?
+        send.append_packet(&FeatureFlags {
+            features: vec![Ident::new("vanilla").unwrap()],
+        })?;
+        */
+
+        // TODO: write player list init packets.
+
+
+    } else {
+        if client.view_distance != client.old_view_distance {
+            // Change the render distance fog.
+            client
+                .send
+                .append_packet(&SetRenderDistance(VarInt(client.view_distance.into())))?;
+        }
+
+        if client.needs_respawn {
+            client.needs_respawn = false;
+
+            client.send.append_packet(&RespawnOwned {
+                dimension_type_name: instance.dimension().dimension_type_name(),
+                dimension_name: instance.dimension().dimension_name(),
+                hashed_seed: 0,
+                game_mode: client.game_mode,
+                previous_game_mode: -1,
+                is_debug: false,
+                is_flat: client.is_flat,
+                copy_metadata: true,
+                last_death_location: client
+                    .death_location
+                    .map(|(id, pos)| (id.dimension_name(), pos)),
+            })?;
+        }
+
+        // TODO: update changed player list.
+    }
+
+    // Check if it's time to send another keepalive.
+    if server.current_tick() % (server.tick_rate() * 10) == 0 {
+        if client.got_keepalive {
+            let id = rand::random();
+            client.send.append_packet(&KeepAliveS2c { id })?;
+            client.last_keepalive_id = id;
+            client.got_keepalive = false;
+        } else {
+            bail!("timed out (no keepalive response)");
+        }
+    }
+
+    /*
+    let self_entity_pos;
+    let self_entity_instance;
+    let self_entity_range;
+
+    // TODO: attempt to check if the client's self-entity was changed and respond
+    //       accordingly.
+
+    if let Some(entity) = self_entity {
+        self_entity_pos = ChunkPos::at(entity.position().x, entity.position().z);
+        self_entity_instance = entity.instance();
+        self_entity_range = entity.self_update_range.clone();
+    } else {
+        // Client isn't associated with a McEntity.
+        self_entity_pos = ChunkPos::default();
+        self_entity_instance = NULL_ENTITY;
+        self_entity_range = 0..0;
+    }
+    */
+
+    // The client's own chunk pos.
+    let old_chunk_pos = ChunkPos::at(client.old_position.x, client.old_position.z);
+    let chunk_pos = ChunkPos::at(client.position.x, client.position.z);
+
+    // Make sure the center chunk is set /before/ loading chunks.
+    if old_chunk_pos != chunk_pos {
+        client.send.append_packet(&SetCenterChunk {
+            chunk_x: VarInt(chunk_pos.x),
+            chunk_z: VarInt(chunk_pos.z),
+        })?;
+    }
+
+    if client.old_instance != client.new_instance {
+        // Unload all chunks and entities in old view.
+        if let Ok(old_instance) = instances.get(client.old_instance) {
+            // TODO: only send unload packets when old dimension == new dimension, since the
+            //       client will do the unloading for us in that case?
+
+            // old_chunk_pos.try_for_each_in_view(self.old_view_distance, |pos| {
+            //     if let Some(cell) = old_instance.cell(pos) {
+            //         if let Some(chunk) = &cell.chunk {
+            //
+            //         }
+            //     }
+            //
+            //     Ok(())
+            // })?;
+        }
+    }
+
+    // TODO: load chunks here.
+
+    if client.is_new {
+        // This closes the "downloading terrain" screen.
+        // Send this after the initial chunks are loaded.
+        client.send.append_packet(&SetDefaultSpawnPosition {
+            position: BlockPos::at(client.position),
+            angle: client.yaw,
+        })?;
+    }
+
+    client.old_instance = client.instance;
+    client.old_position = client.position;
+    client.old_view_distance = client.view_distance;
+
+    client
+        .send
+        .flush()
+        .context("failed to flush packet queue")?;
+
+    Ok(())
+}
+
+/*
 /// The system for updating clients.
 pub(crate) fn update_clients(
     mut clients: Query<(&mut Client, Option<&McEntity>)>,
@@ -437,7 +640,7 @@ fn update_one_client(
     let self_entity_range;
 
     // TODO: attempt to check if the client's self-entity was changed and respond
-    // accordingly.
+    //       accordingly.
 
     if let Some(entity) = self_entity {
         self_entity_pos = ChunkPos::at(entity.position().x, entity.position().z);
@@ -462,18 +665,19 @@ fn update_one_client(
         })?;
     }
 
+    /*
     // Iterate over all visible chunks from the previous tick.
     if let Ok(old_instance) = instances.get(client.old_instance) {
         old_chunk_pos.try_for_each_in_view(client.old_view_distance, |pos| {
             if let Some(cell) = old_instance.cell(pos) {
                 if let Some(chunk) = &cell.chunk {
                     if chunk.needs_reinit() {
-
+                        todo!();
 
                         #[cfg(debug_assertions)]
                         client.loaded_chunks.insert(pos);
                     } else {
-                        chunk.
+                        todo!();
                     }
                 } else if cell.chunk_removed {
                     send.append_packet(&UnloadChunk {
@@ -483,7 +687,7 @@ fn update_one_client(
                 }
             }
         })?;
-    }
+    }*/
 
     if client.is_new {
         // This closes the "downloading terrain" screen.
@@ -503,3 +707,4 @@ fn update_one_client(
 
     Ok(())
 }
+*/

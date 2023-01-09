@@ -21,6 +21,7 @@ bitfield-struct = "0.2.0"
 bytes = "1.2.1"
 flume = "0.10.14"
 glam = "0.22.0"
+hashbrown = "0.13.1" # TODO: remove when get_many_mut is stabilized.
 hmac = "0.12.1"
 num = "0.4.0"
 paste = "1.0.11"
