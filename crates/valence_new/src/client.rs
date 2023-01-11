@@ -41,6 +41,7 @@ pub struct Client {
     ip: IpAddr,
     instance: Entity,
     old_instance: Entity,
+    new_instance: Entity,
     position: DVec3,
     old_position: DVec3,
     yaw: f32,
@@ -87,6 +88,7 @@ impl Client {
             ip: info.ip,
             instance: NULL_ENTITY,
             old_instance: NULL_ENTITY,
+            new_instance: NULL_ENTITY,
             position: DVec3::ZERO,
             old_position: DVec3::ZERO,
             yaw: 0.0,
@@ -388,8 +390,6 @@ fn update_one_client(
         */
 
         // TODO: write player list init packets.
-
-
     } else {
         if client.view_distance != client.old_view_distance {
             // Change the render distance fog.
@@ -466,11 +466,12 @@ fn update_one_client(
     if client.old_instance != client.new_instance {
         // Unload all chunks and entities in old view.
         if let Ok(old_instance) = instances.get(client.old_instance) {
-            // TODO: only send unload packets when old dimension == new dimension, since the
-            //       client will do the unloading for us in that case?
+            // TODO: only send unload packets when old dimension == new
+            // dimension, since the       client will do the
+            // unloading for us in that case?
 
-            // old_chunk_pos.try_for_each_in_view(self.old_view_distance, |pos| {
-            //     if let Some(cell) = old_instance.cell(pos) {
+            // old_chunk_pos.try_for_each_in_view(self.old_view_distance, |pos|
+            // {     if let Some(cell) = old_instance.cell(pos) {
             //         if let Some(chunk) = &cell.chunk {
             //
             //         }
