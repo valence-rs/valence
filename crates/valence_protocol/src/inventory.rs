@@ -2,6 +2,7 @@ use valence_derive::{Decode, Encode};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
 pub enum InventoryKind {
+    Player,
     Generic9x1,
     Generic9x2,
     Generic9x3,
@@ -33,6 +34,7 @@ impl InventoryKind {
     /// inventory slots.
     pub const fn slot_count(self) -> usize {
         match self {
+            InventoryKind::Player => 45,
             InventoryKind::Generic9x1 => 9,
             InventoryKind::Generic9x2 => 9 * 2,
             InventoryKind::Generic9x3 => 9 * 3,
