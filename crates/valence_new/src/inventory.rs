@@ -2,7 +2,10 @@ use std::iter::FusedIterator;
 use std::num::Wrapping;
 
 use bevy_ecs::prelude::*;
-use valence_protocol::{InventoryKind, ItemStack, Text};
+use valence_protocol::packets::s2c::play::{SetContainerContentEncode, SetContainerSlotEncode};
+use valence_protocol::{InventoryKind, ItemStack, Text, VarInt};
+
+use crate::client::Client;
 
 #[derive(Debug, Clone, Component)]
 pub struct Inventory {
@@ -98,5 +101,56 @@ impl Inventory {
 
     pub(crate) fn slot_slice(&self) -> &[Option<ItemStack>] {
         self.slots.as_ref()
+    }
+}
+
+pub fn update_player_inventories(mut query: Query<(&mut Inventory, &mut Client)>) {
+    for (mut inventory, mut client) in query.iter_mut() {
+        if inventory.modified != 0 {
+            if inventory.modified == u64::MAX && client.cursor_item_modified {
+                // Update the whole inventory.
+                let cursor_item = client.cursor_item.clone();
+                client.write_packet(&SetContainerContentEncode {
+                    window_id: 0,
+                    state_id: VarInt(inventory.state_id.0),
+                    slots: inventory.slot_slice(),
+                    carried_item: &cursor_item,
+                });
+
+                inventory.state_id += 1;
+                client.cursor_item_modified = false;
+            } else {
+                // Update only the slots that were modified.
+                let mut sent_updates = 0;
+                for (i, slot) in inventory.slots.iter().enumerate() {
+                    if (inventory.modified >> i) & 1 == 1 {
+                        client.write_packet(&SetContainerSlotEncode {
+                            window_id: 0,
+                            state_id: VarInt(inventory.state_id.0 + sent_updates),
+                            slot_idx: i as i16,
+                            slot_data: slot.as_ref(),
+                        });
+                        sent_updates += 1;
+                    }
+                }
+                inventory.state_id += sent_updates;
+            }
+
+            inventory.modified = 0;
+        }
+
+        if client.cursor_item_modified {
+            client.cursor_item_modified = false;
+
+            let cursor_item = client.cursor_item.clone();
+            client.write_packet(&SetContainerSlotEncode {
+                window_id: -1,
+                state_id: VarInt(inventory.state_id.0),
+                slot_idx: -1,
+                slot_data: cursor_item.as_ref(),
+            });
+
+            inventory.state_id += 1;
+        }
     }
 }
