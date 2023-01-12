@@ -15,10 +15,14 @@ pub struct Inventory {
 }
 
 impl Inventory {
-    pub fn new(kind: InventoryKind, title: Option<impl Into<Text>>) -> Self {
+    pub fn new(kind: InventoryKind) -> Self {
+        // TODO: default title to the correct translation key instead
+        Self::new_with_title(kind, "Inventory")
+    }
+
+    pub fn new_with_title(kind: InventoryKind, title: impl Into<Text>) -> Self {
         Inventory {
-            // TODO: default to the correct translation key instead
-            title: title.map(Into::into).unwrap_or("Inventory".into()),
+            title: title.into(),
             kind,
             slots: vec![None; kind.slot_count()].into(),
             modified: 0,
