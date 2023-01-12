@@ -31,7 +31,7 @@ For instance, if you only want to print the packets `Foo`, `Bar`, and `Baz`, you
 as `^(Foo|Bar|Baz)$` with the `-i` flag.
 
 ```sh
-cargo r -r -p packet_inspector -- 127.0.0.1:25566 127.0.0.1:25565 '^(Foo|Bar|Baz)$'
+cargo r -r -p packet_inspector -- 127.0.0.1:25566 127.0.0.1:25565 -i '^(Foo|Bar|Baz)$'
 ```
 
 Packets are printed to `stdout` while errors are printed to `stderr`. If you only want to see errors in your terminal,
