@@ -13,7 +13,7 @@ use valence_protocol::packets::s2c::play::{
     SetDefaultSpawnPosition, SetRenderDistance, SynchronizePlayerPosition, UnloadChunk,
 };
 use valence_protocol::types::{GameEventKind, GameMode, SyncPlayerPosLookFlags};
-use valence_protocol::{BlockPos, EncodePacket, Username, VarInt};
+use valence_protocol::{BlockPos, EncodePacket, ItemStack, Username, VarInt};
 
 use crate::chunk_pos::ChunkPos;
 use crate::dimension::DimensionId;
@@ -67,6 +67,10 @@ pub struct Client {
     is_hardcore: bool,
     is_flat: bool,
     has_respawn_screen: bool,
+    /// The item that the client thinks it's holding under the mouse
+    /// cursor.
+    pub(crate) cursor_item: Option<ItemStack>,
+    pub(crate) cursor_item_modified: bool,
 }
 
 impl Client {
@@ -108,6 +112,8 @@ impl Client {
             last_keepalive_id: 0,
             teleport_id_counter: 0,
             pending_teleports: 0,
+            cursor_item: None,
+            cursor_item_modified: false,
         }
     }
 
@@ -306,6 +312,21 @@ impl Client {
     /// (re)spawns.
     pub fn set_death_location(&mut self, location: Option<(DimensionId, BlockPos)>) {
         self.death_location = location;
+    }
+
+    /// The item that the client thinks it's holding under the mouse
+    /// cursor. Only relevant when the client has an open inventory.
+    pub fn cursor_item(&self) -> Option<&ItemStack> {
+        self.cursor_item.as_ref()
+    }
+
+    pub fn replace_cursor_item(&mut self, item: impl Into<Option<ItemStack>>) -> Option<ItemStack> {
+        let new = item.into();
+        if self.cursor_item != new {
+            self.cursor_item_modified = true;
+        }
+
+        std::mem::replace(&mut self.cursor_item, new)
     }
 }
 
