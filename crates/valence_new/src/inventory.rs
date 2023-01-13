@@ -2,6 +2,7 @@ use std::iter::FusedIterator;
 use std::num::Wrapping;
 
 use bevy_ecs::prelude::*;
+use tracing::warn;
 use valence_protocol::packets::s2c::play::{SetContainerContentEncode, SetContainerSlotEncode};
 use valence_protocol::{InventoryKind, ItemStack, Text, VarInt};
 
@@ -106,6 +107,10 @@ impl Inventory {
 
 pub(crate) fn update_player_inventories(mut query: Query<(&mut Inventory, &mut Client)>) {
     for (mut inventory, mut client) in query.iter_mut() {
+        if inventory.kind != InventoryKind::Player {
+            warn!("Inventory on client entity is not a player inventory");
+        }
+
         if inventory.modified != 0 {
             if inventory.modified == u64::MAX && client.cursor_item_modified {
                 // Update the whole inventory.
