@@ -20,10 +20,10 @@ pub struct Inventory {
 impl Inventory {
     pub fn new(kind: InventoryKind) -> Self {
         // TODO: default title to the correct translation key instead
-        Self::new_with_title(kind, "Inventory")
+        Self::with_title(kind, "Inventory")
     }
 
-    pub fn new_with_title(kind: InventoryKind, title: impl Into<Text>) -> Self {
+    pub fn with_title(kind: InventoryKind, title: impl Into<Text>) -> Self {
         Inventory {
             title: title.into(),
             kind,
@@ -104,7 +104,7 @@ impl Inventory {
     }
 }
 
-pub fn update_player_inventories(mut query: Query<(&mut Inventory, &mut Client)>) {
+pub(crate) fn update_player_inventories(mut query: Query<(&mut Inventory, &mut Client)>) {
     for (mut inventory, mut client) in query.iter_mut() {
         if inventory.modified != 0 {
             if inventory.modified == u64::MAX && client.cursor_item_modified {
