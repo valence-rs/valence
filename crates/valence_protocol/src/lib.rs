@@ -78,7 +78,7 @@ pub use block_pos::BlockPos;
 pub use byte_angle::ByteAngle;
 pub use codec::*;
 pub use ident::Ident;
-pub use inventory::InventoryKind;
+pub use inventory::{InventoryKind, WindowType};
 pub use item::{ItemKind, ItemStack};
 pub use raw_bytes::RawBytes;
 pub use text::{Text, TextFormat};
