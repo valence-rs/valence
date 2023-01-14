@@ -15,7 +15,7 @@ use tokio::runtime::{Handle, Runtime};
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use uuid::Uuid;
 use valence_nbt::{compound, Compound, List};
-use valence_protocol::{ident, Username};
+use valence_protocol::{ident, InventoryKind, Username};
 
 use crate::biome::{Biome, BiomeId};
 use crate::client::event::{dispatch_client_events, register_client_events};
@@ -24,6 +24,7 @@ use crate::config::{AsyncCallbacks, Config, ConnectionMode};
 use crate::dimension::{Dimension, DimensionId};
 use crate::entity::{deinit_despawned_entities, init_entities, McEntityManager};
 use crate::instance::{update_instances_post_client, update_instances_pre_client, Instance};
+use crate::inventory::{update_player_inventories, Inventory};
 use crate::player_textures::SignedPlayerTextures;
 use crate::server::connect::do_accept_loop;
 use crate::Despawned;
@@ -340,7 +341,8 @@ pub fn run_server(
             .with_system(update_clients.after(update_instances_pre_client))
             .with_system(update_instances_post_client.after(update_clients))
             .with_system(deinit_despawned_entities.after(update_instances_post_client))
-            .with_system(despawn_entities.after(deinit_despawned_entities)),
+            .with_system(despawn_entities.after(deinit_despawned_entities))
+            .with_system(update_player_inventories),
     );
 
     let mut tick_start = Instant::now();
@@ -359,8 +361,10 @@ pub fn run_server(
                 break
             };
 
-            cfg.world
-                .spawn(Client::new(msg.send, msg.recv, msg.permit, msg.info));
+            cfg.world.spawn((
+                Client::new(msg.send, msg.recv, msg.permit, msg.info),
+                Inventory::new(InventoryKind::Player),
+            ));
         }
 
         // Run the scheduled stages.

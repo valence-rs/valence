@@ -9,6 +9,7 @@ pub mod config;
 pub mod dimension;
 pub mod entity;
 pub mod instance;
+pub mod inventory;
 pub mod math;
 mod packet;
 pub mod player_textures;
