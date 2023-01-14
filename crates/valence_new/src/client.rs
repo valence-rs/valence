@@ -71,6 +71,8 @@ pub struct Client {
     /// cursor.
     pub(crate) cursor_item: Option<ItemStack>,
     pub(crate) cursor_item_modified: bool,
+    /// The current window ID. Incremented when inventories are opened.
+    pub(crate) window_id: u8,
 }
 
 impl Client {
@@ -114,6 +116,7 @@ impl Client {
             pending_teleports: 0,
             cursor_item: None,
             cursor_item_modified: false,
+            window_id: 0,
         }
     }
 

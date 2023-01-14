@@ -3,8 +3,10 @@ use std::num::Wrapping;
 
 use bevy_ecs::prelude::*;
 use tracing::warn;
-use valence_protocol::packets::s2c::play::{SetContainerContentEncode, SetContainerSlotEncode};
-use valence_protocol::{InventoryKind, ItemStack, Text, VarInt};
+use valence_protocol::packets::s2c::play::{
+    CloseContainerS2c, OpenScreen, SetContainerContentEncode, SetContainerSlotEncode,
+};
+use valence_protocol::{InventoryKind, ItemStack, Text, VarInt, WindowType};
 
 use crate::client::Client;
 
@@ -156,6 +158,101 @@ pub(crate) fn update_player_inventories(mut query: Query<(&mut Inventory, &mut C
             });
 
             inventory.state_id += 1;
+        }
+    }
+}
+
+/// Used to indicate that the client with this component is currently viewing
+/// an inventory.
+#[derive(Debug, Clone, Component)]
+pub struct OpenInventory {
+    /// The Entity that has the Inventory that the client is currently
+    /// viewing.
+    pub(crate) entity: Entity,
+}
+
+impl OpenInventory {
+    pub fn new(entity: Entity) -> Self {
+        OpenInventory { entity }
+    }
+}
+
+/// Handles the `OpenInventory` component being added to a client, which
+/// indicates that the client is now viewing an inventory.
+pub(crate) fn update_client_on_open_inventory(
+    mut clients: Query<(&mut Client, &OpenInventory, Added<OpenInventory>)>,
+    inventories: Query<&Inventory>,
+) {
+    for (mut client, open_inventory, _) in clients.iter_mut() {
+        // validate that the inventory exists
+        let inventory = inventories.get_component::<Inventory>(open_inventory.entity);
+        if inventory.is_err() {
+            warn!("Client is viewing an inventory that does not exist");
+            continue;
+        }
+
+        // send the inventory to the client
+        let inventory = inventory.unwrap();
+        client.window_id = client.window_id % 100 + 1;
+
+        let packet = OpenScreen {
+            window_id: VarInt(client.window_id.into()),
+            window_type: VarInt(WindowType::from(inventory.kind) as i32),
+            window_title: inventory.title.clone(),
+        };
+        client.write_packet(&packet);
+
+        let packet = SetContainerContentEncode {
+            window_id: client.window_id,
+            state_id: VarInt(inventory.state_id.0),
+            slots: inventory.slot_slice(),
+            carried_item: &client.cursor_item.clone(),
+        };
+        client.write_packet(&packet);
+    }
+}
+
+pub(crate) fn update_open_inventories(
+    mut commands: Commands,
+    mut clients: Query<(Entity, &mut Client, &OpenInventory)>,
+    mut inventories: Query<&mut Inventory>,
+) {
+    for (client_entity, mut client, open_inventory) in clients.iter_mut() {
+        // validate that the inventory exists
+        if let Ok(mut inventory) = inventories.get_component_mut::<Inventory>(open_inventory.entity)
+        {
+            // send the inventory to the client
+            if inventory.modified == 0 {
+                continue;
+            }
+            inventory.state_id += 1;
+
+            let packet = SetContainerContentEncode {
+                window_id: client.window_id,
+                state_id: VarInt(inventory.state_id.0),
+                slots: inventory.slot_slice(),
+                carried_item: &client.cursor_item.clone(),
+            };
+            client.write_packet(&packet);
+
+            inventory.modified = 0;
+        } else {
+            // the inventory no longer exists, so close the inventory
+            commands.entity(client_entity).remove::<OpenInventory>();
+        }
+    }
+}
+
+/// Detects when an the client's `OpenInventory` component is removed, which
+/// indicates that the client is no longer viewing an inventory.
+pub(crate) fn update_client_on_close_inventory(
+    removals: RemovedComponents<OpenInventory>,
+    mut clients: Query<&mut Client>,
+) {
+    for entity in removals.iter() {
+        if let Ok(mut client) = clients.get_component_mut::<Client>(entity) {
+            let window_id = client.window_id;
+            client.write_packet(&CloseContainerS2c { window_id });
         }
     }
 }
