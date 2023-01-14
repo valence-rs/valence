@@ -25,8 +25,8 @@ use crate::dimension::{Dimension, DimensionId};
 use crate::entity::{deinit_despawned_entities, init_entities, McEntityManager};
 use crate::instance::{update_instances_post_client, update_instances_pre_client, Instance};
 use crate::inventory::{
-    update_client_on_close_inventory, update_client_on_open_inventory, update_open_inventories,
-    update_player_inventories, Inventory,
+    handle_close_container, update_client_on_close_inventory, update_client_on_open_inventory,
+    update_open_inventories, update_player_inventories, Inventory,
 };
 use crate::player_textures::SignedPlayerTextures;
 use crate::server::connect::do_accept_loop;
@@ -348,6 +348,7 @@ pub fn run_server(
             .with_system(update_player_inventories)
             .with_system(update_client_on_open_inventory)
             .with_system(update_open_inventories)
+            .with_system(handle_close_container)
             .with_system(update_client_on_close_inventory.after(update_open_inventories)),
     );
 

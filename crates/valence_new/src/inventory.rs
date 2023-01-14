@@ -8,6 +8,7 @@ use valence_protocol::packets::s2c::play::{
 };
 use valence_protocol::{InventoryKind, ItemStack, Text, VarInt, WindowType};
 
+use crate::client::event::CloseContainer;
 use crate::client::Client;
 
 #[derive(Debug, Clone, Component)]
@@ -240,6 +241,16 @@ pub(crate) fn update_open_inventories(
             // the inventory no longer exists, so close the inventory
             commands.entity(client_entity).remove::<OpenInventory>();
         }
+    }
+}
+
+/// Handles clients telling the server that they are closing an inventory.
+pub(crate) fn handle_close_container(
+    mut commands: Commands,
+    mut events: EventReader<CloseContainer>,
+) {
+    for event in events.iter() {
+        commands.entity(event.client).remove::<OpenInventory>();
     }
 }
 
