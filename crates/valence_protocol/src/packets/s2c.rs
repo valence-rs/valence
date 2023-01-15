@@ -107,6 +107,7 @@ pub mod play {
 
     use super::*;
     use crate::packets::s2c::declare_recipes::DeclaredRecipe;
+    use crate::WindowType;
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x00]
@@ -427,7 +428,7 @@ pub mod play {
     #[packet_id = 0x2c]
     pub struct OpenScreen {
         pub window_id: VarInt,
-        pub window_type: VarInt,
+        pub window_type: WindowType,
         pub window_title: Text,
     }
 
