@@ -177,6 +177,10 @@ impl OpenInventory {
     pub fn new(entity: Entity) -> Self {
         OpenInventory { entity }
     }
+
+    pub fn entity(&self) -> Entity {
+        self.entity
+    }
 }
 
 /// Handles the `OpenInventory` component being added to a client, which
