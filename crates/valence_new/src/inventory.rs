@@ -115,7 +115,7 @@ pub(crate) fn update_player_inventories(mut query: Query<(&mut Inventory, &mut C
         }
 
         if inventory.modified != 0 {
-            if inventory.modified == u64::MAX && client.cursor_item_modified {
+            if inventory.modified == u64::MAX {
                 // Update the whole inventory.
                 let cursor_item = client.cursor_item.clone();
                 client.write_packet(&SetContainerContentEncode {
