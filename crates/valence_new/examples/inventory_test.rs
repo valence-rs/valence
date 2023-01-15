@@ -46,11 +46,8 @@ fn setup(world: &mut World) {
         Inventory::new(InventoryKind::Crafting),
     ];
 
-    for inv in inventories.iter_mut() {
+    for mut inv in inventories {
         inv.replace_slot(0, Some(ItemStack::new(ItemKind::DiamondPickaxe, 1, None)));
-    }
-
-    for inv in inventories {
         world.spawn(inv);
     }
 }
