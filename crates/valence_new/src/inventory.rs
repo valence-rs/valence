@@ -116,6 +116,8 @@ pub(crate) fn update_player_inventories(mut query: Query<(&mut Inventory, &mut C
         }
 
         if inventory.modified != 0 {
+            inventory.state_id += 1;
+
             if inventory.modified == u64::MAX {
                 // Update the whole inventory.
                 let cursor_item = client.cursor_item.clone();
@@ -126,29 +128,27 @@ pub(crate) fn update_player_inventories(mut query: Query<(&mut Inventory, &mut C
                     carried_item: &cursor_item,
                 });
 
-                inventory.state_id += 1;
                 client.cursor_item_modified = false;
             } else {
                 // Update only the slots that were modified.
-                let mut sent_updates = 0;
                 for (i, slot) in inventory.slots.iter().enumerate() {
                     if (inventory.modified >> i) & 1 == 1 {
                         client.write_packet(&SetContainerSlotEncode {
                             window_id: 0,
-                            state_id: VarInt(inventory.state_id.0 + sent_updates),
+                            state_id: VarInt(inventory.state_id.0),
                             slot_idx: i as i16,
                             slot_data: slot.as_ref(),
                         });
-                        sent_updates += 1;
                     }
                 }
-                inventory.state_id += sent_updates;
             }
 
             inventory.modified = 0;
         }
 
         if client.cursor_item_modified {
+            inventory.state_id += 1;
+
             client.cursor_item_modified = false;
 
             let cursor_item = client.cursor_item.clone();
@@ -158,8 +158,6 @@ pub(crate) fn update_player_inventories(mut query: Query<(&mut Inventory, &mut C
                 slot_idx: -1,
                 slot_data: cursor_item.as_ref(),
             });
-
-            inventory.state_id += 1;
         }
     }
 }
