@@ -7,24 +7,32 @@ use hashbrown::hash_map::Entry;
 use hashbrown::HashMap;
 use num::integer::div_ceil;
 use rustc_hash::FxHasher;
-use valence_protocol::{BlockPos, LengthPrefixedArray};
+use valence_protocol::packets::s2c::play::UnloadChunk;
+use valence_protocol::LengthPrefixedArray;
 
 use crate::chunk_pos::ChunkPos;
 use crate::client::Client;
 use crate::dimension::DimensionId;
 use crate::entity::McEntity;
-use crate::instance::chunk::Chunk;
+pub use crate::instance::chunk::Chunk;
 use crate::packet::{PacketWriter, WritePacket};
 use crate::server::{Server, SharedServer};
 use crate::Despawned;
 
-pub mod chunk;
+mod chunk;
 mod paletted_container;
 
 /// To create a new instance, see [`SharedServer::new_instance`].
 #[derive(Component)]
 pub struct Instance {
-    partition: HashMap<ChunkPos, PartitionCell, BuildHasherDefault<FxHasher>>,
+    pub(crate) partition: HashMap<ChunkPos, PartitionCell, BuildHasherDefault<FxHasher>>,
+    pub(crate) info: InstanceInfo,
+    /// Packet data to send to all clients in this instance at the end of the
+    /// tick.
+    pub(crate) packet_buf: Vec<u8>,
+}
+
+pub(crate) struct InstanceInfo {
     dimension: DimensionId,
     section_count: usize,
     min_y: i32,
@@ -34,14 +42,13 @@ pub struct Instance {
     /// Sending filler light data causes the vanilla client to lag
     /// less. Hopefully we can remove this in the future.
     filler_sky_light_arrays: Box<[LengthPrefixedArray<u8, 2048>]>,
-    /// Packet data to send to all clients in this instance at the end of the
-    /// tick.
-    packet_buf: Vec<u8>,
 }
 
 pub(crate) struct PartitionCell {
     /// The chunk in this cell.
     pub(crate) chunk: Option<Chunk<true>>,
+    /// If `chunk` went from `Some` to `None` this tick.
+    chunk_removed: bool,
     /// All of the client entities in view of this cell.
     pub(crate) viewers: BTreeSet<Entity>,
     /// Minecraft entities in this cell.
@@ -65,33 +72,38 @@ impl Instance {
 
         Self {
             partition: HashMap::default(),
-            dimension,
-            section_count: (dim.height / 16) as usize,
-            min_y: dim.min_y,
-            biome_registry_len: shared.biomes().len(),
-            compression_threshold: shared.compression_threshold(),
-            filler_sky_light_mask: sky_light_mask.into(),
-            filler_sky_light_arrays: vec![LengthPrefixedArray([0xff; 2048]); light_section_count]
+            info: InstanceInfo {
+                dimension,
+                section_count: (dim.height / 16) as usize,
+                min_y: dim.min_y,
+                biome_registry_len: shared.biomes().len(),
+                compression_threshold: shared.compression_threshold(),
+                filler_sky_light_mask: sky_light_mask.into(),
+                filler_sky_light_arrays: vec![
+                    LengthPrefixedArray([0xff; 2048]);
+                    light_section_count
+                ]
                 .into(),
+            },
             packet_buf: vec![],
         }
     }
 
     pub fn dimension(&self) -> DimensionId {
-        self.dimension
+        self.info.dimension
     }
 
     pub fn section_count(&self) -> usize {
-        self.section_count
+        self.info.section_count
     }
 
-    pub fn insert_chunk(&mut self, pos: ChunkPos, mut chunk: Chunk) -> Option<Chunk> {
+    pub fn insert_chunk(&mut self, pos: impl Into<ChunkPos>, mut chunk: Chunk) -> Option<Chunk> {
         // TODO: notify clients about the new chunk because they won't be in the viewer
-        // list.
+        //       list.
 
-        chunk.resize(self.section_count);
+        chunk.resize(self.info.section_count);
 
-        match self.partition.entry(pos) {
+        match self.partition.entry(pos.into()) {
             Entry::Occupied(oe) => {
                 let cell = oe.into_mut();
                 cell.chunk
@@ -101,6 +113,7 @@ impl Instance {
             Entry::Vacant(ve) => {
                 ve.insert(PartitionCell {
                     chunk: Some(chunk.into_loaded()),
+                    chunk_removed: false,
                     viewers: BTreeSet::new(),
                     entities: BTreeSet::new(),
                     packet_buf: vec![],
@@ -111,18 +124,23 @@ impl Instance {
         }
     }
 
-    pub fn remove_chunk(&mut self, pos: ChunkPos) -> Option<Chunk> {
-        self.partition
-            .get_mut(&pos)
-            .and_then(|p| p.chunk.take().map(|c| c.into_unloaded()))
+    pub fn remove_chunk(&mut self, pos: impl Into<ChunkPos>) -> Option<Chunk> {
+        self.partition.get_mut(&pos.into()).and_then(|p| {
+            p.chunk.take().map(|c| {
+                p.chunk_removed = true;
+                c.into_unloaded()
+            })
+        })
     }
 
-    pub fn chunk(&self, pos: ChunkPos) -> Option<&Chunk<true>> {
-        self.partition.get(&pos).and_then(|p| p.chunk.as_ref())
+    // TODO: Entry API for chunks.
+
+    pub fn chunk(&self, pos: impl Into<ChunkPos>) -> Option<&Chunk<true>> {
+        self.partition.get(&pos.into()).and_then(|p| p.chunk.as_ref())
     }
 
-    pub fn chunk_mut(&mut self, pos: ChunkPos) -> Option<&mut Chunk<true>> {
-        self.partition.get_mut(&pos).and_then(|p| p.chunk.as_mut())
+    pub fn chunk_mut(&mut self, pos: impl Into<ChunkPos>) -> Option<&mut Chunk<true>> {
+        self.partition.get_mut(&pos.into()).and_then(|p| p.chunk.as_mut())
     }
 
     pub fn chunks(&self) -> impl FusedIterator<Item = (ChunkPos, &Chunk<true>)> + Clone + '_ {
@@ -137,27 +155,22 @@ impl Instance {
             .flat_map(|(&pos, par)| par.chunk.as_mut().map(|c| (pos, c)))
     }
 
-    pub(crate) fn cell(&self, pos: ChunkPos) -> Option<&PartitionCell> {
-        self.partition.get(&pos)
-    }
-
     pub fn optimize(&mut self) {
         for cell in self.partition.values_mut() {
             if let Some(chunk) = &mut cell.chunk {
                 chunk.optimize();
             }
-            // cell.incoming.shrink_to_fit();
-            // cell.outgoing.shrink_to_fit();
         }
 
         self.partition.shrink_to_fit();
+        self.packet_buf.shrink_to_fit();
     }
 }
 
 pub(crate) fn update_instances_pre_client(
     mut instances: Query<&mut Instance>,
     // TODO: Check if adding Changed<McEntity> filter would break things.
-    mut entities: Query<(Entity, &mut McEntity, Option<&Despawned>)>,
+    mut entities: Query<(Entity, &McEntity, Option<&Despawned>)>,
     mut clients: Query<&mut Client>,
     server: Res<Server>,
 ) {
@@ -165,8 +178,8 @@ pub(crate) fn update_instances_pre_client(
     let mut compression_scratch = vec![];
     let mut scratch_2 = vec![];
 
-    // Update the partition cells that entities are in. Send the entity
-    // initialization packets when necessary.
+    // Loop over every entity and change their partition cells if their location
+    // changed.
     for (entity_id, entity, despawned) in &mut entities {
         let old_pos = ChunkPos::at(entity.old_position().x, entity.old_position().z);
         let pos = ChunkPos::at(entity.position().x, entity.position().z);
@@ -206,7 +219,7 @@ pub(crate) fn update_instances_pre_client(
 
                         if !cell.viewers.is_empty() {
                             scratch.clear();
-                            let mut writer = PacketWriter::new(
+                            let writer = PacketWriter::new(
                                 &mut scratch,
                                 server.compression_threshold(),
                                 &mut compression_scratch,
@@ -231,6 +244,7 @@ pub(crate) fn update_instances_pre_client(
                     Entry::Vacant(ve) => {
                         ve.insert(PartitionCell {
                             chunk: None,
+                            chunk_removed: false,
                             viewers: BTreeSet::new(),
                             entities: BTreeSet::from([entity_id]),
                             packet_buf: vec![],
@@ -243,6 +257,7 @@ pub(crate) fn update_instances_pre_client(
                 if let Entry::Vacant(ve) = instance.partition.entry(pos) {
                     ve.insert(PartitionCell {
                         chunk: None,
+                        chunk_removed: false,
                         viewers: BTreeSet::new(),
                         // Code below will add the entity to this set.
                         entities: BTreeSet::new(),
@@ -272,7 +287,7 @@ pub(crate) fn update_instances_pre_client(
                         // TODO: `continue` if entity is the self-entity.
 
                         if scratch.is_empty() {
-                            let mut writer = PacketWriter::new(
+                            let writer = PacketWriter::new(
                                 &mut scratch,
                                 server.compression_threshold(),
                                 &mut compression_scratch,
@@ -292,18 +307,16 @@ pub(crate) fn update_instances_pre_client(
 
     // TODO: move this to separate system?
 
-    // Write the entity and chunk update packets to clients. Also write the cell's
-    // packet buffer.
-    for mut instance in &mut instances {
+    // Write the entity and chunk update packets to clients. Also write any data
+    // added to each cell's packet buffer.
+    for instance in &mut instances {
         // To allow for splitting borrows.
         let instance = instance.into_inner();
 
         for (&pos, cell) in &mut instance.partition {
             if !cell.viewers.is_empty() {
-                scratch.clear();
-
                 let mut writer = PacketWriter::new(
-                    &mut scratch,
+                    &mut cell.packet_buf,
                     server.compression_threshold(),
                     &mut compression_scratch,
                 );
@@ -318,23 +331,22 @@ pub(crate) fn update_instances_pre_client(
 
                 if let Some(chunk) = &mut cell.chunk {
                     chunk
-                        .write_update_packets(
-                            writer,
-                            &mut scratch_2,
-                            pos,
-                            instance.min_y,
-                            instance.compression_threshold,
-                            instance.biome_registry_len,
-                            &instance.filler_sky_light_mask,
-                            &instance.filler_sky_light_arrays,
-                        )
+                        .write_update_packets(writer, &mut scratch_2, pos, &instance.info)
+                        .unwrap();
+                } else if cell.chunk_removed {
+                    writer
+                        .write_packet(&UnloadChunk {
+                            chunk_x: pos.x,
+                            chunk_z: pos.z,
+                        })
                         .unwrap();
                 }
 
-                for &client_id in &cell.viewers {
-                    if let Ok(mut client) = clients.get_mut(client_id) {
-                        client.write_packet_bytes(&scratch);
-                        client.write_packet_bytes(&cell.packet_buf);
+                if !cell.packet_buf.is_empty() {
+                    for &client_id in &cell.viewers {
+                        if let Ok(mut client) = clients.get_mut(client_id) {
+                            client.write_packet_bytes(&cell.packet_buf);
+                        }
                     }
                 }
             }
@@ -346,6 +358,7 @@ pub(crate) fn update_instances_post_client(mut instances: Query<&mut Instance>) 
     for mut instance in &mut instances {
         instance.partition.retain(|_, cell| {
             cell.packet_buf.clear();
+            cell.chunk_removed = false;
 
             if let Some(chunk) = &mut cell.chunk {
                 chunk.update_post_client();

@@ -11,9 +11,9 @@ use tracing::warn;
 use uuid::Uuid;
 use valence_protocol::entity_meta::{Facing, PaintingKind, Pose};
 use valence_protocol::packets::s2c::play::{
-    EntityAnimationS2c, SetEntityMetadata, SetEntityVelocity, SetHeadRotation, SpawnEntity,
-    SpawnExperienceOrb, SpawnPlayer, TeleportEntity, UpdateEntityPosition,
-    UpdateEntityPositionAndRotation, UpdateEntityRotation,
+    SetEntityMetadata, SetEntityVelocity, SetHeadRotation, SpawnEntity, SpawnExperienceOrb,
+    SpawnPlayer, TeleportEntity, UpdateEntityPosition, UpdateEntityPositionAndRotation,
+    UpdateEntityRotation,
 };
 use valence_protocol::{ByteAngle, RawBytes, VarInt};
 

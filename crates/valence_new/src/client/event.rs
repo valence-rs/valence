@@ -8,7 +8,7 @@ use paste::paste;
 use tracing::warn;
 use uuid::Uuid;
 use valence_protocol::packets::c2s::play::{
-    ClientCommand, PlayerAbilitiesC2s, PongPlay, ResourcePackC2s, SeenAdvancements,
+    ClientCommand, PlayerAbilitiesC2s, ResourcePackC2s, SeenAdvancements,
 };
 use valence_protocol::packets::C2sPlayPacket;
 use valence_protocol::types::{

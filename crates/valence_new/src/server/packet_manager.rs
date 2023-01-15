@@ -212,6 +212,10 @@ impl PlayPacketSender {
         self.enc.prepend_packet(pkt)
     }
 
+    pub fn clear(&mut self) {
+        self.enc.clear();
+    }
+
     pub fn flush(&mut self) -> Result<()> {
         let bytes = self.enc.take();
         self.send.try_send(bytes)?;

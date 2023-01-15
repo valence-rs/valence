@@ -1,15 +1,14 @@
-use bevy_ecs::prelude::*;
 use valence_nbt::compound;
 use valence_protocol::block::BlockState;
 use valence_protocol::packets::s2c::play::{
     BlockUpdate, ChunkDataAndUpdateLightEncode, UpdateSectionBlocksEncode,
 };
-use valence_protocol::{BlockPos, Encode, LengthPrefixedArray, VarInt, VarLong};
+use valence_protocol::{BlockPos, Encode, VarInt, VarLong};
 
 use crate::biome::BiomeId;
 use crate::chunk_pos::ChunkPos;
 use crate::instance::paletted_container::PalettedContainer;
-use crate::instance::Instance;
+use crate::instance::{InstanceInfo};
 use crate::math::bit_width;
 use crate::packet::{PacketWriter, WritePacket};
 
@@ -26,8 +25,6 @@ pub struct Chunk<const LOADED: bool = false> {
     /// If clients should receive the chunk data packet instead of block change
     /// packets on update.
     refresh: bool,
-    #[cfg(debug_assertions)]
-    uuid: uuid::Uuid,
 }
 
 #[derive(Clone, Default, Debug)]
@@ -54,8 +51,6 @@ impl Chunk<false> {
             sections: vec![],
             cached_init_packets: vec![],
             refresh: true,
-            #[cfg(debug_assertions)]
-            uuid: uuid::Uuid::from_u128(rand::random()),
         };
 
         chunk.resize(section_count);
@@ -79,15 +74,13 @@ impl Chunk<false> {
         }
     }
 
-    pub(super) fn into_loaded(mut self) -> Chunk<true> {
+    pub(super) fn into_loaded(self) -> Chunk<true> {
         debug_assert!(self.refresh);
 
         Chunk {
             sections: self.sections,
             cached_init_packets: self.cached_init_packets,
             refresh: true,
-            #[cfg(debug_assertions)]
-            uuid: self.uuid,
         }
     }
 }
@@ -104,8 +97,6 @@ impl Clone for Chunk {
             sections: self.sections.clone(),
             cached_init_packets: vec![],
             refresh: true,
-            #[cfg(debug_assertions)]
-            uuid: uuid::Uuid::from_u128(rand::random()),
         }
     }
 }
@@ -122,8 +113,6 @@ impl Chunk<true> {
             sections: self.sections,
             cached_init_packets: self.cached_init_packets,
             refresh: true,
-            #[cfg(debug_assertions)]
-            uuid: self.uuid,
         }
     }
 
@@ -132,21 +121,10 @@ impl Chunk<true> {
         mut writer: impl WritePacket,
         scratch: &mut Vec<u8>,
         pos: ChunkPos,
-        min_y: i32,
-        compression_threshold: Option<u32>,
-        biome_registry_len: usize,
-        filler_sky_light_mask: &[u64],
-        filler_sky_light_arrays: &[LengthPrefixedArray<u8, 2048>],
+        info: &InstanceInfo,
     ) -> anyhow::Result<()> {
         if self.refresh {
-            writer.write_bytes(self.get_init_packet_bytes(
-                pos,
-                scratch,
-                compression_threshold,
-                biome_registry_len,
-                filler_sky_light_mask,
-                filler_sky_light_arrays,
-            )?)
+            self.write_init_packets(info, pos, writer, scratch)
         } else {
             for (sect_y, sect) in &mut self.sections.iter_mut().enumerate() {
                 if sect.section_updates.len() == 1 {
@@ -156,7 +134,7 @@ impl Chunk<true> {
                     let block = packed >> 12;
 
                     let global_x = pos.x * 16 + offset_x as i32;
-                    let global_y = min_y + sect_y as i32 * 16;
+                    let global_y = info.min_y + sect_y as i32 * 16;
                     let global_z = pos.z * 16 + offset_z as i32;
 
                     writer.write_packet(&BlockUpdate {
@@ -166,7 +144,7 @@ impl Chunk<true> {
                 } else if sect.section_updates.len() > 1 {
                     let chunk_section_position = (pos.x as i64) << 42
                         | (pos.z as i64 & 0x3fffff) << 20
-                        | (sect_y as i64 + min_y.div_euclid(16) as i64) & 0xfffff;
+                        | (sect_y as i64 + info.min_y.div_euclid(16) as i64) & 0xfffff;
 
                     writer.write_packet(&UpdateSectionBlocksEncode {
                         chunk_section_position,
@@ -184,37 +162,11 @@ impl Chunk<true> {
     /// This will initialize the chunk for the client.
     pub(crate) fn write_init_packets(
         &mut self,
+        info: &InstanceInfo,
         pos: ChunkPos,
-        instance: &Instance,
         mut writer: impl WritePacket,
         scratch: &mut Vec<u8>,
     ) -> anyhow::Result<()> {
-        #[cfg(debug_assertions)]
-        assert_eq!(
-            instance.chunk(pos).unwrap().uuid,
-            self.uuid,
-            "instance and/or position arguments are incorrect"
-        );
-
-        writer.write_bytes(self.get_init_packet_bytes(
-            pos,
-            scratch,
-            instance.compression_threshold,
-            instance.biome_registry_len,
-            &instance.filler_sky_light_mask,
-            &instance.filler_sky_light_arrays,
-        )?)
-    }
-
-    pub fn get_init_packet_bytes(
-        &mut self,
-        pos: ChunkPos,
-        scratch: &mut Vec<u8>,
-        compression_threshold: Option<u32>,
-        biome_registry_len: usize,
-        filler_sky_light_mask: &[u64],
-        filler_sky_light_arrays: &[LengthPrefixedArray<u8, 2048>],
-    ) -> anyhow::Result<&[u8]> {
         if self.cached_init_packets.is_empty() {
             scratch.clear();
 
@@ -234,7 +186,7 @@ impl Chunk<true> {
                     |b| b.0.into(),
                     0,
                     3,
-                    bit_width(biome_registry_len - 1),
+                    bit_width(info.biome_registry_len - 1),
                 )?;
             }
 
@@ -242,7 +194,7 @@ impl Chunk<true> {
 
             let mut writer = PacketWriter::new(
                 &mut self.cached_init_packets,
-                compression_threshold,
+                info.compression_threshold,
                 &mut compression_scratch,
             );
 
@@ -255,16 +207,16 @@ impl Chunk<true> {
                 blocks_and_biomes: scratch,
                 block_entities: &[],
                 trust_edges: true,
-                sky_light_mask: filler_sky_light_mask,
+                sky_light_mask: &info.filler_sky_light_mask,
                 block_light_mask: &[],
                 empty_sky_light_mask: &[],
                 empty_block_light_mask: &[],
-                sky_light_arrays: filler_sky_light_arrays,
+                sky_light_arrays: &info.filler_sky_light_arrays,
                 block_light_arrays: &[],
             })?;
         }
 
-        Ok(&self.cached_init_packets)
+        writer.write_bytes(&self.cached_init_packets)
     }
 
     pub(super) fn update_post_client(&mut self) {
