@@ -167,7 +167,7 @@ pub(crate) fn update_player_inventories(mut query: Query<(&mut Inventory, &mut C
 /// an inventory.
 #[derive(Debug, Clone, Component)]
 pub struct OpenInventory {
-    /// The Entity that has the Inventory that the client is currently
+    /// The Entity with the `Inventory` component that the client is currently
     /// viewing.
     pub(crate) entity: Entity,
 }
