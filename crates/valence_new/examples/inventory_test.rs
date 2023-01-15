@@ -2,7 +2,7 @@ use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::ShouldRun;
 use tracing::info;
 use valence_new::client::Client;
-use valence_new::config::Config;
+use valence_new::config::{Config, ConnectionMode};
 use valence_new::dimension::DimensionId;
 use valence_new::inventory::{Inventory, InventoryKind, OpenInventory};
 use valence_new::protocol::types::GameMode;
@@ -19,11 +19,12 @@ fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().init();
 
     valence_new::run_server(
-        Config::default(),
+        Config::default().with_connection_mode(ConnectionMode::Offline),
         SystemStage::parallel()
             .with_system(setup.with_run_criteria(ShouldRun::once))
             .with_system(init_clients)
-            .with_system(open_inventory_test),
+            .with_system(open_inventory_test)
+            .with_system(blink_items),
         (),
     )
 }
@@ -79,4 +80,14 @@ fn open_inventory_test(
             .insert(OpenInventory::new(target_inventory));
     }
     state.inventory += 1;
+}
+
+fn blink_items(mut inventories: Query<&mut Inventory>) {
+    for mut inv in inventories.iter_mut() {
+        if inv.slot(1).is_some() {
+            inv.replace_slot(1, None);
+        } else {
+            inv.replace_slot(1, Some(ItemStack::new(ItemKind::Diamond, 1, None)));
+        }
+    }
 }
