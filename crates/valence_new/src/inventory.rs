@@ -168,7 +168,7 @@ pub(crate) fn update_player_inventories(mut query: Query<(&mut Inventory, &mut C
 /// an inventory.
 #[derive(Debug, Clone, Component)]
 pub struct OpenInventory {
-    /// The Entity that has the Inventory that the client is currently
+    /// The Entity with the `Inventory` component that the client is currently
     /// viewing.
     pub(crate) entity: Entity,
 }
@@ -255,7 +255,7 @@ pub(crate) fn handle_close_container(
     }
 }
 
-/// Detects when an the client's `OpenInventory` component is removed, which
+/// Detects when a client's `OpenInventory` component is removed, which
 /// indicates that the client is no longer viewing an inventory.
 pub(crate) fn update_client_on_close_inventory(
     removals: RemovedComponents<OpenInventory>,
