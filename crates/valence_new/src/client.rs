@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::fmt;
 use std::net::IpAddr;
 
@@ -9,14 +8,19 @@ use tokio::sync::OwnedSemaphorePermit;
 use tracing::warn;
 use uuid::Uuid;
 use valence_protocol::packets::s2c::play::{
-    DisconnectPlay, GameEvent, KeepAliveS2c, LoginPlayOwned, RespawnOwned, SetCenterChunk,
-    SetDefaultSpawnPosition, SetRenderDistance, SynchronizePlayerPosition, UnloadChunk,
+    AcknowledgeBlockChange, DisconnectPlay, GameEvent, KeepAliveS2c, LoginPlayOwned,
+    PluginMessageS2c, RemoveEntitiesEncode, RespawnOwned, SetCenterChunk, SetDefaultSpawnPosition,
+    SetEntityMetadata, SetRenderDistance, SynchronizePlayerPosition, SystemChatMessage,
+    UnloadChunk,
 };
 use valence_protocol::types::{GameEventKind, GameMode, SyncPlayerPosLookFlags};
-use valence_protocol::{BlockPos, EncodePacket, ItemStack, Username, VarInt};
+use valence_protocol::{
+    BlockPos, EncodePacket, Ident, ItemStack, RawBytes, Text, Username, VarInt,
+};
 
 use crate::chunk_pos::ChunkPos;
 use crate::dimension::DimensionId;
+use crate::entity::data::Player;
 use crate::entity::McEntity;
 use crate::instance::Instance;
 use crate::server::{NewClientInfo, PlayPacketReceiver, PlayPacketSender, Server};
@@ -35,19 +39,21 @@ pub struct Client {
     /// To make sure we're not loading already loaded chunks, or unloading
     /// unloaded chunks.
     #[cfg(debug_assertions)]
-    loaded_chunks: HashSet<ChunkPos>,
+    loaded_chunks: std::collections::HashSet<ChunkPos>,
     username: Username<String>,
     uuid: Uuid,
     ip: IpAddr,
     instance: Entity,
     old_instance: Entity,
-    new_instance: Entity,
     position: DVec3,
     old_position: DVec3,
     yaw: f32,
     pitch: f32,
+    on_ground: bool,
     game_mode: GameMode,
     block_change_sequence: i32,
+    // TODO: make this a component and default to the self-entity's player data?
+    player_data: Player,
     view_distance: u8,
     old_view_distance: u8,
     death_location: Option<(DimensionId, BlockPos)>,
@@ -88,19 +94,20 @@ impl Client {
             is_disconnected: false,
             _permit: permit,
             #[cfg(debug_assertions)]
-            loaded_chunks: HashSet::new(),
+            loaded_chunks: Default::default(),
             username: info.username,
             uuid: info.uuid,
             ip: info.ip,
             instance: NULL_ENTITY,
             old_instance: NULL_ENTITY,
-            new_instance: NULL_ENTITY,
             position: DVec3::ZERO,
             old_position: DVec3::ZERO,
             yaw: 0.0,
             pitch: 0.0,
+            on_ground: false,
             game_mode: GameMode::default(),
             block_change_sequence: 0,
+            player_data: Player::new(),
             view_distance: 2,
             old_view_distance: 2,
             death_location: None,
@@ -152,7 +159,7 @@ impl Client {
     }
 
     pub(crate) fn despawn_entity(&mut self, protocol_id: i32) {
-        todo!("push protocol id to buffer");
+        self.entities_to_despawn.push(VarInt(protocol_id));
     }
 
     /// Gets the username of this client.
@@ -201,6 +208,25 @@ impl Client {
         self.position
     }
 
+    pub fn set_position(&mut self, pos: impl Into<DVec3>) {
+        self.position = pos.into();
+
+        // Teleport the client without modifying their yaw or pitch.
+        self.write_packet(&SynchronizePlayerPosition {
+            position: self.position.to_array(),
+            yaw: 0.0,
+            pitch: 0.0,
+            flags: SyncPlayerPosLookFlags::new()
+                .with_x_rot(true)
+                .with_y_rot(true),
+            teleport_id: VarInt(self.teleport_id_counter as i32),
+            dismount_vehicle: false,
+        });
+
+        self.pending_teleports = self.pending_teleports.wrapping_add(1);
+        self.teleport_id_counter = self.teleport_id_counter.wrapping_add(1);
+    }
+
     /// Gets the position of this client at the end of the previous tick.
     pub fn old_position(&self) -> DVec3 {
         self.old_position
@@ -214,6 +240,10 @@ impl Client {
     /// Gets this client's pitch (in degrees).
     pub fn pitch(&self) -> f32 {
         self.pitch
+    }
+
+    pub fn on_ground(&self) -> bool {
+        self.on_ground
     }
 
     /// Changes the position and rotation of this client in the world it is
@@ -262,10 +292,6 @@ impl Client {
     /// The result is in `2..=32`.
     pub fn view_distance(&self) -> u8 {
         self.view_distance
-    }
-
-    pub(crate) fn old_view_distance(&self) -> u8 {
-        self.old_view_distance
     }
 
     /// Sets the view distance. The client will not be able to see chunks and
@@ -331,19 +357,52 @@ impl Client {
 
         std::mem::replace(&mut self.cursor_item, new)
     }
+
+    pub fn player(&self) -> &Player {
+        &self.player_data
+    }
+
+    pub fn player_mut(&mut self) -> &mut Player {
+        &mut self.player_data
+    }
+
+    /// Sends a system message to the player which is visible in the chat. The
+    /// message is only visible to this client.
+    pub fn send_message(&mut self, msg: impl Into<Text>) {
+        self.write_packet(&SystemChatMessage {
+            chat: msg.into(),
+            kind: VarInt(0),
+        });
+    }
+
+    pub fn send_plugin_message(&mut self, channel: Ident<&str>, data: &[u8]) {
+        self.write_packet(&PluginMessageS2c {
+            channel,
+            data: RawBytes(data),
+        });
+    }
 }
 
 pub(crate) fn update_clients(
     server: Res<Server>,
-    mut clients: Query<(&mut Client, Option<&McEntity>)>,
-    instances: Query<&mut Instance>,
+    mut clients: Query<(Entity, &mut Client, Option<&McEntity>)>,
+    mut instances: Query<&mut Instance>,
     entities: Query<&McEntity>,
+    mut scratch: Local<Vec<u8>>,
 ) {
-    for (mut client, self_entity) in &mut clients {
+    scratch.clear();
+
+    for (client_id, mut client, self_entity) in &mut clients {
         if !client.is_disconnected() {
-            if let Err(e) =
-                update_one_client(&mut client, self_entity, &server, &instances, &entities)
-            {
+            if let Err(e) = update_one_client(
+                &mut client,
+                client_id,
+                self_entity,
+                &server,
+                &mut instances,
+                &entities,
+                &mut scratch,
+            ) {
                 let _ = client.write_packet(&DisconnectPlay { reason: "".into() });
                 client.is_disconnected = true;
                 warn!(
@@ -353,18 +412,25 @@ pub(crate) fn update_clients(
                     "error updating client: {e:#}"
                 );
             }
+        } else {
+            // In case packet data continues to accumulate before the disconnected client is
+            // dropped.
+            client.send.clear();
         }
 
         client.is_new = false;
     }
 }
 
+#[inline]
 fn update_one_client(
     client: &mut Client,
-    self_entity: Option<&McEntity>,
+    this_id: Entity,
+    _self_entity: Option<&McEntity>,
     server: &Server,
-    instances: &Query<&mut Instance>,
+    instances: &mut Query<&mut Instance>,
     entities: &Query<&McEntity>,
+    scratch: &mut Vec<u8>,
 ) -> anyhow::Result<()> {
     let Ok(instance) = instances.get(client.instance) else {
         bail!("the client is not in an instance")
@@ -455,25 +521,8 @@ fn update_one_client(
         }
     }
 
-    /*
-    let self_entity_pos;
-    let self_entity_instance;
-    let self_entity_range;
-
-    // TODO: attempt to check if the client's self-entity was changed and respond
-    //       accordingly.
-
-    if let Some(entity) = self_entity {
-        self_entity_pos = ChunkPos::at(entity.position().x, entity.position().z);
-        self_entity_instance = entity.instance();
-        self_entity_range = entity.self_update_range.clone();
-    } else {
-        // Client isn't associated with a McEntity.
-        self_entity_pos = ChunkPos::default();
-        self_entity_instance = NULL_ENTITY;
-        self_entity_range = 0..0;
-    }
-    */
+    // Send instance-wide packet data.
+    client.send.append_bytes(&instance.packet_buf);
 
     // The client's own chunk pos.
     let old_chunk_pos = ChunkPos::at(client.old_position.x, client.old_position.z);
@@ -487,34 +536,188 @@ fn update_one_client(
         })?;
     }
 
-    if client.old_instance != client.new_instance {
-        // Unload all chunks and entities in old view.
-        if let Ok(old_instance) = instances.get(client.old_instance) {
-            // TODO: only send unload packets when old dimension == new
-            // dimension, since the       client will do the
-            // unloading for us in that case?
+    if client.old_instance != client.instance {
+        // Unload all chunks and entities in old instance.
+        if let Ok(mut old_instance) = instances.get_mut(client.old_instance) {
+            old_chunk_pos.try_for_each_in_view(client.old_view_distance, |pos| {
+                if let Some(cell) = old_instance.partition.get_mut(&pos) {
+                    // Remove this client from the set of clients viewing this cell.
+                    cell.viewers.remove(&this_id);
 
-            // old_chunk_pos.try_for_each_in_view(self.old_view_distance, |pos|
-            // {     if let Some(cell) = old_instance.cell(pos) {
-            //         if let Some(chunk) = &cell.chunk {
-            //
-            //         }
-            //     }
-            //
-            //     Ok(())
-            // })?;
+                    // TODO: only send unload packets when old dimension == new dimension, since the
+                    //       client will do the unloading for us?
+
+                    // Unload all the entities in this cell.
+                    for &entity_id in &cell.entities {
+                        if let Ok(entity) = entities.get(entity_id) {
+                            client.despawn_entity(entity.protocol_id());
+                        }
+                    }
+
+                    // Unload the chunk in this cell.
+                    if cell.chunk.is_some() {
+                        #[cfg(debug_assertions)]
+                        assert!(client.loaded_chunks.remove(&pos));
+
+                        client.send.append_packet(&UnloadChunk {
+                            chunk_x: pos.x,
+                            chunk_z: pos.z,
+                        })?;
+                    }
+                }
+
+                Ok(())
+            })?;
+        }
+
+        // Load all chunks and entities in the new instance.
+        if let Ok(instance) = instances.get_mut(client.instance) {
+            let instance = instance.into_inner();
+            chunk_pos.try_for_each_in_view(client.view_distance, |pos| {
+                if let Some(cell) = instance.partition.get_mut(&pos) {
+                    // Add this client to the set of clients viewing this cell.
+                    cell.viewers.insert(this_id);
+
+                    // Load all the entities in this cell.
+                    for &entity_id in &cell.entities {
+                        if let Ok(entity) = entities.get(entity_id) {
+                            entity.write_init_packets(
+                                &mut client.send,
+                                entity.position(),
+                                scratch,
+                            )?;
+                        }
+                    }
+
+                    // Load the chunk in this cell.
+                    if let Some(chunk) = &mut cell.chunk {
+                        #[cfg(debug_assertions)]
+                        assert!(client.loaded_chunks.insert(pos));
+
+                        chunk.write_init_packets(&instance.info, pos, &mut client.send, scratch)?;
+                    }
+                }
+
+                Ok(())
+            })?;
+        }
+    } else if old_chunk_pos != chunk_pos || client.old_view_distance != client.view_distance {
+        // Unload chunks and entities from the old view and load chunks and
+        // entities from the new view. We don't have to do any work where the
+        // old and new view overlap.
+
+        if let Ok(instance) = instances.get_mut(client.instance) {
+            let instance = instance.into_inner();
+
+            // Unload in old view.
+            old_chunk_pos.try_for_each_in_view(client.old_view_distance, |pos| {
+                // If the new chunk pos is not in view of pos from the new view distance.
+                if !chunk_pos.is_in_view(pos, client.view_distance) {
+                    if let Some(cell) = instance.partition.get_mut(&pos) {
+                        // Remove this client from the set of clients viewing this cell.
+                        cell.viewers.remove(&this_id);
+
+                        // Unload all the entities in this cell.
+                        for &entity_id in &cell.entities {
+                            if let Ok(entity) = entities.get(entity_id) {
+                                client.despawn_entity(entity.protocol_id());
+                            }
+                        }
+
+                        // Unload the chunk in this cell.
+                        if cell.chunk.is_some() {
+                            #[cfg(debug_assertions)]
+                            assert!(client.loaded_chunks.remove(&pos));
+
+                            client.send.append_packet(&UnloadChunk {
+                                chunk_x: pos.x,
+                                chunk_z: pos.z,
+                            })?;
+                        }
+                    }
+                }
+
+                Ok(())
+            })?;
+
+            // Load in new view.
+            chunk_pos.try_for_each_in_view(client.view_distance, |pos| {
+                // If the old chunk pos is not in view of pos from the old view distance.
+                if !old_chunk_pos.is_in_view(pos, client.old_view_distance) {
+                    if let Some(cell) = instance.partition.get_mut(&pos) {
+                        // Add this client to the set of clients viewing this cell.
+                        cell.viewers.insert(this_id);
+
+                        // Load all the entities in this cell.
+                        for &entity_id in &cell.entities {
+                            if let Ok(entity) = entities.get(entity_id) {
+                                entity.write_init_packets(
+                                    &mut client.send,
+                                    entity.position(),
+                                    scratch,
+                                )?;
+                            }
+                        }
+
+                        // Load the chunk in this cell.
+                        if let Some(chunk) = &mut cell.chunk {
+                            #[cfg(debug_assertions)]
+                            assert!(client.loaded_chunks.insert(pos));
+
+                            chunk.write_init_packets(
+                                &instance.info,
+                                pos,
+                                &mut client.send,
+                                scratch,
+                            )?;
+                        }
+                    }
+                }
+
+                Ok(())
+            })?;
         }
     }
 
-    // TODO: load chunks here.
-
+    // This closes the "downloading terrain" screen.
+    // Send this after the initial chunks are loaded.
     if client.is_new {
-        // This closes the "downloading terrain" screen.
-        // Send this after the initial chunks are loaded.
         client.send.append_packet(&SetDefaultSpawnPosition {
             position: BlockPos::at(client.position),
             angle: client.yaw,
         })?;
+    }
+
+    // Despawn all the entities that are queued to be despawned.
+    if !client.entities_to_despawn.is_empty() {
+        client.send.append_packet(&RemoveEntitiesEncode {
+            entity_ids: &client.entities_to_despawn,
+        })?;
+
+        client.entities_to_despawn.clear();
+    }
+
+    // Update the client's own player metadata.
+    scratch.clear();
+    client.player_data.updated_tracked_data(scratch);
+    if !scratch.is_empty() {
+        client.player_data.clear_modifications();
+
+        scratch.push(0xff);
+
+        client.send.append_packet(&SetEntityMetadata {
+            entity_id: VarInt(0),
+            metadata: RawBytes(&scratch),
+        })?;
+    }
+
+    // Acknowledge broken/placed blocks.
+    if client.block_change_sequence != 0 {
+        client.send.append_packet(&AcknowledgeBlockChange {
+            sequence: VarInt(client.block_change_sequence),
+        })?;
+
+        client.block_change_sequence = 0;
     }
 
     client.old_instance = client.instance;
@@ -528,208 +731,3 @@ fn update_one_client(
 
     Ok(())
 }
-
-/*
-/// The system for updating clients.
-pub(crate) fn update_clients(
-    mut clients: Query<(&mut Client, Option<&McEntity>)>,
-    server: Res<Server>,
-    instances: Query<&Instance>,
-    entities: Query<&McEntity>,
-) {
-    // TODO: what batch size to use?
-    clients.par_for_each_mut(1, |(mut client, self_entity)| {
-        if let Some(mut send) = client.send.take() {
-            match update_one_client(
-                &mut client,
-                self_entity,
-                &mut send,
-                &server,
-                &instances,
-                &entities,
-            ) {
-                Ok(()) => client.send = Some(send),
-                Err(e) => {
-                    let _ = send.append_packet(&DisconnectPlay { reason: "".into() });
-                    warn!(
-                        username = %client.username,
-                        uuid = %client.uuid,
-                        ip = %client.ip,
-                        "error updating client: {e:#}"
-                    );
-                }
-            }
-        }
-
-        client.is_new = false;
-    });
-}
-
-fn update_one_client(
-    client: &mut Client,
-    self_entity: Option<&McEntity>,
-    send: &mut PlayPacketSender,
-    server: &Server,
-    instances: &Query<&Instance>,
-    entities: &Query<&McEntity>,
-) -> anyhow::Result<()> {
-    let Ok(instance) = instances.get(client.instance) else {
-        bail!("the client is not in an instance")
-    };
-
-    // Send the login (play) packet and other initial packets. We defer this until
-    // now so that the user can set the client's initial location, game
-    // mode, etc.
-    if client.is_new {
-        client.needs_respawn = false;
-
-        let dimension_names: Vec<_> = server
-            .dimensions()
-            .map(|(id, _)| id.dimension_name())
-            .collect();
-
-        // The login packet is prepended so that it is sent before all the other
-        // packets. Some packets don't work correctly when sent before the login packet,
-        // which is why we're doing this.
-        send.prepend_packet(&LoginPlayOwned {
-            entity_id: 0, // ID 0 is reserved for clients.
-            is_hardcore: client.is_hardcore,
-            game_mode: client.game_mode,
-            previous_game_mode: -1,
-            dimension_names,
-            registry_codec: server.registry_codec().clone(),
-            dimension_type_name: instance.dimension().dimension_type_name(),
-            dimension_name: instance.dimension().dimension_name(),
-            hashed_seed: 42,
-            max_players: VarInt(0), // Unused
-            view_distance: VarInt(client.view_distance() as i32),
-            simulation_distance: VarInt(16),
-            reduced_debug_info: false,
-            enable_respawn_screen: client.has_respawn_screen,
-            is_debug: false,
-            is_flat: client.is_flat,
-            last_death_location: client
-                .death_location
-                .map(|(id, pos)| (id.dimension_name(), pos)),
-        })?;
-
-        /*
-        // TODO: enable all the features?
-        send.append_packet(&FeatureFlags {
-            features: vec![Ident::new("vanilla").unwrap()],
-        })?;
-        */
-
-        // TODO: write player list init packets.
-    } else {
-        if client.view_distance != client.old_view_distance {
-            // Change the render distance fog.
-            send.append_packet(&SetRenderDistance(VarInt(client.view_distance.into())))?;
-        }
-
-        if client.needs_respawn {
-            client.needs_respawn = false;
-
-            send.append_packet(&RespawnOwned {
-                dimension_type_name: instance.dimension().dimension_type_name(),
-                dimension_name: instance.dimension().dimension_name(),
-                hashed_seed: 0,
-                game_mode: client.game_mode,
-                previous_game_mode: -1,
-                is_debug: false,
-                is_flat: client.is_flat,
-                copy_metadata: true,
-                last_death_location: client
-                    .death_location
-                    .map(|(id, pos)| (id.dimension_name(), pos)),
-            })?;
-        }
-
-        // TODO: update changed player list.
-    }
-
-    // Check if it's time to send another keepalive.
-    if server.current_tick() % (server.tick_rate() * 10) == 0 {
-        if client.got_keepalive {
-            let id = rand::random();
-            send.append_packet(&KeepAliveS2c { id })?;
-            client.last_keepalive_id = id;
-            client.got_keepalive = false;
-        } else {
-            bail!("timed out (no keepalive response)");
-        }
-    }
-
-    let self_entity_pos;
-    let self_entity_instance;
-    let self_entity_range;
-
-    // TODO: attempt to check if the client's self-entity was changed and respond
-    //       accordingly.
-
-    if let Some(entity) = self_entity {
-        self_entity_pos = ChunkPos::at(entity.position().x, entity.position().z);
-        self_entity_instance = entity.instance();
-        self_entity_range = entity.self_update_range.clone();
-    } else {
-        // Client isn't associated with a McEntity.
-        self_entity_pos = ChunkPos::default();
-        self_entity_instance = NULL_ENTITY;
-        self_entity_range = 0..0;
-    }
-
-    // The client's own chunk pos.
-    let old_chunk_pos = ChunkPos::at(client.old_position.x, client.old_position.z);
-    let chunk_pos = ChunkPos::at(client.position.x, client.position.z);
-
-    // Make sure the center chunk is set /before/ loading chunks.
-    if old_chunk_pos != chunk_pos {
-        send.append_packet(&SetCenterChunk {
-            chunk_x: VarInt(chunk_pos.x),
-            chunk_z: VarInt(chunk_pos.z),
-        })?;
-    }
-
-    /*
-    // Iterate over all visible chunks from the previous tick.
-    if let Ok(old_instance) = instances.get(client.old_instance) {
-        old_chunk_pos.try_for_each_in_view(client.old_view_distance, |pos| {
-            if let Some(cell) = old_instance.cell(pos) {
-                if let Some(chunk) = &cell.chunk {
-                    if chunk.needs_reinit() {
-                        todo!();
-
-                        #[cfg(debug_assertions)]
-                        client.loaded_chunks.insert(pos);
-                    } else {
-                        todo!();
-                    }
-                } else if cell.chunk_removed {
-                    send.append_packet(&UnloadChunk {
-                        chunk_x: pos.x,
-                        chunk_z: pos.z,
-                    })?;
-                }
-            }
-        })?;
-    }*/
-
-    if client.is_new {
-        // This closes the "downloading terrain" screen.
-        // Send this after the initial chunks are loaded.
-        send.append_packet(&SetDefaultSpawnPosition {
-            position: BlockPos::at(client.position),
-            angle: client.yaw,
-        })?;
-    }
-
-    client.old_instance = client.instance;
-    client.old_position = client.position;
-    client.old_view_distance = client.view_distance;
-    // TODO: clear client player data?
-
-    send.flush().context("failed to flush packet queue")?;
-
-    Ok(())
-}
-*/

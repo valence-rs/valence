@@ -2,13 +2,14 @@ use std::cmp;
 
 use anyhow::bail;
 use bevy_ecs::prelude::*;
+use bevy_ecs::schedule::SystemDescriptor;
 use bevy_ecs::system::SystemParam;
 use glam::{DVec3, Vec3};
 use paste::paste;
 use tracing::warn;
 use uuid::Uuid;
 use valence_protocol::packets::c2s::play::{
-    ClientCommand, PlayerAbilitiesC2s, PongPlay, ResourcePackC2s, SeenAdvancements,
+    ClientCommand, PlayerAbilitiesC2s, ResourcePackC2s, SeenAdvancements,
 };
 use valence_protocol::packets::C2sPlayPacket;
 use valence_protocol::types::{
@@ -202,6 +203,28 @@ pub struct MoveVehicle {
     pub position: DVec3,
     pub yaw: f32,
     pub pitch: f32,
+}
+
+/// Sent whenever one of the other movement events is sent.
+#[derive(Clone, Debug)]
+pub struct MovePlayer {
+    pub client: Entity,
+    /// The position of the client prior to the event.
+    pub old_position: DVec3,
+    /// The position of the client after the event.
+    pub position: DVec3,
+    /// The yaw of the client prior to the event.
+    pub old_yaw: f32,
+    /// The yaw of the client after the event.
+    pub yaw: f32,
+    /// The pitch of the client prior to the event.
+    pub old_pitch: f32,
+    /// The pitch of the client after the event.
+    pub pitch: f32,
+    /// If the client was on ground prior to the event.
+    pub old_on_ground: bool,
+    /// If the client is on ground after the event.
+    pub on_ground: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -594,6 +617,7 @@ events! {
         SetPlayerRotation
         SetPlayerOnGround
         MoveVehicle
+        MovePlayer
         StartSneaking
         StopSneaking
         LeaveBed
@@ -601,9 +625,9 @@ events! {
         StopSprinting
         StartJumpWithHorse
         StopJumpWithHorse
-        OpenHorseInventory
     }
     2 {
+        OpenHorseInventory
         StartFlyingWithElytra
         PaddleBoat
         PickItem
@@ -619,9 +643,9 @@ events! {
         SwapItemInHand
         PlayerInput
         Pong
-        PlayerSession
     }
     3 {
+        PlayerSession
         ChangeRecipeBookSettings
         SetSeenRecipe
         RenameItem
@@ -637,9 +661,9 @@ events! {
         ProgramCommandBlock
         ProgramCommandBlockMinecart
         SetCreativeModeSlot
-        ProgramJigsawBlock
     }
     4 {
+        ProgramJigsawBlock
         ProgramStructureBlock
         UpdateSign
         SwingArm
@@ -778,9 +802,6 @@ fn handle_client(
                     });
             }
             C2sPlayPacket::ClickContainerButton(p) => {
-                // TODO: check that the slot modifications are legal.
-                // TODO: update cursor item.
-
                 events.0.click_container_button.send(ClickContainerButton {
                     client: entity,
                     window_id: p.window_id,
@@ -788,6 +809,9 @@ fn handle_client(
                 });
             }
             C2sPlayPacket::ClickContainer(p) => {
+                // TODO: check that the slot modifications are legal.
+                // TODO: update cursor item.
+
                 events.0.click_container.send(ClickContainer {
                     client: entity,
                     window_id: p.window_id,
@@ -871,6 +895,21 @@ fn handle_client(
                     position: p.position.into(),
                     on_ground: p.on_ground,
                 });
+
+                events.1.move_player.send(MovePlayer {
+                    client: entity,
+                    old_position: client.position,
+                    position: p.position.into(),
+                    old_yaw: client.yaw,
+                    yaw: client.yaw,
+                    old_pitch: client.pitch,
+                    pitch: client.pitch,
+                    old_on_ground: client.on_ground,
+                    on_ground: client.on_ground,
+                });
+
+                client.position = p.position.into();
+                client.on_ground = p.on_ground;
             }
             C2sPlayPacket::SetPlayerPositionAndRotation(p) => {
                 if client.pending_teleports != 0 {
@@ -887,6 +926,23 @@ fn handle_client(
                         pitch: p.pitch,
                         on_ground: p.on_ground,
                     });
+
+                events.1.move_player.send(MovePlayer {
+                    client: entity,
+                    old_position: client.position,
+                    position: p.position.into(),
+                    old_yaw: client.yaw,
+                    yaw: p.yaw,
+                    old_pitch: client.pitch,
+                    pitch: p.pitch,
+                    old_on_ground: client.on_ground,
+                    on_ground: p.on_ground,
+                });
+
+                client.position = p.position.into();
+                client.yaw = p.yaw;
+                client.pitch = p.pitch;
+                client.on_ground = p.on_ground;
             }
             C2sPlayPacket::SetPlayerRotation(p) => {
                 if client.pending_teleports != 0 {
@@ -899,6 +955,22 @@ fn handle_client(
                     pitch: p.pitch,
                     on_ground: p.on_ground,
                 });
+
+                events.1.move_player.send(MovePlayer {
+                    client: entity,
+                    old_position: client.position,
+                    position: client.position,
+                    old_yaw: client.yaw,
+                    yaw: p.yaw,
+                    old_pitch: client.pitch,
+                    pitch: p.pitch,
+                    old_on_ground: client.on_ground,
+                    on_ground: p.on_ground,
+                });
+
+                client.yaw = p.yaw;
+                client.pitch = p.pitch;
+                client.on_ground = p.on_ground;
             }
             C2sPlayPacket::SetPlayerOnGround(p) => {
                 if client.pending_teleports != 0 {
@@ -909,6 +981,20 @@ fn handle_client(
                     client: entity,
                     on_ground: p.0,
                 });
+
+                events.1.move_player.send(MovePlayer {
+                    client: entity,
+                    old_position: client.position,
+                    position: client.position,
+                    old_yaw: client.yaw,
+                    yaw: client.yaw,
+                    old_pitch: client.pitch,
+                    pitch: client.pitch,
+                    old_on_ground: client.on_ground,
+                    on_ground: p.0,
+                });
+
+                client.on_ground = p.0;
             }
             C2sPlayPacket::MoveVehicleC2s(p) => {
                 if client.pending_teleports != 0 {
@@ -921,6 +1007,22 @@ fn handle_client(
                     yaw: p.yaw,
                     pitch: p.pitch,
                 });
+
+                events.1.move_player.send(MovePlayer {
+                    client: entity,
+                    old_position: client.position,
+                    position: p.position.into(),
+                    old_yaw: client.yaw,
+                    yaw: p.yaw,
+                    old_pitch: client.pitch,
+                    pitch: p.pitch,
+                    old_on_ground: client.on_ground,
+                    on_ground: client.on_ground,
+                });
+
+                client.position = p.position.into();
+                client.yaw = p.yaw;
+                client.pitch = p.pitch;
             }
             C2sPlayPacket::PlayerCommand(p) => match p.action_id {
                 Action::StartSneaking => events
@@ -950,7 +1052,7 @@ fn handle_client(
                     .stop_jump_with_horse
                     .send(StopJumpWithHorse { client: entity }),
                 Action::OpenHorseInventory => events
-                    .1
+                    .2
                     .open_horse_inventory
                     .send(OpenHorseInventory { client: entity }),
                 Action::StartFlyingWithElytra => events
@@ -1045,7 +1147,7 @@ fn handle_client(
                 });
             }
             C2sPlayPacket::PlayerSession(p) => {
-                events.2.player_session.send(PlayerSession {
+                events.3.player_session.send(PlayerSession {
                     client: entity,
                     session_id: p.session_id,
                     expires_at: p.expires_at,
@@ -1153,7 +1255,7 @@ fn handle_client(
                 });
             }
             C2sPlayPacket::ProgramJigsawBlock(p) => {
-                events.3.program_jigsaw_block.send(ProgramJigsawBlock {
+                events.4.program_jigsaw_block.send(ProgramJigsawBlock {
                     client: entity,
                     position: p.position,
                     name: p.name.into(),
@@ -1234,4 +1336,142 @@ fn handle_client(
     }
 
     Ok(())
+}
+
+/// Returns the default event handler system which handles client events in a
+/// reasonable default way.
+///
+/// For instance, movement events are handled by changing the entity's
+/// position/rotation to match the received movement, crouching makes the
+/// entity crouch, etc.
+///
+/// This system's primary purpose is to reduce boilerplate code in the
+/// examples, but it can be used as a quick way to get started in your own
+/// code. The precise behavior of this system is left unspecified and
+/// is subject to change.
+pub fn default_event_handler() -> SystemDescriptor {
+    use valence_protocol::entity_meta::Pose;
+
+    use crate::entity::{McEntity, TrackedData};
+
+    fn system(
+        mut clients: Query<(&mut Client, Option<&mut McEntity>)>,
+        mut update_settings: EventReader<UpdateSettings>,
+        mut move_player: EventReader<MovePlayer>,
+        mut start_sneaking: EventReader<StartSneaking>,
+        mut stop_sneaking: EventReader<StopSneaking>,
+        mut start_sprinting: EventReader<StartSprinting>,
+        mut stop_sprinting: EventReader<StopSprinting>,
+        mut swing_arm: EventReader<SwingArm>,
+    ) {
+        for UpdateSettings {
+            client,
+            view_distance,
+            displayed_skin_parts,
+            main_hand,
+            ..
+        } in update_settings.iter()
+        {
+            let Ok((mut client, entity)) = clients.get_mut(*client) else {
+                continue
+            };
+
+            client.set_view_distance(*view_distance);
+
+            let player = client.player_mut();
+
+            player.set_cape(displayed_skin_parts.cape());
+            player.set_jacket(displayed_skin_parts.jacket());
+            player.set_left_sleeve(displayed_skin_parts.left_sleeve());
+            player.set_right_sleeve(displayed_skin_parts.right_sleeve());
+            player.set_left_pants_leg(displayed_skin_parts.left_pants_leg());
+            player.set_right_pants_leg(displayed_skin_parts.right_pants_leg());
+            player.set_hat(displayed_skin_parts.hat());
+            player.set_main_arm(*main_hand as u8);
+
+            if let Some(mut entity) = entity {
+                if let TrackedData::Player(player) = entity.data_mut() {
+                    player.set_cape(displayed_skin_parts.cape());
+                    player.set_jacket(displayed_skin_parts.jacket());
+                    player.set_left_sleeve(displayed_skin_parts.left_sleeve());
+                    player.set_right_sleeve(displayed_skin_parts.right_sleeve());
+                    player.set_left_pants_leg(displayed_skin_parts.left_pants_leg());
+                    player.set_right_pants_leg(displayed_skin_parts.right_pants_leg());
+                    player.set_hat(displayed_skin_parts.hat());
+                    player.set_main_arm(*main_hand as u8);
+                }
+            }
+        }
+
+        for MovePlayer {
+            client,
+            position,
+            yaw,
+            pitch,
+            on_ground,
+            ..
+        } in move_player.iter()
+        {
+            let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
+                continue
+            };
+
+            entity.set_position(*position);
+            entity.set_yaw(*yaw);
+            entity.set_head_yaw(*yaw);
+            entity.set_pitch(*pitch);
+            entity.set_on_ground(*on_ground);
+        }
+
+        for StartSneaking { client } in start_sneaking.iter() {
+            let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
+                continue
+            };
+
+            if let TrackedData::Player(player) = entity.data_mut() {
+                player.set_pose(Pose::Sneaking);
+            }
+        }
+
+        for StopSneaking { client } in stop_sneaking.iter() {
+            let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
+                continue
+            };
+
+            if let TrackedData::Player(player) = entity.data_mut() {
+                player.set_pose(Pose::Standing);
+            }
+        }
+
+        for StartSprinting { client } in start_sprinting.iter() {
+            let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
+                continue
+            };
+
+            if let TrackedData::Player(player) = entity.data_mut() {
+                player.set_sprinting(true);
+            }
+        }
+
+        for StopSprinting { client } in stop_sprinting.iter() {
+            let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
+                continue
+            };
+
+            if let TrackedData::Player(player) = entity.data_mut() {
+                player.set_sprinting(false);
+            }
+        }
+
+        for SwingArm { client, hand } in swing_arm.iter() {
+            let Ok((_, Some(entity))) = clients.get_mut(*client) else {
+                continue
+            };
+
+            // TODO: trigger swing hand event.
+            let _ = (entity, hand);
+        }
+    }
+
+    system.into_descriptor()
 }

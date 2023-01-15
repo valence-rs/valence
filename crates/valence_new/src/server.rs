@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use anyhow::{ensure, Context};
+use anyhow::ensure;
 use bevy_ecs::prelude::*;
 use flume::{Receiver, Sender};
 pub use packet_manager::{PlayPacketReceiver, PlayPacketSender};
@@ -17,12 +17,15 @@ use uuid::Uuid;
 use valence_nbt::{compound, Compound, List};
 use valence_protocol::{ident, Username};
 
-use crate::biome::{Biome, BiomeId};
+use crate::biome::{validate_biomes, Biome, BiomeId};
 use crate::client::event::{dispatch_client_events, register_client_events};
 use crate::client::{update_clients, Client};
 use crate::config::{AsyncCallbacks, Config, ConnectionMode};
-use crate::dimension::{Dimension, DimensionId};
-use crate::entity::{deinit_despawned_entities, init_entities, McEntityManager};
+use crate::dimension::{validate_dimensions, Dimension, DimensionId};
+use crate::entity::{
+    check_entity_invariants, deinit_despawned_entities, init_entities, update_entities,
+    McEntityManager,
+};
 use crate::instance::{update_instances_post_client, update_instances_pre_client, Instance};
 use crate::inventory::{
     handle_close_container, update_client_on_close_inventory, update_client_on_open_inventory,
@@ -283,6 +286,9 @@ pub fn run_server(
         None => cfg.tokio_handle.unwrap(),
     };
 
+    validate_dimensions(&cfg.dimensions)?;
+    validate_biomes(&cfg.biomes)?;
+
     let registry_codec = make_registry_codec(&cfg.dimensions, &cfg.biomes);
 
     let (new_clients_send, new_clients_recv) = flume::bounded(64);
@@ -340,16 +346,18 @@ pub fn run_server(
         "after user stage",
         SystemStage::parallel()
             .with_system(init_entities)
+            .with_system(check_entity_invariants)
             .with_system(update_instances_pre_client.after(init_entities))
             .with_system(update_clients.after(update_instances_pre_client))
             .with_system(update_instances_post_client.after(update_clients))
             .with_system(deinit_despawned_entities.after(update_instances_post_client))
             .with_system(despawn_entities.after(deinit_despawned_entities))
-            .with_system(update_player_inventories)
+            .with_system(update_entities.after(despawn_entities))
             .with_system(update_client_on_open_inventory)
             .with_system(update_open_inventories)
             .with_system(handle_close_container)
-            .with_system(update_client_on_close_inventory.after(update_open_inventories)),
+            .with_system(update_client_on_close_inventory.after(update_open_inventories))
+            .with_system(update_player_inventories),
     );
 
     let mut tick_start = Instant::now();
