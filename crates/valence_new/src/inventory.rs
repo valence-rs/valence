@@ -317,30 +317,27 @@ pub(crate) fn update_client_on_open_inventory(
 ) {
     for (mut client, open_inventory, _) in clients.iter_mut() {
         // validate that the inventory exists
-        let inventory = inventories.get_component::<Inventory>(open_inventory.entity);
-        if inventory.is_err() {
+        if let Ok(inventory) = inventories.get_component::<Inventory>(open_inventory.entity) {
+            // send the inventory to the client
+            client.window_id = client.window_id % 100 + 1;
+
+            let packet = OpenScreen {
+                window_id: VarInt(client.window_id.into()),
+                window_type: WindowType::from(inventory.kind),
+                window_title: inventory.title.clone(),
+            };
+            client.write_packet(&packet);
+
+            let packet = SetContainerContentEncode {
+                window_id: client.window_id,
+                state_id: VarInt(inventory.state_id.0),
+                slots: inventory.slot_slice(),
+                carried_item: &client.cursor_item.clone(),
+            };
+            client.write_packet(&packet);
+        } else {
             warn!("Client is viewing an inventory that does not exist");
-            continue;
         }
-
-        // send the inventory to the client
-        let inventory = inventory.unwrap();
-        client.window_id = client.window_id % 100 + 1;
-
-        let packet = OpenScreen {
-            window_id: VarInt(client.window_id.into()),
-            window_type: WindowType::from(inventory.kind),
-            window_title: inventory.title.clone(),
-        };
-        client.write_packet(&packet);
-
-        let packet = SetContainerContentEncode {
-            window_id: client.window_id,
-            state_id: VarInt(inventory.state_id.0),
-            slots: inventory.slot_slice(),
-            carried_item: &client.cursor_item.clone(),
-        };
-        client.write_packet(&packet);
     }
 }
 
