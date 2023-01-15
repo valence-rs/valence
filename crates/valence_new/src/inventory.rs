@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::iter::FusedIterator;
 use std::num::Wrapping;
 
@@ -346,16 +347,38 @@ pub(crate) fn update_open_inventories(
     mut clients: Query<(Entity, &mut Client, &OpenInventory)>,
     mut inventories: Query<&mut Inventory>,
 ) {
-    for (client_entity, mut client, open_inventory) in clients.iter_mut() {
+    if clients.is_empty() {
+        return;
+    }
+
+    // These operations need to happen in this order.
+
+    // increment the state id of all inventories that have been modified, once per
+    // inventory
+    let observed_inventories = clients
+        .iter_mut()
+        .map(|(_, _, open_inventory)| open_inventory.entity)
+        .collect::<HashSet<_>>();
+    // TODO: benchmark the impact of this
+
+    for inv in observed_inventories {
         // validate that the inventory exists
-        if let Ok(mut inventory) = inventories.get_component_mut::<Inventory>(open_inventory.entity)
-        {
-            // send the inventory to the client
+        if let Ok(mut inventory) = inventories.get_component_mut::<Inventory>(inv) {
             if inventory.modified == 0 {
                 continue;
             }
             inventory.state_id += 1;
+        }
+    }
 
+    // send the inventory contents to all clients that are viewing an inventory
+    for (client_entity, mut client, open_inventory) in clients.iter_mut() {
+        // validate that the inventory exists
+        if let Ok(inventory) = inventories.get_component::<Inventory>(open_inventory.entity) {
+            // send the inventory to the client
+            if inventory.modified == 0 {
+                continue;
+            }
             let packet = SetContainerContentEncode {
                 window_id: client.window_id,
                 state_id: VarInt(inventory.state_id.0),
@@ -363,11 +386,18 @@ pub(crate) fn update_open_inventories(
                 carried_item: &client.cursor_item.clone(),
             };
             client.write_packet(&packet);
-
-            inventory.modified = 0;
         } else {
             // the inventory no longer exists, so close the inventory
             commands.entity(client_entity).remove::<OpenInventory>();
+        }
+    }
+
+    // reset the modified flag
+    for (_, _, open_inventory) in clients.iter_mut() {
+        // validate that the inventory exists
+        if let Ok(mut inventory) = inventories.get_component_mut::<Inventory>(open_inventory.entity)
+        {
+            inventory.modified = 0;
         }
     }
 }
