@@ -4,10 +4,10 @@ use tracing::info;
 use valence_new::client::Client;
 use valence_new::config::Config;
 use valence_new::dimension::DimensionId;
-use valence_new::inventory::{Inventory, OpenInventory};
+use valence_new::inventory::{Inventory, InventoryKind, OpenInventory};
 use valence_new::protocol::types::GameMode;
 use valence_new::server::Server;
-use valence_protocol::{InventoryKind, ItemKind, ItemStack};
+use valence_protocol::{ItemKind, ItemStack};
 
 #[derive(Resource)]
 struct GameState {
