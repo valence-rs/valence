@@ -143,66 +143,77 @@ pub struct Config {
 
 impl Config {
     /// See [`Self::world`].
+    #[must_use]
     pub fn with_world(mut self, world: World) -> Self {
         self.world = world;
         self
     }
 
     /// See [`Self::tokio_handle`].
+    #[must_use]
     pub fn with_tokio_handle(mut self, tokio_handle: Option<Handle>) -> Self {
         self.tokio_handle = tokio_handle;
         self
     }
 
     /// See [`Self::max_connections`].
+    #[must_use]
     pub fn with_max_connections(mut self, max_connections: usize) -> Self {
         self.max_connections = max_connections;
         self
     }
 
     /// See [`Self::address`].
+    #[must_use]
     pub fn with_address(mut self, address: SocketAddr) -> Self {
         self.address = address;
         self
     }
 
     /// See [`Self::tick_rate`].
+    #[must_use]
     pub fn with_tick_rate(mut self, tick_rate: i64) -> Self {
         self.tick_rate = tick_rate;
         self
     }
 
     /// See [`Self::connection_mode`].
+    #[must_use]
     pub fn with_connection_mode(mut self, connection_mode: ConnectionMode) -> Self {
         self.connection_mode = connection_mode;
         self
     }
 
     /// See [`Self::compression_threshold`].
+    #[must_use]
     pub fn with_compression_threshold(mut self, compression_threshold: Option<u32>) -> Self {
         self.compression_threshold = compression_threshold;
         self
     }
 
     /// See [`Self::incoming_capacity`].
+    #[must_use]
     pub fn with_incoming_capacity(mut self, incoming_capacity: usize) -> Self {
         self.incoming_capacity = incoming_capacity;
         self
     }
 
     /// See [`Self::outgoing_capacity`].
+    #[must_use]
     pub fn with_outgoing_capacity(mut self, outgoing_capacity: usize) -> Self {
         self.outgoing_capacity = outgoing_capacity;
         self
     }
 
     /// See [`Self::dimensions`].
+    #[must_use]
     pub fn with_dimensions(mut self, dimensions: impl Into<Vec<Dimension>>) -> Self {
         self.dimensions = dimensions.into();
         self
     }
 
     /// See [`Self::biomes`].
+    #[must_use]
     pub fn with_biomes(mut self, biomes: impl Into<Vec<Biome>>) -> Self {
         self.biomes = biomes.into();
         self
@@ -291,6 +302,7 @@ pub trait AsyncCallbacks: Send + Sync + 'static {
     }
 }
 
+/// The default async callbacks.
 impl AsyncCallbacks for () {}
 
 impl Default for Config {

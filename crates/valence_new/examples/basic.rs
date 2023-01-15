@@ -1,5 +1,6 @@
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::ShouldRun;
+use valence_new::client::event::default_event_handler;
 use valence_new::client::Client;
 use valence_new::config::Config;
 use valence_new::dimension::DimensionId;
@@ -21,6 +22,7 @@ fn main() -> anyhow::Result<()> {
         SystemStage::parallel()
             .with_system(setup.with_run_criteria(ShouldRun::once))
             .with_system(init_clients)
+            .with_system(default_event_handler())
             .with_system(tick),
         (),
     )

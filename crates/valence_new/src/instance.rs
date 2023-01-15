@@ -136,11 +136,15 @@ impl Instance {
     // TODO: Entry API for chunks.
 
     pub fn chunk(&self, pos: impl Into<ChunkPos>) -> Option<&Chunk<true>> {
-        self.partition.get(&pos.into()).and_then(|p| p.chunk.as_ref())
+        self.partition
+            .get(&pos.into())
+            .and_then(|p| p.chunk.as_ref())
     }
 
     pub fn chunk_mut(&mut self, pos: impl Into<ChunkPos>) -> Option<&mut Chunk<true>> {
-        self.partition.get_mut(&pos.into()).and_then(|p| p.chunk.as_mut())
+        self.partition
+            .get_mut(&pos.into())
+            .and_then(|p| p.chunk.as_mut())
     }
 
     pub fn chunks(&self) -> impl FusedIterator<Item = (ChunkPos, &Chunk<true>)> + Clone + '_ {

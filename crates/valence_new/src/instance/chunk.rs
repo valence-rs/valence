@@ -8,7 +8,7 @@ use valence_protocol::{BlockPos, Encode, VarInt, VarLong};
 use crate::biome::BiomeId;
 use crate::chunk_pos::ChunkPos;
 use crate::instance::paletted_container::PalettedContainer;
-use crate::instance::{InstanceInfo};
+use crate::instance::InstanceInfo;
 use crate::math::bit_width;
 use crate::packet::{PacketWriter, WritePacket};
 
@@ -244,6 +244,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
     ///
     /// Panics if the offsets are outside the bounds of the chunk. `x` and `z`
     /// must be less than 16 while `y` must be less than `section_count() * 16`.
+    #[track_caller]
     pub fn block_state(&self, x: usize, y: usize, z: usize) -> BlockState {
         assert!(
             x < 16 && y < self.section_count() * 16 && z < 16,
@@ -265,6 +266,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
     ///
     /// Panics if the offsets are outside the bounds of the chunk. `x` and `z`
     /// must be less than 16 while `y` must be less than `section_count() * 16`.
+    #[track_caller]
     pub fn set_block_state(
         &mut self,
         x: usize,
@@ -313,6 +315,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
     /// section count.
     ///
     /// [`set_block_state`]: Self::set_block_state
+    #[track_caller]
     pub fn fill_block_states(&mut self, sect_y: usize, block: BlockState) {
         let Some(sect) = self.sections.get_mut(sect_y) else {
             panic!(
@@ -373,6 +376,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
     ///
     /// Panics if the offsets are outside the bounds of the chunk. `x` and `z`
     /// must be less than 4 while `y` must be less than `section_count() * 4`.
+    #[track_caller]
     pub fn biome(&self, x: usize, y: usize, z: usize) -> BiomeId {
         assert!(
             x < 4 && y < self.section_count() * 4 && z < 4,
@@ -392,6 +396,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
     ///
     /// Panics if the offsets are outside the bounds of the chunk. `x` and `z`
     /// must be less than 4 while `y` must be less than `section_count() * 4`.
+    #[track_caller]
     pub fn set_biome(&mut self, x: usize, y: usize, z: usize, biome: BiomeId) -> BiomeId {
         assert!(
             x < 4 && y < self.section_count() * 4 && z < 4,
@@ -422,6 +427,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
     /// section count.
     ///
     /// [`set_biome`]: Self::set_biome
+    #[track_caller]
     pub fn fill_biomes(&mut self, sect_y: usize, biome: BiomeId) {
         let Some(sect) = self.sections.get_mut(sect_y) else {
             panic!(

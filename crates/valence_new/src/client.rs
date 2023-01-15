@@ -9,11 +9,14 @@ use tracing::warn;
 use uuid::Uuid;
 use valence_protocol::packets::s2c::play::{
     AcknowledgeBlockChange, DisconnectPlay, GameEvent, KeepAliveS2c, LoginPlayOwned,
-    RemoveEntitiesEncode, RespawnOwned, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata,
-    SetRenderDistance, SynchronizePlayerPosition, UnloadChunk,
+    PluginMessageS2c, RemoveEntitiesEncode, RespawnOwned, SetCenterChunk, SetDefaultSpawnPosition,
+    SetEntityMetadata, SetRenderDistance, SynchronizePlayerPosition, SystemChatMessage,
+    UnloadChunk,
 };
 use valence_protocol::types::{GameEventKind, GameMode, SyncPlayerPosLookFlags};
-use valence_protocol::{BlockPos, EncodePacket, ItemStack, RawBytes, Username, VarInt};
+use valence_protocol::{
+    BlockPos, EncodePacket, Ident, ItemStack, RawBytes, Text, Username, VarInt,
+};
 
 use crate::chunk_pos::ChunkPos;
 use crate::dimension::DimensionId;
@@ -46,8 +49,10 @@ pub struct Client {
     old_position: DVec3,
     yaw: f32,
     pitch: f32,
+    on_ground: bool,
     game_mode: GameMode,
     block_change_sequence: i32,
+    // TODO: make this a component and default to the self-entity's player data?
     player_data: Player,
     view_distance: u8,
     old_view_distance: u8,
@@ -97,6 +102,7 @@ impl Client {
             old_position: DVec3::ZERO,
             yaw: 0.0,
             pitch: 0.0,
+            on_ground: false,
             game_mode: GameMode::default(),
             block_change_sequence: 0,
             player_data: Player::new(),
@@ -199,6 +205,25 @@ impl Client {
         self.position
     }
 
+    pub fn set_position(&mut self, pos: impl Into<DVec3>) {
+        self.position = pos.into();
+
+        // Teleport the client without modifying their yaw or pitch.
+        self.write_packet(&SynchronizePlayerPosition {
+            position: self.position.to_array(),
+            yaw: 0.0,
+            pitch: 0.0,
+            flags: SyncPlayerPosLookFlags::new()
+                .with_x_rot(true)
+                .with_y_rot(true),
+            teleport_id: VarInt(self.teleport_id_counter as i32),
+            dismount_vehicle: false,
+        });
+
+        self.pending_teleports = self.pending_teleports.wrapping_add(1);
+        self.teleport_id_counter = self.teleport_id_counter.wrapping_add(1);
+    }
+
     /// Gets the position of this client at the end of the previous tick.
     pub fn old_position(&self) -> DVec3 {
         self.old_position
@@ -212,6 +237,10 @@ impl Client {
     /// Gets this client's pitch (in degrees).
     pub fn pitch(&self) -> f32 {
         self.pitch
+    }
+
+    pub fn on_ground(&self) -> bool {
+        self.on_ground
     }
 
     /// Changes the position and rotation of this client in the world it is
@@ -228,25 +257,6 @@ impl Client {
             yaw,
             pitch,
             flags: SyncPlayerPosLookFlags::new(),
-            teleport_id: VarInt(self.teleport_id_counter as i32),
-            dismount_vehicle: false,
-        });
-
-        self.pending_teleports = self.pending_teleports.wrapping_add(1);
-        self.teleport_id_counter = self.teleport_id_counter.wrapping_add(1);
-    }
-
-    pub fn set_position(&mut self, pos: impl Into<DVec3>) {
-        self.position = pos.into();
-
-        // Teleport the client without modifying their yaw or pitch.
-        self.write_packet(&SynchronizePlayerPosition {
-            position: self.position.to_array(),
-            yaw: 0.0,
-            pitch: 0.0,
-            flags: SyncPlayerPosLookFlags::new()
-                .with_x_rot(true)
-                .with_y_rot(true),
             teleport_id: VarInt(self.teleport_id_counter as i32),
             dismount_vehicle: false,
         });
@@ -343,6 +353,30 @@ impl Client {
         }
 
         std::mem::replace(&mut self.cursor_item, new)
+    }
+
+    pub fn player(&self) -> &Player {
+        &self.player_data
+    }
+
+    pub fn player_mut(&mut self) -> &mut Player {
+        &mut self.player_data
+    }
+
+    /// Sends a system message to the player which is visible in the chat. The
+    /// message is only visible to this client.
+    pub fn send_message(&mut self, msg: impl Into<Text>) {
+        self.write_packet(&SystemChatMessage {
+            chat: msg.into(),
+            kind: VarInt(0),
+        });
+    }
+
+    pub fn send_plugin_message(&mut self, channel: Ident<&str>, data: &[u8]) {
+        self.write_packet(&PluginMessageS2c {
+            channel,
+            data: RawBytes(data),
+        });
     }
 }
 

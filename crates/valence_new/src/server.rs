@@ -22,7 +22,10 @@ use crate::client::event::{dispatch_client_events, register_client_events};
 use crate::client::{update_clients, Client};
 use crate::config::{AsyncCallbacks, Config, ConnectionMode};
 use crate::dimension::{validate_dimensions, Dimension, DimensionId};
-use crate::entity::{deinit_despawned_entities, init_entities, update_entities, McEntityManager, check_entity_invariants};
+use crate::entity::{
+    check_entity_invariants, deinit_despawned_entities, init_entities, update_entities,
+    McEntityManager,
+};
 use crate::instance::{update_instances_post_client, update_instances_pre_client, Instance};
 use crate::inventory::{update_player_inventories, Inventory};
 use crate::player_textures::SignedPlayerTextures;
