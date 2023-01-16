@@ -359,7 +359,11 @@ pub fn run_server(
             .with_system(handle_close_container)
             .with_system(update_client_on_close_inventory.after(update_open_inventories))
             .with_system(update_player_inventories)
-            .with_system(handle_click_container),
+            .with_system(
+                handle_click_container
+                    .before(update_open_inventories)
+                    .before(update_player_inventories),
+            ),
     );
 
     let mut tick_start = Instant::now();
