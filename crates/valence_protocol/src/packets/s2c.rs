@@ -360,6 +360,20 @@ pub mod play {
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x23]
+    pub struct UpdateLight {
+        pub chunk_x: VarInt,
+        pub chunk_z: VarInt,
+        pub trust_edges: bool,
+        pub sky_light_mask: Vec<u64>,
+        pub block_light_mask: Vec<u64>,
+        pub empty_sky_light_mask: Vec<u64>,
+        pub empty_block_light_mask: Vec<u64>,
+        pub sky_light_arrays: Vec<LengthPrefixedArray<u8, 2048>>,
+        pub block_light_arrays: Vec<LengthPrefixedArray<u8, 2048>>,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x24]
     pub struct LoginPlay<'a> {
         pub entity_id: i32,
@@ -746,6 +760,7 @@ pub mod play {
             KeepAliveS2c,
             ChunkDataAndUpdateLight<'a>,
             WorldEvent,
+            UpdateLight,
             ParticleS2c,
             LoginPlay<'a>,
             UpdateEntityPosition,
