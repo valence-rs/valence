@@ -7,7 +7,7 @@ use valence_protocol::packets::s2c::play::{
 };
 use valence_protocol::{ItemStack, Text, VarInt, WindowType};
 
-use crate::client::event::{ClickContainer, CloseContainer};
+use crate::client::event::{ClickContainer, CloseContainer, SetCreativeModeSlot};
 use crate::client::Client;
 
 #[derive(Debug, Clone, Component)]
@@ -513,6 +513,17 @@ pub(crate) fn handle_click_container(
                     continue;
                 }
             }
+        }
+    }
+}
+
+pub(crate) fn handle_set_slot_creative(
+    mut clients: Query<&mut Inventory, With<Client>>,
+    mut events: EventReader<SetCreativeModeSlot>,
+) {
+    for event in events.iter() {
+        if let Ok(mut inventory) = clients.get_mut(event.client) {
+            inventory.replace_slot(event.slot as u16, event.clicked_item.clone());
         }
     }
 }
