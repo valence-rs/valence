@@ -425,3 +425,24 @@ pub(crate) fn update_client_on_close_inventory(
         }
     }
 }
+
+/// Convert a slot that is outside a target inventory's range to a slot that is
+/// inside the player's inventory.
+fn convert_to_player_slot_id(target_kind: InventoryKind, slot_id: u16) -> u16 {
+    // the first slot in the player's general inventory
+    let offset = target_kind.slot_count() as u16;
+    slot_id - offset + 9
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_convert_to_player_slot() {
+        assert_eq!(convert_to_player_slot_id(InventoryKind::Generic9x3, 27), 9);
+        assert_eq!(convert_to_player_slot_id(InventoryKind::Generic9x3, 36), 18);
+        assert_eq!(convert_to_player_slot_id(InventoryKind::Generic9x3, 54), 36);
+        assert_eq!(convert_to_player_slot_id(InventoryKind::Generic9x1, 9), 9);
+    }
+}
