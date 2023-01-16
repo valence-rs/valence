@@ -22,6 +22,7 @@ pub mod commands;
 pub mod declare_recipes;
 pub mod particle;
 pub mod player_info_update;
+pub mod set_equipment;
 pub mod update_recipe_book;
 
 pub mod status {
@@ -103,6 +104,7 @@ pub mod play {
     use commands::Node;
     pub use particle::ParticleS2c;
     pub use player_info_update::PlayerInfoUpdate;
+    pub use set_equipment::SetEquipment;
     pub use update_recipe_book::UpdateRecipeBook;
 
     use super::*;
@@ -787,6 +789,7 @@ pub mod play {
             SetDefaultSpawnPosition,
             SetEntityMetadata<'a>,
             SetEntityVelocity,
+            SetEquipment,
             SetExperience,
             SetHealth,
             SetSubtitleText,
