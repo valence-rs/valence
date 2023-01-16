@@ -1,13 +1,15 @@
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::ShouldRun;
 use tracing::info;
+use valence_new::client::event::{InteractWithEntity, UseItemOnBlock};
 use valence_new::client::Client;
 use valence_new::config::{Config, ConnectionMode};
 use valence_new::dimension::DimensionId;
+use valence_new::instance::Chunk;
 use valence_new::inventory::{Inventory, InventoryKind, OpenInventory};
 use valence_new::protocol::types::GameMode;
 use valence_new::server::Server;
-use valence_protocol::{ItemKind, ItemStack};
+use valence_protocol::{BlockState, ItemKind, ItemStack};
 
 #[derive(Resource)]
 struct GameState {
@@ -22,17 +24,44 @@ fn main() -> anyhow::Result<()> {
         Config::default().with_connection_mode(ConnectionMode::Offline),
         SystemStage::parallel()
             .with_system(setup.with_run_criteria(ShouldRun::once))
-            .with_system(init_clients)
-            .with_system(open_inventory_test)
-            .with_system(blink_items),
+            // .with_system(open_inventory_test)
+            // .with_system(blink_items)
+            .with_system(open_inventory_on_interact)
+            .with_system(init_clients),
         (),
     )
 }
 
 fn setup(world: &mut World) {
-    let instance = world
+    let mut instance = world
         .resource::<Server>()
         .new_instance(DimensionId::default());
+
+    // Create spawn platform.
+    for z in -5..5 {
+        for x in -5..5 {
+            let mut chunk = Chunk::new(24);
+            for z in 0..16 {
+                for x in 0..16 {
+                    chunk.set_block_state(x, 10, z, BlockState::STONE);
+                }
+            }
+
+            if x == 0 && z == 0 {
+                for sx in 0..3 {
+                    for sz in 0..3 {
+                        chunk.set_block_state(sx, 10, sz, BlockState::BRICKS);
+                    }
+                    chunk.set_block_state(sx, 11, 0, BlockState::CHEST);
+                }
+                chunk.set_block_state(0, 10, 0, BlockState::COPPER_BLOCK);
+                chunk.set_block_state(1, 10, 0, BlockState::IRON_BLOCK);
+                chunk.set_block_state(2, 10, 0, BlockState::GOLD_BLOCK);
+            }
+
+            instance.insert_chunk([x, z], chunk);
+        }
+    }
 
     let id = world.spawn(instance).id();
     world.insert_resource(GameState {
@@ -89,5 +118,20 @@ fn blink_items(mut inventories: Query<&mut Inventory>) {
         } else {
             inv.replace_slot(1, Some(ItemStack::new(ItemKind::Diamond, 1, None)));
         }
+    }
+}
+
+fn open_inventory_on_interact(
+    mut commands: Commands,
+    inventories: Query<(Entity, With<Inventory>, Without<Client>)>,
+    mut events: EventReader<UseItemOnBlock>,
+) {
+    for event in events.iter() {
+        let inventory_idx = event.position.x as usize % 3;
+        info!("opening inventory {}", inventory_idx);
+        let (target_inventory, _, _) = inventories.iter().skip(inventory_idx).next().unwrap();
+        commands
+            .entity(event.client)
+            .insert(OpenInventory::new(target_inventory));
     }
 }
