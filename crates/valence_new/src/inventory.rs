@@ -9,7 +9,7 @@ use valence_protocol::packets::s2c::play::{
 };
 use valence_protocol::{ItemStack, Text, VarInt, WindowType};
 
-use crate::client::event::CloseContainer;
+use crate::client::event::{ClickContainer, CloseContainer};
 use crate::client::Client;
 
 #[derive(Debug, Clone, Component)]
@@ -422,6 +422,111 @@ pub(crate) fn update_client_on_close_inventory(
         if let Ok(mut client) = clients.get_component_mut::<Client>(entity) {
             let window_id = client.window_id;
             client.write_packet(&CloseContainerS2c { window_id });
+        }
+    }
+}
+
+pub(crate) fn handle_click_container(
+    mut clients: Query<(&mut Client, &mut Inventory, Option<&OpenInventory>)>,
+    mut inventories: Query<&mut Inventory, Without<Client>>,
+    mut events: EventReader<ClickContainer>,
+) {
+    for event in events.iter() {
+        if event.window_id == 0 {
+            // the client is interacting with their own inventory
+            let client = clients.get_component_mut::<Client>(event.client.clone());
+            let inventory = inventories.get_component_mut::<Inventory>(event.client.clone());
+            match (client, inventory) {
+                (Ok(mut client), Ok(mut inventory)) => {
+                    if &inventory.state_id.0 != &event.state_id {
+                        // client is out of sync, resync, and ignore the click
+                        let packet = SetContainerContentEncode {
+                            window_id: 0,
+                            state_id: VarInt(inventory.state_id.0),
+                            slots: inventory.slot_slice(),
+                            carried_item: &client.cursor_item.clone(),
+                        };
+                        client.write_packet(&packet);
+                        continue;
+                    }
+
+                    // TODO: do more validation on the click
+                    client.cursor_item = event.carried_item.clone();
+                    for slot_change in event.slot_changes.clone() {
+                        if (0i16..inventory.slot_count() as i16).contains(&slot_change.0) {
+                            inventory.replace_slot(slot_change.0 as u16, slot_change.1);
+                        } else {
+                            // the client is trying to interact with a slot that does not exist,
+                            // ignore
+                            warn!(
+                                "Client attempted to interact with slot {} which does not exist",
+                                slot_change.0
+                            );
+                        }
+                    }
+                }
+                _ => {
+                    // the client or inventory does not exist, ignore
+                    warn!(
+                        "Client attempted to interact with their own
+    inventory, but it does not exist"
+                    );
+                }
+            }
+        } else {
+            // the player is interacting with an inventory that is open
+            let open_inventory = clients
+                .get_component::<OpenInventory>(event.client)
+                .ok()
+                .map(|open_inventory| open_inventory.entity);
+
+            if open_inventory.is_none() {
+                // the client is not viewing an inventory, ignore
+                warn!(
+                    "Client attempted to interact with an inventory, but is
+    not viewing one"
+                );
+                continue;
+            }
+
+            if let Ok(mut target_inventory) =
+                inventories.get_component_mut::<Inventory>(open_inventory.unwrap())
+            {
+                if target_inventory.state_id.0 != event.state_id {
+                    // client is out of sync, resync, ignore click
+                    if let Ok(mut client) = clients.get_component_mut::<Client>(event.client) {
+                        let packet = SetContainerContentEncode {
+                            window_id: client.window_id,
+                            state_id: VarInt(target_inventory.state_id.0),
+                            slots: target_inventory.slot_slice(),
+                            carried_item: &client.cursor_item.clone(),
+                        };
+                        client.write_packet(&packet);
+                    }
+                    continue;
+                }
+
+                if let Ok(mut client) = clients.get_component_mut::<Client>(event.client) {
+                    client.cursor_item = event.carried_item.clone();
+                }
+                if let Ok(mut client_inventory) =
+                    clients.get_component_mut::<Inventory>(event.client)
+                {
+                    for slot_change in event.slot_changes.clone() {
+                        if (0i16..target_inventory.slot_count() as i16).contains(&slot_change.0) {
+                            // the client is interacting with a slot in the target inventory
+                            target_inventory.replace_slot(slot_change.0 as u16, slot_change.1);
+                        } else {
+                            // the client is interacting with a slot in their own inventory
+                            let slot_id = convert_to_player_slot_id(
+                                target_inventory.kind,
+                                slot_change.0 as u16,
+                            );
+                            client_inventory.replace_slot(slot_id, slot_change.1);
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -28,8 +28,9 @@ use crate::entity::{
 };
 use crate::instance::{update_instances_post_client, update_instances_pre_client, Instance};
 use crate::inventory::{
-    handle_close_container, update_client_on_close_inventory, update_client_on_open_inventory,
-    update_open_inventories, update_player_inventories, Inventory, InventoryKind,
+    handle_click_container, handle_close_container, update_client_on_close_inventory,
+    update_client_on_open_inventory, update_open_inventories, update_player_inventories, Inventory,
+    InventoryKind,
 };
 use crate::player_textures::SignedPlayerTextures;
 use crate::server::connect::do_accept_loop;
@@ -357,7 +358,8 @@ pub fn run_server(
             .with_system(update_open_inventories)
             .with_system(handle_close_container)
             .with_system(update_client_on_close_inventory.after(update_open_inventories))
-            .with_system(update_player_inventories),
+            .with_system(update_player_inventories)
+            .with_system(handle_click_container),
     );
 
     let mut tick_start = Instant::now();
