@@ -313,10 +313,10 @@ impl OpenInventory {
 /// Handles the `OpenInventory` component being added to a client, which
 /// indicates that the client is now viewing an inventory.
 pub(crate) fn update_client_on_open_inventory(
-    mut clients: Query<(&mut Client, &OpenInventory, Added<OpenInventory>)>,
+    mut clients: Query<(&mut Client, &OpenInventory), Added<OpenInventory>>,
     inventories: Query<&Inventory>,
 ) {
-    for (mut client, open_inventory, _) in clients.iter_mut() {
+    for (mut client, open_inventory) in clients.iter_mut() {
         // validate that the inventory exists
         if let Ok(inventory) = inventories.get_component::<Inventory>(open_inventory.entity) {
             // send the inventory to the client
