@@ -106,7 +106,9 @@ impl Inventory {
 }
 
 /// Send updates for each client's player inventory.
-pub(crate) fn update_player_inventories(mut query: Query<(&mut Inventory, &mut Client)>) {
+pub(crate) fn update_player_inventories(
+    mut query: Query<(&mut Inventory, &mut Client), Without<OpenInventory>>,
+) {
     for (mut inventory, mut client) in query.iter_mut() {
         if inventory.kind != InventoryKind::Player {
             warn!("Inventory on client entity is not a player inventory");
