@@ -351,6 +351,15 @@ pub mod play {
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x21]
+    pub struct WorldEvent {
+        pub event: i32,
+        pub location: BlockPos,
+        pub data: i32,
+        pub disable_relative_volume: bool,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x24]
     pub struct LoginPlay<'a> {
         pub entity_id: i32,
@@ -736,6 +745,7 @@ pub mod play {
             WorldBorderInitialize,
             KeepAliveS2c,
             ChunkDataAndUpdateLight<'a>,
+            WorldEvent,
             ParticleS2c,
             LoginPlay<'a>,
             UpdateEntityPosition,
