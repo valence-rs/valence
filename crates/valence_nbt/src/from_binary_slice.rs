@@ -13,6 +13,14 @@ pub fn from_binary_slice(slice: &mut &[u8]) -> Result<(Compound, String)> {
     let mut state = DecodeState { slice, depth: 0 };
 
     let root_tag = state.read_tag()?;
+
+    // For cases such as Block Entity Data in the
+    // ChunkUpdateAndUpdateLight Packet
+    // https://wiki.vg/Protocol#Chunk_Data_and_Update_Light
+    if root_tag == Tag::End {
+        return Ok((Compound::new(), String::new()))
+    }
+
     if root_tag != Tag::Compound {
         return Err(Error::new_owned(format!(
             "expected root tag for compound (got {root_tag})",
