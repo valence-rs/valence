@@ -1,6 +1,4 @@
-use std::collections::HashSet;
 use std::iter::FusedIterator;
-use std::num::Wrapping;
 
 use bevy_ecs::prelude::*;
 use tracing::warn;
@@ -19,7 +17,6 @@ pub struct Inventory {
     slots: Box<[Option<ItemStack>]>,
     /// Contains a set bit for each modified slot in `slots`.
     modified: u64,
-    state_id: Wrapping<i32>,
 }
 
 impl Inventory {
@@ -34,7 +31,6 @@ impl Inventory {
             kind,
             slots: vec![None; kind.slot_count()].into(),
             modified: 0,
-            state_id: Wrapping(0),
         }
     }
 
@@ -117,14 +113,15 @@ pub(crate) fn update_player_inventories(mut query: Query<(&mut Inventory, &mut C
         }
 
         if inventory.modified != 0 {
-            inventory.state_id += 1;
+            client.inventory_state_id += 1;
 
             if inventory.modified == u64::MAX {
                 // Update the whole inventory.
                 let cursor_item = client.cursor_item.clone();
+                let state_id = client.inventory_state_id.0;
                 client.write_packet(&SetContainerContentEncode {
                     window_id: 0,
-                    state_id: VarInt(inventory.state_id.0),
+                    state_id: VarInt(state_id),
                     slots: inventory.slot_slice(),
                     carried_item: &cursor_item,
                 });
@@ -134,9 +131,10 @@ pub(crate) fn update_player_inventories(mut query: Query<(&mut Inventory, &mut C
                 // Update only the slots that were modified.
                 for (i, slot) in inventory.slots.iter().enumerate() {
                     if (inventory.modified >> i) & 1 == 1 {
+                        let state_id = client.inventory_state_id.0;
                         client.write_packet(&SetContainerSlotEncode {
                             window_id: 0,
-                            state_id: VarInt(inventory.state_id.0),
+                            state_id: VarInt(state_id),
                             slot_idx: i as i16,
                             slot_data: slot.as_ref(),
                         });
@@ -148,14 +146,15 @@ pub(crate) fn update_player_inventories(mut query: Query<(&mut Inventory, &mut C
         }
 
         if client.cursor_item_modified {
-            inventory.state_id += 1;
+            client.inventory_state_id += 1;
 
             client.cursor_item_modified = false;
 
             let cursor_item = client.cursor_item.clone();
+            let state_id = client.inventory_state_id.0;
             client.write_packet(&SetContainerSlotEncode {
                 window_id: -1,
-                state_id: VarInt(inventory.state_id.0),
+                state_id: VarInt(state_id),
                 slot_idx: -1,
                 slot_data: cursor_item.as_ref(),
             });
@@ -331,7 +330,7 @@ pub(crate) fn update_client_on_open_inventory(
 
             let packet = SetContainerContentEncode {
                 window_id: client.window_id,
-                state_id: VarInt(inventory.state_id.0),
+                state_id: VarInt(client.inventory_state_id.0),
                 slots: inventory.slot_slice(),
                 carried_item: &client.cursor_item.clone(),
             };
@@ -353,24 +352,6 @@ pub(crate) fn update_open_inventories(
 
     // These operations need to happen in this order.
 
-    // increment the state id of all inventories that have been modified, once per
-    // inventory
-    let observed_inventories = clients
-        .iter_mut()
-        .map(|(_, _, open_inventory)| open_inventory.entity)
-        .collect::<HashSet<_>>();
-    // TODO: benchmark the impact of this
-
-    for inv in observed_inventories {
-        // validate that the inventory exists
-        if let Ok(mut inventory) = inventories.get_component_mut::<Inventory>(inv) {
-            if inventory.modified == 0 {
-                continue;
-            }
-            inventory.state_id += 1;
-        }
-    }
-
     // send the inventory contents to all clients that are viewing an inventory
     for (client_entity, mut client, open_inventory) in clients.iter_mut() {
         // validate that the inventory exists
@@ -379,9 +360,10 @@ pub(crate) fn update_open_inventories(
             if inventory.modified == 0 {
                 continue;
             }
+            client.inventory_state_id += 1;
             let packet = SetContainerContentEncode {
                 window_id: client.window_id,
-                state_id: VarInt(inventory.state_id.0),
+                state_id: VarInt(client.inventory_state_id.0),
                 slots: inventory.slot_slice(),
                 carried_item: &client.cursor_item.clone(),
             };
@@ -434,15 +416,13 @@ pub(crate) fn handle_click_container(
     for event in events.iter() {
         if event.window_id == 0 {
             // the client is interacting with their own inventory
-            let client = clients.get_component_mut::<Client>(event.client.clone());
-            let inventory = inventories.get_component_mut::<Inventory>(event.client.clone());
-            match (client, inventory) {
-                (Ok(mut client), Ok(mut inventory)) => {
-                    if &inventory.state_id.0 != &event.state_id {
+            match clients.get_mut(event.client.clone()) {
+                Ok((mut client, mut inventory, _)) => {
+                    if client.inventory_state_id.0 != event.state_id {
                         // client is out of sync, resync, and ignore the click
                         let packet = SetContainerContentEncode {
                             window_id: 0,
-                            state_id: VarInt(inventory.state_id.0),
+                            state_id: VarInt(client.inventory_state_id.0),
                             slots: inventory.slot_slice(),
                             carried_item: &client.cursor_item.clone(),
                         };
@@ -492,23 +472,28 @@ pub(crate) fn handle_click_container(
             if let Ok(mut target_inventory) =
                 inventories.get_component_mut::<Inventory>(open_inventory.unwrap())
             {
-                if target_inventory.state_id.0 != event.state_id {
-                    // client is out of sync, resync, ignore click
-                    if let Ok(mut client) = clients.get_component_mut::<Client>(event.client) {
-                        let packet = SetContainerContentEncode {
-                            window_id: client.window_id,
-                            state_id: VarInt(target_inventory.state_id.0),
-                            slots: target_inventory.slot_slice(),
-                            carried_item: &client.cursor_item.clone(),
-                        };
-                        client.write_packet(&packet);
+                if let Ok(mut client) = clients.get_component_mut::<Client>(event.client) {
+                    if client.inventory_state_id.0 != event.state_id {
+                        // client is out of sync, resync, ignore click
+                        warn!("Client state id mismatch, resyncing");
+                        if let Ok(mut client) = clients.get_component_mut::<Client>(event.client) {
+                            let packet = SetContainerContentEncode {
+                                window_id: client.window_id,
+                                state_id: VarInt(client.inventory_state_id.0),
+                                slots: target_inventory.slot_slice(),
+                                carried_item: &client.cursor_item.clone(),
+                            };
+                            client.write_packet(&packet);
+                        }
+                        continue;
                     }
+
+                    client.cursor_item = event.carried_item.clone();
+                } else {
+                    // the client does not exist, ignore
                     continue;
                 }
 
-                if let Ok(mut client) = clients.get_component_mut::<Client>(event.client) {
-                    client.cursor_item = event.carried_item.clone();
-                }
                 if let Ok(mut client_inventory) =
                     clients.get_component_mut::<Inventory>(event.client)
                 {

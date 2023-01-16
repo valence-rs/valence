@@ -1,5 +1,6 @@
 use std::fmt;
 use std::net::IpAddr;
+use std::num::Wrapping;
 
 use anyhow::{bail, Context};
 use bevy_ecs::prelude::*;
@@ -79,6 +80,7 @@ pub struct Client {
     pub(crate) cursor_item_modified: bool,
     /// The current window ID. Incremented when inventories are opened.
     pub(crate) window_id: u8,
+    pub(crate) inventory_state_id: Wrapping<i32>,
 }
 
 impl Client {
@@ -124,6 +126,7 @@ impl Client {
             cursor_item: None,
             cursor_item_modified: false,
             window_id: 0,
+            inventory_state_id: Wrapping(0),
         }
     }
 
