@@ -1,7 +1,7 @@
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::ShouldRun;
 use tracing::info;
-use valence_new::client::event::{InteractWithEntity, UseItemOnBlock};
+use valence_new::client::event::{InteractWithEntity, StartSneaking, UseItemOnBlock};
 use valence_new::client::Client;
 use valence_new::config::{Config, ConnectionMode};
 use valence_new::dimension::DimensionId;
@@ -27,6 +27,7 @@ fn main() -> anyhow::Result<()> {
             // .with_system(open_inventory_test)
             // .with_system(blink_items)
             .with_system(open_inventory_on_interact)
+            .with_system(toggle_gamemode_on_sneak)
             .with_system(init_clients),
         (),
     )
@@ -133,5 +134,21 @@ fn open_inventory_on_interact(
         commands
             .entity(event.client)
             .insert(OpenInventory::new(target_inventory));
+    }
+}
+
+fn toggle_gamemode_on_sneak(
+    mut clients: Query<&mut Client>,
+    mut events: EventReader<StartSneaking>,
+) {
+    for event in events.iter() {
+        if let Ok(mut client) = clients.get_component_mut::<Client>(event.client) {
+            let mode = client.game_mode();
+            client.set_game_mode(match mode {
+                GameMode::Survival => GameMode::Creative,
+                GameMode::Creative => GameMode::Survival,
+                _ => GameMode::Creative,
+            });
+        }
     }
 }
