@@ -23,6 +23,7 @@ pub mod declare_recipes;
 pub mod particle;
 pub mod player_info_update;
 pub mod set_equipment;
+pub mod update_advancements;
 pub mod update_recipe_book;
 
 pub mod status {
@@ -105,6 +106,7 @@ pub mod play {
     pub use particle::ParticleS2c;
     pub use player_info_update::PlayerInfoUpdate;
     pub use set_equipment::SetEquipment;
+    pub use update_advancements::UpdateAdvancements;
     pub use update_recipe_book::UpdateRecipeBook;
 
     use super::*;
@@ -801,6 +803,7 @@ pub mod play {
             SystemChatMessage,
             SetTabListHeaderAndFooter,
             TeleportEntity,
+            UpdateAdvancements<'a>,
             UpdateAttributes<'a>,
             FeatureFlags<'a>,
             DeclareRecipes<'a>,
