@@ -18,7 +18,7 @@ pub fn from_binary_slice(slice: &mut &[u8]) -> Result<(Compound, String)> {
     // ChunkUpdateAndUpdateLight Packet
     // https://wiki.vg/Protocol#Chunk_Data_and_Update_Light
     if root_tag == Tag::End {
-        return Ok((Compound::new(), String::new()))
+        return Ok((Compound::new(), String::new()));
     }
 
     if root_tag != Tag::Compound {
