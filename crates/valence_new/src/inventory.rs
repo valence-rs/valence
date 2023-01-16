@@ -361,13 +361,30 @@ pub(crate) fn update_open_inventories(
                 continue;
             }
             client.inventory_state_id += 1;
-            let packet = SetContainerContentEncode {
-                window_id: client.window_id,
-                state_id: VarInt(client.inventory_state_id.0),
-                slots: inventory.slot_slice(),
-                carried_item: &client.cursor_item.clone(),
-            };
-            client.write_packet(&packet);
+            if inventory.modified == u64::MAX {
+                // send the entire inventory
+                let packet = SetContainerContentEncode {
+                    window_id: client.window_id,
+                    state_id: VarInt(client.inventory_state_id.0),
+                    slots: inventory.slot_slice(),
+                    carried_item: &client.cursor_item.clone(),
+                };
+                client.write_packet(&packet);
+            } else {
+                // send the modified slots
+                let window_id = client.window_id as i8;
+                let state_id = client.inventory_state_id.0;
+                for (i, slot) in inventory.slots.iter().enumerate() {
+                    if (inventory.modified >> i) & 1 == 1 {
+                        client.write_packet(&SetContainerSlotEncode {
+                            window_id,
+                            state_id: VarInt(state_id),
+                            slot_idx: i as i16,
+                            slot_data: slot.as_ref(),
+                        });
+                    }
+                }
+            }
         } else {
             // the inventory no longer exists, so close the inventory
             commands.entity(client_entity).remove::<OpenInventory>();
