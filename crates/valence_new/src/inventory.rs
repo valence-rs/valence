@@ -437,13 +437,7 @@ pub(crate) fn handle_click_container(
                 Ok((mut client, mut inventory, _)) => {
                     if client.inventory_state_id.0 != event.state_id {
                         // client is out of sync, resync, and ignore the click
-                        let packet = SetContainerContentEncode {
-                            window_id: 0,
-                            state_id: VarInt(client.inventory_state_id.0),
-                            slots: inventory.slot_slice(),
-                            carried_item: &client.cursor_item.clone(),
-                        };
-                        client.write_packet(&packet);
+                        inventory.modified = u64::MAX;
                         continue;
                     }
 
@@ -489,31 +483,18 @@ pub(crate) fn handle_click_container(
             if let Ok(mut target_inventory) =
                 inventories.get_component_mut::<Inventory>(open_inventory.unwrap())
             {
-                if let Ok(mut client) = clients.get_component_mut::<Client>(event.client) {
+                if let Ok((mut client, mut client_inventory, _open_inventory)) =
+                    clients.get_mut(event.client)
+                {
                     if client.inventory_state_id.0 != event.state_id {
                         // client is out of sync, resync, ignore click
-                        warn!("Client state id mismatch, resyncing");
-                        if let Ok(mut client) = clients.get_component_mut::<Client>(event.client) {
-                            let packet = SetContainerContentEncode {
-                                window_id: client.window_id,
-                                state_id: VarInt(client.inventory_state_id.0),
-                                slots: target_inventory.slot_slice(),
-                                carried_item: &client.cursor_item.clone(),
-                            };
-                            client.write_packet(&packet);
-                        }
+                        warn!("Client state id mismatch, marking dirty");
+                        client_inventory.modified = u64::MAX;
                         continue;
                     }
 
                     client.cursor_item = event.carried_item.clone();
-                } else {
-                    // the client does not exist, ignore
-                    continue;
-                }
 
-                if let Ok(mut client_inventory) =
-                    clients.get_component_mut::<Inventory>(event.client)
-                {
                     for slot_change in event.slot_changes.clone() {
                         if (0i16..target_inventory.slot_count() as i16).contains(&slot_change.0) {
                             // the client is interacting with a slot in the target inventory
@@ -527,6 +508,9 @@ pub(crate) fn handle_click_container(
                             client_inventory.replace_slot(slot_id, slot_change.1);
                         }
                     }
+                } else {
+                    // the client does not exist, ignore
+                    continue;
                 }
             }
         }
