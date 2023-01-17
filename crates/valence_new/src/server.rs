@@ -351,8 +351,8 @@ pub fn run_server(
             .with_system(update_clients.after(update_instances_pre_client))
             .with_system(update_instances_post_client.after(update_clients))
             .with_system(deinit_despawned_entities.after(update_instances_post_client))
-            .with_system(despawn_entities.after(deinit_despawned_entities))
-            .with_system(update_entities.after(despawn_entities))
+            .with_system(despawn_marked_entities.after(deinit_despawned_entities))
+            .with_system(update_entities.after(despawn_marked_entities))
             .with_system(update_client_on_open_inventory)
             .with_system(update_open_inventories)
             .with_system(handle_close_container)
@@ -399,8 +399,9 @@ pub fn run_server(
     }
 }
 
-/// Despawns all the entities marked as despawned.
-fn despawn_entities(mut commands: Commands, entities: Query<Entity, With<Despawned>>) {
+/// Despawns all the entities marked as despawned with the [`Despawned`]
+/// component.
+fn despawn_marked_entities(mut commands: Commands, entities: Query<Entity, With<Despawned>>) {
     for entity in &entities {
         commands.entity(entity).despawn();
     }

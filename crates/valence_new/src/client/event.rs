@@ -1345,8 +1345,6 @@ fn handle_client(
 /// position/rotation to match the received movement, crouching makes the
 /// entity crouch, etc.
 ///
-/// In addition to handling events, the returned system will also
-///
 /// This system's primary purpose is to reduce boilerplate code in the
 /// examples, but it can be used as a quick way to get started in your own
 /// code. The precise behavior of this system is left unspecified and

@@ -1,7 +1,8 @@
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::ShouldRun;
 use tracing::info;
-use valence_new::client::Client;
+use valence_new::client::event::default_event_handler;
+use valence_new::client::{despawn_disconnected_clients, Client};
 use valence_new::config::{Config, ConnectionMode};
 use valence_new::dimension::DimensionId;
 use valence_new::inventory::{Inventory, InventoryKind, OpenInventory};
@@ -24,7 +25,9 @@ fn main() -> anyhow::Result<()> {
             .with_system(setup.with_run_criteria(ShouldRun::once))
             .with_system(init_clients)
             .with_system(open_inventory_test)
-            .with_system(blink_items),
+            .with_system(blink_items)
+            .with_system(default_event_handler())
+            .with_system(despawn_disconnected_clients),
         (),
     )
 }
