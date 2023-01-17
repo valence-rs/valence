@@ -1,10 +1,8 @@
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::ShouldRun;
 use tracing::info;
-use valence_new::client::event::{
-    default_event_handler, InteractWithEntity, StartSneaking, UseItemOnBlock,
-};
-use valence_new::client::{despawn_disconnected_clients, Client, Client};
+use valence_new::client::event::{default_event_handler, StartSneaking, UseItemOnBlock};
+use valence_new::client::{despawn_disconnected_clients, Client};
 use valence_new::config::{Config, ConnectionMode};
 use valence_new::dimension::DimensionId;
 use valence_new::instance::Chunk;
