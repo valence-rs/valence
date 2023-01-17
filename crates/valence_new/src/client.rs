@@ -81,6 +81,9 @@ pub struct Client {
     /// The current window ID. Incremented when inventories are opened.
     pub(crate) window_id: u8,
     pub(crate) inventory_state_id: Wrapping<i32>,
+    /// Tracks what slots have been modified by this client in this tick, so we
+    /// don't need to send updates for them.
+    pub(crate) inventory_slots_modified: u64,
 }
 
 impl Client {
@@ -127,6 +130,7 @@ impl Client {
             cursor_item_modified: false,
             window_id: 0,
             inventory_state_id: Wrapping(0),
+            inventory_slots_modified: 0,
         }
     }
 
