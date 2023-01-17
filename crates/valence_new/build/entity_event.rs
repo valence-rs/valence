@@ -8,13 +8,13 @@ use serde::Deserialize;
 use crate::ident;
 
 #[derive(Deserialize, Clone, Debug)]
-struct EntityData {
+struct EntityEvents {
     statuses: BTreeMap<String, u8>,
     animations: BTreeMap<String, u8>,
 }
 
 pub fn build() -> anyhow::Result<TokenStream> {
-    let entity_data: EntityData =
+    let entity_data: EntityEvents =
         serde_json::from_str(include_str!("../../../extracted/entity_data.json"))?;
 
     let mut statuses: Vec<_> = entity_data.statuses.into_iter().collect();
@@ -23,44 +23,39 @@ pub fn build() -> anyhow::Result<TokenStream> {
     let mut animations: Vec<_> = entity_data.animations.into_iter().collect();
     animations.sort_by_key(|(_, id)| *id);
 
-    let event_variants = statuses
+    let entity_status_variants: Vec<_> = statuses
         .iter()
-        .chain(animations.iter())
-        .map(|(name, _)| ident(name.to_pascal_case()));
+        .map(|(name, code)| {
+            let name = ident(name.to_pascal_case());
+            let code = *code as isize;
 
-    let status_arms = statuses.iter().map(|(name, code)| {
-        let name = ident(name.to_pascal_case());
-        quote! {
-            Self::#name => StatusOrAnimation::Status(#code),
-        }
-    });
+            quote! {
+                #name = #code,
+            }
+        })
+        .collect();
 
-    let animation_arms = animations.iter().map(|(name, code)| {
-        let name = ident(name.to_pascal_case());
-        quote! {
-            Self::#name => StatusOrAnimation::Animation(#code),
-        }
-    });
+    let entity_animation_variants: Vec<_> = animations
+        .iter()
+        .map(|(name, code)| {
+            let name = ident(name.to_pascal_case());
+            let code = *code as isize;
+
+            quote! {
+                #name = #code,
+            }
+        })
+        .collect();
 
     Ok(quote! {
         #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-        pub enum EntityEvent {
-            #(#event_variants,)*
+        pub enum EntityStatus {
+            #(#entity_status_variants)*
         }
 
-        impl EntityEvent {
-            pub(crate) fn status_or_animation(self) -> StatusOrAnimation {
-                match self {
-                    #(#status_arms)*
-                    #(#animation_arms)*
-                }
-            }
-        }
-
-        #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-        pub(crate) enum StatusOrAnimation {
-            Status(u8),
-            Animation(u8),
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+        pub enum EntityAnimation {
+            #(#entity_animation_variants)*
         }
     })
 }

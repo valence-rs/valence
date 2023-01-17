@@ -1345,6 +1345,8 @@ fn handle_client(
 /// position/rotation to match the received movement, crouching makes the
 /// entity crouch, etc.
 ///
+/// In addition to handling events, the returned system will also
+///
 /// This system's primary purpose is to reduce boilerplate code in the
 /// examples, but it can be used as a quick way to get started in your own
 /// code. The precise behavior of this system is left unspecified and
@@ -1352,7 +1354,7 @@ fn handle_client(
 pub fn default_event_handler() -> SystemDescriptor {
     use valence_protocol::entity_meta::Pose;
 
-    use crate::entity::{McEntity, TrackedData};
+    use crate::entity::{EntityAnimation, EntityKind, McEntity, TrackedData};
 
     fn system(
         mut clients: Query<(&mut Client, Option<&mut McEntity>)>,
@@ -1464,12 +1466,16 @@ pub fn default_event_handler() -> SystemDescriptor {
         }
 
         for SwingArm { client, hand } in swing_arm.iter() {
-            let Ok((_, Some(entity))) = clients.get_mut(*client) else {
+            let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
                 continue
             };
 
-            // TODO: trigger swing hand event.
-            let _ = (entity, hand);
+            if entity.kind() == EntityKind::Player {
+                entity.trigger_animation(match hand {
+                    Hand::Main => EntityAnimation::SwingMainHand,
+                    Hand::Off => EntityAnimation::SwingOffHand,
+                });
+            }
         }
     }
 
