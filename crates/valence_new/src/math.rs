@@ -1,11 +1,11 @@
 pub use glam::*;
 
-/// An axis-aligned bounding box.
+/// An axis-aligned bounding box. All components of `min` is expected to be <=
+/// `max` componentwise.
 #[derive(Copy, Clone, PartialEq, Default, Debug)]
 pub struct Aabb {
-    // Invariant: min <= max componentwise.
-    min: DVec3,
-    max: DVec3,
+    pub min: DVec3,
+    pub max: DVec3,
 }
 
 impl Aabb {
@@ -16,10 +16,6 @@ impl Aabb {
             min: p0.min(p1),
             max: p0.max(p1),
         }
-    }
-
-    pub(crate) fn new_unchecked(min: DVec3, max: DVec3) -> Self {
-        Self { min, max }
     }
 
     pub(crate) fn from_bottom_size(bottom: impl Into<DVec3>, size: impl Into<DVec3>) -> Self {
@@ -38,16 +34,6 @@ impl Aabb {
                 z: bottom.z + size.z / 2.0,
             },
         }
-    }
-
-    /// The minimum corner of the bounding box.
-    pub const fn min(self) -> DVec3 {
-        self.min
-    }
-
-    /// The maximum corner of the bounding box.
-    pub const fn max(self) -> DVec3 {
-        self.max
     }
 }
 

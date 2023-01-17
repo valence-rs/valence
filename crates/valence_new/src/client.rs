@@ -25,7 +25,7 @@ use crate::entity::data::Player;
 use crate::entity::McEntity;
 use crate::instance::Instance;
 use crate::server::{NewClientInfo, PlayPacketReceiver, PlayPacketSender, Server};
-use crate::NULL_ENTITY;
+use crate::{Despawned, NULL_ENTITY};
 
 pub mod event;
 
@@ -387,6 +387,15 @@ impl Client {
             channel,
             data: RawBytes(data),
         });
+    }
+}
+
+/// A system for adding [`Despawned`] components to disconnected clients.
+pub fn despawn_disconnected_clients(mut commands: Commands, clients: Query<(Entity, &Client)>) {
+    for (entity, client) in &clients {
+        if client.is_disconnected() {
+            commands.entity(entity).insert(Despawned);
+        }
     }
 }
 

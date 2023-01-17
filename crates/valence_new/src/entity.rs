@@ -11,9 +11,9 @@ use tracing::warn;
 use uuid::Uuid;
 use valence_protocol::entity_meta::{Facing, PaintingKind, Pose};
 use valence_protocol::packets::s2c::play::{
-    SetEntityMetadata, SetEntityVelocity, SetHeadRotation, SpawnEntity, SpawnExperienceOrb,
-    SpawnPlayer, TeleportEntity, UpdateEntityPosition, UpdateEntityPositionAndRotation,
-    UpdateEntityRotation,
+    EntityAnimationS2c, EntityEvent as EntityEventS2c, SetEntityMetadata, SetEntityVelocity,
+    SetHeadRotation, SpawnEntity, SpawnExperienceOrb, SpawnPlayer, TeleportEntity,
+    UpdateEntityPosition, UpdateEntityPositionAndRotation, UpdateEntityRotation,
 };
 use valence_protocol::{ByteAngle, RawBytes, VarInt};
 
@@ -23,6 +23,8 @@ use crate::packet::WritePacket;
 use crate::{Despawned, NULL_ENTITY};
 
 pub mod data;
+
+include!(concat!(env!("OUT_DIR"), "/entity_event.rs"));
 
 /// A [`Resource`] which maintains information about all the [`McEntity`]
 /// components on the server.
@@ -54,6 +56,7 @@ pub(crate) fn init_entities(
     for mut entity in &mut entities {
         if manager.next_protocol_id == 0 {
             warn!("entity protocol ID overflow");
+            // ID 0 is reserved for clients so we skip over it.
             manager.next_protocol_id = 1;
         }
 
@@ -74,10 +77,11 @@ pub(crate) fn deinit_despawned_entities(
 
 pub(crate) fn update_entities(mut entities: Query<&mut McEntity, Changed<McEntity>>) {
     for mut entity in &mut entities {
+        entity.data.clear_modifications();
         entity.old_position = entity.position;
         entity.old_instance = entity.instance;
-        entity.variants.clear_modifications();
-        // TODO: clear event/animation flags.
+        entity.statuses = 0;
+        entity.animations = 0;
         entity.yaw_or_pitch_modified = false;
         entity.head_yaw_modified = false;
         entity.velocity_modified = false;
@@ -106,13 +110,16 @@ pub(crate) fn check_entity_invariants(removed: RemovedComponents<McEntity>) {
 /// not common to every kind of entity, see [`Self::data`].
 #[derive(Component)]
 pub struct McEntity {
-    variants: TrackedData,
+    data: TrackedData,
     protocol_id: i32,
     uuid: Uuid,
     /// The range of bytes in the partition cell containing this entity's update
     /// packets.
     pub(crate) self_update_range: Range<usize>,
-    // events: Vec<EntityEvent>, // TODO: store this info in bits?
+    /// Contains a set bit for every status.
+    statuses: u64,
+    /// Contains a set bit for every animation.
+    animations: u8,
     instance: Entity,
     old_instance: Entity,
     position: DVec3,
@@ -139,8 +146,10 @@ impl McEntity {
     /// Like [`Self::new`], but allows specifying the UUID of the entity.
     pub fn with_uuid(kind: EntityKind, instance: Entity, uuid: Uuid) -> Self {
         Self {
-            variants: TrackedData::new(kind),
+            data: TrackedData::new(kind),
             self_update_range: 0..0,
+            statuses: 0,
+            animations: 0,
             instance,
             old_instance: NULL_ENTITY,
             position: DVec3::ZERO,
@@ -160,24 +169,18 @@ impl McEntity {
 
     /// Returns a reference to this entity's tracked data.
     pub fn data(&self) -> &TrackedData {
-        &self.variants
+        &self.data
     }
 
     /// Returns a mutable reference to this entity's tracked data.
     pub fn data_mut(&mut self) -> &mut TrackedData {
-        &mut self.variants
+        &mut self.data
     }
 
     /// Gets the [`EntityKind`] of this entity.
     pub fn kind(&self) -> EntityKind {
-        self.variants.kind()
+        self.data.kind()
     }
-
-    /*
-    /// Triggers an entity event for this entity.
-    pub fn push_event(&mut self, event: EntityEvent) {
-        self.events.push(event);
-    }*/
 
     /// Returns a handle to the [`Instance`] this entity is located in.
     pub fn instance(&self) -> Entity {
@@ -286,6 +289,14 @@ impl McEntity {
         // TODO: on ground modified flag?
     }
 
+    pub fn trigger_status(&mut self, status: EntityStatus) {
+        self.statuses |= 1 << status as u64;
+    }
+
+    pub fn trigger_animation(&mut self, animation: EntityAnimation) {
+        self.animations |= 1 << animation as u8;
+    }
+
     /// Returns the hitbox of this entity.
     ///
     /// The hitbox describes the space that an entity occupies. Clients interact
@@ -294,7 +305,7 @@ impl McEntity {
     /// The hitbox of an entity is determined by its position, entity type, and
     /// other state specific to that type.
     ///
-    /// [interact event]: crate::client::ClientEvent::InteractWithEntity
+    /// [interact event]: crate::client::event::InteractWithEntity
     pub fn hitbox(&self) -> Aabb {
         fn baby(is_baby: bool, adult_hitbox: [f64; 3]) -> [f64; 3] {
             if is_baby {
@@ -324,10 +335,13 @@ impl McEntity {
                 _ => [0.75, 0.0625, 0.75],
             });
 
-            Aabb::new_unchecked(center_pos - bounds / 2.0, center_pos + bounds / 2.0)
+            Aabb {
+                min: center_pos - bounds / 2.0,
+                max: center_pos + bounds / 2.0,
+            }
         }
 
-        let dimensions = match &self.variants {
+        let dimensions = match &self.data {
             TrackedData::Allay(_) => [0.6, 0.35, 0.6],
             TrackedData::ChestBoat(_) => [1.375, 0.5625, 1.375],
             TrackedData::Frog(_) => [0.5, 0.5, 0.5],
@@ -475,7 +489,10 @@ impl McEntity {
                     _ => DVec3::new(bounds.x as f64, bounds.y as f64, 0.0625),
                 };
 
-                return Aabb::new_unchecked(center_pos - bounds / 2.0, center_pos + bounds / 2.0);
+                return Aabb {
+                    min: center_pos - bounds / 2.0,
+                    max: center_pos + bounds / 2.0,
+                };
             }
             TrackedData::Panda(e) => baby(e.get_child(), [1.3, 1.25, 1.3]),
             TrackedData::Parrot(_) => [0.5, 0.9, 0.5],
@@ -509,7 +526,7 @@ impl McEntity {
                     Facing::East => min.x -= peek,
                 }
 
-                return Aabb::new_unchecked(min, max);
+                return Aabb { min, max };
             }
             TrackedData::ShulkerBullet(_) => [0.3125, 0.3125, 0.3125],
             TrackedData::Silverfish(_) => [0.4, 0.3, 0.4],
@@ -591,7 +608,7 @@ impl McEntity {
             velocity: velocity_to_packet_units(self.velocity),
         };
 
-        match &self.variants {
+        match &self.data {
             TrackedData::Marker(_) => {}
             TrackedData::ExperienceOrb(_) => writer.write_packet(&SpawnExperienceOrb {
                 entity_id: VarInt(self.protocol_id),
@@ -640,7 +657,7 @@ impl McEntity {
         }
 
         scratch.clear();
-        self.variants.write_initial_tracked_data(scratch);
+        self.data.write_initial_tracked_data(scratch);
         if !scratch.is_empty() {
             writer.write_packet(&SetEntityMetadata {
                 entity_id: VarInt(self.protocol_id),
@@ -716,7 +733,7 @@ impl McEntity {
         }
 
         scratch.clear();
-        self.variants.write_updated_tracked_data(scratch);
+        self.data.write_updated_tracked_data(scratch);
         if !scratch.is_empty() {
             writer.write_packet(&SetEntityMetadata {
                 entity_id,
@@ -724,20 +741,27 @@ impl McEntity {
             })?;
         }
 
-        // TODO
-        /*
-        for &event in &self.events {
-            match event.status_or_animation() {
-                StatusOrAnimation::Status(code) => writer.write_packet(&EntityEventPacket {
-                    entity_id: entity_id.0,
-                    entity_status: code,
-                })?,
-                StatusOrAnimation::Animation(code) => writer.write_packet(&EntityAnimationS2c {
-                    entity_id,
-                    animation: code,
-                })?,
+        if self.statuses != 0 {
+            for i in 0..std::mem::size_of_val(&self.statuses) {
+                if (self.statuses >> i) & 1 == 1 {
+                    writer.write_packet(&EntityEventS2c {
+                        entity_id: entity_id.0,
+                        entity_status: i as u8,
+                    })?;
+                }
             }
-        }*/
+        }
+
+        if self.animations != 0 {
+            for i in 0..std::mem::size_of_val(&self.animations) {
+                if (self.animations >> i) & 1 == 1 {
+                    writer.write_packet(&EntityAnimationS2c {
+                        entity_id,
+                        animation: i as u8,
+                    })?;
+                }
+            }
+        }
 
         Ok(())
     }
