@@ -312,40 +312,16 @@ impl OpenInventory {
 }
 
 /// Handles the `OpenInventory` component being added to a client, which
-/// indicates that the client is now viewing an inventory.
-pub(crate) fn update_client_on_open_inventory(
-    mut clients: Query<(&mut Client, &OpenInventory), Added<OpenInventory>>,
-    inventories: Query<&Inventory>,
-) {
-    for (mut client, open_inventory) in clients.iter_mut() {
-        // validate that the inventory exists
-        if let Ok(inventory) = inventories.get_component::<Inventory>(open_inventory.entity) {
-            // send the inventory to the client
-            client.window_id = client.window_id % 100 + 1;
-
-            let packet = OpenScreen {
-                window_id: VarInt(client.window_id.into()),
-                window_type: WindowType::from(inventory.kind),
-                window_title: inventory.title.clone(),
-            };
-            client.write_packet(&packet);
-
-            let packet = SetContainerContentEncode {
-                window_id: client.window_id,
-                state_id: VarInt(client.inventory_state_id.0),
-                slots: inventory.slot_slice(),
-                carried_item: &client.cursor_item.clone(),
-            };
-            client.write_packet(&packet);
-        } else {
-            warn!("Client is viewing an inventory that does not exist");
-        }
-    }
-}
-
+/// indicates that the client is now viewing an inventory, and sends inventory
+/// updates to the client when the inventory is modified.
 pub(crate) fn update_open_inventories(
     mut commands: Commands,
-    mut clients: Query<(Entity, &mut Client, &OpenInventory)>,
+    mut clients: Query<(
+        Entity,
+        &mut Client,
+        &OpenInventory,
+        ChangeTrackers<OpenInventory>,
+    )>,
     mut inventories: Query<&mut Inventory>,
 ) {
     if clients.is_empty() {
@@ -355,16 +331,20 @@ pub(crate) fn update_open_inventories(
     // These operations need to happen in this order.
 
     // send the inventory contents to all clients that are viewing an inventory
-    for (client_entity, mut client, open_inventory) in clients.iter_mut() {
+    for (client_entity, mut client, open_inventory, open_inventory_change) in clients.iter_mut() {
         // validate that the inventory exists
         if let Ok(inventory) = inventories.get_component::<Inventory>(open_inventory.entity) {
-            // send the inventory to the client
-            if inventory.modified == 0 {
-                continue;
-            }
-            client.inventory_state_id += 1;
-            if inventory.modified == u64::MAX {
-                // send the entire inventory
+            if open_inventory_change.is_added() {
+                // send the inventory to the client if the client just opened the inventory
+                client.window_id = client.window_id % 100 + 1;
+
+                let packet = OpenScreen {
+                    window_id: VarInt(client.window_id.into()),
+                    window_type: WindowType::from(inventory.kind),
+                    window_title: inventory.title.clone(),
+                };
+                client.write_packet(&packet);
+
                 let packet = SetContainerContentEncode {
                     window_id: client.window_id,
                     state_id: VarInt(client.inventory_state_id.0),
@@ -373,17 +353,33 @@ pub(crate) fn update_open_inventories(
                 };
                 client.write_packet(&packet);
             } else {
-                // send the modified slots
-                let window_id = client.window_id as i8;
-                let state_id = client.inventory_state_id.0;
-                for (i, slot) in inventory.slots.iter().enumerate() {
-                    if (inventory.modified >> i) & 1 == 1 {
-                        client.write_packet(&SetContainerSlotEncode {
-                            window_id,
-                            state_id: VarInt(state_id),
-                            slot_idx: i as i16,
-                            slot_data: slot.as_ref(),
-                        });
+                // the client is already viewing the inventory
+                if inventory.modified == 0 {
+                    continue;
+                }
+                client.inventory_state_id += 1;
+                if inventory.modified == u64::MAX {
+                    // send the entire inventory
+                    let packet = SetContainerContentEncode {
+                        window_id: client.window_id,
+                        state_id: VarInt(client.inventory_state_id.0),
+                        slots: inventory.slot_slice(),
+                        carried_item: &client.cursor_item.clone(),
+                    };
+                    client.write_packet(&packet);
+                } else {
+                    // send the modified slots
+                    let window_id = client.window_id as i8;
+                    let state_id = client.inventory_state_id.0;
+                    for (i, slot) in inventory.slots.iter().enumerate() {
+                        if (inventory.modified >> i) & 1 == 1 {
+                            client.write_packet(&SetContainerSlotEncode {
+                                window_id,
+                                state_id: VarInt(state_id),
+                                slot_idx: i as i16,
+                                slot_data: slot.as_ref(),
+                            });
+                        }
                     }
                 }
             }
@@ -394,7 +390,7 @@ pub(crate) fn update_open_inventories(
     }
 
     // reset the modified flag
-    for (_, _, open_inventory) in clients.iter_mut() {
+    for (_, _, open_inventory, _) in clients.iter_mut() {
         // validate that the inventory exists
         if let Ok(mut inventory) = inventories.get_component_mut::<Inventory>(open_inventory.entity)
         {
