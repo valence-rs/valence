@@ -324,7 +324,10 @@ impl McEntity {
                 _ => [0.75, 0.0625, 0.75],
             });
 
-            Aabb::new_unchecked(center_pos - bounds / 2.0, center_pos + bounds / 2.0)
+            Aabb {
+                min: center_pos - bounds / 2.0,
+                max: center_pos + bounds / 2.0,
+            }
         }
 
         let dimensions = match &self.variants {
@@ -475,7 +478,10 @@ impl McEntity {
                     _ => DVec3::new(bounds.x as f64, bounds.y as f64, 0.0625),
                 };
 
-                return Aabb::new_unchecked(center_pos - bounds / 2.0, center_pos + bounds / 2.0);
+                return Aabb {
+                    min: center_pos - bounds / 2.0,
+                    max: center_pos + bounds / 2.0,
+                };
             }
             TrackedData::Panda(e) => baby(e.get_child(), [1.3, 1.25, 1.3]),
             TrackedData::Parrot(_) => [0.5, 0.9, 0.5],
@@ -509,7 +515,7 @@ impl McEntity {
                     Facing::East => min.x -= peek,
                 }
 
-                return Aabb::new_unchecked(min, max);
+                return Aabb { min, max };
             }
             TrackedData::ShulkerBullet(_) => [0.3125, 0.3125, 0.3125],
             TrackedData::Silverfish(_) => [0.4, 0.3, 0.4],
