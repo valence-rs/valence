@@ -1,7 +1,10 @@
+use std::fmt;
+
 #[cfg(feature = "encryption")]
 use aes::cipher::{AsyncStreamCipher, NewCipher};
 use anyhow::{bail, ensure};
 use bytes::{Buf, BufMut, BytesMut};
+use tracing::debug;
 
 use crate::var_int::{VarInt, VarIntDecodeError};
 use crate::{DecodePacket, Encode, EncodePacket, Result, MAX_PACKET_SIZE};
@@ -285,7 +288,7 @@ impl PacketDecoder {
 
     pub fn try_next_packet<'a, P>(&'a mut self) -> Result<Option<P>>
     where
-        P: DecodePacket<'a>,
+        P: DecodePacket<'a> + fmt::Debug,
     {
         self.buf.advance(self.cursor);
         self.cursor = 0;
@@ -345,11 +348,13 @@ impl PacketDecoder {
         #[cfg(not(feature = "compression"))]
         let packet = P::decode_packet(&mut r)?;
 
-        ensure!(
-            r.is_empty(),
-            "packet contents were not read completely ({} bytes remain)",
-            r.len()
-        );
+        if !r.is_empty() {
+            let remaining = r.len();
+
+            debug!("packet after partial decode ({remaining} bytes remain): {packet:?}");
+
+            bail!("packet contents were not read completely ({remaining} bytes remain)");
+        }
 
         let total_packet_len = VarInt(packet_len).written_size() + packet_len as usize;
         self.cursor = total_packet_len;

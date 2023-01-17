@@ -1,3 +1,4 @@
+use std::fmt;
 use std::io::ErrorKind;
 use std::time::Duration;
 
@@ -60,7 +61,7 @@ where
 
     pub async fn recv_packet<'a, P>(&'a mut self) -> Result<P>
     where
-        P: DecodePacket<'a>,
+        P: DecodePacket<'a> + fmt::Debug,
     {
         timeout(self.timeout, async {
             while !self.dec.has_next_packet()? {
@@ -259,7 +260,7 @@ pub struct PlayPacketReceiver {
 impl PlayPacketReceiver {
     pub fn try_next_packet<'a, P>(&'a mut self) -> Result<Option<P>>
     where
-        P: DecodePacket<'a>,
+        P: DecodePacket<'a> + fmt::Debug,
     {
         self.dec.try_next_packet()
     }

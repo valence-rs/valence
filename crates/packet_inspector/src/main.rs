@@ -13,6 +13,7 @@ use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
+use tracing_subscriber::filter::LevelFilter;
 use valence_protocol::packets::c2s::handshake::Handshake;
 use valence_protocol::packets::c2s::login::{EncryptionResponse, LoginStart};
 use valence_protocol::packets::c2s::play::C2sPlayPacket;
@@ -111,6 +112,10 @@ impl State {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    tracing_subscriber::fmt()
+        .with_max_level(LevelFilter::DEBUG)
+        .init();
+
     let cli = Arc::new(Cli::parse());
 
     let sema = Arc::new(Semaphore::new(cli.max_connections.unwrap_or(100_000)));
