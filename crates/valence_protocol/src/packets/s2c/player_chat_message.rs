@@ -45,16 +45,12 @@ impl<'a> Encode for PlayerChatMessage<'a> {
         self.unsigned_content.encode(&mut w)?;
         self.filter_type.encode(&mut w)?;
 
-        match self.filter_type {
-            MessageFilterType::PartiallyFiltered => {
-                match self.filter_type_bits {
-                    // Filler data
-                    None => 0u8.encode(&mut w)?,
-                    Some(bits) => bits.encode(&mut w)?,
-                }
+        if self.filter_type == MessageFilterType::PartiallyFiltered {
+            match self.filter_type_bits {
+                // Filler data
+                None => 0u8.encode(&mut w)?,
+                Some(bits) => bits.encode(&mut w)?,
             }
-            // Filter bits are only sent if type is partially filtered
-            _ => {}
         }
 
         self.chat_type.encode(&mut w)?;
@@ -79,7 +75,7 @@ impl<'a> Decode<'a> for PlayerChatMessage<'a> {
 
         let filter_type_bits = match filter_type {
             MessageFilterType::PartiallyFiltered => Some(u8::decode(r)?),
-            _ => None
+            _ => None,
         };
 
         let chat_type = VarInt::decode(r)?;

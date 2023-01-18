@@ -10,8 +10,8 @@ use crate::raw_bytes::RawBytes;
 use crate::text::Text;
 use crate::types::{
     AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, GameEventKind, GameMode,
-    GlobalPos, PlayerAbilitiesFlags, SignedProperty, Statistic, SoundCategory, SyncPlayerPosLookFlags,
-    TagGroup,
+    GlobalPos, PlayerAbilitiesFlags, SignedProperty, SoundCategory, Statistic,
+    SyncPlayerPosLookFlags, TagGroup,
 };
 use crate::username::Username;
 use crate::var_int::VarInt;
