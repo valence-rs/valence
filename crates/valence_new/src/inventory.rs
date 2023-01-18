@@ -467,16 +467,16 @@ pub(crate) fn handle_click_container(
 
                     // TODO: do more validation on the click
                     client.cursor_item = event.carried_item.clone();
-                    for slot_change in event.slot_changes.clone() {
-                        if (0i16..inventory.slot_count() as i16).contains(&slot_change.0) {
-                            inventory.replace_slot(slot_change.0 as u16, slot_change.1);
-                            client.inventory_slots_modified |= 1 << slot_change.0;
+                    for (slot_id, item) in event.slot_changes.clone() {
+                        if (0i16..inventory.slot_count() as i16).contains(&slot_id) {
+                            inventory.replace_slot(slot_id as u16, item);
+                            client.inventory_slots_modified |= 1 << slot_id;
                         } else {
                             // the client is trying to interact with a slot that does not exist,
                             // ignore
                             warn!(
                                 "Client attempted to interact with slot {} which does not exist",
-                                slot_change.0
+                                slot_id
                             );
                         }
                     }
@@ -517,20 +517,18 @@ pub(crate) fn handle_click_container(
 
                     client.cursor_item = event.carried_item.clone();
 
-                    for slot_change in event.slot_changes.clone() {
-                        if (0i16..target_inventory.slot_count() as i16).contains(&slot_change.0) {
+                    for (slot_id, item) in event.slot_changes.clone() {
+                        if (0i16..target_inventory.slot_count() as i16).contains(&slot_id) {
                             // the client is interacting with a slot in the target inventory
-                            target_inventory.replace_slot(slot_change.0 as u16, slot_change.1);
+                            target_inventory.replace_slot(slot_id as u16, item);
                             if let Some(open_inventory) = open_inventory.as_mut() {
-                                open_inventory.client_modified |= 1 << slot_change.0;
+                                open_inventory.client_modified |= 1 << slot_id;
                             }
                         } else {
                             // the client is interacting with a slot in their own inventory
-                            let slot_id = convert_to_player_slot_id(
-                                target_inventory.kind,
-                                slot_change.0 as u16,
-                            );
-                            client_inventory.replace_slot(slot_id, slot_change.1);
+                            let slot_id =
+                                convert_to_player_slot_id(target_inventory.kind, slot_id as u16);
+                            client_inventory.replace_slot(slot_id, item);
                             client.inventory_slots_modified |= 1 << slot_id;
                         }
                     }
