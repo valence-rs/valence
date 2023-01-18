@@ -703,6 +703,14 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x63]
+    pub struct PickupItem {
+        pub collected_entity_id: VarInt,
+        pub collector_entity_id: VarInt,
+        pub pickup_item_count: VarInt,
+    }
+
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x64]
     pub struct TeleportEntity {
         pub entity_id: VarInt,
@@ -802,6 +810,7 @@ pub mod play {
             SoundEffect,
             SystemChatMessage,
             SetTabListHeaderAndFooter,
+            PickupItem,
             TeleportEntity,
             UpdateAdvancements<'a>,
             UpdateAttributes<'a>,
