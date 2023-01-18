@@ -637,6 +637,14 @@ pub mod play {
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x55]
+    pub struct SetPassengers {
+        /// Vehicle's entity id
+        pub entity_id: VarInt,
+        pub passengers: Vec<VarInt>,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x59]
     pub struct SetSubtitleText(pub Text);
 
@@ -802,6 +810,7 @@ pub mod play {
             SetEquipment,
             SetExperience,
             SetHealth,
+            SetPassengers,
             SetSubtitleText,
             UpdateTime,
             SetTitleText,
