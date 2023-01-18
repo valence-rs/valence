@@ -10,7 +10,7 @@ use crate::raw_bytes::RawBytes;
 use crate::text::Text;
 use crate::types::{
     AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, GameEventKind, GameMode,
-    GlobalPos, PlayerAbilitiesFlags, SignedProperty, SoundCategory, SyncPlayerPosLookFlags,
+    GlobalPos, PlayerAbilitiesFlags, SignedProperty, Statistic, SoundCategory, SyncPlayerPosLookFlags,
     TagGroup,
 };
 use crate::username::Username;
@@ -150,6 +150,12 @@ pub mod play {
     pub struct EntityAnimationS2c {
         pub entity_id: VarInt,
         pub animation: u8, // TODO: use Animation enum.
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x04]
+    pub struct AwardStatistics {
+        pub statistics: Vec<Statistic>,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -758,6 +764,7 @@ pub mod play {
             SpawnExperienceOrb,
             SpawnPlayer,
             EntityAnimationS2c,
+            AwardStatistics,
             AcknowledgeBlockChange,
             SetBlockDestroyStage,
             BlockEntityData,
