@@ -34,6 +34,7 @@ impl Inventory {
         }
     }
 
+    #[track_caller]
     pub fn slot(&self, idx: u16) -> Option<&ItemStack> {
         self.slots
             .get(idx as usize)
@@ -41,6 +42,7 @@ impl Inventory {
             .as_ref()
     }
 
+    #[track_caller]
     pub fn replace_slot(
         &mut self,
         idx: u16,
@@ -58,6 +60,7 @@ impl Inventory {
         std::mem::replace(old, new)
     }
 
+    #[track_caller]
     pub fn swap_slot(&mut self, idx_a: u16, idx_b: u16) {
         assert!(idx_a < self.slot_count(), "slot index out of range");
         assert!(idx_b < self.slot_count(), "slot index out of range");
