@@ -481,8 +481,8 @@ pub(crate) fn handle_click_container(
                 _ => {
                     // the client or inventory does not exist, ignore
                     warn!(
-                        "Client attempted to interact with their own
-    inventory, but it does not exist"
+                        "Client attempted to interact with their own inventory, but it does not \
+                         exist"
                     );
                 }
             }
@@ -495,10 +495,7 @@ pub(crate) fn handle_click_container(
 
             if open_inventory.is_none() {
                 // the client is not viewing an inventory, ignore
-                warn!(
-                    "Client attempted to interact with an inventory, but is
-    not viewing one"
-                );
+                warn!("Client attempted to interact with an inventory, but is not viewing one");
                 continue;
             }
 
