@@ -1,7 +1,7 @@
 use std::iter::FusedIterator;
 
 use bevy_ecs::prelude::*;
-use tracing::warn;
+use tracing::{debug, warn};
 use valence_protocol::packets::s2c::play::{
     CloseContainerS2c, OpenScreen, SetContainerContentEncode, SetContainerSlotEncode,
 };
@@ -510,7 +510,7 @@ pub(crate) fn handle_click_container(
                 {
                     if client.inventory_state_id.0 != event.state_id {
                         // client is out of sync, resync, ignore click
-                        warn!("Client state id mismatch, marking dirty");
+                        debug!("Client state id mismatch, marking dirty");
                         client_inventory.modified = u64::MAX;
                         continue;
                     }
