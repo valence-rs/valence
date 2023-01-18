@@ -461,7 +461,15 @@ pub(crate) fn handle_click_container(
                 Ok((mut client, mut inventory, _)) => {
                     if client.inventory_state_id.0 != event.state_id {
                         // client is out of sync, resync, and ignore the click
-                        inventory.modified = u64::MAX;
+                        debug!("Client state id mismatch, resyncing");
+                        client.inventory_state_id.0 += 1;
+                        let packet = SetContainerContentEncode {
+                            window_id: client.window_id,
+                            state_id: VarInt(client.inventory_state_id.0),
+                            slots: inventory.slot_slice(),
+                            carried_item: &client.cursor_item.clone(),
+                        };
+                        client.write_packet(&packet);
                         continue;
                     }
 
@@ -510,8 +518,15 @@ pub(crate) fn handle_click_container(
                 {
                     if client.inventory_state_id.0 != event.state_id {
                         // client is out of sync, resync, ignore click
-                        debug!("Client state id mismatch, marking dirty");
-                        client_inventory.modified = u64::MAX;
+                        debug!("Client state id mismatch, resyncing");
+                        client.inventory_state_id.0 += 1;
+                        let packet = SetContainerContentEncode {
+                            window_id: client.window_id,
+                            state_id: VarInt(client.inventory_state_id.0),
+                            slots: target_inventory.slot_slice(),
+                            carried_item: &client.cursor_item.clone(),
+                        };
+                        client.write_packet(&packet);
                         continue;
                     }
 
