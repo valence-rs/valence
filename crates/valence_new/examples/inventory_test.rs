@@ -18,7 +18,9 @@ struct GameState {
 }
 
 fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt().init();
+    tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::DEBUG)
+        .init();
 
     valence_new::run_server(
         Config::default().with_connection_mode(ConnectionMode::Offline),
