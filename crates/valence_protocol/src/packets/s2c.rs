@@ -21,6 +21,7 @@ use crate::LengthPrefixedArray;
 pub mod commands;
 pub mod declare_recipes;
 pub mod particle;
+pub mod player_chat_message;
 pub mod player_info_update;
 pub mod set_equipment;
 pub mod update_advancements;
@@ -104,6 +105,7 @@ pub mod login {
 pub mod play {
     use commands::Node;
     pub use particle::ParticleS2c;
+    pub use player_chat_message::PlayerChatMessage;
     pub use player_info_update::PlayerInfoUpdate;
     pub use set_equipment::SetEquipment;
     pub use update_advancements::UpdateAdvancements;
@@ -470,13 +472,6 @@ pub mod play {
         pub flags: PlayerAbilitiesFlags,
         pub flying_speed: f32,
         pub fov_modifier: f32,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x31]
-    pub struct PlayerChatMessage<'a> {
-        // TODO: A bunch of crap.
-        pub data: RawBytes<'a>,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]

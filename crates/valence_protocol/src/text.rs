@@ -7,6 +7,7 @@ use std::{fmt, ops};
 use anyhow::Context;
 use serde::de::Visitor;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use uuid::Uuid;
 
 use crate::{Decode, Encode, Ident, Result};
 
@@ -209,7 +210,7 @@ enum HoverEvent {
         name: Text,
         #[serde(rename = "type")]
         kind: Ident<String>,
-        // TODO: id (hyphenated entity UUID as a string)
+        id: Uuid,
     },
 }
 
