@@ -455,101 +455,87 @@ pub(crate) fn handle_click_container(
     mut events: EventReader<ClickContainer>,
 ) {
     for event in events.iter() {
-        if event.window_id == 0 {
-            // the client is interacting with their own inventory
-            match clients.get_mut(event.client.clone()) {
-                Ok((mut client, mut inventory, _)) => {
-                    if client.inventory_state_id.0 != event.state_id {
-                        // client is out of sync, resync, and ignore the click
-                        debug!("Client state id mismatch, resyncing");
-                        client.inventory_state_id.0 += 1;
-                        let packet = SetContainerContentEncode {
-                            window_id: client.window_id,
-                            state_id: VarInt(client.inventory_state_id.0),
-                            slots: inventory.slot_slice(),
-                            carried_item: &client.cursor_item.clone(),
-                        };
-                        client.write_packet(&packet);
-                        continue;
-                    }
+        let Ok((mut client, mut client_inventory, mut open_inventory)) =
+            clients.get_mut(event.client) else {
+                // the client does not exist, ignore
+                continue;
+            };
 
-                    // TODO: do more validation on the click
-                    client.cursor_item = event.carried_item.clone();
-                    for (slot_id, item) in event.slot_changes.clone() {
-                        if (0i16..inventory.slot_count() as i16).contains(&slot_id) {
-                            inventory.replace_slot(slot_id as u16, item);
-                            client.inventory_slots_modified |= 1 << slot_id;
-                        } else {
-                            // the client is trying to interact with a slot that does not exist,
-                            // ignore
-                            warn!(
-                                "Client attempted to interact with slot {} which does not exist",
-                                slot_id
-                            );
-                        }
-                    }
-                }
-                _ => {
-                    // the client or inventory does not exist, ignore
-                    warn!(
-                        "Client attempted to interact with their own inventory, but it does not \
-                         exist"
-                    );
-                }
-            }
-        } else {
+        // validate the window id
+        if (event.window_id == 0) != open_inventory.is_none() {
+            warn!(
+                "Client sent a click with an invalid window id for current state: window_id = {}, \
+                 open_inventory present = {}",
+                event.window_id,
+                open_inventory.is_some()
+            );
+            continue;
+        }
+
+        if let Some(open_inventory) = open_inventory.as_mut() {
             // the player is interacting with an inventory that is open
-            let open_inventory = clients
-                .get_component::<OpenInventory>(event.client)
-                .ok()
-                .map(|open_inventory| open_inventory.entity);
-
-            if open_inventory.is_none() {
-                // the client is not viewing an inventory, ignore
-                warn!("Client attempted to interact with an inventory, but is not viewing one");
+            let Ok(mut target_inventory) = inventories.get_component_mut::<Inventory>(open_inventory.entity) else {
+                // the inventory does not exist, ignore
+                continue;
+            };
+            if client.inventory_state_id.0 != event.state_id {
+                // client is out of sync, resync, ignore click
+                debug!("Client state id mismatch, resyncing");
+                client.inventory_state_id.0 += 1;
+                let packet = SetContainerContentEncode {
+                    window_id: client.window_id,
+                    state_id: VarInt(client.inventory_state_id.0),
+                    slots: target_inventory.slot_slice(),
+                    carried_item: &client.cursor_item.clone(),
+                };
+                client.write_packet(&packet);
                 continue;
             }
 
-            if let Ok(mut target_inventory) =
-                inventories.get_component_mut::<Inventory>(open_inventory.unwrap())
-            {
-                if let Ok((mut client, mut client_inventory, mut open_inventory)) =
-                    clients.get_mut(event.client)
-                {
-                    if client.inventory_state_id.0 != event.state_id {
-                        // client is out of sync, resync, ignore click
-                        debug!("Client state id mismatch, resyncing");
-                        client.inventory_state_id.0 += 1;
-                        let packet = SetContainerContentEncode {
-                            window_id: client.window_id,
-                            state_id: VarInt(client.inventory_state_id.0),
-                            slots: target_inventory.slot_slice(),
-                            carried_item: &client.cursor_item.clone(),
-                        };
-                        client.write_packet(&packet);
-                        continue;
-                    }
+            client.cursor_item = event.carried_item.clone();
 
-                    client.cursor_item = event.carried_item.clone();
-
-                    for (slot_id, item) in event.slot_changes.clone() {
-                        if (0i16..target_inventory.slot_count() as i16).contains(&slot_id) {
-                            // the client is interacting with a slot in the target inventory
-                            target_inventory.replace_slot(slot_id as u16, item);
-                            if let Some(open_inventory) = open_inventory.as_mut() {
-                                open_inventory.client_modified |= 1 << slot_id;
-                            }
-                        } else {
-                            // the client is interacting with a slot in their own inventory
-                            let slot_id =
-                                convert_to_player_slot_id(target_inventory.kind, slot_id as u16);
-                            client_inventory.replace_slot(slot_id, item);
-                            client.inventory_slots_modified |= 1 << slot_id;
-                        }
-                    }
+            for (slot_id, item) in event.slot_changes.clone() {
+                if (0i16..target_inventory.slot_count() as i16).contains(&slot_id) {
+                    // the client is interacting with a slot in the target inventory
+                    target_inventory.replace_slot(slot_id as u16, item);
+                    open_inventory.client_modified |= 1 << slot_id;
                 } else {
-                    // the client does not exist, ignore
-                    continue;
+                    // the client is interacting with a slot in their own inventory
+                    let slot_id = convert_to_player_slot_id(target_inventory.kind, slot_id as u16);
+                    client_inventory.replace_slot(slot_id, item);
+                    client.inventory_slots_modified |= 1 << slot_id;
+                }
+            }
+        } else {
+            // the client is interacting with their own inventory
+
+            if client.inventory_state_id.0 != event.state_id {
+                // client is out of sync, resync, and ignore the click
+                debug!("Client state id mismatch, resyncing");
+                client.inventory_state_id.0 += 1;
+                let packet = SetContainerContentEncode {
+                    window_id: client.window_id,
+                    state_id: VarInt(client.inventory_state_id.0),
+                    slots: client_inventory.slot_slice(),
+                    carried_item: &client.cursor_item.clone(),
+                };
+                client.write_packet(&packet);
+                continue;
+            }
+
+            // TODO: do more validation on the click
+            client.cursor_item = event.carried_item.clone();
+            for (slot_id, item) in event.slot_changes.clone() {
+                if (0i16..client_inventory.slot_count() as i16).contains(&slot_id) {
+                    client_inventory.replace_slot(slot_id as u16, item);
+                    client.inventory_slots_modified |= 1 << slot_id;
+                } else {
+                    // the client is trying to interact with a slot that does not exist,
+                    // ignore
+                    warn!(
+                        "Client attempted to interact with slot {} which does not exist",
+                        slot_id
+                    );
                 }
             }
         }
