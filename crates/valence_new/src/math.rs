@@ -1,7 +1,7 @@
 pub use glam::*;
 
-/// An axis-aligned bounding box. All components of `min` is expected to be <=
-/// `max` componentwise.
+/// An axis-aligned bounding box. `min` is expected to be <= `max`
+/// componentwise.
 #[derive(Copy, Clone, PartialEq, Default, Debug)]
 pub struct Aabb {
     pub min: DVec3,

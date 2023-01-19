@@ -129,12 +129,13 @@ impl Chunk<true> {
             for (sect_y, sect) in &mut self.sections.iter_mut().enumerate() {
                 if sect.section_updates.len() == 1 {
                     let packed = sect.section_updates[0].0 as u64;
-                    let offset_z = (packed >> 4) & 0xff;
-                    let offset_x = (packed >> 8) & 0xff;
+                    let offset_y = packed & 0b1111;
+                    let offset_z = (packed >> 4) & 0b1111;
+                    let offset_x = (packed >> 8) & 0b1111;
                     let block = packed >> 12;
 
                     let global_x = pos.x * 16 + offset_x as i32;
-                    let global_y = info.min_y + sect_y as i32 * 16;
+                    let global_y = info.min_y + sect_y as i32 * 16 + offset_y as i32;
                     let global_z = pos.z * 16 + offset_z as i32;
 
                     writer.write_packet(&BlockUpdate {
@@ -295,7 +296,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
 
             if LOADED && !self.refresh {
                 self.cached_init_packets.clear();
-                let compact = (block.to_raw() as i64) << 12 | (x << 8 | z << 4 | sect_y) as i64;
+                let compact = (block.to_raw() as i64) << 12 | (x << 8 | z << 4 | y % 16) as i64;
                 sect.section_updates.push(VarLong(compact));
             }
         }

@@ -67,9 +67,12 @@ fn tick(state: Res<GameState>, server: Res<Server>, mut instances: Query<&mut In
 
         let y = ((10 + server.current_tick() / 20) % 120) as usize;
 
-        instance
-            .chunk_mut([0, 0])
-            .unwrap()
-            .set_block_state(0, y, 0, BlockState::MAGMA_BLOCK);
+        let chunk = instance.chunk_mut([0, 0]).unwrap();
+
+        chunk.set_block_state(0, y, 0, BlockState::MAGMA_BLOCK);
+
+        if server.current_tick() % 40 == 0 {
+            chunk.set_block_state(1, y, 0, BlockState::LIME_WOOL);
+        }
     }
 }
