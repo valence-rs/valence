@@ -346,18 +346,38 @@ pub(crate) fn update_open_inventories(
     // send the inventory contents to all clients that are viewing an inventory
     for (client_entity, mut client, mut open_inventory) in clients.iter_mut() {
         // validate that the inventory exists
-        if let Ok(inventory) = inventories.get_component::<Inventory>(open_inventory.entity) {
-            if open_inventory.is_added() {
-                // send the inventory to the client if the client just opened the inventory
-                client.window_id = client.window_id % 100 + 1;
+        let Ok(inventory) = inventories.get_component::<Inventory>(open_inventory.entity) else {
+            // the inventory no longer exists, so close the inventory
+            commands.entity(client_entity).remove::<OpenInventory>();
+            continue;
+        };
 
-                let packet = OpenScreen {
-                    window_id: VarInt(client.window_id.into()),
-                    window_type: WindowType::from(inventory.kind),
-                    window_title: inventory.title.clone(),
-                };
-                client.write_packet(&packet);
+        if open_inventory.is_added() {
+            // send the inventory to the client if the client just opened the inventory
+            client.window_id = client.window_id % 100 + 1;
 
+            let packet = OpenScreen {
+                window_id: VarInt(client.window_id.into()),
+                window_type: WindowType::from(inventory.kind),
+                window_title: inventory.title.clone(),
+            };
+            client.write_packet(&packet);
+
+            let packet = SetContainerContentEncode {
+                window_id: client.window_id,
+                state_id: VarInt(client.inventory_state_id.0),
+                slots: inventory.slot_slice(),
+                carried_item: &client.cursor_item.clone(),
+            };
+            client.write_packet(&packet);
+        } else {
+            // the client is already viewing the inventory
+            if inventory.modified == 0 {
+                continue;
+            }
+            client.inventory_state_id += 1;
+            if inventory.modified == u64::MAX {
+                // send the entire inventory
                 let packet = SetContainerContentEncode {
                     window_id: client.window_id,
                     state_id: VarInt(client.inventory_state_id.0),
@@ -366,53 +386,34 @@ pub(crate) fn update_open_inventories(
                 };
                 client.write_packet(&packet);
             } else {
-                // the client is already viewing the inventory
-                if inventory.modified == 0 {
-                    continue;
-                }
-                client.inventory_state_id += 1;
-                if inventory.modified == u64::MAX {
-                    // send the entire inventory
-                    let packet = SetContainerContentEncode {
-                        window_id: client.window_id,
-                        state_id: VarInt(client.inventory_state_id.0),
-                        slots: inventory.slot_slice(),
-                        carried_item: &client.cursor_item.clone(),
-                    };
-                    client.write_packet(&packet);
-                } else {
-                    // send the modified slots
-                    let window_id = client.window_id as i8;
-                    let state_id = client.inventory_state_id.0;
-                    if inventory.modified ^ open_inventory.client_modified != 0 {
-                        for (i, slot) in inventory.slots.iter().enumerate() {
-                            if (inventory.modified >> i) & 1 == 1 {
-                                if (open_inventory.client_modified >> i) & 1 == 1 {
-                                    // This slot was modified by this client, so we don't need to
-                                    // send it
-                                    continue;
-                                }
-                                client.write_packet(&SetContainerSlotEncode {
-                                    window_id,
-                                    state_id: VarInt(state_id),
-                                    slot_idx: i as i16,
-                                    slot_data: slot.as_ref(),
-                                });
+                // send the modified slots
+                let window_id = client.window_id as i8;
+                let state_id = client.inventory_state_id.0;
+                if inventory.modified ^ open_inventory.client_modified != 0 {
+                    for (i, slot) in inventory.slots.iter().enumerate() {
+                        if (inventory.modified >> i) & 1 == 1 {
+                            if (open_inventory.client_modified >> i) & 1 == 1 {
+                                // This slot was modified by this client, so we don't need to
+                                // send it
+                                continue;
                             }
+                            client.write_packet(&SetContainerSlotEncode {
+                                window_id,
+                                state_id: VarInt(state_id),
+                                slot_idx: i as i16,
+                                slot_data: slot.as_ref(),
+                            });
                         }
-                    } else {
-                        // we don't need to send any updates, decrement the state id to stay in sync
-                        client.inventory_state_id -= 1;
                     }
+                } else {
+                    // we don't need to send any updates, decrement the state id to stay in sync
+                    client.inventory_state_id -= 1;
                 }
             }
-
-            open_inventory.client_modified = 0;
-            client.inventory_slots_modified = 0;
-        } else {
-            // the inventory no longer exists, so close the inventory
-            commands.entity(client_entity).remove::<OpenInventory>();
         }
+
+        open_inventory.client_modified = 0;
+        client.inventory_slots_modified = 0;
     }
 
     // reset the modified flag
