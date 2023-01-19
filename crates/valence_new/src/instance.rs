@@ -133,6 +133,14 @@ impl Instance {
         })
     }
 
+    pub fn clear_chunks(&mut self) {
+        for cell in &mut self.partition.values_mut() {
+            if cell.chunk.take().is_some() {
+                cell.chunk_removed = true;
+            }
+        }
+    }
+
     // TODO: Entry API for chunks.
 
     pub fn chunk(&self, pos: impl Into<ChunkPos>) -> Option<&Chunk<true>> {
