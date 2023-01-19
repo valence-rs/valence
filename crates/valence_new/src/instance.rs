@@ -3,6 +3,7 @@ use std::hash::BuildHasherDefault;
 use std::iter::FusedIterator;
 
 use bevy_ecs::prelude::*;
+pub use chunk_entry::*;
 use hashbrown::hash_map::Entry;
 use hashbrown::HashMap;
 use num::integer::div_ceil;
@@ -20,6 +21,7 @@ use crate::server::{Server, SharedServer};
 use crate::Despawned;
 
 mod chunk;
+mod chunk_entry;
 mod paletted_container;
 
 /// To create a new instance, see [`SharedServer::new_instance`].
@@ -44,6 +46,7 @@ pub(crate) struct InstanceInfo {
     filler_sky_light_arrays: Box<[LengthPrefixedArray<u8, 2048>]>,
 }
 
+#[derive(Debug)]
 pub(crate) struct PartitionCell {
     /// The chunk in this cell.
     pub(crate) chunk: Option<Chunk<true>>,
@@ -97,52 +100,6 @@ impl Instance {
         self.info.section_count
     }
 
-    pub fn insert_chunk(&mut self, pos: impl Into<ChunkPos>, mut chunk: Chunk) -> Option<Chunk> {
-        // TODO: notify clients about the new chunk because they won't be in the viewer
-        //       list.
-
-        chunk.resize(self.info.section_count);
-
-        match self.partition.entry(pos.into()) {
-            Entry::Occupied(oe) => {
-                let cell = oe.into_mut();
-                cell.chunk
-                    .replace(chunk.into_loaded())
-                    .map(|c| c.into_unloaded())
-            }
-            Entry::Vacant(ve) => {
-                ve.insert(PartitionCell {
-                    chunk: Some(chunk.into_loaded()),
-                    chunk_removed: false,
-                    viewers: BTreeSet::new(),
-                    entities: BTreeSet::new(),
-                    packet_buf: vec![],
-                });
-
-                None
-            }
-        }
-    }
-
-    pub fn remove_chunk(&mut self, pos: impl Into<ChunkPos>) -> Option<Chunk> {
-        self.partition.get_mut(&pos.into()).and_then(|p| {
-            p.chunk.take().map(|c| {
-                p.chunk_removed = true;
-                c.into_unloaded()
-            })
-        })
-    }
-
-    pub fn clear_chunks(&mut self) {
-        for cell in &mut self.partition.values_mut() {
-            if cell.chunk.take().is_some() {
-                cell.chunk_removed = true;
-            }
-        }
-    }
-
-    // TODO: Entry API for chunks.
-
     pub fn chunk(&self, pos: impl Into<ChunkPos>) -> Option<&Chunk<true>> {
         self.partition
             .get(&pos.into())
@@ -153,6 +110,35 @@ impl Instance {
         self.partition
             .get_mut(&pos.into())
             .and_then(|p| p.chunk.as_mut())
+    }
+
+    pub fn insert_chunk(&mut self, pos: impl Into<ChunkPos>, chunk: Chunk) -> Option<Chunk> {
+        match self.chunk_entry(pos) {
+            ChunkEntry::Occupied(mut oe) => Some(oe.insert(chunk)),
+            ChunkEntry::Vacant(ve) => {
+                ve.insert(chunk);
+                None
+            }
+        }
+    }
+
+    pub fn remove_chunk(&mut self, pos: impl Into<ChunkPos>) -> Option<Chunk> {
+        match self.chunk_entry(pos) {
+            ChunkEntry::Occupied(oe) => Some(oe.remove()),
+            ChunkEntry::Vacant(_) => None,
+        }
+    }
+
+    pub fn clear_chunks(&mut self) {
+        for cell in &mut self.partition.values_mut() {
+            if cell.chunk.take().is_some() {
+                cell.chunk_removed = true;
+            }
+        }
+    }
+
+    pub fn chunk_entry(&mut self, pos: impl Into<ChunkPos>) -> ChunkEntry {
+        ChunkEntry::new(self.info.section_count, self.partition.entry(pos.into()))
     }
 
     pub fn chunks(&self) -> impl FusedIterator<Item = (ChunkPos, &Chunk<true>)> + Clone + '_ {
@@ -168,10 +154,8 @@ impl Instance {
     }
 
     pub fn optimize(&mut self) {
-        for cell in self.partition.values_mut() {
-            if let Some(chunk) = &mut cell.chunk {
-                chunk.optimize();
-            }
+        for (_, chunk) in self.chunks_mut() {
+            chunk.optimize();
         }
 
         self.partition.shrink_to_fit();
