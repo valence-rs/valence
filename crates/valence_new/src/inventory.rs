@@ -375,9 +375,9 @@ pub(crate) fn update_open_inventories(
             if inventory.modified == 0 {
                 continue;
             }
-            client.inventory_state_id += 1;
             if inventory.modified == u64::MAX {
                 // send the entire inventory
+                client.inventory_state_id += 1;
                 let packet = SetContainerContentEncode {
                     window_id: client.window_id,
                     state_id: VarInt(client.inventory_state_id.0),
@@ -390,6 +390,7 @@ pub(crate) fn update_open_inventories(
                 let window_id = client.window_id as i8;
                 let state_id = client.inventory_state_id.0;
                 if inventory.modified ^ open_inventory.client_modified != 0 {
+                    client.inventory_state_id += 1;
                     for (i, slot) in inventory.slots.iter().enumerate() {
                         if (inventory.modified >> i) & 1 == 1 {
                             if (open_inventory.client_modified >> i) & 1 == 1 {
@@ -405,9 +406,6 @@ pub(crate) fn update_open_inventories(
                             });
                         }
                     }
-                } else {
-                    // we don't need to send any updates, decrement the state id to stay in sync
-                    client.inventory_state_id -= 1;
                 }
             }
         }
