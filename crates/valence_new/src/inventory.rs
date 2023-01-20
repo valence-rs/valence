@@ -477,7 +477,7 @@ pub(crate) fn handle_click_container(
             if client.inventory_state_id.0 != event.state_id {
                 // client is out of sync, resync, ignore click
                 debug!("Client state id mismatch, resyncing");
-                client.inventory_state_id.0 += 1;
+                client.inventory_state_id += 1;
                 let packet = SetContainerContentEncode {
                     window_id: client.window_id,
                     state_id: VarInt(client.inventory_state_id.0),
@@ -508,7 +508,7 @@ pub(crate) fn handle_click_container(
             if client.inventory_state_id.0 != event.state_id {
                 // client is out of sync, resync, and ignore the click
                 debug!("Client state id mismatch, resyncing");
-                client.inventory_state_id.0 += 1;
+                client.inventory_state_id += 1;
                 let packet = SetContainerContentEncode {
                     window_id: client.window_id,
                     state_id: VarInt(client.inventory_state_id.0),
