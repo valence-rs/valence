@@ -5,6 +5,7 @@ use tracing::{debug, warn};
 use valence_protocol::packets::s2c::play::{
     CloseContainerS2c, OpenScreen, SetContainerContentEncode, SetContainerSlotEncode,
 };
+use valence_protocol::types::GameMode;
 use valence_protocol::{ItemStack, Text, VarInt, WindowType};
 
 use crate::client::event::{ClickContainer, CloseContainer, SetCreativeModeSlot};
@@ -544,6 +545,10 @@ pub(crate) fn handle_set_slot_creative(
 ) {
     for event in events.iter() {
         if let Ok((mut client, mut inventory)) = clients.get_mut(event.client) {
+            if client.game_mode() != GameMode::Creative {
+                // the client is not in creative mode, ignore
+                continue;
+            }
             client.inventory_slots_modified |= 1 << (event.slot as u16);
             inventory.replace_slot(event.slot as u16, event.clicked_item.clone());
         }
