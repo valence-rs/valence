@@ -118,10 +118,9 @@ pub(crate) fn update_player_inventories(
         }
 
         if inventory.modified != 0 {
-            client.inventory_state_id += 1;
-
             if inventory.modified == u64::MAX {
                 // Update the whole inventory.
+                client.inventory_state_id += 1;
                 let cursor_item = client.cursor_item.clone();
                 let state_id = client.inventory_state_id.0;
                 client.write_packet(&SetContainerContentEncode {
@@ -136,6 +135,7 @@ pub(crate) fn update_player_inventories(
                 // send the modified slots
                 let state_id = client.inventory_state_id.0;
                 if inventory.modified ^ client.inventory_slots_modified != 0 {
+                    client.inventory_state_id += 1;
                     for (i, slot) in inventory.slots.iter().enumerate() {
                         if (inventory.modified >> i) & 1 == 1 {
                             if (client.inventory_slots_modified >> i) & 1 == 1 {
@@ -151,9 +151,6 @@ pub(crate) fn update_player_inventories(
                             });
                         }
                     }
-                } else {
-                    // we don't need to send any updates, decrement the state id to stay in sync
-                    client.inventory_state_id -= 1;
                 }
             }
 
