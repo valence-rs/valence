@@ -134,7 +134,7 @@ pub(crate) fn update_player_inventories(
             } else {
                 // send the modified slots
                 let state_id = client.inventory_state_id.0;
-                if inventory.modified ^ client.inventory_slots_modified != 0 {
+                if inventory.modified & !client.inventory_slots_modified != 0 {
                     client.inventory_state_id += 1;
                     for (i, slot) in inventory.slots.iter().enumerate() {
                         if (inventory.modified >> i) & 1 == 1 {
@@ -386,7 +386,7 @@ pub(crate) fn update_open_inventories(
                 // send the modified slots
                 let window_id = client.window_id as i8;
                 let state_id = client.inventory_state_id.0;
-                if inventory.modified ^ open_inventory.client_modified != 0 {
+                if inventory.modified & !open_inventory.client_modified != 0 {
                     client.inventory_state_id += 1;
                     for (i, slot) in inventory.slots.iter().enumerate() {
                         if (inventory.modified >> i) & 1 == 1 {
