@@ -233,7 +233,7 @@ impl InventoryKind {
             InventoryKind::Smoker => 3,
             InventoryKind::Cartography => 3,
             InventoryKind::Stonecutter => 2,
-            InventoryKind::Player => 45,
+            InventoryKind::Player => 46,
         }
     }
 }
