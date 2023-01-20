@@ -370,3 +370,10 @@ pub struct Tag<'a> {
     pub name: Ident<&'a str>,
     pub entries: Vec<VarInt>,
 }
+
+#[derive(Copy, Clone, PartialEq, Debug, Encode, Decode)]
+pub struct Statistic {
+    pub category_id: VarInt,
+    pub statistic_id: VarInt,
+    pub value: VarInt,
+}

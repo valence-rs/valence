@@ -10,8 +10,8 @@ use crate::raw_bytes::RawBytes;
 use crate::text::Text;
 use crate::types::{
     AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, GameEventKind, GameMode,
-    GlobalPos, PlayerAbilitiesFlags, SignedProperty, SoundCategory, SyncPlayerPosLookFlags,
-    TagGroup,
+    GlobalPos, PlayerAbilitiesFlags, SignedProperty, SoundCategory, Statistic,
+    SyncPlayerPosLookFlags, TagGroup,
 };
 use crate::username::Username;
 use crate::var_int::VarInt;
@@ -21,7 +21,10 @@ use crate::LengthPrefixedArray;
 pub mod commands;
 pub mod declare_recipes;
 pub mod particle;
+pub mod player_chat_message;
 pub mod player_info_update;
+pub mod set_equipment;
+pub mod update_advancements;
 pub mod update_recipe_book;
 
 pub mod status {
@@ -102,7 +105,10 @@ pub mod login {
 pub mod play {
     use commands::Node;
     pub use particle::ParticleS2c;
+    pub use player_chat_message::PlayerChatMessage;
     pub use player_info_update::PlayerInfoUpdate;
+    pub use set_equipment::SetEquipment;
+    pub use update_advancements::UpdateAdvancements;
     pub use update_recipe_book::UpdateRecipeBook;
 
     use super::*;
@@ -146,6 +152,12 @@ pub mod play {
     pub struct EntityAnimationS2c {
         pub entity_id: VarInt,
         pub animation: u8, // TODO: use Animation enum.
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x04]
+    pub struct AwardStatistics {
+        pub statistics: Vec<Statistic>,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -351,6 +363,29 @@ pub mod play {
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x21]
+    pub struct WorldEvent {
+        pub event: i32,
+        pub location: BlockPos,
+        pub data: i32,
+        pub disable_relative_volume: bool,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x23]
+    pub struct UpdateLight {
+        pub chunk_x: VarInt,
+        pub chunk_z: VarInt,
+        pub trust_edges: bool,
+        pub sky_light_mask: Vec<u64>,
+        pub block_light_mask: Vec<u64>,
+        pub empty_sky_light_mask: Vec<u64>,
+        pub empty_block_light_mask: Vec<u64>,
+        pub sky_light_arrays: Vec<LengthPrefixedArray<u8, 2048>>,
+        pub block_light_arrays: Vec<LengthPrefixedArray<u8, 2048>>,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x24]
     pub struct LoginPlay<'a> {
         pub entity_id: i32,
@@ -437,13 +472,6 @@ pub mod play {
         pub flags: PlayerAbilitiesFlags,
         pub flying_speed: f32,
         pub fov_modifier: f32,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x31]
-    pub struct PlayerChatMessage<'a> {
-        // TODO: A bunch of crap.
-        pub data: RawBytes<'a>,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -610,6 +638,14 @@ pub mod play {
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x55]
+    pub struct SetPassengers {
+        /// Vehicle's entity id
+        pub entity_id: VarInt,
+        pub passengers: Vec<VarInt>,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x59]
     pub struct SetSubtitleText(pub Text);
 
@@ -676,6 +712,14 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x63]
+    pub struct PickupItem {
+        pub collected_entity_id: VarInt,
+        pub collector_entity_id: VarInt,
+        pub pickup_item_count: VarInt,
+    }
+
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x64]
     pub struct TeleportEntity {
         pub entity_id: VarInt,
@@ -715,6 +759,7 @@ pub mod play {
             SpawnExperienceOrb,
             SpawnPlayer,
             EntityAnimationS2c,
+            AwardStatistics,
             AcknowledgeBlockChange,
             SetBlockDestroyStage,
             BlockEntityData,
@@ -736,6 +781,8 @@ pub mod play {
             WorldBorderInitialize,
             KeepAliveS2c,
             ChunkDataAndUpdateLight<'a>,
+            WorldEvent,
+            UpdateLight,
             ParticleS2c,
             LoginPlay<'a>,
             UpdateEntityPosition,
@@ -762,8 +809,10 @@ pub mod play {
             SetDefaultSpawnPosition,
             SetEntityMetadata<'a>,
             SetEntityVelocity,
+            SetEquipment,
             SetExperience,
             SetHealth,
+            SetPassengers,
             SetSubtitleText,
             UpdateTime,
             SetTitleText,
@@ -772,7 +821,9 @@ pub mod play {
             SoundEffect,
             SystemChatMessage,
             SetTabListHeaderAndFooter,
+            PickupItem,
             TeleportEntity,
+            UpdateAdvancements<'a>,
             UpdateAttributes<'a>,
             FeatureFlags<'a>,
             DeclareRecipes<'a>,
