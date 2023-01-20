@@ -100,6 +100,7 @@ impl<'a> Decode<'a> for PlayerInfoUpdate<'a> {
 
             if actions.add_player() {
                 entry.username = Decode::decode(r)?;
+                entry.properties = Decode::decode(r)?;
             }
 
             if actions.initialize_chat() {
@@ -108,6 +109,10 @@ impl<'a> Decode<'a> for PlayerInfoUpdate<'a> {
 
             if actions.update_game_mode() {
                 entry.game_mode = Decode::decode(r)?;
+            }
+
+            if actions.update_listed() {
+                entry.listed = Decode::decode(r)?;
             }
 
             if actions.update_latency() {

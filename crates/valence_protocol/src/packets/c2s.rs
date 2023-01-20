@@ -143,9 +143,12 @@ pub mod play {
         pub message: &'a str,
         pub timestamp: u64,
         pub salt: u64,
-        pub signature: &'a [u8],
-        pub signed_preview: bool,
-        pub acknowledgement: MessageAcknowledgment<'a>,
+        pub signature: Option<&'a [u8; 256]>,
+        pub message_count: VarInt,
+        // This is a bitset of 20; each bit represents one
+        // of the last 20 messages received and whether or not
+        // the message was acknowledged by the client
+        pub acknowledgement: &'a [u8; 3],
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
