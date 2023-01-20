@@ -549,8 +549,19 @@ pub(crate) fn handle_set_slot_creative(
                 // the client is not in creative mode, ignore
                 continue;
             }
-            client.inventory_slots_modified |= 1 << (event.slot as u16);
             inventory.replace_slot(event.slot as u16, event.clicked_item.clone());
+            client.inventory_state_id += 1;
+            let state_id = client.inventory_state_id.0;
+            // HACK: notchian clients rely on the server to send the slot update when in
+            // creative mode Simply marking the slot as modified is not enough. This was
+            // discovered because shift-clicking the destroy item slot in creative mode does
+            // not work without this hack.
+            client.write_packet(&SetContainerSlotEncode {
+                window_id: 0,
+                state_id: VarInt(state_id),
+                slot_idx: event.slot,
+                slot_data: event.clicked_item.as_ref(),
+            });
         }
     }
 }
