@@ -550,6 +550,7 @@ pub(crate) fn handle_set_slot_creative(
                 continue;
             }
             inventory.replace_slot(event.slot as u16, event.clicked_item.clone());
+            inventory.modified &= !(1 << event.slot); // clear the modified bit, since we are about to send the update
             client.inventory_state_id += 1;
             let state_id = client.inventory_state_id.0;
             // HACK: notchian clients rely on the server to send the slot update when in
