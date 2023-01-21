@@ -879,7 +879,7 @@ fn color_from_str(s: &str) -> Option<Color> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ident;
+    use crate::{ident, translation_key};
 
     #[test]
     fn text_round_trip() {
@@ -917,17 +917,27 @@ mod tests {
     }
 
     #[test]
+    fn plain_string() {
+        let input = r#"{"translate":"commands.time.set","with":["1000"]}"#;
+        let deserialized: Text = serde_json::from_str(input).unwrap();
+
+        assert_eq!(
+            deserialized,
+            Text::translate("commands.time.set", ["1000".into_text()])
+        );
+    }
+
+    #[test]
     fn translate() {
         let txt = Text::translate(
-            valence_protocol::translation_key::CHAT_TYPE_ADVANCEMENT_TASK,
+            translation_key::CHAT_TYPE_ADVANCEMENT_TASK,
             ["arg1".into(), "arg2".into()],
         );
         let serialized = serde_json::to_string(&txt).unwrap();
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
         assert_eq!(
             serialized,
-            "{\"translate\":\"chat.type.advancement.task\",\"with\":[{\"text\":\"arg1\"},{\"text\"\
-             :\"arg2\"}]}"
+            r#"{"translate":"chat.type.advancement.task","with":[{"text":"arg1"},{"text":"arg2"}]}"#
         );
         assert_eq!(txt, deserialized);
     }
@@ -939,7 +949,7 @@ mod tests {
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
         assert_eq!(
             serialized,
-            "{\"score\":{\"name\":\"foo\",\"objective\":\"bar\",\"value\":\"baz\"}}"
+            r#"{"score":{"name":"foo","objective":"bar","value":"baz"}}"#
         );
         assert_eq!(txt, deserialized);
     }
@@ -952,8 +962,7 @@ mod tests {
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
         assert_eq!(
             serialized,
-            "{\"selector\":\"foo\",\"separator\":{\"text\":\"bar\",\"color\":\"#ff5555\",\"bold\":\
-             true}}"
+            r##"{"selector":"foo","separator":{"text":"bar","color":"#ff5555","bold":true}}"##
         );
         assert_eq!(txt, deserialized);
     }
@@ -963,7 +972,7 @@ mod tests {
         let txt = Text::keybind("foo");
         let serialized = serde_json::to_string(&txt).unwrap();
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(serialized, "{\"keybind\":\"foo\"}");
+        assert_eq!(serialized, r#"{"keybind":"foo"}"#);
         assert_eq!(txt, deserialized);
     }
 
@@ -972,8 +981,7 @@ mod tests {
         let txt = Text::block_nbt("foo", "bar", Some(true), Some("baz".into()));
         let serialized = serde_json::to_string(&txt).unwrap();
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
-        let expected = "{\"block\":\"foo\",\"nbt\":\"bar\",\"interpret\":true,\"separator\":{\"\
-                        text\":\"baz\"}}";
+        let expected = r#"{"block":"foo","nbt":"bar","interpret":true,"separator":{"text":"baz"}}"#;
         assert_eq!(serialized, expected);
         assert_eq!(txt, deserialized);
     }
@@ -983,8 +991,8 @@ mod tests {
         let txt = Text::entity_nbt("foo", "bar", Some(true), Some("baz".into()));
         let serialized = serde_json::to_string(&txt).unwrap();
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
-        let expected = "{\"entity\":\"foo\",\"nbt\":\"bar\",\"interpret\":true,\"separator\":{\"\
-                        text\":\"baz\"}}";
+        let expected =
+            r#"{"entity":"foo","nbt":"bar","interpret":true,"separator":{"text":"baz"}}"#;
         assert_eq!(serialized, expected);
         assert_eq!(txt, deserialized);
     }
@@ -994,8 +1002,8 @@ mod tests {
         let txt = Text::storage_nbt(ident!("foo"), "bar", Some(true), Some("baz".into()));
         let serialized = serde_json::to_string(&txt).unwrap();
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
-        let expected = "{\"storage\":\"foo\",\"nbt\":\"bar\",\"interpret\":true,\"separator\":{\"\
-                        text\":\"baz\"}}";
+        let expected =
+            r#"{"storage":"foo","nbt":"bar","interpret":true,"separator":{"text":"baz"}}"#;
         assert_eq!(serialized, expected);
         assert_eq!(txt, deserialized);
     }
