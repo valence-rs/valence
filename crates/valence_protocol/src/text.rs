@@ -41,9 +41,69 @@ use crate::{Decode, Encode, Ident, Result};
 ///     "The text is Red, Green, and also Blue!\nAnd maybe even Italic."
 /// );
 /// ```
-#[derive(Clone, PartialEq, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Default, Serialize)]
 #[serde(transparent)]
 pub struct Text(Box<TextInner>);
+
+impl<'de> Deserialize<'de> for Text {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct TextVisitor;
+
+        impl<'de> Visitor<'de> for TextVisitor {
+            type Value = Text;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                write!(formatter, "a text component data type")
+            }
+
+            fn visit_bool<E: de::Error>(self, v: bool) -> Result<Self::Value, E> {
+                Ok(Text::text(v.to_string()))
+            }
+
+            fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
+                Ok(Text::text(v.to_string()))
+            }
+
+            fn visit_u64<E: de::Error>(self, v: u64) -> Result<Self::Value, E> {
+                Ok(Text::text(v.to_string()))
+            }
+
+            fn visit_f64<E: de::Error>(self, v: f64) -> Result<Self::Value, E> {
+                Ok(Text::text(v.to_string()))
+            }
+
+            fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                Ok(Text::text(v.to_string()))
+            }
+
+            fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
+                Ok(Text::text(v))
+            }
+
+            fn visit_seq<A: de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+                let Some(mut res) = seq.next_element()? else {
+                    return Ok(Text::default())
+                };
+
+                while let Some(child) = seq.next_element::<Text>()? {
+                    res += child;
+                }
+
+                Ok(res)
+            }
+
+            fn visit_map<A: de::MapAccess<'de>>(self, map: A) -> Result<Self::Value, A::Error> {
+                use de::value::MapAccessDeserializer;
+
+                Ok(Text(Box::new(TextInner::deserialize(
+                    MapAccessDeserializer::new(map),
+                )?)))
+            }
+        }
+
+        deserializer.deserialize_any(TextVisitor)
+    }
+}
 
 #[derive(Clone, PartialEq, Default, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -727,6 +787,42 @@ impl From<Cow<'static, str>> for Text {
     }
 }
 
+impl From<i32> for Text {
+    fn from(value: i32) -> Self {
+        Text::text(value.to_string())
+    }
+}
+
+impl From<i64> for Text {
+    fn from(value: i64) -> Self {
+        Text::text(value.to_string())
+    }
+}
+
+impl From<u64> for Text {
+    fn from(value: u64) -> Self {
+        Text::text(value.to_string())
+    }
+}
+
+impl From<f64> for Text {
+    fn from(value: f64) -> Self {
+        Text::text(value.to_string())
+    }
+}
+
+impl From<bool> for Text {
+    fn from(value: bool) -> Self {
+        Text::text(value.to_string())
+    }
+}
+
+impl fmt::Debug for Text {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.write_string(f)
+    }
+}
+
 impl fmt::Display for Text {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.write_string(f)
@@ -845,7 +941,7 @@ fn color_from_str(s: &str) -> Option<Color> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ident;
+    use crate::{ident, translation_key};
 
     #[test]
     fn text_round_trip() {
@@ -883,17 +979,24 @@ mod tests {
     }
 
     #[test]
+    fn non_object_data_types() {
+        let input = r#"["foo", true, false, 1.9E10, 9999]"#;
+        let txt: Text = serde_json::from_str(input).unwrap();
+
+        assert_eq!(txt, "foo".into_text() + true + false + 1.9E10 + 9999);
+    }
+
+    #[test]
     fn translate() {
         let txt = Text::translate(
-            valence_protocol::translation_key::CHAT_TYPE_ADVANCEMENT_TASK,
+            translation_key::CHAT_TYPE_ADVANCEMENT_TASK,
             ["arg1".into(), "arg2".into()],
         );
         let serialized = serde_json::to_string(&txt).unwrap();
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
         assert_eq!(
             serialized,
-            "{\"translate\":\"chat.type.advancement.task\",\"with\":[{\"text\":\"arg1\"},{\"text\"\
-             :\"arg2\"}]}"
+            r#"{"translate":"chat.type.advancement.task","with":[{"text":"arg1"},{"text":"arg2"}]}"#
         );
         assert_eq!(txt, deserialized);
     }
@@ -905,7 +1008,7 @@ mod tests {
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
         assert_eq!(
             serialized,
-            "{\"score\":{\"name\":\"foo\",\"objective\":\"bar\",\"value\":\"baz\"}}"
+            r#"{"score":{"name":"foo","objective":"bar","value":"baz"}}"#
         );
         assert_eq!(txt, deserialized);
     }
@@ -918,8 +1021,7 @@ mod tests {
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
         assert_eq!(
             serialized,
-            "{\"selector\":\"foo\",\"separator\":{\"text\":\"bar\",\"color\":\"#ff5555\",\"bold\":\
-             true}}"
+            r##"{"selector":"foo","separator":{"text":"bar","color":"#ff5555","bold":true}}"##
         );
         assert_eq!(txt, deserialized);
     }
@@ -929,7 +1031,7 @@ mod tests {
         let txt = Text::keybind("foo");
         let serialized = serde_json::to_string(&txt).unwrap();
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
-        assert_eq!(serialized, "{\"keybind\":\"foo\"}");
+        assert_eq!(serialized, r#"{"keybind":"foo"}"#);
         assert_eq!(txt, deserialized);
     }
 
@@ -938,8 +1040,7 @@ mod tests {
         let txt = Text::block_nbt("foo", "bar", Some(true), Some("baz".into()));
         let serialized = serde_json::to_string(&txt).unwrap();
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
-        let expected = "{\"block\":\"foo\",\"nbt\":\"bar\",\"interpret\":true,\"separator\":{\"\
-                        text\":\"baz\"}}";
+        let expected = r#"{"block":"foo","nbt":"bar","interpret":true,"separator":{"text":"baz"}}"#;
         assert_eq!(serialized, expected);
         assert_eq!(txt, deserialized);
     }
@@ -949,8 +1050,8 @@ mod tests {
         let txt = Text::entity_nbt("foo", "bar", Some(true), Some("baz".into()));
         let serialized = serde_json::to_string(&txt).unwrap();
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
-        let expected = "{\"entity\":\"foo\",\"nbt\":\"bar\",\"interpret\":true,\"separator\":{\"\
-                        text\":\"baz\"}}";
+        let expected =
+            r#"{"entity":"foo","nbt":"bar","interpret":true,"separator":{"text":"baz"}}"#;
         assert_eq!(serialized, expected);
         assert_eq!(txt, deserialized);
     }
@@ -960,8 +1061,8 @@ mod tests {
         let txt = Text::storage_nbt(ident!("foo"), "bar", Some(true), Some("baz".into()));
         let serialized = serde_json::to_string(&txt).unwrap();
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
-        let expected = "{\"storage\":\"foo\",\"nbt\":\"bar\",\"interpret\":true,\"separator\":{\"\
-                        text\":\"baz\"}}";
+        let expected =
+            r#"{"storage":"foo","nbt":"bar","interpret":true,"separator":{"text":"baz"}}"#;
         assert_eq!(serialized, expected);
         assert_eq!(txt, deserialized);
     }
