@@ -77,7 +77,7 @@ fn setup(world: &mut World) {
     // create inventories to view
     let mut inventories = [
         Inventory::new(InventoryKind::Generic9x2),
-        Inventory::new(InventoryKind::Generic9x3),
+        Inventory::new(InventoryKind::Generic9x6),
         Inventory::new(InventoryKind::Crafting),
     ];
 
