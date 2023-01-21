@@ -41,9 +41,43 @@ use crate::{Decode, Encode, Ident, Result};
 ///     "The text is Red, Green, and also Blue!\nAnd maybe even Italic."
 /// );
 /// ```
-#[derive(Clone, PartialEq, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Default, Debug, Serialize)]
 #[serde(transparent)]
 pub struct Text(Box<TextInner>);
+
+impl<'de> Deserialize<'de> for Text {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct TextVisitor;
+
+        /// Deserializes strings as plain text objects. Forwards to
+        /// `TextInner`'s `Deserialize` impl in the case of maps.
+        impl<'de> Visitor<'de> for TextVisitor {
+            type Value = Text;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                write!(formatter, "a string or text object")
+            }
+
+            fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                Ok(Text::text(v.to_owned()))
+            }
+
+            fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
+                Ok(Text::text(v))
+            }
+
+            fn visit_map<A: de::MapAccess<'de>>(self, map: A) -> Result<Self::Value, A::Error> {
+                use de::value::MapAccessDeserializer;
+
+                Ok(Text(Box::new(TextInner::deserialize(
+                    MapAccessDeserializer::new(map),
+                )?)))
+            }
+        }
+
+        deserializer.deserialize_any(TextVisitor)
+    }
+}
 
 #[derive(Clone, PartialEq, Default, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
