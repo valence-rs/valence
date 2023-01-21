@@ -351,6 +351,7 @@ pub(crate) fn update_open_inventories(
         if open_inventory.is_added() {
             // send the inventory to the client if the client just opened the inventory
             client.window_id = client.window_id % 100 + 1;
+            open_inventory.client_modified = 0;
 
             let packet = OpenScreen {
                 window_id: VarInt(client.window_id.into()),
