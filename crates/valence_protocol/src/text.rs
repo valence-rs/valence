@@ -983,10 +983,7 @@ mod tests {
         let input = r#"["foo", true, false, 1.9E10, 9999]"#;
         let txt: Text = serde_json::from_str(input).unwrap();
 
-        assert_eq!(
-            txt,
-            "foo".into_text() + true + false + 1.9E10 + 9999
-        );
+        assert_eq!(txt, "foo".into_text() + true + false + 1.9E10 + 9999);
     }
 
     #[test]
