@@ -41,7 +41,7 @@ use crate::{Decode, Encode, Ident, Result};
 ///     "The text is Red, Green, and also Blue!\nAnd maybe even Italic."
 /// );
 /// ```
-#[derive(Clone, PartialEq, Default, Debug, Serialize)]
+#[derive(Clone, PartialEq, Default, Serialize)]
 #[serde(transparent)]
 pub struct Text(Box<TextInner>);
 
@@ -49,21 +49,47 @@ impl<'de> Deserialize<'de> for Text {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         struct TextVisitor;
 
-        /// Deserializes strings as plain text objects. Forwards to
-        /// `TextInner`'s `Deserialize` impl in the case of maps.
         impl<'de> Visitor<'de> for TextVisitor {
             type Value = Text;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                write!(formatter, "a string or text object")
+                write!(formatter, "a text component data type")
+            }
+
+            fn visit_bool<E: de::Error>(self, v: bool) -> Result<Self::Value, E> {
+                Ok(Text::text(v.to_string()))
+            }
+
+            fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
+                Ok(Text::text(v.to_string()))
+            }
+
+            fn visit_u64<E: de::Error>(self, v: u64) -> Result<Self::Value, E> {
+                Ok(Text::text(v.to_string()))
+            }
+
+            fn visit_f64<E: de::Error>(self, v: f64) -> Result<Self::Value, E> {
+                Ok(Text::text(v.to_string()))
             }
 
             fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-                Ok(Text::text(v.to_owned()))
+                Ok(Text::text(v.to_string()))
             }
 
             fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
                 Ok(Text::text(v))
+            }
+
+            fn visit_seq<A: de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+                let Some(mut res) = seq.next_element()? else {
+                    return Ok(Text::default())
+                };
+
+                while let Some(child) = seq.next_element::<Text>()? {
+                    res += child;
+                }
+
+                Ok(res)
             }
 
             fn visit_map<A: de::MapAccess<'de>>(self, map: A) -> Result<Self::Value, A::Error> {
@@ -761,6 +787,42 @@ impl From<Cow<'static, str>> for Text {
     }
 }
 
+impl From<i32> for Text {
+    fn from(value: i32) -> Self {
+        Text::text(value.to_string())
+    }
+}
+
+impl From<i64> for Text {
+    fn from(value: i64) -> Self {
+        Text::text(value.to_string())
+    }
+}
+
+impl From<u64> for Text {
+    fn from(value: u64) -> Self {
+        Text::text(value.to_string())
+    }
+}
+
+impl From<f64> for Text {
+    fn from(value: f64) -> Self {
+        Text::text(value.to_string())
+    }
+}
+
+impl From<bool> for Text {
+    fn from(value: bool) -> Self {
+        Text::text(value.to_string())
+    }
+}
+
+impl fmt::Debug for Text {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.write_string(f)
+    }
+}
+
 impl fmt::Display for Text {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.write_string(f)
@@ -917,13 +979,13 @@ mod tests {
     }
 
     #[test]
-    fn plain_string() {
-        let input = r#"{"translate":"commands.time.set","with":["1000"]}"#;
-        let deserialized: Text = serde_json::from_str(input).unwrap();
+    fn non_object_data_types() {
+        let input = r#"["foo", true, false, 1.9E10, 9999]"#;
+        let txt: Text = serde_json::from_str(input).unwrap();
 
         assert_eq!(
-            deserialized,
-            Text::translate("commands.time.set", ["1000".into_text()])
+            txt,
+            "foo".into_text() + true + false + 1.9E10 + 9999
         );
     }
 
