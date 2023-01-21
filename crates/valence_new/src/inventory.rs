@@ -134,16 +134,14 @@ pub(crate) fn update_player_inventories(
                 client.cursor_item_modified = false;
             } else {
                 // send the modified slots
-                if inventory.modified & !client.inventory_slots_modified != 0 {
+
+                // The slots that were NOT modified by this client, and they need to be sent
+                let modified_filtered = inventory.modified & !client.inventory_slots_modified;
+                if modified_filtered != 0 {
                     client.inventory_state_id += 1;
                     let state_id = client.inventory_state_id.0;
                     for (i, slot) in inventory.slots.iter().enumerate() {
-                        if (inventory.modified >> i) & 1 == 1 {
-                            if (client.inventory_slots_modified >> i) & 1 == 1 {
-                                // This slot was modified by this client, so we don't need to
-                                // send it
-                                continue;
-                            }
+                        if (modified_filtered >> 1) & 1 == 1 {
                             client.write_packet(&SetContainerSlotEncode {
                                 window_id: 0,
                                 state_id: VarInt(state_id),
@@ -386,16 +384,13 @@ pub(crate) fn update_open_inventories(
             } else {
                 // send the modified slots
                 let window_id = client.window_id as i8;
-                if inventory.modified & !open_inventory.client_modified != 0 {
+                // The slots that were NOT modified by this client, and they need to be sent
+                let modified_filtered = inventory.modified & !open_inventory.client_modified;
+                if modified_filtered != 0 {
                     client.inventory_state_id += 1;
                     let state_id = client.inventory_state_id.0;
                     for (i, slot) in inventory.slots.iter().enumerate() {
-                        if (inventory.modified >> i) & 1 == 1 {
-                            if (open_inventory.client_modified >> i) & 1 == 1 {
-                                // This slot was modified by this client, so we don't need to
-                                // send it
-                                continue;
-                            }
+                        if (modified_filtered >> i) & 1 == 1 {
                             client.write_packet(&SetContainerSlotEncode {
                                 window_id,
                                 state_id: VarInt(state_id),
