@@ -333,10 +333,6 @@ pub(crate) fn update_open_inventories(
     mut clients: Query<(Entity, &mut Client, &mut OpenInventory)>,
     mut inventories: Query<&mut Inventory>,
 ) {
-    if clients.is_empty() {
-        return;
-    }
-
     // These operations need to happen in this order.
 
     // send the inventory contents to all clients that are viewing an inventory
@@ -369,9 +365,6 @@ pub(crate) fn update_open_inventories(
             client.write_packet(&packet);
         } else {
             // the client is already viewing the inventory
-            if inventory.modified == 0 {
-                continue;
-            }
             if inventory.modified == u64::MAX {
                 // send the entire inventory
                 client.inventory_state_id += 1;
