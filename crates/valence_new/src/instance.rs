@@ -8,8 +8,9 @@ use hashbrown::hash_map::Entry;
 use hashbrown::HashMap;
 use num::integer::div_ceil;
 use rustc_hash::FxHasher;
+use valence_protocol::block::BlockState;
 use valence_protocol::packets::s2c::play::UnloadChunk;
-use valence_protocol::LengthPrefixedArray;
+use valence_protocol::{BlockPos, LengthPrefixedArray};
 
 use crate::chunk_pos::ChunkPos;
 use crate::client::Client;
@@ -160,6 +161,60 @@ impl Instance {
 
         self.partition.shrink_to_fit();
         self.packet_buf.shrink_to_fit();
+    }
+
+    /// Gets the block state at an absolute block position in world space.
+    ///
+    /// If the position is not inside of a chunk, then [`BlockState::AIR`] is
+    /// returned.
+    pub fn block_state(&self, pos: impl Into<BlockPos>) -> BlockState {
+        let pos = pos.into();
+
+        let Some(y) = pos.y.checked_sub(self.info.min_y).and_then(|y| y.try_into().ok()) else {
+            return BlockState::AIR;
+        };
+
+        if y >= self.info.section_count * 16 {
+            return BlockState::AIR;
+        }
+
+        let Some(chunk) = self.chunk(pos) else {
+            return BlockState::AIR;
+        };
+
+        chunk.block_state(
+            pos.x.rem_euclid(16) as usize,
+            y,
+            pos.z.rem_euclid(16) as usize,
+        )
+    }
+
+    /// Sets the block state at an absolute block position in world space. The
+    /// previous block state at the position is returned.
+    ///
+    /// If the position is not within a loaded chunk or otherwise out of bounds,
+    /// then [`BlockState::AIR`] is returned with no effect.
+    pub fn set_block_state(&mut self, pos: impl Into<BlockPos>, block: BlockState) -> BlockState {
+        let pos = pos.into();
+
+        let Some(y) = pos.y.checked_sub(self.info.min_y).and_then(|y| y.try_into().ok()) else {
+            return BlockState::AIR;
+        };
+
+        if y >= self.info.section_count * 16 {
+            return BlockState::AIR;
+        }
+
+        let Some(chunk) = self.chunk_mut(pos) else {
+            return BlockState::AIR;
+        };
+
+        chunk.set_block_state(
+            pos.x.rem_euclid(16) as usize,
+            y,
+            pos.z.rem_euclid(16) as usize,
+            block,
+        )
     }
 }
 

@@ -9,10 +9,7 @@ use valence_new::protocol::types::GameMode;
 use valence_new::server::Server;
 use valence_protocol::block::BlockState;
 
-#[derive(Resource)]
-struct GameState {
-    instance: Entity,
-}
+const SPAWN_Y: i32 = 64;
 
 fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().init();
@@ -24,7 +21,8 @@ fn main() -> anyhow::Result<()> {
             .with_system(init_clients)
             .with_system(tick)
             .with_system(default_event_handler())
-            .with_system(despawn_disconnected_clients),
+            .with_system(despawn_disconnected_clients)
+            .with_system(teleport_oob_clients),
         (),
     )
 }
@@ -37,42 +35,51 @@ fn setup(world: &mut World) {
     // Create spawn platform.
     for z in -5..5 {
         for x in -5..5 {
-            let mut chunk = Chunk::new(24);
-            for z in 0..16 {
-                for x in 0..16 {
-                    chunk.set_block_state(x, 10, z, BlockState::STONE);
-                }
-            }
-
-            instance.insert_chunk([x, z], chunk);
+            instance.insert_chunk([x, z], Chunk::default());
         }
     }
 
-    let id = world.spawn(instance).id();
-    world.insert_resource(GameState { instance: id })
+    for z in -25..25 {
+        for x in -25..25 {
+            instance.set_block_state([x, SPAWN_Y, z], BlockState::STONE);
+        }
+    }
+
+    world.spawn(instance);
 }
 
-fn init_clients(mut clients: Query<&mut Client, Added<Client>>, state: Res<GameState>) {
+fn init_clients(
+    mut clients: Query<&mut Client, Added<Client>>,
+    instances: Query<Entity, With<Instance>>,
+) {
+    let instance = instances.get_single().unwrap();
+
     for mut client in &mut clients {
-        client.set_position([0.0, 32.0, 0.0]);
-        client.set_instance(state.instance);
+        client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
+        client.set_instance(instance);
         client.set_game_mode(GameMode::Creative);
         client.set_view_distance(20);
     }
 }
 
-fn tick(state: Res<GameState>, server: Res<Server>, mut instances: Query<&mut Instance>) {
+fn tick(server: Res<Server>, mut instances: Query<&mut Instance>) {
     if server.current_tick() % 20 == 0 {
-        let mut instance = instances.get_mut(state.instance).unwrap();
+        let mut instance = instances.get_single_mut().unwrap();
 
-        let y = ((10 + server.current_tick() / 20) % 120) as usize;
+        let y = (SPAWN_Y + server.current_tick() as i32 / 20) % 120;
 
-        let chunk = instance.chunk_mut([0, 0]).unwrap();
-
-        chunk.set_block_state(0, y, 0, BlockState::MAGMA_BLOCK);
+        instance.set_block_state([5, y, 0], BlockState::MAGMA_BLOCK);
 
         if server.current_tick() % 40 == 0 {
-            chunk.set_block_state(1, y, 0, BlockState::LIME_WOOL);
+            instance.set_block_state([6, y, 0], BlockState::LIME_WOOL);
+        }
+    }
+}
+
+fn teleport_oob_clients(mut clients: Query<&mut Client>) {
+    for mut client in &mut clients {
+        if client.position().y <= 0.0 {
+            client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
         }
     }
 }
