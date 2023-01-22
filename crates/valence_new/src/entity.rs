@@ -187,7 +187,12 @@ impl McEntity {
         self.instance
     }
 
-    pub fn old_instance(&self) -> Entity {
+    /// Sets the [`Instance`] this entity is located in.
+    pub fn set_instance(&mut self, instance: Entity) {
+        self.instance = instance;
+    }
+
+    pub(crate) fn old_instance(&self) -> Entity {
         self.old_instance
     }
 

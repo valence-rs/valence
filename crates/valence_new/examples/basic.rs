@@ -58,7 +58,6 @@ fn init_clients(
         client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
         client.set_instance(instance);
         client.set_game_mode(GameMode::Creative);
-        client.set_view_distance(20);
     }
 }
 
