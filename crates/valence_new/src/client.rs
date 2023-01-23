@@ -26,6 +26,7 @@ use crate::entity::McEntity;
 use crate::instance::Instance;
 use crate::server::{NewClientInfo, PlayPacketReceiver, PlayPacketSender, Server};
 use crate::{Despawned, NULL_ENTITY};
+use crate::player_list::PlayerList;
 
 pub mod event;
 
@@ -411,6 +412,7 @@ pub(crate) fn update_clients(
     mut clients: Query<(Entity, &mut Client, Option<&McEntity>)>,
     mut instances: Query<&mut Instance>,
     entities: Query<&McEntity>,
+    mut player_list: ResMut<PlayerList>,
     mut scratch: Local<Vec<u8>>,
 ) {
     scratch.clear();
@@ -424,6 +426,7 @@ pub(crate) fn update_clients(
                 &server,
                 &mut instances,
                 &entities,
+                &mut player_list,
                 &mut scratch,
             ) {
                 let _ = client.write_packet(&DisconnectPlay { reason: "".into() });
@@ -453,6 +456,7 @@ fn update_one_client(
     server: &Server,
     instances: &mut Query<&mut Instance>,
     entities: &Query<&McEntity>,
+    player_list: &mut PlayerList,
     scratch: &mut Vec<u8>,
 ) -> anyhow::Result<()> {
     let Ok(instance) = instances.get(client.instance) else {
@@ -502,7 +506,8 @@ fn update_one_client(
         })?;
         */
 
-        // TODO: write player list init packets.
+        // Initialize the player list.
+        player_list.write_init_packets(&mut client.send)?;
     } else {
         if client.view_distance != client.old_view_distance {
             // Change the render distance fog.
@@ -529,7 +534,7 @@ fn update_one_client(
             })?;
         }
 
-        // TODO: update changed player list.
+        player_list.write_update_packets(&mut client.send)?;
     }
 
     // Check if it's time to send another keepalive.

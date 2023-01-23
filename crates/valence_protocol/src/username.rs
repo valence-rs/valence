@@ -9,7 +9,7 @@ use anyhow::anyhow;
 use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::{Decode, Encode, Result};
+use crate::{Decode, Encode, Result, Text};
 
 /// A newtype wrapper around a string type `S` which guarantees the wrapped
 /// string meets the criteria for a valid Minecraft username.
@@ -114,6 +114,15 @@ where
 {
     fn from(value: Username<S>) -> Self {
         value.0.into()
+    }
+}
+
+impl<S> From<Username<S>> for Text
+where
+    S: AsRef<str>,
+{
+    fn from(value: Username<S>) -> Self {
+        Text::text(value.as_str().to_owned())
     }
 }
 

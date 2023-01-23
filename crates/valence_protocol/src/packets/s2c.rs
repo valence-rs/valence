@@ -486,7 +486,9 @@ pub mod play {
 
     #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x35]
-    pub struct PlayerInfoRemove(pub Vec<Uuid>);
+    pub struct PlayerInfoRemove<'a> {
+        pub uuids: Cow<'a, [Uuid]>,
+    }
 
     #[derive(Copy, Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x38]
@@ -793,7 +795,7 @@ pub mod play {
             PlayerAbilitiesS2c,
             PlayerChatMessage<'a>,
             CombatDeath,
-            PlayerInfoRemove,
+            PlayerInfoRemove<'a>,
             PlayerInfoUpdate<'a>,
             SynchronizePlayerPosition,
             UpdateRecipeBook<'a>,
