@@ -10,13 +10,14 @@ use crate::raw_bytes::RawBytes;
 use crate::text::Text;
 use crate::types::{
     AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, GameEventKind, GameMode,
-    GlobalPos, PlayerAbilitiesFlags, SignedProperty, SoundCategory, Statistic,
-    SyncPlayerPosLookFlags, TagGroup,
+    GlobalPos, PlayerAbilitiesFlags, SoundCategory, Statistic,
+    SyncPlayerPosLookFlags, TagGroup, WindowType, Property,
 };
 use crate::username::Username;
 use crate::var_int::VarInt;
 use crate::var_long::VarLong;
 use crate::LengthPrefixedArray;
+use std::borrow::Cow;
 
 pub mod commands;
 pub mod declare_recipes;
@@ -73,7 +74,7 @@ pub mod login {
     pub struct LoginSuccess<'a> {
         pub uuid: Uuid,
         pub username: Username<&'a str>,
-        pub properties: Vec<SignedProperty<'a>>,
+        pub properties: Cow<'a, [Property]>,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -113,7 +114,6 @@ pub mod play {
 
     use super::*;
     use crate::packets::s2c::declare_recipes::DeclaredRecipe;
-    use crate::WindowType;
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x00]

@@ -1,9 +1,10 @@
+use std::borrow::Cow;
 use std::io::Write;
 
 use bitfield_struct::bitfield;
 use uuid::Uuid;
 
-use crate::types::{GameMode, SignedProperty};
+use crate::types::{GameMode, Property};
 use crate::{Decode, DecodePacket, Encode, EncodePacket, Text, VarInt};
 
 #[derive(Clone, Debug, EncodePacket, DecodePacket)]
@@ -29,7 +30,7 @@ pub struct Actions {
 pub struct Entry<'a> {
     pub player_uuid: Uuid,
     pub username: &'a str,
-    pub properties: Vec<SignedProperty<'a>>,
+    pub properties: Cow<'a, [Property]>,
     pub chat_data: Option<ChatData<'a>>,
     pub listed: bool,
     pub ping: i32,

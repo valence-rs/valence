@@ -10,6 +10,7 @@ use valence_new::dimension::DimensionId;
 use valence_new::entity::{EntityKind, McEntity};
 use valence_new::instance::{Chunk, Instance};
 use valence_new::math::to_yaw_and_pitch;
+use valence_new::player_textures::PlayerTextures;
 use valence_new::server::Server;
 use valence_protocol::block::BlockState;
 use valence_protocol::types::GameMode;

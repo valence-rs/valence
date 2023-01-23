@@ -9,7 +9,7 @@ use valence_protocol::packets::s2c::play::{PlayerInfoRemove, SetTabListHeaderAnd
 use valence_protocol::packets::s2c::player_info_update::{
     Actions, Entry as PacketEntry, PlayerInfoUpdate,
 };
-use valence_protocol::types::{GameMode, SignedProperty};
+use valence_protocol::types::{GameMode, Property};
 use valence_protocol::Text;
 
 use crate::config::Config;
@@ -132,7 +132,7 @@ impl<C: Config> PlayerLists<C> {
                         properties: entry
                             .textures
                             .as_ref()
-                            .map(|textures| SignedProperty {
+                            .map(|textures| Property {
                                 name: "textures",
                                 value: textures.payload(),
                                 signature: Some(textures.signature()),
@@ -421,7 +421,7 @@ impl<C: Config> PlayerList<C> {
                 let properties = entry
                     .textures
                     .as_ref()
-                    .map(|textures| SignedProperty {
+                    .map(|textures| Property {
                         name: "textures",
                         value: textures.payload(),
                         signature: Some(textures.signature()),

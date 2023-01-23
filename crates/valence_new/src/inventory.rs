@@ -5,8 +5,8 @@ use tracing::{debug, warn};
 use valence_protocol::packets::s2c::play::{
     CloseContainerS2c, OpenScreen, SetContainerContentEncode, SetContainerSlotEncode,
 };
-use valence_protocol::types::GameMode;
-use valence_protocol::{ItemStack, Text, VarInt, WindowType};
+use valence_protocol::types::{GameMode, WindowType};
+use valence_protocol::{ItemStack, Text, VarInt};
 
 use crate::client::event::{ClickContainer, CloseContainer, SetCreativeModeSlot};
 use crate::client::Client;

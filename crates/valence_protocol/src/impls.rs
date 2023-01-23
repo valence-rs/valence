@@ -22,6 +22,7 @@ impl Encode for bool {
     }
 
     fn write_slice(slice: &[bool], mut w: impl Write) -> io::Result<()> {
+        // Bools are guaranteed to have the correct bit pattern.
         let bytes: &[u8] = unsafe { mem::transmute(slice) };
         w.write_all(bytes)
     }
@@ -32,7 +33,7 @@ impl Encode for bool {
 impl Decode<'_> for bool {
     fn decode(r: &mut &[u8]) -> Result<Self> {
         let n = r.read_u8()?;
-        ensure!(n <= 1, "boolean is not 0 or 1");
+        ensure!(n <= 1, "decoded boolean is not 0 or 1");
         Ok(n == 1)
     }
 }
@@ -589,20 +590,20 @@ impl<'a, T: Decode<'a>> Decode<'a> for Option<T> {
 
 impl<'a, B> Encode for Cow<'a, B>
 where
-    B: ToOwned + Encode,
+    B: ToOwned + Encode + ?Sized,
 {
     fn encode(&self, w: impl Write) -> Result<()> {
         self.as_ref().encode(w)
     }
 }
 
-impl<'a, B> Decode<'a> for Cow<'a, B>
+impl<'a, 'b, B> Decode<'a> for Cow<'b, B>
 where
-    B: ToOwned,
-    &'a B: Decode<'a>,
+    B: ToOwned + ?Sized,
+    B::Owned: Decode<'a>,
 {
     fn decode(r: &mut &'a [u8]) -> Result<Self> {
-        <&B>::decode(r).map(Cow::Borrowed)
+        B::Owned::decode(r).map(Cow::Owned)
     }
 }
 

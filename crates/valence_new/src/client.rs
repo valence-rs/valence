@@ -14,7 +14,7 @@ use valence_protocol::packets::s2c::play::{
     SetEntityMetadata, SetRenderDistance, SynchronizePlayerPosition, SystemChatMessage,
     UnloadChunk,
 };
-use valence_protocol::types::{GameEventKind, GameMode, SyncPlayerPosLookFlags};
+use valence_protocol::types::{GameEventKind, GameMode, Property, SyncPlayerPosLookFlags};
 use valence_protocol::{
     BlockPos, EncodePacket, Ident, ItemStack, RawBytes, Text, Username, VarInt,
 };
@@ -44,6 +44,7 @@ pub struct Client {
     username: Username<String>,
     uuid: Uuid,
     ip: IpAddr,
+    properties: Vec<Property>,
     instance: Entity,
     old_instance: Entity,
     position: DVec3,
@@ -103,6 +104,7 @@ impl Client {
             username: info.username,
             uuid: info.uuid,
             ip: info.ip,
+            properties: info.properties,
             instance: NULL_ENTITY,
             old_instance: NULL_ENTITY,
             position: DVec3::ZERO,
@@ -182,6 +184,11 @@ impl Client {
     /// Gets the IP address of this client.
     pub fn ip(&self) -> IpAddr {
         self.ip
+    }
+
+    /// Gets the properties from this client's game profile.
+    pub fn properties(&self) -> &[Property] {
+        &self.properties
     }
 
     /// Gets whether or not the client is connected to the server.

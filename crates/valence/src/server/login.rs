@@ -19,7 +19,7 @@ use valence_protocol::packets::c2s::login::{EncryptionResponse, LoginPluginRespo
 use valence_protocol::packets::s2c::login::{
     DisconnectLogin, EncryptionRequest, LoginPluginRequest,
 };
-use valence_protocol::types::{SignedProperty, SignedPropertyOwned};
+use valence_protocol::types::{Property, SignedPropertyOwned};
 use valence_protocol::{translation_key, Decode, Ident, RawBytes, Text, Username, VarInt};
 
 use crate::config::Config;
@@ -161,7 +161,7 @@ pub(super) fn bungeecord(
         .map_err(|_| anyhow!("malformed BungeeCord server address data"))?;
 
     // Read properties and get textures
-    let properties: Vec<SignedProperty> =
+    let properties: Vec<Property> =
         serde_json::from_str(properties).context("failed to parse BungeeCord player properties")?;
 
     let mut textures = None;
@@ -250,7 +250,7 @@ pub(super) async fn velocity(
 
     // Read properties and get textures
     let mut textures = None;
-    for prop in Vec::<SignedProperty>::decode(&mut data_without_signature)
+    for prop in Vec::<Property>::decode(&mut data_without_signature)
         .context("failed to decode velocity player properties")?
     {
         if prop.name == "textures" {

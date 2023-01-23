@@ -27,14 +27,13 @@ use valence_protocol::packets::s2c::login::{
     DisconnectLogin, EncryptionRequest, LoginPluginRequest, LoginSuccess, SetCompression,
 };
 use valence_protocol::packets::s2c::status::{PingResponse, StatusResponse};
-use valence_protocol::types::{HandshakeNextState, SignedProperty, SignedPropertyOwned};
+use valence_protocol::types::{HandshakeNextState, Property};
 use valence_protocol::{
     translation_key, Decode, Ident, PacketDecoder, PacketEncoder, RawBytes, Text, Username, VarInt,
     MINECRAFT_VERSION, PROTOCOL_VERSION,
 };
 
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerListPing};
-use crate::player_textures::SignedPlayerTextures;
 use crate::server::packet_manager::InitialPacketManager;
 use crate::server::{NewClientInfo, NewClientMessage, SharedServer};
 
@@ -267,7 +266,7 @@ async fn handle_login(
     mngr.send_packet(&LoginSuccess {
         uuid: info.uuid,
         username: info.username.as_str_username(),
-        properties: vec![],
+        properties: Default::default(),
     })
     .await?;
 
@@ -352,31 +351,35 @@ pub(super) async fn login_online(
     }
 
     #[derive(Debug, Deserialize)]
-    struct AuthResponse {
-        id: String,
+    struct GameProfile {
+        id: Uuid,
         name: Username<String>,
-        properties: Vec<SignedPropertyOwned>,
+        properties: Vec<Property>,
     }
 
-    let data: AuthResponse = resp.json().await?;
+    let profile: GameProfile = resp
+        .json()
+        .await
+        .context("parsing game profile")?;
 
-    ensure!(data.name == username, "usernames do not match");
+    ensure!(profile.name == username, "usernames do not match");
 
-    let uuid = Uuid::parse_str(&data.id).context("failed to parse player's UUID")?;
+    // let uuid = Uuid::parse_str(&data.id).context("failed to parse player's
+    // UUID")?;
 
-    let textures = match data.properties.into_iter().find(|p| p.name == "textures") {
-        Some(p) => SignedPlayerTextures::from_base64(
-            p.value,
-            p.signature.context("missing signature for textures")?,
-        )?,
-        None => bail!("failed to find textures in auth response"),
-    };
+    // let textures = match data.properties.into_iter().find(|p| p.name ==
+    // "textures") {     Some(p) => SignedPlayerTextures::from_base64(
+    //         p.value,
+    //         p.signature.context("missing signature for textures")?,
+    //     )?,
+    //     None => bail!("failed to find textures in auth response"),
+    // };
 
     Ok(NewClientInfo {
-        uuid,
+        uuid: profile.id,
         username,
         ip: remote_addr.ip(),
-        textures: Some(textures),
+        properties: profile.properties,
     })
 }
 
@@ -393,7 +396,7 @@ pub(super) fn login_offline(
         // Derive the client's UUID from a hash of their username.
         uuid: Uuid::from_slice(&Sha256::digest(username.as_str())[..16])?,
         username,
-        textures: None,
+        properties: vec![],
         ip: remote_addr.ip(),
     })
 }
@@ -412,28 +415,13 @@ pub(super) fn login_bungeecord(
         .map_err(|_| anyhow!("malformed BungeeCord server address data"))?;
 
     // Read properties and get textures
-    let properties: Vec<SignedProperty> =
+    let properties: Vec<Property> =
         serde_json::from_str(properties).context("failed to parse BungeeCord player properties")?;
-
-    let mut textures = None;
-    for prop in properties {
-        if prop.name == "textures" {
-            textures = Some(
-                SignedPlayerTextures::from_base64(
-                    prop.value,
-                    prop.signature
-                        .context("missing player textures signature")?,
-                )
-                .context("failed to parse signed player textures")?,
-            );
-            break;
-        }
-    }
 
     Ok(NewClientInfo {
         uuid: uuid.parse()?,
         username,
-        textures,
+        properties,
         ip: client_ip.parse()?,
     })
 }
@@ -496,23 +484,9 @@ pub(super) async fn login_velocity(
         "mismatched usernames"
     );
 
-    // Read properties and get textures
-    let mut textures = None;
-    for prop in Vec::<SignedProperty>::decode(&mut data_without_signature)
-        .context("failed to decode velocity player properties")?
-    {
-        if prop.name == "textures" {
-            textures = Some(
-                SignedPlayerTextures::from_base64(
-                    prop.value,
-                    prop.signature
-                        .context("missing player textures signature")?,
-                )
-                .context("failed to parse signed player textures")?,
-            );
-            break;
-        }
-    }
+    // Read game profile properties
+    let properties = Vec::<Property>::decode(&mut data_without_signature)
+        .context("decoding velocity game profile properties")?;
 
     if version >= VELOCITY_MODERN_FORWARDING_WITH_KEY_V2 {
         // TODO
@@ -521,7 +495,7 @@ pub(super) async fn login_velocity(
     Ok(NewClientInfo {
         uuid,
         username,
-        textures,
+        properties,
         ip: remote_addr,
     })
 }

@@ -15,6 +15,7 @@ use tokio::runtime::{Handle, Runtime};
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use uuid::Uuid;
 use valence_nbt::{compound, Compound, List};
+use valence_protocol::types::Property;
 use valence_protocol::{ident, Username};
 
 use crate::biome::{validate_biomes, Biome, BiomeId};
@@ -32,7 +33,6 @@ use crate::inventory::{
     update_client_on_close_inventory, update_open_inventories, update_player_inventories,
     Inventory, InventoryKind,
 };
-use crate::player_textures::SignedPlayerTextures;
 use crate::server::connect::do_accept_loop;
 use crate::Despawned;
 
@@ -234,10 +234,9 @@ pub struct NewClientInfo {
     pub uuid: Uuid,
     /// The remote address of the new client.
     pub ip: IpAddr,
-    // TODO: replace "textures" with game profile.
-    /// The new client's player textures. May be `None` if the client does not
-    /// have a skin or cape.
-    pub textures: Option<SignedPlayerTextures>,
+    /// The client's properties from the game profile. Typically contains a
+    /// `textures` property with the skin and cape of the player.
+    pub properties: Vec<Property>,
 }
 
 struct NewClientMessage {
