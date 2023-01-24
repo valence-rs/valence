@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use uuid::Uuid;
 use valence_derive::{Decode, DecodePacket, Encode, EncodePacket};
 use valence_nbt::Compound;
@@ -10,14 +12,13 @@ use crate::raw_bytes::RawBytes;
 use crate::text::Text;
 use crate::types::{
     AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, GameEventKind, GameMode,
-    GlobalPos, PlayerAbilitiesFlags, SoundCategory, Statistic,
-    SyncPlayerPosLookFlags, TagGroup, WindowType, Property,
+    GlobalPos, PlayerAbilitiesFlags, Property, SoundCategory, Statistic, SyncPlayerPosLookFlags,
+    TagGroup, WindowType,
 };
 use crate::username::Username;
 use crate::var_int::VarInt;
 use crate::var_long::VarLong;
 use crate::LengthPrefixedArray;
-use std::borrow::Cow;
 
 pub mod commands;
 pub mod declare_recipes;

@@ -12,9 +12,9 @@ pub mod instance;
 pub mod inventory;
 pub mod math;
 mod packet;
+pub mod player_list;
 pub mod player_textures;
 pub mod server;
-pub mod player_list;
 
 /// A [`Component`] for marking entities that should be despawned at the end of
 /// the tick.

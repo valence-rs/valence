@@ -127,6 +127,9 @@ impl<'a> Decode<'a> for PlayerInfoUpdate<'a> {
             entries.push(entry);
         }
 
-        Ok(Self { actions, entries: entries.into() })
+        Ok(Self {
+            actions,
+            entries: entries.into(),
+        })
     }
 }

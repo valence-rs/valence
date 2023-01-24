@@ -24,9 +24,9 @@ use crate::dimension::DimensionId;
 use crate::entity::data::Player;
 use crate::entity::McEntity;
 use crate::instance::Instance;
+use crate::player_list::PlayerList;
 use crate::server::{NewClientInfo, PlayPacketReceiver, PlayPacketSender, Server};
 use crate::{Despawned, NULL_ENTITY};
-use crate::player_list::PlayerList;
 
 pub mod event;
 
@@ -50,8 +50,11 @@ pub struct Client {
     old_instance: Entity,
     position: DVec3,
     old_position: DVec3,
+    position_modified: bool,
     yaw: f32,
+    yaw_modified: bool,
     pitch: f32,
+    pitch_modified: bool,
     on_ground: bool,
     game_mode: GameMode,
     block_change_sequence: i32,
@@ -110,8 +113,11 @@ impl Client {
             old_instance: NULL_ENTITY,
             position: DVec3::ZERO,
             old_position: DVec3::ZERO,
+            position_modified: true,
             yaw: 0.0,
+            yaw_modified: true,
             pitch: 0.0,
+            pitch_modified: true,
             on_ground: false,
             game_mode: GameMode::default(),
             block_change_sequence: 0,
@@ -225,7 +231,9 @@ impl Client {
 
     pub fn set_position(&mut self, pos: impl Into<DVec3>) {
         self.position = pos.into();
+        self.position_modified = true;
 
+        /*
         // Teleport the client without modifying their yaw or pitch.
         self.write_packet(&SynchronizePlayerPosition {
             position: self.position.to_array(),
@@ -240,9 +248,10 @@ impl Client {
 
         self.pending_teleports = self.pending_teleports.wrapping_add(1);
         self.teleport_id_counter = self.teleport_id_counter.wrapping_add(1);
+         */
     }
 
-    /// Gets the position of this client at the end of the previous tick.
+    /// Returns the position this client was in at the end of the previous tick.
     pub fn old_position(&self) -> DVec3 {
         self.old_position
     }
@@ -252,35 +261,23 @@ impl Client {
         self.yaw
     }
 
+    pub fn set_yaw(&mut self, yaw: f32) {
+        self.yaw = yaw;
+        self.yaw_modified = true;
+    }
+
     /// Gets this client's pitch (in degrees).
     pub fn pitch(&self) -> f32 {
         self.pitch
     }
 
-    pub fn on_ground(&self) -> bool {
-        self.on_ground
+    pub fn set_pitch(&mut self, pitch: f32) {
+        self.pitch = pitch;
+        self.pitch_modified = true;
     }
 
-    /// Changes the position and rotation of this client in the world it is
-    /// located in.
-    ///
-    /// If you want to change the client's world, use [`Self::respawn`].
-    pub fn teleport(&mut self, pos: impl Into<DVec3>, yaw: f32, pitch: f32) {
-        self.position = pos.into();
-        self.yaw = yaw;
-        self.pitch = pitch;
-
-        self.write_packet(&SynchronizePlayerPosition {
-            position: self.position.to_array(),
-            yaw,
-            pitch,
-            flags: SyncPlayerPosLookFlags::new(),
-            teleport_id: VarInt(self.teleport_id_counter as i32),
-            dismount_vehicle: false,
-        });
-
-        self.pending_teleports = self.pending_teleports.wrapping_add(1);
-        self.teleport_id_counter = self.teleport_id_counter.wrapping_add(1);
+    pub fn on_ground(&self) -> bool {
+        self.on_ground
     }
 
     pub fn has_respawn_screen(&self) -> bool {
@@ -705,6 +702,34 @@ fn update_one_client(
                 Ok(())
             })?;
         }
+    }
+
+    // Teleport the client. Do this after chunk packets are sent so the client does
+    // not accidentally pass through blocks.
+    if client.position_modified || client.yaw_modified || client.pitch_modified {
+        let flags = SyncPlayerPosLookFlags::new()
+            .with_x_rot(!client.yaw_modified)
+            .with_y_rot(!client.pitch_modified);
+
+        client.send.append_packet(&SynchronizePlayerPosition {
+            position: client.position.to_array(),
+            yaw: if client.yaw_modified { client.yaw } else { 0.0 },
+            pitch: if client.pitch_modified {
+                client.pitch
+            } else {
+                0.0
+            },
+            flags,
+            teleport_id: VarInt(client.teleport_id_counter as i32),
+            dismount_vehicle: false,
+        })?;
+
+        client.pending_teleports = client.pending_teleports.wrapping_add(1);
+        client.teleport_id_counter = client.teleport_id_counter.wrapping_add(1);
+
+        client.position_modified = false;
+        client.yaw_modified = false;
+        client.pitch_modified = false;
     }
 
     // This closes the "downloading terrain" screen.

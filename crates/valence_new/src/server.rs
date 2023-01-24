@@ -33,7 +33,7 @@ use crate::inventory::{
     update_client_on_close_inventory, update_open_inventories, update_player_inventories,
     Inventory, InventoryKind,
 };
-use crate::player_list::{PlayerList, update_player_list};
+use crate::player_list::{update_player_list, PlayerList};
 use crate::server::connect::do_accept_loop;
 use crate::Despawned;
 

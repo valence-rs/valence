@@ -75,15 +75,11 @@ fn init_clients(
     let instance = instances.get_single().unwrap();
 
     for mut client in &mut clients {
-        client.teleport(
-            [
-                SPAWN_POS.x as f64 + 0.5,
-                SPAWN_POS.y as f64 + 1.0,
-                SPAWN_POS.z as f64 + 0.5,
-            ],
-            0.0,
-            0.0,
-        );
+        client.set_position([
+            SPAWN_POS.x as f64 + 0.5,
+            SPAWN_POS.y as f64 + 1.0,
+            SPAWN_POS.z as f64 + 0.5,
+        ]);
         client.set_instance(instance);
         client.set_game_mode(GameMode::Creative);
     }
