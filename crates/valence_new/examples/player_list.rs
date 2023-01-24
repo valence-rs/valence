@@ -1,5 +1,6 @@
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::ShouldRun;
+use rand::Rng;
 use uuid::Uuid;
 use valence_new::client::event::default_event_handler;
 use valence_new::client::{despawn_disconnected_clients, Client};
@@ -16,6 +17,8 @@ use valence_protocol::text::{Color, TextFormat};
 use valence_protocol::types::GameMode;
 
 const SPAWN_Y: i32 = 64;
+const PLAYER_UUID_1: Uuid = Uuid::from_u128(1);
+const PLAYER_UUID_2: Uuid = Uuid::from_u128(2);
 
 fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().init();
@@ -56,7 +59,7 @@ fn setup(world: &mut World) {
     let mut player_list = world.resource_mut::<PlayerList>();
 
     player_list.insert(
-        Uuid::from_u128(1),
+        PLAYER_UUID_1,
         PlayerListEntry::new().with_display_name(Some("persistent entry with no ping")),
     );
 }
@@ -97,8 +100,17 @@ fn update_player_list(mut player_list: ResMut<PlayerList>, server: Res<Server>) 
     player_list
         .set_footer("Current tick but in purple: ".into_text() + tick.color(Color::LIGHT_PURPLE));
 
-    if tick % server.tick_rate() == 0 {
-        match player_list.entry(Uuid::from_u128(2)) {
+    if tick % 5 == 0 {
+        let mut rng = rand::thread_rng();
+        let color = Color::new(rng.gen(), rng.gen(), rng.gen());
+
+        let entry = player_list.get_mut(PLAYER_UUID_1).unwrap();
+        let new_display_name = entry.display_name().unwrap().clone().color(color);
+        entry.set_display_name(Some(new_display_name));
+    }
+
+    if tick % 20 == 0 {
+        match player_list.entry(PLAYER_UUID_2) {
             Entry::Occupied(oe) => {
                 oe.remove();
             }
