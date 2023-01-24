@@ -3,7 +3,7 @@ use bevy_ecs::schedule::ShouldRun;
 use uuid::Uuid;
 use valence_new::client::event::default_event_handler;
 use valence_new::client::{despawn_disconnected_clients, Client};
-use valence_new::config::Config;
+use valence_new::config::{Config, ConnectionMode};
 use valence_new::dimension::DimensionId;
 use valence_new::instance::{Chunk, Instance};
 use valence_new::player_list::{
@@ -21,7 +21,7 @@ fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().init();
 
     valence_new::run_server(
-        Config::default(),
+        Config::default().with_connection_mode(ConnectionMode::Offline),
         SystemStage::parallel()
             .with_system(setup.with_run_criteria(ShouldRun::once))
             .with_system(init_clients)

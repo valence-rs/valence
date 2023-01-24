@@ -229,7 +229,6 @@ impl PlayerListEntry {
     }
 
     #[must_use]
-    #[track_caller]
     pub fn with_username(mut self, username: impl Into<String>) -> Self {
         self.username = username.into();
 
@@ -322,7 +321,6 @@ impl PlayerListEntry {
     fn clear_trackers(&mut self) {
         self.old_game_mode = self.game_mode;
         self.old_listed = self.listed;
-        self.is_new = true;
         self.modified_ping = false;
         self.modified_display_name = false;
     }
@@ -345,8 +343,10 @@ impl<'a> OccupiedEntry<'a> {
     }
 
     pub fn remove_entry(mut self) -> (Uuid, PlayerListEntry) {
-        let entry = self.entry.get_mut().take().unwrap();
+        let mut entry = self.entry.get_mut().take().unwrap();
         let uuid = *self.entry.key();
+
+        entry.is_new = false;
 
         (uuid, entry)
     }
@@ -371,6 +371,7 @@ impl<'a> OccupiedEntry<'a> {
         // just modify the existing entry.
         if old_entry.username != entry.username || old_entry.properties != entry.properties {
             entry.clear_trackers();
+            entry.is_new = true;
             self.entry.insert(Some(entry)).unwrap()
         } else {
             PlayerListEntry::new()
@@ -402,6 +403,7 @@ impl<'a> VacantEntry<'a> {
 
     pub fn insert(self, mut entry: PlayerListEntry) -> &'a mut PlayerListEntry {
         entry.clear_trackers();
+        entry.is_new = true;
 
         match self.entry {
             MapEntry::Occupied(mut oe) => {
@@ -434,6 +436,8 @@ pub(crate) fn update_player_list(player_list: ResMut<PlayerList>, server: Res<Se
         };
 
         if entry.is_new {
+            entry.is_new = false;
+
             // Send packets to initialize this entry.
 
             let mut actions = Actions::new().with_add_player(true);
