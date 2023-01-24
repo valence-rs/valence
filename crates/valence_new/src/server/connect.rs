@@ -352,10 +352,7 @@ pub(super) async fn login_online(
         properties: Vec<Property>,
     }
 
-    let profile: GameProfile = resp
-        .json()
-        .await
-        .context("parsing game profile")?;
+    let profile: GameProfile = resp.json().await.context("parsing game profile")?;
 
     ensure!(profile.name == username, "usernames do not match");
 

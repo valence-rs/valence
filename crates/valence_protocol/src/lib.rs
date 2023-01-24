@@ -83,7 +83,7 @@ pub use raw_bytes::RawBytes;
 pub use text::{Text, TextFormat};
 pub use username::Username;
 pub use uuid::Uuid;
-pub use valence_derive::{Decode, DecodePacket, Encode, EncodePacket};
+pub use valence_protocol_macros::{Decode, DecodePacket, Encode, EncodePacket};
 pub use var_int::VarInt;
 pub use var_long::VarLong;
 pub use {uuid, valence_nbt as nbt};
@@ -172,7 +172,7 @@ pub const MAX_PACKET_SIZE: i32 = 2097152;
 /// println!("{buf:?}");
 /// ```
 ///
-/// [macro]: valence_derive::Encode
+/// [macro]: valence_protocol_macros::Encode
 pub trait Encode {
     /// Writes this object to the provided writer.
     ///
@@ -247,7 +247,7 @@ pub trait Encode {
 /// assert!(r.is_empty());
 /// ```
 ///
-/// [macro]: valence_derive::Decode
+/// [macro]: valence_protocol_macros::Decode
 pub trait Decode<'a>: Sized {
     /// Reads this object from the provided byte slice.
     ///
@@ -282,7 +282,7 @@ pub trait Decode<'a>: Sized {
 /// println!("{buf:?}");
 /// ```
 ///
-/// [macro]: valence_derive::DecodePacket
+/// [macro]: valence_protocol_macros::DecodePacket
 pub trait EncodePacket {
     /// The packet ID that is written when [`Self::encode_packet`] is called. A
     /// negative value indicates that the packet ID is not statically known.

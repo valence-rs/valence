@@ -17,7 +17,7 @@ serde_json = "1.0.87"
 thiserror = "1.0.37"
 tracing = "0.1.37"
 uuid = { version = "1.2.1", features = ["serde"] }
-valence_derive = { version = "0.1.0", path = "../valence_derive" }
+valence_protocol_macros = { version = "0.1.0", path = "../valence_protocol_macros" }
 valence_nbt = { version = "0.5.0", path = "../valence_nbt" }
 
 [[bench]]
