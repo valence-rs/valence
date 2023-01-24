@@ -4,7 +4,7 @@ use rand::Rng;
 use uuid::Uuid;
 use valence_new::client::event::default_event_handler;
 use valence_new::client::{despawn_disconnected_clients, Client};
-use valence_new::config::{Config, ConnectionMode};
+use valence_new::config::Config;
 use valence_new::dimension::DimensionId;
 use valence_new::instance::{Chunk, Instance};
 use valence_new::player_list::{
@@ -24,7 +24,7 @@ fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt().init();
 
     valence_new::run_server(
-        Config::default().with_connection_mode(ConnectionMode::Offline),
+        Config::default(),
         SystemStage::parallel()
             .with_system(setup.with_run_criteria(ShouldRun::once))
             .with_system(init_clients)
@@ -72,7 +72,7 @@ fn init_clients(
     let instance = instances.get_single().unwrap();
 
     for mut client in &mut clients {
-        client.teleport([0.0, SPAWN_Y as f64 + 1.0, 0.0], 0.0, 0.0);
+        client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
         client.set_instance(instance);
         client.set_game_mode(GameMode::Creative);
 
