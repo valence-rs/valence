@@ -4,6 +4,7 @@ use anyhow::Context;
 use serde::Deserialize;
 use url::Url;
 use valence_protocol::types::Property;
+use base64::prelude::*;
 
 /// Contains URLs to the skin and cape of a player.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -40,7 +41,7 @@ impl PlayerTextures {
             url: Url,
         }
 
-        let decoded = base64::decode(textures.value.as_bytes())?;
+        let decoded = BASE64_STANDARD.decode(textures.value.as_bytes())?;
 
         let Textures { textures } = serde_json::from_slice(&decoded)?;
 

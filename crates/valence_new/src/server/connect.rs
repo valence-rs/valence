@@ -6,6 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, bail, ensure, Context};
+use base64::prelude::*;
 use hmac::digest::Update;
 use hmac::{Hmac, Mac};
 use num::BigInt;
@@ -194,13 +195,7 @@ async fn handle_status(
 
             if !favicon_png.is_empty() {
                 let mut buf = "data:image/png;base64,".to_owned();
-
-                base64::encode_engine_string(
-                    favicon_png,
-                    &mut buf,
-                    &base64::engine::DEFAULT_ENGINE,
-                );
-
+                BASE64_STANDARD.encode_string(favicon_png, &mut buf);
                 json["favicon"] = Value::String(buf);
             }
 
