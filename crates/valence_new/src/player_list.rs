@@ -561,7 +561,6 @@ pub fn add_new_clients_to_player_list(
             .with_properties(client.properties())
             .with_game_mode(client.game_mode())
             .with_ping(-1); // TODO
-                            // .with_display_name(client.username())
 
         player_list.insert(client.uuid(), entry);
     }

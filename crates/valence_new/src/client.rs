@@ -232,23 +232,6 @@ impl Client {
     pub fn set_position(&mut self, pos: impl Into<DVec3>) {
         self.position = pos.into();
         self.position_modified = true;
-
-        /*
-        // Teleport the client without modifying their yaw or pitch.
-        self.write_packet(&SynchronizePlayerPosition {
-            position: self.position.to_array(),
-            yaw: 0.0,
-            pitch: 0.0,
-            flags: SyncPlayerPosLookFlags::new()
-                .with_x_rot(true)
-                .with_y_rot(true),
-            teleport_id: VarInt(self.teleport_id_counter as i32),
-            dismount_vehicle: false,
-        });
-
-        self.pending_teleports = self.pending_teleports.wrapping_add(1);
-        self.teleport_id_counter = self.teleport_id_counter.wrapping_add(1);
-         */
     }
 
     /// Returns the position this client was in at the end of the previous tick.
