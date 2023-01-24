@@ -356,17 +356,6 @@ pub(super) async fn login_online(
 
     ensure!(profile.name == username, "usernames do not match");
 
-    // let uuid = Uuid::parse_str(&data.id).context("failed to parse player's
-    // UUID")?;
-
-    // let textures = match data.properties.into_iter().find(|p| p.name ==
-    // "textures") {     Some(p) => SignedPlayerTextures::from_base64(
-    //         p.value,
-    //         p.signature.context("missing signature for textures")?,
-    //     )?,
-    //     None => bail!("failed to find textures in auth response"),
-    // };
-
     Ok(NewClientInfo {
         uuid: profile.id,
         username,
