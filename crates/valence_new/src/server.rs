@@ -49,7 +49,6 @@ mod packet_manager;
 pub struct Server {
     /// Incremented on every tick.
     current_tick: i64,
-    last_tick_duration: Duration,
     shared: SharedServer,
 }
 
@@ -70,12 +69,6 @@ impl Server {
     /// Returns the number of ticks that have elapsed since the server began.
     pub fn current_tick(&self) -> i64 {
         self.current_tick
-    }
-
-    /// Returns the amount of time taken to execute the previous tick, not
-    /// including the time spent sleeping.
-    pub fn last_tick_duration(&mut self) -> Duration {
-        self.last_tick_duration
     }
 }
 
@@ -317,7 +310,6 @@ pub fn build_plugin(
 
     let server = Server {
         current_tick: 0,
-        last_tick_duration: Duration::default(),
         shared,
     };
 
@@ -329,6 +321,22 @@ pub fn build_plugin(
 
         // Start accepting new connections.
         tokio::spawn(do_accept_loop(shared.clone(), callbacks.clone()));
+    };
+
+    let shared = server.shared.clone();
+
+    // Exclusive system to spawn new clients. Should run before everything else.
+    let spawn_new_clients = move |world: &mut World| {
+        for _ in 0..shared.0.new_clients_recv.len() {
+            let Ok(msg) = shared.0.new_clients_recv.try_recv() else {
+                break
+            };
+
+            world.spawn((
+                Client::new(msg.send, msg.recv, msg.permit, msg.info),
+                Inventory::new(InventoryKind::Player),
+            ));
+        }
     };
 
     let shared = server.shared.clone();
@@ -345,36 +353,39 @@ pub fn build_plugin(
 
     // Add core systems. User code is expected to run in `CoreStage::Update`, so
     // we'll add our systems before and after that.
-    app.add_system_to_stage(CoreStage::PreUpdate, dispatch_client_events);
-    app.add_system_set_to_stage(
-        CoreStage::PostUpdate,
-        SystemSet::new()
-            .with_system(init_entities)
-            .with_system(check_entity_invariants)
-            .with_system(update_instances_pre_client.after(init_entities))
-            .with_system(update_clients.after(update_instances_pre_client))
-            .with_system(update_player_list.before(update_clients))
-            .with_system(update_instances_post_client.after(update_clients))
-            .with_system(deinit_despawned_entities.after(update_instances_post_client))
-            .with_system(despawn_marked_entities.after(deinit_despawned_entities))
-            .with_system(update_entities.after(despawn_marked_entities))
-            .with_system(update_open_inventories)
-            .with_system(handle_close_container)
-            .with_system(update_client_on_close_inventory.after(update_open_inventories))
-            .with_system(update_player_inventories)
-            .with_system(
-                handle_click_container
-                    .before(update_open_inventories)
-                    .before(update_player_inventories),
-            )
-            .with_system(
-                handle_set_slot_creative
-                    .before(update_open_inventories)
-                    .before(update_player_inventories),
-            ),
-    );
 
-    let full_tick_duration = Duration::from_secs_f64((shared.tps() as f64).recip());
+    app.add_system_to_stage(CoreStage::PreUpdate, spawn_new_clients)
+        .add_system_to_stage(CoreStage::PreUpdate, dispatch_client_events)
+        .add_system_set_to_stage(
+            CoreStage::PostUpdate,
+            SystemSet::new()
+                .with_system(init_entities)
+                .with_system(check_entity_invariants)
+                .with_system(update_instances_pre_client.after(init_entities))
+                .with_system(update_clients.after(update_instances_pre_client))
+                .with_system(update_player_list.before(update_clients))
+                .with_system(update_instances_post_client.after(update_clients))
+                .with_system(deinit_despawned_entities.after(update_instances_post_client))
+                .with_system(despawn_marked_entities.after(deinit_despawned_entities))
+                .with_system(update_entities.after(despawn_marked_entities))
+                .with_system(update_open_inventories)
+                .with_system(handle_close_container)
+                .with_system(update_client_on_close_inventory.after(update_open_inventories))
+                .with_system(update_player_inventories)
+                .with_system(
+                    handle_click_container
+                        .before(update_open_inventories)
+                        .before(update_player_inventories),
+                )
+                .with_system(
+                    handle_set_slot_creative
+                        .before(update_open_inventories)
+                        .before(update_player_inventories),
+                ),
+        )
+        .add_system_to_stage(CoreStage::Last, inc_current_tick);
+
+    let tick_duration = Duration::from_secs_f64((shared.tps() as f64).recip());
 
     // Overwrite the app's runner.
     app.set_runner(move |mut app: App| {
@@ -394,30 +405,15 @@ pub fn build_plugin(
                 }
             }
 
-            // Spawn new client entities.
-            for _ in 0..shared.0.new_clients_recv.len() {
-                let Ok(msg) = shared.0.new_clients_recv.try_recv() else {
-                    break
-                };
-
-                app.world.spawn((
-                    Client::new(msg.send, msg.recv, msg.permit, msg.info),
-                    Inventory::new(InventoryKind::Player),
-                ));
-            }
-
             // Run the scheduled stages.
             app.update();
 
             // Clear tracker state so that change detection works correctly.
+            // TODO: is this needed?
             app.world.clear_trackers();
 
-            let mut server = app.world.resource_mut::<Server>();
-
             // Sleep until the next tick.
-            server.last_tick_duration = tick_start.elapsed();
-            thread::sleep(full_tick_duration.saturating_sub(server.last_tick_duration));
-            server.current_tick += 1;
+            thread::sleep(tick_duration.saturating_sub(tick_start.elapsed()));
         }
     });
 
@@ -430,6 +426,10 @@ fn despawn_marked_entities(mut commands: Commands, entities: Query<Entity, With<
     for entity in &entities {
         commands.entity(entity).despawn();
     }
+}
+
+fn inc_current_tick(mut server: ResMut<Server>) {
+    server.current_tick += 1;
 }
 
 fn make_registry_codec(dimensions: &[Dimension], biomes: &[Biome]) -> Compound {
