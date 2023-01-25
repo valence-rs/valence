@@ -691,11 +691,18 @@ fn update_one_client(
     // not accidentally pass through blocks.
     if client.position_modified || client.yaw_modified || client.pitch_modified {
         let flags = SyncPlayerPosLookFlags::new()
-            .with_x_rot(!client.yaw_modified)
-            .with_y_rot(!client.pitch_modified);
+            .with_x(!client.position_modified)
+            .with_y(!client.position_modified)
+            .with_z(!client.position_modified)
+            .with_y_rot(!client.yaw_modified)
+            .with_x_rot(!client.pitch_modified);
 
         client.send.append_packet(&SynchronizePlayerPosition {
-            position: client.position.to_array(),
+            position: if client.position_modified {
+                client.position.to_array()
+            } else {
+                [0.0; 3]
+            },
             yaw: if client.yaw_modified { client.yaw } else { 0.0 },
             pitch: if client.pitch_modified {
                 client.pitch
