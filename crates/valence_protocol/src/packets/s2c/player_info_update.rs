@@ -11,7 +11,7 @@ use crate::{Decode, DecodePacket, Encode, EncodePacket, Text, VarInt};
 #[packet_id = 0x36]
 pub struct PlayerInfoUpdate<'a> {
     pub actions: Actions,
-    pub entries: Vec<Entry<'a>>,
+    pub entries: Cow<'a, [Entry<'a>]>,
 }
 
 #[bitfield(u8)]
@@ -54,7 +54,7 @@ impl<'a> Encode for PlayerInfoUpdate<'a> {
         // Write number of entries.
         VarInt(self.entries.len() as i32).encode(&mut w)?;
 
-        for entry in &self.entries {
+        for entry in self.entries.as_ref() {
             entry.player_uuid.encode(&mut w)?;
 
             if self.actions.add_player() {
@@ -127,6 +127,9 @@ impl<'a> Decode<'a> for PlayerInfoUpdate<'a> {
             entries.push(entry);
         }
 
-        Ok(Self { actions, entries })
+        Ok(Self {
+            actions,
+            entries: entries.into(),
+        })
     }
 }

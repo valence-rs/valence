@@ -10,7 +10,9 @@ use valence_new::dimension::DimensionId;
 use valence_new::entity::{EntityKind, McEntity};
 use valence_new::instance::{Chunk, Instance};
 use valence_new::math::to_yaw_and_pitch;
-use valence_new::player_textures::PlayerTextures;
+use valence_new::player_list::{
+    add_new_clients_to_player_list, remove_disconnected_clients_from_player_list,
+};
 use valence_new::server::Server;
 use valence_protocol::block::BlockState;
 use valence_protocol::types::GameMode;
@@ -39,7 +41,9 @@ fn main() -> anyhow::Result<()> {
             .with_system(init_clients)
             .with_system(update_sphere)
             .with_system(default_event_handler())
-            .with_system(despawn_disconnected_clients),
+            .with_system(despawn_disconnected_clients)
+            .with_system(add_new_clients_to_player_list)
+            .with_system(remove_disconnected_clients_from_player_list),
         (),
     )
 }
@@ -71,15 +75,11 @@ fn init_clients(
     let instance = instances.get_single().unwrap();
 
     for mut client in &mut clients {
-        client.teleport(
-            [
-                SPAWN_POS.x as f64 + 0.5,
-                SPAWN_POS.y as f64 + 1.0,
-                SPAWN_POS.z as f64 + 0.5,
-            ],
-            0.0,
-            0.0,
-        );
+        client.set_position([
+            SPAWN_POS.x as f64 + 0.5,
+            SPAWN_POS.y as f64 + 1.0,
+            SPAWN_POS.z as f64 + 0.5,
+        ]);
         client.set_instance(instance);
         client.set_game_mode(GameMode::Creative);
     }

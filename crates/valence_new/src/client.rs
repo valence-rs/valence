@@ -24,6 +24,7 @@ use crate::dimension::DimensionId;
 use crate::entity::data::Player;
 use crate::entity::McEntity;
 use crate::instance::Instance;
+use crate::player_list::PlayerList;
 use crate::server::{NewClientInfo, PlayPacketReceiver, PlayPacketSender, Server};
 use crate::{Despawned, NULL_ENTITY};
 
@@ -49,8 +50,11 @@ pub struct Client {
     old_instance: Entity,
     position: DVec3,
     old_position: DVec3,
+    position_modified: bool,
     yaw: f32,
+    yaw_modified: bool,
     pitch: f32,
+    pitch_modified: bool,
     on_ground: bool,
     game_mode: GameMode,
     block_change_sequence: i32,
@@ -109,8 +113,11 @@ impl Client {
             old_instance: NULL_ENTITY,
             position: DVec3::ZERO,
             old_position: DVec3::ZERO,
+            position_modified: true,
             yaw: 0.0,
+            yaw_modified: true,
             pitch: 0.0,
+            pitch_modified: true,
             on_ground: false,
             game_mode: GameMode::default(),
             block_change_sequence: 0,
@@ -224,24 +231,10 @@ impl Client {
 
     pub fn set_position(&mut self, pos: impl Into<DVec3>) {
         self.position = pos.into();
-
-        // Teleport the client without modifying their yaw or pitch.
-        self.write_packet(&SynchronizePlayerPosition {
-            position: self.position.to_array(),
-            yaw: 0.0,
-            pitch: 0.0,
-            flags: SyncPlayerPosLookFlags::new()
-                .with_x_rot(true)
-                .with_y_rot(true),
-            teleport_id: VarInt(self.teleport_id_counter as i32),
-            dismount_vehicle: false,
-        });
-
-        self.pending_teleports = self.pending_teleports.wrapping_add(1);
-        self.teleport_id_counter = self.teleport_id_counter.wrapping_add(1);
+        self.position_modified = true;
     }
 
-    /// Gets the position of this client at the end of the previous tick.
+    /// Returns the position this client was in at the end of the previous tick.
     pub fn old_position(&self) -> DVec3 {
         self.old_position
     }
@@ -251,35 +244,23 @@ impl Client {
         self.yaw
     }
 
+    pub fn set_yaw(&mut self, yaw: f32) {
+        self.yaw = yaw;
+        self.yaw_modified = true;
+    }
+
     /// Gets this client's pitch (in degrees).
     pub fn pitch(&self) -> f32 {
         self.pitch
     }
 
-    pub fn on_ground(&self) -> bool {
-        self.on_ground
+    pub fn set_pitch(&mut self, pitch: f32) {
+        self.pitch = pitch;
+        self.pitch_modified = true;
     }
 
-    /// Changes the position and rotation of this client in the world it is
-    /// located in.
-    ///
-    /// If you want to change the client's world, use [`Self::respawn`].
-    pub fn teleport(&mut self, pos: impl Into<DVec3>, yaw: f32, pitch: f32) {
-        self.position = pos.into();
-        self.yaw = yaw;
-        self.pitch = pitch;
-
-        self.write_packet(&SynchronizePlayerPosition {
-            position: self.position.to_array(),
-            yaw,
-            pitch,
-            flags: SyncPlayerPosLookFlags::new(),
-            teleport_id: VarInt(self.teleport_id_counter as i32),
-            dismount_vehicle: false,
-        });
-
-        self.pending_teleports = self.pending_teleports.wrapping_add(1);
-        self.teleport_id_counter = self.teleport_id_counter.wrapping_add(1);
+    pub fn on_ground(&self) -> bool {
+        self.on_ground
     }
 
     pub fn has_respawn_screen(&self) -> bool {
@@ -411,6 +392,7 @@ pub(crate) fn update_clients(
     mut clients: Query<(Entity, &mut Client, Option<&McEntity>)>,
     mut instances: Query<&mut Instance>,
     entities: Query<&McEntity>,
+    mut player_list: ResMut<PlayerList>,
     mut scratch: Local<Vec<u8>>,
 ) {
     scratch.clear();
@@ -424,6 +406,7 @@ pub(crate) fn update_clients(
                 &server,
                 &mut instances,
                 &entities,
+                &mut player_list,
                 &mut scratch,
             ) {
                 let _ = client.write_packet(&DisconnectPlay { reason: "".into() });
@@ -453,6 +436,7 @@ fn update_one_client(
     server: &Server,
     instances: &mut Query<&mut Instance>,
     entities: &Query<&McEntity>,
+    player_list: &mut PlayerList,
     scratch: &mut Vec<u8>,
 ) -> anyhow::Result<()> {
     let Ok(instance) = instances.get(client.instance) else {
@@ -502,7 +486,8 @@ fn update_one_client(
         })?;
         */
 
-        // TODO: write player list init packets.
+        // Initialize the player list.
+        player_list.write_init_packets(&mut client.send)?;
     } else {
         if client.view_distance != client.old_view_distance {
             // Change the render distance fog.
@@ -529,7 +514,7 @@ fn update_one_client(
             })?;
         }
 
-        // TODO: update changed player list.
+        player_list.write_update_packets(&mut client.send)?;
     }
 
     // Check if it's time to send another keepalive.
@@ -700,6 +685,34 @@ fn update_one_client(
                 Ok(())
             })?;
         }
+    }
+
+    // Teleport the client. Do this after chunk packets are sent so the client does
+    // not accidentally pass through blocks.
+    if client.position_modified || client.yaw_modified || client.pitch_modified {
+        let flags = SyncPlayerPosLookFlags::new()
+            .with_x_rot(!client.yaw_modified)
+            .with_y_rot(!client.pitch_modified);
+
+        client.send.append_packet(&SynchronizePlayerPosition {
+            position: client.position.to_array(),
+            yaw: if client.yaw_modified { client.yaw } else { 0.0 },
+            pitch: if client.pitch_modified {
+                client.pitch
+            } else {
+                0.0
+            },
+            flags,
+            teleport_id: VarInt(client.teleport_id_counter as i32),
+            dismount_vehicle: false,
+        })?;
+
+        client.pending_teleports = client.pending_teleports.wrapping_add(1);
+        client.teleport_id_counter = client.teleport_id_counter.wrapping_add(1);
+
+        client.position_modified = false;
+        client.yaw_modified = false;
+        client.pitch_modified = false;
     }
 
     // This closes the "downloading terrain" screen.

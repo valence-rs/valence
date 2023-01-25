@@ -33,6 +33,7 @@ use crate::inventory::{
     update_client_on_close_inventory, update_open_inventories, update_player_inventories,
     Inventory, InventoryKind,
 };
+use crate::player_list::{update_player_list, PlayerList};
 use crate::server::connect::do_accept_loop;
 use crate::Despawned;
 
@@ -331,6 +332,7 @@ pub fn run_server(
     // Insert resources.
     cfg.world.insert_resource(server);
     cfg.world.insert_resource(McEntityManager::new());
+    cfg.world.insert_resource(PlayerList::new());
     register_client_events(&mut cfg.world);
 
     let mut schedule = Schedule::default();
@@ -349,6 +351,7 @@ pub fn run_server(
             .with_system(check_entity_invariants)
             .with_system(update_instances_pre_client.after(init_entities))
             .with_system(update_clients.after(update_instances_pre_client))
+            .with_system(update_player_list.before(update_clients))
             .with_system(update_instances_post_client.after(update_clients))
             .with_system(deinit_despawned_entities.after(update_instances_post_client))
             .with_system(despawn_marked_entities.after(deinit_despawned_entities))

@@ -12,6 +12,7 @@ pub mod instance;
 pub mod inventory;
 pub mod math;
 mod packet;
+pub mod player_list;
 pub mod player_textures;
 pub mod server;
 
