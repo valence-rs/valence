@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 
 use uuid::Uuid;
-use valence_derive::{Decode, DecodePacket, Encode, EncodePacket};
 use valence_nbt::Compound;
 
 use crate::block_pos::BlockPos;
@@ -18,7 +17,7 @@ use crate::types::{
 use crate::username::Username;
 use crate::var_int::VarInt;
 use crate::var_long::VarLong;
-use crate::LengthPrefixedArray;
+use crate::{Decode, DecodePacket, Encode, EncodePacket, LengthPrefixedArray};
 
 pub mod commands;
 pub mod declare_recipes;

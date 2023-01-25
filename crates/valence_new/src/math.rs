@@ -56,11 +56,10 @@ pub fn to_yaw_and_pitch(d: Vec3) -> (f32, f32) {
 ///
 /// This function is the inverse of [`to_yaw_and_pitch`].
 pub fn from_yaw_and_pitch(yaw: f32, pitch: f32) -> Vec3 {
-    let yaw = (yaw + 90.0).to_radians();
-    let pitch = (-pitch).to_radians();
+    let (yaw_sin, yaw_cos) = (yaw + 90.0).to_radians().sin_cos();
+    let (pitch_sin, pitch_cos) = (-pitch).to_radians().sin_cos();
 
-    let xz_len = pitch.cos();
-    Vec3::new(yaw.cos() * xz_len, pitch.sin(), yaw.sin() * xz_len)
+    Vec3::new(yaw_cos * pitch_cos, pitch_sin, yaw_sin * pitch_cos)
 }
 
 /// Returns the minimum number of bits needed to represent the integer `n`.
@@ -83,7 +82,7 @@ mod tests {
             let (yaw, pitch) = to_yaw_and_pitch(d);
             let d_new = from_yaw_and_pitch(yaw, pitch);
 
-            assert_relative_eq!(d, d_new, epsilon = f64::EPSILON * 100.0);
+            assert_relative_eq!(d, d_new, epsilon = f32::EPSILON * 100.0);
         }
     }
 }

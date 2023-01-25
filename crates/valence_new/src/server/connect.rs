@@ -6,6 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, bail, ensure, Context};
+use base64::prelude::*;
 use hmac::digest::Update;
 use hmac::{Hmac, Mac};
 use num::BigInt;
@@ -194,13 +195,7 @@ async fn handle_status(
 
             if !favicon_png.is_empty() {
                 let mut buf = "data:image/png;base64,".to_owned();
-
-                base64::encode_engine_string(
-                    favicon_png,
-                    &mut buf,
-                    &base64::engine::DEFAULT_ENGINE,
-                );
-
+                BASE64_STANDARD.encode_string(favicon_png, &mut buf);
                 json["favicon"] = Value::String(buf);
             }
 
@@ -360,17 +355,6 @@ pub(super) async fn login_online(
     let profile: GameProfile = resp.json().await.context("parsing game profile")?;
 
     ensure!(profile.name == username, "usernames do not match");
-
-    // let uuid = Uuid::parse_str(&data.id).context("failed to parse player's
-    // UUID")?;
-
-    // let textures = match data.properties.into_iter().find(|p| p.name ==
-    // "textures") {     Some(p) => SignedPlayerTextures::from_base64(
-    //         p.value,
-    //         p.signature.context("missing signature for textures")?,
-    //     )?,
-    //     None => bail!("failed to find textures in auth response"),
-    // };
 
     Ok(NewClientInfo {
         uuid: profile.id,
