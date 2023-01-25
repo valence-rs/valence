@@ -1,8 +1,9 @@
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::ShouldRun;
+use tracing::error;
 use valence_new::client::event::default_event_handler;
 use valence_new::client::{despawn_disconnected_clients, Client};
-use valence_new::config::Config;
+use valence_new::config::{Config, ServerPlugin};
 use valence_new::dimension::DimensionId;
 use valence_new::instance::{Chunk, Instance};
 use valence_new::protocol::types::GameMode;

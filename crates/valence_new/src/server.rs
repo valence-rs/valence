@@ -6,6 +6,9 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use anyhow::ensure;
+use bevy_app::prelude::*;
+use bevy_app::AppExit;
+use bevy_ecs::event::ManualEventReader;
 use bevy_ecs::prelude::*;
 use flume::{Receiver, Sender};
 pub use packet_manager::{PlayPacketReceiver, PlayPacketSender};
@@ -21,7 +24,7 @@ use valence_protocol::{ident, Username};
 use crate::biome::{validate_biomes, Biome, BiomeId};
 use crate::client::event::{dispatch_client_events, register_client_events};
 use crate::client::{update_clients, Client};
-use crate::config::{AsyncCallbacks, Config, ConnectionMode};
+use crate::config::{AsyncCallbacks, ConnectionMode, ServerPlugin};
 use crate::dimension::{validate_dimensions, Dimension, DimensionId};
 use crate::entity::{
     check_entity_invariants, deinit_despawned_entities, init_entities, update_entities,
@@ -84,7 +87,7 @@ pub struct SharedServer(Arc<SharedServerInner>);
 
 struct SharedServerInner {
     address: SocketAddr,
-    tick_rate: i64,
+    tps: i64,
     connection_mode: ConnectionMode,
     compression_threshold: Option<u32>,
     max_connections: usize,
@@ -95,8 +98,8 @@ struct SharedServerInner {
     /// Holding a runtime handle is not enough to keep tokio working. We need
     /// to store the runtime here so we don't drop it.
     _tokio_runtime: Option<Runtime>,
-    dimensions: Vec<Dimension>,
-    biomes: Vec<Biome>,
+    dimensions: Arc<[Dimension]>,
+    biomes: Arc<[Biome]>,
     /// Contains info about dimensions, biomes, and chats.
     /// Sent to all clients when joining.
     registry_codec: Compound,
@@ -121,7 +124,8 @@ struct SharedServerInner {
 }
 
 impl SharedServer {
-    /// Creates a new [`Instance`] with the given dimension.
+    /// Creates a new [`Instance`] component with the given dimension.
+    #[must_use]
     pub fn new_instance(&self, dimension: DimensionId) -> Instance {
         Instance::new(dimension, self)
     }
@@ -131,9 +135,9 @@ impl SharedServer {
         self.0.address
     }
 
-    /// Gets the configured tick rate of this server.
-    pub fn tick_rate(&self) -> i64 {
-        self.0.tick_rate
+    /// Gets the configured ticks per second of this server.
+    pub fn tps(&self) -> i64 {
+        self.0.tps
     }
 
     /// Gets the connection mode of the server.
@@ -247,26 +251,20 @@ struct NewClientMessage {
     permit: OwnedSemaphorePermit,
 }
 
-/// Consumes the configuration and starts the Minecraft server.
-///
-/// This function blocks the current thread and returns once the server has
-/// shut down, a runtime error occurs, or the configuration is found to
-/// be invalid.
-pub fn run_server(
-    mut cfg: Config,
-    stage: impl Stage,
-    callbacks: impl AsyncCallbacks,
+pub fn build_plugin(
+    plugin: &ServerPlugin<impl AsyncCallbacks>,
+    app: &mut App,
 ) -> anyhow::Result<()> {
     ensure!(
-        cfg.tick_rate > 0,
+        plugin.tps > 0,
         "configured tick rate must be greater than zero"
     );
     ensure!(
-        cfg.incoming_capacity > 0,
+        plugin.incoming_capacity > 0,
         "configured incoming packet capacity must be nonzero"
     );
     ensure!(
-        cfg.outgoing_capacity > 0,
+        plugin.outgoing_capacity > 0,
         "configured outgoing packet capacity must be nonzero"
     );
 
@@ -276,7 +274,7 @@ pub fn run_server(
         rsa_der::public_key_to_der(&rsa_key.n().to_bytes_be(), &rsa_key.e().to_bytes_be())
             .into_boxed_slice();
 
-    let runtime = if cfg.tokio_handle.is_none() {
+    let runtime = if plugin.tokio_handle.is_none() {
         Some(Runtime::new()?)
     } else {
         None
@@ -284,33 +282,33 @@ pub fn run_server(
 
     let tokio_handle = match &runtime {
         Some(rt) => rt.handle().clone(),
-        None => cfg.tokio_handle.unwrap(),
+        None => plugin.tokio_handle.clone().unwrap(),
     };
 
-    validate_dimensions(&cfg.dimensions)?;
-    validate_biomes(&cfg.biomes)?;
+    validate_dimensions(&plugin.dimensions)?;
+    validate_biomes(&plugin.biomes)?;
 
-    let registry_codec = make_registry_codec(&cfg.dimensions, &cfg.biomes);
+    let registry_codec = make_registry_codec(&plugin.dimensions, &plugin.biomes);
 
     let (new_clients_send, new_clients_recv) = flume::bounded(64);
 
     let shared = SharedServer(Arc::new(SharedServerInner {
-        address: cfg.address,
-        tick_rate: cfg.tick_rate,
-        connection_mode: cfg.connection_mode,
-        compression_threshold: cfg.compression_threshold,
-        max_connections: cfg.max_connections,
-        incoming_capacity: cfg.incoming_capacity,
-        outgoing_capacity: cfg.outgoing_capacity,
+        address: plugin.address,
+        tps: plugin.tps,
+        connection_mode: plugin.connection_mode.clone(),
+        compression_threshold: plugin.compression_threshold,
+        max_connections: plugin.max_connections,
+        incoming_capacity: plugin.incoming_capacity,
+        outgoing_capacity: plugin.outgoing_capacity,
         tokio_handle,
         _tokio_runtime: runtime,
-        dimensions: cfg.dimensions,
-        biomes: cfg.biomes,
+        dimensions: plugin.dimensions.clone(),
+        biomes: plugin.biomes.clone(),
         registry_codec,
         start_instant: Instant::now(),
         new_clients_send,
         new_clients_recv,
-        connection_sema: Arc::new(Semaphore::new(cfg.max_connections)),
+        connection_sema: Arc::new(Semaphore::new(plugin.max_connections)),
         shutdown_result: Mutex::new(None),
         rsa_key,
         public_key_der,
@@ -324,29 +322,33 @@ pub fn run_server(
     };
 
     let shared = server.shared.clone();
-    let _guard = shared.tokio_handle().enter();
+    let callbacks = plugin.callbacks.clone();
 
-    // Start accepting new connections.
-    tokio::spawn(do_accept_loop(shared.clone(), callbacks));
+    let start_accept_loop = move || {
+        let _guard = shared.tokio_handle().enter();
+
+        // Start accepting new connections.
+        tokio::spawn(do_accept_loop(shared.clone(), callbacks.clone()));
+    };
+
+    let shared = server.shared.clone();
+
+    // Start accepting connections in PostStartup to allow user startup code to run
+    // first.
+    app.add_startup_system_to_stage(StartupStage::PostStartup, start_accept_loop);
 
     // Insert resources.
-    cfg.world.insert_resource(server);
-    cfg.world.insert_resource(McEntityManager::new());
-    cfg.world.insert_resource(PlayerList::new());
-    register_client_events(&mut cfg.world);
+    app.insert_resource(server);
+    app.insert_resource(McEntityManager::new());
+    app.insert_resource(PlayerList::new());
+    register_client_events(&mut app.world);
 
-    let mut schedule = Schedule::default();
-
-    schedule.add_stage(
-        "before user stage",
-        SystemStage::single(dispatch_client_events),
-    );
-
-    schedule.add_stage("user stage", stage);
-
-    schedule.add_stage(
-        "after user stage",
-        SystemStage::parallel()
+    // Add core systems. User code is expected to run in `CoreStage::Update`, so
+    // we'll add our systems before and after that.
+    app.add_system_to_stage(CoreStage::PreUpdate, dispatch_client_events);
+    app.add_system_set_to_stage(
+        CoreStage::PostUpdate,
+        SystemSet::new()
             .with_system(init_entities)
             .with_system(check_entity_invariants)
             .with_system(update_instances_pre_client.after(init_entities))
@@ -372,43 +374,54 @@ pub fn run_server(
             ),
     );
 
-    let mut tick_start = Instant::now();
-    let full_tick_duration = Duration::from_secs_f64((shared.tick_rate() as f64).recip());
+    let full_tick_duration = Duration::from_secs_f64((shared.tps() as f64).recip());
 
-    // The main tick/update loop.
-    loop {
-        // Stop the server if it was shut down.
-        if let Some(res) = shared.0.shutdown_result.lock().unwrap().take() {
-            return res;
+    // Overwrite the app's runner.
+    app.set_runner(move |mut app: App| {
+        let mut app_exit_event_reader = ManualEventReader::<AppExit>::default();
+
+        loop {
+            let tick_start = Instant::now();
+
+            // Stop the server if there was an AppExit event.
+            if let Some(app_exit_events) = app.world.get_resource_mut::<Events<AppExit>>() {
+                if app_exit_event_reader
+                    .iter(&app_exit_events)
+                    .last()
+                    .is_some()
+                {
+                    return;
+                }
+            }
+
+            // Spawn new client entities.
+            for _ in 0..shared.0.new_clients_recv.len() {
+                let Ok(msg) = shared.0.new_clients_recv.try_recv() else {
+                    break
+                };
+
+                app.world.spawn((
+                    Client::new(msg.send, msg.recv, msg.permit, msg.info),
+                    Inventory::new(InventoryKind::Player),
+                ));
+            }
+
+            // Run the scheduled stages.
+            app.update();
+
+            // Clear tracker state so that change detection works correctly.
+            app.world.clear_trackers();
+
+            let mut server = app.world.resource_mut::<Server>();
+
+            // Sleep until the next tick.
+            server.last_tick_duration = tick_start.elapsed();
+            thread::sleep(full_tick_duration.saturating_sub(server.last_tick_duration));
+            server.current_tick += 1;
         }
+    });
 
-        // Spawn new client entities.
-        for _ in 0..shared.0.new_clients_recv.len() {
-            let Ok(msg) = shared.0.new_clients_recv.try_recv() else {
-                break
-            };
-
-            cfg.world.spawn((
-                Client::new(msg.send, msg.recv, msg.permit, msg.info),
-                Inventory::new(InventoryKind::Player),
-            ));
-        }
-
-        // Run the scheduled stages.
-        schedule.run_once(&mut cfg.world);
-
-        // Clear tracker state so that change detection works correctly. It's important
-        // that we do this last.
-        cfg.world.clear_trackers();
-
-        let mut server = cfg.world.resource_mut::<Server>();
-
-        // Sleep until the next tick.
-        server.last_tick_duration = tick_start.elapsed();
-        thread::sleep(full_tick_duration.saturating_sub(server.last_tick_duration));
-        server.current_tick += 1;
-        tick_start = Instant::now();
-    }
+    Ok(())
 }
 
 /// Despawns all the entities marked as despawned with the [`Despawned`]

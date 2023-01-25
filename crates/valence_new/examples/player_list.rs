@@ -1,15 +1,14 @@
+use bevy_app::App;
 use bevy_ecs::prelude::*;
-use bevy_ecs::schedule::ShouldRun;
 use rand::Rng;
 use uuid::Uuid;
 use valence_new::client::event::default_event_handler;
 use valence_new::client::{despawn_disconnected_clients, Client};
-use valence_new::config::Config;
+use valence_new::config::ServerPlugin;
 use valence_new::dimension::DimensionId;
 use valence_new::instance::{Chunk, Instance};
 use valence_new::player_list::{
-    add_new_clients_to_player_list, remove_disconnected_clients_from_player_list, Entry,
-    PlayerList, PlayerListEntry,
+    remove_disconnected_clients_from_player_list, Entry, PlayerList, PlayerListEntry,
 };
 use valence_new::server::Server;
 use valence_protocol::block::BlockState;
@@ -20,21 +19,18 @@ const SPAWN_Y: i32 = 64;
 const PLAYER_UUID_1: Uuid = Uuid::from_u128(1);
 const PLAYER_UUID_2: Uuid = Uuid::from_u128(2);
 
-fn main() -> anyhow::Result<()> {
+fn main() {
     tracing_subscriber::fmt().init();
 
-    valence_new::run_server(
-        Config::default(),
-        SystemStage::parallel()
-            .with_system(setup.with_run_criteria(ShouldRun::once))
-            .with_system(init_clients)
-            .with_system(update_player_list)
-            .with_system(default_event_handler())
-            .with_system(despawn_disconnected_clients)
-            .with_system(add_new_clients_to_player_list)
-            .with_system(remove_disconnected_clients_from_player_list),
-        (),
-    )
+    App::new()
+        .add_plugin(ServerPlugin::new(()))
+        .add_startup_system(setup)
+        .add_system(init_clients)
+        .add_system(update_player_list)
+        .add_system(default_event_handler)
+        .add_system(despawn_disconnected_clients)
+        .add_system(remove_disconnected_clients_from_player_list)
+        .run();
 }
 
 fn setup(world: &mut World) {

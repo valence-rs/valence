@@ -518,7 +518,7 @@ fn update_one_client(
     }
 
     // Check if it's time to send another keepalive.
-    if server.current_tick() % (server.tick_rate() * 10) == 0 {
+    if server.current_tick() % (server.tps() * 10) == 0 {
         if client.got_keepalive {
             let id = rand::random();
             client.send.append_packet(&KeepAliveS2c { id })?;

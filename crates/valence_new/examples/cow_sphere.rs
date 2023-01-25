@@ -1,11 +1,11 @@
 use std::f64::consts::TAU;
 
+use bevy_app::App;
 use bevy_ecs::prelude::*;
-use bevy_ecs::schedule::ShouldRun;
 use glam::{DQuat, DVec3, EulerRot};
 use valence_new::client::event::default_event_handler;
 use valence_new::client::{despawn_disconnected_clients, Client};
-use valence_new::config::Config;
+use valence_new::config::ServerPlugin;
 use valence_new::dimension::DimensionId;
 use valence_new::entity::{EntityKind, McEntity};
 use valence_new::instance::{Chunk, Instance};
@@ -31,21 +31,19 @@ const SPAWN_POS: BlockPos = BlockPos::new(0, 100, -20);
 #[derive(Component)]
 struct SpherePart;
 
-fn main() -> anyhow::Result<()> {
+fn main() {
     tracing_subscriber::fmt().init();
 
-    valence_new::run_server(
-        Config::default(),
-        SystemStage::parallel()
-            .with_system(setup.with_run_criteria(ShouldRun::once))
-            .with_system(init_clients)
-            .with_system(update_sphere)
-            .with_system(default_event_handler())
-            .with_system(despawn_disconnected_clients)
-            .with_system(add_new_clients_to_player_list)
-            .with_system(remove_disconnected_clients_from_player_list),
-        (),
-    )
+    App::new()
+        .add_plugin(ServerPlugin::new(()))
+        .add_startup_system(setup)
+        .add_system(init_clients)
+        .add_system(update_sphere)
+        .add_system(default_event_handler)
+        .add_system(despawn_disconnected_clients)
+        .add_system(add_new_clients_to_player_list)
+        .add_system(remove_disconnected_clients_from_player_list)
+        .run();
 }
 
 fn setup(world: &mut World) {
@@ -86,7 +84,7 @@ fn init_clients(
 }
 
 fn update_sphere(server: Res<Server>, mut parts: Query<&mut McEntity, With<SpherePart>>) {
-    let time = server.current_tick() as f64 / server.tick_rate() as f64;
+    let time = server.current_tick() as f64 / server.tps() as f64;
 
     let rot_angles = DVec3::new(0.2, 0.4, 0.6) * SPHERE_FREQ * time * TAU % TAU;
     let rot = DQuat::from_euler(EulerRot::XYZ, rot_angles.x, rot_angles.y, rot_angles.z);
