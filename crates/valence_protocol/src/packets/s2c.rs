@@ -609,6 +609,10 @@ pub mod play {
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x40]
+    pub struct SelectAdvancementsTab<'a>(Option<Ident<&'a str>>);
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x41]
     pub struct ServerData<'a> {
         pub motd: Option<Text>,
@@ -856,6 +860,7 @@ pub mod play {
             Respawn<'a>,
             SetHeadRotation,
             UpdateSectionBlocks,
+            SelectAdvancementsTab<'a>,
             ServerData<'a>,
             SetActionBarText,
             SetHeldItemS2c,
