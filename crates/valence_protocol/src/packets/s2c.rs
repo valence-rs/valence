@@ -20,6 +20,7 @@ use crate::LengthPrefixedArray;
 
 pub mod commands;
 pub mod declare_recipes;
+pub mod look_at;
 pub mod particle;
 pub mod player_chat_message;
 pub mod player_info_update;
@@ -104,6 +105,7 @@ pub mod login {
 
 pub mod play {
     use commands::Node;
+    pub use look_at::LookAt;
     pub use particle::ParticleS2c;
     pub use player_chat_message::PlayerChatMessage;
     pub use player_info_update::PlayerInfoUpdate;
@@ -827,6 +829,7 @@ pub mod play {
             CombatDeath,
             PlayerInfoRemove,
             PlayerInfoUpdate<'a>,
+            LookAt,
             SynchronizePlayerPosition,
             UpdateRecipeBook<'a>,
             RemoveEntities,
