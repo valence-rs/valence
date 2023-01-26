@@ -8,7 +8,7 @@ pub struct PlayerChatMessage<'a> {
     pub sender: Uuid,
     pub index: VarInt,
     pub message_signature: Option<&'a [u8; 256]>,
-    pub message: String,
+    pub message: &'a str,
     pub time_stamp: u64,
     pub salt: u64,
     pub previous_messages: Vec<PreviousMessage<'a>>,
@@ -66,7 +66,7 @@ impl<'a> Decode<'a> for PlayerChatMessage<'a> {
         let sender = Uuid::decode(r)?;
         let index = VarInt::decode(r)?;
         let message_signature = Option::<&'a [u8; 256]>::decode(r)?;
-        let message = String::decode(r)?;
+        let message = <&str>::decode(r)?;
         let time_stamp = u64::decode(r)?;
         let salt = u64::decode(r)?;
         let previous_messages = Vec::<PreviousMessage>::decode(r)?;
