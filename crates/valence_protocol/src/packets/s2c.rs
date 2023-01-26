@@ -709,8 +709,8 @@ pub mod play {
     #[packet_id = 0x60]
     pub struct SystemChatMessage {
         pub chat: Text,
-        /// Index into the chat type registry.
-        pub kind: VarInt,
+        /// Whether the message is in the actionbar or the chat.
+        pub overlay: bool,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]

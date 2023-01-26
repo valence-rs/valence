@@ -431,7 +431,7 @@ impl<C: Config> Client<C> {
     pub fn send_message(&mut self, msg: impl Into<Text>) {
         self.queue_packet(&SystemChatMessage {
             chat: msg.into(),
-            kind: VarInt(0),
+            overlay: false,
         });
     }
 
