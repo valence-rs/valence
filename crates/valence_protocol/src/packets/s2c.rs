@@ -479,6 +479,10 @@ pub mod play {
         pub window_title: Text,
     }
 
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x2d]
+    pub struct OpenSignEditor(pub BlockPos);
+
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x30]
     pub struct PlayerAbilitiesS2c {
@@ -804,6 +808,7 @@ pub mod play {
             UpdateEntityRotation,
             OpenBook,
             OpenScreen,
+            OpenSignEditor,
             PlayerAbilitiesS2c,
             PlayerChatMessage<'a>,
             CombatDeath,
