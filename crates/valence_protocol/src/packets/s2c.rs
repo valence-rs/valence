@@ -9,8 +9,8 @@ use crate::item::ItemStack;
 use crate::raw_bytes::RawBytes;
 use crate::text::Text;
 use crate::types::{
-    AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, EntityEffectFlags,
-    GameEventKind, GameMode, GlobalPos, Hand, PlayerAbilitiesFlags, SignedProperty, SoundCategory,
+    AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, EntityEffectFlags, EntityFeetEyes,
+    GameEventKind, GameMode, GlobalPos, Hand, LookAtEntity, PlayerAbilitiesFlags, SignedProperty, SoundCategory,
     Statistic, SyncPlayerPosLookFlags, TagGroup,
 };
 use crate::username::Username;
@@ -20,7 +20,6 @@ use crate::LengthPrefixedArray;
 
 pub mod commands;
 pub mod declare_recipes;
-pub mod look_at;
 pub mod particle;
 pub mod player_chat_message;
 pub mod player_info_update;
@@ -105,7 +104,6 @@ pub mod login {
 
 pub mod play {
     use commands::Node;
-    pub use look_at::LookAt;
     pub use particle::ParticleS2c;
     pub use player_chat_message::PlayerChatMessage;
     pub use player_info_update::PlayerInfoUpdate;
@@ -516,6 +514,14 @@ pub mod play {
     #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x35]
     pub struct PlayerInfoRemove(pub Vec<Uuid>);
+
+    #[derive(Copy, Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x37]
+    pub struct LookAt {
+        pub feet_eyes: EntityFeetEyes,
+        pub target_position: [f64; 3],
+        pub entity_to_face: Option<LookAtEntity>,
+    }
 
     #[derive(Copy, Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x38]
