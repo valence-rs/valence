@@ -184,6 +184,15 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x08]
+    pub struct BlockAction {
+        pub position: BlockPos,
+        pub action_id: u8,
+        pub action_parameter: u8,
+        pub block_type: VarInt,
+    }
+
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x09]
     pub struct BlockUpdate {
         pub position: BlockPos,
@@ -763,6 +772,7 @@ pub mod play {
             AcknowledgeBlockChange,
             SetBlockDestroyStage,
             BlockEntityData,
+            BlockAction,
             BlockUpdate,
             BossBar,
             SetDifficulty,
