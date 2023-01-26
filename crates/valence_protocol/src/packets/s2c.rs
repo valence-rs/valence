@@ -10,7 +10,7 @@ use crate::raw_bytes::RawBytes;
 use crate::text::Text;
 use crate::types::{
     AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, GameEventKind, GameMode,
-    GlobalPos, PlayerAbilitiesFlags, SignedProperty, SoundCategory, Statistic,
+    GlobalPos, Hand, PlayerAbilitiesFlags, SignedProperty, SoundCategory, Statistic,
     SyncPlayerPosLookFlags, TagGroup,
 };
 use crate::username::Username;
@@ -467,6 +467,10 @@ pub mod play {
         pub on_ground: bool,
     }
 
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x2b]
+    pub struct OpenBook(pub Hand);
+
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x2c]
     pub struct OpenScreen {
@@ -798,6 +802,7 @@ pub mod play {
             UpdateEntityPosition,
             UpdateEntityPositionAndRotation,
             UpdateEntityRotation,
+            OpenBook,
             OpenScreen,
             PlayerAbilitiesS2c,
             PlayerChatMessage<'a>,
