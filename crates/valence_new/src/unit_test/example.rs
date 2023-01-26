@@ -41,7 +41,7 @@ mod tests {
         let server = app.world.resource::<Server>();
         let permit = server.force_aquire_owned();
         let info = gen_client_info("test");
-        let (client, mut send, recv) = create_mock_client(permit, info);
+        let (client, mut client_helper) = create_mock_client(permit, info);
         let client_ent = app.world.spawn(client).id();
 
         // Send a packet as the client to the server.
@@ -49,10 +49,7 @@ mod tests {
             position: [12.0, 64.0, 0.0],
             on_ground: true,
         };
-        let mut buffer = Vec::<u8>::new();
-        valence_protocol::encode_packet(&mut buffer, &packet).expect("Failed to encode packet");
-        send.try_send(BytesMut::from(buffer.as_slice()))
-            .expect("Failed to send packet");
+        client_helper.send_packet(packet);
 
         // Process the packet.
         app.update();
