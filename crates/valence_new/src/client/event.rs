@@ -2,12 +2,12 @@ use std::cmp;
 
 use anyhow::bail;
 use bevy_ecs::prelude::*;
-use bevy_ecs::schedule::SystemDescriptor;
 use bevy_ecs::system::SystemParam;
 use glam::{DVec3, Vec3};
 use paste::paste;
 use tracing::warn;
 use uuid::Uuid;
+use valence_protocol::entity_meta::Pose;
 use valence_protocol::packets::c2s::play::{
     ClientCommand, PlayerAbilitiesC2s, ResourcePackC2s, SeenAdvancements,
 };
@@ -20,6 +20,7 @@ use valence_protocol::types::{
 use valence_protocol::{BlockFace, BlockPos, Ident, ItemStack};
 
 use crate::client::Client;
+use crate::entity::{EntityAnimation, EntityKind, McEntity, TrackedData};
 
 #[derive(Clone, Debug)]
 pub struct QueryBlockEntity {
@@ -1338,7 +1339,7 @@ fn handle_client(
     Ok(())
 }
 
-/// Returns the default event handler system which handles client events in a
+/// The default event handler system which handles client events in a
 /// reasonable default way.
 ///
 /// For instance, movement events are handled by changing the entity's
@@ -1349,133 +1350,125 @@ fn handle_client(
 /// examples, but it can be used as a quick way to get started in your own
 /// code. The precise behavior of this system is left unspecified and
 /// is subject to change.
-pub fn default_event_handler() -> SystemDescriptor {
-    use valence_protocol::entity_meta::Pose;
-
-    use crate::entity::{EntityAnimation, EntityKind, McEntity, TrackedData};
-
-    fn system(
-        mut clients: Query<(&mut Client, Option<&mut McEntity>)>,
-        mut update_settings: EventReader<UpdateSettings>,
-        mut move_player: EventReader<MovePlayer>,
-        mut start_sneaking: EventReader<StartSneaking>,
-        mut stop_sneaking: EventReader<StopSneaking>,
-        mut start_sprinting: EventReader<StartSprinting>,
-        mut stop_sprinting: EventReader<StopSprinting>,
-        mut swing_arm: EventReader<SwingArm>,
-    ) {
-        for UpdateSettings {
-            client,
-            view_distance,
-            displayed_skin_parts,
-            main_hand,
-            ..
-        } in update_settings.iter()
-        {
-            let Ok((mut client, entity)) = clients.get_mut(*client) else {
+pub fn default_event_handler(
+    mut clients: Query<(&mut Client, Option<&mut McEntity>)>,
+    mut update_settings: EventReader<UpdateSettings>,
+    mut move_player: EventReader<MovePlayer>,
+    mut start_sneaking: EventReader<StartSneaking>,
+    mut stop_sneaking: EventReader<StopSneaking>,
+    mut start_sprinting: EventReader<StartSprinting>,
+    mut stop_sprinting: EventReader<StopSprinting>,
+    mut swing_arm: EventReader<SwingArm>,
+) {
+    for UpdateSettings {
+        client,
+        view_distance,
+        displayed_skin_parts,
+        main_hand,
+        ..
+    } in update_settings.iter()
+    {
+        let Ok((mut client, entity)) = clients.get_mut(*client) else {
                 continue
             };
 
-            client.set_view_distance(*view_distance);
+        client.set_view_distance(*view_distance);
 
-            let player = client.player_mut();
+        let player = client.player_mut();
 
-            player.set_cape(displayed_skin_parts.cape());
-            player.set_jacket(displayed_skin_parts.jacket());
-            player.set_left_sleeve(displayed_skin_parts.left_sleeve());
-            player.set_right_sleeve(displayed_skin_parts.right_sleeve());
-            player.set_left_pants_leg(displayed_skin_parts.left_pants_leg());
-            player.set_right_pants_leg(displayed_skin_parts.right_pants_leg());
-            player.set_hat(displayed_skin_parts.hat());
-            player.set_main_arm(*main_hand as u8);
+        player.set_cape(displayed_skin_parts.cape());
+        player.set_jacket(displayed_skin_parts.jacket());
+        player.set_left_sleeve(displayed_skin_parts.left_sleeve());
+        player.set_right_sleeve(displayed_skin_parts.right_sleeve());
+        player.set_left_pants_leg(displayed_skin_parts.left_pants_leg());
+        player.set_right_pants_leg(displayed_skin_parts.right_pants_leg());
+        player.set_hat(displayed_skin_parts.hat());
+        player.set_main_arm(*main_hand as u8);
 
-            if let Some(mut entity) = entity {
-                if let TrackedData::Player(player) = entity.data_mut() {
-                    player.set_cape(displayed_skin_parts.cape());
-                    player.set_jacket(displayed_skin_parts.jacket());
-                    player.set_left_sleeve(displayed_skin_parts.left_sleeve());
-                    player.set_right_sleeve(displayed_skin_parts.right_sleeve());
-                    player.set_left_pants_leg(displayed_skin_parts.left_pants_leg());
-                    player.set_right_pants_leg(displayed_skin_parts.right_pants_leg());
-                    player.set_hat(displayed_skin_parts.hat());
-                    player.set_main_arm(*main_hand as u8);
-                }
-            }
-        }
-
-        for MovePlayer {
-            client,
-            position,
-            yaw,
-            pitch,
-            on_ground,
-            ..
-        } in move_player.iter()
-        {
-            let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
-                continue
-            };
-
-            entity.set_position(*position);
-            entity.set_yaw(*yaw);
-            entity.set_head_yaw(*yaw);
-            entity.set_pitch(*pitch);
-            entity.set_on_ground(*on_ground);
-        }
-
-        for StartSneaking { client } in start_sneaking.iter() {
-            let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
-                continue
-            };
-
+        if let Some(mut entity) = entity {
             if let TrackedData::Player(player) = entity.data_mut() {
-                player.set_pose(Pose::Sneaking);
-            }
-        }
-
-        for StopSneaking { client } in stop_sneaking.iter() {
-            let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
-                continue
-            };
-
-            if let TrackedData::Player(player) = entity.data_mut() {
-                player.set_pose(Pose::Standing);
-            }
-        }
-
-        for StartSprinting { client } in start_sprinting.iter() {
-            let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
-                continue
-            };
-
-            if let TrackedData::Player(player) = entity.data_mut() {
-                player.set_sprinting(true);
-            }
-        }
-
-        for StopSprinting { client } in stop_sprinting.iter() {
-            let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
-                continue
-            };
-
-            if let TrackedData::Player(player) = entity.data_mut() {
-                player.set_sprinting(false);
-            }
-        }
-
-        for SwingArm { client, hand } in swing_arm.iter() {
-            let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
-                continue
-            };
-
-            if entity.kind() == EntityKind::Player {
-                entity.trigger_animation(match hand {
-                    Hand::Main => EntityAnimation::SwingMainHand,
-                    Hand::Off => EntityAnimation::SwingOffHand,
-                });
+                player.set_cape(displayed_skin_parts.cape());
+                player.set_jacket(displayed_skin_parts.jacket());
+                player.set_left_sleeve(displayed_skin_parts.left_sleeve());
+                player.set_right_sleeve(displayed_skin_parts.right_sleeve());
+                player.set_left_pants_leg(displayed_skin_parts.left_pants_leg());
+                player.set_right_pants_leg(displayed_skin_parts.right_pants_leg());
+                player.set_hat(displayed_skin_parts.hat());
+                player.set_main_arm(*main_hand as u8);
             }
         }
     }
 
-    system.into_descriptor()
+    for MovePlayer {
+        client,
+        position,
+        yaw,
+        pitch,
+        on_ground,
+        ..
+    } in move_player.iter()
+    {
+        let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
+                continue
+            };
+
+        entity.set_position(*position);
+        entity.set_yaw(*yaw);
+        entity.set_head_yaw(*yaw);
+        entity.set_pitch(*pitch);
+        entity.set_on_ground(*on_ground);
+    }
+
+    for StartSneaking { client } in start_sneaking.iter() {
+        let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
+                continue
+            };
+
+        if let TrackedData::Player(player) = entity.data_mut() {
+            player.set_pose(Pose::Sneaking);
+        }
+    }
+
+    for StopSneaking { client } in stop_sneaking.iter() {
+        let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
+                continue
+            };
+
+        if let TrackedData::Player(player) = entity.data_mut() {
+            player.set_pose(Pose::Standing);
+        }
+    }
+
+    for StartSprinting { client } in start_sprinting.iter() {
+        let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
+                continue
+            };
+
+        if let TrackedData::Player(player) = entity.data_mut() {
+            player.set_sprinting(true);
+        }
+    }
+
+    for StopSprinting { client } in stop_sprinting.iter() {
+        let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
+                continue
+            };
+
+        if let TrackedData::Player(player) = entity.data_mut() {
+            player.set_sprinting(false);
+        }
+    }
+
+    for SwingArm { client, hand } in swing_arm.iter() {
+        let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
+                continue
+            };
+
+        if entity.kind() == EntityKind::Player {
+            entity.trigger_animation(match hand {
+                Hand::Main => EntityAnimation::SwingMainHand,
+                Hand::Off => EntityAnimation::SwingOffHand,
+            });
+        }
+    }
 }

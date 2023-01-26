@@ -116,9 +116,9 @@ pub struct McEntity {
     /// The range of bytes in the partition cell containing this entity's update
     /// packets.
     pub(crate) self_update_range: Range<usize>,
-    /// Contains a set bit for every status.
+    /// Contains a set bit for every status triggered this tick.
     statuses: u64,
-    /// Contains a set bit for every animation.
+    /// Contains a set bit for every animation triggered this tick.
     animations: u8,
     instance: Entity,
     old_instance: Entity,

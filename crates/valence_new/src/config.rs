@@ -1,10 +1,12 @@
 use std::borrow::Cow;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
+use std::sync::Arc;
 
 use async_trait::async_trait;
-use bevy_ecs::world::World;
+use bevy_app::{App, Plugin};
 use serde::Serialize;
 use tokio::runtime::Handle;
+use tracing::error;
 use uuid::Uuid;
 use valence_protocol::{Text, Username};
 
@@ -12,19 +14,10 @@ use crate::biome::Biome;
 use crate::dimension::Dimension;
 use crate::server::{NewClientInfo, SharedServer};
 
-/// Contains basic server settings with reasonable defaults. Use [`run_server`]
-/// to consume the configuration and start the server.
-///
-/// [`run_server`]: crate::run_server.
+#[derive(Clone)]
 #[non_exhaustive]
-pub struct Config {
-    /// The Bevy ECS [`World`] to use for storing entities. Note that this is
-    /// unrelated to Minecraft's concept of a "world."
-    ///
-    /// # Default Value
-    ///
-    /// `World::new()`
-    pub world: World,
+pub struct ServerPlugin<A> {
+    pub callbacks: Arc<A>,
     /// The [`Handle`] to the tokio runtime the server will use. If `None` is
     /// provided, the server will create its own tokio runtime at startup.
     ///
@@ -49,8 +42,8 @@ pub struct Config {
     ///
     /// `0.0.0.0:25565`, which will listen on every available network interface.
     pub address: SocketAddr,
-    /// The tick rate. This is the number of game updates that should occur in
-    /// one second.
+    /// The ticks per second of the server. This is the number of game updates
+    /// that should occur in one second.
     ///
     /// On each game update (tick), the server is expected to update game logic
     /// and respond to packets from clients. Once this is complete, the server
@@ -64,7 +57,7 @@ pub struct Config {
     /// # Default Value
     ///
     /// [`DEFAULT_TPS`]
-    pub tick_rate: i64,
+    pub tps: i64,
     /// The connection mode. This determines if client authentication and
     /// encryption should take place and if the server should get the player
     /// data from a proxy.
@@ -121,7 +114,7 @@ pub struct Config {
     /// # Default Value
     ///
     /// `vec![Dimension::default()]`
-    pub dimensions: Vec<Dimension>,
+    pub dimensions: Arc<[Dimension]>,
     /// The list of [`Biome`]s usable on the server.
     ///
     /// The biomes returned by [`SharedServer::biomes`] will be in the same
@@ -138,15 +131,26 @@ pub struct Config {
     /// # Default Value
     ///
     /// `vec![Biome::default()]`.
-    pub biomes: Vec<Biome>,
+    pub biomes: Arc<[Biome]>,
 }
 
-impl Config {
-    /// See [`Self::world`].
-    #[must_use]
-    pub fn with_world(mut self, world: World) -> Self {
-        self.world = world;
-        self
+impl<A: AsyncCallbacks> ServerPlugin<A> {
+    pub fn new(callbacks: impl Into<Arc<A>>) -> Self {
+        Self {
+            callbacks: callbacks.into(),
+            tokio_handle: None,
+            max_connections: 1024,
+            address: SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 25565).into(),
+            tps: DEFAULT_TPS,
+            connection_mode: ConnectionMode::Online {
+                prevent_proxy_connections: true,
+            },
+            compression_threshold: Some(256),
+            incoming_capacity: 2097152, // 2 MiB
+            outgoing_capacity: 8388608, // 8 MiB
+            dimensions: [Dimension::default()].as_slice().into(),
+            biomes: [Biome::default()].as_slice().into(),
+        }
     }
 
     /// See [`Self::tokio_handle`].
@@ -173,7 +177,7 @@ impl Config {
     /// See [`Self::tick_rate`].
     #[must_use]
     pub fn with_tick_rate(mut self, tick_rate: i64) -> Self {
-        self.tick_rate = tick_rate;
+        self.tps = tick_rate;
         self
     }
 
@@ -207,16 +211,30 @@ impl Config {
 
     /// See [`Self::dimensions`].
     #[must_use]
-    pub fn with_dimensions(mut self, dimensions: impl Into<Vec<Dimension>>) -> Self {
+    pub fn with_dimensions(mut self, dimensions: impl Into<Arc<[Dimension]>>) -> Self {
         self.dimensions = dimensions.into();
         self
     }
 
     /// See [`Self::biomes`].
     #[must_use]
-    pub fn with_biomes(mut self, biomes: impl Into<Vec<Biome>>) -> Self {
+    pub fn with_biomes(mut self, biomes: impl Into<Arc<[Biome]>>) -> Self {
         self.biomes = biomes.into();
         self
+    }
+}
+
+impl<A: AsyncCallbacks + Default> Default for ServerPlugin<A> {
+    fn default() -> Self {
+        Self::new(A::default())
+    }
+}
+
+impl<A: AsyncCallbacks> Plugin for ServerPlugin<A> {
+    fn build(&self, app: &mut App) {
+        if let Err(e) = crate::server::build_plugin(self, app) {
+            error!("failed to build Valence plugin: {e:#}");
+        }
     }
 }
 
@@ -305,29 +323,9 @@ pub trait AsyncCallbacks: Send + Sync + 'static {
 /// The default async callbacks.
 impl AsyncCallbacks for () {}
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            world: World::default(),
-            tokio_handle: None,
-            max_connections: 1024,
-            address: SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 25565).into(),
-            tick_rate: 20,
-            connection_mode: ConnectionMode::Online {
-                prevent_proxy_connections: true,
-            },
-            compression_threshold: Some(256),
-            incoming_capacity: 2097152, // 2 MiB
-            outgoing_capacity: 8388608, // 8 MiB
-            dimensions: vec![Dimension::default()],
-            biomes: vec![Biome::default()],
-        }
-    }
-}
-
 /// Describes how new connections to the server are handled.
-#[non_exhaustive]
 #[derive(Clone, PartialEq)]
+#[non_exhaustive]
 pub enum ConnectionMode {
     /// The "online mode" fetches all player data (username, UUID, and skin)
     /// from the [configured session server] and enables encryption.
@@ -387,7 +385,7 @@ pub enum ConnectionMode {
     Velocity {
         /// The secret key used to prevent connections from outside Velocity.
         /// The proxy and Valence must be configured to use the same secret key.
-        secret: String,
+        secret: Arc<str>,
     },
 }
 
