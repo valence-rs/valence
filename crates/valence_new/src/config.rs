@@ -385,7 +385,7 @@ pub enum ConnectionMode {
     Velocity {
         /// The secret key used to prevent connections from outside Velocity.
         /// The proxy and Valence must be configured to use the same secret key.
-        secret: String,
+        secret: Arc<str>,
     },
 }
 
