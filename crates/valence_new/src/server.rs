@@ -40,7 +40,7 @@ use crate::player_list::{update_player_list, PlayerList};
 use crate::server::connect::do_accept_loop;
 use crate::Despawned;
 
-mod byte_channel;
+pub(crate) mod byte_channel;
 mod connect;
 mod packet_manager;
 
@@ -220,6 +220,12 @@ impl SharedServer {
     {
         self.0.connection_sema.close();
         *self.0.shutdown_result.lock().unwrap() = Some(res.map_err(|e| e.into()));
+    }
+
+    /// Forcefully aquires a permit to connect to the server. This is useful
+    /// for testing.
+    pub(crate) fn force_aquire_owned(&self) -> OwnedSemaphorePermit {
+        self.0.connection_sema.clone().try_acquire_owned().unwrap()
     }
 }
 
