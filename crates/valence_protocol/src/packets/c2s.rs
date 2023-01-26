@@ -133,8 +133,11 @@ pub mod play {
         pub timestamp: u64,
         pub salt: u64,
         pub argument_signatures: Vec<CommandArgumentSignature<'a>>,
-        pub signed_preview: bool,
-        pub acknowledgement: MessageAcknowledgment<'a>,
+        pub message_count: VarInt,
+        // This is a bitset of 20; each bit represents one
+        // of the last 20 messages received and whether or not
+        // the message was acknowledged by the client
+        pub acknowledgement: &'a [u8; 3],
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]

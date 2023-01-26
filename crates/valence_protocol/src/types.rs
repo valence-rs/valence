@@ -37,7 +37,7 @@ pub struct MessageAcknowledgmentEntry<'a> {
 #[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct CommandArgumentSignature<'a> {
     pub argument_name: &'a str,
-    pub signature: &'a [u8],
+    pub signature: &'a [u8; 256],
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
