@@ -488,6 +488,13 @@ pub mod play {
     pub struct PingPlay(pub i32);
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x2f]
+    pub struct PlaceGhostRecipe<'a> {
+        pub window_id: u8,
+        pub recipe: Ident<&'a str>,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x30]
     pub struct PlayerAbilitiesS2c {
         pub flags: PlayerAbilitiesFlags,
@@ -814,6 +821,7 @@ pub mod play {
             OpenScreen,
             OpenSignEditor,
             PingPlay,
+            PlaceGhostRecipe<'a>,
             PlayerAbilitiesS2c,
             PlayerChatMessage<'a>,
             CombatDeath,
