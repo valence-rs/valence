@@ -9,9 +9,9 @@ use crate::item::ItemStack;
 use crate::raw_bytes::RawBytes;
 use crate::text::Text;
 use crate::types::{
-    AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, EntityEffectFlags, EntityFeetEyes,
-    GameEventKind, GameMode, GlobalPos, Hand, LookAtEntity, PlayerAbilitiesFlags, SignedProperty, SoundCategory,
-    Statistic, SyncPlayerPosLookFlags, TagGroup,
+    AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, EntityEffectFlags,
+    FeetOrEyes, GameEventKind, GameMode, GlobalPos, Hand, LookAtEntity, PlayerAbilitiesFlags,
+    SignedProperty, SoundCategory, Statistic, SyncPlayerPosLookFlags, TagGroup,
 };
 use crate::username::Username;
 use crate::var_int::VarInt;
@@ -518,7 +518,7 @@ pub mod play {
     #[derive(Copy, Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x37]
     pub struct LookAt {
-        pub feet_eyes: EntityFeetEyes,
+        pub feet_eyes: FeetOrEyes,
         pub target_position: [f64; 3],
         pub entity_to_face: Option<LookAtEntity>,
     }

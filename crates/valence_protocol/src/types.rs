@@ -389,7 +389,7 @@ pub struct EntityEffectFlags {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
-pub enum EntityFeetEyes {
+pub enum FeetOrEyes {
     Feet,
     Eyes,
 }
@@ -397,5 +397,5 @@ pub enum EntityFeetEyes {
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
 pub struct LookAtEntity {
     pub entity_id: VarInt,
-    pub entity_feet_eyes: EntityFeetEyes,
+    pub entity_feet_eyes: FeetOrEyes,
 }
