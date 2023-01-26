@@ -479,7 +479,9 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x2b]
-    pub struct OpenBook(pub Hand);
+    pub struct OpenBook {
+        pub hand: Hand,
+    }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x2c]
@@ -491,11 +493,15 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x2d]
-    pub struct OpenSignEditor(pub BlockPos);
+    pub struct OpenSignEditor {
+        pub location: BlockPos,
+    }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x2e]
-    pub struct PingPlay(pub i32);
+    pub struct PingPlay {
+        pub id: i32,
+    }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x2f]
@@ -523,7 +529,9 @@ pub mod play {
 
     #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x35]
-    pub struct PlayerInfoRemove(pub Vec<Uuid>);
+    pub struct PlayerInfoRemove {
+        pub players: Vec<Uuid>,
+    }
 
     #[derive(Copy, Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x37]
@@ -626,7 +634,9 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x40]
-    pub struct SelectAdvancementsTab<'a>(Option<Ident<&'a str>>);
+    pub struct SelectAdvancementsTab<'a> {
+        pub identifier: Option<Ident<&'a str>>,
+    }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x41]
@@ -638,11 +648,15 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x42]
-    pub struct SetActionBarText(pub Text);
+    pub struct SetActionBarText {
+        pub action_bar_text: Text,
+    }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x43]
-    pub struct SetBorderCenter(pub [f64; 2]);
+    pub struct SetBorderCenter {
+        pub xz_position: [f64; 2],
+    }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x44]
@@ -654,19 +668,27 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x45]
-    pub struct SetBorderSize(pub f64);
+    pub struct SetBorderSize {
+        pub diameter: f64,
+    }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x46]
-    pub struct SetBorderWarningDelay(pub VarInt);
+    pub struct SetBorderWarningDelay {
+        pub warning_time: VarInt,
+    }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x47]
-    pub struct SetBorderWarningDistance(pub VarInt);
+    pub struct SetBorderWarningDistance {
+        pub warning_blocks: VarInt,
+    }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x48]
-    pub struct SetCamera(pub VarInt);
+    pub struct SetCamera {
+        pub camera_id: VarInt,
+    }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x49]
@@ -683,7 +705,9 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x4b]
-    pub struct SetRenderDistance(pub VarInt);
+    pub struct SetRenderDistance {
+        pub view_distance: VarInt,
+    }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x4c]
@@ -760,7 +784,9 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x59]
-    pub struct SetSubtitleText(pub Text);
+    pub struct SetSubtitleText {
+        pub subtitle_text: Text,
+    }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x5a]
@@ -775,7 +801,9 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x5b]
-    pub struct SetTitleText(pub Text);
+    pub struct SetTitleText {
+        pub title_text: Text,
+    }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x5c]
@@ -874,7 +902,9 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, Decode, EncodePacket, DecodePacket)]
     #[packet_id = 0x6a]
-    pub struct UpdateTags<'a>(pub Vec<TagGroup<'a>>);
+    pub struct UpdateTags<'a> {
+        pub tags: Vec<TagGroup<'a>>,
+    }
 
     packet_enum! {
         #[derive(Clone)]

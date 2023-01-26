@@ -610,10 +610,12 @@ impl<C: Config> Client<C> {
         let title = title.into();
         let subtitle = subtitle.into();
 
-        self.queue_packet(&SetTitleText(title));
+        self.queue_packet(&SetTitleText { title_text: title });
 
         if !subtitle.is_empty() {
-            self.queue_packet(&SetSubtitleText(subtitle));
+            self.queue_packet(&SetSubtitleText {
+                subtitle_text: subtitle,
+            });
         }
 
         if let Some(anim) = animation.into() {
@@ -623,7 +625,9 @@ impl<C: Config> Client<C> {
 
     /// Sets the action bar for this client.
     pub fn set_action_bar(&mut self, text: impl Into<Text>) {
-        self.queue_packet(&SetActionBarText(text.into()));
+        self.queue_packet(&SetActionBarText {
+            action_bar_text: text.into(),
+        });
     }
 
     /// Sets the attack cooldown speed.
@@ -1046,7 +1050,9 @@ impl<C: Config> Client<C> {
         } else {
             if self.view_distance != self.old_view_distance {
                 // Change the render distance fog.
-                send.append_packet(&SetRenderDistance(VarInt(self.view_distance.into())))?;
+                send.append_packet(&SetRenderDistance {
+                    view_distance: VarInt(self.view_distance.into()),
+                })?;
             }
 
             if self.bits.respawn() {

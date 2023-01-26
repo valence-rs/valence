@@ -120,7 +120,9 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x02]
-    pub struct ChangeDifficulty(pub Difficulty);
+    pub struct ChangeDifficulty {
+        pub new_difficulty: Difficulty,
+    }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x03]
@@ -252,7 +254,9 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x12]
-    pub struct LockDifficulty(pub bool);
+    pub struct LockDifficulty {
+        pub locked: bool,
+    }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x13]
@@ -280,7 +284,9 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x16]
-    pub struct SetPlayerOnGround(pub bool);
+    pub struct SetPlayerOnGround {
+        pub on_ground: bool,
+    }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x17]
@@ -477,7 +483,9 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x2f]
-    pub struct SwingArm(pub Hand);
+    pub struct SwingArm {
+        pub hand: Hand,
+    }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x30]
