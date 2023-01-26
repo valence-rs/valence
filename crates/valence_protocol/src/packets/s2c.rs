@@ -483,6 +483,10 @@ pub mod play {
     #[packet_id = 0x2d]
     pub struct OpenSignEditor(pub BlockPos);
 
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x2e]
+    pub struct PingPlay(pub i32);
+
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x30]
     pub struct PlayerAbilitiesS2c {
@@ -809,6 +813,7 @@ pub mod play {
             OpenBook,
             OpenScreen,
             OpenSignEditor,
+            PingPlay,
             PlayerAbilitiesS2c,
             PlayerChatMessage<'a>,
             CombatDeath,
