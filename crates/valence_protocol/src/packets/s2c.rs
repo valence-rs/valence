@@ -630,6 +630,30 @@ pub mod play {
     #[packet_id = 0x42]
     pub struct SetActionBarText(pub Text);
 
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x43]
+    pub struct SetBorderCenter(pub [f64; 2]);
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x44]
+    pub struct SetBorderLerpSize {
+        pub old_diameter: f64,
+        pub new_diameter: f64,
+        pub speed: VarLong,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x45]
+    pub struct SetBorderSize(pub f64);
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x46]
+    pub struct SetBorderWarningDelay(pub VarInt);
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x47]
+    pub struct SetBorderWarningDistance(pub VarInt);
+
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x49]
     pub struct SetHeldItemS2c {
@@ -869,6 +893,11 @@ pub mod play {
             SelectAdvancementsTab<'a>,
             ServerData<'a>,
             SetActionBarText,
+            SetBorderCenter,
+            SetBorderLerpSize,
+            SetBorderSize,
+            SetBorderWarningDelay,
+            SetBorderWarningDistance,
             SetHeldItemS2c,
             SetCenterChunk,
             SetRenderDistance,
