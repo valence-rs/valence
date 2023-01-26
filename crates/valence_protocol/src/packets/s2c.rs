@@ -654,6 +654,10 @@ pub mod play {
     #[packet_id = 0x47]
     pub struct SetBorderWarningDistance(pub VarInt);
 
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x48]
+    pub struct SetCamera(pub VarInt);
+
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x49]
     pub struct SetHeldItemS2c {
@@ -898,6 +902,7 @@ pub mod play {
             SetBorderSize,
             SetBorderWarningDelay,
             SetBorderWarningDistance,
+            SetCamera,
             SetHeldItemS2c,
             SetCenterChunk,
             SetRenderDistance,
