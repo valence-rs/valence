@@ -9,9 +9,9 @@ use crate::item::ItemStack;
 use crate::raw_bytes::RawBytes;
 use crate::text::Text;
 use crate::types::{
-    AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, GameEventKind, GameMode,
-    GlobalPos, Hand, PlayerAbilitiesFlags, SignedProperty, SoundCategory, Statistic,
-    SyncPlayerPosLookFlags, TagGroup,
+    AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, EntityEffectFlags,
+    GameEventKind, GameMode, GlobalPos, Hand, PlayerAbilitiesFlags, SignedProperty, SoundCategory,
+    Statistic, SyncPlayerPosLookFlags, TagGroup,
 };
 use crate::username::Username;
 use crate::var_int::VarInt;
@@ -772,6 +772,17 @@ pub mod play {
         pub features: Vec<Ident<&'a str>>,
     }
 
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x68]
+    pub struct EntityEffect {
+        pub entity_id: VarInt,
+        pub effect_id: VarInt,
+        pub amplifier: u8,
+        pub duration: VarInt,
+        pub flags: EntityEffectFlags,
+        pub factor_codec: Option<Compound>,
+    }
+
     #[derive(Clone, Debug, Encode, Decode, EncodePacket, DecodePacket)]
     #[packet_id = 0x69]
     pub struct DeclareRecipes<'a> {
@@ -862,6 +873,7 @@ pub mod play {
             UpdateAdvancements<'a>,
             UpdateAttributes<'a>,
             FeatureFlags<'a>,
+            EntityEffect,
             DeclareRecipes<'a>,
             UpdateTags<'a>,
         }

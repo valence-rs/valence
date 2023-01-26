@@ -377,3 +377,13 @@ pub struct Statistic {
     pub statistic_id: VarInt,
     pub value: VarInt,
 }
+
+#[bitfield(u8)]
+#[derive(PartialEq, Eq, Encode, Decode)]
+pub struct EntityEffectFlags {
+    pub is_ambient: bool,
+    pub show_particles: bool,
+    pub show_icon: bool,
+    #[bits(5)]
+    _pad: u8,
+}
