@@ -14,6 +14,8 @@ mod packet;
 pub mod player_list;
 pub mod player_textures;
 pub mod server;
+#[cfg(test)]
+mod unit_test;
 
 /// A [`Component`] for marking entities that should be despawned at the end of
 /// the tick.
