@@ -541,6 +541,13 @@ pub mod play {
     }
 
     #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x3b]
+    pub struct RemoveEntityEffect {
+        pub entity_id: VarInt,
+        pub effect_id: VarInt,
+    }
+
+    #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x3c]
     pub struct ResourcePackS2c<'a> {
         pub url: &'a str,
@@ -844,6 +851,7 @@ pub mod play {
             SynchronizePlayerPosition,
             UpdateRecipeBook<'a>,
             RemoveEntities,
+            RemoveEntityEffect,
             ResourcePackS2c<'a>,
             Respawn<'a>,
             SetHeadRotation,
