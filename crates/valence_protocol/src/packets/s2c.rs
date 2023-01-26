@@ -9,9 +9,10 @@ use crate::item::ItemStack;
 use crate::raw_bytes::RawBytes;
 use crate::text::Text;
 use crate::types::{
-    AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, EntityEffectFlags,
-    FeetOrEyes, GameEventKind, GameMode, GlobalPos, Hand, LookAtEntity, PlayerAbilitiesFlags,
-    SignedProperty, SoundCategory, Statistic, SyncPlayerPosLookFlags, TagGroup,
+    AttributeProperty, BossBarAction, ChunkDataBlockEntity, CommandSuggestionMatch, Difficulty,
+    EntityEffectFlags, FeetOrEyes, GameEventKind, GameMode, GlobalPos, Hand, LookAtEntity,
+    PlayerAbilitiesFlags, SignedProperty, SoundCategory, Statistic, SyncPlayerPosLookFlags,
+    TagGroup, UpdateObjectiveMode, UpdateScoreAction,
 };
 use crate::username::Username;
 use crate::var_int::VarInt;
@@ -217,6 +218,15 @@ pub mod play {
     #[packet_id = 0x0c]
     pub struct ClearTitles {
         pub reset: bool,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x0d]
+    pub struct CommandSuggestionResponse<'a> {
+        pub id: VarInt,
+        pub start: VarInt,
+        pub length: VarInt,
+        pub matches: Vec<CommandSuggestionMatch<'a>>,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -683,10 +693,24 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x4d]
+    pub struct DisplayObjective<'a> {
+        pub position: u8,
+        pub score_name: &'a str,
+    }
+
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x4e]
     pub struct SetEntityMetadata<'a> {
         pub entity_id: VarInt,
         pub metadata: RawBytes<'a>,
+    }
+
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x4f]
+    pub struct LinkEntities {
+        pub attached_entity_id: i32,
+        pub holding_entity_id: i32,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -713,11 +737,25 @@ pub mod play {
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x54]
+    pub struct UpdateObjectives<'a> {
+        pub objective_name: &'a str,
+        pub mode: UpdateObjectiveMode,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x55]
     pub struct SetPassengers {
         /// Vehicle's entity id
         pub entity_id: VarInt,
         pub passengers: Vec<VarInt>,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x57]
+    pub struct UpdateScore<'a> {
+        pub entity_name: &'a str,
+        pub action: UpdateScoreAction<'a>,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -854,6 +892,7 @@ pub mod play {
             BossBar,
             SetDifficulty,
             ClearTitles,
+            CommandSuggestionResponse<'a>,
             Commands<'a>,
             CloseContainerS2c,
             SetContainerContent,
@@ -907,12 +946,16 @@ pub mod play {
             SetCenterChunk,
             SetRenderDistance,
             SetDefaultSpawnPosition,
+            DisplayObjective<'a>,
             SetEntityMetadata<'a>,
+            LinkEntities,
             SetEntityVelocity,
             SetEquipment,
             SetExperience,
             SetHealth,
+            UpdateObjectives<'a>,
             SetPassengers,
+            UpdateScore<'a>,
             SetSubtitleText,
             UpdateTime,
             SetTitleText,

@@ -399,3 +399,35 @@ pub struct LookAtEntity {
     pub entity_id: VarInt,
     pub entity_feet_eyes: FeetOrEyes,
 }
+
+#[derive(Clone, PartialEq, Debug, Encode, Decode)]
+pub enum UpdateObjectiveMode {
+    Create {
+        objective_value: Text,
+        objective_type: VarInt,
+    },
+    Remove,
+    Update {
+        objective_value: Text,
+        objective_type: VarInt,
+    },
+}
+
+#[derive(Clone, PartialEq, Debug, Encode, Decode)]
+pub enum UpdateScoreAction<'a> {
+    Create {
+        objective_value: &'a str,
+        objective_type: VarInt,
+    },
+    Remove,
+    Update {
+        objective_value: &'a str,
+        objective_type: VarInt,
+    },
+}
+
+#[derive(Clone, PartialEq, Debug, Encode, Decode)]
+pub struct CommandSuggestionMatch<'a> {
+    pub suggested_match: &'a str,
+    pub tooltip: Option<Text>,
+}
