@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.65"
+async-trait = "0.1.60"
 base64 = "0.21.0"
 bevy_app = "0.9.1"
 bevy_ecs = "0.9.1"
