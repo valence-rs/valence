@@ -1,9 +1,9 @@
+use bevy_app::App;
 use bevy_ecs::prelude::*;
-use bevy_ecs::schedule::ShouldRun;
 use tracing::info;
 use valence_new::client::event::{default_event_handler, StartSneaking, UseItemOnBlock};
 use valence_new::client::{despawn_disconnected_clients, Client};
-use valence_new::config::{Config, ConnectionMode};
+use valence_new::config::ServerPlugin;
 use valence_new::dimension::DimensionId;
 use valence_new::instance::Chunk;
 use valence_new::inventory::{Inventory, InventoryKind, OpenInventory};
@@ -17,24 +17,22 @@ struct GameState {
     inventory: usize,
 }
 
-fn main() -> anyhow::Result<()> {
+fn main() {
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::DEBUG)
         .init();
 
-    valence_new::run_server(
-        Config::default().with_connection_mode(ConnectionMode::Offline),
-        SystemStage::parallel()
-            .with_system(setup.with_run_criteria(ShouldRun::once))
-            .with_system(init_clients)
-            .with_system(default_event_handler())
-            .with_system(despawn_disconnected_clients)
-            // .with_system(open_inventory_test)
-            // .with_system(blink_items)
-            .with_system(open_inventory_on_interact)
-            .with_system(toggle_gamemode_on_sneak),
-        (),
-    )
+    App::new()
+        .add_plugin(ServerPlugin::new(()))
+        .add_startup_system(setup)
+        .add_system(init_clients)
+        .add_system(default_event_handler)
+        .add_system(despawn_disconnected_clients)
+        // .add_system(open_inventory_test)
+        // .add_system(blink_items)
+        .add_system(open_inventory_on_interact)
+        .add_system(toggle_gamemode_on_sneak)
+        .run();
 }
 
 fn setup(world: &mut World) {

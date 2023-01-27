@@ -1,9 +1,8 @@
+use bevy_app::App;
 use bevy_ecs::prelude::*;
-use bevy_ecs::schedule::ShouldRun;
-use tracing::error;
 use valence_new::client::event::default_event_handler;
 use valence_new::client::{despawn_disconnected_clients, Client};
-use valence_new::config::{Config, ServerPlugin};
+use valence_new::config::ServerPlugin;
 use valence_new::dimension::DimensionId;
 use valence_new::instance::{Chunk, Instance};
 use valence_new::protocol::types::GameMode;
@@ -12,20 +11,18 @@ use valence_protocol::block::BlockState;
 
 const SPAWN_Y: i32 = 64;
 
-fn main() -> anyhow::Result<()> {
+fn main() {
     tracing_subscriber::fmt().init();
 
-    valence_new::run_server(
-        Config::default(),
-        SystemStage::parallel()
-            .with_system(setup.with_run_criteria(ShouldRun::once))
-            .with_system(init_clients)
-            .with_system(tick)
-            .with_system(default_event_handler())
-            .with_system(despawn_disconnected_clients)
-            .with_system(teleport_oob_clients),
-        (),
-    )
+    App::new()
+        .add_plugin(ServerPlugin::new(()))
+        .add_startup_system(setup)
+        .add_system(init_clients)
+        .add_system(tick)
+        .add_system(default_event_handler)
+        .add_system(despawn_disconnected_clients)
+        .add_system(teleport_oob_clients)
+        .run();
 }
 
 fn setup(world: &mut World) {
