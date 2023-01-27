@@ -425,7 +425,7 @@
   },
   {
     "key": "gui.chatReport.comments",
-    "english_translation": "Comments edit box"
+    "english_translation": "Comments"
   },
   {
     "key": "gui.chatReport.read_info",
@@ -456,7 +456,35 @@
     "english_translation": "Leave and Discard Report"
   },
   {
+    "key": "gui.chatReport.discard.draft",
+    "english_translation": "Save as Draft"
+  },
+  {
     "key": "gui.chatReport.discard.return",
+    "english_translation": "Continue Editing"
+  },
+  {
+    "key": "gui.chatReport.draft.title",
+    "english_translation": "Edit draft chat report?"
+  },
+  {
+    "key": "gui.chatReport.draft.content",
+    "english_translation": "Would you like to continue editing the existing report or discard it and create a new one?"
+  },
+  {
+    "key": "gui.chatReport.draft.quittotitle.title",
+    "english_translation": "You have a draft chat report that will be lost if you quit"
+  },
+  {
+    "key": "gui.chatReport.draft.quittotitle.content",
+    "english_translation": "Would you like to continue editing it or discard it?"
+  },
+  {
+    "key": "gui.chatReport.draft.discard",
+    "english_translation": "Discard"
+  },
+  {
+    "key": "gui.chatReport.draft.edit",
     "english_translation": "Continue Editing"
   },
   {
@@ -601,7 +629,11 @@
   },
   {
     "key": "gui.chatSelection.fold",
-    "english_translation": "%s unrelated messages hidden"
+    "english_translation": "%s message(s) hidden"
+  },
+  {
+    "key": "gui.chatSelection.join",
+    "english_translation": "%s joined the chat"
   },
   {
     "key": "gui.multiLineEditBox.character_limit",
@@ -956,6 +988,10 @@
     "english_translation": "Cheats"
   },
   {
+    "key": "selectWorld.experimental",
+    "english_translation": "Experimental"
+  },
+  {
     "key": "selectWorld.customizeType",
     "english_translation": "Customize"
   },
@@ -1013,7 +1049,7 @@
   },
   {
     "key": "selectWorld.backupEraseCache",
-    "english_translation": "Erase cached data"
+    "english_translation": "Erase Cached Data"
   },
   {
     "key": "selectWorld.backupJoinConfirmButton",
@@ -1624,20 +1660,40 @@
     "english_translation": "Error importing settings"
   },
   {
-    "key": "selectWorld.import_worldgen_settings.experimental.title",
+    "key": "selectWorld.warning.experimental.title",
     "english_translation": "Warning! These settings are using experimental features"
   },
   {
-    "key": "selectWorld.import_worldgen_settings.experimental.question",
+    "key": "selectWorld.warning.experimental.question",
     "english_translation": "These settings are experimental and could one day stop working. Do you wish to proceed?"
   },
   {
-    "key": "selectWorld.import_worldgen_settings.deprecated.title",
+    "key": "selectWorld.warning.deprecated.title",
     "english_translation": "Warning! These settings are using deprecated features"
   },
   {
-    "key": "selectWorld.import_worldgen_settings.deprecated.question",
+    "key": "selectWorld.warning.deprecated.question",
     "english_translation": "Some features used are deprecated and will stop working in the future. Do you wish to proceed?"
+  },
+  {
+    "key": "selectWorld.experimental.title",
+    "english_translation": "Experimental Features Warning"
+  },
+  {
+    "key": "selectWorld.experimental.message",
+    "english_translation": "Be careful!\nSome of the selected packs require features that are still under development. Your world might crash, break or not work with future updates."
+  },
+  {
+    "key": "selectWorld.experimental.details",
+    "english_translation": "Details"
+  },
+  {
+    "key": "selectWorld.experimental.details.title",
+    "english_translation": "Experimental feature requirements"
+  },
+  {
+    "key": "selectWorld.experimental.details.entry",
+    "english_translation": "Required experimental features: %s"
   },
   {
     "key": "generator.custom",
@@ -1782,6 +1838,26 @@
   {
     "key": "lanServer.otherPlayers",
     "english_translation": "Settings for Other Players"
+  },
+  {
+    "key": "lanServer.port",
+    "english_translation": "Port Number"
+  },
+  {
+    "key": "lanServer.port.unavailable",
+    "english_translation": "Port not available.\nLeave the edit box empty or enter a different number between 1024 and 65535."
+  },
+  {
+    "key": "lanServer.port.unavailable.new",
+    "english_translation": "Port not available.\nLeave the edit box empty or enter a different number between %s and %s."
+  },
+  {
+    "key": "lanServer.port.invalid",
+    "english_translation": "Not a valid port.\nLeave the edit box empty or enter a number between 1024 and 65535."
+  },
+  {
+    "key": "lanServer.port.invalid.new",
+    "english_translation": "Not a valid port.\nLeave the edit box empty or enter a number between %s and %s."
   },
   {
     "key": "multiplayerWarning.header",
@@ -2036,10 +2112,6 @@
     "english_translation": "Incomplete set of tags received from server.\nPlease contact server operator."
   },
   {
-    "key": "multiplayer.disconnect.missing_public_key",
-    "english_translation": "Missing profile public key.\nThis server requires secure profiles."
-  },
-  {
     "key": "multiplayer.disconnect.expired_public_key",
     "english_translation": "Expired profile public key. Check that your system time is synchronized, and try restarting your game."
   },
@@ -2076,26 +2148,6 @@
     "english_translation": "Messages sent on this server may be modified and might not reflect the original message"
   },
   {
-    "key": "chatPreview.warning.title",
-    "english_translation": "This server uses Chat Preview"
-  },
-  {
-    "key": "chatPreview.warning.content",
-    "english_translation": "Chat Preview allows the server to see your messages before they are sent to other players. This allows a server to send you a preview of your chat messages with custom modifications and styling applied.\n\nThe Chat Preview behavior can be changed in your Chat Settings. Current setting is: [%s]"
-  },
-  {
-    "key": "chatPreview.warning.check",
-    "english_translation": "Do not notify again for this server"
-  },
-  {
-    "key": "chatPreview.warning.toast.title",
-    "english_translation": "Chat Preview is enabled"
-  },
-  {
-    "key": "chatPreview.warning.toast",
-    "english_translation": "This server uses Chat Preview and can see your messages before they are sent to other players. You can turn this off in Chat Settings."
-  },
-  {
     "key": "chat.editBox",
     "english_translation": "chat"
   },
@@ -2124,8 +2176,12 @@
     "english_translation": "Chat disabled due to expired profile public key. Please try reconnecting."
   },
   {
-    "key": "chat.previewInput",
-    "english_translation": "Press [%s] to preview"
+    "key": "chat.disabled.chain_broken",
+    "english_translation": "Chat disabled due to broken chain. Please try reconnecting."
+  },
+  {
+    "key": "chat.disabled.missingProfileKey",
+    "english_translation": "Chat disabled due to missing profile public key. Please try reconnecting."
   },
   {
     "key": "chat.type.text",
@@ -2212,24 +2268,32 @@
     "english_translation": "[%s]"
   },
   {
+    "key": "chat.tag.system",
+    "english_translation": "Server message. Cannot be reported."
+  },
+  {
+    "key": "chat.tag.system_single_player",
+    "english_translation": "Server message."
+  },
+  {
     "key": "chat.tag.not_secure",
-    "english_translation": "This message is not secure, which means that it might have been modified by the server"
+    "english_translation": "Unverified message. Cannot be reported."
   },
   {
     "key": "chat.tag.modified",
-    "english_translation": "This message has been modified by the server."
-  },
-  {
-    "key": "chat.tag.modified.original",
-    "english_translation": "Original text: %s"
-  },
-  {
-    "key": "chat.tag.filtered",
-    "english_translation": "This message has been filtered by the server."
+    "english_translation": "Message modified by the server. Original:"
   },
   {
     "key": "chat.filtered_full",
     "english_translation": "The server has hidden your message for some players."
+  },
+  {
+    "key": "chat.filtered",
+    "english_translation": "Filtered by the server."
+  },
+  {
+    "key": "chat.deleted_marker",
+    "english_translation": "This chat message has been deleted by the server."
   },
   {
     "key": "menu.playdemo",
@@ -2912,30 +2976,6 @@
     "english_translation": "Unfocused Height"
   },
   {
-    "key": "options.chatPreview",
-    "english_translation": "Chat Preview"
-  },
-  {
-    "key": "options.chatPreview.live",
-    "english_translation": "While Typing"
-  },
-  {
-    "key": "options.chatPreview.confirm",
-    "english_translation": "When Sending"
-  },
-  {
-    "key": "options.chatPreview.tooltip.off",
-    "english_translation": "Any modifications applied to your chat messages by a server will not be previewed and will be treated as insecure."
-  },
-  {
-    "key": "options.chatPreview.tooltip.live",
-    "english_translation": "If a server uses Chat Previews: Any modifications applied to your chat messages by a server will be dynamically sent for previewing as the chat message is typed."
-  },
-  {
-    "key": "options.chatPreview.tooltip.confirm",
-    "english_translation": "If a server uses Chat Previews: A chat preview is only generated when attempting to send a message that does not have a preview or is waiting for a preview.\nSending the message requires confirmation."
-  },
-  {
     "key": "options.onlyShowSecureChat",
     "english_translation": "Only Show Secure Chat"
   },
@@ -2964,8 +3004,36 @@
     "english_translation": "Text Background Opacity"
   },
   {
+    "key": "options.accessibility.panorama_speed",
+    "english_translation": "Panorama Scroll Speed"
+  },
+  {
     "key": "options.accessibility.link",
     "english_translation": "Accessibility Guide"
+  },
+  {
+    "key": "options.telemetry",
+    "english_translation": "Telemetry Data"
+  },
+  {
+    "key": "options.telemetry.button",
+    "english_translation": "Data Collection"
+  },
+  {
+    "key": "options.telemetry.state.none",
+    "english_translation": "None"
+  },
+  {
+    "key": "options.telemetry.state.minimal",
+    "english_translation": "Minimal"
+  },
+  {
+    "key": "options.telemetry.state.all",
+    "english_translation": "All"
+  },
+  {
+    "key": "options.telemetry.button.tooltip",
+    "english_translation": "\"%s\" includes only the required data.\n\"%s\" includes optional, as well as the required data."
   },
   {
     "key": "options.audioDevice",
@@ -3106,6 +3174,10 @@
   {
     "key": "options.autoJump",
     "english_translation": "Auto-Jump"
+  },
+  {
+    "key": "options.operatorItemsTab",
+    "english_translation": "Operator Items Tab"
   },
   {
     "key": "options.autoSuggestCommands",
@@ -3844,12 +3916,20 @@
     "english_translation": "World Specific Resources"
   },
   {
+    "key": "resourcePack.programmer_art.name",
+    "english_translation": "Programmer Art"
+  },
+  {
     "key": "resourcePack.broken_assets",
     "english_translation": "BROKEN ASSETS DETECTED"
   },
   {
+    "key": "resourcePack.vanilla.name",
+    "english_translation": "Default"
+  },
+  {
     "key": "resourcePack.vanilla.description",
-    "english_translation": "The default resources for Minecraft"
+    "english_translation": "The default look and feel of Minecraft"
   },
   {
     "key": "resourcePack.load_fail",
@@ -3876,12 +3956,28 @@
     "english_translation": "Reset to Default"
   },
   {
+    "key": "dataPack.vanilla.name",
+    "english_translation": "Default"
+  },
+  {
     "key": "dataPack.vanilla.description",
     "english_translation": "The default data for Minecraft"
   },
   {
+    "key": "dataPack.bundle.description",
+    "english_translation": "Enables experimental Bundle item"
+  },
+  {
+    "key": "dataPack.update_1_20.description",
+    "english_translation": "New features and content for Minecraft 1.20"
+  },
+  {
     "key": "sign.edit",
     "english_translation": "Edit Sign Message"
+  },
+  {
+    "key": "hanging_sign.edit",
+    "english_translation": "Edit Hanging Sign Message"
   },
   {
     "key": "book.pageIndicator",
@@ -4056,6 +4152,14 @@
     "english_translation": "Mangrove Planks"
   },
   {
+    "key": "block.minecraft.bamboo_planks",
+    "english_translation": "Bamboo Planks"
+  },
+  {
+    "key": "block.minecraft.bamboo_mosaic",
+    "english_translation": "Bamboo Mosaic"
+  },
+  {
     "key": "block.minecraft.oak_sapling",
     "english_translation": "Oak Sapling"
   },
@@ -4110,6 +4214,10 @@
   {
     "key": "block.minecraft.mangrove_door",
     "english_translation": "Mangrove Door"
+  },
+  {
+    "key": "block.minecraft.bamboo_door",
+    "english_translation": "Bamboo Door"
   },
   {
     "key": "block.minecraft.bedrock",
@@ -4252,6 +4360,10 @@
     "english_translation": "Muddy Mangrove Roots"
   },
   {
+    "key": "block.minecraft.bamboo_block",
+    "english_translation": "Block of Bamboo"
+  },
+  {
     "key": "block.minecraft.stripped_oak_log",
     "english_translation": "Stripped Oak Log"
   },
@@ -4278,6 +4390,10 @@
   {
     "key": "block.minecraft.stripped_mangrove_log",
     "english_translation": "Stripped Mangrove Log"
+  },
+  {
+    "key": "block.minecraft.stripped_bamboo_block",
+    "english_translation": "Block of Stripped Bamboo"
   },
   {
     "key": "block.minecraft.stripped_oak_wood",
@@ -4712,6 +4828,14 @@
     "english_translation": "Mangrove Slab"
   },
   {
+    "key": "block.minecraft.bamboo_slab",
+    "english_translation": "Bamboo Slab"
+  },
+  {
+    "key": "block.minecraft.bamboo_mosaic_slab",
+    "english_translation": "Bamboo Mosaic Slab"
+  },
+  {
     "key": "block.minecraft.dark_prismarine_slab",
     "english_translation": "Dark Prismarine Slab"
   },
@@ -4734,6 +4858,10 @@
   {
     "key": "block.minecraft.bookshelf",
     "english_translation": "Bookshelf"
+  },
+  {
+    "key": "block.minecraft.chiseled_bookshelf",
+    "english_translation": "Chiseled Bookshelf"
   },
   {
     "key": "block.minecraft.mossy_cobblestone",
@@ -4765,7 +4893,15 @@
   },
   {
     "key": "block.minecraft.spawner",
-    "english_translation": "Spawner"
+    "english_translation": "Monster Spawner"
+  },
+  {
+    "key": "block.minecraft.spawner.desc1",
+    "english_translation": "Interact with Spawn Egg:"
+  },
+  {
+    "key": "block.minecraft.spawner.desc2",
+    "english_translation": "Sets Mob Type"
   },
   {
     "key": "block.minecraft.respawn_anchor",
@@ -4798,6 +4934,14 @@
   {
     "key": "block.minecraft.mangrove_stairs",
     "english_translation": "Mangrove Stairs"
+  },
+  {
+    "key": "block.minecraft.bamboo_stairs",
+    "english_translation": "Bamboo Stairs"
+  },
+  {
+    "key": "block.minecraft.bamboo_mosaic_stairs",
+    "english_translation": "Bamboo Mosaic Stairs"
   },
   {
     "key": "block.minecraft.dark_prismarine_stairs",
@@ -4884,6 +5028,10 @@
     "english_translation": "Mangrove Sign"
   },
   {
+    "key": "block.minecraft.bamboo_sign",
+    "english_translation": "Bamboo Sign"
+  },
+  {
     "key": "block.minecraft.oak_wall_sign",
     "english_translation": "Oak Wall Sign"
   },
@@ -4910,6 +5058,90 @@
   {
     "key": "block.minecraft.mangrove_wall_sign",
     "english_translation": "Mangrove Wall Sign"
+  },
+  {
+    "key": "block.minecraft.bamboo_wall_sign",
+    "english_translation": "Bamboo Wall Sign"
+  },
+  {
+    "key": "block.minecraft.oak_hanging_sign",
+    "english_translation": "Oak Hanging Sign"
+  },
+  {
+    "key": "block.minecraft.spruce_hanging_sign",
+    "english_translation": "Spruce Hanging Sign"
+  },
+  {
+    "key": "block.minecraft.birch_hanging_sign",
+    "english_translation": "Birch Hanging Sign"
+  },
+  {
+    "key": "block.minecraft.acacia_hanging_sign",
+    "english_translation": "Acacia Hanging Sign"
+  },
+  {
+    "key": "block.minecraft.jungle_hanging_sign",
+    "english_translation": "Jungle Hanging Sign"
+  },
+  {
+    "key": "block.minecraft.crimson_hanging_sign",
+    "english_translation": "Crimson Hanging Sign"
+  },
+  {
+    "key": "block.minecraft.warped_hanging_sign",
+    "english_translation": "Warped Hanging Sign"
+  },
+  {
+    "key": "block.minecraft.dark_oak_hanging_sign",
+    "english_translation": "Dark Oak Hanging Sign"
+  },
+  {
+    "key": "block.minecraft.mangrove_hanging_sign",
+    "english_translation": "Mangrove Hanging Sign"
+  },
+  {
+    "key": "block.minecraft.bamboo_hanging_sign",
+    "english_translation": "Bamboo Hanging Sign"
+  },
+  {
+    "key": "block.minecraft.oak_wall_hanging_sign",
+    "english_translation": "Oak Wall Hanging Sign"
+  },
+  {
+    "key": "block.minecraft.spruce_wall_hanging_sign",
+    "english_translation": "Spruce Wall Hanging Sign"
+  },
+  {
+    "key": "block.minecraft.birch_wall_hanging_sign",
+    "english_translation": "Birch Wall Hanging Sign"
+  },
+  {
+    "key": "block.minecraft.acacia_wall_hanging_sign",
+    "english_translation": "Acacia Wall Hanging Sign"
+  },
+  {
+    "key": "block.minecraft.jungle_wall_hanging_sign",
+    "english_translation": "Jungle Wall Hanging Sign"
+  },
+  {
+    "key": "block.minecraft.dark_oak_wall_hanging_sign",
+    "english_translation": "Dark Oak Wall Hanging Sign"
+  },
+  {
+    "key": "block.minecraft.mangrove_wall_hanging_sign",
+    "english_translation": "Mangrove Wall Hanging Sign"
+  },
+  {
+    "key": "block.minecraft.crimson_wall_hanging_sign",
+    "english_translation": "Crimson Wall Hanging Sign"
+  },
+  {
+    "key": "block.minecraft.warped_wall_hanging_sign",
+    "english_translation": "Warped Wall Hanging Sign"
+  },
+  {
+    "key": "block.minecraft.bamboo_wall_hanging_sign",
+    "english_translation": "Bamboo Wall Hanging Sign"
   },
   {
     "key": "block.minecraft.ladder",
@@ -4984,6 +5216,10 @@
     "english_translation": "Mangrove Pressure Plate"
   },
   {
+    "key": "block.minecraft.bamboo_pressure_plate",
+    "english_translation": "Bamboo Pressure Plate"
+  },
+  {
     "key": "block.minecraft.light_weighted_pressure_plate",
     "english_translation": "Light Weighted Pressure Plate"
   },
@@ -5042,6 +5278,10 @@
   {
     "key": "block.minecraft.mangrove_button",
     "english_translation": "Mangrove Button"
+  },
+  {
+    "key": "block.minecraft.bamboo_button",
+    "english_translation": "Bamboo Button"
   },
   {
     "key": "block.minecraft.snow",
@@ -5240,6 +5480,10 @@
     "english_translation": "Mangrove Fence"
   },
   {
+    "key": "block.minecraft.bamboo_fence",
+    "english_translation": "Bamboo Fence"
+  },
+  {
     "key": "block.minecraft.oak_fence_gate",
     "english_translation": "Oak Fence Gate"
   },
@@ -5266,6 +5510,10 @@
   {
     "key": "block.minecraft.mangrove_fence_gate",
     "english_translation": "Mangrove Fence Gate"
+  },
+  {
+    "key": "block.minecraft.bamboo_fence_gate",
+    "english_translation": "Bamboo Fence Gate"
   },
   {
     "key": "block.minecraft.pumpkin_stem",
@@ -5450,6 +5698,10 @@
   {
     "key": "block.minecraft.mangrove_trapdoor",
     "english_translation": "Mangrove Trapdoor"
+  },
+  {
+    "key": "block.minecraft.bamboo_trapdoor",
+    "english_translation": "Bamboo Trapdoor"
   },
   {
     "key": "block.minecraft.iron_trapdoor",
@@ -6458,6 +6710,14 @@
   {
     "key": "block.minecraft.dragon_head",
     "english_translation": "Dragon Head"
+  },
+  {
+    "key": "block.minecraft.piglin_wall_head",
+    "english_translation": "Piglin Wall Head"
+  },
+  {
+    "key": "block.minecraft.piglin_head",
+    "english_translation": "Piglin Head"
   },
   {
     "key": "block.minecraft.end_gateway",
@@ -8044,6 +8304,14 @@
     "english_translation": "Mangrove Boat with Chest"
   },
   {
+    "key": "item.minecraft.bamboo_raft",
+    "english_translation": "Bamboo Raft"
+  },
+  {
+    "key": "item.minecraft.bamboo_chest_raft",
+    "english_translation": "Bamboo Raft with Chest"
+  },
+  {
     "key": "item.minecraft.leather",
     "english_translation": "Leather"
   },
@@ -8548,6 +8816,10 @@
     "english_translation": "Cat Spawn Egg"
   },
   {
+    "key": "item.minecraft.camel_spawn_egg",
+    "english_translation": "Camel Spawn Egg"
+  },
+  {
     "key": "item.minecraft.cave_spider_spawn_egg",
     "english_translation": "Cave Spider Spawn Egg"
   },
@@ -8584,6 +8856,10 @@
     "english_translation": "Elder Guardian Spawn Egg"
   },
   {
+    "key": "item.minecraft.ender_dragon_spawn_egg",
+    "english_translation": "Ender Dragon Spawn Egg"
+  },
+  {
     "key": "item.minecraft.enderman_spawn_egg",
     "english_translation": "Enderman Spawn Egg"
   },
@@ -8618,6 +8894,10 @@
   {
     "key": "item.minecraft.husk_spawn_egg",
     "english_translation": "Husk Spawn Egg"
+  },
+  {
+    "key": "item.minecraft.iron_golem_spawn_egg",
+    "english_translation": "Iron Golem Spawn Egg"
   },
   {
     "key": "item.minecraft.ravager_spawn_egg",
@@ -8720,6 +9000,10 @@
     "english_translation": "Slime Spawn Egg"
   },
   {
+    "key": "item.minecraft.snow_golem_spawn_egg",
+    "english_translation": "Snow Golem Spawn Egg"
+  },
+  {
     "key": "item.minecraft.spider_spawn_egg",
     "english_translation": "Spider Spawn Egg"
   },
@@ -8774,6 +9058,10 @@
   {
     "key": "item.minecraft.witch_spawn_egg",
     "english_translation": "Witch Spawn Egg"
+  },
+  {
+    "key": "item.minecraft.wither_spawn_egg",
+    "english_translation": "Wither Spawn Egg"
   },
   {
     "key": "item.minecraft.wither_skeleton_spawn_egg",
@@ -9485,11 +9773,11 @@
   },
   {
     "key": "structure_block.mode_info.load",
-    "english_translation": "Load mode - Load from File"
+    "english_translation": "Load Mode - Load from File"
   },
   {
     "key": "structure_block.mode_info.data",
-    "english_translation": "Data mode - Game Logic Marker"
+    "english_translation": "Data Mode - Game Logic Marker"
   },
   {
     "key": "structure_block.mode_info.corner",
@@ -9644,6 +9932,10 @@
     "english_translation": "Durability: %s / %s"
   },
   {
+    "key": "item.disabled",
+    "english_translation": "Disabled item"
+  },
+  {
     "key": "filled_map.mansion",
     "english_translation": "Woodland Explorer Map"
   },
@@ -9718,6 +10010,10 @@
   {
     "key": "entity.minecraft.cat",
     "english_translation": "Cat"
+  },
+  {
+    "key": "entity.minecraft.camel",
+    "english_translation": "Camel"
   },
   {
     "key": "entity.minecraft.cave_spider",
@@ -10029,7 +10325,7 @@
   },
   {
     "key": "entity.minecraft.spawner_minecart",
-    "english_translation": "Minecart with Spawner"
+    "english_translation": "Minecart with Monster Spawner"
   },
   {
     "key": "entity.minecraft.spectral_arrow",
@@ -11916,44 +12212,56 @@
     "english_translation": "Building Blocks"
   },
   {
-    "key": "itemGroup.decorations",
-    "english_translation": "Decoration Blocks"
+    "key": "itemGroup.coloredBlocks",
+    "english_translation": "Colored Blocks"
+  },
+  {
+    "key": "itemGroup.natural",
+    "english_translation": "Natural Blocks"
+  },
+  {
+    "key": "itemGroup.functional",
+    "english_translation": "Functional Blocks"
   },
   {
     "key": "itemGroup.redstone",
-    "english_translation": "Redstone"
+    "english_translation": "Redstone Blocks"
   },
   {
-    "key": "itemGroup.transportation",
-    "english_translation": "Transportation"
+    "key": "itemGroup.op",
+    "english_translation": "Operator Utilities"
   },
   {
-    "key": "itemGroup.misc",
-    "english_translation": "Miscellaneous"
+    "key": "itemGroup.spawnEggs",
+    "english_translation": "Spawn Eggs"
   },
   {
     "key": "itemGroup.search",
     "english_translation": "Search Items"
   },
   {
-    "key": "itemGroup.food",
-    "english_translation": "Foodstuffs"
+    "key": "itemGroup.consumables",
+    "english_translation": "Consumables"
+  },
+  {
+    "key": "itemGroup.foodAndDrink",
+    "english_translation": "Food & Drinks"
   },
   {
     "key": "itemGroup.tools",
-    "english_translation": "Tools"
+    "english_translation": "Tools & Utilities"
   },
   {
     "key": "itemGroup.combat",
     "english_translation": "Combat"
   },
   {
-    "key": "itemGroup.brewing",
-    "english_translation": "Brewing"
+    "key": "itemGroup.crafting",
+    "english_translation": "Crafting"
   },
   {
-    "key": "itemGroup.materials",
-    "english_translation": "Materials"
+    "key": "itemGroup.ingredients",
+    "english_translation": "Ingredients"
   },
   {
     "key": "itemGroup.inventory",
@@ -12094,10 +12402,6 @@
   {
     "key": "item.modifiers.head",
     "english_translation": "When on Head:"
-  },
-  {
-    "key": "attribute.unknown",
-    "english_translation": "Unknown attribute"
   },
   {
     "key": "attribute.modifier.plus.0",
@@ -15088,6 +15392,22 @@
     "english_translation": "Chest opens"
   },
   {
+    "key": "subtitles.chiseled_bookshelf.insert",
+    "english_translation": "Book placed"
+  },
+  {
+    "key": "subtitles.chiseled_bookshelf.insert_enchanted",
+    "english_translation": "Enchanted book placed"
+  },
+  {
+    "key": "subtitles.chiseled_bookshelf.take",
+    "english_translation": "Book taken"
+  },
+  {
+    "key": "subtitles.chiseled_bookshelf.take_enchanted",
+    "english_translation": "Enchanted book taken"
+  },
+  {
     "key": "subtitles.block.chorus_flower.death",
     "english_translation": "Chorus Flower withers"
   },
@@ -15504,6 +15824,50 @@
     "english_translation": "Rowing"
   },
   {
+    "key": "subtitles.entity.camel.ambient",
+    "english_translation": "Camel grunts"
+  },
+  {
+    "key": "subtitles.entity.camel.dash",
+    "english_translation": "Camel yeets"
+  },
+  {
+    "key": "subtitles.entity.camel.dash_ready",
+    "english_translation": "Camel recovers"
+  },
+  {
+    "key": "subtitles.entity.camel.death",
+    "english_translation": "Camel dies"
+  },
+  {
+    "key": "subtitles.entity.camel.eat",
+    "english_translation": "Camel eats"
+  },
+  {
+    "key": "subtitles.entity.camel.hurt",
+    "english_translation": "Camel hurts"
+  },
+  {
+    "key": "subtitles.entity.camel.saddle",
+    "english_translation": "Saddle equips"
+  },
+  {
+    "key": "subtitles.entity.camel.sit",
+    "english_translation": "Camel sits down"
+  },
+  {
+    "key": "subtitles.entity.camel.stand",
+    "english_translation": "Camel stands up"
+  },
+  {
+    "key": "subtitles.entity.camel.step",
+    "english_translation": "Camel steps"
+  },
+  {
+    "key": "subtitles.entity.camel.step_sand",
+    "english_translation": "Camel sands"
+  },
+  {
     "key": "subtitles.entity.cat.ambient",
     "english_translation": "Cat meows"
   },
@@ -15754,6 +16118,10 @@
   {
     "key": "subtitles.entity.enderman.hurt",
     "english_translation": "Enderman hurts"
+  },
+  {
+    "key": "subtitles.entity.enderman.scream",
+    "english_translation": "Enderman screams"
   },
   {
     "key": "subtitles.entity.enderman.stare",
@@ -17028,6 +17396,10 @@
     "english_translation": "Tadpole flops"
   },
   {
+    "key": "subtitles.entity.tadpole.grow_up",
+    "english_translation": "Tadpole grows up"
+  },
+  {
     "key": "subtitles.entity.tadpole.hurt",
     "english_translation": "Tadpole hurts"
   },
@@ -17744,6 +18116,158 @@
     "english_translation": "Rain falls"
   },
   {
+    "key": "telemetry_info.screen.title",
+    "english_translation": "Telemetry Data Collection"
+  },
+  {
+    "key": "telemetry_info.screen.description",
+    "english_translation": "Collecting this data helps us improve Minecraft by guiding us in directions that are relevant to our players.\nYou can also send in additional feedback to help us keep improving Minecraft."
+  },
+  {
+    "key": "telemetry_info.button.show_data",
+    "english_translation": "Open My Data"
+  },
+  {
+    "key": "telemetry_info.button.give_feedback",
+    "english_translation": "Give Feedback"
+  },
+  {
+    "key": "telemetry_info.property_title",
+    "english_translation": "Included Data"
+  },
+  {
+    "key": "telemetry.property.user_id.title",
+    "english_translation": "User ID"
+  },
+  {
+    "key": "telemetry.property.client_id.title",
+    "english_translation": "Client ID"
+  },
+  {
+    "key": "telemetry.property.minecraft_session_id.title",
+    "english_translation": "Minecraft Session ID"
+  },
+  {
+    "key": "telemetry.property.game_version.title",
+    "english_translation": "Game Version"
+  },
+  {
+    "key": "telemetry.property.operating_system.title",
+    "english_translation": "Operating System"
+  },
+  {
+    "key": "telemetry.property.platform.title",
+    "english_translation": "Platform"
+  },
+  {
+    "key": "telemetry.property.client_modded.title",
+    "english_translation": "Client Modded"
+  },
+  {
+    "key": "telemetry.property.event_timestamp_utc.title",
+    "english_translation": "Event Timestamp (UTC)"
+  },
+  {
+    "key": "telemetry.property.opt_in.title",
+    "english_translation": "Opt-In"
+  },
+  {
+    "key": "telemetry.property.world_session_id.title",
+    "english_translation": "World Session ID"
+  },
+  {
+    "key": "telemetry.property.server_modded.title",
+    "english_translation": "Server Modded"
+  },
+  {
+    "key": "telemetry.property.server_type.title",
+    "english_translation": "Server Type"
+  },
+  {
+    "key": "telemetry.property.frame_rate_samples.title",
+    "english_translation": "Frame Rate Samples (FPS)"
+  },
+  {
+    "key": "telemetry.property.render_time_samples.title",
+    "english_translation": "Render Time Samples"
+  },
+  {
+    "key": "telemetry.property.used_memory_samples.title",
+    "english_translation": "Used Random Access Memory"
+  },
+  {
+    "key": "telemetry.property.number_of_samples.title",
+    "english_translation": "Sample Count"
+  },
+  {
+    "key": "telemetry.property.render_distance.title",
+    "english_translation": "Render Distance"
+  },
+  {
+    "key": "telemetry.property.dedicated_memory_kb.title",
+    "english_translation": "Dedicated Memory (kB)"
+  },
+  {
+    "key": "telemetry.property.game_mode.title",
+    "english_translation": "Game Mode"
+  },
+  {
+    "key": "telemetry.property.seconds_since_load.title",
+    "english_translation": "Time Since Load (Seconds)"
+  },
+  {
+    "key": "telemetry.property.ticks_since_load.title",
+    "english_translation": "Time Since Load (Ticks)"
+  },
+  {
+    "key": "telemetry.property.world_load_time_ms.title",
+    "english_translation": "World Load Time (Milliseconds)"
+  },
+  {
+    "key": "telemetry.property.new_world.title",
+    "english_translation": "New World"
+  },
+  {
+    "key": "telemetry.event.required",
+    "english_translation": "%s (Required)"
+  },
+  {
+    "key": "telemetry.event.optional",
+    "english_translation": "%s (Optional)"
+  },
+  {
+    "key": "telemetry.event.world_loaded.title",
+    "english_translation": "World Loaded"
+  },
+  {
+    "key": "telemetry.event.world_loaded.description",
+    "english_translation": "Knowing how players play Minecraft (such as Game Mode, client or server modded, and game version) allows us to focus game updates to improve the areas that players care about most.\nThe World Loaded event is paired with the World Unloaded event to calculate how long the play session has lasted."
+  },
+  {
+    "key": "telemetry.event.world_unloaded.title",
+    "english_translation": "World Unloaded"
+  },
+  {
+    "key": "telemetry.event.world_unloaded.description",
+    "english_translation": "This event is paired with the World Loaded event to calculate how long the world session has lasted.\nThe duration (in seconds and ticks) is measured when a world session has ended (quitting to title, disconnecting from a server)."
+  },
+  {
+    "key": "telemetry.event.performance_metrics.title",
+    "english_translation": "Performance Metrics"
+  },
+  {
+    "key": "telemetry.event.performance_metrics.description",
+    "english_translation": "Knowing the overall performance profile of Minecraft helps us tune and optimize the game for a wide range of machine specifications and operating systems. \nGame version is included to help us compare the performance profile for new versions of Minecraft."
+  },
+  {
+    "key": "telemetry.event.world_load_times.title",
+    "english_translation": "World Load Times"
+  },
+  {
+    "key": "telemetry.event.world_load_times.description",
+    "english_translation": "It’s important for us to understand how long it takes to join a world, and how that changes over time. For example, when we add new features or do larger technical changes, we need to see what impact that had on load times."
+  },
+  {
     "key": "debug.prefix",
     "english_translation": "[Debug]:"
   },
@@ -18245,7 +18769,7 @@
   },
   {
     "key": "advancements.husbandry.make_a_sign_glow.description",
-    "english_translation": "Make the text of a Sign glow"
+    "english_translation": "Make the text of any kind of sign glow"
   },
   {
     "key": "advancements.husbandry.ride_a_boat_with_a_goat.title",
@@ -18930,6 +19454,22 @@
   {
     "key": "argument.entity.options.predicate.description",
     "english_translation": "Custom predicate"
+  },
+  {
+    "key": "argument.resource.not_found",
+    "english_translation": "Can't find element '%s' of type '%s'"
+  },
+  {
+    "key": "argument.resource.invalid_type",
+    "english_translation": "Element '%s' has wrong type '%s' (expected '%s')"
+  },
+  {
+    "key": "argument.resource_tag.not_found",
+    "english_translation": "Can't find tag '%s' of type '%s'"
+  },
+  {
+    "key": "argument.resource_tag.invalid_type",
+    "english_translation": "Tag '%s' has wrong type '%s' (expected '%s')"
   },
   {
     "key": "command.failed",
@@ -20228,6 +20768,14 @@
     "english_translation": "Invalid NBT path element"
   },
   {
+    "key": "arguments.nbtpath.too_deep",
+    "english_translation": "Resulting NBT too deeply nested"
+  },
+  {
+    "key": "arguments.nbtpath.too_large",
+    "english_translation": "Resulting NBT too large"
+  },
+  {
     "key": "arguments.nbtpath.nothing_found",
     "english_translation": "Found no elements matching %s"
   },
@@ -20432,6 +20980,10 @@
     "english_translation": "No blocks were filled"
   },
   {
+    "key": "argument.gamemode.invalid",
+    "english_translation": "Unknown gamemode: %s"
+  },
+  {
     "key": "commands.help.failed",
     "english_translation": "Unknown command or insufficient permissions"
   },
@@ -20456,20 +21008,12 @@
     "english_translation": "Could not find a biome of type \"%s\" within reasonable distance"
   },
   {
-    "key": "commands.locate.biome.invalid",
-    "english_translation": "There is no biome with type \"%s\""
-  },
-  {
     "key": "commands.locate.poi.success",
     "english_translation": "The nearest %s is at %s (%s blocks away)"
   },
   {
     "key": "commands.locate.poi.not_found",
     "english_translation": "Could not find a point of interest of type \"%s\" within reasonable distance"
-  },
-  {
-    "key": "commands.locate.poi.invalid",
-    "english_translation": "There is no point of interest with type \"%s\""
   },
   {
     "key": "commands.op.failed",
@@ -20760,16 +21304,8 @@
     "english_translation": "Invalid entity anchor position %s"
   },
   {
-    "key": "enchantment.unknown",
-    "english_translation": "Unknown enchantment: %s"
-  },
-  {
     "key": "lectern.take_book",
     "english_translation": "Take Book"
-  },
-  {
-    "key": "effect.effectNotFound",
-    "english_translation": "Unknown effect: %s"
   },
   {
     "key": "arguments.objective.notFound",
@@ -20800,8 +21336,8 @@
     "english_translation": "Unknown recipe: %s"
   },
   {
-    "key": "entity.notFound",
-    "english_translation": "Unknown entity: %s"
+    "key": "entity.not_summonable",
+    "english_translation": "Can't summon entity of type %s"
   },
   {
     "key": "predicate.unknown",
@@ -20936,6 +21472,10 @@
     "english_translation": "Pack '%s' is already enabled!"
   },
   {
+    "key": "commands.datapack.enable.failed.no_flags",
+    "english_translation": "Pack '%s' cannot be enabled, since required flags are not enabled in this world: %s!"
+  },
+  {
     "key": "commands.datapack.disable.failed",
     "english_translation": "Pack '%s' is not enabled!"
   },
@@ -20982,6 +21522,18 @@
   {
     "key": "commands.fill.toobig",
     "english_translation": "Too many blocks in the specified area (maximum %s, specified %s)"
+  },
+  {
+    "key": "commands.fillbiome.toobig",
+    "english_translation": "Too many blocks in the specified volume (maximum %s, specified %s)"
+  },
+  {
+    "key": "commands.fillbiome.success",
+    "english_translation": "Biomes set between %s, %s, %s and %s, %s, %s"
+  },
+  {
+    "key": "commands.fillbiome.success.count",
+    "english_translation": "%s biome entries set between %s, %s, %s and %s, %s, %s"
   },
   {
     "key": "commands.publish.alreadyPublished",
@@ -21644,6 +22196,62 @@
     "english_translation": "Angered neutral mobs attack any nearby player, not just the player that angered them. Works best if forgiveDeadPlayers is disabled."
   },
   {
+    "key": "gamerule.blockExplosionDropDecay",
+    "english_translation": "In block interaction explosions, some blocks won't drop their loot"
+  },
+  {
+    "key": "gamerule.blockExplosionDropDecay.description",
+    "english_translation": "Some of the drops from blocks destroyed by explosions caused by block interactions are lost in the explosion."
+  },
+  {
+    "key": "gamerule.mobExplosionDropDecay",
+    "english_translation": "In mob explosions, some blocks won't drop their loot"
+  },
+  {
+    "key": "gamerule.mobExplosionDropDecay.description",
+    "english_translation": "Some of the drops from blocks destroyed by explosions caused by mobs are lost in the explosion."
+  },
+  {
+    "key": "gamerule.tntExplosionDropDecay",
+    "english_translation": "In TNT explosions, some blocks won't drop their loot"
+  },
+  {
+    "key": "gamerule.tntExplosionDropDecay.description",
+    "english_translation": "Some of the drops from blocks destroyed by explosions caused by TNT are lost in the explosion."
+  },
+  {
+    "key": "gamerule.snowAccumulationHeight",
+    "english_translation": "Snow accumulation height"
+  },
+  {
+    "key": "gamerule.snowAccumulationHeight.description",
+    "english_translation": "When it snows, layers of snow form on the ground up to at most this number of layers."
+  },
+  {
+    "key": "gamerule.waterSourceConversion",
+    "english_translation": "Water converts to source"
+  },
+  {
+    "key": "gamerule.waterSourceConversion.description",
+    "english_translation": "When flowing water is surrounded on two sides by water sources it converts into a source."
+  },
+  {
+    "key": "gamerule.lavaSourceConversion",
+    "english_translation": "Lava converts to source"
+  },
+  {
+    "key": "gamerule.lavaSourceConversion.description",
+    "english_translation": "When flowing lava is surrounded on two sides by lava sources it converts into a source."
+  },
+  {
+    "key": "gamerule.globalSoundEvents",
+    "english_translation": "Global sound events"
+  },
+  {
+    "key": "gamerule.globalSoundEvents.description",
+    "english_translation": "When certain game events happen, like a boss spawning, the sound is heard everywhere."
+  },
+  {
     "key": "gamerule.category.chat",
     "english_translation": "Chat"
   },
@@ -21674,6 +22282,10 @@
   {
     "key": "pack.source.builtin",
     "english_translation": "built-in"
+  },
+  {
+    "key": "pack.source.feature",
+    "english_translation": "feature"
   },
   {
     "key": "pack.source.world",
@@ -21730,5 +22342,941 @@
   {
     "key": "outOfMemory.message",
     "english_translation": "Minecraft has run out of memory.\n\nThis could be caused by a bug in the game or by the Java Virtual Machine not being allocated enough memory.\n\nTo prevent level corruption, the current game has quit. We've tried to free up enough memory to let you go back to the main menu and back to playing, but this may not have worked.\n\nPlease restart the game if you see this message again."
+  },
+  {
+    "key": "mco.gui.ok",
+    "english_translation": "Ok"
+  },
+  {
+    "key": "mco.gui.button",
+    "english_translation": "Button"
+  },
+  {
+    "key": "mco.terms.buttons.agree",
+    "english_translation": "Agree"
+  },
+  {
+    "key": "mco.terms.buttons.disagree",
+    "english_translation": "Don't agree"
+  },
+  {
+    "key": "mco.terms.title",
+    "english_translation": "Realms Terms of Service"
+  },
+  {
+    "key": "mco.terms.sentence.1",
+    "english_translation": "I agree to the Minecraft Realms"
+  },
+  {
+    "key": "mco.terms.sentence.2",
+    "english_translation": "Terms of Service"
+  },
+  {
+    "key": "mco.selectServer.play",
+    "english_translation": "Play"
+  },
+  {
+    "key": "mco.selectServer.configure",
+    "english_translation": "Configure"
+  },
+  {
+    "key": "mco.selectServer.configureRealm",
+    "english_translation": "Configure realm"
+  },
+  {
+    "key": "mco.selectServer.leave",
+    "english_translation": "Leave realm"
+  },
+  {
+    "key": "mco.selectServer.create",
+    "english_translation": "Create realm"
+  },
+  {
+    "key": "mco.selectServer.purchase",
+    "english_translation": "Add Realm"
+  },
+  {
+    "key": "mco.selectServer.buy",
+    "english_translation": "Buy a realm!"
+  },
+  {
+    "key": "mco.selectServer.trial",
+    "english_translation": "Get a trial!"
+  },
+  {
+    "key": "mco.selectServer.close",
+    "english_translation": "Close"
+  },
+  {
+    "key": "mco.selectServer.expiredTrial",
+    "english_translation": "Your trial has ended"
+  },
+  {
+    "key": "mco.selectServer.expiredList",
+    "english_translation": "Your subscription has expired"
+  },
+  {
+    "key": "mco.selectServer.expiredSubscribe",
+    "english_translation": "Subscribe"
+  },
+  {
+    "key": "mco.selectServer.expiredRenew",
+    "english_translation": "Renew"
+  },
+  {
+    "key": "mco.selectServer.expired",
+    "english_translation": "Expired realm"
+  },
+  {
+    "key": "mco.selectServer.open",
+    "english_translation": "Open realm"
+  },
+  {
+    "key": "mco.selectServer.closed",
+    "english_translation": "Closed realm"
+  },
+  {
+    "key": "mco.selectServer.openserver",
+    "english_translation": "Open realm"
+  },
+  {
+    "key": "mco.selectServer.closeserver",
+    "english_translation": "Close realm"
+  },
+  {
+    "key": "mco.selectServer.minigame",
+    "english_translation": "Minigame:"
+  },
+  {
+    "key": "mco.selectServer.uninitialized",
+    "english_translation": "Click to start your new realm!"
+  },
+  {
+    "key": "mco.selectServer.expires.days",
+    "english_translation": "Expires in %s days"
+  },
+  {
+    "key": "mco.selectServer.expires.day",
+    "english_translation": "Expires in a day"
+  },
+  {
+    "key": "mco.selectServer.expires.soon",
+    "english_translation": "Expires soon"
+  },
+  {
+    "key": "mco.selectServer.note",
+    "english_translation": "Note:"
+  },
+  {
+    "key": "mco.selectServer.mapOnlySupportedForVersion",
+    "english_translation": "This map is unsupported in %s"
+  },
+  {
+    "key": "mco.selectServer.minigameNotSupportedInVersion",
+    "english_translation": "Can't play this minigame in %s"
+  },
+  {
+    "key": "mco.selectServer.popup",
+    "english_translation": "Realms is a safe, simple way to enjoy an online Minecraft world with up to ten friends at a time.   It supports loads of minigames and plenty of custom worlds! Only the owner of the realm needs to pay."
+  },
+  {
+    "key": "mco.configure.world.settings.title",
+    "english_translation": "Settings"
+  },
+  {
+    "key": "mco.configure.world.title",
+    "english_translation": "Configure realm:"
+  },
+  {
+    "key": "mco.configure.worlds.title",
+    "english_translation": "Worlds"
+  },
+  {
+    "key": "mco.configure.world.name",
+    "english_translation": "Realm name"
+  },
+  {
+    "key": "mco.configure.world.description",
+    "english_translation": "Realm description"
+  },
+  {
+    "key": "mco.configure.world.location",
+    "english_translation": "Location"
+  },
+  {
+    "key": "mco.configure.world.invited",
+    "english_translation": "Invited"
+  },
+  {
+    "key": "mco.configure.world.invite.narration",
+    "english_translation": "You have %s new invites"
+  },
+  {
+    "key": "mco.configure.world.buttons.edit",
+    "english_translation": "Settings"
+  },
+  {
+    "key": "mco.configure.world.buttons.done",
+    "english_translation": "Done"
+  },
+  {
+    "key": "mco.configure.world.buttons.delete",
+    "english_translation": "Delete"
+  },
+  {
+    "key": "mco.configure.world.buttons.open",
+    "english_translation": "Open realm"
+  },
+  {
+    "key": "mco.configure.world.buttons.close",
+    "english_translation": "Close realm"
+  },
+  {
+    "key": "mco.configure.world.buttons.invite",
+    "english_translation": "Invite player"
+  },
+  {
+    "key": "mco.configure.world.buttons.activity",
+    "english_translation": "Player activity"
+  },
+  {
+    "key": "mco.configure.world.activityfeed.disabled",
+    "english_translation": "Player feed temporarily disabled"
+  },
+  {
+    "key": "mco.configure.world.buttons.moreoptions",
+    "english_translation": "More options"
+  },
+  {
+    "key": "mco.configure.world.invite.profile.name",
+    "english_translation": "Name"
+  },
+  {
+    "key": "mco.configure.world.uninvite.question",
+    "english_translation": "Are you sure that you want to uninvite"
+  },
+  {
+    "key": "mco.configure.world.status",
+    "english_translation": "Status"
+  },
+  {
+    "key": "mco.configure.world.invites.ops.tooltip",
+    "english_translation": "Operator"
+  },
+  {
+    "key": "mco.configure.world.invites.normal.tooltip",
+    "english_translation": "Normal user"
+  },
+  {
+    "key": "mco.configure.world.invites.remove.tooltip",
+    "english_translation": "Remove"
+  },
+  {
+    "key": "mco.configure.world.closing",
+    "english_translation": "Closing the realm..."
+  },
+  {
+    "key": "mco.configure.world.opening",
+    "english_translation": "Opening the realm..."
+  },
+  {
+    "key": "mco.configure.world.buttons.players",
+    "english_translation": "Players"
+  },
+  {
+    "key": "mco.configure.world.buttons.settings",
+    "english_translation": "Settings"
+  },
+  {
+    "key": "mco.configure.world.buttons.subscription",
+    "english_translation": "Subscription"
+  },
+  {
+    "key": "mco.configure.world.buttons.options",
+    "english_translation": "World options"
+  },
+  {
+    "key": "mco.configure.world.backup",
+    "english_translation": "World backups"
+  },
+  {
+    "key": "mco.configure.world.buttons.resetworld",
+    "english_translation": "Reset world"
+  },
+  {
+    "key": "mco.configure.world.buttons.switchminigame",
+    "english_translation": "Switch minigame"
+  },
+  {
+    "key": "mco.configure.current.minigame",
+    "english_translation": "Current"
+  },
+  {
+    "key": "mco.configure.world.subscription.title",
+    "english_translation": "Your subscription"
+  },
+  {
+    "key": "mco.configure.world.subscription.timeleft",
+    "english_translation": "Time left"
+  },
+  {
+    "key": "mco.configure.world.subscription.unknown",
+    "english_translation": "Unknown"
+  },
+  {
+    "key": "mco.configure.world.subscription.recurring.daysleft",
+    "english_translation": "Renewed automatically in"
+  },
+  {
+    "key": "mco.configure.world.subscription.less_than_a_day",
+    "english_translation": "Less than a day"
+  },
+  {
+    "key": "mco.configure.world.subscription.expired",
+    "english_translation": "Expired"
+  },
+  {
+    "key": "mco.configure.world.subscription.start",
+    "english_translation": "Start date"
+  },
+  {
+    "key": "mco.configure.world.subscription.extend",
+    "english_translation": "Extend subscription"
+  },
+  {
+    "key": "mco.configure.world.subscription.day",
+    "english_translation": "day"
+  },
+  {
+    "key": "mco.configure.world.subscription.month",
+    "english_translation": "month"
+  },
+  {
+    "key": "mco.configure.world.subscription.days",
+    "english_translation": "days"
+  },
+  {
+    "key": "mco.configure.world.subscription.months",
+    "english_translation": "months"
+  },
+  {
+    "key": "mco.configure.world.pvp",
+    "english_translation": "PVP"
+  },
+  {
+    "key": "mco.configure.world.spawn_toggle.title",
+    "english_translation": "Warning!"
+  },
+  {
+    "key": "mco.configure.world.spawn_toggle.message",
+    "english_translation": "Turning this option off will REMOVE ALL existing entities of that type"
+  },
+  {
+    "key": "mco.configure.world.spawn_toggle.message.npc",
+    "english_translation": "Turning this option off will REMOVE ALL existing entities of that type, like Villagers"
+  },
+  {
+    "key": "mco.configure.world.spawnAnimals",
+    "english_translation": "Spawn animals"
+  },
+  {
+    "key": "mco.configure.world.spawnNPCs",
+    "english_translation": "Spawn NPCs"
+  },
+  {
+    "key": "mco.configure.world.spawnMonsters",
+    "english_translation": "Spawn monsters"
+  },
+  {
+    "key": "mco.configure.world.spawnProtection",
+    "english_translation": "Spawn protection"
+  },
+  {
+    "key": "mco.configure.world.commandBlocks",
+    "english_translation": "Command blocks"
+  },
+  {
+    "key": "mco.configure.world.forceGameMode",
+    "english_translation": "Force game mode"
+  },
+  {
+    "key": "mco.configure.world.slot",
+    "english_translation": "World %s"
+  },
+  {
+    "key": "mco.configure.world.slot.empty",
+    "english_translation": "Empty"
+  },
+  {
+    "key": "mco.create.world.wait",
+    "english_translation": "Creating the realm..."
+  },
+  {
+    "key": "mco.create.world.error",
+    "english_translation": "You must enter a name!"
+  },
+  {
+    "key": "mco.create.world.subtitle",
+    "english_translation": "Optionally, select what world to put on your new realm"
+  },
+  {
+    "key": "mco.create.world.skip",
+    "english_translation": "Skip"
+  },
+  {
+    "key": "mco.reset.world.title",
+    "english_translation": "Reset world"
+  },
+  {
+    "key": "mco.reset.world.warning",
+    "english_translation": "This will replace the current world of your realm"
+  },
+  {
+    "key": "mco.reset.world.seed",
+    "english_translation": "Seed (Optional)"
+  },
+  {
+    "key": "mco.reset.world.resetting.screen.title",
+    "english_translation": "Resetting world..."
+  },
+  {
+    "key": "mco.reset.world.generate",
+    "english_translation": "New world"
+  },
+  {
+    "key": "mco.reset.world.upload",
+    "english_translation": "Upload world"
+  },
+  {
+    "key": "mco.reset.world.adventure",
+    "english_translation": "Adventures"
+  },
+  {
+    "key": "mco.reset.world.template",
+    "english_translation": "World templates"
+  },
+  {
+    "key": "mco.reset.world.experience",
+    "english_translation": "Experiences"
+  },
+  {
+    "key": "mco.reset.world.inspiration",
+    "english_translation": "Inspiration"
+  },
+  {
+    "key": "mco.minigame.world.title",
+    "english_translation": "Switch realm to minigame"
+  },
+  {
+    "key": "mco.minigame.world.info.line1",
+    "english_translation": "This will temporarily replace your world with a minigame!"
+  },
+  {
+    "key": "mco.minigame.world.info.line2",
+    "english_translation": "You can later return to your original world without losing anything."
+  },
+  {
+    "key": "mco.minigame.world.selected",
+    "english_translation": "Selected minigame:"
+  },
+  {
+    "key": "mco.minigame.world.noSelection",
+    "english_translation": "Please make a selection"
+  },
+  {
+    "key": "mco.minigame.world.startButton",
+    "english_translation": "Switch"
+  },
+  {
+    "key": "mco.minigame.world.starting.screen.title",
+    "english_translation": "Starting minigame..."
+  },
+  {
+    "key": "mco.minigame.world.changeButton",
+    "english_translation": "Select another minigame"
+  },
+  {
+    "key": "mco.minigame.world.stopButton",
+    "english_translation": "End minigame"
+  },
+  {
+    "key": "mco.minigame.world.switch.title",
+    "english_translation": "Switch minigame"
+  },
+  {
+    "key": "mco.minigame.world.switch.new",
+    "english_translation": "Select another minigame?"
+  },
+  {
+    "key": "mco.minigame.world.restore.question.line1",
+    "english_translation": "The minigame will end and your realm will be restored."
+  },
+  {
+    "key": "mco.minigame.world.restore.question.line2",
+    "english_translation": "Are you sure you want to continue?"
+  },
+  {
+    "key": "mco.minigame.world.restore",
+    "english_translation": "Ending minigame..."
+  },
+  {
+    "key": "mco.configure.world.slot.tooltip",
+    "english_translation": "Switch to world"
+  },
+  {
+    "key": "mco.configure.world.slot.tooltip.minigame",
+    "english_translation": "Switch to minigame"
+  },
+  {
+    "key": "mco.configure.world.slot.tooltip.active",
+    "english_translation": "Join"
+  },
+  {
+    "key": "mco.configure.world.close.question.line1",
+    "english_translation": "Your realm will become unavailable."
+  },
+  {
+    "key": "mco.configure.world.close.question.line2",
+    "english_translation": "Are you sure you want to continue?"
+  },
+  {
+    "key": "mco.configure.world.leave.question.line1",
+    "english_translation": "If you leave this realm you won't see it unless you are invited again"
+  },
+  {
+    "key": "mco.configure.world.leave.question.line2",
+    "english_translation": "Are you sure you want to continue?"
+  },
+  {
+    "key": "mco.configure.world.resourcepack.question.line1",
+    "english_translation": "You need a custom resource pack to play on this realm"
+  },
+  {
+    "key": "mco.configure.world.resourcepack.question.line2",
+    "english_translation": "Do you want to download it and play?"
+  },
+  {
+    "key": "mco.configure.world.reset.question.line1",
+    "english_translation": "Your world will be regenerated and your current world will be lost"
+  },
+  {
+    "key": "mco.configure.world.reset.question.line2",
+    "english_translation": "Are you sure you want to continue?"
+  },
+  {
+    "key": "mco.configure.world.restore.question.line1",
+    "english_translation": "Your world will be restored to date '%s' (%s)"
+  },
+  {
+    "key": "mco.configure.world.restore.question.line2",
+    "english_translation": "Are you sure you want to continue?"
+  },
+  {
+    "key": "mco.configure.world.restore.download.question.line1",
+    "english_translation": "The world will be downloaded and added to your single player worlds."
+  },
+  {
+    "key": "mco.configure.world.restore.download.question.line2",
+    "english_translation": "Do you want to continue?"
+  },
+  {
+    "key": "mco.configure.world.slot.switch.question.line1",
+    "english_translation": "Your realm will be switched to another world"
+  },
+  {
+    "key": "mco.configure.world.slot.switch.question.line2",
+    "english_translation": "Are you sure you want to continue?"
+  },
+  {
+    "key": "mco.configure.world.switch.slot",
+    "english_translation": "Create world"
+  },
+  {
+    "key": "mco.configure.world.switch.slot.subtitle",
+    "english_translation": "This world is empty, choose how to create your world"
+  },
+  {
+    "key": "mco.minigame.world.slot.screen.title",
+    "english_translation": "Switching world..."
+  },
+  {
+    "key": "mco.configure.world.edit.subscreen.adventuremap",
+    "english_translation": "Some settings are disabled since your current world is an adventure"
+  },
+  {
+    "key": "mco.configure.world.edit.subscreen.experience",
+    "english_translation": "Some settings are disabled since your current world is an experience"
+  },
+  {
+    "key": "mco.configure.world.edit.subscreen.inspiration",
+    "english_translation": "Some settings are disabled since your current world is an inspiration"
+  },
+  {
+    "key": "mco.configure.world.edit.slot.name",
+    "english_translation": "World name"
+  },
+  {
+    "key": "mco.configure.world.players.title",
+    "english_translation": "Players"
+  },
+  {
+    "key": "mco.configure.world.players.error",
+    "english_translation": "A player with the provided name does not exist"
+  },
+  {
+    "key": "mco.configure.world.delete.button",
+    "english_translation": "Delete realm"
+  },
+  {
+    "key": "mco.configure.world.delete.question.line1",
+    "english_translation": "Your realm will be permanently deleted"
+  },
+  {
+    "key": "mco.configure.world.delete.question.line2",
+    "english_translation": "Are you sure you want to continue?"
+  },
+  {
+    "key": "mco.connect.connecting",
+    "english_translation": "Connecting to the realm..."
+  },
+  {
+    "key": "mco.connect.authorizing",
+    "english_translation": "Logging in..."
+  },
+  {
+    "key": "mco.connect.failed",
+    "english_translation": "Failed to connect to the realm"
+  },
+  {
+    "key": "mco.connect.success",
+    "english_translation": "Done"
+  },
+  {
+    "key": "mco.create.world",
+    "english_translation": "Create"
+  },
+  {
+    "key": "mco.create.world.reset.title",
+    "english_translation": "Creating world..."
+  },
+  {
+    "key": "mco.client.incompatible.title",
+    "english_translation": "Client incompatible!"
+  },
+  {
+    "key": "mco.client.incompatible.msg.line1",
+    "english_translation": "Your client is not compatible with Realms."
+  },
+  {
+    "key": "mco.client.incompatible.msg.line2",
+    "english_translation": "Please use the most recent version of Minecraft."
+  },
+  {
+    "key": "mco.client.incompatible.msg.line3",
+    "english_translation": "Realms is not compatible with snapshot versions."
+  },
+  {
+    "key": "mco.backup.button.restore",
+    "english_translation": "Restore"
+  },
+  {
+    "key": "mco.backup.generate.world",
+    "english_translation": "Generate world"
+  },
+  {
+    "key": "mco.backup.restoring",
+    "english_translation": "Restoring your realm"
+  },
+  {
+    "key": "mco.backup.button.download",
+    "english_translation": "Download latest"
+  },
+  {
+    "key": "mco.backup.changes.tooltip",
+    "english_translation": "Changes"
+  },
+  {
+    "key": "mco.backup.nobackups",
+    "english_translation": "This realm doesn't have any backups currently."
+  },
+  {
+    "key": "mco.backup.button.upload",
+    "english_translation": "Upload world"
+  },
+  {
+    "key": "mco.backup.button.reset",
+    "english_translation": "Reset world"
+  },
+  {
+    "key": "mco.download.title",
+    "english_translation": "Downloading latest world"
+  },
+  {
+    "key": "mco.download.cancelled",
+    "english_translation": "Download cancelled"
+  },
+  {
+    "key": "mco.download.failed",
+    "english_translation": "Download failed"
+  },
+  {
+    "key": "mco.download.done",
+    "english_translation": "Download done"
+  },
+  {
+    "key": "mco.download.downloading",
+    "english_translation": "Downloading"
+  },
+  {
+    "key": "mco.download.extracting",
+    "english_translation": "Extracting"
+  },
+  {
+    "key": "mco.download.preparing",
+    "english_translation": "Preparing download"
+  },
+  {
+    "key": "mco.download.confirmation.line1",
+    "english_translation": "The world you are going to download is larger than %s"
+  },
+  {
+    "key": "mco.download.confirmation.line2",
+    "english_translation": "You won't be able to upload this world to your realm again"
+  },
+  {
+    "key": "mco.template.title",
+    "english_translation": "World templates"
+  },
+  {
+    "key": "mco.template.title.minigame",
+    "english_translation": "Minigames"
+  },
+  {
+    "key": "mco.template.button.select",
+    "english_translation": "Select"
+  },
+  {
+    "key": "mco.template.button.trailer",
+    "english_translation": "Trailer"
+  },
+  {
+    "key": "mco.template.button.publisher",
+    "english_translation": "Publisher"
+  },
+  {
+    "key": "mco.template.default.name",
+    "english_translation": "World template"
+  },
+  {
+    "key": "mco.template.name",
+    "english_translation": "Template"
+  },
+  {
+    "key": "mco.template.info.tooltip",
+    "english_translation": "Publisher website"
+  },
+  {
+    "key": "mco.template.trailer.tooltip",
+    "english_translation": "Map trailer"
+  },
+  {
+    "key": "mco.template.select.none",
+    "english_translation": "Oops, it looks like this content category is currently empty.\nPlease check back later for new content, or if you're a creator,\n%s."
+  },
+  {
+    "key": "mco.template.select.none.linkTitle",
+    "english_translation": "consider submitting something yourself"
+  },
+  {
+    "key": "mco.template.select.failure",
+    "english_translation": "We couldn't retrieve the list of content for this category.\nPlease check your internet connection, or try again later."
+  },
+  {
+    "key": "mco.template.select.narrate.authors",
+    "english_translation": "Authors: %s"
+  },
+  {
+    "key": "mco.template.select.narrate.version",
+    "english_translation": "version %s"
+  },
+  {
+    "key": "mco.invites.button.accept",
+    "english_translation": "Accept"
+  },
+  {
+    "key": "mco.invites.button.reject",
+    "english_translation": "Reject"
+  },
+  {
+    "key": "mco.invites.title",
+    "english_translation": "Pending Invites"
+  },
+  {
+    "key": "mco.invites.pending",
+    "english_translation": "New invites!"
+  },
+  {
+    "key": "mco.invites.nopending",
+    "english_translation": "No pending invites!"
+  },
+  {
+    "key": "mco.upload.select.world.title",
+    "english_translation": "Upload world"
+  },
+  {
+    "key": "mco.upload.select.world.subtitle",
+    "english_translation": "Please select a singleplayer world to upload"
+  },
+  {
+    "key": "mco.upload.select.world.none",
+    "english_translation": "No singleplayer worlds found!"
+  },
+  {
+    "key": "mco.upload.button.name",
+    "english_translation": "Upload"
+  },
+  {
+    "key": "mco.upload.verifying",
+    "english_translation": "Verifying your world"
+  },
+  {
+    "key": "mco.upload.preparing",
+    "english_translation": "Preparing your world"
+  },
+  {
+    "key": "mco.upload.close.failure",
+    "english_translation": "Could not close your realm, please try again later"
+  },
+  {
+    "key": "mco.upload.size.failure.line1",
+    "english_translation": "'%s' is too big!"
+  },
+  {
+    "key": "mco.upload.size.failure.line2",
+    "english_translation": "It is %s. The maximum allowed size is %s."
+  },
+  {
+    "key": "mco.upload.uploading",
+    "english_translation": "Uploading '%s'"
+  },
+  {
+    "key": "mco.upload.done",
+    "english_translation": "Upload done"
+  },
+  {
+    "key": "mco.upload.failed",
+    "english_translation": "Upload failed! (%s)"
+  },
+  {
+    "key": "mco.upload.cancelled",
+    "english_translation": "Upload cancelled"
+  },
+  {
+    "key": "mco.upload.hardcore",
+    "english_translation": "Hardcore worlds can't be uploaded!"
+  },
+  {
+    "key": "mco.activity.title",
+    "english_translation": "Player activity"
+  },
+  {
+    "key": "mco.activity.noactivity",
+    "english_translation": "No activity for the past %s days"
+  },
+  {
+    "key": "mco.errorMessage.6001",
+    "english_translation": "Client outdated"
+  },
+  {
+    "key": "mco.errorMessage.6002",
+    "english_translation": "Terms of service not accepted"
+  },
+  {
+    "key": "mco.errorMessage.6003",
+    "english_translation": "Download limit reached"
+  },
+  {
+    "key": "mco.errorMessage.6004",
+    "english_translation": "Upload limit reached"
+  },
+  {
+    "key": "mco.errorMessage.connectionFailure",
+    "english_translation": "An error occurred, please try again later."
+  },
+  {
+    "key": "mco.errorMessage.serviceBusy",
+    "english_translation": "Realms is busy at the moment.\nPlease try connecting to your Realm again in a couple of minutes."
+  },
+  {
+    "key": "mco.trial.message.line1",
+    "english_translation": "Want to get your own realm?"
+  },
+  {
+    "key": "mco.trial.message.line2",
+    "english_translation": "Click here for more info!"
+  },
+  {
+    "key": "mco.brokenworld.play",
+    "english_translation": "Play"
+  },
+  {
+    "key": "mco.brokenworld.download",
+    "english_translation": "Download"
+  },
+  {
+    "key": "mco.brokenworld.downloaded",
+    "english_translation": "Downloaded"
+  },
+  {
+    "key": "mco.brokenworld.reset",
+    "english_translation": "Reset"
+  },
+  {
+    "key": "mco.brokenworld.title",
+    "english_translation": "Your current world is no longer supported"
+  },
+  {
+    "key": "mco.brokenworld.message.line1",
+    "english_translation": "Please reset or select another world."
+  },
+  {
+    "key": "mco.brokenworld.message.line2",
+    "english_translation": "You can also choose to download the world to singleplayer."
+  },
+  {
+    "key": "mco.brokenworld.minigame.title",
+    "english_translation": "This minigame is no longer supported"
+  },
+  {
+    "key": "mco.brokenworld.nonowner.title",
+    "english_translation": "World is out of date"
+  },
+  {
+    "key": "mco.brokenworld.nonowner.error",
+    "english_translation": "Please wait for the realm owner to reset the world"
+  },
+  {
+    "key": "mco.error.invalid.session.title",
+    "english_translation": "Invalid session"
+  },
+  {
+    "key": "mco.error.invalid.session.message",
+    "english_translation": "Please try restarting Minecraft"
+  },
+  {
+    "key": "mco.news",
+    "english_translation": "Realms news"
+  },
+  {
+    "key": "mco.account.privacyinfo",
+    "english_translation": "Mojang implements certain procedures to help protect children and their privacy including complying with the Children’s Online Privacy Protection Act (COPPA) and General Data Protection Regulation (GDPR).\n\nYou may need to obtain parental consent before accessing your Realms account.\n\nIf you have an older Minecraft account (you log in with your username), you need to migrate the account to a Mojang account in order to access Realms."
+  },
+  {
+    "key": "mco.account.update",
+    "english_translation": "Update account"
+  },
+  {
+    "key": "mco.account.privacy.info",
+    "english_translation": "Read more about Mojang and privacy laws"
   }
 ]

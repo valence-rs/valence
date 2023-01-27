@@ -3,7 +3,7 @@ package rs.valence.extractor.extractors;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.minecraft.util.registry.Registry;
+import net.minecraft.registry.Registries;
 import rs.valence.extractor.Main;
 
 public class Enchants implements Main.Extractor {
@@ -19,11 +19,11 @@ public class Enchants implements Main.Extractor {
     public JsonElement extract() {
         var enchantsJson = new JsonArray();
 
-        for (var enchant : Registry.ENCHANTMENT) {
+        for (var enchant : Registries.ENCHANTMENT) {
             var enchantJson = new JsonObject();
 
-            enchantJson.addProperty("id", Registry.ENCHANTMENT.getRawId(enchant));
-            enchantJson.addProperty("name", Registry.ENCHANTMENT.getId(enchant).getPath());
+            enchantJson.addProperty("id", Registries.ENCHANTMENT.getRawId(enchant));
+            enchantJson.addProperty("name", Registries.ENCHANTMENT.getId(enchant).getPath());
             enchantJson.addProperty("translation_key", enchant.getTranslationKey());
 
             enchantJson.addProperty("min_level", enchant.getMinLevel());

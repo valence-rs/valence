@@ -3,9 +3,8 @@ package rs.valence.extractor.extractors;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.minecraft.item.ItemPlacementContext;
+import net.minecraft.registry.Registries;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.registry.Registry;
 import net.minecraft.world.EmptyBlockView;
 import rs.valence.extractor.Main;
 
@@ -31,12 +30,12 @@ public class Blocks implements Main.Extractor {
 
         var shapes = new LinkedHashMap<Shape, Integer>();
 
-        for (var block : Registry.BLOCK) {
+        for (var block : Registries.BLOCK) {
             var blockJson = new JsonObject();
-            blockJson.addProperty("id", Registry.BLOCK.getRawId(block));
-            blockJson.addProperty("name", Registry.BLOCK.getId(block).getPath());
+            blockJson.addProperty("id", Registries.BLOCK.getRawId(block));
+            blockJson.addProperty("name", Registries.BLOCK.getId(block).getPath());
             blockJson.addProperty("translation_key", block.getTranslationKey());
-            blockJson.addProperty("item_id", Registry.ITEM.getRawId(block.asItem()));
+            blockJson.addProperty("item_id", Registries.ITEM.getRawId(block.asItem()));
 
             var propsJson = new JsonArray();
             for (var prop : block.getStateManager().getProperties()) {

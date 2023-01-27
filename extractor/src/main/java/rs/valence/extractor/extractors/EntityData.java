@@ -5,8 +5,8 @@ import com.google.gson.JsonObject;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EntityStatuses;
 import net.minecraft.network.packet.s2c.play.EntityAnimationS2CPacket;
+import net.minecraft.registry.Registries;
 import net.minecraft.util.math.Direction;
-import net.minecraft.util.registry.Registry;
 import rs.valence.extractor.Main;
 
 import java.lang.reflect.Modifier;
@@ -23,8 +23,8 @@ public class EntityData implements Main.Extractor {
         var dataJson = new JsonObject();
 
         var typesJson = new JsonObject();
-        for (var type : Registry.ENTITY_TYPE) {
-            typesJson.addProperty(Registry.ENTITY_TYPE.getId(type).getPath(), Registry.ENTITY_TYPE.getRawId(type));
+        for (var type : Registries.ENTITY_TYPE) {
+            typesJson.addProperty(Registries.ENTITY_TYPE.getId(type).getPath(), Registries.ENTITY_TYPE.getRawId(type));
         }
         dataJson.add("types", typesJson);
 
@@ -50,36 +50,36 @@ public class EntityData implements Main.Extractor {
         dataJson.add("animations", animationsJson);
 
         var villagerTypesJson = new JsonObject();
-        for (var type : Registry.VILLAGER_TYPE) {
-            villagerTypesJson.addProperty(Registry.VILLAGER_TYPE.getId(type).getPath(), Registry.VILLAGER_TYPE.getRawId(type));
+        for (var type : Registries.VILLAGER_TYPE) {
+            villagerTypesJson.addProperty(Registries.VILLAGER_TYPE.getId(type).getPath(), Registries.VILLAGER_TYPE.getRawId(type));
         }
         dataJson.add("villager_types", villagerTypesJson);
 
         var villagerProfessionsJson = new JsonObject();
-        for (var profession : Registry.VILLAGER_PROFESSION) {
-            villagerProfessionsJson.addProperty(profession.id(), Registry.VILLAGER_PROFESSION.getRawId(profession));
+        for (var profession : Registries.VILLAGER_PROFESSION) {
+            villagerProfessionsJson.addProperty(profession.id(), Registries.VILLAGER_PROFESSION.getRawId(profession));
         }
         dataJson.add("villager_professions", villagerProfessionsJson);
 
         var catVariantsJson = new JsonObject();
-        for (var variant : Registry.CAT_VARIANT) {
-            catVariantsJson.addProperty(Registry.CAT_VARIANT.getId(variant).getPath(), Registry.CAT_VARIANT.getRawId(variant));
+        for (var variant : Registries.CAT_VARIANT) {
+            catVariantsJson.addProperty(Registries.CAT_VARIANT.getId(variant).getPath(), Registries.CAT_VARIANT.getRawId(variant));
         }
         dataJson.add("cat_variants", catVariantsJson);
 
         var frogVariantsJson = new JsonObject();
-        for (var variant : Registry.FROG_VARIANT) {
-            frogVariantsJson.addProperty(Registry.FROG_VARIANT.getId(variant).getPath(), Registry.FROG_VARIANT.getRawId(variant));
+        for (var variant : Registries.FROG_VARIANT) {
+            frogVariantsJson.addProperty(Registries.FROG_VARIANT.getId(variant).getPath(), Registries.FROG_VARIANT.getRawId(variant));
         }
         dataJson.add("frog_variants", frogVariantsJson);
 
         var paintingVariantsJson = new JsonObject();
-        for (var variant : Registry.PAINTING_VARIANT) {
+        for (var variant : Registries.PAINTING_VARIANT) {
             var variantJson = new JsonObject();
-            variantJson.addProperty("id", Registry.PAINTING_VARIANT.getRawId(variant));
+            variantJson.addProperty("id", Registries.PAINTING_VARIANT.getRawId(variant));
             variantJson.addProperty("width", variant.getWidth());
             variantJson.addProperty("height", variant.getHeight());
-            paintingVariantsJson.add(Registry.PAINTING_VARIANT.getId(variant).getPath(), variantJson);
+            paintingVariantsJson.add(Registries.PAINTING_VARIANT.getId(variant).getPath(), variantJson);
         }
         dataJson.add("painting_variants", paintingVariantsJson);
 
@@ -97,8 +97,8 @@ public class EntityData implements Main.Extractor {
         dataJson.add("poses", posesJson);
 
         var particleTypesJson = new JsonObject();
-        for (var type : Registry.PARTICLE_TYPE) {
-            particleTypesJson.addProperty(Registry.PARTICLE_TYPE.getId(type).getPath(), Registry.PARTICLE_TYPE.getRawId(type));
+        for (var type : Registries.PARTICLE_TYPE) {
+            particleTypesJson.addProperty(Registries.PARTICLE_TYPE.getId(type).getPath(), Registries.PARTICLE_TYPE.getRawId(type));
         }
         dataJson.add("particle_types", particleTypesJson);
 
