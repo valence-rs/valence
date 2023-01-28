@@ -415,7 +415,7 @@ impl<'a> VacantEntry<'a> {
     }
 }
 
-pub(crate) fn update_player_list(player_list: ResMut<PlayerList>, server: Res<Server>) {
+pub(crate) fn update_player_list(player_list: ResMut<PlayerList>, server: Res<Server>, mut clients: Query<&mut Client>) {
     let pl = player_list.into_inner();
 
     let mut scratch = vec![];
@@ -449,7 +449,7 @@ pub(crate) fn update_player_list(player_list: ResMut<PlayerList>, server: Res<Se
             }
 
             // Negative ping indicates absence.
-            if entry.ping >= 0 {
+            if entry.ping != 0 {
                 actions.set_update_latency(true);
             }
 
@@ -482,11 +482,6 @@ pub(crate) fn update_player_list(player_list: ResMut<PlayerList>, server: Res<Se
                 .unwrap();
         } else {
             let mut actions = Actions::new();
-
-            if entry.modified_ping {
-                entry.modified_ping = false;
-                actions.set_update_latency(true);
-            }
 
             if entry.game_mode != entry.old_game_mode {
                 entry.old_game_mode = entry.game_mode;
@@ -547,6 +542,14 @@ pub(crate) fn update_player_list(player_list: ResMut<PlayerList>, server: Res<Se
                 footer: pl.footer.clone(),
             })
             .unwrap();
+    }
+
+    for mut client in &mut clients {
+        if client.is_new() {
+            let _ = pl.write_init_packets(client.packet_writer_mut());
+        } else {
+            client.write_packet_bytes(&pl.cached_update_packets);
+        }
     }
 }
 

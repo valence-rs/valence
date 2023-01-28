@@ -14,18 +14,18 @@ use valence_new::player_list::{
     add_new_clients_to_player_list, remove_disconnected_clients_from_player_list,
 };
 use valence_new::server::Server;
-use valence_protocol::block::BlockState;
-use valence_protocol::types::GameMode;
-use valence_protocol::BlockPos;
+use valence_new::protocol::block::BlockState;
+use valence_new::protocol::types::GameMode;
+use valence_new::protocol::BlockPos;
 
 const SPHERE_CENTER: DVec3 = DVec3::new(0.5, SPAWN_POS.y as f64 + 2.0, 0.5);
 const SPHERE_AMOUNT: usize = 200;
-const SPHERE_TYPE: EntityKind = EntityKind::Cow;
+const SPHERE_KIND: EntityKind = EntityKind::Cow;
 const SPHERE_MIN_RADIUS: f64 = 6.0;
 const SPHERE_MAX_RADIUS: f64 = 12.0;
 const SPHERE_FREQ: f64 = 0.5;
 
-const SPAWN_POS: BlockPos = BlockPos::new(0, 100, -20);
+const SPAWN_POS: BlockPos = BlockPos::new(0, 100, -16);
 
 /// Marker component for entities that are part of the sphere.
 #[derive(Component)]
@@ -62,7 +62,7 @@ fn setup(world: &mut World) {
     let instance_id = world.spawn(instance).id();
 
     world.spawn_batch(
-        [0; SPHERE_AMOUNT].map(|_| (McEntity::new(SPHERE_TYPE, instance_id), SpherePart)),
+        [0; SPHERE_AMOUNT].map(|_| (McEntity::new(SPHERE_KIND, instance_id), SpherePart)),
     );
 }
 

@@ -27,6 +27,7 @@ use crate::instance::Instance;
 use crate::player_list::PlayerList;
 use crate::server::{NewClientInfo, PlayPacketReceiver, PlayPacketSender, Server};
 use crate::{Despawned, NULL_ENTITY};
+use crate::packet::WritePacket;
 
 pub mod event;
 
@@ -141,6 +142,14 @@ impl Client {
             inventory_state_id: Wrapping(0),
             inventory_slots_modified: 0,
         }
+    }
+
+    pub(crate) fn packet_writer_mut(&mut self) -> impl WritePacket + '_ {
+        &mut self.send
+    }
+
+    pub(crate) fn is_new(&self) -> bool {
+        self.is_new
     }
 
     /// Attempts to write a play packet into this client's packet buffer. The
@@ -487,7 +496,7 @@ fn update_one_client(
         */
 
         // Initialize the player list.
-        player_list.write_init_packets(&mut client.send)?;
+        // player_list.write_init_packets(&mut client.send)?;
     } else {
         if client.view_distance != client.old_view_distance {
             // Change the render distance fog.
