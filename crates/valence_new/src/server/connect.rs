@@ -71,7 +71,7 @@ pub async fn do_accept_loop(shared: SharedServer, callbacks: Arc<impl AsyncCallb
     }
 }
 
-#[instrument(skip(shared, callbacks, stream))]
+#[instrument(skip(shared, callbacks, stream, permit))]
 async fn handle_connection(
     shared: SharedServer,
     callbacks: Arc<impl AsyncCallbacks>,

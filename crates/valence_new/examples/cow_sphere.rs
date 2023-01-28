@@ -13,10 +13,10 @@ use valence_new::math::to_yaw_and_pitch;
 use valence_new::player_list::{
     add_new_clients_to_player_list, remove_disconnected_clients_from_player_list,
 };
-use valence_new::server::Server;
 use valence_new::protocol::block::BlockState;
 use valence_new::protocol::types::GameMode;
 use valence_new::protocol::BlockPos;
+use valence_new::server::Server;
 
 const SPHERE_CENTER: DVec3 = DVec3::new(0.5, SPAWN_POS.y as f64 + 2.0, 0.5);
 const SPHERE_AMOUNT: usize = 200;

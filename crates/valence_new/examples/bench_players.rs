@@ -1,14 +1,15 @@
-use bevy_app::App;
+use std::time::Instant;
+
+use bevy_app::{App, CoreStage};
 use bevy_ecs::prelude::*;
 use valence_new::client::event::default_event_handler;
 use valence_new::client::{despawn_disconnected_clients, Client};
-use valence_new::config::ServerPlugin;
+use valence_new::config::{ConnectionMode, ServerPlugin};
 use valence_new::dimension::DimensionId;
 use valence_new::entity::{EntityKind, McEntity};
 use valence_new::instance::{Chunk, Instance};
 use valence_new::player_list::{
-    add_new_clients_to_player_list, remove_disconnected_clients_from_player_list, PlayerList,
-    PlayerListEntry,
+    add_new_clients_to_player_list, remove_disconnected_clients_from_player_list,
 };
 use valence_new::protocol::block::BlockState;
 use valence_new::protocol::types::GameMode;
@@ -16,18 +17,42 @@ use valence_new::server::Server;
 
 const SPAWN_Y: i32 = 64;
 
+#[derive(Resource)]
+struct TickStart(Instant);
+
 fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(ServerPlugin::new(()))
+        .add_plugin(
+            ServerPlugin::new(())
+                .with_connection_mode(ConnectionMode::Offline)
+                .with_compression_threshold(None)
+                .with_max_connections(50_000),
+        )
         .add_startup_system(setup)
+        .add_system_to_stage(CoreStage::First, record_tick_start_time)
+        .add_system_to_stage(CoreStage::Last, print_tick_time)
         .add_system(init_clients)
         .add_system(default_event_handler)
         .add_system(despawn_disconnected_clients)
         .add_system(add_new_clients_to_player_list)
         .add_system(remove_disconnected_clients_from_player_list)
         .run();
+}
+
+fn record_tick_start_time(world: &mut World) {
+    world
+        .get_resource_or_insert_with(|| TickStart(Instant::now()))
+        .0 = Instant::now();
+}
+
+fn print_tick_time(server: Res<Server>, time: Res<TickStart>) {
+    let tick = server.current_tick();
+    if tick % server.tps() == 0 {
+        let millis = time.0.elapsed().as_secs_f32() * 1000.0;
+        println!("Tick={tick}, MSPT={millis:.04}ms");
+    }
 }
 
 fn setup(world: &mut World) {

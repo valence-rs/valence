@@ -1,6 +1,6 @@
 [workspace]
 members = ["crates/*"]
-exclude = ["crates/*/rust-mc-bot"]
+exclude = ["rust-mc-bot"]
 
 [profile.dev.package."*"]
 opt-level = 3

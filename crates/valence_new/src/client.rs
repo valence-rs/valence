@@ -24,10 +24,10 @@ use crate::dimension::DimensionId;
 use crate::entity::data::Player;
 use crate::entity::McEntity;
 use crate::instance::Instance;
+use crate::packet::WritePacket;
 use crate::player_list::PlayerList;
 use crate::server::{NewClientInfo, PlayPacketReceiver, PlayPacketSender, Server};
 use crate::{Despawned, NULL_ENTITY};
-use crate::packet::WritePacket;
 
 pub mod event;
 

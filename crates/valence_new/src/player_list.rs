@@ -415,7 +415,11 @@ impl<'a> VacantEntry<'a> {
     }
 }
 
-pub(crate) fn update_player_list(player_list: ResMut<PlayerList>, server: Res<Server>, mut clients: Query<&mut Client>) {
+pub(crate) fn update_player_list(
+    player_list: ResMut<PlayerList>,
+    server: Res<Server>,
+    mut clients: Query<&mut Client>,
+) {
     let pl = player_list.into_inner();
 
     let mut scratch = vec![];
