@@ -1,7 +1,8 @@
 use std::{
+    error::Error,
     fmt::{Display, Formatter},
     iter::Peekable,
-    str::Chars, error::Error,
+    str::Chars,
 };
 
 use crate::{tag::Tag, Compound, List, Value};
@@ -62,15 +63,14 @@ impl Display for SNBTError {
     }
 }
 
-impl Error for SNBTError {
-}
+impl Error for SNBTError {}
 
 type Result<T> = std::result::Result<T, SNBTError>;
 
 pub struct SNBTReader<'a> {
     line: usize,
     column: usize,
-	pub index: usize,
+    pub index: usize,
     iter: Peekable<Chars<'a>>,
     pushed_back: Option<char>,
 }
@@ -80,7 +80,7 @@ impl<'a> SNBTReader<'a> {
         Self {
             line: 1,
             column: 1,
-			index: 0,
+            index: 0,
             iter: input.chars().peekable(),
             pushed_back: None,
         }
@@ -114,19 +114,19 @@ impl<'a> SNBTReader<'a> {
             } else {
                 self.column += 1;
             }
-			self.index += c.len_utf8();
+            self.index += c.len_utf8();
         }
     }
 
     /// Push back a char, only one char can be pushed back
     fn push_back(&mut self, c: char) {
-		if c == '\n' {
-			self.line -= 1;
-			self.column = 1;
-		} else {
-			self.column -= 1;
-		}
-		self.index -= c.len_utf8();
+        if c == '\n' {
+            self.line -= 1;
+            self.column = 1;
+        } else {
+            self.column -= 1;
+        }
+        self.index -= c.len_utf8();
         match self.pushed_back {
             Some(_) => panic!("Can't push back two chars"),
             None => self.pushed_back = Some(c),
@@ -387,8 +387,8 @@ impl<'a> SNBTReader<'a> {
         Ok(Value::String(target))
     }
 
-	/// Read the next element in the SNBT string.
-	/// [`SNBTErrorType::TrailingData`] is impossible to be returned since it doesnot consider it's an error.
+    /// Read the next element in the SNBT string.
+    /// [`SNBTErrorType::TrailingData`] is impossible to be returned since it doesnot consider it's an error.
     pub fn parse_element(&mut self) -> Result<Value> {
         self.skip_whitespace();
         match self.peek()? {
@@ -398,7 +398,7 @@ impl<'a> SNBTReader<'a> {
             _ => self.parse_primitive(),
         }
     }
-	
+
     pub fn read(&mut self) -> Result<Value> {
         let value = self.parse_element()?;
         self.skip_whitespace();
@@ -408,28 +408,26 @@ impl<'a> SNBTReader<'a> {
         Ok(value)
     }
 
-	/// Get the number of bytes readed.
-	/// It's useful when you want to read a SNBT string from an command argument since there may be trailing data.
-	pub fn bytes_readed(&self) -> usize {
-		self.index
-	}
+    /// Get the number of bytes readed.
+    /// It's useful when you want to read a SNBT string from an command argument since there may be trailing data.
+    pub fn bytes_readed(&self) -> usize {
+        self.index
+    }
 
-	/// Parse a string in SNBT format into a `Value`.
-	/// Assert that the string has no trailing data.
-	/// SNBT is quite similar to JSON, but with some differences.
-	/// See [the wiki](https://minecraft.gamepedia.com/NBT_format#SNBT_format) for more information.
-	/// # Example
-	/// ```
-	/// use nbt::Value;
-	/// use nbt::SNBTReader;
-	/// let value = SNBTReader::from_snbt("1f").unwrap();
-	/// assert_eq!(value, Value::Float(1.0));
-	/// ```
+    /// Parse a string in SNBT format into a `Value`.
+    /// Assert that the string has no trailing data.
+    /// SNBT is quite similar to JSON, but with some differences.
+    /// See [the wiki](https://minecraft.gamepedia.com/NBT_format#SNBT_format) for more information.
+    /// # Example
+    /// ```
+    /// use nbt::Value;
+    /// use nbt::SNBTReader;
+    /// let value = SNBTReader::from_snbt("1f").unwrap();
+    /// assert_eq!(value, Value::Float(1.0));
+    /// ```
     pub fn from_snbt(snbt: &str) -> Result<Value> {
         SNBTReader::new(snbt).read()
     }
-
-
 }
 
 #[cfg(test)]
@@ -481,9 +479,9 @@ mod tests {
             *more.get("larr").unwrap().as_long_array().unwrap(),
             vec![1, 2, 3]
         );
-		println!("{:?}", more);
-		let List::String(list) = cpd.get("empty").unwrap().as_list().unwrap() else { panic!() };
-		assert_eq!(list[0], "Bibabo");
+        println!("{:?}", more);
+        let List::String(list) = cpd.get("empty").unwrap().as_list().unwrap() else { panic!() };
+        assert_eq!(list[0], "Bibabo");
         assert_eq!(
             SNBTReader::from_snbt("\"\\n\"").unwrap_err().error_type,
             SNBTErrorType::InvalidEscapeSequence

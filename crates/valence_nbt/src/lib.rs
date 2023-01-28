@@ -76,9 +76,9 @@ pub mod compound;
 mod error;
 mod from_binary_slice;
 mod modified_utf8;
+pub mod snbt;
 mod to_binary_writer;
 pub mod value;
-pub mod snbt;
 
 mod tag;
 #[cfg(test)]

@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::{Compound, tag::Tag};
+use crate::{tag::Tag, Compound};
 
 /// Represents an arbitrary NBT value.
 #[derive(Clone, PartialEq, Debug)]
