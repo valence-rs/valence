@@ -430,6 +430,155 @@ impl<'a> SNBTReader<'a> {
     }
 }
 
+pub struct SNBTWriter {
+    output: String,
+}
+
+impl SNBTWriter {
+    pub fn new() -> Self {
+        Self {
+            output: String::new(),
+        }
+    }
+
+    fn write_string(&mut self, s: &str) {
+        let mut need_quote = false;
+        for c in s.chars() {
+            if !matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '-' | '+' | '.') {
+                need_quote = true;
+                break;
+            }
+        }
+        if need_quote {
+            self.output.push('"');
+            for c in s.chars() {
+                match c {
+                    '"' => self.output.push_str("\\\""),
+                    '\\' => self.output.push_str("\\\\"),
+                    _ => self.output.push(c),
+                }
+            }
+            self.output.push('"');
+        } else {
+            self.output.push_str(s);
+        }
+    }
+
+    fn write_primitive_array<'a>(
+        &mut self,
+        prefix: &str,
+        iter: impl Iterator<Item = &'a (impl Into<Value> + 'a + Copy)>,
+    ) {
+        self.output.push('[');
+        self.output.push_str(prefix);
+        let mut first = true;
+        for v in iter {
+            if !first {
+                self.output.push(',');
+            }
+            first = false;
+            self.write_element(&(*v).into());
+        }
+        self.output.push(']');
+    }
+
+    fn write_primitive(&mut self, postfix: &str, value: impl ToString) {
+        self.output.push_str(&value.to_string());
+        self.output.push_str(postfix);
+    }
+
+    fn write_list(&mut self, list: &List) {
+        macro_rules! variant_impl {
+            ($v:expr, $handle:expr) => {{
+                self.output.push('[');
+                let mut first = true;
+                for v in $v.iter() {
+                    if !first {
+                        self.output.push(',');
+                    }
+                    first = false;
+                    $handle(v);
+                }
+                self.output.push(']');
+            }};
+        }
+        match list {
+            List::Byte(v) => variant_impl!(v, |v| self.write_primitive("b", v)),
+            List::Short(v) => variant_impl!(v, |v| self.write_primitive("s", v)),
+            List::Int(v) => variant_impl!(v, |v| self.write_primitive("", v)),
+            List::Long(v) => variant_impl!(v, |v| self.write_primitive("l", v)),
+            List::Float(v) => variant_impl!(v, |v| self.write_primitive("f", v)),
+            List::Double(v) => variant_impl!(v, |v| self.write_primitive("d", v)),
+            List::ByteArray(v) => {
+                variant_impl!(v, |v: &Vec<i8>| self.write_primitive_array("B", v.iter()))
+            }
+            List::IntArray(v) => {
+                variant_impl!(v, |v: &Vec<i32>| self.write_primitive_array("", v.iter()))
+            }
+            List::LongArray(v) => {
+                variant_impl!(v, |v: &Vec<i64>| self.write_primitive_array("L", v.iter()))
+            }
+            List::String(v) => variant_impl!(v, |v| self.write_string(v)),
+            List::List(v) => variant_impl!(v, |v| self.write_list(v)),
+            List::Compound(v) => variant_impl!(v, |v| self.write_compound(v)),
+            List::End => self.output.push_str("[]"),
+        }
+    }
+
+    fn write_compound(&mut self, compound: &Compound) {
+        self.output.push('{');
+        let mut first = true;
+        for (k, v) in compound.iter() {
+            if !first {
+                self.output.push(',');
+            }
+            first = false;
+            self.write_string(k);
+            self.output.push(':');
+            self.write_element(v);
+        }
+        self.output.push('}');
+    }
+
+    /// Write a value to the output.
+    pub fn write_element(&mut self, value: &Value) {
+        use Value::*;
+        match value {
+            Byte(v) => self.write_primitive("b", v),
+            Short(v) => self.write_primitive("s", v),
+            Int(v) => self.write_primitive("", v),
+            Long(v) => self.write_primitive("l", v),
+            Float(v) => self.write_primitive("f", v),
+            Double(v) => self.write_primitive("d", v),
+            ByteArray(v) => self.write_primitive_array("B;", v.iter()),
+            IntArray(v) => self.write_primitive_array("I;", v.iter()),
+            LongArray(v) => self.write_primitive_array("L;", v.iter()),
+            String(v) => self.write_string(v),
+            List(v) => self.write_list(v),
+            Compound(v) => self.write_compound(v),
+        }
+    }
+
+    /// Convert a value to a string in SNBT format.
+    pub fn stringify(value: &Value) -> String {
+        let mut writer = SNBTWriter::new();
+        writer.write_element(value);
+        writer.into()
+    }
+}
+
+impl Into<String> for SNBTWriter {
+    fn into(self) -> String {
+        self.output
+    }
+}
+
+impl Display for SNBTWriter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.output)
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -479,7 +628,6 @@ mod tests {
             *more.get("larr").unwrap().as_long_array().unwrap(),
             vec![1, 2, 3]
         );
-        println!("{:?}", more);
         let List::String(list) = cpd.get("empty").unwrap().as_list().unwrap() else { panic!() };
         assert_eq!(list[0], "Bibabo");
         assert_eq!(
@@ -530,5 +678,8 @@ mod tests {
                 .error_type,
             SNBTErrorType::LongString
         );
+        // Since the order of keys in a compound is not guaranteed, we cannot test the output of stringify.
+        // Print it out for manual inspection.
+        println!("{}", SNBTWriter::stringify(&value));
     }
 }
