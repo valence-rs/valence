@@ -30,7 +30,7 @@ use crate::entity::{
     check_entity_invariants, deinit_despawned_entities, init_entities, update_entities,
     McEntityManager,
 };
-use crate::instance::{update_instances_post_client, update_instances_pre_client, Instance};
+use crate::instance::{update_instances_post_client, update_instances_pre_client, Instance, check_instance_invariants};
 use crate::inventory::{
     handle_click_container, handle_close_container, handle_set_slot_creative,
     update_client_on_close_inventory, update_open_inventories, update_player_inventories,
@@ -361,6 +361,7 @@ pub fn build_plugin(
             SystemSet::new()
                 .with_system(init_entities)
                 .with_system(check_entity_invariants)
+                .with_system(check_instance_invariants.after(check_entity_invariants))
                 .with_system(update_player_list.before(update_instances_pre_client))
                 .with_system(update_instances_pre_client.after(init_entities))
                 .with_system(update_clients.after(update_instances_pre_client))

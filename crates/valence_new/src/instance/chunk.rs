@@ -1,3 +1,5 @@
+// Using nonstandard mutex to avoid poisoning API.
+use parking_lot::Mutex;
 use valence_nbt::compound;
 use valence_protocol::block::BlockState;
 use valence_protocol::packets::s2c::play::{
@@ -21,7 +23,7 @@ pub struct Chunk<const LOADED: bool = false> {
     sections: Vec<Section>,
     /// Cached bytes of the chunk data packet. The cache is considered
     /// invalidated if empty.
-    cached_init_packets: Vec<u8>,
+    cached_init_packets: Mutex<Vec<u8>>,
     /// If clients should receive the chunk data packet instead of block change
     /// packets on update.
     refresh: bool,
@@ -49,7 +51,7 @@ impl Chunk<false> {
     pub fn new(section_count: usize) -> Self {
         let mut chunk = Self {
             sections: vec![],
-            cached_init_packets: vec![],
+            cached_init_packets: Mutex::new(vec![]),
             refresh: true,
         };
 
@@ -95,7 +97,7 @@ impl Clone for Chunk {
     fn clone(&self) -> Self {
         Self {
             sections: self.sections.clone(),
-            cached_init_packets: vec![],
+            cached_init_packets: Mutex::new(vec![]),
             refresh: true,
         }
     }
@@ -103,7 +105,7 @@ impl Clone for Chunk {
 
 impl Chunk<true> {
     pub(super) fn into_unloaded(mut self) -> Chunk<false> {
-        self.cached_init_packets.clear();
+        self.cached_init_packets.get_mut().clear();
 
         for sect in &mut self.sections {
             sect.section_updates.clear();
@@ -162,13 +164,15 @@ impl Chunk<true> {
     /// Writes the chunk data packet for this chunk with the given position.
     /// This will initialize the chunk for the client.
     pub(crate) fn write_init_packets(
-        &mut self,
+        &self,
         info: &InstanceInfo,
         pos: ChunkPos,
         mut writer: impl WritePacket,
         scratch: &mut Vec<u8>,
     ) -> anyhow::Result<()> {
-        if self.cached_init_packets.is_empty() {
+        let mut lck = self.cached_init_packets.lock();
+
+        if lck.is_empty() {
             scratch.clear();
 
             for sect in &self.sections {
@@ -194,7 +198,7 @@ impl Chunk<true> {
             let mut compression_scratch = vec![];
 
             let mut writer = PacketWriter::new(
-                &mut self.cached_init_packets,
+                &mut lck,
                 info.compression_threshold,
                 &mut compression_scratch,
             );
@@ -217,7 +221,7 @@ impl Chunk<true> {
             })?;
         }
 
-        writer.write_bytes(&self.cached_init_packets)
+        writer.write_bytes(&lck)
     }
 
     pub(super) fn update_post_client(&mut self) {
@@ -295,7 +299,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
             }
 
             if LOADED && !self.refresh {
-                self.cached_init_packets.clear();
+                self.cached_init_packets.get_mut().clear();
                 let compact = (block.to_raw() as i64) << 12 | (x << 8 | z << 4 | y % 16) as i64;
                 sect.section_updates.push(VarLong(compact));
             }
@@ -328,7 +332,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
         if LOADED && !self.refresh {
             if let PalettedContainer::Single(single) = &sect.block_states {
                 if block != *single {
-                    self.cached_init_packets.clear();
+                    self.cached_init_packets.get_mut().clear();
 
                     // The whole section is being modified, so any previous modifications would be
                     // overwritten.
@@ -350,7 +354,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
                     for x in 0..16 {
                         let idx = x + z * 16 + sect_y * (16 * 16);
                         if block != sect.block_states.get(idx) {
-                            self.cached_init_packets.clear();
+                            self.cached_init_packets.get_mut().clear();
                             let packed = block_bits | (x << 8 | z << 4 | sect_y) as i64;
                             sect.section_updates.push(VarLong(packed));
                         }
@@ -409,7 +413,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
             .set(x + z * 4 + y % 4 * 4 * 4, biome);
 
         if LOADED && biome != old_biome {
-            self.cached_init_packets.clear();
+            self.cached_init_packets.get_mut().clear();
             self.refresh = true;
         }
 
@@ -440,7 +444,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
         sect.biomes.fill(biome);
 
         // TODO: this is set unconditionally, but it doesn't have to be.
-        self.cached_init_packets.clear();
+        self.cached_init_packets.get_mut().clear();
         self.refresh = true;
     }
 
@@ -452,7 +456,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
     /// via [`Self::set_block_state`] and [`Self::set_biome`].
     pub fn optimize(&mut self) {
         self.sections.shrink_to_fit();
-        self.cached_init_packets.shrink_to_fit();
+        self.cached_init_packets.get_mut().shrink_to_fit();
 
         for sect in &mut self.sections {
             sect.section_updates.shrink_to_fit();

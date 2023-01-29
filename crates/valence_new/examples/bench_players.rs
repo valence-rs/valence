@@ -49,7 +49,7 @@ fn record_tick_start_time(world: &mut World) {
 
 fn print_tick_time(server: Res<Server>, time: Res<TickStart>) {
     let tick = server.current_tick();
-    if tick % server.tps() == 0 {
+    if tick % (server.tps() / 2) == 0 {
         let millis = time.0.elapsed().as_secs_f32() * 1000.0;
         println!("Tick={tick}, MSPT={millis:.04}ms");
     }

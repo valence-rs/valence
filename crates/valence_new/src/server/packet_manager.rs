@@ -202,6 +202,7 @@ impl PlayPacketSender {
         self.enc.append_packet(pkt)
     }
 
+    #[inline]
     pub fn append_bytes(&mut self, bytes: &[u8]) {
         self.enc.append_bytes(bytes)
     }

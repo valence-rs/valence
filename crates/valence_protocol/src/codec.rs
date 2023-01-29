@@ -30,6 +30,7 @@ impl PacketEncoder {
         Self::default()
     }
 
+    #[inline]
     pub fn append_bytes(&mut self, bytes: &[u8]) {
         self.buf.extend_from_slice(bytes)
     }

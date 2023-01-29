@@ -11,6 +11,6 @@ Cargo.lock
 rust-mc-bot
 .asset_cache/
 /velocity
-flamegraph.svg
+flamegraph*.svg
 perf.data
 perf.data.old
