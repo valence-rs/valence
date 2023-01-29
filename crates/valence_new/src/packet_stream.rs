@@ -1,55 +1,34 @@
-use std::collections::VecDeque;
+use std::sync::{Arc, Mutex};
 
-use bytes::{BufMut, BytesMut};
+use bytes::BytesMut;
 use valence_protocol::packets::S2cPlayPacket;
 use valence_protocol::{DecodePacket, EncodePacket, PacketDecoder, PacketEncoder};
 
-use crate::server::byte_channel::{ByteReceiver, ByteSender, TryRecvError};
+use crate::packet::WritePacket;
+use crate::server::byte_channel::{ByteReceiver, ByteSender, TryRecvError, TrySendError};
 
-/// Represents a byte stream that packets can be read from and written to.
-pub trait PacketStream {
-    /// Parses and returns the next packet in the stream.
-    fn try_recv<'a, P>(&'a mut self) -> anyhow::Result<Option<P>>
-    where
-        P: DecodePacket<'a> + std::fmt::Debug;
-
-    /// Encodes and writes the given packet to the stream.
-    fn try_send<P>(&mut self, packet: P) -> anyhow::Result<()>
-    where
-        P: EncodePacket;
-}
-
-pub(crate) struct RealPacketStream {
-    dec: PacketDecoder,
-    recv: ByteReceiver,
+pub struct PacketStreamer {
+    pub stream: Arc<Mutex<dyn PacketStream + Send + Sync>>,
     enc: PacketEncoder,
-    send: ByteSender,
+    dec: PacketDecoder,
 }
 
-impl RealPacketStream {
-    pub(crate) fn new(recv: ByteReceiver, send: ByteSender) -> Self {
+impl PacketStreamer {
+    pub fn new(stream: Arc<Mutex<impl PacketStream + Send + Sync>>) -> Self {
         Self {
-            dec: PacketDecoder::new(),
-            recv,
+            stream,
             enc: PacketEncoder::new(),
-            send,
+            dec: PacketDecoder::new(),
         }
     }
 
-    pub fn flush(&mut self) -> anyhow::Result<()> {
-        let bytes = self.enc.take();
-        self.send.try_send(bytes)?;
-        Ok(())
-    }
-}
-
-impl PacketStream for RealPacketStream {
-    fn try_recv<'a, P>(&'a mut self) -> anyhow::Result<Option<P>>
+    /// Parses and returns the next packet in the receive stream.
+    pub fn try_recv<'a, P>(&'a mut self) -> anyhow::Result<Option<P>>
     where
         P: DecodePacket<'a> + std::fmt::Debug,
     {
         loop {
-            match self.recv.try_recv() {
+            match self.stream.lock().unwrap().try_recv() {
                 Ok(bytes) => self.dec.queue_bytes(bytes),
                 Err(TryRecvError::Empty) => break,
                 Err(TryRecvError::Disconnected) => anyhow::bail!("Disconnected"),
@@ -59,12 +38,83 @@ impl PacketStream for RealPacketStream {
         self.dec.try_next_packet()
     }
 
-    fn try_send<P>(&mut self, packet: P) -> anyhow::Result<()>
+    /// Encodes and writes the given packet to the send queue.
+    pub fn try_send<P>(&mut self, packet: &P) -> anyhow::Result<()>
     where
-        P: EncodePacket,
+        P: EncodePacket + ?Sized,
     {
-        self.enc.append_packet(&packet)?;
+        self.enc.append_packet(packet)?;
         Ok(())
+    }
+
+    /// Encodes and writes the given packet to the beginning of send queue.
+    pub fn try_send_prepend<P>(&mut self, packet: &P) -> anyhow::Result<()>
+    where
+        P: EncodePacket + ?Sized,
+    {
+        self.enc.prepend_packet(packet)?;
+        Ok(())
+    }
+
+    /// Add a packet to the send queue that has already been encoded.
+    pub fn send_raw(&mut self, bytes: &[u8]) {
+        self.enc.append_bytes(bytes);
+    }
+
+    /// Flushes the send queue to the stream;
+    pub fn send_flush(&mut self) -> anyhow::Result<()> {
+        self.stream.lock().unwrap().try_send(self.enc.take())?;
+        Ok(())
+    }
+
+    /// Clears the send queue without flushing.
+    pub fn send_drop(&mut self) {
+        self.enc.clear();
+    }
+}
+
+impl WritePacket for PacketStreamer {
+    fn write_packet<P>(&mut self, packet: &P) -> anyhow::Result<()>
+    where
+        P: EncodePacket + ?Sized,
+    {
+        self.try_send(packet)
+    }
+
+    fn write_bytes(&mut self, bytes: &[u8]) -> anyhow::Result<()> {
+        self.send_raw(bytes);
+        Ok(())
+    }
+}
+
+/// Represents a byte stream that packets can be read from and written to.
+pub trait PacketStream {
+    /// Grabs all the bytes buffered for the stream and returns them.
+    fn try_recv(&mut self) -> Result<BytesMut, TryRecvError>;
+
+    /// Writes the given bytes to the stream.
+    fn try_send(&mut self, bytes: BytesMut) -> Result<(), TrySendError>;
+}
+
+pub(crate) struct RealPacketStream {
+    recv: ByteReceiver,
+    send: ByteSender,
+}
+
+impl RealPacketStream {
+    pub(crate) fn new(recv: ByteReceiver, send: ByteSender) -> Self {
+        Self { recv, send }
+    }
+}
+
+impl PacketStream for RealPacketStream {
+    fn try_recv(&mut self) -> Result<BytesMut, TryRecvError> {
+        let bytes = self.recv.try_recv()?;
+        Ok(bytes)
+    }
+
+    fn try_send(&mut self, bytes: BytesMut) -> Result<(), TrySendError> {
+        self.send.try_send(bytes)
     }
 }
 
@@ -72,9 +122,9 @@ impl PacketStream for RealPacketStream {
 /// used for testing.
 pub(crate) struct MockPacketStream {
     recv_enc: PacketEncoder,
-    recv_dec: PacketDecoder,
-
-    send_queue: VecDeque<Vec<u8>>,
+    pending_recv: Vec<u8>,
+    send_dec: PacketDecoder,
+    flushed_sent: Vec<u8>,
 }
 
 impl<'a> MockPacketStream {
@@ -82,9 +132,15 @@ impl<'a> MockPacketStream {
     pub(crate) fn new() -> Self {
         Self {
             recv_enc: PacketEncoder::new(),
-            recv_dec: PacketDecoder::new(),
-            send_queue: VecDeque::new(),
+            pending_recv: Vec::new(),
+            send_dec: PacketDecoder::new(),
+            flushed_sent: Vec::new(),
         }
+    }
+
+    /// Clears the sent packets.
+    fn clear_sent(&mut self) {
+        self.flushed_sent.clear();
     }
 
     /// Injects a packet into the receive stream as if it were received from a
@@ -107,46 +163,37 @@ impl<'a> MockPacketStream {
             .append_packet(&packet)
             .expect("failed to encode injected packet");
         let bytes = self.recv_enc.take();
-        self.recv_dec.queue_bytes(bytes);
+        self.pending_recv.extend_from_slice(bytes.as_ref());
     }
 
-    fn queue_send<P>(&mut self, packet: P) -> anyhow::Result<()>
-    where
-        P: EncodePacket,
-    {
-        let bytes = BytesMut::new();
-        let mut w = bytes.writer();
-        P::encode_packet(&packet, &mut w)?;
-        let bytes = w.into_inner();
-        self.send_queue.push_back(bytes.to_vec());
-        Ok(())
-    }
-
+    /// Collects all the packets that have been sent so assertions can be made
+    /// on what the server sent in unit tests.
     #[allow(dead_code)]
-    pub(crate) fn flush_sent(&'a mut self) -> anyhow::Result<Vec<S2cPlayPacket<'a>>> {
+    pub fn collect_sent(&mut self) -> anyhow::Result<Vec<S2cPlayPacket<'a>>> {
+        let bytes = BytesMut::from(self.flushed_sent.as_slice());
+        self.send_dec.queue_bytes(bytes);
         let mut packets = Vec::new();
-        for pkt in self.send_queue.iter() {
-            let mut p: Box<&'a [u8]> = Box::new(pkt.as_slice());
-            let packet = S2cPlayPacket::<'a>::decode_packet(&mut p)?;
-            packets.push(packet);
+        while let Ok(packet) = self.send_dec.try_next_packet::<S2cPlayPacket<'a>>() {
+            if let Some(packet) = packet {
+                packets.push(packet);
+            } else {
+                break;
+            }
         }
         Ok(packets)
     }
 }
 
 impl PacketStream for MockPacketStream {
-    fn try_recv<'a, P>(&'a mut self) -> anyhow::Result<Option<P>>
-    where
-        P: DecodePacket<'a> + std::fmt::Debug,
-    {
-        self.recv_dec.try_next_packet()
+    fn try_recv(&mut self) -> Result<BytesMut, TryRecvError> {
+        let bytes = BytesMut::from(self.pending_recv.as_slice());
+        self.pending_recv.clear();
+        Ok(bytes)
     }
 
-    fn try_send<P>(&mut self, packet: P) -> anyhow::Result<()>
-    where
-        P: EncodePacket,
-    {
-        self.queue_send(packet)
+    fn try_send(&mut self, bytes: BytesMut) -> Result<(), TrySendError> {
+        self.flushed_sent.extend_from_slice(bytes.as_ref());
+        Ok(())
     }
 }
 
@@ -159,19 +206,21 @@ mod tests {
 
     #[test]
     fn test_mock_stream_read() {
-        let mut stream = MockPacketStream::new();
+        let stream = Arc::new(Mutex::new(MockPacketStream::new()));
+        let mut streamer = PacketStreamer::new(stream);
         let packet = KeepAliveC2s { id: 0xdeadbeef };
-        stream.inject_recv(packet.clone());
-        let packet_out = stream.try_recv::<KeepAliveC2s>().unwrap().unwrap();
+        streamer.try_send(&packet).unwrap();
+        let packet_out = streamer.try_recv::<KeepAliveC2s>().unwrap().unwrap();
         assert_eq!(packet.id, packet_out.id);
     }
 
     #[test]
     fn test_mock_stream_assert_sent() {
-        let mut stream = MockPacketStream::new();
+        let stream = Arc::new(Mutex::new(MockPacketStream::new()));
+        let mut streamer = PacketStreamer::new(stream);
         let packet = KeepAliveS2c { id: 0xdeadbeef };
-        stream.try_send(packet.clone()).unwrap();
-        let packets_out = stream.flush_sent().unwrap();
+        streamer.try_send(&packet).unwrap();
+        let packets_out = stream.lock().unwrap().collect_sent().unwrap();
         let S2cPlayPacket::KeepAliveS2c(packet_out) = packets_out[0] else {
             assert!(false);
             return;

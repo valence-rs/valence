@@ -195,21 +195,6 @@ pub struct PlayPacketSender {
 }
 
 impl PlayPacketSender {
-    /// Creates a new `PlayPacketSender` that will send packets such that they
-    /// can be received and asserted on by a unit test.
-    pub(crate) fn new_injectable() -> (Self, ByteReceiver) {
-        let (send, recv) = byte_channel(0);
-        (
-            PlayPacketSender {
-                enc: PacketEncoder::new(),
-                send,
-                writer_task: None,
-                handle: Handle::current(),
-            },
-            recv,
-        )
-    }
-
     pub fn append_packet<P>(&mut self, pkt: &P) -> Result<()>
     where
         P: EncodePacket + ?Sized,
@@ -277,20 +262,6 @@ pub struct PlayPacketReceiver {
 }
 
 impl PlayPacketReceiver {
-    /// Creates a new `PlayPacketReceiver` with a new `ByteSender` to manually
-    /// inject packets. This is useful for testing.
-    pub(crate) fn new_injectable() -> (Self, ByteSender) {
-        let (send, recv) = byte_channel(8192);
-        (
-            Self {
-                dec: Default::default(),
-                recv,
-                reader_task: tokio::spawn(async {}),
-            },
-            send,
-        )
-    }
-
     pub fn try_next_packet<'a, P>(&'a mut self) -> Result<Option<P>>
     where
         P: DecodePacket<'a> + fmt::Debug,

@@ -21,6 +21,7 @@ use valence_nbt::{compound, Compound, List};
 use valence_protocol::types::Property;
 use valence_protocol::{ident, Username};
 
+use self::byte_channel::{ByteReceiver, ByteSender};
 use crate::biome::{validate_biomes, Biome, BiomeId};
 use crate::client::event::{dispatch_client_events, register_client_events};
 use crate::client::{update_clients, Client};
@@ -36,6 +37,7 @@ use crate::inventory::{
     update_client_on_close_inventory, update_open_inventories, update_player_inventories,
     Inventory, InventoryKind,
 };
+use crate::packet_stream::{PacketStreamer, RealPacketStream};
 use crate::player_list::{update_player_list, PlayerList};
 use crate::server::connect::do_accept_loop;
 use crate::Despawned;
@@ -245,8 +247,8 @@ pub struct NewClientInfo {
 
 struct NewClientMessage {
     info: NewClientInfo,
-    send: PlayPacketSender,
-    recv: PlayPacketReceiver,
+    send: ByteSender,
+    recv: ByteReceiver,
     permit: OwnedSemaphorePermit,
 }
 
@@ -338,8 +340,10 @@ pub fn build_plugin(
                 break
             };
 
+            let stream = RealPacketStream::new(msg.recv, msg.send);
+            let streamer = PacketStreamer::new(Arc::new(Mutex::new(stream)));
             world.spawn((
-                Client::new(msg.send, msg.recv, msg.permit, msg.info),
+                Client::new(streamer, msg.permit, msg.info),
                 Inventory::new(InventoryKind::Player),
             ));
         }

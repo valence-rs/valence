@@ -1,10 +1,12 @@
+use std::sync::{Arc, Mutex};
+
 use bytes::BytesMut;
 use tokio::sync::OwnedSemaphorePermit;
 use valence_protocol::{EncodePacket, Username};
 
 use crate::client::Client;
-use crate::server::byte_channel::{ByteReceiver, ByteSender};
-use crate::server::{NewClientInfo, PlayPacketReceiver, PlayPacketSender};
+use crate::packet_stream::{MockPacketStream, PacketStream, PacketStreamer};
+use crate::server::NewClientInfo;
 
 /// Creates a mock client that can be used for unit testing.
 ///
@@ -14,11 +16,10 @@ pub fn create_mock_client(
     permit: OwnedSemaphorePermit,
     client_info: NewClientInfo,
 ) -> (Client, MockClientHelper) {
-    let (pkt_send, recv) = PlayPacketSender::new_injectable();
-    let (pkt_recv, send) = PlayPacketReceiver::new_injectable();
-
-    let client = Client::new(pkt_send, pkt_recv, permit, client_info);
-    (client, MockClientHelper::new(send, recv))
+    let mock_stream = Arc::new(Mutex::new(MockPacketStream::new()));
+    let streamer = PacketStreamer::new(mock_stream.clone());
+    let client = Client::new(streamer, permit, client_info);
+    (client, MockClientHelper::new(mock_stream))
 }
 
 /// Creates a `NewClientInfo` with the given username and a random UUID.
@@ -33,18 +34,14 @@ pub fn gen_client_info(username: &str) -> NewClientInfo {
 }
 
 pub struct MockClientHelper {
-    /// Used to pretend the client sent bytes.
-    send: ByteSender,
-    /// Used to pretend the client received bytes.
-    recv: ByteReceiver,
+    stream: Arc<Mutex<MockPacketStream>>,
 }
 
-/// Has a `ByteSender` to inject packets to be read and acted
-/// upon by the server, and a `ByteReceiver` to receive packets and make
-/// assertions about what the server sent.
+/// Contains the mocked packet stream and helper methods to inject packets and
+/// read packets from the send stream.
 impl MockClientHelper {
-    fn new(send: ByteSender, recv: ByteReceiver) -> Self {
-        Self { send, recv }
+    fn new(stream: Arc<Mutex<MockPacketStream>>) -> Self {
+        Self { stream }
     }
 
     /// Inject a packet to be parsed by the server. Panics if the packet cannot
@@ -52,7 +49,9 @@ impl MockClientHelper {
     pub fn send_packet(&mut self, packet: impl EncodePacket) {
         let mut buffer = Vec::<u8>::new();
         valence_protocol::encode_packet(&mut buffer, &packet).expect("Failed to encode packet");
-        self.send
+        self.stream
+            .lock()
+            .unwrap()
             .try_send(BytesMut::from(buffer.as_slice()))
             .expect("Failed to send packet");
     }
