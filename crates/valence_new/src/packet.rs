@@ -1,6 +1,6 @@
 use std::io::Write;
-use tracing::warn;
 
+use tracing::warn;
 use valence_protocol::{encode_packet, encode_packet_compressed, EncodePacket};
 
 pub(crate) trait WritePacket {

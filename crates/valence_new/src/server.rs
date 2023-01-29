@@ -30,7 +30,9 @@ use crate::entity::{
     check_entity_invariants, deinit_despawned_entities, init_entities, update_entities,
     McEntityManager,
 };
-use crate::instance::{update_instances_post_client, update_instances_pre_client, Instance, check_instance_invariants};
+use crate::instance::{
+    check_instance_invariants, update_instances_post_client, update_instances_pre_client, Instance,
+};
 use crate::inventory::{
     handle_click_container, handle_close_container, handle_set_slot_creative,
     update_client_on_close_inventory, update_open_inventories, update_player_inventories,

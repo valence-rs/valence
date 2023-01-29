@@ -1,7 +1,7 @@
 use rand::Rng;
 use valence_new::client::despawn_disconnected_clients;
 use valence_new::client::event::default_event_handler;
-use valence_new::player_list::{Entry, remove_disconnected_clients_from_player_list};
+use valence_new::player_list::{remove_disconnected_clients_from_player_list, Entry};
 use valence_new::prelude::*;
 
 const SPAWN_Y: i32 = 64;

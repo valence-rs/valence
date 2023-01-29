@@ -25,7 +25,9 @@
 )]
 
 use bevy_ecs::prelude::*;
-pub use {anyhow, bevy_app, bevy_ecs, uuid, valence_nbt as nbt, valence_protocol as protocol};
+pub use {
+    anyhow, async_trait, bevy_app, bevy_ecs, uuid, valence_nbt as nbt, valence_protocol as protocol,
+};
 
 pub mod biome;
 pub mod chunk_pos;
@@ -42,6 +44,7 @@ pub mod player_textures;
 pub mod server;
 
 pub mod prelude {
+    pub use async_trait::async_trait;
     pub use bevy_app::App;
     pub use bevy_ecs::prelude::*;
     pub use biome::{Biome, BiomeId};
