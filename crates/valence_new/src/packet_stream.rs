@@ -4,6 +4,8 @@ use bytes::{BufMut, BytesMut};
 use valence_protocol::packets::S2cPlayPacket;
 use valence_protocol::{DecodePacket, EncodePacket, PacketDecoder, PacketEncoder};
 
+use crate::server::byte_channel::{ByteReceiver, ByteSender, TryRecvError};
+
 /// Represents a byte stream that packets can be read from and written to.
 pub trait PacketStream {
     /// Parses and returns the next packet in the stream.
@@ -15,6 +17,55 @@ pub trait PacketStream {
     fn try_send<P>(&mut self, packet: P) -> anyhow::Result<()>
     where
         P: EncodePacket;
+}
+
+pub(crate) struct RealPacketStream {
+    dec: PacketDecoder,
+    recv: ByteReceiver,
+    enc: PacketEncoder,
+    send: ByteSender,
+}
+
+impl RealPacketStream {
+    pub(crate) fn new(recv: ByteReceiver, send: ByteSender) -> Self {
+        Self {
+            dec: PacketDecoder::new(),
+            recv,
+            enc: PacketEncoder::new(),
+            send,
+        }
+    }
+
+    pub fn flush(&mut self) -> anyhow::Result<()> {
+        let bytes = self.enc.take();
+        self.send.try_send(bytes)?;
+        Ok(())
+    }
+}
+
+impl PacketStream for RealPacketStream {
+    fn try_recv<'a, P>(&'a mut self) -> anyhow::Result<Option<P>>
+    where
+        P: DecodePacket<'a> + std::fmt::Debug,
+    {
+        loop {
+            match self.recv.try_recv() {
+                Ok(bytes) => self.dec.queue_bytes(bytes),
+                Err(TryRecvError::Empty) => break,
+                Err(TryRecvError::Disconnected) => anyhow::bail!("Disconnected"),
+            }
+        }
+
+        self.dec.try_next_packet()
+    }
+
+    fn try_send<P>(&mut self, packet: P) -> anyhow::Result<()>
+    where
+        P: EncodePacket,
+    {
+        self.enc.append_packet(&packet)?;
+        Ok(())
+    }
 }
 
 /// A `PacketStream` that reads and writes from an in memory buffer of packets
