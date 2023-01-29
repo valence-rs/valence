@@ -395,7 +395,7 @@ pub(crate) fn update_clients(
                 &entities,
                 &server,
             ) {
-                let _ = client.write_packet(&DisconnectPlay { reason: "".into() });
+                client.write_packet(&DisconnectPlay { reason: "".into() });
                 client.is_disconnected = true;
                 warn!(
                     username = %client.username,

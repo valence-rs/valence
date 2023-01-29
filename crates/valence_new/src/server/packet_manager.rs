@@ -235,7 +235,7 @@ impl WritePacket for PlayPacketSender {
         }
     }
 
-    fn write_bytes(&mut self, bytes: &[u8]) {
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
         self.append_bytes(bytes);
     }
 }

@@ -8,7 +8,7 @@ pub(crate) trait WritePacket {
     where
         P: EncodePacket + ?Sized;
 
-    fn write_bytes(&mut self, bytes: &[u8]);
+    fn write_packet_bytes(&mut self, bytes: &[u8]);
 }
 
 impl<W: WritePacket> WritePacket for &mut W {
@@ -19,8 +19,8 @@ impl<W: WritePacket> WritePacket for &mut W {
         (*self).write_packet(packet)
     }
 
-    fn write_bytes(&mut self, bytes: &[u8]) {
-        (*self).write_bytes(bytes)
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        (*self).write_packet_bytes(bytes)
     }
 }
 
@@ -56,7 +56,7 @@ impl WritePacket for PacketWriter<'_> {
         }
     }
 
-    fn write_bytes(&mut self, bytes: &[u8]) {
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
         if let Err(e) = self.buf.write_all(bytes) {
             warn!("failed to write packet bytes: {e:#}");
         }

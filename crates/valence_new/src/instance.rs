@@ -327,7 +327,7 @@ pub(crate) fn update_instances_pre_client(
                     &mut scratch_2,
                 );
 
-                let _ = chunk.write_update_packets(writer, &mut scratch_1, pos, &instance.info);
+                chunk.write_update_packets(writer, &mut scratch_1, pos, &instance.info);
             }
 
             // Cache entity update packets into the packet buffer of this cell.
@@ -348,7 +348,7 @@ pub(crate) fn update_instances_pre_client(
                     &mut scratch_2,
                 );
 
-                let _ = entity.write_update_packets(writer, &mut scratch_1);
+                entity.write_update_packets(writer, &mut scratch_1);
 
                 let end = cell.packet_buf.len();
 

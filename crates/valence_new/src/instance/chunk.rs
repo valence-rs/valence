@@ -223,7 +223,7 @@ impl Chunk<true> {
             });
         }
 
-        writer.write_bytes(&lck);
+        writer.write_packet_bytes(&lck);
     }
 
     pub(super) fn update_post_client(&mut self) {
