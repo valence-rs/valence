@@ -5,7 +5,7 @@ use valence_protocol::packets::S2cPlayPacket;
 use valence_protocol::{DecodePacket, EncodePacket, PacketDecoder, PacketEncoder};
 
 /// Represents a byte stream that packets can be read from and written to.
-trait PacketStream {
+pub trait PacketStream {
     /// Parses and returns the next packet in the stream.
     fn try_recv<'a, P>(&'a mut self) -> anyhow::Result<Option<P>>
     where
