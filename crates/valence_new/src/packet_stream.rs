@@ -27,6 +27,7 @@ pub(crate) struct MockPacketStream {
 }
 
 impl<'a> MockPacketStream {
+    #[allow(dead_code)]
     pub(crate) fn new() -> Self {
         Self {
             recv_enc: PacketEncoder::new(),
