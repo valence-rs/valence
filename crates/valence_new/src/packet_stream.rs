@@ -46,6 +46,7 @@ impl<'a> MockPacketStream {
     /// let packet = KeepAliveC2s { id: 0xdeadbeef };
     /// stream.inject_recv(packet);
     /// ```
+    #[allow(dead_code)]
     pub(crate) fn inject_recv<P>(&mut self, packet: P)
     where
         P: EncodePacket,
@@ -63,16 +64,18 @@ impl<'a> MockPacketStream {
     {
         let bytes = BytesMut::new();
         let mut w = bytes.writer();
-        P::encode_packet(&packet, &mut w);
+        P::encode_packet(&packet, &mut w)?;
         let bytes = w.into_inner();
         self.send_queue.push_back(bytes.to_vec());
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub(crate) fn flush_sent(&'a mut self) -> anyhow::Result<Vec<S2cPlayPacket<'a>>> {
         let mut packets = Vec::new();
-        for pkt in self.send_queue.drain(..) {
-            let packet = S2cPlayPacket::<'a>::decode_packet(&mut pkt.as_slice())?;
+        for pkt in self.send_queue.iter() {
+            let mut p: Box<&'a [u8]> = Box::new(pkt.as_slice());
+            let packet = S2cPlayPacket::<'a>::decode_packet(&mut p)?;
             packets.push(packet);
         }
         Ok(packets)
