@@ -1,5 +1,31 @@
+#![doc(
+    html_logo_url = "https://raw.githubusercontent.com/valence-rs/valence/main/assets/logo.svg",
+    html_favicon_url = "https://raw.githubusercontent.com/valence-rs/valence/main/assets/logo.svg"
+)]
+#![deny(
+    rustdoc::broken_intra_doc_links,
+    rustdoc::private_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::invalid_codeblock_attributes,
+    rustdoc::invalid_rust_codeblocks,
+    rustdoc::bare_urls,
+    rustdoc::invalid_html_tags
+)]
+#![warn(
+    trivial_casts,
+    trivial_numeric_casts,
+    unused_lifetimes,
+    unused_import_braces,
+    clippy::dbg_macro
+)]
+#![allow(
+    clippy::derive_partial_eq_without_eq,
+    clippy::unusual_byte_groupings,
+    clippy::comparison_chain
+)]
+
 use bevy_ecs::prelude::*;
-pub use {anyhow, bevy_app, bevy_ecs, valence_nbt as nbt, valence_protocol as protocol};
+pub use {anyhow, bevy_app, bevy_ecs, uuid, valence_nbt as nbt, valence_protocol as protocol};
 
 pub mod biome;
 pub mod chunk_pos;
@@ -15,6 +41,34 @@ pub mod player_list;
 pub mod player_textures;
 pub mod server;
 
+pub mod prelude {
+    pub use bevy_app::App;
+    pub use bevy_ecs::prelude::*;
+    pub use biome::{Biome, BiomeId};
+    pub use client::Client;
+    pub use config::{
+        AsyncCallbacks, ConnectionMode, PlayerSampleEntry, ServerListPing, ServerPlugin,
+    };
+    pub use dimension::{Dimension, DimensionId};
+    pub use entity::{EntityKind, McEntity, McEntityManager, TrackedData};
+    pub use glam::DVec3;
+    pub use instance::{Chunk, Instance};
+    pub use inventory::{Inventory, InventoryKind, OpenInventory};
+    pub use player_list::{PlayerList, PlayerListEntry};
+    pub use protocol::block::BlockState;
+    pub use protocol::ident::Ident;
+    pub use protocol::text::{Color, Text, TextFormat};
+    pub use protocol::types::GameMode;
+    pub use protocol::username::Username;
+    pub use protocol::{ident, ItemKind, ItemStack};
+    pub use server::{NewClientInfo, Server, SharedServer};
+    pub use uuid::Uuid;
+    pub use valence_nbt::Compound;
+    pub use valence_protocol::{BlockKind, BlockPos};
+
+    use super::*;
+}
+
 /// A [`Component`] for marking entities that should be despawned at the end of
 /// the tick.
 ///
@@ -29,8 +83,6 @@ pub mod server;
 /// [`McEntity`]: crate::entity::McEntity
 #[derive(Copy, Clone, Component)]
 pub struct Despawned;
-
-pub type VisLevel = i16;
 
 const LIBRARY_NAMESPACE: &str = "valence";
 

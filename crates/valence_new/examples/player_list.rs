@@ -1,19 +1,8 @@
-use bevy_app::App;
-use bevy_ecs::prelude::*;
 use rand::Rng;
-use uuid::Uuid;
+use valence_new::client::despawn_disconnected_clients;
 use valence_new::client::event::default_event_handler;
-use valence_new::client::{despawn_disconnected_clients, Client};
-use valence_new::config::ServerPlugin;
-use valence_new::dimension::DimensionId;
-use valence_new::instance::{Chunk, Instance};
-use valence_new::player_list::{
-    remove_disconnected_clients_from_player_list, Entry, PlayerList, PlayerListEntry,
-};
-use valence_new::server::Server;
-use valence_protocol::block::BlockState;
-use valence_protocol::text::{Color, TextFormat};
-use valence_protocol::types::GameMode;
+use valence_new::player_list::{Entry, remove_disconnected_clients_from_player_list};
+use valence_new::prelude::*;
 
 const SPAWN_Y: i32 = 64;
 const PLAYER_UUID_1: Uuid = Uuid::from_u128(1);
@@ -46,7 +35,7 @@ fn setup(world: &mut World) {
 
     for z in -25..25 {
         for x in -25..25 {
-            instance.set_block_state([x, SPAWN_Y, z], BlockState::GRAY_WOOL);
+            instance.set_block_state([x, SPAWN_Y, z], BlockState::LIGHT_GRAY_WOOL);
         }
     }
 

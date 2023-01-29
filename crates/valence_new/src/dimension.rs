@@ -70,8 +70,7 @@ pub struct Dimension {
     /// * `0 <= height <= 4064`
     /// * `min_y + height <= 2032`
     pub height: i32,
-    // TODO: The following fields should be added if they can affect the
-    //       appearance of the dimension to clients.
+    // TODO: add other fields.
     //       * infiniburn
     //       * monster_spawn_light_level
     //       * monster_spawn_block_light_level
