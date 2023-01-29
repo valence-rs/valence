@@ -687,7 +687,7 @@ pub(crate) fn dispatch_client_events(
 
     for (entity, mut client) in &mut clients {
         // Receive packet data for decoding.
-        if !client.recv.try_recv() {
+        if !client.streamer.probe_recv() {
             // Client is disconnected
             client.is_disconnected = true;
             continue;
@@ -710,7 +710,7 @@ fn handle_client(
     entity: Entity,
     events: &mut ClientEvents,
 ) -> anyhow::Result<()> {
-    while let Some(pkt) = client.recv.try_next_packet::<C2sPlayPacket>()? {
+    while let Some(pkt) = client.streamer.try_recv::<C2sPlayPacket>()? {
         match pkt {
             C2sPlayPacket::ConfirmTeleport(p) => {
                 if client.pending_teleports == 0 {

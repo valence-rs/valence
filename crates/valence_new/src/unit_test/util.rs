@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use bytes::BytesMut;
 use tokio::sync::OwnedSemaphorePermit;
-use valence_protocol::{EncodePacket, Username};
+use valence_protocol::{EncodePacket, PacketDecoder, PacketEncoder, Username};
 
 use crate::client::Client;
 use crate::packet_stream::{MockPacketStream, PacketStream, PacketStreamer};
@@ -17,7 +17,11 @@ pub fn create_mock_client(
     client_info: NewClientInfo,
 ) -> (Client, MockClientHelper) {
     let mock_stream = Arc::new(Mutex::new(MockPacketStream::new()));
-    let streamer = PacketStreamer::new(mock_stream.clone());
+    let streamer = PacketStreamer::new(
+        mock_stream.clone(),
+        PacketEncoder::new(),
+        PacketDecoder::new(),
+    );
     let client = Client::new(streamer, permit, client_info);
     (client, MockClientHelper::new(mock_stream))
 }

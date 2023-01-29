@@ -14,11 +14,23 @@ pub struct PacketStreamer {
 }
 
 impl PacketStreamer {
-    pub fn new(stream: Arc<Mutex<impl PacketStream + Send + Sync>>) -> Self {
-        Self {
-            stream,
-            enc: PacketEncoder::new(),
-            dec: PacketDecoder::new(),
+    pub fn new(
+        stream: Arc<Mutex<impl PacketStream + Send + Sync>>,
+        enc: PacketEncoder,
+        dec: PacketDecoder,
+    ) -> Self {
+        Self { stream, enc, dec }
+    }
+
+    /// Returns true if the client is still connected.
+    pub fn probe_recv(&mut self) -> bool {
+        match self.stream.lock().unwrap().try_recv() {
+            Ok(bytes) => {
+                self.dec.queue_bytes(bytes);
+                true
+            }
+            Err(TryRecvError::Empty) => true,
+            Err(TryRecvError::Disconnected) => false,
         }
     }
 
@@ -207,7 +219,7 @@ mod tests {
     #[test]
     fn test_mock_stream_read() {
         let stream = Arc::new(Mutex::new(MockPacketStream::new()));
-        let mut streamer = PacketStreamer::new(stream);
+        let mut streamer = PacketStreamer::new(stream, PacketEncoder::new(), PacketDecoder::new());
         let packet = KeepAliveC2s { id: 0xdeadbeef };
         streamer.try_send(&packet).unwrap();
         let packet_out = streamer.try_recv::<KeepAliveC2s>().unwrap().unwrap();
@@ -217,7 +229,8 @@ mod tests {
     #[test]
     fn test_mock_stream_assert_sent() {
         let stream = Arc::new(Mutex::new(MockPacketStream::new()));
-        let mut streamer = PacketStreamer::new(stream);
+        let mut streamer =
+            PacketStreamer::new(stream.clone(), PacketEncoder::new(), PacketDecoder::new());
         let packet = KeepAliveS2c { id: 0xdeadbeef };
         streamer.try_send(&packet).unwrap();
         let packets_out = stream.lock().unwrap().collect_sent().unwrap();

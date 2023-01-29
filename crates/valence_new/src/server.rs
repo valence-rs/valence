@@ -247,8 +247,8 @@ pub struct NewClientInfo {
 
 struct NewClientMessage {
     info: NewClientInfo,
-    send: ByteSender,
-    recv: ByteReceiver,
+    send: PlayPacketSender,
+    recv: PlayPacketReceiver,
     permit: OwnedSemaphorePermit,
 }
 
@@ -340,8 +340,9 @@ pub fn build_plugin(
                 break
             };
 
-            let stream = RealPacketStream::new(msg.recv, msg.send);
-            let streamer = PacketStreamer::new(Arc::new(Mutex::new(stream)));
+            let stream = RealPacketStream::new(msg.recv.recv, msg.send.send);
+            let streamer =
+                PacketStreamer::new(Arc::new(Mutex::new(stream)), msg.send.enc, msg.recv.dec);
             world.spawn((
                 Client::new(streamer, msg.permit, msg.info),
                 Inventory::new(InventoryKind::Player),

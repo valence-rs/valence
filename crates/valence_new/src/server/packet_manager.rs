@@ -188,102 +188,37 @@ where
 /// Manages a packet encoder and a byte channel to send the encoded packets
 /// through.
 pub struct PlayPacketSender {
-    enc: PacketEncoder,
-    send: ByteSender,
+    pub(crate) enc: PacketEncoder,
+    pub(crate) send: ByteSender,
     writer_task: Option<JoinHandle<()>>,
     handle: Handle,
 }
 
-impl PlayPacketSender {
-    pub fn append_packet<P>(&mut self, pkt: &P) -> Result<()>
-    where
-        P: EncodePacket + ?Sized,
-    {
-        self.enc.append_packet(pkt)
-    }
+// impl Drop for PlayPacketSender {
+//     fn drop(&mut self) {
+//         let _ = self.flush();
 
-    pub fn append_bytes(&mut self, bytes: &[u8]) {
-        self.enc.append_bytes(bytes)
-    }
+//         if let Some(writer_task) = self.writer_task.take() {
+//             if !writer_task.is_finished() {
+//                 let _guard = self.handle.enter();
 
-    pub fn prepend_packet<P>(&mut self, pkt: &P) -> Result<()>
-    where
-        P: EncodePacket + ?Sized,
-    {
-        self.enc.prepend_packet(pkt)
-    }
-
-    pub fn clear(&mut self) {
-        self.enc.clear();
-    }
-
-    pub fn flush(&mut self) -> Result<()> {
-        let bytes = self.enc.take();
-        self.send.try_send(bytes)?;
-        Ok(())
-    }
-}
-
-impl WritePacket for PlayPacketSender {
-    fn write_packet<P>(&mut self, packet: &P) -> Result<()>
-    where
-        P: EncodePacket + ?Sized,
-    {
-        self.append_packet(packet)
-    }
-
-    fn write_bytes(&mut self, bytes: &[u8]) -> Result<()> {
-        self.append_bytes(bytes);
-        Ok(())
-    }
-}
-
-impl Drop for PlayPacketSender {
-    fn drop(&mut self) {
-        let _ = self.flush();
-
-        if let Some(writer_task) = self.writer_task.take() {
-            if !writer_task.is_finished() {
-                let _guard = self.handle.enter();
-
-                // Give any unsent packets a moment to send before we cut the connection.
-                self.handle
-                    .spawn(timeout(Duration::from_secs(1), writer_task));
-            }
-        }
-    }
-}
+//                 // Give any unsent packets a moment to send before we cut the
+// connection.                 self.handle
+//                     .spawn(timeout(Duration::from_secs(1), writer_task));
+//             }
+//         }
+//     }
+// }
 
 /// Manages a packet decoder and a byte channel to receive the encoded packets.
 pub struct PlayPacketReceiver {
-    dec: PacketDecoder,
-    recv: ByteReceiver,
+    pub(crate) dec: PacketDecoder,
+    pub(crate) recv: ByteReceiver,
     reader_task: JoinHandle<()>,
 }
 
-impl PlayPacketReceiver {
-    pub fn try_next_packet<'a, P>(&'a mut self) -> Result<Option<P>>
-    where
-        P: DecodePacket<'a> + fmt::Debug,
-    {
-        self.dec.try_next_packet()
-    }
-
-    /// Returns true if the client is connected. Returns false otherwise.
-    pub fn try_recv(&mut self) -> bool {
-        match self.recv.try_recv() {
-            Ok(bytes) => {
-                self.dec.queue_bytes(bytes);
-                true
-            }
-            Err(TryRecvError::Empty) => true,
-            Err(TryRecvError::Disconnected) => false,
-        }
-    }
-}
-
-impl Drop for PlayPacketReceiver {
-    fn drop(&mut self) {
-        self.reader_task.abort();
-    }
-}
+// impl Drop for PlayPacketReceiver {
+//     fn drop(&mut self) {
+//         self.reader_task.abort();
+//     }
+// }
