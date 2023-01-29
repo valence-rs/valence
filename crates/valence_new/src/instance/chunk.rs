@@ -124,7 +124,7 @@ impl Chunk<true> {
         scratch: &mut Vec<u8>,
         pos: ChunkPos,
         info: &InstanceInfo,
-    ) -> anyhow::Result<()> {
+    ) {
         if self.refresh {
             self.write_init_packets(info, pos, writer, scratch)
         } else {
@@ -143,7 +143,7 @@ impl Chunk<true> {
                     writer.write_packet(&BlockUpdate {
                         position: BlockPos::new(global_x, global_y, global_z),
                         block_id: VarInt(block as i32),
-                    })?
+                    })
                 } else if sect.section_updates.len() > 1 {
                     let chunk_section_position = (pos.x as i64) << 42
                         | (pos.z as i64 & 0x3fffff) << 20
@@ -153,11 +153,9 @@ impl Chunk<true> {
                         chunk_section_position,
                         invert_trust_edges: false,
                         blocks: &sect.section_updates,
-                    })?;
+                    });
                 }
             }
-
-            Ok(())
         }
     }
 
@@ -169,7 +167,7 @@ impl Chunk<true> {
         pos: ChunkPos,
         mut writer: impl WritePacket,
         scratch: &mut Vec<u8>,
-    ) -> anyhow::Result<()> {
+    ) {
         let mut lck = self.cached_init_packets.lock();
 
         if lck.is_empty() {
@@ -178,21 +176,25 @@ impl Chunk<true> {
             for sect in &self.sections {
                 sect.non_air_count.encode(&mut *scratch).unwrap();
 
-                sect.block_states.encode_mc_format(
-                    &mut *scratch,
-                    |b| b.to_raw().into(),
-                    4,
-                    8,
-                    bit_width(BlockState::max_raw().into()),
-                )?;
+                sect.block_states
+                    .encode_mc_format(
+                        &mut *scratch,
+                        |b| b.to_raw().into(),
+                        4,
+                        8,
+                        bit_width(BlockState::max_raw().into()),
+                    )
+                    .expect("failed to encode block paletted container");
 
-                sect.biomes.encode_mc_format(
-                    &mut *scratch,
-                    |b| b.0.into(),
-                    0,
-                    3,
-                    bit_width(info.biome_registry_len - 1),
-                )?;
+                sect.biomes
+                    .encode_mc_format(
+                        &mut *scratch,
+                        |b| b.0.into(),
+                        0,
+                        3,
+                        bit_width(info.biome_registry_len - 1),
+                    )
+                    .expect("failed to encode biome paletted container");
             }
 
             let mut compression_scratch = vec![];
@@ -218,10 +220,10 @@ impl Chunk<true> {
                 empty_block_light_mask: &[],
                 sky_light_arrays: &info.filler_sky_light_arrays,
                 block_light_arrays: &[],
-            })?;
+            });
         }
 
-        writer.write_bytes(&lck)
+        writer.write_bytes(&lck);
     }
 
     pub(super) fn update_post_client(&mut self) {

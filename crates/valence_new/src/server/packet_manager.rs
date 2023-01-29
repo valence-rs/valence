@@ -9,7 +9,7 @@ use tokio::runtime::Handle;
 use tokio::sync::OwnedSemaphorePermit;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
-use tracing::debug;
+use tracing::{debug, warn};
 use valence_protocol::{DecodePacket, EncodePacket, PacketDecoder, PacketEncoder};
 
 use crate::packet::WritePacket;
@@ -226,16 +226,17 @@ impl PlayPacketSender {
 }
 
 impl WritePacket for PlayPacketSender {
-    fn write_packet<P>(&mut self, packet: &P) -> Result<()>
+    fn write_packet<P>(&mut self, packet: &P)
     where
         P: EncodePacket + ?Sized,
     {
-        self.append_packet(packet)
+        if let Err(e) = self.append_packet(packet) {
+            warn!("failed to write packet: {e:#}");
+        }
     }
 
-    fn write_bytes(&mut self, bytes: &[u8]) -> Result<()> {
+    fn write_bytes(&mut self, bytes: &[u8]) {
         self.append_bytes(bytes);
-        Ok(())
     }
 }
 

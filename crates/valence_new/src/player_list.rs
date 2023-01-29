@@ -142,7 +142,7 @@ impl PlayerList {
         self.entries.values_mut().for_each(|e| *e = None);
     }
 
-    pub(crate) fn write_init_packets(&self, mut writer: impl WritePacket) -> anyhow::Result<()> {
+    pub(crate) fn write_init_packets(&self, mut writer: impl WritePacket) {
         let actions = Actions::new()
             .with_add_player(true)
             .with_update_game_mode(true)
@@ -171,21 +171,15 @@ impl PlayerList {
             writer.write_packet(&PlayerInfoUpdate {
                 actions,
                 entries: entries.into(),
-            })?;
+            });
         }
 
         if !self.header.is_empty() || !self.footer.is_empty() {
             writer.write_packet(&SetTabListHeaderAndFooter {
                 header: self.header.clone(),
                 footer: self.footer.clone(),
-            })?;
+            });
         }
-
-        Ok(())
-    }
-
-    pub fn write_update_packets(&self, mut writer: impl WritePacket) -> anyhow::Result<()> {
-        writer.write_bytes(&self.cached_update_packets)
     }
 }
 
@@ -478,12 +472,10 @@ pub(crate) fn update_player_list(
                 display_name: entry.display_name.clone(),
             };
 
-            writer
-                .write_packet(&PlayerInfoUpdate {
-                    actions,
-                    entries: Cow::Borrowed(&[packet_entry]),
-                })
-                .unwrap();
+            writer.write_packet(&PlayerInfoUpdate {
+                actions,
+                entries: Cow::Borrowed(&[packet_entry]),
+            });
         } else {
             let mut actions = Actions::new();
 
@@ -508,21 +500,19 @@ pub(crate) fn update_player_list(
             }
 
             if u8::from(actions) != 0 {
-                writer
-                    .write_packet(&PlayerInfoUpdate {
-                        actions,
-                        entries: Cow::Borrowed(&[PlayerInfoEntry {
-                            player_uuid: uuid,
-                            username: &entry.username,
-                            properties: Cow::default(),
-                            chat_data: None,
-                            listed: entry.listed,
-                            ping: entry.ping,
-                            game_mode: entry.game_mode,
-                            display_name: entry.display_name.clone(),
-                        }]),
-                    })
-                    .unwrap();
+                writer.write_packet(&PlayerInfoUpdate {
+                    actions,
+                    entries: Cow::Borrowed(&[PlayerInfoEntry {
+                        player_uuid: uuid,
+                        username: &entry.username,
+                        properties: Cow::default(),
+                        chat_data: None,
+                        listed: entry.listed,
+                        ping: entry.ping,
+                        game_mode: entry.game_mode,
+                        display_name: entry.display_name.clone(),
+                    }]),
+                });
             }
         }
 
@@ -530,22 +520,18 @@ pub(crate) fn update_player_list(
     });
 
     if !removed.is_empty() {
-        writer
-            .write_packet(&PlayerInfoRemove {
-                uuids: removed.into(),
-            })
-            .unwrap();
+        writer.write_packet(&PlayerInfoRemove {
+            uuids: removed.into(),
+        });
     }
 
     if pl.modified_header_or_footer {
         pl.modified_header_or_footer = false;
 
-        writer
-            .write_packet(&SetTabListHeaderAndFooter {
-                header: pl.header.clone(),
-                footer: pl.footer.clone(),
-            })
-            .unwrap();
+        writer.write_packet(&SetTabListHeaderAndFooter {
+            header: pl.header.clone(),
+            footer: pl.footer.clone(),
+        });
     }
 
     for mut client in &mut clients {

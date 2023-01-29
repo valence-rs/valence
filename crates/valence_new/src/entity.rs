@@ -600,7 +600,7 @@ impl McEntity {
         mut writer: impl WritePacket,
         position: DVec3,
         scratch: &mut Vec<u8>,
-    ) -> anyhow::Result<()> {
+    ) {
         let with_object_data = |data| SpawnEntity {
             entity_id: VarInt(self.protocol_id),
             object_uuid: self.uuid,
@@ -619,7 +619,7 @@ impl McEntity {
                 entity_id: VarInt(self.protocol_id),
                 position: position.to_array(),
                 count: 0, // TODO
-            })?,
+            }),
             TrackedData::Player(_) => {
                 writer.write_packet(&SpawnPlayer {
                     entity_id: VarInt(self.protocol_id),
@@ -627,19 +627,17 @@ impl McEntity {
                     position: position.to_array(),
                     yaw: ByteAngle::from_degrees(self.yaw),
                     pitch: ByteAngle::from_degrees(self.pitch),
-                })?;
+                });
 
                 // Player spawn packet doesn't include head yaw for some reason.
                 writer.write_packet(&SetHeadRotation {
                     entity_id: VarInt(self.protocol_id),
                     head_yaw: ByteAngle::from_degrees(self.head_yaw),
-                })?;
+                });
             }
-            TrackedData::ItemFrame(e) => {
-                writer.write_packet(&with_object_data(e.get_rotation()))?
-            }
+            TrackedData::ItemFrame(e) => writer.write_packet(&with_object_data(e.get_rotation())),
             TrackedData::GlowItemFrame(e) => {
-                writer.write_packet(&with_object_data(e.get_rotation()))?
+                writer.write_packet(&with_object_data(e.get_rotation()))
             }
 
             TrackedData::Painting(_) => writer.write_packet(&with_object_data(
@@ -649,16 +647,16 @@ impl McEntity {
                     2 => 2,
                     _ => 5,
                 },
-            ))?,
+            )),
             // TODO: set block state ID for falling block.
-            TrackedData::FallingBlock(_) => writer.write_packet(&with_object_data(1))?,
+            TrackedData::FallingBlock(_) => writer.write_packet(&with_object_data(1)),
             TrackedData::FishingBobber(e) => {
-                writer.write_packet(&with_object_data(e.get_hook_entity_id()))?
+                writer.write_packet(&with_object_data(e.get_hook_entity_id()))
             }
             TrackedData::Warden(e) => {
-                writer.write_packet(&with_object_data((e.get_pose() == Pose::Emerging).into()))?
+                writer.write_packet(&with_object_data((e.get_pose() == Pose::Emerging).into()))
             }
-            _ => writer.write_packet(&with_object_data(0))?,
+            _ => writer.write_packet(&with_object_data(0)),
         }
 
         scratch.clear();
@@ -667,19 +665,13 @@ impl McEntity {
             writer.write_packet(&SetEntityMetadata {
                 entity_id: VarInt(self.protocol_id),
                 metadata: RawBytes(scratch),
-            })?;
+            });
         }
-
-        Ok(())
     }
 
     /// Writes the appropriate packets to update the entity (Position, tracked
     /// data, events, animations).
-    pub(crate) fn write_update_packets(
-        &self,
-        mut writer: impl WritePacket,
-        scratch: &mut Vec<u8>,
-    ) -> anyhow::Result<()> {
+    pub(crate) fn write_update_packets(&self, mut writer: impl WritePacket, scratch: &mut Vec<u8>) {
         let entity_id = VarInt(self.protocol_id);
 
         let position_delta = self.position - self.old_position;
@@ -693,14 +685,14 @@ impl McEntity {
                 yaw: ByteAngle::from_degrees(self.yaw),
                 pitch: ByteAngle::from_degrees(self.pitch),
                 on_ground: self.on_ground,
-            })?;
+            });
         } else {
             if changed_position && !needs_teleport {
                 writer.write_packet(&UpdateEntityPosition {
                     entity_id,
                     delta: (position_delta * 4096.0).to_array().map(|v| v as i16),
                     on_ground: self.on_ground,
-                })?;
+                });
             }
 
             if self.yaw_or_pitch_modified {
@@ -709,7 +701,7 @@ impl McEntity {
                     yaw: ByteAngle::from_degrees(self.yaw),
                     pitch: ByteAngle::from_degrees(self.pitch),
                     on_ground: self.on_ground,
-                })?;
+                });
             }
         }
 
@@ -720,21 +712,21 @@ impl McEntity {
                 yaw: ByteAngle::from_degrees(self.yaw),
                 pitch: ByteAngle::from_degrees(self.pitch),
                 on_ground: self.on_ground,
-            })?;
+            });
         }
 
         if self.velocity_modified {
             writer.write_packet(&SetEntityVelocity {
                 entity_id,
                 velocity: velocity_to_packet_units(self.velocity),
-            })?;
+            });
         }
 
         if self.head_yaw_modified {
             writer.write_packet(&SetHeadRotation {
                 entity_id,
                 head_yaw: ByteAngle::from_degrees(self.head_yaw),
-            })?;
+            });
         }
 
         scratch.clear();
@@ -743,7 +735,7 @@ impl McEntity {
             writer.write_packet(&SetEntityMetadata {
                 entity_id,
                 metadata: RawBytes(scratch),
-            })?;
+            });
         }
 
         if self.statuses != 0 {
@@ -752,7 +744,7 @@ impl McEntity {
                     writer.write_packet(&EntityEventS2c {
                         entity_id: entity_id.0,
                         entity_status: i as u8,
-                    })?;
+                    });
                 }
             }
         }
@@ -763,12 +755,10 @@ impl McEntity {
                     writer.write_packet(&EntityAnimationS2c {
                         entity_id,
                         animation: i as u8,
-                    })?;
+                    });
                 }
             }
         }
-
-        Ok(())
     }
 }
 

@@ -156,17 +156,7 @@ impl Client {
     where
         P: EncodePacket + fmt::Debug + ?Sized,
     {
-        if let Err(e) = self.send.append_packet(pkt) {
-            if !self.is_disconnected {
-                self.is_disconnected = true;
-                warn!(
-                    username = %self.username,
-                    uuid = %self.uuid,
-                    ip = %self.ip,
-                    "failed to write packet: {e:#}"
-                );
-            }
-        }
+        self.send.write_packet(pkt);
     }
 
     /// Writes arbitrary bytes to this client's packet buffer. Don't use this
@@ -506,7 +496,7 @@ fn update_one_client(
     if server.current_tick() % (server.tps() * 10) == 0 {
         if client.got_keepalive {
             let id = rand::random();
-            client.send.append_packet(&KeepAliveS2c { id })?;
+            client.send.write_packet(&KeepAliveS2c { id });
             client.last_keepalive_id = id;
             client.got_keepalive = false;
         } else {
@@ -523,22 +513,22 @@ fn update_one_client(
     // Make sure the center chunk is set before loading chunks!
     if old_chunk_pos != chunk_pos {
         // TODO: does the client initialize the center chunk to (0, 0)?
-        client.send.append_packet(&SetCenterChunk {
+        client.send.write_packet(&SetCenterChunk {
             chunk_x: VarInt(chunk_pos.x),
             chunk_z: VarInt(chunk_pos.z),
-        })?;
+        });
     }
 
     // Iterate over all visible chunks from the previous tick.
     if let Ok(old_instance) = instances.get(client.old_instance) {
-        old_chunk_pos.try_for_each_in_view(client.old_view_distance, |pos| {
+        old_chunk_pos.for_each_in_view(client.old_view_distance, |pos| {
             if let Some(cell) = old_instance.partition.get(&pos) {
                 if cell.chunk_removed && cell.chunk.is_none() {
                     // Chunk was previously loaded and is now deleted.
-                    client.send.append_packet(&UnloadChunk {
+                    client.send.write_packet(&UnloadChunk {
                         chunk_x: pos.x,
                         chunk_z: pos.z,
-                    })?;
+                    });
                 }
 
                 // Send entity spawn packets for entities entering the client's view.
@@ -555,7 +545,7 @@ fn update_one_client(
                                 &mut client.send,
                                 entity.old_position(),
                                 &mut client.scratch,
-                            )?;
+                            );
                         }
                     }
                 }
@@ -580,9 +570,7 @@ fn update_one_client(
                 // other packet data that was added here by users.
                 client.send.append_bytes(&cell.packet_buf);
             }
-
-            Ok(())
-        })?;
+        });
     }
 
     // Was the client's instance changed?
@@ -592,14 +580,14 @@ fn update_one_client(
             //       client will do the unloading for us in that case?
 
             // Unload all chunks and entities in the old view.
-            old_chunk_pos.try_for_each_in_view(client.old_view_distance, |pos| {
+            old_chunk_pos.for_each_in_view(client.old_view_distance, |pos| {
                 if let Some(cell) = old_instance.partition.get(&pos) {
                     // Unload the chunk at this cell if it was loaded.
                     if cell.chunk.is_some() {
-                        client.send.append_packet(&UnloadChunk {
+                        client.send.write_packet(&UnloadChunk {
                             chunk_x: pos.x,
                             chunk_z: pos.z,
-                        })?;
+                        });
                     }
 
                     // Unload all the entities in the cell.
@@ -611,13 +599,11 @@ fn update_one_client(
                         }
                     }
                 }
-
-                Ok(())
-            })?;
+            });
         }
 
         // Load all chunks and entities in new view.
-        chunk_pos.try_for_each_in_view(client.view_distance, |pos| {
+        chunk_pos.for_each_in_view(client.view_distance, |pos| {
             if let Some(cell) = instance.partition.get(&pos) {
                 // Load the chunk at this cell if there is one.
                 if let Some(chunk) = &cell.chunk {
@@ -626,7 +612,7 @@ fn update_one_client(
                         pos,
                         &mut client.send,
                         &mut client.scratch,
-                    )?;
+                    );
                 }
 
                 // Load all the entities in this cell.
@@ -636,13 +622,11 @@ fn update_one_client(
                             &mut client.send,
                             entity.position(),
                             &mut client.scratch,
-                        )?;
+                        );
                     }
                 }
             }
-
-            Ok(())
-        })?;
+        });
     } else if old_chunk_pos != chunk_pos || client.old_view_distance != client.view_distance {
         // Client changed their view without changing the instance.
 
@@ -650,15 +634,15 @@ fn update_one_client(
         // the new view. We don't need to do any work where the old and new view
         // overlap.
 
-        old_chunk_pos.try_for_each_in_view(client.old_view_distance, |pos| {
+        old_chunk_pos.for_each_in_view(client.old_view_distance, |pos| {
             if !pos.is_in_view(chunk_pos, client.view_distance) {
                 if let Some(cell) = instance.partition.get(&pos) {
                     // Unload the chunk at this cell if it was loaded.
                     if cell.chunk.is_some() {
-                        client.send.append_packet(&UnloadChunk {
+                        client.send.write_packet(&UnloadChunk {
                             chunk_x: pos.x,
                             chunk_z: pos.z,
-                        })?;
+                        });
                     }
 
                     // Unload all the entities in the cell.
@@ -671,11 +655,9 @@ fn update_one_client(
                     }
                 }
             }
+        });
 
-            Ok(())
-        })?;
-
-        chunk_pos.try_for_each_in_view(client.view_distance, |pos| {
+        chunk_pos.for_each_in_view(client.view_distance, |pos| {
             if !pos.is_in_view(old_chunk_pos, client.old_view_distance) {
                 if let Some(cell) = instance.partition.get(&pos) {
                     // Load the chunk at this cell if there is one.
@@ -685,7 +667,7 @@ fn update_one_client(
                             pos,
                             &mut client.send,
                             &mut client.scratch,
-                        )?;
+                        );
                     }
 
                     // Load all the entities in this cell.
@@ -695,14 +677,12 @@ fn update_one_client(
                                 &mut client.send,
                                 entity.position(),
                                 &mut client.scratch,
-                            )?;
+                            );
                         }
                     }
                 }
             }
-
-            Ok(())
-        })?;
+        });
     }
 
     // Despawn all the entities that are queued to be despawned.
@@ -724,7 +704,7 @@ fn update_one_client(
             .with_y_rot(!client.yaw_modified)
             .with_x_rot(!client.pitch_modified);
 
-        client.send.append_packet(&SynchronizePlayerPosition {
+        client.send.write_packet(&SynchronizePlayerPosition {
             position: if client.position_modified {
                 client.position.to_array()
             } else {
@@ -739,7 +719,7 @@ fn update_one_client(
             flags,
             teleport_id: VarInt(client.teleport_id_counter as i32),
             dismount_vehicle: false,
-        })?;
+        });
 
         client.pending_teleports = client.pending_teleports.wrapping_add(1);
         client.teleport_id_counter = client.teleport_id_counter.wrapping_add(1);
@@ -752,10 +732,10 @@ fn update_one_client(
     // This closes the "downloading terrain" screen.
     // Send this after the initial chunks are loaded.
     if client.is_new {
-        client.send.append_packet(&SetDefaultSpawnPosition {
+        client.send.write_packet(&SetDefaultSpawnPosition {
             position: BlockPos::at(client.position),
             angle: client.yaw,
-        })?;
+        });
     }
 
     // Update the client's own player metadata.
@@ -766,17 +746,17 @@ fn update_one_client(
 
         client.scratch.push(0xff);
 
-        client.send.append_packet(&SetEntityMetadata {
+        client.send.write_packet(&SetEntityMetadata {
             entity_id: VarInt(0),
             metadata: RawBytes(&client.scratch),
-        })?;
+        });
     }
 
     // Acknowledge broken/placed blocks.
     if client.block_change_sequence != 0 {
-        client.send.append_packet(&AcknowledgeBlockChange {
+        client.send.write_packet(&AcknowledgeBlockChange {
             sequence: VarInt(client.block_change_sequence),
-        })?;
+        });
 
         client.block_change_sequence = 0;
     }
