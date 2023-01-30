@@ -135,9 +135,9 @@ impl PacketStream for RealPacketStream {
 /// used for testing.
 pub(crate) struct MockPacketStream {
     recv_enc: PacketEncoder,
-    pending_recv: Vec<u8>,
+    pending_recv: BytesMut,
     send_dec: PacketDecoder,
-    flushed_sent: Vec<u8>,
+    flushed_sent: BytesMut,
 }
 
 impl<'a> MockPacketStream {
@@ -145,9 +145,9 @@ impl<'a> MockPacketStream {
     pub(crate) fn new() -> Self {
         Self {
             recv_enc: PacketEncoder::new(),
-            pending_recv: Vec::new(),
+            pending_recv: BytesMut::new(),
             send_dec: PacketDecoder::new(),
-            flushed_sent: Vec::new(),
+            flushed_sent: BytesMut::new(),
         }
     }
 
@@ -183,7 +183,8 @@ impl<'a> MockPacketStream {
     /// on what the server sent in unit tests.
     #[allow(dead_code)]
     pub fn collect_sent(&'a mut self) -> anyhow::Result<Vec<S2cPlayPacket<'a>>> {
-        self.send_dec.queue_slice(self.flushed_sent.as_slice());
+        let bytes = self.flushed_sent.split();
+        self.send_dec.queue_bytes(bytes);
         let mut packets = Vec::new();
         while let Ok(packet) = self.send_dec.try_next_packet::<S2cPlayPacket<'a>>() {
             if let Some(packet) = packet {
@@ -198,8 +199,7 @@ impl<'a> MockPacketStream {
 
 impl PacketStream for MockPacketStream {
     fn try_recv(&mut self) -> Result<BytesMut, TryRecvError> {
-        let bytes = BytesMut::from(self.pending_recv.as_slice());
-        self.pending_recv.clear();
+        let bytes = self.pending_recv.split();
         Ok(bytes)
     }
 
