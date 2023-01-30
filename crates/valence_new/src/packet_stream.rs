@@ -1,6 +1,5 @@
 use std::sync::{Arc, Mutex};
 
-use bevy_ecs::prelude::Component;
 use bytes::BytesMut;
 use tokio::task::JoinHandle;
 use valence_protocol::packets::S2cPlayPacket;
