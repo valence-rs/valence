@@ -687,7 +687,7 @@ pub mod play {
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x48]
     pub struct SetCamera {
-        pub camera_id: VarInt,
+        pub entity_id: VarInt,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
