@@ -307,6 +307,15 @@ pub mod play {
         pub reason: Text,
     }
 
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x18]
+    pub struct DisguisedChatMessage {
+        pub message: Text,
+        pub chat_type: VarInt,
+        pub chat_type_name: Text,
+        pub target_name: Option<Text>,
+    }
+
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x19]
     pub struct EntityEvent {
@@ -931,6 +940,7 @@ pub mod play {
             SetCooldown,
             PluginMessageS2c<'a>,
             DisconnectPlay,
+            DisguisedChatMessage,
             EntityEvent,
             UnloadChunk,
             GameEvent,
