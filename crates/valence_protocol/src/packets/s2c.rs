@@ -543,6 +543,19 @@ pub mod play {
         pub fov_modifier: f32,
     }
 
+    /// Unused by notchian clients.
+    #[derive(Copy, Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x32]
+    pub struct EndCombat {
+        pub duration: VarInt,
+        pub entity_id: i32,
+    }
+
+    /// Unused by notchian clients.
+    #[derive(Copy, Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x33]
+    pub struct EnterCombat {}
+
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x34]
     pub struct CombatDeath {
@@ -980,6 +993,8 @@ pub mod play {
             PlaceGhostRecipe<'a>,
             PlayerAbilitiesS2c,
             PlayerChatMessage<'a>,
+            EndCombat,
+            EnterCombat,
             CombatDeath,
             PlayerInfoRemove,
             PlayerInfoUpdate<'a>,
