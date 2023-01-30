@@ -324,6 +324,14 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x1a]
+    pub struct PlaceRecipe<'a> {
+        pub window_id: u8,
+        pub recipe: Ident<&'a str>,
+        pub make_all: bool,
+    }
+
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x1b]
     pub struct UnloadChunk {
         pub chunk_x: i32,
@@ -951,6 +959,7 @@ pub mod play {
             DisconnectPlay,
             DisguisedChatMessage,
             EntityEvent,
+            PlaceRecipe<'a>,
             UnloadChunk,
             GameEvent,
             OpenHorseScreen,
