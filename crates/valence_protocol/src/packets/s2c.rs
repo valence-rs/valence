@@ -338,6 +338,14 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x1d]
+    pub struct OpenHorseScreen {
+        pub window_id: u8,
+        pub slot_count: VarInt,
+        pub entity_id: i32,
+    }
+
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x1e]
     pub struct WorldBorderInitialize {
         pub x: f64,
@@ -945,6 +953,7 @@ pub mod play {
             EntityEvent,
             UnloadChunk,
             GameEvent,
+            OpenHorseScreen,
             WorldBorderInitialize,
             KeepAliveS2c,
             ChunkDataAndUpdateLight<'a>,
