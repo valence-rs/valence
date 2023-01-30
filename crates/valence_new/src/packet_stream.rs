@@ -15,7 +15,7 @@ pub struct PacketStreamer {
 
 impl PacketStreamer {
     pub fn new(
-        stream: Arc<Mutex<impl PacketStream + Send + Sync>>,
+        stream: Arc<Mutex<impl PacketStream + Send + Sync + 'static>>,
         enc: PacketEncoder,
         dec: PacketDecoder,
     ) -> Self {
@@ -181,7 +181,7 @@ impl<'a> MockPacketStream {
     /// Collects all the packets that have been sent so assertions can be made
     /// on what the server sent in unit tests.
     #[allow(dead_code)]
-    pub fn collect_sent(&mut self) -> anyhow::Result<Vec<S2cPlayPacket<'a>>> {
+    pub fn collect_sent(&'a mut self) -> anyhow::Result<Vec<S2cPlayPacket<'a>>> {
         let bytes = BytesMut::from(self.flushed_sent.as_slice());
         self.send_dec.queue_bytes(bytes);
         let mut packets = Vec::new();
@@ -233,7 +233,8 @@ mod tests {
             PacketStreamer::new(stream.clone(), PacketEncoder::new(), PacketDecoder::new());
         let packet = KeepAliveS2c { id: 0xdeadbeef };
         streamer.try_send(&packet).unwrap();
-        let packets_out = stream.lock().unwrap().collect_sent().unwrap();
+        let mut s = stream.lock().unwrap();
+        let packets_out = s.collect_sent().unwrap();
         let S2cPlayPacket::KeepAliveS2c(packet_out) = packets_out[0] else {
             assert!(false);
             return;
