@@ -833,6 +833,7 @@ pub mod play {
         pub entity_id: VarInt,
         pub volume: f32,
         pub pitch: f32,
+        pub seed: i64,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
