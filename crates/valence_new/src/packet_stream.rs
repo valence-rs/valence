@@ -1,6 +1,8 @@
 use std::sync::{Arc, Mutex};
 
+use bevy_ecs::prelude::Component;
 use bytes::BytesMut;
+use tokio::task::JoinHandle;
 use valence_protocol::packets::S2cPlayPacket;
 use valence_protocol::{DecodePacket, EncodePacket, PacketDecoder, PacketEncoder};
 
@@ -205,6 +207,22 @@ impl PacketStream for MockPacketStream {
     fn try_send(&mut self, bytes: BytesMut) -> Result<(), TrySendError> {
         self.flushed_sent.extend_from_slice(bytes.as_ref());
         Ok(())
+    }
+}
+
+/// An internal type that holds handles for the client's async packet
+/// stream read/write tasks.
+pub(crate) struct ClientAsyncTaskHolder {
+    pub(crate) writer_task: Option<JoinHandle<()>>,
+    pub(crate) reader_task: JoinHandle<()>,
+}
+
+impl Drop for ClientAsyncTaskHolder {
+    fn drop(&mut self) {
+        if let Some(writer_task) = self.writer_task.take() {
+            writer_task.abort();
+        }
+        self.reader_task.abort();
     }
 }
 

@@ -21,7 +21,6 @@ use valence_nbt::{compound, Compound, List};
 use valence_protocol::types::Property;
 use valence_protocol::{ident, Username};
 
-use self::byte_channel::{ByteReceiver, ByteSender};
 use crate::biome::{validate_biomes, Biome, BiomeId};
 use crate::client::event::{dispatch_client_events, register_client_events};
 use crate::client::{update_clients, Client};
@@ -37,7 +36,7 @@ use crate::inventory::{
     update_client_on_close_inventory, update_open_inventories, update_player_inventories,
     Inventory, InventoryKind,
 };
-use crate::packet_stream::{PacketStreamer, RealPacketStream};
+use crate::packet_stream::{ClientAsyncTaskHolder, PacketStreamer, RealPacketStream};
 use crate::player_list::{update_player_list, PlayerList};
 use crate::server::connect::do_accept_loop;
 use crate::Despawned;
@@ -343,10 +342,12 @@ pub fn build_plugin(
             let stream = RealPacketStream::new(msg.recv.recv, msg.send.send);
             let streamer =
                 PacketStreamer::new(Arc::new(Mutex::new(stream)), msg.send.enc, msg.recv.dec);
-            world.spawn((
-                Client::new(streamer, msg.permit, msg.info),
-                Inventory::new(InventoryKind::Player),
-            ));
+            let mut client = Client::new(streamer, msg.permit, msg.info);
+            client.set_async_tasks(ClientAsyncTaskHolder {
+                writer_task: msg.send.writer_task,
+                reader_task: msg.recv.reader_task,
+            });
+            world.spawn((client, Inventory::new(InventoryKind::Player)));
         }
     };
 

@@ -190,8 +190,8 @@ where
 pub struct PlayPacketSender {
     pub(crate) enc: PacketEncoder,
     pub(crate) send: ByteSender,
-    writer_task: Option<JoinHandle<()>>,
-    handle: Handle,
+    pub(crate) writer_task: Option<JoinHandle<()>>,
+    pub(crate) handle: Handle,
 }
 
 // impl Drop for PlayPacketSender {
@@ -214,7 +214,7 @@ pub struct PlayPacketSender {
 pub struct PlayPacketReceiver {
     pub(crate) dec: PacketDecoder,
     pub(crate) recv: ByteReceiver,
-    reader_task: JoinHandle<()>,
+    pub(crate) reader_task: JoinHandle<()>,
 }
 
 // impl Drop for PlayPacketReceiver {

@@ -24,7 +24,7 @@ use crate::dimension::DimensionId;
 use crate::entity::data::Player;
 use crate::entity::McEntity;
 use crate::instance::Instance;
-use crate::packet_stream::PacketStreamer;
+use crate::packet_stream::{ClientAsyncTaskHolder, PacketStreamer};
 use crate::player_list::PlayerList;
 use crate::server::{NewClientInfo, Server};
 use crate::{Despawned, NULL_ENTITY};
@@ -34,6 +34,7 @@ pub mod event;
 #[derive(Component)]
 pub struct Client {
     streamer: PacketStreamer,
+    async_tasks: Option<ClientAsyncTaskHolder>,
     is_disconnected: bool,
     /// Ensures that we don't allow more connections to the server until the
     /// client is dropped.
@@ -99,6 +100,7 @@ impl Client {
     ) -> Self {
         Self {
             streamer,
+            async_tasks: None,
             is_disconnected: false,
             _permit: permit,
             #[cfg(debug_assertions)]
@@ -373,6 +375,13 @@ impl Client {
             channel,
             data: RawBytes(data),
         });
+    }
+
+    pub(crate) fn set_async_tasks(
+        &mut self,
+        async_tasks: crate::packet_stream::ClientAsyncTaskHolder,
+    ) {
+        self.async_tasks = Some(async_tasks);
     }
 }
 
