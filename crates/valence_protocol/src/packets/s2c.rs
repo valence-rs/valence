@@ -305,6 +305,12 @@ pub mod play {
         pub data: RawBytes<'a>,
     }
 
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x16]
+    pub struct DeleteMessage<'a> {
+        pub signature: MessageSignature<'a>,
+    }
+
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x17]
     pub struct DisconnectPlay {
@@ -992,6 +998,7 @@ pub mod play {
             SetContainerSlot,
             SetCooldown,
             PluginMessageS2c<'a>,
+            DeleteMessage<'a>,
             DisconnectPlay,
             DisguisedChatMessage,
             EntityEvent,
