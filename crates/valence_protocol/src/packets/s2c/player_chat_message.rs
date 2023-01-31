@@ -1,5 +1,6 @@
 use std::io::Write;
 
+use crate::packets::s2c::message_signature::MessageSignature;
 use crate::{Decode, DecodePacket, Encode, EncodePacket, Text, Uuid, VarInt};
 
 #[derive(Clone, PartialEq, Debug, EncodePacket, DecodePacket)]
@@ -11,19 +12,13 @@ pub struct PlayerChatMessage<'a> {
     pub message: &'a str,
     pub time_stamp: u64,
     pub salt: u64,
-    pub previous_messages: Vec<PreviousMessage<'a>>,
+    pub previous_messages: Vec<MessageSignature<'a>>,
     pub unsigned_content: Option<Text>,
     pub filter_type: MessageFilterType,
     pub filter_type_bits: Option<u8>,
     pub chat_type: VarInt,
     pub network_name: Text,
     pub network_target_name: Option<Text>,
-}
-
-#[derive(Clone, PartialEq, Debug)]
-pub struct PreviousMessage<'a> {
-    pub message_id: i32,
-    pub signature: Option<&'a [u8; 256]>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
@@ -69,7 +64,7 @@ impl<'a> Decode<'a> for PlayerChatMessage<'a> {
         let message = <&str>::decode(r)?;
         let time_stamp = u64::decode(r)?;
         let salt = u64::decode(r)?;
-        let previous_messages = Vec::<PreviousMessage>::decode(r)?;
+        let previous_messages = Vec::<MessageSignature>::decode(r)?;
         let unsigned_content = Option::<Text>::decode(r)?;
         let filter_type = MessageFilterType::decode(r)?;
 
@@ -96,36 +91,6 @@ impl<'a> Decode<'a> for PlayerChatMessage<'a> {
             chat_type,
             network_name,
             network_target_name,
-        })
-    }
-}
-
-impl<'a> Encode for PreviousMessage<'a> {
-    fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
-        VarInt(self.message_id + 1).encode(&mut w)?;
-
-        match self.signature {
-            None => {}
-            Some(signature) => signature.encode(&mut w)?,
-        }
-
-        Ok(())
-    }
-}
-
-impl<'a> Decode<'a> for PreviousMessage<'a> {
-    fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
-        let message_id = VarInt::decode(r)?.0 - 1;
-
-        let signature = if message_id == -1 {
-            Some(<&[u8; 256]>::decode(r)?)
-        } else {
-            None
-        };
-
-        Ok(Self {
-            message_id,
-            signature,
         })
     }
 }
