@@ -21,6 +21,7 @@ use crate::LengthPrefixedArray;
 
 pub mod commands;
 pub mod declare_recipes;
+pub mod map_data;
 pub mod particle;
 pub mod player_chat_message;
 pub mod player_info_update;
@@ -105,6 +106,7 @@ pub mod login {
 
 pub mod play {
     use commands::Node;
+    pub use map_data::MapData;
     pub use particle::ParticleS2c;
     pub use player_chat_message::PlayerChatMessage;
     pub use player_info_update::PlayerInfoUpdate;
@@ -983,6 +985,7 @@ pub mod play {
             UpdateLight,
             ParticleS2c,
             LoginPlay<'a>,
+            MapData<'a>,
             UpdateEntityPosition,
             UpdateEntityPositionAndRotation,
             UpdateEntityRotation,
