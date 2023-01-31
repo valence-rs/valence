@@ -9,10 +9,11 @@ use crate::item::ItemStack;
 use crate::raw_bytes::RawBytes;
 use crate::text::Text;
 use crate::types::{
-    AttributeProperty, BossBarAction, ChunkDataBlockEntity, CommandSuggestionMatch, Difficulty,
-    EntityEffectFlags, FeetOrEyes, GameEventKind, GameMode, GlobalPos, Hand, LookAtEntity,
-    MerchantTrade, PlayerAbilitiesFlags, SignedProperty, SoundCategory, Statistic,
-    SyncPlayerPosLookFlags, TagGroup, UpdateObjectiveMode, UpdateScoreAction,
+    AttributeProperty, BossBarAction, ChatSuggestionAction, ChunkDataBlockEntity,
+    CommandSuggestionMatch, Difficulty, EntityEffectFlags, FeetOrEyes, GameEventKind, GameMode,
+    GlobalPos, Hand, LookAtEntity, MerchantTrade, PlayerAbilitiesFlags, SignedProperty,
+    SoundCategory, Statistic, SyncPlayerPosLookFlags, TagGroup, UpdateObjectiveMode,
+    UpdateScoreAction,
 };
 use crate::username::Username;
 use crate::var_int::VarInt;
@@ -296,6 +297,13 @@ pub mod play {
     pub struct SetCooldown {
         pub item_id: VarInt,
         pub cooldown_ticks: VarInt,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x14]
+    pub struct ChatSuggestions<'a> {
+        pub action: ChatSuggestionAction,
+        pub entries: Vec<&'a str>,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -997,6 +1005,7 @@ pub mod play {
             SetContainerProperty,
             SetContainerSlot,
             SetCooldown,
+            ChatSuggestions<'a>,
             PluginMessageS2c<'a>,
             DeleteMessage<'a>,
             DisconnectPlay,

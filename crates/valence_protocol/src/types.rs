@@ -445,3 +445,10 @@ pub struct MerchantTrade {
     pub price_multiplier: f32,
     pub demand: i32,
 }
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
+pub enum ChatSuggestionAction {
+    Add,
+    Remove,
+    Set,
+}
