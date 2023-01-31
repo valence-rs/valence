@@ -11,8 +11,8 @@ use crate::text::Text;
 use crate::types::{
     AttributeProperty, BossBarAction, ChunkDataBlockEntity, CommandSuggestionMatch, Difficulty,
     EntityEffectFlags, FeetOrEyes, GameEventKind, GameMode, GlobalPos, Hand, LookAtEntity,
-    PlayerAbilitiesFlags, SignedProperty, SoundCategory, Statistic, SyncPlayerPosLookFlags,
-    TagGroup, UpdateObjectiveMode, UpdateScoreAction,
+    MerchantTrade, PlayerAbilitiesFlags, SignedProperty, SoundCategory, Statistic,
+    SyncPlayerPosLookFlags, TagGroup, UpdateObjectiveMode, UpdateScoreAction,
 };
 use crate::username::Username;
 use crate::var_int::VarInt;
@@ -475,6 +475,17 @@ pub mod play {
         pub is_debug: bool,
         pub is_flat: bool,
         pub last_death_location: Option<(Ident<String>, BlockPos)>,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x26]
+    pub struct MerchantOffers {
+        pub window_id: VarInt,
+        pub trades: Vec<MerchantTrade>,
+        pub villager_level: VarInt,
+        pub experience: VarInt,
+        pub is_regular_villager: bool,
+        pub can_restock: bool,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -986,6 +997,7 @@ pub mod play {
             ParticleS2c,
             LoginPlay<'a>,
             MapData<'a>,
+            MerchantOffers,
             UpdateEntityPosition,
             UpdateEntityPositionAndRotation,
             UpdateEntityRotation,

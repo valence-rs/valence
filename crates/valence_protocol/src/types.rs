@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valence_nbt::Compound;
 
-use crate::{BlockPos, Decode, Encode, Ident, Text, VarInt};
+use crate::{BlockPos, Decode, Encode, Ident, ItemStack, Text, VarInt};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum HandshakeNextState {
@@ -430,4 +430,18 @@ pub enum UpdateScoreAction<'a> {
 pub struct CommandSuggestionMatch<'a> {
     pub suggested_match: &'a str,
     pub tooltip: Option<Text>,
+}
+
+#[derive(Clone, PartialEq, Debug, Encode, Decode)]
+pub struct MerchantTrade {
+    pub input_one: Option<ItemStack>,
+    pub output_item: Option<ItemStack>,
+    pub input_two: Option<ItemStack>,
+    pub trade_disabled: bool,
+    pub number_of_trade_uses: i32,
+    pub max_trade_uses: i32,
+    pub xp: i32,
+    pub special_price: i32,
+    pub price_multiplier: f32,
+    pub demand: i32,
 }
