@@ -516,6 +516,14 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x2a]
+    pub struct MoveVehicle {
+        pub position: [f64; 3],
+        pub yaw: f32,
+        pub pitch: f32,
+    }
+
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x2b]
     pub struct OpenBook {
         pub hand: Hand,
@@ -1001,6 +1009,7 @@ pub mod play {
             UpdateEntityPosition,
             UpdateEntityPositionAndRotation,
             UpdateEntityRotation,
+            MoveVehicle,
             OpenBook,
             OpenScreen,
             OpenSignEditor,
