@@ -858,6 +858,12 @@ pub mod play {
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x58]
+    pub struct SetSimulationDistance {
+        pub simulation_distance: VarInt,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x59]
     pub struct SetSubtitleText {
         pub subtitle_text: Text,
@@ -1072,6 +1078,7 @@ pub mod play {
             UpdateObjectives<'a>,
             SetPassengers,
             UpdateScore<'a>,
+            SetSimulationDistance,
             SetSubtitleText,
             UpdateTime,
             SetTitleText,
