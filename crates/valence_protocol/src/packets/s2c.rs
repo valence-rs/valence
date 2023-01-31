@@ -934,6 +934,13 @@ pub mod play {
         pub footer: Text,
     }
 
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x62]
+    pub struct TagQueryResponse {
+        pub transaction_id: VarInt,
+        pub nbt: Compound,
+    }
+
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x63]
     pub struct PickupItem {
@@ -1087,6 +1094,7 @@ pub mod play {
             SoundEffect,
             SystemChatMessage,
             SetTabListHeaderAndFooter,
+            TagQueryResponse,
             PickupItem,
             TeleportEntity,
             UpdateAdvancements<'a>,
