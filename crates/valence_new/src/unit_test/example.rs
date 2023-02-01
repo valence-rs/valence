@@ -34,8 +34,8 @@ mod tests {
 
     /// A unit test where we want to test what happens when a client sends a
     /// packet to the server.
-    #[tokio::test]
-    async fn test_client_position() {
+    #[test]
+    fn test_client_position() {
         let mut app = App::new();
         app.add_plugin(ServerPlugin::new(()));
         let server = app.world.resource::<Server>();
