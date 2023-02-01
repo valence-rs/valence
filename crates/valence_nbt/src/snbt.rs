@@ -405,7 +405,7 @@ impl<'a> SnbtReader<'a> {
     }
 
     /// Read the next element in the SNBT string.
-    /// [`SNBTErrorType::TrailingData`] cannot be returned because it is not
+    /// [`SnbtErrorKind::TrailingData`] cannot be returned because it is not
     /// considered to be an error.
     pub fn parse_element(&mut self) -> Result<Value> {
         self.skip_whitespace();
