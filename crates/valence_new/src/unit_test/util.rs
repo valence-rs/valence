@@ -51,12 +51,6 @@ impl MockClientHelper {
     /// Inject a packet to be parsed by the server. Panics if the packet cannot
     /// be sent.
     pub fn send_packet(&mut self, packet: impl EncodePacket) {
-        let mut buffer = Vec::<u8>::new();
-        valence_protocol::encode_packet(&mut buffer, &packet).expect("Failed to encode packet");
-        self.stream
-            .lock()
-            .unwrap()
-            .try_send(BytesMut::from(buffer.as_slice()))
-            .expect("Failed to send packet");
+        self.stream.lock().unwrap().inject_recv(packet);
     }
 }
