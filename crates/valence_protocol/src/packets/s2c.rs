@@ -28,6 +28,7 @@ pub mod particle;
 pub mod player_chat_message;
 pub mod player_info_update;
 pub mod set_equipment;
+pub mod sound_id;
 pub mod update_advancements;
 pub mod update_recipe_book;
 
@@ -114,6 +115,7 @@ pub mod play {
     pub use player_chat_message::PlayerChatMessage;
     pub use player_info_update::PlayerInfoUpdate;
     pub use set_equipment::SetEquipment;
+    pub use sound_id::SoundId;
     pub use update_advancements::UpdateAdvancements;
     pub use update_recipe_book::UpdateRecipeBook;
 
@@ -910,8 +912,8 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x5e]
-    pub struct SoundEffect {
-        pub id: VarInt,
+    pub struct SoundEffect<'a> {
+        pub id: SoundId<'a>,
         pub category: SoundCategory,
         pub position: [i32; 3],
         pub volume: f32,
@@ -1091,7 +1093,7 @@ pub mod play {
             SetTitleText,
             SetTitleAnimationTimes,
             EntitySoundEffect,
-            SoundEffect,
+            SoundEffect<'a>,
             SystemChatMessage,
             SetTabListHeaderAndFooter,
             TagQueryResponse,
