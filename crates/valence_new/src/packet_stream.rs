@@ -192,6 +192,9 @@ impl<'a> MockPacketStream {
 impl PacketStream for MockPacketStream {
     fn try_recv(&mut self) -> Result<BytesMut, TryRecvError> {
         let bytes = self.pending_recv.split();
+        if bytes.is_empty() {
+            return Err(TryRecvError::Empty);
+        }
         Ok(bytes)
     }
 
@@ -225,13 +228,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_mock_stream_read() {
+    fn test_mock_stream_read() -> anyhow::Result<()> {
         let stream = Arc::new(Mutex::new(MockPacketStream::new()));
-        let mut streamer = PacketStreamer::new(stream, PacketEncoder::new(), PacketDecoder::new());
+        let mut streamer =
+            PacketStreamer::new(stream.clone(), PacketEncoder::new(), PacketDecoder::new());
         let packet = KeepAliveC2s { id: 0xdeadbeef };
-        streamer.try_send(&packet).unwrap();
-        let packet_out = streamer.try_recv::<KeepAliveC2s>().unwrap().unwrap();
+        stream.lock().unwrap().inject_recv(packet.clone());
+        let packet_out = streamer.try_recv::<KeepAliveC2s>()?.unwrap();
         assert_eq!(packet.id, packet_out.id);
+
+        Ok(())
     }
 
     #[test]
