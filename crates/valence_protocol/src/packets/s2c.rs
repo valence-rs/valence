@@ -29,6 +29,7 @@ pub mod player_chat_message;
 pub mod player_info_update;
 pub mod set_equipment;
 pub mod sound_id;
+pub mod stop_sound;
 pub mod update_advancements;
 pub mod update_recipe_book;
 
@@ -116,6 +117,7 @@ pub mod play {
     pub use player_info_update::PlayerInfoUpdate;
     pub use set_equipment::SetEquipment;
     pub use sound_id::SoundId;
+    pub use stop_sound::StopSound;
     pub use update_advancements::UpdateAdvancements;
     pub use update_recipe_book::UpdateRecipeBook;
 
@@ -1094,6 +1096,7 @@ pub mod play {
             SetTitleAnimationTimes,
             EntitySoundEffect,
             SoundEffect<'a>,
+            StopSound<'a>,
             SystemChatMessage,
             SetTabListHeaderAndFooter,
             TagQueryResponse,
