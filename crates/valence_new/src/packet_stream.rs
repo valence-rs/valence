@@ -235,18 +235,20 @@ mod tests {
     }
 
     #[test]
-    fn test_mock_stream_assert_sent() {
+    fn test_mock_stream_assert_sent() -> anyhow::Result<()> {
         let stream = Arc::new(Mutex::new(MockPacketStream::new()));
         let mut streamer =
             PacketStreamer::new(stream.clone(), PacketEncoder::new(), PacketDecoder::new());
         let packet = KeepAliveS2c { id: 0xdeadbeef };
-        streamer.try_send(&packet).unwrap();
+        streamer.try_send(&packet)?;
+        streamer.send_flush()?;
         let mut s = stream.lock().unwrap();
         let packets_out = s.collect_sent().unwrap();
         let S2cPlayPacket::KeepAliveS2c(packet_out) = packets_out[0] else {
-            assert!(false);
-            return;
+            anyhow::bail!("expected KeepAliveS2c packet");
         };
         assert_eq!(packet.id, packet_out.id);
+
+        Ok(())
     }
 }
