@@ -1,6 +1,5 @@
 use std::sync::{Arc, Mutex};
 
-use bytes::BytesMut;
 use tokio::sync::OwnedSemaphorePermit;
 use valence_protocol::{EncodePacket, PacketDecoder, PacketEncoder, Username};
 
@@ -52,5 +51,9 @@ impl MockClientHelper {
     /// be sent.
     pub fn send_packet(&mut self, packet: impl EncodePacket) {
         self.stream.lock().unwrap().inject_recv(packet);
+    }
+
+    pub(crate) fn inner_stream(&self) -> Arc<Mutex<MockPacketStream>> {
+        self.stream.clone()
     }
 }

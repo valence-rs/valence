@@ -152,7 +152,8 @@ impl<'a> MockPacketStream {
     }
 
     /// Clears the sent packets.
-    fn clear_sent(&mut self) {
+    #[allow(dead_code)]
+    pub fn clear_sent(&mut self) {
         self.flushed_sent.clear();
     }
 
