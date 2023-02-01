@@ -1,15 +1,17 @@
-use std::{
-    error::Error,
-    fmt::{Display, Formatter},
-    iter::Peekable,
-    str::Chars,
-};
+use std::error::Error;
+use std::fmt::{Display, Formatter};
+use std::iter::Peekable;
+use std::str::Chars;
 
-use crate::{tag::Tag, Compound, List, Value};
+use crate::tag::Tag;
+use crate::{Compound, List, Value};
 
 const STRING_MAX_LEN: usize = 32767;
+/// Maximum recursion depth to prevent overflowing the call stack.
+const MAX_DEPTH: usize = 512;
+
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
-pub enum SNBTErrorType {
+pub enum SnbtErrorKind {
     ReachEndOfStream,
     InvalidEscapeSequence,
     EmptyKeyInCompound,
@@ -20,35 +22,37 @@ pub enum SNBTErrorType {
     DifferentTypesInList,
     LongString,
     TrailingData,
+    DepthLimitExceeded,
 }
 
-impl Display for SNBTErrorType {
+impl Display for SnbtErrorKind {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        use SNBTErrorType::*;
+        use SnbtErrorKind::*;
         match self {
-            ReachEndOfStream => write!(f, "Reach end of stream"),
-            InvalidEscapeSequence => write!(f, "Invalid escape sequence"),
-            EmptyKeyInCompound => write!(f, "Empty key in compound"),
-            ExpectColon => write!(f, "Expect colon"),
-            ExpectValue => write!(f, "Expect value"),
-            ExpectComma => write!(f, "Expect comma"),
-            WrongTypeInArray => write!(f, "Wrong type in array"),
-            DifferentTypesInList => write!(f, "Different types in list"),
-            LongString => write!(f, "Long string"),
-            TrailingData => write!(f, "Extra data after end"),
+            ReachEndOfStream => write!(f, "reach end of stream"),
+            InvalidEscapeSequence => write!(f, "invalid escape sequence"),
+            EmptyKeyInCompound => write!(f, "empty key in compound"),
+            ExpectColon => write!(f, "expect colon"),
+            ExpectValue => write!(f, "expect value"),
+            ExpectComma => write!(f, "expect comma"),
+            WrongTypeInArray => write!(f, "wrong type in array"),
+            DifferentTypesInList => write!(f, "different types in list"),
+            LongString => write!(f, "long string"),
+            TrailingData => write!(f, "extra data after end"),
+            DepthLimitExceeded => write!(f, "depth limit exceeded"),
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
-pub struct SNBTError {
-    pub error_type: SNBTErrorType,
+pub struct SnbtError {
+    pub error_type: SnbtErrorKind,
     pub line: usize,
     pub column: usize,
 }
 
-impl SNBTError {
-    pub fn new(error_type: SNBTErrorType, line: usize, column: usize) -> Self {
+impl SnbtError {
+    pub fn new(error_type: SnbtErrorKind, line: usize, column: usize) -> Self {
         Self {
             error_type,
             line,
@@ -57,37 +61,50 @@ impl SNBTError {
     }
 }
 
-impl Display for SNBTError {
+impl Display for SnbtError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "@ {},{}: {}", self.line, self.column, self.error_type)
     }
 }
 
-impl Error for SNBTError {}
+impl Error for SnbtError {}
 
-type Result<T> = std::result::Result<T, SNBTError>;
+type Result<T> = std::result::Result<T, SnbtError>;
 
-pub struct SNBTReader<'a> {
+pub struct SnbtReader<'a> {
     line: usize,
     column: usize,
-    pub index: usize,
+    index: usize,
+    depth: usize,
     iter: Peekable<Chars<'a>>,
     pushed_back: Option<char>,
 }
 
-impl<'a> SNBTReader<'a> {
+impl<'a> SnbtReader<'a> {
     pub fn new(input: &'a str) -> Self {
         Self {
             line: 1,
             column: 1,
             index: 0,
+            depth: 0,
             iter: input.chars().peekable(),
             pushed_back: None,
         }
     }
 
-    fn make_error(&self, error_type: SNBTErrorType) -> SNBTError {
-        SNBTError::new(error_type, self.line, self.column)
+    fn check_depth<T>(&mut self, f: impl FnOnce(&mut Self) -> Result<T>) -> Result<T> {
+        if self.depth >= MAX_DEPTH {
+            return Err(self.make_error(SnbtErrorKind::DepthLimitExceeded));
+        } else {
+            self.depth += 1;
+            let res = f(self);
+            self.depth -= 1;
+            res
+        }
+    }
+
+    fn make_error(&self, error_type: SnbtErrorKind) -> SnbtError {
+        SnbtError::new(error_type, self.line, self.column)
     }
 
     fn peek(&mut self) -> Result<char> {
@@ -97,7 +114,7 @@ impl<'a> SNBTReader<'a> {
             self.iter
                 .peek()
                 .map(|c| *c)
-                .ok_or_else(|| self.make_error(SNBTErrorType::ReachEndOfStream))
+                .ok_or_else(|| self.make_error(SnbtErrorKind::ReachEndOfStream))
         }
     }
 
@@ -149,7 +166,7 @@ impl<'a> SNBTReader<'a> {
             _ => self.read_unquoted_string(),
         }?;
         if str.len() > STRING_MAX_LEN {
-            return Err(self.make_error(SNBTErrorType::LongString));
+            return Err(self.make_error(SnbtErrorKind::LongString));
         }
         Ok(str)
     }
@@ -186,7 +203,7 @@ impl<'a> SNBTReader<'a> {
                     if escape == quote || escape == '\\' {
                         result.push(escape);
                     } else {
-                        return Err(self.make_error(SNBTErrorType::InvalidEscapeSequence));
+                        return Err(self.make_error(SnbtErrorKind::InvalidEscapeSequence));
                     }
                     self.next();
                 }
@@ -198,7 +215,7 @@ impl<'a> SNBTReader<'a> {
             }
         }
         if result.len() > STRING_MAX_LEN {
-            return Err(self.make_error(SNBTErrorType::LongString));
+            return Err(self.make_error(SnbtErrorKind::LongString));
         }
         Ok(result)
     }
@@ -211,10 +228,10 @@ impl<'a> SNBTReader<'a> {
             let key = self.read_string()?;
             self.skip_whitespace();
             if key.len() == 0 {
-                return Err(self.make_error(SNBTErrorType::EmptyKeyInCompound));
+                return Err(self.make_error(SnbtErrorKind::EmptyKeyInCompound));
             }
             if self.peek()? != ':' {
-                return Err(self.make_error(SNBTErrorType::ExpectColon));
+                return Err(self.make_error(SnbtErrorKind::ExpectColon));
             }
             self.next();
             self.skip_whitespace();
@@ -224,7 +241,7 @@ impl<'a> SNBTReader<'a> {
                 self.next();
                 self.skip_whitespace();
             } else if self.peek()? != '}' {
-                return Err(self.make_error(SNBTErrorType::ExpectComma));
+                return Err(self.make_error(SnbtErrorKind::ExpectComma));
             }
             cpd.insert(key, value);
         }
@@ -240,15 +257,15 @@ impl<'a> SNBTReader<'a> {
             let value = self.parse_element()?;
             self.skip_whitespace();
             if element_type == Tag::End {
-                element_type = value.get_type();
-            } else if value.get_type() != element_type {
-                return Err(self.make_error(SNBTErrorType::DifferentTypesInList));
+                element_type = value.get_tag();
+            } else if value.get_tag() != element_type {
+                return Err(self.make_error(SnbtErrorKind::DifferentTypesInList));
             }
             if self.peek()? == ',' {
                 self.next();
                 self.skip_whitespace();
             } else if self.peek()? != ']' {
-                return Err(self.make_error(SNBTErrorType::ExpectComma));
+                return Err(self.make_error(SnbtErrorKind::ExpectComma));
             }
             list.push(value);
         }
@@ -311,20 +328,20 @@ impl<'a> SNBTReader<'a> {
             'B' => Tag::Byte,
             'I' => Tag::Int,
             'L' => Tag::Long,
-            _ => return self.continue_parse_list().map(|l| l.into()),
+            _ => return self.check_depth(|v| Ok(v.continue_parse_list()?.into())),
         };
         self.next();
         if self.peek()? != ';' {
             self.push_back(type_char);
-            return self.continue_parse_list().map(|l| l.into());
+            return self.check_depth(|v| Ok(v.continue_parse_list()?.into()));
         }
         self.next();
         self.skip_whitespace();
         let mut values = vec![];
         while self.peek()? != ']' {
             let value = self.parse_element()?;
-            if value.get_type() != etype {
-                return Err(self.make_error(SNBTErrorType::WrongTypeInArray));
+            if value.get_tag() != etype {
+                return Err(self.make_error(SnbtErrorKind::WrongTypeInArray));
             }
             values.push(value);
             self.skip_whitespace();
@@ -332,7 +349,7 @@ impl<'a> SNBTReader<'a> {
                 self.next();
                 self.skip_whitespace();
             } else if self.peek()? != ']' {
-                return Err(self.make_error(SNBTErrorType::ExpectComma));
+                return Err(self.make_error(SnbtErrorKind::ExpectComma));
             }
         }
         self.next();
@@ -364,7 +381,7 @@ impl<'a> SNBTReader<'a> {
         match target
             .bytes()
             .last()
-            .ok_or_else(|| self.make_error(SNBTErrorType::ExpectValue))?
+            .ok_or_else(|| self.make_error(SnbtErrorKind::ExpectValue))?
         {
             b'b' | b'B' => try_ret!(target[..target.len() - 1].parse::<i8>()),
             b's' | b'S' => try_ret!(target[..target.len() - 1].parse::<i16>()),
@@ -382,17 +399,18 @@ impl<'a> SNBTReader<'a> {
             }
         };
         if target.len() > STRING_MAX_LEN {
-            return Err(self.make_error(SNBTErrorType::LongString));
+            return Err(self.make_error(SnbtErrorKind::LongString));
         }
         Ok(Value::String(target))
     }
 
     /// Read the next element in the SNBT string.
-    /// [`SNBTErrorType::TrailingData`] is impossible to be returned since it doesnot consider it's an error.
+    /// [`SNBTErrorType::TrailingData`] cannot be returned because it is not
+    /// considered to be an error.
     pub fn parse_element(&mut self) -> Result<Value> {
         self.skip_whitespace();
         match self.peek()? {
-            '{' => self.parse_compound().map(|c| c.into()),
+            '{' => self.check_depth(|v| Ok(v.parse_compound()?.into())),
             '[' => self.parse_list_like(),
             '"' | '\'' => self.read_quoted_string().map(|s| s.into()),
             _ => self.parse_primitive(),
@@ -403,42 +421,40 @@ impl<'a> SNBTReader<'a> {
         let value = self.parse_element()?;
         self.skip_whitespace();
         if self.peek().is_ok() {
-            return Err(self.make_error(SNBTErrorType::TrailingData));
+            return Err(self.make_error(SnbtErrorKind::TrailingData));
         }
         Ok(value)
     }
 
-    /// Get the number of bytes readed.
-    /// It's useful when you want to read a SNBT string from an command argument since there may be trailing data.
-    pub fn bytes_readed(&self) -> usize {
+    /// Get the number of bytes read.
+    /// It's useful when you want to read a SNBT string from an command argument
+    /// since there may be trailing data.
+    pub fn bytes_read(&self) -> usize {
         self.index
     }
-
-    /// Parse a string in SNBT format into a `Value`.
-    /// Assert that the string has no trailing data.
-    /// SNBT is quite similar to JSON, but with some differences.
-    /// See [the wiki](https://minecraft.gamepedia.com/NBT_format#SNBT_format) for more information.
-    /// # Example
-    /// ```
-    /// use nbt::Value;
-    /// use nbt::SNBTReader;
-    /// let value = SNBTReader::from_snbt("1f").unwrap();
-    /// assert_eq!(value, Value::Float(1.0));
-    /// ```
-    pub fn from_snbt(snbt: &str) -> Result<Value> {
-        SNBTReader::new(snbt).read()
-    }
+}
+/// Parse a string in SNBT format into a `Value`.
+/// Assert that the string has no trailing data.
+/// SNBT is quite similar to JSON, but with some differences.
+/// See [the wiki](https://minecraft.gamepedia.com/NBT_format#SNBT_format) for more information.
+/// # Example
+/// ```
+/// use valence_nbt::snbt::SnbtReader;
+/// use valence_nbt::Value;
+/// let value = SnbtReader::from_snbt("1f").unwrap();
+/// assert_eq!(value, Value::Float(1.0));
+/// ```
+pub fn from_snbt_string(snbt: &str) -> Result<Value> {
+    SnbtReader::new(snbt).read()
 }
 
-pub struct SNBTWriter {
-    output: String,
+pub struct SnbtWriter<'a> {
+    output: &'a mut String,
 }
 
-impl SNBTWriter {
-    pub fn new() -> Self {
-        Self {
-            output: String::new(),
-        }
+impl<'a> SnbtWriter<'a> {
+    pub fn new(output: &'a mut String) -> Self {
+        Self { output }
     }
 
     fn write_string(&mut self, s: &str) {
@@ -464,10 +480,10 @@ impl SNBTWriter {
         }
     }
 
-    fn write_primitive_array<'a>(
+    fn write_primitive_array<'b>(
         &mut self,
         prefix: &str,
-        iter: impl Iterator<Item = &'a (impl Into<Value> + 'a + Copy)>,
+        iter: impl Iterator<Item = &'b (impl Into<Value> + 'b + Copy)>,
     ) {
         self.output.push('[');
         self.output.push_str(prefix);
@@ -558,22 +574,17 @@ impl SNBTWriter {
             Compound(v) => self.write_compound(v),
         }
     }
-
-    /// Convert a value to a string in SNBT format.
-    pub fn stringify(value: &Value) -> String {
-        let mut writer = SNBTWriter::new();
-        writer.write_element(value);
-        writer.into()
-    }
 }
 
-impl Into<String> for SNBTWriter {
-    fn into(self) -> String {
-        self.output
-    }
+/// Convert a value to a string in SNBT format.
+pub fn to_snbt_string(value: &Value) -> String {
+    let mut output = String::new();
+    let mut writer = SnbtWriter::new(&mut output);
+    writer.write_element(value);
+    output
 }
 
-impl Display for SNBTWriter {
+impl Display for SnbtWriter<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.output)
     }
@@ -603,7 +614,7 @@ mod tests {
 				empty: [Bibabo ],
 			}
 		"#;
-        let value = SNBTReader::from_snbt(str).unwrap();
+        let value = from_snbt_string(str).unwrap();
         let cpd = value.as_compound().unwrap();
         assert_eq!(*cpd.get("foo").unwrap().as_int().unwrap(), 1);
         assert_eq!(*cpd.get("bar").unwrap().as_double().unwrap(), 1.0);
@@ -631,55 +642,66 @@ mod tests {
         let List::String(list) = cpd.get("empty").unwrap().as_list().unwrap() else { panic!() };
         assert_eq!(list[0], "Bibabo");
         assert_eq!(
-            SNBTReader::from_snbt("\"\\n\"").unwrap_err().error_type,
-            SNBTErrorType::InvalidEscapeSequence
+            from_snbt_string("\"\\n\"").unwrap_err().error_type,
+            SnbtErrorKind::InvalidEscapeSequence
         );
         assert_eq!(
-            SNBTReader::from_snbt("[L; 1]").unwrap_err().error_type,
-            SNBTErrorType::WrongTypeInArray
+            from_snbt_string("[L; 1]").unwrap_err().error_type,
+            SnbtErrorKind::WrongTypeInArray
         );
         assert_eq!(
-            SNBTReader::from_snbt("[L; 1L, 2L, 3L")
+            from_snbt_string("[L; 1L, 2L, 3L").unwrap_err().error_type,
+            SnbtErrorKind::ReachEndOfStream
+        );
+        assert_eq!(
+            from_snbt_string("[L; 1L, 2L, 3L,]dewdwe")
                 .unwrap_err()
                 .error_type,
-            SNBTErrorType::ReachEndOfStream
+            SnbtErrorKind::TrailingData
         );
         assert_eq!(
-            SNBTReader::from_snbt("[L; 1L, 2L, 3L,]dewdwe")
+            from_snbt_string("{ foo: }").unwrap_err().error_type,
+            SnbtErrorKind::ExpectValue
+        );
+        assert_eq!(
+            from_snbt_string("{ {}, }").unwrap_err().error_type,
+            SnbtErrorKind::EmptyKeyInCompound
+        );
+        assert_eq!(
+            from_snbt_string("{ foo 1 }").unwrap_err().error_type,
+            SnbtErrorKind::ExpectColon
+        );
+        assert_eq!(
+            from_snbt_string("{ foo: 1 bar: 2 }")
                 .unwrap_err()
                 .error_type,
-            SNBTErrorType::TrailingData
+            SnbtErrorKind::ExpectComma
         );
         assert_eq!(
-            SNBTReader::from_snbt("{ foo: }").unwrap_err().error_type,
-            SNBTErrorType::ExpectValue
+            from_snbt_string("[{}, []]").unwrap_err().error_type,
+            SnbtErrorKind::DifferentTypesInList
         );
         assert_eq!(
-            SNBTReader::from_snbt("{ {}, }").unwrap_err().error_type,
-            SNBTErrorType::EmptyKeyInCompound
-        );
-        assert_eq!(
-            SNBTReader::from_snbt("{ foo 1 }").unwrap_err().error_type,
-            SNBTErrorType::ExpectColon
-        );
-        assert_eq!(
-            SNBTReader::from_snbt("{ foo: 1 bar: 2 }")
+            from_snbt_string(&String::from_utf8(vec![b'e'; 32768]).unwrap())
                 .unwrap_err()
                 .error_type,
-            SNBTErrorType::ExpectComma
+            SnbtErrorKind::LongString
         );
         assert_eq!(
-            SNBTReader::from_snbt("[{}, []]").unwrap_err().error_type,
-            SNBTErrorType::DifferentTypesInList
+            from_snbt_string(
+                &String::from_utf8([[b'['; MAX_DEPTH + 1], [b']'; MAX_DEPTH + 1]].concat())
+                    .unwrap()
+            )
+            .unwrap_err()
+            .error_type,
+            SnbtErrorKind::DepthLimitExceeded
         );
+        #[cfg(feature = "preserve_order")]
         assert_eq!(
-            SNBTReader::from_snbt(&String::from_utf8(vec![b'e'; 32768]).unwrap())
-                .unwrap_err()
-                .error_type,
-            SNBTErrorType::LongString
+            stringify(&value),
+            "{foo:1,bar:1d,baz:1f,\"hello'\":\"hello \
+             world\",world:\"hello\\\"world\",1.5f:1.5d,3b:2f,bool:0b,more:{iarr:[I;1,2,3],larr:\
+             [L;1l,2l,3l]},empty:[Bibabo]}"
         );
-        // Since the order of keys in a compound is not guaranteed, we cannot test the output of stringify.
-        // Print it out for manual inspection.
-        println!("{}", SNBTWriter::stringify(&value));
     }
 }

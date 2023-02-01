@@ -69,6 +69,7 @@
 pub use compound::Compound;
 pub use error::Error;
 pub use from_binary_slice::from_binary_slice;
+pub use tag::Tag;
 pub use to_binary_writer::to_binary_writer;
 pub use value::{List, Value};
 

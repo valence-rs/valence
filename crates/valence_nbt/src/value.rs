@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
-use crate::{tag::Tag, Compound};
+use crate::tag::Tag;
+use crate::Compound;
 
 /// Represents an arbitrary NBT value.
 #[derive(Clone, PartialEq, Debug)]
@@ -75,7 +76,7 @@ impl List {
     }
 
     /// Returns the element type of this list.
-    pub fn element_type(&self) -> Tag {
+    pub fn element_tag(&self) -> Tag {
         match self {
             List::End => Tag::End,
             List::Byte(_) => Tag::Byte,
@@ -144,7 +145,7 @@ impl Value {
     }
 
     /// Returns the type of this value.
-    pub fn get_type(&self) -> Tag {
+    pub fn get_tag(&self) -> Tag {
         match self {
             Self::Byte(_) => Tag::Byte,
             Self::Short(_) => Tag::Short,
