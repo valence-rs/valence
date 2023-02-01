@@ -55,7 +55,7 @@ mod tests {
         app.update();
 
         // Make assertions
-        let client: &Client = app.world.get(client_ent).unwrap();
+        let client: &Client = app.world.get(client_ent).expect("client not found");
         assert_eq!(client.position(), [12.0, 64.0, 0.0].into());
     }
 }
