@@ -94,7 +94,7 @@ impl<'a> SnbtReader<'a> {
 
     fn check_depth<T>(&mut self, f: impl FnOnce(&mut Self) -> Result<T>) -> Result<T> {
         if self.depth >= MAX_DEPTH {
-            return Err(self.make_error(SnbtErrorKind::DepthLimitExceeded));
+            Err(self.make_error(SnbtErrorKind::DepthLimitExceeded))
         } else {
             self.depth += 1;
             let res = f(self);
@@ -113,13 +113,13 @@ impl<'a> SnbtReader<'a> {
         } else {
             self.iter
                 .peek()
-                .map(|c| *c)
+                .copied()
                 .ok_or_else(|| self.make_error(SnbtErrorKind::ReachEndOfStream))
         }
     }
 
     fn next(&mut self) {
-        if let Some(_) = self.pushed_back {
+        if self.pushed_back.is_some() {
             self.pushed_back = None;
             return;
         }
@@ -227,7 +227,7 @@ impl<'a> SnbtReader<'a> {
         while self.peek()? != '}' {
             let key = self.read_string()?;
             self.skip_whitespace();
-            if key.len() == 0 {
+            if key.is_empty() {
                 return Err(self.make_error(SnbtErrorKind::EmptyKeyInCompound));
             }
             if self.peek()? != ':' {
