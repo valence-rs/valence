@@ -698,7 +698,7 @@ mod tests {
         );
         #[cfg(feature = "preserve_order")]
         assert_eq!(
-            stringify(&value),
+            to_snbt_string(&value),
             "{foo:1,bar:1d,baz:1f,\"hello'\":\"hello \
              world\",world:\"hello\\\"world\",1.5f:1.5d,3b:2f,bool:0b,more:{iarr:[I;1,2,3],larr:\
              [L;1l,2l,3l]},empty:[Bibabo]}"
