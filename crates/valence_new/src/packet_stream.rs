@@ -183,17 +183,7 @@ impl<'a> MockPacketStream {
     /// on what the server sent in unit tests.
     #[allow(dead_code)]
     pub fn collect_sent(&'a mut self) -> anyhow::Result<Vec<S2cPlayPacket<'a>>> {
-        let bytes = self.flushed_sent.split();
-        self.send_dec.queue_bytes(bytes);
-        let mut packets = Vec::new();
-        while let Ok(packet) = self.send_dec.try_next_packet::<S2cPlayPacket<'a>>() {
-            if let Some(packet) = packet {
-                packets.push(packet);
-            } else {
-                break;
-            }
-        }
-        Ok(packets)
+        self.send_dec.collect_into_vec()
     }
 }
 
