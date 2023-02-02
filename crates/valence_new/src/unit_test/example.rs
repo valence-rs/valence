@@ -1,3 +1,44 @@
+//! # Unit Test Cookbook
+//!
+//! Setting up an `App` with a single client:
+//! ```
+//! let mut app = App::new();
+//! let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+//! ```
+//!
+//! Asserting packets sent to the client:
+//! ```
+//! # let mut app = App::new();
+//! # let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+//! # let client: &Client = app.world.get(client_ent).expect("client not found");
+//! client
+//!     .enc
+//!     .append_packet(&valence_protocol::packets::s2c::play::KeepAliveS2c::new(
+//!         0xdeadbeef,
+//!     ))
+//!     .unwrap();
+//! client
+//!     .enc
+//!     .append_packet(&valence_protocol::packets::s2c::play::KeepAliveS2c::new(
+//!         0xf00dcafe,
+//!     ))
+//!     .unwrap();
+//!
+//! let sent_packets = client_helper.collect_sent()?;
+//! assert_packet_count!(sent_packets, 2, S2cPlayPacket::KeepAliveS2c(_));
+//! assert_packet_order!(
+//!     sent_packets,
+//!     S2cPlayPacket::KeepAliveS2c(KeepAliveS2c { id: 0xdeadbeef }),
+//!     S2cPlayPacket::KeepAliveS2c(KeepAliveS2c { id: 0xf00dcafe }),
+//! );
+//! ```
+//!
+//! Performing a Query without a system is possible, like so:
+//! ```
+//! # let mut app = App::new();
+//! app.world.query::<&Instance>();
+//! ```
+
 use bevy_app::App;
 
 use crate::config::ServerPlugin;
