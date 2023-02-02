@@ -1,11 +1,16 @@
 use std::sync::{Arc, Mutex};
 
+use bevy_app::App;
+use bevy_ecs::prelude::Entity;
 use bytes::BytesMut;
 use valence_protocol::packets::S2cPlayPacket;
 use valence_protocol::{EncodePacket, PacketDecoder, PacketEncoder, Username};
 
 use crate::client::{Client, ClientConnection};
-use crate::server::NewClientInfo;
+use crate::config::ServerPlugin;
+use crate::dimension::DimensionId;
+use crate::inventory::{Inventory, InventoryKind};
+use crate::server::{NewClientInfo, Server};
 
 /// Creates a mock client that can be used for unit testing.
 ///
@@ -145,4 +150,24 @@ impl MockClientHelper {
     pub fn clear_sent(&mut self) {
         self.conn.clear_sent();
     }
+}
+
+/// Sets up valence with a single mock client. Returns the Entity of the client
+/// and the corresponding MockClientHelper.
+///
+/// Reduces boilerplate in unit tests.
+pub fn scenario_single_client(app: &mut App) -> (Entity, MockClientHelper) {
+    app.add_plugin(ServerPlugin::new(()));
+    let server = app.world.resource::<Server>();
+    let instance = server.new_instance(DimensionId::default());
+    let instance_ent = app.world.spawn(instance).id();
+    let info = gen_client_info("test");
+    let (mut client, client_helper) = create_mock_client(info);
+    // HACK: needed so client does not get disconnected on first update
+    client.set_instance(instance_ent);
+    let client_ent = app
+        .world
+        .spawn((client, Inventory::new(InventoryKind::Player)))
+        .id();
+    (client_ent, client_helper)
 }
