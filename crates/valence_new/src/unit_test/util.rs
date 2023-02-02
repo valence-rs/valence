@@ -171,3 +171,22 @@ pub fn scenario_single_client(app: &mut App) -> (Entity, MockClientHelper) {
         .id();
     (client_ent, client_helper)
 }
+
+#[macro_export]
+macro_rules! assert_packet_order {
+    ($sent_packets:ident, $($packets:pat),+) => {{
+        let sent_packets: &Vec<valence_protocol::packets::S2cPlayPacket> = &$sent_packets;
+        let mut positions = Vec::new();
+        $(positions.push(sent_packets.iter().position(|p| matches!(p, $packets)));)*
+        assert!(positions.windows(2).all(|w: &[Option<usize>]| w[0] < w[1]));
+    }};
+}
+
+#[macro_export]
+macro_rules! assert_packet_count {
+    ($sent_packets:ident, $count:tt, $packet:pat) => {{
+        let sent_packets: &Vec<valence_protocol::packets::S2cPlayPacket> = &$sent_packets;
+        let count = sent_packets.iter().filter(|p| matches!(p, $packet)).count();
+        assert_eq!(count, $count);
+    }};
+}

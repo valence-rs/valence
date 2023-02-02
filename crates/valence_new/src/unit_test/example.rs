@@ -17,6 +17,7 @@ mod tests {
     use super::*;
     use crate::client::Client;
     use crate::inventory::{Inventory, InventoryKind, OpenInventory};
+    use crate::{assert_packet_count, assert_packet_order};
 
     /// The server's tick should increment every update.
     #[test]
@@ -81,17 +82,14 @@ mod tests {
             .get::<Client>(client_ent)
             .expect("client not found");
         let sent_packets = client_helper.collect_sent()?;
-        assert_eq!(sent_packets.len(), 2);
 
-        let open_idx = sent_packets
-            .iter()
-            .position(|p| matches!(p, S2cPlayPacket::OpenScreen(_)))
-            .expect("no OpenScreen packet sent");
-        let container_idx = sent_packets
-            .iter()
-            .position(|p| matches!(p, S2cPlayPacket::SetContainerContent(_)))
-            .expect("no SetContainerContent packet sent");
-        assert!(open_idx < container_idx);
+        assert_packet_count!(sent_packets, 1, S2cPlayPacket::OpenScreen(_));
+        assert_packet_count!(sent_packets, 1, S2cPlayPacket::SetContainerContent(_));
+        assert_packet_order!(
+            sent_packets,
+            S2cPlayPacket::OpenScreen(_),
+            S2cPlayPacket::SetContainerContent(_)
+        );
 
         Ok(())
     }
