@@ -1,5 +1,6 @@
 use std::io;
 use std::io::ErrorKind;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use anyhow::bail;
@@ -223,7 +224,15 @@ impl ClientConnection for RealClientConnection {
     }
 }
 
+/// A mock client connection that can be used for testing.
+///
+/// Safe to clone, but note that the clone will share the same buffers.
+#[derive(Clone)]
 pub(crate) struct MockClientConnection {
+    buffers: Arc<Mutex<MockClientBuffers>>,
+}
+
+struct MockClientBuffers {
     /// The queue of packets to receive from the client to be processed by the
     /// server.
     recv_buf: BytesMut,
@@ -234,32 +243,34 @@ pub(crate) struct MockClientConnection {
 impl MockClientConnection {
     pub fn new() -> Self {
         Self {
-            recv_buf: BytesMut::new(),
-            send_buf: BytesMut::new(),
+            buffers: Arc::new(Mutex::new(MockClientBuffers {
+                recv_buf: BytesMut::new(),
+                send_buf: BytesMut::new(),
+            })),
         }
     }
 
     pub fn inject_recv(&mut self, bytes: BytesMut) {
-        self.recv_buf.extend(bytes);
+        self.buffers.lock().unwrap().recv_buf.extend(bytes);
     }
 
     pub fn take_sent(&mut self) -> BytesMut {
-        self.send_buf.split()
+        self.buffers.lock().unwrap().send_buf.split()
     }
 
     pub fn clear_sent(&mut self) {
-        self.send_buf.clear();
+        self.buffers.lock().unwrap().send_buf.clear();
     }
 }
 
 impl ClientConnection for MockClientConnection {
     fn try_send(&mut self, bytes: BytesMut) -> anyhow::Result<()> {
-        self.send_buf.extend(bytes);
+        self.buffers.lock().unwrap().send_buf.extend(bytes);
         Ok(())
     }
 
     fn try_recv(&mut self) -> anyhow::Result<BytesMut> {
-        Ok(self.recv_buf.split())
+        Ok(self.buffers.lock().unwrap().recv_buf.split())
     }
 }
 
