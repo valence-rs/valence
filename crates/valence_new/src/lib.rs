@@ -42,7 +42,7 @@ mod packet;
 pub mod player_list;
 pub mod player_textures;
 pub mod server;
-#[cfg(test)]
+#[cfg(any(test, doctest))]
 mod unit_test;
 
 pub mod prelude {

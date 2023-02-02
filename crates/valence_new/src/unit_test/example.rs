@@ -1,28 +1,24 @@
 //! # Unit Test Cookbook
 //!
 //! Setting up an `App` with a single client:
-//! ```
+//! ```ignore
+//! # use bevy_app::App;
+//! # use valence_new::unit_test::util::scenario_single_client;
 //! let mut app = App::new();
 //! let (client_ent, mut client_helper) = scenario_single_client(&mut app);
 //! ```
 //!
 //! Asserting packets sent to the client:
-//! ```
+//! ```ignore
+//! # use bevy_app::App;
+//! # use valence_new::unit_test::util::scenario_single_client;
+//! # use valence_new::client::Client;
+//! # fn main() -> anyhow::Result<()> {
 //! # let mut app = App::new();
 //! # let (client_ent, mut client_helper) = scenario_single_client(&mut app);
 //! # let client: &Client = app.world.get(client_ent).expect("client not found");
-//! client
-//!     .enc
-//!     .append_packet(&valence_protocol::packets::s2c::play::KeepAliveS2c::new(
-//!         0xdeadbeef,
-//!     ))
-//!     .unwrap();
-//! client
-//!     .enc
-//!     .append_packet(&valence_protocol::packets::s2c::play::KeepAliveS2c::new(
-//!         0xf00dcafe,
-//!     ))
-//!     .unwrap();
+//! client.write_packet(&valence_protocol::packets::s2c::play::KeepAliveS2c { id: 0xdeadbeef });
+//! client.write_packet(&valence_protocol::packets::s2c::play::KeepAliveS2c { id: 0xf00dcafe });
 //!
 //! let sent_packets = client_helper.collect_sent()?;
 //! assert_packet_count!(sent_packets, 2, S2cPlayPacket::KeepAliveS2c(_));
@@ -31,10 +27,14 @@
 //!     S2cPlayPacket::KeepAliveS2c(KeepAliveS2c { id: 0xdeadbeef }),
 //!     S2cPlayPacket::KeepAliveS2c(KeepAliveS2c { id: 0xf00dcafe }),
 //! );
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! Performing a Query without a system is possible, like so:
 //! ```
+//! # use bevy_app::App;
+//! # use valence_new::instance::Instance;
 //! # let mut app = App::new();
 //! app.world.query::<&Instance>();
 //! ```
