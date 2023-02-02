@@ -222,3 +222,72 @@ impl ClientConnection for RealClientConnection {
         }
     }
 }
+
+pub(crate) struct MockClientConnection {
+    /// The queue of packets to receive from the client to be processed by the
+    /// server.
+    recv_buf: BytesMut,
+    /// The queue of packets to send from the server to the client.
+    send_buf: BytesMut,
+}
+
+impl MockClientConnection {
+    pub fn new() -> Self {
+        Self {
+            recv_buf: BytesMut::new(),
+            send_buf: BytesMut::new(),
+        }
+    }
+
+    pub fn inject_recv(&mut self, bytes: BytesMut) {
+        self.recv_buf.extend(bytes);
+    }
+
+    pub fn take_sent(&mut self) -> BytesMut {
+        self.send_buf.split()
+    }
+
+    pub fn clear_sent(&mut self) {
+        self.send_buf.clear();
+    }
+}
+
+impl ClientConnection for MockClientConnection {
+    fn try_send(&mut self, bytes: BytesMut) -> anyhow::Result<()> {
+        self.send_buf.extend(bytes);
+        Ok(())
+    }
+
+    fn try_recv(&mut self) -> anyhow::Result<BytesMut> {
+        Ok(self.recv_buf.split())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mock_client_recv() -> anyhow::Result<()> {
+        let msg = 0xdeadbeefu32.to_be_bytes();
+        let b = BytesMut::from(&msg[..]);
+        let mut client = MockClientConnection::new();
+        client.inject_recv(b);
+        let b = client.try_recv()?;
+        assert_eq!(b, BytesMut::from(&msg[..]));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_mock_client_send() -> anyhow::Result<()> {
+        let msg = 0xdeadbeefu32.to_be_bytes();
+        let b = BytesMut::from(&msg[..]);
+        let mut client = MockClientConnection::new();
+        client.try_send(b)?;
+        let b = client.take_sent();
+        assert_eq!(b, BytesMut::from(&msg[..]));
+
+        Ok(())
+    }
+}
