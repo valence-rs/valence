@@ -51,7 +51,7 @@ mod tests {
             position: [12.0, 64.0, 0.0],
             on_ground: true,
         };
-        // client_helper.send_packet(packet);
+        client_helper.send(&packet);
 
         // Process the packet.
         app.update();
@@ -81,10 +81,7 @@ mod tests {
 
         // Process a tick to get past the "on join" logic.
         app.update();
-        // let stream = client_helper.inner_stream();
-        // let mut stream = stream.lock().unwrap();
-        // stream.clear_sent();
-        // drop(stream);
+        client_helper.clear_sent();
 
         // Open the inventory.
         let open_inventory = OpenInventory::new(inventory_ent);
@@ -97,11 +94,8 @@ mod tests {
         app.update();
 
         // Make assertions
-        // let client: &Client = app.world.get(client_ent).expect("client not found");
-        // let stream = client_helper.inner_stream();
-        // let mut stream = stream.lock().unwrap();
-        // let sent_packets = stream.collect_sent()?;
-        let sent_packets = vec![];
+        let client: &Client = app.world.get(client_ent).expect("client not found");
+        let sent_packets = client_helper.collect_sent()?;
         assert_eq!(sent_packets.len(), 2);
 
         let open_idx = sent_packets
