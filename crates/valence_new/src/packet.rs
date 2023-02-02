@@ -1,7 +1,7 @@
 use std::io::Write;
 
 use tracing::warn;
-use valence_protocol::{encode_packet, encode_packet_compressed, EncodePacket};
+use valence_protocol::{encode_packet, encode_packet_compressed, EncodePacket, PacketEncoder};
 
 pub(crate) trait WritePacket {
     fn write_packet<P>(&mut self, packet: &P)
@@ -60,5 +60,20 @@ impl WritePacket for PacketWriter<'_> {
         if let Err(e) = self.buf.write_all(bytes) {
             warn!("failed to write packet bytes: {e:#}");
         }
+    }
+}
+
+impl WritePacket for PacketEncoder {
+    fn write_packet<P>(&mut self, packet: &P)
+    where
+        P: EncodePacket + ?Sized,
+    {
+        if let Err(e) = self.append_packet(packet) {
+            warn!("failed to write packet: {e:#}");
+        }
+    }
+
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        self.append_bytes(bytes)
     }
 }

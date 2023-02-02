@@ -536,7 +536,7 @@ pub(crate) fn update_player_list(
 
     for mut client in &mut clients {
         if client.is_new() {
-            pl.write_init_packets(client.packet_writer_mut());
+            pl.write_init_packets(client.into_inner());
         } else {
             client.write_packet_bytes(&pl.cached_update_packets);
         }

@@ -1,11 +1,10 @@
-use std::fmt;
 use std::net::IpAddr;
 use std::num::Wrapping;
 
 use anyhow::{bail, Context};
 use bevy_ecs::prelude::*;
+use bytes::BytesMut;
 use glam::DVec3;
-use tokio::sync::OwnedSemaphorePermit;
 use tracing::warn;
 use uuid::Uuid;
 use valence_protocol::packets::s2c::play::{
@@ -16,7 +15,8 @@ use valence_protocol::packets::s2c::play::{
 };
 use valence_protocol::types::{GameEventKind, GameMode, Property, SyncPlayerPosLookFlags};
 use valence_protocol::{
-    BlockPos, EncodePacket, Ident, ItemStack, RawBytes, Text, Username, VarInt,
+    BlockPos, EncodePacket, Ident, ItemStack, PacketDecoder, PacketEncoder, RawBytes, Text,
+    Username, VarInt,
 };
 
 use crate::chunk_pos::ChunkPos;
@@ -25,20 +25,18 @@ use crate::entity::data::Player;
 use crate::entity::McEntity;
 use crate::instance::Instance;
 use crate::packet::WritePacket;
-use crate::server::{NewClientInfo, PlayPacketReceiver, PlayPacketSender, Server};
+use crate::server::{NewClientInfo, Server};
 use crate::{Despawned, NULL_ENTITY};
 
 pub mod event;
 
 #[derive(Component)]
 pub struct Client {
-    send: PlayPacketSender,
-    recv: PlayPacketReceiver,
+    conn: Box<dyn ClientConnection>,
+    enc: PacketEncoder,
+    dec: PacketDecoder,
     scratch: Vec<u8>,
     is_disconnected: bool,
-    /// Ensures that we don't allow more connections to the server until the
-    /// client is dropped.
-    _permit: OwnedSemaphorePermit,
     username: Username<String>,
     uuid: Uuid,
     ip: IpAddr,
@@ -88,19 +86,24 @@ pub struct Client {
     pub(crate) inventory_slots_modified: u64,
 }
 
+pub trait ClientConnection: Send + Sync + 'static {
+    fn try_send(&mut self, bytes: BytesMut) -> anyhow::Result<()>;
+    fn try_recv(&mut self) -> anyhow::Result<BytesMut>;
+}
+
 impl Client {
     pub(crate) fn new(
-        send: PlayPacketSender,
-        recv: PlayPacketReceiver,
-        permit: OwnedSemaphorePermit,
         info: NewClientInfo,
+        conn: Box<dyn ClientConnection>,
+        enc: PacketEncoder,
+        dec: PacketDecoder,
     ) -> Self {
         Self {
-            send,
-            recv,
+            conn,
+            enc,
+            dec,
             scratch: vec![],
             is_disconnected: false,
-            _permit: permit,
             username: info.username,
             uuid: info.uuid,
             ip: info.ip,
@@ -139,10 +142,6 @@ impl Client {
         }
     }
 
-    pub(crate) fn packet_writer_mut(&mut self) -> impl WritePacket + '_ {
-        &mut self.send
-    }
-
     pub(crate) fn is_new(&self) -> bool {
         self.is_new
     }
@@ -154,9 +153,9 @@ impl Client {
     /// effect if the client is already disconnected.
     pub fn write_packet<P>(&mut self, pkt: &P)
     where
-        P: EncodePacket + fmt::Debug + ?Sized,
+        P: EncodePacket + ?Sized,
     {
-        self.send.write_packet(pkt);
+        self.enc.write_packet(pkt);
     }
 
     /// Writes arbitrary bytes to this client's packet buffer. Don't use this
@@ -166,7 +165,7 @@ impl Client {
     /// [`write_packet`]: Self::write_packet
     #[inline]
     pub fn write_packet_bytes(&mut self, bytes: &[u8]) {
-        self.send.append_bytes(bytes);
+        self.enc.append_bytes(bytes);
     }
 
     /// Gets the username of this client.
@@ -369,6 +368,19 @@ impl Client {
     }
 }
 
+impl WritePacket for Client {
+    fn write_packet<P>(&mut self, packet: &P)
+    where
+        P: EncodePacket + ?Sized,
+    {
+        self.enc.write_packet(packet)
+    }
+
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        self.enc.write_packet_bytes(bytes)
+    }
+}
+
 /// A system for adding [`Despawned`] components to disconnected clients.
 pub fn despawn_disconnected_clients(mut commands: Commands, clients: Query<(Entity, &Client)>) {
     for (entity, client) in &clients {
@@ -437,7 +449,7 @@ fn update_one_client(
         // The login packet is prepended so that it is sent before all the other
         // packets. Some packets don't work correctly when sent before the login packet,
         // which is why we're doing this.
-        client.send.prepend_packet(&LoginPlayOwned {
+        client.enc.prepend_packet(&LoginPlayOwned {
             entity_id: 0, // ID 0 is reserved for clients.
             is_hardcore: client.is_hardcore,
             game_mode: client.game_mode,
@@ -469,14 +481,14 @@ fn update_one_client(
         if client.view_distance != client.old_view_distance {
             // Change the render distance fog.
             client
-                .send
+                .enc
                 .append_packet(&SetRenderDistance(VarInt(client.view_distance.into())))?;
         }
 
         if client.needs_respawn {
             client.needs_respawn = false;
 
-            client.send.append_packet(&RespawnOwned {
+            client.enc.append_packet(&RespawnOwned {
                 dimension_type_name: instance.dimension().dimension_type_name(),
                 dimension_name: instance.dimension().dimension_name(),
                 hashed_seed: 0,
@@ -496,7 +508,7 @@ fn update_one_client(
     if server.current_tick() % (server.tps() * 10) == 0 {
         if client.got_keepalive {
             let id = rand::random();
-            client.send.write_packet(&KeepAliveS2c { id });
+            client.enc.write_packet(&KeepAliveS2c { id });
             client.last_keepalive_id = id;
             client.got_keepalive = false;
         } else {
@@ -505,7 +517,7 @@ fn update_one_client(
     }
 
     // Send instance-wide packet data.
-    client.send.append_bytes(&instance.packet_buf);
+    client.enc.append_bytes(&instance.packet_buf);
 
     let old_chunk_pos = ChunkPos::at(client.old_position.x, client.old_position.z);
     let chunk_pos = ChunkPos::at(client.position.x, client.position.z);
@@ -513,7 +525,7 @@ fn update_one_client(
     // Make sure the center chunk is set before loading chunks!
     if old_chunk_pos != chunk_pos {
         // TODO: does the client initialize the center chunk to (0, 0)?
-        client.send.write_packet(&SetCenterChunk {
+        client.enc.write_packet(&SetCenterChunk {
             chunk_x: VarInt(chunk_pos.x),
             chunk_z: VarInt(chunk_pos.z),
         });
@@ -525,7 +537,7 @@ fn update_one_client(
             if let Some(cell) = old_instance.partition.get(&pos) {
                 if cell.chunk_removed && cell.chunk.is_none() {
                     // Chunk was previously loaded and is now deleted.
-                    client.send.write_packet(&UnloadChunk {
+                    client.enc.write_packet(&UnloadChunk {
                         chunk_x: pos.x,
                         chunk_z: pos.z,
                     });
@@ -542,7 +554,7 @@ fn update_one_client(
                             // Spawn the entity at the old position so that later relative entity
                             // movement packets will not set the entity to the wrong position.
                             entity.write_init_packets(
-                                &mut client.send,
+                                &mut client.enc,
                                 entity.old_position(),
                                 &mut client.scratch,
                             );
@@ -568,7 +580,7 @@ fn update_one_client(
                 // Send all data in the chunk's packet buffer to this client. This will update
                 // entities in the cell, spawn or update the chunk in the cell, or send any
                 // other packet data that was added here by users.
-                client.send.append_bytes(&cell.packet_buf);
+                client.enc.append_bytes(&cell.packet_buf);
             }
         });
     }
@@ -584,7 +596,7 @@ fn update_one_client(
                 if let Some(cell) = old_instance.partition.get(&pos) {
                     // Unload the chunk at this cell if it was loaded.
                     if cell.chunk.is_some() {
-                        client.send.write_packet(&UnloadChunk {
+                        client.enc.write_packet(&UnloadChunk {
                             chunk_x: pos.x,
                             chunk_z: pos.z,
                         });
@@ -610,7 +622,7 @@ fn update_one_client(
                     chunk.write_init_packets(
                         &instance.info,
                         pos,
-                        &mut client.send,
+                        &mut client.enc,
                         &mut client.scratch,
                     );
                 }
@@ -619,7 +631,7 @@ fn update_one_client(
                 for &id in &cell.entities {
                     if let Ok(entity) = entities.get(id) {
                         entity.write_init_packets(
-                            &mut client.send,
+                            &mut client.enc,
                             entity.position(),
                             &mut client.scratch,
                         );
@@ -639,7 +651,7 @@ fn update_one_client(
                 if let Some(cell) = instance.partition.get(&pos) {
                     // Unload the chunk at this cell if it was loaded.
                     if cell.chunk.is_some() {
-                        client.send.write_packet(&UnloadChunk {
+                        client.enc.write_packet(&UnloadChunk {
                             chunk_x: pos.x,
                             chunk_z: pos.z,
                         });
@@ -665,7 +677,7 @@ fn update_one_client(
                         chunk.write_init_packets(
                             &instance.info,
                             pos,
-                            &mut client.send,
+                            &mut client.enc,
                             &mut client.scratch,
                         );
                     }
@@ -674,7 +686,7 @@ fn update_one_client(
                     for &id in &cell.entities {
                         if let Ok(entity) = entities.get(id) {
                             entity.write_init_packets(
-                                &mut client.send,
+                                &mut client.enc,
                                 entity.position(),
                                 &mut client.scratch,
                             );
@@ -687,7 +699,7 @@ fn update_one_client(
 
     // Despawn all the entities that are queued to be despawned.
     if !client.entities_to_despawn.is_empty() {
-        client.send.append_packet(&RemoveEntitiesEncode {
+        client.enc.append_packet(&RemoveEntitiesEncode {
             entity_ids: &client.entities_to_despawn,
         })?;
 
@@ -704,7 +716,7 @@ fn update_one_client(
             .with_y_rot(!client.yaw_modified)
             .with_x_rot(!client.pitch_modified);
 
-        client.send.write_packet(&SynchronizePlayerPosition {
+        client.enc.write_packet(&SynchronizePlayerPosition {
             position: if client.position_modified {
                 client.position.to_array()
             } else {
@@ -732,7 +744,7 @@ fn update_one_client(
     // This closes the "downloading terrain" screen.
     // Send this after the initial chunks are loaded.
     if client.is_new {
-        client.send.write_packet(&SetDefaultSpawnPosition {
+        client.enc.write_packet(&SetDefaultSpawnPosition {
             position: BlockPos::at(client.position),
             angle: client.yaw,
         });
@@ -746,7 +758,7 @@ fn update_one_client(
 
         client.scratch.push(0xff);
 
-        client.send.write_packet(&SetEntityMetadata {
+        client.enc.write_packet(&SetEntityMetadata {
             entity_id: VarInt(0),
             metadata: RawBytes(&client.scratch),
         });
@@ -754,7 +766,7 @@ fn update_one_client(
 
     // Acknowledge broken/placed blocks.
     if client.block_change_sequence != 0 {
-        client.send.write_packet(&AcknowledgeBlockChange {
+        client.enc.write_packet(&AcknowledgeBlockChange {
             sequence: VarInt(client.block_change_sequence),
         });
 
@@ -766,8 +778,8 @@ fn update_one_client(
     client.old_view_distance = client.view_distance;
 
     client
-        .send
-        .flush()
+        .conn
+        .try_send(client.enc.take())
         .context("failed to flush packet queue")?;
 
     Ok(())

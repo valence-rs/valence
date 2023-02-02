@@ -1,21 +1,23 @@
-use std::fmt;
+use std::io;
 use std::io::ErrorKind;
 use std::time::Duration;
 
-use anyhow::Result;
-use tokio::io;
+use anyhow::bail;
+use bytes::BytesMut;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-use tokio::runtime::Handle;
 use tokio::sync::OwnedSemaphorePermit;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
-use tracing::{debug, warn};
+use tracing::debug;
 use valence_protocol::{DecodePacket, EncodePacket, PacketDecoder, PacketEncoder};
 
-use crate::packet::WritePacket;
-use crate::server::byte_channel::{byte_channel, ByteReceiver, ByteSender, TryRecvError};
+use crate::client::{Client, ClientConnection};
+use crate::server::byte_channel::{
+    byte_channel, ByteReceiver, ByteSender, TryRecvError, TrySendError,
+};
+use crate::server::NewClientInfo;
 
-pub struct InitialPacketManager<R, W> {
+pub(super) struct InitialConnection<R, W> {
     reader: R,
     writer: W,
     enc: PacketEncoder,
@@ -26,7 +28,7 @@ pub struct InitialPacketManager<R, W> {
 
 const READ_BUF_SIZE: usize = 4096;
 
-impl<R, W> InitialPacketManager<R, W>
+impl<R, W> InitialConnection<R, W>
 where
     R: AsyncRead + Unpin,
     W: AsyncWrite + Unpin,
@@ -49,7 +51,7 @@ where
         }
     }
 
-    pub async fn send_packet<P>(&mut self, pkt: &P) -> Result<()>
+    pub async fn send_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
     where
         P: EncodePacket + ?Sized,
     {
@@ -59,9 +61,9 @@ where
         Ok(())
     }
 
-    pub async fn recv_packet<'a, P>(&'a mut self) -> Result<P>
+    pub async fn recv_packet<'a, P>(&'a mut self) -> anyhow::Result<P>
     where
-        P: DecodePacket<'a> + fmt::Debug,
+        P: DecodePacket<'a>,
     {
         timeout(self.timeout, async {
             while !self.dec.has_next_packet()? {
@@ -117,12 +119,12 @@ where
         self.dec.enable_encryption(key);
     }
 
-    pub fn into_play(
+    pub fn into_client(
         mut self,
+        info: NewClientInfo,
         incoming_limit: usize,
         outgoing_limit: usize,
-        handle: Handle,
-    ) -> (PlayPacketSender, PlayPacketReceiver, OwnedSemaphorePermit)
+    ) -> Client
     where
         R: Send + 'static,
         W: Send + 'static,
@@ -168,124 +170,55 @@ where
             }
         });
 
-        (
-            PlayPacketSender {
-                enc: self.enc,
+        Client::new(
+            info,
+            Box::new(RealClientConnection {
                 send: outgoing_sender,
-                writer_task: Some(writer_task),
-                handle,
-            },
-            PlayPacketReceiver {
-                dec: self.dec,
                 recv: incoming_receiver,
+                _permit: self.permit,
                 reader_task,
-            },
-            self.permit,
+                writer_task,
+            }),
+            self.enc,
+            self.dec,
         )
     }
 }
 
-/// Manages a packet encoder and a byte channel to send the encoded packets
-/// through.
-pub struct PlayPacketSender {
-    enc: PacketEncoder,
+struct RealClientConnection {
     send: ByteSender,
-    writer_task: Option<JoinHandle<()>>,
-    handle: Handle,
-}
-
-impl PlayPacketSender {
-    pub fn append_packet<P>(&mut self, pkt: &P) -> Result<()>
-    where
-        P: EncodePacket + ?Sized,
-    {
-        self.enc.append_packet(pkt)
-    }
-
-    #[inline]
-    pub fn append_bytes(&mut self, bytes: &[u8]) {
-        self.enc.append_bytes(bytes)
-    }
-
-    pub fn prepend_packet<P>(&mut self, pkt: &P) -> Result<()>
-    where
-        P: EncodePacket + ?Sized,
-    {
-        self.enc.prepend_packet(pkt)
-    }
-
-    pub fn clear(&mut self) {
-        self.enc.clear();
-    }
-
-    pub fn flush(&mut self) -> Result<()> {
-        let bytes = self.enc.take();
-        self.send.try_send(bytes)?;
-        Ok(())
-    }
-}
-
-impl WritePacket for PlayPacketSender {
-    fn write_packet<P>(&mut self, packet: &P)
-    where
-        P: EncodePacket + ?Sized,
-    {
-        if let Err(e) = self.append_packet(packet) {
-            warn!("failed to write packet: {e:#}");
-        }
-    }
-
-    fn write_packet_bytes(&mut self, bytes: &[u8]) {
-        self.append_bytes(bytes);
-    }
-}
-
-impl Drop for PlayPacketSender {
-    fn drop(&mut self) {
-        let _ = self.flush();
-
-        if let Some(writer_task) = self.writer_task.take() {
-            if !writer_task.is_finished() {
-                let _guard = self.handle.enter();
-
-                // Give any unsent packets a moment to send before we cut the connection.
-                self.handle
-                    .spawn(timeout(Duration::from_secs(1), writer_task));
-            }
-        }
-    }
-}
-
-/// Manages a packet decoder and a byte channel to receive the encoded packets.
-pub struct PlayPacketReceiver {
-    dec: PacketDecoder,
     recv: ByteReceiver,
+    /// Ensures that we don't allow more connections to the server until the
+    /// client is dropped.
+    _permit: OwnedSemaphorePermit,
     reader_task: JoinHandle<()>,
+    writer_task: JoinHandle<()>,
 }
 
-impl PlayPacketReceiver {
-    pub fn try_next_packet<'a, P>(&'a mut self) -> Result<Option<P>>
-    where
-        P: DecodePacket<'a> + fmt::Debug,
-    {
-        self.dec.try_next_packet()
+impl Drop for RealClientConnection {
+    fn drop(&mut self) {
+        self.writer_task.abort();
+        self.reader_task.abort();
     }
+}
 
-    /// Returns true if the client is connected. Returns false otherwise.
-    pub fn try_recv(&mut self) -> bool {
-        match self.recv.try_recv() {
-            Ok(bytes) => {
-                self.dec.queue_bytes(bytes);
-                true
-            }
-            Err(TryRecvError::Empty) => true,
-            Err(TryRecvError::Disconnected) => false,
+impl ClientConnection for RealClientConnection {
+    fn try_send(&mut self, bytes: BytesMut) -> anyhow::Result<()> {
+        match self.send.try_send(bytes) {
+            Ok(()) => Ok(()),
+            Err(TrySendError::Full(_)) => bail!(
+                "reached configured outgoing limit of {} bytes",
+                self.send.limit()
+            ),
+            Err(TrySendError::Disconnected(_)) => bail!("client disconnected"),
         }
     }
-}
 
-impl Drop for PlayPacketReceiver {
-    fn drop(&mut self) {
-        self.reader_task.abort();
+    fn try_recv(&mut self) -> anyhow::Result<BytesMut> {
+        match self.recv.try_recv() {
+            Ok(bytes) => Ok(bytes),
+            Err(TryRecvError::Empty) => Ok(BytesMut::new()),
+            Err(TryRecvError::Disconnected) => bail!("client disconnected"),
+        }
     }
 }

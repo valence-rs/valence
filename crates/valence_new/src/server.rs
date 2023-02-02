@@ -11,11 +11,10 @@ use bevy_app::AppExit;
 use bevy_ecs::event::ManualEventReader;
 use bevy_ecs::prelude::*;
 use flume::{Receiver, Sender};
-pub use packet_manager::{PlayPacketReceiver, PlayPacketSender};
 use rand::rngs::OsRng;
 use rsa::{PublicKeyParts, RsaPrivateKey};
 use tokio::runtime::{Handle, Runtime};
-use tokio::sync::{OwnedSemaphorePermit, Semaphore};
+use tokio::sync::Semaphore;
 use uuid::Uuid;
 use valence_nbt::{compound, Compound, List};
 use valence_protocol::types::Property;
@@ -44,7 +43,7 @@ use crate::Despawned;
 
 mod byte_channel;
 mod connect;
-mod packet_manager;
+mod connection;
 
 /// Contains global server state accessible as a [`Resource`].
 #[derive(Resource)]
@@ -101,9 +100,9 @@ struct SharedServerInner {
     /// The instant the server was started.
     start_instant: Instant,
     /// Sender for new clients past the login stage.
-    new_clients_send: Sender<NewClientMessage>,
+    new_clients_send: Sender<Client>,
     /// Receiver for new clients past the login stage.
-    new_clients_recv: Receiver<NewClientMessage>,
+    new_clients_recv: Receiver<Client>,
     /// A semaphore used to limit the number of simultaneous connections to the
     /// server. Closing this semaphore stops new connections.
     connection_sema: Arc<Semaphore>,
@@ -239,13 +238,6 @@ pub struct NewClientInfo {
     pub properties: Vec<Property>,
 }
 
-struct NewClientMessage {
-    info: NewClientInfo,
-    send: PlayPacketSender,
-    recv: PlayPacketReceiver,
-    permit: OwnedSemaphorePermit,
-}
-
 pub fn build_plugin(
     plugin: &ServerPlugin<impl AsyncCallbacks>,
     app: &mut App,
@@ -330,14 +322,11 @@ pub fn build_plugin(
     // Exclusive system to spawn new clients. Should run before everything else.
     let spawn_new_clients = move |world: &mut World| {
         for _ in 0..shared.0.new_clients_recv.len() {
-            let Ok(msg) = shared.0.new_clients_recv.try_recv() else {
+            let Ok(client) = shared.0.new_clients_recv.try_recv() else {
                 break
             };
 
-            world.spawn((
-                Client::new(msg.send, msg.recv, msg.permit, msg.info),
-                Inventory::new(InventoryKind::Player),
-            ));
+            world.spawn((client, Inventory::new(InventoryKind::Player)));
         }
     };
 
