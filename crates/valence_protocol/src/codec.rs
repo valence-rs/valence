@@ -1,5 +1,3 @@
-use std::fmt;
-
 #[cfg(feature = "encryption")]
 use aes::cipher::{AsyncStreamCipher, NewCipher};
 use anyhow::{bail, ensure};
@@ -30,6 +28,7 @@ impl PacketEncoder {
         Self::default()
     }
 
+    #[inline]
     pub fn append_bytes(&mut self, bytes: &[u8]) {
         self.buf.extend_from_slice(bytes)
     }
@@ -288,7 +287,7 @@ impl PacketDecoder {
 
     pub fn try_next_packet<'a, P>(&'a mut self) -> Result<Option<P>>
     where
-        P: DecodePacket<'a> + fmt::Debug,
+        P: DecodePacket<'a>,
     {
         self.buf.advance(self.cursor);
         self.cursor = 0;
@@ -369,13 +368,19 @@ impl PacketDecoder {
     #[track_caller]
     pub fn collect_into_vec<'a, P>(&'a mut self) -> Result<Vec<P>>
     where
-        P: DecodePacket<'a> + fmt::Debug,
+        P: DecodePacket<'a>,
     {
         #[cfg(feature = "encryption")]
-        assert!(self.cipher.is_none(), "encryption must be disabled to use this method");
+        assert!(
+            self.cipher.is_none(),
+            "encryption must be disabled to use this method"
+        );
 
         #[cfg(feature = "compression")]
-        assert!(!self.compression_enabled, "compression must be disabled to use this method");
+        assert!(
+            !self.compression_enabled,
+            "compression must be disabled to use this method"
+        );
 
         self.buf.advance(self.cursor);
         self.cursor = 0;

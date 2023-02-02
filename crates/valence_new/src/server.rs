@@ -11,11 +11,10 @@ use bevy_app::AppExit;
 use bevy_ecs::event::ManualEventReader;
 use bevy_ecs::prelude::*;
 use flume::{Receiver, Sender};
-pub use packet_manager::{PlayPacketReceiver, PlayPacketSender};
 use rand::rngs::OsRng;
 use rsa::{PublicKeyParts, RsaPrivateKey};
 use tokio::runtime::{Handle, Runtime};
-use tokio::sync::{OwnedSemaphorePermit, Semaphore};
+use tokio::sync::Semaphore;
 use uuid::Uuid;
 use valence_nbt::{compound, Compound, List};
 use valence_protocol::types::Property;
@@ -30,7 +29,9 @@ use crate::entity::{
     check_entity_invariants, deinit_despawned_entities, init_entities, update_entities,
     McEntityManager,
 };
-use crate::instance::{update_instances_post_client, update_instances_pre_client, Instance};
+use crate::instance::{
+    check_instance_invariants, update_instances_post_client, update_instances_pre_client, Instance,
+};
 use crate::inventory::{
     handle_click_container, handle_close_container, handle_set_slot_creative,
     update_client_on_close_inventory, update_open_inventories, update_player_inventories,
@@ -43,7 +44,7 @@ use crate::Despawned;
 
 pub(crate) mod byte_channel;
 mod connect;
-mod packet_manager;
+mod connection;
 
 /// Contains global server state accessible as a [`Resource`].
 #[derive(Resource)]
@@ -100,9 +101,9 @@ struct SharedServerInner {
     /// The instant the server was started.
     start_instant: Instant,
     /// Sender for new clients past the login stage.
-    new_clients_send: Sender<NewClientMessage>,
+    new_clients_send: Sender<Client>,
     /// Receiver for new clients past the login stage.
-    new_clients_recv: Receiver<NewClientMessage>,
+    new_clients_recv: Receiver<Client>,
     /// A semaphore used to limit the number of simultaneous connections to the
     /// server. Closing this semaphore stops new connections.
     connection_sema: Arc<Semaphore>,
@@ -244,13 +245,6 @@ pub struct NewClientInfo {
     pub properties: Vec<Property>,
 }
 
-struct NewClientMessage {
-    info: NewClientInfo,
-    send: PlayPacketSender,
-    recv: PlayPacketReceiver,
-    permit: OwnedSemaphorePermit,
-}
-
 pub fn build_plugin(
     plugin: &ServerPlugin<impl AsyncCallbacks>,
     app: &mut App,
@@ -335,18 +329,10 @@ pub fn build_plugin(
     // Exclusive system to spawn new clients. Should run before everything else.
     let spawn_new_clients = move |world: &mut World| {
         for _ in 0..shared.0.new_clients_recv.len() {
-            let Ok(msg) = shared.0.new_clients_recv.try_recv() else {
+            let Ok(client) = shared.0.new_clients_recv.try_recv() else {
                 break
             };
 
-            let stream = RealPacketStream::new(msg.recv.recv, msg.send.send);
-            let streamer =
-                PacketStreamer::new(Arc::new(Mutex::new(stream)), msg.send.enc, msg.recv.dec);
-            let mut client = Client::new(streamer, msg.permit, msg.info);
-            client.set_async_tasks(ClientAsyncTaskHolder {
-                writer_task: msg.send.writer_task,
-                reader_task: msg.recv.reader_task,
-            });
             world.spawn((client, Inventory::new(InventoryKind::Player)));
         }
     };
@@ -373,9 +359,10 @@ pub fn build_plugin(
             SystemSet::new()
                 .with_system(init_entities)
                 .with_system(check_entity_invariants)
+                .with_system(check_instance_invariants.after(check_entity_invariants))
+                .with_system(update_player_list.before(update_instances_pre_client))
                 .with_system(update_instances_pre_client.after(init_entities))
                 .with_system(update_clients.after(update_instances_pre_client))
-                .with_system(update_player_list.before(update_clients))
                 .with_system(update_instances_post_client.after(update_clients))
                 .with_system(deinit_despawned_entities.after(update_instances_post_client))
                 .with_system(despawn_marked_entities.after(deinit_despawned_entities))

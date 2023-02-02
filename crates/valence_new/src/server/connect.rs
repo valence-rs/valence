@@ -35,8 +35,8 @@ use valence_protocol::{
 };
 
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerListPing};
-use crate::server::packet_manager::InitialPacketManager;
-use crate::server::{NewClientInfo, NewClientMessage, SharedServer};
+use crate::server::connection::InitialConnection;
+use crate::server::{NewClientInfo, SharedServer};
 
 /// Accepts new connections to the server as they occur.
 #[instrument(skip_all)]
@@ -71,7 +71,7 @@ pub async fn do_accept_loop(shared: SharedServer, callbacks: Arc<impl AsyncCallb
     }
 }
 
-#[instrument(skip(shared, callbacks, stream))]
+#[instrument(skip(shared, callbacks, stream, permit))]
 async fn handle_connection(
     shared: SharedServer,
     callbacks: Arc<impl AsyncCallbacks>,
@@ -87,7 +87,7 @@ async fn handle_connection(
 
     let (read, write) = stream.into_split();
 
-    let mngr = InitialPacketManager::new(
+    let conn = InitialConnection::new(
         read,
         write,
         PacketEncoder::new(),
@@ -98,7 +98,7 @@ async fn handle_connection(
 
     // TODO: peek stream for 0xFE legacy ping
 
-    if let Err(e) = handle_handshake(shared, callbacks, mngr, remote_addr).await {
+    if let Err(e) = handle_handshake(shared, callbacks, conn, remote_addr).await {
         // EOF can happen if the client disconnects while joining, which isn't
         // very erroneous.
         if let Some(e) = e.downcast_ref::<io::Error>() {
@@ -113,10 +113,10 @@ async fn handle_connection(
 async fn handle_handshake(
     shared: SharedServer,
     callbacks: Arc<impl AsyncCallbacks>,
-    mut mngr: InitialPacketManager<OwnedReadHalf, OwnedWriteHalf>,
+    mut conn: InitialConnection<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
 ) -> anyhow::Result<()> {
-    let handshake = mngr.recv_packet::<HandshakeOwned>().await?;
+    let handshake = conn.recv_packet::<HandshakeOwned>().await?;
 
     ensure!(
         matches!(shared.connection_mode(), ConnectionMode::BungeeCord)
@@ -126,30 +126,24 @@ async fn handle_handshake(
 
     match handshake.next_state {
         HandshakeNextState::Status => {
-            handle_status(shared, callbacks, mngr, remote_addr, handshake)
+            handle_status(shared, callbacks, conn, remote_addr, handshake)
                 .await
                 .context("error handling status")
         }
         HandshakeNextState::Login => {
-            match handle_login(&shared, callbacks, &mut mngr, remote_addr, handshake)
+            match handle_login(&shared, callbacks, &mut conn, remote_addr, handshake)
                 .await
                 .context("error handling login")?
             {
                 Some(info) => {
-                    let (send, recv, permit) = mngr.into_play(
+                    let client = conn.into_client(
+                        info,
                         shared.0.incoming_capacity,
                         shared.0.outgoing_capacity,
-                        shared.tokio_handle().clone(),
                     );
 
-                    let msg = NewClientMessage {
-                        info,
-                        send,
-                        recv,
-                        permit,
-                    };
+                    let _ = shared.0.new_clients_send.send_async(client).await;
 
-                    let _ = shared.0.new_clients_send.send_async(msg).await;
                     Ok(())
                 }
                 None => Ok(()),
@@ -161,11 +155,11 @@ async fn handle_handshake(
 async fn handle_status(
     shared: SharedServer,
     callbacks: Arc<impl AsyncCallbacks>,
-    mut mngr: InitialPacketManager<OwnedReadHalf, OwnedWriteHalf>,
+    mut conn: InitialConnection<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
     handshake: HandshakeOwned,
 ) -> anyhow::Result<()> {
-    mngr.recv_packet::<StatusRequest>().await?;
+    conn.recv_packet::<StatusRequest>().await?;
 
     match callbacks
         .server_list_ping(&shared, remote_addr, handshake.protocol_version.0)
@@ -197,7 +191,7 @@ async fn handle_status(
                 json["favicon"] = Value::String(buf);
             }
 
-            mngr.send_packet(&StatusResponse {
+            conn.send_packet(&StatusResponse {
                 json: &json.to_string(),
             })
             .await?;
@@ -205,9 +199,9 @@ async fn handle_status(
         ServerListPing::Ignore => return Ok(()),
     }
 
-    let PingRequest { payload } = mngr.recv_packet().await?;
+    let PingRequest { payload } = conn.recv_packet().await?;
 
-    mngr.send_packet(&PingResponse { payload }).await?;
+    conn.send_packet(&PingResponse { payload }).await?;
 
     Ok(())
 }
@@ -216,7 +210,7 @@ async fn handle_status(
 async fn handle_login(
     shared: &SharedServer,
     callbacks: Arc<impl AsyncCallbacks>,
-    mngr: &mut InitialPacketManager<OwnedReadHalf, OwnedWriteHalf>,
+    conn: &mut InitialConnection<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
     handshake: HandshakeOwned,
 ) -> anyhow::Result<Option<NewClientInfo>> {
@@ -228,35 +222,35 @@ async fn handle_login(
     let LoginStart {
         username,
         profile_id: _, // TODO
-    } = mngr.recv_packet().await?;
+    } = conn.recv_packet().await?;
 
     let username = username.to_owned_username();
 
     let info = match shared.connection_mode() {
         ConnectionMode::Online { .. } => {
-            login_online(shared, &callbacks, mngr, remote_addr, username).await?
+            login_online(shared, &callbacks, conn, remote_addr, username).await?
         }
         ConnectionMode::Offline => login_offline(remote_addr, username)?,
         ConnectionMode::BungeeCord => login_bungeecord(&handshake.server_address, username)?,
-        ConnectionMode::Velocity { secret } => login_velocity(mngr, username, secret).await?,
+        ConnectionMode::Velocity { secret } => login_velocity(conn, username, secret).await?,
     };
 
     if let Some(threshold) = shared.0.compression_threshold {
-        mngr.send_packet(&SetCompression {
+        conn.send_packet(&SetCompression {
             threshold: VarInt(threshold as i32),
         })
         .await?;
 
-        mngr.set_compression(Some(threshold));
+        conn.set_compression(Some(threshold));
     }
 
     if let Err(reason) = callbacks.login(shared, &info).await {
         info!("disconnect at login: \"{reason}\"");
-        mngr.send_packet(&DisconnectLogin { reason }).await?;
+        conn.send_packet(&DisconnectLogin { reason }).await?;
         return Ok(None);
     }
 
-    mngr.send_packet(&LoginSuccess {
+    conn.send_packet(&LoginSuccess {
         uuid: info.uuid,
         username: info.username.as_str_username(),
         properties: Default::default(),
@@ -270,13 +264,13 @@ async fn handle_login(
 pub(super) async fn login_online(
     shared: &SharedServer,
     callbacks: &Arc<impl AsyncCallbacks>,
-    mngr: &mut InitialPacketManager<OwnedReadHalf, OwnedWriteHalf>,
+    conn: &mut InitialConnection<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
     username: Username<String>,
 ) -> anyhow::Result<NewClientInfo> {
     let my_verify_token: [u8; 16] = rand::random();
 
-    mngr.send_packet(&EncryptionRequest {
+    conn.send_packet(&EncryptionRequest {
         server_id: "", // Always empty
         public_key: &shared.0.public_key_der,
         verify_token: &my_verify_token,
@@ -286,7 +280,7 @@ pub(super) async fn login_online(
     let EncryptionResponse {
         shared_secret,
         verify_token: encrypted_verify_token,
-    } = mngr.recv_packet().await?;
+    } = conn.recv_packet().await?;
 
     let shared_secret = shared
         .0
@@ -310,7 +304,7 @@ pub(super) async fn login_online(
         .try_into()
         .context("shared secret has the wrong length")?;
 
-    mngr.enable_encryption(&crypt_key);
+    conn.enable_encryption(&crypt_key);
 
     let hash = Sha1::new()
         .chain(&shared_secret)
@@ -335,7 +329,7 @@ pub(super) async fn login_online(
                 translation_key::MULTIPLAYER_DISCONNECT_UNVERIFIED_USERNAME,
                 [],
             );
-            mngr.send_packet(&DisconnectLogin { reason }).await?;
+            conn.send_packet(&DisconnectLogin { reason }).await?;
             bail!("session server could not verify username");
         }
         status => {
@@ -407,7 +401,7 @@ pub(super) fn login_bungeecord(
 
 /// Login procedure for Velocity.
 pub(super) async fn login_velocity(
-    mngr: &mut InitialPacketManager<OwnedReadHalf, OwnedWriteHalf>,
+    conn: &mut InitialConnection<OwnedReadHalf, OwnedWriteHalf>,
     username: Username<String>,
     velocity_secret: &str,
 ) -> anyhow::Result<NewClientInfo> {
@@ -417,7 +411,7 @@ pub(super) async fn login_velocity(
     let message_id: i32 = 0; // TODO: make this random?
 
     // Send Player Info Request into the Plugin Channel
-    mngr.send_packet(&LoginPluginRequest {
+    conn.send_packet(&LoginPluginRequest {
         message_id: VarInt(message_id),
         channel: Ident::new("velocity:player_info").unwrap(),
         data: RawBytes(&[VELOCITY_MIN_SUPPORTED_VERSION]),
@@ -425,7 +419,7 @@ pub(super) async fn login_velocity(
     .await?;
 
     // Get Response
-    let plugin_response: LoginPluginResponse = mngr.recv_packet().await?;
+    let plugin_response: LoginPluginResponse = conn.recv_packet().await?;
 
     ensure!(
         plugin_response.message_id.0 == message_id,

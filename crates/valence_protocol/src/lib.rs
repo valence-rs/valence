@@ -68,8 +68,8 @@
 // Allows us to use our own proc macros internally.
 extern crate self as valence_protocol;
 
-use std::io;
 use std::io::Write;
+use std::{fmt, io};
 
 pub use anyhow::{Error, Result};
 pub use array::LengthPrefixedArray;
@@ -283,7 +283,7 @@ pub trait Decode<'a>: Sized {
 /// ```
 ///
 /// [macro]: valence_protocol_macros::DecodePacket
-pub trait EncodePacket {
+pub trait EncodePacket: fmt::Debug {
     /// The packet ID that is written when [`Self::encode_packet`] is called. A
     /// negative value indicates that the packet ID is not statically known.
     const PACKET_ID: i32 = -1;
@@ -322,7 +322,7 @@ pub trait EncodePacket {
 /// ```
 ///
 /// [macro]: valence_protocol::DecodePacket
-pub trait DecodePacket<'a>: Sized {
+pub trait DecodePacket<'a>: Sized + fmt::Debug {
     /// The packet ID that is read when [`Self::decode_packet`] is called. A
     /// negative value indicates that the packet ID is not statically known.
     const PACKET_ID: i32 = -1;

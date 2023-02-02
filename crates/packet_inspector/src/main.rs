@@ -63,7 +63,7 @@ struct State {
 impl State {
     pub async fn rw_packet<'a, P>(&'a mut self) -> anyhow::Result<P>
     where
-        P: DecodePacket<'a> + EncodePacket + fmt::Debug,
+        P: DecodePacket<'a> + EncodePacket,
     {
         while !self.dec.has_next_packet()? {
             self.dec.reserve(4096);

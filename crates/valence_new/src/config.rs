@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::Arc;
 
@@ -258,7 +257,7 @@ pub trait AsyncCallbacks: Send + Sync + 'static {
         ServerListPing::Respond {
             online_players: 0, // TODO: get online players.
             max_players: -1,
-            player_sample: Cow::default(),
+            player_sample: vec![],
             description: "A Valence Server".into(),
             favicon_png: &[],
         }
@@ -407,7 +406,7 @@ pub enum ServerListPing<'a> {
         /// The list of players visible by hovering over the player count.
         ///
         /// Has no effect if this list is empty.
-        player_sample: Cow<'a, [PlayerSampleEntry<'a>]>,
+        player_sample: Vec<PlayerSampleEntry>,
         /// A description of the server.
         description: Text,
         /// The server's icon as the bytes of a PNG image.
@@ -423,12 +422,12 @@ pub enum ServerListPing<'a> {
 
 /// Represents an individual entry in the player sample.
 #[derive(Clone, Debug, Serialize)]
-pub struct PlayerSampleEntry<'a> {
+pub struct PlayerSampleEntry {
     /// The name of the player.
     ///
     /// This string can contain
     /// [legacy formatting codes](https://minecraft.fandom.com/wiki/Formatting_codes).
-    pub name: Cow<'a, str>,
+    pub name: String,
     /// The player UUID.
     pub id: Uuid,
 }

@@ -1,23 +1,19 @@
+use std::collections::hash_map::Entry;
 use std::collections::BTreeSet;
-use std::hash::BuildHasherDefault;
 use std::iter::FusedIterator;
 
 use bevy_ecs::prelude::*;
 pub use chunk_entry::*;
-use hashbrown::hash_map::Entry;
-use hashbrown::HashMap;
 use num::integer::div_ceil;
-use rustc_hash::FxHasher;
+use rustc_hash::FxHashMap;
 use valence_protocol::block::BlockState;
-use valence_protocol::packets::s2c::play::UnloadChunk;
 use valence_protocol::{BlockPos, LengthPrefixedArray};
 
 use crate::chunk_pos::ChunkPos;
-use crate::client::Client;
 use crate::dimension::DimensionId;
 use crate::entity::McEntity;
 pub use crate::instance::chunk::Chunk;
-use crate::packet::{PacketWriter, WritePacket};
+use crate::packet::PacketWriter;
 use crate::server::{Server, SharedServer};
 use crate::Despawned;
 
@@ -28,7 +24,7 @@ mod paletted_container;
 /// To create a new instance, see [`SharedServer::new_instance`].
 #[derive(Component)]
 pub struct Instance {
-    pub(crate) partition: HashMap<ChunkPos, PartitionCell, BuildHasherDefault<FxHasher>>,
+    pub(crate) partition: FxHashMap<ChunkPos, PartitionCell>,
     pub(crate) info: InstanceInfo,
     /// Packet data to send to all clients in this instance at the end of the
     /// tick.
@@ -52,11 +48,15 @@ pub(crate) struct PartitionCell {
     /// The chunk in this cell.
     pub(crate) chunk: Option<Chunk<true>>,
     /// If `chunk` went from `Some` to `None` this tick.
-    chunk_removed: bool,
-    /// All of the client entities in view of this cell.
-    pub(crate) viewers: BTreeSet<Entity>,
+    pub(crate) chunk_removed: bool,
     /// Minecraft entities in this cell.
     pub(crate) entities: BTreeSet<Entity>,
+    /// Minecraft entities that have entered the chunk this tick, paired with
+    /// the cell position in this instance they came from.
+    pub(crate) incoming: Vec<(Entity, Option<ChunkPos>)>,
+    /// Minecraft entities that have left the chunk this tick, paired with the
+    /// cell position in this world they arrived at.
+    pub(crate) outgoing: Vec<(Entity, Option<ChunkPos>)>,
     /// A cache of packets to send to all clients that are in view of this cell
     /// at the end of the tick.
     pub(crate) packet_buf: Vec<u8>,
@@ -75,7 +75,7 @@ impl Instance {
         }
 
         Self {
-            partition: HashMap::default(),
+            partition: FxHashMap::default(),
             info: InstanceInfo {
                 dimension,
                 section_count: (dim.height / 16) as usize,
@@ -220,186 +220,139 @@ impl Instance {
 
 pub(crate) fn update_instances_pre_client(
     mut instances: Query<&mut Instance>,
-    // TODO: Check if adding Changed<McEntity> filter would break things.
-    mut entities: Query<(Entity, &McEntity, Option<&Despawned>)>,
-    mut clients: Query<&mut Client>,
+    mut entities: Query<(Entity, &mut McEntity, Option<&Despawned>)>,
     server: Res<Server>,
 ) {
-    let mut scratch = vec![];
-    let mut compression_scratch = vec![];
-    let mut scratch_2 = vec![];
-
-    // Loop over every entity and change their partition cells if their location
-    // changed.
-    for (entity_id, entity, despawned) in &mut entities {
-        let old_pos = ChunkPos::at(entity.old_position().x, entity.old_position().z);
+    for (entity_id, entity, despawned) in &entities {
         let pos = ChunkPos::at(entity.position().x, entity.position().z);
+        let old_pos = ChunkPos::at(entity.old_position().x, entity.old_position().z);
+
+        let instance = entity.instance();
+        let old_instance = entity.old_instance();
 
         if despawned.is_some() {
-            if let Ok(mut old_instance) = instances.get_mut(entity.old_instance()) {
+            // Entity was deleted. Remove it from the chunk it was in, if it was in a chunk
+            // at all.
+            if let Ok(mut old_instance) = instances.get_mut(old_instance) {
                 if let Some(old_cell) = old_instance.partition.get_mut(&old_pos) {
-                    assert!(old_cell.entities.remove(&entity_id));
-
-                    for &client_id in &old_cell.viewers {
-                        if let Ok(mut client) = clients.get_mut(client_id) {
-                            // TODO: check that entity is not the self-entity.
-                            client.despawn_entity(entity.protocol_id());
-                        }
+                    if old_cell.entities.remove(&entity_id) {
+                        old_cell.outgoing.push((entity_id, None));
                     }
                 }
             }
-        } else if entity.old_instance() != entity.instance() {
-            if let Ok(mut old_instance) = instances.get_mut(entity.old_instance()) {
-                if let Some(old_cell) = old_instance.partition.get_mut(&old_pos) {
-                    assert!(old_cell.entities.remove(&entity_id));
+        } else if old_instance != instance {
+            // Entity changed the instance it is in. Remove it from old cell and
+            // insert it in the new cell.
 
-                    for &client_id in &old_cell.viewers {
-                        if let Ok(mut client) = clients.get_mut(client_id) {
-                            // TODO: check that entity is not the self-entity.
-                            client.despawn_entity(entity.protocol_id());
-                        }
+            // TODO: skip marker entity?
+
+            if let Ok(mut old_instance) = instances.get_mut(old_instance) {
+                if let Some(old_cell) = old_instance.partition.get_mut(&old_pos) {
+                    if old_cell.entities.remove(&entity_id) {
+                        old_cell.outgoing.push((entity_id, None));
                     }
                 }
             }
 
-            if let Ok(mut instance) = instances.get_mut(entity.instance()) {
+            if let Ok(mut instance) = instances.get_mut(instance) {
                 match instance.partition.entry(pos) {
                     Entry::Occupied(oe) => {
                         let cell = oe.into_mut();
-                        assert!(cell.entities.insert(entity_id));
-
-                        if !cell.viewers.is_empty() {
-                            scratch.clear();
-                            let writer = PacketWriter::new(
-                                &mut scratch,
-                                server.compression_threshold(),
-                                &mut compression_scratch,
-                            );
-
-                            // Write with the old position so that the entity will be in the correct
-                            // position if the later entity update packets include a relative
-                            // movement.
-                            entity
-                                .write_init_packets(writer, entity.old_position(), &mut scratch_2)
-                                .unwrap();
-
-                            // TODO: write it to the cell's packet_buf instead?
-                            for &client_id in &cell.viewers {
-                                if let Ok(mut client) = clients.get_mut(client_id) {
-                                    // TODO: check that entity is not the self-entity.
-                                    client.write_packet_bytes(&scratch);
-                                }
-                            }
+                        if cell.entities.insert(entity_id) {
+                            cell.incoming.push((entity_id, None));
                         }
                     }
                     Entry::Vacant(ve) => {
                         ve.insert(PartitionCell {
                             chunk: None,
                             chunk_removed: false,
-                            viewers: BTreeSet::new(),
                             entities: BTreeSet::from([entity_id]),
+                            incoming: vec![(entity_id, None)],
+                            outgoing: vec![],
                             packet_buf: vec![],
                         });
                     }
                 }
             }
-        } else if old_pos != pos {
-            if let Ok(mut instance) = instances.get_mut(entity.instance()) {
-                if let Entry::Vacant(ve) = instance.partition.entry(pos) {
-                    ve.insert(PartitionCell {
-                        chunk: None,
-                        chunk_removed: false,
-                        viewers: BTreeSet::new(),
-                        // Code below will add the entity to this set.
-                        entities: BTreeSet::new(),
-                        packet_buf: vec![],
-                    });
-                }
+        } else if pos != old_pos {
+            // Entity changed its chunk position without changing instances. Remove
+            // it from old cell and insert it in new cell.
 
-                // Old and new cells should exist so this `get_many_mut` shouldn't fail.
-                let [old_cell, cell] = instance.partition.get_many_mut([&old_pos, &pos]).unwrap();
+            // TODO: skip marker entity?
 
-                assert!(old_cell.entities.remove(&entity_id));
-                assert!(cell.entities.insert(entity_id));
-
-                for &client_id in old_cell.viewers.difference(&cell.viewers) {
-                    if let Ok(mut client) = clients.get_mut(client_id) {
-                        // The entity exited the view of this client.
-                        // TODO: check that entity is not the self-entity.
-                        client.despawn_entity(entity.protocol_id());
+            if let Ok(mut instance) = instances.get_mut(instance) {
+                if let Some(old_cell) = instance.partition.get_mut(&old_pos) {
+                    if old_cell.entities.remove(&entity_id) {
+                        old_cell.outgoing.push((entity_id, Some(pos)));
                     }
                 }
 
-                scratch.clear();
-                for &client_id in cell.viewers.difference(&old_cell.viewers) {
-                    if let Ok(mut client) = clients.get_mut(client_id) {
-                        // The entity entered the view of this client.
-
-                        // TODO: `continue` if entity is the self-entity.
-
-                        if scratch.is_empty() {
-                            let writer = PacketWriter::new(
-                                &mut scratch,
-                                server.compression_threshold(),
-                                &mut compression_scratch,
-                            );
-
-                            entity
-                                .write_init_packets(writer, entity.old_position(), &mut scratch_2)
-                                .unwrap();
+                match instance.partition.entry(pos) {
+                    Entry::Occupied(oe) => {
+                        let cell = oe.into_mut();
+                        if cell.entities.insert(entity_id) {
+                            cell.incoming.push((entity_id, Some(old_pos)));
                         }
-
-                        client.write_packet_bytes(&scratch);
+                    }
+                    Entry::Vacant(ve) => {
+                        ve.insert(PartitionCell {
+                            chunk: None,
+                            chunk_removed: false,
+                            entities: BTreeSet::from([entity_id]),
+                            incoming: vec![(entity_id, Some(old_pos))],
+                            outgoing: vec![],
+                            packet_buf: vec![],
+                        });
                     }
                 }
             }
+        } else {
+            // The entity didn't change its chunk position so there is nothing
+            // we need to do.
         }
     }
 
-    // TODO: move this to separate system?
+    let mut scratch_1 = vec![];
+    let mut scratch_2 = vec![];
 
-    // Write the entity and chunk update packets to clients. Also write any data
-    // added to each cell's packet buffer.
     for instance in &mut instances {
-        // To allow for splitting borrows.
         let instance = instance.into_inner();
 
         for (&pos, cell) in &mut instance.partition {
-            if !cell.viewers.is_empty() {
-                let mut writer = PacketWriter::new(
+            // Cache chunk update packets into the packet buffer of this cell.
+            if let Some(chunk) = &mut cell.chunk {
+                let writer = PacketWriter::new(
                     &mut cell.packet_buf,
                     server.compression_threshold(),
-                    &mut compression_scratch,
+                    &mut scratch_2,
                 );
 
-                for &entity_id in &cell.entities {
-                    if let Ok((_, entity, _)) = entities.get(entity_id) {
-                        entity
-                            .write_update_packets(&mut writer, &mut scratch_2)
-                            .unwrap();
-                    }
+                chunk.write_update_packets(writer, &mut scratch_1, pos, &instance.info);
+            }
+
+            // Cache entity update packets into the packet buffer of this cell.
+            for &id in &cell.entities {
+                let (_, mut entity, despawned) = entities
+                    .get_mut(id)
+                    .expect("missing entity in partition cell");
+
+                if despawned.is_some() {
+                    continue;
                 }
 
-                if let Some(chunk) = &mut cell.chunk {
-                    chunk
-                        .write_update_packets(writer, &mut scratch_2, pos, &instance.info)
-                        .unwrap();
-                } else if cell.chunk_removed {
-                    writer
-                        .write_packet(&UnloadChunk {
-                            chunk_x: pos.x,
-                            chunk_z: pos.z,
-                        })
-                        .unwrap();
-                }
+                let start = cell.packet_buf.len();
 
-                if !cell.packet_buf.is_empty() {
-                    for &client_id in &cell.viewers {
-                        if let Ok(mut client) = clients.get_mut(client_id) {
-                            client.write_packet_bytes(&cell.packet_buf);
-                        }
-                    }
-                }
+                let writer = PacketWriter::new(
+                    &mut cell.packet_buf,
+                    server.compression_threshold(),
+                    &mut scratch_2,
+                );
+
+                entity.write_update_packets(writer, &mut scratch_1);
+
+                let end = cell.packet_buf.len();
+
+                entity.self_update_range = start..end;
             }
         }
     }
@@ -410,6 +363,8 @@ pub(crate) fn update_instances_post_client(mut instances: Query<&mut Instance>) 
         instance.partition.retain(|_, cell| {
             cell.packet_buf.clear();
             cell.chunk_removed = false;
+            cell.incoming.clear();
+            cell.outgoing.clear();
 
             if let Some(chunk) = &mut cell.chunk {
                 chunk.update_post_client();
@@ -420,4 +375,21 @@ pub(crate) fn update_instances_post_client(mut instances: Query<&mut Instance>) 
 
         instance.packet_buf.clear();
     }
+}
+
+pub(crate) fn check_instance_invariants(instances: Query<&Instance>, entities: Query<&McEntity>) {
+    #[cfg(debug_assertions)]
+    for instance in &instances {
+        for (pos, cell) in &instance.partition {
+            for &id in &cell.entities {
+                assert!(
+                    entities.get(id).is_ok(),
+                    "instance contains an entity that does not exist at {pos:?}"
+                );
+            }
+        }
+    }
+
+    let _ = instances;
+    let _ = entities;
 }

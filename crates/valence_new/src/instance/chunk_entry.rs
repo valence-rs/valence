@@ -1,4 +1,4 @@
-use hashbrown::hash_map::{Entry, OccupiedEntry};
+use std::collections::hash_map::{Entry, OccupiedEntry};
 
 use super::*;
 
@@ -9,10 +9,7 @@ pub enum ChunkEntry<'a> {
 }
 
 impl<'a> ChunkEntry<'a> {
-    pub(super) fn new(
-        section_count: usize,
-        entry: Entry<'a, ChunkPos, PartitionCell, BuildHasherDefault<FxHasher>>,
-    ) -> Self {
+    pub(super) fn new(section_count: usize, entry: Entry<'a, ChunkPos, PartitionCell>) -> Self {
         match entry {
             Entry::Occupied(oe) => {
                 if oe.get().chunk.is_some() {
@@ -38,7 +35,7 @@ impl<'a> ChunkEntry<'a> {
 #[derive(Debug)]
 pub struct OccupiedChunkEntry<'a> {
     section_count: usize,
-    entry: OccupiedEntry<'a, ChunkPos, PartitionCell, BuildHasherDefault<FxHasher>>,
+    entry: OccupiedEntry<'a, ChunkPos, PartitionCell>,
 }
 
 impl<'a> OccupiedChunkEntry<'a> {
@@ -86,21 +83,19 @@ impl<'a> OccupiedChunkEntry<'a> {
 #[derive(Debug)]
 pub struct VacantChunkEntry<'a> {
     section_count: usize,
-    entry: Entry<'a, ChunkPos, PartitionCell, BuildHasherDefault<FxHasher>>,
+    entry: Entry<'a, ChunkPos, PartitionCell>,
 }
 
 impl<'a> VacantChunkEntry<'a> {
     pub fn insert(self, mut chunk: Chunk) -> &'a mut Chunk<true> {
-        // TODO: notify clients about the new chunk because they won't be in the viewer
-        //       list.
-
         chunk.resize(self.section_count);
 
         let cell = self.entry.or_insert_with(|| PartitionCell {
             chunk: None,
             chunk_removed: false,
-            viewers: BTreeSet::new(),
             entities: BTreeSet::new(),
+            incoming: vec![],
+            outgoing: vec![],
             packet_buf: vec![],
         });
 

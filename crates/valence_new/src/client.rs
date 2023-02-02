@@ -1,11 +1,10 @@
-use std::fmt;
 use std::net::IpAddr;
 use std::num::Wrapping;
 
 use anyhow::{bail, Context};
 use bevy_ecs::prelude::*;
+use bytes::BytesMut;
 use glam::DVec3;
-use tokio::sync::OwnedSemaphorePermit;
 use tracing::warn;
 use uuid::Uuid;
 use valence_protocol::packets::s2c::play::{
@@ -16,7 +15,8 @@ use valence_protocol::packets::s2c::play::{
 };
 use valence_protocol::types::{GameEventKind, GameMode, Property, SyncPlayerPosLookFlags};
 use valence_protocol::{
-    BlockPos, EncodePacket, Ident, ItemStack, RawBytes, Text, Username, VarInt,
+    BlockPos, EncodePacket, Ident, ItemStack, PacketDecoder, PacketEncoder, RawBytes, Text,
+    Username, VarInt,
 };
 
 use crate::chunk_pos::ChunkPos;
@@ -24,8 +24,7 @@ use crate::dimension::DimensionId;
 use crate::entity::data::Player;
 use crate::entity::McEntity;
 use crate::instance::Instance;
-use crate::packet_stream::{ClientAsyncTaskHolder, PacketStreamer};
-use crate::player_list::PlayerList;
+use crate::packet::WritePacket;
 use crate::server::{NewClientInfo, Server};
 use crate::{Despawned, NULL_ENTITY};
 
@@ -33,16 +32,11 @@ pub mod event;
 
 #[derive(Component)]
 pub struct Client {
-    streamer: PacketStreamer,
-    async_tasks: Option<ClientAsyncTaskHolder>,
+    conn: Box<dyn ClientConnection>,
+    enc: PacketEncoder,
+    dec: PacketDecoder,
+    scratch: Vec<u8>,
     is_disconnected: bool,
-    /// Ensures that we don't allow more connections to the server until the
-    /// client is dropped.
-    _permit: OwnedSemaphorePermit,
-    /// To make sure we're not loading already loaded chunks, or unloading
-    /// unloaded chunks.
-    #[cfg(debug_assertions)]
-    loaded_chunks: std::collections::HashSet<ChunkPos>,
     username: Username<String>,
     uuid: Uuid,
     ip: IpAddr,
@@ -92,19 +86,24 @@ pub struct Client {
     pub(crate) inventory_slots_modified: u64,
 }
 
+pub trait ClientConnection: Send + Sync + 'static {
+    fn try_send(&mut self, bytes: BytesMut) -> anyhow::Result<()>;
+    fn try_recv(&mut self) -> anyhow::Result<BytesMut>;
+}
+
 impl Client {
     pub(crate) fn new(
-        streamer: PacketStreamer,
-        permit: OwnedSemaphorePermit,
         info: NewClientInfo,
+        conn: Box<dyn ClientConnection>,
+        enc: PacketEncoder,
+        dec: PacketDecoder,
     ) -> Self {
         Self {
-            streamer,
-            async_tasks: None,
+            conn,
+            enc,
+            dec,
+            scratch: vec![],
             is_disconnected: false,
-            _permit: permit,
-            #[cfg(debug_assertions)]
-            loaded_chunks: Default::default(),
             username: info.username,
             uuid: info.uuid,
             ip: info.ip,
@@ -143,6 +142,10 @@ impl Client {
         }
     }
 
+    pub(crate) fn is_new(&self) -> bool {
+        self.is_new
+    }
+
     /// Attempts to write a play packet into this client's packet buffer. The
     /// packet will be sent at the end of the tick.
     ///
@@ -150,19 +153,9 @@ impl Client {
     /// effect if the client is already disconnected.
     pub fn write_packet<P>(&mut self, pkt: &P)
     where
-        P: EncodePacket + fmt::Debug + ?Sized,
+        P: EncodePacket + ?Sized,
     {
-        if let Err(e) = self.streamer.try_send(pkt) {
-            if !self.is_disconnected {
-                self.is_disconnected = true;
-                warn!(
-                    username = %self.username,
-                    uuid = %self.uuid,
-                    ip = %self.ip,
-                    "failed to write packet: {e:#}"
-                );
-            }
-        }
+        self.enc.write_packet(pkt);
     }
 
     /// Writes arbitrary bytes to this client's packet buffer. Don't use this
@@ -170,12 +163,9 @@ impl Client {
     /// [`write_packet`] instead.
     ///
     /// [`write_packet`]: Self::write_packet
+    #[inline]
     pub fn write_packet_bytes(&mut self, bytes: &[u8]) {
-        self.streamer.send_raw(bytes);
-    }
-
-    pub(crate) fn despawn_entity(&mut self, protocol_id: i32) {
-        self.entities_to_despawn.push(VarInt(protocol_id));
+        self.enc.append_bytes(bytes);
     }
 
     /// Gets the username of this client.
@@ -376,12 +366,18 @@ impl Client {
             data: RawBytes(data),
         });
     }
+}
 
-    pub(crate) fn set_async_tasks(
-        &mut self,
-        async_tasks: crate::packet_stream::ClientAsyncTaskHolder,
-    ) {
-        self.async_tasks = Some(async_tasks);
+impl WritePacket for Client {
+    fn write_packet<P>(&mut self, packet: &P)
+    where
+        P: EncodePacket + ?Sized,
+    {
+        self.enc.write_packet(packet)
+    }
+
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        self.enc.write_packet_bytes(bytes)
     }
 }
 
@@ -397,26 +393,21 @@ pub fn despawn_disconnected_clients(mut commands: Commands, clients: Query<(Enti
 pub(crate) fn update_clients(
     server: Res<Server>,
     mut clients: Query<(Entity, &mut Client, Option<&McEntity>)>,
-    mut instances: Query<&mut Instance>,
+    instances: Query<&Instance>,
     entities: Query<&McEntity>,
-    mut player_list: ResMut<PlayerList>,
-    mut scratch: Local<Vec<u8>>,
 ) {
-    scratch.clear();
-
-    for (client_id, mut client, self_entity) in &mut clients {
+    // TODO: what batch size to use?
+    clients.par_for_each_mut(16, |(entity_id, mut client, self_entity)| {
         if !client.is_disconnected() {
             if let Err(e) = update_one_client(
                 &mut client,
-                client_id,
                 self_entity,
-                &server,
-                &mut instances,
+                entity_id,
+                &instances,
                 &entities,
-                &mut player_list,
-                &mut scratch,
+                &server,
             ) {
-                let _ = client.write_packet(&DisconnectPlay { reason: "".into() });
+                client.write_packet(&DisconnectPlay { reason: "".into() });
                 client.is_disconnected = true;
                 warn!(
                     username = %client.username,
@@ -425,29 +416,23 @@ pub(crate) fn update_clients(
                     "error updating client: {e:#}"
                 );
             }
-        } else {
-            // In case packet data continues to accumulate before the disconnected client is
-            // dropped.
-            client.streamer.send_drop();
         }
 
         client.is_new = false;
-    }
+    });
 }
 
 #[inline]
 fn update_one_client(
     client: &mut Client,
-    this_id: Entity,
     _self_entity: Option<&McEntity>,
-    server: &Server,
-    instances: &mut Query<&mut Instance>,
+    _self_id: Entity,
+    instances: &Query<&Instance>,
     entities: &Query<&McEntity>,
-    player_list: &mut PlayerList,
-    scratch: &mut Vec<u8>,
+    server: &Server,
 ) -> anyhow::Result<()> {
     let Ok(instance) = instances.get(client.instance) else {
-        bail!("the client is not in an instance")
+        bail!("client is in a nonexistent instance");
     };
 
     // Send the login (play) packet and other initial packets. We defer this until
@@ -464,7 +449,7 @@ fn update_one_client(
         // The login packet is prepended so that it is sent before all the other
         // packets. Some packets don't work correctly when sent before the login packet,
         // which is why we're doing this.
-        client.streamer.try_send_prepend(&LoginPlayOwned {
+        client.enc.prepend_packet(&LoginPlayOwned {
             entity_id: 0, // ID 0 is reserved for clients.
             is_hardcore: client.is_hardcore,
             game_mode: client.game_mode,
@@ -492,21 +477,18 @@ fn update_one_client(
             features: vec![Ident::new("vanilla").unwrap()],
         })?;
         */
-
-        // Initialize the player list.
-        player_list.write_init_packets(&mut client.streamer)?;
     } else {
         if client.view_distance != client.old_view_distance {
             // Change the render distance fog.
             client
-                .streamer
-                .try_send(&SetRenderDistance(VarInt(client.view_distance.into())))?;
+                .enc
+                .append_packet(&SetRenderDistance(VarInt(client.view_distance.into())))?;
         }
 
         if client.needs_respawn {
             client.needs_respawn = false;
 
-            client.streamer.try_send(&RespawnOwned {
+            client.enc.append_packet(&RespawnOwned {
                 dimension_type_name: instance.dimension().dimension_type_name(),
                 dimension_name: instance.dimension().dimension_name(),
                 hashed_seed: 0,
@@ -520,15 +502,13 @@ fn update_one_client(
                     .map(|(id, pos)| (id.dimension_name(), pos)),
             })?;
         }
-
-        player_list.write_update_packets(&mut client.streamer)?;
     }
 
     // Check if it's time to send another keepalive.
     if server.current_tick() % (server.tps() * 10) == 0 {
         if client.got_keepalive {
             let id = rand::random();
-            client.streamer.try_send(&KeepAliveS2c { id })?;
+            client.enc.write_packet(&KeepAliveS2c { id });
             client.last_keepalive_id = id;
             client.got_keepalive = false;
         } else {
@@ -537,166 +517,193 @@ fn update_one_client(
     }
 
     // Send instance-wide packet data.
-    client.streamer.send_raw(&instance.packet_buf);
+    client.enc.append_bytes(&instance.packet_buf);
 
-    // The client's own chunk pos.
     let old_chunk_pos = ChunkPos::at(client.old_position.x, client.old_position.z);
     let chunk_pos = ChunkPos::at(client.position.x, client.position.z);
 
-    // Make sure the center chunk is set /before/ loading chunks.
+    // Make sure the center chunk is set before loading chunks!
     if old_chunk_pos != chunk_pos {
-        client.streamer.try_send(&SetCenterChunk {
+        // TODO: does the client initialize the center chunk to (0, 0)?
+        client.enc.write_packet(&SetCenterChunk {
             chunk_x: VarInt(chunk_pos.x),
             chunk_z: VarInt(chunk_pos.z),
-        })?;
+        });
     }
 
-    if client.old_instance != client.instance {
-        // Unload all chunks and entities in old instance.
-        if let Ok(mut old_instance) = instances.get_mut(client.old_instance) {
-            old_chunk_pos.try_for_each_in_view(client.old_view_distance, |pos| {
-                if let Some(cell) = old_instance.partition.get_mut(&pos) {
-                    // Remove this client from the set of clients viewing this cell.
-                    cell.viewers.remove(&this_id);
+    // Iterate over all visible chunks from the previous tick.
+    if let Ok(old_instance) = instances.get(client.old_instance) {
+        old_chunk_pos.for_each_in_view(client.old_view_distance, |pos| {
+            if let Some(cell) = old_instance.partition.get(&pos) {
+                if cell.chunk_removed && cell.chunk.is_none() {
+                    // Chunk was previously loaded and is now deleted.
+                    client.enc.write_packet(&UnloadChunk {
+                        chunk_x: pos.x,
+                        chunk_z: pos.z,
+                    });
+                }
 
-                    // TODO: only send unload packets when old dimension == new dimension, since the
-                    //       client will do the unloading for us?
-
-                    // Unload all the entities in this cell.
-                    for &entity_id in &cell.entities {
-                        if let Ok(entity) = entities.get(entity_id) {
-                            client.despawn_entity(entity.protocol_id());
+                // Send entity spawn packets for entities entering the client's view.
+                for &(id, src_pos) in &cell.incoming {
+                    if src_pos.map_or(true, |p| {
+                        !old_chunk_pos.is_in_view(p, client.old_view_distance)
+                    }) {
+                        // The incoming entity originated from outside the view distance, so it
+                        // must be spawned.
+                        if let Ok(entity) = entities.get(id) {
+                            // Spawn the entity at the old position so that later relative entity
+                            // movement packets will not set the entity to the wrong position.
+                            entity.write_init_packets(
+                                &mut client.enc,
+                                entity.old_position(),
+                                &mut client.scratch,
+                            );
                         }
-                    }
-
-                    // Unload the chunk in this cell.
-                    if cell.chunk.is_some() {
-                        #[cfg(debug_assertions)]
-                        assert!(client.loaded_chunks.remove(&pos));
-
-                        client.streamer.try_send(&UnloadChunk {
-                            chunk_x: pos.x,
-                            chunk_z: pos.z,
-                        })?;
                     }
                 }
 
-                Ok(())
-            })?;
-        }
-
-        // Load all chunks and entities in the new instance.
-        if let Ok(instance) = instances.get_mut(client.instance) {
-            let instance = instance.into_inner();
-            chunk_pos.try_for_each_in_view(client.view_distance, |pos| {
-                if let Some(cell) = instance.partition.get_mut(&pos) {
-                    // Add this client to the set of clients viewing this cell.
-                    cell.viewers.insert(this_id);
-
-                    // Load all the entities in this cell.
-                    for &entity_id in &cell.entities {
-                        if let Ok(entity) = entities.get(entity_id) {
-                            entity.write_init_packets(
-                                &mut client.streamer,
-                                entity.position(),
-                                scratch,
-                            )?;
+                // Send entity despawn packets for entities exiting the client's view.
+                for &(id, dest_pos) in &cell.outgoing {
+                    if dest_pos.map_or(true, |p| {
+                        !old_chunk_pos.is_in_view(p, client.old_view_distance)
+                    }) {
+                        // The outgoing entity moved outside the view distance, so it must be
+                        // despawned.
+                        if let Ok(entity) = entities.get(id) {
+                            client
+                                .entities_to_despawn
+                                .push(VarInt(entity.protocol_id()));
                         }
                     }
+                }
 
-                    // Load the chunk in this cell.
-                    if let Some(chunk) = &mut cell.chunk {
-                        #[cfg(debug_assertions)]
-                        assert!(client.loaded_chunks.insert(pos));
+                // Send all data in the chunk's packet buffer to this client. This will update
+                // entities in the cell, spawn or update the chunk in the cell, or send any
+                // other packet data that was added here by users.
+                client.enc.append_bytes(&cell.packet_buf);
+            }
+        });
+    }
 
+    // Was the client's instance changed?
+    if client.old_instance != client.instance {
+        if let Ok(old_instance) = instances.get(client.old_instance) {
+            // TODO: only send unload packets when old dimension == new dimension, since the
+            //       client will do the unloading for us in that case?
+
+            // Unload all chunks and entities in the old view.
+            old_chunk_pos.for_each_in_view(client.old_view_distance, |pos| {
+                if let Some(cell) = old_instance.partition.get(&pos) {
+                    // Unload the chunk at this cell if it was loaded.
+                    if cell.chunk.is_some() {
+                        client.enc.write_packet(&UnloadChunk {
+                            chunk_x: pos.x,
+                            chunk_z: pos.z,
+                        });
+                    }
+
+                    // Unload all the entities in the cell.
+                    for &id in &cell.entities {
+                        if let Ok(entity) = entities.get(id) {
+                            client
+                                .entities_to_despawn
+                                .push(VarInt(entity.protocol_id()));
+                        }
+                    }
+                }
+            });
+        }
+
+        // Load all chunks and entities in new view.
+        chunk_pos.for_each_in_view(client.view_distance, |pos| {
+            if let Some(cell) = instance.partition.get(&pos) {
+                // Load the chunk at this cell if there is one.
+                if let Some(chunk) = &cell.chunk {
+                    chunk.write_init_packets(
+                        &instance.info,
+                        pos,
+                        &mut client.enc,
+                        &mut client.scratch,
+                    );
+                }
+
+                // Load all the entities in this cell.
+                for &id in &cell.entities {
+                    if let Ok(entity) = entities.get(id) {
+                        entity.write_init_packets(
+                            &mut client.enc,
+                            entity.position(),
+                            &mut client.scratch,
+                        );
+                    }
+                }
+            }
+        });
+    } else if old_chunk_pos != chunk_pos || client.old_view_distance != client.view_distance {
+        // Client changed their view without changing the instance.
+
+        // Uunload chunks and entities in the old view and load chunks and entities in
+        // the new view. We don't need to do any work where the old and new view
+        // overlap.
+
+        old_chunk_pos.for_each_in_view(client.old_view_distance, |pos| {
+            if !pos.is_in_view(chunk_pos, client.view_distance) {
+                if let Some(cell) = instance.partition.get(&pos) {
+                    // Unload the chunk at this cell if it was loaded.
+                    if cell.chunk.is_some() {
+                        client.enc.write_packet(&UnloadChunk {
+                            chunk_x: pos.x,
+                            chunk_z: pos.z,
+                        });
+                    }
+
+                    // Unload all the entities in the cell.
+                    for &id in &cell.entities {
+                        if let Ok(entity) = entities.get(id) {
+                            client
+                                .entities_to_despawn
+                                .push(VarInt(entity.protocol_id()));
+                        }
+                    }
+                }
+            }
+        });
+
+        chunk_pos.for_each_in_view(client.view_distance, |pos| {
+            if !pos.is_in_view(old_chunk_pos, client.old_view_distance) {
+                if let Some(cell) = instance.partition.get(&pos) {
+                    // Load the chunk at this cell if there is one.
+                    if let Some(chunk) = &cell.chunk {
                         chunk.write_init_packets(
                             &instance.info,
                             pos,
-                            &mut client.streamer,
-                            scratch,
-                        )?;
+                            &mut client.enc,
+                            &mut client.scratch,
+                        );
                     }
-                }
 
-                Ok(())
-            })?;
-        }
-    } else if old_chunk_pos != chunk_pos || client.old_view_distance != client.view_distance {
-        // Unload chunks and entities from the old view and load chunks and
-        // entities from the new view. We don't have to do any work where the
-        // old and new view overlap.
-
-        if let Ok(instance) = instances.get_mut(client.instance) {
-            let instance = instance.into_inner();
-
-            // Unload in old view.
-            old_chunk_pos.try_for_each_in_view(client.old_view_distance, |pos| {
-                // If the new chunk pos is not in view of pos from the new view distance.
-                if !chunk_pos.is_in_view(pos, client.view_distance) {
-                    if let Some(cell) = instance.partition.get_mut(&pos) {
-                        // Remove this client from the set of clients viewing this cell.
-                        cell.viewers.remove(&this_id);
-
-                        // Unload all the entities in this cell.
-                        for &entity_id in &cell.entities {
-                            if let Ok(entity) = entities.get(entity_id) {
-                                client.despawn_entity(entity.protocol_id());
-                            }
-                        }
-
-                        // Unload the chunk in this cell.
-                        if cell.chunk.is_some() {
-                            #[cfg(debug_assertions)]
-                            assert!(client.loaded_chunks.remove(&pos));
-
-                            client.streamer.try_send(&UnloadChunk {
-                                chunk_x: pos.x,
-                                chunk_z: pos.z,
-                            })?;
+                    // Load all the entities in this cell.
+                    for &id in &cell.entities {
+                        if let Ok(entity) = entities.get(id) {
+                            entity.write_init_packets(
+                                &mut client.enc,
+                                entity.position(),
+                                &mut client.scratch,
+                            );
                         }
                     }
                 }
+            }
+        });
+    }
 
-                Ok(())
-            })?;
+    // Despawn all the entities that are queued to be despawned.
+    if !client.entities_to_despawn.is_empty() {
+        client.enc.append_packet(&RemoveEntitiesEncode {
+            entity_ids: &client.entities_to_despawn,
+        })?;
 
-            // Load in new view.
-            chunk_pos.try_for_each_in_view(client.view_distance, |pos| {
-                // If the old chunk pos is not in view of pos from the old view distance.
-                if !old_chunk_pos.is_in_view(pos, client.old_view_distance) {
-                    if let Some(cell) = instance.partition.get_mut(&pos) {
-                        // Add this client to the set of clients viewing this cell.
-                        cell.viewers.insert(this_id);
-
-                        // Load all the entities in this cell.
-                        for &entity_id in &cell.entities {
-                            if let Ok(entity) = entities.get(entity_id) {
-                                entity.write_init_packets(
-                                    &mut client.streamer,
-                                    entity.position(),
-                                    scratch,
-                                )?;
-                            }
-                        }
-
-                        // Load the chunk in this cell.
-                        if let Some(chunk) = &mut cell.chunk {
-                            #[cfg(debug_assertions)]
-                            assert!(client.loaded_chunks.insert(pos));
-
-                            chunk.write_init_packets(
-                                &instance.info,
-                                pos,
-                                &mut client.streamer,
-                                scratch,
-                            )?;
-                        }
-                    }
-                }
-
-                Ok(())
-            })?;
-        }
+        client.entities_to_despawn.clear();
     }
 
     // Teleport the client. Do this after chunk packets are sent so the client does
@@ -709,7 +716,7 @@ fn update_one_client(
             .with_y_rot(!client.yaw_modified)
             .with_x_rot(!client.pitch_modified);
 
-        client.streamer.try_send(&SynchronizePlayerPosition {
+        client.enc.write_packet(&SynchronizePlayerPosition {
             position: if client.position_modified {
                 client.position.to_array()
             } else {
@@ -724,7 +731,7 @@ fn update_one_client(
             flags,
             teleport_id: VarInt(client.teleport_id_counter as i32),
             dismount_vehicle: false,
-        })?;
+        });
 
         client.pending_teleports = client.pending_teleports.wrapping_add(1);
         client.teleport_id_counter = client.teleport_id_counter.wrapping_add(1);
@@ -737,40 +744,31 @@ fn update_one_client(
     // This closes the "downloading terrain" screen.
     // Send this after the initial chunks are loaded.
     if client.is_new {
-        client.streamer.try_send(&SetDefaultSpawnPosition {
+        client.enc.write_packet(&SetDefaultSpawnPosition {
             position: BlockPos::at(client.position),
             angle: client.yaw,
-        })?;
-    }
-
-    // Despawn all the entities that are queued to be despawned.
-    if !client.entities_to_despawn.is_empty() {
-        client.streamer.try_send(&RemoveEntitiesEncode {
-            entity_ids: &client.entities_to_despawn,
-        })?;
-
-        client.entities_to_despawn.clear();
+        });
     }
 
     // Update the client's own player metadata.
-    scratch.clear();
-    client.player_data.updated_tracked_data(scratch);
-    if !scratch.is_empty() {
+    client.scratch.clear();
+    client.player_data.updated_tracked_data(&mut client.scratch);
+    if !client.scratch.is_empty() {
         client.player_data.clear_modifications();
 
-        scratch.push(0xff);
+        client.scratch.push(0xff);
 
-        client.streamer.try_send(&SetEntityMetadata {
+        client.enc.write_packet(&SetEntityMetadata {
             entity_id: VarInt(0),
-            metadata: RawBytes(&scratch),
-        })?;
+            metadata: RawBytes(&client.scratch),
+        });
     }
 
     // Acknowledge broken/placed blocks.
     if client.block_change_sequence != 0 {
-        client.streamer.try_send(&AcknowledgeBlockChange {
+        client.enc.write_packet(&AcknowledgeBlockChange {
             sequence: VarInt(client.block_change_sequence),
-        })?;
+        });
 
         client.block_change_sequence = 0;
     }
@@ -780,8 +778,8 @@ fn update_one_client(
     client.old_view_distance = client.view_distance;
 
     client
-        .streamer
-        .send_flush()
+        .conn
+        .try_send(client.enc.take())
         .context("failed to flush packet queue")?;
 
     Ok(())
