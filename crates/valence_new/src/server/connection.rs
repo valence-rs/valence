@@ -1,6 +1,5 @@
 use std::io;
 use std::io::ErrorKind;
-use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use anyhow::bail;

@@ -1,5 +1,4 @@
 use bevy_app::App;
-use bevy_ecs::prelude::*;
 
 use super::util::create_mock_client;
 use crate::config::ServerPlugin;
@@ -14,7 +13,6 @@ use crate::unit_test::util::gen_client_info;
 /// Some of the tests in this file may be inferior duplicates of real tests.
 #[cfg(test)]
 mod tests {
-    use bytes::BytesMut;
     use valence_protocol::packets::S2cPlayPacket;
 
     use super::*;
@@ -41,7 +39,6 @@ mod tests {
     fn example_test_client_position() {
         let mut app = App::new();
         app.add_plugin(ServerPlugin::new(()));
-        let server = app.world.resource::<Server>();
         let info = gen_client_info("test");
         let (client, mut client_helper) = create_mock_client(info);
         let client_ent = app.world.spawn(client).id();
@@ -94,7 +91,9 @@ mod tests {
         app.update();
 
         // Make assertions
-        let client: &Client = app.world.get(client_ent).expect("client not found");
+        app.world
+            .get::<Client>(client_ent)
+            .expect("client not found");
         let sent_packets = client_helper.collect_sent()?;
         assert_eq!(sent_packets.len(), 2);
 
