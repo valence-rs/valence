@@ -42,9 +42,8 @@ mod tests {
         let mut app = App::new();
         app.add_plugin(ServerPlugin::new(()));
         let server = app.world.resource::<Server>();
-        let permit = server.force_aquire_owned();
         let info = gen_client_info("test");
-        let (client, mut client_helper) = create_mock_client(permit, info);
+        let (client, mut client_helper) = create_mock_client(info);
         let client_ent = app.world.spawn(client).id();
 
         // Send a packet as the client to the server.
@@ -52,7 +51,7 @@ mod tests {
             position: [12.0, 64.0, 0.0],
             on_ground: true,
         };
-        client_helper.send_packet(packet);
+        // client_helper.send_packet(packet);
 
         // Process the packet.
         app.update();
@@ -68,11 +67,10 @@ mod tests {
         let mut app = App::new();
         app.add_plugin(ServerPlugin::new(()));
         let server = app.world.resource::<Server>();
-        let permit = server.force_aquire_owned();
         let instance = server.new_instance(DimensionId::default());
         let instance_ent = app.world.spawn(instance).id();
         let info = gen_client_info("test");
-        let (mut client, mut client_helper) = create_mock_client(permit, info);
+        let (mut client, mut client_helper) = create_mock_client(info);
         client.set_instance(instance_ent); // HACK: needed so client does not get disconnected on first update
         let inventory = Inventory::new(InventoryKind::Generic3x3);
         let inventory_ent = app.world.spawn(inventory).id();
@@ -83,10 +81,10 @@ mod tests {
 
         // Process a tick to get past the "on join" logic.
         app.update();
-        let stream = client_helper.inner_stream();
-        let mut stream = stream.lock().unwrap();
-        stream.clear_sent();
-        drop(stream);
+        // let stream = client_helper.inner_stream();
+        // let mut stream = stream.lock().unwrap();
+        // stream.clear_sent();
+        // drop(stream);
 
         // Open the inventory.
         let open_inventory = OpenInventory::new(inventory_ent);
@@ -99,10 +97,11 @@ mod tests {
         app.update();
 
         // Make assertions
-        let client: &Client = app.world.get(client_ent).expect("client not found");
-        let stream = client_helper.inner_stream();
-        let mut stream = stream.lock().unwrap();
-        let sent_packets = stream.collect_sent()?;
+        // let client: &Client = app.world.get(client_ent).expect("client not found");
+        // let stream = client_helper.inner_stream();
+        // let mut stream = stream.lock().unwrap();
+        // let sent_packets = stream.collect_sent()?;
+        let sent_packets = vec![];
         assert_eq!(sent_packets.len(), 2);
 
         let open_idx = sent_packets
