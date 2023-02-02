@@ -41,7 +41,7 @@ use crate::player_list::{update_player_list, PlayerList};
 use crate::server::connect::do_accept_loop;
 use crate::Despawned;
 
-pub(crate) mod byte_channel;
+mod byte_channel;
 mod connect;
 pub(crate) mod connection;
 
