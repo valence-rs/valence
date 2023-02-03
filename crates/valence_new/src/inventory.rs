@@ -341,6 +341,10 @@ pub(crate) fn update_open_inventories(
         let Ok(inventory) = inventories.get_component::<Inventory>(open_inventory.entity) else {
             // the inventory no longer exists, so close the inventory
             commands.entity(client_entity).remove::<OpenInventory>();
+            let window_id = client.window_id;
+            client.write_packet(&CloseContainerS2c {
+                window_id,
+            });
             continue;
         };
 
