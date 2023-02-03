@@ -64,7 +64,7 @@ pub mod prelude {
     pub use protocol::types::GameMode;
     pub use protocol::username::Username;
     pub use protocol::{ident, ItemKind, ItemStack};
-    pub use server::{NewClientInfo, Server, SharedServer};
+    pub use server::{EventLoop, NewClientInfo, Server, SharedServer};
     pub use uuid::Uuid;
     pub use valence_nbt::Compound;
     pub use valence_protocol::{BlockKind, BlockPos};

@@ -27,10 +27,10 @@ fn main() {
 
     App::new()
         .add_plugin(ServerPlugin::new(()))
+        .add_system_to_stage(EventLoop, default_event_handler)
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(update_sphere)
-        .add_system(default_event_handler)
         .add_system(despawn_disconnected_clients)
         .add_system(add_new_clients_to_player_list)
         .add_system(remove_disconnected_clients_from_player_list)

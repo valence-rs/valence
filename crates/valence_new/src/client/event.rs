@@ -2,6 +2,7 @@ use std::cmp;
 
 use anyhow::bail;
 use bevy_ecs::prelude::*;
+use bevy_ecs::schedule::ShouldRun;
 use bevy_ecs::system::SystemParam;
 use glam::{DVec3, Vec3};
 use paste::paste;
@@ -674,676 +675,708 @@ events! {
     }
 }
 
-/// A system for handling serverbound packets and converting them into
-/// ECS events. We also update the event buffers before writing the events.
-///
-/// This needs to happen _before_ the user stage so that events are not one tick
-/// late.
-pub(crate) fn dispatch_client_events(
+pub(crate) fn event_loop_run_criteria(
     mut clients: Query<(Entity, &mut Client)>,
+    mut clients_to_check: Local<Vec<Entity>>,
     mut events: ClientEvents,
-) {
-    update_all_event_buffers(&mut events);
+) -> ShouldRun {
+    if clients_to_check.is_empty() {
+        // First run of the criteria. Prepare packets.
 
-    for (entity, mut client) in &mut clients {
-        // Receive packet data for decoding.
-        let Ok(bytes) = client.conn.try_recv() else {
-            // Client is disconnected.
-            client.is_disconnected = true;
-            continue;
-        };
+        update_all_event_buffers(&mut events);
 
-        if bytes.is_empty() {
-            // Didn't receive any packets to decode.
-            continue;
+        for (entity, client) in &mut clients {
+            let client = client.into_inner();
+
+            let Ok(bytes) = client.conn.try_recv() else {
+                // Client is disconnected.
+                client.is_disconnected = true;
+                continue;
+            };
+
+            if bytes.is_empty() {
+                // No data was received.
+                continue;
+            }
+
+            client.dec.queue_bytes(bytes);
+
+            match handle_one_packet(client, entity, &mut events) {
+                Ok(had_packet) => {
+                    if had_packet {
+                        // We decoded one packet, but there might be more.
+                        clients_to_check.push(entity);
+                    }
+                }
+                Err(e) => {
+                    // TODO: validate packets in separate systems.
+                    warn!(
+                        username = %client.username,
+                        uuid = %client.uuid,
+                        ip = %client.ip,
+                        "failed to dispatch events: {e:#}"
+                    );
+                    client.is_disconnected = true;
+                }
+            }
         }
+    } else {
+        // Continue to filter the list of clients we need to check until there are none
+        // left.
+        clients_to_check.retain(|&entity| {
+            let Ok((_, mut client)) = clients.get_mut(entity) else {
+                // Client was deleted during the last run of the stage.
+                return false;
+            };
 
-        client.dec.queue_bytes(bytes);
+            match handle_one_packet(&mut client, entity, &mut events) {
+                Ok(had_packet) => had_packet,
+                Err(e) => {
+                    // TODO: validate packets in separate systems.
+                    warn!(
+                        username = %client.username,
+                        uuid = %client.uuid,
+                        ip = %client.ip,
+                        "failed to dispatch events: {e:#}"
+                    );
+                    client.is_disconnected = true;
 
-        if let Err(e) = handle_client(&mut client, entity, &mut events) {
-            warn!(
-                username = %client.username,
-                uuid = %client.uuid,
-                ip = %client.ip,
-                "failed to dispatch events: {e:#}"
-            );
-            client.is_disconnected = true;
-        }
+                    false
+                }
+            }
+        });
+    }
+
+    if clients_to_check.is_empty() {
+        ShouldRun::No
+    } else {
+        ShouldRun::YesAndCheckAgain
     }
 }
 
-fn handle_client(
+fn handle_one_packet(
     client: &mut Client,
     entity: Entity,
     events: &mut ClientEvents,
-) -> anyhow::Result<()> {
-    while let Some(pkt) = client.dec.try_next_packet::<C2sPlayPacket>()? {
-        match pkt {
-            C2sPlayPacket::ConfirmTeleport(p) => {
-                if client.pending_teleports == 0 {
-                    bail!("unexpected teleport confirmation");
-                }
+) -> anyhow::Result<bool> {
+    let Some(pkt) = client.dec.try_next_packet::<C2sPlayPacket>()? else {
+        // No packets to decode.
+        return Ok(false);
+    };
 
-                let got = p.teleport_id.0 as u32;
-                let expected = client
-                    .teleport_id_counter
-                    .wrapping_sub(client.pending_teleports);
+    match pkt {
+        C2sPlayPacket::ConfirmTeleport(p) => {
+            if client.pending_teleports == 0 {
+                bail!("unexpected teleport confirmation");
+            }
 
-                if got == expected {
-                    client.pending_teleports -= 1;
-                } else {
-                    bail!("unexpected teleport ID (expected {expected}, got {got}");
-                }
-            }
-            C2sPlayPacket::QueryBlockEntityTag(p) => {
-                events.0.query_block_entity.send(QueryBlockEntity {
-                    client: entity,
-                    position: p.position,
-                    transaction_id: p.transaction_id.0,
-                });
-            }
-            C2sPlayPacket::ChangeDifficulty(p) => {
-                events.0.change_difficulty.send(ChangeDifficulty {
-                    client: entity,
-                    difficulty: p.0,
-                });
-            }
-            C2sPlayPacket::MessageAcknowledgmentC2s(p) => {
-                events.0.message_acknowledgment.send(MessageAcknowledgment {
-                    client: entity,
-                    last_seen: p
-                        .0
-                        .last_seen
-                        .into_iter()
-                        .map(|entry| (entry.profile_id, entry.signature.into()))
-                        .collect(),
-                    last_received: p
-                        .0
-                        .last_received
-                        .map(|entry| (entry.profile_id, entry.signature.into())),
-                });
-            }
-            C2sPlayPacket::ChatCommand(p) => {
-                events.0.chat_command.send(ChatCommand {
-                    client: entity,
-                    command: p.command.into(),
-                    timestamp: p.timestamp,
-                });
-            }
-            C2sPlayPacket::ChatMessage(p) => {
-                events.0.chat_message.send(ChatMessage {
-                    client: entity,
-                    message: p.message.into(),
-                    timestamp: p.timestamp,
-                });
-            }
-            C2sPlayPacket::ClientCommand(p) => match p {
-                ClientCommand::PerformRespawn => events
-                    .0
-                    .perform_respawn
-                    .send(PerformRespawn { client: entity }),
-                ClientCommand::RequestStats => {
-                    events.0.request_stats.send(RequestStats { client: entity })
-                }
-            },
-            C2sPlayPacket::ClientInformation(p) => {
-                events.0.update_settings.send(UpdateSettings {
-                    client: entity,
-                    locale: p.locale.into(),
-                    view_distance: p.view_distance,
-                    chat_mode: p.chat_mode,
-                    chat_colors: p.chat_colors,
-                    displayed_skin_parts: p.displayed_skin_parts,
-                    main_hand: p.main_hand,
-                    enable_text_filtering: p.enable_text_filtering,
-                    allow_server_listings: p.allow_server_listings,
-                });
-            }
-            C2sPlayPacket::CommandSuggestionsRequest(p) => {
-                events
-                    .0
-                    .command_suggestions_request
-                    .send(CommandSuggestionsRequest {
-                        client: entity,
-                        transaction_id: p.transaction_id.0,
-                        text: p.text.into(),
-                    });
-            }
-            C2sPlayPacket::ClickContainerButton(p) => {
-                events.0.click_container_button.send(ClickContainerButton {
-                    client: entity,
-                    window_id: p.window_id,
-                    button_id: p.button_id,
-                });
-            }
-            C2sPlayPacket::ClickContainer(p) => {
-                // TODO: check that the slot modifications are legal.
-                // TODO: update cursor item.
+            let got = p.teleport_id.0 as u32;
+            let expected = client
+                .teleport_id_counter
+                .wrapping_sub(client.pending_teleports);
 
-                events.0.click_container.send(ClickContainer {
-                    client: entity,
-                    window_id: p.window_id,
-                    state_id: p.state_id.0,
-                    slot_id: p.slot_idx,
-                    button: p.button,
-                    mode: p.mode,
-                    slot_changes: p.slots,
-                    carried_item: None,
-                });
+            if got == expected {
+                client.pending_teleports -= 1;
+            } else {
+                bail!("unexpected teleport ID (expected {expected}, got {got}");
             }
-            C2sPlayPacket::CloseContainerC2s(p) => {
-                events.0.close_container.send(CloseContainer {
-                    client: entity,
-                    window_id: p.window_id,
-                });
-            }
-            C2sPlayPacket::PluginMessageC2s(p) => {
-                events.0.plugin_message.send(PluginMessage {
-                    client: entity,
-                    channel: p.channel.into(),
-                    data: p.data.0.into(),
-                });
-            }
-            C2sPlayPacket::EditBook(p) => {
-                events.0.edit_book.send(EditBook {
-                    slot: p.slot.0,
-                    entries: p.entries.into_iter().map(Into::into).collect(),
-                    title: p.title.map(Box::from),
-                });
-            }
-            C2sPlayPacket::QueryEntityTag(p) => {
-                events.0.query_entity_tag.send(QueryEntityTag {
-                    client: entity,
-                    transaction_id: p.transaction_id.0,
-                    entity_id: p.entity_id.0,
-                });
-            }
-            C2sPlayPacket::Interact(p) => {
-                events.1.interact_with_entity.send(InteractWithEntity {
-                    client: entity,
-                    entity_id: p.entity_id.0,
-                    sneaking: p.sneaking,
-                    interact: p.interact,
-                });
-            }
-            C2sPlayPacket::JigsawGenerate(p) => {
-                events.1.jigsaw_generate.send(JigsawGenerate {
-                    client: entity,
-                    position: p.position.into(),
-                    levels: p.levels.0,
-                    keep_jigsaws: p.keep_jigsaws,
-                });
-            }
-            C2sPlayPacket::KeepAliveC2s(p) => {
-                if client.got_keepalive {
-                    bail!("unexpected keepalive");
-                } else if p.id != client.last_keepalive_id {
-                    bail!(
-                        "keepalive IDs don't match (expected {}, got {})",
-                        client.last_keepalive_id,
-                        p.id
-                    );
-                } else {
-                    client.got_keepalive = true;
-                }
-            }
-            C2sPlayPacket::LockDifficulty(p) => {
-                events.1.lock_difficulty.send(LockDifficulty {
-                    client: entity,
-                    locked: p.0,
-                });
-            }
-            C2sPlayPacket::SetPlayerPosition(p) => {
-                if client.pending_teleports != 0 {
-                    continue;
-                }
-
-                events.1.set_player_position.send(SetPlayerPosition {
-                    client: entity,
-                    position: p.position.into(),
-                    on_ground: p.on_ground,
-                });
-
-                events.1.move_player.send(MovePlayer {
-                    client: entity,
-                    old_position: client.position,
-                    position: p.position.into(),
-                    old_yaw: client.yaw,
-                    yaw: client.yaw,
-                    old_pitch: client.pitch,
-                    pitch: client.pitch,
-                    old_on_ground: client.on_ground,
-                    on_ground: client.on_ground,
-                });
-
-                client.position = p.position.into();
-                client.on_ground = p.on_ground;
-            }
-            C2sPlayPacket::SetPlayerPositionAndRotation(p) => {
-                if client.pending_teleports != 0 {
-                    continue;
-                }
-
-                events
-                    .1
-                    .set_player_position_and_rotation
-                    .send(SetPlayerPositionAndRotation {
-                        client: entity,
-                        position: p.position.into(),
-                        yaw: p.yaw,
-                        pitch: p.pitch,
-                        on_ground: p.on_ground,
-                    });
-
-                events.1.move_player.send(MovePlayer {
-                    client: entity,
-                    old_position: client.position,
-                    position: p.position.into(),
-                    old_yaw: client.yaw,
-                    yaw: p.yaw,
-                    old_pitch: client.pitch,
-                    pitch: p.pitch,
-                    old_on_ground: client.on_ground,
-                    on_ground: p.on_ground,
-                });
-
-                client.position = p.position.into();
-                client.yaw = p.yaw;
-                client.pitch = p.pitch;
-                client.on_ground = p.on_ground;
-            }
-            C2sPlayPacket::SetPlayerRotation(p) => {
-                if client.pending_teleports != 0 {
-                    continue;
-                }
-
-                events.1.set_player_rotation.send(SetPlayerRotation {
-                    client: entity,
-                    yaw: p.yaw,
-                    pitch: p.pitch,
-                    on_ground: p.on_ground,
-                });
-
-                events.1.move_player.send(MovePlayer {
-                    client: entity,
-                    old_position: client.position,
-                    position: client.position,
-                    old_yaw: client.yaw,
-                    yaw: p.yaw,
-                    old_pitch: client.pitch,
-                    pitch: p.pitch,
-                    old_on_ground: client.on_ground,
-                    on_ground: p.on_ground,
-                });
-
-                client.yaw = p.yaw;
-                client.pitch = p.pitch;
-                client.on_ground = p.on_ground;
-            }
-            C2sPlayPacket::SetPlayerOnGround(p) => {
-                if client.pending_teleports != 0 {
-                    continue;
-                }
-
-                events.1.set_player_on_ground.send(SetPlayerOnGround {
-                    client: entity,
-                    on_ground: p.0,
-                });
-
-                events.1.move_player.send(MovePlayer {
-                    client: entity,
-                    old_position: client.position,
-                    position: client.position,
-                    old_yaw: client.yaw,
-                    yaw: client.yaw,
-                    old_pitch: client.pitch,
-                    pitch: client.pitch,
-                    old_on_ground: client.on_ground,
-                    on_ground: p.0,
-                });
-
-                client.on_ground = p.0;
-            }
-            C2sPlayPacket::MoveVehicleC2s(p) => {
-                if client.pending_teleports != 0 {
-                    continue;
-                }
-
-                events.1.move_vehicle.send(MoveVehicle {
-                    client: entity,
-                    position: p.position.into(),
-                    yaw: p.yaw,
-                    pitch: p.pitch,
-                });
-
-                events.1.move_player.send(MovePlayer {
-                    client: entity,
-                    old_position: client.position,
-                    position: p.position.into(),
-                    old_yaw: client.yaw,
-                    yaw: p.yaw,
-                    old_pitch: client.pitch,
-                    pitch: p.pitch,
-                    old_on_ground: client.on_ground,
-                    on_ground: client.on_ground,
-                });
-
-                client.position = p.position.into();
-                client.yaw = p.yaw;
-                client.pitch = p.pitch;
-            }
-            C2sPlayPacket::PlayerCommand(p) => match p.action_id {
-                Action::StartSneaking => events
-                    .1
-                    .start_sneaking
-                    .send(StartSneaking { client: entity }),
-                Action::StopSneaking => {
-                    events.1.stop_sneaking.send(StopSneaking { client: entity })
-                }
-                Action::LeaveBed => events.1.leave_bed.send(LeaveBed { client: entity }),
-                Action::StartSprinting => events
-                    .1
-                    .start_sprinting
-                    .send(StartSprinting { client: entity }),
-                Action::StopSprinting => events
-                    .1
-                    .stop_sprinting
-                    .send(StopSprinting { client: entity }),
-                Action::StartJumpWithHorse => {
-                    events.1.start_jump_with_horse.send(StartJumpWithHorse {
-                        client: entity,
-                        jump_boost: p.jump_boost.0 as u8,
-                    })
-                }
-                Action::StopJumpWithHorse => events
-                    .1
-                    .stop_jump_with_horse
-                    .send(StopJumpWithHorse { client: entity }),
-                Action::OpenHorseInventory => events
-                    .2
-                    .open_horse_inventory
-                    .send(OpenHorseInventory { client: entity }),
-                Action::StartFlyingWithElytra => events
-                    .2
-                    .start_flying_with_elytra
-                    .send(StartFlyingWithElytra { client: entity }),
-            },
-            C2sPlayPacket::PaddleBoat(p) => {
-                events.2.paddle_boat.send(PaddleBoat {
-                    client: entity,
-                    left_paddle_turning: p.left_paddle_turning,
-                    right_paddle_turning: p.right_paddle_turning,
-                });
-            }
-            C2sPlayPacket::PickItem(p) => {
-                events.2.pick_item.send(PickItem {
-                    client: entity,
-                    slot_to_use: p.slot_to_use.0,
-                });
-            }
-            C2sPlayPacket::PlaceRecipe(p) => {
-                events.2.place_recipe.send(PlaceRecipe {
-                    client: entity,
-                    window_id: p.window_id,
-                    recipe: p.recipe.into(),
-                    make_all: p.make_all,
-                });
-            }
-            C2sPlayPacket::PlayerAbilitiesC2s(p) => match p {
-                PlayerAbilitiesC2s::StopFlying => {
-                    events.2.stop_flying.send(StopFlying { client: entity })
-                }
-                PlayerAbilitiesC2s::StartFlying => {
-                    events.2.start_flying.send(StartFlying { client: entity })
-                }
-            },
-            C2sPlayPacket::PlayerAction(p) => {
-                if p.sequence.0 != 0 {
-                    client.block_change_sequence =
-                        cmp::max(p.sequence.0, client.block_change_sequence);
-                }
-
-                match p.status {
-                    DiggingStatus::StartedDigging => events.2.start_digging.send(StartDigging {
-                        client: entity,
-                        position: p.position,
-                        face: p.face,
-                        sequence: p.sequence.0,
-                    }),
-                    DiggingStatus::CancelledDigging => {
-                        events.2.cancel_digging.send(CancelDigging {
-                            client: entity,
-                            position: p.position,
-                            face: p.face,
-                            sequence: p.sequence.0,
-                        })
-                    }
-                    DiggingStatus::FinishedDigging => events.2.finish_digging.send(FinishDigging {
-                        client: entity,
-                        position: p.position,
-                        face: p.face,
-                        sequence: p.sequence.0,
-                    }),
-                    DiggingStatus::DropItemStack => events
-                        .2
-                        .drop_item_stack
-                        .send(DropItemStack { client: entity }),
-                    DiggingStatus::DropItem => events.2.drop_item.send(DropItem { client: entity }),
-                    DiggingStatus::UpdateHeldItemState => events
-                        .2
-                        .update_held_item_state
-                        .send(UpdateHeldItemState { client: entity }),
-                    DiggingStatus::SwapItemInHand => events
-                        .2
-                        .swap_item_in_hand
-                        .send(SwapItemInHand { client: entity }),
-                }
-            }
-            C2sPlayPacket::PlayerInput(p) => {
-                events.2.player_input.send(PlayerInput {
-                    client: entity,
-                    sideways: p.sideways,
-                    forward: p.forward,
-                    jump: p.flags.jump(),
-                    unmount: p.flags.unmount(),
-                });
-            }
-            C2sPlayPacket::PongPlay(p) => {
-                events.2.pong.send(Pong {
-                    client: entity,
-                    id: p.id,
-                });
-            }
-            C2sPlayPacket::PlayerSession(p) => {
-                events.3.player_session.send(PlayerSession {
-                    client: entity,
-                    session_id: p.session_id,
-                    expires_at: p.expires_at,
-                    public_key_data: p.public_key_data.into(),
-                    key_signature: p.key_signature.into(),
-                });
-            }
-            C2sPlayPacket::ChangeRecipeBookSettings(p) => {
-                events
-                    .3
-                    .change_recipe_book_settings
-                    .send(ChangeRecipeBookSettings {
-                        client: entity,
-                        book_id: p.book_id,
-                        book_open: p.book_open,
-                        filter_active: p.filter_active,
-                    });
-            }
-            C2sPlayPacket::SetSeenRecipe(p) => {
-                events.3.set_seen_recipe.send(SetSeenRecipe {
-                    client: entity,
-                    recipe_id: p.recipe_id.into(),
-                });
-            }
-            C2sPlayPacket::RenameItem(p) => {
-                events.3.rename_item.send(RenameItem {
-                    client: entity,
-                    name: p.item_name.into(),
-                });
-            }
-            C2sPlayPacket::ResourcePackC2s(p) => match p {
-                ResourcePackC2s::SuccessfullyLoaded => events
-                    .3
-                    .resource_pack_loaded
-                    .send(ResourcePackLoaded { client: entity }),
-                ResourcePackC2s::Declined => events
-                    .3
-                    .resource_pack_declined
-                    .send(ResourcePackDeclined { client: entity }),
-                ResourcePackC2s::FailedDownload => events
-                    .3
-                    .resource_pack_failed_download
-                    .send(ResourcePackFailedDownload { client: entity }),
-                ResourcePackC2s::Accepted => events
-                    .3
-                    .resource_pack_accepted
-                    .send(ResourcePackAccepted { client: entity }),
-            },
-            C2sPlayPacket::SeenAdvancements(p) => match p {
-                SeenAdvancements::OpenedTab { tab_id } => {
-                    events.3.open_advancement_tab.send(OpenAdvancementTab {
-                        client: entity,
-                        tab_id: tab_id.into(),
-                    })
-                }
-                SeenAdvancements::ClosedScreen => events
-                    .3
-                    .close_advancement_screen
-                    .send(CloseAdvancementScreen { client: entity }),
-            },
-            C2sPlayPacket::SelectTrade(p) => {
-                events.3.select_trade.send(SelectTrade {
-                    client: entity,
-                    slot: p.selected_slot.0,
-                });
-            }
-            C2sPlayPacket::SetBeaconEffect(p) => {
-                events.3.set_beacon_effect.send(SetBeaconEffect {
-                    client: entity,
-                    primary_effect: p.primary_effect.map(|i| i.0),
-                    secondary_effect: p.secondary_effect.map(|i| i.0),
-                });
-            }
-            C2sPlayPacket::SetHeldItemC2s(p) => events.3.set_held_item.send(SetHeldItem {
+        }
+        C2sPlayPacket::QueryBlockEntityTag(p) => {
+            events.0.query_block_entity.send(QueryBlockEntity {
                 client: entity,
-                slot: p.slot,
-            }),
-            C2sPlayPacket::ProgramCommandBlock(p) => {
-                events.3.program_command_block.send(ProgramCommandBlock {
+                position: p.position,
+                transaction_id: p.transaction_id.0,
+            });
+        }
+        C2sPlayPacket::ChangeDifficulty(p) => {
+            events.0.change_difficulty.send(ChangeDifficulty {
+                client: entity,
+                difficulty: p.0,
+            });
+        }
+        C2sPlayPacket::MessageAcknowledgmentC2s(p) => {
+            events.0.message_acknowledgment.send(MessageAcknowledgment {
+                client: entity,
+                last_seen: p
+                    .0
+                    .last_seen
+                    .into_iter()
+                    .map(|entry| (entry.profile_id, entry.signature.into()))
+                    .collect(),
+                last_received: p
+                    .0
+                    .last_received
+                    .map(|entry| (entry.profile_id, entry.signature.into())),
+            });
+        }
+        C2sPlayPacket::ChatCommand(p) => {
+            events.0.chat_command.send(ChatCommand {
+                client: entity,
+                command: p.command.into(),
+                timestamp: p.timestamp,
+            });
+        }
+        C2sPlayPacket::ChatMessage(p) => {
+            events.0.chat_message.send(ChatMessage {
+                client: entity,
+                message: p.message.into(),
+                timestamp: p.timestamp,
+            });
+        }
+        C2sPlayPacket::ClientCommand(p) => match p {
+            ClientCommand::PerformRespawn => events
+                .0
+                .perform_respawn
+                .send(PerformRespawn { client: entity }),
+            ClientCommand::RequestStats => {
+                events.0.request_stats.send(RequestStats { client: entity })
+            }
+        },
+        C2sPlayPacket::ClientInformation(p) => {
+            events.0.update_settings.send(UpdateSettings {
+                client: entity,
+                locale: p.locale.into(),
+                view_distance: p.view_distance,
+                chat_mode: p.chat_mode,
+                chat_colors: p.chat_colors,
+                displayed_skin_parts: p.displayed_skin_parts,
+                main_hand: p.main_hand,
+                enable_text_filtering: p.enable_text_filtering,
+                allow_server_listings: p.allow_server_listings,
+            });
+        }
+        C2sPlayPacket::CommandSuggestionsRequest(p) => {
+            events
+                .0
+                .command_suggestions_request
+                .send(CommandSuggestionsRequest {
                     client: entity,
-                    position: p.position,
-                    command: p.command.into(),
-                    mode: p.mode,
-                    track_output: p.flags.track_output(),
-                    conditional: p.flags.conditional(),
-                    automatic: p.flags.automatic(),
+                    transaction_id: p.transaction_id.0,
+                    text: p.text.into(),
                 });
+        }
+        C2sPlayPacket::ClickContainerButton(p) => {
+            events.0.click_container_button.send(ClickContainerButton {
+                client: entity,
+                window_id: p.window_id,
+                button_id: p.button_id,
+            });
+        }
+        C2sPlayPacket::ClickContainer(p) => {
+            events.0.click_container.send(ClickContainer {
+                client: entity,
+                window_id: p.window_id,
+                state_id: p.state_id.0,
+                slot_id: p.slot_idx,
+                button: p.button,
+                mode: p.mode,
+                slot_changes: p.slots,
+                carried_item: None,
+            });
+        }
+        C2sPlayPacket::CloseContainerC2s(p) => {
+            events.0.close_container.send(CloseContainer {
+                client: entity,
+                window_id: p.window_id,
+            });
+        }
+        C2sPlayPacket::PluginMessageC2s(p) => {
+            events.0.plugin_message.send(PluginMessage {
+                client: entity,
+                channel: p.channel.into(),
+                data: p.data.0.into(),
+            });
+        }
+        C2sPlayPacket::EditBook(p) => {
+            events.0.edit_book.send(EditBook {
+                slot: p.slot.0,
+                entries: p.entries.into_iter().map(Into::into).collect(),
+                title: p.title.map(Box::from),
+            });
+        }
+        C2sPlayPacket::QueryEntityTag(p) => {
+            events.0.query_entity_tag.send(QueryEntityTag {
+                client: entity,
+                transaction_id: p.transaction_id.0,
+                entity_id: p.entity_id.0,
+            });
+        }
+        C2sPlayPacket::Interact(p) => {
+            events.1.interact_with_entity.send(InteractWithEntity {
+                client: entity,
+                entity_id: p.entity_id.0,
+                sneaking: p.sneaking,
+                interact: p.interact,
+            });
+        }
+        C2sPlayPacket::JigsawGenerate(p) => {
+            events.1.jigsaw_generate.send(JigsawGenerate {
+                client: entity,
+                position: p.position.into(),
+                levels: p.levels.0,
+                keep_jigsaws: p.keep_jigsaws,
+            });
+        }
+        C2sPlayPacket::KeepAliveC2s(p) => {
+            if client.got_keepalive {
+                bail!("unexpected keepalive");
+            } else if p.id != client.last_keepalive_id {
+                bail!(
+                    "keepalive IDs don't match (expected {}, got {})",
+                    client.last_keepalive_id,
+                    p.id
+                );
+            } else {
+                client.got_keepalive = true;
             }
-            C2sPlayPacket::ProgramCommandBlockMinecart(p) => {
-                events
-                    .3
-                    .program_command_block_minecart
-                    .send(ProgramCommandBlockMinecart {
-                        client: entity,
-                        entity_id: p.entity_id.0,
-                        command: p.command.into(),
-                        track_output: p.track_output,
-                    });
+        }
+        C2sPlayPacket::LockDifficulty(p) => {
+            events.1.lock_difficulty.send(LockDifficulty {
+                client: entity,
+                locked: p.0,
+            });
+        }
+        C2sPlayPacket::SetPlayerPosition(p) => {
+            if client.pending_teleports != 0 {
+                return Ok(false);
             }
-            C2sPlayPacket::SetCreativeModeSlot(p) => {
-                events.3.set_creative_mode_slot.send(SetCreativeModeSlot {
-                    client: entity,
-                    slot: p.slot,
-                    clicked_item: p.clicked_item,
-                });
-            }
-            C2sPlayPacket::ProgramJigsawBlock(p) => {
-                events.4.program_jigsaw_block.send(ProgramJigsawBlock {
-                    client: entity,
-                    position: p.position,
-                    name: p.name.into(),
-                    target: p.target.into(),
-                    pool: p.pool.into(),
-                    final_state: p.final_state.into(),
-                    joint_type: p.joint_type.into(),
-                });
-            }
-            C2sPlayPacket::ProgramStructureBlock(p) => {
-                events
-                    .4
-                    .program_structure_block
-                    .send(ProgramStructureBlock {
-                        client: entity,
-                        position: p.position,
-                        action: p.action,
-                        mode: p.mode,
-                        name: p.name.into(),
-                        offset_xyz: p.offset_xyz,
-                        size_xyz: p.size_xyz,
-                        mirror: p.mirror,
-                        rotation: p.rotation,
-                        metadata: p.metadata.into(),
-                        integrity: p.integrity,
-                        seed: p.seed.0,
-                        flags: p.flags,
-                    })
-            }
-            C2sPlayPacket::UpdateSign(p) => {
-                events.4.update_sign.send(UpdateSign {
-                    client: entity,
-                    position: p.position,
-                    lines: p.lines.map(Into::into),
-                });
-            }
-            C2sPlayPacket::SwingArm(p) => {
-                events.4.swing_arm.send(SwingArm {
-                    client: entity,
-                    hand: p.0,
-                });
-            }
-            C2sPlayPacket::TeleportToEntity(p) => {
-                events.4.teleport_to_entity.send(TeleportToEntity {
-                    client: entity,
-                    target: p.target,
-                });
-            }
-            C2sPlayPacket::UseItemOn(p) => {
-                if p.sequence.0 != 0 {
-                    client.block_change_sequence =
-                        cmp::max(p.sequence.0, client.block_change_sequence);
-                }
 
-                events.4.use_item_on_block.send(UseItemOnBlock {
+            events.1.set_player_position.send(SetPlayerPosition {
+                client: entity,
+                position: p.position.into(),
+                on_ground: p.on_ground,
+            });
+
+            events.1.move_player.send(MovePlayer {
+                client: entity,
+                old_position: client.position,
+                position: p.position.into(),
+                old_yaw: client.yaw,
+                yaw: client.yaw,
+                old_pitch: client.pitch,
+                pitch: client.pitch,
+                old_on_ground: client.on_ground,
+                on_ground: client.on_ground,
+            });
+
+            client.position = p.position.into();
+            client.on_ground = p.on_ground;
+        }
+        C2sPlayPacket::SetPlayerPositionAndRotation(p) => {
+            if client.pending_teleports != 0 {
+                return Ok(false);
+            }
+
+            events
+                .1
+                .set_player_position_and_rotation
+                .send(SetPlayerPositionAndRotation {
                     client: entity,
-                    hand: p.hand,
+                    position: p.position.into(),
+                    yaw: p.yaw,
+                    pitch: p.pitch,
+                    on_ground: p.on_ground,
+                });
+
+            events.1.move_player.send(MovePlayer {
+                client: entity,
+                old_position: client.position,
+                position: p.position.into(),
+                old_yaw: client.yaw,
+                yaw: p.yaw,
+                old_pitch: client.pitch,
+                pitch: p.pitch,
+                old_on_ground: client.on_ground,
+                on_ground: p.on_ground,
+            });
+
+            client.position = p.position.into();
+            client.yaw = p.yaw;
+            client.pitch = p.pitch;
+            client.on_ground = p.on_ground;
+        }
+        C2sPlayPacket::SetPlayerRotation(p) => {
+            if client.pending_teleports != 0 {
+                return Ok(false);
+            }
+
+            events.1.set_player_rotation.send(SetPlayerRotation {
+                client: entity,
+                yaw: p.yaw,
+                pitch: p.pitch,
+                on_ground: p.on_ground,
+            });
+
+            events.1.move_player.send(MovePlayer {
+                client: entity,
+                old_position: client.position,
+                position: client.position,
+                old_yaw: client.yaw,
+                yaw: p.yaw,
+                old_pitch: client.pitch,
+                pitch: p.pitch,
+                old_on_ground: client.on_ground,
+                on_ground: p.on_ground,
+            });
+
+            client.yaw = p.yaw;
+            client.pitch = p.pitch;
+            client.on_ground = p.on_ground;
+        }
+        C2sPlayPacket::SetPlayerOnGround(p) => {
+            if client.pending_teleports != 0 {
+                return Ok(false);
+            }
+
+            events.1.set_player_on_ground.send(SetPlayerOnGround {
+                client: entity,
+                on_ground: p.0,
+            });
+
+            events.1.move_player.send(MovePlayer {
+                client: entity,
+                old_position: client.position,
+                position: client.position,
+                old_yaw: client.yaw,
+                yaw: client.yaw,
+                old_pitch: client.pitch,
+                pitch: client.pitch,
+                old_on_ground: client.on_ground,
+                on_ground: p.0,
+            });
+
+            client.on_ground = p.0;
+        }
+        C2sPlayPacket::MoveVehicleC2s(p) => {
+            if client.pending_teleports != 0 {
+                return Ok(false);
+            }
+
+            events.1.move_vehicle.send(MoveVehicle {
+                client: entity,
+                position: p.position.into(),
+                yaw: p.yaw,
+                pitch: p.pitch,
+            });
+
+            events.1.move_player.send(MovePlayer {
+                client: entity,
+                old_position: client.position,
+                position: p.position.into(),
+                old_yaw: client.yaw,
+                yaw: p.yaw,
+                old_pitch: client.pitch,
+                pitch: p.pitch,
+                old_on_ground: client.on_ground,
+                on_ground: client.on_ground,
+            });
+
+            client.position = p.position.into();
+            client.yaw = p.yaw;
+            client.pitch = p.pitch;
+        }
+        C2sPlayPacket::PlayerCommand(p) => match p.action_id {
+            Action::StartSneaking => events
+                .1
+                .start_sneaking
+                .send(StartSneaking { client: entity }),
+            Action::StopSneaking => events.1.stop_sneaking.send(StopSneaking { client: entity }),
+            Action::LeaveBed => events.1.leave_bed.send(LeaveBed { client: entity }),
+            Action::StartSprinting => events
+                .1
+                .start_sprinting
+                .send(StartSprinting { client: entity }),
+            Action::StopSprinting => events
+                .1
+                .stop_sprinting
+                .send(StopSprinting { client: entity }),
+            Action::StartJumpWithHorse => events.1.start_jump_with_horse.send(StartJumpWithHorse {
+                client: entity,
+                jump_boost: p.jump_boost.0 as u8,
+            }),
+            Action::StopJumpWithHorse => events
+                .1
+                .stop_jump_with_horse
+                .send(StopJumpWithHorse { client: entity }),
+            Action::OpenHorseInventory => events
+                .2
+                .open_horse_inventory
+                .send(OpenHorseInventory { client: entity }),
+            Action::StartFlyingWithElytra => events
+                .2
+                .start_flying_with_elytra
+                .send(StartFlyingWithElytra { client: entity }),
+        },
+        C2sPlayPacket::PaddleBoat(p) => {
+            events.2.paddle_boat.send(PaddleBoat {
+                client: entity,
+                left_paddle_turning: p.left_paddle_turning,
+                right_paddle_turning: p.right_paddle_turning,
+            });
+        }
+        C2sPlayPacket::PickItem(p) => {
+            events.2.pick_item.send(PickItem {
+                client: entity,
+                slot_to_use: p.slot_to_use.0,
+            });
+        }
+        C2sPlayPacket::PlaceRecipe(p) => {
+            events.2.place_recipe.send(PlaceRecipe {
+                client: entity,
+                window_id: p.window_id,
+                recipe: p.recipe.into(),
+                make_all: p.make_all,
+            });
+        }
+        C2sPlayPacket::PlayerAbilitiesC2s(p) => match p {
+            PlayerAbilitiesC2s::StopFlying => {
+                events.2.stop_flying.send(StopFlying { client: entity })
+            }
+            PlayerAbilitiesC2s::StartFlying => {
+                events.2.start_flying.send(StartFlying { client: entity })
+            }
+        },
+        C2sPlayPacket::PlayerAction(p) => {
+            if p.sequence.0 != 0 {
+                client.block_change_sequence = cmp::max(p.sequence.0, client.block_change_sequence);
+            }
+
+            match p.status {
+                DiggingStatus::StartedDigging => events.2.start_digging.send(StartDigging {
+                    client: entity,
                     position: p.position,
                     face: p.face,
-                    cursor_pos: p.cursor_pos.into(),
-                    head_inside_block: false,
-                    sequence: 0,
+                    sequence: p.sequence.0,
+                }),
+                DiggingStatus::CancelledDigging => events.2.cancel_digging.send(CancelDigging {
+                    client: entity,
+                    position: p.position,
+                    face: p.face,
+                    sequence: p.sequence.0,
+                }),
+                DiggingStatus::FinishedDigging => events.2.finish_digging.send(FinishDigging {
+                    client: entity,
+                    position: p.position,
+                    face: p.face,
+                    sequence: p.sequence.0,
+                }),
+                DiggingStatus::DropItemStack => events
+                    .2
+                    .drop_item_stack
+                    .send(DropItemStack { client: entity }),
+                DiggingStatus::DropItem => events.2.drop_item.send(DropItem { client: entity }),
+                DiggingStatus::UpdateHeldItemState => events
+                    .2
+                    .update_held_item_state
+                    .send(UpdateHeldItemState { client: entity }),
+                DiggingStatus::SwapItemInHand => events
+                    .2
+                    .swap_item_in_hand
+                    .send(SwapItemInHand { client: entity }),
+            }
+        }
+        C2sPlayPacket::PlayerInput(p) => {
+            events.2.player_input.send(PlayerInput {
+                client: entity,
+                sideways: p.sideways,
+                forward: p.forward,
+                jump: p.flags.jump(),
+                unmount: p.flags.unmount(),
+            });
+        }
+        C2sPlayPacket::PongPlay(p) => {
+            events.2.pong.send(Pong {
+                client: entity,
+                id: p.id,
+            });
+        }
+        C2sPlayPacket::PlayerSession(p) => {
+            events.3.player_session.send(PlayerSession {
+                client: entity,
+                session_id: p.session_id,
+                expires_at: p.expires_at,
+                public_key_data: p.public_key_data.into(),
+                key_signature: p.key_signature.into(),
+            });
+        }
+        C2sPlayPacket::ChangeRecipeBookSettings(p) => {
+            events
+                .3
+                .change_recipe_book_settings
+                .send(ChangeRecipeBookSettings {
+                    client: entity,
+                    book_id: p.book_id,
+                    book_open: p.book_open,
+                    filter_active: p.filter_active,
+                });
+        }
+        C2sPlayPacket::SetSeenRecipe(p) => {
+            events.3.set_seen_recipe.send(SetSeenRecipe {
+                client: entity,
+                recipe_id: p.recipe_id.into(),
+            });
+        }
+        C2sPlayPacket::RenameItem(p) => {
+            events.3.rename_item.send(RenameItem {
+                client: entity,
+                name: p.item_name.into(),
+            });
+        }
+        C2sPlayPacket::ResourcePackC2s(p) => match p {
+            ResourcePackC2s::SuccessfullyLoaded => events
+                .3
+                .resource_pack_loaded
+                .send(ResourcePackLoaded { client: entity }),
+            ResourcePackC2s::Declined => events
+                .3
+                .resource_pack_declined
+                .send(ResourcePackDeclined { client: entity }),
+            ResourcePackC2s::FailedDownload => events
+                .3
+                .resource_pack_failed_download
+                .send(ResourcePackFailedDownload { client: entity }),
+            ResourcePackC2s::Accepted => events
+                .3
+                .resource_pack_accepted
+                .send(ResourcePackAccepted { client: entity }),
+        },
+        C2sPlayPacket::SeenAdvancements(p) => match p {
+            SeenAdvancements::OpenedTab { tab_id } => {
+                events.3.open_advancement_tab.send(OpenAdvancementTab {
+                    client: entity,
+                    tab_id: tab_id.into(),
                 })
             }
-            C2sPlayPacket::UseItem(p) => {
-                if p.sequence.0 != 0 {
-                    client.block_change_sequence =
-                        cmp::max(p.sequence.0, client.block_change_sequence);
-                }
-
-                events.4.use_item.send(UseItem {
+            SeenAdvancements::ClosedScreen => events
+                .3
+                .close_advancement_screen
+                .send(CloseAdvancementScreen { client: entity }),
+        },
+        C2sPlayPacket::SelectTrade(p) => {
+            events.3.select_trade.send(SelectTrade {
+                client: entity,
+                slot: p.selected_slot.0,
+            });
+        }
+        C2sPlayPacket::SetBeaconEffect(p) => {
+            events.3.set_beacon_effect.send(SetBeaconEffect {
+                client: entity,
+                primary_effect: p.primary_effect.map(|i| i.0),
+                secondary_effect: p.secondary_effect.map(|i| i.0),
+            });
+        }
+        C2sPlayPacket::SetHeldItemC2s(p) => events.3.set_held_item.send(SetHeldItem {
+            client: entity,
+            slot: p.slot,
+        }),
+        C2sPlayPacket::ProgramCommandBlock(p) => {
+            events.3.program_command_block.send(ProgramCommandBlock {
+                client: entity,
+                position: p.position,
+                command: p.command.into(),
+                mode: p.mode,
+                track_output: p.flags.track_output(),
+                conditional: p.flags.conditional(),
+                automatic: p.flags.automatic(),
+            });
+        }
+        C2sPlayPacket::ProgramCommandBlockMinecart(p) => {
+            events
+                .3
+                .program_command_block_minecart
+                .send(ProgramCommandBlockMinecart {
                     client: entity,
-                    hand: p.hand,
-                    sequence: p.sequence.0,
+                    entity_id: p.entity_id.0,
+                    command: p.command.into(),
+                    track_output: p.track_output,
                 });
+        }
+        C2sPlayPacket::SetCreativeModeSlot(p) => {
+            events.3.set_creative_mode_slot.send(SetCreativeModeSlot {
+                client: entity,
+                slot: p.slot,
+                clicked_item: p.clicked_item,
+            });
+        }
+        C2sPlayPacket::ProgramJigsawBlock(p) => {
+            events.4.program_jigsaw_block.send(ProgramJigsawBlock {
+                client: entity,
+                position: p.position,
+                name: p.name.into(),
+                target: p.target.into(),
+                pool: p.pool.into(),
+                final_state: p.final_state.into(),
+                joint_type: p.joint_type.into(),
+            });
+        }
+        C2sPlayPacket::ProgramStructureBlock(p) => {
+            events
+                .4
+                .program_structure_block
+                .send(ProgramStructureBlock {
+                    client: entity,
+                    position: p.position,
+                    action: p.action,
+                    mode: p.mode,
+                    name: p.name.into(),
+                    offset_xyz: p.offset_xyz,
+                    size_xyz: p.size_xyz,
+                    mirror: p.mirror,
+                    rotation: p.rotation,
+                    metadata: p.metadata.into(),
+                    integrity: p.integrity,
+                    seed: p.seed.0,
+                    flags: p.flags,
+                })
+        }
+        C2sPlayPacket::UpdateSign(p) => {
+            events.4.update_sign.send(UpdateSign {
+                client: entity,
+                position: p.position,
+                lines: p.lines.map(Into::into),
+            });
+        }
+        C2sPlayPacket::SwingArm(p) => {
+            events.4.swing_arm.send(SwingArm {
+                client: entity,
+                hand: p.0,
+            });
+        }
+        C2sPlayPacket::TeleportToEntity(p) => {
+            events.4.teleport_to_entity.send(TeleportToEntity {
+                client: entity,
+                target: p.target,
+            });
+        }
+        C2sPlayPacket::UseItemOn(p) => {
+            if p.sequence.0 != 0 {
+                client.block_change_sequence = cmp::max(p.sequence.0, client.block_change_sequence);
             }
+
+            events.4.use_item_on_block.send(UseItemOnBlock {
+                client: entity,
+                hand: p.hand,
+                position: p.position,
+                face: p.face,
+                cursor_pos: p.cursor_pos.into(),
+                head_inside_block: false,
+                sequence: 0,
+            })
+        }
+        C2sPlayPacket::UseItem(p) => {
+            if p.sequence.0 != 0 {
+                client.block_change_sequence = cmp::max(p.sequence.0, client.block_change_sequence);
+            }
+
+            events.4.use_item.send(UseItem {
+                client: entity,
+                hand: p.hand,
+                sequence: p.sequence.0,
+            });
         }
     }
 
-    Ok(())
+    Ok(true)
 }
 
 /// The default event handler system which handles client events in a
@@ -1357,6 +1390,10 @@ fn handle_client(
 /// examples, but it can be used as a quick way to get started in your own
 /// code. The precise behavior of this system is left unspecified and
 /// is subject to change.
+///
+/// This system must be scheduled to run in the
+/// [`EventLoop`](crate::server::EventLoop) stage. Otherwise, it may not
+/// function correctly.
 pub fn default_event_handler(
     mut clients: Query<(&mut Client, Option<&mut McEntity>)>,
     mut update_settings: EventReader<UpdateSettings>,
@@ -1376,8 +1413,8 @@ pub fn default_event_handler(
     } in update_settings.iter()
     {
         let Ok((mut client, entity)) = clients.get_mut(*client) else {
-                continue
-            };
+            continue
+        };
 
         client.set_view_distance(*view_distance);
 
@@ -1416,8 +1453,8 @@ pub fn default_event_handler(
     } in move_player.iter()
     {
         let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
-                continue
-            };
+            continue
+        };
 
         entity.set_position(*position);
         entity.set_yaw(*yaw);
@@ -1428,8 +1465,8 @@ pub fn default_event_handler(
 
     for StartSneaking { client } in start_sneaking.iter() {
         let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
-                continue
-            };
+            continue
+        };
 
         if let TrackedData::Player(player) = entity.data_mut() {
             player.set_pose(Pose::Sneaking);
@@ -1438,8 +1475,8 @@ pub fn default_event_handler(
 
     for StopSneaking { client } in stop_sneaking.iter() {
         let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
-                continue
-            };
+            continue
+        };
 
         if let TrackedData::Player(player) = entity.data_mut() {
             player.set_pose(Pose::Standing);
@@ -1448,8 +1485,8 @@ pub fn default_event_handler(
 
     for StartSprinting { client } in start_sprinting.iter() {
         let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
-                continue
-            };
+            continue
+        };
 
         if let TrackedData::Player(player) = entity.data_mut() {
             player.set_sprinting(true);
@@ -1458,8 +1495,8 @@ pub fn default_event_handler(
 
     for StopSprinting { client } in stop_sprinting.iter() {
         let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
-                continue
-            };
+            continue
+        };
 
         if let TrackedData::Player(player) = entity.data_mut() {
             player.set_sprinting(false);
@@ -1468,8 +1505,8 @@ pub fn default_event_handler(
 
     for SwingArm { client, hand } in swing_arm.iter() {
         let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
-                continue
-            };
+            continue
+        };
 
         if entity.kind() == EntityKind::Player {
             entity.trigger_animation(match hand {

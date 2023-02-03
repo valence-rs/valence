@@ -32,6 +32,6 @@ impl AsyncCallbacks for MyCallbacks {
     }
 
     async fn login(&self, _shared: &SharedServer, _info: &NewClientInfo) -> Result<(), Text> {
-        return Err("You are not meant to join this example".color(Color::RED));
+        Err("You are not meant to join this example".color(Color::RED))
     }
 }

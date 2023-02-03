@@ -21,7 +21,7 @@ use valence_protocol::types::Property;
 use valence_protocol::{ident, Username};
 
 use crate::biome::{validate_biomes, Biome, BiomeId};
-use crate::client::event::{dispatch_client_events, register_client_events};
+use crate::client::event::{event_loop_run_criteria, register_client_events};
 use crate::client::{update_clients, Client};
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerPlugin};
 use crate::dimension::{validate_dimensions, Dimension, DimensionId};
@@ -337,16 +337,20 @@ pub fn build_plugin(
     app.add_startup_system_to_stage(StartupStage::PostStartup, start_accept_loop);
 
     // Insert resources.
-    app.insert_resource(server);
-    app.insert_resource(McEntityManager::new());
-    app.insert_resource(PlayerList::new());
+    app.insert_resource(server)
+        .insert_resource(McEntityManager::new())
+        .insert_resource(PlayerList::new());
     register_client_events(&mut app.world);
 
-    // Add core systems. User code is expected to run in `CoreStage::Update`, so
-    // we'll add our systems before and after that.
+    // Add core systems and stages. User code is expected to run in
+    // `CoreStage::Update` and `EventLoop`.
 
     app.add_system_to_stage(CoreStage::PreUpdate, spawn_new_clients)
-        .add_system_to_stage(CoreStage::PreUpdate, dispatch_client_events)
+        .add_stage_before(
+            CoreStage::Update,
+            EventLoop,
+            SystemStage::parallel().with_run_criteria(event_loop_run_criteria),
+        )
         .add_system_set_to_stage(
             CoreStage::PostUpdate,
             SystemSet::new()
@@ -400,10 +404,6 @@ pub fn build_plugin(
             // Run the scheduled stages.
             app.update();
 
-            // Clear tracker state so that change detection works correctly.
-            // TODO: is this needed?
-            app.world.clear_trackers();
-
             // Sleep until the next tick.
             thread::sleep(tick_duration.saturating_sub(tick_start.elapsed()));
         }
@@ -411,6 +411,10 @@ pub fn build_plugin(
 
     Ok(())
 }
+
+/// The stage label for the special "event loop" stage.
+#[derive(StageLabel)]
+pub struct EventLoop;
 
 /// Despawns all the entities marked as despawned with the [`Despawned`]
 /// component.
