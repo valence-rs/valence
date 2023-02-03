@@ -188,6 +188,13 @@ macro_rules! assert_packet_count {
     ($sent_packets:ident, $count:tt, $packet:pat) => {{
         let sent_packets: &Vec<valence_protocol::packets::S2cPlayPacket> = &$sent_packets;
         let count = sent_packets.iter().filter(|p| matches!(p, $packet)).count();
-        assert_eq!(count, $count);
+        assert_eq!(
+            count,
+            $count,
+            "expected {} {} packets, got {}",
+            $count,
+            stringify!($packet),
+            count
+        );
     }};
 }
