@@ -441,10 +441,10 @@ impl<'a> SnbtReader<'a> {
 /// ```
 /// use valence_nbt::snbt::SnbtReader;
 /// use valence_nbt::Value;
-/// let value = SnbtReader::from_snbt("1f").unwrap();
+/// let value = from_snbt_str("1f").unwrap();
 /// assert_eq!(value, Value::Float(1.0));
 /// ```
-pub fn from_snbt_string(snbt: &str) -> Result<Value> {
+pub fn from_snbt_str(snbt: &str) -> Result<Value> {
     SnbtReader::new(snbt).read()
 }
 
@@ -614,7 +614,7 @@ mod tests {
 				empty: [Bibabo ],
 			}
 		"#;
-        let value = from_snbt_string(str).unwrap();
+        let value = from_snbt_str(str).unwrap();
         let cpd = value.as_compound().unwrap();
         assert_eq!(*cpd.get("foo").unwrap().as_int().unwrap(), 1);
         assert_eq!(*cpd.get("bar").unwrap().as_double().unwrap(), 1.0);
@@ -642,53 +642,51 @@ mod tests {
         let List::String(list) = cpd.get("empty").unwrap().as_list().unwrap() else { panic!() };
         assert_eq!(list[0], "Bibabo");
         assert_eq!(
-            from_snbt_string("\"\\n\"").unwrap_err().error_type,
+            from_snbt_str("\"\\n\"").unwrap_err().error_type,
             SnbtErrorKind::InvalidEscapeSequence
         );
         assert_eq!(
-            from_snbt_string("[L; 1]").unwrap_err().error_type,
+            from_snbt_str("[L; 1]").unwrap_err().error_type,
             SnbtErrorKind::WrongTypeInArray
         );
         assert_eq!(
-            from_snbt_string("[L; 1L, 2L, 3L").unwrap_err().error_type,
+            from_snbt_str("[L; 1L, 2L, 3L").unwrap_err().error_type,
             SnbtErrorKind::ReachEndOfStream
         );
         assert_eq!(
-            from_snbt_string("[L; 1L, 2L, 3L,]dewdwe")
+            from_snbt_str("[L; 1L, 2L, 3L,]dewdwe")
                 .unwrap_err()
                 .error_type,
             SnbtErrorKind::TrailingData
         );
         assert_eq!(
-            from_snbt_string("{ foo: }").unwrap_err().error_type,
+            from_snbt_str("{ foo: }").unwrap_err().error_type,
             SnbtErrorKind::ExpectValue
         );
         assert_eq!(
-            from_snbt_string("{ {}, }").unwrap_err().error_type,
+            from_snbt_str("{ {}, }").unwrap_err().error_type,
             SnbtErrorKind::EmptyKeyInCompound
         );
         assert_eq!(
-            from_snbt_string("{ foo 1 }").unwrap_err().error_type,
+            from_snbt_str("{ foo 1 }").unwrap_err().error_type,
             SnbtErrorKind::ExpectColon
         );
         assert_eq!(
-            from_snbt_string("{ foo: 1 bar: 2 }")
-                .unwrap_err()
-                .error_type,
+            from_snbt_str("{ foo: 1 bar: 2 }").unwrap_err().error_type,
             SnbtErrorKind::ExpectComma
         );
         assert_eq!(
-            from_snbt_string("[{}, []]").unwrap_err().error_type,
+            from_snbt_str("[{}, []]").unwrap_err().error_type,
             SnbtErrorKind::DifferentTypesInList
         );
         assert_eq!(
-            from_snbt_string(&String::from_utf8(vec![b'e'; 32768]).unwrap())
+            from_snbt_str(&String::from_utf8(vec![b'e'; 32768]).unwrap())
                 .unwrap_err()
                 .error_type,
             SnbtErrorKind::LongString
         );
         assert_eq!(
-            from_snbt_string(
+            from_snbt_str(
                 &String::from_utf8([[b'['; MAX_DEPTH + 1], [b']'; MAX_DEPTH + 1]].concat())
                     .unwrap()
             )
