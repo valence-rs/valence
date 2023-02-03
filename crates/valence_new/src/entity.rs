@@ -50,18 +50,20 @@ impl McEntityManager {
 
 /// Sets the protocol ID of new entities.
 pub(crate) fn init_entities(
-    mut entities: Query<&mut McEntity, Added<McEntity>>,
+    mut entities: Query<(Entity, &mut McEntity), Added<McEntity>>,
     mut manager: ResMut<McEntityManager>,
 ) {
-    for mut entity in &mut entities {
+    for (entity, mut mc_entity) in &mut entities {
         if manager.next_protocol_id == 0 {
             warn!("entity protocol ID overflow");
             // ID 0 is reserved for clients so we skip over it.
             manager.next_protocol_id = 1;
         }
 
-        entity.protocol_id = manager.next_protocol_id;
+        mc_entity.protocol_id = manager.next_protocol_id;
         manager.next_protocol_id = manager.next_protocol_id.wrapping_add(1);
+
+        manager.protocol_id_to_entity.insert(mc_entity.protocol_id, entity);
     }
 }
 

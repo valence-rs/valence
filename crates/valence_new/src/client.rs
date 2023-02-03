@@ -4,15 +4,10 @@ use std::num::Wrapping;
 use anyhow::{bail, Context};
 use bevy_ecs::prelude::*;
 use bytes::BytesMut;
-use glam::DVec3;
+use glam::{DVec3, Vec3};
 use tracing::warn;
 use uuid::Uuid;
-use valence_protocol::packets::s2c::play::{
-    AcknowledgeBlockChange, DisconnectPlay, GameEvent, KeepAliveS2c, LoginPlayOwned,
-    PluginMessageS2c, RemoveEntitiesEncode, RespawnOwned, SetCenterChunk, SetDefaultSpawnPosition,
-    SetEntityMetadata, SetRenderDistance, SynchronizePlayerPosition, SystemChatMessage,
-    UnloadChunk,
-};
+use valence_protocol::packets::s2c::play::{AcknowledgeBlockChange, DisconnectPlay, GameEvent, KeepAliveS2c, LoginPlayOwned, PluginMessageS2c, RemoveEntitiesEncode, RespawnOwned, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata, SetEntityVelocity, SetRenderDistance, SynchronizePlayerPosition, SystemChatMessage, UnloadChunk};
 use valence_protocol::types::{GameEventKind, GameMode, Property, SyncPlayerPosLookFlags};
 use valence_protocol::{
     BlockPos, EncodePacket, Ident, ItemStack, PacketDecoder, PacketEncoder, RawBytes, Text,
@@ -22,7 +17,7 @@ use valence_protocol::{
 use crate::chunk_pos::ChunkPos;
 use crate::dimension::DimensionId;
 use crate::entity::data::Player;
-use crate::entity::McEntity;
+use crate::entity::{McEntity, velocity_to_packet_units};
 use crate::instance::Instance;
 use crate::packet::WritePacket;
 use crate::server::{NewClientInfo, Server};
@@ -227,6 +222,13 @@ impl Client {
     /// Returns the position this client was in at the end of the previous tick.
     pub fn old_position(&self) -> DVec3 {
         self.old_position
+    }
+
+    pub fn set_velocity(&mut self, velocity: impl Into<Vec3>) {
+        self.enc.write_packet(&SetEntityVelocity {
+            entity_id: VarInt(0),
+            velocity: velocity_to_packet_units(velocity.into()),
+        });
     }
 
     /// Gets this client's yaw (in degrees).
