@@ -18,6 +18,7 @@ impl VarInt {
 
     /// Returns the exact number of bytes this varint will write when
     /// [`Encode::encode`] is called, assuming no error occurs.
+    #[inline(always)]
     pub fn written_size(self) -> usize {
         match self.0 {
             0 => 1,
@@ -25,6 +26,7 @@ impl VarInt {
         }
     }
 
+    #[inline]
     pub fn decode_partial(mut r: impl Read) -> Result<i32, VarIntDecodeError> {
         let mut val = 0;
         for i in 0..Self::MAX_SIZE {

@@ -1,3 +1,5 @@
+use std::ops::{Deref, DerefMut};
+
 #[cfg(feature = "encryption")]
 use aes::cipher::{AsyncStreamCipher, NewCipher};
 use anyhow::{bail, ensure};
@@ -269,11 +271,102 @@ where
 }
 
 #[derive(Default)]
+struct DecodeBuffer(BytesMut);
+
+impl DecodeBuffer {
+    /// Return the data of a minecraft packet and its total size in bytes (including its length field).
+    /// When the packet is incomplete, return `Ok(None)`
+    ///
+    /// `offset` is the number of bytes to skip from the beginning of the buffer to get to the packet first byte
+    #[inline]
+    pub fn get_packet_data(&self, offset: usize) -> Result<Option<(&[u8], usize)>> {
+        let mut r = &self[offset..];
+
+        let packet_len = match VarInt::decode_partial(&mut r) {
+            Ok(len) => len,
+            Err(VarIntDecodeError::Incomplete) => return Ok(None),
+            Err(VarIntDecodeError::TooLarge) => bail!("malformed packet length VarInt"),
+        };
+
+        // the packet data is not yet entirely inside the buffer
+        if packet_len as usize > r.len() {
+            return Ok(None);
+        }
+
+        ensure!(
+            (0..=MAX_PACKET_SIZE).contains(&packet_len),
+            "packet length of {packet_len} is out of bounds"
+        );
+
+        let total_packet_len = VarInt(packet_len).written_size() + packet_len as usize;
+        Ok(Some((&r[..packet_len as usize], total_packet_len)))
+    }
+}
+
+impl Deref for DecodeBuffer {
+    type Target = BytesMut;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for DecodeBuffer {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+#[cfg(feature = "compression")]
+#[derive(Default)]
+struct DecompressionBuffer(Vec<u8>);
+
+#[cfg(feature = "compression")]
+impl DecompressionBuffer {
+    /// Return the decompressed data for a minecraft packet.
+    /// `packet_data` should be formated as:
+    /// `uncompressed_length`(`VarInt`) followed by `compressed_data`
+    ///
+    /// Detailed info: https://wiki.vg/Protocol#With_compression
+    #[inline]
+    fn decompress<'a>(&'a mut self, packet_data: &'a [u8]) -> Result<&'a [u8]> {
+        use crate::Decode;
+        use anyhow::Context;
+        use flate2::bufread::ZlibDecoder;
+        use std::io::Read;
+
+        let packet_data = &mut &packet_data[..];
+        let buf = &mut self.0;
+
+        let uncompress_len = VarInt::decode(packet_data)?.0;
+
+        ensure!(
+            (0..MAX_PACKET_SIZE).contains(&uncompress_len),
+            "decompressed packet length of {uncompress_len} is out of bounds"
+        );
+
+        if uncompress_len != 0 {
+            buf.clear();
+            buf.reserve_exact(uncompress_len as usize);
+            let mut z = ZlibDecoder::new(*packet_data).take(uncompress_len as u64);
+
+            z.read_to_end(buf).context("decompressing packet")?;
+
+            return Ok(&buf[..]);
+        }
+
+        Ok(packet_data)
+    }
+}
+
+#[derive(Default)]
 pub struct PacketDecoder {
-    buf: BytesMut,
+    buf: DecodeBuffer,
     cursor: usize,
     #[cfg(feature = "compression")]
-    decompress_buf: Vec<u8>,
+    decompress_buf: DecompressionBuffer,
     #[cfg(feature = "compression")]
     compression_enabled: bool,
     #[cfg(feature = "encryption")]
@@ -285,6 +378,9 @@ impl PacketDecoder {
         Self::default()
     }
 
+    /// Try to decode the next packet available.
+    /// If a packet is succesfully decoded, update the cursor to point to the next packet position.
+    /// If the next packet in the buffer is incomplete, return `Ok(None)`.
     pub fn try_next_packet<'a, P>(&'a mut self) -> Result<Option<P>>
     where
         P: DecodePacket<'a>,
@@ -292,70 +388,16 @@ impl PacketDecoder {
         self.buf.advance(self.cursor);
         self.cursor = 0;
 
-        let mut r = &self.buf[..];
-
-        let packet_len = match VarInt::decode_partial(&mut r) {
-            Ok(len) => len,
-            Err(VarIntDecodeError::Incomplete) => return Ok(None),
-            Err(VarIntDecodeError::TooLarge) => bail!("malformed packet length VarInt"),
-        };
-
-        ensure!(
-            (0..=MAX_PACKET_SIZE).contains(&packet_len),
-            "packet length of {packet_len} is out of bounds"
-        );
-
-        if r.len() < packet_len as usize {
+        let Some(( mut packet_data, total_packet_len )) = self.buf.get_packet_data(self.cursor)? else {
             return Ok(None);
-        }
-
-        r = &r[..packet_len as usize];
+        };
 
         #[cfg(feature = "compression")]
-        let packet = if self.compression_enabled {
-            use std::io::Read;
-
-            use anyhow::Context;
-            use flate2::bufread::ZlibDecoder;
-
-            use crate::Decode;
-
-            let data_len = VarInt::decode(&mut r)?.0;
-
-            ensure!(
-                (0..MAX_PACKET_SIZE).contains(&data_len),
-                "decompressed packet length of {data_len} is out of bounds"
-            );
-
-            if data_len != 0 {
-                self.decompress_buf.clear();
-                self.decompress_buf.reserve_exact(data_len as usize);
-                let mut z = ZlibDecoder::new(r).take(data_len as u64);
-
-                z.read_to_end(&mut self.decompress_buf)
-                    .context("decompressing packet")?;
-
-                r = &self.decompress_buf;
-                P::decode_packet(&mut r)?
-            } else {
-                P::decode_packet(&mut r)?
-            }
-        } else {
-            P::decode_packet(&mut r)?
-        };
-
-        #[cfg(not(feature = "compression"))]
-        let packet = P::decode_packet(&mut r)?;
-
-        if !r.is_empty() {
-            let remaining = r.len();
-
-            debug!("packet after partial decode ({remaining} bytes remain): {packet:?}");
-
-            bail!("packet contents were not read completely ({remaining} bytes remain)");
+        if self.compression_enabled {
+            packet_data = self.decompress_buf.decompress(packet_data)?;
         }
 
-        let total_packet_len = VarInt(packet_len).written_size() + packet_len as usize;
+        let packet = decode_packet(packet_data)?;
         self.cursor = total_packet_len;
 
         Ok(Some(packet))
@@ -388,57 +430,33 @@ impl PacketDecoder {
         let mut res = vec![];
 
         loop {
-            let mut r = &self.buf[self.cursor..];
-
-            let packet_len = match VarInt::decode_partial(&mut r) {
-                Ok(len) => len,
-                Err(VarIntDecodeError::Incomplete) => return Ok(res),
-                Err(VarIntDecodeError::TooLarge) => bail!("malformed packet length VarInt"),
-            };
-
-            ensure!(
-                (0..=MAX_PACKET_SIZE).contains(&packet_len),
-                "packet length of {packet_len} is out of bounds"
-            );
-
-            if r.len() < packet_len as usize {
+            let Some(( packet_data, total_packet_len )) = self.buf.get_packet_data(self.cursor)? else {
                 return Ok(res);
-            }
+            };
+            let packet: P = decode_packet(packet_data)?;
 
-            r = &r[..packet_len as usize];
-
-            let packet = P::decode_packet(&mut r)?;
-
-            if !r.is_empty() {
-                let remaining = r.len();
-
-                debug!("packet after partial decode ({remaining} bytes remain): {packet:?}");
-
-                bail!("packet contents were not read completely ({remaining} bytes remain)");
-            }
-
-            let total_packet_len = VarInt(packet_len).written_size() + packet_len as usize;
             self.cursor += total_packet_len;
-
             res.push(packet);
         }
     }
 
+    /// Check if there a complete packet available inside the buffer
+    #[inline]
     pub fn has_next_packet(&self) -> Result<bool> {
-        let mut r = &self.buf[self.cursor..];
+        Ok(self.buf.get_packet_data(self.cursor)?.is_some())
+    }
 
-        match VarInt::decode_partial(&mut r) {
-            Ok(packet_len) => {
-                ensure!(
-                    (0..=MAX_PACKET_SIZE).contains(&packet_len),
-                    "packet length of {packet_len} is out of bounds"
-                );
+    pub fn queued_bytes(&self) -> &[u8] {
+        self.buf.as_ref()
+    }
 
-                Ok(r.len() >= packet_len as usize)
-            }
-            Err(VarIntDecodeError::Incomplete) => Ok(false),
-            Err(VarIntDecodeError::TooLarge) => bail!("malformed packet length VarInt"),
-        }
+    pub fn take_capacity(&mut self) -> BytesMut {
+        let len = self.buf.len();
+        self.buf.split_off(len)
+    }
+
+    pub fn reserve(&mut self, additional: usize) {
+        self.buf.reserve(additional);
     }
 
     #[cfg(feature = "compression")]
@@ -478,18 +496,25 @@ impl PacketDecoder {
             cipher.decrypt(&mut self.buf[len..]);
         }
     }
+}
 
-    pub fn queued_bytes(&self) -> &[u8] {
-        self.buf.as_ref()
+#[inline]
+fn decode_packet<'a, P>(packet_data: &'a [u8]) -> Result<P>
+where
+    P: DecodePacket<'a>,
+{
+    let packet_data = &mut &packet_data[..];
+    let packet = P::decode_packet(packet_data)?;
+
+    if !packet_data.is_empty() {
+        let remaining = packet_data.len();
+
+        debug!("packet after partial decode ({remaining} bytes remain): {packet:?}");
+
+        bail!("packet contents were not read completely ({remaining} bytes remain)");
     }
 
-    pub fn take_capacity(&mut self) -> BytesMut {
-        self.buf.split_off(self.buf.len())
-    }
-
-    pub fn reserve(&mut self, additional: usize) {
-        self.buf.reserve(additional);
-    }
+    Ok(packet)
 }
 
 #[cfg(test)]
