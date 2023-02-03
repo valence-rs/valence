@@ -141,7 +141,7 @@ pub(crate) fn update_player_inventories(
                     client.inventory_state_id += 1;
                     let state_id = client.inventory_state_id.0;
                     for (i, slot) in inventory.slots.iter().enumerate() {
-                        if (modified_filtered >> 1) & 1 == 1 {
+                        if ((modified_filtered >> i) & 1) == 1 {
                             client.write_packet(&SetContainerSlotEncode {
                                 window_id: 0,
                                 state_id: VarInt(state_id),
