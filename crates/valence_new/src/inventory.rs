@@ -706,9 +706,10 @@ mod test {
 
         // Process a tick to get past the "on join" logic.
         app.update();
+        app.update();
         client_helper.clear_sent();
 
-        // Modify the inventory.
+        // Make the client click the slot and pick up the item.
         let state_id = app
             .world
             .get::<Client>(client_ent)
@@ -721,7 +722,7 @@ mod test {
             state_id: VarInt(state_id.0),
             slot_idx: 20,
             slots: vec![(20, None)],
-            carried_item: Some(ItemStack::new(ItemKind::Diamond, 1, None)),
+            carried_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
         });
 
         app.update();
@@ -738,6 +739,19 @@ mod test {
             0,
             S2cPlayPacket::SetContainerContent(_) | S2cPlayPacket::SetContainerSlot(_)
         );
+        let inventory = app
+            .world
+            .get::<Inventory>(client_ent)
+            .expect("could not find inventory for client");
+        assert_eq!(inventory.slot(20), None);
+        let client = app
+            .world
+            .get::<Client>(client_ent)
+            .expect("could not find client");
+        assert_eq!(
+            client.cursor_item,
+            Some(ItemStack::new(ItemKind::Diamond, 2, None))
+        );
 
         Ok(())
     }
@@ -753,6 +767,7 @@ mod test {
         inventory.replace_slot(20, ItemStack::new(ItemKind::Diamond, 2, None));
 
         // Process a tick to get past the "on join" logic.
+        app.update();
         app.update();
         client_helper.clear_sent();
 
