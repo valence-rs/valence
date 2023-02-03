@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 
+use crate::tag::Tag;
 use crate::Compound;
 
 /// Represents an arbitrary NBT value.
@@ -73,6 +74,25 @@ impl List {
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
+
+    /// Returns the element type of this list.
+    pub fn element_tag(&self) -> Tag {
+        match self {
+            List::End => Tag::End,
+            List::Byte(_) => Tag::Byte,
+            List::Short(_) => Tag::Short,
+            List::Int(_) => Tag::Int,
+            List::Long(_) => Tag::Long,
+            List::Float(_) => Tag::Float,
+            List::Double(_) => Tag::Double,
+            List::ByteArray(_) => Tag::ByteArray,
+            List::String(_) => Tag::String,
+            List::List(_) => Tag::List,
+            List::Compound(_) => Tag::Compound,
+            List::IntArray(_) => Tag::IntArray,
+            List::LongArray(_) => Tag::LongArray,
+        }
+    }
 }
 
 /// We can not create new identities in stable Rust using macros, so we provide
@@ -122,6 +142,24 @@ impl Value {
         Compound = Compound => is_compound as_compound as_compound_mut into_compound
         IntArray = Vec<i32> => is_int_array as_int_array as_int_array_mut into_int_array
         LongArray = Vec<i64> => is_long_array as_long_array as_long_array_mut into_long_array
+    }
+
+    /// Returns the type of this value.
+    pub fn get_tag(&self) -> Tag {
+        match self {
+            Self::Byte(_) => Tag::Byte,
+            Self::Short(_) => Tag::Short,
+            Self::Int(_) => Tag::Int,
+            Self::Long(_) => Tag::Long,
+            Self::Float(_) => Tag::Float,
+            Self::Double(_) => Tag::Double,
+            Self::ByteArray(_) => Tag::ByteArray,
+            Self::String(_) => Tag::String,
+            Self::List(_) => Tag::List,
+            Self::Compound(_) => Tag::Compound,
+            Self::IntArray(_) => Tag::IntArray,
+            Self::LongArray(_) => Tag::LongArray,
+        }
     }
 }
 
