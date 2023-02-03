@@ -67,7 +67,6 @@ mod tests {
         app.add_plugin(ServerPlugin::new(()));
         let server = app.world.resource::<Server>();
         let tick = server.current_tick();
-        drop(server);
         app.update();
         let server = app.world.resource::<Server>();
         assert_eq!(server.current_tick(), tick + 1);
