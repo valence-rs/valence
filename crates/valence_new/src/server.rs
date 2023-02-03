@@ -43,7 +43,7 @@ use crate::Despawned;
 
 mod byte_channel;
 mod connect;
-mod connection;
+pub(crate) mod connection;
 
 /// Contains global server state accessible as a [`Resource`].
 #[derive(Resource)]
