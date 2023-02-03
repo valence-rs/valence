@@ -62,7 +62,7 @@ impl MockClientConnection {
     }
 
     pub fn inject_recv(&mut self, bytes: BytesMut) {
-        self.buffers.lock().unwrap().recv_buf.extend(bytes);
+        self.buffers.lock().unwrap().recv_buf.unsplit(bytes);
     }
 
     pub fn take_sent(&mut self) -> BytesMut {
@@ -76,7 +76,7 @@ impl MockClientConnection {
 
 impl ClientConnection for MockClientConnection {
     fn try_send(&mut self, bytes: BytesMut) -> anyhow::Result<()> {
-        self.buffers.lock().unwrap().send_buf.extend(bytes);
+        self.buffers.lock().unwrap().send_buf.unsplit(bytes);
         Ok(())
     }
 
@@ -176,8 +176,9 @@ pub fn scenario_single_client(app: &mut App) -> (Entity, MockClientHelper) {
 macro_rules! assert_packet_order {
     ($sent_packets:ident, $($packets:pat),+) => {{
         let sent_packets: &Vec<valence_protocol::packets::S2cPlayPacket> = &$sent_packets;
-        let mut positions = Vec::new();
-        $(positions.push(sent_packets.iter().position(|p| matches!(p, $packets)));)*
+        let positions = [
+            $((sent_packets.iter().position(|p| matches!(p, $packets))),)*
+        ];
         assert!(positions.windows(2).all(|w: &[Option<usize>]| w[0] < w[1]));
     }};
 }
