@@ -97,16 +97,16 @@ fn handle_combat_events(
     mut start_sprinting: EventReader<StartSprinting>,
     mut stop_sprinting: EventReader<StopSprinting>,
     mut interact_with_entity: EventReader<InteractWithEntity>,
-    mut clients: Query<(&mut Client, &mut CombatState)>,
+    mut clients: Query<(&mut Client, &mut CombatState, &mut McEntity)>,
 ) {
     for &StartSprinting { client } in start_sprinting.iter() {
-        if let Ok((_, mut state)) = clients.get_mut(client) {
+        if let Ok((_, mut state, _)) = clients.get_mut(client) {
             state.has_bonus_knockback = true;
         }
     }
 
     for &StopSprinting { client } in stop_sprinting.iter() {
-        if let Ok((_, mut state)) = clients.get_mut(client) {
+        if let Ok((_, mut state, _)) = clients.get_mut(client) {
             state.has_bonus_knockback = false;
         }
     }
@@ -122,7 +122,7 @@ fn handle_combat_events(
             continue
         };
 
-        let Ok([(attacker_client, mut attacker_state), (mut victim_client, mut victim_state)]) =
+        let Ok([(attacker_client, mut attacker_state, _), (mut victim_client, mut victim_state, mut victim_entity)]) =
             clients.get_many_mut([attacker_client, victim_client])
         else {
             // Victim or attacker does not exist, or the attacker is attacking itself.
@@ -156,7 +156,8 @@ fn handle_combat_events(
 
         attacker_state.has_bonus_knockback = false;
 
-        // TODO: trigger statuses.
+        victim_client.trigger_status(EntityStatus::DamageFromGenericSource);
+        victim_entity.trigger_status(EntityStatus::DamageFromGenericSource);
     }
 }
 

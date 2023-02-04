@@ -63,7 +63,9 @@ pub(crate) fn init_entities(
         mc_entity.protocol_id = manager.next_protocol_id;
         manager.next_protocol_id = manager.next_protocol_id.wrapping_add(1);
 
-        manager.protocol_id_to_entity.insert(mc_entity.protocol_id, entity);
+        manager
+            .protocol_id_to_entity
+            .insert(mc_entity.protocol_id, entity);
     }
 }
 

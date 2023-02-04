@@ -7,7 +7,12 @@ use bytes::BytesMut;
 use glam::{DVec3, Vec3};
 use tracing::warn;
 use uuid::Uuid;
-use valence_protocol::packets::s2c::play::{AcknowledgeBlockChange, DisconnectPlay, GameEvent, KeepAliveS2c, LoginPlayOwned, PluginMessageS2c, RemoveEntitiesEncode, RespawnOwned, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata, SetEntityVelocity, SetRenderDistance, SynchronizePlayerPosition, SystemChatMessage, UnloadChunk};
+use valence_protocol::packets::s2c::play::{
+    AcknowledgeBlockChange, DisconnectPlay, EntityEvent, GameEvent, KeepAliveS2c, LoginPlayOwned,
+    PluginMessageS2c, RemoveEntitiesEncode, RespawnOwned, SetCenterChunk, SetDefaultSpawnPosition,
+    SetEntityMetadata, SetEntityVelocity, SetRenderDistance, SynchronizePlayerPosition,
+    SystemChatMessage, UnloadChunk,
+};
 use valence_protocol::types::{GameEventKind, GameMode, Property, SyncPlayerPosLookFlags};
 use valence_protocol::{
     BlockPos, EncodePacket, Ident, ItemStack, PacketDecoder, PacketEncoder, RawBytes, Text,
@@ -17,7 +22,7 @@ use valence_protocol::{
 use crate::chunk_pos::ChunkPos;
 use crate::dimension::DimensionId;
 use crate::entity::data::Player;
-use crate::entity::{McEntity, velocity_to_packet_units};
+use crate::entity::{velocity_to_packet_units, EntityStatus, McEntity};
 use crate::instance::Instance;
 use crate::packet::WritePacket;
 use crate::server::{NewClientInfo, Server};
@@ -328,6 +333,13 @@ impl Client {
     /// (re)spawns.
     pub fn set_death_location(&mut self, location: Option<(DimensionId, BlockPos)>) {
         self.death_location = location;
+    }
+
+    pub fn trigger_status(&mut self, status: EntityStatus) {
+        self.write_packet(&EntityEvent {
+            entity_id: 0,
+            entity_status: status as u8,
+        });
     }
 
     /// The item that the client thinks it's holding under the mouse
