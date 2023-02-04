@@ -968,4 +968,40 @@ mod test {
             .expect("could not find inventory for client");
         assert_eq!(inventory.slot(36), None);
     }
+
+    #[test]
+    fn test_window_id_increments() {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+        let inventory = Inventory::new(InventoryKind::Generic9x3);
+        let inventory_ent = app.world.spawn(inventory).id();
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        for _ in 0..3 {
+            let open_inventory = OpenInventory::new(inventory_ent);
+            app.world
+                .get_entity_mut(client_ent)
+                .expect("could not find client")
+                .insert(open_inventory);
+
+            app.update();
+
+            app.world
+                .get_entity_mut(client_ent)
+                .expect("could not find client")
+                .remove::<OpenInventory>();
+
+            app.update();
+        }
+
+        // Make assertions
+        let client = app
+            .world
+            .get::<Client>(client_ent)
+            .expect("could not find client");
+        assert_eq!(client.window_id, 3);
+    }
 }
