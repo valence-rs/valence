@@ -907,4 +907,65 @@ mod test {
 
         Ok(())
     }
+
+    #[test]
+    fn test_set_creative_mode_slot_handling() {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+        let mut client = app
+            .world
+            .get_mut::<Client>(client_ent)
+            .expect("could not find client");
+        client.set_game_mode(GameMode::Creative);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        client_helper.send(&valence_protocol::packets::c2s::play::SetCreativeModeSlot {
+            slot: 36,
+            clicked_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
+        });
+
+        app.update();
+
+        // Make assertions
+        let inventory = app
+            .world
+            .get::<Inventory>(client_ent)
+            .expect("could not find inventory for client");
+        assert_eq!(
+            inventory.slot(36),
+            Some(&ItemStack::new(ItemKind::Diamond, 2, None))
+        );
+    }
+
+    #[test]
+    fn test_ignore_set_creative_mode_slot_if_not_creative() {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+        let mut client = app
+            .world
+            .get_mut::<Client>(client_ent)
+            .expect("could not find client");
+        client.set_game_mode(GameMode::Survival);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        client_helper.send(&valence_protocol::packets::c2s::play::SetCreativeModeSlot {
+            slot: 36,
+            clicked_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
+        });
+
+        app.update();
+
+        // Make assertions
+        let inventory = app
+            .world
+            .get::<Inventory>(client_ent)
+            .expect("could not find inventory for client");
+        assert_eq!(inventory.slot(36), None);
+    }
 }
