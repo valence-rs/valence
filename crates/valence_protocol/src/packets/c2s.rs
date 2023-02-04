@@ -123,7 +123,7 @@ pub mod play {
         pub new_difficulty: Difficulty,
     }
 
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x03]
     pub struct MessageAcknowledgmentC2s {
         pub message_count: VarInt,
