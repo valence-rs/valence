@@ -819,11 +819,7 @@ mod test {
         Ok(())
     }
 
-    #[test]
-    fn test_should_modify_open_inventory_click_container() -> anyhow::Result<()> {
-        let mut app = App::new();
-        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
-
+    fn set_up_open_inventory(app: &mut App, client_ent: Entity) -> Entity {
         let inventory = Inventory::new(InventoryKind::Generic9x3);
         let inventory_ent = app.world.spawn(inventory).id();
 
@@ -833,6 +829,15 @@ mod test {
             .get_entity_mut(client_ent)
             .expect("could not find client")
             .insert(open_inventory);
+
+        inventory_ent
+    }
+
+    #[test]
+    fn test_should_modify_open_inventory_click_container() -> anyhow::Result<()> {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+        let inventory_ent = set_up_open_inventory(&mut app, client_ent);
 
         // Process a tick to get past the "on join" logic.
         app.update();
@@ -890,16 +895,7 @@ mod test {
     fn test_should_modify_open_inventory_server_side() -> anyhow::Result<()> {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
-
-        let inventory = Inventory::new(InventoryKind::Generic9x3);
-        let inventory_ent = app.world.spawn(inventory).id();
-
-        // Open the inventory.
-        let open_inventory = OpenInventory::new(inventory_ent);
-        app.world
-            .get_entity_mut(client_ent)
-            .expect("could not find client")
-            .insert(open_inventory);
+        let inventory_ent = set_up_open_inventory(&mut app, client_ent);
 
         // Process a tick to get past the "on join" logic.
         app.update();
@@ -910,7 +906,7 @@ mod test {
             .world
             .get_mut::<Inventory>(inventory_ent)
             .expect("could not find inventory for client");
-        inventory.replace_slot(21, ItemStack::new(ItemKind::IronIngot, 1, None));
+        inventory.replace_slot(5, ItemStack::new(ItemKind::IronIngot, 1, None));
 
         app.update();
         app.update();
@@ -926,7 +922,7 @@ mod test {
             .get::<Inventory>(inventory_ent)
             .expect("could not find inventory for client");
         assert_eq!(
-            inventory.slot(21),
+            inventory.slot(5),
             Some(&ItemStack::new(ItemKind::IronIngot, 1, None))
         );
 
@@ -937,13 +933,7 @@ mod test {
     fn test_should_sync_entire_open_inventory() -> anyhow::Result<()> {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
-        let inventory = Inventory::new(InventoryKind::Generic9x3);
-        let inventory_ent = app.world.spawn(inventory).id();
-        let open_inventory = OpenInventory::new(inventory_ent);
-        app.world
-            .get_entity_mut(client_ent)
-            .expect("could not find client")
-            .insert(open_inventory);
+        let inventory_ent = set_up_open_inventory(&mut app, client_ent);
 
         // Process a tick to get past the "on join" logic.
         app.update();
