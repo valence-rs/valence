@@ -1,8 +1,10 @@
+use tracing::warn;
 use valence_new::client::despawn_disconnected_clients;
-use valence_new::client::event::{default_event_handler, StartSneaking};
+use valence_new::client::event::{default_event_handler, StartSneaking, UseItemOnBlock};
 use valence_new::prelude::*;
 
 const SPAWN_Y: i32 = 64;
+const CHEST_POS: [i32; 3] = [0, SPAWN_Y + 1, 3];
 
 pub fn main() {
     tracing_subscriber::fmt().init();
@@ -11,6 +13,7 @@ pub fn main() {
         .add_plugin(ServerPlugin::new(()))
         .add_system_to_stage(EventLoop, default_event_handler)
         .add_system_to_stage(EventLoop, toggle_gamemode_on_sneak)
+        .add_system_to_stage(EventLoop, open_chest)
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
@@ -33,8 +36,19 @@ fn setup(world: &mut World) {
             instance.set_block_state([x, SPAWN_Y, z], BlockState::GRASS_BLOCK);
         }
     }
+    instance.set_block_state(CHEST_POS, BlockState::CHEST);
+    instance.set_block_state(
+        [CHEST_POS[0], CHEST_POS[1] - 1, CHEST_POS[2]],
+        BlockState::STONE,
+    );
 
     world.spawn(instance);
+
+    let inventory = Inventory::with_title(
+        InventoryKind::Generic9x3,
+        "Extra".italic() + " Chesty".not_italic().bold().color(Color::RED) + " Chest".not_italic(),
+    );
+    world.spawn(inventory);
 }
 
 fn init_clients(
@@ -64,5 +78,24 @@ fn toggle_gamemode_on_sneak(
             GameMode::Creative => GameMode::Survival,
             _ => GameMode::Creative,
         });
+    }
+}
+
+fn open_chest(
+    mut commands: Commands,
+    inventories: Query<Entity, (With<Inventory>, Without<Client>)>,
+    mut events: EventReader<UseItemOnBlock>,
+) {
+    let Ok(inventory) = inventories.get_single() else {
+        warn!("No inventories");
+        return;
+    };
+
+    for event in events.iter() {
+        if event.position != CHEST_POS.into() {
+            continue;
+        }
+        let open_inventory = OpenInventory::new(inventory);
+        commands.entity(event.client).insert(open_inventory);
     }
 }
