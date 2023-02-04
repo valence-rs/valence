@@ -871,7 +871,7 @@ fn handle_one_packet(
                 button: p.button,
                 mode: p.mode,
                 slot_changes: p.slots,
-                carried_item: None,
+                carried_item: p.carried_item,
             });
         }
         C2sPlayPacket::CloseContainerC2s(p) => {
