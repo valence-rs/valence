@@ -9,7 +9,7 @@ use rustc_hash::FxHashMap;
 use valence_protocol::block::BlockState;
 use valence_protocol::{BlockPos, LengthPrefixedArray};
 
-use crate::chunk_pos::ChunkPos;
+use crate::view::ChunkPos;
 use crate::dimension::DimensionId;
 use crate::entity::McEntity;
 pub use crate::instance::chunk::Chunk;
@@ -178,7 +178,7 @@ impl Instance {
             return BlockState::AIR;
         }
 
-        let Some(chunk) = self.chunk(pos) else {
+        let Some(chunk) = self.chunk(ChunkPos::from_block_pos(pos)) else {
             return BlockState::AIR;
         };
 
@@ -205,7 +205,7 @@ impl Instance {
             return BlockState::AIR;
         }
 
-        let Some(chunk) = self.chunk_mut(pos) else {
+        let Some(chunk) = self.chunk_mut(ChunkPos::from_block_pos(pos)) else {
             return BlockState::AIR;
         };
 

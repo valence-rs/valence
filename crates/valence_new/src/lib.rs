@@ -30,7 +30,7 @@ pub use {
 };
 
 pub mod biome;
-pub mod chunk_pos;
+pub mod view;
 pub mod client;
 pub mod config;
 pub mod dimension;
@@ -50,6 +50,7 @@ pub mod prelude {
     pub use bevy_app::App;
     pub use bevy_ecs::prelude::*;
     pub use biome::{Biome, BiomeId};
+    pub use view::{ChunkPos, ChunkView};
     pub use client::Client;
     pub use config::{
         AsyncCallbacks, ConnectionMode, PlayerSampleEntry, ServerListPing, ServerPlugin,
