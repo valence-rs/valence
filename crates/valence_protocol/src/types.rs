@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valence_nbt::Compound;
 
-use crate::{BlockPos, Decode, Encode, Ident, Text, VarInt};
+use crate::{BlockPos, Decode, Encode, Ident, ItemStack, Text, VarInt};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum HandshakeNextState {
@@ -22,22 +22,10 @@ pub struct PublicKeyData<'a> {
     pub signature: &'a [u8],
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
-pub struct MessageAcknowledgment<'a> {
-    pub last_seen: Vec<MessageAcknowledgmentEntry<'a>>,
-    pub last_received: Option<MessageAcknowledgmentEntry<'a>>,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode)]
-pub struct MessageAcknowledgmentEntry<'a> {
-    pub profile_id: Uuid,
-    pub signature: &'a [u8],
-}
-
 #[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct CommandArgumentSignature<'a> {
     pub argument_name: &'a str,
-    pub signature: &'a [u8],
+    pub signature: &'a [u8; 256],
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
@@ -376,4 +364,79 @@ pub struct Statistic {
     pub category_id: VarInt,
     pub statistic_id: VarInt,
     pub value: VarInt,
+}
+
+#[bitfield(u8)]
+#[derive(PartialEq, Eq, Encode, Decode)]
+pub struct EntityEffectFlags {
+    pub is_ambient: bool,
+    pub show_particles: bool,
+    pub show_icon: bool,
+    #[bits(5)]
+    _pad: u8,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
+pub enum FeetOrEyes {
+    Feet,
+    Eyes,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
+pub struct LookAtEntity {
+    pub entity_id: VarInt,
+    pub entity_feet_eyes: FeetOrEyes,
+}
+
+#[derive(Clone, PartialEq, Debug, Encode, Decode)]
+pub enum UpdateObjectiveMode {
+    Create {
+        objective_value: Text,
+        objective_type: VarInt,
+    },
+    Remove,
+    Update {
+        objective_value: Text,
+        objective_type: VarInt,
+    },
+}
+
+#[derive(Clone, PartialEq, Debug, Encode, Decode)]
+pub enum UpdateScoreAction<'a> {
+    Create {
+        objective_value: &'a str,
+        objective_type: VarInt,
+    },
+    Remove,
+    Update {
+        objective_value: &'a str,
+        objective_type: VarInt,
+    },
+}
+
+#[derive(Clone, PartialEq, Debug, Encode, Decode)]
+pub struct CommandSuggestionMatch<'a> {
+    pub suggested_match: &'a str,
+    pub tooltip: Option<Text>,
+}
+
+#[derive(Clone, PartialEq, Debug, Encode, Decode)]
+pub struct MerchantTrade {
+    pub input_one: Option<ItemStack>,
+    pub output_item: Option<ItemStack>,
+    pub input_two: Option<ItemStack>,
+    pub trade_disabled: bool,
+    pub number_of_trade_uses: i32,
+    pub max_trade_uses: i32,
+    pub xp: i32,
+    pub special_price: i32,
+    pub price_multiplier: f32,
+    pub demand: i32,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
+pub enum ChatSuggestionAction {
+    Add,
+    Remove,
+    Set,
 }

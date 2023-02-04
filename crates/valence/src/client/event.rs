@@ -32,8 +32,7 @@ pub enum ClientEvent {
     },
     ChangeDifficulty(Difficulty),
     MessageAcknowledgment {
-        last_seen: Vec<(Uuid, Box<[u8]>)>,
-        last_received: Option<(Uuid, Box<[u8]>)>,
+        message_count: i32,
     },
     ChatCommand {
         command: Box<str>,
@@ -321,18 +320,9 @@ pub(super) fn next_event_fallible<C: Config>(
                 position: p.position,
                 transaction_id: p.transaction_id.0,
             },
-            C2sPlayPacket::ChangeDifficulty(p) => ClientEvent::ChangeDifficulty(p.0),
+            C2sPlayPacket::ChangeDifficulty(p) => ClientEvent::ChangeDifficulty(p.new_difficulty),
             C2sPlayPacket::MessageAcknowledgmentC2s(p) => ClientEvent::MessageAcknowledgment {
-                last_seen: p
-                    .0
-                    .last_seen
-                    .into_iter()
-                    .map(|entry| (entry.profile_id, entry.signature.into()))
-                    .collect(),
-                last_received: p
-                    .0
-                    .last_received
-                    .map(|entry| (entry.profile_id, entry.signature.into())),
+                message_count: p.message_count.0,
             },
             C2sPlayPacket::ChatCommand(p) => ClientEvent::ChatCommand {
                 command: p.command.into(),
@@ -429,7 +419,7 @@ pub(super) fn next_event_fallible<C: Config>(
 
                 continue;
             }
-            C2sPlayPacket::LockDifficulty(p) => ClientEvent::LockDifficulty(p.0),
+            C2sPlayPacket::LockDifficulty(p) => ClientEvent::LockDifficulty(p.locked),
             C2sPlayPacket::SetPlayerPosition(p) => {
                 if client.pending_teleports != 0 {
                     continue;
@@ -477,7 +467,7 @@ pub(super) fn next_event_fallible<C: Config>(
                     continue;
                 }
 
-                ClientEvent::SetPlayerOnGround(p.0)
+                ClientEvent::SetPlayerOnGround(p.on_ground)
             }
             C2sPlayPacket::MoveVehicleC2s(p) => {
                 if client.pending_teleports != 0 {
@@ -640,7 +630,7 @@ pub(super) fn next_event_fallible<C: Config>(
                 position: p.position,
                 lines: p.lines.map(From::from),
             },
-            C2sPlayPacket::SwingArm(p) => ClientEvent::SwingArm(p.0),
+            C2sPlayPacket::SwingArm(p) => ClientEvent::SwingArm(p.hand),
             C2sPlayPacket::TeleportToEntity(p) => {
                 ClientEvent::TeleportToEntity { target: p.target }
             }
