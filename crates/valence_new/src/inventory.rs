@@ -795,6 +795,31 @@ mod test {
     }
 
     #[test]
+    fn test_should_sync_entire_player_inventory() -> anyhow::Result<()> {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        let mut inventory = app
+            .world
+            .get_mut::<Inventory>(client_ent)
+            .expect("could not find inventory for client");
+        inventory.modified = u64::MAX;
+
+        app.update();
+        app.update();
+
+        // Make assertions
+        let sent_packets = client_helper.collect_sent()?;
+        assert_packet_count!(sent_packets, 1, S2cPlayPacket::SetContainerContent(_));
+
+        Ok(())
+    }
+
+    #[test]
     fn test_should_modify_open_inventory_click_container() -> anyhow::Result<()> {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
@@ -904,6 +929,38 @@ mod test {
             inventory.slot(21),
             Some(&ItemStack::new(ItemKind::IronIngot, 1, None))
         );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_should_sync_entire_open_inventory() -> anyhow::Result<()> {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+        let inventory = Inventory::new(InventoryKind::Generic9x3);
+        let inventory_ent = app.world.spawn(inventory).id();
+        let open_inventory = OpenInventory::new(inventory_ent);
+        app.world
+            .get_entity_mut(client_ent)
+            .expect("could not find client")
+            .insert(open_inventory);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        let mut inventory = app
+            .world
+            .get_mut::<Inventory>(inventory_ent)
+            .expect("could not find inventory");
+        inventory.modified = u64::MAX;
+
+        app.update();
+        app.update();
+
+        // Make assertions
+        let sent_packets = client_helper.collect_sent()?;
+        assert_packet_count!(sent_packets, 1, S2cPlayPacket::SetContainerContent(_));
 
         Ok(())
     }
