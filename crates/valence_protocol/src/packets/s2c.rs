@@ -32,6 +32,7 @@ pub mod sound_id;
 pub mod stop_sound;
 pub mod update_advancements;
 pub mod update_recipe_book;
+pub mod update_teams;
 
 pub mod status {
     use super::*;
@@ -123,6 +124,7 @@ pub mod play {
 
     use super::*;
     use crate::packets::s2c::declare_recipes::DeclaredRecipe;
+    use crate::packets::s2c::update_teams::UpdateTeamsMode;
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x00]
@@ -855,6 +857,13 @@ pub mod play {
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x56]
+    pub struct UpdateTeams<'a> {
+        pub team_name: &'a str,
+        pub mode: UpdateTeamsMode<'a>,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x57]
     pub struct UpdateScore<'a> {
         pub entity_name: &'a str,
@@ -1088,6 +1097,7 @@ pub mod play {
             SetHealth,
             UpdateObjectives<'a>,
             SetPassengers,
+            UpdateTeams<'a>,
             UpdateScore<'a>,
             SetSimulationDistance,
             SetSubtitleText,
