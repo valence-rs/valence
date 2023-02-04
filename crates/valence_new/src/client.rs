@@ -404,6 +404,13 @@ impl Client {
     pub fn held_item_slot(&self) -> u16 {
         self.held_item_slot
     }
+
+    pub fn kick(&mut self, reason: impl Into<Text>) {
+        self.write_packet(&DisconnectPlay {
+            reason: reason.into(),
+        });
+        self.is_disconnected = true;
+    }
 }
 
 impl WritePacket for Client {
