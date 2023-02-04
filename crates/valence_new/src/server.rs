@@ -344,7 +344,6 @@ pub fn build_plugin(
 
     // Add core systems and stages. User code is expected to run in
     // `CoreStage::Update` and `EventLoop`.
-
     app.add_system_to_stage(CoreStage::PreUpdate, spawn_new_clients)
         .add_stage_before(
             CoreStage::Update,

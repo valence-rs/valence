@@ -1,7 +1,7 @@
 use rand::Rng;
 use valence_new::client::despawn_disconnected_clients;
 use valence_new::client::event::default_event_handler;
-use valence_new::player_list::{remove_disconnected_clients_from_player_list, Entry};
+use valence_new::player_list::Entry;
 use valence_new::prelude::*;
 
 const SPAWN_Y: i32 = 64;
@@ -106,6 +106,17 @@ fn update_player_list(mut player_list: ResMut<PlayerList>, server: Res<Server>) 
 
                 ve.insert(entry);
             }
+        }
+    }
+}
+
+fn remove_disconnected_clients_from_player_list(
+    clients: Query<&mut Client>,
+    mut player_list: ResMut<PlayerList>,
+) {
+    for client in &clients {
+        if client.is_disconnected() {
+            player_list.remove(client.uuid());
         }
     }
 }

@@ -3,9 +3,6 @@ use valence_new::client::despawn_disconnected_clients;
 use valence_new::client::event::{
     default_event_handler, InteractWithEntity, StartSprinting, StopSprinting,
 };
-use valence_new::player_list::{
-    add_new_clients_to_player_list, remove_disconnected_clients_from_player_list,
-};
 use valence_new::prelude::*;
 
 const SPAWN_Y: i32 = 64;
@@ -29,8 +26,7 @@ pub fn main() {
         .add_system_to_stage(EventLoop, handle_combat_events)
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
-        .add_system(add_new_clients_to_player_list)
-        .add_system(remove_disconnected_clients_from_player_list)
+        .add_system_set(PlayerList::default_system_set())
         .add_system(teleport_oob_clients)
         .run();
 }

@@ -4,9 +4,6 @@ use bevy_app::{App, CoreStage};
 use valence_new::client::despawn_disconnected_clients;
 use valence_new::client::event::default_event_handler;
 use valence_new::instance::{Chunk, Instance};
-use valence_new::player_list::{
-    add_new_clients_to_player_list, remove_disconnected_clients_from_player_list,
-};
 use valence_new::prelude::*;
 
 const SPAWN_Y: i32 = 64;
@@ -30,8 +27,7 @@ fn main() {
         .add_system_to_stage(CoreStage::Last, print_tick_time)
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
-        .add_system(add_new_clients_to_player_list)
-        .add_system(remove_disconnected_clients_from_player_list)
+        .add_system_set(PlayerList::default_system_set())
         .run();
 }
 

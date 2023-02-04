@@ -4,9 +4,6 @@ use glam::{DQuat, EulerRot};
 use valence_new::client::despawn_disconnected_clients;
 use valence_new::client::event::default_event_handler;
 use valence_new::math::to_yaw_and_pitch;
-use valence_new::player_list::{
-    add_new_clients_to_player_list, remove_disconnected_clients_from_player_list,
-};
 use valence_new::prelude::*;
 
 const SPHERE_CENTER: DVec3 = DVec3::new(0.5, SPAWN_POS.y as f64 + 2.0, 0.5);
@@ -32,8 +29,7 @@ fn main() {
         .add_system(init_clients)
         .add_system(update_sphere)
         .add_system(despawn_disconnected_clients)
-        .add_system(add_new_clients_to_player_list)
-        .add_system(remove_disconnected_clients_from_player_list)
+        .add_system_set(PlayerList::default_system_set())
         .run();
 }
 

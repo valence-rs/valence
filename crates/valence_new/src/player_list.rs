@@ -34,6 +34,42 @@ pub struct PlayerList {
 }
 
 impl PlayerList {
+    /// Returns a set of systems for maintaining the player list in a reasonable
+    /// default way.
+    pub fn default_system_set() -> SystemSet {
+        fn add_new_clients_to_player_list(
+            clients: Query<&Client, Added<Client>>,
+            mut player_list: ResMut<PlayerList>,
+        ) {
+            for client in &clients {
+                let entry = PlayerListEntry::new()
+                    .with_username(client.username())
+                    .with_properties(client.properties())
+                    .with_game_mode(client.game_mode())
+                    .with_ping(-1); // TODO
+
+                player_list.insert(client.uuid(), entry);
+            }
+        }
+
+        fn remove_disconnected_clients_from_player_list(
+            clients: Query<&mut Client>,
+            mut player_list: ResMut<PlayerList>,
+        ) {
+            for client in &clients {
+                if client.is_disconnected() {
+                    player_list.remove(client.uuid());
+                }
+            }
+        }
+
+        SystemSet::new()
+            .with_system(add_new_clients_to_player_list)
+            .with_system(remove_disconnected_clients_from_player_list)
+    }
+}
+
+impl PlayerList {
     pub(crate) fn new() -> Self {
         Self {
             cached_update_packets: vec![],
@@ -539,33 +575,6 @@ pub(crate) fn update_player_list(
             pl.write_init_packets(client.into_inner());
         } else {
             client.write_packet_bytes(&pl.cached_update_packets);
-        }
-    }
-}
-
-/// A system which adds new clients to the player list.
-pub fn add_new_clients_to_player_list(
-    clients: Query<&Client, Added<Client>>,
-    mut player_list: ResMut<PlayerList>,
-) {
-    for client in &clients {
-        let entry = PlayerListEntry::new()
-            .with_username(client.username())
-            .with_properties(client.properties())
-            .with_game_mode(client.game_mode())
-            .with_ping(-1); // TODO
-
-        player_list.insert(client.uuid(), entry);
-    }
-}
-
-pub fn remove_disconnected_clients_from_player_list(
-    clients: Query<&mut Client>,
-    mut player_list: ResMut<PlayerList>,
-) {
-    for client in &clients {
-        if client.is_disconnected() {
-            player_list.remove(client.uuid());
         }
     }
 }
