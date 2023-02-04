@@ -10,9 +10,11 @@ use crate::item::ItemStack;
 use crate::raw_bytes::RawBytes;
 use crate::text::Text;
 use crate::types::{
-    AttributeProperty, BossBarAction, ChunkDataBlockEntity, Difficulty, GameEventKind, GameMode,
-    GlobalPos, PlayerAbilitiesFlags, Property, SoundCategory, Statistic, SyncPlayerPosLookFlags,
-    TagGroup, WindowType,
+    AttributeProperty, BossBarAction, ChatSuggestionAction, ChunkDataBlockEntity,
+    CommandSuggestionMatch, Difficulty, EntityEffectFlags, FeetOrEyes, GameEventKind, GameMode,
+    GlobalPos, Hand, LookAtEntity, MerchantTrade, PlayerAbilitiesFlags, Property,
+    SoundCategory, Statistic, SyncPlayerPosLookFlags, TagGroup, UpdateObjectiveMode,
+    UpdateScoreAction, WindowType,
 };
 use crate::username::Username;
 use crate::var_int::VarInt;
@@ -21,12 +23,17 @@ use crate::{Decode, DecodePacket, Encode, EncodePacket, LengthPrefixedArray};
 
 pub mod commands;
 pub mod declare_recipes;
+pub mod map_data;
+pub mod message_signature;
 pub mod particle;
 pub mod player_chat_message;
 pub mod player_info_update;
 pub mod set_equipment;
+pub mod sound_id;
+pub mod stop_sound;
 pub mod update_advancements;
 pub mod update_recipe_book;
+pub mod update_teams;
 
 pub mod status {
     use super::*;
@@ -105,15 +112,20 @@ pub mod login {
 
 pub mod play {
     use commands::Node;
+    pub use map_data::MapData;
+    pub use message_signature::MessageSignature;
     pub use particle::ParticleS2c;
     pub use player_chat_message::PlayerChatMessage;
     pub use player_info_update::PlayerInfoUpdate;
     pub use set_equipment::SetEquipment;
+    pub use sound_id::SoundId;
+    pub use stop_sound::StopSound;
     pub use update_advancements::UpdateAdvancements;
     pub use update_recipe_book::UpdateRecipeBook;
 
     use super::*;
     use crate::packets::s2c::declare_recipes::DeclaredRecipe;
+    use crate::packets::s2c::update_teams::UpdateTeamsMode;
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x00]
@@ -185,6 +197,15 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x08]
+    pub struct BlockAction {
+        pub position: BlockPos,
+        pub action_id: u8,
+        pub action_parameter: u8,
+        pub block_type: VarInt,
+    }
+
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x09]
     pub struct BlockUpdate {
         pub position: BlockPos,
@@ -209,6 +230,15 @@ pub mod play {
     #[packet_id = 0x0c]
     pub struct ClearTitles {
         pub reset: bool,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x0d]
+    pub struct CommandSuggestionResponse<'a> {
+        pub id: VarInt,
+        pub start: VarInt,
+        pub length: VarInt,
+        pub matches: Vec<CommandSuggestionMatch<'a>>,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -276,11 +306,24 @@ pub mod play {
         pub cooldown_ticks: VarInt,
     }
 
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x14]
+    pub struct ChatSuggestions<'a> {
+        pub action: ChatSuggestionAction,
+        pub entries: Vec<&'a str>,
+    }
+
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x15]
     pub struct PluginMessageS2c<'a> {
         pub channel: Ident<&'a str>,
         pub data: RawBytes<'a>,
+    }
+
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x16]
+    pub struct DeleteMessage<'a> {
+        pub signature: MessageSignature<'a>,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -289,11 +332,28 @@ pub mod play {
         pub reason: Text,
     }
 
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x18]
+    pub struct DisguisedChatMessage {
+        pub message: Text,
+        pub chat_type: VarInt,
+        pub chat_type_name: Text,
+        pub target_name: Option<Text>,
+    }
+
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x19]
     pub struct EntityEvent {
         pub entity_id: i32,
         pub entity_status: u8,
+    }
+
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x1a]
+    pub struct PlaceRecipe<'a> {
+        pub window_id: u8,
+        pub recipe: Ident<&'a str>,
+        pub make_all: bool,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -308,6 +368,14 @@ pub mod play {
     pub struct GameEvent {
         pub kind: GameEventKind,
         pub value: f32,
+    }
+
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x1d]
+    pub struct OpenHorseScreen {
+        pub window_id: u8,
+        pub slot_count: VarInt,
+        pub entity_id: i32,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -432,6 +500,17 @@ pub mod play {
         pub last_death_location: Option<(Ident<String>, BlockPos)>,
     }
 
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x26]
+    pub struct MerchantOffers {
+        pub window_id: VarInt,
+        pub trades: Vec<MerchantTrade>,
+        pub villager_level: VarInt,
+        pub experience: VarInt,
+        pub is_regular_villager: bool,
+        pub can_restock: bool,
+    }
+
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x27]
     pub struct UpdateEntityPosition {
@@ -459,12 +538,45 @@ pub mod play {
         pub on_ground: bool,
     }
 
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x2a]
+    pub struct MoveVehicle {
+        pub position: [f64; 3],
+        pub yaw: f32,
+        pub pitch: f32,
+    }
+
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x2b]
+    pub struct OpenBook {
+        pub hand: Hand,
+    }
+
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x2c]
     pub struct OpenScreen {
         pub window_id: VarInt,
         pub window_type: WindowType,
         pub window_title: Text,
+    }
+
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x2d]
+    pub struct OpenSignEditor {
+        pub location: BlockPos,
+    }
+
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x2e]
+    pub struct PingPlay {
+        pub id: i32,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x2f]
+    pub struct PlaceGhostRecipe<'a> {
+        pub window_id: u8,
+        pub recipe: Ident<&'a str>,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -474,6 +586,19 @@ pub mod play {
         pub flying_speed: f32,
         pub fov_modifier: f32,
     }
+
+    /// Unused by notchian clients.
+    #[derive(Copy, Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x32]
+    pub struct EndCombat {
+        pub duration: VarInt,
+        pub entity_id: i32,
+    }
+
+    /// Unused by notchian clients.
+    #[derive(Copy, Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x33]
+    pub struct EnterCombat {}
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x34]
@@ -488,6 +613,14 @@ pub mod play {
     #[packet_id = 0x35]
     pub struct PlayerInfoRemove<'a> {
         pub uuids: Cow<'a, [Uuid]>,
+    }
+
+    #[derive(Copy, Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x37]
+    pub struct LookAt {
+        pub feet_eyes: FeetOrEyes,
+        pub target_position: [f64; 3],
+        pub entity_to_face: Option<LookAtEntity>,
     }
 
     #[derive(Copy, Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -511,6 +644,13 @@ pub mod play {
     #[packet_id = 0x3a]
     pub struct RemoveEntitiesEncode<'a> {
         pub entity_ids: &'a [VarInt],
+    }
+
+    #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x3b]
+    pub struct RemoveEntityEffect {
+        pub entity_id: VarInt,
+        pub effect_id: VarInt,
     }
 
     #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -575,6 +715,12 @@ pub mod play {
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x40]
+    pub struct SelectAdvancementsTab<'a> {
+        pub identifier: Option<Ident<&'a str>>,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x41]
     pub struct ServerData<'a> {
         pub motd: Option<Text>,
@@ -584,7 +730,47 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x42]
-    pub struct SetActionBarText(pub Text);
+    pub struct SetActionBarText {
+        pub action_bar_text: Text,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x43]
+    pub struct SetBorderCenter {
+        pub xz_position: [f64; 2],
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x44]
+    pub struct SetBorderLerpSize {
+        pub old_diameter: f64,
+        pub new_diameter: f64,
+        pub speed: VarLong,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x45]
+    pub struct SetBorderSize {
+        pub diameter: f64,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x46]
+    pub struct SetBorderWarningDelay {
+        pub warning_time: VarInt,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x47]
+    pub struct SetBorderWarningDistance {
+        pub warning_blocks: VarInt,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x48]
+    pub struct SetCamera {
+        pub entity_id: VarInt,
+    }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x49]
@@ -601,7 +787,9 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x4b]
-    pub struct SetRenderDistance(pub VarInt);
+    pub struct SetRenderDistance {
+        pub view_distance: VarInt,
+    }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x4c]
@@ -611,10 +799,24 @@ pub mod play {
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x4d]
+    pub struct DisplayObjective<'a> {
+        pub position: u8,
+        pub score_name: &'a str,
+    }
+
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x4e]
     pub struct SetEntityMetadata<'a> {
         pub entity_id: VarInt,
         pub metadata: RawBytes<'a>,
+    }
+
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x4f]
+    pub struct LinkEntities {
+        pub attached_entity_id: i32,
+        pub holding_entity_id: i32,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -641,6 +843,13 @@ pub mod play {
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x54]
+    pub struct UpdateObjectives<'a> {
+        pub objective_name: &'a str,
+        pub mode: UpdateObjectiveMode,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x55]
     pub struct SetPassengers {
         /// Vehicle's entity id
@@ -649,8 +858,30 @@ pub mod play {
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x56]
+    pub struct UpdateTeams<'a> {
+        pub team_name: &'a str,
+        pub mode: UpdateTeamsMode<'a>,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x57]
+    pub struct UpdateScore<'a> {
+        pub entity_name: &'a str,
+        pub action: UpdateScoreAction<'a>,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x58]
+    pub struct SetSimulationDistance {
+        pub simulation_distance: VarInt,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x59]
-    pub struct SetSubtitleText(pub Text);
+    pub struct SetSubtitleText {
+        pub subtitle_text: Text,
+    }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x5a]
@@ -665,7 +896,9 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x5b]
-    pub struct SetTitleText(pub Text);
+    pub struct SetTitleText {
+        pub title_text: Text,
+    }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x5c]
@@ -686,12 +919,13 @@ pub mod play {
         pub entity_id: VarInt,
         pub volume: f32,
         pub pitch: f32,
+        pub seed: i64,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x5e]
-    pub struct SoundEffect {
-        pub id: VarInt,
+    pub struct SoundEffect<'a> {
+        pub id: SoundId<'a>,
         pub category: SoundCategory,
         pub position: [i32; 3],
         pub volume: f32,
@@ -703,8 +937,8 @@ pub mod play {
     #[packet_id = 0x60]
     pub struct SystemChatMessage {
         pub chat: Text,
-        /// Index into the chat type registry.
-        pub kind: VarInt,
+        /// Whether the message is in the actionbar or the chat.
+        pub overlay: bool,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -712,6 +946,13 @@ pub mod play {
     pub struct SetTabListHeaderAndFooter {
         pub header: Text,
         pub footer: Text,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x62]
+    pub struct TagQueryResponse {
+        pub transaction_id: VarInt,
+        pub nbt: Compound,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -745,6 +986,17 @@ pub mod play {
         pub features: Vec<Ident<&'a str>>,
     }
 
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x68]
+    pub struct EntityEffect {
+        pub entity_id: VarInt,
+        pub effect_id: VarInt,
+        pub amplifier: u8,
+        pub duration: VarInt,
+        pub flags: EntityEffectFlags,
+        pub factor_codec: Option<Compound>,
+    }
+
     #[derive(Clone, Debug, Encode, Decode, EncodePacket, DecodePacket)]
     #[packet_id = 0x69]
     pub struct DeclareRecipes<'a> {
@@ -753,7 +1005,9 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, Decode, EncodePacket, DecodePacket)]
     #[packet_id = 0x6a]
-    pub struct UpdateTags<'a>(pub Vec<TagGroup<'a>>);
+    pub struct UpdateTags<'a> {
+        pub tags: Vec<TagGroup<'a>>,
+    }
 
     packet_enum! {
         #[derive(Clone)]
@@ -766,21 +1020,28 @@ pub mod play {
             AcknowledgeBlockChange,
             SetBlockDestroyStage,
             BlockEntityData,
+            BlockAction,
             BlockUpdate,
             BossBar,
             SetDifficulty,
             ClearTitles,
+            CommandSuggestionResponse<'a>,
             Commands<'a>,
             CloseContainerS2c,
             SetContainerContent,
             SetContainerProperty,
             SetContainerSlot,
             SetCooldown,
+            ChatSuggestions<'a>,
             PluginMessageS2c<'a>,
+            DeleteMessage<'a>,
             DisconnectPlay,
+            DisguisedChatMessage,
             EntityEvent,
+            PlaceRecipe<'a>,
             UnloadChunk,
             GameEvent,
+            OpenHorseScreen,
             WorldBorderInitialize,
             KeepAliveS2c,
             ChunkDataAndUpdateLight<'a>,
@@ -788,47 +1049,74 @@ pub mod play {
             UpdateLight,
             ParticleS2c,
             LoginPlay<'a>,
+            MapData<'a>,
+            MerchantOffers,
             UpdateEntityPosition,
             UpdateEntityPositionAndRotation,
             UpdateEntityRotation,
+            MoveVehicle,
+            OpenBook,
             OpenScreen,
+            OpenSignEditor,
+            PingPlay,
+            PlaceGhostRecipe<'a>,
             PlayerAbilitiesS2c,
             PlayerChatMessage<'a>,
+            EndCombat,
+            EnterCombat,
             CombatDeath,
             PlayerInfoRemove<'a>,
             PlayerInfoUpdate<'a>,
+            LookAt,
             SynchronizePlayerPosition,
             UpdateRecipeBook<'a>,
             RemoveEntities,
+            RemoveEntityEffect,
             ResourcePackS2c<'a>,
             Respawn<'a>,
             SetHeadRotation,
             UpdateSectionBlocks,
+            SelectAdvancementsTab<'a>,
             ServerData<'a>,
             SetActionBarText,
+            SetBorderCenter,
+            SetBorderLerpSize,
+            SetBorderSize,
+            SetBorderWarningDelay,
+            SetBorderWarningDistance,
+            SetCamera,
             SetHeldItemS2c,
             SetCenterChunk,
             SetRenderDistance,
             SetDefaultSpawnPosition,
+            DisplayObjective<'a>,
             SetEntityMetadata<'a>,
+            LinkEntities,
             SetEntityVelocity,
             SetEquipment,
             SetExperience,
             SetHealth,
+            UpdateObjectives<'a>,
             SetPassengers,
+            UpdateTeams<'a>,
+            UpdateScore<'a>,
+            SetSimulationDistance,
             SetSubtitleText,
             UpdateTime,
             SetTitleText,
             SetTitleAnimationTimes,
             EntitySoundEffect,
-            SoundEffect,
+            SoundEffect<'a>,
+            StopSound<'a>,
             SystemChatMessage,
             SetTabListHeaderAndFooter,
+            TagQueryResponse,
             PickupItem,
             TeleportEntity,
             UpdateAdvancements<'a>,
             UpdateAttributes<'a>,
             FeatureFlags<'a>,
+            EntityEffect,
             DeclareRecipes<'a>,
             UpdateTags<'a>,
         }

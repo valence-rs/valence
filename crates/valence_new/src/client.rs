@@ -372,7 +372,7 @@ impl Client {
     pub fn send_message(&mut self, msg: impl Into<Text>) {
         self.write_packet(&SystemChatMessage {
             chat: msg.into(),
-            kind: VarInt(0),
+            overlay: false
         });
     }
 
@@ -500,9 +500,9 @@ fn update_one_client(
     } else {
         if client.view_distance != client.old_view_distance {
             // Change the render distance fog.
-            client
-                .enc
-                .append_packet(&SetRenderDistance(VarInt(client.view_distance.into())))?;
+            client.enc.append_packet(&SetRenderDistance {
+                view_distance: VarInt(client.view_distance.into()),
+            })?;
         }
 
         if client.needs_respawn {

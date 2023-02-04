@@ -69,6 +69,7 @@
 pub use compound::Compound;
 pub use error::Error;
 pub use from_binary_slice::from_binary_slice;
+pub use tag::Tag;
 pub use to_binary_writer::to_binary_writer;
 pub use value::{List, Value};
 
@@ -76,6 +77,7 @@ pub mod compound;
 mod error;
 mod from_binary_slice;
 mod modified_utf8;
+pub mod snbt;
 mod to_binary_writer;
 pub mod value;
 

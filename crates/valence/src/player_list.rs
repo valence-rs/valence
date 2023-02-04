@@ -90,7 +90,9 @@ impl<C: Config> PlayerLists<C> {
 
             if !pl.removed.is_empty() {
                 writer
-                    .write_packet(&PlayerInfoRemove(pl.removed.iter().cloned().collect()))
+                    .write_packet(&PlayerInfoRemove {
+                        players: pl.removed.iter().cloned().collect(),
+                    })
                     .unwrap();
             }
 
@@ -471,7 +473,7 @@ impl<C: Config> PlayerList<C> {
             .chain(self.removed.iter().cloned())
             .collect();
 
-        writer.write_packet(&PlayerInfoRemove(uuids))
+        writer.write_packet(&PlayerInfoRemove { players: uuids })
     }
 }
 
