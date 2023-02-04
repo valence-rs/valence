@@ -8,10 +8,10 @@ use glam::{DVec3, Vec3};
 use tracing::warn;
 use uuid::Uuid;
 use valence_protocol::packets::s2c::play::{
-    AcknowledgeBlockChange, DisconnectPlay, EntityEvent, GameEvent, KeepAliveS2c, LoginPlayOwned,
-    PluginMessageS2c, RemoveEntitiesEncode, RespawnOwned, SetCenterChunk, SetDefaultSpawnPosition,
-    SetEntityMetadata, SetEntityVelocity, SetRenderDistance, SynchronizePlayerPosition,
-    SystemChatMessage, UnloadChunk,
+    AcknowledgeBlockChange, CombatDeath, DisconnectPlay, EntityEvent, GameEvent, KeepAliveS2c,
+    LoginPlayOwned, PluginMessageS2c, RemoveEntitiesEncode, RespawnOwned, SetCenterChunk,
+    SetDefaultSpawnPosition, SetEntityMetadata, SetEntityVelocity, SetRenderDistance,
+    SynchronizePlayerPosition, SystemChatMessage, UnloadChunk,
 };
 use valence_protocol::types::{GameEventKind, GameMode, Property, SyncPlayerPosLookFlags};
 use valence_protocol::{
@@ -260,6 +260,24 @@ impl Client {
 
     pub fn on_ground(&self) -> bool {
         self.on_ground
+    }
+
+    /// Kills the client and shows `message` on the death screen. If an entity
+    /// killed the player, pass its ID into the function.
+    pub fn kill(&mut self, killer: Option<McEntity>, message: impl Into<Text>) {
+        self.write_packet(&CombatDeath {
+            player_id: VarInt(0),
+            entity_id: killer.map_or(-1, |k| k.protocol_id()),
+            message: message.into(),
+        });
+    }
+
+    /// Respawns client. Optionally can roll the credits before respawning.
+    pub fn win_game(&mut self, show_credits: bool) {
+        self.write_packet(&GameEvent {
+            kind: GameEventKind::WinGame,
+            value: if show_credits { 1.0 } else { 0.0 },
+        });
     }
 
     pub fn has_respawn_screen(&self) -> bool {
