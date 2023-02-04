@@ -8,9 +8,8 @@ use crate::raw_bytes::RawBytes;
 use crate::types::{
     Action, ChatMode, ClickContainerMode, CommandArgumentSignature, CommandBlockFlags,
     CommandBlockMode, Difficulty, DiggingStatus, DisplayedSkinParts, EntityInteraction, Hand,
-    HandshakeNextState, MainHand, MessageAcknowledgment, PlayerInputFlags, RecipeBookId,
-    StructureBlockAction, StructureBlockFlags, StructureBlockMirror, StructureBlockMode,
-    StructureBlockRotation,
+    HandshakeNextState, MainHand, PlayerInputFlags, RecipeBookId, StructureBlockAction,
+    StructureBlockFlags, StructureBlockMirror, StructureBlockMode, StructureBlockRotation,
 };
 use crate::username::Username;
 use crate::var_int::VarInt;
@@ -126,7 +125,9 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x03]
-    pub struct MessageAcknowledgmentC2s<'a>(pub MessageAcknowledgment<'a>);
+    pub struct MessageAcknowledgmentC2s {
+        pub message_count: VarInt,
+    }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x04]
@@ -517,7 +518,7 @@ pub mod play {
             ConfirmTeleport,
             QueryBlockEntityTag,
             ChangeDifficulty,
-            MessageAcknowledgmentC2s<'a>,
+            MessageAcknowledgmentC2s,
             ChatCommand<'a>,
             ChatMessage<'a>,
             ClientCommand,

@@ -32,8 +32,7 @@ pub enum ClientEvent {
     },
     ChangeDifficulty(Difficulty),
     MessageAcknowledgment {
-        last_seen: Vec<(Uuid, Box<[u8]>)>,
-        last_received: Option<(Uuid, Box<[u8]>)>,
+        message_count: i32,
     },
     ChatCommand {
         command: Box<str>,
@@ -323,16 +322,7 @@ pub(super) fn next_event_fallible<C: Config>(
             },
             C2sPlayPacket::ChangeDifficulty(p) => ClientEvent::ChangeDifficulty(p.new_difficulty),
             C2sPlayPacket::MessageAcknowledgmentC2s(p) => ClientEvent::MessageAcknowledgment {
-                last_seen: p
-                    .0
-                    .last_seen
-                    .into_iter()
-                    .map(|entry| (entry.profile_id, entry.signature.into()))
-                    .collect(),
-                last_received: p
-                    .0
-                    .last_received
-                    .map(|entry| (entry.profile_id, entry.signature.into())),
+                message_count: p.message_count.0,
             },
             C2sPlayPacket::ChatCommand(p) => ClientEvent::ChatCommand {
                 command: p.command.into(),

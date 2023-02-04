@@ -22,18 +22,6 @@ pub struct PublicKeyData<'a> {
     pub signature: &'a [u8],
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
-pub struct MessageAcknowledgment<'a> {
-    pub last_seen: Vec<MessageAcknowledgmentEntry<'a>>,
-    pub last_received: Option<MessageAcknowledgmentEntry<'a>>,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode)]
-pub struct MessageAcknowledgmentEntry<'a> {
-    pub profile_id: Uuid,
-    pub signature: &'a [u8],
-}
-
 #[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct CommandArgumentSignature<'a> {
     pub argument_name: &'a str,
