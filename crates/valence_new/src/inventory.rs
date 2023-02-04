@@ -606,7 +606,6 @@ mod test {
             .insert(open_inventory);
 
         app.update();
-        app.update();
 
         // Make assertions
         let sent_packets = client_helper.collect_sent()?;
@@ -642,7 +641,6 @@ mod test {
             .insert(open_inventory);
 
         app.update();
-        app.update();
         client_helper.clear_sent();
 
         // Close the inventory.
@@ -651,7 +649,6 @@ mod test {
             .expect("could not find client")
             .remove::<OpenInventory>();
 
-        app.update();
         app.update();
 
         // Make assertions
@@ -682,7 +679,6 @@ mod test {
             .insert(open_inventory);
 
         app.update();
-        app.update();
         client_helper.clear_sent();
 
         // Remove the inventory.
@@ -710,7 +706,6 @@ mod test {
 
         // Process a tick to get past the "on join" logic.
         app.update();
-        app.update();
         client_helper.clear_sent();
 
         // Make the client click the slot and pick up the item.
@@ -729,7 +724,6 @@ mod test {
             carried_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
         });
 
-        app.update();
         app.update();
 
         // Make assertions
@@ -772,7 +766,6 @@ mod test {
 
         // Process a tick to get past the "on join" logic.
         app.update();
-        app.update();
         client_helper.clear_sent();
 
         // Modify the inventory.
@@ -782,7 +775,6 @@ mod test {
             .expect("could not find inventory for client");
         inventory.replace_slot(21, ItemStack::new(ItemKind::IronIngot, 1, None));
 
-        app.update();
         app.update();
 
         // Make assertions
@@ -809,7 +801,6 @@ mod test {
             .expect("could not find inventory for client");
         inventory.modified = u64::MAX;
 
-        app.update();
         app.update();
 
         // Make assertions
@@ -861,7 +852,6 @@ mod test {
         });
 
         app.update();
-        app.update();
 
         // Make assertions
         let sent_packets = client_helper.collect_sent()?;
@@ -909,7 +899,6 @@ mod test {
         inventory.replace_slot(5, ItemStack::new(ItemKind::IronIngot, 1, None));
 
         app.update();
-        app.update();
 
         // Make assertions
         let sent_packets = client_helper.collect_sent()?;
@@ -945,7 +934,6 @@ mod test {
             .expect("could not find inventory");
         inventory.modified = u64::MAX;
 
-        app.update();
         app.update();
 
         // Make assertions

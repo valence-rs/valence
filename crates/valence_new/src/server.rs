@@ -354,6 +354,7 @@ pub fn build_plugin(
         .add_system_set_to_stage(
             CoreStage::PostUpdate,
             SystemSet::new()
+                .label("valence_core")
                 .with_system(init_entities)
                 .with_system(check_entity_invariants)
                 .with_system(check_instance_invariants.after(check_entity_invariants))
@@ -363,7 +364,13 @@ pub fn build_plugin(
                 .with_system(update_instances_post_client.after(update_clients))
                 .with_system(deinit_despawned_entities.after(update_instances_post_client))
                 .with_system(despawn_marked_entities.after(deinit_despawned_entities))
-                .with_system(update_entities.after(despawn_marked_entities))
+                .with_system(update_entities.after(despawn_marked_entities)),
+        )
+        .add_system_set_to_stage(
+            CoreStage::PostUpdate,
+            SystemSet::new()
+                .label("inventory")
+                .before("valence_core")
                 .with_system(update_open_inventories)
                 .with_system(handle_close_container)
                 .with_system(update_client_on_close_inventory.after(update_open_inventories))
