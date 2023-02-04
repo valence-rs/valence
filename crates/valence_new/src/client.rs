@@ -84,6 +84,7 @@ pub struct Client {
     /// Tracks what slots have been modified by this client in this tick, so we
     /// don't need to send updates for them.
     pub(crate) inventory_slots_modified: u64,
+    pub(crate) held_item_slot: u16,
 }
 
 pub trait ClientConnection: Send + Sync + 'static {
@@ -139,6 +140,7 @@ impl Client {
             window_id: 0,
             inventory_state_id: Wrapping(0),
             inventory_slots_modified: 0,
+            held_item_slot: 0,
         }
     }
 
@@ -379,6 +381,10 @@ impl Client {
             channel,
             data: RawBytes(data),
         });
+    }
+
+    pub fn held_item_slot(&self) -> u16 {
+        self.held_item_slot
     }
 }
 
