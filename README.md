@@ -1,5 +1,9 @@
 <img src="assets/logo-full.svg" width="650">
 
+_**NOTE:** Valence is currently undergoing a major rewrite. The information in this README may be outdated. See [ECS Rewrite](https://github.com/valence-rs/valence/pull/184) for more information._
+
+---
+
 A Rust framework for building Minecraft: Java Edition servers.
 
 Like [feather](https://github.com/feather-rs/feather), Valence is an effort to build a Minecraft compatible server
