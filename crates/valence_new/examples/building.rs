@@ -109,23 +109,45 @@ fn digging_survival_mode(
 }
 
 fn place_blocks(
-    clients: Query<(&Client, &mut Inventory)>,
+    mut clients: Query<(&Client, &mut Inventory)>,
     mut instances: Query<&mut Instance>,
     mut events: EventReader<UseItemOnBlock>,
 ) {
     let mut instance = instances.single_mut();
 
     for event in events.iter() {
-        let Ok(client) = clients.get_component::<Client>(event.client) else {
+        let Ok((client, mut inventory)) = clients.get_mut(event.client) else {
             continue;
         };
         if event.hand != Hand::Main {
             continue;
         }
+
+        // get the held item
+        let slot_id = client.held_item_slot();
+        let Some(stack) = inventory.slot(slot_id) else {
+            // no item in the slot
+            continue;
+        };
+
+        let Some(block_kind) = stack.item.to_block_kind() else {
+            // can't place this item as a block
+            continue;
+        };
+
         if client.game_mode() == GameMode::Survival {
             // check if the player has the item in their inventory and remove
             // it.
+            let slot = if stack.count() > 1 {
+                let mut stack = stack.clone();
+                stack.set_count(stack.count() - 1);
+                Some(stack)
+            } else {
+                None
+            };
+            inventory.replace_slot(slot_id, slot);
         }
-        // TODO: set the block state
+        let real_pos = event.position.get_in_direction(event.face);
+        instance.set_block_state(real_pos, block_kind.to_state());
     }
 }
