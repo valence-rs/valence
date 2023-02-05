@@ -33,7 +33,7 @@ use crate::instance::{
     check_instance_invariants, update_instances_post_client, update_instances_pre_client, Instance,
 };
 use crate::inventory::{
-    handle_click_container, handle_close_container, handle_set_slot_creative,
+    handle_click_container, handle_close_container, handle_set_held_item, handle_set_slot_creative,
     update_client_on_close_inventory, update_open_inventories, update_player_inventories,
     Inventory, InventoryKind,
 };
@@ -370,6 +370,7 @@ pub fn build_plugin(
             SystemSet::new()
                 .label("inventory")
                 .before("valence_core")
+                .with_system(handle_set_held_item)
                 .with_system(update_open_inventories)
                 .with_system(handle_close_container)
                 .with_system(update_client_on_close_inventory.after(update_open_inventories))

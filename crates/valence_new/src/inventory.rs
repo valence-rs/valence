@@ -8,7 +8,7 @@ use valence_protocol::packets::s2c::play::{
 use valence_protocol::types::{GameMode, WindowType};
 use valence_protocol::{ItemStack, Text, VarInt};
 
-use crate::client::event::{ClickContainer, CloseContainer, SetCreativeModeSlot};
+use crate::client::event::{ClickContainer, CloseContainer, SetCreativeModeSlot, SetHeldItem};
 use crate::client::Client;
 
 #[derive(Debug, Clone, Component)]
@@ -560,12 +560,27 @@ pub(crate) fn handle_set_slot_creative(
     }
 }
 
+pub(crate) fn handle_set_held_item(
+    mut clients: Query<&mut Client>,
+    mut events: EventReader<SetHeldItem>,
+) {
+    for event in events.iter() {
+        if let Ok(mut client) = clients.get_mut(event.client) {
+            client.held_item_slot = convert_hotbar_slot_id(event.slot as u16);
+        }
+    }
+}
+
 /// Convert a slot that is outside a target inventory's range to a slot that is
 /// inside the player's inventory.
 fn convert_to_player_slot_id(target_kind: InventoryKind, slot_id: u16) -> u16 {
     // the first slot in the player's general inventory
     let offset = target_kind.slot_count() as u16;
     slot_id - offset + 9
+}
+
+fn convert_hotbar_slot_id(slot_id: u16) -> u16 {
+    slot_id + 36
 }
 
 #[cfg(test)]
@@ -584,6 +599,13 @@ mod test {
         assert_eq!(convert_to_player_slot_id(InventoryKind::Generic9x3, 36), 18);
         assert_eq!(convert_to_player_slot_id(InventoryKind::Generic9x3, 54), 36);
         assert_eq!(convert_to_player_slot_id(InventoryKind::Generic9x1, 9), 9);
+    }
+
+    #[test]
+    fn test_convert_hotbar_slot_id() {
+        assert_eq!(convert_hotbar_slot_id(0), 36);
+        assert_eq!(convert_hotbar_slot_id(4), 40);
+        assert_eq!(convert_hotbar_slot_id(9), 44);
     }
 
     #[test]
@@ -1038,5 +1060,28 @@ mod test {
             .get::<Client>(client_ent)
             .expect("could not find client");
         assert_eq!(client.window_id, 3);
+    }
+
+    #[test]
+    fn test_should_handle_set_held_item() -> anyhow::Result<()> {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        client_helper.send(&valence_protocol::packets::c2s::play::SetHeldItemC2s { slot: 4 });
+
+        app.update();
+
+        // Make assertions
+        let client = app
+            .world
+            .get::<Client>(client_ent)
+            .expect("could not find client");
+        assert_eq!(client.held_item_slot, 40);
+
+        Ok(())
     }
 }

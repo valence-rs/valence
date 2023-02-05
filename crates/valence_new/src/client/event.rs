@@ -39,8 +39,7 @@ pub struct ChangeDifficulty {
 #[derive(Clone, Debug)]
 pub struct MessageAcknowledgment {
     pub client: Entity,
-    pub last_seen: Vec<(Uuid, Box<[u8]>)>,
-    pub last_received: Option<(Uuid, Box<[u8]>)>,
+    pub message_count: i32,
 }
 
 #[derive(Clone, Debug)]
@@ -791,22 +790,13 @@ fn handle_one_packet(
         C2sPlayPacket::ChangeDifficulty(p) => {
             events.0.change_difficulty.send(ChangeDifficulty {
                 client: entity,
-                difficulty: p.0,
+                difficulty: p.new_difficulty,
             });
         }
         C2sPlayPacket::MessageAcknowledgmentC2s(p) => {
             events.0.message_acknowledgment.send(MessageAcknowledgment {
                 client: entity,
-                last_seen: p
-                    .0
-                    .last_seen
-                    .into_iter()
-                    .map(|entry| (entry.profile_id, entry.signature.into()))
-                    .collect(),
-                last_received: p
-                    .0
-                    .last_received
-                    .map(|entry| (entry.profile_id, entry.signature.into())),
+                message_count: p.message_count.0,
             });
         }
         C2sPlayPacket::ChatCommand(p) => {
@@ -933,7 +923,7 @@ fn handle_one_packet(
         C2sPlayPacket::LockDifficulty(p) => {
             events.1.lock_difficulty.send(LockDifficulty {
                 client: entity,
-                locked: p.0,
+                locked: p.locked,
             });
         }
         C2sPlayPacket::SetPlayerPosition(p) => {
@@ -1030,7 +1020,7 @@ fn handle_one_packet(
 
             events.1.set_player_on_ground.send(SetPlayerOnGround {
                 client: entity,
-                on_ground: p.0,
+                on_ground: p.on_ground,
             });
 
             events.1.move_player.send(MovePlayer {
@@ -1042,10 +1032,10 @@ fn handle_one_packet(
                 old_pitch: client.pitch,
                 pitch: client.pitch,
                 old_on_ground: client.on_ground,
-                on_ground: p.0,
+                on_ground: p.on_ground,
             });
 
-            client.on_ground = p.0;
+            client.on_ground = p.on_ground;
         }
         C2sPlayPacket::MoveVehicleC2s(p) => {
             if client.pending_teleports != 0 {
@@ -1339,7 +1329,7 @@ fn handle_one_packet(
         C2sPlayPacket::SwingArm(p) => {
             events.4.swing_arm.send(SwingArm {
                 client: entity,
-                hand: p.0,
+                hand: p.hand,
             });
         }
         C2sPlayPacket::TeleportToEntity(p) => {

@@ -7,7 +7,7 @@ use valence_protocol::packets::S2cPlayPacket;
 use valence_protocol::{EncodePacket, PacketDecoder, PacketEncoder, Username};
 
 use crate::client::{Client, ClientConnection};
-use crate::config::ServerPlugin;
+use crate::config::{ConnectionMode, ServerPlugin};
 use crate::dimension::DimensionId;
 use crate::inventory::{Inventory, InventoryKind};
 use crate::server::{NewClientInfo, Server};
@@ -157,7 +157,11 @@ impl MockClientHelper {
 ///
 /// Reduces boilerplate in unit tests.
 pub fn scenario_single_client(app: &mut App) -> (Entity, MockClientHelper) {
-    app.add_plugin(ServerPlugin::new(()));
+    app.add_plugin(
+        ServerPlugin::new(())
+            .with_compression_threshold(None)
+            .with_connection_mode(ConnectionMode::Offline),
+    );
     let server = app.world.resource::<Server>();
     let instance = server.new_instance(DimensionId::default());
     let instance_ent = app.world.spawn(instance).id();

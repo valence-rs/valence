@@ -8,10 +8,10 @@ use glam::{DVec3, Vec3};
 use tracing::warn;
 use uuid::Uuid;
 use valence_protocol::packets::s2c::play::{
-    AcknowledgeBlockChange, DisconnectPlay, EntityEvent, GameEvent, KeepAliveS2c, LoginPlayOwned,
-    PluginMessageS2c, RemoveEntitiesEncode, RespawnOwned, SetCenterChunk, SetDefaultSpawnPosition,
-    SetEntityMetadata, SetEntityVelocity, SetRenderDistance, SynchronizePlayerPosition,
-    SystemChatMessage, UnloadChunk,
+    AcknowledgeBlockChange, CombatDeath, DisconnectPlay, EntityEvent, GameEvent, KeepAliveS2c,
+    LoginPlayOwned, PluginMessageS2c, RemoveEntitiesEncode, RespawnOwned, SetCenterChunk,
+    SetDefaultSpawnPosition, SetEntityMetadata, SetEntityVelocity, SetRenderDistance,
+    SynchronizePlayerPosition, SystemChatMessage, UnloadChunk,
 };
 use valence_protocol::types::{GameEventKind, GameMode, Property, SyncPlayerPosLookFlags};
 use valence_protocol::{
@@ -84,6 +84,7 @@ pub struct Client {
     /// Tracks what slots have been modified by this client in this tick, so we
     /// don't need to send updates for them.
     pub(crate) inventory_slots_modified: u64,
+    pub(crate) held_item_slot: u16,
 }
 
 pub trait ClientConnection: Send + Sync + 'static {
@@ -139,6 +140,7 @@ impl Client {
             window_id: 0,
             inventory_state_id: Wrapping(0),
             inventory_slots_modified: 0,
+            held_item_slot: 0,
         }
     }
 
@@ -271,6 +273,24 @@ impl Client {
         self.on_ground
     }
 
+    /// Kills the client and shows `message` on the death screen. If an entity
+    /// killed the player, pass its ID into the function.
+    pub fn kill(&mut self, killer: Option<McEntity>, message: impl Into<Text>) {
+        self.write_packet(&CombatDeath {
+            player_id: VarInt(0),
+            entity_id: killer.map_or(-1, |k| k.protocol_id()),
+            message: message.into(),
+        });
+    }
+
+    /// Respawns client. Optionally can roll the credits before respawning.
+    pub fn win_game(&mut self, show_credits: bool) {
+        self.write_packet(&GameEvent {
+            kind: GameEventKind::WinGame,
+            value: if show_credits { 1.0 } else { 0.0 },
+        });
+    }
+
     pub fn has_respawn_screen(&self) -> bool {
         self.has_respawn_screen
     }
@@ -381,7 +401,7 @@ impl Client {
     pub fn send_message(&mut self, msg: impl Into<Text>) {
         self.write_packet(&SystemChatMessage {
             chat: msg.into(),
-            kind: VarInt(0),
+            overlay: false
         });
     }
 
@@ -390,6 +410,17 @@ impl Client {
             channel,
             data: RawBytes(data),
         });
+    }
+
+    pub fn held_item_slot(&self) -> u16 {
+        self.held_item_slot
+    }
+
+    pub fn kick(&mut self, reason: impl Into<Text>) {
+        self.write_packet(&DisconnectPlay {
+            reason: reason.into(),
+        });
+        self.is_disconnected = true;
     }
 }
 
@@ -505,9 +536,9 @@ fn update_one_client(
     } else {
         if client.view_distance != client.old_view_distance {
             // Change the render distance fog.
-            client
-                .enc
-                .append_packet(&SetRenderDistance(VarInt(client.view_distance.into())))?;
+            client.enc.append_packet(&SetRenderDistance {
+                view_distance: VarInt(client.view_distance.into()),
+            })?;
         }
 
         if client.needs_respawn {
@@ -533,7 +564,7 @@ fn update_one_client(
     if server.current_tick() % (server.tps() * 10) == 0 {
         if client.got_keepalive {
             let id = rand::random();
-            client.enc.write_packet(&KeepAliveS2c { id });
+            // client.enc.write_packet(&KeepAliveS2c { id });
             client.last_keepalive_id = id;
             client.got_keepalive = false;
         } else {
@@ -799,4 +830,82 @@ fn update_one_client(
         .context("failed to flush packet queue")?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+
+    use bevy_app::App;
+    use valence_protocol::packets::s2c::play::ChunkDataAndUpdateLight;
+    use valence_protocol::packets::S2cPlayPacket;
+
+    use super::*;
+    use crate::instance::Chunk;
+    use crate::unit_test::util::scenario_single_client;
+
+    #[test]
+    fn client_chunk_view_change() {
+        let mut app = App::new();
+
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+
+        let mut instance = app
+            .world
+            .query::<&mut Instance>()
+            .single_mut(&mut app.world);
+
+        for z in -5..5 {
+            for x in -5..5 {
+                instance.insert_chunk([x, z], Chunk::default());
+            }
+        }
+
+        let mut client = app.world.get_mut::<Client>(client_ent).unwrap();
+
+        client.set_position([8.0, 0.0, 8.0]);
+        client.set_view_distance(8);
+
+        // Tick
+        app.update();
+        let mut client = app.world.get_mut::<Client>(client_ent).unwrap();
+
+        let mut loaded_chunks = HashSet::new();
+
+        for pkt in client_helper.collect_sent().unwrap() {
+            if let S2cPlayPacket::ChunkDataAndUpdateLight(ChunkDataAndUpdateLight {
+                chunk_x,
+                chunk_z,
+                ..
+            }) = pkt
+            {
+                assert!(
+                    loaded_chunks.insert(ChunkPos::new(chunk_x, chunk_z)),
+                    "bad chunk: ({chunk_x}, {chunk_z})"
+                );
+            }
+        }
+
+        assert!(!loaded_chunks.is_empty());
+
+        // Move the client to the adjacent chunk.
+        client.set_position([24.0, 0.0, 24.0]);
+
+        // Tick
+        app.update();
+
+        for pkt in client_helper.collect_sent().unwrap() {
+            if let S2cPlayPacket::ChunkDataAndUpdateLight(ChunkDataAndUpdateLight {
+                chunk_x,
+                chunk_z,
+                ..
+            }) = pkt
+            {
+                assert!(
+                    loaded_chunks.insert(ChunkPos::new(chunk_x, chunk_z)),
+                    "bad chunk: ({chunk_x}, {chunk_z})"
+                );
+            }
+        }
+    }
 }
