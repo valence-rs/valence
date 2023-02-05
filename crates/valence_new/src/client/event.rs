@@ -395,24 +395,33 @@ pub struct RenameItem {
     pub name: Box<str>,
 }
 
-#[derive(Clone, Debug)]
-pub struct ResourcePackLoaded {
-    pub client: Entity,
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum ResourcePackStatus {
+    /// The client has accepted the server's resource pack.
+    Accepted,
+    /// The client has declined the server's resource pack.
+    Declined,
+    /// The client has successfully loaded the server's resource pack.
+    Loaded,
+    /// The client has failed to download the server's resource pack.
+    FailedDownload,
+}
+
+impl From<ResourcePackC2s> for ResourcePackStatus {
+    fn from(packet: ResourcePackC2s) -> Self {
+        match packet {
+            ResourcePackC2s::Accepted { .. } => Self::Accepted,
+            ResourcePackC2s::Declined { .. } => Self::Declined,
+            ResourcePackC2s::SuccessfullyLoaded { .. } => Self::Loaded,
+            ResourcePackC2s::FailedDownload { .. } => Self::FailedDownload,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
-pub struct ResourcePackDeclined {
+pub struct ResourcePackStatusChange {
     pub client: Entity,
-}
-
-#[derive(Clone, Debug)]
-pub struct ResourcePackFailedDownload {
-    pub client: Entity,
-}
-
-#[derive(Clone, Debug)]
-pub struct ResourcePackAccepted {
-    pub client: Entity,
+    pub status: ResourcePackStatus,
 }
 
 #[derive(Clone, Debug)]
@@ -650,10 +659,7 @@ events! {
         ChangeRecipeBookSettings
         SetSeenRecipe
         RenameItem
-        ResourcePackLoaded
-        ResourcePackDeclined
-        ResourcePackFailedDownload
-        ResourcePackAccepted
+        ResourcePackStatusChange
         OpenAdvancementTab
         CloseAdvancementScreen
         SelectTrade
@@ -1212,24 +1218,15 @@ fn handle_one_packet(
                 name: p.item_name.into(),
             });
         }
-        C2sPlayPacket::ResourcePackC2s(p) => match p {
-            ResourcePackC2s::SuccessfullyLoaded => events
+        C2sPlayPacket::ResourcePackC2s(p) => {
+            events
                 .3
-                .resource_pack_loaded
-                .send(ResourcePackLoaded { client: entity }),
-            ResourcePackC2s::Declined => events
-                .3
-                .resource_pack_declined
-                .send(ResourcePackDeclined { client: entity }),
-            ResourcePackC2s::FailedDownload => events
-                .3
-                .resource_pack_failed_download
-                .send(ResourcePackFailedDownload { client: entity }),
-            ResourcePackC2s::Accepted => events
-                .3
-                .resource_pack_accepted
-                .send(ResourcePackAccepted { client: entity }),
-        },
+                .resource_pack_status_change
+                .send(ResourcePackStatusChange {
+                    client: entity,
+                    status: p.into(),
+                })
+        }
         C2sPlayPacket::SeenAdvancements(p) => match p {
             SeenAdvancements::OpenedTab { tab_id } => {
                 events.3.open_advancement_tab.send(OpenAdvancementTab {

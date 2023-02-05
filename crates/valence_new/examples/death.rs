@@ -20,30 +20,32 @@ pub fn main() {
 }
 
 fn setup(world: &mut World) {
-    let mut instance = world
-        .resource::<Server>()
-        .new_instance(DimensionId::default());
+    for block in [BlockState::GRASS_BLOCK, BlockState::DEEPSLATE] {
+        let mut instance = world
+            .resource::<Server>()
+            .new_instance(DimensionId::default());
 
-    for z in -5..5 {
-        for x in -5..5 {
-            instance.insert_chunk([x, z], Chunk::default());
+        for z in -5..5 {
+            for x in -5..5 {
+                instance.insert_chunk([x, z], Chunk::default());
+            }
         }
-    }
 
-    for z in -25..25 {
-        for x in -25..25 {
-            instance.set_block_state([x, SPAWN_Y, z], BlockState::GRASS_BLOCK);
+        for z in -25..25 {
+            for x in -25..25 {
+                instance.set_block_state([x, SPAWN_Y, z], block);
+            }
         }
-    }
 
-    world.spawn(instance);
+        world.spawn(instance);
+    }
 }
 
 fn init_clients(
     mut clients: Query<&mut Client, Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
-    let instance = instances.get_single().unwrap();
+    let instance = instances.into_iter().next().unwrap();
 
     for mut client in &mut clients {
         client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
@@ -66,12 +68,25 @@ fn squat_and_die(mut clients: Query<&mut Client>, mut events: EventReader<StartS
     }
 }
 
-fn necromancy(mut clients: Query<&mut Client>, mut events: EventReader<PerformRespawn>) {
+fn necromancy(
+    mut clients: Query<&mut Client>,
+    mut events: EventReader<PerformRespawn>,
+    instances: Query<Entity, With<Instance>>,
+) {
     for event in events.iter() {
         let Ok(mut client) = clients.get_component_mut::<Client>(event.client) else {
             continue;
         };
         client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
         client.set_velocity([0.0, 0.0, 0.0]);
+        client.set_yaw(0.0);
+        client.set_pitch(0.0);
+        // make the client respawn in another instance
+        let idx = instances
+            .iter()
+            .position(|i| i == client.instance())
+            .unwrap();
+        let count = instances.iter().count();
+        client.set_instance(instances.into_iter().nth((idx + 1) % count).unwrap());
     }
 }
