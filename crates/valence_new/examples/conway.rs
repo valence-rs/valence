@@ -10,7 +10,10 @@ pub fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(ServerPlugin::new(()))
+        .add_plugin(ServerPlugin::new(()).with_biomes(vec![Biome {
+            grass_color: Some(0x00ff00),
+            ..Default::default()
+        }]))
         .add_system_to_stage(EventLoop, default_event_handler)
         .add_startup_system(setup)
         .add_system(init_clients)
