@@ -48,11 +48,7 @@ fn setup(world: &mut World) {
         }
     }
 
-    for z in -25..25 {
-        for x in -25..25 {
-            instance.set_block_state([x, SPAWN_Y, z], BlockState::GRASS_BLOCK);
-        }
-    }
+    instance.set_block_state([0, SPAWN_Y, 0], BlockState::BEDROCK);
 
     world.spawn(instance);
 
@@ -67,7 +63,7 @@ fn init_clients(
     let instance = instances.get_single().unwrap();
 
     for mut client in &mut clients {
-        client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
+        client.set_position([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
         client.set_instance(instance);
         client.set_game_mode(GameMode::Creative);
     }
@@ -89,7 +85,7 @@ fn manage_particles(
     let particle = &spawner.particles[spawner.index];
     let name = dbg_name(particle);
 
-    let pos = [0.5, SPAWN_Y as f32 + 2.0, 2.5];
+    let pos = [0.5, SPAWN_Y as f64 + 2.0, 5.0];
     let offset = [0.5, 0.5, 0.5];
 
     for mut client in clients.iter_mut() {

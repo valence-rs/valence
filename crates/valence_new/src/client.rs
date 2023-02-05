@@ -481,17 +481,15 @@ impl Client {
         &mut self,
         particle: &Particle,
         long_distance: bool,
-        position: impl Into<Vec3>,
+        position: impl Into<DVec3>,
         offset: impl Into<Vec3>,
         max_speed: f32,
         count: i32,
     ) {
-        let p = position.into();
-        let position = [p.x as f64, p.y as f64, p.y as f64];
         self.write_packet(&ParticleS2c {
             particle: particle.clone(),
             long_distance,
-            position,
+            position: position.into().into(),
             offset: offset.into().into(),
             max_speed,
             count,
