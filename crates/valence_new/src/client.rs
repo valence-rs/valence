@@ -10,8 +10,9 @@ use uuid::Uuid;
 use valence_protocol::packets::s2c::play::{
     AcknowledgeBlockChange, CombatDeath, DisconnectPlay, EntityEvent, GameEvent, KeepAliveS2c,
     LoginPlayOwned, PluginMessageS2c, RemoveEntitiesEncode, ResourcePackS2c, RespawnOwned,
-    SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata, SetEntityVelocity,
-    SetRenderDistance, SynchronizePlayerPosition, SystemChatMessage, UnloadChunk,
+    SetActionBarText, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata,
+    SetEntityVelocity, SetRenderDistance, SetSubtitleText, SetTitleAnimationTimes, SetTitleText,
+    SynchronizePlayerPosition, SystemChatMessage, UnloadChunk,
 };
 use valence_protocol::types::{GameEventKind, GameMode, Property, SyncPlayerPosLookFlags};
 use valence_protocol::{
@@ -434,6 +435,44 @@ impl Client {
             hash,
             forced,
             prompt_message,
+        });
+    }
+
+    /// Sets the title this client sees.
+    ///
+    /// A title is a large piece of text displayed in the center of the screen
+    /// which may also include a subtitle underneath it. The title can be
+    /// configured to fade in and out using the [`SetTitleAnimationTimes`]
+    /// struct.
+    pub fn set_title(
+        &mut self,
+        title: impl Into<Text>,
+        subtitle: impl Into<Text>,
+        animation: impl Into<Option<SetTitleAnimationTimes>>,
+    ) {
+        let title = title.into();
+        let subtitle = subtitle.into();
+
+        self.write_packet(&SetTitleText { title_text: title });
+
+        if !subtitle.is_empty() {
+            self.write_packet(&SetSubtitleText {
+                subtitle_text: subtitle,
+            });
+        }
+
+        if let Some(anim) = animation.into() {
+            self.write_packet(&anim);
+        }
+    }
+
+    /// Sets the action bar for this client.
+    ///
+    /// The action bar is a small piece of text displayed at the bottom of the
+    /// screen, above the hotbar.
+    pub fn set_action_bar(&mut self, text: impl Into<Text>) {
+        self.write_packet(&SetActionBarText {
+            action_bar_text: text.into(),
         });
     }
 }
