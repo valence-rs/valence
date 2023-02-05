@@ -78,10 +78,7 @@ fn interpret_command(mut clients: Query<&mut Client>, mut events: EventReader<Ch
                     "survival" => GameMode::Survival,
                     "spectator" => GameMode::Spectator,
                     _ => {
-                        client.send_message(
-                            "Invalid gamemode. Use /gamemode creative or /gamemode survival."
-                                .italic(),
-                        );
+                        client.send_message("Invalid gamemode.".italic());
                         continue;
                     }
                 };
