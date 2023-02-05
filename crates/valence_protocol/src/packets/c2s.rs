@@ -8,9 +8,8 @@ use crate::raw_bytes::RawBytes;
 use crate::types::{
     Action, ChatMode, ClickContainerMode, CommandArgumentSignature, CommandBlockFlags,
     CommandBlockMode, Difficulty, DiggingStatus, DisplayedSkinParts, EntityInteraction, Hand,
-    HandshakeNextState, MainHand, MessageAcknowledgment, PlayerInputFlags, RecipeBookId,
-    StructureBlockAction, StructureBlockFlags, StructureBlockMirror, StructureBlockMode,
-    StructureBlockRotation,
+    HandshakeNextState, MainHand, PlayerInputFlags, RecipeBookId, StructureBlockAction,
+    StructureBlockFlags, StructureBlockMirror, StructureBlockMode, StructureBlockRotation,
 };
 use crate::username::Username;
 use crate::var_int::VarInt;
@@ -120,11 +119,15 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x02]
-    pub struct ChangeDifficulty(pub Difficulty);
+    pub struct ChangeDifficulty {
+        pub new_difficulty: Difficulty,
+    }
 
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x03]
-    pub struct MessageAcknowledgmentC2s<'a>(pub MessageAcknowledgment<'a>);
+    pub struct MessageAcknowledgmentC2s {
+        pub message_count: VarInt,
+    }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x04]
@@ -133,8 +136,11 @@ pub mod play {
         pub timestamp: u64,
         pub salt: u64,
         pub argument_signatures: Vec<CommandArgumentSignature<'a>>,
-        pub signed_preview: bool,
-        pub acknowledgement: MessageAcknowledgment<'a>,
+        pub message_count: VarInt,
+        // This is a bitset of 20; each bit represents one
+        // of the last 20 messages received and whether or not
+        // the message was acknowledged by the client
+        pub acknowledgement: &'a [u8; 3],
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -249,7 +255,9 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x12]
-    pub struct LockDifficulty(pub bool);
+    pub struct LockDifficulty {
+        pub locked: bool,
+    }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x13]
@@ -277,7 +285,9 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x16]
-    pub struct SetPlayerOnGround(pub bool);
+    pub struct SetPlayerOnGround {
+        pub on_ground: bool,
+    }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x17]
@@ -474,7 +484,9 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x2f]
-    pub struct SwingArm(pub Hand);
+    pub struct SwingArm {
+        pub hand: Hand,
+    }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x30]
@@ -506,7 +518,7 @@ pub mod play {
             ConfirmTeleport,
             QueryBlockEntityTag,
             ChangeDifficulty,
-            MessageAcknowledgmentC2s<'a>,
+            MessageAcknowledgmentC2s,
             ChatCommand<'a>,
             ChatMessage<'a>,
             ClientCommand,

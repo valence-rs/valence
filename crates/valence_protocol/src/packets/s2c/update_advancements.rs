@@ -32,8 +32,8 @@ pub struct AdvancementDisplay<'a> {
     pub frame_type: VarInt,
     pub flags: i32,
     pub background_texture: Option<Ident<&'a str>>,
-    pub x_coord: f64,
-    pub y_coord: f64,
+    pub x_coord: f32,
+    pub y_coord: f32,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Encode, Decode)]
@@ -78,8 +78,8 @@ impl<'a> Decode<'a> for AdvancementDisplay<'a> {
             None
         };
 
-        let x_coord = f64::decode(r)?;
-        let y_coord = f64::decode(r)?;
+        let x_coord = f32::decode(r)?;
+        let y_coord = f32::decode(r)?;
 
         Ok(Self {
             title,
