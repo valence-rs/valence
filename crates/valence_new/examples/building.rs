@@ -1,6 +1,6 @@
 use valence_new::client::despawn_disconnected_clients;
 use valence_new::client::event::{
-    default_event_handler, FinishDigging, StartDigging, StartSneaking, UseItemOnBlock,
+    default_event_handler, ChatCommand, FinishDigging, StartDigging, UseItemOnBlock,
 };
 use valence_new::prelude::*;
 use valence_protocol::types::Hand;
@@ -13,7 +13,7 @@ pub fn main() {
     App::new()
         .add_plugin(ServerPlugin::new(()))
         .add_system_to_stage(EventLoop, default_event_handler)
-        .add_system_to_stage(EventLoop, toggle_gamemode_on_sneak)
+        .add_system_to_stage(EventLoop, interpret_command)
         .add_system_to_stage(EventLoop, digging_creative_mode)
         .add_system_to_stage(EventLoop, digging_survival_mode)
         .add_system_to_stage(EventLoop, place_blocks)
@@ -53,24 +53,43 @@ fn init_clients(
         client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
         client.set_instance(instance);
         client.set_game_mode(GameMode::Creative);
-        client.send_message("Welcome to Valence! Build something cool.".italic());
+        client.set_op_level(4); // required to use F3+F4, eg /gamemode
+        client.send_message(
+            "Welcome to Valence! Build something cool. Use F3+F4 to change gamemode".italic(),
+        );
     }
 }
 
-fn toggle_gamemode_on_sneak(
-    mut clients: Query<&mut Client>,
-    mut events: EventReader<StartSneaking>,
-) {
+fn interpret_command(mut clients: Query<&mut Client>, mut events: EventReader<ChatCommand>) {
     for event in events.iter() {
         let Ok(mut client) = clients.get_component_mut::<Client>(event.client) else {
             continue;
         };
-        let mode = client.game_mode();
-        client.set_game_mode(match mode {
-            GameMode::Survival => GameMode::Creative,
-            GameMode::Creative => GameMode::Survival,
-            _ => GameMode::Creative,
-        });
+
+        let mut args = event.command.split_whitespace();
+        let command = args.next().unwrap_or_default();
+
+        match command {
+            "gamemode" => {
+                let mode = args.next().unwrap_or_default();
+                let mode = match mode {
+                    "adventure" => GameMode::Adventure,
+                    "creative" => GameMode::Creative,
+                    "survival" => GameMode::Survival,
+                    "spectator" => GameMode::Spectator,
+                    _ => {
+                        client.send_message(
+                            "Invalid gamemode. Use /gamemode creative or /gamemode survival."
+                                .italic(),
+                        );
+                        continue;
+                    }
+                };
+                client.set_game_mode(mode);
+                client.send_message(format!("Set gamemode to {:?}.", mode).italic());
+            }
+            _ => { /* ignored */ }
+        }
     }
 }
 
