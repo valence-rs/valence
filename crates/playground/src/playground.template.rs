@@ -2,8 +2,8 @@ use valence_new::client::despawn_disconnected_clients;
 use valence_new::client::event::default_event_handler;
 use valence_new::prelude::*;
 
-mod extras;
-use extras::*;
+#[allow(unused_imports)]
+use crate::extras::*;
 
 const SPAWN_Y: i32 = 64;
 
