@@ -47,7 +47,7 @@ fn init_clients(
         client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
         client.set_instance(instance);
         client.set_game_mode(GameMode::Creative);
-        client.set_op_level(4); // required to use F3+F4, eg /gamemode
+        client.set_op_level(2); // required to use F3+F4, eg /gamemode
         client.send_message("Welcome to Valence! Use F3+F4 to change gamemode.".italic());
     }
 }
