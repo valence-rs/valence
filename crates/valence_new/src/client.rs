@@ -52,6 +52,7 @@ pub struct Client {
     pitch_modified: bool,
     on_ground: bool,
     game_mode: GameMode,
+    op_level: u8,
     block_change_sequence: i32,
     // TODO: make this a component and default to the self-entity's player data?
     player_data: Player,
@@ -120,6 +121,7 @@ impl Client {
             pitch_modified: true,
             on_ground: false,
             game_mode: GameMode::default(),
+            op_level: 0,
             block_change_sequence: 0,
             player_data: Player::new(),
             view_distance: 2,
@@ -343,6 +345,25 @@ impl Client {
         }
     }
 
+    /// Sets the client's OP level.
+    pub fn set_op_level(&mut self, op_level: u8) {
+        self.op_level = op_level;
+
+        if op_level > 4 {
+            return;
+        }
+
+        self.write_packet(&EntityEvent {
+            entity_id: 0,
+            entity_status: 24 + op_level,
+        });
+    }
+
+    /// Gets the client's OP level.
+    pub fn op_level(&self) -> u8 {
+        self.op_level
+    }
+
     /// Sets the last death location. The client will see
     /// `minecraft:recovery_compass` items point at the provided position.
     /// If the client's current dimension differs from the provided
@@ -390,7 +411,7 @@ impl Client {
     pub fn send_message(&mut self, msg: impl Into<Text>) {
         self.write_packet(&SystemChatMessage {
             chat: msg.into(),
-            overlay: false
+            overlay: false,
         });
     }
 
