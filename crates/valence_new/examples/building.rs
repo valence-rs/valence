@@ -71,6 +71,11 @@ fn interpret_command(mut clients: Query<&mut Client>, mut events: EventReader<Ch
 
         match command {
             "gamemode" => {
+                if client.op_level() < 2 {
+                    // not enough permissions to use gamemode command
+                    continue;
+                }
+
                 let mode = args.next().unwrap_or_default();
                 let mode = match mode {
                     "adventure" => GameMode::Adventure,
