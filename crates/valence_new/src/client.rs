@@ -9,9 +9,9 @@ use tracing::warn;
 use uuid::Uuid;
 use valence_protocol::packets::s2c::play::{
     AcknowledgeBlockChange, CombatDeath, DisconnectPlay, EntityEvent, GameEvent, KeepAliveS2c,
-    LoginPlayOwned, PluginMessageS2c, RemoveEntitiesEncode, RespawnOwned, SetCenterChunk,
-    SetDefaultSpawnPosition, SetEntityMetadata, SetEntityVelocity, SetRenderDistance,
-    SynchronizePlayerPosition, SystemChatMessage, UnloadChunk,
+    LoginPlayOwned, PluginMessageS2c, RemoveEntitiesEncode, ResourcePackS2c, RespawnOwned,
+    SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata, SetEntityVelocity,
+    SetRenderDistance, SynchronizePlayerPosition, SystemChatMessage, UnloadChunk,
 };
 use valence_protocol::types::{GameEventKind, GameMode, Property, SyncPlayerPosLookFlags};
 use valence_protocol::{
@@ -390,7 +390,7 @@ impl Client {
     pub fn send_message(&mut self, msg: impl Into<Text>) {
         self.write_packet(&SystemChatMessage {
             chat: msg.into(),
-            overlay: false
+            overlay: false,
         });
     }
 
@@ -410,6 +410,31 @@ impl Client {
             reason: reason.into(),
         });
         self.is_disconnected = true;
+    }
+
+    /// Requests that the client download and enable a resource pack.
+    ///
+    /// # Arguments
+    /// * `url` - The URL of the resource pack file.
+    /// * `hash` - The SHA-1 hash of the resource pack file. Any value other
+    ///   than a 40-character hexadecimal string is ignored by the client.
+    /// * `forced` - Whether a client should be kicked from the server upon
+    ///   declining the pack (this is enforced client-side)
+    /// * `prompt_message` - A message to be displayed with the resource pack
+    ///   dialog.
+    pub fn set_resource_pack(
+        &mut self,
+        url: &str,
+        hash: &str,
+        forced: bool,
+        prompt_message: Option<Text>,
+    ) {
+        self.write_packet(&ResourcePackS2c {
+            url,
+            hash,
+            forced,
+            prompt_message,
+        });
     }
 }
 
