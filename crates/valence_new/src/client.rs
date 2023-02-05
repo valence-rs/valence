@@ -553,7 +553,7 @@ fn update_one_client(
     if server.current_tick() % (server.tps() * 10) == 0 {
         if client.got_keepalive {
             let id = rand::random();
-            client.enc.write_packet(&KeepAliveS2c { id });
+            // client.enc.write_packet(&KeepAliveS2c { id });
             client.last_keepalive_id = id;
             client.got_keepalive = false;
         } else {
@@ -828,4 +828,82 @@ fn update_one_client(
         .context("failed to flush packet queue")?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+
+    use bevy_app::App;
+    use valence_protocol::packets::s2c::play::ChunkDataAndUpdateLight;
+    use valence_protocol::packets::S2cPlayPacket;
+
+    use super::*;
+    use crate::instance::Chunk;
+    use crate::unit_test::util::scenario_single_client;
+
+    #[test]
+    fn client_chunk_view_change() {
+        let mut app = App::new();
+
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+
+        let mut instance = app
+            .world
+            .query::<&mut Instance>()
+            .single_mut(&mut app.world);
+
+        for z in -5..5 {
+            for x in -5..5 {
+                instance.insert_chunk([x, z], Chunk::default());
+            }
+        }
+
+        let mut client = app.world.get_mut::<Client>(client_ent).unwrap();
+
+        client.set_position([8.0, 0.0, 8.0]);
+        client.set_view_distance(8);
+
+        // Tick
+        app.update();
+        let mut client = app.world.get_mut::<Client>(client_ent).unwrap();
+
+        let mut loaded_chunks = HashSet::new();
+
+        for pkt in client_helper.collect_sent().unwrap() {
+            if let S2cPlayPacket::ChunkDataAndUpdateLight(ChunkDataAndUpdateLight {
+                chunk_x,
+                chunk_z,
+                ..
+            }) = pkt
+            {
+                assert!(
+                    loaded_chunks.insert(ChunkPos::new(chunk_x, chunk_z)),
+                    "bad chunk: ({chunk_x}, {chunk_z})"
+                );
+            }
+        }
+
+        assert!(!loaded_chunks.is_empty());
+
+        // Move the client to the adjacent chunk.
+        client.set_position([24.0, 0.0, 24.0]);
+
+        // Tick
+        app.update();
+
+        for pkt in client_helper.collect_sent().unwrap() {
+            if let S2cPlayPacket::ChunkDataAndUpdateLight(ChunkDataAndUpdateLight {
+                chunk_x,
+                chunk_z,
+                ..
+            }) = pkt
+            {
+                assert!(
+                    loaded_chunks.insert(ChunkPos::new(chunk_x, chunk_z)),
+                    "bad chunk: ({chunk_x}, {chunk_z})"
+                );
+            }
+        }
+    }
 }
