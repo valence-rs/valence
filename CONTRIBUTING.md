@@ -25,10 +25,10 @@ Examples can be run with `cargo run -p valence --example <example_name>`.
 
 Playgrounds are meant to provide a quick and minimal environment to test out new code or reproduce bugs. Playgrounds are also a great way test out quick ideas. This is the preferred method for providing code samples in issues and pull requests.
 
-To get started with a new playground, copy the template to `main.rs`.
+To get started with a new playground, copy the template to `playground.rs`.
 
 ```bash
-cp crates/playground/src/template.rs crates/playground/src/main.rs
+cp crates/playground/src/template.rs crates/playground/src/playground.rs
 ```
 
 Make your changes to `crates/playground/src/playground.rs`. To run it:

@@ -48,7 +48,7 @@ fn init_clients(
     for mut client in &mut clients {
         client.set_position([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
         client.set_instance(instance);
-        client.set_game_mode(GameMode::Creative);
+        client.set_game_mode(GameMode::Survival);
     }
 }
 
