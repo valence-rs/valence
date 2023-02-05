@@ -553,7 +553,7 @@ fn update_one_client(
     if server.current_tick() % (server.tps() * 10) == 0 {
         if client.got_keepalive {
             let id = rand::random();
-            // client.enc.write_packet(&KeepAliveS2c { id });
+            client.enc.write_packet(&KeepAliveS2c { id });
             client.last_keepalive_id = id;
             client.got_keepalive = false;
         } else {
