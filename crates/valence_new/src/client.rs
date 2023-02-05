@@ -401,7 +401,7 @@ impl Client {
     pub fn send_message(&mut self, msg: impl Into<Text>) {
         self.write_packet(&SystemChatMessage {
             chat: msg.into(),
-            overlay: false
+            overlay: false,
         });
     }
 
@@ -564,7 +564,7 @@ fn update_one_client(
     if server.current_tick() % (server.tps() * 10) == 0 {
         if client.got_keepalive {
             let id = rand::random();
-            // client.enc.write_packet(&KeepAliveS2c { id });
+            client.enc.write_packet(&KeepAliveS2c { id });
             client.last_keepalive_id = id;
             client.got_keepalive = false;
         } else {
@@ -834,7 +834,7 @@ fn update_one_client(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use std::collections::BTreeSet;
 
     use bevy_app::App;
     use valence_protocol::packets::s2c::play::ChunkDataAndUpdateLight;
@@ -855,8 +855,8 @@ mod tests {
             .query::<&mut Instance>()
             .single_mut(&mut app.world);
 
-        for z in -5..5 {
-            for x in -5..5 {
+        for z in -15..15 {
+            for x in -15..15 {
                 instance.insert_chunk([x, z], Chunk::default());
             }
         }
@@ -864,13 +864,13 @@ mod tests {
         let mut client = app.world.get_mut::<Client>(client_ent).unwrap();
 
         client.set_position([8.0, 0.0, 8.0]);
-        client.set_view_distance(8);
+        client.set_view_distance(6);
 
         // Tick
         app.update();
         let mut client = app.world.get_mut::<Client>(client_ent).unwrap();
 
-        let mut loaded_chunks = HashSet::new();
+        let mut loaded_chunks = BTreeSet::new();
 
         for pkt in client_helper.collect_sent().unwrap() {
             if let S2cPlayPacket::ChunkDataAndUpdateLight(ChunkDataAndUpdateLight {
@@ -881,9 +881,13 @@ mod tests {
             {
                 assert!(
                     loaded_chunks.insert(ChunkPos::new(chunk_x, chunk_z)),
-                    "bad chunk: ({chunk_x}, {chunk_z})"
+                    "({chunk_x}, {chunk_z})"
                 );
             }
+        }
+
+        for pos in client.view().iter() {
+            assert!(loaded_chunks.contains(&pos), "{pos:?}");
         }
 
         assert!(!loaded_chunks.is_empty());
@@ -893,19 +897,32 @@ mod tests {
 
         // Tick
         app.update();
+        let client = app.world.get_mut::<Client>(client_ent).unwrap();
 
         for pkt in client_helper.collect_sent().unwrap() {
-            if let S2cPlayPacket::ChunkDataAndUpdateLight(ChunkDataAndUpdateLight {
-                chunk_x,
-                chunk_z,
-                ..
-            }) = pkt
-            {
-                assert!(
-                    loaded_chunks.insert(ChunkPos::new(chunk_x, chunk_z)),
-                    "bad chunk: ({chunk_x}, {chunk_z})"
-                );
+            match pkt {
+                S2cPlayPacket::ChunkDataAndUpdateLight(ChunkDataAndUpdateLight {
+                    chunk_x,
+                    chunk_z,
+                    ..
+                }) => {
+                    assert!(
+                        loaded_chunks.insert(ChunkPos::new(chunk_x, chunk_z)),
+                        "({chunk_x}, {chunk_z})"
+                    );
+                }
+                S2cPlayPacket::UnloadChunk(UnloadChunk { chunk_x, chunk_z }) => {
+                    assert!(
+                        loaded_chunks.remove(&ChunkPos::new(chunk_x, chunk_z)),
+                        "({chunk_x}, {chunk_z})"
+                    );
+                }
+                _ => {}
             }
+        }
+
+        for pos in client.view().iter() {
+            assert!(loaded_chunks.contains(&pos), "{pos:?}");
         }
     }
 }
