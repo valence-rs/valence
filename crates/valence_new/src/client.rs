@@ -7,10 +7,11 @@ use bytes::BytesMut;
 use glam::{DVec3, Vec3};
 use tracing::warn;
 use uuid::Uuid;
+use valence_protocol::packets::s2c::particle::Particle;
 use valence_protocol::packets::s2c::play::{
     AcknowledgeBlockChange, CombatDeath, DisconnectPlay, EntityEvent, GameEvent, KeepAliveS2c,
-    LoginPlayOwned, PluginMessageS2c, RemoveEntitiesEncode, ResourcePackS2c, RespawnOwned,
-    SetActionBarText, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata,
+    LoginPlayOwned, ParticleS2c, PluginMessageS2c, RemoveEntitiesEncode, ResourcePackS2c,
+    RespawnOwned, SetActionBarText, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata,
     SetEntityVelocity, SetRenderDistance, SetSubtitleText, SetTitleAnimationTimes, SetTitleText,
     SynchronizePlayerPosition, SystemChatMessage, UnloadChunk,
 };
@@ -474,6 +475,27 @@ impl Client {
         self.write_packet(&SetActionBarText {
             action_bar_text: text.into(),
         });
+    }
+
+    pub fn play_particle(
+        &mut self,
+        particle: &Particle,
+        long_distance: bool,
+        position: impl Into<Vec3>,
+        offset: impl Into<Vec3>,
+        max_speed: f32,
+        count: i32,
+    ) {
+        let p = position.into();
+        let position = [p.x as f64, p.y as f64, p.y as f64];
+        self.write_packet(&ParticleS2c {
+            particle: particle.clone(),
+            long_distance,
+            position,
+            offset: offset.into().into(),
+            max_speed,
+            count,
+        })
     }
 }
 
