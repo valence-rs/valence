@@ -125,3 +125,10 @@ to name this variable `num_foos`.
 All public items should be documented. Documentation must be written with complete sentences and correct grammar.
 Consider using [intra-doc links](https://doc.rust-lang.org/rustdoc/write-documentation/linking-to-items-by-name.html)
 where appropriate.
+
+## Unit Tests
+
+Unit tests help your contributions last! They ensure that your code works as expected and that it continues to work in
+the future.
+
+You can find examples of unit tests in the `unit_test/example.rs` module.
