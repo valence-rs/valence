@@ -1,3 +1,6 @@
+<!-- Please make sure that your PR is aligned with the guidelines in CONTRIBUTING.md to the best of your ability. -->
+<!-- Good PRs have tests! Make sure you have sufficient test coverage. -->
+
 ## Description
 
 <!-- Describe the changes you've made. You may include any justification you want here. -->
@@ -20,9 +23,6 @@ PASTE YOUR PLAYGROUND CODE HERE
 <!-- You need to include steps regardless of whether or not you are using a playground. -->
 Steps:
 1.
-
-- [ ] I have reviewed CONTRIBUTING.md and the PR is aligned with it.
-- [ ] I have added tests for my changes.
 
 #### Related
 
