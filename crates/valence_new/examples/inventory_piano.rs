@@ -3,8 +3,8 @@ use valence_new::client::event::{
     default_event_handler, ClickContainer, SetCreativeModeSlot, StartSneaking,
 };
 use valence_new::prelude::*;
+use valence_protocol::packets::s2c::sound_id::SoundId;
 use valence_protocol::types::SoundCategory;
-use valence_protocol::VarInt;
 
 const SPAWN_Y: i32 = 64;
 
@@ -117,7 +117,7 @@ fn play_note(client: &mut Client, position: BlockPos, clicked_slot: i16) {
         client.send_message(format!("playing note with pitch: {pitch}"));
 
         client.write_packet(&valence_protocol::packets::s2c::play::SoundEffect {
-            id: VarInt::from(767),
+            id: SoundId::Reference { id: 767.into() },
             seed: 0,
             position: position.into(),
             category: SoundCategory::Master,

@@ -356,7 +356,7 @@ pub(crate) fn update_open_inventories(
             let packet = OpenScreen {
                 window_id: VarInt(client.window_id.into()),
                 window_type: WindowType::from(inventory.kind),
-                window_title: inventory.title.clone(),
+                window_title: (&inventory.title).into(),
             };
             client.write_packet(&packet);
 

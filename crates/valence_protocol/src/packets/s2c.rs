@@ -12,9 +12,9 @@ use crate::text::Text;
 use crate::types::{
     AttributeProperty, BossBarAction, ChatSuggestionAction, ChunkDataBlockEntity,
     CommandSuggestionMatch, Difficulty, EntityEffectFlags, FeetOrEyes, GameEventKind, GameMode,
-    GlobalPos, Hand, LookAtEntity, MerchantTrade, PlayerAbilitiesFlags, Property,
-    SoundCategory, Statistic, SyncPlayerPosLookFlags, TagGroup, UpdateObjectiveMode,
-    UpdateScoreAction, WindowType,
+    GlobalPos, Hand, LookAtEntity, MerchantTrade, PlayerAbilitiesFlags, Property, SoundCategory,
+    Statistic, SyncPlayerPosLookFlags, TagGroup, UpdateObjectiveMode, UpdateScoreAction,
+    WindowType,
 };
 use crate::username::Username;
 use crate::var_int::VarInt;
@@ -64,8 +64,8 @@ pub mod login {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x00]
-    pub struct DisconnectLogin {
-        pub reason: Text,
+    pub struct DisconnectLogin<'a> {
+        pub reason: Cow<'a, Text>,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -101,7 +101,7 @@ pub mod login {
     packet_enum! {
         #[derive(Clone)]
         S2cLoginPacket<'a> {
-            DisconnectLogin,
+            DisconnectLogin<'a>,
             EncryptionRequest<'a>,
             LoginSuccess<'a>,
             SetCompression,
@@ -328,17 +328,17 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x17]
-    pub struct DisconnectPlay {
-        pub reason: Text,
+    pub struct DisconnectPlay<'a> {
+        pub reason: Cow<'a, Text>,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x18]
-    pub struct DisguisedChatMessage {
-        pub message: Text,
+    pub struct DisguisedChatMessage<'a> {
+        pub message: Cow<'a, Text>,
         pub chat_type: VarInt,
-        pub chat_type_name: Text,
-        pub target_name: Option<Text>,
+        pub chat_type_name: Cow<'a, Text>,
+        pub target_name: Option<Cow<'a, Text>>,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -554,10 +554,10 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x2c]
-    pub struct OpenScreen {
+    pub struct OpenScreen<'a> {
         pub window_id: VarInt,
         pub window_type: WindowType,
-        pub window_title: Text,
+        pub window_title: Cow<'a, Text>,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -602,11 +602,11 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x34]
-    pub struct CombatDeath {
+    pub struct CombatDeath<'a> {
         pub player_id: VarInt,
         /// Killer's entity ID, -1 if no killer
         pub entity_id: i32,
-        pub message: Text,
+        pub message: Cow<'a, Text>,
     }
 
     #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -659,7 +659,7 @@ pub mod play {
         pub url: &'a str,
         pub hash: &'a str,
         pub forced: bool,
-        pub prompt_message: Option<Text>,
+        pub prompt_message: Option<Cow<'a, Text>>,
     }
 
     #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -723,15 +723,15 @@ pub mod play {
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x41]
     pub struct ServerData<'a> {
-        pub motd: Option<Text>,
+        pub motd: Option<Cow<'a, Text>>,
         pub icon: Option<&'a str>,
         pub enforce_secure_chat: bool,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x42]
-    pub struct SetActionBarText {
-        pub action_bar_text: Text,
+    pub struct SetActionBarText<'a> {
+        pub action_bar_text: Cow<'a, Text>,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -879,8 +879,8 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x59]
-    pub struct SetSubtitleText {
-        pub subtitle_text: Text,
+    pub struct SetSubtitleText<'a> {
+        pub subtitle_text: Cow<'a, Text>,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -896,8 +896,8 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x5b]
-    pub struct SetTitleText {
-        pub title_text: Text,
+    pub struct SetTitleText<'a> {
+        pub title_text: Cow<'a, Text>,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -935,17 +935,17 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x60]
-    pub struct SystemChatMessage {
-        pub chat: Text,
+    pub struct SystemChatMessage<'a> {
+        pub chat: Cow<'a, Text>,
         /// Whether the message is in the actionbar or the chat.
         pub overlay: bool,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x61]
-    pub struct SetTabListHeaderAndFooter {
-        pub header: Text,
-        pub footer: Text,
+    pub struct SetTabListHeaderAndFooter<'a> {
+        pub header: Cow<'a, Text>,
+        pub footer: Cow<'a, Text>,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -1035,8 +1035,8 @@ pub mod play {
             ChatSuggestions<'a>,
             PluginMessageS2c<'a>,
             DeleteMessage<'a>,
-            DisconnectPlay,
-            DisguisedChatMessage,
+            DisconnectPlay<'a>,
+            DisguisedChatMessage<'a>,
             EntityEvent,
             PlaceRecipe<'a>,
             UnloadChunk,
@@ -1056,7 +1056,7 @@ pub mod play {
             UpdateEntityRotation,
             MoveVehicle,
             OpenBook,
-            OpenScreen,
+            OpenScreen<'a>,
             OpenSignEditor,
             PingPlay,
             PlaceGhostRecipe<'a>,
@@ -1064,7 +1064,7 @@ pub mod play {
             PlayerChatMessage<'a>,
             EndCombat,
             EnterCombat,
-            CombatDeath,
+            CombatDeath<'a>,
             PlayerInfoRemove<'a>,
             PlayerInfoUpdate<'a>,
             LookAt,
@@ -1078,7 +1078,7 @@ pub mod play {
             UpdateSectionBlocks,
             SelectAdvancementsTab<'a>,
             ServerData<'a>,
-            SetActionBarText,
+            SetActionBarText<'a>,
             SetBorderCenter,
             SetBorderLerpSize,
             SetBorderSize,
@@ -1101,15 +1101,15 @@ pub mod play {
             UpdateTeams<'a>,
             UpdateScore<'a>,
             SetSimulationDistance,
-            SetSubtitleText,
+            SetSubtitleText<'a>,
             UpdateTime,
-            SetTitleText,
+            SetTitleText<'a>,
             SetTitleAnimationTimes,
             EntitySoundEffect,
             SoundEffect<'a>,
             StopSound<'a>,
-            SystemChatMessage,
-            SetTabListHeaderAndFooter,
+            SystemChatMessage<'a>,
+            SetTabListHeaderAndFooter<'a>,
             TagQueryResponse,
             PickupItem,
             TeleportEntity,

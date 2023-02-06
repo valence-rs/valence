@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::io::Write;
 
 use crate::{Decode, DecodePacket, Encode, EncodePacket, Ident, ItemStack, Text, VarInt};
@@ -26,8 +27,8 @@ pub struct AdvancementRequirements<'a> {
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct AdvancementDisplay<'a> {
-    pub title: Text,
-    pub description: Text,
+    pub title: Cow<'a, Text>,
+    pub description: Cow<'a, Text>,
     pub icon: Option<ItemStack>,
     pub frame_type: VarInt,
     pub flags: i32,
@@ -66,8 +67,8 @@ impl Encode for AdvancementDisplay<'_> {
 
 impl<'a> Decode<'a> for AdvancementDisplay<'a> {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
-        let title = Text::decode(r)?;
-        let description = Text::decode(r)?;
+        let title = <Cow<'a, Text>>::decode(r)?;
+        let description = <Cow<'a, Text>>::decode(r)?;
         let icon = Option::<ItemStack>::decode(r)?;
         let frame_type = VarInt::decode(r)?;
         let flags = i32::decode(r)?;

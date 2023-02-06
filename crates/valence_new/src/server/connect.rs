@@ -246,7 +246,10 @@ async fn handle_login(
 
     if let Err(reason) = callbacks.login(shared, &info).await {
         info!("disconnect at login: \"{reason}\"");
-        conn.send_packet(&DisconnectLogin { reason }).await?;
+        conn.send_packet(&DisconnectLogin {
+            reason: reason.into(),
+        })
+        .await?;
         return Ok(None);
     }
 
@@ -329,7 +332,10 @@ pub(super) async fn login_online(
                 translation_key::MULTIPLAYER_DISCONNECT_UNVERIFIED_USERNAME,
                 [],
             );
-            conn.send_packet(&DisconnectLogin { reason }).await?;
+            conn.send_packet(&DisconnectLogin {
+                reason: reason.into(),
+            })
+            .await?;
             bail!("session server could not verify username");
         }
         status => {
