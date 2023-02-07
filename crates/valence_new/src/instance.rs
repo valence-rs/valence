@@ -7,13 +7,13 @@ pub use chunk_entry::*;
 use num::integer::div_ceil;
 use rustc_hash::FxHashMap;
 use valence_protocol::block::BlockState;
-use valence_protocol::{BlockPos, LengthPrefixedArray};
+use valence_protocol::{BlockPos, EncodePacket, LengthPrefixedArray};
 
 use crate::view::ChunkPos;
 use crate::dimension::DimensionId;
 use crate::entity::McEntity;
 pub use crate::instance::chunk::Chunk;
-use crate::packet::PacketWriter;
+use crate::packet::{PacketWriter, WritePacket};
 use crate::server::{Server, SharedServer};
 use crate::Despawned;
 
@@ -29,6 +29,8 @@ pub struct Instance {
     /// Packet data to send to all clients in this instance at the end of the
     /// tick.
     pub(crate) packet_buf: Vec<u8>,
+    /// Scratch space for writing packets.
+    scratch: Vec<u8>,
 }
 
 pub(crate) struct InstanceInfo {
@@ -90,6 +92,46 @@ impl Instance {
                 .into(),
             },
             packet_buf: vec![],
+            scratch: vec![],
+        }
+    }
+
+    /// Writes a packet into the global packet buffer of this instance. All
+    /// clients in the instance will receive the packet.
+    ///
+    /// This is more efficient than sending the packet to each client
+    /// individually.
+    pub fn write_packet<P>(&mut self, pkt: &P)
+    where
+        P: EncodePacket + ?Sized,
+    {
+        PacketWriter::new(
+            &mut self.packet_buf,
+            self.info.compression_threshold,
+            &mut self.scratch,
+        )
+        .write_packet(pkt);
+    }
+
+    /// Writes a packet to all clients in view of `pos` in this instance. Has no
+    /// effect if there is no chunk at `pos`.
+    ///
+    /// This is more efficient than sending the packet to each client
+    /// individually.
+    pub fn write_packet_at<P>(&mut self, pkt: &P, pos: impl Into<ChunkPos>)
+    where
+        P: EncodePacket + ?Sized,
+    {
+        let pos = pos.into();
+        if let Some(cell) = self.partition.get_mut(&pos) {
+            if cell.chunk.is_some() {
+                PacketWriter::new(
+                    &mut cell.packet_buf,
+                    self.info.compression_threshold,
+                    &mut self.scratch,
+                )
+                .write_packet(pkt);
+            }
         }
     }
 

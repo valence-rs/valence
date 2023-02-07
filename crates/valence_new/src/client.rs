@@ -7,10 +7,12 @@ use bytes::BytesMut;
 use glam::{DVec3, Vec3};
 use tracing::warn;
 use uuid::Uuid;
+use valence_protocol::packets::s2c::particle::Particle;
 use valence_protocol::packets::s2c::play::{
     AcknowledgeBlockChange, CombatDeath, DisconnectPlay, EntityEvent, GameEvent, KeepAliveS2c,
-    LoginPlayOwned, PluginMessageS2c, RemoveEntitiesEncode, RespawnOwned, SetCenterChunk,
-    SetDefaultSpawnPosition, SetEntityMetadata, SetEntityVelocity, SetRenderDistance,
+    LoginPlayOwned, ParticleS2c, PluginMessageS2c, RemoveEntitiesEncode, ResourcePackS2c,
+    RespawnOwned, SetActionBarText, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata,
+    SetEntityVelocity, SetRenderDistance, SetSubtitleText, SetTitleAnimationTimes, SetTitleText,
     SynchronizePlayerPosition, SystemChatMessage, UnloadChunk,
 };
 use valence_protocol::types::{GameEventKind, GameMode, Property, SyncPlayerPosLookFlags};
@@ -52,6 +54,7 @@ pub struct Client {
     pitch_modified: bool,
     on_ground: bool,
     game_mode: GameMode,
+    op_level: u8,
     block_change_sequence: i32,
     // TODO: make this a component and default to the self-entity's player data?
     player_data: Player,
@@ -120,6 +123,7 @@ impl Client {
             pitch_modified: true,
             on_ground: false,
             game_mode: GameMode::default(),
+            op_level: 0,
             block_change_sequence: 0,
             player_data: Player::new(),
             view_distance: 2,
@@ -354,6 +358,25 @@ impl Client {
         }
     }
 
+    /// Sets the client's OP level.
+    pub fn set_op_level(&mut self, op_level: u8) {
+        self.op_level = op_level;
+
+        if op_level > 4 {
+            return;
+        }
+
+        self.write_packet(&EntityEvent {
+            entity_id: 0,
+            entity_status: 24 + op_level,
+        });
+    }
+
+    /// Gets the client's OP level.
+    pub fn op_level(&self) -> u8 {
+        self.op_level
+    }
+
     /// Sets the last death location. The client will see
     /// `minecraft:recovery_compass` items point at the provided position.
     /// If the client's current dimension differs from the provided
@@ -421,6 +444,88 @@ impl Client {
             reason: reason.into(),
         });
         self.is_disconnected = true;
+    }
+
+    /// Requests that the client download and enable a resource pack.
+    ///
+    /// # Arguments
+    /// * `url` - The URL of the resource pack file.
+    /// * `hash` - The SHA-1 hash of the resource pack file. Any value other
+    ///   than a 40-character hexadecimal string is ignored by the client.
+    /// * `forced` - Whether a client should be kicked from the server upon
+    ///   declining the pack (this is enforced client-side)
+    /// * `prompt_message` - A message to be displayed with the resource pack
+    ///   dialog.
+    pub fn set_resource_pack(
+        &mut self,
+        url: &str,
+        hash: &str,
+        forced: bool,
+        prompt_message: Option<Text>,
+    ) {
+        self.write_packet(&ResourcePackS2c {
+            url,
+            hash,
+            forced,
+            prompt_message,
+        });
+    }
+
+    /// Sets the title this client sees.
+    ///
+    /// A title is a large piece of text displayed in the center of the screen
+    /// which may also include a subtitle underneath it. The title can be
+    /// configured to fade in and out using the [`SetTitleAnimationTimes`]
+    /// struct.
+    pub fn set_title(
+        &mut self,
+        title: impl Into<Text>,
+        subtitle: impl Into<Text>,
+        animation: impl Into<Option<SetTitleAnimationTimes>>,
+    ) {
+        let title = title.into();
+        let subtitle = subtitle.into();
+
+        self.write_packet(&SetTitleText { title_text: title });
+
+        if !subtitle.is_empty() {
+            self.write_packet(&SetSubtitleText {
+                subtitle_text: subtitle,
+            });
+        }
+
+        if let Some(anim) = animation.into() {
+            self.write_packet(&anim);
+        }
+    }
+
+    /// Sets the action bar for this client.
+    ///
+    /// The action bar is a small piece of text displayed at the bottom of the
+    /// screen, above the hotbar.
+    pub fn set_action_bar(&mut self, text: impl Into<Text>) {
+        self.write_packet(&SetActionBarText {
+            action_bar_text: text.into(),
+        });
+    }
+
+    pub fn play_particle(
+        &mut self,
+        particle: &Particle,
+        long_distance: bool,
+        position: impl Into<DVec3>,
+        offset: impl Into<Vec3>,
+        max_speed: f32,
+        count: i32,
+    ) {
+        self.write_packet(&ParticleS2c {
+            particle: particle.clone(),
+            long_distance,
+            position: position.into().into(),
+            offset: offset.into().into(),
+            max_speed,
+            count,
+        })
     }
 }
 
