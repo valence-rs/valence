@@ -36,6 +36,7 @@ pub fn main() {
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
+        .add_system_set(PlayerList::default_system_set())
         .run();
 }
 

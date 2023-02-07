@@ -17,6 +17,27 @@ knowledge to complete. New contributors are not required to start with these iss
 If you plan to work on something that's not an open issue, consider making one first so that it can be discussed. This
 way, your contribution will not be rejected when it is submitted for review.
 
+## Playgrounds and Examples
+
+Examples (found in the `examples/` directory) are a great way to document how pieces of Valence's API fit together. It's important that they remain as simple as possible. If you're working on a feature that requires a more complex scenario, consider making a playground instead.
+
+Examples can be run with `cargo run -p valence --example <example_name>`.
+
+Playgrounds are meant to provide a quick and minimal environment to test out new code or reproduce bugs. Playgrounds are also a great way test out quick ideas. This is the preferred method for providing code samples in issues and pull requests.
+
+To get started with a new playground, copy the template to `playground.rs`.
+
+```bash
+cp crates/playground/src/template.rs crates/playground/src/playground.rs
+```
+
+Make your changes to `crates/playground/src/playground.rs`. To run it:
+
+```bash
+cargo run -p playground # simply run the playground, or
+cargo watch -c -x "run -p playground" # run the playground and watch for changes
+```
+
 # Automatic Checks
 
 When you submit a pull request, your code will automatically run through clippy, rustfmt, etc. to check for any errors.
@@ -104,3 +125,10 @@ to name this variable `num_foos`.
 All public items should be documented. Documentation must be written with complete sentences and correct grammar.
 Consider using [intra-doc links](https://doc.rust-lang.org/rustdoc/write-documentation/linking-to-items-by-name.html)
 where appropriate.
+
+## Unit Tests
+
+Unit tests help your contributions last! They ensure that your code works as expected and that it continues to work in
+the future.
+
+You can find examples of unit tests in the `unit_test/example.rs` module.

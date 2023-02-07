@@ -11,6 +11,7 @@ pub fn main() {
         .add_plugin(ServerPlugin::new(()))
         .add_system_to_stage(EventLoop, default_event_handler)
         .add_system_to_stage(EventLoop, interpret_command)
+        .add_system_set(PlayerList::default_system_set())
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)

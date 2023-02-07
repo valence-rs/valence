@@ -8,7 +8,7 @@ use valence_protocol::packets::s2c::play::{
 use valence_protocol::{BlockPos, Encode, VarInt, VarLong};
 
 use crate::biome::BiomeId;
-use crate::chunk_pos::ChunkPos;
+use crate::view::ChunkPos;
 use crate::instance::paletted_container::PalettedContainer;
 use crate::instance::InstanceInfo;
 use crate::math::bit_width;

@@ -17,6 +17,7 @@ pub fn main() {
         .add_system_to_stage(EventLoop, digging_creative_mode)
         .add_system_to_stage(EventLoop, digging_survival_mode)
         .add_system_to_stage(EventLoop, place_blocks)
+        .add_system_set(PlayerList::default_system_set())
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
