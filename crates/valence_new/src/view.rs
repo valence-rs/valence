@@ -121,7 +121,7 @@ impl ChunkView {
         let true_dist = self.dist as i32 + EXTRA_VIEW_RADIUS;
 
         for z in self.pos.z - true_dist..=self.pos.z + true_dist {
-            for x in self.pos.x - true_dist ..= self.pos.z + true_dist {
+            for x in self.pos.x - true_dist ..= self.pos.x + true_dist {
                 let p = ChunkPos { x, z };
                 if self.contains(p) {
                     f(p);
@@ -142,20 +142,43 @@ impl ChunkView {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+
     use super::*;
 
     #[test]
-    fn all_in_view() {
+    fn chunk_view_for_each_and_iter() {
         let pos = ChunkPos::new(42, 24);
 
         for dist in 2..=32 {
+            let mut positions = vec![];
+
             let view = ChunkView { pos, dist };
 
-            for pos in view.iter() {
+            view.for_each(|pos| {
+                positions.push(pos);
+                assert!(view.contains(pos))
+            });
+
+            for (i, pos) in view.iter().enumerate() {
+                assert_eq!(positions[i], pos);
                 assert!(view.contains(pos));
             }
 
-            view.for_each(|pos| assert!(view.contains(pos)));
+
+        }
+    }
+
+    #[test]
+    fn chunk_view_contains() {
+        let view = ChunkView::new([0, 0], 16);
+        let positions = BTreeSet::from_iter(view.iter());
+
+        for z in -64..64 {
+            for x in -64..64 {
+                let p = ChunkPos::new(x, z);
+                assert_eq!(view.contains(p), positions.contains(&p));
+            }
         }
     }
 
