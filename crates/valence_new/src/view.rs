@@ -121,7 +121,7 @@ impl ChunkView {
         let true_dist = self.dist as i32 + EXTRA_VIEW_RADIUS;
 
         for z in self.pos.z - true_dist..=self.pos.z + true_dist {
-            for x in self.pos.x - true_dist ..= self.pos.x + true_dist {
+            for x in self.pos.x - true_dist..=self.pos.x + true_dist {
                 let p = ChunkPos { x, z };
                 if self.contains(p) {
                     f(p);
@@ -164,8 +164,6 @@ mod tests {
                 assert_eq!(positions[i], pos);
                 assert!(view.contains(pos));
             }
-
-
         }
     }
 

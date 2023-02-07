@@ -6,8 +6,10 @@ use rand::Rng;
 use valence_new::client::despawn_disconnected_clients;
 use valence_new::client::event::default_event_handler;
 use valence_new::prelude::*;
+use valence_protocol::packets::s2c::play::SetTitleAnimationTimes;
 
 const START_POS: BlockPos = BlockPos::new(0, 100, 0);
+const VIEW_DIST: u8 = 10;
 
 const BLOCK_TYPES: [BlockState; 7] = [
     BlockState::GRASS_BLOCK,
@@ -28,13 +30,14 @@ pub fn main() {
         .add_system_set(PlayerList::default_system_set())
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
-        .add_system(reset_players)
+        .add_system(reset_clients.after(init_clients))
+        .add_system(manage_chunks.after(reset_clients).before(manage_blocks))
         .add_system(manage_blocks)
         .run();
 }
 
 #[derive(Component)]
-struct Player {
+struct GameState {
     blocks: VecDeque<BlockPos>,
     score: u32,
     combo: u32,
@@ -48,75 +51,89 @@ fn init_clients(
     mut clients: Query<(Entity, &mut Client), Added<Client>>,
 ) {
     for (ent, mut client) in clients.iter_mut() {
-        let instance = server.new_instance(DimensionId::default());
-        commands.entity(ent).insert(instance);
+        let mut instance = server.new_instance(DimensionId::default());
+
+        for pos in client.view().with_dist(VIEW_DIST).iter() {
+            assert!(instance.insert_chunk(pos, Chunk::default()).is_none());
+        }
 
         client.set_position([
             START_POS.x as f64 + 0.5,
             START_POS.y as f64 + 1.0,
             START_POS.z as f64 + 0.5,
         ]);
-        client.set_respawn_screen(true);
+        client.set_flat(true);
         client.set_instance(ent);
         client.set_game_mode(GameMode::Adventure);
-        client.send_message("Welcome to Valence!".italic());
+        client.send_message("Welcome to epic infinite parkour game!".italic());
 
-        let player = Player {
+        let mut state = GameState {
             blocks: VecDeque::new(),
             score: 0,
             combo: 0,
             target_y: 0,
             last_block_timestamp: 0,
         };
-        commands.entity(ent).insert(player);
+
+        reset(&mut client, &mut state, &mut instance);
+
+        commands.entity(ent).insert(state);
+        commands.entity(ent).insert(instance);
     }
 }
 
-fn reset_players(mut clients: Query<(&mut Client, &mut Player, &mut Instance), With<Player>>) {
-    for (mut client, mut player, mut instance) in clients.iter_mut() {
-        if player.is_added() {
-            reset(&mut client, &mut player, &mut instance);
-            continue;
-        }
-
+fn reset_clients(
+    mut clients: Query<(&mut Client, &mut GameState, &mut Instance), With<GameState>>,
+) {
+    for (mut client, mut state, mut instance) in clients.iter_mut() {
         if (client.position().y as i32) < START_POS.y - 32 {
-            reset(&mut client, &mut player, &mut instance);
-            continue;
+            client.send_message(
+                "Your score was ".italic()
+                    + state
+                        .score
+                        .to_string()
+                        .color(Color::GOLD)
+                        .bold()
+                        .not_italic(),
+            );
+
+            reset(&mut client, &mut state, &mut instance);
         }
     }
 }
 
-fn manage_blocks(mut clients: Query<(&mut Client, &mut Player, &mut Instance)>) {
-    for (client, mut player, mut instance) in clients.iter_mut() {
+fn manage_blocks(mut clients: Query<(&mut Client, &mut GameState, &mut Instance)>) {
+    for (mut client, mut state, mut instance) in clients.iter_mut() {
         let pos_under_player = BlockPos::new(
             (client.position().x - 0.5).round() as i32,
             client.position().y as i32 - 1,
             (client.position().z - 0.5).round() as i32,
         );
 
-        if let Some(index) = player
+        if let Some(index) = state
             .blocks
             .iter()
             .position(|block| *block == pos_under_player)
         {
             if index > 0 {
-                let power_result = 2.0f32.powf((player.combo as f32) / 45.0);
+                let power_result = 2.0f32.powf((state.combo as f32) / 45.0);
                 let max_time_taken = (1000.0f32 * (index as f32) / power_result) as u128;
 
                 let current_time_millis = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .unwrap()
                     .as_millis();
-                if current_time_millis - player.last_block_timestamp < max_time_taken {
-                    player.combo += index as u32
+
+                if current_time_millis - state.last_block_timestamp < max_time_taken {
+                    state.combo += index as u32
                 } else {
-                    player.combo = 0
+                    state.combo = 0
                 }
 
-                // let pitch = 0.9 + ((client.combo as f32) - 1.0) * 0.05;
+                // let pitch = 0.9 + ((state.combo as f32) - 1.0) * 0.05;
 
                 for _ in 0..index {
-                    generate_next_block(&mut player, &mut instance, true)
+                    generate_next_block(&mut state, &mut instance, true)
                 }
 
                 // TODO: add sounds again.
@@ -128,40 +145,57 @@ fn manage_blocks(mut clients: Query<(&mut Client, &mut Player, &mut Instance)>) 
                 //     pitch,
                 // );
 
-                // client.set_title(
-                //     "",
-                //     client.score.to_string().color(Color::LIGHT_PURPLE).
-                // bold(),     SetTitleAnimationTimes {
-                //         fade_in: 0,
-                //         stay: 7,
-                //         fade_out: 4,
-                //     },
-                // );
+                client.set_title(
+                    "",
+                    state.score.to_string().color(Color::LIGHT_PURPLE).bold(),
+                    SetTitleAnimationTimes {
+                        fade_in: 0,
+                        stay: 7,
+                        fade_out: 4,
+                    },
+                );
             }
         }
     }
 }
 
-fn reset(client: &mut Client, player: &mut Player, instance: &mut Instance) {
+fn manage_chunks(mut clients: Query<(&mut Client, &mut Instance)>) {
+    for (client, mut instance) in &mut clients {
+        let old_view = client.old_view().with_dist(VIEW_DIST);
+        let view = client.view().with_dist(VIEW_DIST);
+
+        if old_view != view {
+            for pos in old_view.diff(view) {
+                instance.chunk_entry(pos).or_default();
+            }
+
+            for pos in view.diff(old_view) {
+                instance.chunk_entry(pos).or_default();
+            }
+        }
+    }
+}
+
+fn reset(client: &mut Client, state: &mut GameState, instance: &mut Instance) {
     // Load chunks around spawn to avoid double void reset
-    for chunk_z in -1..3 {
-        for chunk_x in -2..2 {
-            instance.insert_chunk([chunk_x, chunk_z], Chunk::default());
+    for z in -1..3 {
+        for x in -2..2 {
+            instance.insert_chunk([x, z], Chunk::default());
         }
     }
 
-    player.score = 0;
-    player.combo = 0;
+    state.score = 0;
+    state.combo = 0;
 
-    for block in &player.blocks {
+    for block in &state.blocks {
         instance.set_block_state(*block, BlockState::AIR);
     }
-    player.blocks.clear();
-    player.blocks.push_back(START_POS);
+    state.blocks.clear();
+    state.blocks.push_back(START_POS);
     instance.set_block_state(START_POS, BlockState::STONE);
 
     for _ in 0..10 {
-        generate_next_block(player, instance, false);
+        generate_next_block(state, instance, false);
     }
 
     client.set_position([
@@ -174,30 +208,30 @@ fn reset(client: &mut Client, player: &mut Player, instance: &mut Instance) {
     client.set_pitch(0f32)
 }
 
-fn generate_next_block(player: &mut Player, instance: &mut Instance, in_game: bool) {
+fn generate_next_block(state: &mut GameState, instance: &mut Instance, in_game: bool) {
     if in_game {
-        let removed_block = player.blocks.pop_front().unwrap();
+        let removed_block = state.blocks.pop_front().unwrap();
         instance.set_block_state(removed_block, BlockState::AIR);
 
-        player.score += 1
+        state.score += 1
     }
 
-    let last_pos = *player.blocks.back().unwrap();
-    let block_pos = generate_random_block(last_pos, player.target_y);
+    let last_pos = *state.blocks.back().unwrap();
+    let block_pos = generate_random_block(last_pos, state.target_y);
 
     if last_pos.y == START_POS.y {
-        player.target_y = 0
+        state.target_y = 0
     } else if last_pos.y < START_POS.y - 30 || last_pos.y > START_POS.y + 30 {
-        player.target_y = START_POS.y;
+        state.target_y = START_POS.y;
     }
 
     let mut rng = rand::thread_rng();
 
     instance.set_block_state(block_pos, *BLOCK_TYPES.choose(&mut rng).unwrap());
-    player.blocks.push_back(block_pos);
+    state.blocks.push_back(block_pos);
 
     // Combo System
-    player.last_block_timestamp = SystemTime::now()
+    state.last_block_timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_millis();

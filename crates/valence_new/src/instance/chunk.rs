@@ -8,11 +8,11 @@ use valence_protocol::packets::s2c::play::{
 use valence_protocol::{BlockPos, Encode, VarInt, VarLong};
 
 use crate::biome::BiomeId;
-use crate::view::ChunkPos;
 use crate::instance::paletted_container::PalettedContainer;
 use crate::instance::InstanceInfo;
 use crate::math::bit_width;
 use crate::packet::{PacketWriter, WritePacket};
+use crate::view::ChunkPos;
 
 /// A chunk is a 16x16-meter segment of a world with a variable height. Chunks
 /// primarily contain blocks, biomes, and block entities.

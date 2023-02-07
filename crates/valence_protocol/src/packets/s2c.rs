@@ -12,9 +12,9 @@ use crate::text::Text;
 use crate::types::{
     AttributeProperty, BossBarAction, ChatSuggestionAction, ChunkDataBlockEntity,
     CommandSuggestionMatch, Difficulty, EntityEffectFlags, FeetOrEyes, GameEventKind, GameMode,
-    GlobalPos, Hand, LookAtEntity, MerchantTrade, PlayerAbilitiesFlags, Property,
-    SoundCategory, Statistic, SyncPlayerPosLookFlags, TagGroup, UpdateObjectiveMode,
-    UpdateScoreAction, WindowType,
+    GlobalPos, Hand, LookAtEntity, MerchantTrade, PlayerAbilitiesFlags, Property, SoundCategory,
+    Statistic, SyncPlayerPosLookFlags, TagGroup, UpdateObjectiveMode, UpdateScoreAction,
+    WindowType,
 };
 use crate::username::Username;
 use crate::var_int::VarInt;

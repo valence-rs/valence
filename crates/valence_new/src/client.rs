@@ -316,6 +316,14 @@ impl Client {
         }
     }
 
+    pub fn is_flat(&self) -> bool {
+        self.is_flat
+    }
+
+    pub fn set_flat(&mut self, flat: bool) {
+        self.is_flat = flat;
+    }
+
     /// The current view distance of this client measured in chunks. The client
     /// will not be able to see chunks and entities past this distance.
     ///
