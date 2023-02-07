@@ -164,9 +164,12 @@ impl Client {
         self.enc.write_packet(pkt);
     }
 
-    /// Writes arbitrary bytes to this client's packet buffer. Don't use this
-    /// function unless you know what you're doing. Consider using
-    /// [`write_packet`] instead.
+    /// Writes arbitrary bytes to this client's packet buffer. The packet data
+    /// must be properly compressed for the current compression threshold but
+    /// never encrypted.
+    ///
+    /// Don't use this function unless you know what you're doing. Consider
+    /// using [`write_packet`] instead.
     ///
     /// [`write_packet`]: Self::write_packet
     #[inline]
