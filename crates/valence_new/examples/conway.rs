@@ -1,10 +1,23 @@
+use std::mem;
+
 use valence_new::client::despawn_disconnected_clients;
 use valence_new::client::event::{default_event_handler, StartDigging, StartSneaking};
 use valence_new::prelude::*;
 
-const SIZE_X: i32 = 100;
-const SIZE_Z: i32 = 100;
+const BOARD_MIN_X: i32 = -30;
+const BOARD_MAX_X: i32 = 30;
+const BOARD_MIN_Z: i32 = -30;
+const BOARD_MAX_Z: i32 = 30;
 const BOARD_Y: i32 = 64;
+
+const BOARD_SIZE_X: usize = (BOARD_MAX_X - BOARD_MIN_X + 1) as usize;
+const BOARD_SIZE_Z: usize = (BOARD_MAX_Z - BOARD_MIN_Z + 1) as usize;
+
+const SPAWN_POS: DVec3 = DVec3::new(
+    (BOARD_MIN_X + BOARD_MAX_X) as f64 / 2.0,
+    BOARD_Y as f64 + 1.0,
+    (BOARD_MIN_Z + BOARD_MAX_Z) as f64 / 2.0,
+);
 
 pub fn main() {
     tracing_subscriber::fmt().init();
@@ -15,12 +28,14 @@ pub fn main() {
             ..Default::default()
         }]))
         .add_system_to_stage(EventLoop, default_event_handler)
+        .add_system_set(PlayerList::default_system_set())
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
-        .add_system_to_stage(EventLoop, alive_on_dig)
+        .add_system_to_stage(EventLoop, toggle_cell_on_dig)
         .add_system(update_board)
         .add_system(pause_on_crouch)
+        .add_system(reset_oob_clients)
         .run();
 }
 
@@ -29,41 +44,34 @@ fn setup(world: &mut World) {
         .resource::<Server>()
         .new_instance(DimensionId::default());
 
-    for z in -5..5 {
-        for x in -5..5 {
+    for z in -10..10 {
+        for x in -10..10 {
             instance.insert_chunk([x, z], Chunk::default());
         }
     }
 
-    for z in 0..SIZE_Z {
-        for x in 0..SIZE_X {
-            instance.set_block_state([x, BOARD_Y, z], BlockState::GRASS_BLOCK);
+    for z in BOARD_MIN_Z..=BOARD_MAX_Z {
+        for x in BOARD_MIN_X..=BOARD_MAX_X {
+            instance.set_block_state([x, BOARD_Y, z], BlockState::DIRT);
         }
     }
 
     world.spawn(instance);
 
-    let board = LifeBoard {
-        paused: false,
-        board: vec![false; (SIZE_X * SIZE_Z) as usize].into_boxed_slice(),
-        board_buf: vec![false; (SIZE_X * SIZE_Z) as usize].into_boxed_slice(),
-    };
-    world.insert_resource(board);
+    world.insert_resource(LifeBoard {
+        paused: true,
+        board: vec![false; BOARD_SIZE_X * BOARD_SIZE_Z].into(),
+        board_buf: vec![false; BOARD_SIZE_X * BOARD_SIZE_Z].into(),
+    });
 }
 
 fn init_clients(
     mut clients: Query<&mut Client, Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
-    let instance = instances.get_single().unwrap();
-
     for mut client in &mut clients {
-        client.set_position([
-            SIZE_X as f64 / 2.0,
-            BOARD_Y as f64 + 1.0,
-            SIZE_Z as f64 / 2.0,
-        ]);
-        client.set_instance(instance);
+        client.set_position(SPAWN_POS);
+        client.set_instance(instances.single());
         client.set_game_mode(GameMode::Survival);
 
         client.send_message("Welcome to Conway's game of life in Minecraft!".italic());
@@ -83,87 +91,88 @@ struct LifeBoard {
 }
 
 impl LifeBoard {
-    pub fn set(&mut self, x: i32, z: i32, value: bool) {
-        self.board[Self::index(x, z).unwrap()] = value;
-    }
-
     pub fn get(&self, x: i32, z: i32) -> bool {
-        self.board[Self::index(x, z).unwrap()]
+        if (BOARD_MIN_X..=BOARD_MAX_X).contains(&x) && (BOARD_MIN_Z..=BOARD_MAX_Z).contains(&z) {
+            let x = (x - BOARD_MIN_X) as usize;
+            let z = (z - BOARD_MIN_Z) as usize;
+
+            self.board[x + z * BOARD_SIZE_X]
+        } else {
+            false
+        }
     }
 
-    #[inline]
-    fn index(x: i32, z: i32) -> Option<usize> {
-        let x = x as usize;
-        let z = z as usize;
-        if x > SIZE_X as usize || z > SIZE_Z as usize {
-            return None;
+    pub fn set(&mut self, x: i32, z: i32, value: bool) {
+        if (BOARD_MIN_X..=BOARD_MAX_X).contains(&x) && (BOARD_MIN_Z..=BOARD_MAX_Z).contains(&z) {
+            let x = (x - BOARD_MIN_X) as usize;
+            let z = (z - BOARD_MIN_Z) as usize;
+
+            self.board[x + z * BOARD_SIZE_X] = value;
         }
-        Some((x + z * SIZE_X as usize) % (SIZE_X * SIZE_Z) as usize)
-    }
-
-    fn count_live_neighbors(board: &Box<[bool]>, x: i32, z: i32) -> u8 {
-        let mut count = 0;
-
-        for dx in -1..=1 {
-            for dz in -1..=1 {
-                if dx == 0 && dz == 0 {
-                    continue;
-                }
-
-                let Some(index) = Self::index(x + dx, z + dz) else {
-                    continue;
-                };
-
-                if board[index] {
-                    count += 1;
-                }
-            }
-        }
-
-        count
     }
 
     pub fn update(&mut self) {
-        self.board_buf.iter_mut().enumerate().for_each(|(i, cell)| {
-            let x = i as i32 % SIZE_X;
-            let z = i as i32 / SIZE_Z;
-            let neighbors = Self::count_live_neighbors(&self.board, x, z);
-            let alive = &self.board[Self::index(x, z).unwrap()];
+        for (idx, cell) in self.board_buf.iter_mut().enumerate() {
+            let x = (idx % BOARD_SIZE_X) as i32;
+            let z = (idx / BOARD_SIZE_X) as i32;
 
-            let new_alive = match (alive, neighbors) {
-                (true, n) if (2..=3).contains(&n) => true,
-                (false, 3) => true,
-                _ => false,
-            };
+            let mut live_neighbors = 0;
 
-            *cell = new_alive;
-        });
-        std::mem::swap(&mut self.board, &mut self.board_buf);
+            for cz in z - 1..=z + 1 {
+                for cx in x - 1..=x + 1 {
+                    if !(cx == x && cz == z) {
+                        let idx = cx.rem_euclid(BOARD_SIZE_X as i32) as usize
+                            + cz.rem_euclid(BOARD_SIZE_Z as i32) as usize * BOARD_SIZE_X;
+
+                        live_neighbors += self.board[idx] as i32;
+                    }
+                }
+            }
+
+            let live = self.board[idx];
+            if live {
+                *cell = (2..=3).contains(&live_neighbors);
+            } else {
+                *cell = live_neighbors == 3;
+            }
+        }
+
+        mem::swap(&mut self.board, &mut self.board_buf);
+    }
+
+    pub fn clear(&mut self) {
+        self.board.fill(false);
     }
 }
 
-fn alive_on_dig(mut events: EventReader<StartDigging>, mut board: ResMut<LifeBoard>) {
+fn toggle_cell_on_dig(mut events: EventReader<StartDigging>, mut board: ResMut<LifeBoard>) {
     for event in events.iter() {
         let (x, z) = (event.position.x, event.position.z);
-        board.set(x, z, true);
+
+        let live = board.get(x, z);
+        board.set(x, z, !live);
     }
 }
 
-fn update_board(mut board: ResMut<LifeBoard>, mut instances: Query<&mut Instance>) {
-    if !board.paused {
+fn update_board(
+    mut board: ResMut<LifeBoard>,
+    mut instances: Query<&mut Instance>,
+    server: Res<Server>,
+) {
+    if !board.paused && server.current_tick() % 2 == 0 {
         board.update();
     }
 
-    let mut instance = instances.get_single_mut().unwrap();
+    let mut instance = instances.single_mut();
 
-    for z in 0..SIZE_Z {
-        for x in 0..SIZE_X {
-            let alive = board.get(x, z);
-            let block = if alive {
+    for z in BOARD_MIN_Z..=BOARD_MAX_Z {
+        for x in BOARD_MIN_X..=BOARD_MAX_X {
+            let block = if board.get(x, z) {
                 BlockState::GRASS_BLOCK
             } else {
                 BlockState::DIRT
             };
+
             instance.set_block_state([x, BOARD_Y, z], block);
         }
     }
@@ -179,10 +188,19 @@ fn pause_on_crouch(
 
         for mut client in clients.iter_mut() {
             if board.paused {
-                client.set_action_bar("Paused.".italic());
+                client.set_action_bar("Paused".italic().color(Color::RED));
             } else {
-                client.set_action_bar("Playing.".italic());
+                client.set_action_bar("Playing".italic().color(Color::GREEN));
             }
+        }
+    }
+}
+
+fn reset_oob_clients(mut clients: Query<&mut Client>, mut board: ResMut<LifeBoard>) {
+    for mut client in &mut clients {
+        if client.position().y < 0.0 {
+            client.set_position(SPAWN_POS);
+            board.clear();
         }
     }
 }
