@@ -13,6 +13,7 @@ pub fn main() {
         .add_system_to_stage(EventLoop, default_event_handler)
         .add_system_to_stage(EventLoop, squat_and_die)
         .add_system_to_stage(EventLoop, necromancy)
+        .add_system_set(PlayerList::default_system_set())
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
