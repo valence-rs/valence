@@ -71,7 +71,7 @@ fn prompt_on_punch(mut clients: Query<&mut Client>, mut events: EventReader<Inte
                 "https://github.com/valence-rs/valence/raw/main/assets/example_pack.zip",
                 "d7c6108849fb190ec2a49f2d38b7f1f897d9ce9f",
                 false,
-                Option::<Text>::None,
+                None,
             );
         }
     }

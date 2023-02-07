@@ -461,13 +461,13 @@ impl Client {
         url: &str,
         hash: &str,
         forced: bool,
-        prompt_message: Option<impl Into<Text>>,
+        prompt_message: Option<Text>,
     ) {
         self.write_packet(&ResourcePackS2c {
             url,
             hash,
             forced,
-            prompt_message: prompt_message.map(|t| t.into().into()),
+            prompt_message: prompt_message.map(|t| t.into()),
         });
     }
 
