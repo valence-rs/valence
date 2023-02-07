@@ -158,4 +158,12 @@ mod tests {
             view.for_each(|pos| assert!(view.contains(pos)));
         }
     }
+
+    #[test]
+    fn chunk_pos_round_trip_conv() {
+        let p = ChunkPos::new(rand::random(), rand::random());
+
+        assert_eq!(ChunkPos::from(<(i32, i32)>::from(p)), p);
+        assert_eq!(ChunkPos::from(<[i32; 2]>::from(p)), p);
+    }
 }
