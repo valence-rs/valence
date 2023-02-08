@@ -286,7 +286,7 @@ impl Client {
         self.write_packet(&CombatDeath {
             player_id: VarInt(0),
             entity_id: killer.map_or(-1, |k| k.protocol_id()),
-            message: message.into(),
+            message: message.into().into(),
         });
     }
 
@@ -434,7 +434,7 @@ impl Client {
     /// message is only visible to this client.
     pub fn send_message(&mut self, msg: impl Into<Text>) {
         self.write_packet(&SystemChatMessage {
-            chat: msg.into(),
+            chat: msg.into().into(),
             overlay: false,
         });
     }
@@ -452,7 +452,7 @@ impl Client {
 
     pub fn kick(&mut self, reason: impl Into<Text>) {
         self.write_packet(&DisconnectPlay {
-            reason: reason.into(),
+            reason: reason.into().into(),
         });
         self.is_disconnected = true;
     }
@@ -478,7 +478,7 @@ impl Client {
             url,
             hash,
             forced,
-            prompt_message,
+            prompt_message: prompt_message.map(|t| t.into()),
         });
     }
 
@@ -494,14 +494,14 @@ impl Client {
         subtitle: impl Into<Text>,
         animation: impl Into<Option<SetTitleAnimationTimes>>,
     ) {
-        let title = title.into();
+        let title = title.into().into();
         let subtitle = subtitle.into();
 
         self.write_packet(&SetTitleText { title_text: title });
 
         if !subtitle.is_empty() {
             self.write_packet(&SetSubtitleText {
-                subtitle_text: subtitle,
+                subtitle_text: subtitle.into(),
             });
         }
 
@@ -516,7 +516,7 @@ impl Client {
     /// screen, above the hotbar.
     pub fn set_action_bar(&mut self, text: impl Into<Text>) {
         self.write_packet(&SetActionBarText {
-            action_bar_text: text.into(),
+            action_bar_text: text.into().into(),
         });
     }
 
@@ -579,7 +579,9 @@ pub(crate) fn update_clients(
                 &entities,
                 &server,
             ) {
-                client.write_packet(&DisconnectPlay { reason: "".into() });
+                client.write_packet(&DisconnectPlay {
+                    reason: Text::from("").into(),
+                });
                 client.is_disconnected = true;
                 warn!(
                     username = %client.username,

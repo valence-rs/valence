@@ -198,7 +198,7 @@ impl PlayerList {
                     listed: entry.listed,
                     ping: entry.ping,
                     game_mode: entry.game_mode,
-                    display_name: entry.display_name.clone(),
+                    display_name: entry.display_name.as_ref().map(|t| t.into()),
                 })
             })
             .collect();
@@ -212,8 +212,8 @@ impl PlayerList {
 
         if !self.header.is_empty() || !self.footer.is_empty() {
             writer.write_packet(&SetTabListHeaderAndFooter {
-                header: self.header.clone(),
-                footer: self.footer.clone(),
+                header: (&self.header).into(),
+                footer: (&self.footer).into(),
             });
         }
     }
@@ -505,7 +505,7 @@ pub(crate) fn update_player_list(
                 listed: entry.listed,
                 ping: entry.ping,
                 game_mode: entry.game_mode,
-                display_name: entry.display_name.clone(),
+                display_name: entry.display_name.as_ref().map(|t| t.into()),
             };
 
             writer.write_packet(&PlayerInfoUpdate {
@@ -546,7 +546,7 @@ pub(crate) fn update_player_list(
                         listed: entry.listed,
                         ping: entry.ping,
                         game_mode: entry.game_mode,
-                        display_name: entry.display_name.clone(),
+                        display_name: entry.display_name.as_ref().map(|t| t.into()),
                     }]),
                 });
             }
@@ -565,8 +565,8 @@ pub(crate) fn update_player_list(
         pl.modified_header_or_footer = false;
 
         writer.write_packet(&SetTabListHeaderAndFooter {
-            header: pl.header.clone(),
-            footer: pl.footer.clone(),
+            header: (&pl.header).into(),
+            footer: (&pl.footer).into(),
         });
     }
 

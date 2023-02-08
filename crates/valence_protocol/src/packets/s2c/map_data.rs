@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::io::Write;
 
 use crate::{Decode, DecodePacket, Encode, EncodePacket, Text, VarInt};
@@ -8,18 +9,18 @@ pub struct MapData<'a> {
     pub map_id: VarInt,
     pub scale: i8,
     pub locked: bool,
-    pub icons: Option<Vec<Icon>>,
+    pub icons: Option<Vec<Icon<'a>>>,
     pub data: Option<Data<'a>>,
 }
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
-pub struct Icon {
+pub struct Icon<'a> {
     pub icon_type: IconType,
     /// In map coordinates; -128 for furthest left, +127 for furthest right
     pub position: [i8; 2],
     /// 0 is a vertical icon and increments by 22.5°
     pub direction: i8,
-    pub display_name: Option<Text>,
+    pub display_name: Option<Cow<'a, Text>>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
@@ -82,7 +83,7 @@ impl<'a> Decode<'a> for MapData<'a> {
         let map_id = VarInt::decode(r)?;
         let scale = i8::decode(r)?;
         let locked = bool::decode(r)?;
-        let icons = <Option<Vec<Icon>>>::decode(r)?;
+        let icons = <Option<Vec<Icon<'a>>>>::decode(r)?;
         let columns = u8::decode(r)?;
 
         let data = if columns > 0 {
