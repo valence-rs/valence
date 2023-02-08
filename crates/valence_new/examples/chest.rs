@@ -56,11 +56,9 @@ fn init_clients(
     mut clients: Query<&mut Client, Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
-    let instance = instances.get_single().unwrap();
-
     for mut client in &mut clients {
         client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
-        client.set_instance(instance);
+        client.set_instance(instances.single());
         client.set_game_mode(GameMode::Creative);
     }
 }

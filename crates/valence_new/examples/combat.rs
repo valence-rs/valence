@@ -71,7 +71,7 @@ fn init_clients(
     mut clients: Query<(Entity, &mut Client), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
-    let instance = instances.get_single().unwrap();
+    let instance = instances.single();
 
     for (entity, mut client) in &mut clients {
         client.set_position([0.0, SPAWN_Y as f64, 0.0]);
