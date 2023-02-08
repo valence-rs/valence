@@ -924,6 +924,9 @@ fn handle_one_packet(
                 );
             } else {
                 client.got_keepalive = true;
+                client.ping = client.keepalive_sent_time.elapsed().as_millis() as u32;
+
+                tracing::info!("Ping is: {}, Instant is: {:?}", client.ping, client.keepalive_sent_time);
             }
         }
         C2sPlayPacket::LockDifficulty(p) => {
