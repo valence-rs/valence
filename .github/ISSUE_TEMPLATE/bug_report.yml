@@ -26,8 +26,6 @@ body:
       label: Minimal Reproducible Example
       description: Do you have a playground to reproduce this bug? Paste it here. It should be a minimal example that exhibits the behavior. If the problem can be reproduced with one of the examples, just indicate which one instead.
       render: Rust
-    validations:
-      required: true
   - type: textarea
     attributes:
       label: Steps To Reproduce
