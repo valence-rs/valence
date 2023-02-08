@@ -316,7 +316,7 @@ impl Instance {
 
     pub fn set_action_bar(&mut self, text: impl Into<Text>) {
         self.write_packet(&SetActionBarText {
-            action_bar_text: text.into(),
+            action_bar_text: text.into().into(),
         });
     }
 }
