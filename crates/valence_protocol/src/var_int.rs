@@ -1,7 +1,7 @@
 use std::io::{Read, Write};
 
 use anyhow::bail;
-use byteorder::{ReadBytesExt, WriteBytesExt};
+use byteorder::ReadBytesExt;
 use thiserror::Error;
 
 use crate::{Decode, Encode};
@@ -48,16 +48,31 @@ pub enum VarIntDecodeError {
 }
 
 impl Encode for VarInt {
+    // Adapted from Moulberry's encode
+    // https://github.com/Moulberry/Graphite/blob/master/crates/graphite_binary/src/varint/encode.rs#L6
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
-        let mut val = self.0 as u32;
-        loop {
-            if val & 0b11111111111111111111111110000000 == 0 {
-                w.write_u8(val as u8)?;
-                return Ok(());
-            }
-            w.write_u8(val as u8 & 0b01111111 | 0b10000000)?;
-            val >>= 7;
-        }
+        let x = unsafe { std::mem::transmute::<i32, u32>(self.0) } as u64;
+        let stage1 = (x & 0x000000000000007f)
+            | ((x & 0x0000000000003f80) << 1)
+            | ((x & 0x00000000001fc000) << 2)
+            | ((x & 0x000000000fe00000) << 3)
+            | ((x & 0x00000000f0000000) << 4);
+
+        let leading = stage1.leading_zeros();
+
+        let unused_bytes = (leading - 1) >> 3;
+        let bytes_needed = 8 - unused_bytes;
+
+        // set all but the last MSBs
+        let msbs = 0x8080808080808080;
+        let msbmask = 0xffffffffffffffff >> (((8 - bytes_needed + 1) << 3) - 1);
+
+        let merged = stage1 | (msbs & msbmask);
+        let bytes = unsafe { std::mem::transmute::<u64, [u8; 8]>(merged) };
+
+        w.write_all(&bytes[..bytes_needed as usize])?;
+
+        Ok(())
     }
 }
 
