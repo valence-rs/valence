@@ -68,7 +68,7 @@ impl Encode for VarInt {
         let msbmask = 0xffffffffffffffff >> (((8 - bytes_needed + 1) << 3) - 1);
 
         let merged = stage1 | (msbs & msbmask);
-        let bytes = unsafe { std::mem::transmute::<u64, [u8; 8]>(merged) };
+        let bytes = merged.to_le_bytes();
 
         w.write_all(&bytes[..bytes_needed as usize])?;
 
