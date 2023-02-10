@@ -11,6 +11,7 @@ pub fn main() {
         .add_plugin(ServerPlugin::new(()))
         .add_system_to_stage(EventLoop, default_event_handler)
         .add_system_to_stage(EventLoop, interpret_command)
+        .add_system_set(PlayerList::default_system_set())
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
@@ -41,11 +42,9 @@ fn init_clients(
     mut clients: Query<&mut Client, Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
-    let instance = instances.get_single().unwrap();
-
     for mut client in &mut clients {
         client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
-        client.set_instance(instance);
+        client.set_instance(instances.single());
         client.set_game_mode(GameMode::Creative);
         client.set_op_level(2); // required to use F3+F4, eg /gamemode
         client.send_message("Welcome to Valence! Use F3+F4 to change gamemode.".italic());

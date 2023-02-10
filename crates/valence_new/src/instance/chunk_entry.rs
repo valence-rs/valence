@@ -30,6 +30,13 @@ impl<'a> ChunkEntry<'a> {
             }),
         }
     }
+
+    pub fn or_default(self) -> &'a mut Chunk<true> {
+        match self {
+            ChunkEntry::Occupied(oe) => oe.into_mut(),
+            ChunkEntry::Vacant(ve) => ve.insert(Chunk::default()),
+        }
+    }
 }
 
 #[derive(Debug)]

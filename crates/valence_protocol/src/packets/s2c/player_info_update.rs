@@ -35,7 +35,7 @@ pub struct Entry<'a> {
     pub listed: bool,
     pub ping: i32,
     pub game_mode: GameMode,
-    pub display_name: Option<Text>,
+    pub display_name: Option<Cow<'a, Text>>,
 }
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]

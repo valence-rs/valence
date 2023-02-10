@@ -4,17 +4,20 @@ use std::iter::FusedIterator;
 
 use bevy_ecs::prelude::*;
 pub use chunk_entry::*;
+use glam::{DVec3, Vec3};
 use num::integer::div_ceil;
 use rustc_hash::FxHashMap;
 use valence_protocol::block::BlockState;
-use valence_protocol::{BlockPos, EncodePacket, LengthPrefixedArray};
+use valence_protocol::packets::s2c::particle::{Particle, ParticleS2c};
+use valence_protocol::packets::s2c::play::SetActionBarText;
+use valence_protocol::{BlockPos, EncodePacket, LengthPrefixedArray, Text};
 
-use crate::chunk_pos::ChunkPos;
 use crate::dimension::DimensionId;
 use crate::entity::McEntity;
 pub use crate::instance::chunk::Chunk;
 use crate::packet::{PacketWriter, WritePacket};
 use crate::server::{Server, SharedServer};
+use crate::view::ChunkPos;
 use crate::Despawned;
 
 mod chunk;
@@ -93,45 +96,6 @@ impl Instance {
             },
             packet_buf: vec![],
             scratch: vec![],
-        }
-    }
-
-    /// Writes a packet into the global packet buffer of this instance. All
-    /// clients in the instance will receive the packet.
-    ///
-    /// This is more efficient than sending the packet to each client
-    /// individually.
-    pub fn write_packet<P>(&mut self, pkt: &P)
-    where
-        P: EncodePacket + ?Sized,
-    {
-        PacketWriter::new(
-            &mut self.packet_buf,
-            self.info.compression_threshold,
-            &mut self.scratch,
-        )
-        .write_packet(pkt);
-    }
-
-    /// Writes a packet to all clients in view of `pos` in this instance. Has no
-    /// effect if there is no chunk at `pos`.
-    ///
-    /// This is more efficient than sending the packet to each client
-    /// individually.
-    pub fn write_packet_at<P>(&mut self, pkt: &P, pos: impl Into<ChunkPos>)
-    where
-        P: EncodePacket + ?Sized,
-    {
-        let pos = pos.into();
-        if let Some(cell) = self.partition.get_mut(&pos) {
-            if cell.chunk.is_some() {
-                PacketWriter::new(
-                    &mut cell.packet_buf,
-                    self.info.compression_threshold,
-                    &mut self.scratch,
-                )
-                .write_packet(pkt);
-            }
         }
     }
 
@@ -220,7 +184,7 @@ impl Instance {
             return BlockState::AIR;
         }
 
-        let Some(chunk) = self.chunk(pos) else {
+        let Some(chunk) = self.chunk(ChunkPos::from_block_pos(pos)) else {
             return BlockState::AIR;
         };
 
@@ -247,7 +211,7 @@ impl Instance {
             return BlockState::AIR;
         }
 
-        let Some(chunk) = self.chunk_mut(pos) else {
+        let Some(chunk) = self.chunk_mut(ChunkPos::from_block_pos(pos)) else {
             return BlockState::AIR;
         };
 
@@ -257,6 +221,103 @@ impl Instance {
             pos.z.rem_euclid(16) as usize,
             block,
         )
+    }
+}
+
+/// Packet methods.
+impl Instance {
+    /// Writes a packet into the global packet buffer of this instance. All
+    /// clients in the instance will receive the packet.
+    ///
+    /// This is more efficient than sending the packet to each client
+    /// individually.
+    pub fn write_packet<P>(&mut self, pkt: &P)
+    where
+        P: EncodePacket + ?Sized,
+    {
+        PacketWriter::new(
+            &mut self.packet_buf,
+            self.info.compression_threshold,
+            &mut self.scratch,
+        )
+        .write_packet(pkt);
+    }
+
+    /// Writes arbitrary packet data into the global packet buffer of this
+    /// instance. All clients in the instance will receive the packet data.
+    ///
+    /// The packet data must be properly compressed for the current compression
+    /// threshold but never encrypted. Don't use this function unless you know
+    /// what you're doing. Consider using [`Self::write_packet`] instead.
+    pub fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        self.packet_buf.extend_from_slice(bytes)
+    }
+
+    /// Writes a packet to all clients in view of `pos` in this instance. Has no
+    /// effect if there is no chunk at `pos`.
+    ///
+    /// This is more efficient than sending the packet to each client
+    /// individually.
+    pub fn write_packet_at<P>(&mut self, pkt: &P, pos: impl Into<ChunkPos>)
+    where
+        P: EncodePacket + ?Sized,
+    {
+        let pos = pos.into();
+        if let Some(cell) = self.partition.get_mut(&pos) {
+            if cell.chunk.is_some() {
+                PacketWriter::new(
+                    &mut cell.packet_buf,
+                    self.info.compression_threshold,
+                    &mut self.scratch,
+                )
+                .write_packet(pkt);
+            }
+        }
+    }
+
+    /// Writes arbitrary packet data to all clients in view of `pos` in this
+    /// instance. Has no effect if there is no chunk at `pos`.
+    ///
+    /// The packet data must be properly compressed for the current compression
+    /// threshold but never encrypted. Don't use this function unless you know
+    /// what you're doing. Consider using [`Self::write_packet`] instead.
+    pub fn write_packet_bytes_at(&mut self, bytes: &[u8], pos: impl Into<ChunkPos>) {
+        let pos = pos.into();
+        if let Some(cell) = self.partition.get_mut(&pos) {
+            if cell.chunk.is_some() {
+                cell.packet_buf.extend_from_slice(bytes);
+            }
+        }
+    }
+
+    pub fn play_particle(
+        &mut self,
+        particle: &Particle,
+        long_distance: bool,
+        position: impl Into<DVec3>,
+        offset: impl Into<Vec3>,
+        max_speed: f32,
+        count: i32,
+    ) {
+        let position = position.into();
+
+        self.write_packet_at(
+            &ParticleS2c {
+                particle: particle.clone(),
+                long_distance,
+                position: position.into(),
+                offset: offset.into().into(),
+                max_speed,
+                count,
+            },
+            ChunkPos::from_dvec3(position),
+        );
+    }
+
+    pub fn set_action_bar(&mut self, text: impl Into<Text>) {
+        self.write_packet(&SetActionBarText {
+            action_bar_text: text.into().into(),
+        });
     }
 }
 

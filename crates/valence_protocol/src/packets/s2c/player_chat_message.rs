@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::io::Write;
 
 use crate::packets::s2c::message_signature::MessageSignature;
@@ -13,12 +14,12 @@ pub struct PlayerChatMessage<'a> {
     pub time_stamp: u64,
     pub salt: u64,
     pub previous_messages: Vec<MessageSignature<'a>>,
-    pub unsigned_content: Option<Text>,
+    pub unsigned_content: Option<Cow<'a, Text>>,
     pub filter_type: MessageFilterType,
     pub filter_type_bits: Option<u8>,
     pub chat_type: VarInt,
-    pub network_name: Text,
-    pub network_target_name: Option<Text>,
+    pub network_name: Cow<'a, Text>,
+    pub network_target_name: Option<Cow<'a, Text>>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
@@ -65,7 +66,7 @@ impl<'a> Decode<'a> for PlayerChatMessage<'a> {
         let time_stamp = u64::decode(r)?;
         let salt = u64::decode(r)?;
         let previous_messages = Vec::<MessageSignature>::decode(r)?;
-        let unsigned_content = Option::<Text>::decode(r)?;
+        let unsigned_content = Option::<Cow<'a, Text>>::decode(r)?;
         let filter_type = MessageFilterType::decode(r)?;
 
         let filter_type_bits = match filter_type {
@@ -74,8 +75,8 @@ impl<'a> Decode<'a> for PlayerChatMessage<'a> {
         };
 
         let chat_type = VarInt::decode(r)?;
-        let network_name = Text::decode(r)?;
-        let network_target_name = Option::<Text>::decode(r)?;
+        let network_name = <Cow<'a, Text>>::decode(r)?;
+        let network_target_name = Option::<Cow<'a, Text>>::decode(r)?;
 
         Ok(Self {
             sender,

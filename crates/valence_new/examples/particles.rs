@@ -11,6 +11,7 @@ pub fn main() {
     App::new()
         .add_plugin(ServerPlugin::new(()))
         .add_system_to_stage(EventLoop, default_event_handler)
+        .add_system_set(PlayerList::default_system_set())
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
@@ -60,11 +61,9 @@ fn init_clients(
     mut clients: Query<&mut Client, Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
-    let instance = instances.get_single().unwrap();
-
     for mut client in &mut clients {
         client.set_position([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
-        client.set_instance(instance);
+        client.set_instance(instances.single());
         client.set_game_mode(GameMode::Creative);
     }
 }
@@ -72,7 +71,7 @@ fn init_clients(
 fn manage_particles(
     mut spawner: ResMut<ParticleSpawner>,
     server: Res<Server>,
-    mut clients: Query<&mut Client>,
+    mut instances: Query<&mut Instance>,
 ) {
     if server.current_tick() % 20 == 0 {
         spawner.next();
@@ -88,10 +87,10 @@ fn manage_particles(
     let pos = [0.5, SPAWN_Y as f64 + 2.0, 5.0];
     let offset = [0.5, 0.5, 0.5];
 
-    for mut client in clients.iter_mut() {
-        client.set_action_bar(name.clone().bold());
-        client.play_particle(particle, true, pos, offset, 0.1, 100);
-    }
+    let mut instance = instances.single_mut();
+
+    instance.play_particle(particle, true, pos, offset, 0.1, 100);
+    instance.set_action_bar(name.clone().bold());
 }
 
 fn dbg_name(dbg: &impl std::fmt::Debug) -> String {

@@ -22,13 +22,13 @@ use valence_protocol::{
     Username, VarInt,
 };
 
-use crate::chunk_pos::ChunkPos;
 use crate::dimension::DimensionId;
 use crate::entity::data::Player;
 use crate::entity::{velocity_to_packet_units, EntityStatus, McEntity};
 use crate::instance::Instance;
 use crate::packet::WritePacket;
 use crate::server::{NewClientInfo, Server};
+use crate::view::{ChunkPos, ChunkView};
 use crate::{Despawned, NULL_ENTITY};
 
 pub mod event;
@@ -169,9 +169,12 @@ impl Client {
         self.enc.write_packet(pkt);
     }
 
-    /// Writes arbitrary bytes to this client's packet buffer. Don't use this
-    /// function unless you know what you're doing. Consider using
-    /// [`write_packet`] instead.
+    /// Writes arbitrary bytes to this client's packet buffer. The packet data
+    /// must be properly compressed for the current compression threshold but
+    /// never encrypted.
+    ///
+    /// Don't use this function unless you know what you're doing. Consider
+    /// using [`write_packet`] instead.
     ///
     /// [`write_packet`]: Self::write_packet
     #[inline]
@@ -240,6 +243,17 @@ impl Client {
         self.old_position
     }
 
+    pub fn view(&self) -> ChunkView {
+        ChunkView::new(ChunkPos::from_dvec3(self.position), self.view_distance)
+    }
+
+    pub fn old_view(&self) -> ChunkView {
+        ChunkView::new(
+            ChunkPos::from_dvec3(self.old_position),
+            self.old_view_distance,
+        )
+    }
+
     pub fn set_velocity(&mut self, velocity: impl Into<Vec3>) {
         self.enc.write_packet(&SetEntityVelocity {
             entity_id: VarInt(0),
@@ -277,7 +291,7 @@ impl Client {
         self.write_packet(&CombatDeath {
             player_id: VarInt(0),
             entity_id: killer.map_or(-1, |k| k.protocol_id()),
-            message: message.into(),
+            message: message.into().into(),
         });
     }
 
@@ -305,6 +319,14 @@ impl Client {
                 });
             }
         }
+    }
+
+    pub fn is_flat(&self) -> bool {
+        self.is_flat
+    }
+
+    pub fn set_flat(&mut self, flat: bool) {
+        self.is_flat = flat;
     }
 
     /// The current view distance of this client measured in chunks. The client
@@ -421,7 +443,7 @@ impl Client {
     /// message is only visible to this client.
     pub fn send_message(&mut self, msg: impl Into<Text>) {
         self.write_packet(&SystemChatMessage {
-            chat: msg.into(),
+            chat: msg.into().into(),
             overlay: false,
         });
     }
@@ -439,7 +461,7 @@ impl Client {
 
     pub fn kick(&mut self, reason: impl Into<Text>) {
         self.write_packet(&DisconnectPlay {
-            reason: reason.into(),
+            reason: reason.into().into(),
         });
         self.is_disconnected = true;
     }
@@ -465,7 +487,7 @@ impl Client {
             url,
             hash,
             forced,
-            prompt_message,
+            prompt_message: prompt_message.map(|t| t.into()),
         });
     }
 
@@ -481,14 +503,14 @@ impl Client {
         subtitle: impl Into<Text>,
         animation: impl Into<Option<SetTitleAnimationTimes>>,
     ) {
-        let title = title.into();
+        let title = title.into().into();
         let subtitle = subtitle.into();
 
         self.write_packet(&SetTitleText { title_text: title });
 
         if !subtitle.is_empty() {
             self.write_packet(&SetSubtitleText {
-                subtitle_text: subtitle,
+                subtitle_text: subtitle.into(),
             });
         }
 
@@ -503,7 +525,7 @@ impl Client {
     /// screen, above the hotbar.
     pub fn set_action_bar(&mut self, text: impl Into<Text>) {
         self.write_packet(&SetActionBarText {
-            action_bar_text: text.into(),
+            action_bar_text: text.into().into(),
         });
     }
 
@@ -566,7 +588,9 @@ pub(crate) fn update_clients(
                 &entities,
                 &server,
             ) {
-                client.write_packet(&DisconnectPlay { reason: "".into() });
+                client.write_packet(&DisconnectPlay {
+                    reason: Text::from("").into(),
+                });
                 client.is_disconnected = true;
                 warn!(
                     username = %client.username,
@@ -679,21 +703,21 @@ fn update_one_client(
     // Send instance-wide packet data.
     client.enc.append_bytes(&instance.packet_buf);
 
-    let old_chunk_pos = ChunkPos::at(client.old_position.x, client.old_position.z);
-    let chunk_pos = ChunkPos::at(client.position.x, client.position.z);
+    let old_view = client.old_view();
+    let view = client.view();
 
     // Make sure the center chunk is set before loading chunks!
-    if old_chunk_pos != chunk_pos {
+    if old_view.pos != view.pos {
         // TODO: does the client initialize the center chunk to (0, 0)?
         client.enc.write_packet(&SetCenterChunk {
-            chunk_x: VarInt(chunk_pos.x),
-            chunk_z: VarInt(chunk_pos.z),
+            chunk_x: VarInt(view.pos.x),
+            chunk_z: VarInt(view.pos.z),
         });
     }
 
     // Iterate over all visible chunks from the previous tick.
     if let Ok(old_instance) = instances.get(client.old_instance) {
-        old_chunk_pos.for_each_in_view(client.old_view_distance, |pos| {
+        old_view.for_each(|pos| {
             if let Some(cell) = old_instance.partition.get(&pos) {
                 if cell.chunk_removed && cell.chunk.is_none() {
                     // Chunk was previously loaded and is now deleted.
@@ -705,9 +729,7 @@ fn update_one_client(
 
                 // Send entity spawn packets for entities entering the client's view.
                 for &(id, src_pos) in &cell.incoming {
-                    if src_pos.map_or(true, |p| {
-                        !old_chunk_pos.is_in_view(p, client.old_view_distance)
-                    }) {
+                    if src_pos.map_or(true, |p| !old_view.contains(p)) {
                         // The incoming entity originated from outside the view distance, so it
                         // must be spawned.
                         if let Ok(entity) = entities.get(id) {
@@ -724,9 +746,7 @@ fn update_one_client(
 
                 // Send entity despawn packets for entities exiting the client's view.
                 for &(id, dest_pos) in &cell.outgoing {
-                    if dest_pos.map_or(true, |p| {
-                        !old_chunk_pos.is_in_view(p, client.old_view_distance)
-                    }) {
+                    if dest_pos.map_or(true, |p| !old_view.contains(p)) {
                         // The outgoing entity moved outside the view distance, so it must be
                         // despawned.
                         if let Ok(entity) = entities.get(id) {
@@ -752,7 +772,7 @@ fn update_one_client(
             //       client will do the unloading for us in that case?
 
             // Unload all chunks and entities in the old view.
-            old_chunk_pos.for_each_in_view(client.old_view_distance, |pos| {
+            old_view.for_each(|pos| {
                 if let Some(cell) = old_instance.partition.get(&pos) {
                     // Unload the chunk at this cell if it was loaded.
                     if cell.chunk.is_some() {
@@ -775,7 +795,7 @@ fn update_one_client(
         }
 
         // Load all chunks and entities in new view.
-        chunk_pos.for_each_in_view(client.view_distance, |pos| {
+        view.for_each(|pos| {
             if let Some(cell) = instance.partition.get(&pos) {
                 // Load the chunk at this cell if there is one.
                 if let Some(chunk) = &cell.chunk {
@@ -799,58 +819,53 @@ fn update_one_client(
                 }
             }
         });
-    } else if old_chunk_pos != chunk_pos || client.old_view_distance != client.view_distance {
+    } else if old_view != view {
         // Client changed their view without changing the instance.
 
         // Uunload chunks and entities in the old view and load chunks and entities in
         // the new view. We don't need to do any work where the old and new view
         // overlap.
+        old_view.diff_for_each(view, |pos| {
+            if let Some(cell) = instance.partition.get(&pos) {
+                // Unload the chunk at this cell if it was loaded.
+                if cell.chunk.is_some() {
+                    client.enc.write_packet(&UnloadChunk {
+                        chunk_x: pos.x,
+                        chunk_z: pos.z,
+                    });
+                }
 
-        old_chunk_pos.for_each_in_view(client.old_view_distance, |pos| {
-            if !pos.is_in_view(chunk_pos, client.view_distance) {
-                if let Some(cell) = instance.partition.get(&pos) {
-                    // Unload the chunk at this cell if it was loaded.
-                    if cell.chunk.is_some() {
-                        client.enc.write_packet(&UnloadChunk {
-                            chunk_x: pos.x,
-                            chunk_z: pos.z,
-                        });
-                    }
-
-                    // Unload all the entities in the cell.
-                    for &id in &cell.entities {
-                        if let Ok(entity) = entities.get(id) {
-                            client
-                                .entities_to_despawn
-                                .push(VarInt(entity.protocol_id()));
-                        }
+                // Unload all the entities in the cell.
+                for &id in &cell.entities {
+                    if let Ok(entity) = entities.get(id) {
+                        client
+                            .entities_to_despawn
+                            .push(VarInt(entity.protocol_id()));
                     }
                 }
             }
         });
 
-        chunk_pos.for_each_in_view(client.view_distance, |pos| {
-            if !pos.is_in_view(old_chunk_pos, client.old_view_distance) {
-                if let Some(cell) = instance.partition.get(&pos) {
-                    // Load the chunk at this cell if there is one.
-                    if let Some(chunk) = &cell.chunk {
-                        chunk.write_init_packets(
-                            &instance.info,
-                            pos,
+        view.diff_for_each(old_view, |pos| {
+            if let Some(cell) = instance.partition.get(&pos) {
+                // Load the chunk at this cell if there is one.
+                if let Some(chunk) = &cell.chunk {
+                    chunk.write_init_packets(
+                        &instance.info,
+                        pos,
+                        &mut client.enc,
+                        &mut client.scratch,
+                    );
+                }
+
+                // Load all the entities in this cell.
+                for &id in &cell.entities {
+                    if let Ok(entity) = entities.get(id) {
+                        entity.write_init_packets(
                             &mut client.enc,
+                            entity.position(),
                             &mut client.scratch,
                         );
-                    }
-
-                    // Load all the entities in this cell.
-                    for &id in &cell.entities {
-                        if let Ok(entity) = entities.get(id) {
-                            entity.write_init_packets(
-                                &mut client.enc,
-                                entity.position(),
-                                &mut client.scratch,
-                            );
-                        }
                     }
                 }
             }
@@ -947,7 +962,7 @@ fn update_one_client(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use std::collections::BTreeSet;
 
     use bevy_app::App;
     use valence_protocol::packets::s2c::play::ChunkDataAndUpdateLight;
@@ -968,8 +983,8 @@ mod tests {
             .query::<&mut Instance>()
             .single_mut(&mut app.world);
 
-        for z in -5..5 {
-            for x in -5..5 {
+        for z in -15..15 {
+            for x in -15..15 {
                 instance.insert_chunk([x, z], Chunk::default());
             }
         }
@@ -977,13 +992,13 @@ mod tests {
         let mut client = app.world.get_mut::<Client>(client_ent).unwrap();
 
         client.set_position([8.0, 0.0, 8.0]);
-        client.set_view_distance(8);
+        client.set_view_distance(6);
 
         // Tick
         app.update();
         let mut client = app.world.get_mut::<Client>(client_ent).unwrap();
 
-        let mut loaded_chunks = HashSet::new();
+        let mut loaded_chunks = BTreeSet::new();
 
         for pkt in client_helper.collect_sent().unwrap() {
             if let S2cPlayPacket::ChunkDataAndUpdateLight(ChunkDataAndUpdateLight {
@@ -994,9 +1009,13 @@ mod tests {
             {
                 assert!(
                     loaded_chunks.insert(ChunkPos::new(chunk_x, chunk_z)),
-                    "bad chunk: ({chunk_x}, {chunk_z})"
+                    "({chunk_x}, {chunk_z})"
                 );
             }
+        }
+
+        for pos in client.view().iter() {
+            assert!(loaded_chunks.contains(&pos), "{pos:?}");
         }
 
         assert!(!loaded_chunks.is_empty());
@@ -1006,19 +1025,32 @@ mod tests {
 
         // Tick
         app.update();
+        let client = app.world.get_mut::<Client>(client_ent).unwrap();
 
         for pkt in client_helper.collect_sent().unwrap() {
-            if let S2cPlayPacket::ChunkDataAndUpdateLight(ChunkDataAndUpdateLight {
-                chunk_x,
-                chunk_z,
-                ..
-            }) = pkt
-            {
-                assert!(
-                    loaded_chunks.insert(ChunkPos::new(chunk_x, chunk_z)),
-                    "bad chunk: ({chunk_x}, {chunk_z})"
-                );
+            match pkt {
+                S2cPlayPacket::ChunkDataAndUpdateLight(ChunkDataAndUpdateLight {
+                    chunk_x,
+                    chunk_z,
+                    ..
+                }) => {
+                    assert!(
+                        loaded_chunks.insert(ChunkPos::new(chunk_x, chunk_z)),
+                        "({chunk_x}, {chunk_z})"
+                    );
+                }
+                S2cPlayPacket::UnloadChunk(UnloadChunk { chunk_x, chunk_z }) => {
+                    assert!(
+                        loaded_chunks.remove(&ChunkPos::new(chunk_x, chunk_z)),
+                        "({chunk_x}, {chunk_z})"
+                    );
+                }
+                _ => {}
             }
+        }
+
+        for pos in client.view().iter() {
+            assert!(loaded_chunks.contains(&pos), "{pos:?}");
         }
     }
 }

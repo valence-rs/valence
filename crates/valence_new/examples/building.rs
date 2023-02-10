@@ -17,6 +17,7 @@ pub fn main() {
         .add_system_to_stage(EventLoop, digging_creative_mode)
         .add_system_to_stage(EventLoop, digging_survival_mode)
         .add_system_to_stage(EventLoop, place_blocks)
+        .add_system_set(PlayerList::default_system_set())
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
@@ -47,11 +48,9 @@ fn init_clients(
     mut clients: Query<&mut Client, Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
-    let instance = instances.get_single().unwrap();
-
     for mut client in &mut clients {
         client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
-        client.set_instance(instance);
+        client.set_instance(instances.single());
         client.set_game_mode(GameMode::Creative);
         client.send_message("Welcome to Valence! Build something cool.".italic());
     }

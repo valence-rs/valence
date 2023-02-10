@@ -30,7 +30,6 @@ pub use {
 };
 
 pub mod biome;
-pub mod chunk_pos;
 pub mod client;
 pub mod config;
 pub mod dimension;
@@ -44,6 +43,7 @@ pub mod player_textures;
 pub mod server;
 #[cfg(any(test, doctest))]
 mod unit_test;
+pub mod view;
 
 pub mod prelude {
     pub use async_trait::async_trait;
@@ -72,6 +72,7 @@ pub mod prelude {
     pub use uuid::Uuid;
     pub use valence_nbt::Compound;
     pub use valence_protocol::{BlockKind, BlockPos};
+    pub use view::{ChunkPos, ChunkView};
 
     use super::*;
 }
