@@ -66,7 +66,7 @@ pub struct Client {
     got_keepalive: bool,
     last_keepalive_id: u64,
     keepalive_sent_time: Instant,
-    ping: u32,
+    ping: i32,
     /// Counts up as teleports are made.
     teleport_id_counter: u32,
     /// The number of pending client teleports that have yet to receive a
@@ -141,7 +141,7 @@ impl Client {
             got_keepalive: true,
             last_keepalive_id: 0,
             keepalive_sent_time: Instant::now(),
-            ping: 0,
+            ping: -1,
             teleport_id_counter: 0,
             pending_teleports: 0,
             cursor_item: None,
@@ -388,6 +388,10 @@ impl Client {
             entity_id: 0,
             entity_status: status as u8,
         });
+    }
+
+    pub fn ping(&self) -> i32 {
+        self.ping
     }
 
     /// The item that the client thinks it's holding under the mouse
