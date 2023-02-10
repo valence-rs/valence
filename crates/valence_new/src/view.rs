@@ -34,6 +34,13 @@ impl ChunkPos {
     pub fn at(x: f64, z: f64) -> Self {
         Self::new((x / 16.0).floor() as i32, (z / 16.0).floor() as i32)
     }
+
+    pub fn distance_squared(self, other: Self) -> u64 {
+        let diff_x = other.x as i64 - self.x as i64;
+        let diff_z = other.z as i64 - self.z as i64;
+
+        (diff_x * diff_x + diff_z * diff_z) as u64
+    }
 }
 
 impl From<(i32, i32)> for ChunkPos {
@@ -91,12 +98,8 @@ impl ChunkView {
 
     #[inline]
     pub fn contains(self, pos: ChunkPos) -> bool {
-        let true_dist = self.dist as i64 + EXTRA_VIEW_RADIUS as i64;
-
-        let diff_x = pos.x as i64 - self.pos.x as i64;
-        let diff_z = pos.z as i64 - self.pos.z as i64;
-
-        diff_x * diff_x + diff_z * diff_z <= true_dist * true_dist
+        let true_dist = self.dist as u64 + EXTRA_VIEW_RADIUS as u64;
+        self.pos.distance_squared(pos) <= true_dist * true_dist
     }
 
     /// Returns an iterator over all the chunk positions in this view.
