@@ -717,6 +717,10 @@ fn update_one_client(
                     });
                 }
 
+                if let Some(chunk) = &cell.chunk {
+                    chunk.mark_viewed();
+                }
+
                 // Send entity spawn packets for entities entering the client's view.
                 for &(id, src_pos) in &cell.incoming {
                     if src_pos.map_or(true, |p| !old_view.contains(p)) {
@@ -795,6 +799,8 @@ fn update_one_client(
                         &mut client.enc,
                         &mut client.scratch,
                     );
+
+                    chunk.mark_viewed();
                 }
 
                 // Load all the entities in this cell.
@@ -812,7 +818,7 @@ fn update_one_client(
     } else if old_view != view {
         // Client changed their view without changing the instance.
 
-        // Uunload chunks and entities in the old view and load chunks and entities in
+        // Unload chunks and entities in the old view and load chunks and entities in
         // the new view. We don't need to do any work where the old and new view
         // overlap.
         old_view.diff_for_each(view, |pos| {
@@ -846,6 +852,8 @@ fn update_one_client(
                         &mut client.enc,
                         &mut client.scratch,
                     );
+
+                    chunk.mark_viewed();
                 }
 
                 // Load all the entities in this cell.

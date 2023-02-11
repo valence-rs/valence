@@ -62,7 +62,7 @@ pub mod prelude {
     pub use instance::{Chunk, Instance};
     pub use inventory::{Inventory, InventoryKind, OpenInventory};
     pub use player_list::{PlayerList, PlayerListEntry};
-    pub use protocol::block::BlockState;
+    pub use protocol::block::{BlockState, PropName, PropValue};
     pub use protocol::ident::Ident;
     pub use protocol::text::{Color, Text, TextFormat};
     pub use protocol::types::GameMode;

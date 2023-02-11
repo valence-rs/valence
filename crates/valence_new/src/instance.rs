@@ -137,9 +137,19 @@ impl Instance {
     }
 
     pub fn clear_chunks(&mut self) {
-        for cell in &mut self.partition.values_mut() {
-            if cell.chunk.take().is_some() {
-                cell.chunk_removed = true;
+        self.retain_chunks(|_, _| false)
+    }
+
+    pub fn retain_chunks<F>(&mut self, mut f: F)
+    where
+        F: FnMut(ChunkPos, &mut Chunk<true>) -> bool,
+    {
+        for (&pos, cell) in &mut self.partition {
+            if let Some(chunk) = &mut cell.chunk {
+                if !f(pos, chunk) {
+                    cell.chunk = None;
+                    cell.chunk_removed = true;
+                }
             }
         }
     }
@@ -222,10 +232,7 @@ impl Instance {
             block,
         )
     }
-}
 
-/// Packet methods.
-impl Instance {
     /// Writes a packet into the global packet buffer of this instance. All
     /// clients in the instance will receive the packet.
     ///
@@ -431,6 +438,8 @@ pub(crate) fn update_instances_pre_client(
                 );
 
                 chunk.write_update_packets(writer, &mut scratch_1, pos, &instance.info);
+
+                chunk.clear_viewed();
             }
 
             // Cache entity update packets into the packet buffer of this cell.
@@ -473,7 +482,7 @@ pub(crate) fn update_instances_post_client(mut instances: Query<&mut Instance>) 
                 chunk.update_post_client();
             }
 
-            cell.chunk.is_some() || cell.entities.len() > 0
+            cell.chunk.is_some() || !cell.entities.is_empty()
         });
 
         instance.packet_buf.clear();

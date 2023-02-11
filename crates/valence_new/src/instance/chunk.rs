@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+
 // Using nonstandard mutex to avoid poisoning API.
 use parking_lot::Mutex;
 use valence_nbt::compound;
@@ -27,6 +29,9 @@ pub struct Chunk<const LOADED: bool = false> {
     /// If clients should receive the chunk data packet instead of block change
     /// packets on update.
     refresh: bool,
+    /// Tracks if any clients are in view of this (loaded) chunk. Useful for
+    /// knowing when a chunk should be unloaded.
+    viewed: AtomicBool,
 }
 
 #[derive(Clone, Default, Debug)]
@@ -53,6 +58,7 @@ impl Chunk<false> {
             sections: vec![],
             cached_init_packets: Mutex::new(vec![]),
             refresh: true,
+            viewed: AtomicBool::new(false),
         };
 
         chunk.resize(section_count);
@@ -83,6 +89,7 @@ impl Chunk<false> {
             sections: self.sections,
             cached_init_packets: self.cached_init_packets,
             refresh: true,
+            viewed: AtomicBool::new(false),
         }
     }
 }
@@ -99,11 +106,55 @@ impl Clone for Chunk {
             sections: self.sections.clone(),
             cached_init_packets: Mutex::new(vec![]),
             refresh: true,
+            viewed: AtomicBool::new(false),
         }
     }
 }
 
 impl Chunk<true> {
+    /// Creates an unloaded clone of this loaded chunk.
+    pub fn to_unloaded(&self) -> Chunk {
+        let sections = self
+            .sections
+            .iter()
+            .map(|sect| {
+                Section {
+                    block_states: sect.block_states.clone(),
+                    biomes: sect.biomes.clone(),
+                    non_air_count: 0,
+                    section_updates: vec![], // Don't clone the section updates.
+                }
+            })
+            .collect();
+
+        Chunk {
+            sections,
+            cached_init_packets: Mutex::new(vec![]),
+            refresh: true,
+            viewed: AtomicBool::new(false),
+        }
+    }
+
+    pub(super) fn clear_viewed(&mut self) {
+        *self.viewed.get_mut() = false;
+    }
+
+    /// Returns `true` if this chunk was in view of a client at the end of the
+    /// previous tick.
+    pub fn is_viewed(&self) -> bool {
+        self.viewed.load(Ordering::Relaxed)
+    }
+
+    /// Like [`Self::is_viewed`], but avoids an atomic load.
+    pub fn is_viewed_mut(&mut self) -> bool {
+        *self.viewed.get_mut()
+    }
+
+    /// Marks this chunk as being seen by a client.
+    pub(crate) fn mark_viewed(&self) {
+        self.viewed.store(true, Ordering::Relaxed);
+    }
+
     pub(super) fn into_unloaded(mut self) -> Chunk<false> {
         self.cached_init_packets.get_mut().clear();
 
@@ -115,6 +166,7 @@ impl Chunk<true> {
             sections: self.sections,
             cached_init_packets: self.cached_init_packets,
             refresh: true,
+            viewed: AtomicBool::new(false),
         }
     }
 
