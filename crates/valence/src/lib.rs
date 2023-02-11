@@ -1,3 +1,5 @@
+//! Valence is a Minecraft server framework written in Rust.
+
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/valence-rs/valence/main/assets/logo.svg",
     html_favicon_url = "https://raw.githubusercontent.com/valence-rs/valence/main/assets/logo.svg"

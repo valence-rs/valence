@@ -540,7 +540,7 @@ impl Client {
     /// If you want to show a particle effect to all players, use
     /// [`Instance::play_particle`]
     ///
-    /// [`Instance::play_particle`]: crate::Instance::play_particle
+    /// [`Instance::play_particle`]: crate::instance::Instance::play_particle
     pub fn play_particle(
         &mut self,
         particle: &Particle,

@@ -9,11 +9,13 @@ use crate::LIBRARY_NAMESPACE;
 
 /// Identifies a particular [`Dimension`] on the server.
 ///
-/// The default dimension ID refers to the first dimension added in the server's
-/// [configuration](crate::config::Config).
+/// The default dimension ID refers to the first dimension added in
+/// [`ServerPlugin::dimensions`].
 ///
-/// To obtain dimension IDs for other dimensions, call
-/// [`dimensions`](crate::server::SharedServer::dimensions).
+/// To obtain dimension IDs for other dimensions, look at
+/// [`ServerPlugin::dimensions`].
+///
+/// [`ServerPlugin::dimensions`]: crate::server::SharedServer::dimensions
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct DimensionId(pub(crate) u16);
 
@@ -28,7 +30,9 @@ impl DimensionId {
 }
 
 /// The default dimension ID corresponds to the first element in the `Vec`
-/// returned by [`crate::config::Config::dimensions`].
+/// returned by [`ServerPlugin::dimensions`].
+///
+/// [`ServerPlugin::dimensions`]: crate::config::ServerPlugin::dimensions
 impl Default for DimensionId {
     fn default() -> Self {
         Self(0)
