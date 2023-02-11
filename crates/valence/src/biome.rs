@@ -14,7 +14,7 @@ use valence_protocol::ident::Ident;
 /// [configuration](crate::config::Config).
 ///
 /// To obtain biome IDs for other biomes, call
-/// [`biomes`](crate::server::SharedServer::biomes).
+/// [`SharedServer::biomes`](crate::server::SharedServer::biomes).
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct BiomeId(pub(crate) u16);
 
@@ -40,8 +40,7 @@ pub struct Biome {
     pub additions_sound: Option<BiomeAdditionsSound>,
     pub mood_sound: Option<BiomeMoodSound>,
     pub particle: Option<BiomeParticle>,
-    // TODO: The following fields should be added if they can affect the appearance of the biome to
-    // clients.
+    // TODO
     // * depth: f32
     // * temperature: f32
     // * scale: f32

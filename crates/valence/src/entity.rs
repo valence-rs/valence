@@ -1,377 +1,235 @@
-//! Entities in a world.
-
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::iter::FusedIterator;
-use std::num::NonZeroU32;
-use std::ops::{Deref, DerefMut, Index, IndexMut, Range};
+use std::fmt;
+use std::fmt::Formatter;
+use std::ops::Range;
 
-use bitfield_struct::bitfield;
+use bevy_ecs::prelude::*;
 pub use data::{EntityKind, TrackedData};
-use rayon::iter::ParallelIterator;
+use glam::{DVec3, UVec3, Vec3};
+use rustc_hash::FxHashMap;
+use tracing::warn;
 use uuid::Uuid;
 use valence_protocol::entity_meta::{Facing, PaintingKind, Pose};
 use valence_protocol::packets::s2c::play::{
-    EntityAnimationS2c, EntityEvent as EntityEventPacket, SetEntityMetadata, SetEntityVelocity,
+    EntityAnimationS2c, EntityEvent as EntityEventS2c, SetEntityMetadata, SetEntityVelocity,
     SetHeadRotation, SpawnEntity, SpawnExperienceOrb, SpawnPlayer, TeleportEntity,
     UpdateEntityPosition, UpdateEntityPositionAndRotation, UpdateEntityRotation,
 };
 use valence_protocol::{ByteAngle, RawBytes, VarInt};
-use vek::{Aabb, Vec3};
 
-use crate::config::Config;
+use crate::config::DEFAULT_TPS;
+use crate::math::Aabb;
 use crate::packet::WritePacket;
-use crate::server::PlayPacketSender;
-use crate::slab_versioned::{Key, VersionedSlab};
-use crate::util::aabb_from_bottom_and_size;
-use crate::world::WorldId;
-use crate::STANDARD_TPS;
+use crate::{Despawned, NULL_ENTITY};
 
 pub mod data;
 
 include!(concat!(env!("OUT_DIR"), "/entity_event.rs"));
 
-/// A container for all [`Entity`]s on a server.
-///
-/// # Spawning Player Entities
-///
-/// [`Player`] entities are treated specially by the client. For the player
-/// entity to be visible to clients, the player's UUID must be added to the
-/// [`PlayerList`] _before_ being loaded by the client.
-///
-/// [`Player`]: crate::entity::data::Player
-/// [`PlayerList`]: crate::player_list::PlayerList
-pub struct Entities<C: Config> {
-    slab: VersionedSlab<Entity<C>>,
-    uuid_to_entity: HashMap<Uuid, EntityId>,
-    raw_id_to_entity: HashMap<NonZeroU32, u32>,
+/// A [`Resource`] which maintains information about all the [`McEntity`]
+/// components on the server.
+#[derive(Resource)]
+pub struct McEntityManager {
+    protocol_id_to_entity: FxHashMap<i32, Entity>,
+    next_protocol_id: i32,
 }
 
-impl<C: Config> Entities<C> {
+impl McEntityManager {
     pub(crate) fn new() -> Self {
         Self {
-            slab: VersionedSlab::new(),
-            uuid_to_entity: HashMap::new(),
-            raw_id_to_entity: HashMap::new(),
+            protocol_id_to_entity: HashMap::default(),
+            next_protocol_id: 1,
         }
     }
 
-    /// Spawns a new entity with a random UUID. A reference to the entity along
-    /// with its ID is returned.
-    pub fn insert(
-        &mut self,
-        kind: EntityKind,
-        state: C::EntityState,
-    ) -> (EntityId, &mut Entity<C>) {
-        self.insert_with_uuid(kind, Uuid::from_bytes(rand::random()), state)
-            .expect("UUID collision")
+    /// Gets the [`Entity`] of the [`McEntity`] with the given protocol ID.
+    pub fn get_with_protocol_id(&self, id: i32) -> Option<Entity> {
+        self.protocol_id_to_entity.get(&id).cloned()
     }
+}
 
-    /// Like [`Self::insert`], but requires specifying the new
-    /// entity's UUID.
-    ///
-    /// The provided UUID must not conflict with an existing entity UUID. If it
-    /// does, `None` is returned and the entity is not spawned.
-    pub fn insert_with_uuid(
-        &mut self,
-        kind: EntityKind,
-        uuid: Uuid,
-        state: C::EntityState,
-    ) -> Option<(EntityId, &mut Entity<C>)> {
-        match self.uuid_to_entity.entry(uuid) {
-            Entry::Occupied(_) => None,
-            Entry::Vacant(ve) => {
-                let (k, e) = self.slab.insert(Entity {
-                    state,
-                    variants: TrackedData::new(kind),
-                    self_update_range: 0..0,
-                    events: vec![],
-                    bits: EntityBits::new(),
-                    world: WorldId::NULL,
-                    old_world: WorldId::NULL,
-                    position: Vec3::default(),
-                    old_position: Vec3::default(),
-                    yaw: 0.0,
-                    pitch: 0.0,
-                    head_yaw: 0.0,
-                    velocity: Vec3::default(),
-                    uuid,
-                });
-
-                // TODO check for overflowing version?
-                self.raw_id_to_entity.insert(k.version(), k.index());
-
-                ve.insert(EntityId(k));
-
-                Some((EntityId(k), e))
-            }
+/// Sets the protocol ID of new entities.
+pub(crate) fn init_entities(
+    mut entities: Query<(Entity, &mut McEntity), Added<McEntity>>,
+    mut manager: ResMut<McEntityManager>,
+) {
+    for (entity, mut mc_entity) in &mut entities {
+        if manager.next_protocol_id == 0 {
+            warn!("entity protocol ID overflow");
+            // ID 0 is reserved for clients so we skip over it.
+            manager.next_protocol_id = 1;
         }
-    }
 
-    /// Returns the number of entities in this container.
-    pub fn len(&self) -> usize {
-        self.slab.len()
-    }
+        mc_entity.protocol_id = manager.next_protocol_id;
+        manager.next_protocol_id = manager.next_protocol_id.wrapping_add(1);
 
-    /// Returns `true` if there are no entities.
-    pub fn is_empty(&self) -> bool {
-        self.slab.len() == 0
-    }
-
-    /// Gets the [`EntityId`] of the entity with the given UUID in an efficient
-    /// manner. The returned ID is guaranteed to be valid.
-    ///
-    /// If there is no entity with the UUID, `None` is returned.
-    pub fn get_with_uuid(&self, uuid: Uuid) -> Option<EntityId> {
-        self.uuid_to_entity.get(&uuid).cloned()
-    }
-
-    /// Gets a shared reference to the entity with the given [`EntityId`].
-    ///
-    /// If the ID is invalid, `None` is returned.
-    pub fn get(&self, entity: EntityId) -> Option<&Entity<C>> {
-        self.slab.get(entity.0)
-    }
-
-    /// Gets an exclusive reference to the entity with the given [`EntityId`].
-    ///
-    /// If the ID is invalid, `None` is returned.
-    pub fn get_mut(&mut self, entity: EntityId) -> Option<&mut Entity<C>> {
-        self.slab.get_mut(entity.0)
-    }
-
-    pub fn delete(&mut self, entity: EntityId) -> bool {
-        if let Some(entity) = self.get_mut(entity) {
-            entity.set_deleted(true);
-            true
-        } else {
-            false
-        }
-    }
-
-    pub fn get_with_raw_id(&self, raw_id: i32) -> Option<(EntityId, &Entity<C>)> {
-        let version = NonZeroU32::new(raw_id as u32)?;
-        let index = *self.raw_id_to_entity.get(&version)?;
-
-        let id = EntityId(Key::new(index, version));
-        let entity = self.get(id)?;
-        Some((id, entity))
-    }
-
-    pub fn get_with_raw_id_mut(&mut self, raw_id: i32) -> Option<(EntityId, &mut Entity<C>)> {
-        let version = NonZeroU32::new(raw_id as u32)?;
-        let index = *self.raw_id_to_entity.get(&version)?;
-
-        let id = EntityId(Key::new(index, version));
-        let entity = self.get_mut(id)?;
-        Some((id, entity))
-    }
-
-    /// Returns an iterator over all entities on the server in an unspecified
-    /// order.
-    pub fn iter(
-        &self,
-    ) -> impl ExactSizeIterator<Item = (EntityId, &Entity<C>)> + FusedIterator + Clone + '_ {
-        self.slab.iter().map(|(k, v)| (EntityId(k), v))
-    }
-
-    /// Returns a mutable iterator over all entities on the server in an
-    /// unspecified order.
-    pub fn iter_mut(
-        &mut self,
-    ) -> impl ExactSizeIterator<Item = (EntityId, &mut Entity<C>)> + FusedIterator + '_ {
-        self.slab.iter_mut().map(|(k, v)| (EntityId(k), v))
-    }
-
-    /// Returns a parallel iterator over all entities on the server in an
-    /// unspecified order.
-    pub fn par_iter(&self) -> impl ParallelIterator<Item = (EntityId, &Entity<C>)> + Clone + '_ {
-        self.slab.par_iter().map(|(k, v)| (EntityId(k), v))
-    }
-
-    /// Returns a parallel mutable iterator over all clients on the server in an
-    /// unspecified order.
-    pub fn par_iter_mut(
-        &mut self,
-    ) -> impl ParallelIterator<Item = (EntityId, &mut Entity<C>)> + '_ {
-        self.slab.par_iter_mut().map(|(k, v)| (EntityId(k), v))
-    }
-
-    pub(crate) fn update(&mut self) {
-        self.slab.retain(|k, entity| {
-            if entity.deleted() {
-                self.uuid_to_entity
-                    .remove(&entity.uuid)
-                    .expect("UUID should have been in UUID map");
-
-                self.raw_id_to_entity
-                    .remove(&k.version())
-                    .expect("raw ID should have been in the raw ID map");
-
-                false
-            } else {
-                entity.old_position = entity.position;
-                entity.old_world = entity.world;
-                entity.variants.clear_modifications();
-                entity.events.clear();
-
-                entity.bits.set_yaw_or_pitch_modified(false);
-                entity.bits.set_head_yaw_modified(false);
-                entity.bits.set_velocity_modified(false);
-
-                true
-            }
-        });
+        manager
+            .protocol_id_to_entity
+            .insert(mc_entity.protocol_id, entity);
     }
 }
 
-impl<C: Config> Index<EntityId> for Entities<C> {
-    type Output = Entity<C>;
-
-    fn index(&self, index: EntityId) -> &Self::Output {
-        self.get(index).expect("invalid entity ID")
+/// Removes despawned entities from the entity manager.
+pub(crate) fn deinit_despawned_entities(
+    entities: Query<&mut McEntity, With<Despawned>>,
+    mut manager: ResMut<McEntityManager>,
+) {
+    for entity in &entities {
+        manager.protocol_id_to_entity.remove(&entity.protocol_id);
     }
 }
 
-impl<C: Config> IndexMut<EntityId> for Entities<C> {
-    fn index_mut(&mut self, index: EntityId) -> &mut Self::Output {
-        self.get_mut(index).expect("invalid entity ID")
+pub(crate) fn update_entities(mut entities: Query<&mut McEntity, Changed<McEntity>>) {
+    for mut entity in &mut entities {
+        entity.data.clear_modifications();
+        entity.old_position = entity.position;
+        entity.old_instance = entity.instance;
+        entity.statuses = 0;
+        entity.animations = 0;
+        entity.yaw_or_pitch_modified = false;
+        entity.head_yaw_modified = false;
+        entity.velocity_modified = false;
     }
 }
 
-/// An identifier for an [`Entity`] on the server.
-///
-/// Entity IDs are either _valid_ or _invalid_. Valid entity IDs point to
-/// entities that have not been deleted, while invalid IDs point to those that
-/// have. Once an ID becomes invalid, it will never become valid again.
-///
-/// The [`Ord`] instance on this type is correct but otherwise unspecified. This
-/// is useful for storing IDs in containers such as
-/// [`BTreeMap`](std::collections::BTreeMap).
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
-pub struct EntityId(Key);
-
-impl EntityId {
-    /// The value of the default entity ID which is always invalid.
-    pub const NULL: Self = Self(Key::NULL);
-
-    pub fn to_raw(self) -> i32 {
-        self.0.version().get() as i32
+pub(crate) fn check_entity_invariants(removed: RemovedComponents<McEntity>) {
+    for entity in &removed {
+        warn!(
+            entity = ?entity,
+            "A `McEntity` component was removed from the world directly. You must use the \
+             `Despawned` marker component instead."
+        );
     }
 }
 
-/// Represents an entity on the server.
+/// A component for Minecraft entities. For Valence to recognize a
+/// Minecraft entity, it must have this component attached.
 ///
-/// An entity is mostly anything in a world that isn't a block or client.
-/// Entities include paintings, falling blocks, zombies, fireballs, and more.
+/// ECS entities with this component are not allowed to be removed from the
+/// [`World`] directly. Instead, you must mark these entities with [`Despawned`]
+/// to allow deinitialization to occur.
 ///
-/// Every entity has common state which is accessible directly from
-/// this struct. This includes position, rotation, velocity, UUID, and hitbox.
-/// To access data that is not common to every kind of entity, see
-/// [`Self::data`].
-pub struct Entity<C: Config> {
-    /// Custom data.
-    pub state: C::EntityState,
-    variants: TrackedData,
-    bits: EntityBits,
+/// Every entity has common state which is accessible directly from this struct.
+/// This includes position, rotation, velocity, and UUID. To access data that is
+/// not common to every kind of entity, see [`Self::data`].
+#[derive(Component)]
+pub struct McEntity {
+    data: TrackedData,
+    protocol_id: i32,
+    uuid: Uuid,
     /// The range of bytes in the partition cell containing this entity's update
     /// packets.
     pub(crate) self_update_range: Range<usize>,
-    events: Vec<EntityEvent>, // TODO: store this info in bits?
-    world: WorldId,
-    old_world: WorldId,
-    position: Vec3<f64>,
-    old_position: Vec3<f64>,
+    /// Contains a set bit for every status triggered this tick.
+    statuses: u64,
+    /// Contains a set bit for every animation triggered this tick.
+    animations: u8,
+    instance: Entity,
+    old_instance: Entity,
+    position: DVec3,
+    old_position: DVec3,
     yaw: f32,
     pitch: f32,
+    yaw_or_pitch_modified: bool,
     head_yaw: f32,
-    velocity: Vec3<f32>,
-    uuid: Uuid,
+    head_yaw_modified: bool,
+    velocity: Vec3,
+    velocity_modified: bool,
+    on_ground: bool,
 }
 
-#[bitfield(u8)]
-pub(crate) struct EntityBits {
-    pub yaw_or_pitch_modified: bool,
-    pub head_yaw_modified: bool,
-    pub velocity_modified: bool,
-    pub on_ground: bool,
-    pub deleted: bool,
-    #[bits(3)]
-    _pad: u8,
-}
-
-impl<C: Config> Deref for Entity<C> {
-    type Target = C::EntityState;
-
-    fn deref(&self) -> &Self::Target {
-        &self.state
+impl McEntity {
+    /// Creates a new [`McEntity`] component with a random UUID.
+    ///
+    /// - `kind`: The type of Minecraft entity this should be.
+    /// - `instance`: The [`Instance`] this entity will be located in.
+    pub fn new(kind: EntityKind, instance: Entity) -> Self {
+        Self::with_uuid(kind, instance, Uuid::from_u128(rand::random()))
     }
-}
 
-impl<C: Config> DerefMut for Entity<C> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.state
+    /// Like [`Self::new`], but allows specifying the UUID of the entity.
+    pub fn with_uuid(kind: EntityKind, instance: Entity, uuid: Uuid) -> Self {
+        Self {
+            data: TrackedData::new(kind),
+            self_update_range: 0..0,
+            statuses: 0,
+            animations: 0,
+            instance,
+            old_instance: NULL_ENTITY,
+            position: DVec3::ZERO,
+            old_position: DVec3::ZERO,
+            yaw: 0.0,
+            pitch: 0.0,
+            yaw_or_pitch_modified: false,
+            head_yaw: 0.0,
+            head_yaw_modified: false,
+            velocity: Vec3::ZERO,
+            velocity_modified: false,
+            protocol_id: 0,
+            uuid,
+            on_ground: false,
+        }
     }
-}
 
-impl<C: Config> Entity<C> {
-    /// Returns a shared reference to this entity's tracked data.
+    /// Returns a reference to this entity's tracked data.
     pub fn data(&self) -> &TrackedData {
-        &self.variants
+        &self.data
     }
 
-    /// Returns an exclusive reference to this entity's tracked data.
+    /// Returns a mutable reference to this entity's tracked data.
     pub fn data_mut(&mut self) -> &mut TrackedData {
-        &mut self.variants
+        &mut self.data
     }
 
     /// Gets the [`EntityKind`] of this entity.
     pub fn kind(&self) -> EntityKind {
-        self.variants.kind()
+        self.data.kind()
     }
 
-    /// Triggers an entity event for this entity.
-    pub fn push_event(&mut self, event: EntityEvent) {
-        self.events.push(event);
+    /// Returns a handle to the [`Instance`] this entity is located in.
+    pub fn instance(&self) -> Entity {
+        self.instance
     }
 
-    /// Gets the [`WorldId`](crate::world::WorldId) of the world this entity is
-    /// located in.
-    ///
-    /// By default, entities are located in
-    /// [`WorldId::NULL`](crate::world::WorldId::NULL).
-    pub fn world(&self) -> WorldId {
-        self.world
+    /// Sets the [`Instance`] this entity is located in.
+    pub fn set_instance(&mut self, instance: Entity) {
+        self.instance = instance;
     }
 
-    /// Sets the world this entity is located in.
-    pub fn set_world(&mut self, world: WorldId) {
-        self.world = world;
+    pub(crate) fn old_instance(&self) -> Entity {
+        self.old_instance
     }
 
-    pub(crate) fn old_world(&self) -> WorldId {
-        self.old_world
+    /// Gets the UUID of this entity.
+    pub fn uuid(&self) -> Uuid {
+        self.uuid
+    }
+
+    /// Returns the raw protocol ID of this entity. IDs for new entities are not
+    /// initialized until the end of the tick.
+    pub fn protocol_id(&self) -> i32 {
+        self.protocol_id
     }
 
     /// Gets the position of this entity in the world it inhabits.
     ///
-    /// The position of an entity is located on the botton of its
+    /// The position of an entity is located on the bottom of its
     /// hitbox and not the center.
-    pub fn position(&self) -> Vec3<f64> {
+    pub fn position(&self) -> DVec3 {
         self.position
     }
 
     /// Sets the position of this entity in the world it inhabits.
     ///
-    /// The position of an entity is located on the botton of its
+    /// The position of an entity is located on the bottom of its
     /// hitbox and not the center.
-    pub fn set_position(&mut self, pos: impl Into<Vec3<f64>>) {
+    pub fn set_position(&mut self, pos: impl Into<DVec3>) {
         self.position = pos.into();
     }
 
     /// Returns the position of this entity as it existed at the end of the
     /// previous tick.
-    pub(crate) fn old_position(&self) -> Vec3<f64> {
+    pub(crate) fn old_position(&self) -> DVec3 {
         self.old_position
     }
 
@@ -384,7 +242,7 @@ impl<C: Config> Entity<C> {
     pub fn set_yaw(&mut self, yaw: f32) {
         if self.yaw != yaw {
             self.yaw = yaw;
-            self.bits.set_yaw_or_pitch_modified(true);
+            self.yaw_or_pitch_modified = true;
         }
     }
 
@@ -397,7 +255,7 @@ impl<C: Config> Entity<C> {
     pub fn set_pitch(&mut self, pitch: f32) {
         if self.pitch != pitch {
             self.pitch = pitch;
-            self.bits.set_yaw_or_pitch_modified(true);
+            self.yaw_or_pitch_modified = true;
         }
     }
 
@@ -410,38 +268,42 @@ impl<C: Config> Entity<C> {
     pub fn set_head_yaw(&mut self, head_yaw: f32) {
         if self.head_yaw != head_yaw {
             self.head_yaw = head_yaw;
-            self.bits.set_head_yaw_modified(true);
+            self.head_yaw_modified = true;
         }
     }
 
     /// Gets the velocity of this entity in meters per second.
-    pub fn velocity(&self) -> Vec3<f32> {
+    pub fn velocity(&self) -> Vec3 {
         self.velocity
     }
 
     /// Sets the velocity of this entity in meters per second.
-    pub fn set_velocity(&mut self, velocity: impl Into<Vec3<f32>>) {
+    pub fn set_velocity(&mut self, velocity: impl Into<Vec3>) {
         let new_vel = velocity.into();
 
         if self.velocity != new_vel {
             self.velocity = new_vel;
-            self.bits.set_velocity_modified(true);
+            self.velocity_modified = true;
         }
     }
 
     /// Gets the value of the "on ground" flag.
     pub fn on_ground(&self) -> bool {
-        self.bits.on_ground()
+        self.on_ground
     }
 
     /// Sets the value of the "on ground" flag.
     pub fn set_on_ground(&mut self, on_ground: bool) {
-        self.bits.set_on_ground(on_ground);
+        self.on_ground = on_ground;
+        // TODO: on ground modified flag?
     }
 
-    /// Gets the UUID of this entity.
-    pub fn uuid(&self) -> Uuid {
-        self.uuid
+    pub fn trigger_status(&mut self, status: EntityStatus) {
+        self.statuses |= 1 << status as u64;
+    }
+
+    pub fn trigger_animation(&mut self, animation: EntityAnimation) {
+        self.animations |= 1 << animation as u8;
     }
 
     /// Returns the hitbox of this entity.
@@ -452,8 +314,8 @@ impl<C: Config> Entity<C> {
     /// The hitbox of an entity is determined by its position, entity type, and
     /// other state specific to that type.
     ///
-    /// [interact event]: crate::client::ClientEvent::InteractWithEntity
-    pub fn hitbox(&self) -> Aabb<f64> {
+    /// [interact event]: crate::client::event::InteractWithEntity
+    pub fn hitbox(&self) -> Aabb {
         fn baby(is_baby: bool, adult_hitbox: [f64; 3]) -> [f64; 3] {
             if is_baby {
                 adult_hitbox.map(|a| a / 2.0)
@@ -462,7 +324,7 @@ impl<C: Config> Entity<C> {
             }
         }
 
-        fn item_frame(pos: Vec3<f64>, rotation: i32) -> Aabb<f64> {
+        fn item_frame(pos: DVec3, rotation: i32) -> Aabb {
             let mut center_pos = pos + 0.5;
 
             match rotation {
@@ -475,7 +337,7 @@ impl<C: Config> Entity<C> {
                 _ => center_pos.y -= 0.46875,
             };
 
-            let bounds = Vec3::from(match rotation {
+            let bounds = DVec3::from(match rotation {
                 0 | 1 => [0.75, 0.0625, 0.75],
                 2 | 3 => [0.75, 0.75, 0.0625],
                 4 | 5 => [0.0625, 0.75, 0.75],
@@ -488,7 +350,7 @@ impl<C: Config> Entity<C> {
             }
         }
 
-        let dimensions = match &self.variants {
+        let dimensions = match &self.data {
             TrackedData::Allay(_) => [0.6, 0.35, 0.6],
             TrackedData::ChestBoat(_) => [1.375, 0.5625, 1.375],
             TrackedData::Frog(_) => [0.5, 0.5, 0.5],
@@ -580,7 +442,7 @@ impl<C: Config> Entity<C> {
             TrackedData::Mooshroom(e) => baby(e.get_child(), [0.9, 1.4, 0.9]),
             TrackedData::Ocelot(e) => baby(e.get_child(), [0.6, 0.7, 0.6]),
             TrackedData::Painting(e) => {
-                let bounds: Vec3<u32> = match e.get_variant() {
+                let bounds: UVec3 = match e.get_variant() {
                     PaintingKind::Kebab => [1, 1, 1],
                     PaintingKind::Aztec => [1, 1, 1],
                     PaintingKind::Alban => [1, 1, 1],
@@ -632,8 +494,8 @@ impl<C: Config> Entity<C> {
                 center_pos.z += cc_facing_z as f64 * if bounds.z % 2 == 0 { 0.5 } else { 0.0 };
 
                 let bounds = match (facing_x, facing_z) {
-                    (1, 0) | (-1, 0) => bounds.as_().with_x(0.0625),
-                    _ => bounds.as_().with_z(0.0625),
+                    (1, 0) | (-1, 0) => DVec3::new(0.0625, bounds.y as f64, bounds.z as f64),
+                    _ => DVec3::new(bounds.x as f64, bounds.y as f64, 0.0625),
                 };
 
                 return Aabb {
@@ -732,269 +594,193 @@ impl<C: Config> Entity<C> {
             TrackedData::FishingBobber(_) => [0.25, 0.25, 0.25],
         };
 
-        aabb_from_bottom_and_size(self.position, dimensions.into())
-    }
-
-    pub fn deleted(&self) -> bool {
-        self.bits.deleted()
-    }
-
-    pub fn set_deleted(&mut self, deleted: bool) {
-        self.bits.set_deleted(deleted)
+        Aabb::from_bottom_size(self.position, dimensions)
     }
 
     /// Sends the appropriate packets to initialize the entity. This will spawn
     /// the entity and initialize tracked data.
-    pub(crate) fn send_init_packets(
+    pub(crate) fn write_init_packets(
         &self,
-        send: &mut PlayPacketSender,
-        position: Vec3<f64>,
-        this_id: EntityId,
+        mut writer: impl WritePacket,
+        position: DVec3,
         scratch: &mut Vec<u8>,
-    ) -> anyhow::Result<()> {
+    ) {
         let with_object_data = |data| SpawnEntity {
-            entity_id: VarInt(this_id.to_raw()),
+            entity_id: VarInt(self.protocol_id),
             object_uuid: self.uuid,
             kind: VarInt(self.kind() as i32),
-            position: position.into_array(),
+            position: position.to_array(),
             pitch: ByteAngle::from_degrees(self.pitch),
             yaw: ByteAngle::from_degrees(self.yaw),
             head_yaw: ByteAngle::from_degrees(self.head_yaw),
             data: VarInt(data),
-            velocity: velocity_to_packet_units(self.velocity).into_array(),
+            velocity: velocity_to_packet_units(self.velocity),
         };
 
-        match &self.variants {
+        match &self.data {
             TrackedData::Marker(_) => {}
-            TrackedData::ExperienceOrb(_) => send.append_packet(&SpawnExperienceOrb {
-                entity_id: VarInt(this_id.to_raw()),
-                position: position.into_array(),
+            TrackedData::ExperienceOrb(_) => writer.write_packet(&SpawnExperienceOrb {
+                entity_id: VarInt(self.protocol_id),
+                position: position.to_array(),
                 count: 0, // TODO
-            })?,
+            }),
             TrackedData::Player(_) => {
-                send.append_packet(&SpawnPlayer {
-                    entity_id: VarInt(this_id.to_raw()),
+                writer.write_packet(&SpawnPlayer {
+                    entity_id: VarInt(self.protocol_id),
                     player_uuid: self.uuid,
-                    position: position.into_array(),
+                    position: position.to_array(),
                     yaw: ByteAngle::from_degrees(self.yaw),
                     pitch: ByteAngle::from_degrees(self.pitch),
-                })?;
+                });
 
                 // Player spawn packet doesn't include head yaw for some reason.
-                send.append_packet(&SetHeadRotation {
-                    entity_id: VarInt(this_id.to_raw()),
+                writer.write_packet(&SetHeadRotation {
+                    entity_id: VarInt(self.protocol_id),
                     head_yaw: ByteAngle::from_degrees(self.head_yaw),
-                })?;
+                });
             }
-            TrackedData::ItemFrame(e) => send.append_packet(&with_object_data(e.get_rotation()))?,
+            TrackedData::ItemFrame(e) => writer.write_packet(&with_object_data(e.get_rotation())),
             TrackedData::GlowItemFrame(e) => {
-                send.append_packet(&with_object_data(e.get_rotation()))?
+                writer.write_packet(&with_object_data(e.get_rotation()))
             }
 
-            TrackedData::Painting(_) => send.append_packet(&with_object_data(
+            TrackedData::Painting(_) => writer.write_packet(&with_object_data(
                 match ((self.yaw + 45.0).rem_euclid(360.0) / 90.0) as u8 {
                     0 => 3,
                     1 => 4,
                     2 => 2,
                     _ => 5,
                 },
-            ))?,
+            )),
             // TODO: set block state ID for falling block.
-            TrackedData::FallingBlock(_) => send.append_packet(&with_object_data(1))?,
+            TrackedData::FallingBlock(_) => writer.write_packet(&with_object_data(1)),
             TrackedData::FishingBobber(e) => {
-                send.append_packet(&with_object_data(e.get_hook_entity_id()))?
+                writer.write_packet(&with_object_data(e.get_hook_entity_id()))
             }
             TrackedData::Warden(e) => {
-                send.append_packet(&with_object_data((e.get_pose() == Pose::Emerging).into()))?
+                writer.write_packet(&with_object_data((e.get_pose() == Pose::Emerging).into()))
             }
-            _ => send.append_packet(&with_object_data(0))?,
+            _ => writer.write_packet(&with_object_data(0)),
         }
 
         scratch.clear();
-        self.variants.write_initial_tracked_data(scratch);
+        self.data.write_initial_tracked_data(scratch);
         if !scratch.is_empty() {
-            send.append_packet(&SetEntityMetadata {
-                entity_id: VarInt(this_id.to_raw()),
+            writer.write_packet(&SetEntityMetadata {
+                entity_id: VarInt(self.protocol_id),
                 metadata: RawBytes(scratch),
-            })?;
+            });
         }
-
-        Ok(())
     }
 
     /// Writes the appropriate packets to update the entity (Position, tracked
-    /// data, and event packets).
-    pub(crate) fn write_update_packets(
-        &self,
-        mut writer: impl WritePacket,
-        this_id: EntityId,
-        scratch: &mut Vec<u8>,
-    ) -> anyhow::Result<()> {
-        let entity_id = VarInt(this_id.to_raw());
+    /// data, events, animations).
+    pub(crate) fn write_update_packets(&self, mut writer: impl WritePacket, scratch: &mut Vec<u8>) {
+        let entity_id = VarInt(self.protocol_id);
 
         let position_delta = self.position - self.old_position;
-        let needs_teleport = position_delta.map(f64::abs).reduce_partial_max() >= 8.0;
+        let needs_teleport = position_delta.abs().max_element() >= 8.0;
         let changed_position = self.position != self.old_position;
 
-        if changed_position && !needs_teleport && self.bits.yaw_or_pitch_modified() {
+        if changed_position && !needs_teleport && self.yaw_or_pitch_modified {
             writer.write_packet(&UpdateEntityPositionAndRotation {
                 entity_id,
-                delta: (position_delta * 4096.0).as_::<i16>().into_array(),
+                delta: (position_delta * 4096.0).to_array().map(|v| v as i16),
                 yaw: ByteAngle::from_degrees(self.yaw),
                 pitch: ByteAngle::from_degrees(self.pitch),
-                on_ground: self.bits.on_ground(),
-            })?;
+                on_ground: self.on_ground,
+            });
         } else {
             if changed_position && !needs_teleport {
                 writer.write_packet(&UpdateEntityPosition {
                     entity_id,
-                    delta: (position_delta * 4096.0).as_::<i16>().into_array(),
-                    on_ground: self.bits.on_ground(),
-                })?;
+                    delta: (position_delta * 4096.0).to_array().map(|v| v as i16),
+                    on_ground: self.on_ground,
+                });
             }
 
-            if self.bits.yaw_or_pitch_modified() {
+            if self.yaw_or_pitch_modified {
                 writer.write_packet(&UpdateEntityRotation {
                     entity_id,
                     yaw: ByteAngle::from_degrees(self.yaw),
                     pitch: ByteAngle::from_degrees(self.pitch),
-                    on_ground: self.bits.on_ground(),
-                })?;
+                    on_ground: self.on_ground,
+                });
             }
         }
 
         if needs_teleport {
             writer.write_packet(&TeleportEntity {
                 entity_id,
-                position: self.position.into_array(),
+                position: self.position.to_array(),
                 yaw: ByteAngle::from_degrees(self.yaw),
                 pitch: ByteAngle::from_degrees(self.pitch),
-                on_ground: self.bits.on_ground(),
-            })?;
+                on_ground: self.on_ground,
+            });
         }
 
-        if self.bits.velocity_modified() {
+        if self.velocity_modified {
             writer.write_packet(&SetEntityVelocity {
                 entity_id,
-                velocity: velocity_to_packet_units(self.velocity).into_array(),
-            })?;
+                velocity: velocity_to_packet_units(self.velocity),
+            });
         }
 
-        if self.bits.head_yaw_modified() {
+        if self.head_yaw_modified {
             writer.write_packet(&SetHeadRotation {
                 entity_id,
                 head_yaw: ByteAngle::from_degrees(self.head_yaw),
-            })?;
+            });
         }
 
         scratch.clear();
-        self.variants.write_updated_tracked_data(scratch);
+        self.data.write_updated_tracked_data(scratch);
         if !scratch.is_empty() {
             writer.write_packet(&SetEntityMetadata {
                 entity_id,
                 metadata: RawBytes(scratch),
-            })?;
+            });
         }
 
-        for &event in &self.events {
-            match event.status_or_animation() {
-                StatusOrAnimation::Status(code) => writer.write_packet(&EntityEventPacket {
-                    entity_id: entity_id.0,
-                    entity_status: code,
-                })?,
-                StatusOrAnimation::Animation(code) => writer.write_packet(&EntityAnimationS2c {
-                    entity_id,
-                    animation: code,
-                })?,
+        if self.statuses != 0 {
+            for i in 0..std::mem::size_of_val(&self.statuses) {
+                if (self.statuses >> i) & 1 == 1 {
+                    writer.write_packet(&EntityEventS2c {
+                        entity_id: entity_id.0,
+                        entity_status: i as u8,
+                    });
+                }
             }
         }
 
-        Ok(())
+        if self.animations != 0 {
+            for i in 0..std::mem::size_of_val(&self.animations) {
+                if (self.animations >> i) & 1 == 1 {
+                    writer.write_packet(&EntityAnimationS2c {
+                        entity_id,
+                        animation: i as u8,
+                    });
+                }
+            }
+        }
     }
 }
 
-pub(crate) fn velocity_to_packet_units(vel: Vec3<f32>) -> Vec3<i16> {
-    // The saturating cast to i16 is desirable.
-    (8000.0 / STANDARD_TPS as f32 * vel).as_()
+#[inline]
+pub(crate) fn velocity_to_packet_units(vel: Vec3) -> [i16; 3] {
+    // The saturating casts to i16 are desirable.
+    (8000.0 / DEFAULT_TPS as f32 * vel)
+        .to_array()
+        .map(|v| v as i16)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    type MockConfig = crate::config::MockConfig<(), (), u8>;
-
-    #[test]
-    fn entities_has_valid_new_state() {
-        let mut entities: Entities<MockConfig> = Entities::new();
-        let raw_id: i32 = 8675309;
-        let entity_id = EntityId(Key::new(
-            202298,
-            NonZeroU32::new(raw_id as u32).expect("value given should never be zero!"),
-        ));
-        let uuid = Uuid::from_bytes([2; 16]);
-        assert!(entities.is_empty());
-        assert!(entities.get(entity_id).is_none());
-        assert!(entities.get_mut(entity_id).is_none());
-        assert!(entities.get_with_uuid(uuid).is_none());
-        assert!(entities.get_with_raw_id(raw_id).is_none());
-    }
-
-    #[test]
-    fn entities_can_be_set_and_get() {
-        let mut entities: Entities<MockConfig> = Entities::new();
-        assert!(entities.is_empty());
-        let (player_id, player_entity) = entities.insert(EntityKind::Player, 1);
-        assert_eq!(player_entity.state, 1);
-        assert_eq!(entities.get(player_id).unwrap().state, 1);
-        let mut_player_entity = entities
-            .get_mut(player_id)
-            .expect("failed to get mutable reference");
-        mut_player_entity.state = 100;
-        assert_eq!(entities.get(player_id).unwrap().state, 100);
-        assert_eq!(entities.len(), 1);
-    }
-
-    #[test]
-    fn entities_can_be_set_and_get_with_uuid() {
-        let mut entities: Entities<MockConfig> = Entities::new();
-        let uuid = Uuid::from_bytes([2; 16]);
-        assert!(entities.is_empty());
-        let (zombie_id, zombie_entity) = entities
-            .insert_with_uuid(EntityKind::Zombie, uuid, 1)
-            .expect("unexpected Uuid collision when inserting to an empty collection");
-        assert_eq!(zombie_entity.state, 1);
-        let maybe_zombie = entities
-            .get_with_uuid(uuid)
-            .expect("UUID lookup failed on item already added to this collection");
-        assert_eq!(zombie_id, maybe_zombie);
-        assert_eq!(entities.len(), 1);
-    }
-
-    #[test]
-    fn entities_can_be_set_and_get_with_raw_id() {
-        let mut entities: Entities<MockConfig> = Entities::new();
-        assert!(entities.is_empty());
-        let (boat_id, boat_entity) = entities.insert(EntityKind::Boat, 12);
-        assert_eq!(boat_entity.state, 12);
-        let (cat_id, cat_entity) = entities.insert(EntityKind::Cat, 75);
-        assert_eq!(cat_entity.state, 75);
-        let maybe_boat_id = entities
-            .get_with_raw_id(boat_id.0.version.get() as i32)
-            .expect("raw id lookup failed on item already added to this collection")
-            .0;
-        let maybe_boat = entities
-            .get(maybe_boat_id)
-            .expect("failed to look up item already added to collection");
-        assert_eq!(maybe_boat.state, 12);
-        let maybe_cat_id = entities
-            .get_with_raw_id(cat_id.0.version.get() as i32)
-            .expect("raw id lookup failed on item already added to this collection")
-            .0;
-        let maybe_cat = entities
-            .get(maybe_cat_id)
-            .expect("failed to look up item already added to collection");
-        assert_eq!(maybe_cat.state, 75);
-        assert_eq!(entities.len(), 2);
+impl fmt::Debug for McEntity {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        f.debug_struct("McEntity")
+            .field("kind", &self.kind())
+            .field("protocol_id", &self.protocol_id)
+            .field("uuid", &self.uuid)
+            .field("position", &self.position)
+            .finish_non_exhaustive()
     }
 }

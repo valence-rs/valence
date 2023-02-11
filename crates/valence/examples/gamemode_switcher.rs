@@ -1,6 +1,6 @@
-use valence_new::client::despawn_disconnected_clients;
-use valence_new::client::event::{default_event_handler, ChatCommand};
-use valence_new::prelude::*;
+use valence::client::despawn_disconnected_clients;
+use valence::client::event::{default_event_handler, ChatCommand};
+use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;
 

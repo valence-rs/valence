@@ -1,4 +1,4 @@
-use valence_new::prelude::App;
+use valence::bevy_app::App;
 
 mod extras;
 mod playground;

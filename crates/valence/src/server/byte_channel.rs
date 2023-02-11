@@ -1,3 +1,5 @@
+//! A channel specifically for sending/receiving batches of bytes.
+
 #![allow(dead_code)]
 
 use std::sync::{Arc, Mutex};
@@ -116,6 +118,10 @@ impl ByteSender {
     pub fn is_disconnected(&self) -> bool {
         self.shared.mtx.lock().unwrap().disconnected
     }
+
+    pub fn limit(&self) -> usize {
+        self.shared.limit
+    }
 }
 
 /// Contains any excess bytes not sent.
@@ -174,6 +180,10 @@ impl ByteReceiver {
 
     pub fn is_disconnected(&self) -> bool {
         self.shared.mtx.lock().unwrap().disconnected
+    }
+
+    pub fn limit(&self) -> usize {
+        self.shared.limit
     }
 }
 

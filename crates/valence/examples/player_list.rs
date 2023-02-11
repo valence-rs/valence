@@ -1,8 +1,8 @@
 use rand::Rng;
-use valence_new::client::despawn_disconnected_clients;
-use valence_new::client::event::default_event_handler;
-use valence_new::player_list::Entry;
-use valence_new::prelude::*;
+use valence::client::despawn_disconnected_clients;
+use valence::client::event::default_event_handler;
+use valence::player_list::Entry;
+use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;
 const PLAYER_UUID_1: Uuid = Uuid::from_u128(1);

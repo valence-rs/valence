@@ -1,6 +1,6 @@
 use std::net::SocketAddr;
 
-use valence_new::prelude::*;
+use valence::prelude::*;
 
 pub fn main() {
     App::new()

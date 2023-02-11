@@ -1,10 +1,10 @@
 use std::time::Instant;
 
 use bevy_app::{App, CoreStage};
-use valence_new::client::despawn_disconnected_clients;
-use valence_new::client::event::default_event_handler;
-use valence_new::instance::{Chunk, Instance};
-use valence_new::prelude::*;
+use valence::client::despawn_disconnected_clients;
+use valence::client::event::default_event_handler;
+use valence::instance::{Chunk, Instance};
+use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;
 

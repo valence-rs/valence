@@ -1,9 +1,9 @@
 use std::error::Error;
 use std::fmt::Write;
+use std::io;
 use std::io::ErrorKind;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::{fmt, io};
 
 use anyhow::bail;
 use clap::Parser;

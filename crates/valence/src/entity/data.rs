@@ -1,6 +1,7 @@
-//! Contains the [`TrackedData`] and the types for each variant.
+//! Contains the [`TrackedData`] enum and the types for each variant.
 
-#![allow(clippy::all, missing_docs, trivial_numeric_casts)]
+// TODO: clean this up.
+#![allow(clippy::all, missing_docs, trivial_numeric_casts, dead_code)]
 
 use uuid::Uuid;
 use valence_protocol::entity_meta::*;

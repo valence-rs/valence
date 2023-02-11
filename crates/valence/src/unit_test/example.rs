@@ -3,7 +3,7 @@
 //! Setting up an `App` with a single client:
 //! ```ignore
 //! # use bevy_app::App;
-//! # use valence_new::unit_test::util::scenario_single_client;
+//! # use valence::unit_test::util::scenario_single_client;
 //! let mut app = App::new();
 //! let (client_ent, mut client_helper) = scenario_single_client(&mut app);
 //! ```
@@ -11,8 +11,8 @@
 //! Asserting packets sent to the client:
 //! ```ignore
 //! # use bevy_app::App;
-//! # use valence_new::unit_test::util::scenario_single_client;
-//! # use valence_new::client::Client;
+//! # use valence::unit_test::util::scenario_single_client;
+//! # use valence::client::Client;
 //! # fn main() -> anyhow::Result<()> {
 //! # let mut app = App::new();
 //! # let (client_ent, mut client_helper) = scenario_single_client(&mut app);
@@ -34,7 +34,7 @@
 //! Performing a Query without a system is possible, like so:
 //! ```
 //! # use bevy_app::App;
-//! # use valence_new::instance::Instance;
+//! # use valence::instance::Instance;
 //! # let mut app = App::new();
 //! app.world.query::<&Instance>();
 //! ```

@@ -6,7 +6,7 @@ description = "A framework for building Minecraft servers in Rust."
 repository = "https://github.com/rj00a/valence"
 readme = "README.md"
 license = "MIT"
-keywords = ["minecraft", "gamedev", "server"]
+keywords = ["minecraft", "gamedev", "server", "ecs"]
 categories = ["game-engines"]
 build = "build/main.rs"
 authors = ["Ryan Johnson <ryanj00a@gmail.com>"]
@@ -14,18 +14,20 @@ authors = ["Ryan Johnson <ryanj00a@gmail.com>"]
 [dependencies]
 anyhow = "1.0.65"
 arrayvec = "0.7.2"
-async-trait = "0.1.57"
-base64 = "0.13.0"
-bitfield-struct = "0.1.8"
+async-trait = "0.1.60"
+base64 = "0.21.0"
+bevy_app = "0.9.1"
+bevy_ecs = "0.9.1"
+bitfield-struct = "0.3.1"
 bytes = "1.2.1"
 flume = "0.10.14"
-futures = "0.3.24"
+glam = "0.22.0"
 hmac = "0.12.1"
 num = "0.4.0"
-paste = "1.0.9"
+parking_lot = "0.12.1"
+paste = "1.0.11"
 rand = "0.8.5"
-rayon = "1.5.3"
-rsa = "0.6.1"
+rsa = "0.7.2"
 rsa-der = "0.3.0"
 rustc-hash = "1.1.0"
 serde = { version = "1.0.145", features = ["derive"] }
@@ -33,16 +35,12 @@ serde_json = "1.0.85"
 sha1 = "0.10.5"
 sha2 = "0.10.6"
 thiserror = "1.0.35"
+tokio = { version = "1.25.0", features = ["full"] }
 tracing = "0.1.37"
 url = { version = "2.2.2", features = ["serde"] }
 uuid = { version = "1.1.2", features = ["serde"] }
 valence_nbt = { version = "0.5.0", path = "../valence_nbt" }
 valence_protocol = { version = "0.1.0", path = "../valence_protocol", features = ["encryption", "compression"] }
-vek = "0.15.8"
-
-[dependencies.tokio]
-version = "1.21.2"
-features = ["macros", "rt-multi-thread", "net", "io-util", "sync", "time"]
 
 [dependencies.reqwest]
 version = "0.11.12"
@@ -52,8 +50,9 @@ features = ["rustls-tls", "json"]
 
 [dev-dependencies]
 approx = "0.5.1"
-tracing-subscriber = "0.3.16"
+glam = { version = "0.22.0", features = ["approx"] }
 noise = "0.8.2"
+tracing-subscriber = "0.3.16"
 valence_spatial_index = { path = "../valence_spatial_index", version = "0.1.0" }
 
 [build-dependencies]
