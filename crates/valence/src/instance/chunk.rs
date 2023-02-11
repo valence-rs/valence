@@ -354,7 +354,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
 
             if LOADED && !self.refresh {
                 self.cached_init_packets.get_mut().clear();
-                let compact = (block.to_raw() as i64) << 12 | (x << 8 | z << 4 | y % 16) as i64;
+                let compact = (block.to_raw() as i64) << 12 | (x << 8 | z << 4 | (y % 16)) as i64;
                 sect.section_updates.push(VarLong(compact));
             }
         }

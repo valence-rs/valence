@@ -8,9 +8,9 @@ use std::path::PathBuf;
 use byteorder::{BigEndian, ReadBytesExt};
 use flate2::bufread::{GzDecoder, ZlibDecoder};
 use thiserror::Error;
-use valence_nbt::Compound;
 #[cfg(feature = "valence")]
 pub use to_valence::*;
+use valence_nbt::Compound;
 
 #[cfg(feature = "valence")]
 mod to_valence;

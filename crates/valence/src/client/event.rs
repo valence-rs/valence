@@ -908,7 +908,7 @@ fn handle_one_packet(
         C2sPlayPacket::JigsawGenerate(p) => {
             events.1.jigsaw_generate.send(JigsawGenerate {
                 client: entity,
-                position: p.position.into(),
+                position: p.position,
                 levels: p.levels.0,
                 keep_jigsaws: p.keep_jigsaws,
             });
@@ -1381,6 +1381,7 @@ fn handle_one_packet(
 /// This system must be scheduled to run in the
 /// [`EventLoop`](crate::server::EventLoop) stage. Otherwise, it may not
 /// function correctly.
+#[allow(clippy::too_many_arguments)]
 pub fn default_event_handler(
     mut clients: Query<(&mut Client, Option<&mut McEntity>)>,
     mut update_settings: EventReader<UpdateSettings>,

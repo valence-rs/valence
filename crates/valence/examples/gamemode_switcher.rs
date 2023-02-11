@@ -58,30 +58,25 @@ fn interpret_command(mut clients: Query<&mut Client>, mut events: EventReader<Ch
         };
 
         let mut args = event.command.split_whitespace();
-        let command = args.next().unwrap_or_default();
 
-        match command {
-            "gamemode" => {
-                if client.op_level() < 2 {
-                    // not enough permissions to use gamemode command
+        if args.next() == Some("gamemode") {
+            if client.op_level() < 2 {
+                // not enough permissions to use gamemode command
+                continue;
+            }
+
+            let mode = match args.next().unwrap_or_default() {
+                "adventure" => GameMode::Adventure,
+                "creative" => GameMode::Creative,
+                "survival" => GameMode::Survival,
+                "spectator" => GameMode::Spectator,
+                _ => {
+                    client.send_message("Invalid gamemode.".italic());
                     continue;
                 }
-
-                let mode = args.next().unwrap_or_default();
-                let mode = match mode {
-                    "adventure" => GameMode::Adventure,
-                    "creative" => GameMode::Creative,
-                    "survival" => GameMode::Survival,
-                    "spectator" => GameMode::Spectator,
-                    _ => {
-                        client.send_message("Invalid gamemode.".italic());
-                        continue;
-                    }
-                };
-                client.set_game_mode(mode);
-                client.send_message(format!("Set gamemode to {:?}.", mode).italic());
-            }
-            _ => { /* ignored */ }
+            };
+            client.set_game_mode(mode);
+            client.send_message(format!("Set gamemode to {mode:?}.").italic());
         }
     }
 }
