@@ -28,7 +28,7 @@ Playgrounds are meant to provide a quick and minimal environment to test out new
 To get started with a new playground, copy the template to `playground.rs`.
 
 ```bash
-cp crates/playground/src/template.rs crates/playground/src/playground.rs
+cp crates/playground/src/playground.template.rs crates/playground/src/playground.rs
 ```
 
 Make your changes to `crates/playground/src/playground.rs`. To run it:
