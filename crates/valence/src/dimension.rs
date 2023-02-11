@@ -37,16 +37,16 @@ impl Default for DimensionId {
 
 /// Contains the configuration for a dimension type.
 ///
-/// On creation, each [`World`] in Valence is assigned a dimension. The
+/// On creation, each [`Instance`] in Valence is assigned a dimension. The
 /// dimension determines certain properties of the world such as its height and
 /// ambient lighting.
 ///
 /// In Minecraft, "dimension" and "dimension type" are two distinct concepts.
 /// For instance, the Overworld and Nether are dimensions, each with
 /// their own dimension type. A dimension in this library is analogous to a
-/// [`World`] while [`Dimension`] represents a dimension type.
+/// [`Instance`] while [`Dimension`] represents a dimension type.
 ///
-/// [`World`]: crate::world::World
+/// [`Instance`]: crate::instance::Instance
 #[derive(Clone, Debug)]
 pub struct Dimension {
     /// When false, compasses will spin randomly.

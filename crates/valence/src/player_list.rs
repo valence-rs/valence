@@ -24,6 +24,21 @@ use crate::server::Server;
 /// Each entry in the player list is intended to represent a connected client to
 /// the server. In addition to a list of players, the player list has a header
 /// and a footer which can contain arbitrary text.
+///
+/// ```ignore
+/// # use uuid::Uuid;
+/// # use valence::player_list::{PlayerList, PlayerListEntry};
+///
+/// # let mut player_list = PlayerList::new();
+/// player_list.set_header("Hello, world!");
+/// player_list.set_footer("Goodbye, world!");
+/// player_list.insert(
+///     Uuid::new_v4(),
+///     PlayerListEntry::new()
+///         .with_username("Notch")
+///         .with_display_name(Some("Herobrine")),
+/// );
+/// ```
 #[derive(Debug, Resource)]
 pub struct PlayerList {
     cached_update_packets: Vec<u8>,
@@ -35,7 +50,8 @@ pub struct PlayerList {
 
 impl PlayerList {
     /// Returns a set of systems for maintaining the player list in a reasonable
-    /// default way.
+    /// default way. When clients connect, they are added to the player list.
+    /// When clients disconnect, they are removed from the player list.
     pub fn default_system_set() -> SystemSet {
         fn add_new_clients_to_player_list(
             clients: Query<&Client, Added<Client>>,
@@ -70,6 +86,7 @@ impl PlayerList {
 }
 
 impl PlayerList {
+    /// Create a new empty player list.
     pub(crate) fn new() -> Self {
         Self {
             cached_update_packets: vec![],
@@ -80,26 +97,35 @@ impl PlayerList {
         }
     }
 
+    /// Get the entry for the given UUID, if it exists, otherwise return None.
     pub fn get(&self, uuid: Uuid) -> Option<&PlayerListEntry> {
         self.entries.get(&uuid).and_then(|opt| opt.as_ref())
     }
 
+    /// Mutably get the entry for the given UUID, if it exists, otherwise return
+    /// None.
     pub fn get_mut(&mut self, uuid: Uuid) -> Option<&mut PlayerListEntry> {
         self.entries.get_mut(&uuid).and_then(|opt| opt.as_mut())
     }
 
+    /// Get an iterator over all entries in the player list. The order of this
+    /// iterator is not guaranteed.
     pub fn iter(&self) -> impl FusedIterator<Item = (Uuid, &PlayerListEntry)> + Clone + '_ {
         self.entries
             .iter()
             .filter_map(|(&uuid, opt)| opt.as_ref().map(|entry| (uuid, entry)))
     }
 
+    /// Get an iterator over all entries in the player list as mutable. The
+    /// order of this iterator is not guaranteed.
     pub fn iter_mut(&mut self) -> impl FusedIterator<Item = (Uuid, &mut PlayerListEntry)> + '_ {
         self.entries
             .iter_mut()
             .filter_map(|(&uuid, opt)| opt.as_mut().map(|entry| (uuid, entry)))
     }
 
+    /// Insert a new entry into the player list. If an entry already exists for
+    /// the given UUID, it is replaced and returned.
     pub fn insert(&mut self, uuid: Uuid, entry: PlayerListEntry) -> Option<PlayerListEntry> {
         match self.entry(uuid) {
             Entry::Occupied(mut oe) => Some(oe.insert(entry)),
@@ -110,6 +136,8 @@ impl PlayerList {
         }
     }
 
+    /// Remove an entry from the player list. If an entry exists for the given
+    /// UUID, it is removed and returned.
     pub fn remove(&mut self, uuid: Uuid) -> Option<PlayerListEntry> {
         match self.entry(uuid) {
             Entry::Occupied(oe) => Some(oe.remove()),
@@ -117,6 +145,8 @@ impl PlayerList {
         }
     }
 
+    /// Gets the given key’s corresponding entry in the map for in-place
+    /// manipulation.
     pub fn entry(&mut self, uuid: Uuid) -> Entry {
         match self.entries.entry(uuid) {
             MapEntry::Occupied(oe) if oe.get().is_some() => {
@@ -135,6 +165,7 @@ impl PlayerList {
         &self.header
     }
 
+    /// Set the header text for the player list. Returns the previous header.
     pub fn set_header(&mut self, header: impl Into<Text>) -> Text {
         let header = header.into();
 
@@ -149,6 +180,7 @@ impl PlayerList {
         &self.footer
     }
 
+    /// Set the footer text for the player list. Returns the previous footer.
     pub fn set_footer(&mut self, footer: impl Into<Text>) -> Text {
         let footer = footer.into();
 
@@ -159,6 +191,11 @@ impl PlayerList {
         mem::replace(&mut self.footer, footer)
     }
 
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all pairs `(k, v)` for which `f(&k, &mut v)`
+    /// returns `false`. The elements are visited in unsorted (and
+    /// unspecified) order.
     pub fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(Uuid, &mut PlayerListEntry) -> bool,
@@ -174,6 +211,7 @@ impl PlayerList {
         });
     }
 
+    /// Clear the player list.
     pub fn clear(&mut self) {
         self.entries.values_mut().for_each(|e| *e = None);
     }
@@ -220,6 +258,14 @@ impl PlayerList {
 }
 
 /// Represents a player entry in the [`PlayerList`].
+///
+/// ```
+/// use valence::player_list::PlayerListEntry;
+///
+/// PlayerListEntry::new()
+///     .with_username("Notch")
+///     .with_display_name(Some("Herobrine"));
+/// ```
 #[derive(Clone, Debug)]
 pub struct PlayerListEntry {
     username: String, // TODO: Username<String>?
@@ -254,10 +300,21 @@ impl Default for PlayerListEntry {
 }
 
 impl PlayerListEntry {
+    /// Create a new player list entry.
+    ///
+    /// ```
+    /// use valence::player_list::PlayerListEntry;
+    ///
+    /// PlayerListEntry::new()
+    ///     .with_username("Notch")
+    ///     .with_display_name(Some("Herobrine"));
+    /// ```
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Set the username for the player list entry. Returns `Self` to chain
+    /// other options.
     #[must_use]
     pub fn with_username(mut self, username: impl Into<String>) -> Self {
         self.username = username.into();
@@ -269,30 +326,56 @@ impl PlayerListEntry {
         self
     }
 
+    /// Set the properties for the player list entry. Returns `Self` to chain
+    /// other options.
+    ///
+    /// A property is a key-value pair that can be used to customize the
+    /// appearance of the player list entry. For example, the skin of the
+    /// player can be set by adding a property with the key `textures` and
+    /// the value being a base64 encoded JSON object.
     #[must_use]
     pub fn with_properties(mut self, properties: impl Into<Vec<Property>>) -> Self {
         self.properties = properties.into();
         self
     }
 
+    /// Set the game mode for the player list entry. Returns `Self` to chain
+    /// other options.
     #[must_use]
     pub fn with_game_mode(mut self, game_mode: GameMode) -> Self {
         self.game_mode = game_mode;
         self
     }
 
+    /// Set the ping for the player list entry. Returns `Self` to chain other
+    /// options.
+    ///
+    /// The ping is the number of milliseconds it takes for the server to
+    /// receive a response from the player. The client will display the
+    /// ping as a number of green bars, where more bars indicate a lower
+    /// ping.
+    ///
+    /// Use a value of `-1` to hide the ping.
     #[must_use]
     pub fn with_ping(mut self, ping: i32) -> Self {
         self.ping = ping;
         self
     }
 
+    /// Set the display name for the player list entry. Returns `Self` to
+    /// chain other options.
+    ///
+    /// The display name is the literal text that is displayed in the player
+    /// list. If this is not set, the username will be used instead.
     #[must_use]
     pub fn with_display_name(mut self, display_name: Option<impl Into<Text>>) -> Self {
         self.display_name = display_name.map(Into::into);
         self
     }
 
+    /// Set whether the player list entry is listed. Returns `Self` to chain
+    /// other options. Setting this to `false` will hide the entry from the
+    /// player list.
     #[must_use]
     pub fn with_listed(mut self, listed: bool) -> Self {
         self.listed = listed;
@@ -311,6 +394,7 @@ impl PlayerListEntry {
         self.game_mode
     }
 
+    /// Set the game mode for the player list entry.
     pub fn set_game_mode(&mut self, game_mode: GameMode) {
         self.game_mode = game_mode;
     }
@@ -319,6 +403,14 @@ impl PlayerListEntry {
         self.ping
     }
 
+    /// Set the ping for the player list entry.
+    ///
+    /// The ping is the number of milliseconds it takes for the server to
+    /// receive a response from the player. The client will display the
+    /// ping as a number of green bars, where more bars indicate a lower
+    /// ping.
+    ///
+    /// Use a value of `-1` to hide the ping.
     pub fn set_ping(&mut self, ping: i32) {
         if self.ping != ping {
             self.ping = ping;
@@ -330,6 +422,11 @@ impl PlayerListEntry {
         self.display_name.as_ref()
     }
 
+    /// Set the display name for the player list entry. Returns the previous
+    /// display name, if any.
+    ///
+    /// The display name is the literal text that is displayed in the player
+    /// list. If this is not set, the username will be used instead.
     pub fn set_display_name(&mut self, display_name: Option<impl Into<Text>>) -> Option<Text> {
         let display_name = display_name.map(Into::into);
 
@@ -344,6 +441,8 @@ impl PlayerListEntry {
         self.listed
     }
 
+    /// Set whether the player list entry is listed. Setting this to `false`
+    /// will hide the entry from the player list.
     pub fn set_listed(&mut self, listed: bool) {
         self.listed = listed;
     }
@@ -356,6 +455,8 @@ impl PlayerListEntry {
     }
 }
 
+/// An entry in the player list that corresponds to a single UUID. Works like
+/// [`std::collections::hash_map::Entry`].
 #[derive(Debug)]
 pub enum Entry<'a> {
     Occupied(OccupiedEntry<'a>),
@@ -445,6 +546,7 @@ impl<'a> VacantEntry<'a> {
     }
 }
 
+/// Manage all player lists on the server and send updates to clients.
 pub(crate) fn update_player_list(
     player_list: ResMut<PlayerList>,
     server: Res<Server>,

@@ -24,7 +24,30 @@ mod chunk;
 mod chunk_entry;
 mod paletted_container;
 
-/// To create a new instance, see [`SharedServer::new_instance`].
+/// An Instance represents a Minecraft world, which consist of [`Chunk`]s.
+/// It manages updating clients when chunks change, and caches chunk and entity
+/// update packets on a per-chunk basis.
+///
+/// To create a new instance, use [`SharedServer::new_instance`].
+/// ```
+/// use bevy_app::prelude::*;
+/// use valence::prelude::*;
+///
+/// let mut app = App::new();
+/// app.add_plugin(ServerPlugin::new(()));
+/// let server = app.world.get_resource::<Server>().unwrap();
+/// let instance = server.new_instance(DimensionId::default());
+/// ```
+/// Now you can actually spawn a new [`Entity`] with `instance`.
+/// ```
+/// # use bevy_app::prelude::*;
+/// # use valence::prelude::*;
+/// # let mut app = App::new();
+/// # app.add_plugin(ServerPlugin::new(()));
+/// # let server = app.world.get_resource::<Server>().unwrap();
+/// # let instance = server.new_instance(DimensionId::default());
+/// let instance_entity = app.world.spawn(instance);
+/// ```
 #[derive(Component)]
 pub struct Instance {
     pub(crate) partition: FxHashMap<ChunkPos, PartitionCell>,
@@ -107,18 +130,23 @@ impl Instance {
         self.info.section_count
     }
 
+    /// Get a reference to the chunk at the given position, if it is loaded.
     pub fn chunk(&self, pos: impl Into<ChunkPos>) -> Option<&Chunk<true>> {
         self.partition
             .get(&pos.into())
             .and_then(|p| p.chunk.as_ref())
     }
 
+    /// Get a mutable reference to the chunk at the given position, if it is
+    /// loaded.
     pub fn chunk_mut(&mut self, pos: impl Into<ChunkPos>) -> Option<&mut Chunk<true>> {
         self.partition
             .get_mut(&pos.into())
             .and_then(|p| p.chunk.as_mut())
     }
 
+    /// Insert a chunk into the instance at the given position. This effectively
+    /// loads the Chunk.
     pub fn insert_chunk(&mut self, pos: impl Into<ChunkPos>, chunk: Chunk) -> Option<Chunk> {
         match self.chunk_entry(pos) {
             ChunkEntry::Occupied(mut oe) => Some(oe.insert(chunk)),
@@ -129,6 +157,8 @@ impl Instance {
         }
     }
 
+    /// Unload the chunk at the given position, if it is loaded. Returns the
+    /// chunk if it was loaded.
     pub fn remove_chunk(&mut self, pos: impl Into<ChunkPos>) -> Option<Chunk> {
         match self.chunk_entry(pos) {
             ChunkEntry::Occupied(oe) => Some(oe.remove()),
@@ -136,10 +166,12 @@ impl Instance {
         }
     }
 
+    /// Unload all chunks in this instance.
     pub fn clear_chunks(&mut self) {
         self.retain_chunks(|_, _| false)
     }
 
+    /// Retain only the chunks for which the given predicate returns `true`.
     pub fn retain_chunks<F>(&mut self, mut f: F)
     where
         F: FnMut(ChunkPos, &mut Chunk<true>) -> bool,
@@ -154,22 +186,28 @@ impl Instance {
         }
     }
 
+    /// Get a [`ChunkEntry`] for the given position.
     pub fn chunk_entry(&mut self, pos: impl Into<ChunkPos>) -> ChunkEntry {
         ChunkEntry::new(self.info.section_count, self.partition.entry(pos.into()))
     }
 
+    /// Get an iterator over all loaded chunks in the instance. The order of the
+    /// chunks is undefined.
     pub fn chunks(&self) -> impl FusedIterator<Item = (ChunkPos, &Chunk<true>)> + Clone + '_ {
         self.partition
             .iter()
             .flat_map(|(&pos, par)| par.chunk.as_ref().map(|c| (pos, c)))
     }
 
+    /// Get an iterator over all loaded chunks in the instance, mutably. The
+    /// order of the chunks is undefined.
     pub fn chunks_mut(&mut self) -> impl FusedIterator<Item = (ChunkPos, &mut Chunk<true>)> + '_ {
         self.partition
             .iter_mut()
             .flat_map(|(&pos, par)| par.chunk.as_mut().map(|c| (pos, c)))
     }
 
+    /// Optimizes the memory usage of the instance.
     pub fn optimize(&mut self) {
         for (_, chunk) in self.chunks_mut() {
             chunk.optimize();
@@ -179,7 +217,8 @@ impl Instance {
         self.packet_buf.shrink_to_fit();
     }
 
-    /// Gets the block state at an absolute block position in world space.
+    /// Gets the block state at an absolute block position in world space. Only
+    /// works for blocks in loaded chunks.
     ///
     /// If the position is not inside of a chunk, then [`BlockState::AIR`] is
     /// returned.
@@ -297,6 +336,9 @@ impl Instance {
         }
     }
 
+    /// Puts a particle effect at the given position in the world. The particle
+    /// effect is visible to all players in the instance with the
+    /// appropriate chunk in view.
     pub fn play_particle(
         &mut self,
         particle: &Particle,
@@ -321,6 +363,7 @@ impl Instance {
         );
     }
 
+    /// Sets the action bar text of all players in the instance.
     pub fn set_action_bar(&mut self, text: impl Into<Text>) {
         self.write_packet(&SetActionBarText {
             action_bar_text: text.into().into(),

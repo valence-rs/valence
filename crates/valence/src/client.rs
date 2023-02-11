@@ -32,6 +32,8 @@ use crate::{Despawned, NULL_ENTITY};
 
 pub mod event;
 
+/// Represents a client connected to the server. Used to send and receive
+/// packets from the client.
 #[derive(Component)]
 pub struct Client {
     conn: Box<dyn ClientConnection>,
@@ -238,6 +240,7 @@ impl Client {
         self.old_position
     }
 
+    /// Gets a [`ChunkView`] representing the chunks this client can see.
     pub fn view(&self) -> ChunkView {
         ChunkView::new(ChunkPos::from_dvec3(self.position), self.view_distance)
     }
@@ -261,6 +264,7 @@ impl Client {
         self.yaw
     }
 
+    /// Sets this client's yaw (in degrees).
     pub fn set_yaw(&mut self, yaw: f32) {
         self.yaw = yaw;
         self.yaw_modified = true;
@@ -271,18 +275,20 @@ impl Client {
         self.pitch
     }
 
+    /// Sets this client's pitch (in degrees).
     pub fn set_pitch(&mut self, pitch: f32) {
         self.pitch = pitch;
         self.pitch_modified = true;
     }
 
+    /// Whether or not the client reports that it is currently on the ground.
     pub fn on_ground(&self) -> bool {
         self.on_ground
     }
 
     /// Kills the client and shows `message` on the death screen. If an entity
-    /// killed the player, pass its ID into the function.
-    pub fn kill(&mut self, killer: Option<McEntity>, message: impl Into<Text>) {
+    /// killed the player, you should supply it as `killer`.
+    pub fn kill(&mut self, killer: Option<&McEntity>, message: impl Into<Text>) {
         self.write_packet(&CombatDeath {
             player_id: VarInt(0),
             entity_id: killer.map_or(-1, |k| k.protocol_id()),
@@ -316,10 +322,16 @@ impl Client {
         }
     }
 
+    /// Gets whether or not the client thinks it's on a superflat world.
+    ///
+    /// Modifies how the skybox is rendered.
     pub fn is_flat(&self) -> bool {
         self.is_flat
     }
 
+    /// Sets whether or not the client thinks it's on a superflat world.
+    ///
+    /// Modifies how the skybox is rendered.
     pub fn set_flat(&mut self, flat: bool) {
         self.is_flat = flat;
     }
@@ -446,10 +458,13 @@ impl Client {
         });
     }
 
+    /// Get the slot id in the player's inventory that the client says it's
+    /// holding.
     pub fn held_item_slot(&self) -> u16 {
         self.held_item_slot
     }
 
+    /// Kick the client with the given reason.
     pub fn kick(&mut self, reason: impl Into<Text>) {
         self.write_packet(&DisconnectPlay {
             reason: reason.into().into(),
@@ -520,6 +535,12 @@ impl Client {
         });
     }
 
+    /// Puts a particle effect at the given position, only for this client.
+    ///
+    /// If you want to show a particle effect to all players, use
+    /// [`Instance::play_particle`]
+    ///
+    /// [`Instance::play_particle`]: crate::Instance::play_particle
     pub fn play_particle(
         &mut self,
         particle: &Particle,

@@ -142,7 +142,10 @@ impl McEntity {
     /// Creates a new [`McEntity`] component with a random UUID.
     ///
     /// - `kind`: The type of Minecraft entity this should be.
-    /// - `instance`: The [`Instance`] this entity will be located in.
+    /// - `instance`: The [`Entity`] that has an [`Instance`] that this entity
+    ///   will be located in.
+    ///
+    /// [`Instance`]: crate::instance::Instance
     pub fn new(kind: EntityKind, instance: Entity) -> Self {
         Self::with_uuid(kind, instance, Uuid::from_u128(rand::random()))
     }
@@ -187,11 +190,15 @@ impl McEntity {
     }
 
     /// Returns a handle to the [`Instance`] this entity is located in.
+    ///
+    /// [`Instance`]: crate::instance::Instance
     pub fn instance(&self) -> Entity {
         self.instance
     }
 
     /// Sets the [`Instance`] this entity is located in.
+    ///
+    /// [`Instance`]: crate::instance::Instance
     pub fn set_instance(&mut self, instance: Entity) {
         self.instance = instance;
     }
