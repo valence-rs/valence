@@ -53,7 +53,6 @@ approx = "0.5.1"
 glam = { version = "0.22.0", features = ["approx"] }
 noise = "0.8.2"
 tracing-subscriber = "0.3.16"
-valence_spatial_index = { path = "../valence_spatial_index", version = "0.1.0" }
 
 [build-dependencies]
 anyhow = "1.0.65"

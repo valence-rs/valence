@@ -1,14 +1,14 @@
 use num_integer::div_ceil;
 use thiserror::Error;
 use valence::biome::BiomeId;
-use valence::chunk::Chunk;
+use valence::instance::Chunk;
 use valence::protocol::block::{BlockKind, PropName, PropValue};
 use valence::protocol::Ident;
 use valence_nbt::{Compound, List, Value};
 
 #[derive(Clone, Debug, Error)]
 #[non_exhaustive]
-pub enum ToValenceError {
+pub enum WriteChunkError {
     #[error("missing chunk sections")]
     MissingSections,
     #[error("missing chunk section Y")]
@@ -53,14 +53,14 @@ pub enum ToValenceError {
     BadBiomePaletteIndex,
 }
 
-/// Reads an Anvil chunk in NBT form and writes its data to a Valence [`Chunk`].
+/// Takes an Anvil chunk in NBT form and writes its data to a Valence [`Chunk`].
 /// An error is returned if the NBT data does not match the expected structure
 /// for an Anvil chunk.
 ///
 /// # Arguments
 ///
 /// - `nbt`: The Anvil chunk to read from. This is usually the value returned by
-///   [`read_chunk`].
+///   [`AnvilWorld::read_chunk`].
 /// - `chunk`: The Valence chunk to write to.
 /// - `sect_offset`: A constant to add to all sector Y positions in `nbt`. After
 ///   applying the offset, only the sectors in the range
@@ -68,19 +68,18 @@ pub enum ToValenceError {
 /// - `map_biome`: A function to map biome resource identifiers in the NBT data
 ///   to Valence [`BiomeId`]s.
 ///
-/// [`read_chunk`]: crate::AnvilWorld::read_chunk
-pub fn to_valence<C, F>(
+/// [`AnvilWorld::read_chunk`]: crate::AnvilWorld::read_chunk
+pub fn to_valence<F, const LOADED: bool>(
     nbt: &Compound,
-    chunk: &mut C,
+    chunk: &mut Chunk<LOADED>,
     sect_offset: i32,
     mut map_biome: F,
-) -> Result<(), ToValenceError>
+) -> Result<(), WriteChunkError>
 where
-    C: Chunk,
     F: FnMut(Ident<&str>) -> BiomeId,
 {
     let Some(Value::List(List::Compound(sections))) = nbt.get("sections") else {
-        return Err(ToValenceError::MissingSections)
+        return Err(WriteChunkError::MissingSections)
     };
 
     let mut converted_block_palette = vec![];
@@ -88,7 +87,7 @@ where
 
     for section in sections {
         let Some(Value::Byte(sect_y)) = section.get("Y") else {
-            return Err(ToValenceError::MissingSectionY)
+            return Err(WriteChunkError::MissingSectionY)
         };
 
         let adjusted_sect_y = *sect_y as i32 + sect_offset;
@@ -99,26 +98,26 @@ where
         }
 
         let Some(Value::Compound(block_states)) = section.get("block_states") else {
-            return Err(ToValenceError::MissingBlockStates)
+            return Err(WriteChunkError::MissingBlockStates)
         };
 
         let Some(Value::List(List::Compound(palette))) = block_states.get("palette") else {
-            return Err(ToValenceError::MissingBlockPalette)
+            return Err(WriteChunkError::MissingBlockPalette)
         };
 
         if !(1..BLOCKS_PER_SECTION).contains(&palette.len()) {
-            return Err(ToValenceError::BadBlockPaletteLen);
+            return Err(WriteChunkError::BadBlockPaletteLen);
         }
 
         converted_block_palette.clear();
 
         for block in palette {
             let Some(Value::String(name)) = block.get("Name") else {
-                return Err(ToValenceError::MissingBlockName)
+                return Err(WriteChunkError::MissingBlockName)
             };
 
             let Some(block_kind) = BlockKind::from_str(ident_path(name)) else {
-                return Err(ToValenceError::UnknownBlockName(name.into()))
+                return Err(WriteChunkError::UnknownBlockName(name.into()))
             };
 
             let mut state = block_kind.to_state();
@@ -126,15 +125,15 @@ where
             if let Some(Value::Compound(properties)) = block.get("Properties") {
                 for (key, value) in properties {
                     let Value::String(value) = value else {
-                        return Err(ToValenceError::BadPropValueType)
+                        return Err(WriteChunkError::BadPropValueType)
                     };
 
                     let Some(prop_name) = PropName::from_str(key) else {
-                        return Err(ToValenceError::UnknownPropName(key.into()))
+                        return Err(WriteChunkError::UnknownPropName(key.into()))
                     };
 
                     let Some(prop_value) = PropValue::from_str(value) else {
-                        return Err(ToValenceError::UnknownPropValue(value.into()))
+                        return Err(WriteChunkError::UnknownPropValue(value.into()))
                     };
 
                     state = state.set(prop_name, prop_value);
@@ -150,7 +149,7 @@ where
             debug_assert!(converted_block_palette.len() > 1);
 
             let Some(Value::LongArray(data)) = block_states.get("data") else {
-                return Err(ToValenceError::MissingBlockStateData)
+                return Err(WriteChunkError::MissingBlockStateData)
             };
 
             let bits_per_idx = bit_width(converted_block_palette.len() - 1).max(4);
@@ -159,7 +158,7 @@ where
             let mask = 2_u64.pow(bits_per_idx as u32) - 1;
 
             if long_count != data.len() {
-                return Err(ToValenceError::BadBlockLongCount);
+                return Err(WriteChunkError::BadBlockLongCount);
             };
 
             let mut i = 0;
@@ -174,7 +173,7 @@ where
                     let idx = (u64 >> (bits_per_idx * j)) & mask;
 
                     let Some(block) = converted_block_palette.get(idx as usize).cloned() else {
-                        return Err(ToValenceError::BadBlockPaletteIndex)
+                        return Err(WriteChunkError::BadBlockPaletteIndex)
                     };
 
                     let x = i % 16;
@@ -189,22 +188,22 @@ where
         }
 
         let Some(Value::Compound(biomes)) = section.get("biomes") else {
-            return Err(ToValenceError::MissingBiomes)
+            return Err(WriteChunkError::MissingBiomes)
         };
 
         let Some(Value::List(List::String(palette))) = biomes.get("palette") else {
-            return Err(ToValenceError::MissingBiomePalette)
+            return Err(WriteChunkError::MissingBiomePalette)
         };
 
         if !(1..BIOMES_PER_SECTION).contains(&palette.len()) {
-            return Err(ToValenceError::BadBiomePaletteLen);
+            return Err(WriteChunkError::BadBiomePaletteLen);
         }
 
         converted_biome_palette.clear();
 
         for biome_name in palette {
             let Ok(ident) = Ident::new(biome_name.as_str()) else {
-                return Err(ToValenceError::BadBiomeName)
+                return Err(WriteChunkError::BadBiomeName)
             };
 
             converted_biome_palette.push(map_biome(ident));
@@ -216,7 +215,7 @@ where
             debug_assert!(converted_biome_palette.len() > 1);
 
             let Some(Value::LongArray(data)) = biomes.get("data") else {
-                return Err(ToValenceError::MissingBiomeData)
+                return Err(WriteChunkError::MissingBiomeData)
             };
 
             let bits_per_idx = bit_width(converted_biome_palette.len() - 1);
@@ -225,7 +224,7 @@ where
             let mask = 2_u64.pow(bits_per_idx as u32) - 1;
 
             if long_count != data.len() {
-                return Err(ToValenceError::BadBiomeLongCount);
+                return Err(WriteChunkError::BadBiomeLongCount);
             };
 
             let mut i = 0;
@@ -240,7 +239,7 @@ where
                     let idx = (u64 >> (bits_per_idx * j)) & mask;
 
                     let Some(biome) = converted_biome_palette.get(idx as usize).cloned() else {
-                        return Err(ToValenceError::BadBiomePaletteIndex)
+                        return Err(WriteChunkError::BadBiomePaletteIndex)
                     };
 
                     let x = i % 4;

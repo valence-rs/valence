@@ -8,12 +8,12 @@ use std::path::PathBuf;
 use byteorder::{BigEndian, ReadBytesExt};
 use flate2::bufread::{GzDecoder, ZlibDecoder};
 use thiserror::Error;
-#[cfg(feature = "valence")]
-pub use to_valence::*;
 use valence_nbt::Compound;
+#[cfg(feature = "valence")]
+pub use write_chunk::*;
 
 #[cfg(feature = "valence")]
-mod to_valence;
+mod write_chunk;
 
 #[derive(Debug)]
 pub struct AnvilWorld {

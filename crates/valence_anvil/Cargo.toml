@@ -23,8 +23,7 @@ anyhow = "1.0.68"
 criterion = "0.4.0"
 fs_extra = "1.2.0"
 tempfile = "3.3.0"
-valence = { version = "0.2.0", path = "../valence" }
-valence_anvil = { version = "0.1.0", path = ".", features = ["valence"] }
+valence_anvil = { version = "0.1.0", path = "." }
 zip = "0.6.3"
 
 [dev-dependencies.reqwest]
@@ -36,3 +35,6 @@ features = ["rustls-tls", "blocking", "stream"]
 [[bench]]
 name = "world_parsing"
 harness = false
+
+[features]
+default = ["valence"]

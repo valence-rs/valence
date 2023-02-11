@@ -5,7 +5,7 @@ use anyhow::{ensure, Context};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use fs_extra::dir::CopyOptions;
 use reqwest::IntoUrl;
-use valence::chunk::UnloadedChunk;
+use valence::instance::Chunk;
 use valence_anvil::AnvilWorld;
 use zip::ZipArchive;
 
@@ -33,7 +33,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                         .expect("missing chunk at position")
                         .data;
 
-                    let mut chunk = UnloadedChunk::new(24);
+                    let mut chunk = Chunk::new(24);
 
                     valence_anvil::to_valence(&nbt, &mut chunk, 4, |_| Default::default()).unwrap();
 
