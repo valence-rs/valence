@@ -76,11 +76,26 @@ public class Blocks implements Main.Extractor {
 
                 stateJson.add("collision_shapes", collisionShapeIdxsJson);
 
+                for (var blockEntity : Registries.BLOCK_ENTITY_TYPE) {
+                    if (blockEntity.supports(state)) {
+                        stateJson.addProperty("block_entity_type", Registries.BLOCK_ENTITY_TYPE.getRawId(blockEntity));
+                    }
+                }
+
                 statesJson.add(stateJson);
             }
             blockJson.add("states", statesJson);
 
             blocksJson.add(blockJson);
+        }
+
+        var blockEntitiesJson = new JsonArray();
+        for (var blockEntity : Registries.BLOCK_ENTITY_TYPE) {
+            var blockEntityJson = new JsonObject();
+            blockEntityJson.addProperty("id", Registries.BLOCK_ENTITY_TYPE.getRawId(blockEntity));
+            blockEntityJson.addProperty("name", Registries.BLOCK_ENTITY_TYPE.getId(blockEntity).getPath());
+
+            blockEntitiesJson.add(blockEntityJson);
         }
 
         var shapesJson = new JsonArray();
@@ -95,6 +110,7 @@ public class Blocks implements Main.Extractor {
             shapesJson.add(shapeJson);
         }
 
+        topLevelJson.add("block_entity_types", blockEntitiesJson);
         topLevelJson.add("shapes", shapesJson);
         topLevelJson.add("blocks", blocksJson);
 

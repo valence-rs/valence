@@ -11,6 +11,7 @@ use crate::ident;
 struct TopLevel {
     blocks: Vec<Block>,
     shapes: Vec<Shape>,
+    block_entity_types: Vec<BlockEntityKind>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -35,6 +36,12 @@ impl Block {
 }
 
 #[derive(Deserialize, Clone, Debug)]
+struct BlockEntityKind {
+    id: u32,
+    name: String,
+}
+
+#[derive(Deserialize, Clone, Debug)]
 struct Property {
     name: String,
     values: Vec<String>,
@@ -47,6 +54,7 @@ struct State {
     opaque: bool,
     replaceable: bool,
     collision_shapes: Vec<u16>,
+    block_entity_type: Option<u32>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -60,8 +68,11 @@ struct Shape {
 }
 
 pub fn build() -> anyhow::Result<TokenStream> {
-    let TopLevel { blocks, shapes } =
-        serde_json::from_str(include_str!("../../../extracted/blocks.json"))?;
+    let TopLevel {
+        blocks,
+        shapes,
+        block_entity_types,
+    } = serde_json::from_str(include_str!("../../../extracted/blocks.json"))?;
 
     let max_state_id = blocks.iter().map(|b| b.max_state_id()).max().unwrap();
 
@@ -285,6 +296,19 @@ pub fn build() -> anyhow::Result<TokenStream> {
         })
         .collect::<TokenStream>();
 
+    let state_to_block_entity_type_arms = blocks
+        .iter()
+        .flat_map(|b| {
+            b.states.iter().filter_map(|s| {
+                let id = s.id;
+                let block_entity_type = s.block_entity_type?;
+                Some(quote! {
+                    #id => Some(#block_entity_type),
+                })
+            })
+        })
+        .collect::<TokenStream>();
+
     let kind_to_state_arms = blocks
         .iter()
         .map(|b| {
@@ -369,6 +393,45 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
             quote! {
                 #id => Some(BlockKind::#name),
+            }
+        })
+        .collect::<TokenStream>();
+
+    let block_entity_type_variants = block_entity_types
+        .iter()
+        .map(|block_entity| {
+            let name = ident(block_entity.name.to_pascal_case());
+            let doc = format!(
+                "The block entity type `{}` (ID {}).",
+                block_entity.name, block_entity.id
+            );
+            quote! {
+                #[doc = #doc]
+                #name,
+            }
+        })
+        .collect::<TokenStream>();
+
+    let block_entity_type_from_id_arms = block_entity_types
+        .iter()
+        .map(|block_entity| {
+            let id = block_entity.id;
+            let name = ident(block_entity.name.to_pascal_case());
+
+            quote! {
+                #id => Some(Self::#name),
+            }
+        })
+        .collect::<TokenStream>();
+
+    let block_entity_type_to_id_arms = block_entity_types
+        .iter()
+        .map(|block_entity| {
+            let id = block_entity.id;
+            let name = ident(block_entity.name.to_pascal_case());
+
+            quote! {
+                Self::#name => #id,
             }
         })
         .collect::<TokenStream>();
@@ -578,6 +641,13 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
+            pub const fn block_entity_type(self) -> Option<u32> {
+                match self.0 {
+                    #state_to_block_entity_type_arms
+                    _ => None
+                }
+            }
+
             #default_block_states
         }
 
@@ -784,6 +854,26 @@ pub fn build() -> anyhow::Result<TokenStream> {
         impl From<bool> for PropValue {
             fn from(b: bool) -> Self {
                 Self::from_bool(b)
+            }
+        }
+
+        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+        pub enum BlockEntityKind {
+            #block_entity_type_variants
+        }
+
+        impl BlockEntityKind {
+            pub const fn from_id(num: u32) -> Option<Self> {
+                match num {
+                    #block_entity_type_from_id_arms
+                    _ => None
+                }
+            }
+
+            pub const fn id(self) -> u32 {
+                match self {
+                    #block_entity_type_to_id_arms
+                }
             }
         }
     })

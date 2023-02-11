@@ -7,7 +7,7 @@ pub use chunk_entry::*;
 use glam::{DVec3, Vec3};
 use num::integer::div_ceil;
 use rustc_hash::FxHashMap;
-use valence_protocol::block::BlockState;
+use valence_protocol::block::{BlockEntity, BlockState};
 use valence_protocol::packets::s2c::particle::{Particle, ParticleS2c};
 use valence_protocol::packets::s2c::play::SetActionBarText;
 use valence_protocol::{BlockPos, EncodePacket, LengthPrefixedArray, Text};
@@ -265,6 +265,56 @@ impl Instance {
         };
 
         chunk.set_block_state(
+            pos.x.rem_euclid(16) as usize,
+            y,
+            pos.z.rem_euclid(16) as usize,
+            block,
+        )
+    }
+
+    /// Gets the block entity at an absolute block position in world space.
+    ///
+    /// If the position is not inside of a chunk, then [`Option::None`] is
+    /// returned.
+    pub fn block_entity(&self, pos: impl Into<BlockPos>) -> Option<BlockEntity> {
+        let pos = pos.into();
+
+        let Some(y) = pos.y.checked_sub(self.info.min_y).and_then(|y| y.try_into().ok()) else {
+            return None;
+        };
+
+        if y >= self.info.section_count * 16 {
+            return None;
+        }
+
+        let Some(chunk) = self.chunk(ChunkPos::from_block_pos(pos)) else {
+            return None;
+        };
+
+        chunk.block_entity(
+            pos.x.rem_euclid(16) as usize,
+            y,
+            pos.z.rem_euclid(16) as usize,
+        )
+    }
+
+    /// Sets the block entity at an absolute block position in world space.
+    pub fn set_block_entity(&mut self, pos: impl Into<BlockPos>, block: BlockEntity) {
+        let pos = pos.into();
+
+        let Some(y) = pos.y.checked_sub(self.info.min_y).and_then(|y| y.try_into().ok()) else {
+            return;
+        };
+
+        if y >= self.info.section_count * 16 {
+            return;
+        }
+
+        let Some(chunk) = self.chunk_mut(ChunkPos::from_block_pos(pos)) else {
+            return;
+        };
+
+        chunk.set_block_entity(
             pos.x.rem_euclid(16) as usize,
             y,
             pos.z.rem_euclid(16) as usize,

@@ -126,6 +126,7 @@ pub mod play {
     use super::*;
     use crate::packets::s2c::declare_recipes::DeclaredRecipe;
     use crate::packets::s2c::update_teams::UpdateTeamsMode;
+    use crate::types::ChunkDataBlockEntityEncode;
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x00]
@@ -194,6 +195,15 @@ pub mod play {
         // TODO: BlockEntityKind enum?
         pub kind: VarInt,
         pub data: Compound,
+    }
+
+    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[packet_id = 0x07]
+    pub struct BlockEntityDataEncode<'a> {
+        pub position: BlockPos,
+        // TODO: BlockEntityKind enum?
+        pub kind: VarInt,
+        pub data: RawBytes<'a>,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -421,7 +431,7 @@ pub mod play {
         pub chunk_z: i32,
         pub heightmaps: &'a Compound,
         pub blocks_and_biomes: &'a [u8],
-        pub block_entities: &'a [ChunkDataBlockEntity],
+        pub block_entities: &'a [ChunkDataBlockEntityEncode<'a>],
         pub trust_edges: bool,
         pub sky_light_mask: &'a [u64],
         pub block_light_mask: &'a [u64],

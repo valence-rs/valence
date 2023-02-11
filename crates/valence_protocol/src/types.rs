@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use valence_nbt::Compound;
 
-use crate::{BlockPos, Decode, Encode, Ident, ItemStack, Text, VarInt};
+use crate::{BlockPos, Decode, Encode, Ident, ItemStack, RawBytes, Text, VarInt};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum HandshakeNextState {
@@ -244,6 +244,15 @@ pub struct ChunkDataBlockEntity {
     // TODO: block entity kind?
     pub kind: VarInt,
     pub data: Compound,
+}
+
+#[derive(Clone, PartialEq, Debug, Encode, Decode)]
+pub struct ChunkDataBlockEntityEncode<'a> {
+    pub packed_xz: i8,
+    pub y: i16,
+    // TODO: block entity kind?
+    pub kind: VarInt,
+    pub data: RawBytes<'a>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default, Encode, Decode)]

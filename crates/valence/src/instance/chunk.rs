@@ -1,13 +1,15 @@
+use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 // Using nonstandard mutex to avoid poisoning API.
 use parking_lot::Mutex;
 use valence_nbt::compound;
-use valence_protocol::block::BlockState;
+use valence_protocol::block::{BlockEntity, BlockEntityData, BlockEntityKind, BlockState};
 use valence_protocol::packets::s2c::play::{
-    BlockUpdate, ChunkDataAndUpdateLightEncode, UpdateSectionBlocksEncode,
+    BlockEntityDataEncode, BlockUpdate, ChunkDataAndUpdateLightEncode, UpdateSectionBlocksEncode,
 };
-use valence_protocol::{BlockPos, Encode, VarInt, VarLong};
+use valence_protocol::types::ChunkDataBlockEntityEncode;
+use valence_protocol::{BlockPos, Encode, RawBytes, VarInt, VarLong};
 
 use crate::biome::BiomeId;
 use crate::instance::paletted_container::PalettedContainer;
@@ -32,6 +34,8 @@ pub struct Chunk<const LOADED: bool = false> {
     /// Tracks if any clients are in view of this (loaded) chunk. Useful for
     /// knowing when a chunk should be unloaded.
     viewed: AtomicBool,
+    /// Block entities in this chunk
+    block_entities: BTreeMap<u32, BlockEntityData>,
 }
 
 #[derive(Clone, Default, Debug)]
@@ -59,6 +63,7 @@ impl Chunk<false> {
             cached_init_packets: Mutex::new(vec![]),
             refresh: true,
             viewed: AtomicBool::new(false),
+            block_entities: BTreeMap::new(),
         };
 
         chunk.resize(section_count);
@@ -90,6 +95,7 @@ impl Chunk<false> {
             cached_init_packets: self.cached_init_packets,
             refresh: true,
             viewed: AtomicBool::new(false),
+            block_entities: self.block_entities,
         }
     }
 }
@@ -107,6 +113,7 @@ impl Clone for Chunk {
             cached_init_packets: Mutex::new(vec![]),
             refresh: true,
             viewed: AtomicBool::new(false),
+            block_entities: self.block_entities.clone(),
         }
     }
 }
@@ -127,11 +134,27 @@ impl Chunk<true> {
             })
             .collect();
 
+        let block_entities = self
+            .block_entities
+            .iter()
+            .map(|(idx, block_entity)| {
+                (
+                    *idx,
+                    BlockEntityData {
+                        dirty: false, // Don't clone dirty flag.
+                        kind: block_entity.kind,
+                        data: block_entity.data.clone(),
+                    },
+                )
+            })
+            .collect();
+
         Chunk {
             sections,
             cached_init_packets: Mutex::new(vec![]),
             refresh: true,
             viewed: AtomicBool::new(false),
+            block_entities,
         }
     }
 
@@ -162,11 +185,16 @@ impl Chunk<true> {
             sect.section_updates.clear();
         }
 
+        for block_entity in self.block_entities.values_mut() {
+            block_entity.dirty = false;
+        }
+
         Chunk {
             sections: self.sections,
             cached_init_packets: self.cached_init_packets,
             refresh: true,
             viewed: AtomicBool::new(false),
+            block_entities: self.block_entities,
         }
     }
 
@@ -206,6 +234,23 @@ impl Chunk<true> {
                         invert_trust_edges: false,
                         blocks: &sect.section_updates,
                     });
+                }
+            }
+            for (idx, block_entity) in &self.block_entities {
+                if block_entity.dirty {
+                    let x = idx % 16;
+                    let z = (idx / 16) % 16;
+                    let y = idx / 16 / 16;
+
+                    let global_x = pos.x * 16 + x as i32;
+                    let global_y = info.min_y + y as i32;
+                    let global_z = pos.z * 16 + z as i32;
+
+                    writer.write_packet(&BlockEntityDataEncode {
+                        position: BlockPos::new(global_x, global_y, global_z),
+                        kind: VarInt(block_entity.kind.id() as i32),
+                        data: RawBytes(&block_entity.data),
+                    })
                 }
             }
         }
@@ -257,6 +302,23 @@ impl Chunk<true> {
                 &mut compression_scratch,
             );
 
+            let block_entities: Vec<_> = self
+                .block_entities
+                .iter()
+                .map(|(idx, block_entity)| {
+                    let x = idx % 16;
+                    let z = idx / 16 % 16;
+                    let y = (idx / 16 / 16) as i16 + info.min_y as i16;
+
+                    ChunkDataBlockEntityEncode {
+                        packed_xz: ((x << 4) | z) as i8,
+                        y,
+                        kind: VarInt(block_entity.kind.id() as i32),
+                        data: RawBytes(&block_entity.data),
+                    }
+                })
+                .collect();
+
             writer.write_packet(&ChunkDataAndUpdateLightEncode {
                 chunk_x: pos.x,
                 chunk_z: pos.z,
@@ -264,7 +326,7 @@ impl Chunk<true> {
                     // TODO: MOTION_BLOCKING heightmap
                 },
                 blocks_and_biomes: scratch,
-                block_entities: &[],
+                block_entities: &block_entities,
                 trust_edges: true,
                 sky_light_mask: &info.filler_sky_light_mask,
                 block_light_mask: &[],
@@ -283,6 +345,9 @@ impl Chunk<true> {
 
         for sect in &mut self.sections {
             sect.section_updates.clear();
+        }
+        for block_entity in self.block_entities.values_mut() {
+            block_entity.dirty = false;
         }
     }
 }
@@ -317,6 +382,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
 
     /// Sets the block state at the provided offsets in the chunk. The previous
     /// block state at the position is returned.
+    /// Also, the corresponding block entity is placed.
     ///
     /// **Note**: The arguments to this function are offsets from the minimum
     /// corner of the chunk in _chunk space_ rather than _world space_.
@@ -356,6 +422,21 @@ impl<const LOADED: bool> Chunk<LOADED> {
                 self.cached_init_packets.get_mut().clear();
                 let compact = (block.to_raw() as i64) << 12 | (x << 8 | z << 4 | (y % 16)) as i64;
                 sect.section_updates.push(VarLong(compact));
+            }
+        }
+
+        let idx = (x + z * 16 + y * 16 * 16) as _;
+        match block.block_entity_type().and_then(BlockEntityKind::from_id) {
+            Some(kind) => {
+                let data = BlockEntityData {
+                    dirty: LOADED && !self.refresh,
+                    kind,
+                    data: vec![10, 0, 0, 0], // Empty compound
+                };
+                self.block_entities.insert(idx, data);
+            }
+            None => {
+                self.block_entities.remove(&idx);
             }
         }
 
@@ -424,6 +505,73 @@ impl<const LOADED: bool> Chunk<LOADED> {
         }
 
         sect.block_states.fill(block);
+
+        for z in 0..16 {
+            for x in 0..16 {
+                for y in 0..16 {
+                    let y = sect_y * 16 + y;
+                    let idx = (x + z * 16 + y * 16 * 16) as _;
+                    match block.block_entity_type().and_then(BlockEntityKind::from_id) {
+                        Some(kind) => {
+                            let data = BlockEntityData {
+                                dirty: LOADED && !self.refresh,
+                                kind,
+                                data: vec![10, 0, 0, 0], // Empty compound
+                            };
+                            self.block_entities.insert(idx, data);
+                        }
+                        None => {
+                            self.block_entities.remove(&idx);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Gets the block entity at the provided offsets in the chunk.
+    ///
+    /// **Note**: The arguments to this function are offsets from the minimum
+    /// corner of the chunk in _chunk space_ rather than _world space_.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the offsets are outside the bounds of the chunk. `x` and `z`
+    /// must be less than 16 while `y` must be less than `section_count() * 16`.
+    #[track_caller]
+    pub fn block_entity(&self, x: usize, y: usize, z: usize) -> Option<BlockEntity> {
+        assert!(
+            x < 16 && y < self.section_count() * 16 && z < 16,
+            "chunk block offsets of ({x}, {y}, {z}) are out of bounds"
+        );
+        let idx = (x + z * 16 + y * 16 * 16) as _;
+
+        self.block_entities
+            .get(&idx)
+            .map(|block| block.parse().unwrap())
+    }
+
+    /// Sets the block entity at the provided offsets in the chunk.
+    ///
+    /// **Note**: The arguments to this function are offsets from the minimum
+    /// corner of the chunk in _chunk space_ rather than _world space_.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the offsets are outside the bounds of the chunk. `x` and `z`
+    /// must be less than 16 while `y` must be less than `section_count() * 16`.
+    #[track_caller]
+    pub fn set_block_entity(&mut self, x: usize, y: usize, z: usize, block: BlockEntity) {
+        assert!(
+            x < 16 && y < self.section_count() * 16 && z < 16,
+            "chunk block offsets of ({x}, {y}, {z}) are out of bounds"
+        );
+        let idx = (x + z * 16 + y * 16 * 16) as _;
+        self.block_entities.insert(idx, block.to_data().unwrap());
+
+        if LOADED && !self.refresh {
+            self.cached_init_packets.get_mut().clear();
+        }
     }
 
     /// Gets the biome at the provided biome offsets in the chunk.
