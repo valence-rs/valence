@@ -79,7 +79,9 @@ fn setup(world: &mut World) {
     });
 
     // Chunks are generated in a thread pool for parallelism and to avoid blocking
-    // the main tick loop.
+    // the main tick loop. You can use your thread pool of choice here (rayon,
+    // bevy_tasks, etc). Only the standard library is used in the example for the
+    // sake of simplicity.
     //
     // If your chunk generation algorithm is inexpensive then there's no need to do
     // this.
