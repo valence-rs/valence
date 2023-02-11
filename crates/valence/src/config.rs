@@ -103,7 +103,7 @@ pub struct ServerPlugin<A> {
     pub outgoing_capacity: usize,
     /// The list of [`Dimension`]s usable on the server.
     ///
-    /// The dimensions returned by [`Server::dimensions`] will be in the
+    /// The dimensions returned by [`ServerPlugin::dimensions`] will be in the
     /// same order as this `Vec`.
     ///
     /// The number of elements in the `Vec` must be in `1..=u16::MAX`.
@@ -174,7 +174,7 @@ impl<A: AsyncCallbacks> ServerPlugin<A> {
         self
     }
 
-    /// See [`Self::tick_rate`].
+    /// See [`Self::tps`].
     #[must_use]
     pub fn with_tick_rate(mut self, tick_rate: i64) -> Self {
         self.tps = tick_rate;
@@ -279,6 +279,8 @@ pub trait AsyncCallbacks: Send + Sync + 'static {
     /// # Default Implementation
     ///
     /// The client is allowed to join unconditionally.
+    ///
+    /// [`Client`]: crate::client::Client
     async fn login(&self, shared: &SharedServer, info: &NewClientInfo) -> Result<(), Text> {
         #![allow(unused_variables)]
         Ok(())
@@ -392,9 +394,9 @@ pub enum ConnectionMode {
 /// Minecraft's standard ticks per second (TPS).
 pub const DEFAULT_TPS: i64 = 20;
 
-/// The result of the [Server List Ping] callback.
+/// The result of the Server List Ping [callback].
 ///
-/// [Server List Ping]: Config::server_list_ping_cb
+/// [callback]: crate::config::AsyncCallbacks
 #[derive(Clone, Default, Debug)]
 pub enum ServerListPing<'a> {
     /// Responds to the server list ping with the given information.

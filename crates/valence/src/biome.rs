@@ -10,18 +10,21 @@ use valence_protocol::ident::Ident;
 
 /// Identifies a particular [`Biome`] on the server.
 ///
-/// The default biome ID refers to the first biome added in the server's
-/// [configuration](crate::config::Config).
+/// The default biome ID refers to the first biome added in
+/// [`ServerPlugin::biomes`].
 ///
-/// To obtain biome IDs for other biomes, call
-/// [`SharedServer::biomes`](crate::server::SharedServer::biomes).
+/// To obtain biome IDs for other biomes, see [`ServerPlugin::biomes`].
+///
+/// [`ServerPlugin::biomes`]: crate::config::ServerPlugin::biomes
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct BiomeId(pub(crate) u16);
 
 /// Contains the configuration for a biome.
 ///
 /// Biomes are registered once at startup through
-/// [`biomes`](crate::config::Config::biomes).
+/// [`ServerPlugin::with_biomes`]
+///
+/// [`ServerPlugin::with_biomes`]: crate::config::ServerPlugin::with_biomes
 #[derive(Clone, Debug)]
 pub struct Biome {
     /// The unique name for this biome. The name can be

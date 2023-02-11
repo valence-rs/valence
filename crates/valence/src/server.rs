@@ -211,7 +211,7 @@ impl SharedServer {
     }
 
     /// Immediately stops new connections to the server and initiates server
-    /// shutdown. The given result is returned through [`start_server`].
+    /// shutdown.
     ///
     /// You may want to disconnect all players with a message prior to calling
     /// this function.
