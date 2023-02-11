@@ -1,5 +1,5 @@
 [package]
-name = "valence_derive"
+name = "valence_protocol_macros"
 version = "0.1.0"
 edition = "2021"
 

@@ -137,17 +137,10 @@ pub enum StructureBlockRotation {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Serialize, Deserialize)]
-pub struct SignedProperty<'a> {
-    pub name: &'a str,
-    pub value: &'a str,
-    pub signature: Option<&'a str>,
-}
-
-#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode, Serialize, Deserialize)]
-pub struct SignedPropertyOwned {
-    pub name: String,
-    pub value: String,
-    pub signature: Option<String>,
+pub struct Property<S = String> {
+    pub name: S,
+    pub value: S,
+    pub signature: Option<S>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
@@ -364,6 +357,34 @@ pub struct Statistic {
     pub category_id: VarInt,
     pub statistic_id: VarInt,
     pub value: VarInt,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
+pub enum WindowType {
+    Generic9x1,
+    Generic9x2,
+    Generic9x3,
+    Generic9x4,
+    Generic9x5,
+    Generic9x6,
+    Generic3x3,
+    Anvil,
+    Beacon,
+    BlastFurnace,
+    BrewingStand,
+    Crafting,
+    Enchantment,
+    Furnace,
+    Grindstone,
+    Hopper,
+    Lectern,
+    Loom,
+    Merchant,
+    ShulkerBox,
+    Smithing,
+    Smoker,
+    Cartography,
+    Stonecutter,
 }
 
 #[bitfield(u8)]

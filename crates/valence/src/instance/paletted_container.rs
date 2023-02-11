@@ -4,8 +4,7 @@ use std::io::Write;
 use arrayvec::ArrayVec;
 use valence_protocol::{Encode, VarInt};
 
-use crate::chunk::{compact_u64s_len, encode_compact_u64s};
-use crate::util::bit_width;
+use crate::math::bit_width;
 
 /// `HALF_LEN` must be equal to `ceil(LEN / 2)`.
 #[derive(Clone, Debug)]
@@ -39,7 +38,7 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
     }
 
     pub fn get(&self, idx: usize) -> T {
-        self.check_oob(idx);
+        debug_assert!(idx < LEN);
 
         match self {
             Self::Single(elem) => *elem,
@@ -49,7 +48,7 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
     }
 
     pub fn set(&mut self, idx: usize, val: T) -> T {
-        self.check_oob(idx);
+        debug_assert!(idx < LEN);
 
         match self {
             Self::Single(old_val) => {
@@ -124,14 +123,6 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
                 };
             }
         }
-    }
-
-    #[inline]
-    fn check_oob(&self, idx: usize) {
-        assert!(
-            idx < LEN,
-            "index {idx} is out of bounds in paletted container of length {LEN}"
-        );
     }
 
     /// Encodes the paletted container in the format that Minecraft expects.
@@ -261,6 +252,37 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize> Indirect<T
         let shift = idx % 2 * 4;
         *u8 = (*u8 & !(0b1111 << shift)) | ((palette_idx as u8) << shift);
         Some(old_val)
+    }
+}
+
+fn compact_u64s_len(vals_count: usize, bits_per_val: usize) -> usize {
+    let vals_per_u64 = 64 / bits_per_val;
+    num::Integer::div_ceil(&vals_count, &vals_per_u64)
+}
+
+#[inline]
+fn encode_compact_u64s(
+    mut w: impl Write,
+    mut vals: impl Iterator<Item = u64>,
+    bits_per_val: usize,
+) -> anyhow::Result<()> {
+    debug_assert!(bits_per_val <= 64);
+
+    let vals_per_u64 = 64 / bits_per_val;
+
+    loop {
+        let mut n = 0;
+        for i in 0..vals_per_u64 {
+            match vals.next() {
+                Some(val) => {
+                    debug_assert!(val < 2_u128.pow(bits_per_val as _) as _);
+                    n |= val << (i * bits_per_val);
+                }
+                None if i > 0 => return n.encode(&mut w),
+                None => return Ok(()),
+            }
+        }
+        n.encode(&mut w)?;
     }
 }
 

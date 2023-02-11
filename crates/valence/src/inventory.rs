@@ -1,99 +1,18 @@
 use std::iter::FusedIterator;
-use std::mem;
-use std::num::Wrapping;
-use std::ops::{Deref, DerefMut, Index, IndexMut};
 
-use valence_protocol::packets::s2c::play::SetContainerSlotEncode;
-use valence_protocol::{InventoryKind, ItemStack, Text, VarInt};
+use bevy_ecs::prelude::*;
+use tracing::{debug, warn};
+use valence_protocol::packets::s2c::play::{
+    CloseContainerS2c, OpenScreen, SetContainerContentEncode, SetContainerSlotEncode,
+};
+use valence_protocol::types::{GameMode, WindowType};
+use valence_protocol::{ItemStack, Text, VarInt};
 
-use crate::config::Config;
-use crate::server::PlayPacketSender;
-use crate::slab_versioned::{Key, VersionedSlab};
+use crate::client::event::{ClickContainer, CloseContainer, SetCreativeModeSlot, SetHeldItem};
+use crate::client::Client;
 
-pub struct Inventories<C: Config> {
-    slab: VersionedSlab<Inventory<C>>,
-}
-
-impl<C: Config> Inventories<C> {
-    pub(crate) fn new() -> Self {
-        Self {
-            slab: VersionedSlab::new(),
-        }
-    }
-
-    pub fn insert(
-        &mut self,
-        kind: InventoryKind,
-        title: impl Into<Text>,
-        state: C::InventoryState,
-    ) -> (InventoryId, &mut Inventory<C>) {
-        let (id, inv) = self.slab.insert(Inventory {
-            state,
-            title: title.into(),
-            kind,
-            slots: vec![None; kind.slot_count()].into(),
-            modified: 0,
-        });
-
-        (InventoryId(id), inv)
-    }
-
-    pub fn remove(&mut self, id: InventoryId) -> Option<C::InventoryState> {
-        self.slab.remove(id.0).map(|inv| inv.state)
-    }
-
-    pub fn get(&self, id: InventoryId) -> Option<&Inventory<C>> {
-        self.slab.get(id.0)
-    }
-
-    pub fn get_mut(&mut self, id: InventoryId) -> Option<&mut Inventory<C>> {
-        self.slab.get_mut(id.0)
-    }
-
-    pub fn iter(
-        &self,
-    ) -> impl ExactSizeIterator<Item = (InventoryId, &Inventory<C>)> + FusedIterator + Clone + '_
-    {
-        self.slab.iter().map(|(k, inv)| (InventoryId(k), inv))
-    }
-
-    pub fn iter_mut(
-        &mut self,
-    ) -> impl ExactSizeIterator<Item = (InventoryId, &mut Inventory<C>)> + FusedIterator + '_ {
-        self.slab.iter_mut().map(|(k, inv)| (InventoryId(k), inv))
-    }
-
-    pub(crate) fn update(&mut self) {
-        for (_, inv) in self.iter_mut() {
-            inv.modified = 0;
-        }
-    }
-}
-
-impl<C: Config> Index<InventoryId> for Inventories<C> {
-    type Output = Inventory<C>;
-
-    fn index(&self, index: InventoryId) -> &Self::Output {
-        self.get(index).expect("invalid inventory ID")
-    }
-}
-
-impl<C: Config> IndexMut<InventoryId> for Inventories<C> {
-    fn index_mut(&mut self, index: InventoryId) -> &mut Self::Output {
-        self.get_mut(index).expect("invalid inventory ID")
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
-pub struct InventoryId(Key);
-
-impl InventoryId {
-    pub const NULL: Self = Self(Key::NULL);
-}
-
-pub struct Inventory<C: Config> {
-    /// Custom state
-    pub state: C::InventoryState,
+#[derive(Debug, Clone, Component)]
+pub struct Inventory {
     title: Text,
     kind: InventoryKind,
     slots: Box<[Option<ItemStack>]>,
@@ -101,21 +20,22 @@ pub struct Inventory<C: Config> {
     modified: u64,
 }
 
-impl<C: Config> Deref for Inventory<C> {
-    type Target = C::InventoryState;
-
-    fn deref(&self) -> &Self::Target {
-        &self.state
+impl Inventory {
+    pub fn new(kind: InventoryKind) -> Self {
+        // TODO: default title to the correct translation key instead
+        Self::with_title(kind, "Inventory")
     }
-}
 
-impl<C: Config> DerefMut for Inventory<C> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.state
+    pub fn with_title(kind: InventoryKind, title: impl Into<Text>) -> Self {
+        Inventory {
+            title: title.into(),
+            kind,
+            slots: vec![None; kind.slot_count()].into(),
+            modified: 0,
+        }
     }
-}
 
-impl<C: Config> Inventory<C> {
+    #[track_caller]
     pub fn slot(&self, idx: u16) -> Option<&ItemStack> {
         self.slots
             .get(idx as usize)
@@ -123,6 +43,7 @@ impl<C: Config> Inventory<C> {
             .as_ref()
     }
 
+    #[track_caller]
     pub fn replace_slot(
         &mut self,
         idx: u16,
@@ -137,9 +58,10 @@ impl<C: Config> Inventory<C> {
             self.modified |= 1 << idx;
         }
 
-        mem::replace(old, new)
+        std::mem::replace(old, new)
     }
 
+    #[track_caller]
     pub fn swap_slot(&mut self, idx_a: u16, idx_b: u16) {
         assert!(idx_a < self.slot_count(), "slot index out of range");
         assert!(idx_b < self.slot_count(), "slot index out of range");
@@ -179,33 +101,986 @@ impl<C: Config> Inventory<C> {
 
     pub fn replace_title(&mut self, title: impl Into<Text>) -> Text {
         // TODO: set title modified flag
-        mem::replace(&mut self.title, title.into())
+        std::mem::replace(&mut self.title, title.into())
     }
 
-    pub(crate) fn slot_slice(&self) -> &[Option<ItemStack>] {
+    fn slot_slice(&self) -> &[Option<ItemStack>] {
         self.slots.as_ref()
     }
+}
 
-    pub(crate) fn send_update(
-        &self,
-        send: &mut PlayPacketSender,
-        window_id: u8,
-        state_id: &mut Wrapping<i32>,
-    ) -> anyhow::Result<()> {
-        if self.modified != 0 {
-            for (idx, slot) in self.slots.iter().enumerate() {
-                if (self.modified >> idx) & 1 == 1 {
-                    *state_id += 1;
+/// Send updates for each client's player inventory.
+pub(crate) fn update_player_inventories(
+    mut query: Query<(&mut Inventory, &mut Client), Without<OpenInventory>>,
+) {
+    for (mut inventory, mut client) in query.iter_mut() {
+        if inventory.kind != InventoryKind::Player {
+            warn!("Inventory on client entity is not a player inventory");
+        }
 
-                    send.append_packet(&SetContainerSlotEncode {
-                        window_id: window_id as i8,
-                        state_id: VarInt(state_id.0),
-                        slot_idx: idx as i16,
-                        slot_data: slot.as_ref(),
-                    })?;
+        if inventory.modified != 0 {
+            if inventory.modified == u64::MAX {
+                // Update the whole inventory.
+                client.inventory_state_id += 1;
+                let cursor_item = client.cursor_item.clone();
+                let state_id = client.inventory_state_id.0;
+                client.write_packet(&SetContainerContentEncode {
+                    window_id: 0,
+                    state_id: VarInt(state_id),
+                    slots: inventory.slot_slice(),
+                    carried_item: &cursor_item,
+                });
+
+                client.cursor_item_modified = false;
+            } else {
+                // send the modified slots
+
+                // The slots that were NOT modified by this client, and they need to be sent
+                let modified_filtered = inventory.modified & !client.inventory_slots_modified;
+                if modified_filtered != 0 {
+                    client.inventory_state_id += 1;
+                    let state_id = client.inventory_state_id.0;
+                    for (i, slot) in inventory.slots.iter().enumerate() {
+                        if ((modified_filtered >> i) & 1) == 1 {
+                            client.write_packet(&SetContainerSlotEncode {
+                                window_id: 0,
+                                state_id: VarInt(state_id),
+                                slot_idx: i as i16,
+                                slot_data: slot.as_ref(),
+                            });
+                        }
+                    }
+                }
+            }
+
+            inventory.modified = 0;
+            client.inventory_slots_modified = 0;
+        }
+
+        if client.cursor_item_modified {
+            client.inventory_state_id += 1;
+
+            client.cursor_item_modified = false;
+
+            let cursor_item = client.cursor_item.clone();
+            let state_id = client.inventory_state_id.0;
+            client.write_packet(&SetContainerSlotEncode {
+                window_id: -1,
+                state_id: VarInt(state_id),
+                slot_idx: -1,
+                slot_data: cursor_item.as_ref(),
+            });
+        }
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum InventoryKind {
+    Generic9x1,
+    Generic9x2,
+    Generic9x3,
+    Generic9x4,
+    Generic9x5,
+    Generic9x6,
+    Generic3x3,
+    Anvil,
+    Beacon,
+    BlastFurnace,
+    BrewingStand,
+    Crafting,
+    Enchantment,
+    Furnace,
+    Grindstone,
+    Hopper,
+    Lectern,
+    Loom,
+    Merchant,
+    ShulkerBox,
+    Smithing,
+    Smoker,
+    Cartography,
+    Stonecutter,
+    Player,
+}
+
+impl InventoryKind {
+    /// The number of slots in this inventory. When the inventory is shown to
+    /// clients, this number does not include the player's main inventory slots.
+    pub const fn slot_count(self) -> usize {
+        match self {
+            InventoryKind::Generic9x1 => 9,
+            InventoryKind::Generic9x2 => 9 * 2,
+            InventoryKind::Generic9x3 => 9 * 3,
+            InventoryKind::Generic9x4 => 9 * 4,
+            InventoryKind::Generic9x5 => 9 * 5,
+            InventoryKind::Generic9x6 => 9 * 6,
+            InventoryKind::Generic3x3 => 3 * 3,
+            InventoryKind::Anvil => 4,
+            InventoryKind::Beacon => 1,
+            InventoryKind::BlastFurnace => 3,
+            InventoryKind::BrewingStand => 5,
+            InventoryKind::Crafting => 10,
+            InventoryKind::Enchantment => 2,
+            InventoryKind::Furnace => 3,
+            InventoryKind::Grindstone => 3,
+            InventoryKind::Hopper => 5,
+            InventoryKind::Lectern => 1,
+            InventoryKind::Loom => 4,
+            InventoryKind::Merchant => 3,
+            InventoryKind::ShulkerBox => 27,
+            InventoryKind::Smithing => 3,
+            InventoryKind::Smoker => 3,
+            InventoryKind::Cartography => 3,
+            InventoryKind::Stonecutter => 2,
+            InventoryKind::Player => 46,
+        }
+    }
+}
+
+impl From<InventoryKind> for WindowType {
+    fn from(value: InventoryKind) -> Self {
+        match value {
+            InventoryKind::Generic9x1 => WindowType::Generic9x1,
+            InventoryKind::Generic9x2 => WindowType::Generic9x2,
+            InventoryKind::Generic9x3 => WindowType::Generic9x3,
+            InventoryKind::Generic9x4 => WindowType::Generic9x4,
+            InventoryKind::Generic9x5 => WindowType::Generic9x5,
+            InventoryKind::Generic9x6 => WindowType::Generic9x6,
+            InventoryKind::Generic3x3 => WindowType::Generic3x3,
+            InventoryKind::Anvil => WindowType::Anvil,
+            InventoryKind::Beacon => WindowType::Beacon,
+            InventoryKind::BlastFurnace => WindowType::BlastFurnace,
+            InventoryKind::BrewingStand => WindowType::BrewingStand,
+            InventoryKind::Crafting => WindowType::Crafting,
+            InventoryKind::Enchantment => WindowType::Enchantment,
+            InventoryKind::Furnace => WindowType::Furnace,
+            InventoryKind::Grindstone => WindowType::Grindstone,
+            InventoryKind::Hopper => WindowType::Hopper,
+            InventoryKind::Lectern => WindowType::Lectern,
+            InventoryKind::Loom => WindowType::Loom,
+            InventoryKind::Merchant => WindowType::Merchant,
+            InventoryKind::ShulkerBox => WindowType::ShulkerBox,
+            InventoryKind::Smithing => WindowType::Smithing,
+            InventoryKind::Smoker => WindowType::Smoker,
+            InventoryKind::Cartography => WindowType::Cartography,
+            InventoryKind::Stonecutter => WindowType::Stonecutter,
+            // arbitrarily chosen, because a player inventory technically does not have a window
+            // type
+            InventoryKind::Player => WindowType::Generic9x4,
+        }
+    }
+}
+
+impl From<WindowType> for InventoryKind {
+    fn from(value: WindowType) -> Self {
+        match value {
+            WindowType::Generic9x1 => InventoryKind::Generic9x1,
+            WindowType::Generic9x2 => InventoryKind::Generic9x2,
+            WindowType::Generic9x3 => InventoryKind::Generic9x3,
+            WindowType::Generic9x4 => InventoryKind::Generic9x4,
+            WindowType::Generic9x5 => InventoryKind::Generic9x5,
+            WindowType::Generic9x6 => InventoryKind::Generic9x6,
+            WindowType::Generic3x3 => InventoryKind::Generic3x3,
+            WindowType::Anvil => InventoryKind::Anvil,
+            WindowType::Beacon => InventoryKind::Beacon,
+            WindowType::BlastFurnace => InventoryKind::BlastFurnace,
+            WindowType::BrewingStand => InventoryKind::BrewingStand,
+            WindowType::Crafting => InventoryKind::Crafting,
+            WindowType::Enchantment => InventoryKind::Enchantment,
+            WindowType::Furnace => InventoryKind::Furnace,
+            WindowType::Grindstone => InventoryKind::Grindstone,
+            WindowType::Hopper => InventoryKind::Hopper,
+            WindowType::Lectern => InventoryKind::Lectern,
+            WindowType::Loom => InventoryKind::Loom,
+            WindowType::Merchant => InventoryKind::Merchant,
+            WindowType::ShulkerBox => InventoryKind::ShulkerBox,
+            WindowType::Smithing => InventoryKind::Smithing,
+            WindowType::Smoker => InventoryKind::Smoker,
+            WindowType::Cartography => InventoryKind::Cartography,
+            WindowType::Stonecutter => InventoryKind::Stonecutter,
+        }
+    }
+}
+
+/// Used to indicate that the client with this component is currently viewing
+/// an inventory.
+#[derive(Debug, Clone, Component)]
+pub struct OpenInventory {
+    /// The Entity with the `Inventory` component that the client is currently
+    /// viewing.
+    pub(crate) entity: Entity,
+    client_modified: u64,
+}
+
+impl OpenInventory {
+    pub fn new(entity: Entity) -> Self {
+        OpenInventory {
+            entity,
+            client_modified: 0,
+        }
+    }
+
+    pub fn entity(&self) -> Entity {
+        self.entity
+    }
+}
+
+/// Handles the `OpenInventory` component being added to a client, which
+/// indicates that the client is now viewing an inventory, and sends inventory
+/// updates to the client when the inventory is modified.
+pub(crate) fn update_open_inventories(
+    mut commands: Commands,
+    mut clients: Query<(Entity, &mut Client, &mut OpenInventory)>,
+    mut inventories: Query<&mut Inventory>,
+) {
+    // These operations need to happen in this order.
+
+    // send the inventory contents to all clients that are viewing an inventory
+    for (client_entity, mut client, mut open_inventory) in clients.iter_mut() {
+        // validate that the inventory exists
+        let Ok(inventory) = inventories.get_component::<Inventory>(open_inventory.entity) else {
+            // the inventory no longer exists, so close the inventory
+            commands.entity(client_entity).remove::<OpenInventory>();
+            let window_id = client.window_id;
+            client.write_packet(&CloseContainerS2c {
+                window_id,
+            });
+            continue;
+        };
+
+        if open_inventory.is_added() {
+            // send the inventory to the client if the client just opened the inventory
+            client.window_id = client.window_id % 100 + 1;
+            open_inventory.client_modified = 0;
+
+            let packet = OpenScreen {
+                window_id: VarInt(client.window_id.into()),
+                window_type: WindowType::from(inventory.kind),
+                window_title: (&inventory.title).into(),
+            };
+            client.write_packet(&packet);
+
+            let packet = SetContainerContentEncode {
+                window_id: client.window_id,
+                state_id: VarInt(client.inventory_state_id.0),
+                slots: inventory.slot_slice(),
+                carried_item: &client.cursor_item.clone(),
+            };
+            client.write_packet(&packet);
+        } else {
+            // the client is already viewing the inventory
+            if inventory.modified == u64::MAX {
+                // send the entire inventory
+                client.inventory_state_id += 1;
+                let packet = SetContainerContentEncode {
+                    window_id: client.window_id,
+                    state_id: VarInt(client.inventory_state_id.0),
+                    slots: inventory.slot_slice(),
+                    carried_item: &client.cursor_item.clone(),
+                };
+                client.write_packet(&packet);
+            } else {
+                // send the modified slots
+                let window_id = client.window_id as i8;
+                // The slots that were NOT modified by this client, and they need to be sent
+                let modified_filtered = inventory.modified & !open_inventory.client_modified;
+                if modified_filtered != 0 {
+                    client.inventory_state_id += 1;
+                    let state_id = client.inventory_state_id.0;
+                    for (i, slot) in inventory.slots.iter().enumerate() {
+                        if (modified_filtered >> i) & 1 == 1 {
+                            client.write_packet(&SetContainerSlotEncode {
+                                window_id,
+                                state_id: VarInt(state_id),
+                                slot_idx: i as i16,
+                                slot_data: slot.as_ref(),
+                            });
+                        }
+                    }
                 }
             }
         }
+
+        open_inventory.client_modified = 0;
+        client.inventory_slots_modified = 0;
+    }
+
+    // reset the modified flag
+    for (_, _, open_inventory) in clients.iter_mut() {
+        // validate that the inventory exists
+        if let Ok(mut inventory) = inventories.get_component_mut::<Inventory>(open_inventory.entity)
+        {
+            inventory.modified = 0;
+        }
+    }
+}
+
+/// Handles clients telling the server that they are closing an inventory.
+pub(crate) fn handle_close_container(
+    mut commands: Commands,
+    mut events: EventReader<CloseContainer>,
+) {
+    for event in events.iter() {
+        commands.entity(event.client).remove::<OpenInventory>();
+    }
+}
+
+/// Detects when a client's `OpenInventory` component is removed, which
+/// indicates that the client is no longer viewing an inventory.
+pub(crate) fn update_client_on_close_inventory(
+    removals: RemovedComponents<OpenInventory>,
+    mut clients: Query<&mut Client>,
+) {
+    for entity in removals.iter() {
+        if let Ok(mut client) = clients.get_component_mut::<Client>(entity) {
+            let window_id = client.window_id;
+            client.write_packet(&CloseContainerS2c { window_id });
+        }
+    }
+}
+
+pub(crate) fn handle_click_container(
+    mut clients: Query<(&mut Client, &mut Inventory, Option<&mut OpenInventory>)>,
+    mut inventories: Query<&mut Inventory, Without<Client>>,
+    mut events: EventReader<ClickContainer>,
+) {
+    for event in events.iter() {
+        let Ok((mut client, mut client_inventory, mut open_inventory)) =
+            clients.get_mut(event.client) else {
+                // the client does not exist, ignore
+                continue;
+            };
+
+        // validate the window id
+        if (event.window_id == 0) != open_inventory.is_none() {
+            warn!(
+                "Client sent a click with an invalid window id for current state: window_id = {}, \
+                 open_inventory present = {}",
+                event.window_id,
+                open_inventory.is_some()
+            );
+            continue;
+        }
+
+        if let Some(open_inventory) = open_inventory.as_mut() {
+            // the player is interacting with an inventory that is open
+            let Ok(mut target_inventory) = inventories.get_component_mut::<Inventory>(open_inventory.entity) else {
+                // the inventory does not exist, ignore
+                continue;
+            };
+            if client.inventory_state_id.0 != event.state_id {
+                // client is out of sync, resync, ignore click
+                debug!("Client state id mismatch, resyncing");
+                client.inventory_state_id += 1;
+                let packet = SetContainerContentEncode {
+                    window_id: client.window_id,
+                    state_id: VarInt(client.inventory_state_id.0),
+                    slots: target_inventory.slot_slice(),
+                    carried_item: &client.cursor_item.clone(),
+                };
+                client.write_packet(&packet);
+                continue;
+            }
+
+            client.cursor_item = event.carried_item.clone();
+
+            for (slot_id, item) in event.slot_changes.clone() {
+                if (0i16..target_inventory.slot_count() as i16).contains(&slot_id) {
+                    // the client is interacting with a slot in the target inventory
+                    target_inventory.replace_slot(slot_id as u16, item);
+                    open_inventory.client_modified |= 1 << slot_id;
+                } else {
+                    // the client is interacting with a slot in their own inventory
+                    let slot_id = convert_to_player_slot_id(target_inventory.kind, slot_id as u16);
+                    client_inventory.replace_slot(slot_id, item);
+                    client.inventory_slots_modified |= 1 << slot_id;
+                }
+            }
+        } else {
+            // the client is interacting with their own inventory
+
+            if client.inventory_state_id.0 != event.state_id {
+                // client is out of sync, resync, and ignore the click
+                debug!("Client state id mismatch, resyncing");
+                client.inventory_state_id += 1;
+                let packet = SetContainerContentEncode {
+                    window_id: client.window_id,
+                    state_id: VarInt(client.inventory_state_id.0),
+                    slots: client_inventory.slot_slice(),
+                    carried_item: &client.cursor_item.clone(),
+                };
+                client.write_packet(&packet);
+                continue;
+            }
+
+            // TODO: do more validation on the click
+            client.cursor_item = event.carried_item.clone();
+            for (slot_id, item) in event.slot_changes.clone() {
+                if (0i16..client_inventory.slot_count() as i16).contains(&slot_id) {
+                    client_inventory.replace_slot(slot_id as u16, item);
+                    client.inventory_slots_modified |= 1 << slot_id;
+                } else {
+                    // the client is trying to interact with a slot that does not exist,
+                    // ignore
+                    warn!(
+                        "Client attempted to interact with slot {} which does not exist",
+                        slot_id
+                    );
+                }
+            }
+        }
+    }
+}
+
+pub(crate) fn handle_set_slot_creative(
+    mut clients: Query<(&mut Client, &mut Inventory)>,
+    mut events: EventReader<SetCreativeModeSlot>,
+) {
+    for event in events.iter() {
+        if let Ok((mut client, mut inventory)) = clients.get_mut(event.client) {
+            if client.game_mode() != GameMode::Creative {
+                // the client is not in creative mode, ignore
+                continue;
+            }
+            inventory.replace_slot(event.slot as u16, event.clicked_item.clone());
+            inventory.modified &= !(1 << event.slot); // clear the modified bit, since we are about to send the update
+            client.inventory_state_id += 1;
+            let state_id = client.inventory_state_id.0;
+            // HACK: notchian clients rely on the server to send the slot update when in
+            // creative mode Simply marking the slot as modified is not enough. This was
+            // discovered because shift-clicking the destroy item slot in creative mode does
+            // not work without this hack.
+            client.write_packet(&SetContainerSlotEncode {
+                window_id: 0,
+                state_id: VarInt(state_id),
+                slot_idx: event.slot,
+                slot_data: event.clicked_item.as_ref(),
+            });
+        }
+    }
+}
+
+pub(crate) fn handle_set_held_item(
+    mut clients: Query<&mut Client>,
+    mut events: EventReader<SetHeldItem>,
+) {
+    for event in events.iter() {
+        if let Ok(mut client) = clients.get_mut(event.client) {
+            client.held_item_slot = convert_hotbar_slot_id(event.slot as u16);
+        }
+    }
+}
+
+/// Convert a slot that is outside a target inventory's range to a slot that is
+/// inside the player's inventory.
+fn convert_to_player_slot_id(target_kind: InventoryKind, slot_id: u16) -> u16 {
+    // the first slot in the player's general inventory
+    let offset = target_kind.slot_count() as u16;
+    slot_id - offset + 9
+}
+
+fn convert_hotbar_slot_id(slot_id: u16) -> u16 {
+    slot_id + 36
+}
+
+#[cfg(test)]
+mod test {
+    use bevy_app::App;
+    use valence_protocol::packets::S2cPlayPacket;
+    use valence_protocol::ItemKind;
+
+    use super::*;
+    use crate::unit_test::util::scenario_single_client;
+    use crate::{assert_packet_count, assert_packet_order};
+
+    #[test]
+    fn test_convert_to_player_slot() {
+        assert_eq!(convert_to_player_slot_id(InventoryKind::Generic9x3, 27), 9);
+        assert_eq!(convert_to_player_slot_id(InventoryKind::Generic9x3, 36), 18);
+        assert_eq!(convert_to_player_slot_id(InventoryKind::Generic9x3, 54), 36);
+        assert_eq!(convert_to_player_slot_id(InventoryKind::Generic9x1, 9), 9);
+    }
+
+    #[test]
+    fn test_convert_hotbar_slot_id() {
+        assert_eq!(convert_hotbar_slot_id(0), 36);
+        assert_eq!(convert_hotbar_slot_id(4), 40);
+        assert_eq!(convert_hotbar_slot_id(8), 44);
+    }
+
+    #[test]
+    fn test_should_open_inventory() -> anyhow::Result<()> {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+
+        let inventory = Inventory::new(InventoryKind::Generic3x3);
+        let inventory_ent = app.world.spawn(inventory).id();
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        // Open the inventory.
+        let open_inventory = OpenInventory::new(inventory_ent);
+        app.world
+            .get_entity_mut(client_ent)
+            .expect("could not find client")
+            .insert(open_inventory);
+
+        app.update();
+
+        // Make assertions
+        let sent_packets = client_helper.collect_sent()?;
+
+        assert_packet_count!(sent_packets, 1, S2cPlayPacket::OpenScreen(_));
+        assert_packet_count!(sent_packets, 1, S2cPlayPacket::SetContainerContent(_));
+        assert_packet_order!(
+            sent_packets,
+            S2cPlayPacket::OpenScreen(_),
+            S2cPlayPacket::SetContainerContent(_)
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_should_close_inventory() -> anyhow::Result<()> {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+
+        let inventory = Inventory::new(InventoryKind::Generic3x3);
+        let inventory_ent = app.world.spawn(inventory).id();
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        // Open the inventory.
+        let open_inventory = OpenInventory::new(inventory_ent);
+        app.world
+            .get_entity_mut(client_ent)
+            .expect("could not find client")
+            .insert(open_inventory);
+
+        app.update();
+        client_helper.clear_sent();
+
+        // Close the inventory.
+        app.world
+            .get_entity_mut(client_ent)
+            .expect("could not find client")
+            .remove::<OpenInventory>();
+
+        app.update();
+
+        // Make assertions
+        let sent_packets = client_helper.collect_sent()?;
+
+        assert_packet_count!(sent_packets, 1, S2cPlayPacket::CloseContainerS2c(_));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_should_remove_invalid_open_inventory() -> anyhow::Result<()> {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+
+        let inventory = Inventory::new(InventoryKind::Generic3x3);
+        let inventory_ent = app.world.spawn(inventory).id();
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        // Open the inventory.
+        let open_inventory = OpenInventory::new(inventory_ent);
+        app.world
+            .get_entity_mut(client_ent)
+            .expect("could not find client")
+            .insert(open_inventory);
+
+        app.update();
+        client_helper.clear_sent();
+
+        // Remove the inventory.
+        app.world.despawn(inventory_ent);
+
+        app.update();
+
+        // Make assertions
+        assert!(app.world.get::<OpenInventory>(client_ent).is_none());
+        let sent_packets = client_helper.collect_sent()?;
+        assert_packet_count!(sent_packets, 1, S2cPlayPacket::CloseContainerS2c(_));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_should_modify_player_inventory_click_container() -> anyhow::Result<()> {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+        let mut inventory = app
+            .world
+            .get_mut::<Inventory>(client_ent)
+            .expect("could not find inventory for client");
+        inventory.replace_slot(20, ItemStack::new(ItemKind::Diamond, 2, None));
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        // Make the client click the slot and pick up the item.
+        let state_id = app
+            .world
+            .get::<Client>(client_ent)
+            .unwrap()
+            .inventory_state_id;
+        client_helper.send(&valence_protocol::packets::c2s::play::ClickContainer {
+            window_id: 0,
+            button: 0,
+            mode: valence_protocol::types::ClickContainerMode::Click,
+            state_id: VarInt(state_id.0),
+            slot_idx: 20,
+            slots: vec![(20, None)],
+            carried_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
+        });
+
+        app.update();
+
+        // Make assertions
+        let sent_packets = client_helper.collect_sent()?;
+
+        // because the inventory was modified as a result of the client's click, the
+        // server should not send any packets to the client because the client
+        // already knows about the change.
+        assert_packet_count!(
+            sent_packets,
+            0,
+            S2cPlayPacket::SetContainerContent(_) | S2cPlayPacket::SetContainerSlot(_)
+        );
+        let inventory = app
+            .world
+            .get::<Inventory>(client_ent)
+            .expect("could not find inventory for client");
+        assert_eq!(inventory.slot(20), None);
+        let client = app
+            .world
+            .get::<Client>(client_ent)
+            .expect("could not find client");
+        assert_eq!(
+            client.cursor_item,
+            Some(ItemStack::new(ItemKind::Diamond, 2, None))
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_should_modify_player_inventory_server_side() -> anyhow::Result<()> {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+        let mut inventory = app
+            .world
+            .get_mut::<Inventory>(client_ent)
+            .expect("could not find inventory for client");
+        inventory.replace_slot(20, ItemStack::new(ItemKind::Diamond, 2, None));
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        // Modify the inventory.
+        let mut inventory = app
+            .world
+            .get_mut::<Inventory>(client_ent)
+            .expect("could not find inventory for client");
+        inventory.replace_slot(21, ItemStack::new(ItemKind::IronIngot, 1, None));
+
+        app.update();
+
+        // Make assertions
+        let sent_packets = client_helper.collect_sent()?;
+        // because the inventory was modified server side, the client needs to be
+        // updated with the change.
+        assert_packet_count!(sent_packets, 1, S2cPlayPacket::SetContainerSlot(_));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_should_sync_entire_player_inventory() -> anyhow::Result<()> {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        let mut inventory = app
+            .world
+            .get_mut::<Inventory>(client_ent)
+            .expect("could not find inventory for client");
+        inventory.modified = u64::MAX;
+
+        app.update();
+
+        // Make assertions
+        let sent_packets = client_helper.collect_sent()?;
+        assert_packet_count!(sent_packets, 1, S2cPlayPacket::SetContainerContent(_));
+
+        Ok(())
+    }
+
+    fn set_up_open_inventory(app: &mut App, client_ent: Entity) -> Entity {
+        let inventory = Inventory::new(InventoryKind::Generic9x3);
+        let inventory_ent = app.world.spawn(inventory).id();
+
+        // Open the inventory.
+        let open_inventory = OpenInventory::new(inventory_ent);
+        app.world
+            .get_entity_mut(client_ent)
+            .expect("could not find client")
+            .insert(open_inventory);
+
+        inventory_ent
+    }
+
+    #[test]
+    fn test_should_modify_open_inventory_click_container() -> anyhow::Result<()> {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+        let inventory_ent = set_up_open_inventory(&mut app, client_ent);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        // Make the client click the slot and pick up the item.
+        let state_id = app
+            .world
+            .get::<Client>(client_ent)
+            .unwrap()
+            .inventory_state_id;
+        let window_id = app.world.get::<Client>(client_ent).unwrap().window_id;
+        client_helper.send(&valence_protocol::packets::c2s::play::ClickContainer {
+            window_id,
+            button: 0,
+            mode: valence_protocol::types::ClickContainerMode::Click,
+            state_id: VarInt(state_id.0),
+            slot_idx: 20,
+            slots: vec![(20, None)],
+            carried_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
+        });
+
+        app.update();
+
+        // Make assertions
+        let sent_packets = client_helper.collect_sent()?;
+
+        // because the inventory was modified as a result of the client's click, the
+        // server should not send any packets to the client because the client
+        // already knows about the change.
+        assert_packet_count!(
+            sent_packets,
+            0,
+            S2cPlayPacket::SetContainerContent(_) | S2cPlayPacket::SetContainerSlot(_)
+        );
+        let inventory = app
+            .world
+            .get::<Inventory>(inventory_ent)
+            .expect("could not find inventory");
+        assert_eq!(inventory.slot(20), None);
+        let client = app
+            .world
+            .get::<Client>(client_ent)
+            .expect("could not find client");
+        assert_eq!(
+            client.cursor_item,
+            Some(ItemStack::new(ItemKind::Diamond, 2, None))
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_should_modify_open_inventory_server_side() -> anyhow::Result<()> {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+        let inventory_ent = set_up_open_inventory(&mut app, client_ent);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        // Modify the inventory.
+        let mut inventory = app
+            .world
+            .get_mut::<Inventory>(inventory_ent)
+            .expect("could not find inventory for client");
+        inventory.replace_slot(5, ItemStack::new(ItemKind::IronIngot, 1, None));
+
+        app.update();
+
+        // Make assertions
+        let sent_packets = client_helper.collect_sent()?;
+
+        // because the inventory was modified server side, the client needs to be
+        // updated with the change.
+        assert_packet_count!(sent_packets, 1, S2cPlayPacket::SetContainerSlot(_));
+        let inventory = app
+            .world
+            .get::<Inventory>(inventory_ent)
+            .expect("could not find inventory for client");
+        assert_eq!(
+            inventory.slot(5),
+            Some(&ItemStack::new(ItemKind::IronIngot, 1, None))
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_should_sync_entire_open_inventory() -> anyhow::Result<()> {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+        let inventory_ent = set_up_open_inventory(&mut app, client_ent);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        let mut inventory = app
+            .world
+            .get_mut::<Inventory>(inventory_ent)
+            .expect("could not find inventory");
+        inventory.modified = u64::MAX;
+
+        app.update();
+
+        // Make assertions
+        let sent_packets = client_helper.collect_sent()?;
+        assert_packet_count!(sent_packets, 1, S2cPlayPacket::SetContainerContent(_));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_set_creative_mode_slot_handling() {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+        let mut client = app
+            .world
+            .get_mut::<Client>(client_ent)
+            .expect("could not find client");
+        client.set_game_mode(GameMode::Creative);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        client_helper.send(&valence_protocol::packets::c2s::play::SetCreativeModeSlot {
+            slot: 36,
+            clicked_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
+        });
+
+        app.update();
+
+        // Make assertions
+        let inventory = app
+            .world
+            .get::<Inventory>(client_ent)
+            .expect("could not find inventory for client");
+        assert_eq!(
+            inventory.slot(36),
+            Some(&ItemStack::new(ItemKind::Diamond, 2, None))
+        );
+    }
+
+    #[test]
+    fn test_ignore_set_creative_mode_slot_if_not_creative() {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+        let mut client = app
+            .world
+            .get_mut::<Client>(client_ent)
+            .expect("could not find client");
+        client.set_game_mode(GameMode::Survival);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        client_helper.send(&valence_protocol::packets::c2s::play::SetCreativeModeSlot {
+            slot: 36,
+            clicked_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
+        });
+
+        app.update();
+
+        // Make assertions
+        let inventory = app
+            .world
+            .get::<Inventory>(client_ent)
+            .expect("could not find inventory for client");
+        assert_eq!(inventory.slot(36), None);
+    }
+
+    #[test]
+    fn test_window_id_increments() {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+        let inventory = Inventory::new(InventoryKind::Generic9x3);
+        let inventory_ent = app.world.spawn(inventory).id();
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        for _ in 0..3 {
+            let open_inventory = OpenInventory::new(inventory_ent);
+            app.world
+                .get_entity_mut(client_ent)
+                .expect("could not find client")
+                .insert(open_inventory);
+
+            app.update();
+
+            app.world
+                .get_entity_mut(client_ent)
+                .expect("could not find client")
+                .remove::<OpenInventory>();
+
+            app.update();
+        }
+
+        // Make assertions
+        let client = app
+            .world
+            .get::<Client>(client_ent)
+            .expect("could not find client");
+        assert_eq!(client.window_id, 3);
+    }
+
+    #[test]
+    fn test_should_handle_set_held_item() -> anyhow::Result<()> {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        client_helper.send(&valence_protocol::packets::c2s::play::SetHeldItemC2s { slot: 4 });
+
+        app.update();
+
+        // Make assertions
+        let client = app
+            .world
+            .get::<Client>(client_ent)
+            .expect("could not find client");
+        assert_eq!(client.held_item_slot, 40);
 
         Ok(())
     }

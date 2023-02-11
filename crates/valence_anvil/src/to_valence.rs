@@ -1,7 +1,7 @@
 use num_integer::div_ceil;
 use thiserror::Error;
 use valence::biome::BiomeId;
-use valence::chunk::Chunk;
+use valence::instance::Chunk;
 use valence::protocol::block::{BlockKind, PropName, PropValue};
 use valence::protocol::Ident;
 use valence_nbt::{Compound, List, Value};
@@ -53,14 +53,14 @@ pub enum ToValenceError {
     BadBiomePaletteIndex,
 }
 
-/// Reads an Anvil chunk in NBT form and writes its data to a Valence [`Chunk`].
+/// Takes an Anvil chunk in NBT form and writes its data to a Valence [`Chunk`].
 /// An error is returned if the NBT data does not match the expected structure
 /// for an Anvil chunk.
 ///
 /// # Arguments
 ///
 /// - `nbt`: The Anvil chunk to read from. This is usually the value returned by
-///   [`read_chunk`].
+///   [`AnvilWorld::read_chunk`].
 /// - `chunk`: The Valence chunk to write to.
 /// - `sect_offset`: A constant to add to all sector Y positions in `nbt`. After
 ///   applying the offset, only the sectors in the range
@@ -68,15 +68,14 @@ pub enum ToValenceError {
 /// - `map_biome`: A function to map biome resource identifiers in the NBT data
 ///   to Valence [`BiomeId`]s.
 ///
-/// [`read_chunk`]: crate::AnvilWorld::read_chunk
-pub fn to_valence<C, F>(
+/// [`AnvilWorld::read_chunk`]: crate::AnvilWorld::read_chunk
+pub fn to_valence<F, const LOADED: bool>(
     nbt: &Compound,
-    chunk: &mut C,
+    chunk: &mut Chunk<LOADED>,
     sect_offset: i32,
     mut map_biome: F,
 ) -> Result<(), ToValenceError>
 where
-    C: Chunk,
     F: FnMut(Ident<&str>) -> BiomeId,
 {
     let Some(Value::List(List::Compound(sections))) = nbt.get("sections") else {

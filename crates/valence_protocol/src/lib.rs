@@ -68,8 +68,8 @@
 // Allows us to use our own proc macros internally.
 extern crate self as valence_protocol;
 
-use std::io;
 use std::io::Write;
+use std::{fmt, io};
 
 pub use anyhow::{Error, Result};
 pub use array::LengthPrefixedArray;
@@ -78,13 +78,12 @@ pub use block_pos::BlockPos;
 pub use byte_angle::ByteAngle;
 pub use codec::*;
 pub use ident::Ident;
-pub use inventory::InventoryKind;
 pub use item::{ItemKind, ItemStack};
 pub use raw_bytes::RawBytes;
 pub use text::{Text, TextFormat};
 pub use username::Username;
 pub use uuid::Uuid;
-pub use valence_derive::{Decode, DecodePacket, Encode, EncodePacket};
+pub use valence_protocol_macros::{Decode, DecodePacket, Encode, EncodePacket};
 pub use var_int::VarInt;
 pub use var_long::VarLong;
 pub use {uuid, valence_nbt as nbt};
@@ -106,7 +105,6 @@ pub mod enchant;
 pub mod entity_meta;
 pub mod ident;
 mod impls;
-mod inventory;
 mod item;
 pub mod packets;
 mod raw_bytes;
@@ -174,7 +172,7 @@ pub const MAX_PACKET_SIZE: i32 = 2097152;
 /// println!("{buf:?}");
 /// ```
 ///
-/// [macro]: valence_derive::Encode
+/// [macro]: valence_protocol_macros::Encode
 pub trait Encode {
     /// Writes this object to the provided writer.
     ///
@@ -249,7 +247,7 @@ pub trait Encode {
 /// assert!(r.is_empty());
 /// ```
 ///
-/// [macro]: valence_derive::Decode
+/// [macro]: valence_protocol_macros::Decode
 pub trait Decode<'a>: Sized {
     /// Reads this object from the provided byte slice.
     ///
@@ -284,8 +282,8 @@ pub trait Decode<'a>: Sized {
 /// println!("{buf:?}");
 /// ```
 ///
-/// [macro]: valence_derive::DecodePacket
-pub trait EncodePacket {
+/// [macro]: valence_protocol_macros::DecodePacket
+pub trait EncodePacket: fmt::Debug {
     /// The packet ID that is written when [`Self::encode_packet`] is called. A
     /// negative value indicates that the packet ID is not statically known.
     const PACKET_ID: i32 = -1;
@@ -324,7 +322,7 @@ pub trait EncodePacket {
 /// ```
 ///
 /// [macro]: valence_protocol::DecodePacket
-pub trait DecodePacket<'a>: Sized {
+pub trait DecodePacket<'a>: Sized + fmt::Debug {
     /// The packet ID that is read when [`Self::decode_packet`] is called. A
     /// negative value indicates that the packet ID is not statically known.
     const PACKET_ID: i32 = -1;
@@ -339,7 +337,7 @@ pub trait DecodePacket<'a>: Sized {
 mod derive_tests {
     use super::*;
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 1]
     struct RegularStruct {
         foo: i32,
@@ -347,30 +345,30 @@ mod derive_tests {
         baz: f64,
     }
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 2]
     struct UnitStruct;
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 3]
     struct EmptyStruct {}
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 4]
     struct TupleStruct(i32, bool, f64);
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 5]
-    struct StructWithGenerics<'z, T = ()> {
+    struct StructWithGenerics<'z, T: std::fmt::Debug = ()> {
         foo: &'z str,
         bar: T,
     }
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 6]
-    struct TupleStructWithGenerics<'z, T = ()>(&'z str, i32, T);
+    struct TupleStructWithGenerics<'z, T: std::fmt::Debug = ()>(&'z str, i32, T);
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 7]
     enum RegularEnum {
         Empty,
@@ -378,13 +376,13 @@ mod derive_tests {
         Fields { foo: i32, bar: bool, baz: f64 },
     }
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 8]
     enum EmptyEnum {}
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 0xbeef]
-    enum EnumWithGenericsAndTags<'z, T = ()> {
+    enum EnumWithGenericsAndTags<'z, T: std::fmt::Debug = ()> {
         #[tag = 5]
         First {
             foo: &'z str,
