@@ -24,6 +24,7 @@ jobs:
       with:
         components: clippy, rustfmt
 
+    - run: cp crates/playground/src/playground.template.rs crates/playground/src/playground.rs
     - name: Validate formatting
       run: cargo fmt --all -- --check
     - name: Validate documentation
