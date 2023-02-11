@@ -605,7 +605,7 @@ mod test {
     fn test_convert_hotbar_slot_id() {
         assert_eq!(convert_hotbar_slot_id(0), 36);
         assert_eq!(convert_hotbar_slot_id(4), 40);
-        assert_eq!(convert_hotbar_slot_id(9), 44);
+        assert_eq!(convert_hotbar_slot_id(8), 44);
     }
 
     #[test]
