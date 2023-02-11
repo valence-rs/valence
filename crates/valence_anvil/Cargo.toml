@@ -2,7 +2,7 @@
 name = "valence_anvil"
 description = "A library for Minecraft's Anvil world format."
 documentation = "https://docs.rs/valence_anvil/"
-repository = "https://github.com/valence_anvil/valence/tree/main/valence_anvil"
+repository = "https://github.com/valence-rs/valence/tree/main/crates/valence_anvil"
 readme = "README.md"
 license = "MIT"
 keywords = ["anvil", "minecraft", "deserialization"]
@@ -20,10 +20,14 @@ valence_nbt = { version = "0.5.0", path = "../valence_nbt" }
 
 [dev-dependencies]
 anyhow = "1.0.68"
+bevy_ecs = "0.9.1"
+clap = "4.1.4"
 criterion = "0.4.0"
+flume = "0.10.14"
 fs_extra = "1.2.0"
 tempfile = "3.3.0"
-valence_anvil = { version = "0.1.0", path = "." }
+tracing = "0.1.37"
+tracing-subscriber = "0.3.16"
 zip = "0.6.3"
 
 [dev-dependencies.reqwest]

@@ -10,10 +10,10 @@ use flate2::bufread::{GzDecoder, ZlibDecoder};
 use thiserror::Error;
 use valence_nbt::Compound;
 #[cfg(feature = "valence")]
-pub use write_chunk::*;
+pub use to_valence::*;
 
 #[cfg(feature = "valence")]
-mod write_chunk;
+mod to_valence;
 
 #[derive(Debug)]
 pub struct AnvilWorld {
