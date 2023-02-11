@@ -337,7 +337,7 @@ pub trait DecodePacket<'a>: Sized + fmt::Debug {
 mod derive_tests {
     use super::*;
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 1]
     struct RegularStruct {
         foo: i32,
@@ -345,30 +345,30 @@ mod derive_tests {
         baz: f64,
     }
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 2]
     struct UnitStruct;
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 3]
     struct EmptyStruct {}
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 4]
     struct TupleStruct(i32, bool, f64);
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 5]
-    struct StructWithGenerics<'z, T = ()> {
+    struct StructWithGenerics<'z, T: std::fmt::Debug = ()> {
         foo: &'z str,
         bar: T,
     }
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 6]
-    struct TupleStructWithGenerics<'z, T = ()>(&'z str, i32, T);
+    struct TupleStructWithGenerics<'z, T: std::fmt::Debug = ()>(&'z str, i32, T);
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 7]
     enum RegularEnum {
         Empty,
@@ -376,13 +376,13 @@ mod derive_tests {
         Fields { foo: i32, bar: bool, baz: f64 },
     }
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 8]
     enum EmptyEnum {}
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket)]
+    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 0xbeef]
-    enum EnumWithGenericsAndTags<'z, T = ()> {
+    enum EnumWithGenericsAndTags<'z, T: std::fmt::Debug = ()> {
         #[tag = 5]
         First {
             foo: &'z str,
