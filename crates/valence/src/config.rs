@@ -142,7 +142,8 @@ impl<A: AsyncCallbacks> ServerPlugin<A> {
             address: SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 25565).into(),
             tps: DEFAULT_TPS,
             connection_mode: ConnectionMode::Online {
-                prevent_proxy_connections: true,
+                // Note: Some people have problems using valence when this is enabled by default.
+                prevent_proxy_connections: false,
             },
             compression_threshold: Some(256),
             incoming_capacity: 2097152, // 2 MiB
