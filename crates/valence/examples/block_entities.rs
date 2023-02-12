@@ -14,7 +14,7 @@ pub fn main() {
     App::new()
         .add_plugin(ServerPlugin::new(()))
         .add_system_to_stage(EventLoop, default_event_handler)
-        .add_system_to_stage(EventLoop, chat_handler)
+        .add_system_to_stage(EventLoop, event_handler)
         .add_system_set(PlayerList::default_system_set())
         .add_startup_system(setup)
         .add_system(init_clients)
@@ -54,7 +54,7 @@ fn setup(world: &mut World) {
         BlockEntity {
             kind: BlockEntityKind::Sign,
             nbt: compound! {
-                "Text1" => r#"{"text": "Type in chat:", "color": "red"}"#
+                "Text1" => "Type in chat:".color(Color::RED),
             },
         },
     );
@@ -79,7 +79,7 @@ fn init_clients(
     }
 }
 
-fn chat_handler(
+fn event_handler(
     clients: Query<&Client>,
     mut messages: EventReader<ChatMessage>,
     mut block_interacts: EventReader<UseItemOnBlock>,
@@ -90,21 +90,18 @@ fn chat_handler(
         client, message, ..
     } in messages.iter()
     {
-        let text = message.to_string().color(Color::DARK_GREEN);
-        let text = serde_json::to_string(&text).unwrap();
-
         let Ok(client) = clients.get(*client) else {
             continue
         };
-        let author = format!("~{}", client.username()).italic();
-        let author = serde_json::to_string(&author).unwrap();
 
         let Some(mut sign) = instance.block_entity(SIGN_POS) else {
             continue
         };
 
-        sign.nbt.insert("Text2", text);
-        sign.nbt.insert("Text3", author);
+        sign.nbt
+            .insert("Text2", message.to_string().color(Color::DARK_GREEN));
+        sign.nbt
+            .insert("Text3", format!("~{}", client.username()).italic());
 
         instance.set_block_entity(SIGN_POS, sign);
     }
