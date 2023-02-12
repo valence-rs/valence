@@ -817,6 +817,18 @@ impl From<bool> for Text {
     }
 }
 
+impl<'a> From<Text> for Cow<'a, Text> {
+    fn from(value: Text) -> Self {
+        Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a Text> for Cow<'a, Text> {
+    fn from(value: &'a Text) -> Self {
+        Cow::Borrowed(value)
+    }
+}
+
 impl fmt::Debug for Text {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.write_string(f)

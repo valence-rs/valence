@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::io::Write;
 
 use anyhow::bail;
@@ -8,24 +9,24 @@ use crate::{Decode, Encode, Text};
 #[derive(Clone, PartialEq, Debug)]
 pub enum UpdateTeamsMode<'a> {
     CreateTeam {
-        team_display_name: Text,
+        team_display_name: Cow<'a, Text>,
         friendly_flags: TeamFlags,
         name_tag_visibility: NameTagVisibility,
         collision_rule: CollisionRule,
         team_color: TeamColor,
-        team_prefix: Text,
-        team_suffix: Text,
+        team_prefix: Cow<'a, Text>,
+        team_suffix: Cow<'a, Text>,
         entities: Vec<&'a str>,
     },
     RemoveTeam,
     UpdateTeamInfo {
-        team_display_name: Text,
+        team_display_name: Cow<'a, Text>,
         friendly_flags: TeamFlags,
         name_tag_visibility: NameTagVisibility,
         collision_rule: CollisionRule,
         team_color: TeamColor,
-        team_prefix: Text,
-        team_suffix: Text,
+        team_prefix: Cow<'a, Text>,
+        team_suffix: Cow<'a, Text>,
     },
     AddEntities {
         entities: Vec<&'a str>,

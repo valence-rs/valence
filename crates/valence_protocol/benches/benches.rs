@@ -130,12 +130,13 @@ fn packets(c: &mut Criterion) {
     };
 
     let tab_list_header_footer_packet = SetTabListHeaderAndFooter {
-        header: "this".italic() + " is the " + "header".bold().color(Color::RED),
-        footer: "this".italic()
+        header: ("this".italic() + " is the " + "header".bold().color(Color::RED)).into(),
+        footer: ("this".italic()
             + " is the "
             + "footer".bold().color(Color::BLUE)
             + ". I am appending some extra text so that the packet goes over the compression \
-               threshold.",
+               threshold.")
+            .into(),
     };
 
     let spawn_entity_packet = SpawnEntity {

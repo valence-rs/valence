@@ -9,11 +9,13 @@ use crate::LIBRARY_NAMESPACE;
 
 /// Identifies a particular [`Dimension`] on the server.
 ///
-/// The default dimension ID refers to the first dimension added in the server's
-/// [configuration](crate::config::Config).
+/// The default dimension ID refers to the first dimension added in
+/// [`ServerPlugin::dimensions`].
 ///
-/// To obtain dimension IDs for other dimensions, call
-/// [`dimensions`](crate::server::SharedServer::dimensions).
+/// To obtain dimension IDs for other dimensions, look at
+/// [`ServerPlugin::dimensions`].
+///
+/// [`ServerPlugin::dimensions`]: crate::server::SharedServer::dimensions
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct DimensionId(pub(crate) u16);
 
@@ -28,7 +30,9 @@ impl DimensionId {
 }
 
 /// The default dimension ID corresponds to the first element in the `Vec`
-/// returned by [`crate::config::Config::dimensions`].
+/// returned by [`ServerPlugin::dimensions`].
+///
+/// [`ServerPlugin::dimensions`]: crate::config::ServerPlugin::dimensions
 impl Default for DimensionId {
     fn default() -> Self {
         Self(0)
@@ -37,16 +41,16 @@ impl Default for DimensionId {
 
 /// Contains the configuration for a dimension type.
 ///
-/// On creation, each [`World`] in Valence is assigned a dimension. The
+/// On creation, each [`Instance`] in Valence is assigned a dimension. The
 /// dimension determines certain properties of the world such as its height and
 /// ambient lighting.
 ///
 /// In Minecraft, "dimension" and "dimension type" are two distinct concepts.
 /// For instance, the Overworld and Nether are dimensions, each with
 /// their own dimension type. A dimension in this library is analogous to a
-/// [`World`] while [`Dimension`] represents a dimension type.
+/// [`Instance`] while [`Dimension`] represents a dimension type.
 ///
-/// [`World`]: crate::world::World
+/// [`Instance`]: crate::instance::Instance
 #[derive(Clone, Debug)]
 pub struct Dimension {
     /// When false, compasses will spin randomly.
@@ -70,8 +74,7 @@ pub struct Dimension {
     /// * `0 <= height <= 4064`
     /// * `min_y + height <= 2032`
     pub height: i32,
-    // TODO: The following fields should be added if they can affect the
-    //       appearance of the dimension to clients.
+    // TODO: add other fields.
     //       * infiniburn
     //       * monster_spawn_light_level
     //       * monster_spawn_block_light_level
