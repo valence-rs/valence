@@ -8,7 +8,7 @@ use std::iter::FusedIterator;
 use anyhow::Context;
 use valence_nbt::Compound;
 
-use crate::{Decode, Encode, ItemKind, Result, VarInt};
+use crate::{Decode, Encode, Ident, ItemKind, Result, VarInt};
 
 include!(concat!(env!("OUT_DIR"), "/block.rs"));
 

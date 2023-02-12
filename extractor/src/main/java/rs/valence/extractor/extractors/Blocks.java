@@ -93,6 +93,7 @@ public class Blocks implements Main.Extractor {
         for (var blockEntity : Registries.BLOCK_ENTITY_TYPE) {
             var blockEntityJson = new JsonObject();
             blockEntityJson.addProperty("id", Registries.BLOCK_ENTITY_TYPE.getRawId(blockEntity));
+            blockEntityJson.addProperty("ident", Registries.BLOCK_ENTITY_TYPE.getId(blockEntity).toString());
             blockEntityJson.addProperty("name", Registries.BLOCK_ENTITY_TYPE.getId(blockEntity).getPath());
 
             blockEntitiesJson.add(blockEntityJson);

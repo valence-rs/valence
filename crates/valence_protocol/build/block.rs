@@ -38,6 +38,7 @@ impl Block {
 #[derive(Deserialize, Clone, Debug)]
 struct BlockEntityKind {
     id: u32,
+    ident: String,
     name: String,
 }
 
@@ -397,7 +398,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         })
         .collect::<TokenStream>();
 
-    let block_entity_type_variants = block_entity_types
+    let block_entity_kind_variants = block_entity_types
         .iter()
         .map(|block_entity| {
             let name = ident(block_entity.name.to_pascal_case());
@@ -412,7 +413,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         })
         .collect::<TokenStream>();
 
-    let block_entity_type_from_id_arms = block_entity_types
+    let block_entity_kind_from_id_arms = block_entity_types
         .iter()
         .map(|block_entity| {
             let id = block_entity.id;
@@ -424,7 +425,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         })
         .collect::<TokenStream>();
 
-    let block_entity_type_to_id_arms = block_entity_types
+    let block_entity_kind_to_id_arms = block_entity_types
         .iter()
         .map(|block_entity| {
             let id = block_entity.id;
@@ -432,6 +433,30 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
             quote! {
                 Self::#name => #id,
+            }
+        })
+        .collect::<TokenStream>();
+
+    let block_entity_kind_from_ident_arms = block_entity_types
+        .iter()
+        .map(|block_entity| {
+            let name = ident(block_entity.name.to_pascal_case());
+            let ident = &block_entity.ident;
+
+            quote! {
+                #ident => Some(Self::#name),
+            }
+        })
+        .collect::<TokenStream>();
+
+    let block_entity_kind_to_ident_arms = block_entity_types
+        .iter()
+        .map(|block_entity| {
+            let name = ident(block_entity.name.to_pascal_case());
+            let ident = &block_entity.ident;
+
+            quote! {
+                Self::#name => Ident::new(#ident).unwrap(),
             }
         })
         .collect::<TokenStream>();
@@ -864,20 +889,33 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
         pub enum BlockEntityKind {
-            #block_entity_type_variants
+            #block_entity_kind_variants
         }
 
         impl BlockEntityKind {
             pub const fn from_id(num: u32) -> Option<Self> {
                 match num {
-                    #block_entity_type_from_id_arms
+                    #block_entity_kind_from_id_arms
                     _ => None
                 }
             }
 
             pub const fn id(self) -> u32 {
                 match self {
-                    #block_entity_type_to_id_arms
+                    #block_entity_kind_to_id_arms
+                }
+            }
+
+            pub fn from_ident(ident: Ident<&str>) -> Option<Self> {
+                match ident.as_str() {
+                    #block_entity_kind_from_ident_arms
+                    _ => None
+                }
+            }
+
+            pub fn ident(self) -> Ident<&'static str> {
+                match self {
+                    #block_entity_kind_to_ident_arms
                 }
             }
         }
