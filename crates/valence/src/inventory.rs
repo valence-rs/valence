@@ -542,6 +542,10 @@ pub(crate) fn handle_set_slot_creative(
                 // the client is not in creative mode, ignore
                 continue;
             }
+            if event.slot < 0 || event.slot >= inventory.slot_count() as i16 {
+                // the client is trying to interact with a slot that does not exist, ignore
+                continue;
+            }
             inventory.replace_slot(event.slot as u16, event.clicked_item.clone());
             inventory.modified &= !(1 << event.slot); // clear the modified bit, since we are about to send the update
             client.inventory_state_id += 1;
