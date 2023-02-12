@@ -1,5 +1,8 @@
 use std::borrow::Cow;
 
+#[cfg(feature = "uuid")]
+use uuid::Uuid;
+
 use crate::tag::Tag;
 use crate::Compound;
 
@@ -251,6 +254,20 @@ impl From<Vec<i32>> for Value {
 impl From<Vec<i64>> for Value {
     fn from(v: Vec<i64>) -> Self {
         Self::LongArray(v)
+    }
+}
+
+#[cfg(feature = "uuid")]
+impl From<Uuid> for Value {
+    fn from(value: Uuid) -> Self {
+        let (least, most) = value.as_u64_pair();
+
+        let first = (least >> 32) as i32;
+        let second = least as i32;
+        let third = (most >> 32) as i32;
+        let fourth = most as i32;
+
+        Value::IntArray(vec![first, second, third, fourth])
     }
 }
 

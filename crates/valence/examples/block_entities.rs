@@ -3,6 +3,7 @@ use valence::client::event::{default_event_handler, ChatMessage, UseItemOnBlock}
 use valence::prelude::*;
 use valence_nbt::{compound, List};
 use valence_protocol::block::{BlockEntity, BlockEntityKind, PropName, PropValue};
+use valence_protocol::types::Hand;
 
 const FLOOR_Y: i32 = 64;
 const SIGN_POS: [i32; 3] = [3, FLOOR_Y + 1, 2];
@@ -103,17 +104,16 @@ fn event_handler(
     }
 
     for UseItemOnBlock {
-        client, position, ..
+        client,
+        position,
+        hand,
+        ..
     } in block_interacts.iter()
     {
-        if *position == SKULL_POS {
+        if *hand == Hand::Main && *position == SKULL_POS {
             let Ok(client) = clients.get(*client) else {
                 continue
             };
-
-            let uuid: [i32; 4] = unsafe { std::mem::transmute(client.uuid().as_u128()) };
-            let mut uuid: Vec<_> = uuid.into();
-            uuid.reverse();
 
             let Some(textures) = client.properties().iter().find(|prop| prop.name == "textures") else {
                 continue
@@ -125,7 +125,7 @@ fn event_handler(
                     kind: BlockEntityKind::Skull,
                     nbt: compound! {
                         "SkullOwner" => compound! {
-                            "Id" => uuid,
+                            "Id" => client.uuid(),
                             "Properties" => compound! {
                                 "textures" => List::Compound(vec![compound! {
                                     "Value" => textures.value.clone(),
