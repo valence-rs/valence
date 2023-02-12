@@ -700,6 +700,8 @@ impl<const LOADED: bool> Chunk<LOADED> {
 
 #[cfg(test)]
 mod tests {
+    use valence_protocol::block::BlockEntityKind;
+
     use super::*;
     use crate::protocol::block::BlockState;
 
@@ -742,5 +744,38 @@ mod tests {
 
         chunk.fill_block_states(0, BlockState::AIR);
         check(&chunk, 6);
+    }
+
+    #[test]
+    fn block_entity_changes() {
+        let mut chunk = Chunk::new(5).into_loaded();
+        chunk.refresh = false;
+
+        assert!(chunk.block_entity(0, 0, 0).is_none());
+        chunk.set_block_state(0, 0, 0, BlockState::CHEST);
+        assert_eq!(
+            chunk.block_entity(0, 0, 0),
+            Some(&BlockEntity {
+                kind: BlockEntityKind::Chest,
+                nbt: compound! {}
+            })
+        );
+        chunk.set_block_state(0, 0, 0, BlockState::STONE);
+        assert!(chunk.block_entity(0, 0, 0).is_none());
+
+        chunk.fill_block_states(2, BlockState::CHEST);
+        for x in 0..16 {
+            for z in 0..16 {
+                for y in 32..47 {
+                    assert_eq!(
+                        chunk.block_entity(x, y, z),
+                        Some(&BlockEntity {
+                            kind: BlockEntityKind::Chest,
+                            nbt: compound! {}
+                        })
+                    );
+                }
+            }
+        }
     }
 }
