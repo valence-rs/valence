@@ -32,6 +32,7 @@ impl VarLong {
 impl Encode for VarLong {
     // Adapted from VarInt-Simd encode
     // https://github.com/as-com/varint-simd/blob/0f468783da8e181929b01b9c6e9f741c1fe09825/src/encode/mod.rs#L71
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     fn encode(&self, mut w: impl Write) -> Result<()> {
         // Break the number into 7-bit parts and spread them out into a vector
         let mut res = [0u64; 2];
@@ -70,6 +71,21 @@ impl Encode for VarLong {
         w.write_all(&bytes[..bytes_needed as usize])?;
 
         Ok(())
+    }
+
+    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+    fn encode(&self, mut w: impl Write) -> Result<()> {
+        use byteorder::WriteBytesExt;
+
+        let mut val = self.0 as u64;
+        loop {
+            if val & 0b1111111111111111111111111111111111111111111111111111111110000000 == 0 {
+                w.write_u8(val as u8)?;
+                return Ok(());
+            }
+            w.write_u8(val as u8 & 0b01111111 | 0b10000000)?;
+            val >>= 7;
+        }
     }
 }
 
