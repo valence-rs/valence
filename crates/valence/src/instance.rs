@@ -272,11 +272,12 @@ impl Instance {
         )
     }
 
-    /// Gets the block entity at an absolute block position in world space.
+    /// Gets a reference to the block entity at an absolute block position in
+    /// world space.
     ///
     /// If the position is not inside of a chunk, then [`Option::None`] is
     /// returned.
-    pub fn block_entity(&self, pos: impl Into<BlockPos>) -> Option<BlockEntity> {
+    pub fn block_entity(&self, pos: impl Into<BlockPos>) -> Option<&BlockEntity> {
         let pos = pos.into();
 
         let Some(y) = pos.y.checked_sub(self.info.min_y).and_then(|y| y.try_into().ok()) else {
@@ -299,7 +300,45 @@ impl Instance {
     }
 
     /// Sets the block entity at an absolute block position in world space.
-    pub fn set_block_entity(&mut self, pos: impl Into<BlockPos>, block: BlockEntity) {
+    /// Returns the block entity that was there before.
+    ///
+    /// If the position is not within a loaded chunk or otherwise out of bounds,
+    /// then [`Option::None`] is returned with no effect.
+    pub fn set_block_entity(
+        &mut self,
+        pos: impl Into<BlockPos>,
+        block_entity: BlockEntity,
+    ) -> Option<BlockEntity> {
+        let pos = pos.into();
+
+        let Some(y) = pos.y.checked_sub(self.info.min_y).and_then(|y| y.try_into().ok()) else {
+            return None;
+        };
+
+        if y >= self.info.section_count * 16 {
+            return None;
+        }
+
+        let Some(chunk) = self.chunk_mut(ChunkPos::from_block_pos(pos)) else {
+            return None;
+        };
+
+        chunk.set_block_entity(
+            pos.x.rem_euclid(16) as usize,
+            y,
+            pos.z.rem_euclid(16) as usize,
+            block_entity,
+        )
+    }
+
+    /// Edits the block entity at an absolute block position in world space.
+    /// Does nothing if the provided is position is out of bounds or if there is
+    /// no block entity at the position.
+    pub fn edit_block_entity(
+        &mut self,
+        pos: impl Into<BlockPos>,
+        f: impl FnOnce(&mut BlockEntity),
+    ) {
         let pos = pos.into();
 
         let Some(y) = pos.y.checked_sub(self.info.min_y).and_then(|y| y.try_into().ok()) else {
@@ -314,11 +353,11 @@ impl Instance {
             return;
         };
 
-        chunk.set_block_entity(
+        chunk.edit_block_entity(
             pos.x.rem_euclid(16) as usize,
             y,
             pos.z.rem_euclid(16) as usize,
-            block,
+            f,
         )
     }
 

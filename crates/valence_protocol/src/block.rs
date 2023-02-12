@@ -80,25 +80,7 @@ impl Decode<'_> for BlockKind {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct BlockEntityData {
-    /// Whether this block entity needs to be resent to clients.
-    pub dirty: bool,
-    pub kind: BlockEntityKind,
-    /// Contains serialized NBT data for the block entity.
-    pub data: Vec<u8>,
-}
-
-impl BlockEntityData {
-    pub fn parse(&self) -> anyhow::Result<BlockEntity> {
-        Ok(BlockEntity {
-            kind: self.kind,
-            nbt: Compound::decode(&mut &self.data[..])?,
-        })
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BlockEntity {
     pub kind: BlockEntityKind,
     pub nbt: Compound,
@@ -107,17 +89,6 @@ pub struct BlockEntity {
 impl BlockEntity {
     pub const fn new(kind: BlockEntityKind, nbt: Compound) -> Self {
         Self { kind, nbt }
-    }
-
-    pub fn to_data(&self) -> anyhow::Result<BlockEntityData> {
-        let mut data = vec![];
-        self.nbt.encode(&mut data)?;
-
-        Ok(BlockEntityData {
-            dirty: true,
-            kind: self.kind,
-            data,
-        })
     }
 }
 

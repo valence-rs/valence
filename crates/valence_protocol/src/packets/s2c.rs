@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use uuid::Uuid;
 use valence_nbt::Compound;
 
+use crate::block::BlockEntityKind;
 use crate::block_pos::BlockPos;
 use crate::byte_angle::ByteAngle;
 use crate::ident::Ident;
@@ -126,7 +127,6 @@ pub mod play {
     use super::*;
     use crate::packets::s2c::declare_recipes::DeclaredRecipe;
     use crate::packets::s2c::update_teams::UpdateTeamsMode;
-    use crate::types::ChunkDataBlockEntityEncode;
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x00]
@@ -190,20 +190,10 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x07]
-    pub struct BlockEntityData {
+    pub struct BlockEntityData<'a> {
         pub position: BlockPos,
-        // TODO: BlockEntityKind enum?
-        pub kind: VarInt,
-        pub data: Compound,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x07]
-    pub struct BlockEntityDataEncode<'a> {
-        pub position: BlockPos,
-        // TODO: BlockEntityKind enum?
-        pub kind: VarInt,
-        pub data: RawBytes<'a>,
+        pub kind: BlockEntityKind,
+        pub data: Cow<'a, Compound>,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -414,7 +404,7 @@ pub mod play {
         pub chunk_z: i32,
         pub heightmaps: Compound,
         pub blocks_and_biomes: &'a [u8],
-        pub block_entities: Vec<ChunkDataBlockEntity>,
+        pub block_entities: Vec<ChunkDataBlockEntity<'a>>,
         pub trust_edges: bool,
         pub sky_light_mask: Vec<u64>,
         pub block_light_mask: Vec<u64>,
@@ -431,7 +421,7 @@ pub mod play {
         pub chunk_z: i32,
         pub heightmaps: &'a Compound,
         pub blocks_and_biomes: &'a [u8],
-        pub block_entities: &'a [ChunkDataBlockEntityEncode<'a>],
+        pub block_entities: &'a [ChunkDataBlockEntity<'a>],
         pub trust_edges: bool,
         pub sky_light_mask: &'a [u64],
         pub block_light_mask: &'a [u64],
@@ -1029,7 +1019,7 @@ pub mod play {
             AwardStatistics,
             AcknowledgeBlockChange,
             SetBlockDestroyStage,
-            BlockEntityData,
+            BlockEntityData<'a>,
             BlockAction,
             BlockUpdate,
             BossBar,

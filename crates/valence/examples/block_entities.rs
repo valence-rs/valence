@@ -94,16 +94,12 @@ fn event_handler(
             continue
         };
 
-        let Some(mut sign) = instance.block_entity(SIGN_POS) else {
-            continue
-        };
-
-        sign.nbt
-            .insert("Text2", message.to_string().color(Color::DARK_GREEN));
-        sign.nbt
-            .insert("Text3", format!("~{}", client.username()).italic());
-
-        instance.set_block_entity(SIGN_POS, sign);
+        instance.edit_block_entity(SIGN_POS, |sign| {
+            sign.nbt
+                .insert("Text2", message.to_string().color(Color::DARK_GREEN));
+            sign.nbt
+                .insert("Text3", format!("~{}", client.username()).italic());
+        });
     }
 
     for UseItemOnBlock {

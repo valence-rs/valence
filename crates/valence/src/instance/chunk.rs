@@ -1,15 +1,16 @@
-use std::collections::BTreeMap;
+use std::borrow::Cow;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 // Using nonstandard mutex to avoid poisoning API.
 use parking_lot::Mutex;
 use valence_nbt::compound;
-use valence_protocol::block::{BlockEntity, BlockEntityData, BlockEntityKind, BlockState};
+use valence_protocol::block::{BlockEntity, BlockState};
 use valence_protocol::packets::s2c::play::{
-    BlockEntityDataEncode, BlockUpdate, ChunkDataAndUpdateLightEncode, UpdateSectionBlocksEncode,
+    BlockEntityData, BlockUpdate, ChunkDataAndUpdateLightEncode, UpdateSectionBlocksEncode,
 };
-use valence_protocol::types::ChunkDataBlockEntityEncode;
-use valence_protocol::{BlockPos, Encode, RawBytes, VarInt, VarLong};
+use valence_protocol::types::ChunkDataBlockEntity;
+use valence_protocol::{BlockPos, Encode, VarInt, VarLong};
 
 use crate::biome::BiomeId;
 use crate::instance::paletted_container::PalettedContainer;
@@ -35,7 +36,8 @@ pub struct Chunk<const LOADED: bool = false> {
     /// knowing when a chunk should be unloaded.
     viewed: AtomicBool,
     /// Block entities in this chunk
-    block_entities: BTreeMap<u32, BlockEntityData>,
+    block_entities: BTreeMap<u32, BlockEntity>,
+    modified_block_entities: BTreeSet<u32>,
 }
 
 #[derive(Clone, Default, Debug)]
@@ -64,6 +66,7 @@ impl Chunk<false> {
             refresh: true,
             viewed: AtomicBool::new(false),
             block_entities: BTreeMap::new(),
+            modified_block_entities: BTreeSet::new(),
         };
 
         chunk.resize(section_count);
@@ -89,6 +92,7 @@ impl Chunk<false> {
 
     pub(super) fn into_loaded(self) -> Chunk<true> {
         debug_assert!(self.refresh);
+        debug_assert!(self.modified_block_entities.is_empty());
 
         Chunk {
             sections: self.sections,
@@ -96,6 +100,7 @@ impl Chunk<false> {
             refresh: true,
             viewed: AtomicBool::new(false),
             block_entities: self.block_entities,
+            modified_block_entities: self.modified_block_entities,
         }
     }
 }
@@ -114,6 +119,7 @@ impl Clone for Chunk {
             refresh: true,
             viewed: AtomicBool::new(false),
             block_entities: self.block_entities.clone(),
+            modified_block_entities: self.modified_block_entities.clone(),
         }
     }
 }
@@ -134,27 +140,13 @@ impl Chunk<true> {
             })
             .collect();
 
-        let block_entities = self
-            .block_entities
-            .iter()
-            .map(|(idx, block_entity)| {
-                (
-                    *idx,
-                    BlockEntityData {
-                        dirty: false, // Don't clone dirty flag.
-                        kind: block_entity.kind,
-                        data: block_entity.data.clone(),
-                    },
-                )
-            })
-            .collect();
-
         Chunk {
             sections,
             cached_init_packets: Mutex::new(vec![]),
             refresh: true,
             viewed: AtomicBool::new(false),
-            block_entities,
+            block_entities: self.block_entities.clone(),
+            modified_block_entities: BTreeSet::new(),
         }
     }
 
@@ -184,10 +176,7 @@ impl Chunk<true> {
         for sect in &mut self.sections {
             sect.section_updates.clear();
         }
-
-        for block_entity in self.block_entities.values_mut() {
-            block_entity.dirty = false;
-        }
+        self.modified_block_entities.clear();
 
         Chunk {
             sections: self.sections,
@@ -195,6 +184,7 @@ impl Chunk<true> {
             refresh: true,
             viewed: AtomicBool::new(false),
             block_entities: self.block_entities,
+            modified_block_entities: self.modified_block_entities,
         }
     }
 
@@ -236,22 +226,23 @@ impl Chunk<true> {
                     });
                 }
             }
-            for (idx, block_entity) in &self.block_entities {
-                if block_entity.dirty {
-                    let x = idx % 16;
-                    let z = (idx / 16) % 16;
-                    let y = idx / 16 / 16;
+            for idx in &self.modified_block_entities {
+                let Some(block_entity) = self.block_entities.get(idx) else {
+                    continue
+                };
+                let x = idx % 16;
+                let z = (idx / 16) % 16;
+                let y = idx / 16 / 16;
 
-                    let global_x = pos.x * 16 + x as i32;
-                    let global_y = info.min_y + y as i32;
-                    let global_z = pos.z * 16 + z as i32;
+                let global_x = pos.x * 16 + x as i32;
+                let global_y = info.min_y + y as i32;
+                let global_z = pos.z * 16 + z as i32;
 
-                    writer.write_packet(&BlockEntityDataEncode {
-                        position: BlockPos::new(global_x, global_y, global_z),
-                        kind: VarInt(block_entity.kind.id() as i32),
-                        data: RawBytes(&block_entity.data),
-                    })
-                }
+                writer.write_packet(&BlockEntityData {
+                    position: BlockPos::new(global_x, global_y, global_z),
+                    kind: block_entity.kind,
+                    data: Cow::Borrowed(&block_entity.nbt),
+                })
             }
         }
     }
@@ -310,11 +301,11 @@ impl Chunk<true> {
                     let z = idx / 16 % 16;
                     let y = (idx / 16 / 16) as i16 + info.min_y as i16;
 
-                    ChunkDataBlockEntityEncode {
+                    ChunkDataBlockEntity {
                         packed_xz: ((x << 4) | z) as i8,
                         y,
-                        kind: VarInt(block_entity.kind.id() as i32),
-                        data: RawBytes(&block_entity.data),
+                        kind: block_entity.kind,
+                        data: Cow::Borrowed(&block_entity.nbt),
                     }
                 })
                 .collect();
@@ -346,9 +337,7 @@ impl Chunk<true> {
         for sect in &mut self.sections {
             sect.section_updates.clear();
         }
-        for block_entity in self.block_entities.values_mut() {
-            block_entity.dirty = false;
-        }
+        self.modified_block_entities.clear();
     }
 }
 
@@ -426,14 +415,16 @@ impl<const LOADED: bool> Chunk<LOADED> {
         }
 
         let idx = (x + z * 16 + y * 16 * 16) as _;
-        match block.block_entity_type().and_then(BlockEntityKind::from_id) {
+        match block.block_entity_kind() {
             Some(kind) => {
-                let data = BlockEntityData {
-                    dirty: LOADED && !self.refresh,
+                let block_entity = BlockEntity {
                     kind,
-                    data: vec![10, 0, 0, 0], // Empty compound
+                    nbt: compound! {},
                 };
-                self.block_entities.insert(idx, data);
+                self.block_entities.insert(idx, block_entity);
+                if LOADED && !self.refresh {
+                    self.modified_block_entities.insert(idx);
+                }
             }
             None => {
                 self.block_entities.remove(&idx);
@@ -511,14 +502,16 @@ impl<const LOADED: bool> Chunk<LOADED> {
                 for y in 0..16 {
                     let y = sect_y * 16 + y;
                     let idx = (x + z * 16 + y * 16 * 16) as _;
-                    match block.block_entity_type().and_then(BlockEntityKind::from_id) {
+                    match block.block_entity_kind() {
                         Some(kind) => {
-                            let data = BlockEntityData {
-                                dirty: LOADED && !self.refresh,
+                            let block_entity = BlockEntity {
                                 kind,
-                                data: vec![10, 0, 0, 0], // Empty compound
+                                nbt: compound! {},
                             };
-                            self.block_entities.insert(idx, data);
+                            self.block_entities.insert(idx, block_entity);
+                            if LOADED && !self.refresh {
+                                self.modified_block_entities.insert(idx);
+                            }
                         }
                         None => {
                             self.block_entities.remove(&idx);
@@ -529,7 +522,8 @@ impl<const LOADED: bool> Chunk<LOADED> {
         }
     }
 
-    /// Gets the block entity at the provided offsets in the chunk.
+    /// Gets a reference to the block entity at the provided offsets in the
+    /// chunk.
     ///
     /// **Note**: The arguments to this function are offsets from the minimum
     /// corner of the chunk in _chunk space_ rather than _world space_.
@@ -539,19 +533,18 @@ impl<const LOADED: bool> Chunk<LOADED> {
     /// Panics if the offsets are outside the bounds of the chunk. `x` and `z`
     /// must be less than 16 while `y` must be less than `section_count() * 16`.
     #[track_caller]
-    pub fn block_entity(&self, x: usize, y: usize, z: usize) -> Option<BlockEntity> {
+    pub fn block_entity(&self, x: usize, y: usize, z: usize) -> Option<&BlockEntity> {
         assert!(
             x < 16 && y < self.section_count() * 16 && z < 16,
             "chunk block offsets of ({x}, {y}, {z}) are out of bounds"
         );
         let idx = (x + z * 16 + y * 16 * 16) as _;
 
-        self.block_entities
-            .get(&idx)
-            .map(|block| block.parse().unwrap())
+        self.block_entities.get(&idx)
     }
 
     /// Sets the block entity at the provided offsets in the chunk.
+    /// Returns the block entity that was there before.
     ///
     /// **Note**: The arguments to this function are offsets from the minimum
     /// corner of the chunk in _chunk space_ rather than _world space_.
@@ -561,15 +554,52 @@ impl<const LOADED: bool> Chunk<LOADED> {
     /// Panics if the offsets are outside the bounds of the chunk. `x` and `z`
     /// must be less than 16 while `y` must be less than `section_count() * 16`.
     #[track_caller]
-    pub fn set_block_entity(&mut self, x: usize, y: usize, z: usize, block: BlockEntity) {
+    pub fn set_block_entity(
+        &mut self,
+        x: usize,
+        y: usize,
+        z: usize,
+        block_entity: BlockEntity,
+    ) -> Option<BlockEntity> {
         assert!(
             x < 16 && y < self.section_count() * 16 && z < 16,
             "chunk block offsets of ({x}, {y}, {z}) are out of bounds"
         );
         let idx = (x + z * 16 + y * 16 * 16) as _;
-        self.block_entities.insert(idx, block.to_data().unwrap());
+        let old = self.block_entities.insert(idx, block_entity);
+        if LOADED {
+            self.modified_block_entities.insert(idx);
+            self.cached_init_packets.get_mut().clear();
+        }
+        old
+    }
 
-        if LOADED && !self.refresh {
+    /// Edits the block entity at the provided offsets in the chunk.
+    /// Does nothing if there is no block entity at the provided offsets.
+    ///
+    /// **Note**: The arguments to this function are offsets from the minimum
+    /// corner of the chunk in _chunk space_ rather than _world space_.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the offsets are outside the bounds of the chunk. `x` and `z`
+    /// must be less than 16 while `y` must be less than `section_count() * 16`.
+    #[track_caller]
+    pub fn edit_block_entity(
+        &mut self,
+        x: usize,
+        y: usize,
+        z: usize,
+        f: impl FnOnce(&mut BlockEntity),
+    ) {
+        assert!(
+            x < 16 && y < self.section_count() * 16 && z < 16,
+            "chunk block offsets of ({x}, {y}, {z}) are out of bounds"
+        );
+        let idx = (x + z * 16 + y * 16 * 16) as _;
+        self.block_entities.entry(idx).and_modify(f);
+        if LOADED {
+            self.modified_block_entities.insert(idx);
             self.cached_init_packets.get_mut().clear();
         }
     }

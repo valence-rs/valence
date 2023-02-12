@@ -641,10 +641,15 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            pub const fn block_entity_type(self) -> Option<u32> {
-                match self.0 {
+            pub const fn block_entity_kind(self) -> Option<BlockEntityKind> {
+                let kind = match self.0 {
                     #state_to_block_entity_type_arms
                     _ => None
+                };
+
+                match kind {
+                    Some(id) => BlockEntityKind::from_id(id),
+                    None => None,
                 }
             }
 
@@ -874,6 +879,19 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 match self {
                     #block_entity_type_to_id_arms
                 }
+            }
+        }
+
+        impl Encode for BlockEntityKind {
+            fn encode(&self, w: impl Write) -> Result<()> {
+                VarInt(self.id() as i32).encode(w)
+            }
+        }
+
+        impl<'a> Decode<'a> for BlockEntityKind {
+            fn decode(r: &mut &'a [u8]) -> Result<Self> {
+                let id = VarInt::decode(r)?;
+                Self::from_id(id.0 as u32).with_context(|| format!("id {}", id.0))
             }
         }
     })
