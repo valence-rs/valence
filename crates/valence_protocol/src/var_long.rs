@@ -1,7 +1,3 @@
-#[cfg(target_arch = "x86")]
-use std::arch::x86::*;
-#[cfg(target_arch = "x86_64")]
-use std::arch::x86_64::*;
 use std::io::Write;
 
 use anyhow::bail;
@@ -37,10 +33,15 @@ impl Encode for VarLong {
         not(target_os = "macos")
     ))]
     fn encode(&self, mut w: impl Write) -> Result<()> {
+        #[cfg(target_arch = "x86")]
+        use std::arch::x86::*;
+        #[cfg(target_arch = "x86_64")]
+        use std::arch::x86_64::*;
+
         // Break the number into 7-bit parts and spread them out into a vector
         let mut res = [0u64; 2];
         {
-            let x: u64 = unsafe { std::mem::transmute(self.0) };
+            let x = self.0 as u64;
 
             res[0] = unsafe { _pdep_u64(x, 0x7f7f7f7f7f7f7f7f) };
             res[1] = unsafe { _pdep_u64(x >> 56, 0x000000000000017f) };
@@ -71,7 +72,7 @@ impl Encode for VarLong {
         let merged = unsafe { _mm_or_si128(stage1, msbmask) };
         let bytes = unsafe { std::mem::transmute::<__m128i, [u8; 16]>(merged) };
 
-        w.write_all(&bytes[..bytes_needed as usize])?;
+        w.write_all(unsafe { bytes.get_unchecked(..bytes_needed as usize) })?;
 
         Ok(())
     }

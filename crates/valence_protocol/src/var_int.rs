@@ -51,7 +51,7 @@ impl Encode for VarInt {
     // Adapted from VarInt-Simd encode
     // https://github.com/as-com/varint-simd/blob/0f468783da8e181929b01b9c6e9f741c1fe09825/src/encode/mod.rs#L71
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
-        let x = unsafe { std::mem::transmute::<i32, u32>(self.0) } as u64;
+        let x = self.0 as u64;
         let stage1 = (x & 0x000000000000007f)
             | ((x & 0x0000000000003f80) << 1)
             | ((x & 0x00000000001fc000) << 2)
@@ -70,7 +70,7 @@ impl Encode for VarInt {
         let merged = stage1 | (msbs & msbmask);
         let bytes = merged.to_le_bytes();
 
-        w.write_all(&bytes[..bytes_needed as usize])?;
+        w.write_all(unsafe { bytes.get_unchecked(..bytes_needed as usize) })?;
 
         Ok(())
     }
