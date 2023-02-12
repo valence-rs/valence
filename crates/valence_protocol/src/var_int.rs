@@ -48,8 +48,8 @@ pub enum VarIntDecodeError {
 }
 
 impl Encode for VarInt {
-    // Adapted from Moulberry's encode
-    // https://github.com/Moulberry/Graphite/blob/master/crates/graphite_binary/src/varint/encode.rs#L6
+    // Adapted from VarInt-Simd encode
+    // https://github.com/as-com/varint-simd/blob/0f468783da8e181929b01b9c6e9f741c1fe09825/src/encode/mod.rs#L71
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         let x = unsafe { std::mem::transmute::<i32, u32>(self.0) } as u64;
         let stage1 = (x & 0x000000000000007f)
