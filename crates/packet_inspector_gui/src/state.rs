@@ -1,10 +1,9 @@
-use std::{io::ErrorKind, sync::Arc};
-
 use std::fmt::Write;
-use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
-    net::tcp::{OwnedReadHalf, OwnedWriteHalf},
-};
+use std::io::ErrorKind;
+use std::sync::Arc;
+
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use valence_protocol::{DecodePacket, EncodePacket, PacketDecoder, PacketEncoder};
 
 use crate::context::{Context, Packet};

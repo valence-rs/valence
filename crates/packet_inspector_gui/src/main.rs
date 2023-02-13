@@ -8,7 +8,6 @@ use std::sync::Arc;
 use anyhow::bail;
 use clap::Parser;
 use context::Context;
-
 use regex::Regex;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
@@ -16,7 +15,6 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
 use tracing_subscriber::filter::LevelFilter;
-
 use valence_protocol::packets::c2s::handshake::Handshake;
 use valence_protocol::packets::c2s::login::{EncryptionResponse, LoginStart};
 use valence_protocol::packets::c2s::play::C2sPlayPacket;

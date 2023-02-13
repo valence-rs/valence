@@ -1,6 +1,3 @@
-// a wgui widget that displays a row in the packet inspector
-// consistant of a up or down arrow, a packet type (hex value), and a packet name
-
 use eframe::epaint::{PathShape, RectShape};
 use egui::{
     Pos2, Rect, Response, Rgba, Rounding, Sense, Shape, Stroke, TextStyle, Ui, Vec2, Widget,
