@@ -112,6 +112,8 @@ impl<'a> eframe::App for App<'a> {
                             .write()
                             .expect("Poisoned RwLock")
                             .iter_mut()
+                            // todo: regex?
+                            .filter(|p| p.packet_name.contains(&self.filter))
                         {
                             {
                                 let selected = self
