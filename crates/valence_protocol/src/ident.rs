@@ -46,7 +46,8 @@ impl<S> Ident<S> {
     /// # Safety
     /// This function does not check for the validity of the Ident.
     /// For a safe version use [`Ident::new`]
-    pub const unsafe fn new_unchecked(string: S, path_start: usize) -> Self {
+    #[doc(hidden)]
+    pub const fn new_unchecked(string: S, path_start: usize) -> Self {
         Self { string, path_start }
     }
 }
