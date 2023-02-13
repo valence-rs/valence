@@ -22,19 +22,25 @@ pub struct Context {
     pub selected_packet: RwLock<Option<usize>>,
     pub(crate) packets: RwLock<Vec<Packet>>,
     pub filter: RwLock<String>,
+    context: Option<egui::Context>,
 }
 
 impl Context {
-    pub fn new() -> Self {
+    pub fn new(ctx: Option<egui::Context>) -> Self {
         Self {
             selected_packet: RwLock::new(None),
             packets: RwLock::new(Vec::new()),
             filter: RwLock::new("".into()),
+            context: ctx,
         }
     }
 
-    pub fn add(&self, packet: Packet) {
+    pub fn add(&self, mut packet: Packet) {
+        packet.id = self.packets.read().expect("Poisened RwLock").len();
         self.packets.write().expect("Poisoned RwLock").push(packet);
+        if let Some(ctx) = &self.context {
+            ctx.request_repaint();
+        }
     }
 
     pub fn set_selected_packet(&self, idx: usize) {

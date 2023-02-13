@@ -1,73 +1,200 @@
-use std::sync::Arc;
-
-use context::{Context, Packet};
-use packet_widget::PacketDirection;
-
 mod context;
 mod packet_widget;
 mod state;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+use std::net::SocketAddr;
+use std::sync::Arc;
+
+use anyhow::bail;
+use clap::Parser;
+use context::Context;
+
+use regex::Regex;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
+use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::Semaphore;
+use tokio::task::JoinHandle;
+use tracing_subscriber::filter::LevelFilter;
+
+use valence_protocol::packets::c2s::handshake::Handshake;
+use valence_protocol::packets::c2s::login::{EncryptionResponse, LoginStart};
+use valence_protocol::packets::c2s::play::C2sPlayPacket;
+use valence_protocol::packets::c2s::status::{PingRequest, StatusRequest};
+use valence_protocol::packets::s2c::login::{LoginSuccess, S2cLoginPacket};
+use valence_protocol::packets::s2c::play::S2cPlayPacket;
+use valence_protocol::packets::s2c::status::{PingResponse, StatusResponse};
+use valence_protocol::types::HandshakeNextState;
+use valence_protocol::{PacketDecoder, PacketEncoder};
+
+use crate::packet_widget::PacketDirection;
+use crate::state::State;
+
+#[derive(Parser, Clone, Debug)]
+#[clap(author, version, about)]
+struct Cli {
+    /// The socket address to listen for connections on. This is the address
+    /// clients should connect to.
+    client_addr: SocketAddr,
+    /// The socket address the proxy will connect to. This is the address of the
+    /// server.
+    server_addr: SocketAddr,
+    /// An optional regular expression to use on packet names. Packet names
+    /// matching the regex are printed while those that don't are ignored.
+    ///
+    /// If no regex is provided, all packets are considered matching.
+    #[clap(short, long)]
+    include_regex: Option<Regex>,
+    /// An optional regular expression to use on packet names. Packet names
+    /// matching the regex are ignored while those are don't are printed.
+    ///
+    /// If no regex is provided, all packets are not considered matching.
+    #[clap(short, long)]
+    exclude_regex: Option<Regex>,
+    /// The maximum number of connections allowed to the proxy. By default,
+    /// there is no limit.
+    #[clap(short, long)]
+    max_connections: Option<usize>,
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt()
+        .with_max_level(LevelFilter::DEBUG)
+        .init();
+
+    let cli = Arc::new(Cli::parse());
+
     let native_options = eframe::NativeOptions {
         initial_window_size: Some(egui::Vec2::new(800.0, 600.0)),
         decorated: true,
         ..Default::default()
     };
 
-    let context = Arc::new(Context::new());
-
-    context.add(Packet {
-        id: 0,
-        selected: false,
-        direction: PacketDirection::ClientToServer,
-        packet_type: 0x2c,
-        packet_name: "Some mock packet".into(),
-        packet: "raw packet".into(),
-    });
-
-    context.add(Packet {
-        id: 1,
-        selected: false,
-        direction: PacketDirection::ServerToClient,
-        packet_type: 0x2c,
-        packet_name: "Ack Some mock packet".into(),
-        packet: "more raw packet".into(),
-    });
-
-    context.add(Packet {
-        id: 2,
-        selected: false,
-        direction: PacketDirection::ServerToClient,
-        packet_type: 0xab,
-        packet_name: "More mock packet".into(),
-        packet: "haha".into(),
-    });
-
-    context.add(Packet {
-        id: 3,
-        selected: false,
-        direction: PacketDirection::ServerToClient,
-        packet_type: 0xff,
-        packet_name: "server_send_data".into(),
-        packet: "haha".into(),
-    });
-
-    context.add(Packet {
-        id: 4,
-        selected: false,
-        direction: PacketDirection::ClientToServer,
-        packet_type: 0xff,
-        packet_name: "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW".into(),
-        packet: "haha".into(),
-    });
-
     eframe::run_native(
         "Valence Packet Inspector",
         native_options,
-        Box::new(|cc| Box::new(App::new(cc, context))),
+        Box::new(|cc| Box::new(App::new(cc, cli))),
     )?;
 
     Ok(())
+}
+
+async fn handle_connection(
+    client: TcpStream,
+    cli: Arc<Cli>,
+    context: Arc<Context>,
+) -> anyhow::Result<()> {
+    eprintln!("Connecting to {}", cli.server_addr);
+
+    let server = TcpStream::connect(cli.server_addr).await?;
+
+    if let Err(e) = server.set_nodelay(true) {
+        eprintln!("Failed to set TCP_NODELAY: {e}");
+    }
+
+    let (client_read, client_write) = client.into_split();
+    let (server_read, server_write) = server.into_split();
+
+    let mut s2c = State {
+        // cli: cli.clone(),
+        enc: PacketEncoder::new(),
+        dec: PacketDecoder::new(),
+        read: server_read,
+        write: client_write,
+        buf: String::new(),
+        direction: PacketDirection::ServerToClient,
+        context: context.clone(),
+    };
+
+    let mut c2s = State {
+        // cli,
+        enc: PacketEncoder::new(),
+        dec: PacketDecoder::new(),
+        read: client_read,
+        write: server_write,
+        buf: String::new(),
+        direction: PacketDirection::ClientToServer,
+        context: context.clone(),
+    };
+
+    let handshake: Handshake = c2s.rw_packet().await?;
+
+    match handshake.next_state {
+        HandshakeNextState::Status => {
+            c2s.rw_packet::<StatusRequest>().await?;
+            s2c.rw_packet::<StatusResponse>().await?;
+            c2s.rw_packet::<PingRequest>().await?;
+            s2c.rw_packet::<PingResponse>().await?;
+
+            Ok(())
+        }
+        HandshakeNextState::Login => {
+            c2s.rw_packet::<LoginStart>().await?;
+
+            match s2c.rw_packet::<S2cLoginPacket>().await? {
+                S2cLoginPacket::EncryptionRequest(_) => {
+                    c2s.rw_packet::<EncryptionResponse>().await?;
+
+                    eprintln!(
+                        "Encryption was enabled! Packet contents are inaccessible to the proxy. \
+                         Disable online_mode to fix this."
+                    );
+
+                    return tokio::select! {
+                        c2s_res = passthrough(c2s.read, c2s.write) => c2s_res,
+                        s2c_res = passthrough(s2c.read, s2c.write) => s2c_res,
+                    };
+                }
+                S2cLoginPacket::SetCompression(pkt) => {
+                    let threshold = pkt.threshold.0 as u32;
+
+                    s2c.enc.set_compression(Some(threshold));
+                    s2c.dec.set_compression(true);
+                    c2s.enc.set_compression(Some(threshold));
+                    c2s.dec.set_compression(true);
+
+                    s2c.rw_packet::<LoginSuccess>().await?;
+                }
+                S2cLoginPacket::LoginSuccess(_) => {}
+                S2cLoginPacket::DisconnectLogin(_) => return Ok(()),
+                S2cLoginPacket::LoginPluginRequest(_) => {
+                    bail!("got login plugin request. Don't know how to proceed.")
+                }
+            }
+
+            let c2s_fut: JoinHandle<anyhow::Result<()>> = tokio::spawn(async move {
+                loop {
+                    c2s.rw_packet::<C2sPlayPacket>().await?;
+                }
+            });
+
+            let s2c_fut = async move {
+                loop {
+                    s2c.rw_packet::<S2cPlayPacket>().await?;
+                }
+            };
+
+            tokio::select! {
+                c2s = c2s_fut => Ok(c2s??),
+                s2c = s2c_fut => s2c,
+            }
+        }
+    }
+}
+
+async fn passthrough(mut read: OwnedReadHalf, mut write: OwnedWriteHalf) -> anyhow::Result<()> {
+    let mut buf = Box::new([0u8; 8192]);
+    loop {
+        let bytes_read = read.read(buf.as_mut_slice()).await?;
+        let bytes = &mut buf[..bytes_read];
+
+        if bytes.is_empty() {
+            break Ok(());
+        }
+
+        write.write_all(bytes).await?;
+    }
 }
 
 struct App<'a> {
@@ -77,7 +204,41 @@ struct App<'a> {
 }
 
 impl<'a> App<'a> {
-    fn new(_cc: &eframe::CreationContext<'_>, context: Arc<Context>) -> Self {
+    fn new(cc: &eframe::CreationContext<'_>, cli: Arc<Cli>) -> Self {
+        let ctx = Some(cc.egui_ctx.clone());
+        let context = Arc::new(Context::new(ctx));
+
+        let t_cli = cli.clone();
+        let t_context = context.clone();
+        tokio::spawn(async move {
+            let sema = Arc::new(Semaphore::new(t_cli.max_connections.unwrap_or(100_000)));
+
+            eprintln!("Waiting for connections on {}", t_cli.client_addr);
+            let listen = TcpListener::bind(t_cli.client_addr).await?;
+
+            while let Ok(permit) = sema.clone().acquire_owned().await {
+                let (client, remote_client_addr) = listen.accept().await?;
+                eprintln!("Accepted connection to {remote_client_addr}");
+
+                if let Err(e) = client.set_nodelay(true) {
+                    eprintln!("Failed to set TCP_NODELAY: {e}");
+                }
+
+                let t2_cli = t_cli.clone();
+                let t2_context = t_context.clone();
+                tokio::spawn(async move {
+                    if let Err(e) = handle_connection(client, t2_cli, t2_context).await {
+                        eprintln!("Connection to {remote_client_addr} ended with: {e:#}");
+                    } else {
+                        eprintln!("Connection to {remote_client_addr} ended.");
+                    }
+                    drop(permit);
+                });
+            }
+
+            Ok::<(), anyhow::Error>(())
+        });
+
         Self {
             _marker: std::marker::PhantomData,
             context,
@@ -113,7 +274,7 @@ impl<'a> eframe::App for App<'a> {
                             .expect("Poisoned RwLock")
                             .iter_mut()
                             // todo: regex?
-                            .filter(|p| p.packet_name.contains(&self.filter))
+                            .filter(|p| p.packet_name.to_lowercase().contains(&self.filter.to_lowercase()))
                         {
                             {
                                 let selected = self
@@ -134,7 +295,6 @@ impl<'a> eframe::App for App<'a> {
 
                             if ui.add(packet.clone()).clicked() {
                                 self.context.set_selected_packet(packet.id);
-                                println!("Clicked {}", packet.id);
                             }
                         }
                     });
@@ -155,9 +315,12 @@ impl<'a> eframe::App for App<'a> {
                     let text_editor = egui::TextEdit::multiline(&mut text)
                         .code_editor()
                         .desired_width(ui.available_width())
+                        .clip_text(true)
                         .desired_rows(24);
 
-                    ui.add(text_editor);
+                    egui::ScrollArea::vertical().show(ui, |ui| {
+                        ui.add(text_editor);
+                    });
                 }
             }
         });

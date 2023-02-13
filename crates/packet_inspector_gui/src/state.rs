@@ -7,18 +7,18 @@ use tokio::{
 };
 use valence_protocol::{DecodePacket, EncodePacket, PacketDecoder, PacketEncoder};
 
-use crate::context::Context;
+use crate::context::{Context, Packet};
 use crate::packet_widget::PacketDirection;
 
 pub struct State {
-    direction: PacketDirection,
-    context: Arc<Context>,
+    pub direction: PacketDirection,
+    pub context: Arc<Context>,
     // cli: Arc<Cli>,
-    enc: PacketEncoder,
-    dec: PacketDecoder,
-    read: OwnedReadHalf,
-    write: OwnedWriteHalf,
-    buf: String,
+    pub enc: PacketEncoder,
+    pub dec: PacketDecoder,
+    pub read: OwnedReadHalf,
+    pub write: OwnedWriteHalf,
+    pub buf: String,
 }
 
 impl State {
@@ -53,19 +53,16 @@ impl State {
             .map(|(fst, _)| fst)
             .unwrap_or(&self.buf);
 
-        // if let Some(r) = &self.cli.include_regex {
-        //     if !r.is_match(packet_name) {
-        //         return Ok(pkt);
-        //     }
-        // }
+        self.context.add(Packet {
+            id: 0, // updated when added to context
+            direction: self.direction.clone(),
+            selected: false,
+            packet_type: bytes[0],
+            packet_name: packet_name.to_owned(),
+            packet: self.buf.clone(),
+        });
 
-        // if let Some(r) = &self.cli.exclude_regex {
-        //     if r.is_match(packet_name) {
-        //         return Ok(pkt);
-        //     }
-        // }
-
-        println!("{}", self.buf);
+        // println!("{}", self.buf);
 
         Ok(pkt)
     }
