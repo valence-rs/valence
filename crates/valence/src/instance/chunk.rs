@@ -119,7 +119,7 @@ impl Clone for Chunk {
             refresh: true,
             viewed: AtomicBool::new(false),
             block_entities: self.block_entities.clone(),
-            modified_block_entities: self.modified_block_entities.clone(),
+            modified_block_entities: BTreeSet::new(),
         }
     }
 }
