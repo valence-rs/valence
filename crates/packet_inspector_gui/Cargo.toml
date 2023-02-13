@@ -1,0 +1,21 @@
+[package]
+name = "packet_inspector_gui"
+version = "0.1.0"
+edition = "2021"
+description = "A simple Minecraft proxy for inspecting packets."
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4.0.30", features = ["derive"] }
+regex = "1.6.0"
+tokio = { version = "1", features = ["full"] }
+tracing-subscriber = "0.3.16"
+valence_protocol = { path = "../valence_protocol", version = "0.1.0", features = [
+    "compression",
+] }
+
+egui = "0.21.0"
+eframe = { version = "0.21.0", default-features = false, features = [
+    "default_fonts", # Embed the default egui fonts.
+    "glow",          # Use the glow rendering backend. Alternative: "wgpu".
+] }
