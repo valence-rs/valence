@@ -7,6 +7,7 @@ use std::iter::FusedIterator;
 
 use anyhow::Context;
 use valence_nbt::Compound;
+use valence_protocol_macros::ident_str;
 
 use crate::{Decode, Encode, Ident, ItemKind, Result, VarInt};
 
