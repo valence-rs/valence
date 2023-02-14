@@ -3,10 +3,9 @@ use egui::{
     Pos2, Rect, Response, Rgba, Rounding, Sense, Shape, Stroke, TextStyle, Ui, Vec2, Widget,
     WidgetText,
 };
+use time::OffsetDateTime;
 
 use crate::context::Packet;
-
-use time::OffsetDateTime;
 
 fn systemtime_strftime(odt: OffsetDateTime) -> String {
     let hour = odt.hour();

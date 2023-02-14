@@ -301,7 +301,6 @@ impl<'a> eframe::App for App<'a> {
                             }
                         }
                     });
-                
             });
         egui::CentralPanel::default().show(ctx, |ui| {
             if let Some(idx) = *self
