@@ -1,6 +1,6 @@
 [package]
 name = "valence_stresser"
-description = "A stresser for Valence server framework development purposes."
+description = "A stresser for Valence Minecraft server framework development purposes."
 authors = ["qualterz <qualterz@tutamail.com>"]
 version = "0.1.0"
 edition = "2021"
