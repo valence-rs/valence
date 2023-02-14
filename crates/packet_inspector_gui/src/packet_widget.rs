@@ -13,7 +13,7 @@ fn systemtime_strftime(odt: OffsetDateTime) -> String {
     let second = odt.second();
     let millis = odt.millisecond();
 
-    format!("{:0>2}:{:0>2}:{:0>2}.{:0>4}", hour, minute, second, millis)
+    format!("{hour:0>2}:{minute:0>2}:{second:0>2}.{millis:0>4}")
 }
 
 #[derive(Clone)]

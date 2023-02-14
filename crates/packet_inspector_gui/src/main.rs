@@ -256,9 +256,9 @@ impl<'a> eframe::App for App<'a> {
                     let total = self.context.packets.read().expect("Poisoned RwLock").len();
 
                     if self.filter.is_empty() {
-                        ui.label(format!("({})", total));
+                        ui.label(format!("({total})"));
                     } else {
-                        ui.label(format!("({}/{})", count, total));
+                        ui.label(format!("({count}/{total})"));
 
                     }
 
