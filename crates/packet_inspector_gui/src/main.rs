@@ -1,6 +1,7 @@
 mod context;
 mod packet_widget;
 mod state;
+mod syntax_highlighting;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -9,6 +10,7 @@ use anyhow::bail;
 use clap::Parser;
 use context::Context;
 use regex::Regex;
+use syntax_highlighting::code_view_ui;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream};
@@ -257,7 +259,7 @@ impl<'a> eframe::App for App<'a> {
         });
 
         egui::SidePanel::left("side_panel")
-            .min_width(200.0)
+            .min_width(250.0)
             .show(ctx, |ui| {
                 // scroll container
                 ui.heading("Packets");
@@ -271,7 +273,7 @@ impl<'a> eframe::App for App<'a> {
                             .write()
                             .expect("Poisoned RwLock")
                             .iter_mut()
-                            // todo: regex?
+                            // todo: regex? or even a wireshark-style filter language processor?
                             .filter(|p| p.packet_name.to_lowercase().contains(&self.filter.to_lowercase()))
                         {
                             {
@@ -308,16 +310,10 @@ impl<'a> eframe::App for App<'a> {
                 let packets = self.context.packets.read().expect("Poisoned RwLock");
                 if idx < packets.len() {
                     let packet = &packets[idx];
-                    let mut text = packet.packet.clone();
-
-                    let text_editor = egui::TextEdit::multiline(&mut text)
-                        .code_editor()
-                        .desired_width(ui.available_width())
-                        .clip_text(true)
-                        .desired_rows(24);
+                    let text = packet.packet.clone();
 
                     egui::ScrollArea::vertical().show(ui, |ui| {
-                        ui.add(text_editor);
+                        code_view_ui(ui, &text);
                     });
                 }
             }

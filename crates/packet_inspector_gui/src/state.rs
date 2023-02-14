@@ -44,7 +44,7 @@ impl State {
         self.write.write_all(&bytes).await?;
 
         self.buf.clear();
-        write!(&mut self.buf, "{pkt:?}")?;
+        write!(&mut self.buf, "{pkt:#?}")?;
 
         let packet_name = self
             .buf
