@@ -6,7 +6,7 @@ struct StresserArgs {
     target_port: u16,
 
     /// Represents an amount of connections to the target host.
-    connections: usize
+    connections_count: usize
 }
 
 fn main() {
