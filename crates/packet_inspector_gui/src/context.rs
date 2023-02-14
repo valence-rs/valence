@@ -1,4 +1,4 @@
-use std::sync::RwLock;
+use std::{path::PathBuf, sync::RwLock};
 
 use time::OffsetDateTime;
 
@@ -12,6 +12,7 @@ pub struct Packet {
     pub(crate) packet_type: u8,
     pub(crate) packet_name: String,
     pub(crate) packet: String,
+    pub(crate) packet_raw: String,
     pub(crate) created_at: OffsetDateTime,
 }
 
@@ -63,5 +64,21 @@ impl Context {
     pub fn set_filter(&self, filter: String) {
         *self.filter.write().expect("Posisoned RwLock") = filter;
         *self.selected_packet.write().expect("Poisoned RwLock") = None;
+    }
+
+    pub fn save(&self, path: PathBuf) -> Result<(), std::io::Error> {
+        let packets = self
+            .packets
+            .read()
+            .expect("Poisoned RwLock")
+            .iter()
+            .filter(|packet| packet.packet_name != "ChunkDataAndUpdateLight") // temporarily blacklisting this packet because HUGE
+            .map(|packet| packet.packet_raw.clone())
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        std::fs::write(path, packets)?;
+
+        Ok(())
     }
 }

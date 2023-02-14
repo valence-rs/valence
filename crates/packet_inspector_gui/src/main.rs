@@ -90,6 +90,7 @@ async fn handle_connection(
         read: server_read,
         write: client_write,
         buf: String::new(),
+        raw: String::new(),
         direction: PacketDirection::ServerToClient,
         context: context.clone(),
     };
@@ -101,6 +102,7 @@ async fn handle_connection(
         read: client_read,
         write: server_write,
         buf: String::new(),
+        raw: String::new(),
         direction: PacketDirection::ClientToServer,
         context: context.clone(),
     };
@@ -265,6 +267,21 @@ impl<'a> eframe::App for App<'a> {
                     if ui.button("Clear").clicked() {
                         self.context.clear();
                     }
+
+                    if ui.button("Export").clicked() {
+                        if let Some(path) = rfd::FileDialog::new()
+                            .add_filter("Text Document", &["txt"])
+                        .save_file() {
+                            match self.context.save(path) {
+                                Ok(_) => {},
+                                Err(err) => {
+                                    // some alert box?
+                                    eprintln!("Failed to save: {}", err);
+                                }
+                            }
+                        }
+                    }
+
                 });
                 egui::ScrollArea::vertical()
                     .auto_shrink([false, false])

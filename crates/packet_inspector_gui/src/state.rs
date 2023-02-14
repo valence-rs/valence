@@ -19,6 +19,7 @@ pub struct State {
     pub read: OwnedReadHalf,
     pub write: OwnedWriteHalf,
     pub buf: String,
+    pub raw: String,
 }
 
 impl State {
@@ -45,7 +46,10 @@ impl State {
         self.write.write_all(&bytes).await?;
 
         self.buf.clear();
+        self.raw.clear();
+
         write!(&mut self.buf, "{pkt:#?}")?;
+        write!(&mut self.raw, "{pkt:?}")?;
 
         let packet_name = self
             .buf
@@ -68,6 +72,7 @@ impl State {
             packet_type: bytes[0],
             packet_name: packet_name.to_owned(),
             packet: self.buf.clone(),
+            packet_raw: self.raw.clone(),
             created_at: time,
         });
 
