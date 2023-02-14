@@ -1,4 +1,4 @@
-struct Args {
+struct StresserArgs {
     /// Represents an IPv4/IPv6/DNS address of a server.
     target_host: String,
 
