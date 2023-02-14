@@ -77,7 +77,7 @@ impl PacketDirection {
 
 impl Widget for Packet {
     fn ui(self, ui: &mut Ui) -> Response {
-        let (rect, response) = ui.allocate_at_least(
+        let (mut rect, response) = ui.allocate_at_least(
             Vec2 {
                 x: ui.available_width(),
                 y: 24.0,
@@ -109,7 +109,7 @@ impl Widget for Packet {
             let label: WidgetText = self.packet_name.into();
             let label = label.into_galley(ui, Some(false), rect.width() - 60.0, TextStyle::Button);
 
-            let timestamp: WidgetText = format!("{}", systemtime_strftime(self.created_at)).into();
+            let timestamp: WidgetText = systemtime_strftime(self.created_at).into();
             let timestamp =
                 timestamp.into_galley(ui, Some(false), rect.width() - 60.0, TextStyle::Button);
 
@@ -122,13 +122,12 @@ impl Widget for Packet {
                 ui.visuals().weak_text_color(),
             );
 
-            let mut label_rect = rect.clone();
-            label_rect.set_width(rect.width() - 5.0);
+            rect.set_width(rect.width() - 5.0);
 
             let label_width = label.size().x + 50.0;
 
             label.paint_with_fallback_color(
-                &ui.painter().with_clip_rect(label_rect),
+                &ui.painter().with_clip_rect(rect),
                 Pos2 {
                     x: rect.left() + 55.0,
                     y: rect.top() + 6.0,
@@ -137,7 +136,7 @@ impl Widget for Packet {
             );
 
             timestamp.paint_with_fallback_color(
-                &ui.painter().with_clip_rect(label_rect),
+                &ui.painter().with_clip_rect(rect),
                 Pos2 {
                     x: rect.left() + label_width + 8.0,
                     y: rect.top() + 6.0,

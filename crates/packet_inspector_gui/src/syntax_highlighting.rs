@@ -59,6 +59,7 @@ enum TokenType {
 #[cfg(feature = "syntect")]
 #[derive(Clone, Copy, Hash, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[allow(unused)]
 enum SyntectTheme {
     Base16EightiesDark,
     Base16MochaDark,
@@ -69,6 +70,7 @@ enum SyntectTheme {
     SolarizedLight,
 }
 
+#[allow(unused)]
 #[cfg(feature = "syntect")]
 impl SyntectTheme {
     fn all() -> impl ExactSizeIterator<Item = Self> {
@@ -140,6 +142,7 @@ impl Default for CodeTheme {
     }
 }
 
+#[allow(unused)]
 impl CodeTheme {
     pub fn from_style(style: &egui::Style) -> Self {
         if style.visuals.dark_mode {
@@ -172,6 +175,7 @@ impl CodeTheme {
     }
 }
 
+#[allow(unused)]
 #[cfg(feature = "syntect")]
 impl CodeTheme {
     pub fn dark() -> Self {

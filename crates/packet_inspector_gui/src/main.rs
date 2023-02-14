@@ -195,13 +195,12 @@ impl<'a> App<'a> {
         let ctx = Some(cc.egui_ctx.clone());
         let context = Arc::new(Context::new(ctx));
 
-        let t_cli = cli.clone();
         let t_context = context.clone();
         tokio::spawn(async move {
-            let sema = Arc::new(Semaphore::new(t_cli.max_connections.unwrap_or(100_000)));
+            let sema = Arc::new(Semaphore::new(cli.max_connections.unwrap_or(100_000)));
 
-            eprintln!("Waiting for connections on {}", t_cli.client_addr);
-            let listen = TcpListener::bind(t_cli.client_addr).await?;
+            eprintln!("Waiting for connections on {}", cli.client_addr);
+            let listen = TcpListener::bind(cli.client_addr).await?;
 
             while let Ok(permit) = sema.clone().acquire_owned().await {
                 let (client, remote_client_addr) = listen.accept().await?;
@@ -211,10 +210,10 @@ impl<'a> App<'a> {
                     eprintln!("Failed to set TCP_NODELAY: {e}");
                 }
 
-                let t2_cli = t_cli.clone();
+                let t_cli = cli.clone();
                 let t2_context = t_context.clone();
                 tokio::spawn(async move {
-                    if let Err(e) = handle_connection(client, t2_cli, t2_context).await {
+                    if let Err(e) = handle_connection(client, t_cli, t2_context).await {
                         eprintln!("Connection to {remote_client_addr} ended with: {e:#}");
                     } else {
                         eprintln!("Connection to {remote_client_addr} ended.");
