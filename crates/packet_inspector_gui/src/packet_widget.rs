@@ -6,6 +6,22 @@ use egui::{
 
 use crate::context::Packet;
 
+use time::OffsetDateTime;
+
+fn systemtime_strftime(odt: OffsetDateTime) -> String {
+    let hour = odt.hour();
+    let minute = odt.minute();
+    let second = odt.second();
+    let millis = odt.millisecond();
+
+    format!("{:0>2}:{:0>2}:{:0>2}.{:0>4}", hour, minute, second, millis)
+}
+
+// fn main() {
+//     let st = SystemTime::now();
+//     println!("{}", systemtime_strftime(st, "%d/%m/%Y %T"));
+// }
+
 #[derive(Clone)]
 pub enum PacketDirection {
     ClientToServer,
@@ -76,7 +92,7 @@ impl Widget for Packet {
         );
 
         let fill = match self.selected {
-            true => Rgba::from_rgba_premultiplied(0.0, 0.0, 0.0, 0.2),
+            true => Rgba::from_rgba_premultiplied(0.0, 0.0, 0.0, 0.4),
             false => Rgba::from_rgba_premultiplied(0.0, 0.0, 0.0, 0.0),
         };
 
@@ -94,16 +110,19 @@ impl Widget for Packet {
             let identifier: WidgetText = format!("0x{:X?}", self.packet_type).into();
 
             let identifier =
-                identifier.into_galley(ui, Some(false), rect.width() - 20.0, TextStyle::Button);
+                identifier.into_galley(ui, Some(false), rect.width() - 21.0, TextStyle::Button);
 
             let label: WidgetText = self.packet_name.into();
-
             let label = label.into_galley(ui, Some(false), rect.width() - 60.0, TextStyle::Button);
+
+            let timestamp: WidgetText = format!("{}", systemtime_strftime(self.created_at)).into();
+            let timestamp =
+                timestamp.into_galley(ui, Some(false), rect.width() - 60.0, TextStyle::Button);
 
             identifier.paint_with_fallback_color(
                 ui.painter(),
                 Pos2 {
-                    x: rect.left() + 20.0,
+                    x: rect.left() + 21.0,
                     y: rect.top() + 6.0,
                 },
                 ui.visuals().weak_text_color(),
@@ -112,6 +131,8 @@ impl Widget for Packet {
             let mut label_rect = rect.clone();
             label_rect.set_width(rect.width() - 5.0);
 
+            let label_width = label.size().x + 50.0;
+
             label.paint_with_fallback_color(
                 &ui.painter().with_clip_rect(label_rect),
                 Pos2 {
@@ -119,7 +140,16 @@ impl Widget for Packet {
                     y: rect.top() + 6.0,
                 },
                 ui.visuals().strong_text_color(),
-            )
+            );
+
+            timestamp.paint_with_fallback_color(
+                &ui.painter().with_clip_rect(label_rect),
+                Pos2 {
+                    x: rect.left() + label_width + 8.0,
+                    y: rect.top() + 6.0,
+                },
+                ui.visuals().weak_text_color(),
+            );
         }
 
         response

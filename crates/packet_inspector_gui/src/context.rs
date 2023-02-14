@@ -1,5 +1,7 @@
 use std::sync::RwLock;
 
+use time::OffsetDateTime;
+
 use crate::packet_widget::PacketDirection;
 
 #[derive(Clone)]
@@ -10,6 +12,7 @@ pub struct Packet {
     pub(crate) packet_type: u8,
     pub(crate) packet_name: String,
     pub(crate) packet: String,
+    pub(crate) created_at: OffsetDateTime,
 }
 
 impl Packet {
@@ -32,6 +35,14 @@ impl Context {
             packets: RwLock::new(Vec::new()),
             filter: RwLock::new("".into()),
             context: ctx,
+        }
+    }
+
+    pub fn clear(&self) {
+        *self.selected_packet.write().expect("Poisoned RwLock") = None;
+        self.packets.write().expect("Poisoned RwLock").clear();
+        if let Some(ctx) = &self.context {
+            ctx.request_repaint();
         }
     }
 

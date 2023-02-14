@@ -1,7 +1,9 @@
 use std::fmt::Write;
 use std::io::ErrorKind;
 use std::sync::Arc;
+use std::time::SystemTime;
 
+use time::OffsetDateTime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use valence_protocol::{DecodePacket, EncodePacket, PacketDecoder, PacketEncoder};
@@ -59,6 +61,7 @@ impl State {
             packet_type: bytes[0],
             packet_name: packet_name.to_owned(),
             packet: self.buf.clone(),
+            created_at: OffsetDateTime::now_local().unwrap(),
         });
 
         // println!("{}", self.buf);

@@ -27,3 +27,4 @@ enum-map = "2.4.2"
 syntect = { version = "5", optional = true, default-features = false, features = [
     "default-fancy",
 ] }
+time = { version = "0.3.17", features = ["local-offset"] }

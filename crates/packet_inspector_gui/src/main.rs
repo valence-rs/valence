@@ -9,7 +9,6 @@ use std::sync::Arc;
 use anyhow::bail;
 use clap::Parser;
 use context::Context;
-use regex::Regex;
 use syntax_highlighting::code_view_ui;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
@@ -39,18 +38,6 @@ struct Cli {
     /// The socket address the proxy will connect to. This is the address of the
     /// server.
     server_addr: SocketAddr,
-    /// An optional regular expression to use on packet names. Packet names
-    /// matching the regex are printed while those that don't are ignored.
-    ///
-    /// If no regex is provided, all packets are considered matching.
-    #[clap(short, long)]
-    include_regex: Option<Regex>,
-    /// An optional regular expression to use on packet names. Packet names
-    /// matching the regex are ignored while those are don't are printed.
-    ///
-    /// If no regex is provided, all packets are not considered matching.
-    #[clap(short, long)]
-    exclude_regex: Option<Regex>,
     /// The maximum number of connections allowed to the proxy. By default,
     /// there is no limit.
     #[clap(short, long)]
@@ -259,10 +246,16 @@ impl<'a> eframe::App for App<'a> {
         });
 
         egui::SidePanel::left("side_panel")
-            .min_width(250.0)
+            .min_width(150.0)
+            .default_width(250.0)
             .show(ctx, |ui| {
                 // scroll container
-                ui.heading("Packets");
+                ui.horizontal(|ui| {
+                    ui.heading("Packets");
+                    if ui.button("Clear").clicked() {
+                        self.context.clear();
+                    }
+                });
                 egui::ScrollArea::vertical()
                     .auto_shrink([false, false])
                     .stick_to_bottom(true)
@@ -298,6 +291,7 @@ impl<'a> eframe::App for App<'a> {
                             }
                         }
                     });
+                
             });
         egui::CentralPanel::default().show(ctx, |ui| {
             if let Some(idx) = *self
