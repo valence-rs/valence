@@ -29,6 +29,7 @@ use crate::entity::{
     check_entity_invariants, deinit_despawned_entities, init_entities, update_entities,
     McEntityManager,
 };
+use crate::equipment::update_equipment;
 use crate::instance::{
     check_instance_invariants, update_instances_post_client, update_instances_pre_client, Instance,
 };
@@ -361,6 +362,7 @@ pub fn build_plugin(
                 .with_system(handle_close_container)
                 .with_system(update_client_on_close_inventory.after(update_open_inventories))
                 .with_system(update_player_inventories)
+                .with_system(update_equipment)
                 .with_system(
                     handle_click_container
                         .before(update_open_inventories)

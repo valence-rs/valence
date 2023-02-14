@@ -36,6 +36,7 @@ pub mod client;
 pub mod config;
 pub mod dimension;
 pub mod entity;
+pub mod equipment;
 pub mod instance;
 pub mod inventory;
 pub mod math;
