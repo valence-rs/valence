@@ -1,7 +1,7 @@
 use std::iter::FusedIterator;
 use std::net::{IpAddr, SocketAddr};
 use std::ops::Deref;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -106,8 +106,6 @@ struct SharedServerInner {
     /// A semaphore used to limit the number of simultaneous connections to the
     /// server. Closing this semaphore stops new connections.
     connection_sema: Arc<Semaphore>,
-    /// The result that will be returned when the server is shut down.
-    shutdown_result: Mutex<Option<anyhow::Result<()>>>,
     /// The RSA keypair used for encryption with clients.
     rsa_key: RsaPrivateKey,
     /// The public part of `rsa_key` encoded in DER, which is an ASN.1 format.
@@ -166,6 +164,7 @@ impl SharedServer {
     }
 
     /// Obtains a [`Dimension`] by using its corresponding [`DimensionId`].
+    #[track_caller]
     pub fn dimension(&self, id: DimensionId) -> &Dimension {
         self.0
             .dimensions
@@ -184,6 +183,7 @@ impl SharedServer {
     }
 
     /// Obtains a [`Biome`] by using its corresponding [`BiomeId`].
+    #[track_caller]
     pub fn biome(&self, id: BiomeId) -> &Biome {
         self.0.biomes.get(id.0 as usize).expect("invalid biome ID")
     }
@@ -208,19 +208,6 @@ impl SharedServer {
     /// Returns the instant the server was started.
     pub fn start_instant(&self) -> Instant {
         self.0.start_instant
-    }
-
-    /// Immediately stops new connections to the server and initiates server
-    /// shutdown.
-    ///
-    /// You may want to disconnect all players with a message prior to calling
-    /// this function.
-    pub fn shutdown<E>(&self, res: Result<(), E>)
-    where
-        E: Into<anyhow::Error>,
-    {
-        self.0.connection_sema.close();
-        *self.0.shutdown_result.lock().unwrap() = Some(res.map_err(|e| e.into()));
     }
 }
 
@@ -296,7 +283,6 @@ pub fn build_plugin(
         new_clients_send,
         new_clients_recv,
         connection_sema: Arc::new(Semaphore::new(plugin.max_connections)),
-        shutdown_result: Mutex::new(None),
         rsa_key,
         public_key_der,
         http_client: Default::default(),
@@ -439,13 +425,7 @@ fn make_registry_codec(dimensions: &[Dimension], biomes: &[Biome]) -> Compound {
     let dimensions = dimensions
         .iter()
         .enumerate()
-        .map(|(id, dim)| {
-            compound! {
-                "name" => DimensionId(id as u16).dimension_type_name(),
-                "id" => id as i32,
-                "element" => dim.to_dimension_registry_item(),
-            }
-        })
+        .map(|(id, dim)| dim.to_dimension_registry_item(id as i32))
         .collect();
 
     let biomes = biomes
@@ -461,9 +441,7 @@ fn make_registry_codec(dimensions: &[Dimension], biomes: &[Biome]) -> Compound {
         },
         ident!("worldgen/biome") => compound! {
             "type" => ident!("worldgen/biome"),
-            "value" => {
-                List::Compound(biomes)
-            }
+            "value" => List::Compound(biomes),
         },
         ident!("chat_type") => compound! {
             "type" => ident!("chat_type"),

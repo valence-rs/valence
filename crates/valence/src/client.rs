@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::net::IpAddr;
 use std::num::Wrapping;
 
@@ -10,12 +11,14 @@ use uuid::Uuid;
 use valence_protocol::packets::s2c::particle::Particle;
 use valence_protocol::packets::s2c::play::{
     AcknowledgeBlockChange, CombatDeath, DisconnectPlay, EntityEvent, GameEvent, KeepAliveS2c,
-    LoginPlayOwned, ParticleS2c, PluginMessageS2c, RemoveEntitiesEncode, ResourcePackS2c,
-    RespawnOwned, SetActionBarText, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata,
+    LoginPlay, ParticleS2c, PluginMessageS2c, RemoveEntitiesEncode, ResourcePackS2c, Respawn,
+    SetActionBarText, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata,
     SetEntityVelocity, SetRenderDistance, SetSubtitleText, SetTitleAnimationTimes, SetTitleText,
     SynchronizePlayerPosition, SystemChatMessage, UnloadChunk,
 };
-use valence_protocol::types::{GameEventKind, GameMode, Property, SyncPlayerPosLookFlags};
+use valence_protocol::types::{
+    GameEventKind, GameMode, GlobalPos, Property, SyncPlayerPosLookFlags,
+};
 use valence_protocol::{
     BlockPos, EncodePacket, Ident, ItemStack, PacketDecoder, PacketEncoder, RawBytes, Text,
     Username, VarInt,
@@ -636,23 +639,30 @@ fn update_one_client(
     if client.is_new {
         client.needs_respawn = false;
 
-        let dimension_names: Vec<_> = server
+        let dimension_names = server
             .dimensions()
-            .map(|(id, _)| id.dimension_name())
+            .map(|(_, dim)| dim.name.as_str_ident())
             .collect();
+
+        let dimension_name = server.dimension(instance.dimension()).name.as_str_ident();
+
+        let last_death_location = client.death_location.map(|(id, pos)| GlobalPos {
+            dimension_name: server.dimension(id).name.as_str_ident(),
+            position: pos,
+        });
 
         // The login packet is prepended so that it is sent before all the other
         // packets. Some packets don't work correctly when sent before the login packet,
         // which is why we're doing this.
-        client.enc.prepend_packet(&LoginPlayOwned {
+        client.enc.prepend_packet(&LoginPlay {
             entity_id: 0, // ID 0 is reserved for clients.
             is_hardcore: client.is_hardcore,
             game_mode: client.game_mode,
             previous_game_mode: -1,
             dimension_names,
-            registry_codec: server.registry_codec().clone(),
-            dimension_type_name: instance.dimension().dimension_type_name(),
-            dimension_name: instance.dimension().dimension_name(),
+            registry_codec: Cow::Borrowed(server.registry_codec()),
+            dimension_type_name: dimension_name,
+            dimension_name,
             hashed_seed: 42,
             max_players: VarInt(0), // Unused
             view_distance: VarInt(client.view_distance() as i32),
@@ -661,9 +671,7 @@ fn update_one_client(
             enable_respawn_screen: client.has_respawn_screen,
             is_debug: false,
             is_flat: client.is_flat,
-            last_death_location: client
-                .death_location
-                .map(|(id, pos)| (id.dimension_name(), pos)),
+            last_death_location,
         })?;
 
         /*
@@ -683,18 +691,23 @@ fn update_one_client(
         if client.needs_respawn {
             client.needs_respawn = false;
 
-            client.enc.append_packet(&RespawnOwned {
-                dimension_type_name: instance.dimension().dimension_type_name(),
-                dimension_name: instance.dimension().dimension_name(),
+            let dimension_name = server.dimension(instance.dimension()).name.as_str_ident();
+
+            let last_death_location = client.death_location.map(|(id, pos)| GlobalPos {
+                dimension_name: server.dimension(id).name.as_str_ident(),
+                position: pos,
+            });
+
+            client.enc.append_packet(&Respawn {
+                dimension_type_name: dimension_name,
+                dimension_name,
                 hashed_seed: 0,
                 game_mode: client.game_mode,
                 previous_game_mode: -1,
                 is_debug: false,
                 is_flat: client.is_flat,
                 copy_metadata: true,
-                last_death_location: client
-                    .death_location
-                    .map(|(id, pos)| (id.dimension_name(), pos)),
+                last_death_location,
             })?;
         }
     }
