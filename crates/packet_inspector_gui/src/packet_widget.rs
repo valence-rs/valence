@@ -16,11 +16,6 @@ fn systemtime_strftime(odt: OffsetDateTime) -> String {
     format!("{:0>2}:{:0>2}:{:0>2}.{:0>4}", hour, minute, second, millis)
 }
 
-// fn main() {
-//     let st = SystemTime::now();
-//     println!("{}", systemtime_strftime(st, "%d/%m/%Y %T"));
-// }
-
 #[derive(Clone)]
 pub enum PacketDirection {
     ClientToServer,

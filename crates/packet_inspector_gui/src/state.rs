@@ -1,7 +1,6 @@
 use std::fmt::Write;
 use std::io::ErrorKind;
 use std::sync::Arc;
-use std::time::SystemTime;
 
 use time::OffsetDateTime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
