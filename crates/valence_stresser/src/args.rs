@@ -3,15 +3,15 @@ use clap::{arg, command, Parser};
 #[derive(Parser)]
 #[command(author, version, about)]
 pub(crate) struct StresserArgs {
-    /// Represents an IPv4/IPv6/DNS address of a server.
-    #[arg(short = 't', long = "host")]
+    /// IPv4/IPv6/DNS address of a server.
+    #[arg(short = 't', long = "target")]
     target_host: String,
 
-    /// Represents a port of the target host.
+    /// Port of the target host.
     #[arg(short = 'p', long = "port")]
     target_port: u16,
 
-    /// Represents an amount of connections to the target host.
+    /// Number of connections to the target.
     #[arg(short = 'c', long = "count")]
     connections_count: usize,
 }
