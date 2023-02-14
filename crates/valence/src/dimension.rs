@@ -1,11 +1,11 @@
 //! Dimension configuration and identification.
 
+use std::collections::HashSet;
+
 use anyhow::ensure;
 use valence_nbt::{compound, Compound};
 use valence_protocol::ident;
 use valence_protocol::ident::Ident;
-
-use crate::LIBRARY_NAMESPACE;
 
 /// Identifies a particular [`Dimension`] on the server.
 ///
@@ -15,19 +15,9 @@ use crate::LIBRARY_NAMESPACE;
 /// To obtain dimension IDs for other dimensions, look at
 /// [`ServerPlugin::dimensions`].
 ///
-/// [`ServerPlugin::dimensions`]: crate::server::SharedServer::dimensions
+/// [`ServerPlugin::dimensions`]: crate::config::ServerPlugin::dimensions
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct DimensionId(pub(crate) u16);
-
-impl DimensionId {
-    pub(crate) fn dimension_type_name(self) -> Ident<String> {
-        ident!("{LIBRARY_NAMESPACE}:dimension_type_{}", self.0)
-    }
-
-    pub(crate) fn dimension_name(self) -> Ident<String> {
-        ident!("{LIBRARY_NAMESPACE}:dimension_{}", self.0)
-    }
-}
 
 /// The default dimension ID corresponds to the first element in the `Vec`
 /// returned by [`ServerPlugin::dimensions`].
@@ -53,6 +43,8 @@ impl Default for DimensionId {
 /// [`Instance`]: crate::instance::Instance
 #[derive(Clone, Debug)]
 pub struct Dimension {
+    /// The unique name for this dimension.
+    pub name: Ident<String>,
     /// When false, compasses will spin randomly.
     pub natural: bool,
     /// Must be between 0.0 and 1.0.
@@ -89,36 +81,42 @@ pub struct Dimension {
 }
 
 impl Dimension {
-    pub(crate) fn to_dimension_registry_item(&self) -> Compound {
-        let mut item = compound! {
-            "piglin_safe" => true,
-            "has_raids" => true,
-            "monster_spawn_light_level" => 0,
-            "monster_spawn_block_light_limit" => 0,
-            "natural" => self.natural,
-            "ambient_light" => self.ambient_light,
-            "infiniburn" => "#minecraft:infiniburn_overworld",
-            "respawn_anchor_works" => true,
-            "has_skylight" => true,
-            "bed_works" => true,
-            "effects" => match self.effects {
-                DimensionEffects::Overworld => "overworld",
-                DimensionEffects::TheNether => "the_nether",
-                DimensionEffects::TheEnd => "the_end",
+    pub(crate) fn to_dimension_registry_item(&self, id: i32) -> Compound {
+        compound! {
+            "name" => self.name.clone(),
+            "id" => id,
+            "element" => {
+                let mut element = compound! {
+                    "piglin_safe" => true,
+                    "has_raids" => true,
+                    "monster_spawn_light_level" => 0,
+                    "monster_spawn_block_light_limit" => 0,
+                    "natural" => self.natural,
+                    "ambient_light" => self.ambient_light,
+                    "infiniburn" => "#minecraft:infiniburn_overworld",
+                    "respawn_anchor_works" => true,
+                    "has_skylight" => true,
+                    "bed_works" => true,
+                    "effects" => match self.effects {
+                        DimensionEffects::Overworld => "overworld",
+                        DimensionEffects::TheNether => "the_nether",
+                        DimensionEffects::TheEnd => "the_end",
+                    },
+                    "min_y" => self.min_y,
+                    "height" => self.height,
+                    "logical_height" => self.height,
+                    "coordinate_scale" => 1.0,
+                    "ultrawarm" => false,
+                    "has_ceiling" => false,
+                };
+
+                if let Some(t) = self.fixed_time {
+                    element.insert("fixed_time", t as i64);
+                }
+
+                element
             },
-            "min_y" => self.min_y,
-            "height" => self.height,
-            "logical_height" => self.height,
-            "coordinate_scale" => 1.0,
-            "ultrawarm" => false,
-            "has_ceiling" => false,
-        };
-
-        if let Some(t) = self.fixed_time {
-            item.insert("fixed_time", t as i64);
         }
-
-        item
     }
 }
 
@@ -133,28 +131,37 @@ pub(crate) fn validate_dimensions(dimensions: &[Dimension]) -> anyhow::Result<()
         "more than u16::MAX dimensions present"
     );
 
-    for (i, dim) in dimensions.iter().enumerate() {
+    let mut names = HashSet::new();
+
+    for dim in dimensions {
+        let name = &dim.name;
+
+        ensure!(
+            names.insert(name.clone()),
+            "dimension \"{name}\" already exists",
+        );
+
         ensure!(
             dim.min_y % 16 == 0 && (-2032..=2016).contains(&dim.min_y),
-            "invalid min_y in dimension #{i}",
+            "invalid min_y in dimension {name}",
         );
 
         ensure!(
             dim.height % 16 == 0
                 && (0..=4064).contains(&dim.height)
                 && dim.min_y.saturating_add(dim.height) <= 2032,
-            "invalid height in dimension #{i}",
+            "invalid height in dimension {name}",
         );
 
         ensure!(
             (0.0..=1.0).contains(&dim.ambient_light),
-            "ambient_light is out of range in dimension #{i}",
+            "ambient_light is out of range in dimension {name}",
         );
 
         if let Some(fixed_time) = dim.fixed_time {
             ensure!(
                 (0..=24_000).contains(&fixed_time),
-                "fixed_time is out of range in dimension #{i}",
+                "fixed_time is out of range in dimension {name}",
             );
         }
     }
@@ -165,6 +172,7 @@ pub(crate) fn validate_dimensions(dimensions: &[Dimension]) -> anyhow::Result<()
 impl Default for Dimension {
     fn default() -> Self {
         Self {
+            name: ident!("overworld"),
             natural: true,
             ambient_light: 1.0,
             fixed_time: None,
