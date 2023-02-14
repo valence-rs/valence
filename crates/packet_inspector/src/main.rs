@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use anyhow::bail;
 use clap::Parser;
+use owo_colors::OwoColorize;
 use regex::Regex;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
@@ -58,6 +59,7 @@ struct State {
     read: OwnedReadHalf,
     write: OwnedWriteHalf,
     buf: String,
+    style: owo_colors::Style,
 }
 
 impl State {
@@ -75,7 +77,7 @@ impl State {
 
             self.dec.queue_bytes(buf);
         }
-
+        
         let pkt: P = self.dec.try_next_packet()?.unwrap();
 
         self.enc.append_packet(&pkt)?;
@@ -104,7 +106,7 @@ impl State {
             }
         }
 
-        println!("{}", self.buf);
+        println!("{}", self.buf.style(self.style));
 
         Ok(pkt)
     }
@@ -164,6 +166,7 @@ async fn handle_connection(client: TcpStream, cli: Arc<Cli>) -> anyhow::Result<(
         read: server_read,
         write: client_write,
         buf: String::new(),
+        style: owo_colors::Style::new().purple()
     };
 
     let mut c2s = State {
@@ -173,6 +176,7 @@ async fn handle_connection(client: TcpStream, cli: Arc<Cli>) -> anyhow::Result<(
         read: client_read,
         write: server_write,
         buf: String::new(),
+        style: owo_colors::Style::new().green()
     };
 
     let handshake: Handshake = c2s.rw_packet().await?;
