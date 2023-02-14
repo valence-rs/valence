@@ -242,8 +242,6 @@ impl<'a> eframe::App for App<'a> {
                 if ui.text_edit_singleline(&mut self.filter).changed() {
                     self.context.set_filter(self.filter.clone());
                 }
-                let count = self.context.packet_count.read().expect("Poisoned RwLock");
-                ui.label(format!("({})", count)); // todo: make dynamic
             });
         });
 
@@ -254,6 +252,17 @@ impl<'a> eframe::App for App<'a> {
                 // scroll container
                 ui.horizontal(|ui| {
                     ui.heading("Packets");
+
+                    let count = self.context.packet_count.read().expect("Poisoned RwLock");
+                    let total = self.context.packets.read().expect("Poisoned RwLock").len();
+
+                    if self.filter.is_empty() {
+                        ui.label(format!("({})", total));
+                    } else {
+                        ui.label(format!("({}/{})", count, total));
+
+                    }
+
                     if ui.button("Clear").clicked() {
                         self.context.clear();
                     }
