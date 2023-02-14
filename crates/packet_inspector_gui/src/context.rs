@@ -24,6 +24,7 @@ impl Packet {
 pub struct Context {
     pub selected_packet: RwLock<Option<usize>>,
     pub(crate) packets: RwLock<Vec<Packet>>,
+    pub(crate) packet_count: RwLock<usize>,
     pub filter: RwLock<String>,
     context: Option<egui::Context>,
 }
@@ -35,6 +36,7 @@ impl Context {
             packets: RwLock::new(Vec::new()),
             filter: RwLock::new("".into()),
             context: ctx,
+            packet_count: RwLock::new(0),
         }
     }
 

@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use anyhow::bail;
 use clap::Parser;
-use context::Context;
+use context::{Context, Packet};
 use syntax_highlighting::code_view_ui;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
@@ -242,6 +242,8 @@ impl<'a> eframe::App for App<'a> {
                 if ui.text_edit_singleline(&mut self.filter).changed() {
                     self.context.set_filter(self.filter.clone());
                 }
+                let count = self.context.packet_count.read().expect("Poisoned RwLock");
+                ui.label(format!("({})", count)); // todo: make dynamic
             });
         });
 
@@ -260,14 +262,22 @@ impl<'a> eframe::App for App<'a> {
                     .auto_shrink([false, false])
                     .stick_to_bottom(true)
                     .show(ui, |ui| {
-                        for packet in self
+
+                        let mut f = self
                             .context
                             .packets
                             .write()
-                            .expect("Poisoned RwLock")
+                            .expect("Poisoned RwLock");
+
+                        let f: Vec<&mut Packet> = f
                             .iter_mut()
                             // todo: regex? or even a wireshark-style filter language processor?
                             .filter(|p| p.packet_name.to_lowercase().contains(&self.filter.to_lowercase()))
+                            .collect();
+
+                        *self.context.packet_count.write().expect("Poisoned RwLock") = f.len();
+
+                        for packet in f
                         {
                             {
                                 let selected = self
