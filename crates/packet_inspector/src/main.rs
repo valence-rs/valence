@@ -77,7 +77,7 @@ impl State {
 
             self.dec.queue_bytes(buf);
         }
-        
+
         let pkt: P = self.dec.try_next_packet()?.unwrap();
 
         self.enc.append_packet(&pkt)?;
@@ -166,7 +166,7 @@ async fn handle_connection(client: TcpStream, cli: Arc<Cli>) -> anyhow::Result<(
         read: server_read,
         write: client_write,
         buf: String::new(),
-        style: owo_colors::Style::new().purple()
+        style: owo_colors::Style::new().purple(),
     };
 
     let mut c2s = State {
@@ -176,7 +176,7 @@ async fn handle_connection(client: TcpStream, cli: Arc<Cli>) -> anyhow::Result<(
         read: client_read,
         write: server_write,
         buf: String::new(),
-        style: owo_colors::Style::new().green()
+        style: owo_colors::Style::new().green(),
     };
 
     let handshake: Handshake = c2s.rw_packet().await?;
