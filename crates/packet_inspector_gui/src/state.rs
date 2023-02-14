@@ -53,6 +53,14 @@ impl State {
             .map(|(fst, _)| fst)
             .unwrap_or(&self.buf);
 
+        let time = match OffsetDateTime::now_local() {
+            Ok(time) => time,
+            Err(_) => {
+                eprintln!("Unable to get local time, using UTC"); // this might get a bit spammy..
+                OffsetDateTime::now_utc()
+            }
+        };
+
         self.context.add(Packet {
             id: 0, // updated when added to context
             direction: self.direction.clone(),
@@ -60,7 +68,7 @@ impl State {
             packet_type: bytes[0],
             packet_name: packet_name.to_owned(),
             packet: self.buf.clone(),
-            created_at: OffsetDateTime::now_local().unwrap(),
+            created_at: time,
         });
 
         // println!("{}", self.buf);
