@@ -1,10 +1,11 @@
 use std::borrow::Cow;
+use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 // Using nonstandard mutex to avoid poisoning API.
 use parking_lot::Mutex;
-use valence_nbt::compound;
+use valence_nbt::{compound, Compound};
 use valence_protocol::block::{BlockEntity, BlockState};
 use valence_protocol::packets::s2c::play::{
     BlockEntityData, BlockUpdate, ChunkDataAndUpdateLightEncode, UpdateSectionBlocksEncode,
@@ -50,6 +51,97 @@ struct Section {
     /// Contains modifications for the update section packet. (Or the regular
     /// block update packet if len == 1).
     section_updates: Vec<VarLong>,
+}
+
+/// Represents a block with an optional block entity
+#[derive(Clone, Debug)]
+pub struct Block {
+    state: BlockState,
+    /// Nbt of the block entity
+    nbt: Option<Compound>,
+}
+
+impl Block {
+    pub const AIR: Self = Self::new(BlockState::AIR);
+
+    pub const fn new(state: BlockState) -> Self {
+        Self {
+            state,
+            nbt: match state.block_entity_kind() {
+                Some(_) => Some(Compound::new()),
+                None => None,
+            },
+        }
+    }
+
+    /// # Panics
+    /// This function panics if the specified [`BlockState`] does not support a
+    /// block entity yet `nbt` is [`Option::Some`]
+    pub const fn with_nbt(state: BlockState, nbt: Option<Compound>) -> Self {
+        if state.block_entity_kind().is_none() {
+            assert!(nbt.is_none(), "blockstate does not support nbt");
+        }
+        Self { state, nbt }
+    }
+
+    pub const fn state(&self) -> BlockState {
+        self.state
+    }
+}
+
+impl From<BlockState> for Block {
+    fn from(value: BlockState) -> Self {
+        Self::new(value)
+    }
+}
+
+/// Immutable reference to a block in a chunk
+#[derive(Clone, Copy, Debug)]
+pub struct BlockRef<'a> {
+    state: BlockState,
+    nbt: Option<&'a Compound>,
+}
+
+impl<'a> BlockRef<'a> {
+    pub const fn state(&self) -> BlockState {
+        self.state
+    }
+
+    pub const fn nbt(&self) -> Option<&'a Compound> {
+        self.nbt
+    }
+}
+
+/// Mutable reference to a block in a chunk
+#[derive(Debug)]
+pub struct BlockMut<'a> {
+    state: BlockState,
+    /// Entry into the block entity map.
+    entry: Entry<'a, u32, BlockEntity>,
+    modified: &'a mut BTreeSet<u32>,
+}
+
+impl<'a> BlockMut<'a> {
+    pub const fn state(&self) -> BlockState {
+        self.state
+    }
+
+    pub fn nbt_mut(&mut self) -> Option<&mut Compound> {
+        match &mut self.entry {
+            Entry::Vacant(_) => None,
+            Entry::Occupied(oe) => {
+                self.modified.insert(*oe.key());
+                Some(&mut oe.get_mut().nbt)
+            }
+        }
+    }
+
+    pub fn set_nbt(&mut self, nbt: Compound) {
+        match &mut self.entry {
+            Entry::Vacant(_) => todo!(),
+            Entry::Occupied(entry) => entry.get_mut().nbt = nbt,
+        }
+    }
 }
 
 const SECTION_BLOCK_COUNT: usize = 16 * 16 * 16;
@@ -601,6 +693,130 @@ impl<const LOADED: bool> Chunk<LOADED> {
         if LOADED {
             self.modified_block_entities.insert(idx);
             self.cached_init_packets.get_mut().clear();
+        }
+    }
+
+    /// Sets the block at the provided offsets in the chunk. The previous
+    /// block at the position is returned.
+    ///
+    /// **Note**: The arguments to this function are offsets from the minimum
+    /// corner of the chunk in _chunk space_ rather than _world space_.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the offsets are outside the bounds of the chunk. `x` and `z`
+    /// must be less than 16 while `y` must be less than `section_count() * 16`.
+    #[track_caller]
+    pub fn set_block(&mut self, x: usize, y: usize, z: usize, block: impl Into<Block>) -> Block {
+        assert!(
+            x < 16 && y < self.section_count() * 16 && z < 16,
+            "chunk block offsets of ({x}, {y}, {z}) are out of bounds"
+        );
+
+        let Block { state, nbt } = block.into();
+        let old_state = {
+            let sect_y = y / 16;
+            let sect = &mut self.sections[sect_y];
+            let idx = x + z * 16 + y % 16 * 16 * 16;
+
+            let old_state = sect.block_states.set(idx, state);
+
+            if state != old_state {
+                // Update non-air count.
+                match (state.is_air(), old_state.is_air()) {
+                    (true, false) => sect.non_air_count -= 1,
+                    (false, true) => sect.non_air_count += 1,
+                    _ => {}
+                }
+
+                if LOADED && !self.refresh {
+                    let compact =
+                        (state.to_raw() as i64) << 12 | (x << 8 | z << 4 | (y % 16)) as i64;
+                    sect.section_updates.push(VarLong(compact));
+                }
+            }
+            old_state
+        };
+
+        let idx = (x + z * 16 + y * 16 * 16) as _;
+        let old_block_entity = match nbt.and_then(|nbt| {
+            state
+                .block_entity_kind()
+                .map(|kind| BlockEntity { kind, nbt })
+        }) {
+            Some(block_entity) => self.block_entities.insert(idx, block_entity),
+            None => self.block_entities.remove(&idx),
+        };
+        if LOADED && !self.refresh {
+            self.modified_block_entities.insert(idx);
+            self.cached_init_packets.get_mut().clear();
+        }
+
+        Block {
+            state: old_state,
+            nbt: old_block_entity.map(|block_entity| block_entity.nbt),
+        }
+    }
+
+    /// Gets a reference to the block at the provided offsets in the chunk.
+    ///
+    /// **Note**: The arguments to this function are offsets from the minimum
+    /// corner of the chunk in _chunk space_ rather than _world space_.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the offsets are outside the bounds of the chunk. `x` and `z`
+    /// must be less than 16 while `y` must be less than `section_count() * 16`.
+    #[track_caller]
+    pub fn block(&self, x: usize, y: usize, z: usize) -> BlockRef {
+        assert!(
+            x < 16 && y < self.section_count() * 16 && z < 16,
+            "chunk block offsets of ({x}, {y}, {z}) are out of bounds"
+        );
+
+        let state = self.sections[y / 16]
+            .block_states
+            .get(x + z * 16 + y % 16 * 16 * 16);
+
+        let idx = (x + z * 16 + y * 16 * 16) as _;
+
+        let nbt = self
+            .block_entities
+            .get(&idx)
+            .map(|block_entity| &block_entity.nbt);
+
+        BlockRef { state, nbt }
+    }
+
+    /// Gets a mutable reference to the block at the provided offsets in the
+    /// chunk.
+    ///
+    /// **Note**: The arguments to this function are offsets from the minimum
+    /// corner of the chunk in _chunk space_ rather than _world space_.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the offsets are outside the bounds of the chunk. `x` and `z`
+    /// must be less than 16 while `y` must be less than `section_count() * 16`.
+    #[track_caller]
+    pub fn block_mut(&mut self, x: usize, y: usize, z: usize) -> BlockMut {
+        assert!(
+            x < 16 && y < self.section_count() * 16 && z < 16,
+            "chunk block offsets of ({x}, {y}, {z}) are out of bounds"
+        );
+
+        let state = self.sections[y / 16]
+            .block_states
+            .get(x + z * 16 + y % 16 * 16 * 16);
+
+        let idx = (x + z * 16 + y * 16 * 16) as _;
+
+        let entry = self.block_entities.entry(idx);
+
+        BlockMut {
+            state,
+            entry,
+            modified: &mut self.modified_block_entities,
         }
     }
 

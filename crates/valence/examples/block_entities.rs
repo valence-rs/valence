@@ -1,8 +1,9 @@
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::{default_event_handler, ChatMessage, UseItemOnBlock};
+use valence::instance::Block;
 use valence::prelude::*;
 use valence_nbt::{compound, List};
-use valence_protocol::block::{BlockEntity, BlockEntityKind, PropName, PropValue};
+use valence_protocol::block::{PropName, PropValue};
 use valence_protocol::types::Hand;
 
 const FLOOR_Y: i32 = 64;
@@ -36,31 +37,24 @@ fn setup(world: &mut World) {
 
     for z in 0..16 {
         for x in 0..8 {
-            instance.set_block_state([x, FLOOR_Y, z], BlockState::WHITE_CONCRETE);
+            instance.set_block([x, FLOOR_Y, z], BlockState::WHITE_CONCRETE);
         }
     }
 
-    instance.set_block_state(
+    instance.set_block(
         [3, FLOOR_Y + 1, 1],
         BlockState::CHEST.set(PropName::Facing, PropValue::West),
     );
-
-    instance.set_block_state(
+    instance.set_block(
         SIGN_POS,
-        BlockState::OAK_SIGN.set(PropName::Rotation, PropValue::_4),
-    );
-
-    instance.set_block_entity(
-        SIGN_POS,
-        BlockEntity {
-            kind: BlockEntityKind::Sign,
-            nbt: compound! {
+        Block::with_nbt(
+            BlockState::OAK_SIGN.set(PropName::Rotation, PropValue::_4),
+            Some(compound! {
                 "Text1" => "Type in chat:".color(Color::RED),
-            },
-        },
+            }),
+        ),
     );
-
-    instance.set_block_state(
+    instance.set_block(
         SKULL_POS,
         BlockState::PLAYER_HEAD.set(PropName::Rotation, PropValue::_12),
     );
@@ -95,12 +89,10 @@ fn event_handler(
             continue
         };
 
-        instance.edit_block_entity(SIGN_POS, |sign| {
-            sign.nbt
-                .insert("Text2", message.to_string().color(Color::DARK_GREEN));
-            sign.nbt
-                .insert("Text3", format!("~{}", client.username()).italic());
-        });
+        let mut sign = instance.block_mut(SIGN_POS).unwrap();
+        let nbt = sign.nbt_mut().unwrap();
+        nbt.insert("Text2", message.to_string().color(Color::DARK_GREEN));
+        nbt.insert("Text3", format!("~{}", client.username()).italic());
     }
 
     for UseItemOnBlock {
@@ -119,22 +111,18 @@ fn event_handler(
                 continue
             };
 
-            instance.set_block_entity(
-                SKULL_POS,
-                BlockEntity {
-                    kind: BlockEntityKind::Skull,
-                    nbt: compound! {
-                        "SkullOwner" => compound! {
-                            "Id" => client.uuid(),
-                            "Properties" => compound! {
-                                "textures" => List::Compound(vec![compound! {
-                                    "Value" => textures.value.clone(),
-                                }])
-                            }
-                        }
-                    },
-                },
-            );
+            let mut skull = instance.block_mut(SKULL_POS).unwrap();
+            let nbt = skull.nbt_mut().unwrap();
+            *nbt = compound! {
+                "SkullOwner" => compound! {
+                    "Id" => client.uuid(),
+                    "Properties" => compound! {
+                        "textures" => List::Compound(vec![compound! {
+                            "Value" => textures.value.clone(),
+                        }])
+                    }
+                }
+            };
         }
     }
 }

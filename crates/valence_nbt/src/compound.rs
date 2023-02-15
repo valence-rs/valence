@@ -41,11 +41,11 @@ impl fmt::Debug for Compound {
 }
 
 impl Compound {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { map: Map::new() }
     }
 
-    pub fn with_capacity(cap: usize) -> Self {
+    pub const fn with_capacity(cap: usize) -> Self {
         Self {
             #[cfg(not(feature = "preserve_order"))]
             map: {

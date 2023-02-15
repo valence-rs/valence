@@ -52,7 +52,7 @@ fn setup(world: &mut World) {
 
     for z in BOARD_MIN_Z..=BOARD_MAX_Z {
         for x in BOARD_MIN_X..=BOARD_MAX_X {
-            instance.set_block_state([x, BOARD_Y, z], BlockState::DIRT);
+            instance.set_block([x, BOARD_Y, z], BlockState::DIRT);
         }
     }
 
@@ -173,7 +173,7 @@ fn update_board(
                 BlockState::DIRT
             };
 
-            instance.set_block_state([x, BOARD_Y, z], block);
+            instance.set_block([x, BOARD_Y, z], block);
         }
     }
 }
