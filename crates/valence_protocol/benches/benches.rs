@@ -10,14 +10,14 @@ use valence_protocol::packets::s2c::play::{
 use valence_protocol::text::Color;
 use valence_protocol::{
     encode_packet, encode_packet_compressed, ByteAngle, Decode, Encode, ItemKind,
-    LengthPrefixedArray, PacketDecoder, PacketEncoder, TextFormat, VarInt,
+    LengthPrefixedArray, PacketDecoder, PacketEncoder, TextFormat, VarInt, VarLong,
 };
 
 criterion_group! {
     name = benches;
     config = Criterion::default()
         .measurement_time(Duration::from_secs(5)).confidence_level(0.99);
-    targets = blocks, packets, var_int, decode_array
+    targets = blocks, packets, var_int, var_long, decode_array
 }
 criterion_main!(benches);
 
@@ -353,6 +353,36 @@ fn var_int(c: &mut Criterion) {
             |buf| {
                 let mut r = black_box(buf.as_slice());
                 let _ = black_box(VarInt::decode(&mut r));
+            },
+        )
+    });
+}
+
+fn var_long(c: &mut Criterion) {
+    let mut rng = rand::thread_rng();
+
+    c.bench_function("VarLong::encode", |b| {
+        b.iter_with_setup(
+            || rng.gen(),
+            |i| {
+                let i: i64 = black_box(i);
+
+                let mut buf = [0; VarLong::MAX_SIZE];
+                let _ = black_box(VarLong(i).encode(buf.as_mut_slice()));
+            },
+        );
+    });
+
+    c.bench_function("VarLong::decode", |b| {
+        b.iter_with_setup(
+            || {
+                let mut buf = [0; VarLong::MAX_SIZE];
+                VarLong(rng.gen()).encode(buf.as_mut_slice()).unwrap();
+                buf
+            },
+            |buf| {
+                let mut r = black_box(buf.as_slice());
+                let _ = black_box(VarLong::decode(&mut r));
             },
         )
     });

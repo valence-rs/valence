@@ -1,7 +1,7 @@
 use std::io::Write;
 
 use anyhow::bail;
-use byteorder::{ReadBytesExt, WriteBytesExt};
+use byteorder::ReadBytesExt;
 
 use crate::{Decode, Encode, Result};
 
@@ -26,7 +26,64 @@ impl VarLong {
 }
 
 impl Encode for VarLong {
+    // Adapted from VarInt-Simd encode
+    // https://github.com/as-com/varint-simd/blob/0f468783da8e181929b01b9c6e9f741c1fe09825/src/encode/mod.rs#L71
+    #[cfg(all(
+        any(target_arch = "x86", target_arch = "x86_64"),
+        not(target_os = "macos")
+    ))]
     fn encode(&self, mut w: impl Write) -> Result<()> {
+        #[cfg(target_arch = "x86")]
+        use std::arch::x86::*;
+        #[cfg(target_arch = "x86_64")]
+        use std::arch::x86_64::*;
+
+        // Break the number into 7-bit parts and spread them out into a vector
+        let mut res = [0u64; 2];
+        {
+            let x = self.0 as u64;
+
+            res[0] = unsafe { _pdep_u64(x, 0x7f7f7f7f7f7f7f7f) };
+            res[1] = unsafe { _pdep_u64(x >> 56, 0x000000000000017f) };
+        }
+        let stage1: __m128i = unsafe { std::mem::transmute(res) };
+
+        // Create a mask for where there exist values
+        // This signed comparison works because all MSBs should be cleared at this point
+        // Also handle the special case when num == 0
+        let minimum =
+            unsafe { _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xffu8 as i8) };
+        let exists = unsafe { _mm_or_si128(_mm_cmpgt_epi8(stage1, _mm_setzero_si128()), minimum) };
+        let bits = unsafe { _mm_movemask_epi8(exists) };
+
+        // Count the number of bytes used
+        let bytes_needed = 32 - bits.leading_zeros() as u8; // lzcnt on supported CPUs
+
+        // Fill that many bytes into a vector
+        let ascend = unsafe { _mm_setr_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15) };
+        let mask = unsafe { _mm_cmplt_epi8(ascend, _mm_set1_epi8(bytes_needed as i8)) };
+
+        // Shift it down 1 byte so the last MSB is the only one set, and make sure only
+        // the MSB is set
+        let shift = unsafe { _mm_bsrli_si128(mask, 1) };
+        let msbmask = unsafe { _mm_and_si128(shift, _mm_set1_epi8(128u8 as i8)) };
+
+        // Merge the MSB bits into the vector
+        let merged = unsafe { _mm_or_si128(stage1, msbmask) };
+        let bytes = unsafe { std::mem::transmute::<__m128i, [u8; 16]>(merged) };
+
+        w.write_all(unsafe { bytes.get_unchecked(..bytes_needed as usize) })?;
+
+        Ok(())
+    }
+
+    #[cfg(any(
+        not(any(target_arch = "x86", target_arch = "x86_64")),
+        target_os = "macos"
+    ))]
+    fn encode(&self, mut w: impl Write) -> Result<()> {
+        use byteorder::WriteBytesExt;
+
         let mut val = self.0 as u64;
         loop {
             if val & 0b1111111111111111111111111111111111111111111111111111111110000000 == 0 {
