@@ -14,3 +14,19 @@ impl Sound {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sound_to_soundid() {
+        assert_eq!(
+            Sound::BlockBellUse.to_id(),
+            SoundId::Direct {
+                id: Ident::new("block.bell.use").unwrap(),
+                range: None
+            },
+        );
+    }
+}
