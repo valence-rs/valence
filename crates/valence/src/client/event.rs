@@ -924,6 +924,7 @@ fn handle_one_packet(
                 );
             } else {
                 client.got_keepalive = true;
+                client.ping = client.keepalive_sent_time.elapsed().as_millis() as i32;
             }
         }
         C2sPlayPacket::LockDifficulty(p) => {

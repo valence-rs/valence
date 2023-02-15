@@ -54,7 +54,7 @@ pub struct Biome {
 
 impl Biome {
     pub(crate) fn to_biome_registry_item(&self, id: i32) -> Compound {
-        let mut reg = compound! {
+        compound! {
             "name" => self.name.clone(),
             "id" => id,
             "element" => compound! {
@@ -68,7 +68,6 @@ impl Biome {
                 "scale" => 0.05_f32,
                 "downfall" => 0.4_f32,
                 "category" => "none",
-                // "temperature_modifier" =>
                 "effects" => {
                     let mut eff = compound! {
                         "sky_color" => self.sky_color as i32,
@@ -120,24 +119,22 @@ impl Biome {
                         });
                     }
 
+                    if let Some(p) = &self.particle {
+                        eff.insert(
+                            "particle",
+                            compound! {
+                                "probability" => p.probability,
+                                "options" => compound! {
+                                    "type" => p.kind.clone(),
+                                }
+                            },
+                        );
+                    }
+
                     eff
                 },
             }
-        };
-
-        if let Some(p) = &self.particle {
-            reg.insert(
-                "particle",
-                compound! {
-                    "probability" => p.probability,
-                    "options" => compound! {
-                        "type" => p.kind.clone(),
-                    }
-                },
-            );
         }
-
-        reg
     }
 }
 
