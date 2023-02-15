@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::net::IpAddr;
 use std::num::Wrapping;
+use std::time::Instant;
 
 use anyhow::{bail, Context};
 use bevy_ecs::prelude::*;
@@ -69,6 +70,8 @@ pub struct Client {
     entities_to_despawn: Vec<VarInt>,
     got_keepalive: bool,
     last_keepalive_id: u64,
+    keepalive_sent_time: Instant,
+    ping: i32,
     /// Counts up as teleports are made.
     teleport_id_counter: u32,
     /// The number of pending client teleports that have yet to receive a
@@ -142,6 +145,8 @@ impl Client {
             has_respawn_screen: false,
             got_keepalive: true,
             last_keepalive_id: 0,
+            keepalive_sent_time: Instant::now(),
+            ping: -1,
             teleport_id_counter: 0,
             pending_teleports: 0,
             cursor_item: None,
@@ -420,6 +425,10 @@ impl Client {
             entity_id: 0,
             entity_status: status as u8,
         });
+    }
+
+    pub fn ping(&self) -> i32 {
+        self.ping
     }
 
     /// The item that the client thinks it's holding under the mouse
@@ -717,8 +726,10 @@ fn update_one_client(
         if client.got_keepalive {
             let id = rand::random();
             client.enc.write_packet(&KeepAliveS2c { id });
-            client.last_keepalive_id = id;
+
             client.got_keepalive = false;
+            client.last_keepalive_id = id;
+            client.keepalive_sent_time = Instant::now();
         } else {
             bail!("timed out (no keepalive response)");
         }
