@@ -9,19 +9,19 @@ use bytes::BytesMut;
 use glam::{DVec3, Vec3};
 use tracing::warn;
 use uuid::Uuid;
-use valence_protocol::{packets::s2c::{particle::Particle, play::SoundEffect}, Sound, types::SoundCategory};
+use valence_protocol::packets::s2c::particle::Particle;
 use valence_protocol::packets::s2c::play::{
     AcknowledgeBlockChange, CombatDeath, DisconnectPlay, EntityEvent, GameEvent, KeepAliveS2c,
     LoginPlay, ParticleS2c, PluginMessageS2c, RemoveEntitiesEncode, ResourcePackS2c, Respawn,
     SetActionBarText, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata,
     SetEntityVelocity, SetRenderDistance, SetSubtitleText, SetTitleAnimationTimes, SetTitleText,
-    SynchronizePlayerPosition, SystemChatMessage, UnloadChunk,
+    SoundEffect, SynchronizePlayerPosition, SystemChatMessage, UnloadChunk,
 };
 use valence_protocol::types::{
-    GameEventKind, GameMode, GlobalPos, Property, SyncPlayerPosLookFlags,
+    GameEventKind, GameMode, GlobalPos, Property, SoundCategory, SyncPlayerPosLookFlags,
 };
 use valence_protocol::{
-    BlockPos, EncodePacket, Ident, ItemStack, PacketDecoder, PacketEncoder, RawBytes, Text,
+    BlockPos, EncodePacket, Ident, ItemStack, PacketDecoder, PacketEncoder, RawBytes, Sound, Text,
     Username, VarInt,
 };
 
@@ -588,16 +588,14 @@ impl Client {
     ) {
         let position = position.into();
 
-        self.write_packet(
-            &SoundEffect {
-                id: sound.to_id(),
-                category,
-                position: (position * 8.0).as_ivec3().into(),
-                volume,
-                pitch,
-                seed: rand::random(),
-            }
-        );
+        self.write_packet(&SoundEffect {
+            id: sound.to_id(),
+            category,
+            position: (position * 8.0).as_ivec3().into(),
+            volume,
+            pitch,
+            seed: rand::random(),
+        });
     }
 }
 

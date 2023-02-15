@@ -12,7 +12,8 @@ pub struct Sound {
 }
 
 pub fn build() -> anyhow::Result<TokenStream> {
-    let sounds = serde_json::from_str::<Vec<Sound>>(include_str!("../../../extracted/sounds.json"))?;
+    let sounds =
+        serde_json::from_str::<Vec<Sound>>(include_str!("../../../extracted/sounds.json"))?;
 
     let sound_count = sounds.len();
 

@@ -6,7 +6,9 @@ use rand::Rng;
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::default_event_handler;
 use valence::prelude::*;
-use valence_protocol::{packets::s2c::play::SetTitleAnimationTimes, types::SoundCategory, Sound};
+use valence_protocol::packets::s2c::play::SetTitleAnimationTimes;
+use valence_protocol::types::SoundCategory;
+use valence_protocol::Sound;
 
 const START_POS: BlockPos = BlockPos::new(0, 100, 0);
 const VIEW_DIST: u8 = 10;

@@ -7,10 +7,11 @@ pub use chunk_entry::*;
 use glam::{DVec3, Vec3};
 use num::integer::div_ceil;
 use rustc_hash::FxHashMap;
-use valence_protocol::{block::BlockState, types::SoundCategory};
+use valence_protocol::block::BlockState;
 use valence_protocol::packets::s2c::particle::{Particle, ParticleS2c};
 use valence_protocol::packets::s2c::play::{SetActionBarText, SoundEffect};
-use valence_protocol::{BlockPos, EncodePacket, LengthPrefixedArray, Text, Sound};
+use valence_protocol::types::SoundCategory;
+use valence_protocol::{BlockPos, EncodePacket, LengthPrefixedArray, Sound, Text};
 
 use crate::dimension::DimensionId;
 use crate::entity::McEntity;
