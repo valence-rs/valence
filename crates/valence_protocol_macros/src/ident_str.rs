@@ -36,6 +36,6 @@ pub fn ident_str(item: TokenStream) -> Result<TokenStream> {
     };
 
     Ok(quote! {
-        Ident::new_unchecked(#ident, #path_start)
+        ::valence_protocol::ident::Ident::new_unchecked(#ident, #path_start)
     })
 }
