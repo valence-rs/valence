@@ -15,13 +15,13 @@ use valence_protocol::packets::s2c::play::{
     LoginPlay, ParticleS2c, PluginMessageS2c, RemoveEntitiesEncode, ResourcePackS2c, Respawn,
     SetActionBarText, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata,
     SetEntityVelocity, SetRenderDistance, SetSubtitleText, SetTitleAnimationTimes, SetTitleText,
-    SynchronizePlayerPosition, SystemChatMessage, UnloadChunk,
+    SoundEffect, SynchronizePlayerPosition, SystemChatMessage, UnloadChunk,
 };
 use valence_protocol::types::{
-    GameEventKind, GameMode, GlobalPos, Property, SyncPlayerPosLookFlags,
+    GameEventKind, GameMode, GlobalPos, Property, SoundCategory, SyncPlayerPosLookFlags,
 };
 use valence_protocol::{
-    BlockPos, EncodePacket, Ident, ItemStack, PacketDecoder, PacketEncoder, RawBytes, Text,
+    BlockPos, EncodePacket, Ident, ItemStack, PacketDecoder, PacketEncoder, RawBytes, Sound, Text,
     Username, VarInt,
 };
 
@@ -570,6 +570,32 @@ impl Client {
             max_speed,
             count,
         })
+    }
+
+    /// Plays a sound effect at the given position, only for this client.
+    ///
+    /// If you want to play a sound effect to all players, use
+    /// [`Instance::play_sound`]
+    ///
+    /// [`Instance::play_sound`]: crate::instance::Instance::play_sound
+    pub fn play_sound(
+        &mut self,
+        sound: Sound,
+        category: SoundCategory,
+        position: impl Into<DVec3>,
+        volume: f32,
+        pitch: f32,
+    ) {
+        let position = position.into();
+
+        self.write_packet(&SoundEffect {
+            id: sound.to_id(),
+            category,
+            position: (position * 8.0).as_ivec3().into(),
+            volume,
+            pitch,
+            seed: rand::random(),
+        });
     }
 }
 
