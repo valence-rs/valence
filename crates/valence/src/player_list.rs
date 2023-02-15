@@ -62,7 +62,7 @@ impl PlayerList {
                     .with_username(client.username())
                     .with_properties(client.properties())
                     .with_game_mode(client.game_mode())
-                    .with_ping(-1); // TODO
+                    .with_ping(client.ping());
 
                 player_list.insert(client.uuid(), entry);
             }
