@@ -7,10 +7,10 @@ pub use chunk_entry::*;
 use glam::{DVec3, Vec3};
 use num::integer::div_ceil;
 use rustc_hash::FxHashMap;
-use valence_protocol::block::BlockState;
+use valence_protocol::{block::BlockState, types::SoundCategory};
 use valence_protocol::packets::s2c::particle::{Particle, ParticleS2c};
-use valence_protocol::packets::s2c::play::SetActionBarText;
-use valence_protocol::{BlockPos, EncodePacket, LengthPrefixedArray, Text};
+use valence_protocol::packets::s2c::play::{SetActionBarText, SoundEffect};
+use valence_protocol::{BlockPos, EncodePacket, LengthPrefixedArray, Text, Sound};
 
 use crate::dimension::DimensionId;
 use crate::entity::McEntity;
@@ -358,6 +358,32 @@ impl Instance {
                 offset: offset.into().into(),
                 max_speed,
                 count,
+            },
+            ChunkPos::from_dvec3(position),
+        );
+    }
+
+    /// Plays a sound effect at the given position in the world. The sound
+    /// effect is audible to all players in the instance with the
+    /// appropriate chunk in view.
+    pub fn play_sound(
+        &mut self,
+        sound: Sound,
+        category: SoundCategory,
+        position: impl Into<DVec3>,
+        volume: f32,
+        pitch: f32,
+    ) {
+        let position = position.into();
+
+        self.write_packet_at(
+            &SoundEffect {
+                id: sound.to_id(),
+                category,
+                position: (position * 8.0).as_ivec3().into(),
+                volume,
+                pitch,
+                seed: rand::random(),
             },
             ChunkPos::from_dvec3(position),
         );

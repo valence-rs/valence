@@ -44,6 +44,7 @@ public class Main implements ModInitializer {
                new EntityData(),
                new Items(),
                new Packets(),
+               new Sounds(),
                new TranslationKeys(),
         };
 

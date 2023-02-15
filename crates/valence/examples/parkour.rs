@@ -6,7 +6,7 @@ use rand::Rng;
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::default_event_handler;
 use valence::prelude::*;
-use valence_protocol::packets::s2c::play::SetTitleAnimationTimes;
+use valence_protocol::{packets::s2c::play::SetTitleAnimationTimes, types::SoundCategory, Sound};
 
 const START_POS: BlockPos = BlockPos::new(0, 100, 0);
 const VIEW_DIST: u8 = 10;
@@ -130,20 +130,19 @@ fn manage_blocks(mut clients: Query<(&mut Client, &mut GameState, &mut Instance)
                     state.combo = 0
                 }
 
-                // let pitch = 0.9 + ((state.combo as f32) - 1.0) * 0.05;
-
                 for _ in 0..index {
                     generate_next_block(&mut state, &mut instance, true)
                 }
 
-                // TODO: add sounds again.
-                // client.play_sound(
-                //     Ident::new("minecraft:block.note_block.bass").unwrap(),
-                //     SoundCategory::Master,
-                //     client.position(),
-                //     1f32,
-                //     pitch,
-                // );
+                let pitch = 0.9 + ((state.combo as f32) - 1.0) * 0.05;
+                let pos = client.position();
+                client.play_sound(
+                    Sound::BlockNoteBlockBass,
+                    SoundCategory::Master,
+                    pos,
+                    1.0,
+                    pitch,
+                );
 
                 client.set_title(
                     "",

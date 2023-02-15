@@ -8,6 +8,7 @@ use proc_macro2::{Ident, Span};
 mod block;
 mod enchant;
 mod item;
+mod sound;
 mod translation_key;
 
 pub fn main() -> anyhow::Result<()> {
@@ -17,6 +18,7 @@ pub fn main() -> anyhow::Result<()> {
         (block::build as fn() -> _, "block.rs"),
         (enchant::build, "enchant.rs"),
         (item::build, "item.rs"),
+        (sound::build, "sound.rs"),
         (translation_key::build, "translation_key.rs"),
     ];
 

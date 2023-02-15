@@ -7,7 +7,7 @@ use bytes::BytesMut;
 use glam::{DVec3, Vec3};
 use tracing::warn;
 use uuid::Uuid;
-use valence_protocol::packets::s2c::particle::Particle;
+use valence_protocol::{packets::s2c::{particle::Particle, play::SoundEffect}, Sound, types::SoundCategory};
 use valence_protocol::packets::s2c::play::{
     AcknowledgeBlockChange, CombatDeath, DisconnectPlay, EntityEvent, GameEvent, KeepAliveS2c,
     LoginPlayOwned, ParticleS2c, PluginMessageS2c, RemoveEntitiesEncode, ResourcePackS2c,
@@ -558,6 +558,34 @@ impl Client {
             max_speed,
             count,
         })
+    }
+
+    /// Plays a sound effect at the given position, only for this client.
+    ///
+    /// If you want to play a sound effect to all players, use
+    /// [`Instance::play_sound`]
+    ///
+    /// [`Instance::play_sound`]: crate::instance::Instance::play_sound
+    pub fn play_sound(
+        &mut self,
+        sound: Sound,
+        category: SoundCategory,
+        position: impl Into<DVec3>,
+        volume: f32,
+        pitch: f32,
+    ) {
+        let position = position.into();
+
+        self.write_packet(
+            &SoundEffect {
+                id: sound.to_id(),
+                category,
+                position: (position * 8.0).as_ivec3().into(),
+                volume,
+                pitch,
+                seed: rand::random(),
+            }
+        );
     }
 }
 
