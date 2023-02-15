@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::net::IpAddr;
 use std::num::Wrapping;
+use std::time::Instant;
 
 use anyhow::{bail, Context};
 use bevy_ecs::prelude::*;
@@ -14,13 +15,13 @@ use valence_protocol::packets::s2c::play::{
     LoginPlay, ParticleS2c, PluginMessageS2c, RemoveEntitiesEncode, ResourcePackS2c, Respawn,
     SetActionBarText, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata,
     SetEntityVelocity, SetRenderDistance, SetSubtitleText, SetTitleAnimationTimes, SetTitleText,
-    SynchronizePlayerPosition, SystemChatMessage, UnloadChunk,
+    SoundEffect, SynchronizePlayerPosition, SystemChatMessage, UnloadChunk,
 };
 use valence_protocol::types::{
-    GameEventKind, GameMode, GlobalPos, Property, SyncPlayerPosLookFlags,
+    GameEventKind, GameMode, GlobalPos, Property, SoundCategory, SyncPlayerPosLookFlags,
 };
 use valence_protocol::{
-    BlockPos, EncodePacket, Ident, ItemStack, PacketDecoder, PacketEncoder, RawBytes, Text,
+    BlockPos, EncodePacket, Ident, ItemStack, PacketDecoder, PacketEncoder, RawBytes, Sound, Text,
     Username, VarInt,
 };
 
@@ -69,6 +70,8 @@ pub struct Client {
     entities_to_despawn: Vec<VarInt>,
     got_keepalive: bool,
     last_keepalive_id: u64,
+    keepalive_sent_time: Instant,
+    ping: i32,
     /// Counts up as teleports are made.
     teleport_id_counter: u32,
     /// The number of pending client teleports that have yet to receive a
@@ -142,6 +145,8 @@ impl Client {
             has_respawn_screen: false,
             got_keepalive: true,
             last_keepalive_id: 0,
+            keepalive_sent_time: Instant::now(),
+            ping: -1,
             teleport_id_counter: 0,
             pending_teleports: 0,
             cursor_item: None,
@@ -422,6 +427,10 @@ impl Client {
         });
     }
 
+    pub fn ping(&self) -> i32 {
+        self.ping
+    }
+
     /// The item that the client thinks it's holding under the mouse
     /// cursor. Only relevant when the client has an open inventory.
     pub fn cursor_item(&self) -> Option<&ItemStack> {
@@ -561,6 +570,32 @@ impl Client {
             max_speed,
             count,
         })
+    }
+
+    /// Plays a sound effect at the given position, only for this client.
+    ///
+    /// If you want to play a sound effect to all players, use
+    /// [`Instance::play_sound`]
+    ///
+    /// [`Instance::play_sound`]: crate::instance::Instance::play_sound
+    pub fn play_sound(
+        &mut self,
+        sound: Sound,
+        category: SoundCategory,
+        position: impl Into<DVec3>,
+        volume: f32,
+        pitch: f32,
+    ) {
+        let position = position.into();
+
+        self.write_packet(&SoundEffect {
+            id: sound.to_id(),
+            category,
+            position: (position * 8.0).as_ivec3().into(),
+            volume,
+            pitch,
+            seed: rand::random(),
+        });
     }
 }
 
@@ -717,8 +752,10 @@ fn update_one_client(
         if client.got_keepalive {
             let id = rand::random();
             client.enc.write_packet(&KeepAliveS2c { id });
-            client.last_keepalive_id = id;
+
             client.got_keepalive = false;
+            client.last_keepalive_id = id;
+            client.keepalive_sent_time = Instant::now();
         } else {
             bail!("timed out (no keepalive response)");
         }
