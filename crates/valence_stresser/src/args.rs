@@ -5,13 +5,13 @@ use clap::{arg, command, Parser};
 pub(crate) struct StresserArgs {
     /// IPv4/IPv6/DNS address of a server.
     #[arg(short = 't', long = "target")]
-    target_host: String,
+    pub target_host: String,
 
     /// Port of the target host.
     #[arg(short = 'p', long = "port")]
-    target_port: u16,
+    pub target_port: u16,
 
     /// Number of connections to the target.
     #[arg(short = 'c', long = "count")]
-    connections_count: usize,
+    pub connections_count: usize,
 }
