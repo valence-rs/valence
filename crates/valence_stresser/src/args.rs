@@ -9,6 +9,7 @@ pub(crate) struct StresserArgs {
 
     /// Port of the target host.
     #[arg(short = 'p', long = "port")]
+    #[arg(default_value_t = 25565)]
     pub target_port: u16,
 
     /// Number of connections to the target.
