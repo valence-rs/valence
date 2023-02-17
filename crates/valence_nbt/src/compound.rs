@@ -45,7 +45,7 @@ impl Compound {
         Self { map: Map::new() }
     }
 
-    pub const fn with_capacity(cap: usize) -> Self {
+    pub fn with_capacity(cap: usize) -> Self {
         Self {
             #[cfg(not(feature = "preserve_order"))]
             map: {
