@@ -8,7 +8,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  CARGO_UNSTABLE_SPARSE_REGISTRY: 'true'
 
 jobs:
   build:
@@ -21,7 +20,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - uses: dtolnay/rust-toolchain@nightly
+    - uses: dtolnay/rust-toolchain@stable
       with:
         components: clippy, rustfmt
 
@@ -29,10 +28,10 @@ jobs:
     - name: Validate formatting
       run: cargo fmt --all -- --check
     - name: Validate documentation
-      run: cargo +stable doc --workspace --no-deps --all-features --document-private-items
+      run: cargo doc --workspace --no-deps --all-features --document-private-items
     - name: Run clippy lints
-      run: cargo +stable clippy --workspace --no-deps --all-features --all-targets -- -D warnings
+      run: cargo clippy --workspace --no-deps --all-features --all-targets -- -D warnings
     - name: Run tests
-      run: cargo +stable test --workspace --all-features --all-targets
+      run: cargo test --workspace --all-features --all-targets
     - name: Run valence_nbt tests without preserve_order feature
-      run: cargo +stable test -p valence_nbt --all-targets
+      run: cargo test -p valence_nbt --all-targets
