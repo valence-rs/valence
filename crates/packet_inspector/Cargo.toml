@@ -7,6 +7,7 @@ description = "A simple Minecraft proxy for inspecting packets."
 [dependencies]
 anyhow = "1"
 clap = { version = "4.0.30", features = ["derive"] }
+owo-colors = "3.5.0"
 regex = "1.6.0"
 tokio = { version = "1", features = ["full"] }
 tracing-subscriber = "0.3.16"

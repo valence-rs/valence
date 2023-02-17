@@ -44,7 +44,7 @@ pub async fn do_accept_loop(shared: SharedServer, callbacks: Arc<impl AsyncCallb
     let listener = match TcpListener::bind(shared.0.address).await {
         Ok(listener) => listener,
         Err(e) => {
-            shared.shutdown(Err(e).context("failed to start TCP listener"));
+            error!("failed to start TCP listener: {e}");
             return;
         }
     };

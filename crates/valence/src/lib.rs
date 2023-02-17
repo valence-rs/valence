@@ -94,8 +94,6 @@ pub mod prelude {
 #[derive(Copy, Clone, Component)]
 pub struct Despawned;
 
-const LIBRARY_NAMESPACE: &str = "valence";
-
 /// Let's pretend that [`NULL_ENTITY`] was created by spawning an entity,
 /// immediately despawning it, and then stealing its [`Entity`] ID. The user
 /// doesn't need to know about this.

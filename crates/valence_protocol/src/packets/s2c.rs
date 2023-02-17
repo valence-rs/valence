@@ -463,7 +463,7 @@ pub mod play {
         /// Same values as `game_mode` but with -1 to indicate no previous.
         pub previous_game_mode: i8,
         pub dimension_names: Vec<Ident<&'a str>>,
-        pub registry_codec: Compound,
+        pub registry_codec: Cow<'a, Compound>,
         pub dimension_type_name: Ident<&'a str>,
         pub dimension_name: Ident<&'a str>,
         pub hashed_seed: i64,
@@ -475,29 +475,6 @@ pub mod play {
         pub is_debug: bool,
         pub is_flat: bool,
         pub last_death_location: Option<GlobalPos<'a>>,
-    }
-
-    // TODO: remove this.
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x24]
-    pub struct LoginPlayOwned {
-        pub entity_id: i32,
-        pub is_hardcore: bool,
-        pub game_mode: GameMode,
-        pub previous_game_mode: i8,
-        pub dimension_names: Vec<Ident<String>>,
-        pub registry_codec: Compound,
-        pub dimension_type_name: Ident<String>,
-        pub dimension_name: Ident<String>,
-        pub hashed_seed: i64,
-        pub max_players: VarInt,
-        pub view_distance: VarInt,
-        pub simulation_distance: VarInt,
-        pub reduced_debug_info: bool,
-        pub enable_respawn_screen: bool,
-        pub is_debug: bool,
-        pub is_flat: bool,
-        pub last_death_location: Option<(Ident<String>, BlockPos)>,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -674,21 +651,6 @@ pub mod play {
         pub is_flat: bool,
         pub copy_metadata: bool,
         pub last_death_location: Option<GlobalPos<'a>>,
-    }
-
-    // TODO: remove
-    #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x3d]
-    pub struct RespawnOwned {
-        pub dimension_type_name: Ident<String>,
-        pub dimension_name: Ident<String>,
-        pub hashed_seed: u64,
-        pub game_mode: GameMode,
-        pub previous_game_mode: i8,
-        pub is_debug: bool,
-        pub is_flat: bool,
-        pub copy_metadata: bool,
-        pub last_death_location: Option<(Ident<String>, BlockPos)>,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
