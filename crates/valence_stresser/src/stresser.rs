@@ -82,6 +82,8 @@ pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
         }
     }
 
+    println!("{connection_name} logined");
+
     loop {
         let mut read_buf = [0 as u8; BUFFER_SIZE];
         let bytes_read = conn.read(&mut read_buf).unwrap();
@@ -101,6 +103,8 @@ pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
                         enc.clear();
                         _ = enc.append_packet(&KeepAliveC2s { id: p.id });
                         _ = conn.write_all(&enc.take());
+
+                        println!("{connection_name} keep alive")
                     }
 
                     S2cPlayPacket::SynchronizePlayerPosition(p) => {
