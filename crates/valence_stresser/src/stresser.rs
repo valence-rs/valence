@@ -57,8 +57,9 @@ pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
 
     enc.clear();
 
+    let mut read_buf = [0_u8; BUFFER_SIZE];
+
     loop {
-        let mut read_buf = [0_u8; BUFFER_SIZE];
         let bytes_read = conn.read(&mut read_buf).unwrap();
         let bytes = &mut read_buf[..bytes_read];
 
@@ -95,7 +96,6 @@ pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
     println!("{connection_name} logined");
 
     loop {
-        let mut read_buf = [0_u8; BUFFER_SIZE];
         let bytes_read = conn.read(&mut read_buf).unwrap();
         let bytes = &mut read_buf[..bytes_read];
 
