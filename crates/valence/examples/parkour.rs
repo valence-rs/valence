@@ -189,11 +189,11 @@ fn reset(client: &mut Client, state: &mut GameState, instance: &mut Instance) {
     state.combo = 0;
 
     for block in &state.blocks {
-        instance.set_block_state(*block, BlockState::AIR);
+        instance.set_block(*block, BlockState::AIR);
     }
     state.blocks.clear();
     state.blocks.push_back(START_POS);
-    instance.set_block_state(START_POS, BlockState::STONE);
+    instance.set_block(START_POS, BlockState::STONE);
 
     for _ in 0..10 {
         generate_next_block(state, instance, false);
@@ -212,7 +212,7 @@ fn reset(client: &mut Client, state: &mut GameState, instance: &mut Instance) {
 fn generate_next_block(state: &mut GameState, instance: &mut Instance, in_game: bool) {
     if in_game {
         let removed_block = state.blocks.pop_front().unwrap();
-        instance.set_block_state(removed_block, BlockState::AIR);
+        instance.set_block(removed_block, BlockState::AIR);
 
         state.score += 1
     }
@@ -228,7 +228,7 @@ fn generate_next_block(state: &mut GameState, instance: &mut Instance, in_game: 
 
     let mut rng = rand::thread_rng();
 
-    instance.set_block_state(block_pos, *BLOCK_TYPES.choose(&mut rng).unwrap());
+    instance.set_block(block_pos, *BLOCK_TYPES.choose(&mut rng).unwrap());
     state.blocks.push_back(block_pos);
 
     // Combo System

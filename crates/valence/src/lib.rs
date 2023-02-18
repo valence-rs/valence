@@ -61,7 +61,7 @@ pub mod prelude {
         EntityAnimation, EntityKind, EntityStatus, McEntity, McEntityManager, TrackedData,
     };
     pub use glam::DVec3;
-    pub use instance::{Chunk, Instance};
+    pub use instance::{Block, BlockMut, BlockRef, Chunk, Instance};
     pub use inventory::{Inventory, InventoryKind, OpenInventory};
     pub use player_list::{PlayerList, PlayerListEntry};
     pub use protocol::block::{BlockState, PropName, PropValue};

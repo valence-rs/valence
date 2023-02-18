@@ -40,6 +40,18 @@ pub struct Ident<S> {
     path_start: usize,
 }
 
+impl<S> Ident<S> {
+    /// Returns an Ident with the given fields
+    ///
+    /// # Safety
+    /// This function does not check for the validity of the Ident.
+    /// For a safe version use [`Ident::new`]
+    #[doc(hidden)]
+    pub const fn new_unchecked(string: S, path_start: usize) -> Self {
+        Self { string, path_start }
+    }
+}
+
 impl<S: AsRef<str>> Ident<S> {
     pub fn new(string: S) -> Result<Self, IdentError<S>> {
         let check_namespace = |s: &str| {
