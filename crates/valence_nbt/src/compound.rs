@@ -41,7 +41,7 @@ impl fmt::Debug for Compound {
 }
 
 impl Compound {
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self { map: Map::new() }
     }
 

@@ -54,7 +54,7 @@ struct Section {
 }
 
 /// Represents a block with an optional block entity
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Block {
     state: BlockState,
     /// Nbt of the block entity
@@ -62,26 +62,23 @@ pub struct Block {
 }
 
 impl Block {
-    pub const AIR: Self = Self::new(BlockState::AIR);
+    pub const AIR: Self = Self {
+        state: BlockState::AIR,
+        nbt: None,
+    };
 
-    pub const fn new(state: BlockState) -> Self {
+    pub fn new(state: BlockState) -> Self {
         Self {
             state,
-            nbt: match state.block_entity_kind() {
-                Some(_) => Some(Compound::new()),
-                None => None,
-            },
+            nbt: state.block_entity_kind().map(|_| Compound::new()),
         }
     }
 
-    /// # Panics
-    /// This function panics if the specified [`BlockState`] does not support a
-    /// block entity yet `nbt` is [`Option::Some`]
-    pub const fn with_nbt(state: BlockState, nbt: Option<Compound>) -> Self {
-        if state.block_entity_kind().is_none() {
-            assert!(nbt.is_none(), "blockstate does not support nbt");
+    pub fn with_nbt(state: BlockState, nbt: Compound) -> Self {
+        Self {
+            state,
+            nbt: state.block_entity_kind().map(|_| nbt),
         }
-        Self { state, nbt }
     }
 
     pub const fn state(&self) -> BlockState {
@@ -92,6 +89,36 @@ impl Block {
 impl From<BlockState> for Block {
     fn from(value: BlockState) -> Self {
         Self::new(value)
+    }
+}
+
+impl From<BlockRef<'_>> for Block {
+    fn from(BlockRef { state, nbt }: BlockRef<'_>) -> Self {
+        Self {
+            state,
+            nbt: nbt.cloned(),
+        }
+    }
+}
+
+impl From<BlockMut<'_>> for Block {
+    fn from(value: BlockMut<'_>) -> Self {
+        Self {
+            state: value.state,
+            nbt: value.nbt().cloned(),
+        }
+    }
+}
+
+impl From<&Block> for Block {
+    fn from(value: &Block) -> Self {
+        value.clone()
+    }
+}
+
+impl From<&mut Block> for Block {
+    fn from(value: &mut Block) -> Self {
+        value.clone()
     }
 }
 
@@ -126,20 +153,20 @@ impl<'a> BlockMut<'a> {
         self.state
     }
 
-    pub fn nbt_mut(&mut self) -> Option<&mut Compound> {
-        match &mut self.entry {
+    pub fn nbt(&self) -> Option<&Compound> {
+        match &self.entry {
+            Entry::Occupied(entry) => Some(&entry.get().nbt),
             Entry::Vacant(_) => None,
-            Entry::Occupied(oe) => {
-                self.modified.insert(*oe.key());
-                Some(&mut oe.get_mut().nbt)
-            }
         }
     }
 
-    pub fn set_nbt(&mut self, nbt: Compound) {
+    pub fn nbt_mut(&mut self) -> Option<&mut Compound> {
         match &mut self.entry {
-            Entry::Vacant(_) => todo!(),
-            Entry::Occupied(entry) => entry.get_mut().nbt = nbt,
+            Entry::Occupied(entry) => {
+                self.modified.insert(*entry.key());
+                Some(&mut entry.get_mut().nbt)
+            }
+            Entry::Vacant(_) => None,
         }
     }
 }

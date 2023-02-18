@@ -49,9 +49,9 @@ fn setup(world: &mut World) {
         SIGN_POS,
         Block::with_nbt(
             BlockState::OAK_SIGN.set(PropName::Rotation, PropValue::_4),
-            Some(compound! {
+            compound! {
                 "Text1" => "Type in chat:".color(Color::RED),
-            }),
+            },
         ),
     );
     instance.set_block(
