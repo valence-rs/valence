@@ -3,7 +3,7 @@ package rs.valence.extractor.extractors;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.minecraft.util.Language;
+import net.minecraft.locale.Language;
 import rs.valence.extractor.Main;
 
 import java.lang.reflect.Field;

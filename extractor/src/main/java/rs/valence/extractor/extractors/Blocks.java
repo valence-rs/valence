@@ -3,9 +3,9 @@ package rs.valence.extractor.extractors;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.EmptyBlockView;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.level.EmptyBlockGetter;
 import rs.valence.extractor.Main;
 
 import java.util.LinkedHashMap;
@@ -28,23 +28,24 @@ public class Blocks implements Main.Extractor {
         var blocksJson = new JsonArray();
         var stateIdCounter = 0;
 
-        var shapes = new LinkedHashMap<Shape, Integer>();
+        var aabbs = new LinkedHashMap<AABB, Integer>();
 
-        for (var block : Registries.BLOCK) {
+        for (var block : BuiltInRegistries.BLOCK) {
             var blockJson = new JsonObject();
-            blockJson.addProperty("id", Registries.BLOCK.getRawId(block));
-            blockJson.addProperty("name", Registries.BLOCK.getId(block).getPath());
-            blockJson.addProperty("translation_key", block.getTranslationKey());
-            blockJson.addProperty("item_id", Registries.ITEM.getRawId(block.asItem()));
+
+            blockJson.addProperty("id", BuiltInRegistries.BLOCK.getId(block));
+            blockJson.addProperty("name", BuiltInRegistries.BLOCK.getKey(block).getPath());
+            blockJson.addProperty("translation_key", block.getDescriptionId());
+            blockJson.addProperty("item_id", BuiltInRegistries.ITEM.getId(block.asItem()));
 
             var propsJson = new JsonArray();
-            for (var prop : block.getStateManager().getProperties()) {
+            for (var prop : block.getStateDefinition().getProperties()) {
                 var propJson = new JsonObject();
 
                 propJson.addProperty("name", prop.getName());
 
                 var valuesJson = new JsonArray();
-                for (var value : prop.getValues()) {
+                for (var value : prop.getPossibleValues()) {
                     valuesJson.add(value.toString().toLowerCase(Locale.ROOT));
                 }
                 propJson.add("values", valuesJson);
@@ -54,24 +55,24 @@ public class Blocks implements Main.Extractor {
             blockJson.add("properties", propsJson);
 
             var statesJson = new JsonArray();
-            for (var state : block.getStateManager().getStates()) {
+            for (var state : block.getStateDefinition().getPossibleStates()) {
                 var stateJson = new JsonObject();
                 var id = stateIdCounter++;
                 stateJson.addProperty("id", id);
-                stateJson.addProperty("luminance", state.getLuminance());
-                stateJson.addProperty("opaque", state.isOpaque());
+                stateJson.addProperty("luminance", state.getLightEmission());
+//                stateJson.addProperty("opaque", state.isOpaque());
                 stateJson.addProperty("replaceable", state.getMaterial().isReplaceable());
 
-                if (block.getDefaultState().equals(state)) {
+                if (block.defaultBlockState().equals(state)) {
                     blockJson.addProperty("default_state_id", id);
                 }
 
                 var collisionShapeIdxsJson = new JsonArray();
-                for (var box : state.getCollisionShape(EmptyBlockView.INSTANCE, BlockPos.ORIGIN).getBoundingBoxes()) {
-                    var collisionShape = new Shape(box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ);
+                for (var aabb : state.getCollisionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO).toAabbs()) {
+                    var collisionAABB = new AABB(aabb.minX, aabb.minY, aabb.minZ, aabb.maxX, aabb.maxY, aabb.maxZ);
 
-                    var idx = shapes.putIfAbsent(collisionShape, shapes.size());
-                    collisionShapeIdxsJson.add(Objects.requireNonNullElseGet(idx, () -> shapes.size() - 1));
+                    var idx = aabbs.putIfAbsent(collisionAABB, aabbs.size());
+                    collisionShapeIdxsJson.add(Objects.requireNonNullElseGet(idx, () -> aabbs.size() - 1));
                 }
 
                 stateJson.add("collision_shapes", collisionShapeIdxsJson);
@@ -84,7 +85,7 @@ public class Blocks implements Main.Extractor {
         }
 
         var shapesJson = new JsonArray();
-        for (var shape : shapes.keySet()) {
+        for (var shape : aabbs.keySet()) {
             var shapeJson = new JsonObject();
             shapeJson.addProperty("min_x", shape.minX);
             shapeJson.addProperty("min_y", shape.minY);
@@ -95,12 +96,12 @@ public class Blocks implements Main.Extractor {
             shapesJson.add(shapeJson);
         }
 
-        topLevelJson.add("shapes", shapesJson);
+        topLevelJson.add("aabbs", shapesJson);
         topLevelJson.add("blocks", blocksJson);
 
         return topLevelJson;
     }
 
-    private record Shape(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
+    private record AABB(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
     }
 }

@@ -3,8 +3,8 @@ package rs.valence.extractor.extractors;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.minecraft.network.NetworkSide;
-import net.minecraft.network.NetworkState;
+import net.minecraft.network.ConnectionProtocol;
+import net.minecraft.network.protocol.PacketFlow;
 import rs.valence.extractor.Main;
 
 import java.util.Locale;
@@ -20,13 +20,13 @@ public class Packets implements Main.Extractor {
     public JsonElement extract() {
         var packetsJson = new JsonObject();
 
-        for (var side : NetworkSide.values()) {
-            var sideJson = new JsonObject();
+        for (var flow : PacketFlow.values()) {
+            var flowJson = new JsonObject();
 
-            for (var state : NetworkState.values()) {
-                var stateJson = new JsonArray();
+            for (var proto : ConnectionProtocol.values()) {
+                var protoJson = new JsonArray();
 
-                var map = state.getPacketIdToPacketMap(side);
+                var map = proto.getPacketsByIds(flow);
 
                 for (var id : new TreeSet<>(map.keySet())) {
                     var packetJson = new JsonObject();
@@ -34,13 +34,13 @@ public class Packets implements Main.Extractor {
                     packetJson.addProperty("name", map.get(id.intValue()).getSimpleName());
                     packetJson.addProperty("id", id);
 
-                    stateJson.add(packetJson);
+                    protoJson.add(packetJson);
                 }
 
-                sideJson.add(state.name().toLowerCase(Locale.ROOT), stateJson);
+                flowJson.add(proto.name().toLowerCase(Locale.ROOT), protoJson);
             }
 
-            packetsJson.add(side.name().toLowerCase(Locale.ROOT), sideJson);
+            packetsJson.add(flow.name().toLowerCase(Locale.ROOT), flowJson);
         }
 
         return packetsJson;

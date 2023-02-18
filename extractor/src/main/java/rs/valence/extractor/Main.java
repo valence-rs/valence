@@ -41,7 +41,7 @@ public class Main implements ModInitializer {
                new Blocks(),
                new Enchants(),
                new Entities(),
-               new EntityData(),
+               new Misc(),
                new Items(),
                new Packets(),
                new Sounds(),

@@ -6,11 +6,9 @@
     "min_level": 1,
     "max_level": 4,
     "rarity_weight": 10,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -20,11 +18,9 @@
     "min_level": 1,
     "max_level": 4,
     "rarity_weight": 5,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -34,11 +30,9 @@
     "min_level": 1,
     "max_level": 4,
     "rarity_weight": 5,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -48,11 +42,9 @@
     "min_level": 1,
     "max_level": 4,
     "rarity_weight": 2,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -62,11 +54,9 @@
     "min_level": 1,
     "max_level": 4,
     "rarity_weight": 5,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -76,11 +66,9 @@
     "min_level": 1,
     "max_level": 3,
     "rarity_weight": 2,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -90,11 +78,9 @@
     "min_level": 1,
     "max_level": 1,
     "rarity_weight": 2,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -104,11 +90,9 @@
     "min_level": 1,
     "max_level": 3,
     "rarity_weight": 1,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -118,11 +102,9 @@
     "min_level": 1,
     "max_level": 3,
     "rarity_weight": 2,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -132,11 +114,9 @@
     "min_level": 1,
     "max_level": 2,
     "rarity_weight": 2,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": true,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": true
     }
   },
   {
@@ -146,11 +126,9 @@
     "min_level": 1,
     "max_level": 1,
     "rarity_weight": 1,
-    "cursed": true,
+    "curse": true,
     "sources": {
-      "treasure": true,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": true
     }
   },
   {
@@ -160,11 +138,9 @@
     "min_level": 1,
     "max_level": 3,
     "rarity_weight": 1,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": true,
-      "enchantment_table": false,
-      "random_selection": false
+      "treasure": true
     }
   },
   {
@@ -174,11 +150,9 @@
     "min_level": 1,
     "max_level": 3,
     "rarity_weight": 1,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": true,
-      "enchantment_table": false,
-      "random_selection": false
+      "treasure": true
     }
   },
   {
@@ -188,11 +162,9 @@
     "min_level": 1,
     "max_level": 5,
     "rarity_weight": 10,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -202,11 +174,9 @@
     "min_level": 1,
     "max_level": 5,
     "rarity_weight": 5,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -216,11 +186,9 @@
     "min_level": 1,
     "max_level": 5,
     "rarity_weight": 5,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -230,11 +198,9 @@
     "min_level": 1,
     "max_level": 2,
     "rarity_weight": 5,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -244,11 +210,9 @@
     "min_level": 1,
     "max_level": 2,
     "rarity_weight": 2,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -258,11 +222,9 @@
     "min_level": 1,
     "max_level": 3,
     "rarity_weight": 2,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -272,11 +234,9 @@
     "min_level": 1,
     "max_level": 3,
     "rarity_weight": 2,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -286,11 +246,9 @@
     "min_level": 1,
     "max_level": 5,
     "rarity_weight": 10,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -300,11 +258,9 @@
     "min_level": 1,
     "max_level": 1,
     "rarity_weight": 1,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -314,11 +270,9 @@
     "min_level": 1,
     "max_level": 3,
     "rarity_weight": 5,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -328,11 +282,9 @@
     "min_level": 1,
     "max_level": 3,
     "rarity_weight": 2,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -342,11 +294,9 @@
     "min_level": 1,
     "max_level": 5,
     "rarity_weight": 10,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -356,11 +306,9 @@
     "min_level": 1,
     "max_level": 2,
     "rarity_weight": 2,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -370,11 +318,9 @@
     "min_level": 1,
     "max_level": 1,
     "rarity_weight": 2,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -384,11 +330,9 @@
     "min_level": 1,
     "max_level": 1,
     "rarity_weight": 1,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -398,11 +342,9 @@
     "min_level": 1,
     "max_level": 3,
     "rarity_weight": 2,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -412,11 +354,9 @@
     "min_level": 1,
     "max_level": 3,
     "rarity_weight": 2,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -426,11 +366,9 @@
     "min_level": 1,
     "max_level": 3,
     "rarity_weight": 5,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -440,11 +378,9 @@
     "min_level": 1,
     "max_level": 5,
     "rarity_weight": 2,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -454,11 +390,9 @@
     "min_level": 1,
     "max_level": 3,
     "rarity_weight": 2,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -468,11 +402,9 @@
     "min_level": 1,
     "max_level": 1,
     "rarity_weight": 1,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -482,11 +414,9 @@
     "min_level": 1,
     "max_level": 1,
     "rarity_weight": 2,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -496,11 +426,9 @@
     "min_level": 1,
     "max_level": 3,
     "rarity_weight": 5,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -510,11 +438,9 @@
     "min_level": 1,
     "max_level": 4,
     "rarity_weight": 10,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": false,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": false
     }
   },
   {
@@ -524,11 +450,9 @@
     "min_level": 1,
     "max_level": 1,
     "rarity_weight": 2,
-    "cursed": false,
+    "curse": false,
     "sources": {
-      "treasure": true,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": true
     }
   },
   {
@@ -538,11 +462,9 @@
     "min_level": 1,
     "max_level": 1,
     "rarity_weight": 1,
-    "cursed": true,
+    "curse": true,
     "sources": {
-      "treasure": true,
-      "enchantment_table": true,
-      "random_selection": true
+      "treasure": true
     }
   }
 ]
