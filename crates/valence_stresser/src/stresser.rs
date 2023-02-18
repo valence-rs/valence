@@ -74,6 +74,8 @@ pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
                         break;
                     }
 
+                    S2cLoginPacket::EncryptionRequest(_) => unimplemented!(),
+
                     _ => (),
                 },
 
