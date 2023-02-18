@@ -1,9 +1,7 @@
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::{default_event_handler, ChatMessage, UseItemOnBlock};
-use valence::instance::Block;
 use valence::prelude::*;
 use valence_nbt::{compound, List};
-use valence_protocol::block::{PropName, PropValue};
 use valence_protocol::types::Hand;
 
 const FLOOR_Y: i32 = 64;
