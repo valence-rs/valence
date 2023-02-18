@@ -15,4 +15,9 @@ pub(crate) struct StresserArgs {
     #[arg(default_value = "Stresser")]
     #[arg(short = 'n', long = "name")]
     pub name_prefix: String,
+
+    /// Spawn cooldown of connections in milliseconds.
+    #[arg(default_value = "100")]
+    #[arg(long = "cooldown")]
+    pub spawn_cooldown: u64,
 }
