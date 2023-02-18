@@ -23,8 +23,6 @@ fn main() {
             make_connection(target_addr, &conn_name.as_str());
         }));
 
-        println!("Connections spawned: {}", conn_index + 1);
-
         thread::sleep(Duration::from_millis(args.spawn_cooldown))
     }
 
