@@ -6,7 +6,7 @@ use valence_protocol::packets::c2s::login::LoginStart;
 use valence_protocol::packets::c2s::play::{ConfirmTeleport, KeepAliveC2s, SetPlayerPosition};
 use valence_protocol::packets::{C2sHandshakePacket, S2cLoginPacket, S2cPlayPacket};
 use valence_protocol::types::HandshakeNextState;
-use valence_protocol::{PacketDecoder, PacketEncoder, Username, Uuid, VarInt};
+use valence_protocol::{PacketDecoder, PacketEncoder, Username, Uuid, VarInt, PROTOCOL_VERSION};
 
 // At higher values something going wrong and keep alive packets are not
 // handling.
@@ -32,7 +32,7 @@ pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
     let server_addr_str = socket_addr.ip().to_string().as_str().to_owned();
 
     let handshake_pkt = C2sHandshakePacket::Handshake(Handshake {
-        protocol_version: VarInt::from(761),
+        protocol_version: VarInt::from(PROTOCOL_VERSION),
         server_address: &server_addr_str,
         server_port: socket_addr.port(),
         next_state: HandshakeNextState::Login,
