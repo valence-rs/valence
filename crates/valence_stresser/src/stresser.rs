@@ -53,40 +53,42 @@ pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
         let bytes_read = conn.read(&mut read_buf).unwrap();
         let bytes = &mut read_buf[..bytes_read];
 
-        if bytes_read > 0 {
-            println!("\nBytes read: {bytes_read}");
+        if bytes_read == 0{
+            continue
+        }
 
-            dec.reserve(BUFFER_SIZE);
-            dec.queue_slice(bytes);
+        println!("\nBytes read: {bytes_read}");
 
-            if let Ok(pkt) = dec.try_next_packet::<S2cLoginPacket>() {
-                println!("Got login packet");
+        dec.reserve(BUFFER_SIZE);
+        dec.queue_slice(bytes);
 
-                match pkt {
-                    Some(pkt) => match pkt {
-                        S2cLoginPacket::SetCompression(p) => {
-                            println!("Got set compression packet");
+        if let Ok(pkt) = dec.try_next_packet::<S2cLoginPacket>() {
+            println!("Got login packet");
 
-                            let threshold = p.threshold.0 as u32;
+            match pkt {
+                Some(pkt) => match pkt {
+                    S2cLoginPacket::SetCompression(p) => {
+                        println!("Got set compression packet");
 
-                            println!("Compression threshold: {}", threshold);
+                        let threshold = p.threshold.0 as u32;
 
-                            dec.set_compression(true);
-                            enc.set_compression(Some(threshold));
+                        println!("Compression threshold: {}", threshold);
 
-                            println!("Compression enabled");
-                        }
+                        dec.set_compression(true);
+                        enc.set_compression(Some(threshold));
 
-                        S2cLoginPacket::LoginSuccess(_) => {
-                            println!("Logic success");
-                            break;
-                        }
+                        println!("Compression enabled");
+                    }
 
-                        _ => (),
-                    },
+                    S2cLoginPacket::LoginSuccess(_) => {
+                        println!("Logic success");
+                        break;
+                    }
 
-                    None => (),
-                }
+                    _ => (),
+                },
+
+                None => (),
             }
         }
     }
@@ -96,56 +98,58 @@ pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
         let bytes_read = conn.read(&mut read_buf).unwrap();
         let bytes = &mut read_buf[..bytes_read];
 
-        if bytes_read > 0 {
-            println!("\nBytes read: {bytes_read}");
+        if bytes_read == 0 {
+            continue;
+        }
 
-            dec.reserve(BUFFER_SIZE);
-            dec.queue_slice(bytes);
+        println!("\nBytes read: {bytes_read}");
 
-            match dec.try_next_packet::<S2cPlayPacket>() {
-                Ok(pkt) => {
-                    println!("Got play packet");
+        dec.reserve(BUFFER_SIZE);
+        dec.queue_slice(bytes);
 
-                    match pkt {
-                        Some(pkt) => match pkt {
-                            S2cPlayPacket::KeepAliveS2c(p) => {
-                                enc.clear();
-                                _ = enc.append_packet(&KeepAliveC2s { id: p.id });
-                                _ = conn.write_all(&enc.take());
+        match dec.try_next_packet::<S2cPlayPacket>() {
+            Ok(pkt) => {
+                println!("Got play packet");
 
-                                println!("Keep alive: {}", p.id);
-                            }
+                match pkt {
+                    Some(pkt) => match pkt {
+                        S2cPlayPacket::KeepAliveS2c(p) => {
+                            enc.clear();
+                            _ = enc.append_packet(&KeepAliveC2s { id: p.id });
+                            _ = conn.write_all(&enc.take());
 
-                            S2cPlayPacket::SynchronizePlayerPosition(p) => {
-                                enc.clear();
-                                _ = enc.append_packet(&ConfirmTeleport {
-                                    teleport_id: p.teleport_id,
-                                });
-                                _ = conn.write_all(&enc.take());
+                            println!("Keep alive: {}", p.id);
+                        }
 
-                                println!("Confirm teleport: {}", p.teleport_id.0);
+                        S2cPlayPacket::SynchronizePlayerPosition(p) => {
+                            enc.clear();
+                            _ = enc.append_packet(&ConfirmTeleport {
+                                teleport_id: p.teleport_id,
+                            });
+                            _ = conn.write_all(&enc.take());
 
-                                enc.clear();
-                                _ = enc.append_packet(&SetPlayerPosition {
-                                    position: p.position,
-                                    on_ground: true,
-                                });
-                                _ = conn.write_all(&enc.take());
+                            println!("Confirm teleport: {}", p.teleport_id.0);
 
-                                println!("Set player position: {:?}", p.position);
-                            }
+                            enc.clear();
+                            _ = enc.append_packet(&SetPlayerPosition {
+                                position: p.position,
+                                on_ground: true,
+                            });
+                            _ = conn.write_all(&enc.take());
 
-                            S2cPlayPacket::ChunkDataAndUpdateLight(_) => {
-                                println!("Ignore chunk data")
-                            }
+                            println!("Set player position: {:?}", p.position);
+                        }
 
-                            _ => println!("{pkt:?}"),
-                        },
-                        None => (),
-                    }
+                        S2cPlayPacket::ChunkDataAndUpdateLight(_) => {
+                            println!("Ignore chunk data")
+                        }
+
+                        _ => println!("{pkt:?}"),
+                    },
+                    None => (),
                 }
-                Err(e) => println!("{e}"),
             }
+            Err(e) => println!("{e}"),
         }
     }
 }
