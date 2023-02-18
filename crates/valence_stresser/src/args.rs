@@ -17,6 +17,7 @@ pub(crate) struct StresserArgs {
     pub name_prefix: String,
 
     /// Spawn cooldown of connections in milliseconds.
+    /// The lower the value, the more frequent the connection rate.
     #[arg(default_value = "100")]
     #[arg(long = "cooldown")]
     pub spawn_cooldown: u64,
