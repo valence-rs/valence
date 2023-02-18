@@ -1,38 +1,35 @@
 use std::io::{Read, Write};
-use std::net::{TcpStream, ToSocketAddrs};
+use std::net::{SocketAddr, TcpStream, ToSocketAddrs};
 
 use args::StresserArgs;
 use clap::Parser;
 use valence_protocol::packets::c2s::handshake::Handshake;
 use valence_protocol::packets::c2s::login::LoginStart;
-use valence_protocol::packets::c2s::play::{SetPlayerPosition, ConfirmTeleport, KeepAliveC2s};
+use valence_protocol::packets::c2s::play::{ConfirmTeleport, KeepAliveC2s, SetPlayerPosition};
 use valence_protocol::packets::{C2sHandshakePacket, S2cLoginPacket, S2cPlayPacket};
 use valence_protocol::types::HandshakeNextState;
 use valence_protocol::{PacketDecoder, PacketEncoder, Username, Uuid, VarInt};
 
 mod args;
 
-fn main() {
-    // At higher values something going wrong and keep alive packets are not
-    // handling.
-    const BUFFER_SIZE: usize = 4;
+// At higher values something going wrong and keep alive packets are not
+// handling.
+const BUFFER_SIZE: usize = 4;
 
-    let args = StresserArgs::parse();
+fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
+    let mut conn = TcpStream::connect(socket_addr).unwrap();
 
-    let target_addr = args.target_host.to_socket_addrs().unwrap().next().unwrap();
+    _ = conn.set_nodelay(true);
 
     let mut dec = PacketDecoder::new();
     let mut enc = PacketEncoder::new();
 
-    let server_addr = target_addr.ip().to_string().as_str().to_owned();
-    let mut conn = TcpStream::connect(target_addr).unwrap();
-
-    _ = conn.set_nodelay(true);
+    let server_addr_str = socket_addr.ip().to_string().as_str().to_owned();
 
     let handshake_pkt = C2sHandshakePacket::Handshake(Handshake {
         protocol_version: VarInt::from(761),
-        server_address: &server_addr,
-        server_port: target_addr.port(),
+        server_address: &server_addr_str,
+        server_port: socket_addr.port(),
         next_state: HandshakeNextState::Login,
     });
 
@@ -45,7 +42,7 @@ fn main() {
     enc.clear();
 
     _ = enc.append_packet(&LoginStart {
-        username: Username::new("Tob").unwrap(),
+        username: Username::new(connection_name).unwrap(),
         profile_id: Some(Uuid::new_v4()),
     });
 
@@ -155,4 +152,12 @@ fn main() {
             }
         }
     }
+}
+
+fn main() {
+    let args = StresserArgs::parse();
+
+    let target_addr = args.target_host.to_socket_addrs().unwrap().next().unwrap();
+
+    make_connection(target_addr, args.name_prefix.as_str());
 }
