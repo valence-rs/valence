@@ -53,35 +53,24 @@ pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
         let bytes_read = conn.read(&mut read_buf).unwrap();
         let bytes = &mut read_buf[..bytes_read];
 
-        if bytes_read == 0{
-            continue
+        if bytes_read == 0 {
+            continue;
         }
-
-        println!("\nBytes read: {bytes_read}");
 
         dec.reserve(BUFFER_SIZE);
         dec.queue_slice(bytes);
 
         if let Ok(pkt) = dec.try_next_packet::<S2cLoginPacket>() {
-            println!("Got login packet");
-
             match pkt {
                 Some(pkt) => match pkt {
                     S2cLoginPacket::SetCompression(p) => {
-                        println!("Got set compression packet");
-
                         let threshold = p.threshold.0 as u32;
-
-                        println!("Compression threshold: {}", threshold);
 
                         dec.set_compression(true);
                         enc.set_compression(Some(threshold));
-
-                        println!("Compression enabled");
                     }
 
                     S2cLoginPacket::LoginSuccess(_) => {
-                        println!("Logic success");
                         break;
                     }
 
@@ -102,54 +91,37 @@ pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
             continue;
         }
 
-        println!("\nBytes read: {bytes_read}");
-
         dec.reserve(BUFFER_SIZE);
         dec.queue_slice(bytes);
 
         match dec.try_next_packet::<S2cPlayPacket>() {
-            Ok(pkt) => {
-                println!("Got play packet");
+            Ok(pkt) => match pkt {
+                Some(pkt) => match pkt {
+                    S2cPlayPacket::KeepAliveS2c(p) => {
+                        enc.clear();
+                        _ = enc.append_packet(&KeepAliveC2s { id: p.id });
+                        _ = conn.write_all(&enc.take());
+                    }
 
-                match pkt {
-                    Some(pkt) => match pkt {
-                        S2cPlayPacket::KeepAliveS2c(p) => {
-                            enc.clear();
-                            _ = enc.append_packet(&KeepAliveC2s { id: p.id });
-                            _ = conn.write_all(&enc.take());
+                    S2cPlayPacket::SynchronizePlayerPosition(p) => {
+                        enc.clear();
+                        _ = enc.append_packet(&ConfirmTeleport {
+                            teleport_id: p.teleport_id,
+                        });
+                        _ = conn.write_all(&enc.take());
 
-                            println!("Keep alive: {}", p.id);
-                        }
-
-                        S2cPlayPacket::SynchronizePlayerPosition(p) => {
-                            enc.clear();
-                            _ = enc.append_packet(&ConfirmTeleport {
-                                teleport_id: p.teleport_id,
-                            });
-                            _ = conn.write_all(&enc.take());
-
-                            println!("Confirm teleport: {}", p.teleport_id.0);
-
-                            enc.clear();
-                            _ = enc.append_packet(&SetPlayerPosition {
-                                position: p.position,
-                                on_ground: true,
-                            });
-                            _ = conn.write_all(&enc.take());
-
-                            println!("Set player position: {:?}", p.position);
-                        }
-
-                        S2cPlayPacket::ChunkDataAndUpdateLight(_) => {
-                            println!("Ignore chunk data")
-                        }
-
-                        _ => println!("{pkt:?}"),
-                    },
-                    None => (),
-                }
-            }
-            Err(e) => println!("{e}"),
+                        enc.clear();
+                        _ = enc.append_packet(&SetPlayerPosition {
+                            position: p.position,
+                            on_ground: true,
+                        });
+                        _ = conn.write_all(&enc.take());
+                    }
+                    _ => (),
+                },
+                None => (),
+            },
+            Err(_) => (),
         }
     }
 }
