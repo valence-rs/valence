@@ -13,7 +13,16 @@ use valence_protocol::{PacketDecoder, PacketEncoder, Username, Uuid, VarInt};
 const BUFFER_SIZE: usize = 4;
 
 pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
-    let mut conn = TcpStream::connect(socket_addr).unwrap();
+    let mut conn = match TcpStream::connect(socket_addr) {
+        Ok(conn) => {
+            println!("{connection_name} established connection");
+            conn
+        }
+        _ => {
+            println!("{connection_name} connection failed");
+            return;
+        },
+    };
 
     _ = conn.set_nodelay(true);
 
