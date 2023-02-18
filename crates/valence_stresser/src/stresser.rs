@@ -83,7 +83,10 @@ pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
                         break;
                     }
 
-                    S2cLoginPacket::EncryptionRequest(_) => unimplemented!(),
+                    S2cLoginPacket::EncryptionRequest(_) => {
+                        println!("{connection_name} failed to login: encryption not implemented");
+                        return;
+                    },
 
                     _ => (),
                 },
