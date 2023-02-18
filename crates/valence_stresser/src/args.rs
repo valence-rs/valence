@@ -10,4 +10,9 @@ pub(crate) struct StresserArgs {
     /// Number of connections to the target.
     #[arg(short = 'c', long = "count")]
     pub connections_count: usize,
+
+    /// Name prefix of connections.
+    #[arg(default_value = "Stresser")]
+    #[arg(short = 'n', long = "name")]
+    pub name_prefix: String,
 }
