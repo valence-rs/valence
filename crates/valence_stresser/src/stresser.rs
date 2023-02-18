@@ -58,7 +58,7 @@ pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
     enc.clear();
 
     loop {
-        let mut read_buf = [0 as u8; BUFFER_SIZE];
+        let mut read_buf = [0_u8; BUFFER_SIZE];
         let bytes_read = conn.read(&mut read_buf).unwrap();
         let bytes = &mut read_buf[..bytes_read];
 
@@ -69,29 +69,25 @@ pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
         dec.reserve(BUFFER_SIZE);
         dec.queue_slice(bytes);
 
-        if let Ok(pkt) = dec.try_next_packet::<S2cLoginPacket>() {
+        if let Ok(Some(pkt)) = dec.try_next_packet::<S2cLoginPacket>() {
             match pkt {
-                Some(pkt) => match pkt {
-                    S2cLoginPacket::SetCompression(p) => {
-                        let threshold = p.threshold.0 as u32;
+                S2cLoginPacket::SetCompression(p) => {
+                    let threshold = p.threshold.0 as u32;
 
-                        dec.set_compression(true);
-                        enc.set_compression(Some(threshold));
-                    }
+                    dec.set_compression(true);
+                    enc.set_compression(Some(threshold));
+                }
 
-                    S2cLoginPacket::LoginSuccess(_) => {
-                        break;
-                    }
+                S2cLoginPacket::LoginSuccess(_) => {
+                    break;
+                }
 
-                    S2cLoginPacket::EncryptionRequest(_) => {
-                        println!("{connection_name} failed to login: encryption not implemented");
-                        return;
-                    }
+                S2cLoginPacket::EncryptionRequest(_) => {
+                    println!("{connection_name} failed to login: encryption not implemented");
+                    return;
+                }
 
-                    _ => (),
-                },
-
-                None => (),
+                _ => (),
             }
         }
     }
@@ -99,7 +95,7 @@ pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
     println!("{connection_name} logined");
 
     loop {
-        let mut read_buf = [0 as u8; BUFFER_SIZE];
+        let mut read_buf = [0_u8; BUFFER_SIZE];
         let bytes_read = conn.read(&mut read_buf).unwrap();
         let bytes = &mut read_buf[..bytes_read];
 
@@ -110,36 +106,32 @@ pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
         dec.reserve(BUFFER_SIZE);
         dec.queue_slice(bytes);
 
-        match dec.try_next_packet::<S2cPlayPacket>() {
-            Ok(pkt) => match pkt {
-                Some(pkt) => match pkt {
-                    S2cPlayPacket::KeepAliveS2c(p) => {
-                        enc.clear();
-                        _ = enc.append_packet(&KeepAliveC2s { id: p.id });
-                        _ = conn.write_all(&enc.take());
+        if let Ok(Some(pkt)) = dec.try_next_packet::<S2cPlayPacket>() {
+            match pkt {
+                S2cPlayPacket::KeepAliveS2c(p) => {
+                    enc.clear();
+                    _ = enc.append_packet(&KeepAliveC2s { id: p.id });
+                    _ = conn.write_all(&enc.take());
 
-                        println!("{connection_name} keep alive")
-                    }
+                    println!("{connection_name} keep alive")
+                }
 
-                    S2cPlayPacket::SynchronizePlayerPosition(p) => {
-                        enc.clear();
-                        _ = enc.append_packet(&ConfirmTeleport {
-                            teleport_id: p.teleport_id,
-                        });
-                        _ = conn.write_all(&enc.take());
+                S2cPlayPacket::SynchronizePlayerPosition(p) => {
+                    enc.clear();
+                    _ = enc.append_packet(&ConfirmTeleport {
+                        teleport_id: p.teleport_id,
+                    });
+                    _ = conn.write_all(&enc.take());
 
-                        enc.clear();
-                        _ = enc.append_packet(&SetPlayerPosition {
-                            position: p.position,
-                            on_ground: true,
-                        });
-                        _ = conn.write_all(&enc.take());
-                    }
-                    _ => (),
-                },
-                None => (),
-            },
-            Err(_) => (),
+                    enc.clear();
+                    _ = enc.append_packet(&SetPlayerPosition {
+                        position: p.position,
+                        on_ground: true,
+                    });
+                    _ = conn.write_all(&enc.take());
+                }
+                _ => (),
+            }
         }
     }
 }

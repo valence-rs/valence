@@ -20,7 +20,7 @@ fn main() {
         let conn_name = format!("{}{}", args.name_prefix, conn_index);
 
         last_thread = Some(thread::spawn(move || {
-            make_connection(target_addr, &conn_name.as_str());
+            make_connection(target_addr, conn_name.as_str());
         }));
 
         thread::sleep(Duration::from_millis(args.spawn_cooldown))
