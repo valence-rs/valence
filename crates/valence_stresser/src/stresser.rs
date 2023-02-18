@@ -15,7 +15,7 @@ const BUFFER_SIZE: usize = 4;
 pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
     let mut conn = match TcpStream::connect(socket_addr) {
         Ok(conn) => {
-            println!("{connection_name} established connection");
+            println!("{connection_name} connected");
             conn
         }
         _ => {
