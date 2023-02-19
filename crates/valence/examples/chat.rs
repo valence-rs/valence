@@ -5,7 +5,6 @@ use valence::client::event::{default_event_handler, ChatCommand, ChatMessage};
 use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;
-const ARENA_RADIUS: i32 = 32;
 
 pub fn main() {
     tracing_subscriber::fmt().init();
@@ -19,7 +18,6 @@ pub fn main() {
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
         .add_system_set(PlayerList::default_system_set())
-        .add_system(teleport_oob_clients)
         .run();
 }
 
@@ -34,24 +32,9 @@ fn setup(world: &mut World) {
         }
     }
 
-    // Create circular arena.
-    for z in -ARENA_RADIUS..ARENA_RADIUS {
-        for x in -ARENA_RADIUS..ARENA_RADIUS {
-            let dist = f64::hypot(x as _, z as _) / ARENA_RADIUS as f64;
-
-            if dist > 1.0 {
-                continue;
-            }
-
-            let block = if rand::random::<f64>() < dist {
-                BlockState::STONE
-            } else {
-                BlockState::DEEPSLATE
-            };
-
-            for y in 0..SPAWN_Y {
-                instance.set_block_state([x, y, z], block);
-            }
+    for z in -25..25 {
+        for x in -25..25 {
+            instance.set_block_state([x, SPAWN_Y, z], BlockState::BEDROCK);
         }
     }
 
@@ -103,13 +86,5 @@ fn handle_command_events(mut clients: Query<&mut Client>, mut commands: EventRea
             "You sent the command ".into_text() + ("/".into_text() + (message).into_text()).bold();
 
         client.send_message(formatted);
-    }
-}
-
-fn teleport_oob_clients(mut clients: Query<&mut Client>) {
-    for mut client in &mut clients {
-        if client.position().y < 0.0 {
-            client.set_position([0.0, SPAWN_Y as _, 0.0]);
-        }
     }
 }
