@@ -44,7 +44,7 @@ fn setup(world: &mut World) {
         }
     }
 
-    instance.set_block_state(SPAWN_POS, BlockState::BEDROCK);
+    instance.set_block(SPAWN_POS, BlockState::BEDROCK);
 
     let instance_id = world.spawn(instance).id();
 
