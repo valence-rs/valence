@@ -950,7 +950,7 @@ mod tests {
         chunk.refresh = false;
 
         assert!(chunk.block_entity(0, 0, 0).is_none());
-        chunk.set_block_state(0, 0, 0, BlockState::CHEST);
+        chunk.set_block(0, 0, 0, BlockState::CHEST);
         assert_eq!(
             chunk.block_entity(0, 0, 0),
             Some(&BlockEntity {
@@ -958,22 +958,7 @@ mod tests {
                 nbt: compound! {}
             })
         );
-        chunk.set_block_state(0, 0, 0, BlockState::STONE);
+        chunk.set_block(0, 0, 0, BlockState::STONE);
         assert!(chunk.block_entity(0, 0, 0).is_none());
-
-        chunk.fill_block_states(2, BlockState::CHEST);
-        for x in 0..16 {
-            for z in 0..16 {
-                for y in 32..47 {
-                    assert_eq!(
-                        chunk.block_entity(x, y, z),
-                        Some(&BlockEntity {
-                            kind: BlockEntityKind::Chest,
-                            nbt: compound! {}
-                        })
-                    );
-                }
-            }
-        }
     }
 }
