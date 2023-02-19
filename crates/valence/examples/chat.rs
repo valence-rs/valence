@@ -46,7 +46,7 @@ fn init_clients(
     instances: Query<Entity, With<Instance>>,
 ) {
     for mut client in &mut clients {
-        client.set_position([0.0, SPAWN_Y as f64, 0.0]);
+        client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
         client.set_instance(instances.single());
         client.set_game_mode(GameMode::Adventure);
         client.send_message("Welcome to Valence! Talk about something.".italic());
