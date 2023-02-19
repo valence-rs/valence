@@ -645,7 +645,7 @@ impl<const LOADED: bool> Chunk<LOADED> {
         );
         let idx = (x + z * 16 + y * 16 * 16) as _;
         let old = self.block_entities.insert(idx, block_entity);
-        if LOADED {
+        if LOADED && !self.refresh {
             self.modified_block_entities.insert(idx);
             self.cached_init_packets.get_mut().clear();
         }
@@ -669,7 +669,9 @@ impl<const LOADED: bool> Chunk<LOADED> {
             "chunk block offsets of ({x}, {y}, {z}) are out of bounds"
         );
         let idx = (x + z * 16 + y * 16 * 16) as _;
-        if LOADED {
+
+        let res = self.block_entities.get_mut(&idx);
+        if LOADED && res.is_some() && !self.refresh {
             self.modified_block_entities.insert(idx);
             self.cached_init_packets.get_mut().clear();
         }
