@@ -84,8 +84,7 @@ fn handle_message_events(mut clients: Query<&mut Client>, mut messages: EventRea
             .color(Color::YELLOW)
             + message.into_text().not_bold().color(Color::WHITE);
 
-        // TODO! Is there a more efficient way to do this?
-        clients.for_each_mut(|mut client| {
+        clients.par_for_each_mut(16, |mut client| {
             client.send_message(formatted.clone());
         })
     }
