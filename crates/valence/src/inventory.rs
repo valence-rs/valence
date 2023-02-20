@@ -1240,7 +1240,6 @@ mod test {
                 .expect("could not find client");
             client.cursor_item = Some(ItemStack::new(ItemKind::IronIngot, 32, None));
             let state_id = client.inventory_state_id.0;
-            drop(client);
 
             // Process a tick to get past the "on join" logic.
             app.update();
