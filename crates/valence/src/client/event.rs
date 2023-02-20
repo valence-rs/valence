@@ -22,6 +22,7 @@ use valence_protocol::{BlockFace, BlockPos, Ident, ItemStack};
 
 use crate::client::Client;
 use crate::entity::{EntityAnimation, EntityKind, McEntity, TrackedData};
+use crate::inventory::Inventory;
 
 #[derive(Clone, Debug)]
 pub struct QueryBlockEntity {
@@ -682,7 +683,7 @@ events! {
 }
 
 pub(crate) fn event_loop_run_criteria(
-    mut clients: Query<(Entity, &mut Client)>,
+    mut clients: Query<(Entity, &mut Client, &mut Inventory)>,
     mut clients_to_check: Local<Vec<Entity>>,
     mut events: ClientEvents,
 ) -> ShouldRun {
@@ -691,8 +692,9 @@ pub(crate) fn event_loop_run_criteria(
 
         update_all_event_buffers(&mut events);
 
-        for (entity, client) in &mut clients {
+        for (entity, client, inventory) in &mut clients {
             let client = client.into_inner();
+            let inventory = inventory.into_inner();
 
             let Ok(bytes) = client.conn.try_recv() else {
                 // Client is disconnected.
@@ -707,7 +709,7 @@ pub(crate) fn event_loop_run_criteria(
 
             client.dec.queue_bytes(bytes);
 
-            match handle_one_packet(client, entity, &mut events) {
+            match handle_one_packet(client, inventory, entity, &mut events) {
                 Ok(had_packet) => {
                     if had_packet {
                         // We decoded one packet, but there might be more.
@@ -730,12 +732,12 @@ pub(crate) fn event_loop_run_criteria(
         // Continue to filter the list of clients we need to check until there are none
         // left.
         clients_to_check.retain(|&entity| {
-            let Ok((_, mut client)) = clients.get_mut(entity) else {
+            let Ok((_, mut client, mut inventory)) = clients.get_mut(entity) else {
                 // Client was deleted during the last run of the stage.
                 return false;
             };
 
-            match handle_one_packet(&mut client, entity, &mut events) {
+            match handle_one_packet(&mut client, &mut inventory, entity, &mut events) {
                 Ok(had_packet) => had_packet,
                 Err(e) => {
                     // TODO: validate packets in separate systems.
@@ -762,6 +764,7 @@ pub(crate) fn event_loop_run_criteria(
 
 fn handle_one_packet(
     client: &mut Client,
+    inventory: &mut Inventory,
     entity: Entity,
     events: &mut ClientEvents,
 ) -> anyhow::Result<bool> {
