@@ -1,6 +1,9 @@
-use std::io::{Read, Write};
-use std::net::{SocketAddr, TcpStream};
+use std::io::{self, ErrorKind};
+use std::net::SocketAddr;
 
+use anyhow::bail;
+use tokio::io::AsyncWriteExt;
+use tokio::net::TcpStream;
 use valence_protocol::packets::c2s::handshake::Handshake;
 use valence_protocol::packets::c2s::login::LoginStart;
 use valence_protocol::packets::c2s::play::{ConfirmTeleport, KeepAliveC2s, SetPlayerPosition};
@@ -12,15 +15,15 @@ use valence_protocol::{PacketDecoder, PacketEncoder, Username, Uuid, VarInt, PRO
 // handling.
 const BUFFER_SIZE: usize = 4;
 
-pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
-    let mut conn = match TcpStream::connect(socket_addr) {
+pub async fn make_session(socket_addr: SocketAddr, session_name: &str) -> anyhow::Result<()> {
+    let mut conn = match TcpStream::connect(socket_addr).await {
         Ok(conn) => {
-            println!("{connection_name} connected");
+            println!("{session_name} connected");
             conn
         }
-        _ => {
-            println!("{connection_name} connection failed");
-            return;
+        Err(err) => {
+            println!("{session_name} connection failed");
+            return Err(err.into());
         }
     };
 
@@ -40,34 +43,29 @@ pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
 
     _ = enc.append_packet(&handshake_pkt);
 
-    let write_buf = enc.take();
-
-    _ = conn.write_all(&write_buf);
-
-    enc.clear();
-
     _ = enc.append_packet(&LoginStart {
-        username: Username::new(connection_name).unwrap(),
+        username: Username::new(session_name).unwrap(),
         profile_id: Some(Uuid::new_v4()),
     });
 
     let write_buf = enc.take();
-
-    _ = conn.write_all(&write_buf);
-
-    enc.clear();
-
-    let mut read_buf = [0_u8; BUFFER_SIZE];
+    conn.write_all(&write_buf).await?;
 
     loop {
-        let bytes_read = conn.read(&mut read_buf).unwrap();
-        let bytes = &mut read_buf[..bytes_read];
+        dec.reserve(BUFFER_SIZE);
 
-        if bytes_read == 0 {
-            continue;
-        }
+        let mut read_buf = dec.take_capacity();
 
-        dec.queue_slice(bytes);
+        conn.readable().await?;
+
+        match conn.try_read_buf(&mut read_buf) {
+            Ok(0) => return Err(io::Error::from(ErrorKind::UnexpectedEof).into()),
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => continue,
+            Err(e) => return Err(e.into()),
+            Ok(_) => (),
+        };
+
+        dec.queue_bytes(read_buf);
 
         if let Ok(Some(pkt)) = dec.try_next_packet::<S2cLoginPacket>() {
             match pkt {
@@ -83,8 +81,7 @@ pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
                 }
 
                 S2cLoginPacket::EncryptionRequest(_) => {
-                    println!("{connection_name} failed to login: encryption not implemented");
-                    return;
+                    bail!("Encryption not implemented");
                 }
 
                 _ => (),
@@ -92,44 +89,55 @@ pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
         }
     }
 
-    println!("{connection_name} logined");
+    println!("{session_name} logined");
 
     loop {
-        let bytes_read = conn.read(&mut read_buf).unwrap();
-        let bytes = &mut read_buf[..bytes_read];
+        dec.reserve(BUFFER_SIZE);
 
-        if bytes_read == 0 {
-            continue;
-        }
+        let mut read_buf = dec.take_capacity();
 
-        dec.queue_slice(bytes);
+        conn.readable().await?;
 
-        if let Ok(Some(pkt)) = dec.try_next_packet::<S2cPlayPacket>() {
-            match pkt {
+        match conn.try_read_buf(&mut read_buf) {
+            Ok(0) => return Err(io::Error::from(ErrorKind::UnexpectedEof).into()),
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => continue,
+            Err(e) => return Err(e.into()),
+            Ok(_) => (),
+        };
+
+        dec.queue_bytes(read_buf);
+
+        match dec.try_next_packet::<S2cPlayPacket>() {
+            Ok(None) => continue,
+            Ok(Some(pkt)) => match pkt {
                 S2cPlayPacket::KeepAliveS2c(p) => {
                     enc.clear();
-                    _ = enc.append_packet(&KeepAliveC2s { id: p.id });
-                    _ = conn.write_all(&enc.take());
 
-                    println!("{connection_name} keep alive")
+                    _ = enc.append_packet(&KeepAliveC2s { id: p.id });
+                    conn.write_all(&enc.take()).await?;
+
+                    println!("{session_name} keep alive")
                 }
 
                 S2cPlayPacket::SynchronizePlayerPosition(p) => {
                     enc.clear();
+
                     _ = enc.append_packet(&ConfirmTeleport {
                         teleport_id: p.teleport_id,
                     });
-                    _ = conn.write_all(&enc.take());
 
-                    enc.clear();
                     _ = enc.append_packet(&SetPlayerPosition {
                         position: p.position,
                         on_ground: true,
                     });
-                    _ = conn.write_all(&enc.take());
+
+                    conn.write_all(&enc.take()).await?;
+
+                    println!("{session_name} spawned")
                 }
                 _ => (),
-            }
+            },
+            Err(err) => return Err(err),
         }
     }
 }

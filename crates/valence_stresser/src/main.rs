@@ -1,32 +1,38 @@
 use core::time::Duration;
 use std::net::ToSocketAddrs;
-use std::thread::{self, JoinHandle};
+use std::sync::Arc;
 
 use args::StresserArgs;
 use clap::Parser;
-use stresser::make_connection;
+use stresser::make_session;
+use tokio::sync::Semaphore;
 
 mod args;
 pub mod stresser;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = StresserArgs::parse();
 
     let target_addr = args.target_host.to_socket_addrs().unwrap().next().unwrap();
 
-    let mut last_thread: Option<JoinHandle<()>> = None;
+    let mut session_index: usize = 0;
 
-    for conn_index in 0..args.connections_count {
-        let conn_name = format!("{}{}", args.name_prefix, conn_index);
+    let sema = Arc::new(Semaphore::new(args.connections_count));
 
-        last_thread = Some(thread::spawn(move || {
-            make_connection(target_addr, conn_name.as_str());
-        }));
+    while let Ok(perm) = sema.clone().acquire_owned().await {
+        let session_name = format!("{}{}", args.name_prefix, session_index);
 
-        thread::sleep(Duration::from_millis(args.spawn_cooldown))
-    }
+        tokio::spawn(async move {
+            if let Err(err) = make_session(target_addr, session_name.as_str()).await {
+                eprintln!("Session {session_name} interrupted with error: {err}")
+            };
 
-    if let Some(thread) = last_thread {
-        _ = thread.join();
+            drop(perm);
+        });
+
+        session_index += 1;
+
+        tokio::time::sleep(Duration::from_millis(args.spawn_cooldown)).await
     }
 }
