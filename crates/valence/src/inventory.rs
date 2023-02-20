@@ -1155,10 +1155,15 @@ mod test {
             app.update();
 
             // Make assertions
+            let client = app
+                .world
+                .get::<Client>(client_ent)
+                .expect("could not find client");
+            assert_eq!(client.held_item_slot(), 36);
             let inventory = app
                 .world
                 .get::<Inventory>(client_ent)
-                .expect("could not find client");
+                .expect("could not find inventory");
             assert_eq!(inventory.slot(36), None);
 
             Ok(())

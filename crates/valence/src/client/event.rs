@@ -339,6 +339,7 @@ pub struct DropItem {
 #[derive(Clone, Debug)]
 pub struct DropItemStack {
     pub client: Entity,
+    pub from_slot: Option<u16>,
     pub stack: ItemStack,
 }
 
@@ -1161,11 +1162,30 @@ fn handle_one_packet(
                     face: p.face,
                     sequence: p.sequence.0,
                 }),
-                DiggingStatus::DropItemStack => events
-                    .2
-                    .drop_item_stack
-                    .send(DropItemStack { client: entity }),
-                DiggingStatus::DropItem => events.2.drop_item.send(DropItem { client: entity }),
+                DiggingStatus::DropItemStack => {
+                    if let Some(stack) = inventory.replace_slot(client.held_item_slot(), None) {
+                        client.inventory_slots_modified |= 1 << client.held_item_slot();
+                        events.2.drop_item_stack.send(DropItemStack {
+                            client: entity,
+                            from_slot: Some(client.held_item_slot()),
+                            stack,
+                        });
+                    }
+                }
+                DiggingStatus::DropItem => {
+                    if let Some(stack) = inventory.slot(client.held_item_slot()) {
+                        if stack.count() == 1 {
+                            inventory.replace_slot(client.held_item_slot(), None);
+                        } else {
+                            let mut stack = stack.clone();
+                            stack.set_count(1);
+                            inventory.replace_slot(client.held_item_slot(), Some(stack.clone()));
+                        }
+                        client.inventory_slots_modified |= 1 << client.held_item_slot();
+
+                        events.2.drop_item.send(DropItem { client: entity });
+                    }
+                }
                 DiggingStatus::UpdateHeldItemState => events
                     .2
                     .update_held_item_state
@@ -1288,6 +1308,7 @@ fn handle_one_packet(
                 if let Some(stack) = p.clicked_item.as_ref() {
                     events.2.drop_item_stack.send(DropItemStack {
                         client: entity,
+                        from_slot: None,
                         stack: stack.clone(),
                     });
                 }
