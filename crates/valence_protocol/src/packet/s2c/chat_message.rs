@@ -6,7 +6,7 @@ use crate::{Decode, DecodePacket, Encode, EncodePacket, Text, Uuid, VarInt};
 
 #[derive(Clone, PartialEq, Debug, EncodePacket, DecodePacket)]
 #[packet_id = 0x31]
-pub struct PlayerChatMessage<'a> {
+pub struct ChatMessageS2c<'a> {
     pub sender: Uuid,
     pub index: VarInt,
     pub message_signature: Option<&'a [u8; 256]>,
@@ -29,7 +29,7 @@ pub enum MessageFilterType {
     PartiallyFiltered,
 }
 
-impl<'a> Encode for PlayerChatMessage<'a> {
+impl<'a> Encode for ChatMessageS2c<'a> {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         self.sender.encode(&mut w)?;
         self.index.encode(&mut w)?;
@@ -57,7 +57,7 @@ impl<'a> Encode for PlayerChatMessage<'a> {
     }
 }
 
-impl<'a> Decode<'a> for PlayerChatMessage<'a> {
+impl<'a> Decode<'a> for ChatMessageS2c<'a> {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
         let sender = Uuid::decode(r)?;
         let index = VarInt::decode(r)?;

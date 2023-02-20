@@ -6,7 +6,7 @@ use crate::{Decode, DecodePacket, Encode, EncodePacket, Ident, VarInt};
 
 #[derive(Clone, PartialEq, Eq, Debug, EncodePacket, DecodePacket)]
 #[packet_id = 0x39]
-pub struct UpdateRecipeBook<'a> {
+pub struct UnlockRecipesS2c<'a> {
     pub action: UpdateRecipeBookAction<'a>,
     pub crafting_recipe_book_open: bool,
     pub crafting_recipe_book_filter_active: bool,
@@ -26,7 +26,7 @@ pub enum UpdateRecipeBookAction<'a> {
     Remove,
 }
 
-impl Encode for UpdateRecipeBook<'_> {
+impl Encode for UnlockRecipesS2c<'_> {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         VarInt(match &self.action {
             UpdateRecipeBookAction::Init { .. } => 0,
@@ -53,7 +53,7 @@ impl Encode for UpdateRecipeBook<'_> {
     }
 }
 
-impl<'a> Decode<'a> for UpdateRecipeBook<'a> {
+impl<'a> Decode<'a> for UnlockRecipesS2c<'a> {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
         let action_id = VarInt::decode(r)?.0;
 

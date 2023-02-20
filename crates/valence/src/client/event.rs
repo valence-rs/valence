@@ -10,7 +10,7 @@ use tracing::warn;
 use uuid::Uuid;
 use valence_protocol::entity_meta::Pose;
 use valence_protocol::packet::c2s::play::{
-    ClientCommand, PlayerAbilitiesC2s, ResourcePackC2s, SeenAdvancements,
+    ClientStatusC2s, UpdatePlayerAbilitiesC2s, ResourcePackStatusC2s, AdvancementTabC2s,
 };
 use valence_protocol::packet::C2sPlayPacket;
 use valence_protocol::types::{
@@ -407,13 +407,13 @@ pub enum ResourcePackStatus {
     FailedDownload,
 }
 
-impl From<ResourcePackC2s> for ResourcePackStatus {
-    fn from(packet: ResourcePackC2s) -> Self {
+impl From<ResourcePackStatusC2s> for ResourcePackStatus {
+    fn from(packet: ResourcePackStatusC2s) -> Self {
         match packet {
-            ResourcePackC2s::Accepted { .. } => Self::Accepted,
-            ResourcePackC2s::Declined { .. } => Self::Declined,
-            ResourcePackC2s::SuccessfullyLoaded { .. } => Self::Loaded,
-            ResourcePackC2s::FailedDownload { .. } => Self::FailedDownload,
+            ResourcePackStatusC2s::Accepted { .. } => Self::Accepted,
+            ResourcePackStatusC2s::Declined { .. } => Self::Declined,
+            ResourcePackStatusC2s::SuccessfullyLoaded { .. } => Self::Loaded,
+            ResourcePackStatusC2s::FailedDownload { .. } => Self::FailedDownload,
         }
     }
 }
@@ -820,11 +820,11 @@ fn handle_one_packet(
             });
         }
         C2sPlayPacket::ClientCommand(p) => match p {
-            ClientCommand::PerformRespawn => events
+            ClientStatusC2s::PerformRespawn => events
                 .0
                 .perform_respawn
                 .send(PerformRespawn { client: entity }),
-            ClientCommand::RequestStats => {
+            ClientStatusC2s::RequestStats => {
                 events.0.request_stats.send(RequestStats { client: entity })
             }
         },
@@ -1126,10 +1126,10 @@ fn handle_one_packet(
             });
         }
         C2sPlayPacket::PlayerAbilitiesC2s(p) => match p {
-            PlayerAbilitiesC2s::StopFlying => {
+            UpdatePlayerAbilitiesC2s::StopFlying => {
                 events.2.stop_flying.send(StopFlying { client: entity })
             }
-            PlayerAbilitiesC2s::StartFlying => {
+            UpdatePlayerAbilitiesC2s::StartFlying => {
                 events.2.start_flying.send(StartFlying { client: entity })
             }
         },
@@ -1229,13 +1229,13 @@ fn handle_one_packet(
                 })
         }
         C2sPlayPacket::SeenAdvancements(p) => match p {
-            SeenAdvancements::OpenedTab { tab_id } => {
+            AdvancementTabC2s::OpenedTab { tab_id } => {
                 events.3.open_advancement_tab.send(OpenAdvancementTab {
                     client: entity,
                     tab_id: tab_id.into(),
                 })
             }
-            SeenAdvancements::ClosedScreen => events
+            AdvancementTabC2s::ClosedScreen => events
                 .3
                 .close_advancement_screen
                 .send(CloseAdvancementScreen { client: entity }),

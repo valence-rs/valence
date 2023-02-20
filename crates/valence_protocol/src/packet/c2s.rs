@@ -21,7 +21,7 @@ pub mod handshake {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x00]
-    pub struct Handshake<'a> {
+    pub struct HandshakeC2s<'a> {
         pub protocol_version: VarInt,
         pub server_address: &'a str,
         pub server_port: u16,
@@ -31,7 +31,7 @@ pub mod handshake {
     packet_enum! {
         #[derive(Clone)]
         C2sHandshakePacket<'a> {
-            Handshake<'a>
+            HandshakeC2s<'a>
         }
     }
 }
@@ -41,19 +41,19 @@ pub mod status {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x00]
-    pub struct StatusRequest;
+    pub struct QueryRequestC2s;
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x01]
-    pub struct PingRequest {
+    pub struct QueryPingC2s {
         pub payload: u64,
     }
 
     packet_enum! {
         #[derive(Clone)]
         C2sStatusPacket {
-            StatusRequest,
-            PingRequest,
+            QueryRequestC2s,
+            QueryPingC2s,
         }
     }
 }
@@ -63,21 +63,21 @@ pub mod login {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x00]
-    pub struct LoginStart<'a> {
+    pub struct LoginHelloC2s<'a> {
         pub username: Username<&'a str>,
         pub profile_id: Option<Uuid>,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x01]
-    pub struct EncryptionResponse<'a> {
+    pub struct LoginKeyC2s<'a> {
         pub shared_secret: &'a [u8],
         pub verify_token: &'a [u8],
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x02]
-    pub struct LoginPluginResponse<'a> {
+    pub struct LoginQueryResponseC2s<'a> {
         pub message_id: VarInt,
         pub data: Option<RawBytes<'a>>,
     }
@@ -85,9 +85,9 @@ pub mod login {
     packet_enum! {
         #[derive(Clone)]
         C2sLoginPacket<'a> {
-            LoginStart<'a>,
-            EncryptionResponse<'a>,
-            LoginPluginResponse<'a>,
+            LoginHelloC2s<'a>,
+            LoginKeyC2s<'a>,
+            LoginQueryResponseC2s<'a>,
         }
     }
 }
@@ -97,20 +97,20 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x00]
-    pub struct ConfirmTeleport {
+    pub struct TeleportConfirmC2s {
         pub teleport_id: VarInt,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x01]
-    pub struct QueryBlockEntityTag {
+    pub struct QueryBlockNbtC2s {
         pub transaction_id: VarInt,
         pub position: BlockPos,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x02]
-    pub struct ChangeDifficulty {
+    pub struct UpdateDifficultyC2s {
         pub new_difficulty: Difficulty,
     }
 
@@ -122,7 +122,7 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x04]
-    pub struct ChatCommand<'a> {
+    pub struct CommandExecutionC2s<'a> {
         pub command: &'a str,
         pub timestamp: u64,
         pub salt: u64,
@@ -136,7 +136,7 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x05]
-    pub struct ChatMessage<'a> {
+    pub struct ChatMessageC2s<'a> {
         pub message: &'a str,
         pub timestamp: u64,
         pub salt: u64,
@@ -150,14 +150,14 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x06]
-    pub enum ClientCommand {
+    pub enum ClientStatusC2s {
         PerformRespawn,
         RequestStats,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x07]
-    pub struct ClientInformation<'a> {
+    pub struct ClientSettingsC2s<'a> {
         pub locale: &'a str,
         pub view_distance: u8,
         pub chat_mode: ChatMode,
@@ -170,21 +170,21 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x08]
-    pub struct CommandSuggestionsRequest<'a> {
+    pub struct RequestCommandCompletionsC2s<'a> {
         pub transaction_id: VarInt,
         pub text: &'a str,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x09]
-    pub struct ClickContainerButton {
+    pub struct ButtonClickC2s {
         pub window_id: i8,
         pub button_id: i8,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x0a]
-    pub struct ClickContainer {
+    pub struct ClickSlotC2s {
         pub window_id: u8,
         pub state_id: VarInt,
         pub slot_idx: i16,
@@ -196,20 +196,20 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x0b]
-    pub struct CloseContainerC2s {
+    pub struct CloseHandledScreenC2s {
         pub window_id: i8,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x0c]
-    pub struct PluginMessageC2s<'a> {
+    pub struct CustomPayloadC2s<'a> {
         pub channel: Ident<&'a str>,
         pub data: RawBytes<'a>,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x0d]
-    pub struct EditBook<'a> {
+    pub struct BookUpdateC2s<'a> {
         pub slot: VarInt,
         pub entries: Vec<&'a str>,
         pub title: Option<&'a str>,
@@ -217,14 +217,14 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x0e]
-    pub struct QueryEntityTag {
+    pub struct QueryEntityNbtC2s {
         pub transaction_id: VarInt,
         pub entity_id: VarInt,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x0f]
-    pub struct Interact {
+    pub struct PlayerInteractC2s {
         pub entity_id: VarInt,
         pub interact: EntityInteraction,
         pub sneaking: bool,
@@ -232,7 +232,7 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x10]
-    pub struct JigsawGenerate {
+    pub struct JigsawGeneratingC2s {
         pub position: BlockPos,
         pub levels: VarInt,
         pub keep_jigsaws: bool,
@@ -246,20 +246,21 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x12]
-    pub struct LockDifficulty {
+    pub struct UpdateDifficultyLockC2s {
         pub locked: bool,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x13]
-    pub struct SetPlayerPosition {
+    pub struct PositionAndOnGroundC2s {
         pub position: [f64; 3],
         pub on_ground: bool,
     }
 
+    // TODO: move to position module.
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x14]
-    pub struct SetPlayerPositionAndRotation {
+    pub struct FullC2s {
         pub position: [f64; 3],
         pub yaw: f32,
         pub pitch: f32,
@@ -268,7 +269,7 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x15]
-    pub struct SetPlayerRotation {
+    pub struct LookAndOnGroundC2s {
         pub yaw: f32,
         pub pitch: f32,
         pub on_ground: bool,
@@ -276,13 +277,13 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x16]
-    pub struct SetPlayerOnGround {
+    pub struct OnGroundOnlyC2s {
         pub on_ground: bool,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x17]
-    pub struct MoveVehicleC2s {
+    pub struct VehicleMoveC2s {
         pub position: [f64; 3],
         pub yaw: f32,
         pub pitch: f32,
@@ -290,20 +291,20 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x18]
-    pub struct PaddleBoat {
+    pub struct BoatPaddleStateC2s {
         pub left_paddle_turning: bool,
         pub right_paddle_turning: bool,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x19]
-    pub struct PickItem {
+    pub struct PickFromInventoryC2s {
         pub slot_to_use: VarInt,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x1a]
-    pub struct PlaceRecipe<'a> {
+    pub struct CraftRequestC2s<'a> {
         pub window_id: i8,
         pub recipe: Ident<&'a str>,
         pub make_all: bool,
@@ -311,7 +312,7 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x1b]
-    pub enum PlayerAbilitiesC2s {
+    pub enum UpdatePlayerAbilitiesC2s {
         #[tag = 0b00]
         StopFlying,
         #[tag = 0b10]
@@ -320,7 +321,7 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x1c]
-    pub struct PlayerAction {
+    pub struct PlayerActionC2s {
         pub status: DiggingStatus,
         pub position: BlockPos,
         pub face: BlockFace,
@@ -329,7 +330,7 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x1d]
-    pub struct PlayerCommand {
+    pub struct ClientCommandC2s {
         pub entity_id: VarInt,
         pub action_id: Action,
         pub jump_boost: VarInt,
@@ -337,7 +338,7 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x1e]
-    pub struct PlayerInput {
+    pub struct PlayerInputC2s {
         pub sideways: f32,
         pub forward: f32,
         pub flags: PlayerInputFlags,
@@ -345,13 +346,13 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x1f]
-    pub struct PongPlay {
+    pub struct PlayPongC2s {
         pub id: i32,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x20]
-    pub struct PlayerSession<'a> {
+    pub struct PlayerSessionC2s<'a> {
         pub session_id: Uuid,
         // Public key
         pub expires_at: i64,
@@ -361,7 +362,7 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x21]
-    pub struct ChangeRecipeBookSettings {
+    pub struct RecipeCategoryOptionsC2s {
         pub book_id: RecipeBookId,
         pub book_open: bool,
         pub filter_active: bool,
@@ -369,19 +370,19 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x22]
-    pub struct SetSeenRecipe<'a> {
+    pub struct RecipeBookDataC2s<'a> {
         pub recipe_id: Ident<&'a str>,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x23]
-    pub struct RenameItem<'a> {
+    pub struct RenameItemC2s<'a> {
         pub item_name: &'a str,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x24]
-    pub enum ResourcePackC2s {
+    pub enum ResourcePackStatusC2s {
         SuccessfullyLoaded,
         Declined,
         FailedDownload,
@@ -390,33 +391,33 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x25]
-    pub enum SeenAdvancements<'a> {
+    pub enum AdvancementTabC2s<'a> {
         OpenedTab { tab_id: Ident<&'a str> },
         ClosedScreen,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x26]
-    pub struct SelectTrade {
+    pub struct SelectMerchantTradeC2s {
         pub selected_slot: VarInt,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x27]
-    pub struct SetBeaconEffect {
+    pub struct UpdateBeaconC2s {
         pub primary_effect: Option<VarInt>,
         pub secondary_effect: Option<VarInt>,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x28]
-    pub struct SetHeldItemC2s {
+    pub struct UpdateSelectedSlotC2s {
         pub slot: i16,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x29]
-    pub struct ProgramCommandBlock<'a> {
+    pub struct UpdateCommandBlockC2s<'a> {
         pub position: BlockPos,
         pub command: &'a str,
         pub mode: CommandBlockMode,
@@ -425,7 +426,7 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x2a]
-    pub struct ProgramCommandBlockMinecart<'a> {
+    pub struct UpdateCommandBlockMinecartC2s<'a> {
         pub entity_id: VarInt,
         pub command: &'a str,
         pub track_output: bool,
@@ -433,14 +434,14 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x2b]
-    pub struct SetCreativeModeSlot {
+    pub struct CreativeInventoryActionC2s {
         pub slot: i16,
         pub clicked_item: Option<ItemStack>,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x2c]
-    pub struct ProgramJigsawBlock<'a> {
+    pub struct UpdateJigsawC2s<'a> {
         pub position: BlockPos,
         pub name: Ident<&'a str>,
         pub target: Ident<&'a str>,
@@ -451,7 +452,7 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x2d]
-    pub struct ProgramStructureBlock<'a> {
+    pub struct UpdateStructureBlockC2s<'a> {
         pub position: BlockPos,
         pub action: StructureBlockAction,
         pub mode: StructureBlockMode,
@@ -468,26 +469,26 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x2e]
-    pub struct UpdateSign<'a> {
+    pub struct UpdateSignC2s<'a> {
         pub position: BlockPos,
         pub lines: [&'a str; 4],
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x2f]
-    pub struct SwingArm {
+    pub struct HandSwingC2s {
         pub hand: Hand,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x30]
-    pub struct TeleportToEntity {
+    pub struct SpectatorTeleportC2s {
         pub target: Uuid,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x31]
-    pub struct UseItemOn {
+    pub struct PlayerInteractBlockC2s {
         pub hand: Hand,
         pub position: BlockPos,
         pub face: BlockFace,
@@ -498,7 +499,7 @@ pub mod play {
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x32]
-    pub struct UseItem {
+    pub struct PlayerInteractItemC2s {
         pub hand: Hand,
         pub sequence: VarInt,
     }
@@ -506,57 +507,57 @@ pub mod play {
     packet_enum! {
         #[derive(Clone)]
         C2sPlayPacket<'a> {
-            ConfirmTeleport,
-            QueryBlockEntityTag,
-            ChangeDifficulty,
+            TeleportConfirmC2s,
+            QueryBlockNbtC2s,
+            UpdateDifficultyC2s,
             MessageAcknowledgmentC2s,
-            ChatCommand<'a>,
-            ChatMessage<'a>,
-            ClientCommand,
-            ClientInformation<'a>,
-            CommandSuggestionsRequest<'a>,
-            ClickContainerButton,
-            ClickContainer,
-            CloseContainerC2s,
-            PluginMessageC2s<'a>,
-            EditBook<'a>,
-            QueryEntityTag,
-            Interact,
-            JigsawGenerate,
+            CommandExecutionC2s<'a>,
+            ChatMessageC2s<'a>,
+            ClientStatusC2s,
+            ClientSettingsC2s<'a>,
+            RequestCommandCompletionsC2s<'a>,
+            ButtonClickC2s,
+            ClickSlotC2s,
+            CloseHandledScreenC2s,
+            CustomPayloadC2s<'a>,
+            BookUpdateC2s<'a>,
+            QueryEntityNbtC2s,
+            PlayerInteractC2s,
+            JigsawGeneratingC2s,
             KeepAliveC2s,
-            LockDifficulty,
-            SetPlayerPosition,
-            SetPlayerPositionAndRotation,
-            SetPlayerRotation,
-            SetPlayerOnGround,
-            MoveVehicleC2s,
-            PaddleBoat,
-            PickItem,
-            PlaceRecipe<'a>,
-            PlayerAbilitiesC2s,
-            PlayerAction,
-            PlayerCommand,
-            PlayerInput,
-            PongPlay,
-            PlayerSession<'a>,
-            ChangeRecipeBookSettings,
-            SetSeenRecipe<'a>,
-            RenameItem<'a>,
-            ResourcePackC2s,
-            SeenAdvancements<'a>,
-            SelectTrade,
-            SetBeaconEffect,
-            SetHeldItemC2s,
-            ProgramCommandBlock<'a>,
-            ProgramCommandBlockMinecart<'a>,
-            SetCreativeModeSlot,
-            ProgramJigsawBlock<'a>,
-            ProgramStructureBlock<'a>,
-            UpdateSign<'a>,
-            SwingArm,
-            TeleportToEntity,
-            UseItemOn,
-            UseItem
+            UpdateDifficultyLockC2s,
+            PositionAndOnGroundC2s,
+            FullC2s,
+            LookAndOnGroundC2s,
+            OnGroundOnlyC2s,
+            VehicleMoveC2s,
+            BoatPaddleStateC2s,
+            PickFromInventoryC2s,
+            CraftRequestC2s<'a>,
+            UpdatePlayerAbilitiesC2s,
+            PlayerActionC2s,
+            ClientCommandC2s,
+            PlayerInputC2s,
+            PlayPongC2s,
+            PlayerSessionC2s<'a>,
+            RecipeCategoryOptionsC2s,
+            RecipeBookDataC2s<'a>,
+            RenameItemC2s<'a>,
+            ResourcePackStatusC2s,
+            AdvancementTabC2s<'a>,
+            SelectMerchantTradeC2s,
+            UpdateBeaconC2s,
+            UpdateSelectedSlotC2s,
+            UpdateCommandBlockC2s<'a>,
+            UpdateCommandBlockMinecartC2s<'a>,
+            CreativeInventoryActionC2s,
+            UpdateJigsawC2s<'a>,
+            UpdateStructureBlockC2s<'a>,
+            UpdateSignC2s<'a>,
+            HandSwingC2s,
+            SpectatorTeleportC2s,
+            PlayerInteractBlockC2s,
+            PlayerInteractItemC2s
         }
     }
 }

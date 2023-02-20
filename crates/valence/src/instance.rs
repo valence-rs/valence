@@ -8,7 +8,7 @@ use glam::{DVec3, Vec3};
 use num::integer::div_ceil;
 use rustc_hash::FxHashMap;
 use valence_protocol::packet::s2c::particle::{Particle, ParticleS2c};
-use valence_protocol::packet::s2c::play::{SetActionBarText, SoundEffect};
+use valence_protocol::packet::s2c::play::{OverlayMessageS2c, PlaySoundS2c};
 use valence_protocol::types::SoundCategory;
 use valence_protocol::{BlockPos, EncodePacket, LengthPrefixedArray, Sound, Text};
 
@@ -408,7 +408,7 @@ impl Instance {
         let position = position.into();
 
         self.write_packet_at(
-            &SoundEffect {
+            &PlaySoundS2c {
                 id: sound.to_id(),
                 category,
                 position: (position * 8.0).as_ivec3().into(),
@@ -422,7 +422,7 @@ impl Instance {
 
     /// Sets the action bar text of all players in the instance.
     pub fn set_action_bar(&mut self, text: impl Into<Text>) {
-        self.write_packet(&SetActionBarText {
+        self.write_packet(&OverlayMessageS2c {
             action_bar_text: text.into().into(),
         });
     }

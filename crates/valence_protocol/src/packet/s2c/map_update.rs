@@ -5,7 +5,7 @@ use crate::{Decode, DecodePacket, Encode, EncodePacket, Text, VarInt};
 
 #[derive(Clone, PartialEq, Debug, EncodePacket, DecodePacket)]
 #[packet_id = 0x25]
-pub struct MapData<'a> {
+pub struct MapUpdateS2c<'a> {
     pub map_id: VarInt,
     pub scale: i8,
     pub locked: bool,
@@ -62,7 +62,7 @@ pub struct Data<'a> {
     pub data: &'a [u8],
 }
 
-impl Encode for MapData<'_> {
+impl Encode for MapUpdateS2c<'_> {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         self.map_id.encode(&mut w)?;
         self.scale.encode(&mut w)?;
@@ -78,7 +78,7 @@ impl Encode for MapData<'_> {
     }
 }
 
-impl<'a> Decode<'a> for MapData<'a> {
+impl<'a> Decode<'a> for MapUpdateS2c<'a> {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
         let map_id = VarInt::decode(r)?;
         let scale = i8::decode(r)?;

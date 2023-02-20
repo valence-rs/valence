@@ -4,7 +4,7 @@ use std::iter::FusedIterator;
 use bevy_ecs::prelude::*;
 use tracing::{debug, warn};
 use valence_protocol::packet::s2c::play::{
-    CloseContainerS2c, OpenScreen, SetContainerContent, SetContainerSlot,
+    CloseScreenS2c, OpenScreenS2c, InventoryS2c, ScreenHandlerSlotUpdateS2c,
 };
 use valence_protocol::types::{GameMode, WindowType};
 use valence_protocol::{ItemStack, Text, VarInt};
@@ -125,7 +125,7 @@ pub(crate) fn update_player_inventories(
                 client.inventory_state_id += 1;
                 let cursor_item = client.cursor_item.clone();
                 let state_id = client.inventory_state_id.0;
-                client.write_packet(&SetContainerContent {
+                client.write_packet(&Inventory {
                     window_id: 0,
                     state_id: VarInt(state_id),
                     slots: Cow::Borrowed(inventory.slot_slice()),
@@ -143,7 +143,7 @@ pub(crate) fn update_player_inventories(
                     let state_id = client.inventory_state_id.0;
                     for (i, slot) in inventory.slots.iter().enumerate() {
                         if ((modified_filtered >> i) & 1) == 1 {
-                            client.write_packet(&SetContainerSlot {
+                            client.write_packet(&ScreenHandlerSlotUpdateS2c {
                                 window_id: 0,
                                 state_id: VarInt(state_id),
                                 slot_idx: i as i16,
@@ -166,7 +166,7 @@ pub(crate) fn update_player_inventories(
             // TODO: eliminate clone?
             let cursor_item = client.cursor_item.clone();
             let state_id = client.inventory_state_id.0;
-            client.write_packet(&SetContainerSlot {
+            client.write_packet(&ScreenHandlerSlotUpdateS2c {
                 window_id: -1,
                 state_id: VarInt(state_id),
                 slot_idx: -1,
@@ -344,7 +344,7 @@ pub(crate) fn update_open_inventories(
             // the inventory no longer exists, so close the inventory
             commands.entity(client_entity).remove::<OpenInventory>();
             let window_id = client.window_id;
-            client.write_packet(&CloseContainerS2c {
+            client.write_packet(&CloseScreenS2c {
                 window_id,
             });
             continue;
@@ -355,14 +355,14 @@ pub(crate) fn update_open_inventories(
             client.window_id = client.window_id % 100 + 1;
             open_inventory.client_modified = 0;
 
-            let packet = OpenScreen {
+            let packet = OpenScreenS2c {
                 window_id: VarInt(client.window_id.into()),
                 window_type: WindowType::from(inventory.kind),
                 window_title: (&inventory.title).into(),
             };
             client.write_packet(&packet);
 
-            let packet = SetContainerContent {
+            let packet = Inventory {
                 window_id: client.window_id,
                 state_id: VarInt(client.inventory_state_id.0),
                 slots: Cow::Borrowed(inventory.slot_slice()),
@@ -375,7 +375,7 @@ pub(crate) fn update_open_inventories(
             if inventory.modified == u64::MAX {
                 // send the entire inventory
                 client.inventory_state_id += 1;
-                let packet = SetContainerContent {
+                let packet = Inventory {
                     window_id: client.window_id,
                     state_id: VarInt(client.inventory_state_id.0),
                     slots: Cow::Borrowed(inventory.slot_slice()),
@@ -393,7 +393,7 @@ pub(crate) fn update_open_inventories(
                     let state_id = client.inventory_state_id.0;
                     for (i, slot) in inventory.slots.iter().enumerate() {
                         if (modified_filtered >> i) & 1 == 1 {
-                            client.write_packet(&SetContainerSlot {
+                            client.write_packet(&ScreenHandlerSlotUpdateS2c {
                                 window_id,
                                 state_id: VarInt(state_id),
                                 slot_idx: i as i16,
@@ -438,7 +438,7 @@ pub(crate) fn update_client_on_close_inventory(
     for entity in removals.iter() {
         if let Ok(mut client) = clients.get_component_mut::<Client>(entity) {
             let window_id = client.window_id;
-            client.write_packet(&CloseContainerS2c { window_id });
+            client.write_packet(&CloseScreenS2c { window_id });
         }
     }
 }
@@ -476,7 +476,7 @@ pub(crate) fn handle_click_container(
                 // client is out of sync, resync, ignore click
                 debug!("Client state id mismatch, resyncing");
                 client.inventory_state_id += 1;
-                let packet = SetContainerContent {
+                let packet = Inventory {
                     window_id: client.window_id,
                     state_id: VarInt(client.inventory_state_id.0),
                     slots: Cow::Borrowed(target_inventory.slot_slice()),
@@ -508,7 +508,7 @@ pub(crate) fn handle_click_container(
                 // client is out of sync, resync, and ignore the click
                 debug!("Client state id mismatch, resyncing");
                 client.inventory_state_id += 1;
-                let packet = SetContainerContent {
+                let packet = Inventory {
                     window_id: client.window_id,
                     state_id: VarInt(client.inventory_state_id.0),
                     slots: Cow::Borrowed(client_inventory.slot_slice()),
@@ -560,7 +560,7 @@ pub(crate) fn handle_set_slot_creative(
             // creative mode Simply marking the slot as modified is not enough. This was
             // discovered because shift-clicking the destroy item slot in creative mode does
             // not work without this hack.
-            client.write_packet(&SetContainerSlot {
+            client.write_packet(&ScreenHandlerSlotUpdateS2c {
                 window_id: 0,
                 state_id: VarInt(state_id),
                 slot_idx: event.slot,

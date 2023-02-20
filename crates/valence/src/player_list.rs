@@ -7,9 +7,9 @@ use std::mem;
 use bevy_ecs::prelude::*;
 use tracing::warn;
 use uuid::Uuid;
-use valence_protocol::packet::s2c::play::{PlayerInfoRemove, SetTabListHeaderAndFooter};
-use valence_protocol::packet::s2c::player_info_update::{
-    Actions, Entry as PlayerInfoEntry, PlayerInfoUpdate,
+use valence_protocol::packet::s2c::play::{PlayerRemove, PlayerListHeaderS2c};
+use valence_protocol::packet::s2c::player_list::{
+    Actions, Entry as PlayerInfoEntry, PlayerListS2c,
 };
 use valence_protocol::types::{GameMode, Property};
 use valence_protocol::Text;
@@ -242,14 +242,14 @@ impl PlayerList {
             .collect();
 
         if !entries.is_empty() {
-            writer.write_packet(&PlayerInfoUpdate {
+            writer.write_packet(&PlayerListS2c {
                 actions,
                 entries: entries.into(),
             });
         }
 
         if !self.header.is_empty() || !self.footer.is_empty() {
-            writer.write_packet(&SetTabListHeaderAndFooter {
+            writer.write_packet(&PlayerListHeaderS2c {
                 header: (&self.header).into(),
                 footer: (&self.footer).into(),
             });
@@ -610,7 +610,7 @@ pub(crate) fn update_player_list(
                 display_name: entry.display_name.as_ref().map(|t| t.into()),
             };
 
-            writer.write_packet(&PlayerInfoUpdate {
+            writer.write_packet(&PlayerListS2c {
                 actions,
                 entries: Cow::Borrowed(&[packet_entry]),
             });
@@ -638,7 +638,7 @@ pub(crate) fn update_player_list(
             }
 
             if u8::from(actions) != 0 {
-                writer.write_packet(&PlayerInfoUpdate {
+                writer.write_packet(&PlayerListS2c {
                     actions,
                     entries: Cow::Borrowed(&[PlayerInfoEntry {
                         player_uuid: uuid,
@@ -658,7 +658,7 @@ pub(crate) fn update_player_list(
     });
 
     if !removed.is_empty() {
-        writer.write_packet(&PlayerInfoRemove {
+        writer.write_packet(&PlayerRemove {
             uuids: removed.into(),
         });
     }
@@ -666,7 +666,7 @@ pub(crate) fn update_player_list(
     if pl.modified_header_or_footer {
         pl.modified_header_or_footer = false;
 
-        writer.write_packet(&SetTabListHeaderAndFooter {
+        writer.write_packet(&PlayerListHeaderS2c {
             header: (&pl.header).into(),
             footer: (&pl.footer).into(),
         });

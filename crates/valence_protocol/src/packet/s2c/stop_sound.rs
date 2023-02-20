@@ -5,12 +5,12 @@ use crate::{Decode, DecodePacket, Encode, EncodePacket, Ident};
 
 #[derive(Clone, PartialEq, Debug, EncodePacket, DecodePacket)]
 #[packet_id = 0x5f]
-pub struct StopSound<'a> {
+pub struct StopSoundS2c<'a> {
     pub source: Option<SoundCategory>,
     pub sound: Option<Ident<&'a str>>,
 }
 
-impl Encode for StopSound<'_> {
+impl Encode for StopSoundS2c<'_> {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         match (self.source, self.sound) {
             (Some(source), Some(sound)) => {
@@ -33,7 +33,7 @@ impl Encode for StopSound<'_> {
     }
 }
 
-impl<'a> Decode<'a> for StopSound<'a> {
+impl<'a> Decode<'a> for StopSoundS2c<'a> {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
         let (source, sound) = match i8::decode(r)? {
             3 => (

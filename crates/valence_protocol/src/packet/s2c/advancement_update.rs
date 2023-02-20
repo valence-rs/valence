@@ -5,7 +5,7 @@ use crate::{Decode, DecodePacket, Encode, EncodePacket, Ident, ItemStack, Text, 
 
 #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
 #[packet_id = 0x65]
-pub struct UpdateAdvancements<'a> {
+pub struct AdvancementUpdateS2c<'a> {
     pub reset: bool,
     pub advancement_mapping: Vec<(Ident<&'a str>, Advancement<'a>)>,
     pub identifiers: Vec<Ident<&'a str>>,

@@ -4,7 +4,7 @@ use crate::{Decode, DecodePacket, Encode, EncodePacket, ItemStack, VarInt};
 
 #[derive(Clone, PartialEq, Debug, EncodePacket, DecodePacket)]
 #[packet_id = 0x51]
-pub struct SetEquipment {
+pub struct EntityEquipmentUpdateS2c {
     pub entity_id: VarInt,
     pub equipment: Vec<EquipmentEntry>,
 }
@@ -15,7 +15,7 @@ pub struct EquipmentEntry {
     pub item: Option<ItemStack>,
 }
 
-impl Encode for SetEquipment {
+impl Encode for EntityEquipmentUpdateS2c {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         self.entity_id.encode(&mut w)?;
 
@@ -33,7 +33,7 @@ impl Encode for SetEquipment {
     }
 }
 
-impl<'a> Decode<'a> for SetEquipment {
+impl<'a> Decode<'a> for EntityEquipmentUpdateS2c {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
         let entity_id = VarInt::decode(r)?;
 

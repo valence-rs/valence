@@ -9,7 +9,7 @@ use crate::{Decode, DecodePacket, Encode, EncodePacket, Text, VarInt};
 
 #[derive(Clone, Debug, EncodePacket, DecodePacket)]
 #[packet_id = 0x36]
-pub struct PlayerInfoUpdate<'a> {
+pub struct PlayerListS2c<'a> {
     pub actions: Actions,
     pub entries: Cow<'a, [Entry<'a>]>,
 }
@@ -47,7 +47,7 @@ pub struct ChatData<'a> {
     pub public_key_signature: &'a [u8],
 }
 
-impl<'a> Encode for PlayerInfoUpdate<'a> {
+impl<'a> Encode for PlayerListS2c<'a> {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         self.actions.0.encode(&mut w)?;
 
@@ -87,7 +87,7 @@ impl<'a> Encode for PlayerInfoUpdate<'a> {
     }
 }
 
-impl<'a> Decode<'a> for PlayerInfoUpdate<'a> {
+impl<'a> Decode<'a> for PlayerListS2c<'a> {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
         let actions = Actions(u8::decode(r)?);
 
