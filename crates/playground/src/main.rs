@@ -1,5 +1,6 @@
 use valence::bevy_app::App;
 
+#[allow(dead_code)]
 mod extras;
 mod playground;
 

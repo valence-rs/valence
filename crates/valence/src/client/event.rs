@@ -22,6 +22,7 @@ use valence_protocol::{BlockFace, BlockPos, Ident, ItemStack};
 
 use crate::client::Client;
 use crate::entity::{EntityAnimation, EntityKind, McEntity, TrackedData};
+use crate::inventory::Inventory;
 
 #[derive(Clone, Debug)]
 pub struct QueryBlockEntity {
@@ -331,13 +332,10 @@ pub struct FinishDigging {
 }
 
 #[derive(Clone, Debug)]
-pub struct DropItem {
-    pub client: Entity,
-}
-
-#[derive(Clone, Debug)]
 pub struct DropItemStack {
     pub client: Entity,
+    pub from_slot: Option<u16>,
+    pub stack: ItemStack,
 }
 
 /// Eating food, pulling back bows, using buckets, etc.
@@ -647,7 +645,6 @@ events! {
         StartDigging
         CancelDigging
         FinishDigging
-        DropItem
         DropItemStack
         UpdateHeldItemState
         SwapItemInHand
@@ -681,7 +678,7 @@ events! {
 }
 
 pub(crate) fn event_loop_run_criteria(
-    mut clients: Query<(Entity, &mut Client)>,
+    mut clients: Query<(Entity, &mut Client, &mut Inventory)>,
     mut clients_to_check: Local<Vec<Entity>>,
     mut events: ClientEvents,
 ) -> ShouldRun {
@@ -690,8 +687,9 @@ pub(crate) fn event_loop_run_criteria(
 
         update_all_event_buffers(&mut events);
 
-        for (entity, client) in &mut clients {
+        for (entity, client, inventory) in &mut clients {
             let client = client.into_inner();
+            let inventory = inventory.into_inner();
 
             let Ok(bytes) = client.conn.try_recv() else {
                 // Client is disconnected.
@@ -706,7 +704,7 @@ pub(crate) fn event_loop_run_criteria(
 
             client.dec.queue_bytes(bytes);
 
-            match handle_one_packet(client, entity, &mut events) {
+            match handle_one_packet(client, inventory, entity, &mut events) {
                 Ok(had_packet) => {
                     if had_packet {
                         // We decoded one packet, but there might be more.
@@ -729,12 +727,12 @@ pub(crate) fn event_loop_run_criteria(
         // Continue to filter the list of clients we need to check until there are none
         // left.
         clients_to_check.retain(|&entity| {
-            let Ok((_, mut client)) = clients.get_mut(entity) else {
+            let Ok((_, mut client, mut inventory)) = clients.get_mut(entity) else {
                 // Client was deleted during the last run of the stage.
                 return false;
             };
 
-            match handle_one_packet(&mut client, entity, &mut events) {
+            match handle_one_packet(&mut client, &mut inventory, entity, &mut events) {
                 Ok(had_packet) => had_packet,
                 Err(e) => {
                     // TODO: validate packets in separate systems.
@@ -761,6 +759,7 @@ pub(crate) fn event_loop_run_criteria(
 
 fn handle_one_packet(
     client: &mut Client,
+    inventory: &mut Inventory,
     entity: Entity,
     events: &mut ClientEvents,
 ) -> anyhow::Result<bool> {
@@ -859,16 +858,47 @@ fn handle_one_packet(
             });
         }
         C2sPlayPacket::ClickContainer(p) => {
-            events.0.click_container.send(ClickContainer {
-                client: entity,
-                window_id: p.window_id,
-                state_id: p.state_id.0,
-                slot_id: p.slot_idx,
-                button: p.button,
-                mode: p.mode,
-                slot_changes: p.slots,
-                carried_item: p.carried_item,
-            });
+            if p.slot_idx < 0 {
+                if let Some(stack) = client.cursor_item.take() {
+                    events.2.drop_item_stack.send(DropItemStack {
+                        client: entity,
+                        from_slot: None,
+                        stack,
+                    });
+                }
+            } else if p.mode == ClickContainerMode::DropKey {
+                let entire_stack = p.button == 1;
+                if let Some(stack) = inventory.slot(p.slot_idx as u16) {
+                    let dropped = if entire_stack || stack.count() == 1 {
+                        inventory.replace_slot(p.slot_idx as u16, None)
+                    } else {
+                        let mut stack = stack.clone();
+                        stack.set_count(stack.count() - 1);
+                        let mut old_slot = inventory.replace_slot(p.slot_idx as u16, Some(stack));
+                        // we already checked that the slot was not empty and that the
+                        // stack count is > 1
+                        old_slot.as_mut().unwrap().set_count(1);
+                        old_slot
+                    }
+                    .expect("dropped item should exist"); // we already checked that the slot was not empty
+                    events.2.drop_item_stack.send(DropItemStack {
+                        client: entity,
+                        from_slot: Some(p.slot_idx as u16),
+                        stack: dropped,
+                    });
+                }
+            } else {
+                events.0.click_container.send(ClickContainer {
+                    client: entity,
+                    window_id: p.window_id,
+                    state_id: p.state_id.0,
+                    slot_id: p.slot_idx,
+                    button: p.button,
+                    mode: p.mode,
+                    slot_changes: p.slots,
+                    carried_item: p.carried_item,
+                });
+            }
         }
         C2sPlayPacket::CloseContainerC2s(p) => {
             events.0.close_container.send(CloseContainer {
@@ -1157,11 +1187,36 @@ fn handle_one_packet(
                     face: p.face,
                     sequence: p.sequence.0,
                 }),
-                DiggingStatus::DropItemStack => events
-                    .2
-                    .drop_item_stack
-                    .send(DropItemStack { client: entity }),
-                DiggingStatus::DropItem => events.2.drop_item.send(DropItem { client: entity }),
+                DiggingStatus::DropItemStack => {
+                    if let Some(stack) = inventory.replace_slot(client.held_item_slot(), None) {
+                        client.inventory_slots_modified |= 1 << client.held_item_slot();
+                        events.2.drop_item_stack.send(DropItemStack {
+                            client: entity,
+                            from_slot: Some(client.held_item_slot()),
+                            stack,
+                        });
+                    }
+                }
+                DiggingStatus::DropItem => {
+                    if let Some(stack) = inventory.slot(client.held_item_slot()) {
+                        let mut old_slot = if stack.count() == 1 {
+                            inventory.replace_slot(client.held_item_slot(), None)
+                        } else {
+                            let mut stack = stack.clone();
+                            stack.set_count(stack.count() - 1);
+                            inventory.replace_slot(client.held_item_slot(), Some(stack.clone()))
+                        }
+                        .expect("old slot should exist"); // we already checked that the slot was not empty
+                        client.inventory_slots_modified |= 1 << client.held_item_slot();
+                        old_slot.set_count(1);
+
+                        events.2.drop_item_stack.send(DropItemStack {
+                            client: entity,
+                            from_slot: Some(client.held_item_slot()),
+                            stack: old_slot,
+                        });
+                    }
+                }
                 DiggingStatus::UpdateHeldItemState => events
                     .2
                     .update_held_item_state
@@ -1280,6 +1335,15 @@ fn handle_one_packet(
                 });
         }
         C2sPlayPacket::SetCreativeModeSlot(p) => {
+            if p.slot == -1 {
+                if let Some(stack) = p.clicked_item.as_ref() {
+                    events.2.drop_item_stack.send(DropItemStack {
+                        client: entity,
+                        from_slot: None,
+                        stack: stack.clone(),
+                    });
+                }
+            }
             events.3.set_creative_mode_slot.send(SetCreativeModeSlot {
                 client: entity,
                 slot: p.slot,
