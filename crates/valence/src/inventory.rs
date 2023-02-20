@@ -1104,7 +1104,7 @@ mod test {
                 .world
                 .get_mut::<Inventory>(client_ent)
                 .expect("could not find inventory");
-            inventory.replace_slot(36, ItemStack::new(ItemKind::IronIngot, 2, None));
+            inventory.replace_slot(36, ItemStack::new(ItemKind::IronIngot, 3, None));
 
             // Process a tick to get past the "on join" logic.
             app.update();
@@ -1126,15 +1126,23 @@ mod test {
                 .expect("could not find client");
             assert_eq!(
                 inventory.slot(36),
-                Some(&ItemStack::new(ItemKind::IronIngot, 1, None))
+                Some(&ItemStack::new(ItemKind::IronIngot, 2, None))
             );
             let events = app
                 .world
-                .get_resource::<Events<DropItem>>()
+                .get_resource::<Events<DropItemStack>>()
                 .expect("expected drop item stack events");
             let events = events.iter_current_update_events().collect::<Vec<_>>();
             assert_eq!(events.len(), 1);
             assert_eq!(events[0].client, client_ent);
+            assert_eq!(events[0].from_slot, Some(36));
+            assert_eq!(
+                events[0].stack,
+                ItemStack::new(ItemKind::IronIngot, 1, None)
+            );
+
+            let sent_packets = client_helper.collect_sent()?;
+            assert_packet_count!(sent_packets, 0, S2cPlayPacket::SetContainerSlot(_));
 
             Ok(())
         }

@@ -1184,16 +1184,22 @@ fn handle_one_packet(
                 }
                 DiggingStatus::DropItem => {
                     if let Some(stack) = inventory.slot(client.held_item_slot()) {
-                        if stack.count() == 1 {
-                            inventory.replace_slot(client.held_item_slot(), None);
+                        let mut old_slot = if stack.count() == 1 {
+                            inventory.replace_slot(client.held_item_slot(), None)
                         } else {
                             let mut stack = stack.clone();
-                            stack.set_count(1);
-                            inventory.replace_slot(client.held_item_slot(), Some(stack.clone()));
+                            stack.set_count(stack.count() - 1);
+                            inventory.replace_slot(client.held_item_slot(), Some(stack.clone()))
                         }
+                        .expect("old slot should exist"); // SAFETY: we already checked that the slot was not empty
                         client.inventory_slots_modified |= 1 << client.held_item_slot();
+                        old_slot.set_count(1);
 
-                        events.2.drop_item.send(DropItem { client: entity });
+                        events.2.drop_item_stack.send(DropItemStack {
+                            client: entity,
+                            from_slot: Some(client.held_item_slot()),
+                            stack: old_slot,
+                        });
                     }
                 }
                 DiggingStatus::UpdateHeldItemState => events
