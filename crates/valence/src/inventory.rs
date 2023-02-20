@@ -1088,4 +1088,80 @@ mod test {
 
         Ok(())
     }
+
+    mod dropping_items {
+        use valence_protocol::types::DiggingStatus;
+        use valence_protocol::{BlockFace, BlockPos};
+
+        use super::*;
+
+        #[test]
+        fn should_drop_item_player_action() -> anyhow::Result<()> {
+            let mut app = App::new();
+            let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+            let mut inventory = app
+                .world
+                .get_mut::<Inventory>(client_ent)
+                .expect("could not find inventory");
+            inventory.replace_slot(36, ItemStack::new(ItemKind::IronIngot, 2, None));
+
+            // Process a tick to get past the "on join" logic.
+            app.update();
+            client_helper.clear_sent();
+
+            client_helper.send(&valence_protocol::packets::c2s::play::PlayerAction {
+                status: DiggingStatus::DropItem,
+                position: BlockPos::new(0, 0, 0),
+                face: BlockFace::Bottom,
+                sequence: VarInt(0),
+            });
+
+            app.update();
+
+            // Make assertions
+            let inventory = app
+                .world
+                .get::<Inventory>(client_ent)
+                .expect("could not find client");
+            assert_eq!(
+                inventory.slot(36),
+                Some(&ItemStack::new(ItemKind::IronIngot, 1, None))
+            );
+
+            Ok(())
+        }
+
+        #[test]
+        fn should_drop_item_stack_player_action() -> anyhow::Result<()> {
+            let mut app = App::new();
+            let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+            let mut inventory = app
+                .world
+                .get_mut::<Inventory>(client_ent)
+                .expect("could not find inventory");
+            inventory.replace_slot(36, ItemStack::new(ItemKind::IronIngot, 32, None));
+
+            // Process a tick to get past the "on join" logic.
+            app.update();
+            client_helper.clear_sent();
+
+            client_helper.send(&valence_protocol::packets::c2s::play::PlayerAction {
+                status: DiggingStatus::DropItemStack,
+                position: BlockPos::new(0, 0, 0),
+                face: BlockFace::Bottom,
+                sequence: VarInt(0),
+            });
+
+            app.update();
+
+            // Make assertions
+            let inventory = app
+                .world
+                .get::<Inventory>(client_ent)
+                .expect("could not find client");
+            assert_eq!(inventory.slot(36), None);
+
+            Ok(())
+        }
+    }
 }
