@@ -338,6 +338,7 @@ pub struct DropItem {
 #[derive(Clone, Debug)]
 pub struct DropItemStack {
     pub client: Entity,
+    pub stack: ItemStack,
 }
 
 /// Eating food, pulling back bows, using buckets, etc.
