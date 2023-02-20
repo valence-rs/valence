@@ -67,7 +67,6 @@ pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
             continue;
         }
 
-        dec.reserve(BUFFER_SIZE);
         dec.queue_slice(bytes);
 
         if let Ok(Some(pkt)) = dec.try_next_packet::<S2cLoginPacket>() {
@@ -103,7 +102,6 @@ pub fn make_connection(socket_addr: SocketAddr, connection_name: &str) {
             continue;
         }
 
-        dec.reserve(BUFFER_SIZE);
         dec.queue_slice(bytes);
 
         if let Ok(Some(pkt)) = dec.try_next_packet::<S2cPlayPacket>() {
