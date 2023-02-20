@@ -1293,7 +1293,7 @@ mod test {
                 .world
                 .get_mut::<Inventory>(client_ent)
                 .expect("could not find inventory");
-            inventory.replace_slot(36, ItemStack::new(ItemKind::IronIngot, 32, None));
+            inventory.replace_slot(40, ItemStack::new(ItemKind::IronIngot, 32, None));
 
             // Process a tick to get past the "on join" logic.
             app.update();
@@ -1301,7 +1301,7 @@ mod test {
 
             client_helper.send(&valence_protocol::packets::c2s::play::ClickContainer {
                 window_id: 0,
-                slot_idx: 36,
+                slot_idx: 40,
                 button: 0,
                 mode: ClickContainerMode::DropKey,
                 state_id: VarInt(state_id),
@@ -1319,7 +1319,7 @@ mod test {
             let events = events.iter_current_update_events().collect::<Vec<_>>();
             assert_eq!(events.len(), 1);
             assert_eq!(events[0].client, client_ent);
-            assert_eq!(events[0].from_slot, Some(36));
+            assert_eq!(events[0].from_slot, Some(40));
             assert_eq!(
                 events[0].stack,
                 ItemStack::new(ItemKind::IronIngot, 1, None)
@@ -1341,7 +1341,7 @@ mod test {
                 .world
                 .get_mut::<Inventory>(client_ent)
                 .expect("could not find inventory");
-            inventory.replace_slot(36, ItemStack::new(ItemKind::IronIngot, 32, None));
+            inventory.replace_slot(40, ItemStack::new(ItemKind::IronIngot, 32, None));
 
             // Process a tick to get past the "on join" logic.
             app.update();
@@ -1349,7 +1349,7 @@ mod test {
 
             client_helper.send(&valence_protocol::packets::c2s::play::ClickContainer {
                 window_id: 0,
-                slot_idx: 36,
+                slot_idx: 40,
                 button: 1, // pressing control
                 mode: ClickContainerMode::DropKey,
                 state_id: VarInt(state_id),
@@ -1367,7 +1367,7 @@ mod test {
             let events = events.iter_current_update_events().collect::<Vec<_>>();
             assert_eq!(events.len(), 1);
             assert_eq!(events[0].client, client_ent);
-            assert_eq!(events[0].from_slot, Some(36));
+            assert_eq!(events[0].from_slot, Some(40));
             assert_eq!(
                 events[0].stack,
                 ItemStack::new(ItemKind::IronIngot, 32, None)
