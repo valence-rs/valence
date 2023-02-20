@@ -125,8 +125,8 @@ pub mod play {
     pub use update_recipe_book::UpdateRecipeBook;
 
     use super::*;
-    use crate::packets::s2c::declare_recipes::DeclaredRecipe;
-    use crate::packets::s2c::update_teams::UpdateTeamsMode;
+    use crate::packet::s2c::declare_recipes::DeclaredRecipe;
+    use crate::packet::s2c::update_teams::UpdateTeamsMode;
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x00]
@@ -257,20 +257,11 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x10]
-    pub struct SetContainerContent {
+    pub struct SetContainerContent<'a> {
         pub window_id: u8,
         pub state_id: VarInt,
-        pub slots: Vec<Option<ItemStack>>,
-        pub carried_item: Option<ItemStack>,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket)]
-    #[packet_id = 0x10]
-    pub struct SetContainerContentEncode<'a> {
-        pub window_id: u8,
-        pub state_id: VarInt,
-        pub slots: &'a [Option<ItemStack>],
-        pub carried_item: &'a Option<ItemStack>,
+        pub slots: Cow<'a, [Option<ItemStack>]>,
+        pub carried_item: Cow<'a, Option<ItemStack>>,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -283,20 +274,11 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x12]
-    pub struct SetContainerSlot {
+    pub struct SetContainerSlot<'a> {
         pub window_id: i8,
         pub state_id: VarInt,
         pub slot_idx: i16,
-        pub slot_data: Option<ItemStack>,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket)]
-    #[packet_id = 0x12]
-    pub struct SetContainerSlotEncode<'a> {
-        pub window_id: i8,
-        pub state_id: VarInt,
-        pub slot_idx: i16,
-        pub slot_data: Option<&'a ItemStack>,
+        pub slot_data: Cow<'a, Option<ItemStack>>,
     }
 
     #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -402,33 +384,16 @@ pub mod play {
     pub struct ChunkDataAndUpdateLight<'a> {
         pub chunk_x: i32,
         pub chunk_z: i32,
-        pub heightmaps: Compound,
+        pub heightmaps: Cow<'a, Compound>,
         pub blocks_and_biomes: &'a [u8],
-        pub block_entities: Vec<ChunkDataBlockEntity<'a>>,
+        pub block_entities: Cow<'a, [ChunkDataBlockEntity<'a>]>,
         pub trust_edges: bool,
-        pub sky_light_mask: Vec<u64>,
-        pub block_light_mask: Vec<u64>,
-        pub empty_sky_light_mask: Vec<u64>,
-        pub empty_block_light_mask: Vec<u64>,
-        pub sky_light_arrays: Vec<LengthPrefixedArray<u8, 2048>>,
-        pub block_light_arrays: Vec<LengthPrefixedArray<u8, 2048>>,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket)]
-    #[packet_id = 0x20]
-    pub struct ChunkDataAndUpdateLightEncode<'a> {
-        pub chunk_x: i32,
-        pub chunk_z: i32,
-        pub heightmaps: &'a Compound,
-        pub blocks_and_biomes: &'a [u8],
-        pub block_entities: &'a [ChunkDataBlockEntity<'a>],
-        pub trust_edges: bool,
-        pub sky_light_mask: &'a [u64],
-        pub block_light_mask: &'a [u64],
-        pub empty_sky_light_mask: &'a [u64],
-        pub empty_block_light_mask: &'a [u64],
-        pub sky_light_arrays: &'a [LengthPrefixedArray<u8, 2048>],
-        pub block_light_arrays: &'a [LengthPrefixedArray<u8, 2048>],
+        pub sky_light_mask: Cow<'a, [u64]>,
+        pub block_light_mask: Cow<'a, [u64]>,
+        pub empty_sky_light_mask: Cow<'a, [u64]>,
+        pub empty_block_light_mask: Cow<'a, [u64]>,
+        pub sky_light_arrays: Cow<'a, [LengthPrefixedArray<u8, 2048>]>,
+        pub block_light_arrays: Cow<'a, [LengthPrefixedArray<u8, 2048>]>,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -613,14 +578,8 @@ pub mod play {
 
     #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x3a]
-    pub struct RemoveEntities {
-        pub entity_ids: Vec<VarInt>,
-    }
-
-    #[derive(Copy, Clone, PartialEq, Debug, Encode, EncodePacket)]
-    #[packet_id = 0x3a]
-    pub struct RemoveEntitiesEncode<'a> {
-        pub entity_ids: &'a [VarInt],
+    pub struct RemoveEntities<'a> {
+        pub entity_ids: Cow<'a, [VarInt]>,
     }
 
     #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -662,18 +621,10 @@ pub mod play {
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
     #[packet_id = 0x3f]
-    pub struct UpdateSectionBlocks {
+    pub struct UpdateSectionBlocks<'a> {
         pub chunk_section_position: i64,
         pub invert_trust_edges: bool,
-        pub blocks: Vec<VarLong>,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket)]
-    #[packet_id = 0x3f]
-    pub struct UpdateSectionBlocksEncode<'a> {
-        pub chunk_section_position: i64,
-        pub invert_trust_edges: bool,
-        pub blocks: &'a [VarLong],
+        pub blocks: Cow<'a, [VarLong]>,
     }
 
     #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
@@ -990,9 +941,9 @@ pub mod play {
             CommandSuggestionResponse<'a>,
             Commands<'a>,
             CloseContainerS2c,
-            SetContainerContent,
+            SetContainerContent<'a>,
             SetContainerProperty,
-            SetContainerSlot,
+            SetContainerSlot<'a>,
             SetCooldown,
             ChatSuggestions<'a>,
             PluginMessageS2c<'a>,
@@ -1032,12 +983,12 @@ pub mod play {
             LookAt,
             SynchronizePlayerPosition,
             UpdateRecipeBook<'a>,
-            RemoveEntities,
+            RemoveEntities<'a>,
             RemoveEntityEffect,
             ResourcePackS2c<'a>,
             Respawn<'a>,
             SetHeadRotation,
-            UpdateSectionBlocks,
+            UpdateSectionBlocks<'a>,
             SelectAdvancementsTab<'a>,
             ServerData<'a>,
             SetActionBarText<'a>,

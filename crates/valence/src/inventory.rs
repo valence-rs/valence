@@ -1,9 +1,10 @@
+use std::borrow::Cow;
 use std::iter::FusedIterator;
 
 use bevy_ecs::prelude::*;
 use tracing::{debug, warn};
-use valence_protocol::packets::s2c::play::{
-    CloseContainerS2c, OpenScreen, SetContainerContentEncode, SetContainerSlotEncode,
+use valence_protocol::packet::s2c::play::{
+    CloseContainerS2c, OpenScreen, SetContainerContent, SetContainerSlot,
 };
 use valence_protocol::types::{GameMode, WindowType};
 use valence_protocol::{ItemStack, Text, VarInt};
@@ -124,11 +125,11 @@ pub(crate) fn update_player_inventories(
                 client.inventory_state_id += 1;
                 let cursor_item = client.cursor_item.clone();
                 let state_id = client.inventory_state_id.0;
-                client.write_packet(&SetContainerContentEncode {
+                client.write_packet(&SetContainerContent {
                     window_id: 0,
                     state_id: VarInt(state_id),
-                    slots: inventory.slot_slice(),
-                    carried_item: &cursor_item,
+                    slots: Cow::Borrowed(inventory.slot_slice()),
+                    carried_item: Cow::Borrowed(&cursor_item),
                 });
 
                 client.cursor_item_modified = false;
@@ -142,11 +143,11 @@ pub(crate) fn update_player_inventories(
                     let state_id = client.inventory_state_id.0;
                     for (i, slot) in inventory.slots.iter().enumerate() {
                         if ((modified_filtered >> i) & 1) == 1 {
-                            client.write_packet(&SetContainerSlotEncode {
+                            client.write_packet(&SetContainerSlot {
                                 window_id: 0,
                                 state_id: VarInt(state_id),
                                 slot_idx: i as i16,
-                                slot_data: slot.as_ref(),
+                                slot_data: Cow::Borrowed(&slot),
                             });
                         }
                     }
@@ -162,13 +163,14 @@ pub(crate) fn update_player_inventories(
 
             client.cursor_item_modified = false;
 
+            // TODO: eliminate clone?
             let cursor_item = client.cursor_item.clone();
             let state_id = client.inventory_state_id.0;
-            client.write_packet(&SetContainerSlotEncode {
+            client.write_packet(&SetContainerSlot {
                 window_id: -1,
                 state_id: VarInt(state_id),
                 slot_idx: -1,
-                slot_data: cursor_item.as_ref(),
+                slot_data: Cow::Borrowed(&cursor_item),
             });
         }
     }
@@ -360,11 +362,12 @@ pub(crate) fn update_open_inventories(
             };
             client.write_packet(&packet);
 
-            let packet = SetContainerContentEncode {
+            let packet = SetContainerContent {
                 window_id: client.window_id,
                 state_id: VarInt(client.inventory_state_id.0),
-                slots: inventory.slot_slice(),
-                carried_item: &client.cursor_item.clone(),
+                slots: Cow::Borrowed(inventory.slot_slice()),
+                // TODO: eliminate clone?
+                carried_item: Cow::Owned(client.cursor_item.clone()),
             };
             client.write_packet(&packet);
         } else {
@@ -372,11 +375,12 @@ pub(crate) fn update_open_inventories(
             if inventory.modified == u64::MAX {
                 // send the entire inventory
                 client.inventory_state_id += 1;
-                let packet = SetContainerContentEncode {
+                let packet = SetContainerContent {
                     window_id: client.window_id,
                     state_id: VarInt(client.inventory_state_id.0),
-                    slots: inventory.slot_slice(),
-                    carried_item: &client.cursor_item.clone(),
+                    slots: Cow::Borrowed(inventory.slot_slice()),
+                    // TODO: eliminate clone?
+                    carried_item: Cow::Owned(client.cursor_item.clone()),
                 };
                 client.write_packet(&packet);
             } else {
@@ -389,11 +393,11 @@ pub(crate) fn update_open_inventories(
                     let state_id = client.inventory_state_id.0;
                     for (i, slot) in inventory.slots.iter().enumerate() {
                         if (modified_filtered >> i) & 1 == 1 {
-                            client.write_packet(&SetContainerSlotEncode {
+                            client.write_packet(&SetContainerSlot {
                                 window_id,
                                 state_id: VarInt(state_id),
                                 slot_idx: i as i16,
-                                slot_data: slot.as_ref(),
+                                slot_data: Cow::Borrowed(slot),
                             });
                         }
                     }
@@ -472,11 +476,12 @@ pub(crate) fn handle_click_container(
                 // client is out of sync, resync, ignore click
                 debug!("Client state id mismatch, resyncing");
                 client.inventory_state_id += 1;
-                let packet = SetContainerContentEncode {
+                let packet = SetContainerContent {
                     window_id: client.window_id,
                     state_id: VarInt(client.inventory_state_id.0),
-                    slots: target_inventory.slot_slice(),
-                    carried_item: &client.cursor_item.clone(),
+                    slots: Cow::Borrowed(target_inventory.slot_slice()),
+                    // TODO: eliminate clone?
+                    carried_item: Cow::Owned(client.cursor_item.clone()),
                 };
                 client.write_packet(&packet);
                 continue;
@@ -503,11 +508,12 @@ pub(crate) fn handle_click_container(
                 // client is out of sync, resync, and ignore the click
                 debug!("Client state id mismatch, resyncing");
                 client.inventory_state_id += 1;
-                let packet = SetContainerContentEncode {
+                let packet = SetContainerContent {
                     window_id: client.window_id,
                     state_id: VarInt(client.inventory_state_id.0),
-                    slots: client_inventory.slot_slice(),
-                    carried_item: &client.cursor_item.clone(),
+                    slots: Cow::Borrowed(client_inventory.slot_slice()),
+                    // TODO: eliminate clone?
+                    carried_item: Cow::Owned(client.cursor_item.clone()),
                 };
                 client.write_packet(&packet);
                 continue;
@@ -554,11 +560,11 @@ pub(crate) fn handle_set_slot_creative(
             // creative mode Simply marking the slot as modified is not enough. This was
             // discovered because shift-clicking the destroy item slot in creative mode does
             // not work without this hack.
-            client.write_packet(&SetContainerSlotEncode {
+            client.write_packet(&SetContainerSlot {
                 window_id: 0,
                 state_id: VarInt(state_id),
                 slot_idx: event.slot,
-                slot_data: event.clicked_item.as_ref(),
+                slot_data: Cow::Borrowed(&event.clicked_item),
             });
         }
     }

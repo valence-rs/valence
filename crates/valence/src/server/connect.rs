@@ -21,13 +21,13 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::OwnedSemaphorePermit;
 use tracing::{error, info, instrument, trace, warn};
 use uuid::Uuid;
-use valence_protocol::packets::c2s::handshake::HandshakeOwned;
-use valence_protocol::packets::c2s::login::{EncryptionResponse, LoginPluginResponse, LoginStart};
-use valence_protocol::packets::c2s::status::{PingRequest, StatusRequest};
-use valence_protocol::packets::s2c::login::{
+use valence_protocol::packet::c2s::handshake::Handshake;
+use valence_protocol::packet::c2s::login::{EncryptionResponse, LoginPluginResponse, LoginStart};
+use valence_protocol::packet::c2s::status::{PingRequest, StatusRequest};
+use valence_protocol::packet::s2c::login::{
     DisconnectLogin, EncryptionRequest, LoginPluginRequest, LoginSuccess, SetCompression,
 };
-use valence_protocol::packets::s2c::status::{PingResponse, StatusResponse};
+use valence_protocol::packet::s2c::status::{PingResponse, StatusResponse};
 use valence_protocol::types::{HandshakeNextState, Property};
 use valence_protocol::{
     translation_key, Decode, Ident, PacketDecoder, PacketEncoder, RawBytes, Text, Username, VarInt,
@@ -110,13 +110,25 @@ async fn handle_connection(
     }
 }
 
+struct HandshakeData {
+    protocol_version: i32,
+    server_address: String,
+    next_state: HandshakeNextState,
+}
+
 async fn handle_handshake(
     shared: SharedServer,
     callbacks: Arc<impl AsyncCallbacks>,
     mut conn: InitialConnection<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
 ) -> anyhow::Result<()> {
-    let handshake = conn.recv_packet::<HandshakeOwned>().await?;
+    let handshake = conn.recv_packet::<Handshake>().await?;
+
+    let handshake = HandshakeData {
+        protocol_version: handshake.protocol_version.0,
+        server_address: handshake.server_address.to_owned(),
+        next_state: handshake.next_state,
+    };
 
     ensure!(
         matches!(shared.connection_mode(), ConnectionMode::BungeeCord)
@@ -157,12 +169,12 @@ async fn handle_status(
     callbacks: Arc<impl AsyncCallbacks>,
     mut conn: InitialConnection<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
-    handshake: HandshakeOwned,
+    handshake: HandshakeData,
 ) -> anyhow::Result<()> {
     conn.recv_packet::<StatusRequest>().await?;
 
     match callbacks
-        .server_list_ping(&shared, remote_addr, handshake.protocol_version.0)
+        .server_list_ping(&shared, remote_addr, handshake.protocol_version)
         .await
     {
         ServerListPing::Respond {
@@ -212,9 +224,9 @@ async fn handle_login(
     callbacks: Arc<impl AsyncCallbacks>,
     conn: &mut InitialConnection<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
-    handshake: HandshakeOwned,
+    handshake: HandshakeData,
 ) -> anyhow::Result<Option<NewClientInfo>> {
-    if handshake.protocol_version.0 != PROTOCOL_VERSION {
+    if handshake.protocol_version != PROTOCOL_VERSION {
         // TODO: send translated disconnect msg?
         return Ok(None);
     }

@@ -7,8 +7,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use parking_lot::Mutex;
 use valence_nbt::{compound, Compound};
 use valence_protocol::block::{BlockEntity, BlockState};
-use valence_protocol::packets::s2c::play::{
-    BlockEntityData, BlockUpdate, ChunkDataAndUpdateLightEncode, UpdateSectionBlocksEncode,
+use valence_protocol::packet::s2c::play::{
+    BlockEntityData, BlockUpdate, ChunkDataAndUpdateLight, UpdateSectionBlocks,
 };
 use valence_protocol::types::ChunkDataBlockEntity;
 use valence_protocol::{BlockPos, Encode, VarInt, VarLong};
@@ -338,10 +338,10 @@ impl Chunk<true> {
                         | (pos.z as i64 & 0x3fffff) << 20
                         | (sect_y as i64 + info.min_y.div_euclid(16) as i64) & 0xfffff;
 
-                    writer.write_packet(&UpdateSectionBlocksEncode {
+                    writer.write_packet(&UpdateSectionBlocks {
                         chunk_section_position,
                         invert_trust_edges: false,
-                        blocks: &sect.section_updates,
+                        blocks: Cow::Borrowed(&sect.section_updates),
                     });
                 }
             }
@@ -429,21 +429,23 @@ impl Chunk<true> {
                 })
                 .collect();
 
-            writer.write_packet(&ChunkDataAndUpdateLightEncode {
+            let heightmaps = compound! {
+                // TODO: MOTION_BLOCKING heightmap
+            };
+
+            writer.write_packet(&ChunkDataAndUpdateLight {
                 chunk_x: pos.x,
                 chunk_z: pos.z,
-                heightmaps: &compound! {
-                    // TODO: MOTION_BLOCKING heightmap
-                },
+                heightmaps: Cow::Owned(heightmaps),
                 blocks_and_biomes: scratch,
-                block_entities: &block_entities,
+                block_entities: Cow::Borrowed(&block_entities),
                 trust_edges: true,
-                sky_light_mask: &info.filler_sky_light_mask,
-                block_light_mask: &[],
-                empty_sky_light_mask: &[],
-                empty_block_light_mask: &[],
-                sky_light_arrays: &info.filler_sky_light_arrays,
-                block_light_arrays: &[],
+                sky_light_mask: Cow::Borrowed(&info.filler_sky_light_mask),
+                block_light_mask: Cow::Borrowed(&[]),
+                empty_sky_light_mask: Cow::Borrowed(&[]),
+                empty_block_light_mask: Cow::Borrowed(&[]),
+                sky_light_arrays: Cow::Borrowed(&info.filler_sky_light_arrays),
+                block_light_arrays: Cow::Borrowed(&[]),
             });
         }
 

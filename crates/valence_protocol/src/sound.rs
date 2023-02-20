@@ -3,7 +3,7 @@
 // associated const fn functions of `Sound` to access details about a sound.
 include!(concat!(env!("OUT_DIR"), "/sound.rs"));
 
-use crate::packets::s2c::play::SoundId;
+use crate::packet::s2c::play::SoundId;
 use crate::Ident;
 
 impl Sound {

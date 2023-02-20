@@ -10,7 +10,7 @@ use rustc_hash::FxHashMap;
 use tracing::warn;
 use uuid::Uuid;
 use valence_protocol::entity_meta::{Facing, PaintingKind, Pose};
-use valence_protocol::packets::s2c::play::{
+use valence_protocol::packet::s2c::play::{
     EntityAnimationS2c, EntityEvent as EntityEventS2c, SetEntityMetadata, SetEntityVelocity,
     SetHeadRotation, SpawnEntity, SpawnExperienceOrb, SpawnPlayer, TeleportEntity,
     UpdateEntityPosition, UpdateEntityPositionAndRotation, UpdateEntityRotation,

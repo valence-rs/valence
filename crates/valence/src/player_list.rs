@@ -7,8 +7,8 @@ use std::mem;
 use bevy_ecs::prelude::*;
 use tracing::warn;
 use uuid::Uuid;
-use valence_protocol::packets::s2c::play::{PlayerInfoRemove, SetTabListHeaderAndFooter};
-use valence_protocol::packets::s2c::player_info_update::{
+use valence_protocol::packet::s2c::play::{PlayerInfoRemove, SetTabListHeaderAndFooter};
+use valence_protocol::packet::s2c::player_info_update::{
     Actions, Entry as PlayerInfoEntry, PlayerInfoUpdate,
 };
 use valence_protocol::types::{GameMode, Property};

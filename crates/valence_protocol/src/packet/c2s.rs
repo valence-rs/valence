@@ -28,15 +28,6 @@ pub mod handshake {
         pub next_state: HandshakeNextState,
     }
 
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x00]
-    pub struct HandshakeOwned {
-        pub protocol_version: VarInt,
-        pub server_address: String,
-        pub server_port: u16,
-        pub next_state: HandshakeNextState,
-    }
-
     packet_enum! {
         #[derive(Clone)]
         C2sHandshakePacket<'a> {

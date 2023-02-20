@@ -9,14 +9,8 @@ use bytes::BytesMut;
 use glam::{DVec3, Vec3};
 use tracing::warn;
 use uuid::Uuid;
-use valence_protocol::packets::s2c::particle::Particle;
-use valence_protocol::packets::s2c::play::{
-    AcknowledgeBlockChange, CombatDeath, DisconnectPlay, EntityEvent, GameEvent, KeepAliveS2c,
-    LoginPlay, ParticleS2c, PluginMessageS2c, RemoveEntitiesEncode, ResourcePackS2c, Respawn,
-    SetActionBarText, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata,
-    SetEntityVelocity, SetRenderDistance, SetSubtitleText, SetTitleAnimationTimes, SetTitleText,
-    SoundEffect, SynchronizePlayerPosition, SystemChatMessage, UnloadChunk,
-};
+use valence_protocol::packet::s2c::particle::Particle;
+use valence_protocol::packet::s2c::play::{AcknowledgeBlockChange, CombatDeath, DisconnectPlay, EntityEvent, GameEvent, KeepAliveS2c, LoginPlay, ParticleS2c, PluginMessageS2c, RemoveEntities, ResourcePackS2c, Respawn, SetActionBarText, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata, SetEntityVelocity, SetRenderDistance, SetSubtitleText, SetTitleAnimationTimes, SetTitleText, SoundEffect, SynchronizePlayerPosition, SystemChatMessage, UnloadChunk};
 use valence_protocol::types::{
     GameEventKind, GameMode, GlobalPos, Property, SoundCategory, SyncPlayerPosLookFlags,
 };
@@ -943,8 +937,8 @@ fn update_one_client(
 
     // Despawn all the entities that are queued to be despawned.
     if !client.entities_to_despawn.is_empty() {
-        client.enc.append_packet(&RemoveEntitiesEncode {
-            entity_ids: &client.entities_to_despawn,
+        client.enc.append_packet(&RemoveEntities {
+            entity_ids: Cow::Borrowed(&client.entities_to_despawn),
         })?;
 
         client.entities_to_despawn.clear();

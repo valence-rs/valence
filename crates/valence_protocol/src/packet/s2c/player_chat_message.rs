@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::io::Write;
 
-use crate::packets::s2c::message_signature::MessageSignature;
+use crate::packet::s2c::message_signature::MessageSignature;
 use crate::{Decode, DecodePacket, Encode, EncodePacket, Text, Uuid, VarInt};
 
 #[derive(Clone, PartialEq, Debug, EncodePacket, DecodePacket)]

@@ -107,7 +107,7 @@ pub mod entity_meta;
 pub mod ident;
 mod impls;
 mod item;
-pub mod packets;
+pub mod packet;
 mod raw_bytes;
 pub mod sound;
 pub mod text;
