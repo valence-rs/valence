@@ -875,12 +875,12 @@ fn handle_one_packet(
                         let mut stack = stack.clone();
                         stack.set_count(stack.count() - 1);
                         let mut old_slot = inventory.replace_slot(p.slot_idx as u16, Some(stack));
-                        // SAFETY: we already checked that the slot was not empty and that the
+                        // we already checked that the slot was not empty and that the
                         // stack count is > 1
                         old_slot.as_mut().unwrap().set_count(1);
                         old_slot
                     }
-                    .expect("dropped item should exist"); // SAFETY: we already checked that the slot was not empty
+                    .expect("dropped item should exist"); // we already checked that the slot was not empty
                     events.2.drop_item_stack.send(DropItemStack {
                         client: entity,
                         from_slot: Some(p.slot_idx as u16),
@@ -1206,7 +1206,7 @@ fn handle_one_packet(
                             stack.set_count(stack.count() - 1);
                             inventory.replace_slot(client.held_item_slot(), Some(stack.clone()))
                         }
-                        .expect("old slot should exist"); // SAFETY: we already checked that the slot was not empty
+                        .expect("old slot should exist"); // we already checked that the slot was not empty
                         client.inventory_slots_modified |= 1 << client.held_item_slot();
                         old_slot.set_count(1);
 
