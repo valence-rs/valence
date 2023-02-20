@@ -864,16 +864,26 @@ fn handle_one_packet(
             });
         }
         C2sPlayPacket::ClickContainer(p) => {
-            events.0.click_container.send(ClickContainer {
-                client: entity,
-                window_id: p.window_id,
-                state_id: p.state_id.0,
-                slot_id: p.slot_idx,
-                button: p.button,
-                mode: p.mode,
-                slot_changes: p.slots,
-                carried_item: p.carried_item,
-            });
+            if p.slot_idx < 0 {
+                if let Some(stack) = client.cursor_item.take() {
+                    events.2.drop_item_stack.send(DropItemStack {
+                        client: entity,
+                        from_slot: None,
+                        stack,
+                    });
+                }
+            } else {
+                events.0.click_container.send(ClickContainer {
+                    client: entity,
+                    window_id: p.window_id,
+                    state_id: p.state_id.0,
+                    slot_id: p.slot_idx,
+                    button: p.button,
+                    mode: p.mode,
+                    slot_changes: p.slots,
+                    carried_item: p.carried_item,
+                });
+            }
         }
         C2sPlayPacket::CloseContainerC2s(p) => {
             events.0.close_container.send(CloseContainer {

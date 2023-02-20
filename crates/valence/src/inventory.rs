@@ -1090,7 +1090,7 @@ mod test {
     }
 
     mod dropping_items {
-        use valence_protocol::types::DiggingStatus;
+        use valence_protocol::types::{ClickContainerMode, DiggingStatus};
         use valence_protocol::{BlockFace, BlockPos};
 
         use super::*;
@@ -1206,6 +1206,56 @@ mod test {
             app.update();
 
             // Make assertions
+            let events = app
+                .world
+                .get_resource::<Events<DropItemStack>>()
+                .expect("expected drop item stack events");
+            let events = events.iter_current_update_events().collect::<Vec<_>>();
+            assert_eq!(events.len(), 1);
+            assert_eq!(events[0].client, client_ent);
+            assert_eq!(events[0].from_slot, None);
+            assert_eq!(
+                events[0].stack,
+                ItemStack::new(ItemKind::IronIngot, 32, None)
+            );
+
+            Ok(())
+        }
+
+        #[test]
+        fn should_drop_item_stack_click_container() -> anyhow::Result<()> {
+            let mut app = App::new();
+            let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+            let mut client = app
+                .world
+                .get_mut::<Client>(client_ent)
+                .expect("could not find client");
+            client.cursor_item = Some(ItemStack::new(ItemKind::IronIngot, 32, None));
+            let state_id = client.inventory_state_id.0;
+            drop(client);
+
+            // Process a tick to get past the "on join" logic.
+            app.update();
+            client_helper.clear_sent();
+
+            client_helper.send(&valence_protocol::packets::c2s::play::ClickContainer {
+                window_id: 0,
+                slot_idx: -999,
+                button: 0,
+                mode: ClickContainerMode::Click,
+                state_id: VarInt(state_id),
+                slots: vec![],
+                carried_item: None,
+            });
+
+            app.update();
+
+            // Make assertions
+            let client = app
+                .world
+                .get::<Client>(client_ent)
+                .expect("could not find client");
+            assert_eq!(client.cursor_item(), None);
             let events = app
                 .world
                 .get_resource::<Events<DropItemStack>>()
