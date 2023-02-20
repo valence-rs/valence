@@ -1281,6 +1281,14 @@ fn handle_one_packet(
                 });
         }
         C2sPlayPacket::SetCreativeModeSlot(p) => {
+            if p.slot == -1 {
+                if let Some(stack) = p.clicked_item.as_ref() {
+                    events.2.drop_item_stack.send(DropItemStack {
+                        client: entity,
+                        stack: stack.clone(),
+                    });
+                }
+            }
             events.3.set_creative_mode_slot.send(SetCreativeModeSlot {
                 client: entity,
                 slot: p.slot,
