@@ -866,6 +866,32 @@ fn handle_one_packet(
                         stack,
                     });
                 }
+            } else if p.mode == ClickContainerMode::DropKey {
+                let entire_stack = p.button == 1;
+                if let Some(stack) = inventory.slot(p.slot_idx as u16) {
+                    let dropped = if entire_stack {
+                        inventory.replace_slot(p.slot_idx as u16, None)
+                    } else {
+                        if stack.count() == 1 {
+                            inventory.replace_slot(client.held_item_slot(), None)
+                        } else {
+                            let mut stack = stack.clone();
+                            stack.set_count(stack.count() - 1);
+                            let mut old_slot =
+                                inventory.replace_slot(client.held_item_slot(), Some(stack));
+                            // SAFETY: we already checked that the slot was not empty and that the
+                            // stack count is > 1
+                            old_slot.as_mut().unwrap().set_count(1);
+                            old_slot
+                        }
+                    }
+                    .expect("dropped item should exist"); // SAFETY: we already checked that the slot was not empty
+                    events.2.drop_item_stack.send(DropItemStack {
+                        client: entity,
+                        from_slot: Some(p.slot_idx as u16),
+                        stack: dropped,
+                    });
+                }
             } else {
                 events.0.click_container.send(ClickContainer {
                     client: entity,
