@@ -332,11 +332,6 @@ pub struct FinishDigging {
 }
 
 #[derive(Clone, Debug)]
-pub struct DropItem {
-    pub client: Entity,
-}
-
-#[derive(Clone, Debug)]
 pub struct DropItemStack {
     pub client: Entity,
     pub from_slot: Option<u16>,
@@ -650,7 +645,6 @@ events! {
         StartDigging
         CancelDigging
         FinishDigging
-        DropItem
         DropItemStack
         UpdateHeldItemState
         SwapItemInHand

@@ -1094,7 +1094,7 @@ mod test {
         use valence_protocol::{BlockFace, BlockPos};
 
         use super::*;
-        use crate::client::event::{DropItem, DropItemStack};
+        use crate::client::event::DropItemStack;
 
         #[test]
         fn should_drop_item_player_action() -> anyhow::Result<()> {
