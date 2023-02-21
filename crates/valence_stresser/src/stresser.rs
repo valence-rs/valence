@@ -81,7 +81,7 @@ pub async fn make_session(socket_addr: SocketAddr, session_name: &str) -> anyhow
                 }
 
                 S2cLoginPacket::EncryptionRequest(_) => {
-                    bail!("Encryption not implemented");
+                    bail!("encryption not implemented");
                 }
 
                 _ => (),
@@ -92,20 +92,22 @@ pub async fn make_session(socket_addr: SocketAddr, session_name: &str) -> anyhow
     println!("{session_name} logined");
 
     loop {
-        dec.reserve(BUFFER_SIZE);
+        while !dec.has_next_packet()? {
+            dec.reserve(BUFFER_SIZE);
 
-        let mut read_buf = dec.take_capacity();
+            let mut read_buf = dec.take_capacity();
 
-        conn.readable().await?;
+            conn.readable().await?;
 
-        match conn.try_read_buf(&mut read_buf) {
-            Ok(0) => return Err(io::Error::from(ErrorKind::UnexpectedEof).into()),
-            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => continue,
-            Err(e) => return Err(e.into()),
-            Ok(_) => (),
-        };
+            match conn.try_read_buf(&mut read_buf) {
+                Ok(0) => return Err(io::Error::from(ErrorKind::UnexpectedEof).into()),
+                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => continue,
+                Err(e) => return Err(e.into()),
+                Ok(_) => (),
+            };
 
-        dec.queue_bytes(read_buf);
+            dec.queue_bytes(read_buf);
+        }
 
         match dec.try_next_packet::<S2cPlayPacket>() {
             Ok(None) => continue,

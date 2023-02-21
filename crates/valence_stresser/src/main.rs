@@ -33,6 +33,6 @@ async fn main() {
 
         session_index += 1;
 
-        tokio::time::sleep(Duration::from_millis(args.spawn_cooldown)).await
+        tokio::time::sleep(Duration::from_millis(args.spawn_cooldown)).await;
     }
 }
