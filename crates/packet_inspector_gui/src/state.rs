@@ -1,5 +1,5 @@
 use std::io::ErrorKind;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use time::OffsetDateTime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -54,11 +54,7 @@ impl State {
         self.context.add(Packet {
             id: 0, // updated when added to context
             direction: self.direction.clone(),
-            selected: false,
-            packet_type: bytes[0],
             use_compression: has_compression,
-            packet_name: Arc::new(Mutex::new(None)),
-            packet_str: Arc::new(Mutex::new(None)),
             packet_data: bytes.to_vec(),
             stage,
             created_at: time,

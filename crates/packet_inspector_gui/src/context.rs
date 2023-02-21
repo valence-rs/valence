@@ -1,5 +1,7 @@
+use std::collections::VecDeque;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::RwLock;
 
 use time::OffsetDateTime;
 use valence_protocol::packets::c2s::handshake::Handshake;
@@ -31,62 +33,59 @@ pub enum Stage {
 pub struct Packet {
     pub(crate) id: usize,
     pub(crate) direction: PacketDirection,
-    pub(crate) selected: bool,
     pub(crate) use_compression: bool,
-    pub(crate) packet_type: u8,
-    pub(crate) packet_name: Arc<Mutex<Option<String>>>,
-    pub(crate) packet_str: Arc<Mutex<Option<String>>>,
     pub(crate) packet_data: Vec<u8>,
     pub(crate) stage: Stage,
     pub(crate) created_at: OffsetDateTime,
 }
 
-impl Packet {
+#[derive(Clone)]
+pub struct DisplayPacket {
+    pub(crate) id: usize,
+    pub(crate) direction: PacketDirection,
+    pub(crate) selected: bool,
+    pub(crate) packet_type: u8,
+    pub(crate) packet_name: String,
+    pub(crate) packet_str: String,
+    pub(crate) created_at: OffsetDateTime,
+}
+
+impl From<Packet> for DisplayPacket {
+    fn from(pkt: Packet) -> DisplayPacket {
+        let packet = pkt.get_packet_string();
+
+        // trim to some max length
+        let packet = if packet.len() > 1024 {
+            format!("{}\n...", &packet[..1024])
+        } else {
+            packet
+        };
+
+        let name = packet
+            .split_once(|ch: char| !ch.is_ascii_alphanumeric())
+            .map(|(fst, _)| fst)
+            .unwrap_or(&packet);
+
+        DisplayPacket {
+            id: pkt.id,
+            direction: pkt.direction,
+            selected: false,
+            packet_type: pkt.packet_data[0],
+            packet_name: name.to_string(),
+            packet_str: packet,
+            created_at: pkt.created_at,
+        }
+    }
+}
+
+impl DisplayPacket {
     pub(crate) fn selected(&mut self, value: bool) {
         self.selected = value;
     }
+}
 
-    pub fn get_name(&self) -> String {
-        let mut name = self.packet_name.lock().expect("Poisoned Mutex");
-        if name.is_none() {
-            let packet = self.as_formatted_string_internal();
-
-            let packet_name = packet
-                .split_once(|ch: char| !ch.is_ascii_alphanumeric())
-                .map(|(fst, _)| fst)
-                .unwrap_or(&packet);
-
-            *name = Some(packet_name.to_string());
-        }
-
-        name.clone().unwrap()
-    }
-
-    pub fn get_packet_string(&self) -> String {
-        let mut packet_str = self.packet_str.lock().expect("Poisoned Mutex");
-        if packet_str.is_none() {
-            let packet = self.as_formatted_string_internal();
-            *packet_str = Some(packet);
-        }
-
-        packet_str.clone().unwrap()
-    }
-
-    pub fn get_packet_string_deformatted(&self) -> String {
-        let mut packet_str = self.packet_str.lock().expect("Poisoned Mutex");
-        if packet_str.is_none() {
-            let packet = self.as_formatted_string_internal();
-            *packet_str = Some(packet);
-        }
-
-        let packet_str = packet_str.clone().unwrap();
-
-        // probably not the cleanest way to do this, but it avoids needing to decode the
-        // packet again
-        packet_str.replace("    ", "").replace('\n', " ")
-    }
-
-    fn as_formatted_string_internal(&self) -> String {
+impl Packet {
+    fn get_packet_string(&self) -> String {
         let mut dec = PacketDecoder::new();
         dec.set_compression(self.use_compression);
         dec.queue_slice(&self.packet_data);
@@ -185,17 +184,21 @@ impl Packet {
 }
 
 pub struct Context {
+    pub last_packet: AtomicUsize,
     pub selected_packet: RwLock<Option<usize>>,
-    pub(crate) packets: RwLock<Vec<Packet>>,
+    pub(crate) process_packets: RwLock<VecDeque<Packet>>,
+    pub(crate) packets: RwLock<Vec<DisplayPacket>>,
     pub(crate) packet_count: RwLock<usize>,
     pub filter: RwLock<String>,
-    context: Option<egui::Context>,
+    pub(crate) context: Option<egui::Context>,
 }
 
 impl Context {
     pub fn new(ctx: Option<egui::Context>) -> Self {
         Self {
+            last_packet: AtomicUsize::new(0),
             selected_packet: RwLock::new(None),
+            process_packets: RwLock::new(VecDeque::new()),
             packets: RwLock::new(Vec::new()),
             filter: RwLock::new("".into()),
             context: ctx,
@@ -204,6 +207,7 @@ impl Context {
     }
 
     pub fn clear(&self) {
+        self.last_packet.store(0, Ordering::Relaxed);
         *self.selected_packet.write().expect("Poisoned RwLock") = None;
         self.packets.write().expect("Poisoned RwLock").clear();
         if let Some(ctx) = &self.context {
@@ -212,11 +216,11 @@ impl Context {
     }
 
     pub fn add(&self, mut packet: Packet) {
-        packet.id = self.packets.read().expect("Poisened RwLock").len();
-        self.packets.write().expect("Poisoned RwLock").push(packet);
-        if let Some(ctx) = &self.context {
-            ctx.request_repaint();
-        }
+        packet.id = self.last_packet.fetch_add(1, Ordering::Relaxed);
+        self.process_packets
+            .write()
+            .expect("Poisoned RwLock")
+            .push_back(packet);
     }
 
     pub fn set_selected_packet(&self, idx: usize) {
@@ -234,8 +238,8 @@ impl Context {
             .read()
             .expect("Poisoned RwLock")
             .iter()
-            .filter(|packet| packet.get_name() != "ChunkDataAndUpdateLight") // temporarily blacklisting this packet because HUGE
-            .map(|packet| packet.get_packet_string_deformatted())
+            .filter(|packet| packet.packet_name != "ChunkDataAndUpdateLight") // temporarily blacklisting this packet because HUGE
+            .map(|packet| packet.packet_str.replace("    ", "").replace('\n', " ")) // deformat the packet
             .collect::<Vec<String>>()
             .join("\n");
 

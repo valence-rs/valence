@@ -5,10 +5,11 @@ mod syntax_highlighting;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::bail;
 use clap::Parser;
-use context::{Context, Packet};
+use context::{Context, DisplayPacket};
 use syntax_highlighting::code_view_ui;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
@@ -188,13 +189,12 @@ async fn passthrough(mut read: OwnedReadHalf, mut write: OwnedWriteHalf) -> anyh
     }
 }
 
-struct App<'a> {
-    _marker: std::marker::PhantomData<&'a ()>,
+struct App {
     context: Arc<Context>,
     filter: String,
 }
 
-impl<'a> App<'a> {
+impl App {
     fn new(cc: &eframe::CreationContext<'_>, cli: Arc<Cli>) -> Self {
         let ctx = Some(cc.egui_ctx.clone());
         let context = Arc::new(Context::new(ctx));
@@ -229,15 +229,38 @@ impl<'a> App<'a> {
             Ok::<(), anyhow::Error>(())
         });
 
+        let t_context = context.clone();
+        tokio::spawn(async move {
+            loop {
+                let packet = t_context
+                    .process_packets
+                    .write()
+                    .expect("Poisoned RwLock")
+                    .pop_front();
+
+                if let Some(p) = packet {
+                    t_context
+                        .packets
+                        .write()
+                        .expect("Poisoned RwLock")
+                        .push(p.into());
+                    if let Some(ctx) = &t_context.context {
+                        ctx.request_repaint();
+                    }
+                } else {
+                    tokio::time::sleep(Duration::from_millis(100)).await;
+                }
+            }
+        });
+
         Self {
-            _marker: std::marker::PhantomData,
             context,
             filter: "".into(),
         }
     }
 }
 
-impl<'a> eframe::App for App<'a> {
+impl eframe::App for App {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("header").show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -296,10 +319,10 @@ impl<'a> eframe::App for App<'a> {
                             .write()
                             .expect("Poisoned RwLock");
 
-                        let f: Vec<&mut Packet> = f
+                        let f: Vec<&mut DisplayPacket> = f
                             .iter_mut()
                             // todo: regex? or even a wireshark-style filter language processor?
-                            .filter(|p| p.get_name().to_lowercase().contains(&self.filter.to_lowercase()))
+                            .filter(|p| p.packet_name.to_lowercase().contains(&self.filter.to_lowercase()))
                             .collect();
 
                         *self.context.packet_count.write().expect("Poisoned RwLock") = f.len();
@@ -340,7 +363,7 @@ impl<'a> eframe::App for App<'a> {
                 let packets = self.context.packets.read().expect("Poisoned RwLock");
                 if idx < packets.len() {
                     let packet = &packets[idx];
-                    let text = packet.get_packet_string();
+                    let text = packet.packet_str.clone();
 
                     egui::ScrollArea::vertical().show(ui, |ui| {
                         code_view_ui(ui, &text);
