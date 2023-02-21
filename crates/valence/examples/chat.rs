@@ -10,7 +10,7 @@ pub fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(ServerPlugin::new(()))
+        .add_plugin(ServerPlugin::new(()).with_connection_mode(ConnectionMode::Offline))
         .add_startup_system(setup)
         .add_system_to_stage(EventLoop, default_event_handler)
         .add_system_to_stage(EventLoop, handle_message_events)
