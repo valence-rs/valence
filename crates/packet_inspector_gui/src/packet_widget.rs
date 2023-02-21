@@ -7,7 +7,7 @@ use time::OffsetDateTime;
 
 use crate::context::Packet;
 
-fn systemtime_strftime(odt: OffsetDateTime) -> String {
+pub fn systemtime_strftime(odt: OffsetDateTime) -> String {
     let hour = odt.hour();
     let minute = odt.minute();
     let second = odt.second();

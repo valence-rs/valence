@@ -11,7 +11,7 @@ use valence_protocol::packets::s2c::status::{PingResponse, StatusResponse};
 use valence_protocol::packets::{C2sPlayPacket, S2cLoginPacket, S2cPlayPacket};
 use valence_protocol::PacketDecoder;
 
-use crate::packet_widget::PacketDirection;
+use crate::packet_widget::{systemtime_strftime, PacketDirection};
 
 #[derive(Clone)]
 pub enum Stage {
@@ -53,6 +53,103 @@ impl From<&mut Packet> for String {
 impl Packet {
     pub(crate) fn selected(&mut self, value: bool) {
         self.selected = value;
+    }
+
+    fn get_packet_string_no_format(&self) -> String {
+        let mut dec = PacketDecoder::new();
+        dec.set_compression(self.use_compression);
+        dec.queue_slice(&self.packet_data);
+
+        match self.stage {
+            Stage::Handshake => {
+                let pkt = match dec.try_next_packet::<Handshake>() {
+                    Ok(Some(pkt)) => pkt,
+                    Ok(None) => return "Handshake".to_string(),
+                    Err(err) => return format!("{:?}", err),
+                };
+                format!("{pkt:?}")
+            }
+            Stage::StatusRequest => {
+                let pkt = match dec.try_next_packet::<StatusRequest>() {
+                    Ok(Some(pkt)) => pkt,
+                    Ok(None) => return "StatusRequest".to_string(),
+                    Err(err) => return format!("{:?}", err),
+                };
+                format!("{pkt:?}")
+            }
+            Stage::StatusResponse => {
+                let pkt = match dec.try_next_packet::<StatusResponse>() {
+                    Ok(Some(pkt)) => pkt,
+                    Ok(None) => return "StatusResponse".to_string(),
+                    Err(err) => return format!("{:?}", err),
+                };
+                format!("{pkt:?}")
+            }
+            Stage::PingRequest => {
+                let pkt = match dec.try_next_packet::<PingRequest>() {
+                    Ok(Some(pkt)) => pkt,
+                    Ok(None) => return "PingRequest".to_string(),
+                    Err(err) => return format!("{:?}", err),
+                };
+                format!("{pkt:?}")
+            }
+            Stage::PingResponse => {
+                let pkt = match dec.try_next_packet::<PingResponse>() {
+                    Ok(Some(pkt)) => pkt,
+                    Ok(None) => return "PingResponse".to_string(),
+                    Err(err) => return format!("{:?}", err),
+                };
+                format!("{pkt:?}")
+            }
+            Stage::LoginStart => {
+                let pkt = match dec.try_next_packet::<LoginStart>() {
+                    Ok(Some(pkt)) => pkt,
+                    Ok(None) => return "LoginStart".to_string(),
+                    Err(err) => return format!("{:?}", err),
+                };
+                format!("{pkt:?}")
+            }
+            Stage::S2cLoginPacket => {
+                let pkt = match dec.try_next_packet::<S2cLoginPacket>() {
+                    Ok(Some(pkt)) => pkt,
+                    Ok(None) => return "S2cLoginPacket".to_string(),
+                    Err(err) => return format!("{:?}", err),
+                };
+                format!("{pkt:?}")
+            }
+            Stage::EncryptionResponse => {
+                let pkt = match dec.try_next_packet::<EncryptionResponse>() {
+                    Ok(Some(pkt)) => pkt,
+                    Ok(None) => return "EncryptionResponse".to_string(),
+                    Err(err) => return format!("{:?}", err),
+                };
+                format!("{pkt:?}")
+            }
+            Stage::LoginSuccess => {
+                let pkt = match dec.try_next_packet::<LoginSuccess>() {
+                    Ok(Some(pkt)) => pkt,
+                    Ok(None) => return "LoginSuccess".to_string(),
+                    Err(err) => return format!("{:?}", err),
+                };
+                format!("{pkt:?}")
+            }
+            Stage::C2sPlayPacket => {
+                let pkt = match dec.try_next_packet::<C2sPlayPacket>() {
+                    Ok(Some(pkt)) => pkt,
+                    Ok(None) => return "C2sPlayPacket".to_string(),
+                    Err(err) => return format!("{:?}", err),
+                };
+                format!("{pkt:?}")
+            }
+            Stage::S2cPlayPacket => {
+                let pkt = match dec.try_next_packet::<S2cPlayPacket>() {
+                    Ok(Some(pkt)) => pkt,
+                    Ok(None) => return "S2cPlayPacket".to_string(),
+                    Err(err) => return format!("{:?}", err),
+                };
+                format!("{pkt:?}")
+            }
+        }
     }
 
     fn get_packet_string(&self) -> String {
@@ -210,7 +307,9 @@ impl Context {
             .expect("Poisoned RwLock")
             .iter()
             .filter(|packet| packet.packet_name != "ChunkDataAndUpdateLight") // temporarily blacklisting this packet because HUGE
-            .map(|packet| packet.get_packet_string().replace("    ", "").replace('\n', " ")) // deformat the packet
+            .map(|packet| {
+                format!("[{}] {}", systemtime_strftime(packet.created_at), packet.get_packet_string_no_format())
+            }) // deformat the packet
             .collect::<Vec<String>>()
             .join("\n");
 
