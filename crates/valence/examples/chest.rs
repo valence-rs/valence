@@ -38,10 +38,6 @@ fn setup(world: &mut World) {
         }
     }
     instance.set_block(CHEST_POS, BlockState::CHEST);
-    instance.set_block(
-        [CHEST_POS[0], CHEST_POS[1] - 1, CHEST_POS[2]],
-        BlockState::STONE,
-    );
 
     world.spawn(instance);
 
