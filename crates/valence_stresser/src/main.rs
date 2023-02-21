@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use args::StresserArgs;
 use clap::Parser;
-use stresser::make_session;
+use stresser::{make_session, SessionParams};
 use tokio::sync::Semaphore;
 
 mod args;
@@ -24,7 +24,13 @@ async fn main() {
         let session_name = format!("{}{}", args.name_prefix, session_index);
 
         tokio::spawn(async move {
-            if let Err(err) = make_session(target_addr, session_name.as_str()).await {
+            let params = SessionParams {
+                socket_addr: target_addr,
+                session_name: session_name.as_str(),
+                read_buffer_size: args.read_buffer_size,
+            };
+
+            if let Err(err) = make_session(&params).await {
                 eprintln!("Session {session_name} interrupted with error: {err}")
             };
 

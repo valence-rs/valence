@@ -11,18 +11,24 @@ use valence_protocol::packets::{C2sHandshakePacket, S2cLoginPacket, S2cPlayPacke
 use valence_protocol::types::HandshakeNextState;
 use valence_protocol::{PacketDecoder, PacketEncoder, Username, Uuid, VarInt, PROTOCOL_VERSION};
 
-// At higher values something going wrong and keep alive packets are not
-// handling.
-const BUFFER_SIZE: usize = 4;
+pub struct SessionParams<'a> {
+    pub socket_addr: SocketAddr,
+    pub session_name: &'a str,
+    pub read_buffer_size: usize,
+}
 
-pub async fn make_session(socket_addr: SocketAddr, session_name: &str) -> anyhow::Result<()> {
-    let mut conn = match TcpStream::connect(socket_addr).await {
+pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> {
+    let sock_addr = params.socket_addr;
+    let sess_name = params.session_name;
+    let rb_size = params.read_buffer_size;
+
+    let mut conn = match TcpStream::connect(sock_addr).await {
         Ok(conn) => {
-            println!("{session_name} connected");
+            println!("{sess_name} connected");
             conn
         }
         Err(err) => {
-            println!("{session_name} connection failed");
+            println!("{sess_name} connection failed");
             return Err(err.into());
         }
     };
@@ -32,19 +38,19 @@ pub async fn make_session(socket_addr: SocketAddr, session_name: &str) -> anyhow
     let mut dec = PacketDecoder::new();
     let mut enc = PacketEncoder::new();
 
-    let server_addr_str = socket_addr.ip().to_string().as_str().to_owned();
+    let server_addr_str = sock_addr.ip().to_string().as_str().to_owned();
 
     let handshake_pkt = C2sHandshakePacket::Handshake(Handshake {
         protocol_version: VarInt::from(PROTOCOL_VERSION),
         server_address: &server_addr_str,
-        server_port: socket_addr.port(),
+        server_port: sock_addr.port(),
         next_state: HandshakeNextState::Login,
     });
 
     _ = enc.append_packet(&handshake_pkt);
 
     _ = enc.append_packet(&LoginStart {
-        username: Username::new(session_name).unwrap(),
+        username: Username::new(sess_name).unwrap(),
         profile_id: Some(Uuid::new_v4()),
     });
 
@@ -52,7 +58,7 @@ pub async fn make_session(socket_addr: SocketAddr, session_name: &str) -> anyhow
     conn.write_all(&write_buf).await?;
 
     loop {
-        dec.reserve(BUFFER_SIZE);
+        dec.reserve(rb_size);
 
         let mut read_buf = dec.take_capacity();
 
@@ -89,11 +95,11 @@ pub async fn make_session(socket_addr: SocketAddr, session_name: &str) -> anyhow
         }
     }
 
-    println!("{session_name} logined");
+    println!("{sess_name} logined");
 
     loop {
         while !dec.has_next_packet()? {
-            dec.reserve(BUFFER_SIZE);
+            dec.reserve(rb_size);
 
             let mut read_buf = dec.take_capacity();
 
@@ -118,7 +124,7 @@ pub async fn make_session(socket_addr: SocketAddr, session_name: &str) -> anyhow
                     _ = enc.append_packet(&KeepAliveC2s { id: p.id });
                     conn.write_all(&enc.take()).await?;
 
-                    println!("{session_name} keep alive")
+                    println!("{sess_name} keep alive")
                 }
 
                 S2cPlayPacket::SynchronizePlayerPosition(p) => {
@@ -135,7 +141,7 @@ pub async fn make_session(socket_addr: SocketAddr, session_name: &str) -> anyhow
 
                     conn.write_all(&enc.take()).await?;
 
-                    println!("{session_name} spawned")
+                    println!("{sess_name} spawned")
                 }
                 _ => (),
             },

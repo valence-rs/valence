@@ -21,4 +21,9 @@ pub(crate) struct StresserArgs {
     #[arg(default_value = "10")]
     #[arg(long = "cooldown")]
     pub spawn_cooldown: u64,
+
+    /// Read buffer size in bytes.
+    #[arg(default_value = "4096")]
+    #[arg(long = "read-buffer")]
+    pub read_buffer_size: usize,
 }
