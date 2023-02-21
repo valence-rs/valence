@@ -45,7 +45,7 @@ impl State {
 
         let packet_name = self
             .buf
-            .split_once(|ch: char| !ch.is_ascii_alphabetic())
+            .split_once(|ch: char| !ch.is_ascii_alphanumeric())
             .map(|(fst, _)| fst)
             .unwrap_or(&self.buf);
 
