@@ -5,7 +5,7 @@ use egui::{
 };
 use time::OffsetDateTime;
 
-use crate::context::DisplayPacket;
+use crate::context::Packet;
 
 fn systemtime_strftime(odt: OffsetDateTime) -> String {
     let hour = odt.hour();
@@ -75,7 +75,7 @@ impl PacketDirection {
     }
 }
 
-impl Widget for DisplayPacket {
+impl Widget for Packet {
     fn ui(self, ui: &mut Ui) -> Response {
         let (mut rect, response) = ui.allocate_at_least(
             Vec2 {

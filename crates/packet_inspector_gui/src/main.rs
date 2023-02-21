@@ -5,11 +5,10 @@ mod syntax_highlighting;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time::Duration;
 
 use anyhow::bail;
 use clap::Parser;
-use context::{Context, DisplayPacket};
+use context::{Context, Packet};
 use syntax_highlighting::code_view_ui;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
@@ -93,6 +92,7 @@ async fn handle_connection(
         write: client_write,
         direction: PacketDirection::ServerToClient,
         context: context.clone(),
+        buf: String::new(),
     };
 
     let mut c2s = State {
@@ -103,6 +103,7 @@ async fn handle_connection(
         write: server_write,
         direction: PacketDirection::ClientToServer,
         context: context.clone(),
+        buf: String::new(),
     };
 
     let handshake: Handshake = c2s.rw_packet(Stage::Handshake).await?;
@@ -229,29 +230,29 @@ impl App {
             Ok::<(), anyhow::Error>(())
         });
 
-        let t_context = context.clone();
-        tokio::spawn(async move {
-            loop {
-                let packet = t_context
-                    .process_packets
-                    .write()
-                    .expect("Poisoned RwLock")
-                    .pop_front();
+        // let t_context = context.clone();
+        // tokio::spawn(async move {
+        //     loop {
+        //         let packet = t_context
+        //             .process_packets
+        //             .write()
+        //             .expect("Poisoned RwLock")
+        //             .pop_front();
 
-                if let Some(p) = packet {
-                    t_context
-                        .packets
-                        .write()
-                        .expect("Poisoned RwLock")
-                        .push(p.into());
-                    if let Some(ctx) = &t_context.context {
-                        ctx.request_repaint();
-                    }
-                } else {
-                    tokio::time::sleep(Duration::from_millis(100)).await;
-                }
-            }
-        });
+        //         if let Some(p) = packet {
+        //             t_context
+        //                 .packets
+        //                 .write()
+        //                 .expect("Poisoned RwLock")
+        //                 .push(p.into());
+        //             if let Some(ctx) = &t_context.context {
+        //                 ctx.request_repaint();
+        //             }
+        //         } else {
+        //             tokio::time::sleep(Duration::from_millis(100)).await;
+        //         }
+        //     }
+        // });
 
         Self {
             context,
@@ -319,7 +320,7 @@ impl eframe::App for App {
                             .write()
                             .expect("Poisoned RwLock");
 
-                        let f: Vec<&mut DisplayPacket> = f
+                        let f: Vec<&mut Packet> = f
                             .iter_mut()
                             // todo: regex? or even a wireshark-style filter language processor?
                             .filter(|p| p.packet_name.to_lowercase().contains(&self.filter.to_lowercase()))
@@ -338,6 +339,7 @@ impl eframe::App for App {
                                 if let Some(idx) = *selected {
                                     if idx == packet.id {
                                         packet.selected(true);
+                                        *self.context.buffer.write().expect("Poisoned RwLock") = packet.into();
                                     } else {
                                         packet.selected(false);
                                     }
@@ -353,23 +355,11 @@ impl eframe::App for App {
                     });
             });
         egui::CentralPanel::default().show(ctx, |ui| {
-            if let Some(idx) = *self
-                .context
-                .selected_packet
-                .read()
-                .expect("Poisoned RwLock")
-            {
-                // get the packet
-                let packets = self.context.packets.read().expect("Poisoned RwLock");
-                if idx < packets.len() {
-                    let packet = &packets[idx];
-                    let text = packet.packet_str.clone();
+            let text = self.context.buffer.read().expect("Poisoned RwLock");
 
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        code_view_ui(ui, &text);
-                    });
-                }
-            }
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                code_view_ui(ui, &text);
+            });
         });
     }
 }

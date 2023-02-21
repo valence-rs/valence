@@ -1,4 +1,3 @@
-use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::RwLock;
@@ -33,58 +32,29 @@ pub enum Stage {
 pub struct Packet {
     pub(crate) id: usize,
     pub(crate) direction: PacketDirection,
+    pub(crate) selected: bool,
     pub(crate) use_compression: bool,
     pub(crate) packet_data: Vec<u8>,
     pub(crate) stage: Stage,
-    pub(crate) created_at: OffsetDateTime,
-}
-
-#[derive(Clone)]
-pub struct DisplayPacket {
-    pub(crate) id: usize,
-    pub(crate) direction: PacketDirection,
-    pub(crate) selected: bool,
     pub(crate) packet_type: u8,
     pub(crate) packet_name: String,
-    pub(crate) packet_str: String,
     pub(crate) created_at: OffsetDateTime,
 }
 
-impl From<Packet> for DisplayPacket {
-    fn from(pkt: Packet) -> DisplayPacket {
-        let packet = pkt.get_packet_string();
-
-        // trim to some max length
-        let packet = if packet.len() > 1024 {
-            format!("{}\n...", &packet[..1024])
-        } else {
-            packet
-        };
-
-        let name = packet
-            .split_once(|ch: char| !ch.is_ascii_alphanumeric())
-            .map(|(fst, _)| fst)
-            .unwrap_or(&packet);
-
-        DisplayPacket {
-            id: pkt.id,
-            direction: pkt.direction,
-            selected: false,
-            packet_type: pkt.packet_data[0],
-            packet_name: name.to_string(),
-            packet_str: packet,
-            created_at: pkt.created_at,
+impl From<&mut Packet> for String {
+    fn from(value: &mut Packet) -> Self {
+        if value.packet_data.len() > 1024 {
+            return "Packet too large".to_string();
         }
-    }
-}
-
-impl DisplayPacket {
-    pub(crate) fn selected(&mut self, value: bool) {
-        self.selected = value;
+        value.get_packet_string()
     }
 }
 
 impl Packet {
+    pub(crate) fn selected(&mut self, value: bool) {
+        self.selected = value;
+    }
+
     fn get_packet_string(&self) -> String {
         let mut dec = PacketDecoder::new();
         dec.set_compression(self.use_compression);
@@ -186,10 +156,10 @@ impl Packet {
 pub struct Context {
     pub last_packet: AtomicUsize,
     pub selected_packet: RwLock<Option<usize>>,
-    pub(crate) process_packets: RwLock<VecDeque<Packet>>,
-    pub(crate) packets: RwLock<Vec<DisplayPacket>>,
+    pub(crate) packets: RwLock<Vec<Packet>>,
     pub(crate) packet_count: RwLock<usize>,
     pub filter: RwLock<String>,
+    pub buffer: RwLock<String>,
     pub(crate) context: Option<egui::Context>,
 }
 
@@ -198,9 +168,9 @@ impl Context {
         Self {
             last_packet: AtomicUsize::new(0),
             selected_packet: RwLock::new(None),
-            process_packets: RwLock::new(VecDeque::new()),
             packets: RwLock::new(Vec::new()),
             filter: RwLock::new("".into()),
+            buffer: RwLock::new("".into()),
             context: ctx,
             packet_count: RwLock::new(0),
         }
@@ -217,10 +187,10 @@ impl Context {
 
     pub fn add(&self, mut packet: Packet) {
         packet.id = self.last_packet.fetch_add(1, Ordering::Relaxed);
-        self.process_packets
-            .write()
-            .expect("Poisoned RwLock")
-            .push_back(packet);
+        self.packets.write().expect("Poisoned RwLock").push(packet);
+        if let Some(ctx) = &self.context {
+            ctx.request_repaint();
+        }
     }
 
     pub fn set_selected_packet(&self, idx: usize) {
@@ -232,6 +202,7 @@ impl Context {
         *self.selected_packet.write().expect("Poisoned RwLock") = None;
     }
 
+    // Might want to do this "one at a time..."?
     pub fn save(&self, path: PathBuf) -> Result<(), std::io::Error> {
         let packets = self
             .packets
@@ -239,7 +210,7 @@ impl Context {
             .expect("Poisoned RwLock")
             .iter()
             .filter(|packet| packet.packet_name != "ChunkDataAndUpdateLight") // temporarily blacklisting this packet because HUGE
-            .map(|packet| packet.packet_str.replace("    ", "").replace('\n', " ")) // deformat the packet
+            .map(|packet| packet.get_packet_string().replace("    ", "").replace('\n', " ")) // deformat the packet
             .collect::<Vec<String>>()
             .join("\n");
 
