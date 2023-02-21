@@ -27,7 +27,7 @@ pub fn main() {
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
-        .add_system_to_stage(CoreStage::Update, randomize_equipment)
+        .add_system(randomize_equipment)
         .run();
 }
 
