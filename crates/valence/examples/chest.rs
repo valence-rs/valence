@@ -34,14 +34,10 @@ fn setup(world: &mut World) {
 
     for z in -25..25 {
         for x in -25..25 {
-            instance.set_block_state([x, SPAWN_Y, z], BlockState::GRASS_BLOCK);
+            instance.set_block([x, SPAWN_Y, z], BlockState::GRASS_BLOCK);
         }
     }
-    instance.set_block_state(CHEST_POS, BlockState::CHEST);
-    instance.set_block_state(
-        [CHEST_POS[0], CHEST_POS[1] - 1, CHEST_POS[2]],
-        BlockState::STONE,
-    );
+    instance.set_block(CHEST_POS, BlockState::CHEST);
 
     world.spawn(instance);
 

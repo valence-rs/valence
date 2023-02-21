@@ -49,7 +49,7 @@ fn setup(world: &mut World) {
         }
     }
 
-    instance.set_block_state([0, SPAWN_Y, 0], BlockState::BEDROCK);
+    instance.set_block([0, SPAWN_Y, 0], BlockState::BEDROCK);
 
     world.spawn(instance);
 

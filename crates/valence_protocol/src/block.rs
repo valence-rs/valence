@@ -6,8 +6,10 @@ use std::io::Write;
 use std::iter::FusedIterator;
 
 use anyhow::Context;
+use valence_nbt::Compound;
+use valence_protocol_macros::ident_str;
 
-use crate::{Decode, Encode, ItemKind, Result, VarInt};
+use crate::{Decode, Encode, Ident, ItemKind, Result, VarInt};
 
 include!(concat!(env!("OUT_DIR"), "/block.rs"));
 
@@ -76,6 +78,18 @@ impl Decode<'_> for BlockKind {
         let errmsg = "invalid block kind ID";
 
         BlockKind::from_raw(id.try_into().context(errmsg)?).context(errmsg)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct BlockEntity {
+    pub kind: BlockEntityKind,
+    pub nbt: Compound,
+}
+
+impl BlockEntity {
+    pub const fn new(kind: BlockEntityKind, nbt: Compound) -> Self {
+        Self { kind, nbt }
     }
 }
 

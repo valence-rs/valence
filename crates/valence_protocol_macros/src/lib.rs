@@ -1,5 +1,6 @@
 //! This crate provides derive macros for [`Encode`], [`Decode`],
 //! [`EncodePacket`], and [`DecodePacket`].
+//! It also provides the procedural macro [`ident_str!`]
 //!
 //! See `valence_protocol`'s documentation for more information.
 
@@ -13,6 +14,7 @@ use syn::{
 
 mod decode;
 mod encode;
+mod ident_str;
 
 #[proc_macro_derive(Encode, attributes(tag))]
 pub fn derive_encode(item: StdTokenStream) -> StdTokenStream {
@@ -41,6 +43,14 @@ pub fn derive_decode(item: StdTokenStream) -> StdTokenStream {
 #[proc_macro_derive(DecodePacket, attributes(packet_id))]
 pub fn derive_decode_packet(item: StdTokenStream) -> StdTokenStream {
     match decode::derive_decode_packet(item.into()) {
+        Ok(tokens) => tokens.into(),
+        Err(e) => e.into_compile_error().into(),
+    }
+}
+
+#[proc_macro]
+pub fn ident_str(item: StdTokenStream) -> StdTokenStream {
+    match ident_str::ident_str(item.into()) {
         Ok(tokens) => tokens.into(),
         Err(e) => e.into_compile_error().into(),
     }
