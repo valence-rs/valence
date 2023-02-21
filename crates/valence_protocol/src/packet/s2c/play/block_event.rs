@@ -2,8 +2,7 @@ use crate::block_pos::BlockPos;
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x08]
+#[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct BlockEventS2c {
     pub position: BlockPos,
     pub action_id: u8,

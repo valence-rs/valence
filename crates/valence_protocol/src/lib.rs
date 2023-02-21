@@ -8,12 +8,12 @@
 //! # Examples
 //!
 //! ```
-//! use valence_protocol::packets::c2s::play::RenameItem;
-//! use valence_protocol::{PacketDecoder, PacketEncoder};
+//! use valence_protocol::codec::{PacketDecoder, PacketEncoder};
+//! use valence_protocol::packet::c2s::play::RenameItemC2s;
 //!
 //! let mut enc = PacketEncoder::new();
 //!
-//! let outgoing = RenameItem {
+//! let outgoing = RenameItemC2s {
 //!     item_name: "Hello!",
 //! };
 //!
@@ -23,7 +23,7 @@
 //!
 //! dec.queue_bytes(enc.take());
 //!
-//! let incoming = dec.try_next_packet::<RenameItem>().unwrap().unwrap();
+//! let incoming = dec.try_next_packet::<RenameItemC2s>().unwrap().unwrap();
 //!
 //! assert_eq!(outgoing.item_name, incoming.item_name);
 //! ```
@@ -72,7 +72,7 @@ use std::io::Write;
 use std::{fmt, io};
 
 pub use anyhow::{Error, Result};
-pub use valence_protocol_macros::{Decode, DecodePacket, Encode, EncodePacket};
+pub use valence_protocol_macros::{ident_str, Decode, DecodePacket, Encode, EncodePacket};
 pub use {uuid, valence_nbt as nbt};
 
 /// The Minecraft protocol version this library currently targets.
@@ -82,18 +82,17 @@ pub const PROTOCOL_VERSION: i32 = 761;
 /// targets.
 pub const MINECRAFT_VERSION: &str = "1.19.3";
 
-mod array;
+pub mod array;
 pub mod block;
-mod block_pos;
-mod bounded;
-mod byte_angle;
-mod codec;
+pub mod block_pos;
+pub mod byte_angle;
+pub mod codec;
 pub mod enchant;
 pub mod ident;
 mod impls;
-mod item;
+pub mod item;
 pub mod packet;
-mod raw_bytes;
+pub mod raw_bytes;
 pub mod sound;
 pub mod text;
 pub mod tracked_data;
@@ -101,14 +100,15 @@ pub mod translation_key;
 pub mod types;
 pub mod username;
 pub mod var_int;
-mod var_long;
+pub mod var_long;
 
 /// Used only by proc macros. Not public API.
 #[doc(hidden)]
 pub mod __private {
     pub use anyhow::{anyhow, bail, ensure, Context, Result};
 
-    pub use crate::{Decode, DecodePacket, Encode, EncodePacket, VarInt};
+    pub use crate::{Decode, DecodePacket, Encode, EncodePacket};
+    pub use crate::var_int::VarInt;
 }
 
 /// The maximum number of bytes in a single Minecraft packet.
@@ -257,7 +257,7 @@ pub trait Decode<'a>: Sized {
 /// ```
 /// use valence_protocol::{Encode, EncodePacket};
 ///
-/// #[derive(Encode, EncodePacket)]
+/// #[derive(Debug, Encode, EncodePacket)]
 /// #[packet_id = 42]
 /// struct MyStruct {
 ///     first: i32,
@@ -294,7 +294,7 @@ pub trait EncodePacket: fmt::Debug {
 /// ```
 /// use valence_protocol::{Decode, DecodePacket};
 ///
-/// #[derive(Decode, DecodePacket)]
+/// #[derive(Debug, Decode, DecodePacket)]
 /// #[packet_id = 42]
 /// struct MyStruct {
 ///     first: i32,

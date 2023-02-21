@@ -5,8 +5,7 @@ use crate::text::Text;
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Clone, PartialEq, Debug, EncodePacket, DecodePacket)]
-#[packet_id = 0x25]
+#[derive(Clone, PartialEq, Debug)]
 pub struct MapUpdateS2c<'a> {
     pub map_id: VarInt,
     pub scale: i8,

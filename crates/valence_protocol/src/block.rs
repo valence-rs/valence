@@ -6,7 +6,6 @@ use std::io::Write;
 use std::iter::FusedIterator;
 
 use anyhow::Context;
-use valence_nbt::Compound;
 use valence_protocol_macros::ident_str;
 
 use crate::ident::Ident;

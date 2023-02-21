@@ -2,8 +2,7 @@ use crate::ident::Ident;
 use crate::types::{GameMode, GlobalPos};
 use crate::{Decode, Encode};
 
-#[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x3d]
+#[derive(Clone, PartialEq, Debug, Encode, Decode)]
 pub struct PlayerRespawnS2c<'a> {
     pub dimension_type_name: Ident<&'a str>,
     pub dimension_name: Ident<&'a str>,

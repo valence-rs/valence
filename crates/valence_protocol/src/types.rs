@@ -1,14 +1,13 @@
 //! Miscellaneous type definitions used in packets.
 
-use std::borrow::Cow;
+use std::io::Write;
 
-use bitfield_struct::bitfield;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-use valence_nbt::Compound;
 
-use crate::block::BlockEntityKind;
-use crate::{BlockPos, Decode, Encode, Ident, ItemStack, Text, VarInt};
+use crate::var_int::VarInt;
+use crate::{Decode, Encode};
+use crate::block_pos::BlockPos;
+use crate::ident::Ident;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Encode, Decode)]
 pub struct PublicKeyData<'a> {
@@ -28,16 +27,6 @@ pub struct Property<S = String> {
     pub name: S,
     pub value: S,
     pub signature: Option<S>,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
-pub enum Animation {
-    SwingMainArm,
-    TakeDamage,
-    LeaveBed,
-    SwingOffhand,
-    CriticalEffect,
-    MagicCriticalEffect,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]

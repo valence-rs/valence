@@ -5,10 +5,9 @@ use crate::ident::Ident;
 use crate::item::ItemStack;
 use crate::text::Text;
 use crate::var_int::VarInt;
-use crate::{Decode, Encode, Ident, ItemStack, Text, VarInt};
+use crate::{Decode, Encode};
 
-#[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x65]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct AdvancementUpdateS2c<'a> {
     pub reset: bool,
     pub advancement_mapping: Vec<(Ident<&'a str>, Advancement<'a>)>,

@@ -1,7 +1,6 @@
 use crate::{Decode, Encode};
 
-#[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x12]
+#[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct UpdateDifficultyLockC2s {
     pub locked: bool,
 }

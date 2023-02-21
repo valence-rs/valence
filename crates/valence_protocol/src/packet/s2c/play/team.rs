@@ -7,8 +7,7 @@ use bitfield_struct::bitfield;
 use crate::text::Text;
 use crate::{Decode, Encode};
 
-#[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x56]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct TeamS2c<'a> {
     pub team_name: &'a str,
     pub mode: Mode<'a>,

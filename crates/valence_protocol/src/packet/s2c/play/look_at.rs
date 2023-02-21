@@ -1,8 +1,7 @@
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Copy, Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x37]
+#[derive(Copy, Clone, PartialEq, Debug, Encode, Decode)]
 pub struct LookAtS2c {
     pub feet_or_eyes: FeetOrEyes,
     pub target_position: [f64; 3],

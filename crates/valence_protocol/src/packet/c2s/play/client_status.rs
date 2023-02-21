@@ -1,7 +1,6 @@
 use crate::{Decode, Encode};
 
-#[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x06]
+#[derive(Clone, Debug, Encode, Decode)]
 pub enum ClientStatusC2s {
     PerformRespawn,
     RequestStats,

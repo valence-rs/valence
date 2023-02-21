@@ -3,10 +3,10 @@ pub mod handshake {
 
     pub mod handshake;
 
-    packet_enum! {
+    packet_group! {
         #[derive(Clone)]
         C2sHandshakePacket<'a> {
-            HandshakeC2s<'a>
+            0 = HandshakeC2s<'a>
         }
     }
 }
@@ -18,11 +18,11 @@ pub mod status {
     pub mod query_ping;
     pub mod query_request;
 
-    packet_enum! {
+    packet_group! {
         #[derive(Clone)]
         C2sStatusPacket {
-            QueryRequestC2s,
-            QueryPingC2s,
+            0 = QueryRequestC2s,
+            1 = QueryPingC2s,
         }
     }
 }
@@ -36,12 +36,12 @@ pub mod login {
     pub mod login_key;
     pub mod login_query_response;
 
-    packet_enum! {
+    packet_group! {
         #[derive(Clone)]
         C2sLoginPacket<'a> {
-            LoginHelloC2s<'a>,
-            LoginKeyC2s<'a>,
-            LoginQueryResponseC2s<'a>,
+            0 = LoginHelloC2s<'a>,
+            1 = LoginKeyC2s<'a>,
+            2 = LoginQueryResponseC2s<'a>,
         }
     }
 }
@@ -145,60 +145,60 @@ pub mod play {
     pub mod update_structure_block;
     pub mod vehicle_move;
 
-    packet_enum! {
+    packet_group! {
         #[derive(Clone)]
         C2sPlayPacket<'a> {
-            TeleportConfirmC2s,
-            QueryBlockNbtC2s,
-            UpdateDifficultyC2s,
-            MessageAcknowledgmentC2s,
-            CommandExecutionC2s<'a>,
-            ChatMessageC2s<'a>,
-            ClientStatusC2s,
-            ClientSettingsC2s<'a>,
-            RequestCommandCompletionsC2s<'a>,
-            ButtonClickC2s,
-            ClickSlotC2s,
-            CloseHandledScreenC2s,
-            CustomPayloadC2s<'a>,
-            BookUpdateC2s<'a>,
-            QueryEntityNbtC2s,
-            PlayerInteractC2s,
-            JigsawGeneratingC2s,
-            KeepAliveC2s,
-            UpdateDifficultyLockC2s,
-            PositionAndOnGroundC2s,
-            FullC2s,
-            LookAndOnGroundC2s,
-            OnGroundOnlyC2s,
-            VehicleMoveC2s,
-            BoatPaddleStateC2s,
-            PickFromInventoryC2s,
-            CraftRequestC2s<'a>,
-            UpdatePlayerAbilitiesC2s,
-            PlayerActionC2s,
-            ClientCommandC2s,
-            PlayerInputC2s,
-            PlayPongC2s,
-            PlayerSessionC2s<'a>,
-            RecipeCategoryOptionsC2s,
-            RecipeBookDataC2s<'a>,
-            RenameItemC2s<'a>,
-            ResourcePackStatusC2s,
-            AdvancementTabC2s<'a>,
-            SelectMerchantTradeC2s,
-            UpdateBeaconC2s,
-            UpdateSelectedSlotC2s,
-            UpdateCommandBlockC2s<'a>,
-            UpdateCommandBlockMinecartC2s<'a>,
-            CreativeInventoryActionC2s,
-            UpdateJigsawC2s<'a>,
-            UpdateStructureBlockC2s<'a>,
-            UpdateSignC2s<'a>,
-            HandSwingC2s,
-            SpectatorTeleportC2s,
-            PlayerInteractBlockC2s,
-            PlayerInteractItemC2s
+            0 = TeleportConfirmC2s,
+            1 = QueryBlockNbtC2s,
+            2 = UpdateDifficultyC2s,
+            3 = MessageAcknowledgmentC2s,
+            4 = CommandExecutionC2s<'a>,
+            5 = ChatMessageC2s<'a>,
+            6 = ClientStatusC2s,
+            7 = ClientSettingsC2s<'a>,
+            8 = RequestCommandCompletionsC2s<'a>,
+            9 = ButtonClickC2s,
+            10 = ClickSlotC2s,
+            11 = CloseHandledScreenC2s,
+            12 = CustomPayloadC2s<'a>,
+            13 = BookUpdateC2s<'a>,
+            14 = QueryEntityNbtC2s,
+            15 = PlayerInteractC2s,
+            16 = JigsawGeneratingC2s,
+            17 = KeepAliveC2s,
+            18 = UpdateDifficultyLockC2s,
+            19 = PositionAndOnGroundC2s,
+            20 = FullC2s,
+            21 = LookAndOnGroundC2s,
+            22 = OnGroundOnlyC2s,
+            23 = VehicleMoveC2s,
+            24 = BoatPaddleStateC2s,
+            25 = PickFromInventoryC2s,
+            26 = CraftRequestC2s<'a>,
+            27 = UpdatePlayerAbilitiesC2s,
+            28 = PlayerActionC2s,
+            29 = ClientCommandC2s,
+            30 = PlayerInputC2s,
+            31 = PlayPongC2s,
+            32 = PlayerSessionC2s<'a>,
+            33 = RecipeCategoryOptionsC2s,
+            34 = RecipeBookDataC2s<'a>,
+            35 = RenameItemC2s<'a>,
+            36 = ResourcePackStatusC2s,
+            37 = AdvancementTabC2s<'a>,
+            38 = SelectMerchantTradeC2s,
+            39 = UpdateBeaconC2s,
+            40 = UpdateSelectedSlotC2s,
+            41 = UpdateCommandBlockC2s<'a>,
+            42 = UpdateCommandBlockMinecartC2s<'a>,
+            43 = CreativeInventoryActionC2s,
+            44 = UpdateJigsawC2s<'a>,
+            45 = UpdateStructureBlockC2s<'a>,
+            46 = UpdateSignC2s<'a>,
+            47 = HandSwingC2s,
+            48 = SpectatorTeleportC2s,
+            49 = PlayerInteractBlockC2s,
+            50 = PlayerInteractItemC2s
         }
     }
 }

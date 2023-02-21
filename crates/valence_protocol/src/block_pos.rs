@@ -2,7 +2,8 @@ use std::io::Write;
 
 use anyhow::bail;
 
-use crate::{BlockFace, Decode, Encode};
+use crate::types::BlockFace;
+use crate::{Decode, Encode};
 
 /// Represents an absolute block position in world space.
 #[derive(Clone, Copy, Default, PartialEq, Eq, Hash, Debug)]
@@ -27,7 +28,8 @@ impl BlockPos {
     /// direction.
     ///
     /// ```
-    /// use valence_protocol::{BlockFace, BlockPos};
+    /// use valence_protocol::block_pos::BlockPos;
+    /// use valence_protocol::types::BlockFace;
     ///
     /// let pos = BlockPos::new(0, 0, 0);
     /// let adj = pos.get_in_direction(BlockFace::South);

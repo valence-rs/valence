@@ -4,8 +4,7 @@ use crate::byte_angle::ByteAngle;
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x02]
+#[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct PlayerSpawnS2c {
     pub entity_id: VarInt,
     pub player_uuid: Uuid,

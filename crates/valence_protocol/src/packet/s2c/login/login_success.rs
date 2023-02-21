@@ -6,8 +6,7 @@ use crate::types::Property;
 use crate::username::Username;
 use crate::{Decode, Encode};
 
-#[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x02]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct LoginSuccessS2c<'a> {
     pub uuid: Uuid,
     pub username: Username<&'a str>,

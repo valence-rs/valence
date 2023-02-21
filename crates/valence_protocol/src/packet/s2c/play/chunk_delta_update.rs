@@ -3,8 +3,7 @@ use std::borrow::Cow;
 use crate::var_long::VarLong;
 use crate::{Decode, Encode};
 
-#[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x3f]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct ChunkDeltaUpdateS2c<'a> {
     pub chunk_section_position: i64,
     pub invert_trust_edges: bool,

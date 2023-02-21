@@ -1,7 +1,6 @@
 use crate::{Decode, Encode};
 
-#[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x5a]
+#[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct WorldTimeUpdateS2c {
     /// The age of the world in 1/20ths of a second.
     pub world_age: i64,

@@ -7,8 +7,7 @@ use crate::types::{GameMode, GlobalPos};
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x24]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct GameJoinS2c<'a> {
     pub entity_id: i32,
     pub is_hardcore: bool,

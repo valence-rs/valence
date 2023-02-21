@@ -1,10 +1,10 @@
 use valence_nbt::Compound;
+use bitfield_struct::bitfield;
 
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x68]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct EntityStatusEffectS2c {
     pub entity_id: VarInt,
     pub effect_id: VarInt,

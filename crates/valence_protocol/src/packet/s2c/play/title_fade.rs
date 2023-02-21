@@ -1,7 +1,6 @@
 use crate::{Decode, Encode};
 
-#[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x5c]
+#[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct TitleFadeS2c {
     /// Ticks to spend fading in.
     pub fade_in: i32,

@@ -8,8 +8,7 @@ use crate::types::MessageSignature;
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Clone, PartialEq, Debug, EncodePacket, DecodePacket)]
-#[packet_id = 0x31]
+#[derive(Clone, PartialEq, Debug)]
 pub struct ChatMessageS2c<'a> {
     pub sender: Uuid,
     pub index: VarInt,

@@ -1,14 +1,12 @@
-use crate::{Decode, DecodePacket, Encode, EncodePacket};
+use crate::{Decode, Encode};
 
-#[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x13]
+#[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct PositionAndOnGroundC2s {
     pub position: [f64; 3],
     pub on_ground: bool,
 }
 
-#[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x14]
+#[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct FullC2s {
     pub position: [f64; 3],
     pub yaw: f32,
@@ -16,16 +14,14 @@ pub struct FullC2s {
     pub on_ground: bool,
 }
 
-#[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x15]
+#[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct LookAndOnGroundC2s {
     pub yaw: f32,
     pub pitch: f32,
     pub on_ground: bool,
 }
 
-#[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x16]
+#[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct OnGroundOnlyC2s {
     pub on_ground: bool,
 }

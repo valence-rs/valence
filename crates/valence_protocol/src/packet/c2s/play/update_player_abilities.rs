@@ -1,7 +1,6 @@
 use crate::{Decode, Encode};
 
-#[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x1b]
+#[derive(Copy, Clone, Debug, Encode, Decode)]
 pub enum UpdatePlayerAbilitiesC2s {
     #[tag = 0b00]
     StopFlying,

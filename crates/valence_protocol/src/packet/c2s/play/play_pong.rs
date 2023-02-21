@@ -1,7 +1,6 @@
 use crate::{Decode, Encode};
 
-#[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x1f]
+#[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct PlayPongC2s {
     pub id: i32,
 }

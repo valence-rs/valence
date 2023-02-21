@@ -4,8 +4,7 @@ use crate::item::ItemStack;
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x12]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct ScreenHandlerSlotUpdateS2c<'a> {
     pub window_id: i8,
     pub state_id: VarInt,

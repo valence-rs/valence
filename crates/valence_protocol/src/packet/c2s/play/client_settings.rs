@@ -1,7 +1,7 @@
 use crate::{Decode, Encode};
+use bitfield_struct::bitfield;
 
-#[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x07]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct ClientSettingsC2s<'a> {
     pub locale: &'a str,
     pub view_distance: u8,

@@ -1,7 +1,6 @@
 use crate::{Decode, Encode};
 
-#[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x21]
+#[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct RecipeCategoryOptionsC2s {
     pub book_id: RecipeBookId,
     pub book_open: bool,

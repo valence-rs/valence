@@ -3,8 +3,7 @@ use bitfield_struct::bitfield;
 use crate::block_pos::BlockPos;
 use crate::{Decode, Encode};
 
-#[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x29]
+#[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct UpdateCommandBlockC2s<'a> {
     pub position: BlockPos,
     pub command: &'a str,

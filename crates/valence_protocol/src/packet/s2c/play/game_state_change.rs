@@ -1,7 +1,6 @@
 use crate::{Decode, Encode};
 
-#[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x1c]
+#[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct GameStateChangeS2c {
     pub kind: GameEventKind,
     pub value: f32,

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
+use crate::{Encode, Decode};
 
-#[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x14]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct ChatSuggestionsS2c<'a> {
     pub action: Action,
     pub entries: Cow<'a, [&'a str]>,

@@ -1,8 +1,7 @@
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x05]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct ChatMessageC2s<'a> {
     pub message: &'a str,
     pub timestamp: u64,

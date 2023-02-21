@@ -2,7 +2,6 @@ use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
-#[packet_id = 0x04]
 pub struct CommandExecutionC2s<'a> {
     pub command: &'a str,
     pub timestamp: u64,

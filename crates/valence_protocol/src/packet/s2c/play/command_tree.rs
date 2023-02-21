@@ -7,8 +7,7 @@ use crate::ident::Ident;
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x0e]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct CommandTreeS2c<'a> {
     pub commands: Vec<Node<'a>>,
     pub root_index: VarInt,

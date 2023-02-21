@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 
 use crate::text::Text;
+use crate::{Encode, Decode};
 
-#[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x59]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct SubtitleS2c<'a> {
     pub subtitle_text: Cow<'a, Text>,
 }

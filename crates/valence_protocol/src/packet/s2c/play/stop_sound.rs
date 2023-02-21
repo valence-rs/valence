@@ -4,8 +4,7 @@ use crate::ident::Ident;
 use crate::types::SoundCategory;
 use crate::{Decode, Encode};
 
-#[derive(Clone, PartialEq, Debug, EncodePacket, DecodePacket)]
-#[packet_id = 0x5f]
+#[derive(Clone, PartialEq, Debug)]
 pub struct StopSoundS2c<'a> {
     pub source: Option<SoundCategory>,
     pub sound: Option<Ident<&'a str>>,

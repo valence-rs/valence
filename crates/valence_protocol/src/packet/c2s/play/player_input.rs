@@ -2,8 +2,7 @@ use bitfield_struct::bitfield;
 
 use crate::{Decode, Encode};
 
-#[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x1e]
+#[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct PlayerInputC2s {
     pub sideways: f32,
     pub forward: f32,

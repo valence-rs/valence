@@ -7,8 +7,7 @@ use crate::item::ItemStack;
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Clone, Debug, Encode, Decode, EncodePacket, DecodePacket)]
-#[packet_id = 0x69]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct SynchronizeRecipesS2c<'a> {
     pub recipes: Vec<Recipe<'a>>,
 }

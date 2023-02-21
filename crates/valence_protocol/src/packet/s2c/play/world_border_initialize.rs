@@ -2,8 +2,7 @@ use crate::var_int::VarInt;
 use crate::var_long::VarLong;
 use crate::{Decode, Encode};
 
-#[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x1e]
+#[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct WorldBorderInitializeS2c {
     pub x: f64,
     pub z: f64,

@@ -1,10 +1,10 @@
+use bitfield_struct::bitfield;
 use uuid::Uuid;
 
 use crate::text::Text;
 use crate::{Decode, Encode};
 
-#[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x0a]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct BossBarS2c {
     pub id: Uuid,
     pub action: Action,

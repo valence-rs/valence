@@ -10,7 +10,8 @@ use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use uuid::Uuid;
 use valence_nbt::Value;
 
-use crate::{Decode, Encode, Ident, Result};
+use crate::{Decode, Encode, Result};
+use crate::ident::Ident;
 
 /// Represents formatted text in Minecraft's JSON text format.
 ///

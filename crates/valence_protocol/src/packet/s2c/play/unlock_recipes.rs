@@ -6,8 +6,7 @@ use crate::ident::Ident;
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Clone, PartialEq, Eq, Debug, EncodePacket, DecodePacket)]
-#[packet_id = 0x39]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct UnlockRecipesS2c<'a> {
     pub action: UpdateRecipeBookAction<'a>,
     pub crafting_recipe_book_open: bool,

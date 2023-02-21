@@ -1,9 +1,9 @@
-use crate::block::BlockFace;
 use crate::block_pos::BlockPos;
 use crate::var_int::VarInt;
+use crate::{Encode, Decode};
+use crate::types::BlockFace;
 
-#[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x1c]
+#[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct PlayerActionC2s {
     pub status: DiggingStatus,
     pub position: BlockPos,

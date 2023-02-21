@@ -2,8 +2,7 @@ use crate::ident::Ident;
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Clone, Debug, Encode, Decode, EncodePacket, DecodePacket)]
-#[packet_id = 0x6a]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct SynchronizeTagsS2c<'a> {
     pub tags: Vec<TagGroup<'a>>,
 }

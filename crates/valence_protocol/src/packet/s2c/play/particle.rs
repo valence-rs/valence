@@ -8,8 +8,7 @@ use crate::item::ItemStack;
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Clone, Debug, EncodePacket, DecodePacket)]
-#[packet_id = 0x22]
+#[derive(Clone, Debug)]
 pub struct ParticleS2c {
     pub particle: Particle,
     pub long_distance: bool,

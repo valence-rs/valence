@@ -1,9 +1,7 @@
-use crate::types::Statistic;
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x04]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct StatisticsS2c {
     pub statistics: Vec<Statistic>,
 }

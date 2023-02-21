@@ -4,8 +4,7 @@ use crate::text::Text;
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x0d]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct CommandSuggestionsS2c<'a> {
     pub id: VarInt,
     pub start: VarInt,

@@ -12,12 +12,13 @@ pub use s2c::login::S2cLoginPacket;
 pub use s2c::play::S2cPlayPacket;
 pub use s2c::status::S2cStatusPacket;
 
-/// Defines an enum of packets.
-macro_rules! packet_enum {
+/// Defines an enum of packets and implements `EncodePacket` and `DecodePacket`
+/// for each.
+macro_rules! packet_group {
     (
         $(#[$attrs:meta])*
         $enum_name:ident<$enum_life:lifetime> {
-            $($packet:ident $(<$life:lifetime>)?),* $(,)?
+            $($packet_id:literal = $packet:ident $(<$life:lifetime>)?),* $(,)?
         }
     ) => {
         $(#[$attrs])*
@@ -33,11 +34,41 @@ macro_rules! packet_enum {
                     Self::$packet(p)
                 }
             }
+
+            impl$(<$life>)? crate::EncodePacket for $packet$(<$life>)? {
+                const PACKET_ID: i32 = $packet_id;
+
+                #[allow(unused_imports)]
+                fn encode_packet(&self, mut w: impl std::io::Write) -> crate::Result<()> {
+                    use ::valence_protocol::__private::{Encode, Context, VarInt};
+
+                    VarInt($packet_id)
+                        .encode(&mut w)
+                        .context("failed to encode packet ID")?;
+
+                    self.encode(w)
+                }
+            }
+
+            impl<$enum_life> crate::DecodePacket<$enum_life> for $packet$(<$life>)? {
+                const PACKET_ID: i32 = $packet_id;
+
+                #[allow(unused_imports)]
+                fn decode_packet(r: &mut &$enum_life [u8]) -> ::valence_protocol::__private::Result<Self> {
+                    use ::valence_protocol::__private::{Decode, Context, VarInt, ensure};
+
+                    let id = VarInt::decode(r).context("failed to decode packet ID")?.0;
+                    ensure!(id == $packet_id, "unexpected packet ID {} (expected {})", id, $packet_id);
+
+                    Self::decode(r)
+                }
+            }
         )*
 
         impl<$enum_life> crate::EncodePacket for $enum_name<$enum_life> {
             fn encode_packet(&self, mut w: impl std::io::Write) -> crate::Result<()> {
-                use crate::{Encode, VarInt};
+                use crate::Encode;
+                use crate::var_int::VarInt;
 
                 match self {
                     $(
@@ -54,7 +85,8 @@ macro_rules! packet_enum {
 
         impl<$enum_life> crate::DecodePacket<$enum_life> for $enum_name<$enum_life> {
             fn decode_packet(r: &mut &$enum_life [u8]) -> crate::Result<Self> {
-                use crate::{Decode, VarInt};
+                use crate::Decode;
+                use crate::var_int::VarInt;
 
                 let id = VarInt::decode(r)?.0;
                 Ok(match id {
@@ -62,7 +94,7 @@ macro_rules! packet_enum {
                         <$packet as crate::DecodePacket>::PACKET_ID =>
                             Self::$packet($packet::decode(r)?),
                     )*
-                    id => anyhow::bail!("unknown packet ID {:#02x} while decoding {}", id, stringify!($enum_name)),
+                    id => anyhow::bail!("unknown packet ID {} while decoding {}", id, stringify!($enum_name)),
                 })
             }
         }
@@ -81,7 +113,7 @@ macro_rules! packet_enum {
     (
         $(#[$attrs:meta])*
         $enum_name:ident {
-            $($packet:ident),* $(,)?
+            $($packet_id:literal = $packet:ident),* $(,)?
         }
     ) => {
         $(#[$attrs])*
@@ -97,11 +129,41 @@ macro_rules! packet_enum {
                     Self::$packet(p)
                 }
             }
+
+            impl crate::EncodePacket for $packet {
+                const PACKET_ID: i32 = $packet_id;
+
+                #[allow(unused_imports)]
+                fn encode_packet(&self, mut w: impl std::io::Write) -> crate::Result<()> {
+                    use ::valence_protocol::__private::{Encode, Context, VarInt};
+
+                    VarInt($packet_id)
+                        .encode(&mut w)
+                        .context("failed to encode packet ID")?;
+
+                    self.encode(w)
+                }
+            }
+
+            impl crate::DecodePacket<'_> for $packet {
+                const PACKET_ID: i32 = $packet_id;
+
+                #[allow(unused_imports)]
+                fn decode_packet(r: &mut &[u8]) -> ::valence_protocol::__private::Result<Self> {
+                    use ::valence_protocol::__private::{Decode, Context, VarInt, ensure};
+
+                    let id = VarInt::decode(r).context("failed to decode packet ID")?.0;
+                    ensure!(id == $packet_id, "unexpected packet ID {} (expected {})", id, $packet_id);
+
+                    Self::decode(r)
+                }
+            }
         )*
 
         impl crate::EncodePacket for $enum_name {
             fn encode_packet(&self, mut w: impl std::io::Write) -> crate::Result<()> {
-                use crate::{Encode, VarInt};
+                use crate::Encode;
+                use crate::var_int::VarInt;
 
                 match self {
                     $(
@@ -118,7 +180,8 @@ macro_rules! packet_enum {
 
         impl crate::DecodePacket<'_> for $enum_name {
             fn decode_packet(r: &mut &[u8]) -> crate::Result<Self> {
-                use crate::{Decode, VarInt};
+                use crate::Decode;
+                use crate::var_int::VarInt;
 
                 let id = VarInt::decode(r)?.0;
                 Ok(match id {
@@ -126,7 +189,7 @@ macro_rules! packet_enum {
                         <$packet as crate::DecodePacket>::PACKET_ID =>
                             Self::$packet($packet::decode(r)?),
                     )*
-                    id => anyhow::bail!("unknown packet ID {:#02x} while decoding {}", id, stringify!($enum_name)),
+                    id => anyhow::bail!("unknown packet ID {} while decoding {}", id, stringify!($enum_name)),
                 })
             }
         }

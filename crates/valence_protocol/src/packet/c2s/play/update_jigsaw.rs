@@ -2,8 +2,7 @@ use crate::block_pos::BlockPos;
 use crate::ident::Ident;
 use crate::{Decode, Encode};
 
-#[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x2c]
+#[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct UpdateJigsawC2s<'a> {
     pub position: BlockPos,
     pub name: Ident<&'a str>,

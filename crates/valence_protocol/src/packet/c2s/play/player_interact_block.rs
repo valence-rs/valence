@@ -3,8 +3,7 @@ use crate::types::{BlockFace, Hand};
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x31]
+#[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct PlayerInteractBlockC2s {
     pub hand: Hand,
     pub position: BlockPos,

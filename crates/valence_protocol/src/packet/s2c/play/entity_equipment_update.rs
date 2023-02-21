@@ -4,8 +4,7 @@ use crate::item::ItemStack;
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Clone, PartialEq, Debug, EncodePacket, DecodePacket)]
-#[packet_id = 0x51]
+#[derive(Clone, PartialEq, Debug)]
 pub struct EntityEquipmentUpdateS2c {
     pub entity_id: VarInt,
     pub equipment: Vec<EquipmentEntry>,

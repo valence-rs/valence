@@ -2,8 +2,7 @@ use crate::array::LengthPrefixedArray;
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x23]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct LightUpdateS2c {
     pub chunk_x: VarInt,
     pub chunk_z: VarInt,

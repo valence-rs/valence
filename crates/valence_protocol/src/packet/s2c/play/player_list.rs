@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::io::Write;
 
+use bitfield_struct::bitfield;
 use uuid::Uuid;
 
 use crate::text::Text;
@@ -8,8 +9,7 @@ use crate::types::{GameMode, Property};
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Clone, Debug, EncodePacket, DecodePacket)]
-#[packet_id = 0x36]
+#[derive(Clone, Debug)]
 pub struct PlayerListS2c<'a> {
     pub actions: Actions,
     pub entries: Cow<'a, [Entry<'a>]>,

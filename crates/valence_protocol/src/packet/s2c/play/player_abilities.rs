@@ -2,8 +2,7 @@ use bitfield_struct::bitfield;
 
 use crate::{Decode, Encode};
 
-#[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x30]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct PlayerAbilitiesS2c {
     pub flags: PlayerAbilitiesFlags,
     pub flying_speed: f32,

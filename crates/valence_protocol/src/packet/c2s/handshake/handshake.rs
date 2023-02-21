@@ -1,7 +1,7 @@
-use crate::{Decode, DecodePacket, Encode, EncodePacket, VarInt};
+use crate::var_int::VarInt;
+use crate::{Decode, Encode};
 
-#[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-#[packet_id = 0x00]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct HandshakeC2s<'a> {
     pub protocol_version: VarInt,
     pub server_address: &'a str,
