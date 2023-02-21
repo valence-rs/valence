@@ -60,7 +60,7 @@ fn setup(world: &mut World) {
 
     for z in -50..50 {
         for x in -50..50 {
-            instance.set_block_state([x, SPAWN_Y, z], BlockState::GRASS_BLOCK);
+            instance.set_block([x, SPAWN_Y, z], BlockState::GRASS_BLOCK);
         }
     }
 
