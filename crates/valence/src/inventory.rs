@@ -1094,4 +1094,291 @@ mod test {
 
         Ok(())
     }
+
+    mod dropping_items {
+        use valence_protocol::types::{ClickContainerMode, DiggingStatus};
+        use valence_protocol::{BlockFace, BlockPos};
+
+        use super::*;
+        use crate::client::event::DropItemStack;
+
+        #[test]
+        fn should_drop_item_player_action() -> anyhow::Result<()> {
+            let mut app = App::new();
+            let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+            let mut inventory = app
+                .world
+                .get_mut::<Inventory>(client_ent)
+                .expect("could not find inventory");
+            inventory.replace_slot(36, ItemStack::new(ItemKind::IronIngot, 3, None));
+
+            // Process a tick to get past the "on join" logic.
+            app.update();
+            client_helper.clear_sent();
+
+            client_helper.send(&valence_protocol::packets::c2s::play::PlayerAction {
+                status: DiggingStatus::DropItem,
+                position: BlockPos::new(0, 0, 0),
+                face: BlockFace::Bottom,
+                sequence: VarInt(0),
+            });
+
+            app.update();
+
+            // Make assertions
+            let inventory = app
+                .world
+                .get::<Inventory>(client_ent)
+                .expect("could not find client");
+            assert_eq!(
+                inventory.slot(36),
+                Some(&ItemStack::new(ItemKind::IronIngot, 2, None))
+            );
+            let events = app
+                .world
+                .get_resource::<Events<DropItemStack>>()
+                .expect("expected drop item stack events");
+            let events = events.iter_current_update_events().collect::<Vec<_>>();
+            assert_eq!(events.len(), 1);
+            assert_eq!(events[0].client, client_ent);
+            assert_eq!(events[0].from_slot, Some(36));
+            assert_eq!(
+                events[0].stack,
+                ItemStack::new(ItemKind::IronIngot, 1, None)
+            );
+
+            let sent_packets = client_helper.collect_sent()?;
+            assert_packet_count!(sent_packets, 0, S2cPlayPacket::SetContainerSlot(_));
+
+            Ok(())
+        }
+
+        #[test]
+        fn should_drop_item_stack_player_action() -> anyhow::Result<()> {
+            let mut app = App::new();
+            let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+            let mut inventory = app
+                .world
+                .get_mut::<Inventory>(client_ent)
+                .expect("could not find inventory");
+            inventory.replace_slot(36, ItemStack::new(ItemKind::IronIngot, 32, None));
+
+            // Process a tick to get past the "on join" logic.
+            app.update();
+            client_helper.clear_sent();
+
+            client_helper.send(&valence_protocol::packets::c2s::play::PlayerAction {
+                status: DiggingStatus::DropItemStack,
+                position: BlockPos::new(0, 0, 0),
+                face: BlockFace::Bottom,
+                sequence: VarInt(0),
+            });
+
+            app.update();
+
+            // Make assertions
+            let client = app
+                .world
+                .get::<Client>(client_ent)
+                .expect("could not find client");
+            assert_eq!(client.held_item_slot(), 36);
+            let inventory = app
+                .world
+                .get::<Inventory>(client_ent)
+                .expect("could not find inventory");
+            assert_eq!(inventory.slot(36), None);
+            let events = app
+                .world
+                .get_resource::<Events<DropItemStack>>()
+                .expect("expected drop item stack events");
+            let events = events.iter_current_update_events().collect::<Vec<_>>();
+            assert_eq!(events.len(), 1);
+            assert_eq!(events[0].client, client_ent);
+            assert_eq!(events[0].from_slot, Some(36));
+            assert_eq!(
+                events[0].stack,
+                ItemStack::new(ItemKind::IronIngot, 32, None)
+            );
+
+            Ok(())
+        }
+
+        #[test]
+        fn should_drop_item_stack_set_creative_mode_slot() -> anyhow::Result<()> {
+            let mut app = App::new();
+            let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+
+            // Process a tick to get past the "on join" logic.
+            app.update();
+            client_helper.clear_sent();
+
+            client_helper.send(&valence_protocol::packets::c2s::play::SetCreativeModeSlot {
+                slot: -1,
+                clicked_item: Some(ItemStack::new(ItemKind::IronIngot, 32, None)),
+            });
+
+            app.update();
+
+            // Make assertions
+            let events = app
+                .world
+                .get_resource::<Events<DropItemStack>>()
+                .expect("expected drop item stack events");
+            let events = events.iter_current_update_events().collect::<Vec<_>>();
+            assert_eq!(events.len(), 1);
+            assert_eq!(events[0].client, client_ent);
+            assert_eq!(events[0].from_slot, None);
+            assert_eq!(
+                events[0].stack,
+                ItemStack::new(ItemKind::IronIngot, 32, None)
+            );
+
+            Ok(())
+        }
+
+        #[test]
+        fn should_drop_item_stack_click_container_outside() -> anyhow::Result<()> {
+            let mut app = App::new();
+            let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+            let mut client = app
+                .world
+                .get_mut::<Client>(client_ent)
+                .expect("could not find client");
+            client.cursor_item = Some(ItemStack::new(ItemKind::IronIngot, 32, None));
+            let state_id = client.inventory_state_id.0;
+
+            // Process a tick to get past the "on join" logic.
+            app.update();
+            client_helper.clear_sent();
+
+            client_helper.send(&valence_protocol::packets::c2s::play::ClickContainer {
+                window_id: 0,
+                slot_idx: -999,
+                button: 0,
+                mode: ClickContainerMode::Click,
+                state_id: VarInt(state_id),
+                slots: vec![],
+                carried_item: None,
+            });
+
+            app.update();
+
+            // Make assertions
+            let client = app
+                .world
+                .get::<Client>(client_ent)
+                .expect("could not find client");
+            assert_eq!(client.cursor_item(), None);
+            let events = app
+                .world
+                .get_resource::<Events<DropItemStack>>()
+                .expect("expected drop item stack events");
+            let events = events.iter_current_update_events().collect::<Vec<_>>();
+            assert_eq!(events.len(), 1);
+            assert_eq!(events[0].client, client_ent);
+            assert_eq!(events[0].from_slot, None);
+            assert_eq!(
+                events[0].stack,
+                ItemStack::new(ItemKind::IronIngot, 32, None)
+            );
+
+            Ok(())
+        }
+
+        #[test]
+        fn should_drop_item_click_container_with_dropkey_single() -> anyhow::Result<()> {
+            let mut app = App::new();
+            let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+            let client = app
+                .world
+                .get_mut::<Client>(client_ent)
+                .expect("could not find client");
+            let state_id = client.inventory_state_id.0;
+            let mut inventory = app
+                .world
+                .get_mut::<Inventory>(client_ent)
+                .expect("could not find inventory");
+            inventory.replace_slot(40, ItemStack::new(ItemKind::IronIngot, 32, None));
+
+            // Process a tick to get past the "on join" logic.
+            app.update();
+            client_helper.clear_sent();
+
+            client_helper.send(&valence_protocol::packets::c2s::play::ClickContainer {
+                window_id: 0,
+                slot_idx: 40,
+                button: 0,
+                mode: ClickContainerMode::DropKey,
+                state_id: VarInt(state_id),
+                slots: vec![],
+                carried_item: None,
+            });
+
+            app.update();
+
+            // Make assertions
+            let events = app
+                .world
+                .get_resource::<Events<DropItemStack>>()
+                .expect("expected drop item stack events");
+            let events = events.iter_current_update_events().collect::<Vec<_>>();
+            assert_eq!(events.len(), 1);
+            assert_eq!(events[0].client, client_ent);
+            assert_eq!(events[0].from_slot, Some(40));
+            assert_eq!(
+                events[0].stack,
+                ItemStack::new(ItemKind::IronIngot, 1, None)
+            );
+
+            Ok(())
+        }
+
+        #[test]
+        fn should_drop_item_stack_click_container_with_dropkey() -> anyhow::Result<()> {
+            let mut app = App::new();
+            let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+            let client = app
+                .world
+                .get_mut::<Client>(client_ent)
+                .expect("could not find client");
+            let state_id = client.inventory_state_id.0;
+            let mut inventory = app
+                .world
+                .get_mut::<Inventory>(client_ent)
+                .expect("could not find inventory");
+            inventory.replace_slot(40, ItemStack::new(ItemKind::IronIngot, 32, None));
+
+            // Process a tick to get past the "on join" logic.
+            app.update();
+            client_helper.clear_sent();
+
+            client_helper.send(&valence_protocol::packets::c2s::play::ClickContainer {
+                window_id: 0,
+                slot_idx: 40,
+                button: 1, // pressing control
+                mode: ClickContainerMode::DropKey,
+                state_id: VarInt(state_id),
+                slots: vec![],
+                carried_item: None,
+            });
+
+            app.update();
+
+            // Make assertions
+            let events = app
+                .world
+                .get_resource::<Events<DropItemStack>>()
+                .expect("expected drop item stack events");
+            let events = events.iter_current_update_events().collect::<Vec<_>>();
+            assert_eq!(events.len(), 1);
+            assert_eq!(events[0].client, client_ent);
+            assert_eq!(events[0].from_slot, Some(40));
+            assert_eq!(
+                events[0].stack,
+                ItemStack::new(ItemKind::IronIngot, 32, None)
+            );
+
+            Ok(())
+        }
+    }
 }
