@@ -533,23 +533,6 @@ impl<const LOADED: bool> Chunk<LOADED> {
             }
         }
 
-        let idx = (x + z * 16 + y * 16 * 16) as _;
-        match block.block_entity_kind() {
-            Some(kind) => {
-                let block_entity = BlockEntity {
-                    kind,
-                    nbt: compound! {},
-                };
-                self.block_entities.insert(idx, block_entity);
-                if LOADED && !self.refresh {
-                    self.modified_block_entities.insert(idx);
-                }
-            }
-            None => {
-                self.block_entities.remove(&idx);
-            }
-        }
-
         old_block
     }
 
@@ -615,30 +598,6 @@ impl<const LOADED: bool> Chunk<LOADED> {
         }
 
         sect.block_states.fill(block);
-
-        for z in 0..16 {
-            for x in 0..16 {
-                for y in 0..16 {
-                    let y = sect_y * 16 + y;
-                    let idx = (x + z * 16 + y * 16 * 16) as _;
-                    match block.block_entity_kind() {
-                        Some(kind) => {
-                            let block_entity = BlockEntity {
-                                kind,
-                                nbt: compound! {},
-                            };
-                            self.block_entities.insert(idx, block_entity);
-                            if LOADED && !self.refresh {
-                                self.modified_block_entities.insert(idx);
-                            }
-                        }
-                        None => {
-                            self.block_entities.remove(&idx);
-                        }
-                    }
-                }
-            }
-        }
     }
 
     /// Gets a reference to the block entity at the provided offsets in the
@@ -686,15 +645,15 @@ impl<const LOADED: bool> Chunk<LOADED> {
         );
         let idx = (x + z * 16 + y * 16 * 16) as _;
         let old = self.block_entities.insert(idx, block_entity);
-        if LOADED {
+        if LOADED && !self.refresh {
             self.modified_block_entities.insert(idx);
             self.cached_init_packets.get_mut().clear();
         }
         old
     }
 
-    /// Edits the block entity at the provided offsets in the chunk.
-    /// Does nothing if there is no block entity at the provided offsets.
+    /// Returns a mutable reference to the block entity at the provided offsets
+    /// in the chunk.
     ///
     /// **Note**: The arguments to this function are offsets from the minimum
     /// corner of the chunk in _chunk space_ rather than _world space_.
@@ -704,23 +663,19 @@ impl<const LOADED: bool> Chunk<LOADED> {
     /// Panics if the offsets are outside the bounds of the chunk. `x` and `z`
     /// must be less than 16 while `y` must be less than `section_count() * 16`.
     #[track_caller]
-    pub fn edit_block_entity(
-        &mut self,
-        x: usize,
-        y: usize,
-        z: usize,
-        f: impl FnOnce(&mut BlockEntity),
-    ) {
+    pub fn block_entity_mut(&mut self, x: usize, y: usize, z: usize) -> Option<&mut BlockEntity> {
         assert!(
             x < 16 && y < self.section_count() * 16 && z < 16,
             "chunk block offsets of ({x}, {y}, {z}) are out of bounds"
         );
         let idx = (x + z * 16 + y * 16 * 16) as _;
-        self.block_entities.entry(idx).and_modify(f);
-        if LOADED {
+
+        let res = self.block_entities.get_mut(&idx);
+        if LOADED && res.is_some() && !self.refresh {
             self.modified_block_entities.insert(idx);
             self.cached_init_packets.get_mut().clear();
         }
+        self.block_entities.get_mut(&idx)
     }
 
     /// Sets the block at the provided offsets in the chunk. The previous
@@ -995,7 +950,7 @@ mod tests {
         chunk.refresh = false;
 
         assert!(chunk.block_entity(0, 0, 0).is_none());
-        chunk.set_block_state(0, 0, 0, BlockState::CHEST);
+        chunk.set_block(0, 0, 0, BlockState::CHEST);
         assert_eq!(
             chunk.block_entity(0, 0, 0),
             Some(&BlockEntity {
@@ -1003,22 +958,7 @@ mod tests {
                 nbt: compound! {}
             })
         );
-        chunk.set_block_state(0, 0, 0, BlockState::STONE);
+        chunk.set_block(0, 0, 0, BlockState::STONE);
         assert!(chunk.block_entity(0, 0, 0).is_none());
-
-        chunk.fill_block_states(2, BlockState::CHEST);
-        for x in 0..16 {
-            for z in 0..16 {
-                for y in 32..47 {
-                    assert_eq!(
-                        chunk.block_entity(x, y, z),
-                        Some(&BlockEntity {
-                            kind: BlockEntityKind::Chest,
-                            nbt: compound! {}
-                        })
-                    );
-                }
-            }
-        }
     }
 }
