@@ -4,7 +4,7 @@ use std::iter::FusedIterator;
 use bevy_ecs::prelude::*;
 use tracing::{debug, warn};
 use valence_protocol::packet::s2c::play::{
-    CloseScreenS2c, OpenScreenS2c, InventoryS2c, ScreenHandlerSlotUpdateS2c,
+    CloseScreenS2c, InventoryS2c, OpenScreenS2c, ScreenHandlerSlotUpdateS2c,
 };
 use valence_protocol::types::{GameMode, WindowType};
 use valence_protocol::{ItemStack, Text, VarInt};

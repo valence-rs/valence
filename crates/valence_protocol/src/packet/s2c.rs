@@ -1,56 +1,9 @@
-use std::borrow::Cow;
-
-use uuid::Uuid;
-use valence_nbt::Compound;
-
-use crate::block::BlockEntityKind;
-use crate::block_pos::BlockPos;
-use crate::byte_angle::ByteAngle;
-use crate::ident::Ident;
-use crate::item::ItemStack;
-use crate::raw_bytes::RawBytes;
-use crate::text::Text;
-use crate::types::{
-    AttributeProperty, BossBarAction, ChatSuggestionAction, ChunkDataBlockEntity,
-    CommandSuggestionMatch, Difficulty, EntityEffectFlags, FeetOrEyes, GameEventKind, GameMode,
-    GlobalPos, Hand, LookAtEntity, MerchantTrade, PlayerAbilitiesFlags, Property, SoundCategory,
-    Statistic, SyncPlayerPosLookFlags, TagGroup, UpdateObjectiveMode, UpdateScoreAction,
-    WindowType,
-};
-use crate::username::Username;
-use crate::var_int::VarInt;
-use crate::var_long::VarLong;
-use crate::{Decode, DecodePacket, Encode, EncodePacket, LengthPrefixedArray};
-
-pub mod commands;
-pub mod declare_recipes;
-pub mod map_update;
-pub mod message_signature;
-pub mod particle;
-pub mod chat_message;
-pub mod player_list;
-pub mod entity_equipment_update;
-pub mod sound_id;
-pub mod stop_sound;
-pub mod advancement_update;
-pub mod unlock_recipes;
-pub mod update_teams;
-
 pub mod status {
-    use super::*;
+    pub use query_pong::QueryPongS2c;
+    pub use query_response::QueryResponseS2c;
 
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x00]
-    pub struct QueryResponseS2c<'a> {
-        pub json: &'a str,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x01]
-    pub struct QueryPongS2c {
-        pub payload: u64,
-    }
-
+    pub mod query_pong;
+    pub mod query_response;
     packet_enum! {
         #[derive(Clone)]
         S2cStatusPacket<'a> {
@@ -61,44 +14,17 @@ pub mod status {
 }
 
 pub mod login {
-    use super::*;
+    pub use login_compression::LoginCompressionS2c;
+    pub use login_disconnect::LoginDisconnectS2c;
+    pub use login_hello::LoginHelloS2c;
+    pub use login_query_request::LoginQueryRequestS2c;
+    pub use login_success::LoginSuccessS2c;
 
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x00]
-    pub struct LoginDisconnectS2c<'a> {
-        pub reason: Cow<'a, Text>,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x01]
-    pub struct LoginHelloS2c<'a> {
-        pub server_id: &'a str,
-        pub public_key: &'a [u8],
-        pub verify_token: &'a [u8],
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x02]
-    pub struct LoginSuccessS2c<'a> {
-        pub uuid: Uuid,
-        pub username: Username<&'a str>,
-        pub properties: Cow<'a, [Property]>,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x03]
-    pub struct LoginCompressionS2c {
-        pub threshold: VarInt,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x04]
-    pub struct LoginQueryRequestS2c<'a> {
-        pub message_id: VarInt,
-        pub channel: Ident<&'a str>,
-        pub data: RawBytes<'a>,
-    }
-
+    pub mod login_compression;
+    pub mod login_disconnect;
+    pub mod login_hello;
+    pub mod login_query_request;
+    pub mod login_success;
     packet_enum! {
         #[derive(Clone)]
         S2cLoginPacket<'a> {
@@ -112,815 +38,220 @@ pub mod login {
 }
 
 pub mod play {
-    use commands::Node;
-    pub use map_update::MapUpdateS2c;
-    pub use message_signature::MessageSignature;
+
+    pub mod entity_spawn;
+
+    use std::borrow::Cow;
+
+    pub use entity_spawn::EntitySpawnS2c;
+    pub mod experience_orb_spawn;
+    pub use experience_orb_spawn::ExperienceOrbSpawnS2c;
+    pub mod player_spawn;
+    pub use player_spawn::PlayerSpawnS2c;
+    pub mod entity_animation;
+    pub use entity_animation::EntityAnimationS2c;
+    pub mod statistics;
+    pub use statistics::StatisticsS2c;
+    pub mod player_action_response;
+    pub use player_action_response::PlayerActionResponseS2c;
+    pub mod block_breaking_progress;
+    pub use block_breaking_progress::BlockBreakingProgressS2c;
+    pub mod block_entity_update;
+    pub use block_entity_update::BlockEntityUpdateS2c;
+    pub mod block_event;
+    pub use block_event::BlockEventS2c;
+    pub mod block_update;
+    pub use block_update::BlockUpdateS2c;
+    pub mod boss_bar;
+    pub use boss_bar::BossBarS2c;
+    pub mod difficulty;
+    pub use difficulty::DifficultyS2c;
+    pub mod clear_titles;
+    pub use clear_titles::ClearTitlesS2c;
+    pub mod command_suggestions;
+    pub use command_suggestions::CommandSuggestionsS2c;
+    pub mod command_tree;
+    pub use command_tree::CommandTreeS2c;
+    pub mod close_screen;
+    pub use close_screen::CloseScreenS2c;
+    pub mod inventory;
+    pub use inventory::InventoryS2c;
+    pub mod screen_handler_property_update;
+    pub use screen_handler_property_update::ScreenHandlerPropertyUpdateS2c;
+    pub mod screen_handler_slot_update;
+    pub use screen_handler_slot_update::ScreenHandlerSlotUpdateS2c;
+    pub mod cooldown_update;
+    pub use cooldown_update::CooldownUpdateS2c;
+    pub mod chat_suggestions;
+    pub use chat_suggestions::ChatSuggestionsS2c;
+    pub mod custom_payload;
+    pub use custom_payload::CustomPayloadS2c;
+    pub mod remove_message;
+    pub use remove_message::RemoveMessageS2c;
+    pub mod disconnect;
+    pub use disconnect::DisconnectS2c;
+    pub mod profileless_chat_message;
+    pub use profileless_chat_message::ProfilelessChatMessageS2c;
+    pub mod entity_status;
+    pub use entity_status::EntityStatusS2c;
+    pub mod explosion;
+    pub use explosion::ExplosionS2c;
+    pub mod unload_chunk;
+    pub use unload_chunk::UnloadChunkS2c;
+    pub mod game_state_change;
+    pub use game_state_change::GameStateChangeS2c;
+    pub mod open_horse_screen;
+    pub use open_horse_screen::OpenHorseScreenS2c;
+    pub mod world_border_initialize;
+    pub use world_border_initialize::WorldBorderInitializeS2c;
+    pub mod keep_alive;
+    pub use keep_alive::KeepAliveS2c;
+    pub mod chunk_data;
+    pub use chunk_data::ChunkDataS2c;
+    pub mod world_event;
+    pub use world_event::WorldEventS2c;
+    pub mod light_update;
+    pub use light_update::LightUpdateS2c;
+    pub mod particle;
     pub use particle::ParticleS2c;
+    pub mod game_join;
+    pub use game_join::GameJoinS2c;
+    pub mod map_update;
+    pub use map_update::MapUpdateS2c;
+    pub mod set_trade_offers;
+    pub use set_trade_offers::SetTradeOffersS2c;
+    pub mod entity;
+    pub use entity::{MoveRelativeS2c, RotateAndMoveRelativeS2c, RotateS2c};
+    pub mod vehicle_move;
+    pub use vehicle_move::VehicleMoveS2c;
+    pub mod open_written_book;
+    pub use open_written_book::OpenWrittenBookS2c;
+    pub mod open_screen;
+    pub use open_screen::OpenScreenS2c;
+    pub mod sign_editor_open;
+    pub use sign_editor_open::SignEditorOpen;
+    pub mod play_ping;
+    pub use play_ping::PlayPingS2c;
+    pub mod craft_failed_response;
+    pub use craft_failed_response::CraftFailedResponseS2c;
+    pub mod player_abilities;
+    pub use player_abilities::PlayerAbilitiesS2c;
+    pub mod chat_message;
     pub use chat_message::ChatMessageS2c;
+    pub mod end_combat;
+    pub use end_combat::EndCombatS2c;
+    pub mod enter_combat;
+    pub use enter_combat::EnterCombatS2c;
+    pub mod death_message;
+    pub use death_message::DeathMessageS2c;
+    pub mod player_remove;
+    pub use player_remove::PlayerRemoveS2c;
+    pub mod player_list;
     pub use player_list::PlayerListS2c;
-    pub use entity_equipment_update::EntityEquipmentUpdateS2c;
-    pub use sound_id::SoundId;
-    pub use stop_sound::StopSoundS2c;
-    pub use advancement_update::AdvancementUpdateS2c;
+    pub mod look_at;
+    pub use look_at::LookAtS2c;
+    pub mod player_position_look;
+    pub use player_position_look::PlayerPositionLookS2c;
+    pub mod unlock_recipes;
     pub use unlock_recipes::UnlockRecipesS2c;
-
-    use super::*;
-    use crate::packet::s2c::declare_recipes::DeclaredRecipe;
-    use crate::packet::s2c::update_teams::UpdateTeamsMode;
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x00]
-    pub struct EntitySpawnS2c {
-        pub entity_id: VarInt,
-        pub object_uuid: Uuid,
-        // TODO: EntityKind type?
-        pub kind: VarInt,
-        pub position: [f64; 3],
-        pub pitch: ByteAngle,
-        pub yaw: ByteAngle,
-        pub head_yaw: ByteAngle,
-        pub data: VarInt,
-        pub velocity: [i16; 3],
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x01]
-    pub struct ExperienceOrbSpawnS2c {
-        pub entity_id: VarInt,
-        pub position: [f64; 3],
-        pub count: i16,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x02]
-    pub struct PlayerSpawnS2c {
-        pub entity_id: VarInt,
-        pub player_uuid: Uuid,
-        pub position: [f64; 3],
-        pub yaw: ByteAngle,
-        pub pitch: ByteAngle,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x03]
-    pub struct EntityAnimationS2c {
-        pub entity_id: VarInt,
-        pub animation: u8, // TODO: use Animation enum.
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x04]
-    pub struct StatisticsS2c {
-        pub statistics: Vec<Statistic>,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x05]
-    pub struct PlayerActionResponseS2c {
-        pub sequence: VarInt,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x06]
-    pub struct BlockBreakingProgressS2c {
-        pub entity_id: VarInt,
-        pub position: BlockPos,
-        pub destroy_stage: u8,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x07]
-    pub struct BlockEntityUpdateS2c<'a> {
-        pub position: BlockPos,
-        pub kind: BlockEntityKind,
-        pub data: Cow<'a, Compound>,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x08]
-    pub struct BlockEventS2c {
-        pub position: BlockPos,
-        pub action_id: u8,
-        pub action_parameter: u8,
-        pub block_type: VarInt,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x09]
-    pub struct BlockUpdateS2c {
-        pub position: BlockPos,
-        pub block_id: VarInt,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x0a]
-    pub struct BossBarS2c {
-        pub id: Uuid,
-        pub action: BossBarAction,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x0b]
-    pub struct DifficultyS2c {
-        pub difficulty: Difficulty,
-        pub locked: bool,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x0c]
-    pub struct ClearTitlesS2c {
-        pub reset: bool,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x0d]
-    pub struct CommandSuggestionsS2c<'a> {
-        pub id: VarInt,
-        pub start: VarInt,
-        pub length: VarInt,
-        pub matches: Vec<CommandSuggestionMatch<'a>>,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x0e]
-    pub struct CommandTreeS2c<'a> {
-        pub commands: Vec<Node<'a>>,
-        pub root_index: VarInt,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x0f]
-    pub struct CloseScreenS2c {
-        /// Ignored by notchian clients.
-        pub window_id: u8,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x10]
-    pub struct InventoryS2c<'a> {
-        pub window_id: u8,
-        pub state_id: VarInt,
-        pub slots: Cow<'a, [Option<ItemStack>]>,
-        pub carried_item: Cow<'a, Option<ItemStack>>,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x11]
-    pub struct ScreenHandlerPropertyUpdateS2c {
-        pub window_id: u8,
-        pub property: i16,
-        pub value: i16,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x12]
-    pub struct ScreenHandlerSlotUpdateS2c<'a> {
-        pub window_id: i8,
-        pub state_id: VarInt,
-        pub slot_idx: i16,
-        pub slot_data: Cow<'a, Option<ItemStack>>,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x13]
-    pub struct CooldownUpdateS2c {
-        pub item_id: VarInt,
-        pub cooldown_ticks: VarInt,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x14]
-    pub struct ChatSuggestionsS2c<'a> {
-        pub action: ChatSuggestionAction,
-        pub entries: Vec<&'a str>,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x15]
-    pub struct CustomPayloadS2c<'a> {
-        pub channel: Ident<&'a str>,
-        pub data: RawBytes<'a>,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x16]
-    pub struct RemoveMessageS2c<'a> {
-        pub signature: MessageSignature<'a>,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x17]
-    pub struct DisconnectS2c<'a> {
-        pub reason: Cow<'a, Text>,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x18]
-    pub struct ProfilelessChatMessageS2c<'a> {
-        pub message: Cow<'a, Text>,
-        pub chat_type: VarInt,
-        pub chat_type_name: Cow<'a, Text>,
-        pub target_name: Option<Cow<'a, Text>>,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x19]
-    pub struct EntityStatusS2c {
-        pub entity_id: i32,
-        pub entity_status: u8,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x1a]
-    pub struct ExplosionS2c<'a> {
-        pub window_id: u8,
-        pub recipe: Ident<&'a str>,
-        pub make_all: bool,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x1b]
-    pub struct UnloadChunkS2c {
-        pub chunk_x: i32,
-        pub chunk_z: i32,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x1c]
-    pub struct GameStateChangeS2c {
-        pub kind: GameEventKind,
-        pub value: f32,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x1d]
-    pub struct OpenHorseScreenS2c {
-        pub window_id: u8,
-        pub slot_count: VarInt,
-        pub entity_id: i32,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x1e]
-    pub struct WorldBorderInitializeS2c {
-        pub x: f64,
-        pub z: f64,
-        pub old_diameter: f64,
-        pub new_diameter: f64,
-        pub speed: VarLong,
-        pub portal_teleport_boundary: VarInt,
-        pub warning_blocks: VarInt,
-        pub warning_time: VarInt,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x1f]
-    pub struct KeepAliveS2c {
-        pub id: u64,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x20]
-    pub struct ChunkDataS2c<'a> {
-        pub chunk_x: i32,
-        pub chunk_z: i32,
-        pub heightmaps: Cow<'a, Compound>,
-        pub blocks_and_biomes: &'a [u8],
-        pub block_entities: Cow<'a, [ChunkDataBlockEntity<'a>]>,
-        pub trust_edges: bool,
-        pub sky_light_mask: Cow<'a, [u64]>,
-        pub block_light_mask: Cow<'a, [u64]>,
-        pub empty_sky_light_mask: Cow<'a, [u64]>,
-        pub empty_block_light_mask: Cow<'a, [u64]>,
-        pub sky_light_arrays: Cow<'a, [LengthPrefixedArray<u8, 2048>]>,
-        pub block_light_arrays: Cow<'a, [LengthPrefixedArray<u8, 2048>]>,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x21]
-    pub struct WorldEventS2c {
-        pub event: i32,
-        pub location: BlockPos,
-        pub data: i32,
-        pub disable_relative_volume: bool,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x23]
-    pub struct LightUpdateS2c {
-        pub chunk_x: VarInt,
-        pub chunk_z: VarInt,
-        pub trust_edges: bool,
-        pub sky_light_mask: Vec<u64>,
-        pub block_light_mask: Vec<u64>,
-        pub empty_sky_light_mask: Vec<u64>,
-        pub empty_block_light_mask: Vec<u64>,
-        pub sky_light_arrays: Vec<LengthPrefixedArray<u8, 2048>>,
-        pub block_light_arrays: Vec<LengthPrefixedArray<u8, 2048>>,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x24]
-    pub struct GameJoinS2c<'a> {
-        pub entity_id: i32,
-        pub is_hardcore: bool,
-        pub game_mode: GameMode,
-        /// Same values as `game_mode` but with -1 to indicate no previous.
-        pub previous_game_mode: i8,
-        pub dimension_names: Vec<Ident<&'a str>>,
-        pub registry_codec: Cow<'a, Compound>,
-        pub dimension_type_name: Ident<&'a str>,
-        pub dimension_name: Ident<&'a str>,
-        pub hashed_seed: i64,
-        pub max_players: VarInt,
-        pub view_distance: VarInt,
-        pub simulation_distance: VarInt,
-        pub reduced_debug_info: bool,
-        pub enable_respawn_screen: bool,
-        pub is_debug: bool,
-        pub is_flat: bool,
-        pub last_death_location: Option<GlobalPos<'a>>,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x26]
-    pub struct SetTradeOffersS2c {
-        pub window_id: VarInt,
-        pub trades: Vec<MerchantTrade>,
-        pub villager_level: VarInt,
-        pub experience: VarInt,
-        pub is_regular_villager: bool,
-        pub can_restock: bool,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x27]
-    pub struct MoveRelativeS2c {
-        pub entity_id: VarInt,
-        pub delta: [i16; 3],
-        pub on_ground: bool,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x28]
-    pub struct RotateAndMoveRelativeS2c {
-        pub entity_id: VarInt,
-        pub delta: [i16; 3],
-        pub yaw: ByteAngle,
-        pub pitch: ByteAngle,
-        pub on_ground: bool,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x29]
-    pub struct RotateS2c {
-        pub entity_id: VarInt,
-        pub yaw: ByteAngle,
-        pub pitch: ByteAngle,
-        pub on_ground: bool,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x2a]
-    pub struct VehicleMoveS2c {
-        pub position: [f64; 3],
-        pub yaw: f32,
-        pub pitch: f32,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x2b]
-    pub struct OpenWrittenBookS2c {
-        pub hand: Hand,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x2c]
-    pub struct OpenScreenS2c<'a> {
-        pub window_id: VarInt,
-        pub window_type: WindowType,
-        pub window_title: Cow<'a, Text>,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x2d]
-    pub struct SignEditorOpen {
-        pub location: BlockPos,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x2e]
-    pub struct PlayPingS2c {
-        pub id: i32,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x2f]
-    pub struct CraftFailedResponseS2c<'a> {
-        pub window_id: u8,
-        pub recipe: Ident<&'a str>,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x30]
-    pub struct PlayerAbilitiesS2c {
-        pub flags: PlayerAbilitiesFlags,
-        pub flying_speed: f32,
-        pub fov_modifier: f32,
-    }
-
-    /// Unused by notchian clients.
-    #[derive(Copy, Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x32]
-    pub struct EndCombatS2c {
-        pub duration: VarInt,
-        pub entity_id: i32,
-    }
-
-    /// Unused by notchian clients.
-    #[derive(Copy, Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x33]
-    pub struct EnterCombatS2c;
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x34]
-    pub struct DeathMessageS2c<'a> {
-        pub player_id: VarInt,
-        /// Killer's entity ID, -1 if no killer
-        pub entity_id: i32,
-        pub message: Cow<'a, Text>,
-    }
-
-    #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x35]
-    pub struct PlayerRemove<'a> {
-        pub uuids: Cow<'a, [Uuid]>,
-    }
-
-    #[derive(Copy, Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x37]
-    pub struct LookAtS2c {
-        pub feet_eyes: FeetOrEyes,
-        pub target_position: [f64; 3],
-        pub entity_to_face: Option<LookAtEntity>,
-    }
-
-    #[derive(Copy, Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x38]
-    pub struct PlayerPositionLookS2c {
-        pub position: [f64; 3],
-        pub yaw: f32,
-        pub pitch: f32,
-        pub flags: SyncPlayerPosLookFlags,
-        pub teleport_id: VarInt,
-        pub dismount_vehicle: bool,
-    }
-
-    #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x3a]
-    pub struct EntitiesDestroyS2c<'a> {
-        pub entity_ids: Cow<'a, [VarInt]>,
-    }
-
-    #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x3b]
-    pub struct RemoveEntityStatusEffectS2c {
-        pub entity_id: VarInt,
-        pub effect_id: VarInt,
-    }
-
-    #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x3c]
-    pub struct ResourcePackSendS2c<'a> {
-        pub url: &'a str,
-        pub hash: &'a str,
-        pub forced: bool,
-        pub prompt_message: Option<Cow<'a, Text>>,
-    }
-
-    #[derive(Clone, PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x3d]
-    pub struct PlayerRespawnS2c<'a> {
-        pub dimension_type_name: Ident<&'a str>,
-        pub dimension_name: Ident<&'a str>,
-        pub hashed_seed: u64,
-        pub game_mode: GameMode,
-        pub previous_game_mode: i8,
-        pub is_debug: bool,
-        pub is_flat: bool,
-        pub copy_metadata: bool,
-        pub last_death_location: Option<GlobalPos<'a>>,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x3e]
-    pub struct EntitySetHeadYawS2c {
-        pub entity_id: VarInt,
-        pub head_yaw: ByteAngle,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x3f]
-    pub struct ChunkDeltaUpdateS2c<'a> {
-        pub chunk_section_position: i64,
-        pub invert_trust_edges: bool,
-        pub blocks: Cow<'a, [VarLong]>,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x40]
-    pub struct SelectAdvancementsTabS2c<'a> {
-        pub identifier: Option<Ident<&'a str>>,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x41]
-    pub struct ServerMetadataS2c<'a> {
-        pub motd: Option<Cow<'a, Text>>,
-        pub icon: Option<&'a str>,
-        pub enforce_secure_chat: bool,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x42]
-    pub struct OverlayMessageS2c<'a> {
-        pub action_bar_text: Cow<'a, Text>,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x43]
-    pub struct WorldBorderCenterChangedS2c {
-        pub xz_position: [f64; 2],
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x44]
-    pub struct WorldBorderInterpolateSizeS2c {
-        pub old_diameter: f64,
-        pub new_diameter: f64,
-        pub speed: VarLong,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x45]
-    pub struct WorldBorderSizeChangedS2c {
-        pub diameter: f64,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x46]
-    pub struct WorldBorderWarningTimeChangedS2c {
-        pub warning_time: VarInt,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x47]
-    pub struct WorldBorderWarningBlocksChangedS2c {
-        pub warning_blocks: VarInt,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x48]
-    pub struct SetCameraEntityS2c {
-        pub entity_id: VarInt,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x49]
-    pub struct UpdateSelectedSlotS2c {
-        pub slot: u8,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x4a]
-    pub struct ChunkRenderDistanceCenterS2c {
-        pub chunk_x: VarInt,
-        pub chunk_z: VarInt,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x4b]
-    pub struct ChunkLoadDistanceS2c {
-        pub view_distance: VarInt,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x4c]
-    pub struct PlayerSpawnPositionS2c {
-        pub position: BlockPos,
-        pub angle: f32,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x4d]
-    pub struct ScoreboardDisplayS2c<'a> {
-        pub position: u8,
-        pub score_name: &'a str,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x4e]
-    pub struct EntityTrackerUpdateS2c<'a> {
-        pub entity_id: VarInt,
-        pub metadata: RawBytes<'a>,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x4f]
-    pub struct EntityAttachS2c {
-        pub attached_entity_id: i32,
-        pub holding_entity_id: i32,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x50]
-    pub struct EntityVelocityUpdateS2c {
-        pub entity_id: VarInt,
-        pub velocity: [i16; 3],
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x52]
-    pub struct ExperienceBarUpdateS2c {
-        pub bar: f32,
-        pub level: VarInt,
-        pub total_xp: VarInt,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x53]
-    pub struct HealthUpdateS2c {
-        pub health: f32,
-        pub food: VarInt,
-        pub food_saturation: f32,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x54]
-    pub struct ScoreboardObjectiveUpdateS2c<'a> {
-        pub objective_name: &'a str,
-        pub mode: UpdateObjectiveMode,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x55]
-    pub struct EntityPassengersSetS2c {
-        /// Vehicle's entity id
-        pub entity_id: VarInt,
-        pub passengers: Vec<VarInt>,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x56]
-    pub struct TeamS2c<'a> {
-        pub team_name: &'a str,
-        pub mode: UpdateTeamsMode<'a>,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x57]
-    pub struct ScoreboardPlayerUpdateS2c<'a> {
-        pub entity_name: &'a str,
-        pub action: UpdateScoreAction<'a>,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x58]
-    pub struct SimulationDistanceS2c {
-        pub simulation_distance: VarInt,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x59]
-    pub struct SubtitleS2c<'a> {
-        pub subtitle_text: Cow<'a, Text>,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x5a]
-    pub struct WorldTimeUpdateS2c {
-        /// The age of the world in 1/20ths of a second.
-        pub world_age: i64,
-        /// The current time of day in 1/20ths of a second.
-        /// The value should be in the range \[0, 24000].
-        /// 6000 is noon, 12000 is sunset, and 18000 is midnight.
-        pub time_of_day: i64,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x5b]
-    pub struct TitleS2c<'a> {
-        pub title_text: Cow<'a, Text>,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x5c]
-    pub struct TitleFadeS2c {
-        /// Ticks to spend fading in.
-        pub fade_in: i32,
-        /// Ticks to keep the title displayed.
-        pub stay: i32,
-        /// Ticks to spend fading out.
-        pub fade_out: i32,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x5d]
-    pub struct PlaySoundFromEntityS2c {
-        pub id: VarInt,
-        pub category: SoundCategory,
-        pub entity_id: VarInt,
-        pub volume: f32,
-        pub pitch: f32,
-        pub seed: i64,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x5e]
-    pub struct PlaySoundS2c<'a> {
-        pub id: SoundId<'a>,
-        pub category: SoundCategory,
-        pub position: [i32; 3],
-        pub volume: f32,
-        pub pitch: f32,
-        pub seed: i64,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x60]
-    pub struct GameMessageS2c<'a> {
-        pub chat: Cow<'a, Text>,
-        /// Whether the message is in the actionbar or the chat.
-        pub overlay: bool,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x61]
-    pub struct PlayerListHeaderS2c<'a> {
-        pub header: Cow<'a, Text>,
-        pub footer: Cow<'a, Text>,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x62]
-    pub struct NbtQueryResponseS2c {
-        pub transaction_id: VarInt,
-        pub nbt: Compound,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x63]
-    pub struct ItemPickupAnimationS2c {
-        pub collected_entity_id: VarInt,
-        pub collector_entity_id: VarInt,
-        pub pickup_item_count: VarInt,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x64]
-    pub struct EntityPositionS2c {
-        pub entity_id: VarInt,
-        pub position: [f64; 3],
-        pub yaw: ByteAngle,
-        pub pitch: ByteAngle,
-        pub on_ground: bool,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x66]
-    pub struct EntityAttributesS2c<'a> {
-        pub entity_id: VarInt,
-        pub properties: Vec<AttributeProperty<'a>>,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x67]
-    pub struct FeaturesS2c<'a> {
-        pub features: Vec<Ident<&'a str>>,
-    }
-
-    #[derive(Clone, Debug, Encode, EncodePacket, Decode, DecodePacket)]
-    #[packet_id = 0x68]
-    pub struct EntityStatusEffectS2c {
-        pub entity_id: VarInt,
-        pub effect_id: VarInt,
-        pub amplifier: u8,
-        pub duration: VarInt,
-        pub flags: EntityEffectFlags,
-        pub factor_codec: Option<Compound>,
-    }
-
-    #[derive(Clone, Debug, Encode, Decode, EncodePacket, DecodePacket)]
-    #[packet_id = 0x69]
-    pub struct SynchronizeRecipesS2c<'a> {
-        pub recipes: Vec<DeclaredRecipe<'a>>,
-    }
-
-    #[derive(Clone, Debug, Encode, Decode, EncodePacket, DecodePacket)]
-    #[packet_id = 0x6a]
-    pub struct SynchronizeTagsS2c<'a> {
-        pub tags: Vec<TagGroup<'a>>,
-    }
+    pub mod entities_destroy;
+    pub use entities_destroy::EntitiesDestroyS2c;
+    pub mod remove_entity_status_effect;
+    pub use remove_entity_status_effect::RemoveEntityStatusEffectS2c;
+    pub mod resource_pack_send;
+    pub use resource_pack_send::ResourcePackSendS2c;
+    pub mod player_respawn;
+    pub use player_respawn::PlayerRespawnS2c;
+    pub mod entity_set_head_yaw;
+    pub use entity_set_head_yaw::EntitySetHeadYawS2c;
+    pub mod chunk_delta_update;
+    pub use chunk_delta_update::ChunkDeltaUpdateS2c;
+    pub mod select_advancements_tab;
+    pub use select_advancements_tab::SelectAdvancementsTabS2c;
+    pub mod server_metadata;
+    pub use server_metadata::ServerMetadataS2c;
+    pub mod overlay_message;
+    pub use overlay_message::OverlayMessageS2c;
+    pub mod world_border_center_changed;
+    pub use world_border_center_changed::WorldBorderCenterChangedS2c;
+    pub mod world_border_interpolate_size;
+    pub use world_border_interpolate_size::WorldBorderInterpolateSizeS2c;
+    pub mod world_border_size_changed;
+    pub use world_border_size_changed::WorldBorderSizeChangedS2c;
+    pub mod world_border_warning_time_changed;
+    pub use world_border_warning_time_changed::WorldBorderWarningTimeChangedS2c;
+    pub mod world_border_warning_blocks_changed;
+    pub use world_border_warning_blocks_changed::WorldBorderWarningBlocksChangedS2c;
+    pub mod set_camera_entity;
+    pub use set_camera_entity::SetCameraEntityS2c;
+    pub mod update_selected_slot;
+    pub use update_selected_slot::UpdateSelectedSlotS2c;
+    pub mod chunk_render_distance_center;
+    pub use chunk_render_distance_center::ChunkRenderDistanceCenterS2c;
+    pub mod chunk_load_distance;
+    pub use chunk_load_distance::ChunkLoadDistanceS2c;
+    pub mod player_spawn_position;
+    pub use player_spawn_position::PlayerSpawnPositionS2c;
+    pub mod scoreboard_display;
+    pub use scoreboard_display::ScoreboardDisplayS2c;
+    pub mod entity_tracker_update;
+    pub use entity_tracker_update::EntityTrackerUpdateS2c;
+    pub mod entity_attach;
+    pub use entity_attach::EntityAttachS2c;
+    pub mod entity_velocity_update;
+    pub use entity_velocity_update::EntityVelocityUpdateS2c;
+    pub mod entity_equipment_update;
+    pub use entity_equipment_update::EntityEquipmentUpdateS2c;
+    pub mod experience_bar_update;
+    pub use experience_bar_update::ExperienceBarUpdateS2c;
+    pub mod health_update;
+    pub use health_update::HealthUpdateS2c;
+    pub mod scoreboard_objective_update;
+    pub use scoreboard_objective_update::ScoreboardObjectiveUpdateS2c;
+    pub mod entity_passengers_set;
+    pub use entity_passengers_set::EntityPassengersSetS2c;
+    pub mod team;
+    pub use team::TeamS2c;
+    pub mod scoreboard_player_update;
+    pub use scoreboard_player_update::ScoreboardPlayerUpdateS2c;
+    pub mod simulation_distance;
+    pub use simulation_distance::SimulationDistanceS2c;
+    pub mod subtitle;
+    pub use subtitle::SubtitleS2c;
+    pub mod world_time_update;
+    pub use world_time_update::WorldTimeUpdateS2c;
+    pub mod title;
+    pub use title::TitleS2c;
+    pub mod title_fade;
+    pub use title_fade::TitleFadeS2c;
+    pub mod play_sound_from_entity;
+    pub use play_sound_from_entity::PlaySoundFromEntityS2c;
+    pub mod play_sound;
+    pub use play_sound::PlaySoundS2c;
+    pub mod stop_sound;
+    pub use stop_sound::StopSoundS2c;
+    pub mod game_message;
+    pub use game_message::GameMessageS2c;
+    pub mod player_list_header;
+    pub use player_list_header::PlayerListHeaderS2c;
+    pub mod nbt_query_response;
+    pub use nbt_query_response::NbtQueryResponseS2c;
+    pub mod item_pickup_animation;
+    pub use item_pickup_animation::ItemPickupAnimationS2c;
+    pub mod entity_position;
+    pub use entity_position::EntityPositionS2c;
+    pub mod advancement_update;
+    pub use advancement_update::AdvancementUpdateS2c;
+    pub mod entity_attributes;
+    pub use entity_attributes::EntityAttributesS2c;
+    pub mod features;
+    pub use features::FeaturesS2c;
+    pub mod entity_status_effect;
+    pub use entity_status_effect::EntityStatusEffectS2c;
+    pub mod synchronize_recipes;
+    pub use synchronize_recipes::SynchronizeRecipesS2c;
+    pub mod synchronize_tags;
+    pub use synchronize_tags::SynchronizeTagsS2c;
 
     packet_enum! {
         #[derive(Clone)]
@@ -978,7 +309,7 @@ pub mod play {
             EndCombatS2c,
             EnterCombatS2c,
             DeathMessageS2c<'a>,
-            PlayerRemove<'a>,
+            PlayerRemoveS2c<'a>,
             PlayerListS2c<'a>,
             LookAtS2c,
             PlayerPositionLookS2c,

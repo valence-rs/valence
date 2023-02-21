@@ -8,11 +8,11 @@ use glam::{DVec3, Vec3};
 use paste::paste;
 use tracing::warn;
 use uuid::Uuid;
-use valence_protocol::entity_meta::Pose;
 use valence_protocol::packet::c2s::play::{
-    ClientStatusC2s, UpdatePlayerAbilitiesC2s, ResourcePackStatusC2s, AdvancementTabC2s,
+    AdvancementTabC2s, ClientStatusC2s, ResourcePackStatusC2s, UpdatePlayerAbilitiesC2s,
 };
 use valence_protocol::packet::C2sPlayPacket;
+use valence_protocol::tracked_data::Pose;
 use valence_protocol::types::{
     Action, ChatMode, ClickContainerMode, CommandBlockMode, Difficulty, DiggingStatus,
     DisplayedSkinParts, EntityInteraction, Hand, MainHand, RecipeBookId, StructureBlockAction,

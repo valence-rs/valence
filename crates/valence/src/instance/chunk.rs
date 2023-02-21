@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 // Using nonstandard mutex to avoid poisoning API.
 use parking_lot::Mutex;
 use valence_nbt::{compound, Compound};
-use valence_protocol::block::{BlockEntity, BlockState};
+use valence_protocol::block::BlockState;
 use valence_protocol::packet::s2c::play::{
     BlockEntityUpdateS2c, BlockUpdateS2c, ChunkDataS2c, ChunkDeltaUpdateS2c,
 };
@@ -168,6 +168,18 @@ impl<'a> BlockMut<'a> {
             }
             Entry::Vacant(_) => None,
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct BlockEntity {
+    pub kind: BlockEntityKind,
+    pub nbt: Compound,
+}
+
+impl BlockEntity {
+    pub fn new(kind: BlockEntityKind, nbt: Compound) -> Self {
+        Self { kind, nbt }
     }
 }
 

@@ -10,7 +10,14 @@ use glam::{DVec3, Vec3};
 use tracing::warn;
 use uuid::Uuid;
 use valence_protocol::packet::s2c::particle::Particle;
-use valence_protocol::packet::s2c::play::{PlayerActionResponseS2c, DeathMessageS2c, DisconnectS2c, EntityStatusS2c, GameStateChangeS2c, KeepAliveS2c, GameJoinS2c, ParticleS2c, CustomPayloadS2c, EntitiesDestroyS2c, ResourcePackSendS2c, PlayerRespawnS2c, OverlayMessageS2c, ChunkRenderDistanceCenterS2c, PlayerSpawnPositionS2c, EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, ChunkLoadDistanceS2c, SubtitleS2c, TitleFadeS2c, TitleS2c, PlaySoundS2c, PlayerPositionLookS2c, GameMessageS2c, UnloadChunkS2c};
+use valence_protocol::packet::s2c::play::{
+    ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, CustomPayloadS2c, DeathMessageS2c,
+    DisconnectS2c, EntitiesDestroyS2c, EntityStatusS2c, EntityTrackerUpdateS2c,
+    EntityVelocityUpdateS2c, GameJoinS2c, GameMessageS2c, GameStateChangeS2c, KeepAliveS2c,
+    OverlayMessageS2c, ParticleS2c, PlaySoundS2c, PlayerActionResponseS2c, PlayerPositionLookS2c,
+    PlayerRespawnS2c, PlayerSpawnPositionS2c, ResourcePackSendS2c, SubtitleS2c, TitleFadeS2c,
+    TitleS2c, UnloadChunkS2c,
+};
 use valence_protocol::types::{
     GameEventKind, GameMode, GlobalPos, Property, SoundCategory, SyncPlayerPosLookFlags,
 };

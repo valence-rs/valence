@@ -9,12 +9,12 @@ use glam::{DVec3, UVec3, Vec3};
 use rustc_hash::FxHashMap;
 use tracing::warn;
 use uuid::Uuid;
-use valence_protocol::entity_meta::{Facing, PaintingKind, Pose};
 use valence_protocol::packet::s2c::play::{
-    EntityAnimationS2c, EntityStatusS2c as EntityEventS2c, EntityTrackerUpdateS2c, EntityVelocityUpdateS2c,
-    EntitySetHeadYawS2c, EntitySpawnS2c, ExperienceOrbSpawnS2c, PlayerSpawnS2c, EntityPositionS2c,
-    MoveRelativeS2c, RotateAndMoveRelativeS2c, RotateS2c,
+    EntityAnimationS2c, EntityPositionS2c, EntitySetHeadYawS2c, EntitySpawnS2c,
+    EntityStatusS2c as EntityEventS2c, EntityTrackerUpdateS2c, EntityVelocityUpdateS2c,
+    ExperienceOrbSpawnS2c, MoveRelativeS2c, PlayerSpawnS2c, RotateAndMoveRelativeS2c, RotateS2c,
 };
+use valence_protocol::tracked_data::{Facing, PaintingKind, Pose};
 use valence_protocol::{ByteAngle, RawBytes, VarInt};
 
 use crate::config::DEFAULT_TPS;

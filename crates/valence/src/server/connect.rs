@@ -22,10 +22,10 @@ use tokio::sync::OwnedSemaphorePermit;
 use tracing::{error, info, instrument, trace, warn};
 use uuid::Uuid;
 use valence_protocol::packet::c2s::handshake::HandshakeC2s;
-use valence_protocol::packet::c2s::login::{LoginKeyC2s, LoginQueryResponseC2s, LoginHelloC2s};
+use valence_protocol::packet::c2s::login::{LoginHelloC2s, LoginKeyC2s, LoginQueryResponseC2s};
 use valence_protocol::packet::c2s::status::{QueryPingC2s, QueryRequestC2s};
 use valence_protocol::packet::s2c::login::{
-    LoginDisconnectS2c, LoginHelloS2c, LoginQueryRequestS2c, LoginSuccessS2c, LoginCompressionS2c,
+    LoginCompressionS2c, LoginDisconnectS2c, LoginHelloS2c, LoginQueryRequestS2c, LoginSuccessS2c,
 };
 use valence_protocol::packet::s2c::status::{QueryPongS2c, QueryResponseS2c};
 use valence_protocol::types::{HandshakeNextState, Property};

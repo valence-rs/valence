@@ -7,7 +7,7 @@ use std::mem;
 use bevy_ecs::prelude::*;
 use tracing::warn;
 use uuid::Uuid;
-use valence_protocol::packet::s2c::play::{PlayerRemove, PlayerListHeaderS2c};
+use valence_protocol::packet::s2c::play::{PlayerListHeaderS2c, PlayerRemoveS2c};
 use valence_protocol::packet::s2c::player_list::{
     Actions, Entry as PlayerInfoEntry, PlayerListS2c,
 };
@@ -658,7 +658,7 @@ pub(crate) fn update_player_list(
     });
 
     if !removed.is_empty() {
-        writer.write_packet(&PlayerRemove {
+        writer.write_packet(&PlayerRemoveS2c {
             uuids: removed.into(),
         });
     }

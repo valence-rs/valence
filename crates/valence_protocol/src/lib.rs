@@ -72,21 +72,7 @@ use std::io::Write;
 use std::{fmt, io};
 
 pub use anyhow::{Error, Result};
-pub use array::LengthPrefixedArray;
-pub use block::{BlockFace, BlockKind, BlockState};
-pub use block_pos::BlockPos;
-pub use byte_angle::ByteAngle;
-pub use codec::*;
-pub use ident::Ident;
-pub use item::{ItemKind, ItemStack};
-pub use raw_bytes::RawBytes;
-pub use sound::Sound;
-pub use text::{Text, TextFormat};
-pub use username::Username;
-pub use uuid::Uuid;
 pub use valence_protocol_macros::{Decode, DecodePacket, Encode, EncodePacket};
-pub use var_int::VarInt;
-pub use var_long::VarLong;
 pub use {uuid, valence_nbt as nbt};
 
 /// The Minecraft protocol version this library currently targets.
@@ -103,7 +89,6 @@ mod bounded;
 mod byte_angle;
 mod codec;
 pub mod enchant;
-pub mod entity_meta;
 pub mod ident;
 mod impls;
 mod item;
@@ -111,6 +96,7 @@ pub mod packet;
 mod raw_bytes;
 pub mod sound;
 pub mod text;
+pub mod tracked_data;
 pub mod translation_key;
 pub mod types;
 pub mod username;
@@ -361,14 +347,14 @@ mod derive_tests {
 
     #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 5]
-    struct StructWithGenerics<'z, T: std::fmt::Debug = ()> {
+    struct StructWithGenerics<'z, T: fmt::Debug = ()> {
         foo: &'z str,
         bar: T,
     }
 
     #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 6]
-    struct TupleStructWithGenerics<'z, T: std::fmt::Debug = ()>(&'z str, i32, T);
+    struct TupleStructWithGenerics<'z, T: fmt::Debug = ()>(&'z str, i32, T);
 
     #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 7]
@@ -384,7 +370,7 @@ mod derive_tests {
 
     #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 0xbeef]
-    enum EnumWithGenericsAndTags<'z, T: std::fmt::Debug = ()> {
+    enum EnumWithGenericsAndTags<'z, T: fmt::Debug = ()> {
         #[tag = 5]
         First {
             foo: &'z str,
