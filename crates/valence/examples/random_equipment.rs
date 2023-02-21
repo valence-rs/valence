@@ -2,7 +2,7 @@ use bevy_app::CoreStage;
 use rand::Rng;
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::default_event_handler;
-use valence::equipment::{EquipmentSlot, Equipments};
+use valence::equipment::{Equipment, EquipmentSlot};
 use valence::prelude::*;
 
 const BOARD_MIN_X: i32 = -30;
@@ -21,14 +21,7 @@ pub fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(
-            ServerPlugin::new(())
-                .with_biomes(vec![Biome {
-                    grass_color: Some(0x00ff00),
-                    ..Default::default()
-                }])
-                .with_connection_mode(ConnectionMode::Offline),
-        )
+        .add_plugin(ServerPlugin::new(()).with_connection_mode(ConnectionMode::Offline))
         .add_system_to_stage(EventLoop, default_event_handler)
         .add_system_set(PlayerList::default_system_set())
         .add_startup_system(setup)
@@ -51,15 +44,15 @@ fn setup(world: &mut World) {
 
     for z in BOARD_MIN_Z..=BOARD_MAX_Z {
         for x in BOARD_MIN_X..=BOARD_MAX_X {
-            instance.set_block_state([x, BOARD_Y, z], BlockState::DIRT);
+            instance.set_block([x, BOARD_Y, z], BlockState::DIRT);
         }
     }
 
     let instance = world.spawn(instance);
     let instance_entity = instance.id();
 
-    let mut equipments = Equipments::default();
-    equipments.set(
+    let mut equipment = Equipment::default();
+    equipment.set(
         ItemStack::new(ItemKind::IronBoots, 1, None),
         EquipmentSlot::Boots,
     );
@@ -67,7 +60,7 @@ fn setup(world: &mut World) {
     // Spawn armor stand
     let mut armor_stand = world.spawn((
         McEntity::new(EntityKind::ArmorStand, instance_entity),
-        equipments,
+        equipment,
     ));
 
     if let Some(mut armor_stand) = armor_stand.get_mut::<McEntity>() {
@@ -89,16 +82,16 @@ fn init_clients(
         client.set_instance(instances.single());
         client.set_game_mode(GameMode::Creative);
 
-        let equipments = Equipments::default();
+        let equipment = Equipment::default();
 
         commands.entity(entity).insert((
-            equipments,
+            equipment,
             McEntity::with_uuid(EntityKind::Player, instance, client.uuid()),
         ));
     }
 }
 
-fn randomize_equipment(mut query: Query<&mut Equipments>, server: Res<Server>) {
+fn randomize_equipment(mut query: Query<&mut Equipment>, server: Res<Server>) {
     let ticks = server.current_tick();
     if ticks % server.tps() != 0 {
         return;

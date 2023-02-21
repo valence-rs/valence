@@ -19,7 +19,7 @@ use valence_protocol::packets::s2c::set_equipment::SetEquipment;
 use valence_protocol::{ByteAngle, RawBytes, VarInt};
 
 use crate::config::DEFAULT_TPS;
-use crate::equipment::Equipments;
+use crate::equipment::Equipment;
 use crate::math::Aabb;
 use crate::packet::WritePacket;
 use crate::{Despawned, NULL_ENTITY};
@@ -613,7 +613,7 @@ impl McEntity {
         mut writer: impl WritePacket,
         position: DVec3,
         scratch: &mut Vec<u8>,
-        equipments: Option<&Equipments>,
+        equipment: Option<&Equipment>,
     ) {
         let entity_id = VarInt(self.protocol_id);
         let with_object_data = |data| SpawnEntity {
@@ -683,12 +683,12 @@ impl McEntity {
             });
         }
 
-        // If entity has equipments, send it to the client
-        if let Some(equipments) = equipments {
-            if !equipments.is_empty() {
+        // If entity has equipment, send it to the client
+        if let Some(equipment) = equipment {
+            if !equipment.is_empty() {
                 writer.write_packet(&SetEquipment {
                     entity_id,
-                    equipment: equipments.equipments().clone(),
+                    equipment: equipment.equipment().clone(),
                 })
             }
         }

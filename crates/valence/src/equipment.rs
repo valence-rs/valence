@@ -7,12 +7,12 @@ use valence_protocol::{packets::s2c::set_equipment::EquipmentEntry, ItemStack};
 use crate::prelude::*;
 use crate::view::ChunkPos;
 
-/// ECS component to be added for entities with equipments.
+/// ECS component to be added for entities with equipment.
 ///
 /// Equipment updates managed by [update_equipment].
 #[derive(Component, Default, PartialEq, Debug)]
-pub struct Equipments {
-    equipments: Vec<EquipmentEntry>,
+pub struct Equipment {
+    equipment: Vec<EquipmentEntry>,
     /// Bit set with the modified equipment slots
     modified_slots: u8,
 }
@@ -27,9 +27,9 @@ pub enum EquipmentSlot {
     Helmet,
 }
 
-impl Equipments {
-    pub fn new() -> Equipments {
-        Equipments::default()
+impl Equipment {
+    pub fn new() -> Equipment {
+        Equipment::default()
     }
 
     /// Set an equipment slot with an item stack
@@ -37,7 +37,7 @@ impl Equipments {
         if let Some(equip) = self.get_mut(slot) {
             equip.item = Some(item);
         } else {
-            self.equipments.push(EquipmentEntry {
+            self.equipment.push(EquipmentEntry {
                 item: Some(item),
                 slot: slot.into(),
             });
@@ -46,21 +46,21 @@ impl Equipments {
         self.set_modified_slot(slot);
     }
 
-    /// Remove all equipments
+    /// Remove all equipment
     pub fn clear(&mut self) {
-        for equip in self.equipments.iter() {
+        for equip in self.equipment.iter() {
             self.modified_slots |= 1 << equip.slot as u8;
         }
 
-        self.equipments.clear();
+        self.equipment.clear();
     }
 
     /// Remove an equipment from a slot and return it if present
     pub fn remove(&mut self, slot: EquipmentSlot) -> Option<EquipmentEntry> {
         let slot: i8 = slot.into();
 
-        if let Some(idx) = self.equipments.iter().position(|equip| equip.slot == slot) {
-            Some(self.equipments.remove(idx))
+        if let Some(idx) = self.equipment.iter().position(|equip| equip.slot == slot) {
+            Some(self.equipment.remove(idx))
         } else {
             None
         }
@@ -68,27 +68,27 @@ impl Equipments {
 
     pub fn get_mut(&mut self, slot: EquipmentSlot) -> Option<&mut EquipmentEntry> {
         let slot: i8 = slot.into();
-        self.equipments.iter_mut().find(|equip| equip.slot == slot)
+        self.equipment.iter_mut().find(|equip| equip.slot == slot)
     }
 
     pub fn get(&self, slot: EquipmentSlot) -> Option<&EquipmentEntry> {
         let slot: i8 = slot.into();
-        self.equipments.iter().find(|equip| equip.slot == slot)
+        self.equipment.iter().find(|equip| equip.slot == slot)
     }
 
-    pub fn equipments(&self) -> &Vec<EquipmentEntry> {
-        &self.equipments
+    pub fn equipment(&self) -> &Vec<EquipmentEntry> {
+        &self.equipment
     }
 
     pub fn is_empty(&self) -> bool {
-        self.equipments.is_empty()
+        self.equipment.is_empty()
     }
 
     fn has_modified_slots(&self) -> bool {
         self.modified_slots != 0
     }
 
-    fn iter_modified_equipments(&self) -> impl Iterator<Item = EquipmentEntry> + '_ {
+    fn iter_modified_equipment(&self) -> impl Iterator<Item = EquipmentEntry> + '_ {
         self.iter_modified_slots().map(|slot| {
             self.get(slot).cloned().unwrap_or_else(|| EquipmentEntry {
                 slot: slot.into(),
@@ -152,15 +152,15 @@ impl From<EquipmentSlot> for i8 {
     }
 }
 
-/// When a [Equipments] component is changed, send [SetEquipment] packet to all clients
+/// When a [Equipment] component is changed, send [SetEquipment] packet to all clients
 /// that have the updated entity in their view distance.
 ///
 /// NOTE: [SetEquipment] packet only have cosmetic effect, which means it does not affect armor resistance or damage.
-pub fn update_equipment(
-    mut equiped_entities: Query<(Entity, &McEntity, &mut Equipments), Changed<Equipments>>,
-    mut clients: Query<(Entity, &mut Client)>,
+pub(crate) fn update_equipment(
+    mut equiped_entities: Query<(&McEntity, &mut Equipment), Changed<Equipment>>,
+    mut instances: Query<&mut Instance>,
 ) {
-    for (equiped_entity, equiped_mc_entity, mut equips) in &mut equiped_entities {
+    for (equiped_mc_entity, mut equips) in &mut equiped_entities {
         if !equips.has_modified_slots() {
             continue;
         }
@@ -168,20 +168,14 @@ pub fn update_equipment(
         let equiped_instance = equiped_mc_entity.instance();
         let equiped_chunk_pos = ChunkPos::from_dvec3(equiped_mc_entity.position());
 
-        // Send packets to all clients which have the equiped entity in view
-        for (client_entity, mut client) in &mut clients {
-            if client.instance() != equiped_instance {
-                continue;
-            }
-
-            // It is not necessary to `SetEquipment` packets for the associate client's player entity,
-            // because its equipments are already tracked on the client side.
-            if client_entity != equiped_entity && client.view().contains(equiped_chunk_pos) {
-                client.write_packet(&SetEquipment {
+        if let Ok(mut equiped_instance) = instances.get_mut(equiped_instance) {
+            equiped_instance.write_packet_at(
+                &SetEquipment {
                     entity_id: VarInt(equiped_mc_entity.protocol_id()),
-                    equipment: equips.iter_modified_equipments().collect(),
-                });
-            }
+                    equipment: equips.iter_modified_equipment().collect(),
+                },
+                equiped_chunk_pos,
+            )
         }
 
         equips.clear_modified_slot();
@@ -193,24 +187,24 @@ mod test {
     use super::*;
 
     #[test]
-    fn modify_equipments() {
-        let mut equipments = Equipments::default();
+    fn test_set_boots_and_clear() {
+        let mut equipment = Equipment::default();
         assert_eq!(
-            equipments,
-            Equipments {
-                equipments: vec![],
+            equipment,
+            Equipment {
+                equipment: vec![],
                 modified_slots: 0
             }
         );
 
         let item = ItemStack::new(ItemKind::GreenWool, 1, None);
         let slot = EquipmentSlot::Boots;
-        equipments.set(item.clone(), slot);
+        equipment.set(item.clone(), slot);
 
         assert_eq!(
-            equipments,
-            Equipments {
-                equipments: vec![EquipmentEntry {
+            equipment,
+            Equipment {
+                equipment: vec![EquipmentEntry {
                     slot: slot.into(),
                     item: Some(item)
                 }],
@@ -218,23 +212,48 @@ mod test {
             }
         );
 
-        equipments.clear_modified_slot();
-        equipments.clear();
+        equipment.clear_modified_slot();
+        equipment.clear();
         assert_eq!(
-            equipments,
-            Equipments {
-                equipments: vec![],
+            equipment,
+            Equipment {
+                equipment: vec![],
                 modified_slots: 0b100
             }
         );
         assert_eq!(
-            equipments
-                .iter_modified_equipments()
+            equipment
+                .iter_modified_equipment()
                 .collect::<Vec<EquipmentEntry>>(),
             vec![EquipmentEntry {
                 slot: slot.into(),
                 item: None
             }]
+        );
+    }
+
+    #[test]
+    fn test_set_main_hand_and_remove_it() {
+        let mut equipment = Equipment::default();
+
+        let item = ItemStack::new(ItemKind::DiamondSword, 1, None);
+        let slot = EquipmentSlot::MainHand;
+        equipment.set(item.clone(), slot);
+
+        assert_eq!(
+            equipment.remove(EquipmentSlot::MainHand),
+            Some(EquipmentEntry {
+                slot: slot.into(),
+                item: Some(item)
+            })
+        );
+        assert_eq!(equipment.remove(EquipmentSlot::Helmet), None);
+        assert_eq!(
+            equipment,
+            Equipment {
+                equipment: vec![],
+                modified_slots: 0b1
+            }
         );
     }
 }
