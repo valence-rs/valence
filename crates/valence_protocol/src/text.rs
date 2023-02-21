@@ -8,6 +8,7 @@ use anyhow::Context;
 use serde::de::Visitor;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use uuid::Uuid;
+use valence_nbt::Value;
 
 use crate::{Decode, Encode, Ident, Result};
 
@@ -826,6 +827,15 @@ impl<'a> From<Text> for Cow<'a, Text> {
 impl<'a> From<&'a Text> for Cow<'a, Text> {
     fn from(value: &'a Text) -> Self {
         Cow::Borrowed(value)
+    }
+}
+
+impl From<Text> for Value {
+    fn from(value: Text) -> Self {
+        Value::String(
+            serde_json::to_string(&value)
+                .unwrap_or_else(|err| panic!("failed to jsonify text {value:?}\n{err}")),
+        )
     }
 }
 

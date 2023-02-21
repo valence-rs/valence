@@ -58,7 +58,7 @@ fn setup(world: &mut World) {
             };
 
             for y in 0..SPAWN_Y {
-                instance.set_block_state([x, y, z], block);
+                instance.set_block([x, y, z], block);
             }
         }
     }

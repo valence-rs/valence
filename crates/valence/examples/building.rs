@@ -37,7 +37,7 @@ fn setup(world: &mut World) {
 
     for z in -25..25 {
         for x in -25..25 {
-            instance.set_block_state([x, SPAWN_Y, z], BlockState::GRASS_BLOCK);
+            instance.set_block([x, SPAWN_Y, z], BlockState::GRASS_BLOCK);
         }
     }
 
@@ -85,7 +85,7 @@ fn digging_creative_mode(
             continue;
         };
         if client.game_mode() == GameMode::Creative {
-            instance.set_block_state(event.position, BlockState::AIR);
+            instance.set_block(event.position, BlockState::AIR);
         }
     }
 }
@@ -102,7 +102,7 @@ fn digging_survival_mode(
             continue;
         };
         if client.game_mode() == GameMode::Survival {
-            instance.set_block_state(event.position, BlockState::AIR);
+            instance.set_block(event.position, BlockState::AIR);
         }
     }
 }
@@ -147,6 +147,6 @@ fn place_blocks(
             inventory.replace_slot(slot_id, slot);
         }
         let real_pos = event.position.get_in_direction(event.face);
-        instance.set_block_state(real_pos, block_kind.to_state());
+        instance.set_block(real_pos, block_kind.to_state());
     }
 }

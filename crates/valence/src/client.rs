@@ -154,7 +154,7 @@ impl Client {
             window_id: 0,
             inventory_state_id: Wrapping(0),
             inventory_slots_modified: 0,
-            held_item_slot: 0,
+            held_item_slot: 36,
         }
     }
 
