@@ -26,6 +26,7 @@ use valence_protocol::packets::s2c::status::{PingResponse, StatusResponse};
 use valence_protocol::types::HandshakeNextState;
 use valence_protocol::{PacketDecoder, PacketEncoder};
 
+use crate::context::Stage;
 use crate::packet_widget::PacketDirection;
 use crate::state::State;
 
@@ -89,8 +90,6 @@ async fn handle_connection(
         dec: PacketDecoder::new(),
         read: server_read,
         write: client_write,
-        buf: String::new(),
-        raw: String::new(),
         direction: PacketDirection::ServerToClient,
         context: context.clone(),
     };
@@ -101,29 +100,32 @@ async fn handle_connection(
         dec: PacketDecoder::new(),
         read: client_read,
         write: server_write,
-        buf: String::new(),
-        raw: String::new(),
         direction: PacketDirection::ClientToServer,
         context: context.clone(),
     };
 
-    let handshake: Handshake = c2s.rw_packet().await?;
+    let handshake: Handshake = c2s.rw_packet(Stage::Handshake).await?;
 
     match handshake.next_state {
         HandshakeNextState::Status => {
-            c2s.rw_packet::<StatusRequest>().await?;
-            s2c.rw_packet::<StatusResponse>().await?;
-            c2s.rw_packet::<PingRequest>().await?;
-            s2c.rw_packet::<PingResponse>().await?;
+            c2s.rw_packet::<StatusRequest>(Stage::StatusRequest).await?;
+            s2c.rw_packet::<StatusResponse>(Stage::StatusResponse)
+                .await?;
+            c2s.rw_packet::<PingRequest>(Stage::PingRequest).await?;
+            s2c.rw_packet::<PingResponse>(Stage::PingResponse).await?;
 
             Ok(())
         }
         HandshakeNextState::Login => {
-            c2s.rw_packet::<LoginStart>().await?;
+            c2s.rw_packet::<LoginStart>(Stage::LoginStart).await?;
 
-            match s2c.rw_packet::<S2cLoginPacket>().await? {
+            match s2c
+                .rw_packet::<S2cLoginPacket>(Stage::S2cLoginPacket)
+                .await?
+            {
                 S2cLoginPacket::EncryptionRequest(_) => {
-                    c2s.rw_packet::<EncryptionResponse>().await?;
+                    c2s.rw_packet::<EncryptionResponse>(Stage::EncryptionResponse)
+                        .await?;
 
                     eprintln!(
                         "Encryption was enabled! Packet contents are inaccessible to the proxy. \
@@ -143,7 +145,7 @@ async fn handle_connection(
                     c2s.enc.set_compression(Some(threshold));
                     c2s.dec.set_compression(true);
 
-                    s2c.rw_packet::<LoginSuccess>().await?;
+                    s2c.rw_packet::<LoginSuccess>(Stage::LoginSuccess).await?;
                 }
                 S2cLoginPacket::LoginSuccess(_) => {}
                 S2cLoginPacket::DisconnectLogin(_) => return Ok(()),
@@ -154,19 +156,19 @@ async fn handle_connection(
 
             let c2s_fut: JoinHandle<anyhow::Result<()>> = tokio::spawn(async move {
                 loop {
-                    c2s.rw_packet::<C2sPlayPacket>().await?;
+                    c2s.rw_packet::<C2sPlayPacket>(Stage::C2sPlayPacket).await?;
                 }
             });
 
-            let s2c_fut = async move {
+            let s2c_fut: JoinHandle<anyhow::Result<()>> = tokio::spawn(async move {
                 loop {
-                    s2c.rw_packet::<S2cPlayPacket>().await?;
+                    s2c.rw_packet::<S2cPlayPacket>(Stage::S2cPlayPacket).await?;
                 }
-            };
+            });
 
             tokio::select! {
                 c2s = c2s_fut => Ok(c2s??),
-                s2c = s2c_fut => s2c,
+                s2c = s2c_fut => Ok(s2c??),
             }
         }
     }
@@ -297,7 +299,7 @@ impl<'a> eframe::App for App<'a> {
                         let f: Vec<&mut Packet> = f
                             .iter_mut()
                             // todo: regex? or even a wireshark-style filter language processor?
-                            .filter(|p| p.packet_name.to_lowercase().contains(&self.filter.to_lowercase()))
+                            .filter(|p| p.get_name().to_lowercase().contains(&self.filter.to_lowercase()))
                             .collect();
 
                         *self.context.packet_count.write().expect("Poisoned RwLock") = f.len();
@@ -338,7 +340,7 @@ impl<'a> eframe::App for App<'a> {
                 let packets = self.context.packets.read().expect("Poisoned RwLock");
                 if idx < packets.len() {
                     let packet = &packets[idx];
-                    let text = packet.packet.clone();
+                    let text = packet.get_packet_string();
 
                     egui::ScrollArea::vertical().show(ui, |ui| {
                         code_view_ui(ui, &text);

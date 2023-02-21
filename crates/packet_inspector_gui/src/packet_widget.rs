@@ -106,7 +106,7 @@ impl Widget for Packet {
             let identifier =
                 identifier.into_galley(ui, Some(false), rect.width() - 21.0, TextStyle::Button);
 
-            let label: WidgetText = self.packet_name.into();
+            let label: WidgetText = self.get_name().into();
             let label = label.into_galley(ui, Some(false), rect.width() - 60.0, TextStyle::Button);
 
             let timestamp: WidgetText = systemtime_strftime(self.created_at).into();

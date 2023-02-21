@@ -1,13 +1,12 @@
-use std::fmt::Write;
 use std::io::ErrorKind;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use time::OffsetDateTime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use valence_protocol::{DecodePacket, EncodePacket, PacketDecoder, PacketEncoder};
 
-use crate::context::{Context, Packet};
+use crate::context::{Context, Packet, Stage};
 use crate::packet_widget::PacketDirection;
 
 pub struct State {
@@ -18,12 +17,10 @@ pub struct State {
     pub dec: PacketDecoder,
     pub read: OwnedReadHalf,
     pub write: OwnedWriteHalf,
-    pub buf: String,
-    pub raw: String,
 }
 
 impl State {
-    pub async fn rw_packet<'a, P>(&'a mut self) -> anyhow::Result<P>
+    pub async fn rw_packet<'a, P>(&'a mut self, stage: Stage) -> anyhow::Result<P>
     where
         P: DecodePacket<'a> + EncodePacket,
     {
@@ -38,24 +35,13 @@ impl State {
             self.dec.queue_bytes(buf);
         }
 
+        let has_compression = self.dec.compression().clone();
         let pkt: P = self.dec.try_next_packet()?.unwrap();
 
         self.enc.append_packet(&pkt)?;
 
         let bytes = self.enc.take();
         self.write.write_all(&bytes).await?;
-
-        self.buf.clear();
-        self.raw.clear();
-
-        write!(&mut self.buf, "{pkt:#?}")?;
-        write!(&mut self.raw, "{pkt:?}")?;
-
-        let packet_name = self
-            .buf
-            .split_once(|ch: char| !ch.is_ascii_alphabetic())
-            .map(|(fst, _)| fst)
-            .unwrap_or(&self.buf);
 
         let time = match OffsetDateTime::now_local() {
             Ok(time) => time,
@@ -70,9 +56,11 @@ impl State {
             direction: self.direction.clone(),
             selected: false,
             packet_type: bytes[0],
-            packet_name: packet_name.to_owned(),
-            packet: self.buf.clone(),
-            packet_raw: self.raw.clone(),
+            use_compression: has_compression,
+            packet_name: Arc::new(Mutex::new(None)),
+            packet_str: Arc::new(Mutex::new(None)),
+            packet_data: bytes.to_vec(),
+            stage,
             created_at: time,
         });
 

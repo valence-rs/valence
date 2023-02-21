@@ -446,6 +446,11 @@ impl PacketDecoder {
         self.compression_enabled = enabled;
     }
 
+    #[cfg(feature = "compression")]
+    pub fn compression(&self) -> bool {
+        self.compression_enabled
+    }
+
     #[cfg(feature = "encryption")]
     pub fn enable_encryption(&mut self, key: &[u8; 16]) {
         assert!(self.cipher.is_none(), "encryption is already enabled");
