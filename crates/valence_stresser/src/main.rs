@@ -18,7 +18,7 @@ async fn main() {
 
     let mut session_index: usize = 0;
 
-    let sema = Arc::new(Semaphore::new(args.connections_count));
+    let sema = Arc::new(Semaphore::new(args.sessions_count));
 
     while let Ok(perm) = sema.clone().acquire_owned().await {
         let session_name = format!("{}{}", args.name_prefix, session_index);

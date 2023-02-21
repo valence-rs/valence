@@ -9,7 +9,7 @@ pub(crate) struct StresserArgs {
 
     /// Number of sessions.
     #[arg(short = 'c', long = "count")]
-    pub connections_count: usize,
+    pub sessions_count: usize,
 
     /// Name prefix of sessions.
     #[arg(default_value = "Stresser")]
@@ -17,7 +17,7 @@ pub(crate) struct StresserArgs {
     pub name_prefix: String,
 
     /// Spawn cooldown of sessions in milliseconds.
-    /// The lower the value, the more frequently connections are spawned.
+    /// The lower the value, the more frequently sessions are spawned.
     #[arg(default_value = "10")]
     #[arg(long = "cooldown")]
     pub spawn_cooldown: u64,
