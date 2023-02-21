@@ -1,24 +1,14 @@
-use std::{
-    path::PathBuf,
-    sync::{Arc, Mutex, RwLock},
-};
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex, RwLock};
 
 use time::OffsetDateTime;
-use valence_protocol::{
-    packets::{
-        c2s::{
-            handshake::Handshake,
-            login::{EncryptionResponse, LoginStart},
-            status::{PingRequest, StatusRequest},
-        },
-        s2c::{
-            login::LoginSuccess,
-            status::{PingResponse, StatusResponse},
-        },
-        C2sPlayPacket, S2cLoginPacket, S2cPlayPacket,
-    },
-    PacketDecoder,
-};
+use valence_protocol::packets::c2s::handshake::Handshake;
+use valence_protocol::packets::c2s::login::{EncryptionResponse, LoginStart};
+use valence_protocol::packets::c2s::status::{PingRequest, StatusRequest};
+use valence_protocol::packets::s2c::login::LoginSuccess;
+use valence_protocol::packets::s2c::status::{PingResponse, StatusResponse};
+use valence_protocol::packets::{C2sPlayPacket, S2cLoginPacket, S2cPlayPacket};
+use valence_protocol::PacketDecoder;
 
 use crate::packet_widget::PacketDirection;
 
@@ -91,10 +81,9 @@ impl Packet {
 
         let packet_str = packet_str.clone().unwrap();
 
-        // probably not the cleanest way to do this, but it avoids needing to decode the packet again
-        let packet_str = packet_str.replace("    ", "").replace("\n", " ");
-
-        packet_str
+        // probably not the cleanest way to do this, but it avoids needing to decode the
+        // packet again
+        packet_str.replace("    ", "").replace('\n', " ")
     }
 
     fn as_formatted_string_internal(&self) -> String {

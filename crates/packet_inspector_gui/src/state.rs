@@ -35,7 +35,7 @@ impl State {
             self.dec.queue_bytes(buf);
         }
 
-        let has_compression = self.dec.compression().clone();
+        let has_compression = self.dec.compression();
         let pkt: P = self.dec.try_next_packet()?.unwrap();
 
         self.enc.append_packet(&pkt)?;
