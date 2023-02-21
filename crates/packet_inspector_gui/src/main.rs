@@ -230,30 +230,6 @@ impl App {
             Ok::<(), anyhow::Error>(())
         });
 
-        // let t_context = context.clone();
-        // tokio::spawn(async move {
-        //     loop {
-        //         let packet = t_context
-        //             .process_packets
-        //             .write()
-        //             .expect("Poisoned RwLock")
-        //             .pop_front();
-
-        //         if let Some(p) = packet {
-        //             t_context
-        //                 .packets
-        //                 .write()
-        //                 .expect("Poisoned RwLock")
-        //                 .push(p.into());
-        //             if let Some(ctx) = &t_context.context {
-        //                 ctx.request_repaint();
-        //             }
-        //         } else {
-        //             tokio::time::sleep(Duration::from_millis(100)).await;
-        //         }
-        //     }
-        // });
-
         Self {
             context,
             filter: "".into(),
