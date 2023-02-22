@@ -290,7 +290,7 @@ pub mod play {
             32 = ChunkDataS2c<'a>,
             33 = WorldEventS2c,
             34 = LightUpdateS2c,
-            35 = ParticleS2c,
+            35 = ParticleS2c<'a>,
             36 = GameJoinS2c<'a>,
             37 = MapUpdateS2c<'a>,
             38 = SetTradeOffersS2c,

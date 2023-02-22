@@ -9,7 +9,8 @@ use tokio::sync::OwnedSemaphorePermit;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 use tracing::debug;
-use valence_protocol::{DecodePacket, EncodePacket, PacketDecoder, PacketEncoder};
+use valence_protocol::codec::{PacketDecoder, PacketEncoder};
+use valence_protocol::{DecodePacket, EncodePacket};
 
 use crate::client::{Client, ClientConnection};
 use crate::server::byte_channel::{

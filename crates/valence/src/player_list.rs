@@ -7,12 +7,12 @@ use std::mem;
 use bevy_ecs::prelude::*;
 use tracing::warn;
 use uuid::Uuid;
-use valence_protocol::packet::s2c::play::{PlayerListHeaderS2c, PlayerRemoveS2c};
-use valence_protocol::packet::s2c::player_list::{
+use valence_protocol::packet::s2c::play::player_list::{
     Actions, Entry as PlayerInfoEntry, PlayerListS2c,
 };
+use valence_protocol::packet::s2c::play::{PlayerListHeaderS2c, PlayerRemoveS2c};
+use valence_protocol::text::Text;
 use valence_protocol::types::{GameMode, Property};
-use valence_protocol::Text;
 
 use crate::client::Client;
 use crate::packet::{PacketWriter, WritePacket};

@@ -107,8 +107,8 @@ pub mod var_long;
 pub mod __private {
     pub use anyhow::{anyhow, bail, ensure, Context, Result};
 
-    pub use crate::{Decode, DecodePacket, Encode, EncodePacket};
     pub use crate::var_int::VarInt;
+    pub use crate::{Decode, DecodePacket, Encode, EncodePacket};
 }
 
 /// The maximum number of bytes in a single Minecraft packet.

@@ -1,7 +1,7 @@
 use bevy_app::App;
 use tracing::warn;
 use valence::client::despawn_disconnected_clients;
-use valence::client::event::{default_event_handler, ChatCommand, ChatMessage};
+use valence::client::event::{default_event_handler, ChatMessage, CommandExecution};
 use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;
@@ -73,7 +73,10 @@ fn handle_message_events(mut clients: Query<&mut Client>, mut messages: EventRea
     }
 }
 
-fn handle_command_events(mut clients: Query<&mut Client>, mut commands: EventReader<ChatCommand>) {
+fn handle_command_events(
+    mut clients: Query<&mut Client>,
+    mut commands: EventReader<CommandExecution>,
+) {
     for command in commands.iter() {
         let Ok(mut client) = clients.get_component_mut::<Client>(command.client) else {
             warn!("Unable to find client for message: {:?}", command);

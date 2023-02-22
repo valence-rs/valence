@@ -1,10 +1,10 @@
 use std::borrow::Cow;
-use crate::{Encode, Decode};
 
 use valence_nbt::Compound;
 
 use crate::array::LengthPrefixedArray;
 use crate::block::BlockEntityKind;
+use crate::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct ChunkDataS2c<'a> {

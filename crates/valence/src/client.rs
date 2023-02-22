@@ -9,7 +9,13 @@ use bytes::BytesMut;
 use glam::{DVec3, Vec3};
 use tracing::warn;
 use uuid::Uuid;
-use valence_protocol::packet::s2c::particle::Particle;
+use valence_protocol::block_pos::BlockPos;
+use valence_protocol::codec::{PacketDecoder, PacketEncoder};
+use valence_protocol::ident::Ident;
+use valence_protocol::item::ItemStack;
+use valence_protocol::packet::s2c::play::game_state_change::GameEventKind;
+use valence_protocol::packet::s2c::play::particle::Particle;
+use valence_protocol::packet::s2c::play::player_position_look::Flags as PlayerPositionLookFlags;
 use valence_protocol::packet::s2c::play::{
     ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, CustomPayloadS2c, DeathMessageS2c,
     DisconnectS2c, EntitiesDestroyS2c, EntityStatusS2c, EntityTrackerUpdateS2c,
@@ -18,13 +24,12 @@ use valence_protocol::packet::s2c::play::{
     PlayerRespawnS2c, PlayerSpawnPositionS2c, ResourcePackSendS2c, SubtitleS2c, TitleFadeS2c,
     TitleS2c, UnloadChunkS2c,
 };
-use valence_protocol::types::{
-    GameEventKind, GameMode, GlobalPos, Property, SoundCategory, SyncPlayerPosLookFlags,
-};
-use valence_protocol::{
-    BlockPos, EncodePacket, Ident, ItemStack, PacketDecoder, PacketEncoder, RawBytes, Sound, Text,
-    Username, VarInt,
-};
+use valence_protocol::sound::Sound;
+use valence_protocol::text::Text;
+use valence_protocol::types::{GameMode, GlobalPos, Property, SoundCategory};
+use valence_protocol::username::Username;
+use valence_protocol::var_int::VarInt;
+use valence_protocol::EncodePacket;
 
 use crate::dimension::DimensionId;
 use crate::entity::data::Player;
@@ -421,7 +426,7 @@ impl Client {
         self.death_location = location;
     }
 
-    pub fn trigger_status(&mut self, status: EntityStatusS2c) {
+    pub fn trigger_status(&mut self, status: EntityStatus) {
         self.write_packet(&EntityStatusS2c {
             entity_id: 0,
             entity_status: status as u8,
@@ -467,7 +472,7 @@ impl Client {
     pub fn send_plugin_message(&mut self, channel: Ident<&str>, data: &[u8]) {
         self.write_packet(&CustomPayloadS2c {
             channel,
-            data: RawBytes(data),
+            data: data.into(),
         });
     }
 
@@ -553,7 +558,7 @@ impl Client {
     /// If you want to show a particle effect to all players, use
     /// [`Instance::play_particle`]
     ///
-    /// [`Instance::play_particle`]: crate::instance::Instance::play_particle
+    /// [`Instance::play_particle`]: Instance::play_particle
     pub fn play_particle(
         &mut self,
         particle: &Particle,
@@ -564,7 +569,7 @@ impl Client {
         count: i32,
     ) {
         self.write_packet(&ParticleS2c {
-            particle: particle.clone(),
+            particle: Cow::Borrowed(particle),
             long_distance,
             position: position.into().into(),
             offset: offset.into().into(),
@@ -578,7 +583,7 @@ impl Client {
     /// If you want to play a sound effect to all players, use
     /// [`Instance::play_sound`]
     ///
-    /// [`Instance::play_sound`]: crate::instance::Instance::play_sound
+    /// [`Instance::play_sound`]: Instance::play_sound
     pub fn play_sound(
         &mut self,
         sound: Sound,
@@ -954,7 +959,7 @@ fn update_one_client(
     // Teleport the client. Do this after chunk packets are sent so the client does
     // not accidentally pass through blocks.
     if client.position_modified || client.yaw_modified || client.pitch_modified {
-        let flags = SyncPlayerPosLookFlags::new()
+        let flags = PlayerPositionLookFlags::new()
             .with_x(!client.position_modified)
             .with_y(!client.position_modified)
             .with_z(!client.position_modified)
@@ -1005,7 +1010,7 @@ fn update_one_client(
 
         client.enc.write_packet(&EntityTrackerUpdateS2c {
             entity_id: VarInt(0),
-            metadata: RawBytes(&client.scratch),
+            metadata: client.scratch.as_slice().into(),
         });
     }
 
@@ -1035,8 +1040,8 @@ mod tests {
     use std::collections::BTreeSet;
 
     use bevy_app::App;
-    use valence_protocol::packets::s2c::play::ChunkDataAndUpdateLight;
-    use valence_protocol::packets::S2cPlayPacket;
+    use valence_protocol::packet::s2c::play::ChunkDataS2c;
+    use valence_protocol::packet::S2cPlayPacket;
 
     use super::*;
     use crate::instance::Chunk;
@@ -1071,10 +1076,8 @@ mod tests {
         let mut loaded_chunks = BTreeSet::new();
 
         for pkt in client_helper.collect_sent().unwrap() {
-            if let S2cPlayPacket::ChunkDataAndUpdateLight(ChunkDataAndUpdateLight {
-                chunk_x,
-                chunk_z,
-                ..
+            if let S2cPlayPacket::ChunkDataS2c(ChunkDataS2c {
+                chunk_x, chunk_z, ..
             }) = pkt
             {
                 assert!(
@@ -1099,17 +1102,15 @@ mod tests {
 
         for pkt in client_helper.collect_sent().unwrap() {
             match pkt {
-                S2cPlayPacket::ChunkDataAndUpdateLight(ChunkDataAndUpdateLight {
-                    chunk_x,
-                    chunk_z,
-                    ..
+                S2cPlayPacket::ChunkDataS2c(ChunkDataS2c {
+                    chunk_x, chunk_z, ..
                 }) => {
                     assert!(
                         loaded_chunks.insert(ChunkPos::new(chunk_x, chunk_z)),
                         "({chunk_x}, {chunk_z})"
                     );
                 }
-                S2cPlayPacket::UnloadChunk(UnloadChunkS2c { chunk_x, chunk_z }) => {
+                S2cPlayPacket::UnloadChunkS2c(UnloadChunkS2c { chunk_x, chunk_z }) => {
                     assert!(
                         loaded_chunks.remove(&ChunkPos::new(chunk_x, chunk_z)),
                         "({chunk_x}, {chunk_z})"

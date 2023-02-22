@@ -27,5 +27,5 @@ pub enum ClickMode {
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct Slot {
     pub idx: i16,
-    pub stack: Option<ItemStack>,
+    pub item: Option<ItemStack>,
 }

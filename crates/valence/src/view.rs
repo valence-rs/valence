@@ -1,5 +1,5 @@
 use glam::DVec3;
-use valence_protocol::BlockPos;
+use valence_protocol::block_pos::BlockPos;
 
 /// The X and Z position of a chunk in an
 /// [`Instance`](crate::instance::Instance).

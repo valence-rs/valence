@@ -1,18 +1,18 @@
 use crate::block_pos::BlockPos;
+use crate::types::Direction;
 use crate::var_int::VarInt;
-use crate::{Encode, Decode};
-use crate::types::BlockFace;
+use crate::{Decode, Encode};
 
 #[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct PlayerActionC2s {
-    pub status: DiggingStatus,
+    pub action: Action,
     pub position: BlockPos,
-    pub face: BlockFace,
+    pub direction: Direction,
     pub sequence: VarInt,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
-pub enum DiggingStatus {
+pub enum Action {
     StartDestroyBlock,
     AbortDestroyBlock,
     StopDestroyBlock,

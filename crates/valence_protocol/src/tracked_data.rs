@@ -185,3 +185,10 @@ pub enum PaintingKind {
     Fire,
     DonkeyKong,
 }
+
+// TODO: remove
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Encode, Decode)]
+pub enum Particle {
+    #[tag = 21]
+    EntityEffect,
+}

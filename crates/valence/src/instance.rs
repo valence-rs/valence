@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::collections::BTreeSet;
 use std::iter::FusedIterator;
@@ -7,10 +8,14 @@ pub use chunk_entry::*;
 use glam::{DVec3, Vec3};
 use num::integer::div_ceil;
 use rustc_hash::FxHashMap;
-use valence_protocol::packet::s2c::particle::{Particle, ParticleS2c};
-use valence_protocol::packet::s2c::play::{OverlayMessageS2c, PlaySoundS2c};
+use valence_protocol::array::LengthPrefixedArray;
+use valence_protocol::block_pos::BlockPos;
+use valence_protocol::packet::s2c::play::particle::Particle;
+use valence_protocol::packet::s2c::play::{OverlayMessageS2c, ParticleS2c, PlaySoundS2c};
+use valence_protocol::sound::Sound;
+use valence_protocol::text::Text;
 use valence_protocol::types::SoundCategory;
-use valence_protocol::{BlockPos, EncodePacket, LengthPrefixedArray, Sound, Text};
+use valence_protocol::EncodePacket;
 
 use crate::dimension::DimensionId;
 use crate::entity::McEntity;
@@ -383,7 +388,7 @@ impl Instance {
 
         self.write_packet_at(
             &ParticleS2c {
-                particle: particle.clone(),
+                particle: Cow::Borrowed(particle),
                 long_distance,
                 position: position.into(),
                 offset: offset.into().into(),

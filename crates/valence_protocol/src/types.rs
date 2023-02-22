@@ -4,10 +4,10 @@ use std::io::Write;
 
 use serde::{Deserialize, Serialize};
 
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
 use crate::block_pos::BlockPos;
 use crate::ident::Ident;
+use crate::var_int::VarInt;
+use crate::{Decode, Encode};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Encode, Decode)]
 pub struct PublicKeyData<'a> {
@@ -95,11 +95,11 @@ pub enum WindowType {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
-pub enum BlockFace {
+pub enum Direction {
     /// -Y
-    Bottom,
+    Down,
     /// +Y
-    Top,
+    Up,
     /// -Z
     North,
     /// +Z

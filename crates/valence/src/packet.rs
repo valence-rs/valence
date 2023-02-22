@@ -1,7 +1,8 @@
 use std::io::Write;
 
 use tracing::warn;
-use valence_protocol::{encode_packet, encode_packet_compressed, EncodePacket, PacketEncoder};
+use valence_protocol::codec::{encode_packet, encode_packet_compressed, PacketEncoder};
+use valence_protocol::EncodePacket;
 
 pub(crate) trait WritePacket {
     fn write_packet<P>(&mut self, packet: &P)

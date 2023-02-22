@@ -1,5 +1,5 @@
-use valence_nbt::Compound;
 use bitfield_struct::bitfield;
+use valence_nbt::Compound;
 
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};

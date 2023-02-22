@@ -1,6 +1,6 @@
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::{
-    default_event_handler, InteractWithEntity, ResourcePackStatus, ResourcePackStatusChange,
+    default_event_handler, PlayerInteract, ResourcePackStatus, ResourcePackStatusChange,
 };
 use valence::prelude::*;
 use valence_protocol::types::EntityInteraction;
@@ -59,7 +59,7 @@ fn init_clients(
     }
 }
 
-fn prompt_on_punch(mut clients: Query<&mut Client>, mut events: EventReader<InteractWithEntity>) {
+fn prompt_on_punch(mut clients: Query<&mut Client>, mut events: EventReader<PlayerInteract>) {
     for event in events.iter() {
         let Ok(mut client) = clients.get_mut(event.client) else {
             continue;

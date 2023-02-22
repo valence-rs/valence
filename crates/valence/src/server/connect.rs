@@ -21,6 +21,9 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::OwnedSemaphorePermit;
 use tracing::{error, info, instrument, trace, warn};
 use uuid::Uuid;
+use valence_protocol::codec::{PacketDecoder, PacketEncoder};
+use valence_protocol::ident::Ident;
+use valence_protocol::packet::c2s::handshake::handshake::NextState;
 use valence_protocol::packet::c2s::handshake::HandshakeC2s;
 use valence_protocol::packet::c2s::login::{LoginHelloC2s, LoginKeyC2s, LoginQueryResponseC2s};
 use valence_protocol::packet::c2s::status::{QueryPingC2s, QueryRequestC2s};
@@ -28,11 +31,12 @@ use valence_protocol::packet::s2c::login::{
     LoginCompressionS2c, LoginDisconnectS2c, LoginHelloS2c, LoginQueryRequestS2c, LoginSuccessS2c,
 };
 use valence_protocol::packet::s2c::status::{QueryPongS2c, QueryResponseS2c};
-use valence_protocol::types::{HandshakeNextState, Property};
-use valence_protocol::{
-    translation_key, Decode, Ident, PacketDecoder, PacketEncoder, RawBytes, Text, Username, VarInt,
-    MINECRAFT_VERSION, PROTOCOL_VERSION,
-};
+use valence_protocol::raw_bytes::RawBytes;
+use valence_protocol::text::Text;
+use valence_protocol::types::Property;
+use valence_protocol::username::Username;
+use valence_protocol::var_int::VarInt;
+use valence_protocol::{translation_key, Decode, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerListPing};
 use crate::server::connection::InitialConnection;
@@ -113,7 +117,7 @@ async fn handle_connection(
 struct HandshakeData {
     protocol_version: i32,
     server_address: String,
-    next_state: HandshakeNextState,
+    next_state: NextState,
 }
 
 async fn handle_handshake(
@@ -137,12 +141,10 @@ async fn handle_handshake(
     );
 
     match handshake.next_state {
-        HandshakeNextState::Status => {
-            handle_status(shared, callbacks, conn, remote_addr, handshake)
-                .await
-                .context("error handling status")
-        }
-        HandshakeNextState::Login => {
+        NextState::Status => handle_status(shared, callbacks, conn, remote_addr, handshake)
+            .await
+            .context("error handling status"),
+        NextState::Login => {
             match handle_login(&shared, callbacks, &mut conn, remote_addr, handshake)
                 .await
                 .context("error handling login")?
@@ -231,7 +233,7 @@ async fn handle_login(
         return Ok(None);
     }
 
-    let LoginHelloS2c {
+    let LoginHelloC2s {
         username,
         profile_id: _, // TODO
     } = conn.recv_packet().await?;

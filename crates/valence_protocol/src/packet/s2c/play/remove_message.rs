@@ -1,4 +1,3 @@
-
 use crate::types::MessageSignature;
 use crate::{Decode, Encode};
 

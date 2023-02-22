@@ -6,12 +6,15 @@ use std::sync::atomic::{AtomicBool, Ordering};
 // Using nonstandard mutex to avoid poisoning API.
 use parking_lot::Mutex;
 use valence_nbt::{compound, Compound};
-use valence_protocol::block::BlockState;
+use valence_protocol::block::{BlockEntityKind, BlockState};
+use valence_protocol::block_pos::BlockPos;
+use valence_protocol::packet::s2c::play::chunk_data::ChunkDataBlockEntity;
 use valence_protocol::packet::s2c::play::{
     BlockEntityUpdateS2c, BlockUpdateS2c, ChunkDataS2c, ChunkDeltaUpdateS2c,
 };
-use valence_protocol::types::ChunkDataBlockEntity;
-use valence_protocol::{BlockPos, Encode, VarInt, VarLong};
+use valence_protocol::var_int::VarInt;
+use valence_protocol::var_long::VarLong;
+use valence_protocol::Encode;
 
 use crate::biome::BiomeId;
 use crate::instance::paletted_container::PalettedContainer;

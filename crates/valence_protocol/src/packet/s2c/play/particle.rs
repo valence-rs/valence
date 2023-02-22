@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::io::Write;
 
 use anyhow::bail;
@@ -9,8 +10,8 @@ use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
 #[derive(Clone, Debug)]
-pub struct ParticleS2c {
-    pub particle: Particle,
+pub struct ParticleS2c<'a> {
+    pub particle: Cow<'a, Particle>,
     pub long_distance: bool,
     pub position: [f64; 3],
     pub offset: [f32; 3],
@@ -233,7 +234,7 @@ impl Particle {
     }
 }
 
-impl Encode for ParticleS2c {
+impl Encode for ParticleS2c<'_> {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         VarInt(self.particle.id()).encode(&mut w)?;
         self.long_distance.encode(&mut w)?;
@@ -242,7 +243,7 @@ impl Encode for ParticleS2c {
         self.max_speed.encode(&mut w)?;
         self.count.encode(&mut w)?;
 
-        match &self.particle {
+        match self.particle.as_ref() {
             Particle::Block(block_state) => block_state.encode(w),
             Particle::BlockMarker(block_state) => block_state.encode(w),
             Particle::Dust { rgb, scale } => {
@@ -281,7 +282,7 @@ impl Encode for ParticleS2c {
     }
 }
 
-impl<'a> Decode<'a> for ParticleS2c {
+impl<'a> Decode<'a> for ParticleS2c<'a> {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
         let particle_id = VarInt::decode(r)?.0;
         let long_distance = bool::decode(r)?;
@@ -291,7 +292,7 @@ impl<'a> Decode<'a> for ParticleS2c {
         let particle_count = i32::decode(r)?;
 
         Ok(Self {
-            particle: match particle_id {
+            particle: Cow::Owned(match particle_id {
                 0 => Particle::AmbientEntityEffect,
                 1 => Particle::AngryVillager,
                 2 => Particle::Block(BlockState::decode(r)?),
@@ -405,7 +406,7 @@ impl<'a> Decode<'a> for ParticleS2c {
                 90 => Particle::ElectricSpark,
                 91 => Particle::Scrape,
                 id => bail!("invalid particle ID of {id}"),
-            },
+            }),
             long_distance,
             position,
             offset,

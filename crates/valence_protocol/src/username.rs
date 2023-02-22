@@ -9,8 +9,8 @@ use anyhow::anyhow;
 use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::{Decode, Encode, Result};
 use crate::text::Text;
+use crate::{Decode, Encode, Result};
 
 /// A newtype wrapper around a string type `S` which guarantees the wrapped
 /// string meets the criteria for a valid Minecraft username.
