@@ -3,6 +3,7 @@ mod packet_widget;
 mod state;
 mod syntax_highlighting;
 
+use std::collections::BTreeMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -193,6 +194,7 @@ async fn passthrough(mut read: OwnedReadHalf, mut write: OwnedWriteHalf) -> anyh
 struct App {
     context: Arc<Context>,
     filter: String,
+    selected_packets: BTreeMap<String, bool>,
 }
 
 impl App {
@@ -233,7 +235,18 @@ impl App {
         Self {
             context,
             filter: "".into(),
+            selected_packets: BTreeMap::new(),
         }
+    }
+
+    fn nested_menus(&mut self, ui: &mut egui::Ui) {
+        self.selected_packets
+            .iter_mut()
+            .for_each(|(name, selected)| {
+                if ui.checkbox(selected, name).changed() {
+                    ui.ctx().request_repaint();
+                }
+            });
     }
 }
 
@@ -245,6 +258,15 @@ impl eframe::App for App {
                 if ui.text_edit_singleline(&mut self.filter).changed() {
                     self.context.set_filter(self.filter.clone());
                 }
+                ui.menu_button("Packets", |ui| {
+                    ui.set_max_width(250.0);
+                    ui.set_max_height(400.0);
+                    egui::ScrollArea::vertical()
+                        .auto_shrink([true, true])
+                        .show(ui, |ui| {
+                            self.nested_menus(ui);
+                        });
+                });
             });
         });
 
@@ -259,11 +281,12 @@ impl eframe::App for App {
                     let count = self.context.packet_count.read().expect("Poisoned RwLock");
                     let total = self.context.packets.read().expect("Poisoned RwLock").len();
 
-                    if self.filter.is_empty() {
+                    let all_selected = self.selected_packets.values().all(|v| *v);
+
+                    if self.filter.is_empty() && all_selected {
                         ui.label(format!("({total})"));
                     } else {
                         ui.label(format!("({count}/{total})"));
-
                     }
 
                     if ui.button("Clear").clicked() {
@@ -273,9 +296,10 @@ impl eframe::App for App {
                     if ui.button("Export").clicked() {
                         if let Some(path) = rfd::FileDialog::new()
                             .add_filter("Text Document", &["txt"])
-                        .save_file() {
+                            .save_file()
+                        {
                             match self.context.save(path) {
-                                Ok(_) => {},
+                                Ok(_) => {}
                                 Err(err) => {
                                     // some alert box?
                                     eprintln!("Failed to save: {}", err);
@@ -283,29 +307,42 @@ impl eframe::App for App {
                             }
                         }
                     }
-
                 });
                 egui::ScrollArea::vertical()
                     .auto_shrink([false, false])
                     .stick_to_bottom(true)
                     .show(ui, |ui| {
-
-                        let mut f = self
-                            .context
-                            .packets
-                            .write()
-                            .expect("Poisoned RwLock");
+                        let mut f = self.context.packets.write().expect("Poisoned RwLock");
 
                         let f: Vec<&mut Packet> = f
                             .iter_mut()
-                            // todo: regex? or even a wireshark-style filter language processor?
-                            .filter(|p| p.packet_name.to_lowercase().contains(&self.filter.to_lowercase()))
+                            .filter(|p| {
+                                if !self.selected_packets.contains_key(&p.packet_name) {
+                                    self.selected_packets.insert(p.packet_name.clone(), true);
+                                }
+
+                                // filter selected_packets
+                                if let Some(selected) = self.selected_packets.get(&p.packet_name) {
+                                    if !*selected {
+                                        return false;
+                                    }
+                                }
+
+                                if self.filter.is_empty() {
+                                    return true;
+                                }
+
+                                if let Ok(re) = regex::Regex::new(&self.filter) {
+                                    return re.is_match(&p.packet_name);
+                                }
+
+                                false
+                            })
                             .collect();
 
                         *self.context.packet_count.write().expect("Poisoned RwLock") = f.len();
 
-                        for packet in f
-                        {
+                        for packet in f {
                             {
                                 let selected = self
                                     .context
@@ -315,7 +352,8 @@ impl eframe::App for App {
                                 if let Some(idx) = *selected {
                                     if idx == packet.id {
                                         packet.selected(true);
-                                        *self.context.buffer.write().expect("Poisoned RwLock") = packet.into();
+                                        *self.context.buffer.write().expect("Poisoned RwLock") =
+                                            packet.into();
                                     } else {
                                         packet.selected(false);
                                     }
