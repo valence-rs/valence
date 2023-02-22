@@ -9,7 +9,7 @@ use crate::view::ChunkPos;
 
 /// ECS component to be added for entities with equipment.
 ///
-/// Equipment updates managed by [update_equipment].
+/// Equipment updates managed by `update_equipment`.
 #[derive(Component, Default, PartialEq, Debug)]
 pub struct Equipment {
     equipment: Vec<EquipmentEntry>,
@@ -57,9 +57,14 @@ impl Equipment {
 
     /// Remove an equipment from a slot and return it if present
     pub fn remove(&mut self, slot: EquipmentSlot) -> Option<EquipmentEntry> {
-        let slot: i8 = slot.into();
+        let slot_id: i8 = slot.into();
 
-        if let Some(idx) = self.equipment.iter().position(|equip| equip.slot == slot) {
+        if let Some(idx) = self
+            .equipment
+            .iter()
+            .position(|equip| equip.slot == slot_id)
+        {
+            self.set_modified_slot(slot);
             Some(self.equipment.remove(idx))
         } else {
             None
@@ -122,7 +127,7 @@ impl Equipment {
 impl TryFrom<i8> for EquipmentSlot {
     type Error = &'static str;
 
-    /// Convert from `id` according to https://wiki.vg/Protocol#Set_Equipment
+    /// Convert from `id` according to <https://wiki.vg/Protocol#Set_Equipment>
     fn try_from(id: i8) -> Result<Self, Self::Error> {
         let slot = match id {
             0 => EquipmentSlot::MainHand,
@@ -139,7 +144,7 @@ impl TryFrom<i8> for EquipmentSlot {
 }
 
 impl From<EquipmentSlot> for i8 {
-    /// Convert to `id` according to https://wiki.vg/Protocol#Set_Equipment
+    /// Convert to `id` according to <https://wiki.vg/Protocol#Set_Equipment>
     fn from(slot: EquipmentSlot) -> Self {
         match slot {
             EquipmentSlot::MainHand => 0,
@@ -165,16 +170,16 @@ pub(crate) fn update_equipment(
             continue;
         }
 
-        let equiped_instance = equiped_mc_entity.instance();
-        let equiped_chunk_pos = ChunkPos::from_dvec3(equiped_mc_entity.position());
+        let instance = equiped_mc_entity.instance();
+        let chunk_pos = ChunkPos::from_dvec3(equiped_mc_entity.position());
 
-        if let Ok(mut equiped_instance) = instances.get_mut(equiped_instance) {
-            equiped_instance.write_packet_at(
+        if let Ok(mut instance) = instances.get_mut(instance) {
+            instance.write_packet_at(
                 &SetEquipment {
                     entity_id: VarInt(equiped_mc_entity.protocol_id()),
                     equipment: equips.iter_modified_equipment().collect(),
                 },
-                equiped_chunk_pos,
+                chunk_pos,
             )
         }
 
@@ -184,6 +189,10 @@ pub(crate) fn update_equipment(
 
 #[cfg(test)]
 mod test {
+    use valence_protocol::packets::S2cPlayPacket;
+
+    use crate::unit_test::util::scenario_single_client;
+
     use super::*;
 
     #[test]
@@ -255,5 +264,111 @@ mod test {
                 modified_slots: 0b1
             }
         );
+    }
+
+    #[test]
+    fn test_set_equipment_sent_packets() -> anyhow::Result<()> {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+
+        // Setup server
+        let mut instance = app
+            .world
+            .resource::<Server>()
+            .new_instance(DimensionId::default());
+        instance.insert_chunk([0, 0], Default::default());
+        let instance = app.world.spawn(instance);
+        let instance_entity = instance.id();
+
+        // Setup client
+        let mut client = app.world.get_mut::<Client>(client_ent).unwrap();
+        let uuid = client.uuid();
+        client.set_position([0.0, 0.0, 0.0]);
+        client.set_instance(instance_entity);
+        let mut client_ent_mut = app
+            .world
+            .get_entity_mut(client_ent)
+            .expect("should have client component");
+        client_ent_mut.insert(McEntity::with_uuid(EntityKind::Player, client_ent, uuid));
+
+        // Spawn armor stand
+        let equipment = Equipment::default();
+        let mut mc_entity = McEntity::new(EntityKind::ArmorStand, instance_entity);
+        mc_entity.set_position([0.0, 0.0, 0.0]);
+        let armor_stand = app.world.spawn((mc_entity, equipment));
+        let armor_stand = armor_stand.id();
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        // Set armor stand boots
+        let mut equipments = app
+            .world
+            .get_mut::<Equipment>(armor_stand)
+            .expect("should have Equipment component");
+        let item = ItemStack::new(ItemKind::IronBoots, 1, None);
+        let slot = EquipmentSlot::Boots;
+        equipments.set(item.clone(), slot);
+        let armor_stand_entity_id = VarInt(
+            app.world
+                .get_mut::<McEntity>(armor_stand)
+                .expect("should have McEntity component")
+                .protocol_id(),
+        );
+
+        // Assert packet
+        app.update();
+        let sent_packets = client_helper.collect_sent()?;
+        if let S2cPlayPacket::SetEquipment(packet) = &sent_packets[0] {
+            assert_eq!(
+                packet,
+                &SetEquipment {
+                    entity_id: armor_stand_entity_id,
+                    equipment: vec![EquipmentEntry {
+                        slot: slot.into(),
+                        item: Some(item)
+                    }]
+                }
+            )
+        }
+
+        // Set up for next tick
+        app.update();
+        client_helper.clear_sent();
+
+        // Remove boots and set main hand
+        let mut equipments = app
+            .world
+            .get_mut::<Equipment>(armor_stand)
+            .expect("should have Equipment component");
+        equipments.remove(EquipmentSlot::Boots);
+        let item = ItemStack::new(ItemKind::DiamondSword, 1, None);
+        let slot = EquipmentSlot::MainHand;
+        equipments.set(item.clone(), slot);
+
+        // Assert new packets
+        app.update();
+        let sent_packets = client_helper.collect_sent()?;
+        if let S2cPlayPacket::SetEquipment(packet) = &sent_packets[0] {
+            assert_eq!(
+                packet,
+                &SetEquipment {
+                    entity_id: armor_stand_entity_id,
+                    equipment: vec![
+                        EquipmentEntry {
+                            slot: slot.into(),
+                            item: Some(item)
+                        },
+                        EquipmentEntry {
+                            slot: EquipmentSlot::Boots.into(),
+                            item: None
+                        },
+                    ]
+                }
+            )
+        }
+
+        Ok(())
     }
 }
