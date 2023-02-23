@@ -7,7 +7,7 @@
 //!
 //! [`PacketEncoder`]: codec::PacketEncoder
 //! [`PacketDecoder`]: codec::PacketDecoder
-//! 
+//!
 //! # Examples
 //!
 //! ```
@@ -284,7 +284,7 @@ pub trait EncodePacket: fmt::Debug {
 
     /// Like [`Encode::encode`], but a leading [`VarInt`] packet ID must be
     /// written first.
-    /// 
+    ///
     /// [`VarInt`]: var_int::VarInt
     fn encode_packet(&self, w: impl Write) -> Result<()>;
 }
@@ -326,7 +326,7 @@ pub trait DecodePacket<'a>: Sized + fmt::Debug {
 
     /// Like [`Decode::decode`], but a leading [`VarInt`] packet ID must be read
     /// first.
-    /// 
+    ///
     /// [`VarInt`]: var_int::VarInt
     fn decode_packet(r: &mut &'a [u8]) -> Result<Self>;
 }
