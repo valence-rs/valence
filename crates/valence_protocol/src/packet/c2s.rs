@@ -1,6 +1,7 @@
 pub mod handshake {
     pub use handshake::HandshakeC2s;
 
+    #[allow(clippy::module_inception)]
     pub mod handshake;
 
     packet_group! {

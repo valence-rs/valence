@@ -1,7 +1,6 @@
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::default_event_handler;
 use valence::prelude::*;
-use valence_protocol::packets::s2c::particle::Particle;
 
 const SPAWN_Y: i32 = 64;
 

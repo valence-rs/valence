@@ -29,10 +29,10 @@ impl BlockPos {
     ///
     /// ```
     /// use valence_protocol::block_pos::BlockPos;
-    /// use valence_protocol::types::BlockFace;
+    /// use valence_protocol::types::Direction;
     ///
     /// let pos = BlockPos::new(0, 0, 0);
-    /// let adj = pos.get_in_direction(BlockFace::South);
+    /// let adj = pos.get_in_direction(Direction::South);
     /// assert_eq!(adj, BlockPos::new(0, 0, 1));
     /// ```
     pub fn get_in_direction(self, dir: Direction) -> BlockPos {

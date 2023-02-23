@@ -6,9 +6,9 @@ use rand::Rng;
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::default_event_handler;
 use valence::prelude::*;
-use valence_protocol::packets::s2c::play::SetTitleAnimationTimes;
+use valence_protocol::packet::s2c::play::TitleFadeS2c;
+use valence_protocol::sound::Sound;
 use valence_protocol::types::SoundCategory;
-use valence_protocol::Sound;
 
 const START_POS: BlockPos = BlockPos::new(0, 100, 0);
 const VIEW_DIST: u8 = 10;
@@ -149,7 +149,7 @@ fn manage_blocks(mut clients: Query<(&mut Client, &mut GameState, &mut Instance)
                 client.set_title(
                     "",
                     state.score.to_string().color(Color::LIGHT_PURPLE).bold(),
-                    SetTitleAnimationTimes {
+                    TitleFadeS2c {
                         fade_in: 0,
                         stay: 7,
                         fade_out: 4,

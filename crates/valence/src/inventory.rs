@@ -151,7 +151,7 @@ pub(crate) fn update_player_inventories(
                                 window_id: 0,
                                 state_id: VarInt(state_id),
                                 slot_idx: i as i16,
-                                slot_data: Cow::Borrowed(&slot),
+                                slot_data: Cow::Borrowed(slot),
                             });
                         }
                     }

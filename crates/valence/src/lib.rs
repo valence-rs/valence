@@ -75,6 +75,8 @@ pub mod prelude {
     pub use valence_nbt::Compound;
     pub use valence_protocol::block::BlockKind;
     pub use valence_protocol::block_pos::BlockPos;
+    pub use valence_protocol::ident;
+    pub use valence_protocol::packet::s2c::play::particle::Particle;
     pub use view::{ChunkPos, ChunkView};
 
     use super::*;

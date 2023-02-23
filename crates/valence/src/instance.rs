@@ -4,6 +4,7 @@ use std::collections::BTreeSet;
 use std::iter::FusedIterator;
 
 use bevy_ecs::prelude::*;
+pub use chunk::{Block, BlockEntity, BlockMut, BlockRef, Chunk};
 pub use chunk_entry::*;
 use glam::{DVec3, Vec3};
 use num::integer::div_ceil;
@@ -19,7 +20,6 @@ use valence_protocol::EncodePacket;
 
 use crate::dimension::DimensionId;
 use crate::entity::McEntity;
-pub use crate::instance::chunk::{Block, BlockMut, BlockRef, Chunk};
 use crate::packet::{PacketWriter, WritePacket};
 use crate::server::{Server, SharedServer};
 use crate::view::ChunkPos;
