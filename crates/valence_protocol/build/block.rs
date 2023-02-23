@@ -615,7 +615,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             /// Returns the wall variant of the block state.
             ///
             /// If the given block state doesn't have a wall variant, `None` is returned.
-            pub const fn to_wall_variant(self) -> Option<Self> {
+            pub const fn wall_block_id(self) -> Option<Self> {
                 match self {
                     #state_to_wall_variant_arms
                     _ => None
