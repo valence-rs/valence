@@ -2,9 +2,12 @@
 //! protocol.
 //!
 //! The API is centered around the [`Encode`] and [`Decode`] traits. Clientbound
-//! and serverbound packets are defined in the [`packets`] module. Packets are
+//! and serverbound packets are defined in the [`packet`] module. Packets are
 //! encoded and decoded using the [`PacketEncoder`] and [`PacketDecoder`] types.
 //!
+//! [`PacketEncoder`]: codec::PacketEncoder
+//! [`PacketDecoder`]: codec::PacketDecoder
+//! 
 //! # Examples
 //!
 //! ```
@@ -161,6 +164,7 @@ pub const MAX_PACKET_SIZE: i32 = 2097152;
 /// ```
 ///
 /// [macro]: valence_protocol_macros::Encode
+/// [`VarInt`]: var_int::VarInt
 pub trait Encode {
     /// Writes this object to the provided writer.
     ///
@@ -236,6 +240,7 @@ pub trait Encode {
 /// ```
 ///
 /// [macro]: valence_protocol_macros::Decode
+/// [`VarInt`]: var_int::VarInt
 pub trait Decode<'a>: Sized {
     /// Reads this object from the provided byte slice.
     ///
@@ -271,6 +276,7 @@ pub trait Decode<'a>: Sized {
 /// ```
 ///
 /// [macro]: valence_protocol_macros::DecodePacket
+/// [`VarInt`]: var_int::VarInt
 pub trait EncodePacket: fmt::Debug {
     /// The packet ID that is written when [`Self::encode_packet`] is called. A
     /// negative value indicates that the packet ID is not statically known.
@@ -278,6 +284,8 @@ pub trait EncodePacket: fmt::Debug {
 
     /// Like [`Encode::encode`], but a leading [`VarInt`] packet ID must be
     /// written first.
+    /// 
+    /// [`VarInt`]: var_int::VarInt
     fn encode_packet(&self, w: impl Write) -> Result<()>;
 }
 
@@ -310,6 +318,7 @@ pub trait EncodePacket: fmt::Debug {
 /// ```
 ///
 /// [macro]: valence_protocol::DecodePacket
+/// [`VarInt`]: var_int::VarInt
 pub trait DecodePacket<'a>: Sized + fmt::Debug {
     /// The packet ID that is read when [`Self::decode_packet`] is called. A
     /// negative value indicates that the packet ID is not statically known.
@@ -317,6 +326,8 @@ pub trait DecodePacket<'a>: Sized + fmt::Debug {
 
     /// Like [`Decode::decode`], but a leading [`VarInt`] packet ID must be read
     /// first.
+    /// 
+    /// [`VarInt`]: var_int::VarInt
     fn decode_packet(r: &mut &'a [u8]) -> Result<Self>;
 }
 

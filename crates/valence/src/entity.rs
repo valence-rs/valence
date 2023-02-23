@@ -322,7 +322,7 @@ impl McEntity {
     /// The hitbox of an entity is determined by its position, entity type, and
     /// other state specific to that type.
     ///
-    /// [interact event]: crate::client::event::InteractWithEntity
+    /// [interact event]: crate::client::event::PlayerInteract
     pub fn hitbox(&self) -> Aabb {
         fn baby(is_baby: bool, adult_hitbox: [f64; 3]) -> [f64; 3] {
             if is_baby {
