@@ -70,7 +70,7 @@ impl State {
             stage,
             created_at: time,
             selected: false,
-            packet_type: bytes[0],
+            packet_type: bytes[0], // This is not the correct value to use here because compression.
             packet_name: packet_name.to_string(),
         });
 

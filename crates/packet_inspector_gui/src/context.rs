@@ -256,7 +256,6 @@ pub struct Context {
     pub(crate) packets: RwLock<Vec<Packet>>,
     pub(crate) packet_count: RwLock<usize>,
     pub filter: RwLock<String>,
-    pub buffer: RwLock<String>,
     pub(crate) context: Option<egui::Context>,
 }
 
@@ -267,7 +266,6 @@ impl Context {
             selected_packet: RwLock::new(None),
             packets: RwLock::new(Vec::new()),
             filter: RwLock::new("".into()),
-            buffer: RwLock::new("".into()),
             context: ctx,
             packet_count: RwLock::new(0),
         }

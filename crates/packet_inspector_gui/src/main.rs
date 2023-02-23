@@ -195,6 +195,7 @@ struct App {
     context: Arc<Context>,
     filter: String,
     selected_packets: BTreeMap<String, bool>,
+    buffer: String,
 }
 
 impl App {
@@ -236,6 +237,7 @@ impl App {
             context,
             filter: "".into(),
             selected_packets: BTreeMap::new(),
+            buffer: String::new(),
         }
     }
 
@@ -317,6 +319,7 @@ impl eframe::App for App {
                         let f: Vec<&mut Packet> = f
                             .iter_mut()
                             .filter(|p| {
+                                // bit meh to do this here but it works.
                                 if !self.selected_packets.contains_key(&p.packet_name) {
                                     self.selected_packets.insert(p.packet_name.clone(), true);
                                 }
@@ -352,8 +355,7 @@ impl eframe::App for App {
                                 if let Some(idx) = *selected {
                                     if idx == packet.id {
                                         packet.selected(true);
-                                        *self.context.buffer.write().expect("Poisoned RwLock") =
-                                            packet.into();
+                                        self.buffer = packet.into();
                                     } else {
                                         packet.selected(false);
                                     }
@@ -369,10 +371,8 @@ impl eframe::App for App {
                     });
             });
         egui::CentralPanel::default().show(ctx, |ui| {
-            let text = self.context.buffer.read().expect("Poisoned RwLock");
-
             egui::ScrollArea::vertical().show(ui, |ui| {
-                code_view_ui(ui, &text);
+                code_view_ui(ui, &self.buffer);
             });
         });
     }
