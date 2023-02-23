@@ -293,6 +293,7 @@ impl eframe::App for App {
 
                     if ui.button("Clear").clicked() {
                         self.context.clear();
+                        self.buffer = String::new();
                     }
 
                     if ui.button("Export").clicked() {
