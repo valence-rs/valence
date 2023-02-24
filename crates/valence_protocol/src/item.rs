@@ -3,7 +3,9 @@ use std::io::Write;
 use anyhow::{ensure, Context};
 use valence_nbt::Compound;
 
-use crate::{BlockKind, Decode, Encode, Result, VarInt};
+use crate::block::BlockKind;
+use crate::var_int::VarInt;
+use crate::{Decode, Encode, Result};
 
 include!(concat!(env!("OUT_DIR"), "/item.rs"));
 

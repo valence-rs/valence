@@ -8,31 +8,42 @@ use glam::{DVec3, Vec3};
 use paste::paste;
 use tracing::warn;
 use uuid::Uuid;
-use valence_protocol::entity_meta::Pose;
-use valence_protocol::packets::c2s::play::{
-    ClientCommand, PlayerAbilitiesC2s, ResourcePackC2s, SeenAdvancements,
+use valence_protocol::block_pos::BlockPos;
+use valence_protocol::ident::Ident;
+use valence_protocol::item::ItemStack;
+use valence_protocol::packet::c2s::play::click_slot::{ClickMode, Slot};
+use valence_protocol::packet::c2s::play::client_command::Action as ClientCommandAction;
+use valence_protocol::packet::c2s::play::client_settings::{
+    ChatMode, DisplayedSkinParts, MainHand,
 };
-use valence_protocol::packets::C2sPlayPacket;
-use valence_protocol::types::{
-    Action, ChatMode, ClickContainerMode, CommandBlockMode, Difficulty, DiggingStatus,
-    DisplayedSkinParts, EntityInteraction, Hand, MainHand, RecipeBookId, StructureBlockAction,
-    StructureBlockFlags, StructureBlockMirror, StructureBlockMode, StructureBlockRotation,
+use valence_protocol::packet::c2s::play::player_action::Action as PlayerAction;
+use valence_protocol::packet::c2s::play::player_interact::Interaction;
+use valence_protocol::packet::c2s::play::recipe_category_options::RecipeBookId;
+use valence_protocol::packet::c2s::play::update_command_block::Mode as CommandBlockMode;
+use valence_protocol::packet::c2s::play::update_structure_block::{
+    Action as StructureBlockAction, Flags as StructureBlockFlags, Mirror as StructureBlockMirror,
+    Mode as StructureBlockMode, Rotation as StructureBlockRotation,
 };
-use valence_protocol::{BlockFace, BlockPos, Ident, ItemStack};
+use valence_protocol::packet::c2s::play::{
+    AdvancementTabC2s, ClientStatusC2s, ResourcePackStatusC2s, UpdatePlayerAbilitiesC2s,
+};
+use valence_protocol::packet::C2sPlayPacket;
+use valence_protocol::tracked_data::Pose;
+use valence_protocol::types::{Difficulty, Direction, Hand};
 
 use crate::client::Client;
 use crate::entity::{EntityAnimation, EntityKind, McEntity, TrackedData};
 use crate::inventory::Inventory;
 
 #[derive(Clone, Debug)]
-pub struct QueryBlockEntity {
+pub struct QueryBlockNbt {
     pub client: Entity,
     pub position: BlockPos,
     pub transaction_id: i32,
 }
 
 #[derive(Clone, Debug)]
-pub struct ChangeDifficulty {
+pub struct UpdateDifficulty {
     pub client: Entity,
     pub difficulty: Difficulty,
 }
@@ -44,7 +55,7 @@ pub struct MessageAcknowledgment {
 }
 
 #[derive(Clone, Debug)]
-pub struct ChatCommand {
+pub struct CommandExecution {
     pub client: Entity,
     pub command: Box<str>,
     pub timestamp: u64,
@@ -58,11 +69,6 @@ pub struct ChatMessage {
 }
 
 #[derive(Clone, Debug)]
-pub struct ChatPreview {
-    pub client: Entity,
-}
-
-#[derive(Clone, Debug)]
 pub struct PerformRespawn {
     pub client: Entity,
 }
@@ -73,7 +79,7 @@ pub struct RequestStats {
 }
 
 #[derive(Clone, Debug)]
-pub struct UpdateSettings {
+pub struct ClientSettings {
     pub client: Entity,
     /// e.g. en_US
     pub locale: Box<str>,
@@ -91,53 +97,53 @@ pub struct UpdateSettings {
 }
 
 #[derive(Clone, Debug)]
-pub struct CommandSuggestionsRequest {
+pub struct RequestCommandCompletions {
     pub client: Entity,
     pub transaction_id: i32,
     pub text: Box<str>,
 }
 
 #[derive(Clone, Debug)]
-pub struct ClickContainerButton {
+pub struct ButtonClick {
     pub client: Entity,
     pub window_id: i8,
     pub button_id: i8,
 }
 
 #[derive(Clone, Debug)]
-pub struct ClickContainer {
+pub struct ClickSlot {
     pub client: Entity,
     pub window_id: u8,
     pub state_id: i32,
     pub slot_id: i16,
     pub button: i8,
-    pub mode: ClickContainerMode,
-    pub slot_changes: Vec<(i16, Option<ItemStack>)>,
+    pub mode: ClickMode,
+    pub slot_changes: Vec<Slot>,
     pub carried_item: Option<ItemStack>,
 }
 
 #[derive(Clone, Debug)]
-pub struct CloseContainer {
+pub struct CloseHandledScreen {
     pub client: Entity,
     pub window_id: i8,
 }
 
 #[derive(Clone, Debug)]
-pub struct PluginMessage {
+pub struct CustomPayload {
     pub client: Entity,
     pub channel: Ident<Box<str>>,
     pub data: Box<[u8]>,
 }
 
 #[derive(Clone, Debug)]
-pub struct EditBook {
+pub struct BookUpdate {
     pub slot: i32,
     pub entries: Vec<Box<str>>,
     pub title: Option<Box<str>>,
 }
 
 #[derive(Clone, Debug)]
-pub struct QueryEntityTag {
+pub struct QueryEntityNbt {
     pub client: Entity,
     pub transaction_id: i32,
     pub entity_id: i32,
@@ -145,18 +151,18 @@ pub struct QueryEntityTag {
 
 /// Left or right click interaction with an entity's hitbox.
 #[derive(Clone, Debug)]
-pub struct InteractWithEntity {
+pub struct PlayerInteract {
     pub client: Entity,
     /// The raw ID of the entity being interacted with.
     pub entity_id: i32,
     /// If the client was sneaking during the interaction.
     pub sneaking: bool,
     /// The kind of interaction that occurred.
-    pub interact: EntityInteraction,
+    pub interact: Interaction,
 }
 
 #[derive(Clone, Debug)]
-pub struct JigsawGenerate {
+pub struct JigsawGenerating {
     pub client: Entity,
     pub position: BlockPos,
     pub levels: i32,
@@ -164,20 +170,13 @@ pub struct JigsawGenerate {
 }
 
 #[derive(Clone, Debug)]
-pub struct LockDifficulty {
+pub struct UpdateDifficultyLock {
     pub client: Entity,
     pub locked: bool,
 }
 
 #[derive(Clone, Debug)]
-pub struct SetPlayerPosition {
-    pub client: Entity,
-    pub position: DVec3,
-    pub on_ground: bool,
-}
-
-#[derive(Clone, Debug)]
-pub struct SetPlayerPositionAndRotation {
+pub struct PlayerMove {
     pub client: Entity,
     pub position: DVec3,
     pub yaw: f32,
@@ -186,47 +185,11 @@ pub struct SetPlayerPositionAndRotation {
 }
 
 #[derive(Clone, Debug)]
-pub struct SetPlayerRotation {
-    pub client: Entity,
-    pub yaw: f32,
-    pub pitch: f32,
-    pub on_ground: bool,
-}
-
-#[derive(Clone, Debug)]
-pub struct SetPlayerOnGround {
-    pub client: Entity,
-    pub on_ground: bool,
-}
-
-#[derive(Clone, Debug)]
-pub struct MoveVehicle {
+pub struct VehicleMove {
     pub client: Entity,
     pub position: DVec3,
     pub yaw: f32,
     pub pitch: f32,
-}
-
-/// Sent whenever one of the other movement events is sent.
-#[derive(Clone, Debug)]
-pub struct MovePlayer {
-    pub client: Entity,
-    /// The position of the client prior to the event.
-    pub old_position: DVec3,
-    /// The position of the client after the event.
-    pub position: DVec3,
-    /// The yaw of the client prior to the event.
-    pub old_yaw: f32,
-    /// The yaw of the client after the event.
-    pub yaw: f32,
-    /// The pitch of the client prior to the event.
-    pub old_pitch: f32,
-    /// The pitch of the client after the event.
-    pub pitch: f32,
-    /// If the client was on ground prior to the event.
-    pub old_on_ground: bool,
-    /// If the client is on ground after the event.
-    pub on_ground: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -277,20 +240,20 @@ pub struct StartFlyingWithElytra {
 }
 
 #[derive(Clone, Debug)]
-pub struct PaddleBoat {
+pub struct BoatPaddleState {
     pub client: Entity,
     pub left_paddle_turning: bool,
     pub right_paddle_turning: bool,
 }
 
 #[derive(Clone, Debug)]
-pub struct PickItem {
+pub struct PickFromInventory {
     pub client: Entity,
     pub slot_to_use: i32,
 }
 
 #[derive(Clone, Debug)]
-pub struct PlaceRecipe {
+pub struct CraftRequest {
     pub client: Entity,
     pub window_id: i8,
     pub recipe: Ident<Box<str>>,
@@ -311,23 +274,23 @@ pub struct StartFlying {
 pub struct StartDigging {
     pub client: Entity,
     pub position: BlockPos,
-    pub face: BlockFace,
+    pub direction: Direction,
     pub sequence: i32,
 }
 
 #[derive(Clone, Debug)]
-pub struct CancelDigging {
+pub struct AbortDestroyBlock {
     pub client: Entity,
     pub position: BlockPos,
-    pub face: BlockFace,
+    pub direction: Direction,
     pub sequence: i32,
 }
 
 #[derive(Clone, Debug)]
-pub struct FinishDigging {
+pub struct StopDestroyBlock {
     pub client: Entity,
     pub position: BlockPos,
-    pub face: BlockFace,
+    pub direction: Direction,
     pub sequence: i32,
 }
 
@@ -340,12 +303,12 @@ pub struct DropItemStack {
 
 /// Eating food, pulling back bows, using buckets, etc.
 #[derive(Clone, Debug)]
-pub struct UpdateHeldItemState {
+pub struct ReleaseUseItem {
     pub client: Entity,
 }
 
 #[derive(Clone, Debug)]
-pub struct SwapItemInHand {
+pub struct SwapItemWithOffhand {
     pub client: Entity,
 }
 
@@ -359,7 +322,7 @@ pub struct PlayerInput {
 }
 
 #[derive(Clone, Debug)]
-pub struct Pong {
+pub struct PlayPong {
     pub client: Entity,
     pub id: i32,
 }
@@ -374,7 +337,7 @@ pub struct PlayerSession {
 }
 
 #[derive(Clone, Debug)]
-pub struct ChangeRecipeBookSettings {
+pub struct RecipeCategoryOptions {
     pub client: Entity,
     pub book_id: RecipeBookId,
     pub book_open: bool,
@@ -382,7 +345,7 @@ pub struct ChangeRecipeBookSettings {
 }
 
 #[derive(Clone, Debug)]
-pub struct SetSeenRecipe {
+pub struct RecipeBookData {
     pub client: Entity,
     pub recipe_id: Ident<Box<str>>,
 }
@@ -405,13 +368,13 @@ pub enum ResourcePackStatus {
     FailedDownload,
 }
 
-impl From<ResourcePackC2s> for ResourcePackStatus {
-    fn from(packet: ResourcePackC2s) -> Self {
+impl From<ResourcePackStatusC2s> for ResourcePackStatus {
+    fn from(packet: ResourcePackStatusC2s) -> Self {
         match packet {
-            ResourcePackC2s::Accepted { .. } => Self::Accepted,
-            ResourcePackC2s::Declined { .. } => Self::Declined,
-            ResourcePackC2s::SuccessfullyLoaded { .. } => Self::Loaded,
-            ResourcePackC2s::FailedDownload { .. } => Self::FailedDownload,
+            ResourcePackStatusC2s::Accepted => Self::Accepted,
+            ResourcePackStatusC2s::Declined => Self::Declined,
+            ResourcePackStatusC2s::SuccessfullyLoaded => Self::Loaded,
+            ResourcePackStatusC2s::FailedDownload => Self::FailedDownload,
         }
     }
 }
@@ -434,26 +397,26 @@ pub struct CloseAdvancementScreen {
 }
 
 #[derive(Clone, Debug)]
-pub struct SelectTrade {
+pub struct SelectMerchantTrade {
     pub client: Entity,
     pub slot: i32,
 }
 
 #[derive(Clone, Debug)]
-pub struct SetBeaconEffect {
+pub struct UpdateBeacon {
     pub client: Entity,
     pub primary_effect: Option<i32>,
     pub secondary_effect: Option<i32>,
 }
 
 #[derive(Clone, Debug)]
-pub struct SetHeldItem {
+pub struct UpdateSelectedSlot {
     pub client: Entity,
     pub slot: i16,
 }
 
 #[derive(Clone, Debug)]
-pub struct ProgramCommandBlock {
+pub struct UpdateCommandBlock {
     pub client: Entity,
     pub position: BlockPos,
     pub command: Box<str>,
@@ -464,7 +427,7 @@ pub struct ProgramCommandBlock {
 }
 
 #[derive(Clone, Debug)]
-pub struct ProgramCommandBlockMinecart {
+pub struct UpdateCommandBlockMinecart {
     pub client: Entity,
     pub entity_id: i32,
     pub command: Box<str>,
@@ -472,14 +435,14 @@ pub struct ProgramCommandBlockMinecart {
 }
 
 #[derive(Clone, Debug)]
-pub struct SetCreativeModeSlot {
+pub struct CreativeInventoryAction {
     pub client: Entity,
     pub slot: i16,
     pub clicked_item: Option<ItemStack>,
 }
 
 #[derive(Clone, Debug)]
-pub struct ProgramJigsawBlock {
+pub struct UpdateJigsaw {
     pub client: Entity,
     pub position: BlockPos,
     pub name: Ident<Box<str>>,
@@ -490,7 +453,7 @@ pub struct ProgramJigsawBlock {
 }
 
 #[derive(Clone, Debug)]
-pub struct ProgramStructureBlock {
+pub struct UpdateStructureBlock {
     pub client: Entity,
     pub position: BlockPos,
     pub action: StructureBlockAction,
@@ -514,26 +477,26 @@ pub struct UpdateSign {
 }
 
 #[derive(Clone, Debug)]
-pub struct SwingArm {
+pub struct HandSwing {
     pub client: Entity,
     pub hand: Hand,
 }
 
 #[derive(Clone, Debug)]
-pub struct TeleportToEntity {
+pub struct SpectatorTeleport {
     pub client: Entity,
     pub target: Uuid,
 }
 
 #[derive(Clone, Debug)]
-pub struct UseItemOnBlock {
+pub struct PlayerInteractBlock {
     pub client: Entity,
     /// The hand that was used
     pub hand: Hand,
     /// The location of the block that was interacted with
     pub position: BlockPos,
     /// The face of the block that was clicked
-    pub face: BlockFace,
+    pub direction: Direction,
     /// The position inside of the block that was clicked on
     pub cursor_pos: Vec3,
     /// Whether or not the player's head is inside a block
@@ -543,7 +506,7 @@ pub struct UseItemOnBlock {
 }
 
 #[derive(Clone, Debug)]
-pub struct UseItem {
+pub struct PlayerInteractItem {
     pub client: Entity,
     pub hand: Hand,
     pub sequence: i32,
@@ -599,33 +562,28 @@ macro_rules! events {
 // Events are grouped to get around the 16 system parameter maximum.
 events! {
     0 {
-        QueryBlockEntity
-        ChangeDifficulty
+        QueryBlockNbt
+        UpdateDifficulty
         MessageAcknowledgment
-        ChatCommand
+        CommandExecution
         ChatMessage
-        ChatPreview
         PerformRespawn
         RequestStats
-        UpdateSettings
-        CommandSuggestionsRequest
-        ClickContainerButton
-        ClickContainer
-        CloseContainer
-        PluginMessage
-        EditBook
-        QueryEntityTag
+        ClientSettings
+        RequestCommandCompletions
+        ButtonClick
+        ClickSlot
+        CloseHandledScreen
+        CustomPayload
+        BookUpdate
+        QueryEntityNbt
     }
     1 {
-        InteractWithEntity
-        JigsawGenerate
-        LockDifficulty
-        SetPlayerPosition
-        SetPlayerPositionAndRotation
-        SetPlayerRotation
-        SetPlayerOnGround
-        MoveVehicle
-        MovePlayer
+        PlayerInteract
+        JigsawGenerating
+        UpdateDifficultyLock
+        PlayerMove
+        VehicleMove
         StartSneaking
         StopSneaking
         LeaveBed
@@ -637,43 +595,43 @@ events! {
     2 {
         OpenHorseInventory
         StartFlyingWithElytra
-        PaddleBoat
-        PickItem
-        PlaceRecipe
+        BoatPaddleState
+        PickFromInventory
+        CraftRequest
         StopFlying
         StartFlying
         StartDigging
-        CancelDigging
-        FinishDigging
+        AbortDestroyBlock
+        StopDestroyBlock
         DropItemStack
-        UpdateHeldItemState
-        SwapItemInHand
+        ReleaseUseItem
+        SwapItemWithOffhand
         PlayerInput
-        Pong
+        PlayPong
     }
     3 {
         PlayerSession
-        ChangeRecipeBookSettings
-        SetSeenRecipe
+        RecipeCategoryOptions
+        RecipeBookData
         RenameItem
         ResourcePackStatusChange
         OpenAdvancementTab
         CloseAdvancementScreen
-        SelectTrade
-        SetBeaconEffect
-        SetHeldItem
-        ProgramCommandBlock
-        ProgramCommandBlockMinecart
-        SetCreativeModeSlot
+        SelectMerchantTrade
+        UpdateBeacon
+        UpdateSelectedSlot
+        UpdateCommandBlock
+        UpdateCommandBlockMinecart
+        CreativeInventoryAction
     }
     4 {
-        ProgramJigsawBlock
-        ProgramStructureBlock
+        UpdateJigsaw
+        UpdateStructureBlock
         UpdateSign
-        SwingArm
-        TeleportToEntity
-        UseItemOnBlock
-        UseItem
+        HandSwing
+        SpectatorTeleport
+        PlayerInteractBlock
+        PlayerInteractItem
     }
 }
 
@@ -712,7 +670,6 @@ pub(crate) fn event_loop_run_criteria(
                     }
                 }
                 Err(e) => {
-                    // TODO: validate packets in separate systems.
                     warn!(
                         username = %client.username,
                         uuid = %client.uuid,
@@ -735,7 +692,6 @@ pub(crate) fn event_loop_run_criteria(
             match handle_one_packet(&mut client, &mut inventory, entity, &mut events) {
                 Ok(had_packet) => had_packet,
                 Err(e) => {
-                    // TODO: validate packets in separate systems.
                     warn!(
                         username = %client.username,
                         uuid = %client.uuid,
@@ -769,7 +725,7 @@ fn handle_one_packet(
     };
 
     match pkt {
-        C2sPlayPacket::ConfirmTeleport(p) => {
+        C2sPlayPacket::TeleportConfirmC2s(p) => {
             if client.pending_teleports == 0 {
                 bail!("unexpected teleport confirmation");
             }
@@ -785,17 +741,17 @@ fn handle_one_packet(
                 bail!("unexpected teleport ID (expected {expected}, got {got}");
             }
         }
-        C2sPlayPacket::QueryBlockEntityTag(p) => {
-            events.0.query_block_entity.send(QueryBlockEntity {
+        C2sPlayPacket::QueryBlockNbtC2s(p) => {
+            events.0.query_block_nbt.send(QueryBlockNbt {
                 client: entity,
                 position: p.position,
                 transaction_id: p.transaction_id.0,
             });
         }
-        C2sPlayPacket::ChangeDifficulty(p) => {
-            events.0.change_difficulty.send(ChangeDifficulty {
+        C2sPlayPacket::UpdateDifficultyC2s(p) => {
+            events.0.update_difficulty.send(UpdateDifficulty {
                 client: entity,
-                difficulty: p.new_difficulty,
+                difficulty: p.difficulty,
             });
         }
         C2sPlayPacket::MessageAcknowledgmentC2s(p) => {
@@ -804,31 +760,31 @@ fn handle_one_packet(
                 message_count: p.message_count.0,
             });
         }
-        C2sPlayPacket::ChatCommand(p) => {
-            events.0.chat_command.send(ChatCommand {
+        C2sPlayPacket::CommandExecutionC2s(p) => {
+            events.0.command_execution.send(CommandExecution {
                 client: entity,
                 command: p.command.into(),
                 timestamp: p.timestamp,
             });
         }
-        C2sPlayPacket::ChatMessage(p) => {
+        C2sPlayPacket::ChatMessageC2s(p) => {
             events.0.chat_message.send(ChatMessage {
                 client: entity,
                 message: p.message.into(),
                 timestamp: p.timestamp,
             });
         }
-        C2sPlayPacket::ClientCommand(p) => match p {
-            ClientCommand::PerformRespawn => events
+        C2sPlayPacket::ClientStatusC2s(p) => match p {
+            ClientStatusC2s::PerformRespawn => events
                 .0
                 .perform_respawn
                 .send(PerformRespawn { client: entity }),
-            ClientCommand::RequestStats => {
+            ClientStatusC2s::RequestStats => {
                 events.0.request_stats.send(RequestStats { client: entity })
             }
         },
-        C2sPlayPacket::ClientInformation(p) => {
-            events.0.update_settings.send(UpdateSettings {
+        C2sPlayPacket::ClientSettingsC2s(p) => {
+            events.0.client_settings.send(ClientSettings {
                 client: entity,
                 locale: p.locale.into(),
                 view_distance: p.view_distance,
@@ -840,24 +796,24 @@ fn handle_one_packet(
                 allow_server_listings: p.allow_server_listings,
             });
         }
-        C2sPlayPacket::CommandSuggestionsRequest(p) => {
+        C2sPlayPacket::RequestCommandCompletionsC2s(p) => {
             events
                 .0
-                .command_suggestions_request
-                .send(CommandSuggestionsRequest {
+                .request_command_completions
+                .send(RequestCommandCompletions {
                     client: entity,
                     transaction_id: p.transaction_id.0,
                     text: p.text.into(),
                 });
         }
-        C2sPlayPacket::ClickContainerButton(p) => {
-            events.0.click_container_button.send(ClickContainerButton {
+        C2sPlayPacket::ButtonClickC2s(p) => {
+            events.0.button_click.send(ButtonClick {
                 client: entity,
                 window_id: p.window_id,
                 button_id: p.button_id,
             });
         }
-        C2sPlayPacket::ClickContainer(p) => {
+        C2sPlayPacket::ClickSlotC2s(p) => {
             if p.slot_idx < 0 {
                 if let Some(stack) = client.cursor_item.take() {
                     events.2.drop_item_stack.send(DropItemStack {
@@ -866,7 +822,7 @@ fn handle_one_packet(
                         stack,
                     });
                 }
-            } else if p.mode == ClickContainerMode::DropKey {
+            } else if p.mode == ClickMode::DropKey {
                 let entire_stack = p.button == 1;
                 if let Some(stack) = inventory.slot(p.slot_idx as u16) {
                     let dropped = if entire_stack || stack.count() == 1 {
@@ -888,7 +844,7 @@ fn handle_one_packet(
                     });
                 }
             } else {
-                events.0.click_container.send(ClickContainer {
+                events.0.click_slot.send(ClickSlot {
                     client: entity,
                     window_id: p.window_id,
                     state_id: p.state_id.0,
@@ -900,43 +856,43 @@ fn handle_one_packet(
                 });
             }
         }
-        C2sPlayPacket::CloseContainerC2s(p) => {
-            events.0.close_container.send(CloseContainer {
+        C2sPlayPacket::CloseHandledScreenC2s(p) => {
+            events.0.close_handled_screen.send(CloseHandledScreen {
                 client: entity,
                 window_id: p.window_id,
             });
         }
-        C2sPlayPacket::PluginMessageC2s(p) => {
-            events.0.plugin_message.send(PluginMessage {
+        C2sPlayPacket::CustomPayloadC2s(p) => {
+            events.0.custom_payload.send(CustomPayload {
                 client: entity,
                 channel: p.channel.into(),
                 data: p.data.0.into(),
             });
         }
-        C2sPlayPacket::EditBook(p) => {
-            events.0.edit_book.send(EditBook {
+        C2sPlayPacket::BookUpdateC2s(p) => {
+            events.0.book_update.send(BookUpdate {
                 slot: p.slot.0,
                 entries: p.entries.into_iter().map(Into::into).collect(),
                 title: p.title.map(Box::from),
             });
         }
-        C2sPlayPacket::QueryEntityTag(p) => {
-            events.0.query_entity_tag.send(QueryEntityTag {
+        C2sPlayPacket::QueryEntityNbtC2s(p) => {
+            events.0.query_entity_nbt.send(QueryEntityNbt {
                 client: entity,
                 transaction_id: p.transaction_id.0,
                 entity_id: p.entity_id.0,
             });
         }
-        C2sPlayPacket::Interact(p) => {
-            events.1.interact_with_entity.send(InteractWithEntity {
+        C2sPlayPacket::PlayerInteractC2s(p) => {
+            events.1.player_interact.send(PlayerInteract {
                 client: entity,
                 entity_id: p.entity_id.0,
                 sneaking: p.sneaking,
                 interact: p.interact,
             });
         }
-        C2sPlayPacket::JigsawGenerate(p) => {
-            events.1.jigsaw_generate.send(JigsawGenerate {
+        C2sPlayPacket::JigsawGeneratingC2s(p) => {
+            events.1.jigsaw_generating.send(JigsawGenerating {
                 client: entity,
                 position: p.position,
                 levels: p.levels.0,
@@ -957,63 +913,38 @@ fn handle_one_packet(
                 client.ping = client.keepalive_sent_time.elapsed().as_millis() as i32;
             }
         }
-        C2sPlayPacket::LockDifficulty(p) => {
-            events.1.lock_difficulty.send(LockDifficulty {
+        C2sPlayPacket::UpdateDifficultyLockC2s(p) => {
+            events.1.update_difficulty_lock.send(UpdateDifficultyLock {
                 client: entity,
                 locked: p.locked,
             });
         }
-        C2sPlayPacket::SetPlayerPosition(p) => {
+        C2sPlayPacket::PositionAndOnGroundC2s(p) => {
             if client.pending_teleports != 0 {
                 return Ok(false);
             }
 
-            events.1.set_player_position.send(SetPlayerPosition {
+            events.1.player_move.send(PlayerMove {
                 client: entity,
                 position: p.position.into(),
-                on_ground: p.on_ground,
-            });
-
-            events.1.move_player.send(MovePlayer {
-                client: entity,
-                old_position: client.position,
-                position: p.position.into(),
-                old_yaw: client.yaw,
                 yaw: client.yaw,
-                old_pitch: client.pitch,
                 pitch: client.pitch,
-                old_on_ground: client.on_ground,
                 on_ground: client.on_ground,
             });
 
             client.position = p.position.into();
             client.on_ground = p.on_ground;
         }
-        C2sPlayPacket::SetPlayerPositionAndRotation(p) => {
+        C2sPlayPacket::FullC2s(p) => {
             if client.pending_teleports != 0 {
                 return Ok(false);
             }
 
-            events
-                .1
-                .set_player_position_and_rotation
-                .send(SetPlayerPositionAndRotation {
-                    client: entity,
-                    position: p.position.into(),
-                    yaw: p.yaw,
-                    pitch: p.pitch,
-                    on_ground: p.on_ground,
-                });
-
-            events.1.move_player.send(MovePlayer {
+            events.1.player_move.send(PlayerMove {
                 client: entity,
-                old_position: client.position,
                 position: p.position.into(),
-                old_yaw: client.yaw,
                 yaw: p.yaw,
-                old_pitch: client.pitch,
                 pitch: p.pitch,
-                old_on_ground: client.on_ground,
                 on_ground: p.on_ground,
             });
 
@@ -1022,27 +953,16 @@ fn handle_one_packet(
             client.pitch = p.pitch;
             client.on_ground = p.on_ground;
         }
-        C2sPlayPacket::SetPlayerRotation(p) => {
+        C2sPlayPacket::LookAndOnGroundC2s(p) => {
             if client.pending_teleports != 0 {
                 return Ok(false);
             }
 
-            events.1.set_player_rotation.send(SetPlayerRotation {
+            events.1.player_move.send(PlayerMove {
                 client: entity,
-                yaw: p.yaw,
-                pitch: p.pitch,
-                on_ground: p.on_ground,
-            });
-
-            events.1.move_player.send(MovePlayer {
-                client: entity,
-                old_position: client.position,
                 position: client.position,
-                old_yaw: client.yaw,
                 yaw: p.yaw,
-                old_pitch: client.pitch,
                 pitch: p.pitch,
-                old_on_ground: client.on_ground,
                 on_ground: p.on_ground,
             });
 
@@ -1050,144 +970,95 @@ fn handle_one_packet(
             client.pitch = p.pitch;
             client.on_ground = p.on_ground;
         }
-        C2sPlayPacket::SetPlayerOnGround(p) => {
+        C2sPlayPacket::OnGroundOnlyC2s(p) => {
             if client.pending_teleports != 0 {
                 return Ok(false);
             }
 
-            events.1.set_player_on_ground.send(SetPlayerOnGround {
+            events.1.player_move.send(PlayerMove {
                 client: entity,
-                on_ground: p.on_ground,
-            });
-
-            events.1.move_player.send(MovePlayer {
-                client: entity,
-                old_position: client.position,
                 position: client.position,
-                old_yaw: client.yaw,
                 yaw: client.yaw,
-                old_pitch: client.pitch,
                 pitch: client.pitch,
-                old_on_ground: client.on_ground,
                 on_ground: p.on_ground,
             });
 
             client.on_ground = p.on_ground;
         }
-        C2sPlayPacket::MoveVehicleC2s(p) => {
+        C2sPlayPacket::VehicleMoveC2s(p) => {
             if client.pending_teleports != 0 {
                 return Ok(false);
             }
 
-            events.1.move_vehicle.send(MoveVehicle {
+            events.1.vehicle_move.send(VehicleMove {
                 client: entity,
                 position: p.position.into(),
                 yaw: p.yaw,
                 pitch: p.pitch,
-            });
-
-            events.1.move_player.send(MovePlayer {
-                client: entity,
-                old_position: client.position,
-                position: p.position.into(),
-                old_yaw: client.yaw,
-                yaw: p.yaw,
-                old_pitch: client.pitch,
-                pitch: p.pitch,
-                old_on_ground: client.on_ground,
-                on_ground: client.on_ground,
             });
 
             client.position = p.position.into();
             client.yaw = p.yaw;
             client.pitch = p.pitch;
         }
-        C2sPlayPacket::PlayerCommand(p) => match p.action_id {
-            Action::StartSneaking => events
-                .1
-                .start_sneaking
-                .send(StartSneaking { client: entity }),
-            Action::StopSneaking => events.1.stop_sneaking.send(StopSneaking { client: entity }),
-            Action::LeaveBed => events.1.leave_bed.send(LeaveBed { client: entity }),
-            Action::StartSprinting => events
-                .1
-                .start_sprinting
-                .send(StartSprinting { client: entity }),
-            Action::StopSprinting => events
-                .1
-                .stop_sprinting
-                .send(StopSprinting { client: entity }),
-            Action::StartJumpWithHorse => events.1.start_jump_with_horse.send(StartJumpWithHorse {
-                client: entity,
-                jump_boost: p.jump_boost.0 as u8,
-            }),
-            Action::StopJumpWithHorse => events
-                .1
-                .stop_jump_with_horse
-                .send(StopJumpWithHorse { client: entity }),
-            Action::OpenHorseInventory => events
-                .2
-                .open_horse_inventory
-                .send(OpenHorseInventory { client: entity }),
-            Action::StartFlyingWithElytra => events
-                .2
-                .start_flying_with_elytra
-                .send(StartFlyingWithElytra { client: entity }),
-        },
-        C2sPlayPacket::PaddleBoat(p) => {
-            events.2.paddle_boat.send(PaddleBoat {
+        C2sPlayPacket::BoatPaddleStateC2s(p) => {
+            events.2.boat_paddle_state.send(BoatPaddleState {
                 client: entity,
                 left_paddle_turning: p.left_paddle_turning,
                 right_paddle_turning: p.right_paddle_turning,
             });
         }
-        C2sPlayPacket::PickItem(p) => {
-            events.2.pick_item.send(PickItem {
+        C2sPlayPacket::PickFromInventoryC2s(p) => {
+            events.2.pick_from_inventory.send(PickFromInventory {
                 client: entity,
                 slot_to_use: p.slot_to_use.0,
             });
         }
-        C2sPlayPacket::PlaceRecipe(p) => {
-            events.2.place_recipe.send(PlaceRecipe {
+        C2sPlayPacket::CraftRequestC2s(p) => {
+            events.2.craft_request.send(CraftRequest {
                 client: entity,
                 window_id: p.window_id,
                 recipe: p.recipe.into(),
                 make_all: p.make_all,
             });
         }
-        C2sPlayPacket::PlayerAbilitiesC2s(p) => match p {
-            PlayerAbilitiesC2s::StopFlying => {
+        C2sPlayPacket::UpdatePlayerAbilitiesC2s(p) => match p {
+            UpdatePlayerAbilitiesC2s::StopFlying => {
                 events.2.stop_flying.send(StopFlying { client: entity })
             }
-            PlayerAbilitiesC2s::StartFlying => {
+            UpdatePlayerAbilitiesC2s::StartFlying => {
                 events.2.start_flying.send(StartFlying { client: entity })
             }
         },
-        C2sPlayPacket::PlayerAction(p) => {
+        C2sPlayPacket::PlayerActionC2s(p) => {
             if p.sequence.0 != 0 {
                 client.block_change_sequence = cmp::max(p.sequence.0, client.block_change_sequence);
             }
 
-            match p.status {
-                DiggingStatus::StartedDigging => events.2.start_digging.send(StartDigging {
+            match p.action {
+                PlayerAction::StartDestroyBlock => events.2.start_digging.send(StartDigging {
                     client: entity,
                     position: p.position,
-                    face: p.face,
+                    direction: p.direction,
                     sequence: p.sequence.0,
                 }),
-                DiggingStatus::CancelledDigging => events.2.cancel_digging.send(CancelDigging {
-                    client: entity,
-                    position: p.position,
-                    face: p.face,
-                    sequence: p.sequence.0,
-                }),
-                DiggingStatus::FinishedDigging => events.2.finish_digging.send(FinishDigging {
-                    client: entity,
-                    position: p.position,
-                    face: p.face,
-                    sequence: p.sequence.0,
-                }),
-                DiggingStatus::DropItemStack => {
+                PlayerAction::AbortDestroyBlock => {
+                    events.2.abort_destroy_block.send(AbortDestroyBlock {
+                        client: entity,
+                        position: p.position,
+                        direction: p.direction,
+                        sequence: p.sequence.0,
+                    })
+                }
+                PlayerAction::StopDestroyBlock => {
+                    events.2.stop_destroy_block.send(StopDestroyBlock {
+                        client: entity,
+                        position: p.position,
+                        direction: p.direction,
+                        sequence: p.sequence.0,
+                    })
+                }
+                PlayerAction::DropAllItems => {
                     if let Some(stack) = inventory.replace_slot(client.held_item_slot(), None) {
                         client.inventory_slots_modified |= 1 << client.held_item_slot();
                         events.2.drop_item_stack.send(DropItemStack {
@@ -1197,7 +1068,7 @@ fn handle_one_packet(
                         });
                     }
                 }
-                DiggingStatus::DropItem => {
+                PlayerAction::DropItem => {
                     if let Some(stack) = inventory.slot(client.held_item_slot()) {
                         let mut old_slot = if stack.count() == 1 {
                             inventory.replace_slot(client.held_item_slot(), None)
@@ -1217,17 +1088,53 @@ fn handle_one_packet(
                         });
                     }
                 }
-                DiggingStatus::UpdateHeldItemState => events
+                PlayerAction::ReleaseUseItem => events
                     .2
-                    .update_held_item_state
-                    .send(UpdateHeldItemState { client: entity }),
-                DiggingStatus::SwapItemInHand => events
+                    .release_use_item
+                    .send(ReleaseUseItem { client: entity }),
+                PlayerAction::SwapItemWithOffhand => events
                     .2
-                    .swap_item_in_hand
-                    .send(SwapItemInHand { client: entity }),
+                    .swap_item_with_offhand
+                    .send(SwapItemWithOffhand { client: entity }),
             }
         }
-        C2sPlayPacket::PlayerInput(p) => {
+        C2sPlayPacket::ClientCommandC2s(p) => match p.action {
+            ClientCommandAction::StartSneaking => events
+                .1
+                .start_sneaking
+                .send(StartSneaking { client: entity }),
+            ClientCommandAction::StopSneaking => {
+                events.1.stop_sneaking.send(StopSneaking { client: entity })
+            }
+            ClientCommandAction::LeaveBed => events.1.leave_bed.send(LeaveBed { client: entity }),
+            ClientCommandAction::StartSprinting => events
+                .1
+                .start_sprinting
+                .send(StartSprinting { client: entity }),
+            ClientCommandAction::StopSprinting => events
+                .1
+                .stop_sprinting
+                .send(StopSprinting { client: entity }),
+            ClientCommandAction::StartJumpWithHorse => {
+                events.1.start_jump_with_horse.send(StartJumpWithHorse {
+                    client: entity,
+                    jump_boost: p.jump_boost.0 as u8,
+                })
+            }
+            ClientCommandAction::StopJumpWithHorse => events
+                .1
+                .stop_jump_with_horse
+                .send(StopJumpWithHorse { client: entity }),
+            ClientCommandAction::OpenHorseInventory => events
+                .2
+                .open_horse_inventory
+                .send(OpenHorseInventory { client: entity }),
+            ClientCommandAction::StartFlyingWithElytra => events
+                .2
+                .start_flying_with_elytra
+                .send(StartFlyingWithElytra { client: entity }),
+        },
+        C2sPlayPacket::PlayerInputC2s(p) => {
             events.2.player_input.send(PlayerInput {
                 client: entity,
                 sideways: p.sideways,
@@ -1236,13 +1143,13 @@ fn handle_one_packet(
                 unmount: p.flags.unmount(),
             });
         }
-        C2sPlayPacket::PongPlay(p) => {
-            events.2.pong.send(Pong {
+        C2sPlayPacket::PlayPongC2s(p) => {
+            events.2.play_pong.send(PlayPong {
                 client: entity,
                 id: p.id,
             });
         }
-        C2sPlayPacket::PlayerSession(p) => {
+        C2sPlayPacket::PlayerSessionC2s(p) => {
             events.3.player_session.send(PlayerSession {
                 client: entity,
                 session_id: p.session_id,
@@ -1251,30 +1158,30 @@ fn handle_one_packet(
                 key_signature: p.key_signature.into(),
             });
         }
-        C2sPlayPacket::ChangeRecipeBookSettings(p) => {
+        C2sPlayPacket::RecipeCategoryOptionsC2s(p) => {
             events
                 .3
-                .change_recipe_book_settings
-                .send(ChangeRecipeBookSettings {
+                .recipe_category_options
+                .send(RecipeCategoryOptions {
                     client: entity,
                     book_id: p.book_id,
                     book_open: p.book_open,
                     filter_active: p.filter_active,
                 });
         }
-        C2sPlayPacket::SetSeenRecipe(p) => {
-            events.3.set_seen_recipe.send(SetSeenRecipe {
+        C2sPlayPacket::RecipeBookDataC2s(p) => {
+            events.3.recipe_book_data.send(RecipeBookData {
                 client: entity,
                 recipe_id: p.recipe_id.into(),
             });
         }
-        C2sPlayPacket::RenameItem(p) => {
+        C2sPlayPacket::RenameItemC2s(p) => {
             events.3.rename_item.send(RenameItem {
                 client: entity,
                 name: p.item_name.into(),
             });
         }
-        C2sPlayPacket::ResourcePackC2s(p) => {
+        C2sPlayPacket::ResourcePackStatusC2s(p) => {
             events
                 .3
                 .resource_pack_status_change
@@ -1283,37 +1190,39 @@ fn handle_one_packet(
                     status: p.into(),
                 })
         }
-        C2sPlayPacket::SeenAdvancements(p) => match p {
-            SeenAdvancements::OpenedTab { tab_id } => {
+        C2sPlayPacket::AdvancementTabC2s(p) => match p {
+            AdvancementTabC2s::OpenedTab { tab_id } => {
                 events.3.open_advancement_tab.send(OpenAdvancementTab {
                     client: entity,
                     tab_id: tab_id.into(),
                 })
             }
-            SeenAdvancements::ClosedScreen => events
+            AdvancementTabC2s::ClosedScreen => events
                 .3
                 .close_advancement_screen
                 .send(CloseAdvancementScreen { client: entity }),
         },
-        C2sPlayPacket::SelectTrade(p) => {
-            events.3.select_trade.send(SelectTrade {
+        C2sPlayPacket::SelectMerchantTradeC2s(p) => {
+            events.3.select_merchant_trade.send(SelectMerchantTrade {
                 client: entity,
                 slot: p.selected_slot.0,
             });
         }
-        C2sPlayPacket::SetBeaconEffect(p) => {
-            events.3.set_beacon_effect.send(SetBeaconEffect {
+        C2sPlayPacket::UpdateBeaconC2s(p) => {
+            events.3.update_beacon.send(UpdateBeacon {
                 client: entity,
                 primary_effect: p.primary_effect.map(|i| i.0),
                 secondary_effect: p.secondary_effect.map(|i| i.0),
             });
         }
-        C2sPlayPacket::SetHeldItemC2s(p) => events.3.set_held_item.send(SetHeldItem {
-            client: entity,
-            slot: p.slot,
-        }),
-        C2sPlayPacket::ProgramCommandBlock(p) => {
-            events.3.program_command_block.send(ProgramCommandBlock {
+        C2sPlayPacket::UpdateSelectedSlotC2s(p) => {
+            events.3.update_selected_slot.send(UpdateSelectedSlot {
+                client: entity,
+                slot: p.slot,
+            })
+        }
+        C2sPlayPacket::UpdateCommandBlockC2s(p) => {
+            events.3.update_command_block.send(UpdateCommandBlock {
                 client: entity,
                 position: p.position,
                 command: p.command.into(),
@@ -1323,18 +1232,18 @@ fn handle_one_packet(
                 automatic: p.flags.automatic(),
             });
         }
-        C2sPlayPacket::ProgramCommandBlockMinecart(p) => {
+        C2sPlayPacket::UpdateCommandBlockMinecartC2s(p) => {
             events
                 .3
-                .program_command_block_minecart
-                .send(ProgramCommandBlockMinecart {
+                .update_command_block_minecart
+                .send(UpdateCommandBlockMinecart {
                     client: entity,
                     entity_id: p.entity_id.0,
                     command: p.command.into(),
                     track_output: p.track_output,
                 });
         }
-        C2sPlayPacket::SetCreativeModeSlot(p) => {
+        C2sPlayPacket::CreativeInventoryActionC2s(p) => {
             if p.slot == -1 {
                 if let Some(stack) = p.clicked_item.as_ref() {
                     events.2.drop_item_stack.send(DropItemStack {
@@ -1344,14 +1253,17 @@ fn handle_one_packet(
                     });
                 }
             }
-            events.3.set_creative_mode_slot.send(SetCreativeModeSlot {
-                client: entity,
-                slot: p.slot,
-                clicked_item: p.clicked_item,
-            });
+            events
+                .3
+                .creative_inventory_action
+                .send(CreativeInventoryAction {
+                    client: entity,
+                    slot: p.slot,
+                    clicked_item: p.clicked_item,
+                });
         }
-        C2sPlayPacket::ProgramJigsawBlock(p) => {
-            events.4.program_jigsaw_block.send(ProgramJigsawBlock {
+        C2sPlayPacket::UpdateJigsawC2s(p) => {
+            events.4.update_jigsaw.send(UpdateJigsaw {
                 client: entity,
                 position: p.position,
                 name: p.name.into(),
@@ -1361,66 +1273,63 @@ fn handle_one_packet(
                 joint_type: p.joint_type.into(),
             });
         }
-        C2sPlayPacket::ProgramStructureBlock(p) => {
-            events
-                .4
-                .program_structure_block
-                .send(ProgramStructureBlock {
-                    client: entity,
-                    position: p.position,
-                    action: p.action,
-                    mode: p.mode,
-                    name: p.name.into(),
-                    offset_xyz: p.offset_xyz,
-                    size_xyz: p.size_xyz,
-                    mirror: p.mirror,
-                    rotation: p.rotation,
-                    metadata: p.metadata.into(),
-                    integrity: p.integrity,
-                    seed: p.seed.0,
-                    flags: p.flags,
-                })
+        C2sPlayPacket::UpdateStructureBlockC2s(p) => {
+            events.4.update_structure_block.send(UpdateStructureBlock {
+                client: entity,
+                position: p.position,
+                action: p.action,
+                mode: p.mode,
+                name: p.name.into(),
+                offset_xyz: p.offset_xyz,
+                size_xyz: p.size_xyz,
+                mirror: p.mirror,
+                rotation: p.rotation,
+                metadata: p.metadata.into(),
+                integrity: p.integrity,
+                seed: p.seed.0,
+                flags: p.flags,
+            })
         }
-        C2sPlayPacket::UpdateSign(p) => {
+        C2sPlayPacket::UpdateSignC2s(p) => {
             events.4.update_sign.send(UpdateSign {
                 client: entity,
                 position: p.position,
                 lines: p.lines.map(Into::into),
             });
         }
-        C2sPlayPacket::SwingArm(p) => {
-            events.4.swing_arm.send(SwingArm {
+        C2sPlayPacket::HandSwingC2s(p) => {
+            events.4.hand_swing.send(HandSwing {
                 client: entity,
                 hand: p.hand,
             });
         }
-        C2sPlayPacket::TeleportToEntity(p) => {
-            events.4.teleport_to_entity.send(TeleportToEntity {
+        C2sPlayPacket::SpectatorTeleportC2s(p) => {
+            events.4.spectator_teleport.send(SpectatorTeleport {
                 client: entity,
                 target: p.target,
             });
         }
-        C2sPlayPacket::UseItemOn(p) => {
+        C2sPlayPacket::PlayerInteractBlockC2s(p) => {
             if p.sequence.0 != 0 {
                 client.block_change_sequence = cmp::max(p.sequence.0, client.block_change_sequence);
             }
 
-            events.4.use_item_on_block.send(UseItemOnBlock {
+            events.4.player_interact_block.send(PlayerInteractBlock {
                 client: entity,
                 hand: p.hand,
                 position: p.position,
-                face: p.face,
+                direction: p.face,
                 cursor_pos: p.cursor_pos.into(),
                 head_inside_block: false,
                 sequence: 0,
             })
         }
-        C2sPlayPacket::UseItem(p) => {
+        C2sPlayPacket::PlayerInteractItemC2s(p) => {
             if p.sequence.0 != 0 {
                 client.block_change_sequence = cmp::max(p.sequence.0, client.block_change_sequence);
             }
 
-            events.4.use_item.send(UseItem {
+            events.4.player_interact_item.send(PlayerInteractItem {
                 client: entity,
                 hand: p.hand,
                 sequence: p.sequence.0,
@@ -1449,15 +1358,15 @@ fn handle_one_packet(
 #[allow(clippy::too_many_arguments)]
 pub fn default_event_handler(
     mut clients: Query<(&mut Client, Option<&mut McEntity>)>,
-    mut update_settings: EventReader<UpdateSettings>,
-    mut move_player: EventReader<MovePlayer>,
+    mut update_settings: EventReader<ClientSettings>,
+    mut player_move: EventReader<PlayerMove>,
     mut start_sneaking: EventReader<StartSneaking>,
     mut stop_sneaking: EventReader<StopSneaking>,
     mut start_sprinting: EventReader<StartSprinting>,
     mut stop_sprinting: EventReader<StopSprinting>,
-    mut swing_arm: EventReader<SwingArm>,
+    mut swing_arm: EventReader<HandSwing>,
 ) {
-    for UpdateSettings {
+    for ClientSettings {
         client,
         view_distance,
         displayed_skin_parts,
@@ -1496,14 +1405,14 @@ pub fn default_event_handler(
         }
     }
 
-    for MovePlayer {
+    for PlayerMove {
         client,
         position,
         yaw,
         pitch,
         on_ground,
         ..
-    } in move_player.iter()
+    } in player_move.iter()
     {
         let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
             continue
@@ -1556,7 +1465,7 @@ pub fn default_event_handler(
         }
     }
 
-    for SwingArm { client, hand } in swing_arm.iter() {
+    for HandSwing { client, hand } in swing_arm.iter() {
         let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
             continue
         };

@@ -2,18 +2,21 @@
 //! protocol.
 //!
 //! The API is centered around the [`Encode`] and [`Decode`] traits. Clientbound
-//! and serverbound packets are defined in the [`packets`] module. Packets are
+//! and serverbound packets are defined in the [`packet`] module. Packets are
 //! encoded and decoded using the [`PacketEncoder`] and [`PacketDecoder`] types.
+//!
+//! [`PacketEncoder`]: codec::PacketEncoder
+//! [`PacketDecoder`]: codec::PacketDecoder
 //!
 //! # Examples
 //!
 //! ```
-//! use valence_protocol::packets::c2s::play::RenameItem;
-//! use valence_protocol::{PacketDecoder, PacketEncoder};
+//! use valence_protocol::codec::{PacketDecoder, PacketEncoder};
+//! use valence_protocol::packet::c2s::play::RenameItemC2s;
 //!
 //! let mut enc = PacketEncoder::new();
 //!
-//! let outgoing = RenameItem {
+//! let outgoing = RenameItemC2s {
 //!     item_name: "Hello!",
 //! };
 //!
@@ -23,7 +26,7 @@
 //!
 //! dec.queue_bytes(enc.take());
 //!
-//! let incoming = dec.try_next_packet::<RenameItem>().unwrap().unwrap();
+//! let incoming = dec.try_next_packet::<RenameItemC2s>().unwrap().unwrap();
 //!
 //! assert_eq!(outgoing.item_name, incoming.item_name);
 //! ```
@@ -72,21 +75,7 @@ use std::io::Write;
 use std::{fmt, io};
 
 pub use anyhow::{Error, Result};
-pub use array::LengthPrefixedArray;
-pub use block::{BlockFace, BlockKind, BlockState};
-pub use block_pos::BlockPos;
-pub use byte_angle::ByteAngle;
-pub use codec::*;
-pub use ident::Ident;
-pub use item::{ItemKind, ItemStack};
-pub use raw_bytes::RawBytes;
-pub use sound::Sound;
-pub use text::{Text, TextFormat};
-pub use username::Username;
-pub use uuid::Uuid;
-pub use valence_protocol_macros::{Decode, DecodePacket, Encode, EncodePacket};
-pub use var_int::VarInt;
-pub use var_long::VarLong;
+pub use valence_protocol_macros::{ident_str, Decode, DecodePacket, Encode, EncodePacket};
 pub use {uuid, valence_nbt as nbt};
 
 /// The Minecraft protocol version this library currently targets.
@@ -96,33 +85,33 @@ pub const PROTOCOL_VERSION: i32 = 761;
 /// targets.
 pub const MINECRAFT_VERSION: &str = "1.19.3";
 
-mod array;
+pub mod array;
 pub mod block;
-mod block_pos;
-mod bounded;
-mod byte_angle;
-mod codec;
+pub mod block_pos;
+pub mod byte_angle;
+pub mod codec;
 pub mod enchant;
-pub mod entity_meta;
 pub mod ident;
 mod impls;
-mod item;
-pub mod packets;
-mod raw_bytes;
+pub mod item;
+pub mod packet;
+pub mod raw_bytes;
 pub mod sound;
 pub mod text;
+pub mod tracked_data;
 pub mod translation_key;
 pub mod types;
 pub mod username;
 pub mod var_int;
-mod var_long;
+pub mod var_long;
 
 /// Used only by proc macros. Not public API.
 #[doc(hidden)]
 pub mod __private {
     pub use anyhow::{anyhow, bail, ensure, Context, Result};
 
-    pub use crate::{Decode, DecodePacket, Encode, EncodePacket, VarInt};
+    pub use crate::var_int::VarInt;
+    pub use crate::{Decode, DecodePacket, Encode, EncodePacket};
 }
 
 /// The maximum number of bytes in a single Minecraft packet.
@@ -175,6 +164,7 @@ pub const MAX_PACKET_SIZE: i32 = 2097152;
 /// ```
 ///
 /// [macro]: valence_protocol_macros::Encode
+/// [`VarInt`]: var_int::VarInt
 pub trait Encode {
     /// Writes this object to the provided writer.
     ///
@@ -250,6 +240,7 @@ pub trait Encode {
 /// ```
 ///
 /// [macro]: valence_protocol_macros::Decode
+/// [`VarInt`]: var_int::VarInt
 pub trait Decode<'a>: Sized {
     /// Reads this object from the provided byte slice.
     ///
@@ -285,6 +276,7 @@ pub trait Decode<'a>: Sized {
 /// ```
 ///
 /// [macro]: valence_protocol_macros::DecodePacket
+/// [`VarInt`]: var_int::VarInt
 pub trait EncodePacket: fmt::Debug {
     /// The packet ID that is written when [`Self::encode_packet`] is called. A
     /// negative value indicates that the packet ID is not statically known.
@@ -292,6 +284,8 @@ pub trait EncodePacket: fmt::Debug {
 
     /// Like [`Encode::encode`], but a leading [`VarInt`] packet ID must be
     /// written first.
+    ///
+    /// [`VarInt`]: var_int::VarInt
     fn encode_packet(&self, w: impl Write) -> Result<()>;
 }
 
@@ -324,6 +318,7 @@ pub trait EncodePacket: fmt::Debug {
 /// ```
 ///
 /// [macro]: valence_protocol::DecodePacket
+/// [`VarInt`]: var_int::VarInt
 pub trait DecodePacket<'a>: Sized + fmt::Debug {
     /// The packet ID that is read when [`Self::decode_packet`] is called. A
     /// negative value indicates that the packet ID is not statically known.
@@ -331,6 +326,8 @@ pub trait DecodePacket<'a>: Sized + fmt::Debug {
 
     /// Like [`Decode::decode`], but a leading [`VarInt`] packet ID must be read
     /// first.
+    ///
+    /// [`VarInt`]: var_int::VarInt
     fn decode_packet(r: &mut &'a [u8]) -> Result<Self>;
 }
 
@@ -361,14 +358,14 @@ mod derive_tests {
 
     #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 5]
-    struct StructWithGenerics<'z, T: std::fmt::Debug = ()> {
+    struct StructWithGenerics<'z, T: fmt::Debug = ()> {
         foo: &'z str,
         bar: T,
     }
 
     #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 6]
-    struct TupleStructWithGenerics<'z, T: std::fmt::Debug = ()>(&'z str, i32, T);
+    struct TupleStructWithGenerics<'z, T: fmt::Debug = ()>(&'z str, i32, T);
 
     #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 7]
@@ -384,7 +381,7 @@ mod derive_tests {
 
     #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
     #[packet_id = 0xbeef]
-    enum EnumWithGenericsAndTags<'z, T: std::fmt::Debug = ()> {
+    enum EnumWithGenericsAndTags<'z, T: fmt::Debug = ()> {
         #[tag = 5]
         First {
             foo: &'z str,

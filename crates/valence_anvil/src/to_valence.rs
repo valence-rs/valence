@@ -1,9 +1,9 @@
 use num_integer::{div_ceil, Integer};
 use thiserror::Error;
 use valence::biome::BiomeId;
-use valence::instance::Chunk;
-use valence::protocol::block::{BlockEntity, BlockEntityKind, BlockKind, PropName, PropValue};
-use valence::protocol::Ident;
+use valence::instance::{BlockEntity, Chunk};
+use valence::protocol::block::{BlockEntityKind, BlockKind, PropName, PropValue};
+use valence::protocol::ident::Ident;
 use valence_nbt::{Compound, List, Value};
 
 #[derive(Clone, Debug, Error)]

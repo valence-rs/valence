@@ -26,3 +26,15 @@ impl<'a> Decode<'a> for RawBytes<'a> {
         Ok(Self(slice))
     }
 }
+
+impl<'a> From<&'a [u8]> for RawBytes<'a> {
+    fn from(value: &'a [u8]) -> Self {
+        Self(value)
+    }
+}
+
+impl<'a> From<RawBytes<'a>> for &'a [u8] {
+    fn from(value: RawBytes<'a>) -> Self {
+        value.0
+    }
+}

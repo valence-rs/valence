@@ -501,10 +501,10 @@ impl PacketDecoder {
 mod tests {
     use super::*;
     use crate::block_pos::BlockPos;
-    use crate::entity_meta::PaintingKind;
     use crate::ident::Ident;
     use crate::item::{ItemKind, ItemStack};
     use crate::text::{Text, TextFormat};
+    use crate::tracked_data::PaintingKind;
     use crate::username::Username;
     use crate::var_long::VarLong;
     use crate::Decode;

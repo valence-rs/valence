@@ -6,10 +6,12 @@ use std::io::Write;
 use std::iter::FusedIterator;
 
 use anyhow::Context;
-use valence_nbt::Compound;
 use valence_protocol_macros::ident_str;
 
-use crate::{Decode, Encode, Ident, ItemKind, Result, VarInt};
+use crate::ident::Ident;
+use crate::item::ItemKind;
+use crate::var_int::VarInt;
+use crate::{Decode, Encode, Result};
 
 include!(concat!(env!("OUT_DIR"), "/block.rs"));
 
@@ -79,34 +81,6 @@ impl Decode<'_> for BlockKind {
 
         BlockKind::from_raw(id.try_into().context(errmsg)?).context(errmsg)
     }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct BlockEntity {
-    pub kind: BlockEntityKind,
-    pub nbt: Compound,
-}
-
-impl BlockEntity {
-    pub const fn new(kind: BlockEntityKind, nbt: Compound) -> Self {
-        Self { kind, nbt }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
-pub enum BlockFace {
-    /// -Y
-    Bottom,
-    /// +Y
-    Top,
-    /// -Z
-    North,
-    /// +Z
-    South,
-    /// -X
-    West,
-    /// +X
-    East,
 }
 
 #[cfg(test)]

@@ -21,18 +21,22 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::OwnedSemaphorePermit;
 use tracing::{error, info, instrument, trace, warn};
 use uuid::Uuid;
-use valence_protocol::packets::c2s::handshake::HandshakeOwned;
-use valence_protocol::packets::c2s::login::{EncryptionResponse, LoginPluginResponse, LoginStart};
-use valence_protocol::packets::c2s::status::{PingRequest, StatusRequest};
-use valence_protocol::packets::s2c::login::{
-    DisconnectLogin, EncryptionRequest, LoginPluginRequest, LoginSuccess, SetCompression,
+use valence_protocol::codec::{PacketDecoder, PacketEncoder};
+use valence_protocol::ident::Ident;
+use valence_protocol::packet::c2s::handshake::handshake::NextState;
+use valence_protocol::packet::c2s::handshake::HandshakeC2s;
+use valence_protocol::packet::c2s::login::{LoginHelloC2s, LoginKeyC2s, LoginQueryResponseC2s};
+use valence_protocol::packet::c2s::status::{QueryPingC2s, QueryRequestC2s};
+use valence_protocol::packet::s2c::login::{
+    LoginCompressionS2c, LoginDisconnectS2c, LoginHelloS2c, LoginQueryRequestS2c, LoginSuccessS2c,
 };
-use valence_protocol::packets::s2c::status::{PingResponse, StatusResponse};
-use valence_protocol::types::{HandshakeNextState, Property};
-use valence_protocol::{
-    translation_key, Decode, Ident, PacketDecoder, PacketEncoder, RawBytes, Text, Username, VarInt,
-    MINECRAFT_VERSION, PROTOCOL_VERSION,
-};
+use valence_protocol::packet::s2c::status::{QueryPongS2c, QueryResponseS2c};
+use valence_protocol::raw_bytes::RawBytes;
+use valence_protocol::text::Text;
+use valence_protocol::types::Property;
+use valence_protocol::username::Username;
+use valence_protocol::var_int::VarInt;
+use valence_protocol::{translation_key, Decode, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerListPing};
 use crate::server::connection::InitialConnection;
@@ -110,13 +114,25 @@ async fn handle_connection(
     }
 }
 
+struct HandshakeData {
+    protocol_version: i32,
+    server_address: String,
+    next_state: NextState,
+}
+
 async fn handle_handshake(
     shared: SharedServer,
     callbacks: Arc<impl AsyncCallbacks>,
     mut conn: InitialConnection<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
 ) -> anyhow::Result<()> {
-    let handshake = conn.recv_packet::<HandshakeOwned>().await?;
+    let handshake = conn.recv_packet::<HandshakeC2s>().await?;
+
+    let handshake = HandshakeData {
+        protocol_version: handshake.protocol_version.0,
+        server_address: handshake.server_address.to_owned(),
+        next_state: handshake.next_state,
+    };
 
     ensure!(
         matches!(shared.connection_mode(), ConnectionMode::BungeeCord)
@@ -125,12 +141,10 @@ async fn handle_handshake(
     );
 
     match handshake.next_state {
-        HandshakeNextState::Status => {
-            handle_status(shared, callbacks, conn, remote_addr, handshake)
-                .await
-                .context("error handling status")
-        }
-        HandshakeNextState::Login => {
+        NextState::Status => handle_status(shared, callbacks, conn, remote_addr, handshake)
+            .await
+            .context("error handling status"),
+        NextState::Login => {
             match handle_login(&shared, callbacks, &mut conn, remote_addr, handshake)
                 .await
                 .context("error handling login")?
@@ -157,12 +171,12 @@ async fn handle_status(
     callbacks: Arc<impl AsyncCallbacks>,
     mut conn: InitialConnection<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
-    handshake: HandshakeOwned,
+    handshake: HandshakeData,
 ) -> anyhow::Result<()> {
-    conn.recv_packet::<StatusRequest>().await?;
+    conn.recv_packet::<QueryRequestC2s>().await?;
 
     match callbacks
-        .server_list_ping(&shared, remote_addr, handshake.protocol_version.0)
+        .server_list_ping(&shared, remote_addr, handshake.protocol_version)
         .await
     {
         ServerListPing::Respond {
@@ -191,7 +205,7 @@ async fn handle_status(
                 json["favicon"] = Value::String(buf);
             }
 
-            conn.send_packet(&StatusResponse {
+            conn.send_packet(&QueryResponseS2c {
                 json: &json.to_string(),
             })
             .await?;
@@ -199,9 +213,9 @@ async fn handle_status(
         ServerListPing::Ignore => return Ok(()),
     }
 
-    let PingRequest { payload } = conn.recv_packet().await?;
+    let QueryPingC2s { payload } = conn.recv_packet().await?;
 
-    conn.send_packet(&PingResponse { payload }).await?;
+    conn.send_packet(&QueryPongS2c { payload }).await?;
 
     Ok(())
 }
@@ -212,14 +226,14 @@ async fn handle_login(
     callbacks: Arc<impl AsyncCallbacks>,
     conn: &mut InitialConnection<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
-    handshake: HandshakeOwned,
+    handshake: HandshakeData,
 ) -> anyhow::Result<Option<NewClientInfo>> {
-    if handshake.protocol_version.0 != PROTOCOL_VERSION {
+    if handshake.protocol_version != PROTOCOL_VERSION {
         // TODO: send translated disconnect msg?
         return Ok(None);
     }
 
-    let LoginStart {
+    let LoginHelloC2s {
         username,
         profile_id: _, // TODO
     } = conn.recv_packet().await?;
@@ -236,7 +250,7 @@ async fn handle_login(
     };
 
     if let Some(threshold) = shared.0.compression_threshold {
-        conn.send_packet(&SetCompression {
+        conn.send_packet(&LoginCompressionS2c {
             threshold: VarInt(threshold as i32),
         })
         .await?;
@@ -246,14 +260,14 @@ async fn handle_login(
 
     if let Err(reason) = callbacks.login(shared, &info).await {
         info!("disconnect at login: \"{reason}\"");
-        conn.send_packet(&DisconnectLogin {
+        conn.send_packet(&LoginDisconnectS2c {
             reason: reason.into(),
         })
         .await?;
         return Ok(None);
     }
 
-    conn.send_packet(&LoginSuccess {
+    conn.send_packet(&LoginSuccessS2c {
         uuid: info.uuid,
         username: info.username.as_str_username(),
         properties: Default::default(),
@@ -273,14 +287,14 @@ pub(super) async fn login_online(
 ) -> anyhow::Result<NewClientInfo> {
     let my_verify_token: [u8; 16] = rand::random();
 
-    conn.send_packet(&EncryptionRequest {
+    conn.send_packet(&LoginHelloS2c {
         server_id: "", // Always empty
         public_key: &shared.0.public_key_der,
         verify_token: &my_verify_token,
     })
     .await?;
 
-    let EncryptionResponse {
+    let LoginKeyC2s {
         shared_secret,
         verify_token: encrypted_verify_token,
     } = conn.recv_packet().await?;
@@ -332,7 +346,7 @@ pub(super) async fn login_online(
                 translation_key::MULTIPLAYER_DISCONNECT_UNVERIFIED_USERNAME,
                 [],
             );
-            conn.send_packet(&DisconnectLogin {
+            conn.send_packet(&LoginDisconnectS2c {
                 reason: reason.into(),
             })
             .await?;
@@ -417,7 +431,7 @@ pub(super) async fn login_velocity(
     let message_id: i32 = 0; // TODO: make this random?
 
     // Send Player Info Request into the Plugin Channel
-    conn.send_packet(&LoginPluginRequest {
+    conn.send_packet(&LoginQueryRequestS2c {
         message_id: VarInt(message_id),
         channel: Ident::new("velocity:player_info").unwrap(),
         data: RawBytes(&[VELOCITY_MIN_SUPPORTED_VERSION]),
@@ -425,7 +439,7 @@ pub(super) async fn login_velocity(
     .await?;
 
     // Get Response
-    let plugin_response: LoginPluginResponse = conn.recv_packet().await?;
+    let plugin_response: LoginQueryResponseC2s = conn.recv_packet().await?;
 
     ensure!(
         plugin_response.message_id.0 == message_id,

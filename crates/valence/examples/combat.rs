@@ -1,7 +1,7 @@
 use glam::Vec3Swizzles;
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::{
-    default_event_handler, InteractWithEntity, StartSprinting, StopSprinting,
+    default_event_handler, PlayerInteract, StartSprinting, StopSprinting,
 };
 use valence::prelude::*;
 
@@ -92,7 +92,7 @@ fn handle_combat_events(
     server: Res<Server>,
     mut start_sprinting: EventReader<StartSprinting>,
     mut stop_sprinting: EventReader<StopSprinting>,
-    mut interact_with_entity: EventReader<InteractWithEntity>,
+    mut interact_with_entity: EventReader<PlayerInteract>,
     mut clients: Query<(&mut Client, &mut CombatState, &mut McEntity)>,
 ) {
     for &StartSprinting { client } in start_sprinting.iter() {
@@ -107,7 +107,7 @@ fn handle_combat_events(
         }
     }
 
-    for &InteractWithEntity {
+    for &PlayerInteract {
         client: attacker_client,
         entity_id,
         ..

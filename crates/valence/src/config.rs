@@ -7,7 +7,8 @@ use serde::Serialize;
 use tokio::runtime::Handle;
 use tracing::error;
 use uuid::Uuid;
-use valence_protocol::{Text, Username};
+use valence_protocol::text::Text;
+use valence_protocol::username::Username;
 
 use crate::biome::Biome;
 use crate::dimension::Dimension;

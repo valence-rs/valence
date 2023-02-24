@@ -9,13 +9,14 @@ use glam::{DVec3, UVec3, Vec3};
 use rustc_hash::FxHashMap;
 use tracing::warn;
 use uuid::Uuid;
-use valence_protocol::entity_meta::{Facing, PaintingKind, Pose};
-use valence_protocol::packets::s2c::play::{
-    EntityAnimationS2c, EntityEvent as EntityEventS2c, SetEntityMetadata, SetEntityVelocity,
-    SetHeadRotation, SpawnEntity, SpawnExperienceOrb, SpawnPlayer, TeleportEntity,
-    UpdateEntityPosition, UpdateEntityPositionAndRotation, UpdateEntityRotation,
+use valence_protocol::byte_angle::ByteAngle;
+use valence_protocol::packet::s2c::play::{
+    EntityAnimationS2c, EntityPositionS2c, EntitySetHeadYawS2c, EntitySpawnS2c,
+    EntityStatusS2c as EntityEventS2c, EntityTrackerUpdateS2c, EntityVelocityUpdateS2c,
+    ExperienceOrbSpawnS2c, MoveRelativeS2c, PlayerSpawnS2c, RotateAndMoveRelativeS2c, RotateS2c,
 };
-use valence_protocol::{ByteAngle, RawBytes, VarInt};
+use valence_protocol::tracked_data::{Facing, PaintingKind, Pose};
+use valence_protocol::var_int::VarInt;
 
 use crate::config::DEFAULT_TPS;
 use crate::math::Aabb;
@@ -321,7 +322,7 @@ impl McEntity {
     /// The hitbox of an entity is determined by its position, entity type, and
     /// other state specific to that type.
     ///
-    /// [interact event]: crate::client::event::InteractWithEntity
+    /// [interact event]: crate::client::event::PlayerInteract
     pub fn hitbox(&self) -> Aabb {
         fn baby(is_baby: bool, adult_hitbox: [f64; 3]) -> [f64; 3] {
             if is_baby {
@@ -612,7 +613,7 @@ impl McEntity {
         position: DVec3,
         scratch: &mut Vec<u8>,
     ) {
-        let with_object_data = |data| SpawnEntity {
+        let with_object_data = |data| EntitySpawnS2c {
             entity_id: VarInt(self.protocol_id),
             object_uuid: self.uuid,
             kind: VarInt(self.kind() as i32),
@@ -626,13 +627,13 @@ impl McEntity {
 
         match &self.data {
             TrackedData::Marker(_) => {}
-            TrackedData::ExperienceOrb(_) => writer.write_packet(&SpawnExperienceOrb {
+            TrackedData::ExperienceOrb(_) => writer.write_packet(&ExperienceOrbSpawnS2c {
                 entity_id: VarInt(self.protocol_id),
                 position: position.to_array(),
                 count: 0, // TODO
             }),
             TrackedData::Player(_) => {
-                writer.write_packet(&SpawnPlayer {
+                writer.write_packet(&PlayerSpawnS2c {
                     entity_id: VarInt(self.protocol_id),
                     player_uuid: self.uuid,
                     position: position.to_array(),
@@ -641,7 +642,7 @@ impl McEntity {
                 });
 
                 // Player spawn packet doesn't include head yaw for some reason.
-                writer.write_packet(&SetHeadRotation {
+                writer.write_packet(&EntitySetHeadYawS2c {
                     entity_id: VarInt(self.protocol_id),
                     head_yaw: ByteAngle::from_degrees(self.head_yaw),
                 });
@@ -673,9 +674,9 @@ impl McEntity {
         scratch.clear();
         self.data.write_initial_tracked_data(scratch);
         if !scratch.is_empty() {
-            writer.write_packet(&SetEntityMetadata {
+            writer.write_packet(&EntityTrackerUpdateS2c {
                 entity_id: VarInt(self.protocol_id),
-                metadata: RawBytes(scratch),
+                metadata: scratch.as_slice().into(),
             });
         }
     }
@@ -690,7 +691,7 @@ impl McEntity {
         let changed_position = self.position != self.old_position;
 
         if changed_position && !needs_teleport && self.yaw_or_pitch_modified {
-            writer.write_packet(&UpdateEntityPositionAndRotation {
+            writer.write_packet(&RotateAndMoveRelativeS2c {
                 entity_id,
                 delta: (position_delta * 4096.0).to_array().map(|v| v as i16),
                 yaw: ByteAngle::from_degrees(self.yaw),
@@ -699,7 +700,7 @@ impl McEntity {
             });
         } else {
             if changed_position && !needs_teleport {
-                writer.write_packet(&UpdateEntityPosition {
+                writer.write_packet(&MoveRelativeS2c {
                     entity_id,
                     delta: (position_delta * 4096.0).to_array().map(|v| v as i16),
                     on_ground: self.on_ground,
@@ -707,7 +708,7 @@ impl McEntity {
             }
 
             if self.yaw_or_pitch_modified {
-                writer.write_packet(&UpdateEntityRotation {
+                writer.write_packet(&RotateS2c {
                     entity_id,
                     yaw: ByteAngle::from_degrees(self.yaw),
                     pitch: ByteAngle::from_degrees(self.pitch),
@@ -717,7 +718,7 @@ impl McEntity {
         }
 
         if needs_teleport {
-            writer.write_packet(&TeleportEntity {
+            writer.write_packet(&EntityPositionS2c {
                 entity_id,
                 position: self.position.to_array(),
                 yaw: ByteAngle::from_degrees(self.yaw),
@@ -727,14 +728,14 @@ impl McEntity {
         }
 
         if self.velocity_modified {
-            writer.write_packet(&SetEntityVelocity {
+            writer.write_packet(&EntityVelocityUpdateS2c {
                 entity_id,
                 velocity: velocity_to_packet_units(self.velocity),
             });
         }
 
         if self.head_yaw_modified {
-            writer.write_packet(&SetHeadRotation {
+            writer.write_packet(&EntitySetHeadYawS2c {
                 entity_id,
                 head_yaw: ByteAngle::from_degrees(self.head_yaw),
             });
@@ -743,9 +744,9 @@ impl McEntity {
         scratch.clear();
         self.data.write_updated_tracked_data(scratch);
         if !scratch.is_empty() {
-            writer.write_packet(&SetEntityMetadata {
+            writer.write_packet(&EntityTrackerUpdateS2c {
                 entity_id,
-                metadata: RawBytes(scratch),
+                metadata: scratch.as_slice().into(),
             });
         }
 

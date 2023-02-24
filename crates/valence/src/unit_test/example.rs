@@ -53,7 +53,7 @@ use crate::unit_test::util::scenario_single_client;
 /// Some of the tests in this file may be inferior duplicates of real tests.
 #[cfg(test)]
 mod tests {
-    use valence_protocol::packets::S2cPlayPacket;
+    use valence_protocol::packet::S2cPlayPacket;
 
     use super::*;
     use crate::client::Client;
@@ -80,7 +80,7 @@ mod tests {
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
 
         // Send a packet as the client to the server.
-        let packet = valence_protocol::packets::c2s::play::SetPlayerPosition {
+        let packet = valence_protocol::packet::c2s::play::PositionAndOnGroundC2s {
             position: [12.0, 64.0, 0.0],
             on_ground: true,
         };
@@ -123,12 +123,12 @@ mod tests {
             .expect("client not found");
         let sent_packets = client_helper.collect_sent()?;
 
-        assert_packet_count!(sent_packets, 1, S2cPlayPacket::OpenScreen(_));
-        assert_packet_count!(sent_packets, 1, S2cPlayPacket::SetContainerContent(_));
+        assert_packet_count!(sent_packets, 1, S2cPlayPacket::OpenScreenS2c(_));
+        assert_packet_count!(sent_packets, 1, S2cPlayPacket::InventoryS2c(_));
         assert_packet_order!(
             sent_packets,
-            S2cPlayPacket::OpenScreen(_),
-            S2cPlayPacket::SetContainerContent(_)
+            S2cPlayPacket::OpenScreenS2c(_),
+            S2cPlayPacket::InventoryS2c(_)
         );
 
         Ok(())

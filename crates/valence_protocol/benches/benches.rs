@@ -1,17 +1,21 @@
+use std::borrow::Cow;
 use std::time::Duration;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use rand::Rng;
 use valence_nbt::{compound, List};
+use valence_protocol::array::LengthPrefixedArray;
 use valence_protocol::block::{BlockKind, BlockState, PropName, PropValue};
-use valence_protocol::packets::s2c::play::{
-    ChunkDataAndUpdateLight, ChunkDataAndUpdateLightEncode, SetTabListHeaderAndFooter, SpawnEntity,
+use valence_protocol::byte_angle::ByteAngle;
+use valence_protocol::codec::{
+    encode_packet, encode_packet_compressed, PacketDecoder, PacketEncoder,
 };
-use valence_protocol::text::Color;
-use valence_protocol::{
-    encode_packet, encode_packet_compressed, ByteAngle, Decode, Encode, ItemKind,
-    LengthPrefixedArray, PacketDecoder, PacketEncoder, TextFormat, VarInt, VarLong,
-};
+use valence_protocol::item::ItemKind;
+use valence_protocol::packet::s2c::play::{ChunkDataS2c, EntitySpawnS2c, PlayerListHeaderS2c};
+use valence_protocol::text::{Color, TextFormat};
+use valence_protocol::var_int::VarInt;
+use valence_protocol::var_long::VarLong;
+use valence_protocol::{Decode, Encode};
 
 criterion_group! {
     name = benches;
@@ -112,24 +116,24 @@ fn packets(c: &mut Criterion) {
     const SKY_LIGHT_ARRAYS: [LengthPrefixedArray<u8, 2048>; 26] =
         [LengthPrefixedArray([0xff; 2048]); 26];
 
-    let chunk_data_packet = ChunkDataAndUpdateLightEncode {
+    let chunk_data_packet = ChunkDataS2c {
         chunk_x: 123,
         chunk_z: 456,
-        heightmaps: &compound! {
+        heightmaps: Cow::Owned(compound! {
             "MOTION_BLOCKING" => List::Long(vec![123; 256]),
-        },
+        }),
         blocks_and_biomes: BLOCKS_AND_BIOMES.as_slice(),
-        block_entities: &[],
+        block_entities: Cow::Borrowed(&[]),
         trust_edges: false,
-        sky_light_mask: &[],
-        block_light_mask: &[],
-        empty_sky_light_mask: &[],
-        empty_block_light_mask: &[],
-        sky_light_arrays: SKY_LIGHT_ARRAYS.as_slice(),
-        block_light_arrays: &[],
+        sky_light_mask: Cow::Borrowed(&[]),
+        block_light_mask: Cow::Borrowed(&[]),
+        empty_sky_light_mask: Cow::Borrowed(&[]),
+        empty_block_light_mask: Cow::Borrowed(&[]),
+        sky_light_arrays: Cow::Borrowed(SKY_LIGHT_ARRAYS.as_slice()),
+        block_light_arrays: Cow::Borrowed(&[]),
     };
 
-    let tab_list_header_footer_packet = SetTabListHeaderAndFooter {
+    let player_list_header_packet = PlayerListHeaderS2c {
         header: ("this".italic() + " is the " + "header".bold().color(Color::RED)).into(),
         footer: ("this".italic()
             + " is the "
@@ -139,7 +143,7 @@ fn packets(c: &mut Criterion) {
             .into(),
     };
 
-    let spawn_entity_packet = SpawnEntity {
+    let spawn_entity_packet = EntitySpawnS2c {
         entity_id: VarInt(1234),
         object_uuid: Default::default(),
         kind: VarInt(5),
@@ -162,14 +166,12 @@ fn packets(c: &mut Criterion) {
         });
     });
 
-    c.bench_function("encode_tab_list_header_footer", |b| {
+    c.bench_function("encode_player_list_header", |b| {
         b.iter(|| {
             let encoder = black_box(&mut encoder);
 
             encoder.clear();
-            encoder
-                .append_packet(&tab_list_header_footer_packet)
-                .unwrap();
+            encoder.append_packet(&player_list_header_packet).unwrap();
 
             black_box(encoder);
         });
@@ -199,14 +201,12 @@ fn packets(c: &mut Criterion) {
         });
     });
 
-    c.bench_function("encode_tab_list_header_footer_compressed", |b| {
+    c.bench_function("encode_player_list_header_compressed", |b| {
         b.iter(|| {
             let encoder = black_box(&mut encoder);
 
             encoder.clear();
-            encoder
-                .append_packet(&tab_list_header_footer_packet)
-                .unwrap();
+            encoder.append_packet(&player_list_header_packet).unwrap();
 
             black_box(encoder);
         });
@@ -233,25 +233,21 @@ fn packets(c: &mut Criterion) {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decoder
-                .try_next_packet::<ChunkDataAndUpdateLight>()
-                .unwrap();
+            decoder.try_next_packet::<ChunkDataS2c>().unwrap();
 
             black_box(decoder);
         });
     });
 
     packet_buf.clear();
-    encode_packet(&mut packet_buf, &tab_list_header_footer_packet).unwrap();
+    encode_packet(&mut packet_buf, &player_list_header_packet).unwrap();
 
-    c.bench_function("decode_tab_list_header_footer", |b| {
+    c.bench_function("decode_player_list_header", |b| {
         b.iter(|| {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decoder
-                .try_next_packet::<SetTabListHeaderAndFooter>()
-                .unwrap();
+            decoder.try_next_packet::<PlayerListHeaderS2c>().unwrap();
 
             black_box(decoder);
         });
@@ -260,12 +256,12 @@ fn packets(c: &mut Criterion) {
     packet_buf.clear();
     encode_packet(&mut packet_buf, &spawn_entity_packet).unwrap();
 
-    c.bench_function("decode_spawn_entity", |b| {
+    c.bench_function("decode_entity_spawn", |b| {
         b.iter(|| {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decoder.try_next_packet::<SpawnEntity>().unwrap();
+            decoder.try_next_packet::<EntitySpawnS2c>().unwrap();
 
             black_box(decoder);
         });
@@ -283,9 +279,7 @@ fn packets(c: &mut Criterion) {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decoder
-                .try_next_packet::<ChunkDataAndUpdateLight>()
-                .unwrap();
+            decoder.try_next_packet::<ChunkDataS2c>().unwrap();
 
             black_box(decoder);
         });
@@ -294,20 +288,18 @@ fn packets(c: &mut Criterion) {
     packet_buf.clear();
     encode_packet_compressed(
         &mut packet_buf,
-        &tab_list_header_footer_packet,
+        &player_list_header_packet,
         256,
         &mut scratch,
     )
     .unwrap();
 
-    c.bench_function("decode_tab_list_header_footer_compressed", |b| {
+    c.bench_function("decode_player_list_header_compressed", |b| {
         b.iter(|| {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decoder
-                .try_next_packet::<SetTabListHeaderAndFooter>()
-                .unwrap();
+            decoder.try_next_packet::<PlayerListHeaderS2c>().unwrap();
 
             black_box(decoder);
         });
@@ -321,7 +313,7 @@ fn packets(c: &mut Criterion) {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decoder.try_next_packet::<SpawnEntity>().unwrap();
+            decoder.try_next_packet::<EntitySpawnS2c>().unwrap();
 
             black_box(decoder);
         });
