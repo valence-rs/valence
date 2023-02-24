@@ -37,10 +37,8 @@ impl ParticleSpawner {
     }
 }
 
-fn setup(world: &mut World) {
-    let mut instance = world
-        .resource::<Server>()
-        .new_instance(DimensionId::default());
+fn setup(mut commands: Commands, server: Res<Server>) {
+    let mut instance = server.new_instance(DimensionId::default());
 
     for z in -5..5 {
         for x in -5..5 {
@@ -50,10 +48,10 @@ fn setup(world: &mut World) {
 
     instance.set_block([0, SPAWN_Y, 0], BlockState::BEDROCK);
 
-    world.spawn(instance);
+    commands.spawn(instance);
 
     let spawner = ParticleSpawner::new();
-    world.insert_resource(spawner)
+    commands.insert_resource(spawner)
 }
 
 fn init_clients(
