@@ -11,8 +11,11 @@ use num::integer::div_ceil;
 use rustc_hash::FxHashMap;
 use valence_protocol::array::LengthPrefixedArray;
 use valence_protocol::block_pos::BlockPos;
+use valence_protocol::packet::s2c::play::game_state_change::GameEventKind;
 use valence_protocol::packet::s2c::play::particle::Particle;
-use valence_protocol::packet::s2c::play::{OverlayMessageS2c, ParticleS2c, PlaySoundS2c};
+use valence_protocol::packet::s2c::play::{
+    GameStateChangeS2c, OverlayMessageS2c, ParticleS2c, PlaySoundS2c,
+};
 use valence_protocol::sound::Sound;
 use valence_protocol::text::Text;
 use valence_protocol::types::SoundCategory;
@@ -23,7 +26,7 @@ use crate::entity::McEntity;
 use crate::packet::{PacketWriter, WritePacket};
 use crate::server::{Server, SharedServer};
 use crate::view::ChunkPos;
-use crate::Despawned;
+use crate::{weather, Despawned};
 
 mod chunk;
 mod chunk_entry;
@@ -429,6 +432,46 @@ impl Instance {
     pub fn set_action_bar(&mut self, text: impl Into<Text>) {
         self.write_packet(&OverlayMessageS2c {
             action_bar_text: text.into().into(),
+        });
+    }
+
+    /// Sends the rain begin event to all players in the instance.
+    pub fn begin_raining(&mut self) {
+        self.write_packet(&GameStateChangeS2c {
+            kind: GameEventKind::BeginRaining,
+            value: f32::default(),
+        });
+    }
+
+    /// Sends the rain end event to all players in the instance.
+    pub fn end_raining(&mut self) {
+        self.write_packet(&GameStateChangeS2c {
+            kind: GameEventKind::EndRaining,
+            value: f32::default(),
+        });
+    }
+
+    /// Sets a level of the rain in the instance.
+    pub fn set_raining_level(&mut self, level: f32) {
+        self.write_packet(&GameStateChangeS2c {
+            kind: GameEventKind::RainLevelChange,
+            value: num::clamp(
+                level,
+                weather::MIN_WEATHER_LEVEL,
+                weather::MAX_WEATHER_LEVEL,
+            ),
+        });
+    }
+
+    /// Sets a level of the thunder in the instance.
+    pub fn set_thunder_level(&mut self, level: f32) {
+        self.write_packet(&GameStateChangeS2c {
+            kind: GameEventKind::ThunderLevelChange,
+            value: num::clamp(
+                level,
+                weather::MIN_WEATHER_LEVEL,
+                weather::MAX_WEATHER_LEVEL,
+            ),
         });
     }
 }
