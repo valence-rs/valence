@@ -1,7 +1,7 @@
 use std::io::{Read, Write};
 
 use anyhow::bail;
-use byteorder::ReadBytesExt;
+use byteorder::{ReadBytesExt, WriteBytesExt};
 use thiserror::Error;
 
 use crate::{Decode, Encode};
@@ -48,6 +48,7 @@ pub enum VarIntDecodeError {
 }
 
 impl Encode for VarInt {
+    /*
     // Adapted from VarInt-Simd encode
     // https://github.com/as-com/varint-simd/blob/0f468783da8e181929b01b9c6e9f741c1fe09825/src/encode/mod.rs#L71
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
@@ -73,6 +74,18 @@ impl Encode for VarInt {
         w.write_all(unsafe { bytes.get_unchecked(..bytes_needed as usize) })?;
 
         Ok(())
+    }*/
+
+    fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
+        let mut val = self.0 as u32;
+        loop {
+            if val & 0b11111111111111111111111110000000 == 0 {
+                w.write_u8(val as u8)?;
+                return Ok(());
+            }
+            w.write_u8(val as u8 & 0b01111111 | 0b10000000)?;
+            val >>= 7;
+        }
     }
 }
 
