@@ -1,0 +1,9 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "rs.valence.extractor.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "ExposeWallBlock"
+  ]
+}

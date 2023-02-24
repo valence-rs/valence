@@ -124,4 +124,21 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn blockstate_to_wall() {
+        assert_eq!(BlockState::STONE.wall_block_id(), None);
+        assert_eq!(
+            BlockState::OAK_SIGN.wall_block_id(),
+            Some(BlockState::OAK_WALL_SIGN)
+        );
+        assert_eq!(
+            BlockState::GREEN_BANNER.wall_block_id(),
+            Some(BlockState::GREEN_WALL_BANNER)
+        );
+        assert_ne!(
+            BlockState::GREEN_BANNER.wall_block_id(),
+            Some(BlockState::GREEN_BANNER)
+        );
+    }
 }
