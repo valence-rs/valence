@@ -262,7 +262,7 @@ pub trait Decode<'a>: Sized {
 /// ```
 /// use valence_protocol::{Encode, EncodePacket};
 ///
-/// #[derive(Debug, Encode, EncodePacket)]
+/// #[derive(Encode, EncodePacket, Debug)]
 /// #[packet_id = 42]
 /// struct MyStruct {
 ///     first: i32,
@@ -302,7 +302,7 @@ pub trait EncodePacket: fmt::Debug {
 /// ```
 /// use valence_protocol::{Decode, DecodePacket};
 ///
-/// #[derive(Debug, Decode, DecodePacket)]
+/// #[derive(Decode, DecodePacket, Debug)]
 /// #[packet_id = 42]
 /// struct MyStruct {
 ///     first: i32,

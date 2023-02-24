@@ -442,6 +442,11 @@ impl PacketDecoder {
     }
 
     #[cfg(feature = "compression")]
+    pub fn compression(&self) -> bool {
+        self.compression_enabled
+    }
+
+    #[cfg(feature = "compression")]
     pub fn set_compression(&mut self, enabled: bool) {
         self.compression_enabled = enabled;
     }

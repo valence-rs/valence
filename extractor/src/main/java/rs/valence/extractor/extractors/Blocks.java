@@ -4,9 +4,11 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.registry.Registries;
+import net.minecraft.item.VerticallyAttachableBlockItem;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.EmptyBlockView;
 import rs.valence.extractor.Main;
+import rs.valence.extractor.mixin.ExposeWallBlock;
 
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -36,6 +38,13 @@ public class Blocks implements Main.Extractor {
             blockJson.addProperty("name", Registries.BLOCK.getId(block).getPath());
             blockJson.addProperty("translation_key", block.getTranslationKey());
             blockJson.addProperty("item_id", Registries.ITEM.getRawId(block.asItem()));
+
+            if (block.asItem() instanceof VerticallyAttachableBlockItem wsbItem) {
+                if (wsbItem.getBlock() == block) {
+                    var wallBlock = ((ExposeWallBlock) wsbItem).getWallBlock();
+                    blockJson.addProperty("wall_variant_id", Registries.BLOCK.getRawId(wallBlock));
+                }
+            }
 
             var propsJson = new JsonArray();
             for (var prop : block.getStateManager().getProperties()) {
