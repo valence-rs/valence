@@ -457,8 +457,8 @@ impl Instance {
             kind: GameEventKind::RainLevelChange,
             value: num::clamp(
                 level,
-                weather::MIN_WEATHER_LEVEL,
-                weather::MAX_WEATHER_LEVEL,
+                weather::WEATHER_LEVEL_MIN,
+                weather::WEATHER_LEVEL_MAX,
             ),
         });
     }
@@ -469,8 +469,8 @@ impl Instance {
             kind: GameEventKind::ThunderLevelChange,
             value: num::clamp(
                 level,
-                weather::MIN_WEATHER_LEVEL,
-                weather::MAX_WEATHER_LEVEL,
+                weather::WEATHER_LEVEL_MIN,
+                weather::WEATHER_LEVEL_MAX,
             ),
         });
     }
