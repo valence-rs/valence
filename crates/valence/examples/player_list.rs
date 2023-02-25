@@ -22,7 +22,7 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, server: Res<Server>) {
+fn setup(mut commands: Commands, server: Res<Server>, mut player_list: ResMut<PlayerList>) {
     let mut instance = server.new_instance(DimensionId::default());
 
     for z in -5..5 {
@@ -38,8 +38,6 @@ fn setup(mut commands: Commands, server: Res<Server>) {
     }
 
     commands.spawn(instance);
-
-    let mut player_list = world.resource_mut::<PlayerList>();
 
     player_list.insert(
         PLAYER_UUID_1,

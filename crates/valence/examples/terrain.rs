@@ -95,7 +95,7 @@ fn setup(mut commands: Commands, server: Res<Server>) {
         receiver: finished_receiver,
     });
 
-    let mut instance = server.new_instance(DimensionId::default());
+    let instance = server.new_instance(DimensionId::default());
 
     commands.spawn(instance);
 }

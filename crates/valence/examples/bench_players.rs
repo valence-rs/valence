@@ -1,6 +1,6 @@
 use std::time::Instant;
 
-use bevy::app::{App, CoreStage};
+use bevy_app::{App, CoreStage};
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::default_event_handler;
 use valence::instance::{Chunk, Instance};
