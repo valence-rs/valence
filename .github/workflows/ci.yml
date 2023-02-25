@@ -23,8 +23,6 @@ jobs:
     - uses: dtolnay/rust-toolchain@stable
       with:
         components: clippy, rustfmt
-    - if: matrix.os == 'macos-latest'
-      run: ulimit -a
     - run: cp crates/playground/src/playground.template.rs crates/playground/src/playground.rs
     - name: Validate formatting
       run: cargo fmt --all -- --check
@@ -33,6 +31,6 @@ jobs:
     - name: Run clippy lints
       run: cargo clippy --workspace --no-deps --all-features --all-targets -- -D warnings
     - name: Run tests
-      run: cargo test -v --workspace --all-features --all-targets
+      run: cargo test --workspace --all-features --all-targets
     - name: Run valence_nbt tests without preserve_order feature
-      run: cargo test -v -p valence_nbt --all-targets
+      run: cargo test -p valence_nbt --all-targets
