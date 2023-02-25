@@ -1,0 +1,20 @@
+[package]
+name = "valence_schem"
+description = "A library for the Sponge Schematic Format."
+documentation.workspace = true
+repository = "https://github.com/valence-rs/valence/tree/main/crates/valence_schem"
+readme = "README.md"
+license.workspace = true
+keywords = ["schematics", "minecraft", "deserialization"]
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+flate2.workspace = true
+glam.workspace = true
+thiserror.workspace = true
+valence_biome.workspace = true
+valence_block.workspace = true
+valence_core.workspace = true
+valence_instance.workspace = true
+valence_nbt.workspace = true

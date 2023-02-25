@@ -22,7 +22,9 @@ use std::fmt;
 use std::fmt::Display;
 use std::io::Write;
 use std::iter::FusedIterator;
+use std::str::FromStr;
 
+use thiserror::Error;
 use anyhow::Context;
 use valence_core::ident;
 use valence_core::ident::Ident;
@@ -97,6 +99,53 @@ impl Decode<'_> for BlockKind {
         let errmsg = "invalid block kind ID";
 
         BlockKind::from_raw(id.try_into().context(errmsg)?).context(errmsg)
+    }
+}
+
+#[derive(Debug, Error, PartialEq, Eq)]
+pub enum ParseBlockStateError {
+    #[error("unknown block kind '{0}'")]
+    UnknownBlockKind(String),
+    #[error("invalid prop string '{0}'")]
+    InvalidPropString(String),
+    #[error("unknown prop name '{0}'")]
+    UnknownPropName(String),
+    #[error("unknown prop value '{0}'")]
+    UnknownPropValue(String),
+}
+
+impl FromStr for BlockState {
+    type Err = ParseBlockStateError;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        let state = match s.split_once('[') {
+            Some((kind, props)) => {
+                let Some(kind) = BlockKind::from_str(kind) else {
+                    return Err(ParseBlockStateError::UnknownBlockKind(kind.to_string()));
+                };
+                props[..props.len() - 1]
+                    .split(',')
+                    .map(|prop| prop.trim())
+                    .try_fold(kind.to_state(), |state, prop| {
+                        let Some((name, val)) = prop.split_once('=') else {
+                            return Err(ParseBlockStateError::InvalidPropString(prop.to_string()));
+                        };
+                        let Some(name) = PropName::from_str(name) else {
+                            return Err(ParseBlockStateError::UnknownPropName(name.to_string()));
+                        };
+                        let Some(val) = PropValue::from_str(val) else {
+                            return Err(ParseBlockStateError::UnknownPropValue(val.to_string()));
+                        };
+                        Ok(state.set(name, val))
+                    })?
+            }
+            None => match BlockKind::from_str(s) {
+                Some(kind) => kind.to_state(),
+                None => return Err(ParseBlockStateError::UnknownBlockKind(s.to_string())),
+            },
+        };
+
+        Ok(state)
     }
 }
 

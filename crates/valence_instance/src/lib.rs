@@ -527,6 +527,10 @@ impl Instance {
         self.info.section_count
     }
 
+    pub fn min_y(&self) -> i32 {
+        self.info.min_y
+    }
+
     /// Get a reference to the chunk at the given position, if it is loaded.
     pub fn chunk(&self, pos: impl Into<ChunkPos>) -> Option<&Chunk<true>> {
         self.partition
