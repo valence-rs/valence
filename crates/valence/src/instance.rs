@@ -452,7 +452,7 @@ impl Instance {
     }
 
     /// Sets a level of the rain in the instance.
-    pub fn set_raining_level(&mut self, level: f32) {
+    pub fn set_rain_level(&mut self, level: f32) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::RainLevelChange,
             value: num::clamp(
