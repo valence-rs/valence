@@ -20,17 +20,19 @@ use valence_protocol::sound::Sound;
 use valence_protocol::text::Text;
 use valence_protocol::types::SoundCategory;
 use valence_protocol::EncodePacket;
+pub use weather::{WEATHER_LEVEL_MAX, WEATHER_LEVEL_MIN};
 
 use crate::dimension::DimensionId;
 use crate::entity::McEntity;
 use crate::packet::{PacketWriter, WritePacket};
 use crate::server::{Server, SharedServer};
 use crate::view::ChunkPos;
-use crate::{weather, Despawned};
+use crate::Despawned;
 
 mod chunk;
 mod chunk_entry;
 mod paletted_container;
+mod weather;
 
 /// An Instance represents a Minecraft world, which consist of [`Chunk`]s.
 /// It manages updating clients when chunks change, and caches chunk and entity
@@ -455,11 +457,7 @@ impl Instance {
     pub fn set_rain_level(&mut self, level: f32) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::RainLevelChange,
-            value: num::clamp(
-                level,
-                weather::WEATHER_LEVEL_MIN,
-                weather::WEATHER_LEVEL_MAX,
-            ),
+            value: level.clamp(WEATHER_LEVEL_MIN, WEATHER_LEVEL_MAX),
         });
     }
 
@@ -467,11 +465,7 @@ impl Instance {
     pub fn set_thunder_level(&mut self, level: f32) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::ThunderLevelChange,
-            value: num::clamp(
-                level,
-                weather::WEATHER_LEVEL_MIN,
-                weather::WEATHER_LEVEL_MAX,
-            ),
+            value: level.clamp(WEATHER_LEVEL_MIN, WEATHER_LEVEL_MAX),
         });
     }
 }
