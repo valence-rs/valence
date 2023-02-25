@@ -437,7 +437,7 @@ impl Instance {
         });
     }
 
-    /// Sends the rain begin event to all players in the instance.
+    /// Sends the begin rain event to all players in the instance.
     pub fn begin_raining(&mut self) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::BeginRaining,
@@ -445,7 +445,7 @@ impl Instance {
         });
     }
 
-    /// Sends the rain end event to all players in the instance.
+    /// Sends the end rain event to all players in the instance.
     pub fn end_raining(&mut self) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::EndRaining,
@@ -453,7 +453,7 @@ impl Instance {
         });
     }
 
-    /// Sets a level of the rain in the instance.
+    /// Sends the set rain level event to all players in the instance.
     pub fn set_rain_level(&mut self, level: f32) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::RainLevelChange,
@@ -461,7 +461,7 @@ impl Instance {
         });
     }
 
-    /// Sets a level of the thunder in the instance.
+    /// Sends the set thunder level event to all players in the instance.
     pub fn set_thunder_level(&mut self, level: f32) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::ThunderLevelChange,
