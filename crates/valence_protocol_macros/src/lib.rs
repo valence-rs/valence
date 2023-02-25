@@ -1,6 +1,6 @@
-//! This crate provides derive macros for [`Encode`], [`Decode`],
-//! [`EncodePacket`], and [`DecodePacket`].
-//! It also provides the procedural macro [`ident_str!`]
+//! This crate provides derive macros for [`Encode`], [`Decode`], and
+//! [`Packet`]. It also provides the procedural macro [`ident_str!`] for parsing
+//! identifiers at compile time.
 //!
 //! See `valence_protocol`'s documentation for more information.
 

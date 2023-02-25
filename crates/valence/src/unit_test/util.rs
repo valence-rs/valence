@@ -135,7 +135,7 @@ impl MockClientHelper {
 
     /// Inject a packet to be treated as a packet inbound to the server. Panics
     /// if the packet cannot be sent.
-    pub fn send<'a>(&mut self, packet: &(impl Packet<'a>)) {
+    pub fn send<'a>(&mut self, packet: &impl Packet<'a>) {
         self.enc
             .append_packet(packet)
             .expect("failed to encode packet");

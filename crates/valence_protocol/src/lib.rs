@@ -276,7 +276,7 @@ pub trait Decode<'a>: Sized {
 /// println!("{buf:?}");
 /// ```
 ///
-/// [macro]: valence_protocol_macros::DecodePacket
+/// [macro]: valence_protocol_macros::Packet
 /// [`VarInt`]: var_int::VarInt
 pub trait Packet<'a>: Sized + fmt::Debug {
     /// The packet returned by [`Self::packet_id`]. If the packet ID is not
