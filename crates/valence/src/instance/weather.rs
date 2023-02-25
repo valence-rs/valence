@@ -7,12 +7,12 @@ pub const WEATHER_LEVEL_MAX: f32 = 1_f32;
 #[derive(Component)]
 pub struct Weather {
     /// Contains the raining level.
-    /// Should be between [`MIN_WEATHER_LEVEL`] and [`MAX_WEATHER_LEVEL`].
+    /// Should be between [`WEATHER_LEVEL_MIN`] and [`WEATHER_LEVEL_MAX`].
     ///
     /// The [`None`] value means no raining event.
     pub raining: Option<f32>,
     /// Contains the thunder level.
-    /// Should be between [`MIN_WEATHER_LEVEL`] and [`MAX_WEATHER_LEVEL`].
+    /// Should be between [`WEATHER_LEVEL_MIN`] and [`WEATHER_LEVEL_MAX`].
     ///
     /// The [`None`] value means no thunder event.
     pub thunder: Option<f32>,
