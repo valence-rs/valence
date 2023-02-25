@@ -8,25 +8,18 @@ use proc_macro::TokenStream as StdTokenStream;
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 use syn::{
-    parse_quote, Attribute, Error, GenericParam, Generics, Lifetime, LifetimeDef, Lit, LitInt,
-    Meta, Result, Variant,
+    parse_quote, Attribute, Error, GenericParam, Generics, Lifetime, LifetimeDef, Lit, Meta,
+    Result, Variant,
 };
 
 mod decode;
 mod encode;
 mod ident_str;
+mod packet;
 
 #[proc_macro_derive(Encode, attributes(tag))]
 pub fn derive_encode(item: StdTokenStream) -> StdTokenStream {
     match encode::derive_encode(item.into()) {
-        Ok(tokens) => tokens.into(),
-        Err(e) => e.into_compile_error().into(),
-    }
-}
-
-#[proc_macro_derive(EncodePacket, attributes(packet_id))]
-pub fn derive_encode_packet(item: StdTokenStream) -> StdTokenStream {
-    match encode::derive_encode_packet(item.into()) {
         Ok(tokens) => tokens.into(),
         Err(e) => e.into_compile_error().into(),
     }
@@ -40,9 +33,9 @@ pub fn derive_decode(item: StdTokenStream) -> StdTokenStream {
     }
 }
 
-#[proc_macro_derive(DecodePacket, attributes(packet_id))]
-pub fn derive_decode_packet(item: StdTokenStream) -> StdTokenStream {
-    match decode::derive_decode_packet(item.into()) {
+#[proc_macro_derive(Packet, attributes(packet_id))]
+pub fn derive_packet(item: StdTokenStream) -> StdTokenStream {
+    match packet::derive_packet(item.into()) {
         Ok(tokens) => tokens.into(),
         Err(e) => e.into_compile_error().into(),
     }
@@ -54,22 +47,6 @@ pub fn ident_str(item: StdTokenStream) -> StdTokenStream {
         Ok(tokens) => tokens.into(),
         Err(e) => e.into_compile_error().into(),
     }
-}
-
-fn find_packet_id_attr(attrs: &[Attribute]) -> Result<Option<LitInt>> {
-    for attr in attrs {
-        if let Meta::NameValue(nv) = attr.parse_meta()? {
-            if nv.path.is_ident("packet_id") {
-                let span = nv.lit.span();
-                return match nv.lit {
-                    Lit::Int(i) => Ok(Some(i)),
-                    _ => Err(Error::new(span, "packet ID must be an integer literal")),
-                };
-            }
-        }
-    }
-
-    Ok(None)
 }
 
 fn pair_variants_with_discriminants(

@@ -5,7 +5,7 @@ use bytes::{Buf, BufMut, BytesMut};
 use tracing::debug;
 
 use crate::var_int::{VarInt, VarIntDecodeError};
-use crate::{DecodePacket, Encode, EncodePacket, Result, MAX_PACKET_SIZE};
+use crate::{Encode, Packet, Result, MAX_PACKET_SIZE};
 
 /// The AES block cipher with a 128 bit key, using the CFB-8 mode of
 /// operation.
@@ -33,9 +33,9 @@ impl PacketEncoder {
         self.buf.extend_from_slice(bytes)
     }
 
-    pub fn prepend_packet<P>(&mut self, pkt: &P) -> Result<()>
+    pub fn prepend_packet<'a, P>(&mut self, pkt: &P) -> Result<()>
     where
-        P: EncodePacket + ?Sized,
+        P: Packet<'a>,
     {
         let start_len = self.buf.len();
         self.append_packet(pkt)?;
@@ -54,9 +54,9 @@ impl PacketEncoder {
         Ok(())
     }
 
-    pub fn append_packet<P>(&mut self, pkt: &P) -> Result<()>
+    pub fn append_packet<'a, P>(&mut self, pkt: &P) -> Result<()>
     where
-        P: EncodePacket + ?Sized,
+        P: Packet<'a>,
     {
         let start_len = self.buf.len();
 
@@ -171,9 +171,9 @@ impl PacketEncoder {
     }
 }
 
-pub fn encode_packet<P>(buf: &mut Vec<u8>, pkt: &P) -> Result<()>
+pub fn encode_packet<'a, P>(buf: &mut Vec<u8>, pkt: &P) -> Result<()>
 where
-    P: EncodePacket + ?Sized,
+    P: Packet<'a>,
 {
     let start_len = buf.len();
 
@@ -201,14 +201,14 @@ where
 }
 
 #[cfg(feature = "compression")]
-pub fn encode_packet_compressed<P>(
+pub fn encode_packet_compressed<'a, P>(
     buf: &mut Vec<u8>,
     pkt: &P,
     threshold: u32,
     scratch: &mut Vec<u8>,
 ) -> Result<()>
 where
-    P: EncodePacket + ?Sized,
+    P: Packet<'a>,
 {
     use std::io::Read;
 
@@ -287,7 +287,7 @@ impl PacketDecoder {
 
     pub fn try_next_packet<'a, P>(&'a mut self) -> Result<Option<P>>
     where
-        P: DecodePacket<'a>,
+        P: Packet<'a>,
     {
         self.buf.advance(self.cursor);
         self.cursor = 0;
@@ -368,7 +368,7 @@ impl PacketDecoder {
     #[track_caller]
     pub fn collect_into_vec<'a, P>(&'a mut self) -> Result<Vec<P>>
     where
-        P: DecodePacket<'a>,
+        P: Packet<'a>,
     {
         #[cfg(feature = "encryption")]
         assert!(
@@ -512,7 +512,7 @@ mod tests {
     #[cfg(feature = "encryption")]
     const CRYPT_KEY: [u8; 16] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 
-    #[derive(PartialEq, Debug, Encode, EncodePacket, Decode, DecodePacket)]
+    #[derive(PartialEq, Debug, Encode, Decode, Packet)]
     #[packet_id = 42]
     struct TestPacket<'a> {
         a: bool,
