@@ -29,7 +29,7 @@ use valence_protocol::text::Text;
 use valence_protocol::types::{GameMode, GlobalPos, Property, SoundCategory};
 use valence_protocol::username::Username;
 use valence_protocol::var_int::VarInt;
-use valence_protocol::EncodePacket;
+use valence_protocol::Packet;
 
 use crate::dimension::DimensionId;
 use crate::entity::data::Player;
@@ -173,9 +173,9 @@ impl Client {
     ///
     /// If encoding the packet fails, the client is disconnected. Has no
     /// effect if the client is already disconnected.
-    pub fn write_packet<P>(&mut self, pkt: &P)
+    pub fn write_packet<'a, P>(&mut self, pkt: &P)
     where
-        P: EncodePacket + ?Sized,
+        P: Packet<'a>,
     {
         self.enc.write_packet(pkt);
     }
@@ -606,9 +606,9 @@ impl Client {
 }
 
 impl WritePacket for Client {
-    fn write_packet<P>(&mut self, packet: &P)
+    fn write_packet<'a, P>(&mut self, packet: &P)
     where
-        P: EncodePacket + ?Sized,
+        P: Packet<'a>,
     {
         self.enc.write_packet(packet)
     }

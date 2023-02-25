@@ -3,9 +3,7 @@ use quote::quote;
 use syn::spanned::Spanned;
 use syn::{parse2, parse_quote, Data, DeriveInput, Error, Fields, Result};
 
-use crate::{
-    add_trait_bounds, decode_split_for_impl, find_packet_id_attr, pair_variants_with_discriminants,
-};
+use crate::{add_trait_bounds, decode_split_for_impl, pair_variants_with_discriminants};
 
 pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
     let mut input = parse2::<DeriveInput>(item)?;
@@ -166,49 +164,4 @@ pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
             "cannot derive `Decode` on unions",
         )),
     }
-}
-
-pub fn derive_decode_packet(item: TokenStream) -> Result<TokenStream> {
-    let mut input = parse2::<DeriveInput>(item)?;
-
-    let Some(packet_id) = find_packet_id_attr(&input.attrs)? else {
-        return Err(Error::new(
-            input.ident.span(),
-            "cannot derive `DecodePacket` without `#[packet_id = ...]` helper attribute",
-        ))
-    };
-
-    let lifetime = input
-        .generics
-        .lifetimes()
-        .next()
-        .map(|l| l.lifetime.clone())
-        .unwrap_or_else(|| parse_quote!('a));
-
-    add_trait_bounds(
-        &mut input.generics,
-        quote!(::valence_protocol::__private::Decode<#lifetime>),
-    );
-
-    let (impl_generics, ty_generics, where_clause) =
-        decode_split_for_impl(input.generics, lifetime.clone());
-
-    let name = input.ident;
-
-    Ok(quote! {
-        impl #impl_generics ::valence_protocol::__private::DecodePacket<#lifetime> for #name #ty_generics
-        #where_clause
-        {
-            const PACKET_ID: i32 = #packet_id;
-
-            fn decode_packet(r: &mut &#lifetime [u8]) -> ::valence_protocol::__private::Result<Self> {
-                use ::valence_protocol::__private::{Decode, Context, VarInt, ensure};
-
-                let id = VarInt::decode(r).context("failed to decode packet ID")?.0;
-                ensure!(id == #packet_id, "unexpected packet ID {} (expected {})", id, #packet_id);
-
-                Self::decode(r)
-            }
-        }
-    })
 }

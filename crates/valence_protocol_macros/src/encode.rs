@@ -3,7 +3,7 @@ use quote::quote;
 use syn::spanned::Spanned;
 use syn::{parse2, Data, DeriveInput, Error, Fields, LitInt, Result};
 
-use crate::{add_trait_bounds, find_packet_id_attr, pair_variants_with_discriminants};
+use crate::{add_trait_bounds, pair_variants_with_discriminants};
 
 pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
     let mut input = parse2::<DeriveInput>(item)?;
@@ -162,42 +162,4 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
             "cannot derive `Encode` on unions",
         )),
     }
-}
-
-pub fn derive_encode_packet(item: TokenStream) -> Result<TokenStream> {
-    let mut input = parse2::<DeriveInput>(item)?;
-
-    let Some(packet_id) = find_packet_id_attr(&input.attrs)? else {
-        return Err(Error::new(
-            input.ident.span(),
-            "cannot derive `EncodePacket` without `#[packet_id = ...]` helper attribute",
-        ))
-    };
-
-    add_trait_bounds(
-        &mut input.generics,
-        quote!(::valence_protocol::__private::Encode),
-    );
-
-    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
-
-    let name = input.ident;
-
-    Ok(quote! {
-        impl #impl_generics ::valence_protocol::__private::EncodePacket for #name #ty_generics
-        #where_clause
-        {
-            const PACKET_ID: i32 = #packet_id;
-
-            fn encode_packet(&self, mut w: impl ::std::io::Write) -> ::valence_protocol::__private::Result<()> {
-                use ::valence_protocol::__private::{Encode, Context, VarInt};
-
-                VarInt(#packet_id)
-                    .encode(&mut w)
-                    .context("failed to encode packet ID")?;
-
-                self.encode(w)
-            }
-        }
-    })
 }

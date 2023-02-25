@@ -2,20 +2,20 @@ use std::io::Write;
 
 use tracing::warn;
 use valence_protocol::codec::{encode_packet, encode_packet_compressed, PacketEncoder};
-use valence_protocol::EncodePacket;
+use valence_protocol::Packet;
 
 pub(crate) trait WritePacket {
-    fn write_packet<P>(&mut self, packet: &P)
+    fn write_packet<'a, P>(&mut self, packet: &P)
     where
-        P: EncodePacket + ?Sized;
+        P: Packet<'a>;
 
     fn write_packet_bytes(&mut self, bytes: &[u8]);
 }
 
 impl<W: WritePacket> WritePacket for &mut W {
-    fn write_packet<P>(&mut self, packet: &P)
+    fn write_packet<'a, P>(&mut self, packet: &P)
     where
-        P: EncodePacket + ?Sized,
+        P: Packet<'a>,
     {
         (*self).write_packet(packet)
     }
@@ -42,9 +42,9 @@ impl<'a> PacketWriter<'a> {
 }
 
 impl WritePacket for PacketWriter<'_> {
-    fn write_packet<P>(&mut self, pkt: &P)
+    fn write_packet<'a, P>(&mut self, pkt: &P)
     where
-        P: EncodePacket + ?Sized,
+        P: Packet<'a>,
     {
         let res = if let Some(threshold) = self.threshold {
             encode_packet_compressed(self.buf, pkt, threshold, self.scratch)
@@ -65,9 +65,9 @@ impl WritePacket for PacketWriter<'_> {
 }
 
 impl WritePacket for PacketEncoder {
-    fn write_packet<P>(&mut self, packet: &P)
+    fn write_packet<'a, P>(&mut self, packet: &P)
     where
-        P: EncodePacket + ?Sized,
+        P: Packet<'a>,
     {
         if let Err(e) = self.append_packet(packet) {
             warn!("failed to write packet: {e:#}");

@@ -6,7 +6,7 @@ use bytes::BytesMut;
 use valence_protocol::codec::{PacketDecoder, PacketEncoder};
 use valence_protocol::packet::S2cPlayPacket;
 use valence_protocol::username::Username;
-use valence_protocol::EncodePacket;
+use valence_protocol::Packet;
 
 use crate::client::{Client, ClientConnection};
 use crate::config::{ConnectionMode, ServerPlugin};
@@ -135,7 +135,7 @@ impl MockClientHelper {
 
     /// Inject a packet to be treated as a packet inbound to the server. Panics
     /// if the packet cannot be sent.
-    pub fn send(&mut self, packet: &(impl EncodePacket + ?Sized)) {
+    pub fn send<'a>(&mut self, packet: &impl Packet<'a>) {
         self.enc
             .append_packet(packet)
             .expect("failed to encode packet");
