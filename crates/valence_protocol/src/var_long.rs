@@ -26,7 +26,6 @@ impl VarLong {
 }
 
 impl Encode for VarLong {
-    /*
     // Adapted from VarInt-Simd encode
     // https://github.com/as-com/varint-simd/blob/0f468783da8e181929b01b9c6e9f741c1fe09825/src/encode/mod.rs#L71
     #[cfg(all(
@@ -76,13 +75,12 @@ impl Encode for VarLong {
         w.write_all(unsafe { bytes.get_unchecked(..bytes_needed as usize) })?;
 
         Ok(())
-    }*/
+    }
 
-    /*
     #[cfg(any(
         not(any(target_arch = "x86", target_arch = "x86_64")),
         target_os = "macos"
-    ))]*/
+    ))]
     fn encode(&self, mut w: impl Write) -> Result<()> {
         use byteorder::WriteBytesExt;
 
