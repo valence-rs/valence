@@ -23,7 +23,8 @@ jobs:
     - uses: dtolnay/rust-toolchain@stable
       with:
         components: clippy, rustfmt
-
+    - if: matrix.os == 'macos-latest'
+      run: ulimit -a
     - run: cp crates/playground/src/playground.template.rs crates/playground/src/playground.rs
     - name: Validate formatting
       run: cargo fmt --all -- --check
