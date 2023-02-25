@@ -14,6 +14,6 @@ pub struct Weather {
     /// Contains the thunder level.
     /// Should be between [`MIN_WEATHER_LEVEL`] and [`MAX_WEATHER_LEVEL`].
     ///
-    /// The [`None`] value means no thunder.
+    /// The [`None`] value means no thunder event.
     pub thunder: Option<f32>,
 }
