@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-11]
 
     runs-on: ${{ matrix.os }}
 
@@ -33,6 +33,6 @@ jobs:
     - name: Run clippy lints
       run: cargo clippy --workspace --no-deps --all-features --all-targets -- -D warnings
     - name: Run tests
-      run: cargo test --workspace --all-features --all-targets
+      run: cargo test -v --workspace --all-features --all-targets
     - name: Run valence_nbt tests without preserve_order feature
-      run: cargo test -p valence_nbt --all-targets
+      run: cargo test -v -p valence_nbt --all-targets

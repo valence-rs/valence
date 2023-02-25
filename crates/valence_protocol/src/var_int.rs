@@ -1,7 +1,7 @@
 use std::io::{Read, Write};
 
 use anyhow::bail;
-use byteorder::{ReadBytesExt, WriteBytesExt};
+use byteorder::ReadBytesExt;
 use thiserror::Error;
 
 use crate::{Decode, Encode};
