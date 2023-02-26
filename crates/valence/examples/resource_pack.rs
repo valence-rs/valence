@@ -1,9 +1,9 @@
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::{
-    default_event_handler, InteractWithEntity, ResourcePackStatus, ResourcePackStatusChange,
+    default_event_handler, PlayerInteract, ResourcePackStatus, ResourcePackStatusChange,
 };
 use valence::prelude::*;
-use valence_protocol::types::EntityInteraction;
+use valence_protocol::packet::c2s::play::player_interact::Interaction;
 
 const SPAWN_Y: i32 = 64;
 
@@ -59,12 +59,12 @@ fn init_clients(
     }
 }
 
-fn prompt_on_punch(mut clients: Query<&mut Client>, mut events: EventReader<InteractWithEntity>) {
+fn prompt_on_punch(mut clients: Query<&mut Client>, mut events: EventReader<PlayerInteract>) {
     for event in events.iter() {
         let Ok(mut client) = clients.get_mut(event.client) else {
             continue;
         };
-        if event.interact == EntityInteraction::Attack {
+        if event.interact == Interaction::Attack {
             client.set_resource_pack(
                 "https://github.com/valence-rs/valence/raw/main/assets/example_pack.zip",
                 "d7c6108849fb190ec2a49f2d38b7f1f897d9ce9f",

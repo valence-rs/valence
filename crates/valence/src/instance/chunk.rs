@@ -6,12 +6,15 @@ use std::sync::atomic::{AtomicBool, Ordering};
 // Using nonstandard mutex to avoid poisoning API.
 use parking_lot::Mutex;
 use valence_nbt::{compound, Compound};
-use valence_protocol::block::{BlockEntity, BlockState};
-use valence_protocol::packets::s2c::play::{
-    BlockEntityData, BlockUpdate, ChunkDataAndUpdateLightEncode, UpdateSectionBlocksEncode,
+use valence_protocol::block::{BlockEntityKind, BlockState};
+use valence_protocol::block_pos::BlockPos;
+use valence_protocol::packet::s2c::play::chunk_data::ChunkDataBlockEntity;
+use valence_protocol::packet::s2c::play::{
+    BlockEntityUpdateS2c, BlockUpdateS2c, ChunkDataS2c, ChunkDeltaUpdateS2c,
 };
-use valence_protocol::types::ChunkDataBlockEntity;
-use valence_protocol::{BlockPos, Encode, VarInt, VarLong};
+use valence_protocol::var_int::VarInt;
+use valence_protocol::var_long::VarLong;
+use valence_protocol::Encode;
 
 use crate::biome::BiomeId;
 use crate::instance::paletted_container::PalettedContainer;
@@ -168,6 +171,18 @@ impl<'a> BlockMut<'a> {
             }
             Entry::Vacant(_) => None,
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct BlockEntity {
+    pub kind: BlockEntityKind,
+    pub nbt: Compound,
+}
+
+impl BlockEntity {
+    pub fn new(kind: BlockEntityKind, nbt: Compound) -> Self {
+        Self { kind, nbt }
     }
 }
 
@@ -329,7 +344,7 @@ impl Chunk<true> {
                     let global_y = info.min_y + sect_y as i32 * 16 + offset_y as i32;
                     let global_z = pos.z * 16 + offset_z as i32;
 
-                    writer.write_packet(&BlockUpdate {
+                    writer.write_packet(&BlockUpdateS2c {
                         position: BlockPos::new(global_x, global_y, global_z),
                         block_id: VarInt(block as i32),
                     })
@@ -338,10 +353,10 @@ impl Chunk<true> {
                         | (pos.z as i64 & 0x3fffff) << 20
                         | (sect_y as i64 + info.min_y.div_euclid(16) as i64) & 0xfffff;
 
-                    writer.write_packet(&UpdateSectionBlocksEncode {
+                    writer.write_packet(&ChunkDeltaUpdateS2c {
                         chunk_section_position,
                         invert_trust_edges: false,
-                        blocks: &sect.section_updates,
+                        blocks: Cow::Borrowed(&sect.section_updates),
                     });
                 }
             }
@@ -357,7 +372,7 @@ impl Chunk<true> {
                 let global_y = info.min_y + y as i32;
                 let global_z = pos.z * 16 + z as i32;
 
-                writer.write_packet(&BlockEntityData {
+                writer.write_packet(&BlockEntityUpdateS2c {
                     position: BlockPos::new(global_x, global_y, global_z),
                     kind: block_entity.kind,
                     data: Cow::Borrowed(&block_entity.nbt),
@@ -429,21 +444,23 @@ impl Chunk<true> {
                 })
                 .collect();
 
-            writer.write_packet(&ChunkDataAndUpdateLightEncode {
+            let heightmaps = compound! {
+                // TODO: MOTION_BLOCKING heightmap
+            };
+
+            writer.write_packet(&ChunkDataS2c {
                 chunk_x: pos.x,
                 chunk_z: pos.z,
-                heightmaps: &compound! {
-                    // TODO: MOTION_BLOCKING heightmap
-                },
+                heightmaps: Cow::Owned(heightmaps),
                 blocks_and_biomes: scratch,
-                block_entities: &block_entities,
+                block_entities: Cow::Borrowed(&block_entities),
                 trust_edges: true,
-                sky_light_mask: &info.filler_sky_light_mask,
-                block_light_mask: &[],
-                empty_sky_light_mask: &[],
-                empty_block_light_mask: &[],
-                sky_light_arrays: &info.filler_sky_light_arrays,
-                block_light_arrays: &[],
+                sky_light_mask: Cow::Borrowed(&info.filler_sky_light_mask),
+                block_light_mask: Cow::Borrowed(&[]),
+                empty_sky_light_mask: Cow::Borrowed(&[]),
+                empty_block_light_mask: Cow::Borrowed(&[]),
+                sky_light_arrays: Cow::Borrowed(&info.filler_sky_light_arrays),
+                block_light_arrays: Cow::Borrowed(&[]),
             });
         }
 

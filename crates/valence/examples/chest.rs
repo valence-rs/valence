@@ -1,6 +1,6 @@
 use tracing::warn;
 use valence::client::despawn_disconnected_clients;
-use valence::client::event::{default_event_handler, StartSneaking, UseItemOnBlock};
+use valence::client::event::{default_event_handler, PlayerInteractBlock, StartSneaking};
 use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;
@@ -79,7 +79,7 @@ fn toggle_gamemode_on_sneak(
 fn open_chest(
     mut commands: Commands,
     inventories: Query<Entity, (With<Inventory>, Without<Client>)>,
-    mut events: EventReader<UseItemOnBlock>,
+    mut events: EventReader<PlayerInteractBlock>,
 ) {
     let Ok(inventory) = inventories.get_single() else {
         warn!("No inventories");

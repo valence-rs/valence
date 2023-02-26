@@ -1,14 +1,19 @@
+use std::borrow::Cow;
 use std::iter::FusedIterator;
 
 use bevy_ecs::prelude::*;
 use tracing::{debug, warn};
-use valence_protocol::packets::s2c::play::{
-    CloseContainerS2c, OpenScreen, SetContainerContentEncode, SetContainerSlotEncode,
+use valence_protocol::item::ItemStack;
+use valence_protocol::packet::s2c::play::{
+    CloseScreenS2c, InventoryS2c, OpenScreenS2c, ScreenHandlerSlotUpdateS2c,
 };
+use valence_protocol::text::Text;
 use valence_protocol::types::{GameMode, WindowType};
-use valence_protocol::{ItemStack, Text, VarInt};
+use valence_protocol::var_int::VarInt;
 
-use crate::client::event::{ClickContainer, CloseContainer, SetCreativeModeSlot, SetHeldItem};
+use crate::client::event::{
+    ClickSlot, CloseHandledScreen, CreativeInventoryAction, UpdateSelectedSlot,
+};
 use crate::client::Client;
 
 #[derive(Debug, Clone, Component)]
@@ -124,11 +129,11 @@ pub(crate) fn update_player_inventories(
                 client.inventory_state_id += 1;
                 let cursor_item = client.cursor_item.clone();
                 let state_id = client.inventory_state_id.0;
-                client.write_packet(&SetContainerContentEncode {
+                client.write_packet(&InventoryS2c {
                     window_id: 0,
                     state_id: VarInt(state_id),
-                    slots: inventory.slot_slice(),
-                    carried_item: &cursor_item,
+                    slots: Cow::Borrowed(inventory.slot_slice()),
+                    carried_item: Cow::Borrowed(&cursor_item),
                 });
 
                 client.cursor_item_modified = false;
@@ -142,11 +147,11 @@ pub(crate) fn update_player_inventories(
                     let state_id = client.inventory_state_id.0;
                     for (i, slot) in inventory.slots.iter().enumerate() {
                         if ((modified_filtered >> i) & 1) == 1 {
-                            client.write_packet(&SetContainerSlotEncode {
+                            client.write_packet(&ScreenHandlerSlotUpdateS2c {
                                 window_id: 0,
                                 state_id: VarInt(state_id),
                                 slot_idx: i as i16,
-                                slot_data: slot.as_ref(),
+                                slot_data: Cow::Borrowed(slot),
                             });
                         }
                     }
@@ -162,13 +167,14 @@ pub(crate) fn update_player_inventories(
 
             client.cursor_item_modified = false;
 
+            // TODO: eliminate clone?
             let cursor_item = client.cursor_item.clone();
             let state_id = client.inventory_state_id.0;
-            client.write_packet(&SetContainerSlotEncode {
+            client.write_packet(&ScreenHandlerSlotUpdateS2c {
                 window_id: -1,
                 state_id: VarInt(state_id),
                 slot_idx: -1,
-                slot_data: cursor_item.as_ref(),
+                slot_data: Cow::Borrowed(&cursor_item),
             });
         }
     }
@@ -342,7 +348,7 @@ pub(crate) fn update_open_inventories(
             // the inventory no longer exists, so close the inventory
             commands.entity(client_entity).remove::<OpenInventory>();
             let window_id = client.window_id;
-            client.write_packet(&CloseContainerS2c {
+            client.write_packet(&CloseScreenS2c {
                 window_id,
             });
             continue;
@@ -353,18 +359,19 @@ pub(crate) fn update_open_inventories(
             client.window_id = client.window_id % 100 + 1;
             open_inventory.client_modified = 0;
 
-            let packet = OpenScreen {
+            let packet = OpenScreenS2c {
                 window_id: VarInt(client.window_id.into()),
                 window_type: WindowType::from(inventory.kind),
                 window_title: (&inventory.title).into(),
             };
             client.write_packet(&packet);
 
-            let packet = SetContainerContentEncode {
+            let packet = InventoryS2c {
                 window_id: client.window_id,
                 state_id: VarInt(client.inventory_state_id.0),
-                slots: inventory.slot_slice(),
-                carried_item: &client.cursor_item.clone(),
+                slots: Cow::Borrowed(inventory.slot_slice()),
+                // TODO: eliminate clone?
+                carried_item: Cow::Owned(client.cursor_item.clone()),
             };
             client.write_packet(&packet);
         } else {
@@ -372,11 +379,12 @@ pub(crate) fn update_open_inventories(
             if inventory.modified == u64::MAX {
                 // send the entire inventory
                 client.inventory_state_id += 1;
-                let packet = SetContainerContentEncode {
+                let packet = InventoryS2c {
                     window_id: client.window_id,
                     state_id: VarInt(client.inventory_state_id.0),
-                    slots: inventory.slot_slice(),
-                    carried_item: &client.cursor_item.clone(),
+                    slots: Cow::Borrowed(inventory.slot_slice()),
+                    // TODO: eliminate clone?
+                    carried_item: Cow::Owned(client.cursor_item.clone()),
                 };
                 client.write_packet(&packet);
             } else {
@@ -389,11 +397,11 @@ pub(crate) fn update_open_inventories(
                     let state_id = client.inventory_state_id.0;
                     for (i, slot) in inventory.slots.iter().enumerate() {
                         if (modified_filtered >> i) & 1 == 1 {
-                            client.write_packet(&SetContainerSlotEncode {
+                            client.write_packet(&ScreenHandlerSlotUpdateS2c {
                                 window_id,
                                 state_id: VarInt(state_id),
                                 slot_idx: i as i16,
-                                slot_data: slot.as_ref(),
+                                slot_data: Cow::Borrowed(slot),
                             });
                         }
                     }
@@ -418,7 +426,7 @@ pub(crate) fn update_open_inventories(
 /// Handles clients telling the server that they are closing an inventory.
 pub(crate) fn handle_close_container(
     mut commands: Commands,
-    mut events: EventReader<CloseContainer>,
+    mut events: EventReader<CloseHandledScreen>,
 ) {
     for event in events.iter() {
         commands.entity(event.client).remove::<OpenInventory>();
@@ -434,7 +442,7 @@ pub(crate) fn update_client_on_close_inventory(
     for entity in removals.iter() {
         if let Ok(mut client) = clients.get_component_mut::<Client>(entity) {
             let window_id = client.window_id;
-            client.write_packet(&CloseContainerS2c { window_id });
+            client.write_packet(&CloseScreenS2c { window_id });
         }
     }
 }
@@ -442,7 +450,7 @@ pub(crate) fn update_client_on_close_inventory(
 pub(crate) fn handle_click_container(
     mut clients: Query<(&mut Client, &mut Inventory, Option<&mut OpenInventory>)>,
     mut inventories: Query<&mut Inventory, Without<Client>>,
-    mut events: EventReader<ClickContainer>,
+    mut events: EventReader<ClickSlot>,
 ) {
     for event in events.iter() {
         let Ok((mut client, mut client_inventory, mut open_inventory)) =
@@ -472,11 +480,12 @@ pub(crate) fn handle_click_container(
                 // client is out of sync, resync, ignore click
                 debug!("Client state id mismatch, resyncing");
                 client.inventory_state_id += 1;
-                let packet = SetContainerContentEncode {
+                let packet = InventoryS2c {
                     window_id: client.window_id,
                     state_id: VarInt(client.inventory_state_id.0),
-                    slots: target_inventory.slot_slice(),
-                    carried_item: &client.cursor_item.clone(),
+                    slots: Cow::Borrowed(target_inventory.slot_slice()),
+                    // TODO: eliminate clone?
+                    carried_item: Cow::Owned(client.cursor_item.clone()),
                 };
                 client.write_packet(&packet);
                 continue;
@@ -484,15 +493,15 @@ pub(crate) fn handle_click_container(
 
             client.cursor_item = event.carried_item.clone();
 
-            for (slot_id, item) in event.slot_changes.clone() {
-                if (0i16..target_inventory.slot_count() as i16).contains(&slot_id) {
+            for slot in event.slot_changes.clone() {
+                if (0i16..target_inventory.slot_count() as i16).contains(&slot.idx) {
                     // the client is interacting with a slot in the target inventory
-                    target_inventory.replace_slot(slot_id as u16, item);
-                    open_inventory.client_modified |= 1 << slot_id;
+                    target_inventory.replace_slot(slot.idx as u16, slot.item);
+                    open_inventory.client_modified |= 1 << slot.idx;
                 } else {
                     // the client is interacting with a slot in their own inventory
-                    let slot_id = convert_to_player_slot_id(target_inventory.kind, slot_id as u16);
-                    client_inventory.replace_slot(slot_id, item);
+                    let slot_id = convert_to_player_slot_id(target_inventory.kind, slot.idx as u16);
+                    client_inventory.replace_slot(slot_id, slot.item);
                     client.inventory_slots_modified |= 1 << slot_id;
                 }
             }
@@ -503,11 +512,12 @@ pub(crate) fn handle_click_container(
                 // client is out of sync, resync, and ignore the click
                 debug!("Client state id mismatch, resyncing");
                 client.inventory_state_id += 1;
-                let packet = SetContainerContentEncode {
+                let packet = InventoryS2c {
                     window_id: client.window_id,
                     state_id: VarInt(client.inventory_state_id.0),
-                    slots: client_inventory.slot_slice(),
-                    carried_item: &client.cursor_item.clone(),
+                    slots: Cow::Borrowed(client_inventory.slot_slice()),
+                    // TODO: eliminate clone?
+                    carried_item: Cow::Owned(client.cursor_item.clone()),
                 };
                 client.write_packet(&packet);
                 continue;
@@ -515,16 +525,16 @@ pub(crate) fn handle_click_container(
 
             // TODO: do more validation on the click
             client.cursor_item = event.carried_item.clone();
-            for (slot_id, item) in event.slot_changes.clone() {
-                if (0i16..client_inventory.slot_count() as i16).contains(&slot_id) {
-                    client_inventory.replace_slot(slot_id as u16, item);
-                    client.inventory_slots_modified |= 1 << slot_id;
+            for slot in event.slot_changes.clone() {
+                if (0i16..client_inventory.slot_count() as i16).contains(&slot.idx) {
+                    client_inventory.replace_slot(slot.idx as u16, slot.item);
+                    client.inventory_slots_modified |= 1 << slot.idx;
                 } else {
                     // the client is trying to interact with a slot that does not exist,
                     // ignore
                     warn!(
                         "Client attempted to interact with slot {} which does not exist",
-                        slot_id
+                        slot.idx
                     );
                 }
             }
@@ -534,7 +544,7 @@ pub(crate) fn handle_click_container(
 
 pub(crate) fn handle_set_slot_creative(
     mut clients: Query<(&mut Client, &mut Inventory)>,
-    mut events: EventReader<SetCreativeModeSlot>,
+    mut events: EventReader<CreativeInventoryAction>,
 ) {
     for event in events.iter() {
         if let Ok((mut client, mut inventory)) = clients.get_mut(event.client) {
@@ -554,11 +564,11 @@ pub(crate) fn handle_set_slot_creative(
             // creative mode Simply marking the slot as modified is not enough. This was
             // discovered because shift-clicking the destroy item slot in creative mode does
             // not work without this hack.
-            client.write_packet(&SetContainerSlotEncode {
+            client.write_packet(&ScreenHandlerSlotUpdateS2c {
                 window_id: 0,
                 state_id: VarInt(state_id),
                 slot_idx: event.slot,
-                slot_data: event.clicked_item.as_ref(),
+                slot_data: Cow::Borrowed(&event.clicked_item),
             });
         }
     }
@@ -566,7 +576,7 @@ pub(crate) fn handle_set_slot_creative(
 
 pub(crate) fn handle_set_held_item(
     mut clients: Query<&mut Client>,
-    mut events: EventReader<SetHeldItem>,
+    mut events: EventReader<UpdateSelectedSlot>,
 ) {
     for event in events.iter() {
         if let Ok(mut client) = clients.get_mut(event.client) {
@@ -590,8 +600,8 @@ fn convert_hotbar_slot_id(slot_id: u16) -> u16 {
 #[cfg(test)]
 mod test {
     use bevy_app::App;
-    use valence_protocol::packets::S2cPlayPacket;
-    use valence_protocol::ItemKind;
+    use valence_protocol::item::ItemKind;
+    use valence_protocol::packet::S2cPlayPacket;
 
     use super::*;
     use crate::unit_test::util::scenario_single_client;
@@ -636,12 +646,12 @@ mod test {
         // Make assertions
         let sent_packets = client_helper.collect_sent()?;
 
-        assert_packet_count!(sent_packets, 1, S2cPlayPacket::OpenScreen(_));
-        assert_packet_count!(sent_packets, 1, S2cPlayPacket::SetContainerContent(_));
+        assert_packet_count!(sent_packets, 1, S2cPlayPacket::OpenScreenS2c(_));
+        assert_packet_count!(sent_packets, 1, S2cPlayPacket::InventoryS2c(_));
         assert_packet_order!(
             sent_packets,
-            S2cPlayPacket::OpenScreen(_),
-            S2cPlayPacket::SetContainerContent(_)
+            S2cPlayPacket::OpenScreenS2c(_),
+            S2cPlayPacket::InventoryS2c(_)
         );
 
         Ok(())
@@ -680,7 +690,7 @@ mod test {
         // Make assertions
         let sent_packets = client_helper.collect_sent()?;
 
-        assert_packet_count!(sent_packets, 1, S2cPlayPacket::CloseContainerS2c(_));
+        assert_packet_count!(sent_packets, 1, S2cPlayPacket::CloseScreenS2c(_));
 
         Ok(())
     }
@@ -715,13 +725,13 @@ mod test {
         // Make assertions
         assert!(app.world.get::<OpenInventory>(client_ent).is_none());
         let sent_packets = client_helper.collect_sent()?;
-        assert_packet_count!(sent_packets, 1, S2cPlayPacket::CloseContainerS2c(_));
+        assert_packet_count!(sent_packets, 1, S2cPlayPacket::CloseScreenS2c(_));
 
         Ok(())
     }
 
     #[test]
-    fn test_should_modify_player_inventory_click_container() -> anyhow::Result<()> {
+    fn test_should_modify_player_inventory_click_slot() -> anyhow::Result<()> {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
         let mut inventory = app
@@ -740,13 +750,16 @@ mod test {
             .get::<Client>(client_ent)
             .unwrap()
             .inventory_state_id;
-        client_helper.send(&valence_protocol::packets::c2s::play::ClickContainer {
+        client_helper.send(&valence_protocol::packet::c2s::play::ClickSlotC2s {
             window_id: 0,
             button: 0,
-            mode: valence_protocol::types::ClickContainerMode::Click,
+            mode: valence_protocol::packet::c2s::play::click_slot::ClickMode::Click,
             state_id: VarInt(state_id.0),
             slot_idx: 20,
-            slots: vec![(20, None)],
+            slots: vec![valence_protocol::packet::c2s::play::click_slot::Slot {
+                idx: 20,
+                item: None,
+            }],
             carried_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
         });
 
@@ -761,7 +774,7 @@ mod test {
         assert_packet_count!(
             sent_packets,
             0,
-            S2cPlayPacket::SetContainerContent(_) | S2cPlayPacket::SetContainerSlot(_)
+            S2cPlayPacket::InventoryS2c(_) | S2cPlayPacket::ScreenHandlerSlotUpdateS2c(_)
         );
         let inventory = app
             .world
@@ -807,7 +820,11 @@ mod test {
         let sent_packets = client_helper.collect_sent()?;
         // because the inventory was modified server side, the client needs to be
         // updated with the change.
-        assert_packet_count!(sent_packets, 1, S2cPlayPacket::SetContainerSlot(_));
+        assert_packet_count!(
+            sent_packets,
+            1,
+            S2cPlayPacket::ScreenHandlerSlotUpdateS2c(_)
+        );
 
         Ok(())
     }
@@ -831,7 +848,7 @@ mod test {
 
         // Make assertions
         let sent_packets = client_helper.collect_sent()?;
-        assert_packet_count!(sent_packets, 1, S2cPlayPacket::SetContainerContent(_));
+        assert_packet_count!(sent_packets, 1, S2cPlayPacket::InventoryS2c(_));
 
         Ok(())
     }
@@ -851,7 +868,7 @@ mod test {
     }
 
     #[test]
-    fn test_should_modify_open_inventory_click_container() -> anyhow::Result<()> {
+    fn test_should_modify_open_inventory_click_slot() -> anyhow::Result<()> {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
         let inventory_ent = set_up_open_inventory(&mut app, client_ent);
@@ -867,13 +884,16 @@ mod test {
             .unwrap()
             .inventory_state_id;
         let window_id = app.world.get::<Client>(client_ent).unwrap().window_id;
-        client_helper.send(&valence_protocol::packets::c2s::play::ClickContainer {
+        client_helper.send(&valence_protocol::packet::c2s::play::ClickSlotC2s {
             window_id,
             button: 0,
-            mode: valence_protocol::types::ClickContainerMode::Click,
+            mode: valence_protocol::packet::c2s::play::click_slot::ClickMode::Click,
             state_id: VarInt(state_id.0),
             slot_idx: 20,
-            slots: vec![(20, None)],
+            slots: vec![valence_protocol::packet::c2s::play::click_slot::Slot {
+                idx: 20,
+                item: None,
+            }],
             carried_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
         });
 
@@ -888,7 +908,7 @@ mod test {
         assert_packet_count!(
             sent_packets,
             0,
-            S2cPlayPacket::SetContainerContent(_) | S2cPlayPacket::SetContainerSlot(_)
+            S2cPlayPacket::InventoryS2c(_) | S2cPlayPacket::ScreenHandlerSlotUpdateS2c(_)
         );
         let inventory = app
             .world
@@ -931,7 +951,11 @@ mod test {
 
         // because the inventory was modified server side, the client needs to be
         // updated with the change.
-        assert_packet_count!(sent_packets, 1, S2cPlayPacket::SetContainerSlot(_));
+        assert_packet_count!(
+            sent_packets,
+            1,
+            S2cPlayPacket::ScreenHandlerSlotUpdateS2c(_)
+        );
         let inventory = app
             .world
             .get::<Inventory>(inventory_ent)
@@ -964,7 +988,7 @@ mod test {
 
         // Make assertions
         let sent_packets = client_helper.collect_sent()?;
-        assert_packet_count!(sent_packets, 1, S2cPlayPacket::SetContainerContent(_));
+        assert_packet_count!(sent_packets, 1, S2cPlayPacket::InventoryS2c(_));
 
         Ok(())
     }
@@ -983,10 +1007,12 @@ mod test {
         app.update();
         client_helper.clear_sent();
 
-        client_helper.send(&valence_protocol::packets::c2s::play::SetCreativeModeSlot {
-            slot: 36,
-            clicked_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
-        });
+        client_helper.send(
+            &valence_protocol::packet::c2s::play::CreativeInventoryActionC2s {
+                slot: 36,
+                clicked_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
+            },
+        );
 
         app.update();
 
@@ -1015,10 +1041,12 @@ mod test {
         app.update();
         client_helper.clear_sent();
 
-        client_helper.send(&valence_protocol::packets::c2s::play::SetCreativeModeSlot {
-            slot: 36,
-            clicked_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
-        });
+        client_helper.send(
+            &valence_protocol::packet::c2s::play::CreativeInventoryActionC2s {
+                slot: 36,
+                clicked_item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
+            },
+        );
 
         app.update();
 
@@ -1075,7 +1103,7 @@ mod test {
         app.update();
         client_helper.clear_sent();
 
-        client_helper.send(&valence_protocol::packets::c2s::play::SetHeldItemC2s { slot: 4 });
+        client_helper.send(&valence_protocol::packet::c2s::play::UpdateSelectedSlotC2s { slot: 4 });
 
         app.update();
 
@@ -1090,8 +1118,10 @@ mod test {
     }
 
     mod dropping_items {
-        use valence_protocol::types::{ClickContainerMode, DiggingStatus};
-        use valence_protocol::{BlockFace, BlockPos};
+        use valence_protocol::block_pos::BlockPos;
+        use valence_protocol::packet::c2s::play::click_slot::ClickMode;
+        use valence_protocol::packet::c2s::play::player_action::Action;
+        use valence_protocol::types::Direction;
 
         use super::*;
         use crate::client::event::DropItemStack;
@@ -1110,10 +1140,10 @@ mod test {
             app.update();
             client_helper.clear_sent();
 
-            client_helper.send(&valence_protocol::packets::c2s::play::PlayerAction {
-                status: DiggingStatus::DropItem,
+            client_helper.send(&valence_protocol::packet::c2s::play::PlayerActionC2s {
+                action: Action::DropItem,
                 position: BlockPos::new(0, 0, 0),
-                face: BlockFace::Bottom,
+                direction: Direction::Down,
                 sequence: VarInt(0),
             });
 
@@ -1142,7 +1172,11 @@ mod test {
             );
 
             let sent_packets = client_helper.collect_sent()?;
-            assert_packet_count!(sent_packets, 0, S2cPlayPacket::SetContainerSlot(_));
+            assert_packet_count!(
+                sent_packets,
+                0,
+                S2cPlayPacket::ScreenHandlerSlotUpdateS2c(_)
+            );
 
             Ok(())
         }
@@ -1161,10 +1195,10 @@ mod test {
             app.update();
             client_helper.clear_sent();
 
-            client_helper.send(&valence_protocol::packets::c2s::play::PlayerAction {
-                status: DiggingStatus::DropItemStack,
+            client_helper.send(&valence_protocol::packet::c2s::play::PlayerActionC2s {
+                action: Action::DropAllItems,
                 position: BlockPos::new(0, 0, 0),
-                face: BlockFace::Bottom,
+                direction: Direction::Down,
                 sequence: VarInt(0),
             });
 
@@ -1206,10 +1240,12 @@ mod test {
             app.update();
             client_helper.clear_sent();
 
-            client_helper.send(&valence_protocol::packets::c2s::play::SetCreativeModeSlot {
-                slot: -1,
-                clicked_item: Some(ItemStack::new(ItemKind::IronIngot, 32, None)),
-            });
+            client_helper.send(
+                &valence_protocol::packet::c2s::play::CreativeInventoryActionC2s {
+                    slot: -1,
+                    clicked_item: Some(ItemStack::new(ItemKind::IronIngot, 32, None)),
+                },
+            );
 
             app.update();
 
@@ -1245,11 +1281,11 @@ mod test {
             app.update();
             client_helper.clear_sent();
 
-            client_helper.send(&valence_protocol::packets::c2s::play::ClickContainer {
+            client_helper.send(&valence_protocol::packet::c2s::play::ClickSlotC2s {
                 window_id: 0,
                 slot_idx: -999,
                 button: 0,
-                mode: ClickContainerMode::Click,
+                mode: ClickMode::Click,
                 state_id: VarInt(state_id),
                 slots: vec![],
                 carried_item: None,
@@ -1298,11 +1334,11 @@ mod test {
             app.update();
             client_helper.clear_sent();
 
-            client_helper.send(&valence_protocol::packets::c2s::play::ClickContainer {
+            client_helper.send(&valence_protocol::packet::c2s::play::ClickSlotC2s {
                 window_id: 0,
                 slot_idx: 40,
                 button: 0,
-                mode: ClickContainerMode::DropKey,
+                mode: ClickMode::DropKey,
                 state_id: VarInt(state_id),
                 slots: vec![],
                 carried_item: None,
@@ -1346,11 +1382,11 @@ mod test {
             app.update();
             client_helper.clear_sent();
 
-            client_helper.send(&valence_protocol::packets::c2s::play::ClickContainer {
+            client_helper.send(&valence_protocol::packet::c2s::play::ClickSlotC2s {
                 window_id: 0,
                 slot_idx: 40,
                 button: 1, // pressing control
-                mode: ClickContainerMode::DropKey,
+                mode: ClickMode::DropKey,
                 state_id: VarInt(state_id),
                 slots: vec![],
                 carried_item: None,

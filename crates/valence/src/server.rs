@@ -17,8 +17,9 @@ use tokio::runtime::{Handle, Runtime};
 use tokio::sync::Semaphore;
 use uuid::Uuid;
 use valence_nbt::{compound, Compound, List};
+use valence_protocol::ident;
 use valence_protocol::types::Property;
-use valence_protocol::{ident, Username};
+use valence_protocol::username::Username;
 
 use crate::biome::{validate_biomes, Biome, BiomeId};
 use crate::client::event::{event_loop_run_criteria, register_client_events};

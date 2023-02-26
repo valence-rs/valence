@@ -12,7 +12,8 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use uuid::Uuid;
 use valence_nbt::Compound;
 
-use crate::{Decode, Encode, Result, VarInt, MAX_PACKET_SIZE};
+use crate::var_int::VarInt;
+use crate::{Decode, Encode, Result, MAX_PACKET_SIZE};
 
 // ==== Primitive ==== //
 
@@ -22,6 +23,7 @@ impl Encode for bool {
     }
 
     fn write_slice(slice: &[bool], mut w: impl Write) -> io::Result<()> {
+        // SAFETY: Bools have the same layout as u8.
         // Bools are guaranteed to have the correct bit pattern.
         let bytes: &[u8] = unsafe { mem::transmute(slice) };
         w.write_all(bytes)

@@ -1,5 +1,5 @@
 use valence::client::despawn_disconnected_clients;
-use valence::client::event::{default_event_handler, ChatCommand};
+use valence::client::event::{default_event_handler, CommandExecution};
 use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;
@@ -51,7 +51,7 @@ fn init_clients(
     }
 }
 
-fn interpret_command(mut clients: Query<&mut Client>, mut events: EventReader<ChatCommand>) {
+fn interpret_command(mut clients: Query<&mut Client>, mut events: EventReader<CommandExecution>) {
     for event in events.iter() {
         let Ok(mut client) = clients.get_component_mut::<Client>(event.client) else {
             continue;

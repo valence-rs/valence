@@ -6,10 +6,12 @@ use std::io::Write;
 use std::iter::FusedIterator;
 
 use anyhow::Context;
-use valence_nbt::Compound;
 use valence_protocol_macros::ident_str;
 
-use crate::{Decode, Encode, Ident, ItemKind, Result, VarInt};
+use crate::ident::Ident;
+use crate::item::ItemKind;
+use crate::var_int::VarInt;
+use crate::{Decode, Encode, Result};
 
 include!(concat!(env!("OUT_DIR"), "/block.rs"));
 
@@ -81,34 +83,6 @@ impl Decode<'_> for BlockKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct BlockEntity {
-    pub kind: BlockEntityKind,
-    pub nbt: Compound,
-}
-
-impl BlockEntity {
-    pub const fn new(kind: BlockEntityKind, nbt: Compound) -> Self {
-        Self { kind, nbt }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
-pub enum BlockFace {
-    /// -Y
-    Bottom,
-    /// +Y
-    Top,
-    /// -Z
-    North,
-    /// +Z
-    South,
-    /// -X
-    West,
-    /// +X
-    East,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -123,5 +97,22 @@ mod tests {
                 assert_eq!(new_block, block);
             }
         }
+    }
+
+    #[test]
+    fn blockstate_to_wall() {
+        assert_eq!(BlockState::STONE.wall_block_id(), None);
+        assert_eq!(
+            BlockState::OAK_SIGN.wall_block_id(),
+            Some(BlockState::OAK_WALL_SIGN)
+        );
+        assert_eq!(
+            BlockState::GREEN_BANNER.wall_block_id(),
+            Some(BlockState::GREEN_WALL_BANNER)
+        );
+        assert_ne!(
+            BlockState::GREEN_BANNER.wall_block_id(),
+            Some(BlockState::GREEN_BANNER)
+        );
     }
 }

@@ -2,7 +2,8 @@ use std::array;
 use std::io::Write;
 
 use arrayvec::ArrayVec;
-use valence_protocol::{Encode, VarInt};
+use valence_protocol::var_int::VarInt;
+use valence_protocol::Encode;
 
 use crate::math::bit_width;
 

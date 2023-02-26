@@ -1,20 +1,25 @@
+use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::collections::BTreeSet;
 use std::iter::FusedIterator;
 
 use bevy_ecs::prelude::*;
+pub use chunk::{Block, BlockEntity, BlockMut, BlockRef, Chunk};
 pub use chunk_entry::*;
 use glam::{DVec3, Vec3};
 use num::integer::div_ceil;
 use rustc_hash::FxHashMap;
-use valence_protocol::packets::s2c::particle::{Particle, ParticleS2c};
-use valence_protocol::packets::s2c::play::{SetActionBarText, SoundEffect};
+use valence_protocol::array::LengthPrefixedArray;
+use valence_protocol::block_pos::BlockPos;
+use valence_protocol::packet::s2c::play::particle::Particle;
+use valence_protocol::packet::s2c::play::{OverlayMessageS2c, ParticleS2c, PlaySoundS2c};
+use valence_protocol::sound::Sound;
+use valence_protocol::text::Text;
 use valence_protocol::types::SoundCategory;
-use valence_protocol::{BlockPos, EncodePacket, LengthPrefixedArray, Sound, Text};
+use valence_protocol::Packet;
 
 use crate::dimension::DimensionId;
 use crate::entity::McEntity;
-pub use crate::instance::chunk::{Block, BlockMut, BlockRef, Chunk};
 use crate::packet::{PacketWriter, WritePacket};
 use crate::server::{Server, SharedServer};
 use crate::view::ChunkPos;
@@ -308,9 +313,9 @@ impl Instance {
     ///
     /// This is more efficient than sending the packet to each client
     /// individually.
-    pub fn write_packet<P>(&mut self, pkt: &P)
+    pub fn write_packet<'a, P>(&mut self, pkt: &P)
     where
-        P: EncodePacket + ?Sized,
+        P: Packet<'a>,
     {
         PacketWriter::new(
             &mut self.packet_buf,
@@ -335,9 +340,9 @@ impl Instance {
     ///
     /// This is more efficient than sending the packet to each client
     /// individually.
-    pub fn write_packet_at<P>(&mut self, pkt: &P, pos: impl Into<ChunkPos>)
+    pub fn write_packet_at<'a, P>(&mut self, pkt: &P, pos: impl Into<ChunkPos>)
     where
-        P: EncodePacket + ?Sized,
+        P: Packet<'a>,
     {
         let pos = pos.into();
         if let Some(cell) = self.partition.get_mut(&pos) {
@@ -383,7 +388,7 @@ impl Instance {
 
         self.write_packet_at(
             &ParticleS2c {
-                particle: particle.clone(),
+                particle: Cow::Borrowed(particle),
                 long_distance,
                 position: position.into(),
                 offset: offset.into().into(),
@@ -408,7 +413,7 @@ impl Instance {
         let position = position.into();
 
         self.write_packet_at(
-            &SoundEffect {
+            &PlaySoundS2c {
                 id: sound.to_id(),
                 category,
                 position: (position * 8.0).as_ivec3().into(),
@@ -422,7 +427,7 @@ impl Instance {
 
     /// Sets the action bar text of all players in the instance.
     pub fn set_action_bar(&mut self, text: impl Into<Text>) {
-        self.write_packet(&SetActionBarText {
+        self.write_packet(&OverlayMessageS2c {
             action_bar_text: text.into().into(),
         });
     }
