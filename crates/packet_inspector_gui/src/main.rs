@@ -17,15 +17,14 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
 use tracing_subscriber::filter::LevelFilter;
-use valence_protocol::packets::c2s::handshake::Handshake;
-use valence_protocol::packets::c2s::login::{EncryptionResponse, LoginStart};
-use valence_protocol::packets::c2s::play::C2sPlayPacket;
-use valence_protocol::packets::c2s::status::{PingRequest, StatusRequest};
-use valence_protocol::packets::s2c::login::{LoginSuccess, S2cLoginPacket};
-use valence_protocol::packets::s2c::play::S2cPlayPacket;
-use valence_protocol::packets::s2c::status::{PingResponse, StatusResponse};
-use valence_protocol::types::HandshakeNextState;
-use valence_protocol::{PacketDecoder, PacketEncoder};
+use valence_protocol::codec::{PacketDecoder, PacketEncoder};
+use valence_protocol::packet::c2s::handshake::handshake::NextState;
+use valence_protocol::packet::c2s::handshake::HandshakeC2s;
+use valence_protocol::packet::c2s::login::{LoginHelloC2s, LoginKeyC2s};
+use valence_protocol::packet::c2s::status::{QueryPingC2s, QueryRequestC2s};
+use valence_protocol::packet::s2c::login::LoginSuccessS2c;
+use valence_protocol::packet::s2c::status::{QueryPongS2c, QueryResponseS2c};
+use valence_protocol::packet::{C2sPlayPacket, S2cLoginPacket, S2cPlayPacket};
 
 use crate::context::Stage;
 use crate::packet_widget::PacketDirection;
@@ -107,28 +106,28 @@ async fn handle_connection(
         buf: String::new(),
     };
 
-    let handshake: Handshake = c2s.rw_packet(Stage::Handshake).await?;
+    let handshake: HandshakeC2s = c2s.rw_packet(Stage::HandshakeC2s).await?;
 
     match handshake.next_state {
-        HandshakeNextState::Status => {
-            c2s.rw_packet::<StatusRequest>(Stage::StatusRequest).await?;
-            s2c.rw_packet::<StatusResponse>(Stage::StatusResponse)
+        NextState::Status => {
+            c2s.rw_packet::<QueryRequestC2s>(Stage::QueryRequestC2s)
                 .await?;
-            c2s.rw_packet::<PingRequest>(Stage::PingRequest).await?;
-            s2c.rw_packet::<PingResponse>(Stage::PingResponse).await?;
+            s2c.rw_packet::<QueryResponseS2c>(Stage::QueryResponseS2c)
+                .await?;
+            c2s.rw_packet::<QueryPingC2s>(Stage::QueryPingC2s).await?;
+            s2c.rw_packet::<QueryPongS2c>(Stage::QueryPongS2c).await?;
 
             Ok(())
         }
-        HandshakeNextState::Login => {
-            c2s.rw_packet::<LoginStart>(Stage::LoginStart).await?;
+        NextState::Login => {
+            c2s.rw_packet::<LoginHelloC2s>(Stage::LoginHelloC2s).await?;
 
             match s2c
                 .rw_packet::<S2cLoginPacket>(Stage::S2cLoginPacket)
                 .await?
             {
-                S2cLoginPacket::EncryptionRequest(_) => {
-                    c2s.rw_packet::<EncryptionResponse>(Stage::EncryptionResponse)
-                        .await?;
+                S2cLoginPacket::LoginHelloS2c(_) => {
+                    c2s.rw_packet::<LoginKeyC2s>(Stage::LoginKeyC2s).await?;
 
                     eprintln!(
                         "Encryption was enabled! Packet contents are inaccessible to the proxy. \
@@ -140,7 +139,7 @@ async fn handle_connection(
                         s2c_res = passthrough(s2c.read, s2c.write) => s2c_res,
                     };
                 }
-                S2cLoginPacket::SetCompression(pkt) => {
+                S2cLoginPacket::LoginCompressionS2c(pkt) => {
                     let threshold = pkt.threshold.0 as u32;
 
                     s2c.enc.set_compression(Some(threshold));
@@ -148,11 +147,12 @@ async fn handle_connection(
                     c2s.enc.set_compression(Some(threshold));
                     c2s.dec.set_compression(true);
 
-                    s2c.rw_packet::<LoginSuccess>(Stage::LoginSuccess).await?;
+                    s2c.rw_packet::<LoginSuccessS2c>(Stage::LoginSuccessS2c)
+                        .await?;
                 }
-                S2cLoginPacket::LoginSuccess(_) => {}
-                S2cLoginPacket::DisconnectLogin(_) => return Ok(()),
-                S2cLoginPacket::LoginPluginRequest(_) => {
+                S2cLoginPacket::LoginSuccessS2c(_) => {}
+                S2cLoginPacket::LoginDisconnectS2c(_) => return Ok(()),
+                S2cLoginPacket::LoginQueryRequestS2c(_) => {
                     bail!("got login plugin request. Don't know how to proceed.")
                 }
             }
@@ -320,7 +320,8 @@ impl eframe::App for App {
                         let f: Vec<&mut Packet> = f
                             .iter_mut()
                             .filter(|p| {
-                                // bit meh to do this here but it works.
+                                // what if packets exist (or will exist) with the same name but
+                                // different direction?
                                 if !self.selected_packets.contains_key(&p.packet_name) {
                                     self.selected_packets.insert(p.packet_name.clone(), true);
                                 }

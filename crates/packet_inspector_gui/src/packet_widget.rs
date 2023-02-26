@@ -101,7 +101,7 @@ impl Widget for Packet {
             let shape = self.direction.get_shape(&rect);
             ui.painter().add(Shape::Path(shape));
 
-            let identifier: WidgetText = format!("0x{:X?}", self.packet_type).into();
+            let identifier: WidgetText = format!("0x{:0>2X?}", self.packet_type).into();
 
             let identifier =
                 identifier.into_galley(ui, Some(false), rect.width() - 21.0, TextStyle::Button);

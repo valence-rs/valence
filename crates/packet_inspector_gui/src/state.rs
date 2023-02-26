@@ -5,7 +5,8 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use valence_protocol::{DecodePacket, EncodePacket, PacketDecoder, PacketEncoder};
+use valence_protocol::codec::{PacketDecoder, PacketEncoder};
+use valence_protocol::Packet as ValencePacket;
 
 use crate::context::{Context, Packet, Stage};
 use crate::packet_widget::PacketDirection;
@@ -24,7 +25,7 @@ pub struct State {
 impl State {
     pub async fn rw_packet<'a, P>(&'a mut self, stage: Stage) -> anyhow::Result<P>
     where
-        P: DecodePacket<'a> + EncodePacket,
+        P: ValencePacket<'a>,
     {
         while !self.dec.has_next_packet()? {
             self.dec.reserve(4096);
@@ -70,7 +71,7 @@ impl State {
             stage,
             created_at: time,
             selected: false,
-            packet_type: bytes[0], // This is not the correct value to use here because compression.
+            packet_type: pkt.packet_id(),
             packet_name: packet_name.to_string(),
         });
 
