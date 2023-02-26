@@ -66,14 +66,17 @@ pub mod prelude {
     pub use player_list::{PlayerList, PlayerListEntry};
     pub use protocol::block::{BlockState, PropName, PropValue};
     pub use protocol::ident::Ident;
+    pub use protocol::item::{ItemKind, ItemStack};
     pub use protocol::text::{Color, Text, TextFormat};
     pub use protocol::types::GameMode;
     pub use protocol::username::Username;
-    pub use protocol::{ident, ItemKind, ItemStack};
     pub use server::{EventLoop, NewClientInfo, Server, SharedServer};
     pub use uuid::Uuid;
     pub use valence_nbt::Compound;
-    pub use valence_protocol::{BlockKind, BlockPos};
+    pub use valence_protocol::block::BlockKind;
+    pub use valence_protocol::block_pos::BlockPos;
+    pub use valence_protocol::ident;
+    pub use valence_protocol::packet::s2c::play::particle::Particle;
     pub use view::{ChunkPos, ChunkView};
 
     use super::*;

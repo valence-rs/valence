@@ -3,8 +3,10 @@ use std::sync::{Arc, Mutex};
 use bevy_app::App;
 use bevy_ecs::prelude::Entity;
 use bytes::BytesMut;
-use valence_protocol::packets::S2cPlayPacket;
-use valence_protocol::{EncodePacket, PacketDecoder, PacketEncoder, Username};
+use valence_protocol::codec::{PacketDecoder, PacketEncoder};
+use valence_protocol::packet::S2cPlayPacket;
+use valence_protocol::username::Username;
+use valence_protocol::Packet;
 
 use crate::client::{Client, ClientConnection};
 use crate::config::{ConnectionMode, ServerPlugin};
@@ -133,7 +135,7 @@ impl MockClientHelper {
 
     /// Inject a packet to be treated as a packet inbound to the server. Panics
     /// if the packet cannot be sent.
-    pub fn send(&mut self, packet: &impl EncodePacket) {
+    pub fn send<'a>(&mut self, packet: &impl Packet<'a>) {
         self.enc
             .append_packet(packet)
             .expect("failed to encode packet");
@@ -179,7 +181,7 @@ pub fn scenario_single_client(app: &mut App) -> (Entity, MockClientHelper) {
 #[macro_export]
 macro_rules! assert_packet_order {
     ($sent_packets:ident, $($packets:pat),+) => {{
-        let sent_packets: &Vec<valence_protocol::packets::S2cPlayPacket> = &$sent_packets;
+        let sent_packets: &Vec<valence_protocol::packet::S2cPlayPacket> = &$sent_packets;
         let positions = [
             $((sent_packets.iter().position(|p| matches!(p, $packets))),)*
         ];
@@ -190,7 +192,7 @@ macro_rules! assert_packet_order {
 #[macro_export]
 macro_rules! assert_packet_count {
     ($sent_packets:ident, $count:tt, $packet:pat) => {{
-        let sent_packets: &Vec<valence_protocol::packets::S2cPlayPacket> = &$sent_packets;
+        let sent_packets: &Vec<valence_protocol::packet::S2cPlayPacket> = &$sent_packets;
         let count = sent_packets.iter().filter(|p| matches!(p, $packet)).count();
         assert_eq!(
             count,

@@ -1,6 +1,6 @@
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::{
-    default_event_handler, FinishDigging, StartDigging, StartSneaking, UseItemOnBlock,
+    default_event_handler, PlayerInteractBlock, StartDigging, StartSneaking, StopDestroyBlock,
 };
 use valence::prelude::*;
 use valence_protocol::types::Hand;
@@ -93,7 +93,7 @@ fn digging_creative_mode(
 fn digging_survival_mode(
     clients: Query<&Client>,
     mut instances: Query<&mut Instance>,
-    mut events: EventReader<FinishDigging>,
+    mut events: EventReader<StopDestroyBlock>,
 ) {
     let mut instance = instances.single_mut();
 
@@ -110,7 +110,7 @@ fn digging_survival_mode(
 fn place_blocks(
     mut clients: Query<(&Client, &mut Inventory)>,
     mut instances: Query<&mut Instance>,
-    mut events: EventReader<UseItemOnBlock>,
+    mut events: EventReader<PlayerInteractBlock>,
 ) {
     let mut instance = instances.single_mut();
 
@@ -146,7 +146,7 @@ fn place_blocks(
             };
             inventory.replace_slot(slot_id, slot);
         }
-        let real_pos = event.position.get_in_direction(event.face);
+        let real_pos = event.position.get_in_direction(event.direction);
         instance.set_block(real_pos, block_kind.to_state());
     }
 }

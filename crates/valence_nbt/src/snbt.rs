@@ -437,10 +437,13 @@ impl<'a> SnbtReader<'a> {
 /// Assert that the string has no trailing data.
 /// SNBT is quite similar to JSON, but with some differences.
 /// See [the wiki](https://minecraft.gamepedia.com/NBT_format#SNBT_format) for more information.
+///
 /// # Example
+///
 /// ```
-/// use valence_nbt::snbt::SnbtReader;
+/// use valence_nbt::snbt::from_snbt_str;
 /// use valence_nbt::Value;
+///
 /// let value = from_snbt_str("1f").unwrap();
 /// assert_eq!(value, Value::Float(1.0));
 /// ```

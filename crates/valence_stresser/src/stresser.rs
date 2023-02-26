@@ -4,12 +4,18 @@ use std::net::SocketAddr;
 use anyhow::bail;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
-use valence_protocol::packets::c2s::handshake::Handshake;
-use valence_protocol::packets::c2s::login::LoginStart;
-use valence_protocol::packets::c2s::play::{ConfirmTeleport, KeepAliveC2s, SetPlayerPosition};
-use valence_protocol::packets::{C2sHandshakePacket, S2cLoginPacket, S2cPlayPacket};
-use valence_protocol::types::HandshakeNextState;
-use valence_protocol::{PacketDecoder, PacketEncoder, Username, Uuid, VarInt, PROTOCOL_VERSION};
+use uuid::Uuid;
+use valence_protocol::codec::{PacketDecoder, PacketEncoder};
+use valence_protocol::packet::c2s::handshake::handshake::NextState;
+use valence_protocol::packet::c2s::handshake::HandshakeC2s;
+use valence_protocol::packet::c2s::login::LoginHelloC2s;
+use valence_protocol::packet::c2s::play::{
+    KeepAliveC2s, PositionAndOnGroundC2s, TeleportConfirmC2s,
+};
+use valence_protocol::packet::{C2sHandshakePacket, S2cLoginPacket, S2cPlayPacket};
+use valence_protocol::username::Username;
+use valence_protocol::var_int::VarInt;
+use valence_protocol::PROTOCOL_VERSION;
 
 pub struct SessionParams<'a> {
     pub socket_addr: SocketAddr,
@@ -28,31 +34,31 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
             conn
         }
         Err(err) => {
-            println!("{sess_name} connection failed");
+            eprintln!("{sess_name} connection failed");
             return Err(err.into());
         }
     };
 
-    _ = conn.set_nodelay(true);
+    conn.set_nodelay(true)?;
 
     let mut dec = PacketDecoder::new();
     let mut enc = PacketEncoder::new();
 
-    let server_addr_str = sock_addr.ip().to_string().as_str().to_owned();
+    let server_addr_str = sock_addr.ip().to_string();
 
-    let handshake_pkt = C2sHandshakePacket::Handshake(Handshake {
-        protocol_version: VarInt::from(PROTOCOL_VERSION),
+    let handshake_pkt = C2sHandshakePacket::HandshakeC2s(HandshakeC2s {
+        protocol_version: VarInt(PROTOCOL_VERSION),
         server_address: &server_addr_str,
         server_port: sock_addr.port(),
-        next_state: HandshakeNextState::Login,
+        next_state: NextState::Login,
     });
 
-    _ = enc.append_packet(&handshake_pkt);
+    enc.append_packet(&handshake_pkt)?;
 
-    _ = enc.append_packet(&LoginStart {
+    enc.append_packet(&LoginHelloC2s {
         username: Username::new(sess_name).unwrap(),
         profile_id: Some(Uuid::new_v4()),
-    });
+    })?;
 
     let write_buf = enc.take();
     conn.write_all(&write_buf).await?;
@@ -75,18 +81,18 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
 
         if let Ok(Some(pkt)) = dec.try_next_packet::<S2cLoginPacket>() {
             match pkt {
-                S2cLoginPacket::SetCompression(p) => {
+                S2cLoginPacket::LoginCompressionS2c(p) => {
                     let threshold = p.threshold.0 as u32;
 
                     dec.set_compression(true);
                     enc.set_compression(Some(threshold));
                 }
 
-                S2cLoginPacket::LoginSuccess(_) => {
+                S2cLoginPacket::LoginSuccessS2c(_) => {
                     break;
                 }
 
-                S2cLoginPacket::EncryptionRequest(_) => {
+                S2cLoginPacket::LoginHelloS2c(_) => {
                     bail!("encryption not implemented");
                 }
 
@@ -121,23 +127,23 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
                 S2cPlayPacket::KeepAliveS2c(p) => {
                     enc.clear();
 
-                    _ = enc.append_packet(&KeepAliveC2s { id: p.id });
+                    enc.append_packet(&KeepAliveC2s { id: p.id })?;
                     conn.write_all(&enc.take()).await?;
 
                     println!("{sess_name} keep alive")
                 }
 
-                S2cPlayPacket::SynchronizePlayerPosition(p) => {
+                S2cPlayPacket::PlayerPositionLookS2c(p) => {
                     enc.clear();
 
-                    _ = enc.append_packet(&ConfirmTeleport {
+                    enc.append_packet(&TeleportConfirmC2s {
                         teleport_id: p.teleport_id,
-                    });
+                    })?;
 
-                    _ = enc.append_packet(&SetPlayerPosition {
+                    enc.append_packet(&PositionAndOnGroundC2s {
                         position: p.position,
                         on_ground: true,
-                    });
+                    })?;
 
                     conn.write_all(&enc.take()).await?;
 

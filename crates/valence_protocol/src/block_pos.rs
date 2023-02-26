@@ -2,7 +2,8 @@ use std::io::Write;
 
 use anyhow::bail;
 
-use crate::{BlockFace, Decode, Encode};
+use crate::types::Direction;
+use crate::{Decode, Encode};
 
 /// Represents an absolute block position in world space.
 #[derive(Clone, Copy, Default, PartialEq, Eq, Hash, Debug)]
@@ -27,20 +28,21 @@ impl BlockPos {
     /// direction.
     ///
     /// ```
-    /// use valence_protocol::{BlockFace, BlockPos};
+    /// use valence_protocol::block_pos::BlockPos;
+    /// use valence_protocol::types::Direction;
     ///
     /// let pos = BlockPos::new(0, 0, 0);
-    /// let adj = pos.get_in_direction(BlockFace::South);
+    /// let adj = pos.get_in_direction(Direction::South);
     /// assert_eq!(adj, BlockPos::new(0, 0, 1));
     /// ```
-    pub fn get_in_direction(self, dir: BlockFace) -> BlockPos {
+    pub fn get_in_direction(self, dir: Direction) -> BlockPos {
         match dir {
-            BlockFace::Bottom => BlockPos::new(self.x, self.y - 1, self.z),
-            BlockFace::Top => BlockPos::new(self.x, self.y + 1, self.z),
-            BlockFace::North => BlockPos::new(self.x, self.y, self.z - 1),
-            BlockFace::South => BlockPos::new(self.x, self.y, self.z + 1),
-            BlockFace::West => BlockPos::new(self.x - 1, self.y, self.z),
-            BlockFace::East => BlockPos::new(self.x + 1, self.y, self.z),
+            Direction::Down => BlockPos::new(self.x, self.y - 1, self.z),
+            Direction::Up => BlockPos::new(self.x, self.y + 1, self.z),
+            Direction::North => BlockPos::new(self.x, self.y, self.z - 1),
+            Direction::South => BlockPos::new(self.x, self.y, self.z + 1),
+            Direction::West => BlockPos::new(self.x - 1, self.y, self.z),
+            Direction::East => BlockPos::new(self.x + 1, self.y, self.z),
         }
     }
 }

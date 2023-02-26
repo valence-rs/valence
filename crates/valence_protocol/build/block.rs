@@ -18,6 +18,7 @@ struct TopLevel {
 struct Block {
     id: u16,
     item_id: u16,
+    wall_variant_id: Option<u16>,
     translation_key: String,
     name: String,
     properties: Vec<Property>,
@@ -293,6 +294,22 @@ pub fn build() -> anyhow::Result<TokenStream> {
             quote! {
                 #[doc = #doc]
                 pub const #name: BlockState = BlockState(#state);
+            }
+        })
+        .collect::<TokenStream>();
+
+    let state_to_wall_variant_arms = blocks
+        .iter()
+        .filter(|b| b.wall_variant_id.is_some())
+        .map(|b| {
+            let block_name = ident(b.name.to_shouty_snake_case());
+            let wall_block_name = ident(
+                blocks[b.wall_variant_id.unwrap() as usize]
+                    .name
+                    .to_shouty_snake_case(),
+            );
+            quote! {
+                BlockState::#block_name => Some(BlockState::#wall_block_name),
             }
         })
         .collect::<TokenStream>();
@@ -593,6 +610,16 @@ pub fn build() -> anyhow::Result<TokenStream> {
             /// Returns the maximum block state ID.
             pub const fn max_raw() -> u16 {
                 #max_state_id
+            }
+
+            /// Returns the wall variant of the block state.
+            ///
+            /// If the given block state doesn't have a wall variant, `None` is returned.
+            pub const fn wall_block_id(self) -> Option<Self> {
+                match self {
+                    #state_to_wall_variant_arms
+                    _ => None
+                }
             }
 
             /// Gets the value of the property with the given name from this block.

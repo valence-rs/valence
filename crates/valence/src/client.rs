@@ -9,21 +9,27 @@ use bytes::BytesMut;
 use glam::{DVec3, Vec3};
 use tracing::warn;
 use uuid::Uuid;
-use valence_protocol::packets::s2c::particle::Particle;
-use valence_protocol::packets::s2c::play::{
-    AcknowledgeBlockChange, CombatDeath, DisconnectPlay, EntityEvent, GameEvent, KeepAliveS2c,
-    LoginPlay, ParticleS2c, PluginMessageS2c, RemoveEntitiesEncode, ResourcePackS2c, Respawn,
-    SetActionBarText, SetCenterChunk, SetDefaultSpawnPosition, SetEntityMetadata,
-    SetEntityVelocity, SetRenderDistance, SetSubtitleText, SetTitleAnimationTimes, SetTitleText,
-    SoundEffect, SynchronizePlayerPosition, SystemChatMessage, UnloadChunk,
+use valence_protocol::block_pos::BlockPos;
+use valence_protocol::codec::{PacketDecoder, PacketEncoder};
+use valence_protocol::ident::Ident;
+use valence_protocol::item::ItemStack;
+use valence_protocol::packet::s2c::play::game_state_change::GameEventKind;
+use valence_protocol::packet::s2c::play::particle::Particle;
+use valence_protocol::packet::s2c::play::player_position_look::Flags as PlayerPositionLookFlags;
+use valence_protocol::packet::s2c::play::{
+    ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, CustomPayloadS2c, DeathMessageS2c,
+    DisconnectS2c, EntitiesDestroyS2c, EntityStatusS2c, EntityTrackerUpdateS2c,
+    EntityVelocityUpdateS2c, GameJoinS2c, GameMessageS2c, GameStateChangeS2c, KeepAliveS2c,
+    OverlayMessageS2c, ParticleS2c, PlaySoundS2c, PlayerActionResponseS2c, PlayerPositionLookS2c,
+    PlayerRespawnS2c, PlayerSpawnPositionS2c, ResourcePackSendS2c, SubtitleS2c, TitleFadeS2c,
+    TitleS2c, UnloadChunkS2c,
 };
-use valence_protocol::types::{
-    GameEventKind, GameMode, GlobalPos, Property, SoundCategory, SyncPlayerPosLookFlags,
-};
-use valence_protocol::{
-    BlockPos, EncodePacket, Ident, ItemStack, PacketDecoder, PacketEncoder, RawBytes, Sound, Text,
-    Username, VarInt,
-};
+use valence_protocol::sound::Sound;
+use valence_protocol::text::Text;
+use valence_protocol::types::{GameMode, GlobalPos, Property, SoundCategory};
+use valence_protocol::username::Username;
+use valence_protocol::var_int::VarInt;
+use valence_protocol::Packet;
 
 use crate::dimension::DimensionId;
 use crate::entity::data::Player;
@@ -167,9 +173,9 @@ impl Client {
     ///
     /// If encoding the packet fails, the client is disconnected. Has no
     /// effect if the client is already disconnected.
-    pub fn write_packet<P>(&mut self, pkt: &P)
+    pub fn write_packet<'a, P>(&mut self, pkt: &P)
     where
-        P: EncodePacket + ?Sized,
+        P: Packet<'a>,
     {
         self.enc.write_packet(pkt);
     }
@@ -261,7 +267,7 @@ impl Client {
     }
 
     pub fn set_velocity(&mut self, velocity: impl Into<Vec3>) {
-        self.enc.write_packet(&SetEntityVelocity {
+        self.enc.write_packet(&EntityVelocityUpdateS2c {
             entity_id: VarInt(0),
             velocity: velocity_to_packet_units(velocity.into()),
         });
@@ -297,7 +303,7 @@ impl Client {
     /// Kills the client and shows `message` on the death screen. If an entity
     /// killed the player, you should supply it as `killer`.
     pub fn kill(&mut self, killer: Option<&McEntity>, message: impl Into<Text>) {
-        self.write_packet(&CombatDeath {
+        self.write_packet(&DeathMessageS2c {
             player_id: VarInt(0),
             entity_id: killer.map_or(-1, |k| k.protocol_id()),
             message: message.into().into(),
@@ -306,7 +312,7 @@ impl Client {
 
     /// Respawns client. Optionally can roll the credits before respawning.
     pub fn win_game(&mut self, show_credits: bool) {
-        self.write_packet(&GameEvent {
+        self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::WinGame,
             value: if show_credits { 1.0 } else { 0.0 },
         });
@@ -322,7 +328,7 @@ impl Client {
             self.has_respawn_screen = enable;
 
             if !self.is_new {
-                self.write_packet(&GameEvent {
+                self.write_packet(&GameStateChangeS2c {
                     kind: GameEventKind::EnableRespawnScreen,
                     value: if enable { 0.0 } else { 1.0 },
                 });
@@ -381,7 +387,7 @@ impl Client {
             self.game_mode = game_mode;
 
             if !self.is_new {
-                self.write_packet(&GameEvent {
+                self.write_packet(&GameStateChangeS2c {
                     kind: GameEventKind::ChangeGameMode,
                     value: game_mode as i32 as f32,
                 });
@@ -397,7 +403,7 @@ impl Client {
             return;
         }
 
-        self.write_packet(&EntityEvent {
+        self.write_packet(&EntityStatusS2c {
             entity_id: 0,
             entity_status: 24 + op_level,
         });
@@ -421,7 +427,7 @@ impl Client {
     }
 
     pub fn trigger_status(&mut self, status: EntityStatus) {
-        self.write_packet(&EntityEvent {
+        self.write_packet(&EntityStatusS2c {
             entity_id: 0,
             entity_status: status as u8,
         });
@@ -457,16 +463,16 @@ impl Client {
     /// Sends a system message to the player which is visible in the chat. The
     /// message is only visible to this client.
     pub fn send_message(&mut self, msg: impl Into<Text>) {
-        self.write_packet(&SystemChatMessage {
+        self.write_packet(&GameMessageS2c {
             chat: msg.into().into(),
             overlay: false,
         });
     }
 
     pub fn send_plugin_message(&mut self, channel: Ident<&str>, data: &[u8]) {
-        self.write_packet(&PluginMessageS2c {
+        self.write_packet(&CustomPayloadS2c {
             channel,
-            data: RawBytes(data),
+            data: data.into(),
         });
     }
 
@@ -478,7 +484,7 @@ impl Client {
 
     /// Kick the client with the given reason.
     pub fn kick(&mut self, reason: impl Into<Text>) {
-        self.write_packet(&DisconnectPlay {
+        self.write_packet(&DisconnectS2c {
             reason: reason.into().into(),
         });
         self.is_disconnected = true;
@@ -501,7 +507,7 @@ impl Client {
         forced: bool,
         prompt_message: Option<Text>,
     ) {
-        self.write_packet(&ResourcePackS2c {
+        self.write_packet(&ResourcePackSendS2c {
             url,
             hash,
             forced,
@@ -513,21 +519,21 @@ impl Client {
     ///
     /// A title is a large piece of text displayed in the center of the screen
     /// which may also include a subtitle underneath it. The title can be
-    /// configured to fade in and out using the [`SetTitleAnimationTimes`]
+    /// configured to fade in and out using the [`TitleFadeS2c`]
     /// struct.
     pub fn set_title(
         &mut self,
         title: impl Into<Text>,
         subtitle: impl Into<Text>,
-        animation: impl Into<Option<SetTitleAnimationTimes>>,
+        animation: impl Into<Option<TitleFadeS2c>>,
     ) {
         let title = title.into().into();
         let subtitle = subtitle.into();
 
-        self.write_packet(&SetTitleText { title_text: title });
+        self.write_packet(&TitleS2c { title_text: title });
 
         if !subtitle.is_empty() {
-            self.write_packet(&SetSubtitleText {
+            self.write_packet(&SubtitleS2c {
                 subtitle_text: subtitle.into(),
             });
         }
@@ -542,7 +548,7 @@ impl Client {
     /// The action bar is a small piece of text displayed at the bottom of the
     /// screen, above the hotbar.
     pub fn set_action_bar(&mut self, text: impl Into<Text>) {
-        self.write_packet(&SetActionBarText {
+        self.write_packet(&OverlayMessageS2c {
             action_bar_text: text.into().into(),
         });
     }
@@ -552,7 +558,7 @@ impl Client {
     /// If you want to show a particle effect to all players, use
     /// [`Instance::play_particle`]
     ///
-    /// [`Instance::play_particle`]: crate::instance::Instance::play_particle
+    /// [`Instance::play_particle`]: Instance::play_particle
     pub fn play_particle(
         &mut self,
         particle: &Particle,
@@ -563,7 +569,7 @@ impl Client {
         count: i32,
     ) {
         self.write_packet(&ParticleS2c {
-            particle: particle.clone(),
+            particle: Cow::Borrowed(particle),
             long_distance,
             position: position.into().into(),
             offset: offset.into().into(),
@@ -577,7 +583,7 @@ impl Client {
     /// If you want to play a sound effect to all players, use
     /// [`Instance::play_sound`]
     ///
-    /// [`Instance::play_sound`]: crate::instance::Instance::play_sound
+    /// [`Instance::play_sound`]: Instance::play_sound
     pub fn play_sound(
         &mut self,
         sound: Sound,
@@ -588,7 +594,7 @@ impl Client {
     ) {
         let position = position.into();
 
-        self.write_packet(&SoundEffect {
+        self.write_packet(&PlaySoundS2c {
             id: sound.to_id(),
             category,
             position: (position * 8.0).as_ivec3().into(),
@@ -600,9 +606,9 @@ impl Client {
 }
 
 impl WritePacket for Client {
-    fn write_packet<P>(&mut self, packet: &P)
+    fn write_packet<'a, P>(&mut self, packet: &P)
     where
-        P: EncodePacket + ?Sized,
+        P: Packet<'a>,
     {
         self.enc.write_packet(packet)
     }
@@ -638,7 +644,7 @@ pub(crate) fn update_clients(
                 &entities,
                 &server,
             ) {
-                client.write_packet(&DisconnectPlay {
+                client.write_packet(&DisconnectS2c {
                     reason: Text::from("").into(),
                 });
                 client.is_disconnected = true;
@@ -689,7 +695,7 @@ fn update_one_client(
         // The login packet is prepended so that it is sent before all the other
         // packets. Some packets don't work correctly when sent before the login packet,
         // which is why we're doing this.
-        client.enc.prepend_packet(&LoginPlay {
+        client.enc.prepend_packet(&GameJoinS2c {
             entity_id: 0, // ID 0 is reserved for clients.
             is_hardcore: client.is_hardcore,
             game_mode: client.game_mode,
@@ -718,7 +724,7 @@ fn update_one_client(
     } else {
         if client.view_distance != client.old_view_distance {
             // Change the render distance fog.
-            client.enc.append_packet(&SetRenderDistance {
+            client.enc.append_packet(&ChunkLoadDistanceS2c {
                 view_distance: VarInt(client.view_distance.into()),
             })?;
         }
@@ -733,7 +739,7 @@ fn update_one_client(
                 position: pos,
             });
 
-            client.enc.append_packet(&Respawn {
+            client.enc.append_packet(&PlayerRespawnS2c {
                 dimension_type_name: dimension_name,
                 dimension_name,
                 hashed_seed: 0,
@@ -770,7 +776,7 @@ fn update_one_client(
     // Make sure the center chunk is set before loading chunks!
     if old_view.pos != view.pos {
         // TODO: does the client initialize the center chunk to (0, 0)?
-        client.enc.write_packet(&SetCenterChunk {
+        client.enc.write_packet(&ChunkRenderDistanceCenterS2c {
             chunk_x: VarInt(view.pos.x),
             chunk_z: VarInt(view.pos.z),
         });
@@ -782,7 +788,7 @@ fn update_one_client(
             if let Some(cell) = old_instance.partition.get(&pos) {
                 if cell.chunk_removed && cell.chunk.is_none() {
                     // Chunk was previously loaded and is now deleted.
-                    client.enc.write_packet(&UnloadChunk {
+                    client.enc.write_packet(&UnloadChunkS2c {
                         chunk_x: pos.x,
                         chunk_z: pos.z,
                     });
@@ -841,7 +847,7 @@ fn update_one_client(
                 if let Some(cell) = old_instance.partition.get(&pos) {
                     // Unload the chunk at this cell if it was loaded.
                     if cell.chunk.is_some() {
-                        client.enc.write_packet(&UnloadChunk {
+                        client.enc.write_packet(&UnloadChunkS2c {
                             chunk_x: pos.x,
                             chunk_z: pos.z,
                         });
@@ -896,7 +902,7 @@ fn update_one_client(
             if let Some(cell) = instance.partition.get(&pos) {
                 // Unload the chunk at this cell if it was loaded.
                 if cell.chunk.is_some() {
-                    client.enc.write_packet(&UnloadChunk {
+                    client.enc.write_packet(&UnloadChunkS2c {
                         chunk_x: pos.x,
                         chunk_z: pos.z,
                     });
@@ -943,8 +949,8 @@ fn update_one_client(
 
     // Despawn all the entities that are queued to be despawned.
     if !client.entities_to_despawn.is_empty() {
-        client.enc.append_packet(&RemoveEntitiesEncode {
-            entity_ids: &client.entities_to_despawn,
+        client.enc.append_packet(&EntitiesDestroyS2c {
+            entity_ids: Cow::Borrowed(&client.entities_to_despawn),
         })?;
 
         client.entities_to_despawn.clear();
@@ -953,14 +959,14 @@ fn update_one_client(
     // Teleport the client. Do this after chunk packets are sent so the client does
     // not accidentally pass through blocks.
     if client.position_modified || client.yaw_modified || client.pitch_modified {
-        let flags = SyncPlayerPosLookFlags::new()
+        let flags = PlayerPositionLookFlags::new()
             .with_x(!client.position_modified)
             .with_y(!client.position_modified)
             .with_z(!client.position_modified)
             .with_y_rot(!client.yaw_modified)
             .with_x_rot(!client.pitch_modified);
 
-        client.enc.write_packet(&SynchronizePlayerPosition {
+        client.enc.write_packet(&PlayerPositionLookS2c {
             position: if client.position_modified {
                 client.position.to_array()
             } else {
@@ -988,7 +994,7 @@ fn update_one_client(
     // This closes the "downloading terrain" screen.
     // Send this after the initial chunks are loaded.
     if client.is_new {
-        client.enc.write_packet(&SetDefaultSpawnPosition {
+        client.enc.write_packet(&PlayerSpawnPositionS2c {
             position: BlockPos::at(client.position),
             angle: client.yaw,
         });
@@ -1002,15 +1008,15 @@ fn update_one_client(
 
         client.scratch.push(0xff);
 
-        client.enc.write_packet(&SetEntityMetadata {
+        client.enc.write_packet(&EntityTrackerUpdateS2c {
             entity_id: VarInt(0),
-            metadata: RawBytes(&client.scratch),
+            metadata: client.scratch.as_slice().into(),
         });
     }
 
     // Acknowledge broken/placed blocks.
     if client.block_change_sequence != 0 {
-        client.enc.write_packet(&AcknowledgeBlockChange {
+        client.enc.write_packet(&PlayerActionResponseS2c {
             sequence: VarInt(client.block_change_sequence),
         });
 
@@ -1034,8 +1040,8 @@ mod tests {
     use std::collections::BTreeSet;
 
     use bevy_app::App;
-    use valence_protocol::packets::s2c::play::ChunkDataAndUpdateLight;
-    use valence_protocol::packets::S2cPlayPacket;
+    use valence_protocol::packet::s2c::play::ChunkDataS2c;
+    use valence_protocol::packet::S2cPlayPacket;
 
     use super::*;
     use crate::instance::Chunk;
@@ -1070,10 +1076,8 @@ mod tests {
         let mut loaded_chunks = BTreeSet::new();
 
         for pkt in client_helper.collect_sent().unwrap() {
-            if let S2cPlayPacket::ChunkDataAndUpdateLight(ChunkDataAndUpdateLight {
-                chunk_x,
-                chunk_z,
-                ..
+            if let S2cPlayPacket::ChunkDataS2c(ChunkDataS2c {
+                chunk_x, chunk_z, ..
             }) = pkt
             {
                 assert!(
@@ -1098,17 +1102,15 @@ mod tests {
 
         for pkt in client_helper.collect_sent().unwrap() {
             match pkt {
-                S2cPlayPacket::ChunkDataAndUpdateLight(ChunkDataAndUpdateLight {
-                    chunk_x,
-                    chunk_z,
-                    ..
+                S2cPlayPacket::ChunkDataS2c(ChunkDataS2c {
+                    chunk_x, chunk_z, ..
                 }) => {
                     assert!(
                         loaded_chunks.insert(ChunkPos::new(chunk_x, chunk_z)),
                         "({chunk_x}, {chunk_z})"
                     );
                 }
-                S2cPlayPacket::UnloadChunk(UnloadChunk { chunk_x, chunk_z }) => {
+                S2cPlayPacket::UnloadChunkS2c(UnloadChunkS2c { chunk_x, chunk_z }) => {
                     assert!(
                         loaded_chunks.remove(&ChunkPos::new(chunk_x, chunk_z)),
                         "({chunk_x}, {chunk_z})"

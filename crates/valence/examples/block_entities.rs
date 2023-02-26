@@ -1,5 +1,5 @@
 use valence::client::despawn_disconnected_clients;
-use valence::client::event::{default_event_handler, ChatMessage, UseItemOnBlock};
+use valence::client::event::{default_event_handler, ChatMessage, PlayerInteractBlock};
 use valence::prelude::*;
 use valence_nbt::{compound, List};
 use valence_protocol::types::Hand;
@@ -75,7 +75,7 @@ fn init_clients(
 fn event_handler(
     clients: Query<&Client>,
     mut messages: EventReader<ChatMessage>,
-    mut block_interacts: EventReader<UseItemOnBlock>,
+    mut block_interacts: EventReader<PlayerInteractBlock>,
     mut instances: Query<&mut Instance>,
 ) {
     let mut instance = instances.single_mut();
@@ -93,7 +93,7 @@ fn event_handler(
         nbt.insert("Text3", format!("~{}", client.username()).italic());
     }
 
-    for UseItemOnBlock {
+    for PlayerInteractBlock {
         client,
         position,
         hand,
