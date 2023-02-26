@@ -30,7 +30,7 @@ fn setup(mut commands: Commands, server: Res<Server>) {
         }
     }
 
-    world.spawn(instance);
+    commands.spawn(instance);
 }
 
 fn init_clients(
