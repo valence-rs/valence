@@ -1,12 +1,10 @@
 use std::path::PathBuf;
 
-use bevy_ecs::prelude::*;
 use clap::Parser;
-use glam::DVec3;
 use valence::prelude::*;
 use valence_schem::Schematic;
 
-const SPAWN_POS: DVec3 = DVec3::new(0.0, 256.0, 0.0);
+const SPAWN_POS: BlockPos = BlockPos::new(0, 256, 0);
 
 #[derive(Parser)]
 #[clap(author, version, about)]
@@ -71,6 +69,10 @@ fn init_clients(
     for (mut loc, mut pos, mut game_mode) in &mut clients {
         *game_mode = GameMode::Creative;
         loc.0 = instances.single();
-        pos.set(SPAWN_POS);
+        pos.set([
+            SPAWN_POS.x as f64 + 0.5,
+            SPAWN_POS.y as f64,
+            SPAWN_POS.z as f64 + 0.5,
+        ]);
     }
 }
