@@ -25,7 +25,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use flate2::bufread::GzDecoder;
-use glam::IVec3;
+use glam::{DVec3, IVec3};
 use thiserror::Error;
 use valence_biome::BiomeId;
 use valence_block::{BlockEntityKind, BlockState, ParseBlockStateError};
@@ -45,7 +45,7 @@ pub struct Schematic {
     pub offset: IVec3,
     blocks: Option<Box<[Block]>>,
     biomes: Option<Biomes>,
-    // TODO: pub entities: Option<Box<[Entity]>>,
+    pub entities: Option<Box<[Entity]>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -57,13 +57,21 @@ pub struct Block {
 #[derive(Debug, Clone, PartialEq)]
 pub struct BlockEntity {
     pub kind: BlockEntityKind,
-    pub nbt: Compound,
+    pub data: Compound,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Biomes {
     palette: Box<[Ident<String>]>,
     data: Box<[usize]>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Entity {
+    pub pos: DVec3,
+    /// The id of the entity type
+    pub id: Ident<String>,
+    pub data: Option<Compound>,
 }
 
 #[derive(Debug, Error)]
@@ -116,6 +124,9 @@ pub enum LoadSchematicError {
     #[error("missing block entity pos")]
     MissingBlockEntityPos,
 
+    #[error("invalid block entity pos {0:?}")]
+    InvalidBlockEntityPos(Vec<i32>),
+
     #[error("missing block entity id")]
     MissingBlockEntityId,
 
@@ -124,9 +135,6 @@ pub enum LoadSchematicError {
 
     #[error("unknown block entity '{0}'")]
     UnknownBlockEntity(String),
-
-    #[error("missing block entity data")]
-    MissingBlockEntityData,
 
     #[error("missing biome palette")]
     MissingBiomePalette,
@@ -139,6 +147,21 @@ pub enum LoadSchematicError {
 
     #[error("missing biome data")]
     MissingBiomeData,
+
+    #[error("invalid biome count")]
+    InvalidBiomeCount,
+
+    #[error("missing entity pos")]
+    MissingEntityPos,
+
+    #[error("invalid entity pos {0:?}")]
+    InvalidEntityPos(Vec<f64>),
+
+    #[error("missing entity id")]
+    MissingEntityId,
+
+    #[error("invalid entity id '{0}'")]
+    InvalidEntityId(String),
 }
 
 struct VarIntReader<I: ExactSizeIterator<Item = u8>>(I);
@@ -250,26 +273,28 @@ impl Schematic {
                     blocks.get("BlockEntities")
                 {
                     for block_entity in block_entities {
-                        let Some(&[x, y, z]) = block_entity.get("Pos").and_then(|val| val.as_int_array()).map(|arr| arr.as_slice()) else {
+                        let Some(Value::IntArray(pos)) = block_entity.get("Pos") else {
                             return Err(LoadSchematicError::MissingBlockEntityPos);
                         };
+                        let [x, y, z] = pos[..] else {
+                            return Err(LoadSchematicError::InvalidBlockEntityPos(pos.clone()));
+                        };
+
                         let Some(Value::String(id)) = block_entity.get("Id") else {
                             return Err(LoadSchematicError::MissingBlockEntityId);
                         };
-
                         let Ok(id) = Ident::new(&id[..]) else {
                             return Err(LoadSchematicError::InvalidBlockEntityId(id.clone()));
                         };
                         let Some(kind) = BlockEntityKind::from_ident(id.as_str_ident()) else {
                             return Err(LoadSchematicError::UnknownBlockEntity(id.to_string()));
                         };
-                        let Some(Value::Compound(nbt)) = block_entity.get("Data") else {
-                            return Err(LoadSchematicError::MissingBlockEntityData);
+
+                        let nbt = match block_entity.get("Data") {
+                            Some(Value::Compound(nbt)) => nbt.clone(),
+                            _ => Compound::with_capacity(0),
                         };
-                        let block_entity = BlockEntity {
-                            kind,
-                            nbt: nbt.clone(),
-                        };
+                        let block_entity = BlockEntity { kind, data: nbt };
                         data[(x + z * width as i32 + y * width as i32 * length as i32) as usize]
                             .block_entity
                             .replace(block_entity);
@@ -322,11 +347,52 @@ impl Schematic {
                     })
                     .collect();
 
+                if u16::try_from(data.len()) != Ok(width * height * length) {
+                    return Err(LoadSchematicError::InvalidBiomeCount);
+                }
+
                 let biomes = Biomes {
                     palette: palette.into_boxed_slice(),
                     data: data.into_boxed_slice(),
                 };
                 Some(biomes)
+            }
+            _ => None,
+        };
+
+        let entities: Option<Box<[Entity]>> = match root.get("Entities") {
+            Some(Value::List(List::Compound(entities))) => {
+                let entities: Result<Vec<_>, _> = entities
+                    .iter()
+                    .map(|entity| {
+                        let Some(Value::List(List::Double(pos))) = entity.get("Pos") else {
+                            return Err(LoadSchematicError::MissingEntityPos);
+                        };
+                        let [x, y, z] = pos[..] else {
+                            return Err(LoadSchematicError::InvalidEntityPos(pos.clone()));
+                        };
+                        let pos = DVec3::new(x, y, z);
+
+                        let Some(Value::String(id)) = entity.get("Id") else {
+                            return Err(LoadSchematicError::MissingEntityId);
+                        };
+                        let Ok(id) = Ident::new(id.clone()) else {
+                            return Err(LoadSchematicError::InvalidEntityId(id.clone()));
+                        };
+
+                        let data = match entity.get("Data") {
+                            Some(Value::Compound(data)) => Some(data.clone()),
+                            _ => None,
+                        };
+
+                        Ok(Entity {
+                            pos,
+                            id: id.to_string_ident(),
+                            data,
+                        })
+                    })
+                    .collect();
+                Some(entities?.into_boxed_slice())
             }
             _ => None,
         };
@@ -339,6 +405,7 @@ impl Schematic {
             offset,
             blocks,
             biomes,
+            entities,
         })
     }
 
@@ -374,7 +441,9 @@ impl Schematic {
                     .chunk_entry(ChunkPos::from_block_pos(block_pos))
                     .or_default();
                 let block = match block_entity {
-                    Some(BlockEntity { kind, nbt }) if Some(*kind) == state.block_entity_kind() => {
+                    Some(BlockEntity { kind, data: nbt })
+                        if Some(*kind) == state.block_entity_kind() =>
+                    {
                         ValenceBlock::with_nbt(*state, nbt.clone())
                     }
                     _ => ValenceBlock::new(*state),
@@ -418,5 +487,7 @@ impl Schematic {
                 );
             }
         }
+
+        // TODO: Spawn entities
     }
 }
