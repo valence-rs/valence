@@ -14,12 +14,12 @@ pub struct Weather {
     /// Contains the rain level.
     /// Should be between [`WEATHER_LEVEL_MIN`] and [`WEATHER_LEVEL_MAX`].
     ///
-    /// The [`None`] value means no raining event.
+    /// The [`None`] value means no rain level.
     pub rain: Option<f32>,
     /// Contains the thunder level.
     /// Should be between [`WEATHER_LEVEL_MIN`] and [`WEATHER_LEVEL_MAX`].
     ///
-    /// The [`None`] value means no thunder event.
+    /// The [`None`] value means no thunder level.
     pub thunder: Option<f32>,
 }
 
