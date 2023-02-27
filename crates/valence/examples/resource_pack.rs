@@ -22,10 +22,8 @@ pub fn main() {
         .run();
 }
 
-fn setup(world: &mut World) {
-    let mut instance = world
-        .resource::<Server>()
-        .new_instance(DimensionId::default());
+fn setup(mut commands: Commands, server: Res<Server>) {
+    let mut instance = server.new_instance(DimensionId::default());
 
     for z in -5..5 {
         for x in -5..5 {
@@ -39,11 +37,11 @@ fn setup(world: &mut World) {
         }
     }
 
-    let instance_ent = world.spawn(instance).id();
+    let instance_ent = commands.spawn(instance).id();
 
     let mut sheep = McEntity::new(EntityKind::Sheep, instance_ent);
     sheep.set_position([0.0, SPAWN_Y as f64 + 1.0, 2.0]);
-    world.spawn(sheep);
+    commands.spawn(sheep);
 }
 
 fn init_clients(
