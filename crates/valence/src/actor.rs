@@ -18,41 +18,42 @@ use valence_protocol::packet::s2c::play::{
 use valence_protocol::tracked_data::{Facing, PaintingKind, Pose};
 use valence_protocol::var_int::VarInt;
 
+use crate::component::Despawned;
 use crate::config::DEFAULT_TPS;
-use crate::math::Aabb;
 use crate::packet::WritePacket;
-use crate::{Despawned, NULL_ENTITY};
+use crate::util::Aabb;
+use crate::NULL_ENTITY;
 
 pub mod data;
 
 include!(concat!(env!("OUT_DIR"), "/entity_event.rs"));
 
-/// A [`Resource`] which maintains information about all the [`McEntity`]
+/// A [`Resource`] which maintains information about all the [`Actor`]
 /// components on the server.
-#[derive(Resource)]
-pub struct McEntityManager {
-    protocol_id_to_entity: FxHashMap<i32, Entity>,
+#[derive(Resource, Debug)]
+pub struct ActorManager {
+    protocol_id_to_actor: FxHashMap<i32, Entity>,
     next_protocol_id: i32,
 }
 
-impl McEntityManager {
+impl ActorManager {
     pub(crate) fn new() -> Self {
         Self {
-            protocol_id_to_entity: HashMap::default(),
+            protocol_id_to_actor: HashMap::default(),
             next_protocol_id: 1,
         }
     }
 
     /// Gets the [`Entity`] of the [`McEntity`] with the given protocol ID.
     pub fn get_with_protocol_id(&self, id: i32) -> Option<Entity> {
-        self.protocol_id_to_entity.get(&id).cloned()
+        self.protocol_id_to_actor.get(&id).cloned()
     }
 }
 
-/// Sets the protocol ID of new entities.
-pub(crate) fn init_entities(
-    mut entities: Query<(Entity, &mut McEntity), Added<McEntity>>,
-    mut manager: ResMut<McEntityManager>,
+/// Sets the protocol ID of new actors.
+pub(crate) fn init_actors(
+    mut entities: Query<(Entity, &mut Actor), Added<Actor>>,
+    mut manager: ResMut<ActorManager>,
 ) {
     for (entity, mut mc_entity) in &mut entities {
         if manager.next_protocol_id == 0 {
@@ -65,39 +66,39 @@ pub(crate) fn init_entities(
         manager.next_protocol_id = manager.next_protocol_id.wrapping_add(1);
 
         manager
-            .protocol_id_to_entity
+            .protocol_id_to_actor
             .insert(mc_entity.protocol_id, entity);
     }
 }
 
-/// Removes despawned entities from the entity manager.
-pub(crate) fn deinit_despawned_entities(
-    entities: Query<&mut McEntity, With<Despawned>>,
-    mut manager: ResMut<McEntityManager>,
+/// Removes despawned actors from the actor manager.
+pub(crate) fn deinit_despawned_actors(
+    entities: Query<&mut Actor, With<Despawned>>,
+    mut manager: ResMut<ActorManager>,
 ) {
     for entity in &entities {
-        manager.protocol_id_to_entity.remove(&entity.protocol_id);
+        manager.protocol_id_to_actor.remove(&entity.protocol_id);
     }
 }
 
-pub(crate) fn update_entities(mut entities: Query<&mut McEntity, Changed<McEntity>>) {
-    for mut entity in &mut entities {
-        entity.data.clear_modifications();
-        entity.old_position = entity.position;
-        entity.old_instance = entity.instance;
-        entity.statuses = 0;
-        entity.animations = 0;
-        entity.yaw_or_pitch_modified = false;
-        entity.head_yaw_modified = false;
-        entity.velocity_modified = false;
+pub(crate) fn update_actors(mut actors: Query<&mut Actor, Changed<Actor>>) {
+    for mut actor in &mut actors {
+        actor.data.clear_modifications();
+        actor.old_position = actor.position;
+        actor.old_instance = actor.instance;
+        actor.statuses = 0;
+        actor.animations = 0;
+        actor.yaw_or_pitch_modified = false;
+        actor.head_yaw_modified = false;
+        actor.velocity_modified = false;
     }
 }
 
-pub(crate) fn check_entity_invariants(removed: RemovedComponents<McEntity>) {
-    for entity in &removed {
+pub(crate) fn check_actor_invariants(removed: RemovedComponents<Actor>) {
+    for actor in &removed {
         warn!(
-            entity = ?entity,
-            "A `McEntity` component was removed from the world directly. You must use the \
+            actor = ?actor,
+            "An `Actor` component was removed from the world directly. You must use the \
              `Despawned` marker component instead."
         );
     }
@@ -114,7 +115,7 @@ pub(crate) fn check_entity_invariants(removed: RemovedComponents<McEntity>) {
 /// This includes position, rotation, velocity, and UUID. To access data that is
 /// not common to every kind of entity, see [`Self::data`].
 #[derive(Component)]
-pub struct McEntity {
+pub struct Actor {
     data: TrackedData,
     protocol_id: i32,
     uuid: Uuid,
@@ -139,7 +140,7 @@ pub struct McEntity {
     on_ground: bool,
 }
 
-impl McEntity {
+impl Actor {
     /// Creates a new [`McEntity`] component with a random UUID.
     ///
     /// - `kind`: The type of Minecraft entity this should be.
@@ -782,7 +783,7 @@ pub(crate) fn velocity_to_packet_units(vel: Vec3) -> [i16; 3] {
         .map(|v| v as i16)
 }
 
-impl fmt::Debug for McEntity {
+impl fmt::Debug for Actor {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_struct("McEntity")
             .field("kind", &self.kind())

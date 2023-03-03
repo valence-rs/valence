@@ -268,7 +268,7 @@ impl PlayerList {
 /// ```
 #[derive(Clone, Debug)]
 pub struct PlayerListEntry {
-    username: String, // TODO: Username<String>?
+    username: String,
     properties: Vec<Property>,
     game_mode: GameMode,
     old_game_mode: GameMode,

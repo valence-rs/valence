@@ -75,7 +75,7 @@ fn init_clients(
         client.set_instance(instance);
         client.set_game_mode(GameMode::Creative);
 
-        let player_entity = McEntity::with_uuid(EntityKind::Player, instance, client.uuid());
+        let player_entity = Actor::with_uuid(EntityKind::Player, instance, client.uuid());
 
         commands.entity(client_entity).insert(player_entity);
     }

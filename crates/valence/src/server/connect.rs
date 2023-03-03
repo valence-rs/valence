@@ -34,13 +34,13 @@ use valence_protocol::packet::s2c::status::{QueryPongS2c, QueryResponseS2c};
 use valence_protocol::raw_bytes::RawBytes;
 use valence_protocol::text::Text;
 use valence_protocol::types::Property;
-use valence_protocol::username::Username;
 use valence_protocol::var_int::VarInt;
 use valence_protocol::{translation_key, Decode, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerListPing};
 use crate::server::connection::InitialConnection;
 use crate::server::{NewClientInfo, SharedServer};
+use crate::util::is_valid_username;
 
 /// Accepts new connections to the server as they occur.
 #[instrument(skip_all)]
@@ -238,7 +238,9 @@ async fn handle_login(
         profile_id: _, // TODO
     } = conn.recv_packet().await?;
 
-    let username = username.to_owned_username();
+    ensure!(is_valid_username(username), "invalid username");
+
+    let username = username.to_owned();
 
     let info = match shared.connection_mode() {
         ConnectionMode::Online { .. } => {
@@ -283,7 +285,7 @@ pub(super) async fn login_online(
     callbacks: &Arc<impl AsyncCallbacks>,
     conn: &mut InitialConnection<OwnedReadHalf, OwnedWriteHalf>,
     remote_addr: SocketAddr,
-    username: Username<String>,
+    username: String,
 ) -> anyhow::Result<NewClientInfo> {
     let my_verify_token: [u8; 16] = rand::random();
 
@@ -331,7 +333,7 @@ pub(super) async fn login_online(
     let url = callbacks
         .session_server(
             shared,
-            username.as_str_username(),
+            username.as_str(),
             &auth_digest(&hash),
             &remote_addr.ip(),
         )
@@ -360,11 +362,16 @@ pub(super) async fn login_online(
     #[derive(Debug, Deserialize)]
     struct GameProfile {
         id: Uuid,
-        name: Username<String>,
+        name: String,
         properties: Vec<Property>,
     }
 
     let profile: GameProfile = resp.json().await.context("parsing game profile")?;
+
+    ensure!(
+        is_valid_username(&profile.name),
+        "invalid game profile username"
+    );
 
     ensure!(profile.name == username, "usernames do not match");
 
@@ -383,7 +390,7 @@ fn auth_digest(bytes: &[u8]) -> String {
 /// Login procedure for offline mode.
 pub(super) fn login_offline(
     remote_addr: SocketAddr,
-    username: Username<String>,
+    username: String,
 ) -> anyhow::Result<NewClientInfo> {
     Ok(NewClientInfo {
         // Derive the client's UUID from a hash of their username.
@@ -397,7 +404,7 @@ pub(super) fn login_offline(
 /// Login procedure for BungeeCord.
 pub(super) fn login_bungeecord(
     server_address: &str,
-    username: Username<String>,
+    username: String,
 ) -> anyhow::Result<NewClientInfo> {
     // Get data from server_address field of the handshake
     let [_, client_ip, uuid, properties]: [&str; 4] = server_address
@@ -422,7 +429,7 @@ pub(super) fn login_bungeecord(
 /// Login procedure for Velocity.
 pub(super) async fn login_velocity(
     conn: &mut InitialConnection<OwnedReadHalf, OwnedWriteHalf>,
-    username: Username<String>,
+    username: String,
     velocity_secret: &str,
 ) -> anyhow::Result<NewClientInfo> {
     const VELOCITY_MIN_SUPPORTED_VERSION: u8 = 1;
@@ -473,7 +480,7 @@ pub(super) async fn login_velocity(
 
     // Get username and validate
     ensure!(
-        username == Username::decode(&mut data_without_signature)?,
+        username == <&str>::decode(&mut data_without_signature)?,
         "mismatched usernames"
     );
 

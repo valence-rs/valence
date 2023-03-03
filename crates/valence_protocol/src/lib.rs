@@ -101,7 +101,6 @@ pub mod text;
 pub mod tracked_data;
 pub mod translation_key;
 pub mod types;
-pub mod username;
 pub mod var_int;
 pub mod var_long;
 

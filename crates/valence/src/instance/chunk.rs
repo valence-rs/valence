@@ -19,8 +19,8 @@ use valence_protocol::Encode;
 use crate::biome::BiomeId;
 use crate::instance::paletted_container::PalettedContainer;
 use crate::instance::InstanceInfo;
-use crate::math::bit_width;
 use crate::packet::{PacketWriter, WritePacket};
+use crate::util::bit_width;
 use crate::view::ChunkPos;
 
 /// A chunk is a 16x16-meter segment of a world with a variable height. Chunks

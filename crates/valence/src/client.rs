@@ -26,283 +26,159 @@ use valence_protocol::packet::s2c::play::{
 };
 use valence_protocol::sound::Sound;
 use valence_protocol::text::Text;
-use valence_protocol::types::{GameMode, GlobalPos, Property, SoundCategory};
-use valence_protocol::username::Username;
+use valence_protocol::types::{GlobalPos, Property, SoundCategory};
 use valence_protocol::var_int::VarInt;
 use valence_protocol::Packet;
 
+use crate::NULL_ENTITY;
+use crate::actor::{velocity_to_packet_units, Actor, EntityStatus};
+use crate::component::{
+    Despawned, GameMode, Location, OldLocation, OldPosition, OnGround, Ping, Pitch, Position,
+    Properties, UniqueId, Username, Yaw,
+};
 use crate::dimension::DimensionId;
-use crate::entity::data::Player;
-use crate::entity::{velocity_to_packet_units, EntityStatus, McEntity};
 use crate::instance::Instance;
 use crate::packet::WritePacket;
 use crate::server::{NewClientInfo, Server};
 use crate::view::{ChunkPos, ChunkView};
-use crate::{Despawned, NULL_ENTITY};
 
 pub mod event;
 
-/// Represents a client connected to the server. Used to send and receive
-/// packets from the client.
-#[derive(Component)]
-pub struct Client {
-    conn: Box<dyn ClientConnection>,
-    enc: PacketEncoder,
-    dec: PacketDecoder,
-    scratch: Vec<u8>,
-    is_disconnected: bool,
-    username: Username<String>,
-    uuid: Uuid,
-    ip: IpAddr,
-    properties: Vec<Property>,
-    instance: Entity,
-    old_instance: Entity,
-    position: DVec3,
-    old_position: DVec3,
-    position_modified: bool,
-    yaw: f32,
-    yaw_modified: bool,
-    pitch: f32,
-    pitch_modified: bool,
-    on_ground: bool,
+/// The bundle of components needed for clients to function. All components are
+/// required.
+#[derive(Bundle)]
+pub(crate) struct ClientBundle {
+    client: Client,
+    username: Username,
+    uuid: UniqueId,
+    ip: Ip,
+    properties: Properties,
+    location: Location,
+    old_location: OldLocation,
+    position: Position,
+    old_position: OldPosition,
+    yaw: Yaw,
+    pitch: Pitch,
+    on_ground: OnGround,
     game_mode: GameMode,
-    op_level: u8,
-    block_change_sequence: i32,
-    // TODO: make this a component and default to the self-entity's player data?
-    player_data: Player,
-    view_distance: u8,
-    old_view_distance: u8,
-    death_location: Option<(DimensionId, BlockPos)>,
-    entities_to_despawn: Vec<VarInt>,
-    got_keepalive: bool,
-    last_keepalive_id: u64,
-    keepalive_sent_time: Instant,
-    ping: i32,
-    /// Counts up as teleports are made.
-    teleport_id_counter: u32,
-    /// The number of pending client teleports that have yet to receive a
-    /// confirmation. Inbound client position packets should be ignored while
-    /// this is nonzero.
-    pending_teleports: u32,
-    /// If the client needs initialization.
-    is_new: bool,
-    /// If the client needs to be sent the respawn packet for the current world.
-    needs_respawn: bool,
-    is_hardcore: bool,
-    is_flat: bool,
-    has_respawn_screen: bool,
-    /// The item that the client thinks it's holding under the mouse
-    /// cursor.
-    pub(crate) cursor_item: Option<ItemStack>,
-    pub(crate) cursor_item_modified: bool,
-    /// The current window ID. Incremented when inventories are opened.
-    pub(crate) window_id: u8,
-    pub(crate) inventory_state_id: Wrapping<i32>,
-    /// Tracks what slots have been modified by this client in this tick, so we
-    /// don't need to send updates for them.
-    pub(crate) inventory_slots_modified: u64,
-    pub(crate) held_item_slot: u16,
+    op_level: OpLevel,
+    block_change_sequence: BlockChangeSequence,
+    view_distance: ViewDistance,
+    old_view_distance: OldViewDistance,
+    death_location: DeathLocation,
+    keepalive_state: KeepaliveState,
+    ping: Ping,
+    teleport_state: TeleportState,
+    is_hardcore: IsHardcore,
+    is_flat: IsFlat,
+    has_respawn_screen: HasRespawnScreen,
+    cursor_item: CursorItem,
+    player_inventory_state: PlayerInventoryState,
 }
 
-pub trait ClientConnection: Send + Sync + 'static {
-    fn try_send(&mut self, bytes: BytesMut) -> anyhow::Result<()>;
-    fn try_recv(&mut self) -> anyhow::Result<BytesMut>;
-}
-
-impl Client {
-    pub(crate) fn new(
+impl ClientBundle {
+    pub fn new(
         info: NewClientInfo,
         conn: Box<dyn ClientConnection>,
         enc: PacketEncoder,
         dec: PacketDecoder,
     ) -> Self {
         Self {
-            conn,
-            enc,
-            dec,
-            scratch: vec![],
-            is_disconnected: false,
-            username: info.username,
-            uuid: info.uuid,
-            ip: info.ip,
-            properties: info.properties,
-            instance: NULL_ENTITY,
-            old_instance: NULL_ENTITY,
-            position: DVec3::ZERO,
-            old_position: DVec3::ZERO,
-            position_modified: true,
-            yaw: 0.0,
-            yaw_modified: true,
-            pitch: 0.0,
-            pitch_modified: true,
-            on_ground: false,
+            client: Client {
+                conn,
+                enc,
+                dec,
+                scratch: Vec::new(),
+                actors_to_despawn: Vec::new(),
+            },
+            username: Username(info.username),
+            uuid: UniqueId(info.uuid),
+            ip: Ip(info.ip),
+            properties: Properties(info.properties),
+            location: Location::default(),
+            old_location: OldLocation::default(),
+            position: Position::default(),
+            old_position: OldPosition::default(),
+            yaw: Yaw::default(),
+            pitch: Pitch::default(),
+            on_ground: OnGround::default(),
             game_mode: GameMode::default(),
-            op_level: 0,
-            block_change_sequence: 0,
-            player_data: Player::new(),
-            view_distance: 2,
-            old_view_distance: 2,
-            death_location: None,
-            entities_to_despawn: vec![],
-            is_new: true,
-            needs_respawn: false,
-            is_hardcore: false,
-            is_flat: false,
-            has_respawn_screen: false,
-            got_keepalive: true,
-            last_keepalive_id: 0,
-            keepalive_sent_time: Instant::now(),
-            ping: -1,
-            teleport_id_counter: 0,
-            pending_teleports: 0,
-            cursor_item: None,
-            cursor_item_modified: false,
-            window_id: 0,
-            inventory_state_id: Wrapping(0),
-            inventory_slots_modified: 0,
-            held_item_slot: 36,
+            op_level: OpLevel::default(),
+            block_change_sequence: BlockChangeSequence(0),
+            view_distance: ViewDistance::default(),
+            old_view_distance: OldViewDistance(2),
+            death_location: DeathLocation::default(),
+            keepalive_state: KeepaliveState {
+                got_keepalive: true,
+                last_keepalive_id: 0,
+                keepalive_sent_time: Instant::now(),
+            },
+            ping: Ping::default(),
+            teleport_state: TeleportState {
+                teleport_id_counter: 0,
+                pending_teleports: 0,
+            },
+            is_hardcore: IsHardcore::default(),
+            is_flat: IsFlat::default(),
+            has_respawn_screen: HasRespawnScreen::default(),
+            cursor_item: CursorItem::default(),
+            player_inventory_state: PlayerInventoryState {
+                window_id: 0,
+                inventory_state_id: Wrapping(0),
+                inventory_slots_modified: 0,
+                // First slot of the hotbar.
+                held_item_slot: 36,
+            },
         }
     }
+}
 
-    pub(crate) fn is_new(&self) -> bool {
-        self.is_new
+/// The primary client component. This component is removed when clients are
+/// disconnected.
+#[derive(Component)]
+pub struct Client {
+    conn: Box<dyn ClientConnection>,
+    pub(crate) enc: PacketEncoder,
+    pub(crate) dec: PacketDecoder,
+    /// Scratch buffer.
+    scratch: Vec<u8>,
+    actors_to_despawn: Vec<VarInt>,
+}
+
+impl WritePacket for Client {
+    fn write_packet<'a>(&mut self, packet: &impl Packet<'a>) {
+        self.enc.write_packet(packet)
     }
 
-    /// Attempts to write a play packet into this client's packet buffer. The
-    /// packet will be sent at the end of the tick.
-    ///
-    /// If encoding the packet fails, the client is disconnected. Has no
-    /// effect if the client is already disconnected.
-    pub fn write_packet<'a, P>(&mut self, pkt: &P)
-    where
-        P: Packet<'a>,
-    {
-        self.enc.write_packet(pkt);
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        self.enc.write_packet_bytes(bytes)
+    }
+}
+
+impl Client {
+    pub(crate) fn update_clients() {
+        todo!()
     }
 
-    /// Writes arbitrary bytes to this client's packet buffer. The packet data
-    /// must be properly compressed for the current compression threshold but
-    /// never encrypted.
-    ///
-    /// Don't use this function unless you know what you're doing. Consider
-    /// using [`write_packet`] instead.
-    ///
-    /// [`write_packet`]: Self::write_packet
-    #[inline]
-    pub fn write_packet_bytes(&mut self, bytes: &[u8]) {
-        self.enc.append_bytes(bytes);
-    }
-
-    /// Gets the username of this client.
-    pub fn username(&self) -> Username<&str> {
-        self.username.as_str_username()
-    }
-
-    /// Gets the UUID of this client.
-    pub fn uuid(&self) -> Uuid {
-        self.uuid
-    }
-
-    /// Gets the IP address of this client.
-    pub fn ip(&self) -> IpAddr {
-        self.ip
-    }
-
-    /// Gets the properties from this client's game profile.
-    pub fn properties(&self) -> &[Property] {
-        &self.properties
-    }
-
-    /// Gets whether or not the client is connected to the server.
-    ///
-    /// A disconnected client component will never become reconnected. It is
-    /// your responsibility to despawn disconnected client entities, since
-    /// they will not be automatically despawned by Valence.
-    pub fn is_disconnected(&self) -> bool {
-        self.is_disconnected
-    }
-
-    /// Gets the [`Instance`] entity this client is located in. The client is
-    /// not in any instance when they first join.
-    pub fn instance(&self) -> Entity {
-        self.instance
-    }
-
-    /// Sets the [`Instance`] entity this client is located in. This can be used
-    /// to respawn the client after death.
-    ///
-    /// The given [`Entity`] must exist and have the [`Instance`] component.
-    /// Otherwise, the client is disconnected at the end of the tick.
-    pub fn set_instance(&mut self, instance: Entity) {
-        self.instance = instance;
-        self.needs_respawn = true;
-    }
-
-    /// Gets the absolute position of this client in the instance it is located
-    /// in.
-    pub fn position(&self) -> DVec3 {
-        self.position
-    }
-
-    pub fn set_position(&mut self, pos: impl Into<DVec3>) {
-        self.position = pos.into();
-        self.position_modified = true;
-    }
-
-    /// Returns the position this client was in at the end of the previous tick.
-    pub fn old_position(&self) -> DVec3 {
-        self.old_position
-    }
-
-    /// Gets a [`ChunkView`] representing the chunks this client can see.
-    pub fn view(&self) -> ChunkView {
-        ChunkView::new(ChunkPos::from_dvec3(self.position), self.view_distance)
-    }
-
-    pub fn old_view(&self) -> ChunkView {
-        ChunkView::new(
-            ChunkPos::from_dvec3(self.old_position),
-            self.old_view_distance,
-        )
-    }
-
-    pub fn set_velocity(&mut self, velocity: impl Into<Vec3>) {
-        self.enc.write_packet(&EntityVelocityUpdateS2c {
-            entity_id: VarInt(0),
-            velocity: velocity_to_packet_units(velocity.into()),
+    /// Sends a system message to the player which is visible in the chat. The
+    /// message is only visible to this client.
+    pub fn send_message(&mut self, msg: impl Into<Text>) {
+        self.write_packet(&GameMessageS2c {
+            chat: msg.into().into(),
+            overlay: false,
         });
     }
 
-    /// Gets this client's yaw (in degrees).
-    pub fn yaw(&self) -> f32 {
-        self.yaw
+    pub fn send_custom_payload(&mut self, channel: Ident<&str>, data: &[u8]) {
+        self.write_packet(&CustomPayloadS2c {
+            channel,
+            data: data.into(),
+        });
     }
 
-    /// Sets this client's yaw (in degrees).
-    pub fn set_yaw(&mut self, yaw: f32) {
-        self.yaw = yaw;
-        self.yaw_modified = true;
-    }
-
-    /// Gets this client's pitch (in degrees).
-    pub fn pitch(&self) -> f32 {
-        self.pitch
-    }
-
-    /// Sets this client's pitch (in degrees).
-    pub fn set_pitch(&mut self, pitch: f32) {
-        self.pitch = pitch;
-        self.pitch_modified = true;
-    }
-
-    /// Whether or not the client reports that it is currently on the ground.
-    pub fn on_ground(&self) -> bool {
-        self.on_ground
-    }
-
-    /// Kills the client and shows `message` on the death screen. If an entity
+    /// Kills the client and shows `message` on the death screen. If an actor
     /// killed the player, you should supply it as `killer`.
-    pub fn kill(&mut self, killer: Option<&McEntity>, message: impl Into<Text>) {
+    pub fn kill(&mut self, killer: Option<&Actor>, message: impl Into<Text>) {
         self.write_packet(&DeathMessageS2c {
             player_id: VarInt(0),
             entity_id: killer.map_or(-1, |k| k.protocol_id()),
@@ -316,178 +192,6 @@ impl Client {
             kind: GameEventKind::WinGame,
             value: if show_credits { 1.0 } else { 0.0 },
         });
-    }
-
-    pub fn has_respawn_screen(&self) -> bool {
-        self.has_respawn_screen
-    }
-
-    /// Sets whether respawn screen should be displayed after client's death.
-    pub fn set_respawn_screen(&mut self, enable: bool) {
-        if self.has_respawn_screen != enable {
-            self.has_respawn_screen = enable;
-
-            if !self.is_new {
-                self.write_packet(&GameStateChangeS2c {
-                    kind: GameEventKind::EnableRespawnScreen,
-                    value: if enable { 0.0 } else { 1.0 },
-                });
-            }
-        }
-    }
-
-    /// Gets whether or not the client thinks it's on a superflat world.
-    ///
-    /// Modifies how the skybox is rendered.
-    pub fn is_flat(&self) -> bool {
-        self.is_flat
-    }
-
-    /// Sets whether or not the client thinks it's on a superflat world.
-    ///
-    /// Modifies how the skybox is rendered.
-    pub fn set_flat(&mut self, flat: bool) {
-        self.is_flat = flat;
-    }
-
-    /// The current view distance of this client measured in chunks. The client
-    /// will not be able to see chunks and entities past this distance.
-    ///
-    /// The result is in `2..=32`.
-    pub fn view_distance(&self) -> u8 {
-        self.view_distance
-    }
-
-    /// Sets the view distance. The client will not be able to see chunks and
-    /// entities past this distance.
-    ///
-    /// The new view distance is measured in chunks and is clamped to `2..=32`.
-    pub fn set_view_distance(&mut self, dist: u8) {
-        self.view_distance = dist.clamp(2, 32);
-    }
-
-    /// Gets the last death location of this client. The client will see
-    /// `minecraft:recovery_compass` items point at the returned position.
-    ///
-    /// If the client's current dimension differs from the returned
-    /// dimension or the location is `None` then the compass will spin
-    /// randomly.
-    pub fn death_location(&self) -> Option<(DimensionId, BlockPos)> {
-        self.death_location
-    }
-
-    /// Gets the client's game mode.
-    pub fn game_mode(&self) -> GameMode {
-        self.game_mode
-    }
-
-    /// Sets the client's game mode.
-    pub fn set_game_mode(&mut self, game_mode: GameMode) {
-        if self.game_mode != game_mode {
-            self.game_mode = game_mode;
-
-            if !self.is_new {
-                self.write_packet(&GameStateChangeS2c {
-                    kind: GameEventKind::ChangeGameMode,
-                    value: game_mode as i32 as f32,
-                });
-            }
-        }
-    }
-
-    /// Sets the client's OP level.
-    pub fn set_op_level(&mut self, op_level: u8) {
-        self.op_level = op_level;
-
-        if op_level > 4 {
-            return;
-        }
-
-        self.write_packet(&EntityStatusS2c {
-            entity_id: 0,
-            entity_status: 24 + op_level,
-        });
-    }
-
-    /// Gets the client's OP level.
-    pub fn op_level(&self) -> u8 {
-        self.op_level
-    }
-
-    /// Sets the last death location. The client will see
-    /// `minecraft:recovery_compass` items point at the provided position.
-    /// If the client's current dimension differs from the provided
-    /// dimension or the location is `None` then the compass will spin
-    /// randomly.
-    ///
-    /// Changes to the last death location take effect when the client
-    /// (re)spawns.
-    pub fn set_death_location(&mut self, location: Option<(DimensionId, BlockPos)>) {
-        self.death_location = location;
-    }
-
-    pub fn trigger_status(&mut self, status: EntityStatus) {
-        self.write_packet(&EntityStatusS2c {
-            entity_id: 0,
-            entity_status: status as u8,
-        });
-    }
-
-    pub fn ping(&self) -> i32 {
-        self.ping
-    }
-
-    /// The item that the client thinks it's holding under the mouse
-    /// cursor. Only relevant when the client has an open inventory.
-    pub fn cursor_item(&self) -> Option<&ItemStack> {
-        self.cursor_item.as_ref()
-    }
-
-    pub fn replace_cursor_item(&mut self, item: impl Into<Option<ItemStack>>) -> Option<ItemStack> {
-        let new = item.into();
-        if self.cursor_item != new {
-            self.cursor_item_modified = true;
-        }
-
-        std::mem::replace(&mut self.cursor_item, new)
-    }
-
-    pub fn player(&self) -> &Player {
-        &self.player_data
-    }
-
-    pub fn player_mut(&mut self) -> &mut Player {
-        &mut self.player_data
-    }
-
-    /// Sends a system message to the player which is visible in the chat. The
-    /// message is only visible to this client.
-    pub fn send_message(&mut self, msg: impl Into<Text>) {
-        self.write_packet(&GameMessageS2c {
-            chat: msg.into().into(),
-            overlay: false,
-        });
-    }
-
-    pub fn send_plugin_message(&mut self, channel: Ident<&str>, data: &[u8]) {
-        self.write_packet(&CustomPayloadS2c {
-            channel,
-            data: data.into(),
-        });
-    }
-
-    /// Get the slot id in the player's inventory that the client says it's
-    /// holding.
-    pub fn held_item_slot(&self) -> u16 {
-        self.held_item_slot
-    }
-
-    /// Kick the client with the given reason.
-    pub fn kick(&mut self, reason: impl Into<Text>) {
-        self.write_packet(&DisconnectS2c {
-            reason: reason.into().into(),
-        });
-        self.is_disconnected = true;
     }
 
     /// Requests that the client download and enable a resource pack.
@@ -605,33 +309,130 @@ impl Client {
     }
 }
 
-impl WritePacket for Client {
-    fn write_packet<'a, P>(&mut self, packet: &P)
-    where
-        P: Packet<'a>,
-    {
-        self.enc.write_packet(packet)
+pub trait ClientConnection: Send + Sync + 'static {
+    fn try_send(&mut self, bytes: BytesMut) -> anyhow::Result<()>;
+    fn try_recv(&mut self) -> anyhow::Result<BytesMut>;
+}
+
+#[derive(Component, Clone, PartialEq, Eq, Debug)]
+pub struct Ip(pub IpAddr);
+
+#[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
+pub struct OpLevel(pub u8);
+
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+pub struct BlockChangeSequence(i32);
+
+
+#[derive(Component, Clone, PartialEq, Eq, Debug)]
+
+pub struct ViewDistance(u8);
+
+impl ViewDistance {
+    pub fn get(&self) -> u8 {
+        self.0
     }
 
-    fn write_packet_bytes(&mut self, bytes: &[u8]) {
-        self.enc.write_packet_bytes(bytes)
+    /// `dist` is clamped to `2..=32`.
+    pub fn set(&mut self, dist: u8) {
+        self.0 = dist.clamp(2, 32);
     }
 }
 
-/// A system for adding [`Despawned`] components to disconnected clients.
-pub fn despawn_disconnected_clients(mut commands: Commands, clients: Query<(Entity, &Client)>) {
-    for (entity, client) in &clients {
-        if client.is_disconnected() {
-            commands.entity(entity).insert(Despawned);
+impl Default for ViewDistance {
+    fn default() -> Self {
+        Self(2)
+    }
+}
+
+/// The [`ViewDistance`] at the end of the previous tick. Automatically updated
+/// as [`ViewDistance`] is changed.
+#[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
+
+pub struct OldViewDistance(u8);
+
+impl OldViewDistance {
+    pub fn get(&self) -> u8 {
+        self.0
+    }
+}
+
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+pub struct DeathLocation(pub Option<(DimensionId, BlockPos)>);
+
+#[derive(Component, Debug)]
+pub struct KeepaliveState {
+    got_keepalive: bool,
+    last_keepalive_id: u64,
+    keepalive_sent_time: Instant,
+}
+
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+pub struct IsHardcore(pub bool);
+
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+pub struct IsFlat(pub bool);
+
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+pub struct HasRespawnScreen(pub bool);
+
+#[derive(Component, Debug)]
+pub struct TeleportState {
+    /// Counts up as teleports are made.
+    teleport_id_counter: u32,
+    /// The number of pending client teleports that have yet to receive a
+    /// confirmation. Inbound client position packets should be ignored while
+    /// this is nonzero.
+    pending_teleports: u32,
+}
+
+impl TeleportState {
+    pub fn teleport_id_counter(&self) -> u32 {
+        self.teleport_id_counter
+    }
+
+    pub fn pending_teleports(&self) -> u32 {
+        self.pending_teleports
+    }
+}
+
+/// The item that the client thinks it's holding under the mouse
+/// cursor.
+#[derive(Component, Clone, PartialEq, Default, Debug)]
+pub struct CursorItem(pub Option<ItemStack>);
+
+/// Miscellaneous inventory data.
+#[derive(Component, Debug)]
+pub struct PlayerInventoryState {
+    /// The current window ID. Incremented when inventories are opened.
+    pub(crate) window_id: u8,
+    pub(crate) inventory_state_id: Wrapping<i32>,
+    /// Tracks what slots have been modified by this client in this tick, so we
+    /// don't need to send updates for them.
+    pub(crate) inventory_slots_modified: u64,
+    // TODO: make this a separate component (in the range 0-8?)
+    pub(crate) held_item_slot: u16,
+}
+
+/// A system for adding [`Despawned`] components to disconnected clients. This
+/// works by listening for removed [`Client`] components.
+pub fn despawn_disconnected_clients(
+    mut commands: Commands,
+    disconnected_clients: RemovedComponents<Client>,
+) {
+    for entity in &disconnected_clients {
+        if let Some(entity) = commands.get_entity(entity) {
+            entity.insert(Despawned);
         }
     }
 }
 
+/*
 pub(crate) fn update_clients(
     server: Res<Server>,
-    mut clients: Query<(Entity, &mut Client, Option<&McEntity>)>,
+    mut clients: Query<(Entity, &mut Client, Option<&Actor>)>,
     instances: Query<&Instance>,
-    entities: Query<&McEntity>,
+    entities: Query<&Actor>,
 ) {
     // TODO: what batch size to use?
     clients.par_for_each_mut(16, |(entity_id, mut client, self_entity)| {
@@ -664,10 +465,10 @@ pub(crate) fn update_clients(
 #[inline]
 fn update_one_client(
     client: &mut Client,
-    _self_entity: Option<&McEntity>,
+    _self_entity: Option<&Actor>,
     _self_id: Entity,
     instances: &Query<&Instance>,
-    entities: &Query<&McEntity>,
+    entities: &Query<&Actor>,
     server: &Server,
 ) -> anyhow::Result<()> {
     let Ok(instance) = instances.get(client.instance) else {
@@ -1034,6 +835,7 @@ fn update_one_client(
 
     Ok(())
 }
+*/
 
 #[cfg(test)]
 mod tests {

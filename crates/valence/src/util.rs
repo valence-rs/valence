@@ -67,6 +67,30 @@ pub(crate) const fn bit_width(n: usize) -> usize {
     (usize::BITS - n.leading_zeros()) as _
 }
 
+/// Returns whether or not the given string is a valid Minecraft username.
+///
+/// A valid username is 3 to 16 characters long with only ASCII alphanumeric
+/// characters. The username must match the regex `^[a-zA-Z0-9_]{3,16}$` to be
+/// considered valid.
+///
+/// # Examples
+///
+/// ```
+/// use valence::util::is_valid_userrname;
+///
+/// assert!(Username::new("00a").is_ok());
+/// assert!(Username::new("jeb_").is_ok());
+///
+/// assert!(Username::new("notavalidusername").is_err());
+/// assert!(Username::new("NotValid!").is_err());
+/// ```
+pub fn is_valid_username(username: &str) -> bool {
+    (3..=16).contains(&username.len())
+        && username
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;

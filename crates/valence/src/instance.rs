@@ -18,12 +18,12 @@ use valence_protocol::text::Text;
 use valence_protocol::types::SoundCategory;
 use valence_protocol::Packet;
 
+use crate::component::Despawned;
 use crate::dimension::DimensionId;
-use crate::entity::McEntity;
+use crate::actor::Actor;
 use crate::packet::{PacketWriter, WritePacket};
 use crate::server::{Server, SharedServer};
 use crate::view::ChunkPos;
-use crate::Despawned;
 
 mod chunk;
 mod chunk_entry;
@@ -435,7 +435,7 @@ impl Instance {
 
 pub(crate) fn update_instances_pre_client(
     mut instances: Query<&mut Instance>,
-    mut entities: Query<(Entity, &mut McEntity, Option<&Despawned>)>,
+    mut entities: Query<(Entity, &mut Actor, Option<&Despawned>)>,
     server: Res<Server>,
 ) {
     for (entity_id, entity, despawned) in &entities {
@@ -594,7 +594,7 @@ pub(crate) fn update_instances_post_client(mut instances: Query<&mut Instance>) 
     }
 }
 
-pub(crate) fn check_instance_invariants(instances: Query<&Instance>, entities: Query<&McEntity>) {
+pub(crate) fn check_instance_invariants(instances: Query<&Instance>, entities: Query<&Actor>) {
     #[cfg(debug_assertions)]
     for instance in &instances {
         for (pos, cell) in &instance.partition {

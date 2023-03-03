@@ -5,7 +5,6 @@ use bevy_ecs::prelude::Entity;
 use bytes::BytesMut;
 use valence_protocol::codec::{PacketDecoder, PacketEncoder};
 use valence_protocol::packet::S2cPlayPacket;
-use valence_protocol::username::Username;
 use valence_protocol::Packet;
 
 use crate::client::{Client, ClientConnection};
@@ -27,10 +26,9 @@ pub fn create_mock_client(client_info: NewClientInfo) -> (Client, MockClientHelp
 }
 
 /// Creates a `NewClientInfo` with the given username and a random UUID.
-/// Panics if the username is invalid.
 pub fn gen_client_info(username: &str) -> NewClientInfo {
     NewClientInfo {
-        username: Username::new(username.to_owned()).unwrap(),
+        username: username.to_owned(),
         uuid: uuid::Uuid::new_v4(),
         ip: std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
         properties: vec![],

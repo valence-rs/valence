@@ -113,7 +113,7 @@ fn init_clients(
         client.set_position(SPAWN_POS);
         client.set_instance(instance);
 
-        commands.spawn(McEntity::with_uuid(
+        commands.spawn(Actor::with_uuid(
             EntityKind::Player,
             instance,
             client.uuid(),

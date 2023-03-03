@@ -33,18 +33,19 @@ pub use {
 
 pub mod biome;
 pub mod client;
+pub mod component;
 pub mod config;
 pub mod dimension;
-pub mod entity;
+pub mod actor;
 pub mod instance;
 pub mod inventory;
-pub mod math;
-mod packet;
+pub mod packet;
 pub mod player_list;
 pub mod player_textures;
 pub mod server;
 #[cfg(any(test, doctest))]
 mod unit_test;
+pub mod util;
 pub mod view;
 
 pub mod prelude {
@@ -57,8 +58,8 @@ pub mod prelude {
         AsyncCallbacks, ConnectionMode, PlayerSampleEntry, ServerListPing, ServerPlugin,
     };
     pub use dimension::{Dimension, DimensionId};
-    pub use entity::{
-        EntityAnimation, EntityKind, EntityStatus, McEntity, McEntityManager, TrackedData,
+    pub use actor::{
+        EntityAnimation, EntityKind, EntityStatus, Actor, ActorManager, TrackedData,
     };
     pub use glam::DVec3;
     pub use instance::{Block, BlockMut, BlockRef, Chunk, Instance};
@@ -69,7 +70,6 @@ pub mod prelude {
     pub use protocol::item::{ItemKind, ItemStack};
     pub use protocol::text::{Color, Text, TextFormat};
     pub use protocol::types::GameMode;
-    pub use protocol::username::Username;
     pub use server::{EventLoop, NewClientInfo, Server, SharedServer};
     pub use uuid::Uuid;
     pub use valence_nbt::Compound;
@@ -81,21 +81,6 @@ pub mod prelude {
 
     use super::*;
 }
-
-/// A [`Component`] for marking entities that should be despawned at the end of
-/// the tick.
-///
-/// In Valence, some built-in components such as [`McEntity`] are not allowed to
-/// be removed from the [`World`] directly. Instead, you must give the entities
-/// you wish to despawn the `Despawned` component. At the end of the tick,
-/// Valence will despawn all entities with this component for you.
-///
-/// It is legal to remove components or delete entities that Valence does not
-/// know about at any time.
-///
-/// [`McEntity`]: entity::McEntity
-#[derive(Copy, Clone, Component)]
-pub struct Despawned;
 
 /// Let's pretend that [`NULL_ENTITY`] was created by spawning an entity,
 /// immediately despawning it, and then stealing its [`Entity`] ID. The user
