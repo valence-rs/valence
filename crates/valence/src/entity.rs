@@ -93,8 +93,8 @@ pub(crate) fn update_entities(mut entities: Query<&mut McEntity, Changed<McEntit
     }
 }
 
-pub(crate) fn check_entity_invariants(removed: RemovedComponents<McEntity>) {
-    for entity in &removed {
+pub(crate) fn check_entity_invariants(mut removed: RemovedComponents<McEntity>) {
+    for entity in &mut removed {
         warn!(
             entity = ?entity,
             "A `McEntity` component was removed from the world directly. You must use the \

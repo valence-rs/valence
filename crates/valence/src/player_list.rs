@@ -5,6 +5,7 @@ use std::iter::FusedIterator;
 use std::mem;
 
 use bevy_ecs::prelude::*;
+use bevy_ecs::schedule::SystemConfigs;
 use tracing::warn;
 use uuid::Uuid;
 use valence_protocol::packet::s2c::play::player_list::{
@@ -52,7 +53,7 @@ impl PlayerList {
     /// Returns a set of systems for maintaining the player list in a reasonable
     /// default way. When clients connect, they are added to the player list.
     /// When clients disconnect, they are removed from the player list.
-    pub fn default_system_set() -> SystemSet {
+    pub fn default_systems() -> SystemConfigs {
         fn add_new_clients_to_player_list(
             clients: Query<&Client, Added<Client>>,
             mut player_list: ResMut<PlayerList>,
@@ -79,9 +80,10 @@ impl PlayerList {
             }
         }
 
-        SystemSet::new()
-            .with_system(add_new_clients_to_player_list)
-            .with_system(remove_disconnected_clients_from_player_list)
+        (
+            add_new_clients_to_player_list,
+            remove_disconnected_clients_from_player_list,
+        ).into_configs()
     }
 }
 

@@ -2,13 +2,11 @@ use std::iter::FusedIterator;
 use std::net::{IpAddr, SocketAddr};
 use std::ops::Deref;
 use std::sync::Arc;
-use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use anyhow::ensure;
 use bevy_app::prelude::*;
-use bevy_app::AppExit;
-use bevy_ecs::event::ManualEventReader;
+use bevy_app::{ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use bevy_ecs::prelude::*;
 use flume::{Receiver, Sender};
 use rand::rngs::OsRng;
@@ -22,7 +20,7 @@ use valence_protocol::types::Property;
 use valence_protocol::username::Username;
 
 use crate::biome::{validate_biomes, Biome, BiomeId};
-use crate::client::event::{event_loop_run_criteria, register_client_events};
+use crate::client::event::register_client_events;
 use crate::client::{update_clients, Client};
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerPlugin};
 use crate::dimension::{validate_dimensions, Dimension, DimensionId};
@@ -33,12 +31,9 @@ use crate::entity::{
 use crate::instance::{
     check_instance_invariants, update_instances_post_client, update_instances_pre_client, Instance,
 };
-use crate::inventory::{
-    handle_click_container, handle_close_container, handle_set_held_item, handle_set_slot_creative,
-    update_client_on_close_inventory, update_open_inventories, update_player_inventories,
-    Inventory, InventoryKind,
-};
+use crate::inventory::update_inventories;
 use crate::player_list::{update_player_list, PlayerList};
+use crate::prelude::{Inventory, InventoryKind};
 use crate::server::connect::do_accept_loop;
 use crate::Despawned;
 
@@ -98,8 +93,6 @@ struct SharedServerInner {
     /// Contains info about dimensions, biomes, and chats.
     /// Sent to all clients when joining.
     registry_codec: Compound,
-    /// The instant the server was started.
-    start_instant: Instant,
     /// Sender for new clients past the login stage.
     new_clients_send: Sender<Client>,
     /// Receiver for new clients past the login stage.
@@ -205,11 +198,6 @@ impl SharedServer {
     pub(crate) fn registry_codec(&self) -> &Compound {
         &self.0.registry_codec
     }
-
-    /// Returns the instant the server was started.
-    pub fn start_instant(&self) -> Instant {
-        self.0.start_instant
-    }
 }
 
 /// Contains information about a new client joining the server.
@@ -280,7 +268,6 @@ pub fn build_plugin(
         dimensions: plugin.dimensions.clone(),
         biomes: plugin.biomes.clone(),
         registry_codec,
-        start_instant: Instant::now(),
         new_clients_send,
         new_clients_recv,
         connection_sema: Arc::new(Semaphore::new(plugin.max_connections)),
@@ -306,22 +293,19 @@ pub fn build_plugin(
 
     let shared = server.shared.clone();
 
-    // Exclusive system to spawn new clients. Should run before everything else.
-    let spawn_new_clients = move |world: &mut World| {
+    // System to spawn new clients.
+    let spawn_new_clients = move |mut commands: Commands| {
         for _ in 0..shared.0.new_clients_recv.len() {
             let Ok(client) = shared.0.new_clients_recv.try_recv() else {
                 break
             };
 
-            world.spawn((client, Inventory::new(InventoryKind::Player)));
+            // TODO: bundle for spawning clients.
+            commands.spawn((client, Inventory::new(InventoryKind::Player)));
         }
     };
 
     let shared = server.shared.clone();
-
-    // Start accepting connections in PostStartup to allow user startup code to run
-    // first.
-    app.add_startup_system_to_stage(StartupStage::PostStartup, start_accept_loop);
 
     // Insert resources.
     app.insert_resource(server)
@@ -329,86 +313,75 @@ pub fn build_plugin(
         .insert_resource(PlayerList::new());
     register_client_events(&mut app.world);
 
-    // Add core systems and stages. User code is expected to run in
-    // `CoreStage::Update` and `EventLoop`.
-    app.add_system_to_stage(CoreStage::PreUpdate, spawn_new_clients)
-        .add_stage_before(
-            CoreStage::Update,
-            EventLoop,
-            SystemStage::parallel().with_run_criteria(event_loop_run_criteria),
+    // Make the app loop forever at the configured TPS.
+    {
+        let tick_period = Duration::from_secs_f64((shared.tps() as f64).recip());
+
+        app.insert_resource(ScheduleRunnerSettings::run_loop(tick_period))
+            .add_plugin(ScheduleRunnerPlugin);
+    }
+
+    // Start accepting connections in `PostStartup` to allow user startup code to
+    // run first.
+    app.add_system(
+        start_accept_loop
+            .in_schedule(CoreSchedule::Startup)
+            .in_base_set(StartupSet::PostStartup),
+    );
+
+    // Add our system sets.
+    app.configure_sets((
+        ValenceSet::EventLoop
+            .after(CoreSet::PreUpdateFlush)
+            .before(ValenceSet::EventLoopFlush),
+        ValenceSet::EventLoopFlush
+            .after(ValenceSet::EventLoop)
+            .before(CoreSet::Update),
+    ));
+
+    // TODO: add the event loop system to the event loop set.
+
+    // Apply system buffers in `ValenceSet::EventLoopFlush`.
+    app.add_system(apply_system_buffers.in_set(ValenceSet::EventLoopFlush));
+
+    // Spawn new clients during `PreUpdate` so that they're available ASAP in
+    // `Update`.
+    app.add_system(spawn_new_clients.in_base_set(CoreSet::PreUpdate));
+
+    // Add internal valence systems that run after `CoreSet::Update`.
+    app.add_systems(
+        (
+            init_entities,
+            check_entity_invariants,
+            check_instance_invariants.after(check_entity_invariants),
+            update_player_list.before(update_instances_pre_client),
+            update_instances_pre_client.after(init_entities),
+            update_clients.after(update_instances_pre_client),
+            update_instances_post_client.after(update_clients),
+            deinit_despawned_entities.after(update_instances_post_client),
+            despawn_marked_entities.after(deinit_despawned_entities),
+            update_entities.after(despawn_marked_entities),
         )
-        .add_system_set_to_stage(
-            CoreStage::PostUpdate,
-            SystemSet::new()
-                .label("valence_core")
-                .with_system(init_entities)
-                .with_system(check_entity_invariants)
-                .with_system(check_instance_invariants.after(check_entity_invariants))
-                .with_system(update_player_list.before(update_instances_pre_client))
-                .with_system(update_instances_pre_client.after(init_entities))
-                .with_system(update_clients.after(update_instances_pre_client))
-                .with_system(update_instances_post_client.after(update_clients))
-                .with_system(deinit_despawned_entities.after(update_instances_post_client))
-                .with_system(despawn_marked_entities.after(deinit_despawned_entities))
-                .with_system(update_entities.after(despawn_marked_entities)),
-        )
-        .add_system_set_to_stage(
-            CoreStage::PostUpdate,
-            SystemSet::new()
-                .label("inventory")
-                .before("valence_core")
-                .with_system(handle_set_held_item)
-                .with_system(update_open_inventories)
-                .with_system(handle_close_container)
-                .with_system(update_client_on_close_inventory.after(update_open_inventories))
-                .with_system(update_player_inventories)
-                .with_system(
-                    handle_click_container
-                        .before(update_open_inventories)
-                        .before(update_player_inventories),
-                )
-                .with_system(
-                    handle_set_slot_creative
-                        .before(update_open_inventories)
-                        .before(update_player_inventories),
-                ),
-        )
-        .add_system_to_stage(CoreStage::Last, inc_current_tick);
-
-    let tick_duration = Duration::from_secs_f64((shared.tps() as f64).recip());
-
-    // Overwrite the app's runner.
-    app.set_runner(move |mut app: App| {
-        let mut app_exit_event_reader = ManualEventReader::<AppExit>::default();
-
-        loop {
-            let tick_start = Instant::now();
-
-            // Stop the server if there was an AppExit event.
-            if let Some(app_exit_events) = app.world.get_resource_mut::<Events<AppExit>>() {
-                if app_exit_event_reader
-                    .iter(&app_exit_events)
-                    .last()
-                    .is_some()
-                {
-                    return;
-                }
-            }
-
-            // Run the scheduled stages.
-            app.update();
-
-            // Sleep until the next tick.
-            thread::sleep(tick_duration.saturating_sub(tick_start.elapsed()));
-        }
-    });
+            .in_base_set(CoreSet::PostUpdate),
+    )
+    .add_systems(
+        update_inventories()
+            .in_base_set(CoreSet::PostUpdate)
+            .before(init_entities),
+    )
+    .add_system(increment_tick_counter.in_base_set(CoreSet::Last));
 
     Ok(())
 }
 
-/// The stage label for the special "event loop" stage.
-#[derive(StageLabel)]
-pub struct EventLoop;
+/// Contains [`SystemSet`]s created by Valence.
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum ValenceSet {
+    /// The special "event loop" system set. This is ordered between
+    /// [`CoreSet::PreUpdateFlush`] and [`ValenceSet::EventLoopFlush`].
+    EventLoop,
+    EventLoopFlush,
+}
 
 /// Despawns all the entities marked as despawned with the [`Despawned`]
 /// component.
@@ -418,7 +391,7 @@ fn despawn_marked_entities(mut commands: Commands, entities: Query<Entity, With<
     }
 }
 
-fn inc_current_tick(mut server: ResMut<Server>) {
+fn increment_tick_counter(mut server: ResMut<Server>) {
     server.current_tick += 1;
 }
 

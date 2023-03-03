@@ -2,7 +2,6 @@ use std::cmp;
 
 use anyhow::bail;
 use bevy_ecs::prelude::*;
-use bevy_ecs::schedule::ShouldRun;
 use bevy_ecs::system::SystemParam;
 use glam::{DVec3, Vec3};
 use paste::paste;
@@ -635,6 +634,7 @@ events! {
     }
 }
 
+/*
 pub(crate) fn event_loop_run_criteria(
     mut clients: Query<(Entity, &mut Client, &mut Inventory)>,
     mut clients_to_check: Local<Vec<Entity>>,
@@ -711,7 +711,7 @@ pub(crate) fn event_loop_run_criteria(
     } else {
         ShouldRun::YesAndCheckAgain
     }
-}
+}*/
 
 fn handle_one_packet(
     client: &mut Client,

@@ -70,7 +70,7 @@ pub mod prelude {
     pub use protocol::text::{Color, Text, TextFormat};
     pub use protocol::types::GameMode;
     pub use protocol::username::Username;
-    pub use server::{EventLoop, NewClientInfo, Server, SharedServer};
+    pub use server::{ValenceSet, NewClientInfo, Server, SharedServer};
     pub use uuid::Uuid;
     pub use valence_nbt::Compound;
     pub use valence_protocol::block::BlockKind;
