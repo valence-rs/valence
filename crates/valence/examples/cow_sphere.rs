@@ -33,10 +33,8 @@ fn main() {
         .run();
 }
 
-fn setup(world: &mut World) {
-    let mut instance = world
-        .resource::<Server>()
-        .new_instance(DimensionId::default());
+fn setup(mut commands: Commands, server: Res<Server>) {
+    let mut instance = server.new_instance(DimensionId::default());
 
     for z in -5..5 {
         for x in -5..5 {
@@ -46,9 +44,9 @@ fn setup(world: &mut World) {
 
     instance.set_block(SPAWN_POS, BlockState::BEDROCK);
 
-    let instance_id = world.spawn(instance).id();
+    let instance_id = commands.spawn(instance).id();
 
-    world.spawn_batch(
+    commands.spawn_batch(
         [0; SPHERE_AMOUNT].map(|_| (McEntity::new(SPHERE_KIND, instance_id), SpherePart)),
     );
 }

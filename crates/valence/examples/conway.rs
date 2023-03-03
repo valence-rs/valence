@@ -39,10 +39,8 @@ pub fn main() {
         .run();
 }
 
-fn setup(world: &mut World) {
-    let mut instance = world
-        .resource::<Server>()
-        .new_instance(DimensionId::default());
+fn setup(mut commands: Commands, server: Res<Server>) {
+    let mut instance = server.new_instance(DimensionId::default());
 
     for z in -10..10 {
         for x in -10..10 {
@@ -56,9 +54,9 @@ fn setup(world: &mut World) {
         }
     }
 
-    world.spawn(instance);
+    commands.spawn(instance);
 
-    world.insert_resource(LifeBoard {
+    commands.insert_resource(LifeBoard {
         paused: true,
         board: vec![false; BOARD_SIZE_X * BOARD_SIZE_Z].into(),
         board_buf: vec![false; BOARD_SIZE_X * BOARD_SIZE_Z].into(),

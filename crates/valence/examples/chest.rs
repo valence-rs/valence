@@ -21,10 +21,8 @@ pub fn main() {
         .run();
 }
 
-fn setup(world: &mut World) {
-    let mut instance = world
-        .resource::<Server>()
-        .new_instance(DimensionId::default());
+fn setup(mut commands: Commands, server: Res<Server>) {
+    let mut instance = server.new_instance(DimensionId::default());
 
     for z in -5..5 {
         for x in -5..5 {
@@ -39,13 +37,13 @@ fn setup(world: &mut World) {
     }
     instance.set_block(CHEST_POS, BlockState::CHEST);
 
-    world.spawn(instance);
+    commands.spawn(instance);
 
     let inventory = Inventory::with_title(
         InventoryKind::Generic9x3,
         "Extra".italic() + " Chesty".not_italic().bold().color(Color::RED) + " Chest".not_italic(),
     );
-    world.spawn(inventory);
+    commands.spawn(inventory);
 }
 
 fn init_clients(

@@ -31,10 +31,8 @@ fn main() {
         .run();
 }
 
-fn record_tick_start_time(world: &mut World) {
-    world
-        .get_resource_or_insert_with(|| TickStart(Instant::now()))
-        .0 = Instant::now();
+fn record_tick_start_time(mut commands: Commands) {
+    commands.insert_resource(TickStart(Instant::now()));
 }
 
 fn print_tick_time(server: Res<Server>, time: Res<TickStart>, clients: Query<(), With<Client>>) {
@@ -47,10 +45,8 @@ fn print_tick_time(server: Res<Server>, time: Res<TickStart>, clients: Query<(),
     }
 }
 
-fn setup(world: &mut World) {
-    let mut instance = world
-        .resource::<Server>()
-        .new_instance(DimensionId::default());
+fn setup(mut commands: Commands, server: Res<Server>) {
+    let mut instance = server.new_instance(DimensionId::default());
 
     for z in -5..5 {
         for x in -5..5 {
@@ -64,7 +60,7 @@ fn setup(world: &mut World) {
         }
     }
 
-    world.spawn(instance);
+    commands.spawn(instance);
 }
 
 fn init_clients(
@@ -72,7 +68,7 @@ fn init_clients(
     instances: Query<Entity, With<Instance>>,
     mut commands: Commands,
 ) {
-    let instance = instances.get_single().unwrap();
+    let instance = instances.single();
 
     for (client_entity, mut client) in &mut clients {
         client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);

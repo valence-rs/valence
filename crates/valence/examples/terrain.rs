@@ -54,9 +54,8 @@ pub fn main() {
         .run();
 }
 
-fn setup(world: &mut World) {
+fn setup(mut commands: Commands, server: Res<Server>) {
     let seconds_per_day = 86_400;
-
     let seed = (SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
@@ -90,17 +89,15 @@ fn setup(world: &mut World) {
         thread::spawn(move || chunk_worker(state));
     }
 
-    world.insert_resource(GameState {
+    commands.insert_resource(GameState {
         pending: HashMap::new(),
         sender: pending_sender,
         receiver: finished_receiver,
     });
 
-    let instance = world
-        .resource::<Server>()
-        .new_instance(DimensionId::default());
+    let instance = server.new_instance(DimensionId::default());
 
-    world.spawn(instance);
+    commands.spawn(instance);
 }
 
 fn init_clients(
