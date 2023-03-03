@@ -2,7 +2,7 @@ use std::cmp;
 
 use anyhow::bail;
 use bevy_ecs::prelude::*;
-use bevy_ecs::system::SystemParam;
+use bevy_ecs::system::{SystemParam, SystemState};
 use glam::{DVec3, Vec3};
 use paste::paste;
 use tracing::warn;
@@ -33,6 +33,7 @@ use valence_protocol::types::{Difficulty, Direction, Hand};
 use crate::client::Client;
 use crate::entity::{EntityAnimation, EntityKind, McEntity, TrackedData};
 use crate::inventory::Inventory;
+use crate::server::EventLoopSchedule;
 
 #[derive(Clone, Debug)]
 pub struct QueryBlockNbt {
@@ -634,58 +635,64 @@ events! {
     }
 }
 
-/*
-pub(crate) fn event_loop_run_criteria(
-    mut clients: Query<(Entity, &mut Client, &mut Inventory)>,
+/// An exclusive system for running the event loop schedule.
+pub(crate) fn run_event_loop(
+    world: &mut World,
+    state: &mut SystemState<(
+        Query<(Entity, &mut Client, &mut Inventory)>,
+        ClientEvents,
+    )>,
     mut clients_to_check: Local<Vec<Entity>>,
-    mut events: ClientEvents,
-) -> ShouldRun {
-    if clients_to_check.is_empty() {
-        // First run of the criteria. Prepare packets.
+) {
+    let (mut clients, mut events) = state.get_mut(world);
 
-        update_all_event_buffers(&mut events);
+    update_all_event_buffers(&mut events);
 
-        for (entity, client, inventory) in &mut clients {
-            let client = client.into_inner();
-            let inventory = inventory.into_inner();
+    for (entity, client, inventory) in &mut clients {
+        let client = client.into_inner();
+        let inventory = inventory.into_inner();
 
-            let Ok(bytes) = client.conn.try_recv() else {
-                // Client is disconnected.
-                client.is_disconnected = true;
-                continue;
-            };
+        let Ok(bytes) = client.conn.try_recv() else {
+            // Client is disconnected.
+            client.is_disconnected = true;
+            continue;
+        };
 
-            if bytes.is_empty() {
-                // No data was received.
-                continue;
+        if bytes.is_empty() {
+            // No data was received.
+            continue;
+        }
+
+        client.dec.queue_bytes(bytes);
+
+        match handle_one_packet(client, inventory, entity, &mut events) {
+            Ok(had_packet) => {
+                if had_packet {
+                    // We decoded one packet, but there might be more.
+                    clients_to_check.push(entity);
+                }
             }
-
-            client.dec.queue_bytes(bytes);
-
-            match handle_one_packet(client, inventory, entity, &mut events) {
-                Ok(had_packet) => {
-                    if had_packet {
-                        // We decoded one packet, but there might be more.
-                        clients_to_check.push(entity);
-                    }
-                }
-                Err(e) => {
-                    warn!(
-                        username = %client.username,
-                        uuid = %client.uuid,
-                        ip = %client.ip,
-                        "failed to dispatch events: {e:#}"
-                    );
-                    client.is_disconnected = true;
-                }
+            Err(e) => {
+                warn!(
+                    username = %client.username,
+                    uuid = %client.uuid,
+                    ip = %client.ip,
+                    "failed to dispatch events: {e:#}"
+                );
+                client.is_disconnected = true;
             }
         }
-    } else {
-        // Continue to filter the list of clients we need to check until there are none
-        // left.
+    }
+
+    // Keep looping until all serverbound packets are decoded.
+    while !clients_to_check.is_empty() {
+        world.run_schedule(EventLoopSchedule);
+
+        let (mut clients, mut events) = state.get_mut(world);
+
         clients_to_check.retain(|&entity| {
             let Ok((_, mut client, mut inventory)) = clients.get_mut(entity) else {
-                // Client was deleted during the last run of the stage.
+                // Client must have been deleted during the last run of the schedule.
                 return false;
             };
 
@@ -705,13 +712,7 @@ pub(crate) fn event_loop_run_criteria(
             }
         });
     }
-
-    if clients_to_check.is_empty() {
-        ShouldRun::No
-    } else {
-        ShouldRun::YesAndCheckAgain
-    }
-}*/
+}
 
 fn handle_one_packet(
     client: &mut Client,

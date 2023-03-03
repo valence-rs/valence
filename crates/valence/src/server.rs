@@ -8,6 +8,7 @@ use anyhow::ensure;
 use bevy_app::prelude::*;
 use bevy_app::{ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use bevy_ecs::prelude::*;
+use bevy_ecs::schedule::ScheduleLabel;
 use flume::{Receiver, Sender};
 use rand::rngs::OsRng;
 use rsa::{PublicKeyParts, RsaPrivateKey};
@@ -20,7 +21,7 @@ use valence_protocol::types::Property;
 use valence_protocol::username::Username;
 
 use crate::biome::{validate_biomes, Biome, BiomeId};
-use crate::client::event::register_client_events;
+use crate::client::event::{register_client_events, run_event_loop};
 use crate::client::{update_clients, Client};
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerPlugin};
 use crate::dimension::{validate_dimensions, Dimension, DimensionId};
@@ -294,14 +295,13 @@ pub fn build_plugin(
     let shared = server.shared.clone();
 
     // System to spawn new clients.
-    let spawn_new_clients = move |mut commands: Commands| {
+    let spawn_new_clients = move |world: &mut World| {
         for _ in 0..shared.0.new_clients_recv.len() {
             let Ok(client) = shared.0.new_clients_recv.try_recv() else {
                 break
             };
 
-            // TODO: bundle for spawning clients.
-            commands.spawn((client, Inventory::new(InventoryKind::Player)));
+            world.spawn((client, Inventory::new(InventoryKind::Player)));
         }
     };
 
@@ -312,6 +312,13 @@ pub fn build_plugin(
         .insert_resource(McEntityManager::new())
         .insert_resource(PlayerList::new());
     register_client_events(&mut app.world);
+
+    // Add the event loop schedule.
+    let mut event_loop = Schedule::new();
+    event_loop.configure_set(EventLoopSet);
+    event_loop.set_default_base_set(EventLoopSet);
+
+    app.add_schedule(EventLoopSchedule, event_loop);
 
     // Make the app loop forever at the configured TPS.
     {
@@ -329,24 +336,10 @@ pub fn build_plugin(
             .in_base_set(StartupSet::PostStartup),
     );
 
-    // Add our system sets.
-    app.configure_sets((
-        ValenceSet::EventLoop
-            .after(CoreSet::PreUpdateFlush)
-            .before(ValenceSet::EventLoopFlush),
-        ValenceSet::EventLoopFlush
-            .after(ValenceSet::EventLoop)
-            .before(CoreSet::Update),
-    ));
-
-    // TODO: add the event loop system to the event loop set.
-
-    // Apply system buffers in `ValenceSet::EventLoopFlush`.
-    app.add_system(apply_system_buffers.in_set(ValenceSet::EventLoopFlush));
-
-    // Spawn new clients during `PreUpdate` so that they're available ASAP in
-    // `Update`.
-    app.add_system(spawn_new_clients.in_base_set(CoreSet::PreUpdate));
+    // Add `CoreSet:::PreUpdate` systems.
+    app.add_systems(
+        (spawn_new_clients.before(run_event_loop), run_event_loop).in_base_set(CoreSet::PreUpdate),
+    );
 
     // Add internal valence systems that run after `CoreSet::Update`.
     app.add_systems(
@@ -374,14 +367,13 @@ pub fn build_plugin(
     Ok(())
 }
 
-/// Contains [`SystemSet`]s created by Valence.
-#[derive(SystemSet, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub enum ValenceSet {
-    /// The special "event loop" system set. This is ordered between
-    /// [`CoreSet::PreUpdateFlush`] and [`ValenceSet::EventLoopFlush`].
-    EventLoop,
-    EventLoopFlush,
-}
+/// The [`ScheduleLabel`] for the event loop [`Schedule`].
+#[derive(ScheduleLabel, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
+pub struct EventLoopSchedule;
+
+/// The default base set for the event loop [`Schedule`].
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
+pub struct EventLoopSet;
 
 /// Despawns all the entities marked as despawned with the [`Despawned`]
 /// component.
