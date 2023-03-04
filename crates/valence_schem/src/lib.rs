@@ -830,41 +830,43 @@ mod test {
         assert_eq!(
             nbt,
             compound! {
-                "Version" => 3,
-                "DataVersion" => 3218,
-                "Metadata" => compound! {
-                    "A" => 123,
-                },
-                "Width" => 3i16,
-                "Height" => 3i16,
-                "Length" => 2i16,
-                "Offset" => vec![-1, -2, -1],
-                "Blocks" => compound! {
-                    "Data" => vec![0i8, 1, 0, 0, 0, 0, 2, 3, 3, 0, 4, 0, 0, 5, 0, 0, 0, 0],
-                    "Palette" => compound! {
-                        "air" => 0,
-                        "glowstone" => 1,
-                        "lapis_block" => 2,
-                        "stone" => 3,
-                        "andesite_wall[east=none, north=low, south=none, up=true, waterlogged=false, west=none]" => 4,
-                        "oak_sign[rotation=0, waterlogged=false]" => 5,
+                "Schematic" => compound! {
+                    "Version" => 3,
+                    "DataVersion" => 3218,
+                    "Metadata" => compound! {
+                        "A" => 123,
                     },
-                    "BlockEntities" => Value::List(List::Compound(vec![
-                        compound! {
-                            "Data" => compound!{
-                                "Text1" => "abc".into_text(),
-                            },
-                            "Id" => "sign",
-                            "Pos" => vec![1, 2, 0],
+                    "Width" => 3i16,
+                    "Height" => 3i16,
+                    "Length" => 2i16,
+                    "Offset" => vec![-1, -2, -1],
+                    "Blocks" => compound! {
+                        "Data" => vec![0i8, 1, 0, 0, 0, 0, 2, 3, 3, 0, 4, 0, 0, 5, 0, 0, 0, 0],
+                        "Palette" => compound! {
+                            "air" => 0,
+                            "glowstone" => 1,
+                            "lapis_block" => 2,
+                            "stone" => 3,
+                            "andesite_wall[east=none, north=low, south=none, up=true, waterlogged=false, west=none]" => 4,
+                            "oak_sign[rotation=0, waterlogged=false]" => 5,
                         },
-                    ]))
-                },
-                "Biomes" => compound! {
-                    "Data" => vec![0i8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                    "Palette" => compound! {
-                        "minecraft:plains" => 0,
-                    }
-                },
+                        "BlockEntities" => Value::List(List::Compound(vec![
+                            compound! {
+                                "Data" => compound!{
+                                    "Text1" => "abc".into_text(),
+                                },
+                                "Id" => "sign",
+                                "Pos" => vec![1, 2, 0],
+                            },
+                        ]))
+                    },
+                    "Biomes" => compound! {
+                        "Data" => vec![0i8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                        "Palette" => compound! {
+                            "minecraft:plains" => 0,
+                        }
+                    },
+                }
             }
         );
     }
