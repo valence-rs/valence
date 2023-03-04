@@ -38,8 +38,8 @@ impl Block {
 #[derive(Deserialize, Clone, Debug)]
 struct BlockEntityKind {
     id: u32,
-    ident: String,
-    name: String,
+    namespace: String,
+    path: String,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -423,10 +423,10 @@ fn build() -> anyhow::Result<TokenStream> {
     let block_entity_kind_variants = block_entity_types
         .iter()
         .map(|block_entity| {
-            let name = ident(block_entity.name.to_pascal_case());
+            let name = ident(block_entity.path.to_pascal_case());
             let doc = format!(
-                "The block entity type `{}` (ID {}).",
-                block_entity.name, block_entity.id
+                "The block entity type `{}:{}` (ID {}).",
+                block_entity.namespace, block_entity.path, block_entity.id
             );
             quote! {
                 #[doc = #doc]
@@ -439,7 +439,7 @@ fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .map(|block_entity| {
             let id = block_entity.id;
-            let name = ident(block_entity.name.to_pascal_case());
+            let name = ident(block_entity.path.to_pascal_case());
 
             quote! {
                 #id => Some(Self::#name),
@@ -451,7 +451,7 @@ fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .map(|block_entity| {
             let id = block_entity.id;
-            let name = ident(block_entity.name.to_pascal_case());
+            let name = ident(block_entity.path.to_pascal_case());
 
             quote! {
                 Self::#name => #id,
@@ -462,11 +462,12 @@ fn build() -> anyhow::Result<TokenStream> {
     let block_entity_kind_from_ident_arms = block_entity_types
         .iter()
         .map(|block_entity| {
-            let name = ident(block_entity.name.to_pascal_case());
-            let ident = &block_entity.ident;
+            let name = ident(block_entity.path.to_pascal_case());
+            let namespace = &block_entity.namespace;
+            let path = &block_entity.path;
 
             quote! {
-                #ident => Some(Self::#name),
+                (#namespace, #path) => Some(Self::#name),
             }
         })
         .collect::<TokenStream>();
@@ -474,8 +475,11 @@ fn build() -> anyhow::Result<TokenStream> {
     let block_entity_kind_to_ident_arms = block_entity_types
         .iter()
         .map(|block_entity| {
-            let name = ident(block_entity.name.to_pascal_case());
-            let ident = &block_entity.ident;
+            let name = ident(block_entity.path.to_pascal_case());
+            let namespace = &block_entity.namespace;
+            let path = &block_entity.path;
+
+            let ident = format!("{namespace}:{path}");
 
             quote! {
                 Self::#name => ident!(#ident),
@@ -939,13 +943,13 @@ fn build() -> anyhow::Result<TokenStream> {
             }
 
             pub fn from_ident(ident: Ident<&str>) -> Option<Self> {
-                match ident.as_str() {
+                match (ident.namespace(), ident.path()) {
                     #block_entity_kind_from_ident_arms
                     _ => None
                 }
             }
 
-            pub fn ident(self) -> Ident<&'static str> {
+            pub const fn ident(self) -> Ident<&'static str> {
                 match self {
                     #block_entity_kind_to_ident_arms
                 }
