@@ -90,3 +90,12 @@ impl Client {
         });
     }
 }
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn test_should_handle_players_globally() {}
+
+    #[test]
+    fn test_should_handle_players_specifically() {}
+}
