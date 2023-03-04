@@ -27,15 +27,16 @@ pub fn main() {
             grass_color: Some(0x00ff00),
             ..Default::default()
         }]))
-        .add_system_to_stage(EventLoop, default_event_handler)
-        .add_system_set(PlayerList::default_system_set())
         .add_startup_system(setup)
         .add_system(init_clients)
-        .add_system(despawn_disconnected_clients)
-        .add_system_to_stage(EventLoop, toggle_cell_on_dig)
-        .add_system(update_board)
-        .add_system(pause_on_crouch)
-        .add_system(reset_oob_clients)
+        .add_systems((default_event_handler, toggle_cell_on_dig).in_schedule(EventLoopSchedule))
+        .add_systems(PlayerList::default_systems())
+        .add_systems((
+            despawn_disconnected_clients,
+            update_board,
+            pause_on_crouch,
+            reset_oob_clients,
+        ))
         .run();
 }
 

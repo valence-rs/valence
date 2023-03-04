@@ -12,15 +12,20 @@ pub fn main() {
 
     App::new()
         .add_plugin(ServerPlugin::new(()))
-        .add_system_to_stage(EventLoop, default_event_handler)
-        .add_system_to_stage(EventLoop, toggle_gamemode_on_sneak)
-        .add_system_to_stage(EventLoop, digging_creative_mode)
-        .add_system_to_stage(EventLoop, digging_survival_mode)
-        .add_system_to_stage(EventLoop, place_blocks)
-        .add_system_set(PlayerList::default_system_set())
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
+        .add_systems(
+            (
+                default_event_handler,
+                toggle_gamemode_on_sneak,
+                digging_creative_mode,
+                digging_survival_mode,
+                place_blocks,
+            )
+                .in_schedule(EventLoopSchedule),
+        )
+        .add_systems(PlayerList::default_systems())
         .run();
 }
 
