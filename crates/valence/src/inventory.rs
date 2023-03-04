@@ -69,6 +69,7 @@ impl Inventory {
 
     #[track_caller]
     #[allow(unused_must_use)]
+    #[inline]
     pub fn set_slot(&mut self, idx: u16, item: impl Into<Option<ItemStack>>) {
         self.replace_slot(idx, item);
     }
@@ -417,12 +418,12 @@ fn handle_click_container(
             for slot in event.slot_changes.clone() {
                 if (0i16..target_inventory.slot_count() as i16).contains(&slot.idx) {
                     // the client is interacting with a slot in the target inventory
-                    target_inventory.replace_slot(slot.idx as u16, slot.item);
+                    target_inventory.set_slot(slot.idx as u16, slot.item);
                     open_inventory.client_modified |= 1 << slot.idx;
                 } else {
                     // the client is interacting with a slot in their own inventory
                     let slot_id = convert_to_player_slot_id(target_inventory.kind, slot.idx as u16);
-                    client_inventory.replace_slot(slot_id, slot.item);
+                    client_inventory.set_slot(slot_id, slot.item);
                     client.inventory_slots_modified |= 1 << slot_id;
                 }
             }
@@ -448,7 +449,7 @@ fn handle_click_container(
             client.cursor_item = event.carried_item.clone();
             for slot in event.slot_changes.clone() {
                 if (0i16..client_inventory.slot_count() as i16).contains(&slot.idx) {
-                    client_inventory.replace_slot(slot.idx as u16, slot.item);
+                    client_inventory.set_slot(slot.idx as u16, slot.item);
                     client.inventory_slots_modified |= 1 << slot.idx;
                 } else {
                     // the client is trying to interact with a slot that does not exist,
@@ -477,7 +478,7 @@ fn handle_set_slot_creative(
                 // the client is trying to interact with a slot that does not exist, ignore
                 continue;
             }
-            inventory.replace_slot(event.slot as u16, event.clicked_item.clone());
+            inventory.set_slot(event.slot as u16, event.clicked_item.clone());
             inventory.modified &= !(1 << event.slot); // clear the modified bit, since we are about to send the update
             client.inventory_state_id += 1;
             let state_id = client.inventory_state_id.0;

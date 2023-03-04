@@ -147,7 +147,7 @@ fn place_blocks(
             } else {
                 None
             };
-            inventory.replace_slot(slot_id, slot);
+            inventory.set_slot(slot_id, slot);
         }
         let real_pos = event.position.get_in_direction(event.direction);
         instance.set_block(real_pos, block_kind.to_state());
