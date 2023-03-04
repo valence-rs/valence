@@ -68,6 +68,13 @@ impl Inventory {
     }
 
     #[track_caller]
+    #[allow(unused_must_use)]
+    pub fn set_slot(&mut self, idx: u16, item: impl Into<Option<ItemStack>>) {
+        self.replace_slot(idx, item);
+    }
+
+    #[track_caller]
+    #[must_use]
     pub fn replace_slot(
         &mut self,
         idx: u16,
