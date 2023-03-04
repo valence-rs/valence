@@ -28,6 +28,7 @@
 
 use std::borrow::Cow;
 use std::iter::FusedIterator;
+use std::ops::Range;
 
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::SystemConfigs;
@@ -249,6 +250,50 @@ impl Inventory {
 
     fn slot_slice(&self) -> &[Option<ItemStack>] {
         self.slots.as_ref()
+    }
+
+    /// Returns the first empty slot in the given range, or `None` if there are
+    /// no empty slots in the range.
+    ///
+    /// ```
+    /// # use valence::prelude::*;
+    /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
+    /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
+    /// inv.set_slot(2, ItemStack::new(ItemKind::GoldIngot, 1, None));
+    /// inv.set_slot(3, ItemStack::new(ItemKind::IronIngot, 1, None));
+    /// assert_eq!(inv.first_empty_slot_in(0..6), Some(1));
+    /// assert_eq!(inv.first_empty_slot_in(2..6), Some(4));
+    /// ```
+    #[track_caller]
+    #[must_use]
+    pub fn first_empty_slot_in(&self, range: Range<u16>) -> Option<u16> {
+        assert!(
+            (0..=self.slot_count()).contains(&range.start)
+                && (0..=self.slot_count()).contains(&range.end),
+            "slot range out of range"
+        );
+
+        for idx in range {
+            if self.slots[idx as usize].is_none() {
+                return Some(idx);
+            }
+        }
+
+        None
+    }
+
+    /// Returns the first empty slot in the inventory, or `None` if there are no
+    /// empty slots.
+    /// ```
+    /// # use valence::prelude::*;
+    /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
+    /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
+    /// inv.set_slot(2, ItemStack::new(ItemKind::GoldIngot, 1, None));
+    /// inv.set_slot(3, ItemStack::new(ItemKind::IronIngot, 1, None));
+    /// assert_eq!(inv.first_empty_slot(), Some(1));
+    /// ```
+    pub fn first_empty_slot(&self) -> Option<u16> {
+        self.first_empty_slot_in(0..self.slot_count())
     }
 }
 
