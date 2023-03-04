@@ -67,6 +67,14 @@ impl Inventory {
             .as_ref()
     }
 
+    /// Sets the slot at the given index to the given item stack.
+    /// ```
+    /// # use valence::prelude::*;
+    /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
+    /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
+    /// let old = inv.replace_slot(0, ItemStack::new(ItemKind::IronIngot, 1, None));
+    /// assert_eq!(old.unwrap().item, ItemKind::Diamond);
+    /// ```
     #[track_caller]
     #[allow(unused_must_use)]
     #[inline]
@@ -74,6 +82,8 @@ impl Inventory {
         self.replace_slot(idx, item);
     }
 
+    /// Replaces the slot at the given index with the given item stack, and
+    /// returns the old stack in that slot.
     #[track_caller]
     #[must_use]
     pub fn replace_slot(
@@ -93,6 +103,17 @@ impl Inventory {
         std::mem::replace(old, new)
     }
 
+    /// Swap the contents of two slots. If the slots are the same, nothing
+    /// happens.
+    ///
+    /// ```
+    /// # use valence::prelude::*;
+    /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
+    /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
+    /// assert_eq!(inv.slot(1), None);
+    /// inv.swap_slot(0, 1);
+    /// assert_eq!(inv.slot(1).unwrap().item, ItemKind::Diamond);
+    /// ```
     #[track_caller]
     pub fn swap_slot(&mut self, idx_a: u16, idx_b: u16) {
         assert!(idx_a < self.slot_count(), "slot index out of range");
@@ -107,6 +128,30 @@ impl Inventory {
         self.modified |= 1 << idx_b;
 
         self.slots.swap(idx_a as usize, idx_b as usize);
+    }
+
+    /// Set the amount of items in the given slot without replacing the slot
+    /// entirely. Valid values are 1-127, inclusive, and `amount` will be
+    /// clamped to this range. If the slot is empty, nothing happens.
+    ///
+    /// ```
+    /// # use valence::prelude::*;
+    /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
+    /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
+    /// inv.set_slot_amount(0, 64);
+    /// assert_eq!(inv.slot(0).unwrap().count(), 64);
+    /// ```
+    #[track_caller]
+    pub fn set_slot_amount(&mut self, idx: u16, amount: u8) {
+        assert!(idx < self.slot_count(), "slot index out of range");
+
+        if let Some(item) = self.slots[idx as usize].as_mut() {
+            if item.count() == amount {
+                return;
+            }
+            item.set_count(amount);
+            self.modified |= 1 << idx;
+        }
     }
 
     pub fn slot_count(&self) -> u16 {
