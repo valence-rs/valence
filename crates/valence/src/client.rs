@@ -633,32 +633,33 @@ pub(crate) fn update_clients(
     instances: Query<&Instance>,
     entities: Query<&McEntity>,
 ) {
-    // TODO: what batch size to use?
-    clients.par_for_each_mut(16, |(entity_id, mut client, self_entity)| {
-        if !client.is_disconnected() {
-            if let Err(e) = update_one_client(
-                &mut client,
-                self_entity,
-                entity_id,
-                &instances,
-                &entities,
-                &server,
-            ) {
-                client.write_packet(&DisconnectS2c {
-                    reason: Text::from("").into(),
-                });
-                client.is_disconnected = true;
-                warn!(
-                    username = %client.username,
-                    uuid = %client.uuid,
-                    ip = %client.ip,
-                    "error updating client: {e:#}"
-                );
+    clients
+        .par_iter_mut()
+        .for_each_mut(|(entity_id, mut client, self_entity)| {
+            if !client.is_disconnected() {
+                if let Err(e) = update_one_client(
+                    &mut client,
+                    self_entity,
+                    entity_id,
+                    &instances,
+                    &entities,
+                    &server,
+                ) {
+                    client.write_packet(&DisconnectS2c {
+                        reason: Text::from("").into(),
+                    });
+                    client.is_disconnected = true;
+                    warn!(
+                        username = %client.username,
+                        uuid = %client.uuid,
+                        ip = %client.ip,
+                        "error updating client: {e:#}"
+                    );
+                }
             }
-        }
 
-        client.is_new = false;
-    });
+            client.is_new = false;
+        });
 }
 
 #[inline]

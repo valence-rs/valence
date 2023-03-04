@@ -9,7 +9,7 @@ const SPAWN_Y: i32 = 64;
 
 pub fn build_app(app: &mut App) {
     app.add_plugin(ServerPlugin::new(()))
-        .add_system_to_stage(EventLoop, default_event_handler)
+        .add_system(default_event_handler.in_schedule(EventLoopSchedule))
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients);
