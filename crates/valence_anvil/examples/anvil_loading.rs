@@ -53,18 +53,6 @@ pub fn main() {
         )
         .add_system(despawn_disconnected_clients)
         .run();
-
-    // App::new()
-    //     .add_plugin(ServerPlugin::new(()))
-    //     .add_system_to_stage(EventLoop, default_event_handler)
-    //     .add_system_set(PlayerList::default_system_set())
-    //     .add_startup_system(setup)
-    //     .add_system(init_clients)
-    //     .add_system(remove_unviewed_chunks.after(init_clients))
-    //     .add_system(update_client_views.after(remove_unviewed_chunks))
-    //     .add_system(send_recv_chunks.after(update_client_views))
-    //     .add_system(despawn_disconnected_clients)
-    //     .run();
 }
 
 fn setup(world: &mut World) {
