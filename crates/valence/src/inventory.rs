@@ -107,10 +107,9 @@ impl Inventory {
     /// assert_eq!(inv.slot(0).unwrap().item, ItemKind::Diamond);
     /// ```
     #[track_caller]
-    #[allow(unused_must_use)]
     #[inline]
     pub fn set_slot(&mut self, idx: u16, item: impl Into<Option<ItemStack>>) {
-        self.replace_slot(idx, item);
+        let _ = self.replace_slot(idx, item);
     }
 
     /// Replaces the slot at the given index with the given item stack, and
@@ -234,10 +233,9 @@ impl Inventory {
     /// let mut inv = Inventory::new(InventoryKind::Generic9x3);
     /// inv.set_title("Box of Holding");
     /// ```
-    #[allow(unused_must_use)]
     #[inline]
     pub fn set_title(&mut self, title: impl Into<Text>) {
-        self.replace_title(title);
+        let _ = self.replace_title(title);
     }
 
     /// Replace the text displayed on the inventory's title bar, and returns the
