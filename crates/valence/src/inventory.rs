@@ -198,7 +198,7 @@ impl Inventory {
 
     /// Set the text displayed on the inventory's title bar.
     ///
-    /// To get the old title, use [`replace_title`].
+    /// To get the old title, use [`Inventory::replace_title`].
     ///
     /// ```
     /// # use valence::inventory::{Inventory, InventoryKind};
