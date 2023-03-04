@@ -55,6 +55,17 @@ impl Instance {
             value: level.clamp(WEATHER_LEVEL_MIN, WEATHER_LEVEL_MAX),
         });
     }
+
+    /// Sends weather level events to all players in the instance.
+    pub fn set_weather(&mut self, weather: &Weather) {
+        if let Some(rain_level) = weather.rain {
+            self.set_rain_level(rain_level)
+        }
+
+        if let Some(thunder_level) = weather.thunder {
+            self.set_thunder_level(thunder_level)
+        }
+    }
 }
 
 impl Client {
@@ -89,6 +100,49 @@ impl Client {
             value: level.clamp(WEATHER_LEVEL_MIN, WEATHER_LEVEL_MAX),
         });
     }
+
+    /// Sends weather level events to the client.
+    pub fn set_weather(&mut self, weather: &Weather) {
+        if let Some(rain_level) = weather.rain {
+            self.set_rain_level(rain_level)
+        }
+
+        if let Some(thunder_level) = weather.thunder {
+            self.set_thunder_level(thunder_level)
+        }
+    }
+}
+
+pub fn handle_weather_begin_per_instance(
+    mut query: Query<(&mut Instance, &Weather), Added<Weather>>,
+) {
+    query
+        .par_iter_mut()
+        .for_each_mut(|(mut instance, weather)| {
+            instance.begin_raining();
+            instance.set_weather(weather);
+        });
+}
+
+pub fn handle_weather_end_per_instance(
+    mut query: Query<&mut Instance>,
+    mut removed: RemovedComponents<Weather>,
+) {
+    removed.iter().for_each(|entity| {
+        if let Ok(mut instance) = query.get_mut(entity) {
+            instance.end_raining();
+        }
+    })
+}
+
+pub fn handle_weather_change_per_instance(
+    mut query: Query<(&mut Instance, &Weather), Changed<Weather>>,
+) {
+    query
+        .par_iter_mut()
+        .for_each_mut(|(mut instance, weather)| {
+            instance.set_weather(weather);
+        });
 }
 
 #[cfg(test)]
@@ -97,5 +151,5 @@ mod test {
     fn test_should_handle_players_globally() {}
 
     #[test]
-    fn test_should_handle_players_specifically() {}
+    fn test_should_handle_players_locally() {}
 }
