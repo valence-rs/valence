@@ -126,10 +126,36 @@ impl Inventory {
         self.kind
     }
 
+    /// The text displayed on the inventory's title bar.
+    ///
+    /// ```
+    /// # use valence::inventory::{Inventory, InventoryKind};
+    /// # use valence_protocol::text::Text;
+    /// let inv = Inventory::with_title(InventoryKind::Generic9x3, "Box of Holding");
+    /// assert_eq!(inv.title(), &Text::from("Box of Holding"));
+    /// ```
     pub fn title(&self) -> &Text {
         &self.title
     }
 
+    /// Set the text displayed on the inventory's title bar.
+    ///
+    /// To get the old title, use [`replace_title`].
+    ///
+    /// ```
+    /// # use valence::inventory::{Inventory, InventoryKind};
+    /// let mut inv = Inventory::new(InventoryKind::Generic9x3);
+    /// inv.set_title("Box of Holding");
+    /// ```
+    #[allow(unused_must_use)]
+    #[inline]
+    pub fn set_title(&mut self, title: impl Into<Text>) {
+        self.replace_title(title);
+    }
+
+    /// Replace the text displayed on the inventory's title bar, and returns the
+    /// old text.
+    #[must_use]
     pub fn replace_title(&mut self, title: impl Into<Text>) -> Text {
         // TODO: set title modified flag
         std::mem::replace(&mut self.title, title.into())
