@@ -1,7 +1,5 @@
-use std::fs::File;
 use std::path::PathBuf;
 
-use valence::packet::Encode;
 use valence::prelude::*;
 use valence_client::misc::InteractBlock;
 use valence_inventory::ClientInventoryState;
@@ -270,10 +268,8 @@ fn save_schem(
                 client.send_message("Copy something to clipboard first!");
                 continue;
             };
-            let nbt = schematic.serialize();
             let path = PathBuf::from(format!("{username}.schem"));
-            let file = File::create(&path).unwrap();
-            nbt.encode(file).unwrap();
+            schematic.save(&path).unwrap();
             client.send_message(format!("Saved schem to {}", path.display()));
         }
     }

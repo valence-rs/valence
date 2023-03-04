@@ -21,10 +21,12 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, BufReader, Read, Write};
-use std::path::PathBuf;
+use std::path::Path;
 use std::str::FromStr;
 
 use flate2::bufread::GzDecoder;
+use flate2::write::GzEncoder;
+use flate2::Compression;
 use glam::{DVec3, IVec3};
 use thiserror::Error;
 use valence_biome::BiomeId;
@@ -203,8 +205,17 @@ impl<'a> Write for VarIntWriteWrapper<'a> {
     }
 }
 
+#[derive(Debug, Error)]
+pub enum SaveSchematicError {
+    #[error(transparent)]
+    Io(#[from] io::Error),
+
+    #[error(transparent)]
+    Nbt(#[from] valence_nbt::Error),
+}
+
 impl Schematic {
-    pub fn load(path: PathBuf) -> Result<Self, LoadSchematicError> {
+    pub fn load(path: impl AsRef<Path>) -> Result<Self, LoadSchematicError> {
         let file = File::open(path)?;
 
         let mut buf = vec![];
@@ -212,6 +223,10 @@ impl Schematic {
         z.read_to_end(&mut buf)?;
 
         let root = valence_nbt::from_binary_slice(&mut buf.as_slice())?.0;
+        Self::deserialize(&root)
+    }
+
+    pub fn deserialize(root: &Compound) -> Result<Self, LoadSchematicError> {
         let Some(Value::Compound(root)) = root.get("Schematic") else {
             return Err(LoadSchematicError::MissingSchematic);
         };
@@ -422,6 +437,7 @@ impl Schematic {
         })
     }
 
+    /// When saving make sure to use gzip
     pub fn serialize(&self) -> Compound {
         let mut compound = compound! {
             "Version" => 3,
@@ -538,7 +554,18 @@ impl Schematic {
             compound.insert("Entities", Value::List(List::Compound(entities)));
         }
 
-        compound
+        compound! {
+            "Schematic" => compound,
+        }
+    }
+
+    pub fn save(&self, path: impl AsRef<Path>) -> Result<(), SaveSchematicError> {
+        let nbt = self.serialize();
+        let file = File::create(path)?;
+        let mut z = GzEncoder::new(file, Compression::best());
+        valence_nbt::to_binary_writer(&mut z, &nbt, "")?;
+        z.flush()?;
+        Ok(())
     }
 
     pub fn paste<F>(&self, instance: &mut Instance, origin: BlockPos, map_biome: F)
@@ -613,7 +640,7 @@ impl Schematic {
 
                 chunk.set_biome(
                     (x / 4).rem_euclid(4) as usize,
-                    (y - min_y / 4) as usize,
+                    ((y - min_y) / 4) as usize,
                     (z / 4).rem_euclid(4) as usize,
                     biome,
                 );
