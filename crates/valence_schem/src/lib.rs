@@ -742,10 +742,12 @@ impl Schematic {
 
 #[cfg(test)]
 mod test {
+    use std::fs;
+
     use super::*;
 
     #[test]
-    fn schematic() {
+    fn schematic_copy_paste() {
         let mut app = App::new();
         app.add_plugin(ServerPlugin::new(()));
         let mut instance = app
@@ -865,5 +867,15 @@ mod test {
                 },
             }
         );
+    }
+
+    #[test]
+    fn schematic_load_save() {
+        let schem1 = Schematic::load("../../assets/example_schem.schem").unwrap();
+        const TEST_PATH: &str = "test.schem";
+        schem1.save(TEST_PATH, Compression::best()).unwrap();
+        let schem2 = Schematic::load(TEST_PATH).unwrap();
+        assert_eq!(schem1, schem2);
+        fs::remove_file(TEST_PATH).unwrap();
     }
 }
