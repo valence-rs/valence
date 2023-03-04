@@ -25,10 +25,7 @@ use crate::client::event::{register_client_events, run_event_loop};
 use crate::client::{update_clients, Client};
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerPlugin};
 use crate::dimension::{validate_dimensions, Dimension, DimensionId};
-use crate::entity::{
-    check_entity_invariants, deinit_despawned_entities, init_entities, update_entities,
-    McEntityManager,
-};
+use crate::entity::{deinit_despawned_entities, init_entities, update_entities, McEntityManager};
 use crate::instance::{
     check_instance_invariants, update_instances_post_client, update_instances_pre_client, Instance,
 };
@@ -345,8 +342,7 @@ pub fn build_plugin(
     app.add_systems(
         (
             init_entities,
-            check_entity_invariants,
-            check_instance_invariants.after(check_entity_invariants),
+            check_instance_invariants,
             update_player_list.before(update_instances_pre_client),
             update_instances_pre_client.after(init_entities),
             update_clients.after(update_instances_pre_client),

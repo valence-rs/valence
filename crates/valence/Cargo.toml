@@ -16,8 +16,8 @@ anyhow = "1.0.65"
 arrayvec = "0.7.2"
 async-trait = "0.1.60"
 base64 = "0.21.0"
-bevy_app = { git = "https://github.com/bevyengine/bevy/", rev = "8b8078d1d02abaec317bbafe620a51c652159ff9" }
-bevy_ecs = { git = "https://github.com/bevyengine/bevy/", rev = "8b8078d1d02abaec317bbafe620a51c652159ff9" }
+bevy_app = { git = "https://github.com/bevyengine/bevy/", rev = "2ea00610188dce1eba1172a3ded8244570189230" }
+bevy_ecs = { git = "https://github.com/bevyengine/bevy/", rev = "2ea00610188dce1eba1172a3ded8244570189230" }
 bitfield-struct = "0.3.1"
 bytes = "1.2.1"
 flume = "0.10.14"

@@ -12,12 +12,17 @@ pub fn main() {
 
     App::new()
         .add_plugin(ServerPlugin::new(()))
-        .add_system_to_stage(EventLoop, default_event_handler)
-        .add_system_to_stage(EventLoop, prompt_on_punch)
-        .add_system_to_stage(EventLoop, on_resource_pack_status)
-        .add_system_set(PlayerList::default_system_set())
         .add_startup_system(setup)
         .add_system(init_clients)
+        .add_systems(
+            (
+                default_event_handler,
+                prompt_on_punch,
+                on_resource_pack_status,
+            )
+                .in_schedule(EventLoopSchedule),
+        )
+        .add_systems(PlayerList::default_systems())
         .add_system(despawn_disconnected_clients)
         .run();
 }
@@ -33,7 +38,7 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 
     for z in -25..25 {
         for x in -25..25 {
-            instance.set_block([x, SPAWN_Y, z], BlockState::GRASS_BLOCK);
+            instance.set_block([x, SPAWN_Y, z], BlockState::BEDROCK);
         }
     }
 
@@ -41,6 +46,8 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 
     let mut sheep = McEntity::new(EntityKind::Sheep, instance_ent);
     sheep.set_position([0.0, SPAWN_Y as f64 + 1.0, 2.0]);
+    sheep.set_yaw(180.0);
+    sheep.set_head_yaw(180.0);
     commands.spawn(sheep);
 }
 

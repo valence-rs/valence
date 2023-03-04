@@ -13,12 +13,14 @@ pub fn main() {
 
     App::new()
         .add_plugin(ServerPlugin::new(()))
-        .add_system_to_stage(EventLoop, default_event_handler)
-        .add_system_to_stage(EventLoop, event_handler)
-        .add_system_set(PlayerList::default_system_set())
         .add_startup_system(setup)
-        .add_system(init_clients)
-        .add_system(despawn_disconnected_clients)
+        .add_systems((
+            default_event_handler.in_schedule(EventLoopSchedule),
+            event_handler.in_schedule(EventLoopSchedule),
+            init_clients,
+            despawn_disconnected_clients,
+        ))
+        .add_systems(PlayerList::default_systems())
         .run();
 }
 

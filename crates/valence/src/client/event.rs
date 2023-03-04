@@ -636,12 +636,10 @@ events! {
 }
 
 /// An exclusive system for running the event loop schedule.
+#[allow(clippy::type_complexity)]
 pub(crate) fn run_event_loop(
     world: &mut World,
-    state: &mut SystemState<(
-        Query<(Entity, &mut Client, &mut Inventory)>,
-        ClientEvents,
-    )>,
+    state: &mut SystemState<(Query<(Entity, &mut Client, &mut Inventory)>, ClientEvents)>,
     mut clients_to_check: Local<Vec<Entity>>,
 ) {
     let (mut clients, mut events) = state.get_mut(world);
@@ -1354,8 +1352,8 @@ fn handle_one_packet(
 /// is subject to change.
 ///
 /// This system must be scheduled to run in the
-/// [`EventLoop`](crate::server::EventLoop) stage. Otherwise, it may not
-/// function correctly.
+/// [`EventLoopSchedule`](crate::server::EventLoopSchedule). Otherwise, it may
+/// not function correctly.
 #[allow(clippy::too_many_arguments)]
 pub fn default_event_handler(
     mut clients: Query<(&mut Client, Option<&mut McEntity>)>,

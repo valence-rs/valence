@@ -1,6 +1,5 @@
 use std::time::Instant;
 
-use bevy_app::{App, CoreStage};
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::default_event_handler;
 use valence::instance::{Chunk, Instance};
@@ -22,12 +21,14 @@ fn main() {
                 .with_max_connections(50_000),
         )
         .add_startup_system(setup)
-        .add_system_to_stage(EventLoop, default_event_handler)
-        .add_system_to_stage(CoreStage::First, record_tick_start_time)
-        .add_system_to_stage(CoreStage::Last, print_tick_time)
-        .add_system(init_clients)
-        .add_system(despawn_disconnected_clients)
-        .add_system_set(PlayerList::default_system_set())
+        .add_systems((
+            default_event_handler.in_schedule(EventLoopSchedule),
+            record_tick_start_time.in_base_set(CoreSet::First),
+            print_tick_time.in_base_set(CoreSet::Last),
+            init_clients,
+            despawn_disconnected_clients,
+        ))
+        .add_systems(PlayerList::default_systems())
         .run();
 }
 

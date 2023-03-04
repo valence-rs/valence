@@ -49,7 +49,7 @@ pub mod view;
 
 pub mod prelude {
     pub use async_trait::async_trait;
-    pub use bevy_app::App;
+    pub use bevy_app::prelude::*;
     pub use bevy_ecs::prelude::*;
     pub use biome::{Biome, BiomeId};
     pub use client::Client;
@@ -70,7 +70,7 @@ pub mod prelude {
     pub use protocol::text::{Color, Text, TextFormat};
     pub use protocol::types::GameMode;
     pub use protocol::username::Username;
-    pub use server::{NewClientInfo, Server, SharedServer};
+    pub use server::{EventLoopSchedule, EventLoopSet, NewClientInfo, Server, SharedServer};
     pub use uuid::Uuid;
     pub use valence_nbt::Compound;
     pub use valence_protocol::block::BlockKind;

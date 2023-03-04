@@ -83,7 +83,8 @@ impl PlayerList {
         (
             add_new_clients_to_player_list,
             remove_disconnected_clients_from_player_list,
-        ).into_configs()
+        )
+            .into_configs()
     }
 }
 

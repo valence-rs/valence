@@ -28,13 +28,16 @@ pub fn main() {
 
     App::new()
         .add_plugin(ServerPlugin::new(()))
-        .add_system_to_stage(EventLoop, default_event_handler)
-        .add_system_set(PlayerList::default_system_set())
         .add_system(init_clients)
+        .add_system(default_event_handler.in_schedule(EventLoopSchedule))
+        .add_systems(PlayerList::default_systems())
+        .add_systems((
+            reset_clients.after(init_clients),
+            manage_chunks.after(reset_clients).before(manage_blocks),
+            manage_blocks,
+            despawn_disconnected_clients,
+        ))
         .add_system(despawn_disconnected_clients)
-        .add_system(reset_clients.after(init_clients))
-        .add_system(manage_chunks.after(reset_clients).before(manage_blocks))
-        .add_system(manage_blocks)
         .run();
 }
 
