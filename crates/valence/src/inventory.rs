@@ -68,12 +68,14 @@ impl Inventory {
     }
 
     /// Sets the slot at the given index to the given item stack.
+    ///
+    /// See also [`Inventory::replace_slot`].
+    ///
     /// ```
     /// # use valence::prelude::*;
     /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
     /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
-    /// let old = inv.replace_slot(0, ItemStack::new(ItemKind::IronIngot, 1, None));
-    /// assert_eq!(old.unwrap().item, ItemKind::Diamond);
+    /// assert_eq!(inv.slot(0).unwrap().item, ItemKind::Diamond);
     /// ```
     #[track_caller]
     #[allow(unused_must_use)]
@@ -84,6 +86,16 @@ impl Inventory {
 
     /// Replaces the slot at the given index with the given item stack, and
     /// returns the old stack in that slot.
+    ///
+    /// See also [`Inventory::set_slot`].
+    ///
+    /// ```
+    /// # use valence::prelude::*;
+    /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
+    /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
+    /// let old = inv.replace_slot(0, ItemStack::new(ItemKind::IronIngot, 1, None));
+    /// assert_eq!(old.unwrap().item, ItemKind::Diamond);
+    /// ```
     #[track_caller]
     #[must_use]
     pub fn replace_slot(
