@@ -23,7 +23,7 @@ use valence_protocol::packet::c2s::status::{QueryPingC2s, QueryRequestC2s};
 use valence_protocol::packet::s2c::login::LoginSuccessS2c;
 use valence_protocol::packet::s2c::status::{QueryPongS2c, QueryResponseS2c};
 use valence_protocol::packet::{C2sPlayPacket, S2cLoginPacket, S2cPlayPacket};
-use valence_protocol::{DecodePacket, EncodePacket};
+use valence_protocol::Packet;
 
 #[derive(Parser, Clone, Debug)]
 #[clap(author, version, about)]
@@ -65,7 +65,7 @@ struct State {
 impl State {
     pub async fn rw_packet<'a, P>(&'a mut self) -> anyhow::Result<P>
     where
-        P: DecodePacket<'a> + EncodePacket,
+        P: Packet<'a>,
     {
         while !self.dec.has_next_packet()? {
             self.dec.reserve(4096);

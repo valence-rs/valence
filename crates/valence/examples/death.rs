@@ -10,21 +10,19 @@ pub fn main() {
 
     App::new()
         .add_plugin(ServerPlugin::new(()))
-        .add_system_to_stage(EventLoop, default_event_handler)
-        .add_system_to_stage(EventLoop, squat_and_die)
-        .add_system_to_stage(EventLoop, necromancy)
-        .add_system_set(PlayerList::default_system_set())
         .add_startup_system(setup)
         .add_system(init_clients)
+        .add_systems(
+            (default_event_handler, squat_and_die, necromancy).in_schedule(EventLoopSchedule),
+        )
+        .add_systems(PlayerList::default_systems())
         .add_system(despawn_disconnected_clients)
         .run();
 }
 
-fn setup(world: &mut World) {
+fn setup(mut commands: Commands, server: Res<Server>) {
     for block in [BlockState::GRASS_BLOCK, BlockState::DEEPSLATE] {
-        let mut instance = world
-            .resource::<Server>()
-            .new_instance(DimensionId::default());
+        let mut instance = server.new_instance(DimensionId::default());
 
         for z in -5..5 {
             for x in -5..5 {
@@ -38,7 +36,7 @@ fn setup(world: &mut World) {
             }
         }
 
-        world.spawn(instance);
+        commands.spawn(instance);
     }
 }
 

@@ -14,18 +14,19 @@ fn main() {
     App::new()
         .add_plugin(ServerPlugin::new(()))
         .add_startup_system(setup)
-        .add_system_to_stage(EventLoop, default_event_handler)
-        .add_system(init_clients)
-        .add_system(update_player_list)
-        .add_system(despawn_disconnected_clients)
-        .add_system(remove_disconnected_clients_from_player_list)
+        .add_system(default_event_handler.in_schedule(EventLoopSchedule))
+        .add_systems(PlayerList::default_systems())
+        .add_systems((
+            init_clients,
+            update_player_list,
+            remove_disconnected_clients_from_player_list,
+            despawn_disconnected_clients,
+        ))
         .run();
 }
 
-fn setup(world: &mut World) {
-    let mut instance = world
-        .resource::<Server>()
-        .new_instance(DimensionId::default());
+fn setup(mut commands: Commands, server: Res<Server>, mut player_list: ResMut<PlayerList>) {
+    let mut instance = server.new_instance(DimensionId::default());
 
     for z in -5..5 {
         for x in -5..5 {
@@ -39,9 +40,7 @@ fn setup(world: &mut World) {
         }
     }
 
-    world.spawn(instance);
-
-    let mut player_list = world.resource_mut::<PlayerList>();
+    commands.spawn(instance);
 
     player_list.insert(
         PLAYER_UUID_1,

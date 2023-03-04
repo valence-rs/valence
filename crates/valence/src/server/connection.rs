@@ -10,7 +10,7 @@ use tokio::task::JoinHandle;
 use tokio::time::timeout;
 use tracing::debug;
 use valence_protocol::codec::{PacketDecoder, PacketEncoder};
-use valence_protocol::{DecodePacket, EncodePacket};
+use valence_protocol::Packet;
 
 use crate::client::{Client, ClientConnection};
 use crate::server::byte_channel::{
@@ -52,9 +52,9 @@ where
         }
     }
 
-    pub async fn send_packet<P>(&mut self, pkt: &P) -> anyhow::Result<()>
+    pub async fn send_packet<'a, P>(&mut self, pkt: &P) -> anyhow::Result<()>
     where
-        P: EncodePacket + ?Sized,
+        P: Packet<'a>,
     {
         self.enc.append_packet(pkt)?;
         let bytes = self.enc.take();
@@ -64,7 +64,7 @@ where
 
     pub async fn recv_packet<'a, P>(&'a mut self) -> anyhow::Result<P>
     where
-        P: DecodePacket<'a>,
+        P: Packet<'a>,
     {
         timeout(self.timeout, async {
             while !self.dec.has_next_packet()? {

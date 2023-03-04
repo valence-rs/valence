@@ -75,7 +75,7 @@ use std::io::Write;
 use std::{fmt, io};
 
 pub use anyhow::{Error, Result};
-pub use valence_protocol_macros::{ident_str, Decode, DecodePacket, Encode, EncodePacket};
+pub use valence_protocol_macros::{ident_str, Decode, Encode, Packet};
 pub use {uuid, valence_nbt as nbt};
 
 /// The Minecraft protocol version this library currently targets.
@@ -111,7 +111,7 @@ pub mod __private {
     pub use anyhow::{anyhow, bail, ensure, Context, Result};
 
     pub use crate::var_int::VarInt;
-    pub use crate::{Decode, DecodePacket, Encode, EncodePacket};
+    pub use crate::{Decode, Encode, Packet};
 }
 
 /// The maximum number of bytes in a single Minecraft packet.
@@ -249,20 +249,21 @@ pub trait Decode<'a>: Sized {
     fn decode(r: &mut &'a [u8]) -> Result<Self>;
 }
 
-/// Like [`Encode`], but implementations must write a leading [`VarInt`] packet
-/// ID before any other data.
+/// Like [`Encode`] + [`Decode`], but implementations must read and write a
+/// leading [`VarInt`] packet ID before any other data.
 ///
 /// # Deriving
 ///
 /// This trait can be implemented automatically by using the
-/// [`EncodePacket`][macro] derive macro. The trait is implemented by writing
-/// the packet ID provided in the `#[packet_id = ...]` helper attribute followed
-/// by a call to [`Encode::encode`].
+/// [`Packet`][macro] derive macro. The trait is implemented by reading or
+/// writing the packet ID provided in the `#[packet_id = ...]` helper attribute
+/// followed by a call to [`Encode::encode`] or [`Decode::decode`]. The target
+/// type must implement [`Encode`], [`Decode`], and [`fmt::Debug`].
 ///
 /// ```
-/// use valence_protocol::{Encode, EncodePacket};
+/// use valence_protocol::{Encode, Packet};
 ///
-/// #[derive(Encode, EncodePacket, Debug)]
+/// #[derive(Encode, Packet, Debug)]
 /// #[packet_id = 42]
 /// struct MyStruct {
 ///     first: i32,
@@ -275,60 +276,24 @@ pub trait Decode<'a>: Sized {
 /// println!("{buf:?}");
 /// ```
 ///
-/// [macro]: valence_protocol_macros::DecodePacket
+/// [macro]: valence_protocol_macros::Packet
 /// [`VarInt`]: var_int::VarInt
-pub trait EncodePacket: fmt::Debug {
-    /// The packet ID that is written when [`Self::encode_packet`] is called. A
-    /// negative value indicates that the packet ID is not statically known.
+pub trait Packet<'a>: Sized + fmt::Debug {
+    /// The packet returned by [`Self::packet_id`]. If the packet ID is not
+    /// statically known, then a negative value is used instead.
     const PACKET_ID: i32 = -1;
-
     /// Like [`Encode::encode`], but a leading [`VarInt`] packet ID must be
     /// written first.
     ///
     /// [`VarInt`]: var_int::VarInt
     fn encode_packet(&self, w: impl Write) -> Result<()>;
-}
-
-/// Like [`Decode`], but implementations must read a leading [`VarInt`] packet
-/// ID before any other data.
-///
-/// # Deriving
-///
-/// This trait can be implemented automatically by using the
-/// [`DecodePacket`][macro] derive macro. The trait is implemented by reading
-/// the packet ID provided in the `#[packet_id = ...]` helper attribute followed
-/// by a call to [`Decode::decode`].
-///
-/// ```
-/// use valence_protocol::{Decode, DecodePacket};
-///
-/// #[derive(Decode, DecodePacket, Debug)]
-/// #[packet_id = 42]
-/// struct MyStruct {
-///     first: i32,
-/// }
-///
-/// let buf = [42, 0, 0, 0, 0];
-/// let mut r = buf.as_slice();
-///
-/// let value = MyStruct::decode_packet(&mut r).unwrap();
-///
-/// assert_eq!(value.first, 0);
-/// assert!(r.is_empty());
-/// ```
-///
-/// [macro]: valence_protocol::DecodePacket
-/// [`VarInt`]: var_int::VarInt
-pub trait DecodePacket<'a>: Sized + fmt::Debug {
-    /// The packet ID that is read when [`Self::decode_packet`] is called. A
-    /// negative value indicates that the packet ID is not statically known.
-    const PACKET_ID: i32 = -1;
-
     /// Like [`Decode::decode`], but a leading [`VarInt`] packet ID must be read
     /// first.
     ///
     /// [`VarInt`]: var_int::VarInt
     fn decode_packet(r: &mut &'a [u8]) -> Result<Self>;
+    /// Returns the ID of this packet.
+    fn packet_id(&self) -> i32;
 }
 
 #[allow(dead_code)]
@@ -336,7 +301,7 @@ pub trait DecodePacket<'a>: Sized + fmt::Debug {
 mod derive_tests {
     use super::*;
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
+    #[derive(Encode, Decode, Packet, Debug)]
     #[packet_id = 1]
     struct RegularStruct {
         foo: i32,
@@ -344,30 +309,30 @@ mod derive_tests {
         baz: f64,
     }
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
+    #[derive(Encode, Decode, Packet, Debug)]
     #[packet_id = 2]
     struct UnitStruct;
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
+    #[derive(Encode, Decode, Packet, Debug)]
     #[packet_id = 3]
     struct EmptyStruct {}
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
+    #[derive(Encode, Decode, Packet, Debug)]
     #[packet_id = 4]
     struct TupleStruct(i32, bool, f64);
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
+    #[derive(Encode, Decode, Packet, Debug)]
     #[packet_id = 5]
-    struct StructWithGenerics<'z, T: fmt::Debug = ()> {
+    struct StructWithGenerics<'z, T = ()> {
         foo: &'z str,
         bar: T,
     }
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
+    #[derive(Encode, Decode, Packet, Debug)]
     #[packet_id = 6]
-    struct TupleStructWithGenerics<'z, T: fmt::Debug = ()>(&'z str, i32, T);
+    struct TupleStructWithGenerics<'z, T = ()>(&'z str, i32, T);
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
+    #[derive(Encode, Decode, Packet, Debug)]
     #[packet_id = 7]
     enum RegularEnum {
         Empty,
@@ -375,13 +340,13 @@ mod derive_tests {
         Fields { foo: i32, bar: bool, baz: f64 },
     }
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
+    #[derive(Encode, Decode, Packet, Debug)]
     #[packet_id = 8]
     enum EmptyEnum {}
 
-    #[derive(Encode, EncodePacket, Decode, DecodePacket, Debug)]
+    #[derive(Encode, Decode, Packet, Debug)]
     #[packet_id = 0xbeef]
-    enum EnumWithGenericsAndTags<'z, T: fmt::Debug = ()> {
+    enum EnumWithGenericsAndTags<'z, T = ()> {
         #[tag = 5]
         First {
             foo: &'z str,
@@ -396,7 +361,7 @@ mod derive_tests {
     #[allow(unconditional_recursion)]
     fn has_impls<'a, T>()
     where
-        T: Encode + EncodePacket + Decode<'a> + DecodePacket<'a>,
+        T: Encode + Decode<'a> + Packet<'a>,
     {
         has_impls::<RegularStruct>();
         has_impls::<UnitStruct>();

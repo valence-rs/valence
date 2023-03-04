@@ -11,20 +11,19 @@ pub fn main() {
 
     App::new()
         .add_plugin(ServerPlugin::new(()))
-        .add_system_to_stage(EventLoop, default_event_handler)
-        .add_system_to_stage(EventLoop, toggle_gamemode_on_sneak)
-        .add_system_to_stage(EventLoop, open_chest)
-        .add_system_set(PlayerList::default_system_set())
         .add_startup_system(setup)
         .add_system(init_clients)
+        .add_systems(
+            (default_event_handler, toggle_gamemode_on_sneak, open_chest)
+                .in_schedule(EventLoopSchedule),
+        )
+        .add_systems(PlayerList::default_systems())
         .add_system(despawn_disconnected_clients)
         .run();
 }
 
-fn setup(world: &mut World) {
-    let mut instance = world
-        .resource::<Server>()
-        .new_instance(DimensionId::default());
+fn setup(mut commands: Commands, server: Res<Server>) {
+    let mut instance = server.new_instance(DimensionId::default());
 
     for z in -5..5 {
         for x in -5..5 {
@@ -39,13 +38,13 @@ fn setup(world: &mut World) {
     }
     instance.set_block(CHEST_POS, BlockState::CHEST);
 
-    world.spawn(instance);
+    commands.spawn(instance);
 
     let inventory = Inventory::with_title(
         InventoryKind::Generic9x3,
         "Extra".italic() + " Chesty".not_italic().bold().color(Color::RED) + " Chest".not_italic(),
     );
-    world.spawn(inventory);
+    commands.spawn(inventory);
 }
 
 fn init_clients(

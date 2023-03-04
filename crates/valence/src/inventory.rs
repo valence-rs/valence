@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::iter::FusedIterator;
 
 use bevy_ecs::prelude::*;
+use bevy_ecs::schedule::SystemConfigs;
 use tracing::{debug, warn};
 use valence_protocol::item::ItemStack;
 use valence_protocol::packet::s2c::play::{
@@ -15,6 +16,24 @@ use crate::client::event::{
     ClickSlot, CloseHandledScreen, CreativeInventoryAction, UpdateSelectedSlot,
 };
 use crate::client::Client;
+
+/// The systems needed for updating the inventories.
+pub(crate) fn update_inventories() -> SystemConfigs {
+    (
+        handle_set_held_item,
+        update_open_inventories,
+        handle_close_container,
+        update_client_on_close_inventory.after(update_open_inventories),
+        update_player_inventories,
+        handle_click_container
+            .before(update_open_inventories)
+            .before(update_player_inventories),
+        handle_set_slot_creative
+            .before(update_open_inventories)
+            .before(update_player_inventories),
+    )
+        .into_configs()
+}
 
 #[derive(Debug, Clone, Component)]
 pub struct Inventory {
@@ -115,7 +134,7 @@ impl Inventory {
 }
 
 /// Send updates for each client's player inventory.
-pub(crate) fn update_player_inventories(
+fn update_player_inventories(
     mut query: Query<(&mut Inventory, &mut Client), Without<OpenInventory>>,
 ) {
     for (mut inventory, mut client) in query.iter_mut() {
@@ -178,6 +197,292 @@ pub(crate) fn update_player_inventories(
             });
         }
     }
+}
+
+/// Used to indicate that the client with this component is currently viewing
+/// an inventory.
+#[derive(Debug, Clone, Component)]
+pub struct OpenInventory {
+    /// The Entity with the `Inventory` component that the client is currently
+    /// viewing.
+    pub(crate) entity: Entity,
+    client_modified: u64,
+}
+
+impl OpenInventory {
+    pub fn new(entity: Entity) -> Self {
+        OpenInventory {
+            entity,
+            client_modified: 0,
+        }
+    }
+
+    pub fn entity(&self) -> Entity {
+        self.entity
+    }
+}
+
+/// Handles the `OpenInventory` component being added to a client, which
+/// indicates that the client is now viewing an inventory, and sends inventory
+/// updates to the client when the inventory is modified.
+fn update_open_inventories(
+    mut commands: Commands,
+    mut clients: Query<(Entity, &mut Client, &mut OpenInventory)>,
+    mut inventories: Query<&mut Inventory>,
+) {
+    // These operations need to happen in this order.
+
+    // send the inventory contents to all clients that are viewing an inventory
+    for (client_entity, mut client, mut open_inventory) in clients.iter_mut() {
+        // validate that the inventory exists
+        let Ok(inventory) = inventories.get_component::<Inventory>(open_inventory.entity) else {
+            // the inventory no longer exists, so close the inventory
+            commands.entity(client_entity).remove::<OpenInventory>();
+            let window_id = client.window_id;
+            client.write_packet(&CloseScreenS2c {
+                window_id,
+            });
+            continue;
+        };
+
+        if open_inventory.is_added() {
+            // send the inventory to the client if the client just opened the inventory
+            client.window_id = client.window_id % 100 + 1;
+            open_inventory.client_modified = 0;
+
+            let packet = OpenScreenS2c {
+                window_id: VarInt(client.window_id.into()),
+                window_type: WindowType::from(inventory.kind),
+                window_title: (&inventory.title).into(),
+            };
+            client.write_packet(&packet);
+
+            let packet = InventoryS2c {
+                window_id: client.window_id,
+                state_id: VarInt(client.inventory_state_id.0),
+                slots: Cow::Borrowed(inventory.slot_slice()),
+                // TODO: eliminate clone?
+                carried_item: Cow::Owned(client.cursor_item.clone()),
+            };
+            client.write_packet(&packet);
+        } else {
+            // the client is already viewing the inventory
+            if inventory.modified == u64::MAX {
+                // send the entire inventory
+                client.inventory_state_id += 1;
+                let packet = InventoryS2c {
+                    window_id: client.window_id,
+                    state_id: VarInt(client.inventory_state_id.0),
+                    slots: Cow::Borrowed(inventory.slot_slice()),
+                    // TODO: eliminate clone?
+                    carried_item: Cow::Owned(client.cursor_item.clone()),
+                };
+                client.write_packet(&packet);
+            } else {
+                // send the modified slots
+                let window_id = client.window_id as i8;
+                // The slots that were NOT modified by this client, and they need to be sent
+                let modified_filtered = inventory.modified & !open_inventory.client_modified;
+                if modified_filtered != 0 {
+                    client.inventory_state_id += 1;
+                    let state_id = client.inventory_state_id.0;
+                    for (i, slot) in inventory.slots.iter().enumerate() {
+                        if (modified_filtered >> i) & 1 == 1 {
+                            client.write_packet(&ScreenHandlerSlotUpdateS2c {
+                                window_id,
+                                state_id: VarInt(state_id),
+                                slot_idx: i as i16,
+                                slot_data: Cow::Borrowed(slot),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        open_inventory.client_modified = 0;
+        client.inventory_slots_modified = 0;
+    }
+
+    // reset the modified flag
+    for (_, _, open_inventory) in clients.iter_mut() {
+        // validate that the inventory exists
+        if let Ok(mut inventory) = inventories.get_component_mut::<Inventory>(open_inventory.entity)
+        {
+            inventory.modified = 0;
+        }
+    }
+}
+
+/// Handles clients telling the server that they are closing an inventory.
+fn handle_close_container(mut commands: Commands, mut events: EventReader<CloseHandledScreen>) {
+    for event in events.iter() {
+        commands.entity(event.client).remove::<OpenInventory>();
+    }
+}
+
+/// Detects when a client's `OpenInventory` component is removed, which
+/// indicates that the client is no longer viewing an inventory.
+fn update_client_on_close_inventory(
+    mut removals: RemovedComponents<OpenInventory>,
+    mut clients: Query<&mut Client>,
+) {
+    for entity in &mut removals {
+        if let Ok(mut client) = clients.get_component_mut::<Client>(entity) {
+            let window_id = client.window_id;
+            client.write_packet(&CloseScreenS2c { window_id });
+        }
+    }
+}
+
+fn handle_click_container(
+    mut clients: Query<(&mut Client, &mut Inventory, Option<&mut OpenInventory>)>,
+    mut inventories: Query<&mut Inventory, Without<Client>>,
+    mut events: EventReader<ClickSlot>,
+) {
+    for event in events.iter() {
+        let Ok((mut client, mut client_inventory, mut open_inventory)) =
+            clients.get_mut(event.client) else {
+                // the client does not exist, ignore
+                continue;
+            };
+
+        // validate the window id
+        if (event.window_id == 0) != open_inventory.is_none() {
+            warn!(
+                "Client sent a click with an invalid window id for current state: window_id = {}, \
+                 open_inventory present = {}",
+                event.window_id,
+                open_inventory.is_some()
+            );
+            continue;
+        }
+
+        if let Some(open_inventory) = open_inventory.as_mut() {
+            // the player is interacting with an inventory that is open
+            let Ok(mut target_inventory) = inventories.get_component_mut::<Inventory>(open_inventory.entity) else {
+                // the inventory does not exist, ignore
+                continue;
+            };
+            if client.inventory_state_id.0 != event.state_id {
+                // client is out of sync, resync, ignore click
+                debug!("Client state id mismatch, resyncing");
+                client.inventory_state_id += 1;
+                let packet = InventoryS2c {
+                    window_id: client.window_id,
+                    state_id: VarInt(client.inventory_state_id.0),
+                    slots: Cow::Borrowed(target_inventory.slot_slice()),
+                    // TODO: eliminate clone?
+                    carried_item: Cow::Owned(client.cursor_item.clone()),
+                };
+                client.write_packet(&packet);
+                continue;
+            }
+
+            client.cursor_item = event.carried_item.clone();
+
+            for slot in event.slot_changes.clone() {
+                if (0i16..target_inventory.slot_count() as i16).contains(&slot.idx) {
+                    // the client is interacting with a slot in the target inventory
+                    target_inventory.replace_slot(slot.idx as u16, slot.item);
+                    open_inventory.client_modified |= 1 << slot.idx;
+                } else {
+                    // the client is interacting with a slot in their own inventory
+                    let slot_id = convert_to_player_slot_id(target_inventory.kind, slot.idx as u16);
+                    client_inventory.replace_slot(slot_id, slot.item);
+                    client.inventory_slots_modified |= 1 << slot_id;
+                }
+            }
+        } else {
+            // the client is interacting with their own inventory
+
+            if client.inventory_state_id.0 != event.state_id {
+                // client is out of sync, resync, and ignore the click
+                debug!("Client state id mismatch, resyncing");
+                client.inventory_state_id += 1;
+                let packet = InventoryS2c {
+                    window_id: client.window_id,
+                    state_id: VarInt(client.inventory_state_id.0),
+                    slots: Cow::Borrowed(client_inventory.slot_slice()),
+                    // TODO: eliminate clone?
+                    carried_item: Cow::Owned(client.cursor_item.clone()),
+                };
+                client.write_packet(&packet);
+                continue;
+            }
+
+            // TODO: do more validation on the click
+            client.cursor_item = event.carried_item.clone();
+            for slot in event.slot_changes.clone() {
+                if (0i16..client_inventory.slot_count() as i16).contains(&slot.idx) {
+                    client_inventory.replace_slot(slot.idx as u16, slot.item);
+                    client.inventory_slots_modified |= 1 << slot.idx;
+                } else {
+                    // the client is trying to interact with a slot that does not exist,
+                    // ignore
+                    warn!(
+                        "Client attempted to interact with slot {} which does not exist",
+                        slot.idx
+                    );
+                }
+            }
+        }
+    }
+}
+
+fn handle_set_slot_creative(
+    mut clients: Query<(&mut Client, &mut Inventory)>,
+    mut events: EventReader<CreativeInventoryAction>,
+) {
+    for event in events.iter() {
+        if let Ok((mut client, mut inventory)) = clients.get_mut(event.client) {
+            if client.game_mode() != GameMode::Creative {
+                // the client is not in creative mode, ignore
+                continue;
+            }
+            if event.slot < 0 || event.slot >= inventory.slot_count() as i16 {
+                // the client is trying to interact with a slot that does not exist, ignore
+                continue;
+            }
+            inventory.replace_slot(event.slot as u16, event.clicked_item.clone());
+            inventory.modified &= !(1 << event.slot); // clear the modified bit, since we are about to send the update
+            client.inventory_state_id += 1;
+            let state_id = client.inventory_state_id.0;
+            // HACK: notchian clients rely on the server to send the slot update when in
+            // creative mode Simply marking the slot as modified is not enough. This was
+            // discovered because shift-clicking the destroy item slot in creative mode does
+            // not work without this hack.
+            client.write_packet(&ScreenHandlerSlotUpdateS2c {
+                window_id: 0,
+                state_id: VarInt(state_id),
+                slot_idx: event.slot,
+                slot_data: Cow::Borrowed(&event.clicked_item),
+            });
+        }
+    }
+}
+
+fn handle_set_held_item(
+    mut clients: Query<&mut Client>,
+    mut events: EventReader<UpdateSelectedSlot>,
+) {
+    for event in events.iter() {
+        if let Ok(mut client) = clients.get_mut(event.client) {
+            client.held_item_slot = convert_hotbar_slot_id(event.slot as u16);
+        }
+    }
+}
+
+/// Convert a slot that is outside a target inventory's range to a slot that is
+/// inside the player's inventory.
+fn convert_to_player_slot_id(target_kind: InventoryKind, slot_id: u16) -> u16 {
+    // the first slot in the player's general inventory
+    let offset = target_kind.slot_count() as u16;
+    slot_id - offset + 9
+}
+
+fn convert_hotbar_slot_id(slot_id: u16) -> u16 {
+    slot_id + 36
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -306,295 +611,6 @@ impl From<WindowType> for InventoryKind {
             WindowType::Stonecutter => InventoryKind::Stonecutter,
         }
     }
-}
-
-/// Used to indicate that the client with this component is currently viewing
-/// an inventory.
-#[derive(Debug, Clone, Component)]
-pub struct OpenInventory {
-    /// The Entity with the `Inventory` component that the client is currently
-    /// viewing.
-    pub(crate) entity: Entity,
-    client_modified: u64,
-}
-
-impl OpenInventory {
-    pub fn new(entity: Entity) -> Self {
-        OpenInventory {
-            entity,
-            client_modified: 0,
-        }
-    }
-
-    pub fn entity(&self) -> Entity {
-        self.entity
-    }
-}
-
-/// Handles the `OpenInventory` component being added to a client, which
-/// indicates that the client is now viewing an inventory, and sends inventory
-/// updates to the client when the inventory is modified.
-pub(crate) fn update_open_inventories(
-    mut commands: Commands,
-    mut clients: Query<(Entity, &mut Client, &mut OpenInventory)>,
-    mut inventories: Query<&mut Inventory>,
-) {
-    // These operations need to happen in this order.
-
-    // send the inventory contents to all clients that are viewing an inventory
-    for (client_entity, mut client, mut open_inventory) in clients.iter_mut() {
-        // validate that the inventory exists
-        let Ok(inventory) = inventories.get_component::<Inventory>(open_inventory.entity) else {
-            // the inventory no longer exists, so close the inventory
-            commands.entity(client_entity).remove::<OpenInventory>();
-            let window_id = client.window_id;
-            client.write_packet(&CloseScreenS2c {
-                window_id,
-            });
-            continue;
-        };
-
-        if open_inventory.is_added() {
-            // send the inventory to the client if the client just opened the inventory
-            client.window_id = client.window_id % 100 + 1;
-            open_inventory.client_modified = 0;
-
-            let packet = OpenScreenS2c {
-                window_id: VarInt(client.window_id.into()),
-                window_type: WindowType::from(inventory.kind),
-                window_title: (&inventory.title).into(),
-            };
-            client.write_packet(&packet);
-
-            let packet = InventoryS2c {
-                window_id: client.window_id,
-                state_id: VarInt(client.inventory_state_id.0),
-                slots: Cow::Borrowed(inventory.slot_slice()),
-                // TODO: eliminate clone?
-                carried_item: Cow::Owned(client.cursor_item.clone()),
-            };
-            client.write_packet(&packet);
-        } else {
-            // the client is already viewing the inventory
-            if inventory.modified == u64::MAX {
-                // send the entire inventory
-                client.inventory_state_id += 1;
-                let packet = InventoryS2c {
-                    window_id: client.window_id,
-                    state_id: VarInt(client.inventory_state_id.0),
-                    slots: Cow::Borrowed(inventory.slot_slice()),
-                    // TODO: eliminate clone?
-                    carried_item: Cow::Owned(client.cursor_item.clone()),
-                };
-                client.write_packet(&packet);
-            } else {
-                // send the modified slots
-                let window_id = client.window_id as i8;
-                // The slots that were NOT modified by this client, and they need to be sent
-                let modified_filtered = inventory.modified & !open_inventory.client_modified;
-                if modified_filtered != 0 {
-                    client.inventory_state_id += 1;
-                    let state_id = client.inventory_state_id.0;
-                    for (i, slot) in inventory.slots.iter().enumerate() {
-                        if (modified_filtered >> i) & 1 == 1 {
-                            client.write_packet(&ScreenHandlerSlotUpdateS2c {
-                                window_id,
-                                state_id: VarInt(state_id),
-                                slot_idx: i as i16,
-                                slot_data: Cow::Borrowed(slot),
-                            });
-                        }
-                    }
-                }
-            }
-        }
-
-        open_inventory.client_modified = 0;
-        client.inventory_slots_modified = 0;
-    }
-
-    // reset the modified flag
-    for (_, _, open_inventory) in clients.iter_mut() {
-        // validate that the inventory exists
-        if let Ok(mut inventory) = inventories.get_component_mut::<Inventory>(open_inventory.entity)
-        {
-            inventory.modified = 0;
-        }
-    }
-}
-
-/// Handles clients telling the server that they are closing an inventory.
-pub(crate) fn handle_close_container(
-    mut commands: Commands,
-    mut events: EventReader<CloseHandledScreen>,
-) {
-    for event in events.iter() {
-        commands.entity(event.client).remove::<OpenInventory>();
-    }
-}
-
-/// Detects when a client's `OpenInventory` component is removed, which
-/// indicates that the client is no longer viewing an inventory.
-pub(crate) fn update_client_on_close_inventory(
-    removals: RemovedComponents<OpenInventory>,
-    mut clients: Query<&mut Client>,
-) {
-    for entity in removals.iter() {
-        if let Ok(mut client) = clients.get_component_mut::<Client>(entity) {
-            let window_id = client.window_id;
-            client.write_packet(&CloseScreenS2c { window_id });
-        }
-    }
-}
-
-pub(crate) fn handle_click_container(
-    mut clients: Query<(&mut Client, &mut Inventory, Option<&mut OpenInventory>)>,
-    mut inventories: Query<&mut Inventory, Without<Client>>,
-    mut events: EventReader<ClickSlot>,
-) {
-    for event in events.iter() {
-        let Ok((mut client, mut client_inventory, mut open_inventory)) =
-            clients.get_mut(event.client) else {
-                // the client does not exist, ignore
-                continue;
-            };
-
-        // validate the window id
-        if (event.window_id == 0) != open_inventory.is_none() {
-            warn!(
-                "Client sent a click with an invalid window id for current state: window_id = {}, \
-                 open_inventory present = {}",
-                event.window_id,
-                open_inventory.is_some()
-            );
-            continue;
-        }
-
-        if let Some(open_inventory) = open_inventory.as_mut() {
-            // the player is interacting with an inventory that is open
-            let Ok(mut target_inventory) = inventories.get_component_mut::<Inventory>(open_inventory.entity) else {
-                // the inventory does not exist, ignore
-                continue;
-            };
-            if client.inventory_state_id.0 != event.state_id {
-                // client is out of sync, resync, ignore click
-                debug!("Client state id mismatch, resyncing");
-                client.inventory_state_id += 1;
-                let packet = InventoryS2c {
-                    window_id: client.window_id,
-                    state_id: VarInt(client.inventory_state_id.0),
-                    slots: Cow::Borrowed(target_inventory.slot_slice()),
-                    // TODO: eliminate clone?
-                    carried_item: Cow::Owned(client.cursor_item.clone()),
-                };
-                client.write_packet(&packet);
-                continue;
-            }
-
-            client.cursor_item = event.carried_item.clone();
-
-            for slot in event.slot_changes.clone() {
-                if (0i16..target_inventory.slot_count() as i16).contains(&slot.idx) {
-                    // the client is interacting with a slot in the target inventory
-                    target_inventory.replace_slot(slot.idx as u16, slot.item);
-                    open_inventory.client_modified |= 1 << slot.idx;
-                } else {
-                    // the client is interacting with a slot in their own inventory
-                    let slot_id = convert_to_player_slot_id(target_inventory.kind, slot.idx as u16);
-                    client_inventory.replace_slot(slot_id, slot.item);
-                    client.inventory_slots_modified |= 1 << slot_id;
-                }
-            }
-        } else {
-            // the client is interacting with their own inventory
-
-            if client.inventory_state_id.0 != event.state_id {
-                // client is out of sync, resync, and ignore the click
-                debug!("Client state id mismatch, resyncing");
-                client.inventory_state_id += 1;
-                let packet = InventoryS2c {
-                    window_id: client.window_id,
-                    state_id: VarInt(client.inventory_state_id.0),
-                    slots: Cow::Borrowed(client_inventory.slot_slice()),
-                    // TODO: eliminate clone?
-                    carried_item: Cow::Owned(client.cursor_item.clone()),
-                };
-                client.write_packet(&packet);
-                continue;
-            }
-
-            // TODO: do more validation on the click
-            client.cursor_item = event.carried_item.clone();
-            for slot in event.slot_changes.clone() {
-                if (0i16..client_inventory.slot_count() as i16).contains(&slot.idx) {
-                    client_inventory.replace_slot(slot.idx as u16, slot.item);
-                    client.inventory_slots_modified |= 1 << slot.idx;
-                } else {
-                    // the client is trying to interact with a slot that does not exist,
-                    // ignore
-                    warn!(
-                        "Client attempted to interact with slot {} which does not exist",
-                        slot.idx
-                    );
-                }
-            }
-        }
-    }
-}
-
-pub(crate) fn handle_set_slot_creative(
-    mut clients: Query<(&mut Client, &mut Inventory)>,
-    mut events: EventReader<CreativeInventoryAction>,
-) {
-    for event in events.iter() {
-        if let Ok((mut client, mut inventory)) = clients.get_mut(event.client) {
-            if client.game_mode() != GameMode::Creative {
-                // the client is not in creative mode, ignore
-                continue;
-            }
-            if event.slot < 0 || event.slot >= inventory.slot_count() as i16 {
-                // the client is trying to interact with a slot that does not exist, ignore
-                continue;
-            }
-            inventory.replace_slot(event.slot as u16, event.clicked_item.clone());
-            inventory.modified &= !(1 << event.slot); // clear the modified bit, since we are about to send the update
-            client.inventory_state_id += 1;
-            let state_id = client.inventory_state_id.0;
-            // HACK: notchian clients rely on the server to send the slot update when in
-            // creative mode Simply marking the slot as modified is not enough. This was
-            // discovered because shift-clicking the destroy item slot in creative mode does
-            // not work without this hack.
-            client.write_packet(&ScreenHandlerSlotUpdateS2c {
-                window_id: 0,
-                state_id: VarInt(state_id),
-                slot_idx: event.slot,
-                slot_data: Cow::Borrowed(&event.clicked_item),
-            });
-        }
-    }
-}
-
-pub(crate) fn handle_set_held_item(
-    mut clients: Query<&mut Client>,
-    mut events: EventReader<UpdateSelectedSlot>,
-) {
-    for event in events.iter() {
-        if let Ok(mut client) = clients.get_mut(event.client) {
-            client.held_item_slot = convert_hotbar_slot_id(event.slot as u16);
-        }
-    }
-}
-
-/// Convert a slot that is outside a target inventory's range to a slot that is
-/// inside the player's inventory.
-fn convert_to_player_slot_id(target_kind: InventoryKind, slot_id: u16) -> u16 {
-    // the first slot in the player's general inventory
-    let offset = target_kind.slot_count() as u16;
-    slot_id - offset + 9
-}
-
-fn convert_hotbar_slot_id(slot_id: u16) -> u16 {
-    slot_id + 36
 }
 
 #[cfg(test)]

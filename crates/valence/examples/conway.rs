@@ -27,22 +27,21 @@ pub fn main() {
             grass_color: Some(0x00ff00),
             ..Default::default()
         }]))
-        .add_system_to_stage(EventLoop, default_event_handler)
-        .add_system_set(PlayerList::default_system_set())
         .add_startup_system(setup)
         .add_system(init_clients)
-        .add_system(despawn_disconnected_clients)
-        .add_system_to_stage(EventLoop, toggle_cell_on_dig)
-        .add_system(update_board)
-        .add_system(pause_on_crouch)
-        .add_system(reset_oob_clients)
+        .add_systems((default_event_handler, toggle_cell_on_dig).in_schedule(EventLoopSchedule))
+        .add_systems(PlayerList::default_systems())
+        .add_systems((
+            despawn_disconnected_clients,
+            update_board,
+            pause_on_crouch,
+            reset_oob_clients,
+        ))
         .run();
 }
 
-fn setup(world: &mut World) {
-    let mut instance = world
-        .resource::<Server>()
-        .new_instance(DimensionId::default());
+fn setup(mut commands: Commands, server: Res<Server>) {
+    let mut instance = server.new_instance(DimensionId::default());
 
     for z in -10..10 {
         for x in -10..10 {
@@ -56,9 +55,9 @@ fn setup(world: &mut World) {
         }
     }
 
-    world.spawn(instance);
+    commands.spawn(instance);
 
-    world.insert_resource(LifeBoard {
+    commands.insert_resource(LifeBoard {
         paused: true,
         board: vec![false; BOARD_SIZE_X * BOARD_SIZE_Z].into(),
         board_buf: vec![false; BOARD_SIZE_X * BOARD_SIZE_Z].into(),

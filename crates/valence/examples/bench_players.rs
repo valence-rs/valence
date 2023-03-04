@@ -1,6 +1,5 @@
 use std::time::Instant;
 
-use bevy_app::{App, CoreStage};
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::default_event_handler;
 use valence::instance::{Chunk, Instance};
@@ -22,19 +21,19 @@ fn main() {
                 .with_max_connections(50_000),
         )
         .add_startup_system(setup)
-        .add_system_to_stage(EventLoop, default_event_handler)
-        .add_system_to_stage(CoreStage::First, record_tick_start_time)
-        .add_system_to_stage(CoreStage::Last, print_tick_time)
-        .add_system(init_clients)
-        .add_system(despawn_disconnected_clients)
-        .add_system_set(PlayerList::default_system_set())
+        .add_systems((
+            default_event_handler.in_schedule(EventLoopSchedule),
+            record_tick_start_time.in_base_set(CoreSet::First),
+            print_tick_time.in_base_set(CoreSet::Last),
+            init_clients,
+            despawn_disconnected_clients,
+        ))
+        .add_systems(PlayerList::default_systems())
         .run();
 }
 
-fn record_tick_start_time(world: &mut World) {
-    world
-        .get_resource_or_insert_with(|| TickStart(Instant::now()))
-        .0 = Instant::now();
+fn record_tick_start_time(mut commands: Commands) {
+    commands.insert_resource(TickStart(Instant::now()));
 }
 
 fn print_tick_time(server: Res<Server>, time: Res<TickStart>, clients: Query<(), With<Client>>) {
@@ -47,10 +46,8 @@ fn print_tick_time(server: Res<Server>, time: Res<TickStart>, clients: Query<(),
     }
 }
 
-fn setup(world: &mut World) {
-    let mut instance = world
-        .resource::<Server>()
-        .new_instance(DimensionId::default());
+fn setup(mut commands: Commands, server: Res<Server>) {
+    let mut instance = server.new_instance(DimensionId::default());
 
     for z in -5..5 {
         for x in -5..5 {
@@ -64,7 +61,7 @@ fn setup(world: &mut World) {
         }
     }
 
-    world.spawn(instance);
+    commands.spawn(instance);
 }
 
 fn init_clients(
@@ -72,7 +69,7 @@ fn init_clients(
     instances: Query<Entity, With<Instance>>,
     mut commands: Commands,
 ) {
-    let instance = instances.get_single().unwrap();
+    let instance = instances.single();
 
     for (client_entity, mut client) in &mut clients {
         client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);

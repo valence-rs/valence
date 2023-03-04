@@ -43,20 +43,24 @@ pub fn main() {
 
     App::new()
         .add_plugin(ServerPlugin::new(()))
-        .add_system_to_stage(EventLoop, default_event_handler)
-        .add_system_set(PlayerList::default_system_set())
         .add_startup_system(setup)
-        .add_system(init_clients)
-        .add_system(remove_unviewed_chunks.after(init_clients))
-        .add_system(update_client_views.after(remove_unviewed_chunks))
-        .add_system(send_recv_chunks.after(update_client_views))
+        .add_system(default_event_handler.in_schedule(EventLoopSchedule))
+        .add_systems(
+            (
+                init_clients,
+                remove_unviewed_chunks,
+                update_client_views,
+                send_recv_chunks,
+            )
+                .chain(),
+        )
         .add_system(despawn_disconnected_clients)
+        .add_systems(PlayerList::default_systems())
         .run();
 }
 
-fn setup(world: &mut World) {
+fn setup(mut commands: Commands, server: Res<Server>) {
     let seconds_per_day = 86_400;
-
     let seed = (SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
@@ -90,17 +94,15 @@ fn setup(world: &mut World) {
         thread::spawn(move || chunk_worker(state));
     }
 
-    world.insert_resource(GameState {
+    commands.insert_resource(GameState {
         pending: HashMap::new(),
         sender: pending_sender,
         receiver: finished_receiver,
     });
 
-    let instance = world
-        .resource::<Server>()
-        .new_instance(DimensionId::default());
+    let instance = server.new_instance(DimensionId::default());
 
-    world.spawn(instance);
+    commands.spawn(instance);
 }
 
 fn init_clients(

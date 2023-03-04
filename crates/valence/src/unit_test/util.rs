@@ -1,12 +1,13 @@
 use std::sync::{Arc, Mutex};
 
-use bevy_app::App;
+use bevy_app::{App, CoreSchedule};
 use bevy_ecs::prelude::Entity;
+use bevy_ecs::schedule::{LogLevel, ScheduleBuildSettings};
 use bytes::BytesMut;
 use valence_protocol::codec::{PacketDecoder, PacketEncoder};
 use valence_protocol::packet::S2cPlayPacket;
 use valence_protocol::username::Username;
-use valence_protocol::EncodePacket;
+use valence_protocol::Packet;
 
 use crate::client::{Client, ClientConnection};
 use crate::config::{ConnectionMode, ServerPlugin};
@@ -135,7 +136,7 @@ impl MockClientHelper {
 
     /// Inject a packet to be treated as a packet inbound to the server. Panics
     /// if the packet cannot be sent.
-    pub fn send(&mut self, packet: &(impl EncodePacket + ?Sized)) {
+    pub fn send<'a>(&mut self, packet: &impl Packet<'a>) {
         self.enc
             .append_packet(packet)
             .expect("failed to encode packet");
@@ -164,17 +165,28 @@ pub fn scenario_single_client(app: &mut App) -> (Entity, MockClientHelper) {
             .with_compression_threshold(None)
             .with_connection_mode(ConnectionMode::Offline),
     );
+
     let server = app.world.resource::<Server>();
     let instance = server.new_instance(DimensionId::default());
     let instance_ent = app.world.spawn(instance).id();
     let info = gen_client_info("test");
     let (mut client, client_helper) = create_mock_client(info);
+
     // HACK: needed so client does not get disconnected on first update
     client.set_instance(instance_ent);
     let client_ent = app
         .world
         .spawn((client, Inventory::new(InventoryKind::Player)))
         .id();
+
+    // Print warnings if there are ambiguities in the schedule.
+    app.edit_schedule(CoreSchedule::Main, |schedule| {
+        schedule.set_build_settings(ScheduleBuildSettings {
+            ambiguity_detection: LogLevel::Warn,
+            ..Default::default()
+        });
+    });
+
     (client_ent, client_helper)
 }
 

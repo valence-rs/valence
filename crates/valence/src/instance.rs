@@ -16,7 +16,7 @@ use valence_protocol::packet::s2c::play::{OverlayMessageS2c, ParticleS2c, PlaySo
 use valence_protocol::sound::Sound;
 use valence_protocol::text::Text;
 use valence_protocol::types::SoundCategory;
-use valence_protocol::EncodePacket;
+use valence_protocol::Packet;
 pub use weather::{WEATHER_LEVEL_MAX, WEATHER_LEVEL_MIN};
 
 use crate::dimension::DimensionId;
@@ -315,9 +315,9 @@ impl Instance {
     ///
     /// This is more efficient than sending the packet to each client
     /// individually.
-    pub fn write_packet<P>(&mut self, pkt: &P)
+    pub fn write_packet<'a, P>(&mut self, pkt: &P)
     where
-        P: EncodePacket + ?Sized,
+        P: Packet<'a>,
     {
         PacketWriter::new(
             &mut self.packet_buf,
@@ -342,9 +342,9 @@ impl Instance {
     ///
     /// This is more efficient than sending the packet to each client
     /// individually.
-    pub fn write_packet_at<P>(&mut self, pkt: &P, pos: impl Into<ChunkPos>)
+    pub fn write_packet_at<'a, P>(&mut self, pkt: &P, pos: impl Into<ChunkPos>)
     where
-        P: EncodePacket + ?Sized,
+        P: Packet<'a>,
     {
         let pos = pos.into();
         if let Some(cell) = self.partition.get_mut(&pos) {

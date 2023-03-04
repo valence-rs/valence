@@ -9,10 +9,10 @@ pub fn main() {
 
     App::new()
         .add_plugin(ServerPlugin::new(()))
-        .add_system_to_stage(EventLoop, default_event_handler)
-        .add_system_set(PlayerList::default_system_set())
         .add_startup_system(setup)
         .add_system(init_clients)
+        .add_system(default_event_handler.in_schedule(EventLoopSchedule))
+        .add_systems(PlayerList::default_systems())
         .add_system(despawn_disconnected_clients)
         .add_system(manage_particles)
         .run();
@@ -37,10 +37,8 @@ impl ParticleSpawner {
     }
 }
 
-fn setup(world: &mut World) {
-    let mut instance = world
-        .resource::<Server>()
-        .new_instance(DimensionId::default());
+fn setup(mut commands: Commands, server: Res<Server>) {
+    let mut instance = server.new_instance(DimensionId::default());
 
     for z in -5..5 {
         for x in -5..5 {
@@ -50,10 +48,10 @@ fn setup(world: &mut World) {
 
     instance.set_block([0, SPAWN_Y, 0], BlockState::BEDROCK);
 
-    world.spawn(instance);
+    commands.spawn(instance);
 
     let spawner = ParticleSpawner::new();
-    world.insert_resource(spawner)
+    commands.insert_resource(spawner)
 }
 
 fn init_clients(

@@ -22,19 +22,16 @@ pub fn main() {
     App::new()
         .add_plugin(ServerPlugin::new(()))
         .add_startup_system(setup)
-        .add_system_to_stage(EventLoop, default_event_handler)
-        .add_system_to_stage(EventLoop, handle_combat_events)
         .add_system(init_clients)
+        .add_systems((default_event_handler, handle_combat_events).in_schedule(EventLoopSchedule))
+        .add_systems(PlayerList::default_systems())
         .add_system(despawn_disconnected_clients)
-        .add_system_set(PlayerList::default_system_set())
         .add_system(teleport_oob_clients)
         .run();
 }
 
-fn setup(world: &mut World) {
-    let mut instance = world
-        .resource::<Server>()
-        .new_instance(DimensionId::default());
+fn setup(mut commands: Commands, server: Res<Server>) {
+    let mut instance = server.new_instance(DimensionId::default());
 
     for z in -5..5 {
         for x in -5..5 {
@@ -63,7 +60,7 @@ fn setup(world: &mut World) {
         }
     }
 
-    world.spawn(instance);
+    commands.spawn(instance);
 }
 
 fn init_clients(

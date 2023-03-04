@@ -32,16 +32,17 @@ pub fn main() {
                     .collect::<Vec<_>>(),
             ),
         )
-        .add_system_to_stage(EventLoop, default_event_handler)
         .add_startup_system(setup)
-        .add_system(init_clients)
-        .add_system(despawn_disconnected_clients)
-        .add_system_set(PlayerList::default_system_set())
+        .add_systems((
+            default_event_handler.in_schedule(EventLoopSchedule),
+            init_clients,
+            despawn_disconnected_clients,
+        ))
+        .add_systems(PlayerList::default_systems())
         .run();
 }
 
-fn setup(world: &mut World) {
-    let server = world.resource::<Server>();
+fn setup(mut commands: Commands, server: Res<Server>) {
     let mut instance = server.new_instance(DimensionId::default());
 
     for z in -5..5 {
@@ -72,7 +73,7 @@ fn setup(world: &mut World) {
         }
     }
 
-    world.spawn(instance);
+    commands.spawn(instance);
 }
 
 fn init_clients(

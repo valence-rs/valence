@@ -12,19 +12,22 @@ pub fn main() {
     App::new()
         .add_plugin(ServerPlugin::new(()).with_connection_mode(ConnectionMode::Offline))
         .add_startup_system(setup)
-        .add_system_to_stage(EventLoop, default_event_handler)
-        .add_system_to_stage(EventLoop, handle_message_events)
-        .add_system_to_stage(EventLoop, handle_command_events)
         .add_system(init_clients)
+        .add_systems(
+            (
+                default_event_handler,
+                handle_message_events,
+                handle_command_events,
+            )
+                .in_schedule(EventLoopSchedule),
+        )
+        .add_systems(PlayerList::default_systems())
         .add_system(despawn_disconnected_clients)
-        .add_system_set(PlayerList::default_system_set())
         .run();
 }
 
-fn setup(world: &mut World) {
-    let mut instance = world
-        .resource::<Server>()
-        .new_instance(DimensionId::default());
+fn setup(mut commands: Commands, server: Res<Server>) {
+    let mut instance = server.new_instance(DimensionId::default());
 
     for z in -5..5 {
         for x in -5..5 {
@@ -38,7 +41,7 @@ fn setup(world: &mut World) {
         }
     }
 
-    world.spawn(instance);
+    commands.spawn(instance);
 }
 
 fn init_clients(
@@ -67,9 +70,10 @@ fn handle_message_events(mut clients: Query<&mut Client>, mut messages: EventRea
             .color(Color::YELLOW)
             + message.into_text().not_bold().color(Color::WHITE);
 
-        clients.par_for_each_mut(16, |mut client| {
+        // TODO: write message to instance buffer.
+        for mut client in &mut clients {
             client.send_message(formatted.clone());
-        })
+        }
     }
 }
 
