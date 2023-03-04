@@ -36,7 +36,7 @@ pub mod client;
 pub mod component;
 pub mod config;
 pub mod dimension;
-pub mod actor;
+pub mod entity;
 pub mod instance;
 pub mod inventory;
 pub mod packet;
@@ -58,8 +58,8 @@ pub mod prelude {
         AsyncCallbacks, ConnectionMode, PlayerSampleEntry, ServerListPing, ServerPlugin,
     };
     pub use dimension::{Dimension, DimensionId};
-    pub use actor::{
-        EntityAnimation, EntityKind, EntityStatus, Actor, ActorManager, TrackedData,
+    pub use entity::{
+        EntityAnimation, EntityKind, EntityStatus, McEntity, McEntityManager, TrackedData,
     };
     pub use glam::DVec3;
     pub use instance::{Block, BlockMut, BlockRef, Chunk, Instance};

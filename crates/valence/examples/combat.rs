@@ -80,18 +80,18 @@ fn init_clients(
                 last_attacked_tick: 0,
                 has_bonus_knockback: false,
             },
-            Actor::with_uuid(EntityKind::Player, instance, client.uuid()),
+            McEntity::with_uuid(EntityKind::Player, instance, client.uuid()),
         ));
     }
 }
 
 fn handle_combat_events(
-    manager: Res<ActorManager>,
+    manager: Res<McEntityManager>,
     server: Res<Server>,
     mut start_sprinting: EventReader<StartSprinting>,
     mut stop_sprinting: EventReader<StopSprinting>,
     mut interact_with_entity: EventReader<PlayerInteract>,
-    mut clients: Query<(&mut Client, &mut CombatState, &mut Actor)>,
+    mut clients: Query<(&mut Client, &mut CombatState, &mut McEntity)>,
 ) {
     for &StartSprinting { client } in start_sprinting.iter() {
         if let Ok((_, mut state, _)) = clients.get_mut(client) {

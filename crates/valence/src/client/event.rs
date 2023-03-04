@@ -32,7 +32,7 @@ use valence_protocol::tracked_data::Pose;
 use valence_protocol::types::{Difficulty, Direction, Hand};
 
 use crate::client::Client;
-use crate::actor::{EntityAnimation, EntityKind, Actor, TrackedData};
+use crate::entity::{EntityAnimation, EntityKind, McEntity, TrackedData};
 use crate::inventory::Inventory;
 
 #[derive(Clone, Debug)]
@@ -1357,7 +1357,7 @@ fn handle_one_packet(
 /// function correctly.
 #[allow(clippy::too_many_arguments)]
 pub fn default_event_handler(
-    mut clients: Query<(&mut Client, Option<&mut Actor>)>,
+    mut clients: Query<(&mut Client, Option<&mut McEntity>)>,
     mut update_settings: EventReader<ClientSettings>,
     mut player_move: EventReader<PlayerMove>,
     mut start_sneaking: EventReader<StartSneaking>,

@@ -26,9 +26,9 @@ use crate::client::{update_clients, Client};
 use crate::component::Despawned;
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerPlugin};
 use crate::dimension::{validate_dimensions, Dimension, DimensionId};
-use crate::actor::{
-    check_actor_invariants, deinit_despawned_actors, init_actors, update_actors,
-    ActorManager,
+use crate::entity::{
+    check_mcentity_invariants, deinit_despawned_mcentities, init_mcentities, update_mcentities,
+    McEntityManager,
 };
 use crate::instance::{
     check_instance_invariants, update_instances_post_client, update_instances_pre_client, Instance,
@@ -324,7 +324,7 @@ pub fn build_plugin(
 
     // Insert resources.
     app.insert_resource(server)
-        .insert_resource(ActorManager::new())
+        .insert_resource(McEntityManager::new())
         .insert_resource(PlayerList::new());
     register_client_events(&mut app.world);
 
@@ -340,16 +340,16 @@ pub fn build_plugin(
             CoreStage::PostUpdate,
             SystemSet::new()
                 .label("valence_core")
-                .with_system(init_actors)
-                .with_system(check_actor_invariants)
-                .with_system(check_instance_invariants.after(check_actor_invariants))
+                .with_system(init_mcentities)
+                .with_system(check_mcentity_invariants)
+                .with_system(check_instance_invariants.after(check_mcentity_invariants))
                 .with_system(update_player_list.before(update_instances_pre_client))
-                .with_system(update_instances_pre_client.after(init_actors))
+                .with_system(update_instances_pre_client.after(init_mcentities))
                 .with_system(update_clients.after(update_instances_pre_client))
                 .with_system(update_instances_post_client.after(update_clients))
-                .with_system(deinit_despawned_actors.after(update_instances_post_client))
-                .with_system(despawn_marked_entities.after(deinit_despawned_actors))
-                .with_system(update_actors.after(despawn_marked_entities)),
+                .with_system(deinit_despawned_mcentities.after(update_instances_post_client))
+                .with_system(despawn_marked_entities.after(deinit_despawned_mcentities))
+                .with_system(update_mcentities.after(despawn_marked_entities)),
         )
         .add_system_set_to_stage(
             CoreStage::PostUpdate,

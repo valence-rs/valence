@@ -31,7 +31,7 @@ use valence_protocol::var_int::VarInt;
 use valence_protocol::Packet;
 
 use crate::NULL_ENTITY;
-use crate::actor::{velocity_to_packet_units, Actor, EntityStatus};
+use crate::entity::{velocity_to_packet_units, McEntity, EntityStatus};
 use crate::component::{
     Despawned, GameMode, Location, OldLocation, OldPosition, OnGround, Ping, Pitch, Position,
     Properties, UniqueId, Username, Yaw,
@@ -89,7 +89,7 @@ impl ClientBundle {
                 enc,
                 dec,
                 scratch: Vec::new(),
-                actors_to_despawn: Vec::new(),
+                mcentities_to_despawn: Vec::new(),
             },
             username: Username(info.username),
             uuid: UniqueId(info.uuid),
@@ -142,7 +142,7 @@ pub struct Client {
     pub(crate) dec: PacketDecoder,
     /// Scratch buffer.
     scratch: Vec<u8>,
-    actors_to_despawn: Vec<VarInt>,
+    mcentities_to_despawn: Vec<VarInt>,
 }
 
 impl WritePacket for Client {
@@ -176,9 +176,9 @@ impl Client {
         });
     }
 
-    /// Kills the client and shows `message` on the death screen. If an actor
+    /// Kills the client and shows `message` on the death screen. If an entity
     /// killed the player, you should supply it as `killer`.
-    pub fn kill(&mut self, killer: Option<&Actor>, message: impl Into<Text>) {
+    pub fn kill(&mut self, killer: Option<&McEntity>, message: impl Into<Text>) {
         self.write_packet(&DeathMessageS2c {
             player_id: VarInt(0),
             entity_id: killer.map_or(-1, |k| k.protocol_id()),
@@ -430,9 +430,9 @@ pub fn despawn_disconnected_clients(
 /*
 pub(crate) fn update_clients(
     server: Res<Server>,
-    mut clients: Query<(Entity, &mut Client, Option<&Actor>)>,
+    mut clients: Query<(Entity, &mut Client, Option<&McEntity>)>,
     instances: Query<&Instance>,
-    entities: Query<&Actor>,
+    entities: Query<&McEntity>,
 ) {
     // TODO: what batch size to use?
     clients.par_for_each_mut(16, |(entity_id, mut client, self_entity)| {
@@ -465,10 +465,10 @@ pub(crate) fn update_clients(
 #[inline]
 fn update_one_client(
     client: &mut Client,
-    _self_entity: Option<&Actor>,
+    _self_entity: Option<&McEntity>,
     _self_id: Entity,
     instances: &Query<&Instance>,
-    entities: &Query<&Actor>,
+    entities: &Query<&McEntity>,
     server: &Server,
 ) -> anyhow::Result<()> {
     let Ok(instance) = instances.get(client.instance) else {

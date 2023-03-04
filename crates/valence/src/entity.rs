@@ -28,32 +28,32 @@ pub mod data;
 
 include!(concat!(env!("OUT_DIR"), "/entity_event.rs"));
 
-/// A [`Resource`] which maintains information about all the [`Actor`]
+/// A [`Resource`] which maintains information about all the [`McEntity`]
 /// components on the server.
 #[derive(Resource, Debug)]
-pub struct ActorManager {
-    protocol_id_to_actor: FxHashMap<i32, Entity>,
+pub struct McEntityManager {
+    protocol_id_to_mcentity: FxHashMap<i32, Entity>,
     next_protocol_id: i32,
 }
 
-impl ActorManager {
+impl McEntityManager {
     pub(crate) fn new() -> Self {
         Self {
-            protocol_id_to_actor: HashMap::default(),
+            protocol_id_to_mcentity: HashMap::default(),
             next_protocol_id: 1,
         }
     }
 
     /// Gets the [`Entity`] of the [`McEntity`] with the given protocol ID.
     pub fn get_with_protocol_id(&self, id: i32) -> Option<Entity> {
-        self.protocol_id_to_actor.get(&id).cloned()
+        self.protocol_id_to_mcentity.get(&id).cloned()
     }
 }
 
-/// Sets the protocol ID of new actors.
-pub(crate) fn init_actors(
-    mut entities: Query<(Entity, &mut Actor), Added<Actor>>,
-    mut manager: ResMut<ActorManager>,
+/// Sets the protocol ID of new mcentities.
+pub(crate) fn init_mcentities(
+    mut entities: Query<(Entity, &mut McEntity), Added<McEntity>>,
+    mut manager: ResMut<McEntityManager>,
 ) {
     for (entity, mut mc_entity) in &mut entities {
         if manager.next_protocol_id == 0 {
@@ -66,39 +66,39 @@ pub(crate) fn init_actors(
         manager.next_protocol_id = manager.next_protocol_id.wrapping_add(1);
 
         manager
-            .protocol_id_to_actor
+            .protocol_id_to_mcentity
             .insert(mc_entity.protocol_id, entity);
     }
 }
 
-/// Removes despawned actors from the actor manager.
-pub(crate) fn deinit_despawned_actors(
-    entities: Query<&mut Actor, With<Despawned>>,
-    mut manager: ResMut<ActorManager>,
+/// Removes despawned mcentities from the mcentity manager.
+pub(crate) fn deinit_despawned_mcentities(
+    entities: Query<&mut McEntity, With<Despawned>>,
+    mut manager: ResMut<McEntityManager>,
 ) {
     for entity in &entities {
-        manager.protocol_id_to_actor.remove(&entity.protocol_id);
+        manager.protocol_id_to_mcentity.remove(&entity.protocol_id);
     }
 }
 
-pub(crate) fn update_actors(mut actors: Query<&mut Actor, Changed<Actor>>) {
-    for mut actor in &mut actors {
-        actor.data.clear_modifications();
-        actor.old_position = actor.position;
-        actor.old_instance = actor.instance;
-        actor.statuses = 0;
-        actor.animations = 0;
-        actor.yaw_or_pitch_modified = false;
-        actor.head_yaw_modified = false;
-        actor.velocity_modified = false;
+pub(crate) fn update_mcentities(mut mcentities: Query<&mut McEntity, Changed<McEntity>>) {
+    for mut ent in &mut mcentities {
+        ent.data.clear_modifications();
+        ent.old_position = ent.position;
+        ent.old_instance = ent.instance;
+        ent.statuses = 0;
+        ent.animations = 0;
+        ent.yaw_or_pitch_modified = false;
+        ent.head_yaw_modified = false;
+        ent.velocity_modified = false;
     }
 }
 
-pub(crate) fn check_actor_invariants(removed: RemovedComponents<Actor>) {
-    for actor in &removed {
+pub(crate) fn check_mcentity_invariants(removed: RemovedComponents<McEntity>) {
+    for entity in &removed {
         warn!(
-            actor = ?actor,
-            "An `Actor` component was removed from the world directly. You must use the \
+            entity = ?entity,
+            "A `McEntity` component was removed from the world directly. You must use the \
              `Despawned` marker component instead."
         );
     }
@@ -115,7 +115,7 @@ pub(crate) fn check_actor_invariants(removed: RemovedComponents<Actor>) {
 /// This includes position, rotation, velocity, and UUID. To access data that is
 /// not common to every kind of entity, see [`Self::data`].
 #[derive(Component)]
-pub struct Actor {
+pub struct McEntity {
     data: TrackedData,
     protocol_id: i32,
     uuid: Uuid,
@@ -140,7 +140,7 @@ pub struct Actor {
     on_ground: bool,
 }
 
-impl Actor {
+impl McEntity {
     /// Creates a new [`McEntity`] component with a random UUID.
     ///
     /// - `kind`: The type of Minecraft entity this should be.
@@ -783,7 +783,7 @@ pub(crate) fn velocity_to_packet_units(vel: Vec3) -> [i16; 3] {
         .map(|v| v as i16)
 }
 
-impl fmt::Debug for Actor {
+impl fmt::Debug for McEntity {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         f.debug_struct("McEntity")
             .field("kind", &self.kind())

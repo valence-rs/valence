@@ -47,7 +47,7 @@ fn setup(mut commands: Commands, server: Res<Server>) {
     let instance_id = commands.spawn(instance).id();
 
     commands.spawn_batch(
-        [0; SPHERE_AMOUNT].map(|_| (Actor::new(SPHERE_KIND, instance_id), SpherePart)),
+        [0; SPHERE_AMOUNT].map(|_| (McEntity::new(SPHERE_KIND, instance_id), SpherePart)),
     );
 }
 
@@ -66,7 +66,7 @@ fn init_clients(
     }
 }
 
-fn update_sphere(server: Res<Server>, mut parts: Query<&mut Actor, With<SpherePart>>) {
+fn update_sphere(server: Res<Server>, mut parts: Query<&mut McEntity, With<SpherePart>>) {
     let time = server.current_tick() as f64 / server.tps() as f64;
 
     let rot_angles = DVec3::new(0.2, 0.4, 0.6) * SPHERE_FREQ * time * TAU % TAU;

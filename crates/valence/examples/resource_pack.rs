@@ -39,7 +39,7 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 
     let instance_ent = commands.spawn(instance).id();
 
-    let mut sheep = Actor::new(EntityKind::Sheep, instance_ent);
+    let mut sheep = McEntity::new(EntityKind::Sheep, instance_ent);
     sheep.set_position([0.0, SPAWN_Y as f64 + 1.0, 2.0]);
     commands.spawn(sheep);
 }
