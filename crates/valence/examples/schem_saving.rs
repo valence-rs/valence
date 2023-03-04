@@ -307,11 +307,25 @@ fn place_blocks(
     }
 }
 
-fn break_blocks(mut instances: Query<&mut Instance>, mut events: EventReader<Digging>) {
+fn break_blocks(
+    mut instances: Query<&mut Instance>,
+    inventories: Query<(&Inventory, &ClientInventoryState)>,
+    mut events: EventReader<Digging>,
+) {
     let mut instance = instances.single_mut();
 
-    for event in events.iter() {
-        instance.set_block(event.position, BlockState::AIR);
+    for Digging {
+        client, position, ..
+    } in events.iter()
+    {
+        let Ok((inv, inv_state)) = inventories.get(*client) else {
+            continue;
+        };
+
+        let slot = inv.slot(inv_state.held_item_slot());
+        if !matches!(slot, Some(ItemStack {item, ..}) if *item == ItemKind::WoodenAxe) {
+            instance.set_block(*position, BlockState::AIR);
+        }
     }
 }
 
