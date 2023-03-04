@@ -833,7 +833,7 @@ mod test {
             .world
             .get_mut::<Inventory>(client_ent)
             .expect("could not find inventory for client");
-        inventory.replace_slot(20, ItemStack::new(ItemKind::Diamond, 2, None));
+        inventory.set_slot(20, ItemStack::new(ItemKind::Diamond, 2, None));
 
         // Process a tick to get past the "on join" logic.
         app.update();
@@ -896,7 +896,7 @@ mod test {
             .world
             .get_mut::<Inventory>(client_ent)
             .expect("could not find inventory for client");
-        inventory.replace_slot(20, ItemStack::new(ItemKind::Diamond, 2, None));
+        inventory.set_slot(20, ItemStack::new(ItemKind::Diamond, 2, None));
 
         // Process a tick to get past the "on join" logic.
         app.update();
@@ -907,7 +907,7 @@ mod test {
             .world
             .get_mut::<Inventory>(client_ent)
             .expect("could not find inventory for client");
-        inventory.replace_slot(21, ItemStack::new(ItemKind::IronIngot, 1, None));
+        inventory.set_slot(21, ItemStack::new(ItemKind::IronIngot, 1, None));
 
         app.update();
 
@@ -1037,7 +1037,7 @@ mod test {
             .world
             .get_mut::<Inventory>(inventory_ent)
             .expect("could not find inventory for client");
-        inventory.replace_slot(5, ItemStack::new(ItemKind::IronIngot, 1, None));
+        inventory.set_slot(5, ItemStack::new(ItemKind::IronIngot, 1, None));
 
         app.update();
 
@@ -1229,7 +1229,7 @@ mod test {
                 .world
                 .get_mut::<Inventory>(client_ent)
                 .expect("could not find inventory");
-            inventory.replace_slot(36, ItemStack::new(ItemKind::IronIngot, 3, None));
+            inventory.set_slot(36, ItemStack::new(ItemKind::IronIngot, 3, None));
 
             // Process a tick to get past the "on join" logic.
             app.update();
@@ -1284,7 +1284,7 @@ mod test {
                 .world
                 .get_mut::<Inventory>(client_ent)
                 .expect("could not find inventory");
-            inventory.replace_slot(36, ItemStack::new(ItemKind::IronIngot, 32, None));
+            inventory.set_slot(36, ItemStack::new(ItemKind::IronIngot, 32, None));
 
             // Process a tick to get past the "on join" logic.
             app.update();
@@ -1423,7 +1423,7 @@ mod test {
                 .world
                 .get_mut::<Inventory>(client_ent)
                 .expect("could not find inventory");
-            inventory.replace_slot(40, ItemStack::new(ItemKind::IronIngot, 32, None));
+            inventory.set_slot(40, ItemStack::new(ItemKind::IronIngot, 32, None));
 
             // Process a tick to get past the "on join" logic.
             app.update();
@@ -1471,7 +1471,7 @@ mod test {
                 .world
                 .get_mut::<Inventory>(client_ent)
                 .expect("could not find inventory");
-            inventory.replace_slot(40, ItemStack::new(ItemKind::IronIngot, 32, None));
+            inventory.set_slot(40, ItemStack::new(ItemKind::IronIngot, 32, None));
 
             // Process a tick to get past the "on join" logic.
             app.update();
