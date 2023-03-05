@@ -169,7 +169,7 @@ mod test {
         app.update();
         client_helper.clear_sent();
 
-        // Attach a weather component to the instance
+        // Insert a weather component to the instance
         let weather = Weather {
             rain: Some(1_f32),
             thunder: Some(1_f32),
@@ -189,10 +189,14 @@ mod test {
             app.update();
         }
 
+        // Remove the weather component from the instance
+        app.world.entity_mut(instance_ent).remove::<Weather>();
+        app.update();
+
         // Make assertions
         let sent_packets = client_helper.collect_sent()?;
 
-        assert_packet_count!(sent_packets, 3, S2cPlayPacket::GameStateChangeS2c(_));
+        assert_packet_count!(sent_packets, 4, S2cPlayPacket::GameStateChangeS2c(_));
 
         assert_packet_order!(
             sent_packets,
@@ -206,6 +210,10 @@ mod test {
             }),
             S2cPlayPacket::GameStateChangeS2c(GameStateChangeS2c {
                 kind: GameEventKind::ThunderLevelChange,
+                value: _
+            }),
+            S2cPlayPacket::GameStateChangeS2c(GameStateChangeS2c {
+                kind: GameEventKind::EndRaining,
                 value: _
             })
         );
