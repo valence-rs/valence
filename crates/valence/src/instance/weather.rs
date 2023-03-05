@@ -169,7 +169,7 @@ mod test {
         app.update();
         client_helper.clear_sent();
 
-        // Insert a weather component to the instance
+        // Insert a weather component to the instance.
         let weather = Weather {
             rain: Some(1_f32),
             thunder: Some(1_f32),
@@ -184,16 +184,16 @@ mod test {
 
         app.world.entity_mut(instance_ent).insert(weather);
 
-        // Make sure that all event packets are sent
+        // Handle weather event packets.
         for _ in 0..3 {
             app.update();
         }
 
-        // Remove the weather component from the instance
+        // Remove the weather component from the instance.
         app.world.entity_mut(instance_ent).remove::<Weather>();
         app.update();
 
-        // Make assertions
+        // Make assertions.
         let sent_packets = client_helper.collect_sent()?;
 
         assert_packet_count!(sent_packets, 4, S2cPlayPacket::GameStateChangeS2c(_));
@@ -214,6 +214,60 @@ mod test {
             }),
             S2cPlayPacket::GameStateChangeS2c(GameStateChangeS2c {
                 kind: GameEventKind::EndRaining,
+                value: _
+            })
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_weather_events_emit_on_player_join() -> anyhow::Result<()> {
+        let mut app = App::new();
+
+        // Insert a weather component to the instance.
+        let weather = Weather {
+            rain: Some(1_f32),
+            thunder: Some(1_f32),
+        };
+
+        let instance_ent = app
+            .world
+            .iter_entities()
+            .find(|e| e.contains::<Instance>())
+            .expect("could not find instance")
+            .id();
+
+        app.world.entity_mut(instance_ent).insert(weather);
+
+        // Join new player to the instance.
+        let (_, mut client_helper) = scenario_single_client(&mut app);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        
+        // Handle weather event packets.
+        for _ in 0..3 {
+            app.update();
+        }
+
+        // Make assertions.
+        let sent_packets = client_helper.collect_sent()?;
+
+        assert_packet_count!(sent_packets, 3, S2cPlayPacket::GameStateChangeS2c(_));
+
+        assert_packet_order!(
+            sent_packets,
+            S2cPlayPacket::GameStateChangeS2c(GameStateChangeS2c {
+                kind: GameEventKind::BeginRaining,
+                value: _
+            }),
+            S2cPlayPacket::GameStateChangeS2c(GameStateChangeS2c {
+                kind: GameEventKind::RainLevelChange,
+                value: _
+            }),
+            S2cPlayPacket::GameStateChangeS2c(GameStateChangeS2c {
+                kind: GameEventKind::ThunderLevelChange,
                 value: _
             })
         );
