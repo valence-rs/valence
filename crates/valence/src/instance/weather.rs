@@ -113,13 +113,13 @@ impl Client {
     }
 }
 
-pub fn handle_weather_begin_per_instance(mut query: Query<&mut Instance, Added<Weather>>) {
+fn handle_weather_begin_per_instance(mut query: Query<&mut Instance, Added<Weather>>) {
     query.par_iter_mut().for_each_mut(|mut instance| {
         instance.begin_raining();
     });
 }
 
-pub fn handle_weather_end_per_instance(
+fn handle_weather_end_per_instance(
     mut query: Query<&mut Instance>,
     mut removed: RemovedComponents<Weather>,
 ) {
@@ -130,7 +130,7 @@ pub fn handle_weather_end_per_instance(
     })
 }
 
-pub fn handle_weather_change_per_instance(
+fn handle_weather_change_per_instance(
     mut query: Query<(&mut Instance, &Weather), Changed<Weather>>,
 ) {
     query
