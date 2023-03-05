@@ -66,7 +66,17 @@ pub struct BlockEntity {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Biomes {
     palette: Box<[Ident<String>]>,
-    data: Box<[usize]>,
+    data: BiomeData,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum BiomeData {
+    /// One biome per y-column. Used in spec version 2.
+    /// Indexed by x + z * Width
+    Columns(Box<[usize]>),
+    /// One biome per block. Used in spec version 3.
+    /// Indexed by x + z * Width + y * Width * Length
+    Blocks(Box<[usize]>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -91,7 +101,7 @@ pub enum LoadSchematicError {
     #[error("missing version")]
     MissingVersion,
 
-    #[error("unknown version {0} (only version 3 is supported)")]
+    #[error("unknown version {0} (only versions 1 through 3 are supported)")]
     UnknownVersion(i32),
 
     #[error("missing width")]
@@ -121,6 +131,12 @@ pub enum LoadSchematicError {
     #[error(transparent)]
     VarIntDecodeError(#[from] VarIntDecodeError),
 
+    #[error("block {0} not in palette {1:?}")]
+    BlockNotInPalette(i32, HashMap<i32, BlockState>),
+
+    #[error("unknown block state id {0}")]
+    UnknownBlockStateId(i32),
+
     #[error("invalid block count")]
     InvalidBlockCount,
 
@@ -144,6 +160,9 @@ pub enum LoadSchematicError {
 
     #[error("invalid biome palette")]
     InvalidBiomePalette,
+
+    #[error("biome {0} not in palette {1:?}")]
+    BiomeNotInPalette(i32, HashMap<i32, Ident<String>>),
 
     #[error("invalid biome ident '{0}'")]
     InvalidBiomeIdent(String),
@@ -239,8 +258,7 @@ impl Schematic {
         let Some(&Value::Int(version)) = root.get("Version") else {
             return Err(LoadSchematicError::MissingVersion);
         };
-        //TODO: Allow version 1 and 2
-        if version != 3 {
+        if !(1..=3).contains(&version) {
             return Err(LoadSchematicError::UnknownVersion(version));
         }
         let Some(&Value::Short(width)) = root.get("Width") else {
@@ -261,32 +279,51 @@ impl Schematic {
             };
             IVec3::new(x, y, z)
         };
-        let blocks: Option<Box<[Block]>> = match root.get("Blocks") {
-            Some(Value::Compound(blocks)) => {
-                let Some(Value::Compound(palette)) = blocks.get("Palette") else {
-                    return Err(LoadSchematicError::MissingBlockPalette);
+        let blocks = match version {
+            1 | 2 => {
+                let palette = match root.get("Palette") {
+                    Some(Value::Compound(palette)) => {
+                        let palette: Result<HashMap<_, _>, _> = palette
+                            .into_iter()
+                            .map(|(state, value)| {
+                                let &Value::Int(i) = value else {
+                                    return Err(LoadSchematicError::InvalidBlockPalette);
+                                };
+                                let state = BlockState::from_str(
+                                    state.strip_prefix("minecraft:").unwrap_or(state),
+                                )?;
+                                Ok((i, state))
+                            })
+                            .collect();
+                        Some(palette?)
+                    }
+                    _ => None,
                 };
-                let palette: Result<HashMap<_, _>, _> = palette
-                    .into_iter()
-                    .map(|(state, value)| {
-                        let &Value::Int(i) = value else {
-                            return Err(LoadSchematicError::InvalidBlockPalette);
-                        };
-                        let state = BlockState::from_str(
-                            state.strip_prefix("minecraft:").unwrap_or(state),
-                        )?;
-                        Ok((i, state))
-                    })
-                    .collect();
-                let palette = palette?;
 
-                let Some(Value::ByteArray(data)) = blocks.get("Data") else {
+                let Some(Value::ByteArray(data)) = root.get("BlockData") else {
                     return Err(LoadSchematicError::MissingBlockData);
                 };
                 let data: Result<Vec<_>, LoadSchematicError> =
                     VarIntReader(data.iter().map(|byte| *byte as u8))
                         .map(|val| {
-                            let state = palette[&val?];
+                            let val = val?;
+                            let state = match &palette {
+                                Some(palette) => match palette.get(&val) {
+                                    Some(val) => *val,
+                                    None => {
+                                        return Err(LoadSchematicError::BlockNotInPalette(
+                                            val,
+                                            palette.clone(),
+                                        ))
+                                    }
+                                },
+                                None => match BlockState::from_raw(val.try_into().unwrap()) {
+                                    Some(val) => val,
+                                    None => {
+                                        return Err(LoadSchematicError::UnknownBlockStateId(val))
+                                    }
+                                },
+                            };
                             Ok(Block {
                                 state,
                                 block_entity: None,
@@ -297,9 +334,12 @@ impl Schematic {
                 if u16::try_from(data.len()) != Ok(width * height * length) {
                     return Err(LoadSchematicError::InvalidBlockCount);
                 }
-                if let Some(Value::List(List::Compound(block_entities))) =
-                    blocks.get("BlockEntities")
-                {
+
+                if let Some(Value::List(List::Compound(block_entities))) = root.get(match version {
+                    1 => "TileEntities",
+                    2 => "BlockEntities",
+                    _ => unreachable!(),
+                }) {
                     for block_entity in block_entities {
                         let Some(Value::IntArray(pos)) = block_entity.get("Pos") else {
                             return Err(LoadSchematicError::MissingBlockEntityPos);
@@ -307,7 +347,6 @@ impl Schematic {
                         let [x, y, z] = pos[..] else {
                             return Err(LoadSchematicError::InvalidBlockEntityPos(pos.clone()));
                         };
-
                         let Some(Value::String(id)) = block_entity.get("Id") else {
                             return Err(LoadSchematicError::MissingBlockEntityId);
                         };
@@ -318,45 +357,136 @@ impl Schematic {
                             return Err(LoadSchematicError::UnknownBlockEntity(id.to_string()));
                         };
 
-                        let nbt = match block_entity.get("Data") {
-                            Some(Value::Compound(nbt)) => nbt.clone(),
-                            _ => Compound::with_capacity(0),
-                        };
+                        let mut nbt = block_entity.clone();
+                        nbt.remove("Pos");
+                        nbt.remove("Id");
                         let block_entity = BlockEntity { kind, data: nbt };
                         data[(x + z * width as i32 + y * width as i32 * length as i32) as usize]
                             .block_entity
                             .replace(block_entity);
                     }
                 }
+
                 Some(data.into_boxed_slice())
             }
-            _ => None,
+            3 => match root.get("Blocks") {
+                Some(Value::Compound(blocks)) => {
+                    let Some(Value::Compound(palette)) = blocks.get("Palette") else {
+                        return Err(LoadSchematicError::MissingBlockPalette);
+                    };
+                    let palette: Result<HashMap<_, _>, _> = palette
+                        .into_iter()
+                        .map(|(state, value)| {
+                            let &Value::Int(i) = value else {
+                                return Err(LoadSchematicError::InvalidBlockPalette);
+                            };
+                            let state = BlockState::from_str(
+                                state.strip_prefix("minecraft:").unwrap_or(state),
+                            )?;
+                            Ok((i, state))
+                        })
+                        .collect();
+                    let palette = palette?;
+
+                    let Some(Value::ByteArray(data)) = blocks.get("Data") else {
+                        return Err(LoadSchematicError::MissingBlockData);
+                    };
+                    let data: Result<Vec<_>, LoadSchematicError> =
+                        VarIntReader(data.iter().map(|byte| *byte as u8))
+                            .map(|val| {
+                                let val = val?;
+                                let state = match palette.get(&val) {
+                                    Some(val) => *val,
+                                    None => {
+                                        return Err(LoadSchematicError::BlockNotInPalette(
+                                            val,
+                                            palette.clone(),
+                                        ))
+                                    }
+                                };
+                                Ok(Block {
+                                    state,
+                                    block_entity: None,
+                                })
+                            })
+                            .collect();
+                    let mut data = data?;
+                    if u16::try_from(data.len()) != Ok(width * height * length) {
+                        return Err(LoadSchematicError::InvalidBlockCount);
+                    }
+                    if let Some(Value::List(List::Compound(block_entities))) =
+                        blocks.get("BlockEntities")
+                    {
+                        for block_entity in block_entities {
+                            let Some(Value::IntArray(pos)) = block_entity.get("Pos") else {
+                                return Err(LoadSchematicError::MissingBlockEntityPos);
+                            };
+                            let [x, y, z] = pos[..] else {
+                                return Err(LoadSchematicError::InvalidBlockEntityPos(pos.clone()));
+                            };
+
+                            let Some(Value::String(id)) = block_entity.get("Id") else {
+                                return Err(LoadSchematicError::MissingBlockEntityId);
+                            };
+                            let Ok(id) = Ident::new(&id[..]) else {
+                                return Err(LoadSchematicError::InvalidBlockEntityId(id.clone()));
+                            };
+                            let Some(kind) = BlockEntityKind::from_ident(id) else {
+                                return Err(LoadSchematicError::UnknownBlockEntity(id.to_string()));
+                            };
+
+                            let nbt = match block_entity.get("Data") {
+                                Some(Value::Compound(nbt)) => nbt.clone(),
+                                _ => Compound::with_capacity(0),
+                            };
+                            let block_entity = BlockEntity { kind, data: nbt };
+                            data[(x + z * width as i32 + y * width as i32 * length as i32)
+                                as usize]
+                                .block_entity
+                                .replace(block_entity);
+                        }
+                    }
+                    Some(data.into_boxed_slice())
+                }
+                _ => None,
+            },
+            _ => unreachable!(),
         };
 
-        let biomes = match root.get("Biomes") {
-            Some(Value::Compound(biomes)) => {
-                let Some(Value::Compound(palette)) = biomes.get("Palette") else {
+        let biomes = match version {
+            1 => None,
+            2 => {
+                let Some(Value::Compound(palette)) = root.get("BiomePalette") else {
                     return Err(LoadSchematicError::MissingBiomePalette);
                 };
                 let palette: Result<HashMap<_, _>, _> = palette
                     .iter()
                     .map(|(biome, value)| {
                         let &Value::Int(i) = value else {
-                            return Err(LoadSchematicError::InvalidBiomePalette);
-                        };
+                                return Err(LoadSchematicError::InvalidBiomePalette);
+                            };
                         let Ok(ident) = Ident::new(biome.clone()) else {
-                            return Err(LoadSchematicError::InvalidBiomeIdent(biome.clone()));
-                        };
+                                return Err(LoadSchematicError::InvalidBiomeIdent(biome.clone()));
+                            };
                         Ok((i, ident))
                     })
                     .collect();
                 let palette = palette?;
-                let Some(Value::ByteArray(data)) = biomes.get("Data") else {
+
+                let Some(Value::ByteArray(data)) = root.get("BiomesData") else {
                     return Err(LoadSchematicError::MissingBiomeData);
                 };
                 let data: Result<Vec<_>, LoadSchematicError> =
                     VarIntReader(data.iter().map(|byte| *byte as u8))
-                        .map(|val| Ok(&palette[&val?]))
+                        .map(|val| {
+                            let val = val?;
+                            match palette.get(&val) {
+                                Some(val) => Ok(val),
+                                None => {
+                                    Err(LoadSchematicError::BiomeNotInPalette(val, palette.clone()))
+                                }
+                            }
+                        })
                         .collect();
                 let data = data?;
 
@@ -375,17 +505,71 @@ impl Schematic {
                     })
                     .collect();
 
-                if u16::try_from(data.len()) != Ok(width * height * length) {
+                if u16::try_from(data.len()) != Ok(width * length) {
                     return Err(LoadSchematicError::InvalidBiomeCount);
                 }
 
                 let biomes = Biomes {
                     palette: palette.into_boxed_slice(),
-                    data: data.into_boxed_slice(),
+                    data: BiomeData::Columns(data.into_boxed_slice()),
                 };
                 Some(biomes)
             }
-            _ => None,
+            3 => match root.get("Biomes") {
+                Some(Value::Compound(biomes)) => {
+                    let Some(Value::Compound(palette)) = biomes.get("Palette") else {
+                        return Err(LoadSchematicError::MissingBiomePalette);
+                    };
+                    let palette: Result<HashMap<_, _>, _> = palette
+                        .iter()
+                        .map(|(biome, value)| {
+                            let &Value::Int(i) = value else {
+                                return Err(LoadSchematicError::InvalidBiomePalette);
+                            };
+                            let Ok(ident) = Ident::new(biome.clone()) else {
+                                return Err(LoadSchematicError::InvalidBiomeIdent(biome.clone()));
+                            };
+                            Ok((i, ident))
+                        })
+                        .collect();
+                    let palette = palette?;
+                    let Some(Value::ByteArray(data)) = biomes.get("Data") else {
+                        return Err(LoadSchematicError::MissingBiomeData);
+                    };
+                    let data: Result<Vec<_>, LoadSchematicError> =
+                        VarIntReader(data.iter().map(|byte| *byte as u8))
+                            .map(|val| Ok(&palette[&val?]))
+                            .collect();
+                    let data = data?;
+
+                    let mut palette = vec![];
+                    let mut map = HashMap::new();
+                    let data: Vec<_> = data
+                        .into_iter()
+                        .map(|biome| match map.entry(biome) {
+                            Entry::Occupied(entry) => *entry.get(),
+                            Entry::Vacant(entry) => {
+                                let idx = palette.len();
+                                palette.push(biome.clone());
+                                entry.insert(idx);
+                                idx
+                            }
+                        })
+                        .collect();
+
+                    if u16::try_from(data.len()) != Ok(width * height * length) {
+                        return Err(LoadSchematicError::InvalidBiomeCount);
+                    }
+
+                    let biomes = Biomes {
+                        palette: palette.into_boxed_slice(),
+                        data: BiomeData::Blocks(data.into_boxed_slice()),
+                    };
+                    Some(biomes)
+                }
+                _ => None,
+            },
+            _ => unreachable!(),
         };
 
         let entities: Option<Box<[Entity]>> = match root.get("Entities") {
@@ -517,10 +701,23 @@ impl Schematic {
                 .map(|(idx, val)| (val.to_string(), Value::Int(idx as i32)))
                 .collect();
             let mut data = vec![];
-            for i in biomes.data.iter() {
-                VarInt(*i as i32)
-                    .encode(VarIntWriteWrapper(&mut data))
-                    .unwrap();
+            match &biomes.data {
+                BiomeData::Columns(biome_data) => {
+                    for _ in 0..self.height {
+                        for i in biome_data.iter() {
+                            VarInt(*i as i32)
+                                .encode(VarIntWriteWrapper(&mut data))
+                                .unwrap();
+                        }
+                    }
+                }
+                BiomeData::Blocks(biome_data) => {
+                    for i in biome_data.iter() {
+                        VarInt(*i as i32)
+                            .encode(VarIntWriteWrapper(&mut data))
+                            .unwrap();
+                    }
+                }
             }
             compound.insert(
                 "Biomes",
@@ -617,20 +814,36 @@ impl Schematic {
         }
 
         if let Some(Biomes { palette, data }) = &self.biomes {
-            for ([x, y, z], biome) in data
-                .iter()
-                .map(|biome| palette[*biome].as_str_ident())
-                .map(map_biome)
-                .enumerate()
-                .map(|(idx, biome)| {
-                    let idx = u16::try_from(idx).unwrap();
-                    let y = idx / (self.width * self.length);
-                    let z = (idx % (self.width * self.length)) / self.width;
-                    let x = (idx % (self.width * self.length)) % self.width;
+            let data: Box<dyn Iterator<Item = _>> = match data {
+                BiomeData::Columns(data) => Box::new(
+                    data.iter()
+                        .map(|biome| palette[*biome].as_str_ident())
+                        .map(map_biome)
+                        .enumerate()
+                        .flat_map(|(idx, biome)| {
+                            let idx = u16::try_from(idx).unwrap();
+                            let z = idx / self.width;
+                            let x = idx % self.width;
 
-                    ([x, y, z], biome)
-                })
-            {
+                            (0..self.height).map(move |y| ([x, y, z], biome))
+                        }),
+                ),
+                BiomeData::Blocks(data) => Box::new(
+                    data.iter()
+                        .map(|biome| palette[*biome].as_str_ident())
+                        .map(map_biome)
+                        .enumerate()
+                        .map(|(idx, biome)| {
+                            let idx = u16::try_from(idx).unwrap();
+                            let y = idx / (self.width * self.length);
+                            let z = (idx % (self.width * self.length)) / self.width;
+                            let x = (idx % (self.width * self.length)) % self.width;
+
+                            ([x, y, z], biome)
+                        }),
+                ),
+            };
+            for ([x, y, z], biome) in data {
                 let x = x as i32 + origin.x + self.offset.x;
                 let y = y as i32 + origin.y + self.offset.y;
                 let z = z as i32 + origin.z + self.offset.z;
@@ -678,7 +891,7 @@ impl Schematic {
                 (min.z..=max.z).flat_map(move |z| {
                     (min.x..=max.x).map(move |x| {
                         let Some(block) = instance.block([x, y, z]) else {
-                            todo!("asd");
+                            panic!("coordinates ({x} {y} {z}) are out of bounds");
                         };
                         let state = block.state();
                         let block_entity = block
@@ -724,7 +937,7 @@ impl Schematic {
 
             Biomes {
                 palette: palette.into_boxed_slice(),
-                data: data.into_boxed_slice(),
+                data: BiomeData::Blocks(data.into_boxed_slice()),
             }
         };
         Self {
