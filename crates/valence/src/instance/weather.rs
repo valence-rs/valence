@@ -175,11 +175,10 @@ mod test {
             thunder: Some(1_f32),
         };
 
-        let ents_iter = app.world.iter_entities();
-
-        let instance_ent = ents_iter
-            .skip_while(|e| !e.contains::<Instance>())
-            .next()
+        let instance_ent = app
+            .world
+            .iter_entities()
+            .find(|e| e.contains::<Instance>())
             .expect("could not find instance")
             .id();
 
