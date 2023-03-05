@@ -5,7 +5,9 @@ use glam::{DVec3, Vec3};
 use uuid::Uuid;
 use valence_protocol::types::{GameMode as ProtocolGameMode, Property};
 
-use crate::{util::{from_yaw_and_pitch, to_yaw_and_pitch}, NULL_ENTITY};
+use crate::util::{from_yaw_and_pitch, to_yaw_and_pitch};
+use crate::view::ChunkPos;
+use crate::NULL_ENTITY;
 
 /// A [`Component`] for marking entities that should be despawned at the end of
 /// the tick.
@@ -85,8 +87,9 @@ impl Default for Ping {
     }
 }
 
-/// Contains the [`Instance`] an entity is located in.
-/// 
+/// Contains the [`Instance`] an entity is located in. For the coordinates
+/// within the instance, see [`Position`].
+///
 /// [`Instance`]: crate::instance::Instance
 #[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Location(pub Entity);
@@ -101,6 +104,12 @@ impl Default for Location {
 pub struct OldLocation(Entity);
 
 impl OldLocation {
+    pub(crate) fn update(mut query: Query<(&Location, &mut OldLocation), Changed<OldLocation>>) {
+        for (loc, mut old_loc) in &mut query {
+            old_loc.0 = loc.0;
+        }
+    }
+
     pub fn new(instance: Entity) -> Self {
         Self(instance)
     }
@@ -119,16 +128,32 @@ impl Default for OldLocation {
 #[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
 pub struct Position(pub DVec3);
 
+impl Position {
+    pub fn chunk_pos(&self) -> ChunkPos {
+        ChunkPos::from_dvec3(self.0)
+    }
+}
+
 #[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
 pub struct OldPosition(DVec3);
 
 impl OldPosition {
+    pub(crate) fn update(mut query: Query<(&Position, &mut OldPosition), Changed<Position>>) {
+        for (pos, mut old_pos) in &mut query {
+            old_pos.0 = pos.0;
+        }
+    }
+
     pub fn new(pos: DVec3) -> Self {
         Self(pos)
     }
 
     pub fn get(&self) -> DVec3 {
         self.0
+    }
+
+    pub fn chunk_pos(&self) -> ChunkPos {
+        ChunkPos::from_dvec3(self.0)
     }
 }
 

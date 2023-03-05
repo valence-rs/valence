@@ -150,7 +150,7 @@ async fn handle_handshake(
                 .context("error handling login")?
             {
                 Some(info) => {
-                    let client = conn.into_client(
+                    let client = conn.into_client_bundle(
                         info,
                         shared.0.incoming_capacity,
                         shared.0.outgoing_capacity,
@@ -271,7 +271,7 @@ async fn handle_login(
 
     conn.send_packet(&LoginSuccessS2c {
         uuid: info.uuid,
-        username: info.username.as_str_username(),
+        username: &info.username,
         properties: Default::default(),
     })
     .await?;

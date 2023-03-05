@@ -3,12 +3,14 @@ use std::net::IpAddr;
 use std::num::Wrapping;
 use std::time::Instant;
 
-use anyhow::{bail, Context};
 use bevy_ecs::prelude::*;
+use bevy_ecs::query::WorldQuery;
+use bevy_ecs::schedule::SystemConfigs;
+use bevy_ecs::system::Command;
 use bytes::BytesMut;
 use glam::{DVec3, Vec3};
+use rand::Rng;
 use tracing::warn;
-use uuid::Uuid;
 use valence_protocol::block_pos::BlockPos;
 use valence_protocol::codec::{PacketDecoder, PacketEncoder};
 use valence_protocol::ident::Ident;
@@ -26,29 +28,34 @@ use valence_protocol::packet::s2c::play::{
 };
 use valence_protocol::sound::Sound;
 use valence_protocol::text::Text;
-use valence_protocol::types::{GlobalPos, Property, SoundCategory};
+use valence_protocol::types::{GlobalPos, SoundCategory};
 use valence_protocol::var_int::VarInt;
 use valence_protocol::Packet;
 
-use crate::NULL_ENTITY;
-use crate::entity::{velocity_to_packet_units, McEntity, EntityStatus};
 use crate::component::{
     Despawned, GameMode, Location, OldLocation, OldPosition, OnGround, Ping, Pitch, Position,
     Properties, UniqueId, Username, Yaw,
 };
 use crate::dimension::DimensionId;
+use crate::entity::{velocity_to_packet_units, EntityStatus, McEntity};
 use crate::instance::Instance;
+use crate::inventory::{Inventory, InventoryKind};
 use crate::packet::WritePacket;
 use crate::server::{NewClientInfo, Server};
 use crate::view::{ChunkPos, ChunkView};
 
 pub mod event;
 
+pub(crate) fn update_clients() -> SystemConfigs {
+    (initial_join,).into_configs()
+}
+
 /// The bundle of components needed for clients to function. All components are
-/// required.
+/// required unless otherwise stated.
 #[derive(Bundle)]
 pub(crate) struct ClientBundle {
     client: Client,
+    entity_remove_buffer: EntityRemoveBuffer,
     username: Username,
     uuid: UniqueId,
     ip: Ip,
@@ -60,24 +67,30 @@ pub(crate) struct ClientBundle {
     yaw: Yaw,
     pitch: Pitch,
     on_ground: OnGround,
+    compass_pos: CompassPos,
     game_mode: GameMode,
     op_level: OpLevel,
-    block_change_sequence: BlockChangeSequence,
+    player_action_sequence: PlayerActionSequence,
     view_distance: ViewDistance,
     old_view_distance: OldViewDistance,
     death_location: DeathLocation,
     keepalive_state: KeepaliveState,
     ping: Ping,
-    teleport_state: TeleportState,
     is_hardcore: IsHardcore,
-    is_flat: IsFlat,
+    prev_game_mode: PrevGameMode,
+    hashed_seed: HashedSeed,
+    reduced_debug_info: ReducedDebugInfo,
     has_respawn_screen: HasRespawnScreen,
+    is_debug: IsDebug,
+    is_flat: IsFlat,
+    teleport_state: TeleportState,
     cursor_item: CursorItem,
     player_inventory_state: PlayerInventoryState,
+    inventory: Inventory,
 }
 
 impl ClientBundle {
-    pub fn new(
+    pub(crate) fn new(
         info: NewClientInfo,
         conn: Box<dyn ClientConnection>,
         enc: PacketEncoder,
@@ -89,8 +102,8 @@ impl ClientBundle {
                 enc,
                 dec,
                 scratch: Vec::new(),
-                mcentities_to_despawn: Vec::new(),
             },
+            entity_remove_buffer: EntityRemoveBuffer(vec![]),
             username: Username(info.username),
             uuid: UniqueId(info.uuid),
             ip: Ip(info.ip),
@@ -102,9 +115,10 @@ impl ClientBundle {
             yaw: Yaw::default(),
             pitch: Pitch::default(),
             on_ground: OnGround::default(),
+            compass_pos: CompassPos::default(),
             game_mode: GameMode::default(),
             op_level: OpLevel::default(),
-            block_change_sequence: BlockChangeSequence(0),
+            player_action_sequence: PlayerActionSequence(0),
             view_distance: ViewDistance::default(),
             old_view_distance: OldViewDistance(2),
             death_location: DeathLocation::default(),
@@ -129,6 +143,11 @@ impl ClientBundle {
                 // First slot of the hotbar.
                 held_item_slot: 36,
             },
+            inventory: Inventory::new(InventoryKind::Player),
+            prev_game_mode: PrevGameMode::default(),
+            hashed_seed: HashedSeed::default(),
+            reduced_debug_info: ReducedDebugInfo::default(),
+            is_debug: IsDebug::default(),
         }
     }
 }
@@ -142,9 +161,21 @@ pub struct Client {
     pub(crate) dec: PacketDecoder,
     /// Scratch buffer.
     scratch: Vec<u8>,
-    mcentities_to_despawn: Vec<VarInt>,
 }
 
+pub(crate) trait ClientConnection: Send + Sync + 'static {
+    fn try_send(&mut self, bytes: BytesMut) -> anyhow::Result<()>;
+    fn try_recv(&mut self) -> anyhow::Result<BytesMut>;
+}
+
+impl Drop for Client {
+    fn drop(&mut self) {
+        self.flush_packets();
+    }
+}
+
+/// Writes packets into this client's packet buffer. The buffer is flushed at
+/// the end of the tick.
 impl WritePacket for Client {
     fn write_packet<'a>(&mut self, packet: &impl Packet<'a>) {
         self.enc.write_packet(packet)
@@ -156,8 +187,25 @@ impl WritePacket for Client {
 }
 
 impl Client {
-    pub(crate) fn update_clients() {
-        todo!()
+    /// Flushes the packet queue to the underlying connection.
+    ///
+    /// This is called automatically at the end of the tick and when the client
+    /// is dropped. Unless you're in a hurry, there's usually no reason to
+    /// call this method yourself.
+    ///
+    /// Returns an error if flushing was unsuccessful.
+    pub fn flush_packets(&mut self) -> anyhow::Result<()> {
+        self.conn.try_send(self.enc.take())
+    }
+
+    /// Sends the disconnect packet to this client with the provided reason.
+    ///
+    /// **NOTE:** The client may choose to ignore the disconnect packet. You
+    /// should despawn the client after calling this method.
+    pub fn disconnect(&mut self, reason: impl Into<Text>) {
+        self.write_packet(&DisconnectS2c {
+            reason: reason.into().into(),
+        });
     }
 
     /// Sends a system message to the player which is visible in the chat. The
@@ -307,22 +355,82 @@ impl Client {
             seed: rand::random(),
         });
     }
+
+    /// `velocity` is in m/s.
+    pub fn set_velocity(&mut self, velocity: impl Into<Vec3>) {
+        self.write_packet(&EntityVelocityUpdateS2c {
+            entity_id: VarInt(0),
+            velocity: velocity_to_packet_units(velocity.into()),
+        });
+    }
+
+    /// Triggers an [`EntityStatus`].
+    ///
+    /// The status is only visible to this client.
+    pub fn trigger_status(&mut self, status: EntityStatus) {
+        self.write_packet(&EntityStatusS2c {
+            entity_id: 0,
+            entity_status: status as u8,
+        });
+    }
 }
 
-pub trait ClientConnection: Send + Sync + 'static {
-    fn try_send(&mut self, bytes: BytesMut) -> anyhow::Result<()>;
-    fn try_recv(&mut self) -> anyhow::Result<BytesMut>;
+/// A [`Command`] to disconnect a [`Client`] with a displayed reason.
+#[derive(Clone, PartialEq, Debug)]
+pub struct DisconnectClient {
+    pub client: Entity,
+    pub reason: Text,
+}
+
+impl Command for DisconnectClient {
+    fn write(self, world: &mut World) {
+        if let Some(mut entity) = world.get_entity_mut(self.client) {
+            if let Some(mut client) = entity.get_mut::<Client>() {
+                client.write_packet(&DisconnectS2c {
+                    reason: self.reason.into(),
+                });
+
+                entity.remove::<Client>();
+            }
+        }
+    }
+}
+
+/// Contains a list of Minecraft entities that need to be despawned. Entity IDs
+/// in this list will be despawned all at once at the end of the tick.
+///
+/// You should not need to use this directly under normal circumstances.
+#[derive(Component, Debug)]
+pub struct EntityRemoveBuffer(Vec<VarInt>);
+
+impl EntityRemoveBuffer {
+    pub fn push(&mut self, entity_id: i32) {
+        debug_assert!(
+            entity_id != 0,
+            "removing entity with protocol ID 0 (which should be reserved for clients)"
+        );
+
+        debug_assert!(
+            !self.0.contains(&VarInt(entity_id)),
+            "removing entity ID {entity_id} multiple times in a single tick!"
+        );
+
+        self.0.push(VarInt(entity_id));
+    }
 }
 
 #[derive(Component, Clone, PartialEq, Eq, Debug)]
 pub struct Ip(pub IpAddr);
 
+/// The position that regular compass items will point to.
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+pub struct CompassPos(pub BlockPos);
+
 #[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
 pub struct OpLevel(pub u8);
 
 #[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
-pub struct BlockChangeSequence(i32);
-
+pub struct PlayerActionSequence(i32);
 
 #[derive(Component, Clone, PartialEq, Eq, Debug)]
 
@@ -370,11 +478,26 @@ pub struct KeepaliveState {
 #[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct IsHardcore(pub bool);
 
+/// The initial previous gamemode. Used for the F3+F4 gamemode switcher.
 #[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
-pub struct IsFlat(pub bool);
+pub struct PrevGameMode(pub Option<GameMode>);
+
+/// Hashed world seed used for biome noise.
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+pub struct HashedSeed(pub u64);
+
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+pub struct ReducedDebugInfo(pub bool);
 
 #[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct HasRespawnScreen(pub bool);
+
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+pub struct IsDebug(pub bool);
+
+/// Changes the perceived horizon line (used for superflat worlds).
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+pub struct IsFlat(pub bool);
 
 #[derive(Component, Debug)]
 pub struct TeleportState {
@@ -418,11 +541,493 @@ pub struct PlayerInventoryState {
 /// works by listening for removed [`Client`] components.
 pub fn despawn_disconnected_clients(
     mut commands: Commands,
-    disconnected_clients: RemovedComponents<Client>,
+    mut disconnected_clients: RemovedComponents<Client>,
 ) {
-    for entity in &disconnected_clients {
+    for entity in disconnected_clients.iter() {
         if let Some(entity) = commands.get_entity(entity) {
             entity.insert(Despawned);
+        }
+    }
+}
+
+#[derive(WorldQuery)]
+#[world_query(mutable)]
+struct ClientJoinQuery {
+    entity: Entity,
+    client: &'static mut Client,
+    loc: &'static Location,
+    pos: &'static Position,
+    is_hardcore: &'static IsHardcore,
+    game_mode: &'static GameMode,
+    prev_game_mode: &'static PrevGameMode,
+    hashed_seed: &'static HashedSeed,
+    view_distance: &'static ViewDistance,
+    reduced_debug_info: &'static ReducedDebugInfo,
+    has_respawn_screen: &'static HasRespawnScreen,
+    is_debug: &'static IsDebug,
+    is_flat: &'static IsFlat,
+    death_loc: &'static DeathLocation,
+}
+
+fn initial_join(
+    server: Res<Server>,
+    mut clients: Query<ClientJoinQuery, Added<Client>>,
+    instances: Query<&Instance>,
+    mut commands: Commands,
+) {
+    for q in &mut clients {
+        let Ok(instance) = instances.get(q.loc.0) else {
+            warn!("Client {:?} joined nonexistent instance. Disconnecting.", q.entity);
+            commands.entity(q.entity).remove::<Client>();
+            continue
+        };
+
+        let dimension_names = server
+            .dimensions()
+            .map(|(_, dim)| dim.name.as_str_ident())
+            .collect();
+
+        let dimension_name = server.dimension(instance.dimension()).name.as_str_ident();
+
+        let last_death_location = q.death_loc.0.map(|(id, pos)| GlobalPos {
+            dimension_name: server.dimension(id).name.as_str_ident(),
+            position: pos,
+        });
+
+        // The login packet is prepended so that it's sent before all the other packets.
+        // Some packets don't work corectly when sent before the game join packet.
+        _ = q.client.enc.prepend_packet(&GameJoinS2c {
+            entity_id: 0, // We reserve ID 0 for clients.
+            is_hardcore: q.is_hardcore.0,
+            game_mode: q.game_mode.clone().into(),
+            previous_game_mode: q.prev_game_mode.0.map(|g| g as i8).unwrap_or(-1),
+            dimension_names,
+            registry_codec: Cow::Borrowed(server.registry_codec()),
+            dimension_type_name: dimension_name,
+            dimension_name,
+            hashed_seed: q.hashed_seed.0 as i64,
+            max_players: VarInt(0), // Ignored by clients.
+            view_distance: VarInt(q.view_distance.0 as i32),
+            simulation_distance: VarInt(16), // TODO.
+            reduced_debug_info: q.reduced_debug_info.0,
+            enable_respawn_screen: q.has_respawn_screen.0,
+            is_debug: q.is_debug.0,
+            is_flat: q.is_flat.0,
+            last_death_location,
+        });
+
+        /*
+        // TODO: enable all the features?
+        q.client.write_packet(&FeatureFlags {
+            features: vec![Ident::new("vanilla").unwrap()],
+        })?;
+        */
+    }
+}
+
+fn change_chunk_load_dist(mut clients: Query<(&mut Client, &ViewDistance), Changed<ViewDistance>>) {
+    for (mut client, dist) in &mut clients {
+        client.write_packet(&ChunkLoadDistanceS2c {
+            view_distance: VarInt(dist.0.into()),
+        });
+    }
+}
+
+fn respawn(
+    mut clients: Query<
+        (
+            &mut Client,
+            &Location,
+            &DeathLocation,
+            &HashedSeed,
+            &GameMode,
+            &PrevGameMode,
+            &IsDebug,
+            &IsFlat,
+        ),
+        Changed<Location>,
+    >,
+    instances: Query<&Instance>,
+    server: Res<Server>,
+) {
+    for (mut client, loc, death_loc, hashed_seed, game_mode, prev_game_mode, is_debug, is_flat) in
+        &mut clients
+    {
+        if client.is_added() {
+            // No need to respawn since we are sending the game join packet this tick.
+            continue;
+        }
+
+        let Ok(instance) = instances.get(loc.0) else {
+            warn!("Client respawned in nonexistent instance.");
+            continue
+        };
+
+        let dimension_name = server.dimension(instance.dimension()).name.as_str_ident();
+
+        let last_death_location = death_loc.0.map(|(id, pos)| GlobalPos {
+            dimension_name: server.dimension(id).name.as_str_ident(),
+            position: pos,
+        });
+
+        client.write_packet(&PlayerRespawnS2c {
+            dimension_type_name: dimension_name,
+            dimension_name,
+            hashed_seed: hashed_seed.0,
+            game_mode: (*game_mode).into(),
+            previous_game_mode: prev_game_mode.0.map(|g| g as i8).unwrap_or(-1),
+            is_debug: is_debug.0,
+            is_flat: is_flat.0,
+            copy_metadata: true,
+            last_death_location,
+        });
+    }
+}
+
+fn read_instance_data_in_view(
+    mut clients: Query<(
+        &mut Client,
+        &mut EntityRemoveBuffer,
+        &OldLocation,
+        &OldPosition,
+        &OldViewDistance,
+    )>,
+    instances: Query<&Instance>,
+    entities: Query<&McEntity>,
+) {
+    clients.par_iter_mut().for_each_mut(
+        |(mut client, mut remove_buf, old_loc, old_pos, old_view_dist)| {
+            let Ok(instance) = instances.get(old_loc.get()) else {
+                return;
+            };
+
+            // Send instance-wide packet data.
+            client.write_packet_bytes(&instance.packet_buf);
+
+            // TODO: cache the chunk position?
+            let chunk_pos = old_pos.chunk_pos();
+
+            let view = ChunkView::new(chunk_pos, old_view_dist.0);
+
+            // Iterate over all visible chunks from the previous tick.
+            view.for_each(|pos| {
+                if let Some(cell) = instance.partition.get(&pos) {
+                    if cell.chunk_removed && cell.chunk.is_none() {
+                        // Chunk was previously loaded and is now deleted.
+                        client.write_packet(&UnloadChunkS2c {
+                            chunk_x: pos.x,
+                            chunk_z: pos.z,
+                        });
+                    }
+
+                    if let Some(chunk) = &cell.chunk {
+                        chunk.mark_viewed();
+                    }
+
+                    // Send entity spawn packets for entities entering the client's view.
+                    for &(id, src_pos) in &cell.incoming {
+                        if src_pos.map_or(true, |p| !view.contains(p)) {
+                            // The incoming entity originated from outside the view distance, so it
+                            // must be spawned.
+                            if let Ok(entity) = entities.get(id) {
+                                // Spawn the entity at the old position so that later relative
+                                // entity movement packets will not
+                                // set the entity to the wrong position.
+                                entity.write_init_packets(
+                                    *client,
+                                    entity.old_position(),
+                                    &mut client.scratch,
+                                );
+                            }
+                        }
+                    }
+
+                    // Send entity despawn packets for entities exiting the client's view.
+                    for &(id, dest_pos) in &cell.outgoing {
+                        if dest_pos.map_or(true, |p| !view.contains(p)) {
+                            // The outgoing entity moved outside the view distance, so it must be
+                            // despawned.
+                            if let Ok(entity) = entities.get(id) {
+                                remove_buf.push(entity.protocol_id());
+                            }
+                        }
+                    }
+
+                    // Send all data in the chunk's packet buffer to this client. This will update
+                    // entities in the cell, spawn or update the chunk in the cell, or send any
+                    // other packet data that was added here by users.
+                    client.write_packet_bytes(&cell.packet_buf);
+                }
+            });
+        },
+    );
+}
+
+/// Updates the clients' view, i.e. the set of chunks that are visible from the
+/// client's chunk position.
+fn change_view(
+    mut clients: Query<
+        (
+            &mut Client,
+            &mut EntityRemoveBuffer,
+            &Location,
+            &OldLocation,
+            &Position,
+            &OldPosition,
+            &ViewDistance,
+            &OldViewDistance,
+        ),
+        Or<(Changed<Location>, Changed<Position>, Changed<ViewDistance>)>,
+    >,
+    instances: Query<&Instance>,
+    entities: Query<&McEntity>,
+) {
+    clients.par_iter_mut().for_each_mut(
+        |(mut client, mut remove_buf, loc, old_loc, pos, old_pos, view_dist, old_view_dist)| {
+            // TODO: cache chunk pos?
+            let view = ChunkView::new(ChunkPos::from_dvec3(pos.0), view_dist.0);
+            let old_view = ChunkView::new(ChunkPos::from_dvec3(old_pos.get()), old_view_dist.0);
+
+            // Make sure the center chunk is set before loading chunks! Otherwise the client
+            // may ignore the chunk.
+            if old_view.pos != view.pos {
+                client.write_packet(&ChunkRenderDistanceCenterS2c {
+                    chunk_x: VarInt(view.pos.x),
+                    chunk_z: VarInt(view.pos.z),
+                });
+            }
+
+            // Was the client's instance changed?
+            if loc.0 != old_loc.get() {
+                if let Ok(old_instance) = instances.get(old_loc.get()) {
+                    // TODO: only send unload packets when old dimension == new dimension, since the
+                    //       client will do the unloading for us in that case?
+
+                    // Unload all chunks and entities in the old view.
+                    old_view.for_each(|pos| {
+                        if let Some(cell) = old_instance.partition.get(&pos) {
+                            // Unload the chunk at this cell if it was loaded.
+                            if cell.chunk.is_some() {
+                                client.write_packet(&UnloadChunkS2c {
+                                    chunk_x: pos.x,
+                                    chunk_z: pos.z,
+                                });
+                            }
+
+                            // Unload all the entities in the cell.
+                            for &id in &cell.entities {
+                                if let Ok(entity) = entities.get(id) {
+                                    remove_buf.push(entity.protocol_id());
+                                }
+                            }
+                        }
+                    });
+                }
+
+                if let Ok(instance) = instances.get(loc.0) {
+                    // Load all chunks and entities in new view.
+                    view.for_each(|pos| {
+                        if let Some(cell) = instance.partition.get(&pos) {
+                            // Load the chunk at this cell if there is one.
+                            if let Some(chunk) = &cell.chunk {
+                                chunk.write_init_packets(
+                                    &instance.info,
+                                    pos,
+                                    &mut client.enc,
+                                    &mut client.scratch,
+                                );
+
+                                chunk.mark_viewed();
+                            }
+
+                            // Load all the entities in this cell.
+                            for &id in &cell.entities {
+                                if let Ok(entity) = entities.get(id) {
+                                    entity.write_init_packets(
+                                        &mut client.enc,
+                                        entity.position(),
+                                        &mut client.scratch,
+                                    );
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    warn!("Client entered nonexistent instance ({:?}).", loc.0);
+                }
+            } else if old_view != view {
+                // Client changed their view without changing the instance.
+
+                if let Ok(instance) = instances.get(loc.0) {
+                    // Unload chunks and entities in the old view and load chunks and entities in
+                    // the new view. We don't need to do any work where the old and new view
+                    // overlap.
+                    old_view.diff_for_each(view, |pos| {
+                        if let Some(cell) = instance.partition.get(&pos) {
+                            // Unload the chunk at this cell if it was loaded.
+                            if cell.chunk.is_some() {
+                                client.write_packet(&UnloadChunkS2c {
+                                    chunk_x: pos.x,
+                                    chunk_z: pos.z,
+                                });
+                            }
+
+                            // Unload all the entities in the cell.
+                            for &id in &cell.entities {
+                                if let Ok(entity) = entities.get(id) {
+                                    remove_buf.push(entity.protocol_id());
+                                }
+                            }
+                        }
+                    });
+
+                    view.diff_for_each(old_view, |pos| {
+                        if let Some(cell) = instance.partition.get(&pos) {
+                            // Load the chunk at this cell if there is one.
+                            if let Some(chunk) = &cell.chunk {
+                                chunk.write_init_packets(
+                                    &instance.info,
+                                    pos,
+                                    &mut client.enc,
+                                    &mut client.scratch,
+                                );
+
+                                chunk.mark_viewed();
+                            }
+
+                            // Load all the entities in this cell.
+                            for &id in &cell.entities {
+                                if let Ok(entity) = entities.get(id) {
+                                    entity.write_init_packets(
+                                        &mut client.enc,
+                                        entity.position(),
+                                        &mut client.scratch,
+                                    );
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        },
+    );
+}
+
+fn remove_entities(
+    mut clients: Query<(&mut Client, &mut EntityRemoveBuffer), Changed<EntityRemoveBuffer>>,
+) {
+    for (mut client, mut buf) in &mut clients {
+        if !buf.0.is_empty() {
+            client.write_packet(&EntitiesDestroyS2c {
+                entity_ids: Cow::Borrowed(&buf.0),
+            });
+
+            buf.0.clear();
+        }
+    }
+}
+
+fn teleport(
+    mut clients: Query<
+        (
+            &mut Client,
+            &mut TeleportState,
+            Ref<Position>,
+            Ref<Yaw>,
+            Ref<Pitch>,
+        ),
+        Or<(Changed<Position>, Changed<Yaw>, Changed<Pitch>)>,
+    >,
+) {
+    for (mut client, mut state, pos, yaw, pitch) in &mut clients {
+        // TODO: skip if client is added?
+
+        let flags = PlayerPositionLookFlags::new()
+            .with_x(!pos.is_changed())
+            .with_y(!pos.is_changed())
+            .with_z(!pos.is_changed())
+            .with_y_rot(!yaw.is_changed())
+            .with_x_rot(!pitch.is_changed());
+
+        client.write_packet(&PlayerPositionLookS2c {
+            position: if pos.is_changed() {
+                pos.0.into()
+            } else {
+                [0.0; 3]
+            },
+            yaw: if yaw.is_changed() { yaw.0 } else { 0.0 },
+            pitch: if pitch.is_changed() { pitch.0 } else { 0.0 },
+            flags,
+            teleport_id: VarInt(state.teleport_id_counter as i32),
+            dismount_vehicle: false, // TODO?
+        });
+
+        state.pending_teleports = state.pending_teleports.wrapping_add(1);
+        state.teleport_id_counter = state.teleport_id_counter.wrapping_add(1);
+    }
+}
+
+fn change_compass_pos(mut clients: Query<(&mut Client, &CompassPos), Changed<CompassPos>>) {
+    // This also closes the "downloading terrain" screen when first joining, so
+    // we should do this after the initial chunks are written.
+    for (mut client, compass_pos) in &mut clients {
+        client.write_packet(&PlayerSpawnPositionS2c {
+            position: compass_pos.0,
+            angle: 0.0, // TODO: does this do anything?
+        });
+    }
+}
+
+fn flush_packets(
+    mut clients: Query<(Entity, &mut Client), Changed<Client>>,
+    mut commands: Commands,
+) {
+    for (entity, mut client) in &mut clients {
+        if let Err(e) = client.flush_packets() {
+            warn!("Failed to flush packet queue for client {entity:?}: {e:#}.");
+            commands.entity(entity).remove::<Client>();
+        }
+    }
+}
+
+fn change_tracked_data() {
+    todo!()
+}
+
+fn acknowledge_player_actions(
+    mut clients: Query<(&mut Client, &mut PlayerActionSequence), Changed<PlayerActionSequence>>,
+) {
+    for (mut client, mut action_seq) in &mut clients {
+        if action_seq.0 != 0 {
+            client.write_packet(&PlayerActionResponseS2c {
+                sequence: VarInt(action_seq.0),
+            });
+
+            action_seq.0 = 0;
+        }
+    }
+}
+
+fn send_keepalive(
+    mut clients: Query<(Entity, &mut Client, &mut KeepaliveState)>,
+    server: Res<Server>,
+    mut commands: Commands,
+) {
+    if server.current_tick() % (server.tps() * 10) == 0 {
+        let mut rng = rand::thread_rng();
+
+        for (entity, mut client, mut state) in &mut clients {
+            if state.got_keepalive {
+                let id = rng.gen();
+                client.write_packet(&KeepAliveS2c { id });
+
+                state.got_keepalive = false;
+                state.last_keepalive_id = id;
+                state.keepalive_sent_time = Instant::now();
+            } else {
+                warn!("Client {entity:?} timed out (no keepalive response)");
+                commands.entity(entity).remove::<Client>();
+            }
         }
     }
 }
