@@ -26,6 +26,7 @@ use crate::client::{update_clients, Client};
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerPlugin};
 use crate::dimension::{validate_dimensions, Dimension, DimensionId};
 use crate::entity::{deinit_despawned_entities, init_entities, update_entities, McEntityManager};
+use crate::instance::weather::update_weather;
 use crate::instance::{
     check_instance_invariants, update_instances_post_client, update_instances_pre_client, Instance,
 };
@@ -358,6 +359,7 @@ pub fn build_plugin(
             .in_base_set(CoreSet::PostUpdate)
             .before(init_entities),
     )
+    .add_systems(update_weather().in_base_set(CoreSet::PostUpdate))
     .add_system(increment_tick_counter.in_base_set(CoreSet::Last));
 
     Ok(())

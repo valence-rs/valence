@@ -29,7 +29,7 @@ use crate::Despawned;
 mod chunk;
 mod chunk_entry;
 mod paletted_container;
-mod weather;
+pub mod weather;
 
 /// An Instance represents a Minecraft world, which consist of [`Chunk`]s.
 /// It manages updating clients when chunks change, and caches chunk and entity
