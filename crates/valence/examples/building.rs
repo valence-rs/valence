@@ -140,14 +140,12 @@ fn place_blocks(
         if client.game_mode() == GameMode::Survival {
             // check if the player has the item in their inventory and remove
             // it.
-            let slot = if stack.count() > 1 {
-                let mut stack = stack.clone();
-                stack.set_count(stack.count() - 1);
-                Some(stack)
+            if stack.count() > 1 {
+                let count = stack.count();
+                inventory.set_slot_amount(slot_id, count - 1);
             } else {
-                None
-            };
-            inventory.replace_slot(slot_id, slot);
+                inventory.set_slot(slot_id, None);
+            }
         }
         let real_pos = event.position.get_in_direction(event.direction);
         instance.set_block(real_pos, block_kind.to_state());
