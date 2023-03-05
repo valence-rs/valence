@@ -5,11 +5,13 @@ mod syntax_highlighting;
 
 use std::collections::BTreeMap;
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use anyhow::bail;
 use clap::Parser;
 use context::{Context, Packet};
+use egui::RichText;
+use regex::Regex;
 use syntax_highlighting::code_view_ui;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
@@ -35,14 +37,31 @@ use crate::state::State;
 struct Cli {
     /// The socket address to listen for connections on. This is the address
     /// clients should connect to.
-    client_addr: SocketAddr,
+    #[arg(required_if_eq("nogui", "true"))]
+    client_addr: Option<SocketAddr>,
+
     /// The socket address the proxy will connect to. This is the address of the
     /// server.
-    server_addr: SocketAddr,
+    #[arg(required_if_eq("nogui", "true"))]
+    server_addr: Option<SocketAddr>,
+
     /// The maximum number of connections allowed to the proxy. By default,
     /// there is no limit.
     #[clap(short, long)]
     max_connections: Option<usize>,
+
+    /// Disable the GUI. Logging to stdout.
+    #[clap(long)]
+    nogui: bool,
+
+    /// Only show packets that match the filter.
+    #[clap(short, long)]
+    include_filter: Option<Regex>,
+
+    /// Hide packets that match the filter. Note: Only in effect if nogui is
+    /// set.
+    #[clap(short, long)]
+    exclude_filter: Option<Regex>,
 }
 
 #[tokio::main]
@@ -53,16 +72,91 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let cli = Arc::new(Cli::parse());
 
+    match cli.nogui {
+        true => start_cli(cli).await?,
+        false => start_gui(cli)?,
+    };
+
+    Ok(())
+}
+
+async fn start_cli(cli: Arc<Cli>) -> Result<(), Box<dyn std::error::Error>> {
+    let context = Arc::new(Context::new(
+        None,
+        Some(context::Logger {
+            include_filter: cli.include_filter.clone(),
+            exclude_filter: cli.exclude_filter.clone(),
+        }),
+    ));
+
+    let sema = Arc::new(Semaphore::new(cli.max_connections.unwrap_or(100_000)));
+
+    let client_addr = match cli.client_addr {
+        Some(addr) => addr,
+        None => panic!("client_addr must be set"),
+    };
+
+    let server_addr = match cli.server_addr {
+        Some(addr) => addr,
+        None => panic!("server_addr must be set"),
+    };
+
+    eprintln!("Waiting for connections on {}", client_addr);
+    let listen = TcpListener::bind(client_addr).await?;
+
+    while let Ok(permit) = sema.clone().acquire_owned().await {
+        let (client, remote_client_addr) = listen.accept().await?;
+        eprintln!("Accepted connection to {remote_client_addr}");
+
+        if let Err(e) = client.set_nodelay(true) {
+            eprintln!("Failed to set TCP_NODELAY: {e}");
+        }
+
+        let context = context.clone();
+        tokio::spawn(async move {
+            if let Err(e) = handle_connection(client, server_addr, context).await {
+                eprintln!("Connection to {remote_client_addr} ended with: {e:#}");
+            } else {
+                eprintln!("Connection to {remote_client_addr} ended.");
+            }
+            drop(permit);
+        });
+    }
+
+    Ok(())
+}
+
+fn start_gui(cli: Arc<Cli>) -> Result<(), Box<dyn std::error::Error>> {
     let native_options = eframe::NativeOptions {
         initial_window_size: Some(egui::Vec2::new(800.0, 600.0)),
         decorated: true,
         ..Default::default()
     };
 
+    let server_addr = cli.server_addr;
+    let client_addr = cli.client_addr;
+    let max_connections = cli.max_connections.unwrap_or(100_000);
+
+    let filter = cli
+        .include_filter
+        .clone()
+        .map(|f| f.to_string())
+        .unwrap_or("".to_string());
+
     eframe::run_native(
         "Valence Packet Inspector",
         native_options,
-        Box::new(|cc| Box::new(App::new(cc, cli))),
+        Box::new(move |cc| {
+            let gui_app = GuiApp::new(cc, filter);
+
+            if let Some(server_addr) = server_addr {
+                if let Some(client_addr) = client_addr {
+                    gui_app.start_listening(client_addr, server_addr, max_connections);
+                }
+            }
+
+            Box::new(gui_app)
+        }),
     )?;
 
     Ok(())
@@ -70,12 +164,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn handle_connection(
     client: TcpStream,
-    cli: Arc<Cli>,
+    server_addr: SocketAddr,
     context: Arc<Context>,
 ) -> anyhow::Result<()> {
-    eprintln!("Connecting to {}", cli.server_addr);
+    eprintln!("Connecting to {}", server_addr);
 
-    let server = TcpStream::connect(cli.server_addr).await?;
+    let server = TcpStream::connect(server_addr).await?;
 
     if let Err(e) = server.set_nodelay(true) {
         eprintln!("Failed to set TCP_NODELAY: {e}");
@@ -191,24 +285,67 @@ async fn passthrough(mut read: OwnedReadHalf, mut write: OwnedWriteHalf) -> anyh
     }
 }
 
-struct App {
+struct GuiApp {
+    temp_server_addr: String,
+    temp_client_addr: String,
+    temp_max_connections: String,
+
+    server_addr_error: bool,
+    client_addr_error: bool,
+    max_connections_error: bool,
+
     context: Arc<Context>,
     filter: String,
     selected_packets: BTreeMap<String, bool>,
     buffer: String,
+    is_listening: RwLock<bool>,
+    window_open: bool,
 }
 
-impl App {
-    fn new(cc: &eframe::CreationContext<'_>, cli: Arc<Cli>) -> Self {
+impl GuiApp {
+    fn new(cc: &eframe::CreationContext<'_>, filter: String) -> Self {
         let ctx = Some(cc.egui_ctx.clone());
-        let context = Arc::new(Context::new(ctx));
 
-        let t_context = context.clone();
+        let context = Context::new(ctx, None);
+
+        {
+            let mut f = context.filter.write().expect("Poisoned filter");
+            *f = filter.clone();
+        }
+
+        let context = Arc::new(context);
+
+        Self {
+            context,
+            filter,
+            selected_packets: BTreeMap::new(),
+            buffer: String::new(),
+            is_listening: RwLock::new(false),
+            window_open: false,
+
+            temp_server_addr: "127.0.0.1:25565".to_string(), /* TODO: Save last used values in
+                                                              * config file or something */
+            temp_client_addr: "127.0.0.1:25560".to_string(),
+            temp_max_connections: "".to_string(),
+
+            server_addr_error: false,
+            client_addr_error: false,
+            max_connections_error: false,
+        }
+    }
+
+    fn start_listening(
+        &self,
+        client_addr: SocketAddr,
+        server_addr: SocketAddr,
+        max_connections: usize,
+    ) {
+        let t_context = self.context.clone();
         tokio::spawn(async move {
-            let sema = Arc::new(Semaphore::new(cli.max_connections.unwrap_or(100_000)));
+            let sema = Arc::new(Semaphore::new(max_connections));
 
-            eprintln!("Waiting for connections on {}", cli.client_addr);
-            let listen = TcpListener::bind(cli.client_addr).await?;
+            let listen = TcpListener::bind(client_addr).await?;
+            eprintln!("Waiting for connections on {}", client_addr);
 
             while let Ok(permit) = sema.clone().acquire_owned().await {
                 let (client, remote_client_addr) = listen.accept().await?;
@@ -218,10 +355,9 @@ impl App {
                     eprintln!("Failed to set TCP_NODELAY: {e}");
                 }
 
-                let t_cli = cli.clone();
                 let t2_context = t_context.clone();
                 tokio::spawn(async move {
-                    if let Err(e) = handle_connection(client, t_cli, t2_context).await {
+                    if let Err(e) = handle_connection(client, server_addr, t2_context).await {
                         eprintln!("Connection to {remote_client_addr} ended with: {e:#}");
                     } else {
                         eprintln!("Connection to {remote_client_addr} ended.");
@@ -232,13 +368,7 @@ impl App {
 
             Ok::<(), anyhow::Error>(())
         });
-
-        Self {
-            context,
-            filter: "".into(),
-            selected_packets: BTreeMap::new(),
-            buffer: String::new(),
-        }
+        *self.is_listening.write().expect("Poisoned is_listening") = true;
     }
 
     fn nested_menus(&mut self, ui: &mut egui::Ui) {
@@ -252,8 +382,101 @@ impl App {
     }
 }
 
-impl eframe::App for App {
+impl eframe::App for GuiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if !*self.is_listening.read().expect("Poisoned is_listening") {
+            self.window_open = true;
+        }
+
+        if self.window_open {
+            egui::Window::new("Setup")
+                .collapsible(false)
+                .resizable(false)
+                .show(ctx, |ui| {
+                    egui::Grid::new("setup_grid")
+                        .num_columns(2)
+                        .spacing([40.0, 4.0])
+                        .striped(true)
+                        .show(ui, |ui| {
+                            ui.label(RichText::new("Server address:").color(
+                                match self.server_addr_error {
+                                    true => egui::Color32::RED,
+                                    false => egui::Color32::WHITE,
+                                },
+                            ));
+                            if ui
+                                .text_edit_singleline(&mut self.temp_server_addr)
+                                .on_hover_text(
+                                    "The socket address the proxy will connect to. This is the \
+                                     address of the server.",
+                                )
+                                .changed()
+                            {
+                                self.server_addr_error = false;
+                            };
+                            ui.end_row();
+                            ui.label(RichText::new("Client address:").color(
+                                match self.client_addr_error {
+                                    true => egui::Color32::RED,
+                                    false => egui::Color32::WHITE,
+                                },
+                            ));
+                            ui.text_edit_singleline(&mut self.temp_client_addr)
+                                .on_hover_text(
+                                    "The socket address to listen for connections on. This is the \
+                                     address clients should connect to.",
+                                );
+                            ui.end_row();
+                            ui.label(RichText::new("Max Connections:").color(
+                                match self.max_connections_error {
+                                    true => egui::Color32::RED,
+                                    false => egui::Color32::WHITE,
+                                },
+                            ));
+                            ui.text_edit_singleline(&mut self.temp_max_connections)
+                                .on_hover_text(
+                                    "The maximum number of connections allowed to the proxy. By \
+                                     default, there is no limit.",
+                                );
+                            ui.end_row();
+                            if ui.button("Start Proxy").clicked() {
+                                self.window_open = false;
+                            }
+                        });
+                });
+
+            if !self.window_open {
+                let server_addr = self.temp_server_addr.parse::<SocketAddr>().map_err(|_| {
+                    self.server_addr_error = true;
+                });
+
+                let client_addr = self.temp_client_addr.parse::<SocketAddr>().map_err(|_| {
+                    self.client_addr_error = true;
+                });
+
+                let max_connections = if self.temp_max_connections.is_empty() {
+                    Ok(100_000)
+                } else {
+                    self.temp_max_connections.parse::<usize>().map_err(|_| {
+                        self.max_connections_error = true;
+                    })
+                };
+
+                if server_addr.is_err() || client_addr.is_err() || max_connections.is_err() {
+                    self.window_open = true;
+                    return;
+                }
+
+                self.start_listening(
+                    client_addr.unwrap(),
+                    server_addr.unwrap(),
+                    max_connections.unwrap(),
+                );
+            }
+
+            return;
+        }
+
         egui::TopBottomPanel::top("header").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.label("Filter:");

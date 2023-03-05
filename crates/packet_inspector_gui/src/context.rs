@@ -2,6 +2,8 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::RwLock;
 
+use owo_colors::{OwoColorize, Style};
+use regex::Regex;
 use time::OffsetDateTime;
 use valence_protocol::codec::PacketDecoder;
 use valence_protocol::packet::c2s::handshake::HandshakeC2s;
@@ -250,24 +252,36 @@ impl Packet {
     }
 }
 
+pub struct Logger {
+    pub include_filter: Option<Regex>,
+    pub exclude_filter: Option<Regex>,
+}
+
 pub struct Context {
+    pub logger: Option<Logger>,
     pub last_packet: AtomicUsize,
     pub selected_packet: RwLock<Option<usize>>,
     pub(crate) packets: RwLock<Vec<Packet>>,
     pub(crate) packet_count: RwLock<usize>,
     pub filter: RwLock<String>,
     pub(crate) context: Option<egui::Context>,
+    c2s_style: Style,
+    s2c_style: Style,
 }
 
 impl Context {
-    pub fn new(ctx: Option<egui::Context>) -> Self {
+    pub fn new(ctx: Option<egui::Context>, logger: Option<Logger>) -> Self {
         Self {
+            logger,
             last_packet: AtomicUsize::new(0),
             selected_packet: RwLock::new(None),
             packets: RwLock::new(Vec::new()),
             filter: RwLock::new("".into()),
             context: ctx,
             packet_count: RwLock::new(0),
+
+            c2s_style: Style::new().green(),
+            s2c_style: Style::new().purple(),
         }
     }
 
@@ -281,10 +295,41 @@ impl Context {
     }
 
     pub fn add(&self, mut packet: Packet) {
-        packet.id = self.last_packet.fetch_add(1, Ordering::Relaxed);
-        self.packets.write().expect("Poisoned RwLock").push(packet);
         if let Some(ctx) = &self.context {
+            packet.id = self.last_packet.fetch_add(1, Ordering::Relaxed);
+            self.packets.write().expect("Poisoned RwLock").push(packet);
             ctx.request_repaint();
+            return;
+        }
+
+        if let Some(logger) = &self.logger {
+            if let Some(include_filter) = &logger.include_filter {
+                if !include_filter.is_match(&packet.packet_name) {
+                    return;
+                }
+            }
+            if let Some(exclude_filter) = &logger.exclude_filter {
+                if exclude_filter.is_match(&packet.packet_name) {
+                    return;
+                }
+            }
+
+            let arrow = match &packet.direction {
+                PacketDirection::ClientToServer => "↑",
+                PacketDirection::ServerToClient => "↓",
+            };
+
+            let style = match &packet.direction {
+                PacketDirection::ClientToServer => self.c2s_style,
+                PacketDirection::ServerToClient => self.s2c_style,
+            };
+
+            println!(
+                "[{}] ({}) {}",
+                systemtime_strftime(packet.created_at),
+                arrow.style(style),
+                packet.get_packet_string_no_format().style(style)
+            )
         }
     }
 
