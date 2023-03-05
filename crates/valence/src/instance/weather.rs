@@ -152,9 +152,65 @@ pub(crate) fn update_weather() -> SystemConfigs {
 
 #[cfg(test)]
 mod test {
-    #[test]
-    fn test_should_handle_players_globally() {}
+    use anyhow::Ok;
+    use bevy_app::App;
+    use valence_protocol::packet::S2cPlayPacket;
+
+    use super::*;
+    use crate::unit_test::util::scenario_single_client;
+    use crate::{assert_packet_count, assert_packet_order};
 
     #[test]
-    fn test_should_handle_players_locally() {}
+    fn test_weather_events_emit() -> anyhow::Result<()> {
+        let mut app = App::new();
+        let (_, mut client_helper) = scenario_single_client(&mut app);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        // Attach a weather component to the instance
+        let weather = Weather {
+            rain: Some(1_f32),
+            thunder: Some(1_f32),
+        };
+
+        let ents_iter = app.world.iter_entities();
+
+        let instance_ent = ents_iter
+            .skip_while(|e| !e.contains::<Instance>())
+            .next()
+            .expect("could not find instance")
+            .id();
+
+        app.world.entity_mut(instance_ent).insert(weather);
+
+        // Make sure that all event packets are sent
+        for _ in 0..3 {
+            app.update();
+        }
+
+        // Make assertions
+        let sent_packets = client_helper.collect_sent()?;
+
+        assert_packet_count!(sent_packets, 3, S2cPlayPacket::GameStateChangeS2c(_));
+
+        assert_packet_order!(
+            sent_packets,
+            S2cPlayPacket::GameStateChangeS2c(GameStateChangeS2c {
+                kind: GameEventKind::BeginRaining,
+                value: _
+            }),
+            S2cPlayPacket::GameStateChangeS2c(GameStateChangeS2c {
+                kind: GameEventKind::RainLevelChange,
+                value: _
+            }),
+            S2cPlayPacket::GameStateChangeS2c(GameStateChangeS2c {
+                kind: GameEventKind::ThunderLevelChange,
+                value: _
+            })
+        );
+
+        Ok(())
+    }
 }
