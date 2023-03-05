@@ -264,20 +264,14 @@ impl Inventory {
     /// ```
     #[track_caller]
     #[must_use]
-    pub fn first_empty_slot_in(&self, range: Range<u16>) -> Option<u16> {
+    pub fn first_empty_slot_in(&self, mut range: Range<u16>) -> Option<u16> {
         assert!(
             (0..=self.slot_count()).contains(&range.start)
                 && (0..=self.slot_count()).contains(&range.end),
             "slot range out of range"
         );
 
-        for idx in range {
-            if self.slots[idx as usize].is_none() {
-                return Some(idx);
-            }
-        }
-
-        None
+        range.find(|&idx| self.slots[idx as usize].is_none())
     }
 
     /// Returns the first empty slot in the inventory, or `None` if there are no
