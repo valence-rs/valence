@@ -28,7 +28,7 @@ use valence_protocol::packet::s2c::login::LoginSuccessS2c;
 use valence_protocol::packet::s2c::status::{QueryPongS2c, QueryResponseS2c};
 use valence_protocol::packet::{C2sPlayPacket, S2cLoginPacket, S2cPlayPacket};
 
-use crate::context::Stage;
+use crate::context::{ContextMode, Stage};
 use crate::packet_widget::PacketDirection;
 use crate::state::State;
 
@@ -81,13 +81,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn start_cli(cli: Arc<Cli>) -> Result<(), Box<dyn std::error::Error>> {
-    let context = Arc::new(Context::new(
-        None,
-        Some(context::Logger {
-            include_filter: cli.include_filter.clone(),
-            exclude_filter: cli.exclude_filter.clone(),
-        }),
-    ));
+    let context = Arc::new(Context::new(ContextMode::Cli(context::Logger {
+        include_filter: cli.include_filter.clone(),
+        exclude_filter: cli.exclude_filter.clone(),
+    })));
 
     let sema = Arc::new(Semaphore::new(cli.max_connections.unwrap_or(100_000)));
 
@@ -179,7 +176,6 @@ async fn handle_connection(
     let (server_read, server_write) = server.into_split();
 
     let mut s2c = State {
-        // cli: cli.clone(),
         enc: PacketEncoder::new(),
         dec: PacketDecoder::new(),
         read: server_read,
@@ -190,7 +186,6 @@ async fn handle_connection(
     };
 
     let mut c2s = State {
-        // cli,
         enc: PacketEncoder::new(),
         dec: PacketDecoder::new(),
         read: client_read,
@@ -304,9 +299,9 @@ struct GuiApp {
 
 impl GuiApp {
     fn new(cc: &eframe::CreationContext<'_>, filter: String) -> Self {
-        let ctx = Some(cc.egui_ctx.clone());
+        let ctx = cc.egui_ctx.clone();
 
-        let context = Context::new(ctx, None);
+        let context = Context::new(ContextMode::Gui(ctx));
 
         {
             let mut f = context.filter.write().expect("Poisoned filter");
