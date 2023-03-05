@@ -1,4 +1,5 @@
 use bevy_ecs::prelude::*;
+use bevy_ecs::schedule::SystemConfigs;
 use valence_protocol::packet::s2c::play::game_state_change::GameEventKind;
 use valence_protocol::packet::s2c::play::GameStateChangeS2c;
 
@@ -138,6 +139,15 @@ fn handle_weather_change_per_instance(
         .for_each_mut(|(mut instance, weather)| {
             instance.set_weather(weather);
         });
+}
+
+pub(crate) fn update_weather() -> SystemConfigs {
+    (
+        handle_weather_begin_per_instance,
+        handle_weather_end_per_instance,
+        handle_weather_change_per_instance,
+    )
+        .into_configs()
 }
 
 #[cfg(test)]
