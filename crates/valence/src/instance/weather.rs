@@ -4,7 +4,7 @@ use valence_protocol::packet::s2c::play::game_state_change::GameEventKind;
 use valence_protocol::packet::s2c::play::GameStateChangeS2c;
 
 use super::Instance;
-use crate::client::Client;
+use crate::prelude::*;
 
 pub const WEATHER_LEVEL_MIN: f32 = 0_f32;
 pub const WEATHER_LEVEL_MAX: f32 = 1_f32;
@@ -141,11 +141,23 @@ fn handle_weather_change_per_instance(
         });
 }
 
+fn handle_weather_for_joined_player(
+    mut clients: Query<&mut Client, Added<Client>>,
+    instances: Query<&Instance>,
+) {
+    clients.par_iter_mut().for_each_mut(|mut client| {
+        if let Ok(weather) = instances.get_component::<Weather>(client.instance()) {
+            client.set_weather(weather);
+        }
+    })
+}
+
 pub(crate) fn update_weather() -> SystemConfigs {
     (
         handle_weather_begin_per_instance,
         handle_weather_end_per_instance,
         handle_weather_change_per_instance,
+        handle_weather_for_joined_player,
     )
         .into_configs()
 }
@@ -157,7 +169,7 @@ mod test {
     use valence_protocol::packet::S2cPlayPacket;
 
     use super::*;
-    use crate::unit_test::util::scenario_single_client;
+    use crate::unit_test::util::{create_mock_client, gen_client_info, scenario_single_client};
     use crate::{assert_packet_count, assert_packet_order};
 
     #[test]
@@ -225,28 +237,42 @@ mod test {
     fn test_weather_events_emit_on_player_join() -> anyhow::Result<()> {
         let mut app = App::new();
 
+        app.add_plugin(
+            ServerPlugin::new(())
+                .with_compression_threshold(None)
+                .with_connection_mode(ConnectionMode::Offline),
+        );
+
+        let server = app.world.resource::<Server>();
+        let instance = server.new_instance(DimensionId::default());
+        let instance_ent = app.world.spawn(instance).id();
+        let info = gen_client_info("test");
+
         // Insert a weather component to the instance.
         let weather = Weather {
             rain: Some(1_f32),
             thunder: Some(1_f32),
         };
 
-        let instance_ent = app
-            .world
-            .iter_entities()
-            .find(|e| e.contains::<Instance>())
-            .expect("could not find instance")
-            .id();
-
         app.world.entity_mut(instance_ent).insert(weather);
 
+        // Handle weather event packets before player joined.
+        for _ in 0..3 {
+            app.update();
+        }
+
         // Join new player to the instance.
-        let (_, mut client_helper) = scenario_single_client(&mut app);
+        let (mut client, mut client_helper) = create_mock_client(info);
+
+        client.set_instance(instance_ent);
+        app.world
+            .spawn((client, Inventory::new(InventoryKind::Player)));
 
         // Process a tick to get past the "on join" logic.
         app.update();
-        
-        // Handle weather event packets.
+        client_helper.clear_sent();
+
+        // Handle weather event packets after player joined.
         for _ in 0..3 {
             app.update();
         }
