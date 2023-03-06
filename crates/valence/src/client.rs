@@ -135,7 +135,7 @@ impl ClientBundle {
             player_inventory_state: PlayerInventoryState {
                 window_id: 0,
                 state_id: Wrapping(0),
-                slots_modified: 0,
+                slots_changed: 0,
                 // First slot of the hotbar.
                 held_item_slot: 36,
             },
@@ -532,9 +532,9 @@ pub struct PlayerInventoryState {
     /// The current window ID. Incremented when inventories are opened.
     pub(crate) window_id: u8,
     pub(crate) state_id: Wrapping<i32>,
-    /// Tracks what slots have been modified by this client in this tick, so we
+    /// Tracks what slots have been changed by this client in this tick, so we
     /// don't need to send updates for them.
-    pub(crate) slots_modified: u64,
+    pub(crate) slots_changed: u64,
     // TODO: make this a separate modifiable component.
     pub(crate) held_item_slot: u16,
 }

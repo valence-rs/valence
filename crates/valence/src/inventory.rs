@@ -25,7 +25,7 @@ pub struct Inventory {
     kind: InventoryKind,
     slots: Box<[Option<ItemStack>]>,
     /// Contains a set bit for each modified slot in `slots`.
-    modified: u64,
+    changed: u64,
 }
 
 impl Inventory {
@@ -39,7 +39,7 @@ impl Inventory {
             title: title.into(),
             kind,
             slots: vec![None; kind.slot_count()].into(),
-            modified: 0,
+            changed: 0,
         }
     }
 
@@ -57,13 +57,13 @@ impl Inventory {
         idx: u16,
         item: impl Into<Option<ItemStack>>,
     ) -> Option<ItemStack> {
-        assert!(idx < self.slot_count(), "slot index out of range");
+        assert!(idx < self.slot_count(), "slot index of {idx} out of bounds");
 
         let new = item.into();
         let old = &mut self.slots[idx as usize];
 
         if new != *old {
-            self.modified |= 1 << idx;
+            self.changed |= 1 << idx;
         }
 
         std::mem::replace(old, new)
@@ -71,16 +71,22 @@ impl Inventory {
 
     #[track_caller]
     pub fn swap_slot(&mut self, idx_a: u16, idx_b: u16) {
-        assert!(idx_a < self.slot_count(), "slot index out of range");
-        assert!(idx_b < self.slot_count(), "slot index out of range");
+        assert!(
+            idx_a < self.slot_count(),
+            "slot index of {idx_a} out of bounds"
+        );
+        assert!(
+            idx_b < self.slot_count(),
+            "slot index of {idx_b} out of bounds"
+        );
 
         if idx_a == idx_b || self.slots[idx_a as usize] == self.slots[idx_b as usize] {
             // Nothing to do here, ignore.
             return;
         }
 
-        self.modified |= 1 << idx_a;
-        self.modified |= 1 << idx_b;
+        self.changed |= 1 << idx_a;
+        self.changed |= 1 << idx_b;
 
         self.slots.swap(idx_a as usize, idx_b as usize);
     }
@@ -124,14 +130,14 @@ pub struct OpenInventory {
     /// The Entity with the `Inventory` component that the client is currently
     /// viewing.
     pub(crate) entity: Entity,
-    client_modified: u64,
+    client_changed: u64,
 }
 
 impl OpenInventory {
     pub fn new(entity: Entity) -> Self {
         OpenInventory {
             entity,
-            client_modified: 0,
+            client_changed: 0,
         }
     }
 
@@ -175,7 +181,7 @@ fn update_player_inventories(
             warn!("Inventory on client entity is not a player inventory");
         }
 
-        if inventory.modified == u64::MAX {
+        if inventory.changed == u64::MAX {
             // Update the whole inventory.
 
             inv_state.state_id += 1;
@@ -187,22 +193,22 @@ fn update_player_inventories(
                 carried_item: Cow::Borrowed(&cursor_item.0),
             });
 
-            inventory.modified = 0;
-            inv_state.slots_modified = 0;
+            inventory.changed = 0;
+            inv_state.slots_changed = 0;
 
             // Skip updating the cursor item because we just updated the whole inventory.
             continue;
-        } else if inventory.modified != 0 {
-            // send the modified slots
+        } else if inventory.changed != 0 {
+            // Send the modified slots.
 
             // The slots that were NOT modified by this client, and they need to be sent
-            let modified_filtered = inventory.modified & !inv_state.slots_modified;
+            let changed_filtered = inventory.changed & !inv_state.slots_changed;
 
-            if modified_filtered != 0 {
+            if changed_filtered != 0 {
                 inv_state.state_id += 1;
 
                 for (i, slot) in inventory.slots.iter().enumerate() {
-                    if ((modified_filtered >> i) & 1) == 1 {
+                    if ((changed_filtered >> i) & 1) == 1 {
                         client.write_packet(&ScreenHandlerSlotUpdateS2c {
                             window_id: 0,
                             state_id: VarInt(inv_state.state_id.0),
@@ -213,8 +219,8 @@ fn update_player_inventories(
                 }
             }
 
-            inventory.modified = 0;
-            inv_state.slots_modified = 0;
+            inventory.changed = 0;
+            inv_state.slots_changed = 0;
         }
 
         if cursor_item.is_changed() {
@@ -238,7 +244,7 @@ fn update_open_inventories(
         Entity,
         &mut Client,
         &mut PlayerInventoryState,
-        &mut CursorItem,
+        &CursorItem,
         &mut OpenInventory,
     )>,
     mut inventories: Query<&mut Inventory>,
@@ -246,13 +252,12 @@ fn update_open_inventories(
 ) {
     // These operations need to happen in this order.
 
-    // send the inventory contents to all clients that are viewing an inventory
-    for (client_entity, mut client, mut inv_state, mut cursor_item, mut open_inventory) in
-        &mut clients
+    // Send the inventory contents to all clients that are viewing an inventory.
+    for (client_entity, mut client, mut inv_state, cursor_item, mut open_inventory) in &mut clients
     {
-        // validate that the inventory exists
-        let Ok(inventory) = inventories.get(open_inventory.entity) else {
-            // the inventory no longer exists, so close the inventory
+        // Validate that the inventory exists.
+        let Ok(mut inventory) = inventories.get_mut(open_inventory.entity) else {
+            // The inventory no longer exists, so close the inventory.
             commands.entity(client_entity).remove::<OpenInventory>();
 
             client.write_packet(&CloseScreenS2c {
@@ -263,9 +268,9 @@ fn update_open_inventories(
         };
 
         if open_inventory.is_added() {
-            // send the inventory to the client if the client just opened the inventory
+            // Send the inventory to the client if the client just opened the inventory.
             inv_state.window_id = inv_state.window_id % 100 + 1;
-            open_inventory.client_modified = 0;
+            open_inventory.client_changed = 0;
 
             client.write_packet(&OpenScreenS2c {
                 window_id: VarInt(inv_state.window_id.into()),
@@ -280,10 +285,10 @@ fn update_open_inventories(
                 carried_item: Cow::Borrowed(&cursor_item.0),
             });
         } else {
-            // the client is already viewing the inventory
+            // The client is already viewing the inventory.
 
-            if inventory.modified == u64::MAX {
-                // send the entire inventory
+            if inventory.changed == u64::MAX {
+                // Send the entire inventory.
 
                 inv_state.state_id += 1;
 
@@ -294,16 +299,16 @@ fn update_open_inventories(
                     carried_item: Cow::Borrowed(&cursor_item.0),
                 })
             } else {
-                // send the modified slots
+                // Send the changed slots.
 
-                // The slots that were NOT modified by this client, and they need to be sent
-                let modified_filtered = inventory.modified & !open_inventory.client_modified;
+                // The slots that were NOT changed by this client, and they need to be sent
+                let changed_filtered = inventory.changed & !open_inventory.client_changed;
 
-                if modified_filtered != 0 {
+                if changed_filtered != 0 {
                     inv_state.state_id += 1;
 
                     for (i, slot) in inventory.slots.iter().enumerate() {
-                        if (modified_filtered >> i) & 1 == 1 {
+                        if (changed_filtered >> i) & 1 == 1 {
                             client.write_packet(&ScreenHandlerSlotUpdateS2c {
                                 window_id: inv_state.window_id as i8,
                                 state_id: VarInt(inv_state.state_id.0),
@@ -316,18 +321,9 @@ fn update_open_inventories(
             }
         }
 
-        open_inventory.client_modified = 0;
-        inv_state.slots_modified = 0;
-    }
-
-    // TODO: do this in the above loop?
-
-    // reset the modified flags
-    for (_, _, _, _, open_inventory) in &mut clients {
-        // validate that the inventory exists
-        if let Ok(mut inventory) = inventories.get_mut(open_inventory.entity) {
-            inventory.modified = 0;
-        }
+        open_inventory.client_changed = 0;
+        inv_state.slots_changed = 0;
+        inventory.changed = 0;
     }
 }
 
@@ -419,12 +415,12 @@ fn handle_click_container(
                 if (0i16..target_inventory.slot_count() as i16).contains(&slot.idx) {
                     // The client is interacting with a slot in the target inventory.
                     target_inventory.replace_slot(slot.idx as u16, slot.item);
-                    open_inventory.client_modified |= 1 << slot.idx;
+                    open_inventory.client_changed |= 1 << slot.idx;
                 } else {
                     // The client is interacting with a slot in their own inventory.
                     let slot_id = convert_to_player_slot_id(target_inventory.kind, slot.idx as u16);
                     client_inventory.replace_slot(slot_id, slot.item);
-                    inv_state.slots_modified |= 1 << slot_id;
+                    inv_state.slots_changed |= 1 << slot_id;
                 }
             }
         } else {
@@ -454,10 +450,10 @@ fn handle_click_container(
             for slot in event.slot_changes.clone() {
                 if (0i16..client_inventory.slot_count() as i16).contains(&slot.idx) {
                     client_inventory.replace_slot(slot.idx as u16, slot.item);
-                    inv_state.slots_modified |= 1 << slot.idx;
+                    inv_state.slots_changed |= 1 << slot.idx;
                 } else {
-                    // the client is trying to interact with a slot that does not exist,
-                    // ignore
+                    // The client is trying to interact with a slot that does not exist,
+                    // ignore.
                     warn!(
                         "Client attempted to interact with slot {} which does not exist",
                         slot.idx
@@ -482,12 +478,12 @@ fn handle_set_slot_creative(
             clients.get_mut(event.client)
         {
             if *game_mode != GameMode::Creative {
-                // the client is not in creative mode, ignore
+                // The client is not in creative mode, ignore.
                 continue;
             }
 
             if event.slot < 0 || event.slot >= inventory.slot_count() as i16 {
-                // the client is trying to interact with a slot that does not exist, ignore
+                // The client is trying to interact with a slot that does not exist, ignore.
                 continue;
             }
 
@@ -497,7 +493,7 @@ fn handle_set_slot_creative(
             inv_state.state_id += 1;
 
             // HACK: notchian clients rely on the server to send the slot update when in
-            // creative mode Simply marking the slot as modified is not enough. This was
+            // creative mode. Simply marking the slot as changed is not enough. This was
             // discovered because shift-clicking the destroy item slot in creative mode does
             // not work without this hack.
             client.write_packet(&ScreenHandlerSlotUpdateS2c {
@@ -832,7 +828,7 @@ mod test {
         // Make assertions
         let sent_packets = client_helper.collect_sent()?;
 
-        // because the inventory was modified as a result of the client's click, the
+        // because the inventory was changed as a result of the client's click, the
         // server should not send any packets to the client because the client
         // already knows about the change.
         assert_packet_count!(
@@ -906,7 +902,7 @@ mod test {
             .world
             .get_mut::<Inventory>(client_ent)
             .expect("could not find inventory for client");
-        inventory.modified = u64::MAX;
+        inventory.changed = u64::MAX;
 
         app.update();
 
@@ -1046,7 +1042,7 @@ mod test {
             .world
             .get_mut::<Inventory>(inventory_ent)
             .expect("could not find inventory");
-        inventory.modified = u64::MAX;
+        inventory.changed = u64::MAX;
 
         app.update();
 

@@ -1070,7 +1070,7 @@ fn handle_one_packet(q: &mut EventLoopQueryItem, events: &mut ClientEvents) -> a
                         .inventory
                         .replace_slot(q.player_inventory_state.held_item_slot(), None)
                     {
-                        q.player_inventory_state.slots_modified |=
+                        q.player_inventory_state.slots_changed |=
                             1 << q.player_inventory_state.held_item_slot();
                         events.2.drop_item_stack.send(DropItemStack {
                             client: entity,
@@ -1094,7 +1094,7 @@ fn handle_one_packet(q: &mut EventLoopQueryItem, events: &mut ClientEvents) -> a
                             )
                         }
                         .expect("old slot should exist"); // we already checked that the slot was not empty
-                        q.player_inventory_state.slots_modified |=
+                        q.player_inventory_state.slots_changed |=
                             1 << q.player_inventory_state.held_item_slot();
                         old_slot.set_count(1);
 
