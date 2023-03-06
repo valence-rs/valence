@@ -1,5 +1,34 @@
+//! The inventory system.
+//!
+//! This module contains the systems and components needed to handle
+//! inventories. By default, clients will have a player inventory attached to
+//! them.
+//!
+//! # Components
+//!
+//! - [`Inventory`]: The inventory component. This is the thing that holds
+//!   items.
+//! - [`OpenInventory`]: The component that is attached to clients when they
+//!   have an inventory open.
+//!
+//! # Examples
+//!
+//! An example system that will let you access all player's inventories:
+//!
+//! ```rust
+//! # use valence::prelude::*;
+//! fn system(mut clients: Query<(&Client, &Inventory)>) {}
+//! ```
+//!
+//! ### See also
+//!
+//! Examples related to inventories in the `examples/` directory:
+//! - `building`
+//! - `chest`
+
 use std::borrow::Cow;
 use std::iter::FusedIterator;
+use std::ops::Range;
 
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::SystemConfigs;
@@ -51,7 +80,36 @@ impl Inventory {
             .as_ref()
     }
 
+    /// Sets the slot at the given index to the given item stack.
+    ///
+    /// See also [`Inventory::replace_slot`].
+    ///
+    /// ```
+    /// # use valence::prelude::*;
+    /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
+    /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
+    /// assert_eq!(inv.slot(0).unwrap().item, ItemKind::Diamond);
+    /// ```
     #[track_caller]
+    #[inline]
+    pub fn set_slot(&mut self, idx: u16, item: impl Into<Option<ItemStack>>) {
+        let _ = self.replace_slot(idx, item);
+    }
+
+    /// Replaces the slot at the given index with the given item stack, and
+    /// returns the old stack in that slot.
+    ///
+    /// See also [`Inventory::set_slot`].
+    ///
+    /// ```
+    /// # use valence::prelude::*;
+    /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
+    /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
+    /// let old = inv.replace_slot(0, ItemStack::new(ItemKind::IronIngot, 1, None));
+    /// assert_eq!(old.unwrap().item, ItemKind::Diamond);
+    /// ```
+    #[track_caller]
+    #[must_use]
     pub fn replace_slot(
         &mut self,
         idx: u16,
@@ -69,6 +127,17 @@ impl Inventory {
         std::mem::replace(old, new)
     }
 
+    /// Swap the contents of two slots. If the slots are the same, nothing
+    /// happens.
+    ///
+    /// ```
+    /// # use valence::prelude::*;
+    /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
+    /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
+    /// assert_eq!(inv.slot(1), None);
+    /// inv.swap_slot(0, 1);
+    /// assert_eq!(inv.slot(1).unwrap().item, ItemKind::Diamond);
+    /// ```
     #[track_caller]
     pub fn swap_slot(&mut self, idx_a: u16, idx_b: u16) {
         assert!(
@@ -91,6 +160,30 @@ impl Inventory {
         self.slots.swap(idx_a as usize, idx_b as usize);
     }
 
+    /// Set the amount of items in the given slot without replacing the slot
+    /// entirely. Valid values are 1-127, inclusive, and `amount` will be
+    /// clamped to this range. If the slot is empty, nothing happens.
+    ///
+    /// ```
+    /// # use valence::prelude::*;
+    /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
+    /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
+    /// inv.set_slot_amount(0, 64);
+    /// assert_eq!(inv.slot(0).unwrap().count(), 64);
+    /// ```
+    #[track_caller]
+    pub fn set_slot_amount(&mut self, idx: u16, amount: u8) {
+        assert!(idx < self.slot_count(), "slot index out of range");
+
+        if let Some(item) = self.slots[idx as usize].as_mut() {
+            if item.count() == amount {
+                return;
+            }
+            item.set_count(amount);
+            self.changed |= 1 << idx;
+        }
+    }
+
     pub fn slot_count(&self) -> u16 {
         self.slots.len() as u16
     }
@@ -109,10 +202,35 @@ impl Inventory {
         self.kind
     }
 
+    /// The text displayed on the inventory's title bar.
+    ///
+    /// ```
+    /// # use valence::inventory::{Inventory, InventoryKind};
+    /// # use valence_protocol::text::Text;
+    /// let inv = Inventory::with_title(InventoryKind::Generic9x3, "Box of Holding");
+    /// assert_eq!(inv.title(), &Text::from("Box of Holding"));
+    /// ```
     pub fn title(&self) -> &Text {
         &self.title
     }
 
+    /// Set the text displayed on the inventory's title bar.
+    ///
+    /// To get the old title, use [`Inventory::replace_title`].
+    ///
+    /// ```
+    /// # use valence::inventory::{Inventory, InventoryKind};
+    /// let mut inv = Inventory::new(InventoryKind::Generic9x3);
+    /// inv.set_title("Box of Holding");
+    /// ```
+    #[inline]
+    pub fn set_title(&mut self, title: impl Into<Text>) {
+        let _ = self.replace_title(title);
+    }
+
+    /// Replace the text displayed on the inventory's title bar, and returns the
+    /// old text.
+    #[must_use]
     pub fn replace_title(&mut self, title: impl Into<Text>) -> Text {
         // TODO: set title modified flag
         std::mem::replace(&mut self.title, title.into())
@@ -120,6 +238,44 @@ impl Inventory {
 
     fn slot_slice(&self) -> &[Option<ItemStack>] {
         self.slots.as_ref()
+    }
+
+    /// Returns the first empty slot in the given range, or `None` if there are
+    /// no empty slots in the range.
+    ///
+    /// ```
+    /// # use valence::prelude::*;
+    /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
+    /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
+    /// inv.set_slot(2, ItemStack::new(ItemKind::GoldIngot, 1, None));
+    /// inv.set_slot(3, ItemStack::new(ItemKind::IronIngot, 1, None));
+    /// assert_eq!(inv.first_empty_slot_in(0..6), Some(1));
+    /// assert_eq!(inv.first_empty_slot_in(2..6), Some(4));
+    /// ```
+    #[track_caller]
+    #[must_use]
+    pub fn first_empty_slot_in(&self, mut range: Range<u16>) -> Option<u16> {
+        assert!(
+            (0..=self.slot_count()).contains(&range.start)
+                && (0..=self.slot_count()).contains(&range.end),
+            "slot range out of range"
+        );
+
+        range.find(|&idx| self.slots[idx as usize].is_none())
+    }
+
+    /// Returns the first empty slot in the inventory, or `None` if there are no
+    /// empty slots.
+    /// ```
+    /// # use valence::prelude::*;
+    /// let mut inv = Inventory::new(InventoryKind::Generic9x1);
+    /// inv.set_slot(0, ItemStack::new(ItemKind::Diamond, 1, None));
+    /// inv.set_slot(2, ItemStack::new(ItemKind::GoldIngot, 1, None));
+    /// inv.set_slot(3, ItemStack::new(ItemKind::IronIngot, 1, None));
+    /// assert_eq!(inv.first_empty_slot(), Some(1));
+    /// ```
+    pub fn first_empty_slot(&self) -> Option<u16> {
+        self.first_empty_slot_in(0..self.slot_count())
     }
 }
 
@@ -402,8 +558,7 @@ fn handle_click_container(
                     window_id: inv_state.window_id,
                     state_id: VarInt(inv_state.state_id.0),
                     slots: Cow::Borrowed(target_inventory.slot_slice()),
-                    // TODO: eliminate clone?
-                    carried_item: Cow::Owned(cursor_item.0.clone()),
+                    carried_item: Cow::Borrowed(&cursor_item.0),
                 });
 
                 continue;
@@ -414,12 +569,12 @@ fn handle_click_container(
             for slot in event.slot_changes.clone() {
                 if (0i16..target_inventory.slot_count() as i16).contains(&slot.idx) {
                     // The client is interacting with a slot in the target inventory.
-                    target_inventory.replace_slot(slot.idx as u16, slot.item);
+                    target_inventory.set_slot(slot.idx as u16, slot.item);
                     open_inventory.client_changed |= 1 << slot.idx;
                 } else {
                     // The client is interacting with a slot in their own inventory.
                     let slot_id = convert_to_player_slot_id(target_inventory.kind, slot.idx as u16);
-                    client_inventory.replace_slot(slot_id, slot.item);
+                    client_inventory.set_slot(slot_id, slot.item);
                     inv_state.slots_changed |= 1 << slot_id;
                 }
             }
@@ -449,7 +604,7 @@ fn handle_click_container(
 
             for slot in event.slot_changes.clone() {
                 if (0i16..client_inventory.slot_count() as i16).contains(&slot.idx) {
-                    client_inventory.replace_slot(slot.idx as u16, slot.item);
+                    client_inventory.set_slot(slot.idx as u16, slot.item);
                     inv_state.slots_changed |= 1 << slot.idx;
                 } else {
                     // The client is trying to interact with a slot that does not exist,
@@ -798,7 +953,7 @@ mod test {
             .world
             .get_mut::<Inventory>(client_ent)
             .expect("could not find inventory for client");
-        inventory.replace_slot(20, ItemStack::new(ItemKind::Diamond, 2, None));
+        inventory.set_slot(20, ItemStack::new(ItemKind::Diamond, 2, None));
 
         // Process a tick to get past the "on join" logic.
         app.update();
@@ -861,7 +1016,7 @@ mod test {
             .world
             .get_mut::<Inventory>(client_ent)
             .expect("could not find inventory for client");
-        inventory.replace_slot(20, ItemStack::new(ItemKind::Diamond, 2, None));
+        inventory.set_slot(20, ItemStack::new(ItemKind::Diamond, 2, None));
 
         // Process a tick to get past the "on join" logic.
         app.update();
@@ -872,7 +1027,7 @@ mod test {
             .world
             .get_mut::<Inventory>(client_ent)
             .expect("could not find inventory for client");
-        inventory.replace_slot(21, ItemStack::new(ItemKind::IronIngot, 1, None));
+        inventory.set_slot(21, ItemStack::new(ItemKind::IronIngot, 1, None));
 
         app.update();
 
@@ -1002,7 +1157,7 @@ mod test {
             .world
             .get_mut::<Inventory>(inventory_ent)
             .expect("could not find inventory for client");
-        inventory.replace_slot(5, ItemStack::new(ItemKind::IronIngot, 1, None));
+        inventory.set_slot(5, ItemStack::new(ItemKind::IronIngot, 1, None));
 
         app.update();
 
@@ -1194,7 +1349,7 @@ mod test {
                 .world
                 .get_mut::<Inventory>(client_ent)
                 .expect("could not find inventory");
-            inventory.replace_slot(36, ItemStack::new(ItemKind::IronIngot, 3, None));
+            inventory.set_slot(36, ItemStack::new(ItemKind::IronIngot, 3, None));
 
             // Process a tick to get past the "on join" logic.
             app.update();
@@ -1249,7 +1404,7 @@ mod test {
                 .world
                 .get_mut::<Inventory>(client_ent)
                 .expect("could not find inventory");
-            inventory.replace_slot(36, ItemStack::new(ItemKind::IronIngot, 32, None));
+            inventory.set_slot(36, ItemStack::new(ItemKind::IronIngot, 32, None));
 
             // Process a tick to get past the "on join" logic.
             app.update();
@@ -1388,7 +1543,7 @@ mod test {
                 .world
                 .get_mut::<Inventory>(client_ent)
                 .expect("could not find inventory");
-            inventory.replace_slot(40, ItemStack::new(ItemKind::IronIngot, 32, None));
+            inventory.set_slot(40, ItemStack::new(ItemKind::IronIngot, 32, None));
 
             // Process a tick to get past the "on join" logic.
             app.update();
@@ -1436,7 +1591,7 @@ mod test {
                 .world
                 .get_mut::<Inventory>(client_ent)
                 .expect("could not find inventory");
-            inventory.replace_slot(40, ItemStack::new(ItemKind::IronIngot, 32, None));
+            inventory.set_slot(40, ItemStack::new(ItemKind::IronIngot, 32, None));
 
             // Process a tick to get past the "on join" logic.
             app.update();
