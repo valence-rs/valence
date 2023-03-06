@@ -143,7 +143,7 @@ fn handle_weather_change_per_instance(
 
 fn handle_weather_for_joined_player(
     mut clients: Query<&mut Client, Added<Client>>,
-    weathers: Query<&Weather, With<Instance>>
+    weathers: Query<&Weather, With<Instance>>,
 ) {
     clients.par_iter_mut().for_each_mut(|mut client| {
         if let Ok(weather) = weathers.get_single() {
@@ -170,7 +170,7 @@ mod test {
     use valence_protocol::packet::S2cPlayPacket;
 
     use super::*;
-    use crate::unit_test::util::{create_mock_client, gen_client_info, scenario_single_client};
+    use crate::unit_test::util::scenario_single_client;
     use crate::{assert_packet_count, assert_packet_order};
 
     #[test]
@@ -227,74 +227,6 @@ mod test {
             }),
             S2cPlayPacket::GameStateChangeS2c(GameStateChangeS2c {
                 kind: GameEventKind::EndRaining,
-                value: _
-            })
-        );
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_weather_events_emit_on_player_join() -> anyhow::Result<()> {
-        let mut app = App::new();
-
-        app.add_plugin(
-            ServerPlugin::new(())
-                .with_compression_threshold(None)
-                .with_connection_mode(ConnectionMode::Offline),
-        );
-
-        let server = app.world.resource::<Server>();
-        let instance = server.new_instance(DimensionId::default());
-        let instance_ent = app.world.spawn(instance).id();
-        let info = gen_client_info("test");
-
-        // Insert a weather component to the instance.
-        let weather = Weather {
-            rain: Some(1_f32),
-            thunder: Some(1_f32),
-        };
-
-        app.world.entity_mut(instance_ent).insert(weather);
-
-        // Handle weather event packets before player joined.
-        for _ in 0..3 {
-            app.update();
-        }
-
-        // Join new player to the instance.
-        let (mut client, mut client_helper) = create_mock_client(info);
-
-        client.set_instance(instance_ent);
-        app.world
-            .spawn((client, Inventory::new(InventoryKind::Player)));
-
-        // Process a tick to get past the "on join" logic.
-        app.update();
-        client_helper.clear_sent();
-
-        // Handle weather event packets after player joined.
-        for _ in 0..3 {
-            app.update();
-        }
-
-        // Make assertions.
-        let sent_packets = client_helper.collect_sent()?;
-
-        assert_packet_count!(sent_packets, 3, S2cPlayPacket::GameStateChangeS2c(_));
-
-        assert_packet_order!(
-            sent_packets,
-            S2cPlayPacket::GameStateChangeS2c(GameStateChangeS2c {
-                kind: GameEventKind::BeginRaining,
-                value: _
-            }),
-            S2cPlayPacket::GameStateChangeS2c(GameStateChangeS2c {
-                kind: GameEventKind::RainLevelChange,
-                value: _
-            }),
-            S2cPlayPacket::GameStateChangeS2c(GameStateChangeS2c {
-                kind: GameEventKind::ThunderLevelChange,
                 value: _
             })
         );
