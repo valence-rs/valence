@@ -184,8 +184,9 @@ mod test {
 
         // Insert a weather component to the instance.
         let weather = Weather {
-            rain: Some(1_f32),
-            thunder: Some(1_f32),
+            // Invalid values to assert they are clamped.
+            rain: Some(WEATHER_LEVEL_MAX + 1_f32),
+            thunder: Some(WEATHER_LEVEL_MAX + 1_f32),
         };
 
         let instance_ent = app
@@ -230,6 +231,16 @@ mod test {
                 value: _
             })
         );
+
+        for pkt in sent_packets {
+            if let S2cPlayPacket::GameStateChangeS2c(pkt) = pkt {
+                match pkt.kind {
+                    GameEventKind::RainLevelChange => assert_eq!(pkt.value, WEATHER_LEVEL_MAX),
+                    GameEventKind::ThunderLevelChange => assert_eq!(pkt.value, WEATHER_LEVEL_MAX),
+                    _ => continue,
+                }
+            }
+        }
 
         Ok(())
     }
