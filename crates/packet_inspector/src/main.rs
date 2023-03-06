@@ -1,14 +1,18 @@
-use std::error::Error;
-use std::fmt::Write;
-use std::io;
-use std::io::ErrorKind;
+mod context;
+mod packet_widget;
+mod state;
+mod syntax_highlighting;
+
+use std::collections::BTreeMap;
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 use anyhow::bail;
 use clap::Parser;
-use owo_colors::OwoColorize;
+use context::{Context, Packet};
+use egui::RichText;
 use regex::Regex;
+use syntax_highlighting::code_view_ui;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream};
@@ -23,107 +27,79 @@ use valence_protocol::packet::c2s::status::{QueryPingC2s, QueryRequestC2s};
 use valence_protocol::packet::s2c::login::LoginSuccessS2c;
 use valence_protocol::packet::s2c::status::{QueryPongS2c, QueryResponseS2c};
 use valence_protocol::packet::{C2sPlayPacket, S2cLoginPacket, S2cPlayPacket};
-use valence_protocol::Packet;
+
+use crate::context::{ContextMode, Stage};
+use crate::packet_widget::PacketDirection;
+use crate::state::State;
 
 #[derive(Parser, Clone, Debug)]
 #[clap(author, version, about)]
 struct Cli {
     /// The socket address to listen for connections on. This is the address
     /// clients should connect to.
-    client_addr: SocketAddr,
+    #[arg(required_if_eq("nogui", "true"))]
+    client_addr: Option<SocketAddr>,
+
     /// The socket address the proxy will connect to. This is the address of the
     /// server.
-    server_addr: SocketAddr,
-    /// An optional regular expression to use on packet names. Packet names
-    /// matching the regex are printed while those that don't are ignored.
-    ///
-    /// If no regex is provided, all packets are considered matching.
-    #[clap(short, long)]
-    include_regex: Option<Regex>,
-    /// An optional regular expression to use on packet names. Packet names
-    /// matching the regex are ignored while those are don't are printed.
-    ///
-    /// If no regex is provided, all packets are not considered matching.
-    #[clap(short, long)]
-    exclude_regex: Option<Regex>,
+    #[arg(required_if_eq("nogui", "true"))]
+    server_addr: Option<SocketAddr>,
+
     /// The maximum number of connections allowed to the proxy. By default,
     /// there is no limit.
     #[clap(short, long)]
     max_connections: Option<usize>,
-}
 
-struct State {
-    cli: Arc<Cli>,
-    enc: PacketEncoder,
-    dec: PacketDecoder,
-    read: OwnedReadHalf,
-    write: OwnedWriteHalf,
-    buf: String,
-    style: owo_colors::Style,
-}
+    /// Disable the GUI. Logging to stdout.
+    #[clap(long)]
+    nogui: bool,
 
-impl State {
-    pub async fn rw_packet<'a, P>(&'a mut self) -> anyhow::Result<P>
-    where
-        P: Packet<'a>,
-    {
-        while !self.dec.has_next_packet()? {
-            self.dec.reserve(4096);
-            let mut buf = self.dec.take_capacity();
+    /// Only show packets that match the filter.
+    #[clap(short, long)]
+    include_filter: Option<Regex>,
 
-            if self.read.read_buf(&mut buf).await? == 0 {
-                return Err(io::Error::from(ErrorKind::UnexpectedEof).into());
-            }
-
-            self.dec.queue_bytes(buf);
-        }
-
-        let pkt: P = self.dec.try_next_packet()?.unwrap();
-
-        self.enc.append_packet(&pkt)?;
-
-        let bytes = self.enc.take();
-        self.write.write_all(&bytes).await?;
-
-        self.buf.clear();
-        write!(&mut self.buf, "{pkt:?}")?;
-
-        let packet_name = self
-            .buf
-            .split_once(|ch: char| !ch.is_ascii_alphabetic())
-            .map(|(fst, _)| fst)
-            .unwrap_or(&self.buf);
-
-        if let Some(r) = &self.cli.include_regex {
-            if !r.is_match(packet_name) {
-                return Ok(pkt);
-            }
-        }
-
-        if let Some(r) = &self.cli.exclude_regex {
-            if r.is_match(packet_name) {
-                return Ok(pkt);
-            }
-        }
-
-        println!("{}", self.buf.style(self.style));
-
-        Ok(pkt)
-    }
+    /// Hide packets that match the filter. Note: Only in effect if nogui is
+    /// set.
+    #[clap(short, long)]
+    exclude_filter: Option<Regex>,
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt()
         .with_max_level(LevelFilter::DEBUG)
         .init();
 
     let cli = Arc::new(Cli::parse());
 
+    match cli.nogui {
+        true => start_cli(cli).await?,
+        false => start_gui(cli)?,
+    };
+
+    Ok(())
+}
+
+async fn start_cli(cli: Arc<Cli>) -> Result<(), Box<dyn std::error::Error>> {
+    let context = Arc::new(Context::new(ContextMode::Cli(context::Logger {
+        include_filter: cli.include_filter.clone(),
+        exclude_filter: cli.exclude_filter.clone(),
+    })));
+
     let sema = Arc::new(Semaphore::new(cli.max_connections.unwrap_or(100_000)));
 
-    eprintln!("Waiting for connections on {}", cli.client_addr);
-    let listen = TcpListener::bind(cli.client_addr).await?;
+    let client_addr = match cli.client_addr {
+        Some(addr) => addr,
+        None => panic!("client_addr must be set"),
+    };
+
+    let server_addr = match cli.server_addr {
+        Some(addr) => addr,
+        None => panic!("server_addr must be set"),
+    };
+
+    eprintln!("Waiting for connections on {}", client_addr);
+    let listen = TcpListener::bind(client_addr).await?;
 
     while let Ok(permit) = sema.clone().acquire_owned().await {
         let (client, remote_client_addr) = listen.accept().await?;
@@ -133,9 +109,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
             eprintln!("Failed to set TCP_NODELAY: {e}");
         }
 
-        let cli = cli.clone();
+        let context = context.clone();
         tokio::spawn(async move {
-            if let Err(e) = handle_connection(client, cli).await {
+            if let Err(e) = handle_connection(client, server_addr, context).await {
                 eprintln!("Connection to {remote_client_addr} ended with: {e:#}");
             } else {
                 eprintln!("Connection to {remote_client_addr} ended.");
@@ -147,10 +123,50 @@ async fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn handle_connection(client: TcpStream, cli: Arc<Cli>) -> anyhow::Result<()> {
-    eprintln!("Connecting to {}", cli.server_addr);
+fn start_gui(cli: Arc<Cli>) -> Result<(), Box<dyn std::error::Error>> {
+    let native_options = eframe::NativeOptions {
+        initial_window_size: Some(egui::Vec2::new(800.0, 600.0)),
+        decorated: true,
+        ..Default::default()
+    };
 
-    let server = TcpStream::connect(cli.server_addr).await?;
+    let server_addr = cli.server_addr;
+    let client_addr = cli.client_addr;
+    let max_connections = cli.max_connections.unwrap_or(100_000);
+
+    let filter = cli
+        .include_filter
+        .clone()
+        .map(|f| f.to_string())
+        .unwrap_or("".to_string());
+
+    eframe::run_native(
+        "Valence Packet Inspector",
+        native_options,
+        Box::new(move |cc| {
+            let gui_app = GuiApp::new(cc, filter);
+
+            if let Some(server_addr) = server_addr {
+                if let Some(client_addr) = client_addr {
+                    gui_app.start_listening(client_addr, server_addr, max_connections);
+                }
+            }
+
+            Box::new(gui_app)
+        }),
+    )?;
+
+    Ok(())
+}
+
+async fn handle_connection(
+    client: TcpStream,
+    server_addr: SocketAddr,
+    context: Arc<Context>,
+) -> anyhow::Result<()> {
+    eprintln!("Connecting to {}", server_addr);
+
+    let server = TcpStream::connect(server_addr).await?;
 
     if let Err(e) = server.set_nodelay(true) {
         eprintln!("Failed to set TCP_NODELAY: {e}");
@@ -160,42 +176,47 @@ async fn handle_connection(client: TcpStream, cli: Arc<Cli>) -> anyhow::Result<(
     let (server_read, server_write) = server.into_split();
 
     let mut s2c = State {
-        cli: cli.clone(),
         enc: PacketEncoder::new(),
         dec: PacketDecoder::new(),
         read: server_read,
         write: client_write,
+        direction: PacketDirection::ServerToClient,
+        context: context.clone(),
         buf: String::new(),
-        style: owo_colors::Style::new().purple(),
     };
 
     let mut c2s = State {
-        cli,
         enc: PacketEncoder::new(),
         dec: PacketDecoder::new(),
         read: client_read,
         write: server_write,
+        direction: PacketDirection::ClientToServer,
+        context: context.clone(),
         buf: String::new(),
-        style: owo_colors::Style::new().green(),
     };
 
-    let handshake: HandshakeC2s = c2s.rw_packet().await?;
+    let handshake: HandshakeC2s = c2s.rw_packet(Stage::HandshakeC2s).await?;
 
     match handshake.next_state {
         NextState::Status => {
-            c2s.rw_packet::<QueryRequestC2s>().await?;
-            s2c.rw_packet::<QueryResponseS2c>().await?;
-            c2s.rw_packet::<QueryPingC2s>().await?;
-            s2c.rw_packet::<QueryPongS2c>().await?;
+            c2s.rw_packet::<QueryRequestC2s>(Stage::QueryRequestC2s)
+                .await?;
+            s2c.rw_packet::<QueryResponseS2c>(Stage::QueryResponseS2c)
+                .await?;
+            c2s.rw_packet::<QueryPingC2s>(Stage::QueryPingC2s).await?;
+            s2c.rw_packet::<QueryPongS2c>(Stage::QueryPongS2c).await?;
 
             Ok(())
         }
         NextState::Login => {
-            c2s.rw_packet::<LoginHelloC2s>().await?;
+            c2s.rw_packet::<LoginHelloC2s>(Stage::LoginHelloC2s).await?;
 
-            match s2c.rw_packet::<S2cLoginPacket>().await? {
+            match s2c
+                .rw_packet::<S2cLoginPacket>(Stage::S2cLoginPacket)
+                .await?
+            {
                 S2cLoginPacket::LoginHelloS2c(_) => {
-                    c2s.rw_packet::<LoginKeyC2s>().await?;
+                    c2s.rw_packet::<LoginKeyC2s>(Stage::LoginKeyC2s).await?;
 
                     eprintln!(
                         "Encryption was enabled! Packet contents are inaccessible to the proxy. \
@@ -215,30 +236,31 @@ async fn handle_connection(client: TcpStream, cli: Arc<Cli>) -> anyhow::Result<(
                     c2s.enc.set_compression(Some(threshold));
                     c2s.dec.set_compression(true);
 
-                    s2c.rw_packet::<LoginSuccessS2c>().await?;
+                    s2c.rw_packet::<LoginSuccessS2c>(Stage::LoginSuccessS2c)
+                        .await?;
                 }
                 S2cLoginPacket::LoginSuccessS2c(_) => {}
                 S2cLoginPacket::LoginDisconnectS2c(_) => return Ok(()),
                 S2cLoginPacket::LoginQueryRequestS2c(_) => {
-                    bail!("got login query request. Don't know how to proceed.")
+                    bail!("got login plugin request. Don't know how to proceed.")
                 }
             }
 
             let c2s_fut: JoinHandle<anyhow::Result<()>> = tokio::spawn(async move {
                 loop {
-                    c2s.rw_packet::<C2sPlayPacket>().await?;
+                    c2s.rw_packet::<C2sPlayPacket>(Stage::C2sPlayPacket).await?;
                 }
             });
 
-            let s2c_fut = async move {
+            let s2c_fut: JoinHandle<anyhow::Result<()>> = tokio::spawn(async move {
                 loop {
-                    s2c.rw_packet::<S2cPlayPacket>().await?;
+                    s2c.rw_packet::<S2cPlayPacket>(Stage::S2cPlayPacket).await?;
                 }
-            };
+            });
 
             tokio::select! {
                 c2s = c2s_fut => Ok(c2s??),
-                s2c = s2c_fut => s2c,
+                s2c = s2c_fut => Ok(s2c??),
             }
         }
     }
@@ -255,5 +277,323 @@ async fn passthrough(mut read: OwnedReadHalf, mut write: OwnedWriteHalf) -> anyh
         }
 
         write.write_all(bytes).await?;
+    }
+}
+
+struct GuiApp {
+    temp_server_addr: String,
+    temp_client_addr: String,
+    temp_max_connections: String,
+
+    server_addr_error: bool,
+    client_addr_error: bool,
+    max_connections_error: bool,
+
+    context: Arc<Context>,
+    filter: String,
+    selected_packets: BTreeMap<String, bool>,
+    buffer: String,
+    is_listening: RwLock<bool>,
+    window_open: bool,
+}
+
+impl GuiApp {
+    fn new(cc: &eframe::CreationContext<'_>, filter: String) -> Self {
+        let ctx = cc.egui_ctx.clone();
+
+        let context = Context::new(ContextMode::Gui(ctx));
+
+        {
+            let mut f = context.filter.write().expect("Poisoned filter");
+            *f = filter.clone();
+        }
+
+        let context = Arc::new(context);
+
+        Self {
+            context,
+            filter,
+            selected_packets: BTreeMap::new(),
+            buffer: String::new(),
+            is_listening: RwLock::new(false),
+            window_open: false,
+
+            temp_server_addr: "127.0.0.1:25565".to_string(), /* TODO: Save last used values in
+                                                              * config file or something */
+            temp_client_addr: "127.0.0.1:25560".to_string(),
+            temp_max_connections: "".to_string(),
+
+            server_addr_error: false,
+            client_addr_error: false,
+            max_connections_error: false,
+        }
+    }
+
+    fn start_listening(
+        &self,
+        client_addr: SocketAddr,
+        server_addr: SocketAddr,
+        max_connections: usize,
+    ) {
+        let t_context = self.context.clone();
+        tokio::spawn(async move {
+            let sema = Arc::new(Semaphore::new(max_connections));
+
+            let listen = TcpListener::bind(client_addr).await?;
+            eprintln!("Waiting for connections on {}", client_addr);
+
+            while let Ok(permit) = sema.clone().acquire_owned().await {
+                let (client, remote_client_addr) = listen.accept().await?;
+                eprintln!("Accepted connection to {remote_client_addr}");
+
+                if let Err(e) = client.set_nodelay(true) {
+                    eprintln!("Failed to set TCP_NODELAY: {e}");
+                }
+
+                let t2_context = t_context.clone();
+                tokio::spawn(async move {
+                    if let Err(e) = handle_connection(client, server_addr, t2_context).await {
+                        eprintln!("Connection to {remote_client_addr} ended with: {e:#}");
+                    } else {
+                        eprintln!("Connection to {remote_client_addr} ended.");
+                    }
+                    drop(permit);
+                });
+            }
+
+            Ok::<(), anyhow::Error>(())
+        });
+        *self.is_listening.write().expect("Poisoned is_listening") = true;
+    }
+
+    fn nested_menus(&mut self, ui: &mut egui::Ui) {
+        self.selected_packets
+            .iter_mut()
+            .for_each(|(name, selected)| {
+                if ui.checkbox(selected, name).changed() {
+                    ui.ctx().request_repaint();
+                }
+            });
+    }
+}
+
+impl eframe::App for GuiApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        if !*self.is_listening.read().expect("Poisoned is_listening") {
+            self.window_open = true;
+        }
+
+        if self.window_open {
+            egui::Window::new("Setup")
+                .collapsible(false)
+                .resizable(false)
+                .show(ctx, |ui| {
+                    egui::Grid::new("setup_grid")
+                        .num_columns(2)
+                        .spacing([40.0, 4.0])
+                        .striped(true)
+                        .show(ui, |ui| {
+                            ui.label(RichText::new("Server address:").color(
+                                match self.server_addr_error {
+                                    true => egui::Color32::RED,
+                                    false => egui::Color32::WHITE,
+                                },
+                            ));
+                            if ui
+                                .text_edit_singleline(&mut self.temp_server_addr)
+                                .on_hover_text(
+                                    "The socket address the proxy will connect to. This is the \
+                                     address of the server.",
+                                )
+                                .changed()
+                            {
+                                self.server_addr_error = false;
+                            };
+                            ui.end_row();
+                            ui.label(RichText::new("Client address:").color(
+                                match self.client_addr_error {
+                                    true => egui::Color32::RED,
+                                    false => egui::Color32::WHITE,
+                                },
+                            ));
+                            ui.text_edit_singleline(&mut self.temp_client_addr)
+                                .on_hover_text(
+                                    "The socket address to listen for connections on. This is the \
+                                     address clients should connect to.",
+                                );
+                            ui.end_row();
+                            ui.label(RichText::new("Max Connections:").color(
+                                match self.max_connections_error {
+                                    true => egui::Color32::RED,
+                                    false => egui::Color32::WHITE,
+                                },
+                            ));
+                            ui.text_edit_singleline(&mut self.temp_max_connections)
+                                .on_hover_text(
+                                    "The maximum number of connections allowed to the proxy. By \
+                                     default, there is no limit.",
+                                );
+                            ui.end_row();
+                            if ui.button("Start Proxy").clicked() {
+                                self.window_open = false;
+                            }
+                        });
+                });
+
+            if !self.window_open {
+                let server_addr = self.temp_server_addr.parse::<SocketAddr>().map_err(|_| {
+                    self.server_addr_error = true;
+                });
+
+                let client_addr = self.temp_client_addr.parse::<SocketAddr>().map_err(|_| {
+                    self.client_addr_error = true;
+                });
+
+                let max_connections = if self.temp_max_connections.is_empty() {
+                    Ok(100_000)
+                } else {
+                    self.temp_max_connections.parse::<usize>().map_err(|_| {
+                        self.max_connections_error = true;
+                    })
+                };
+
+                if server_addr.is_err() || client_addr.is_err() || max_connections.is_err() {
+                    self.window_open = true;
+                    return;
+                }
+
+                self.start_listening(
+                    client_addr.unwrap(),
+                    server_addr.unwrap(),
+                    max_connections.unwrap(),
+                );
+            }
+
+            return;
+        }
+
+        egui::TopBottomPanel::top("header").show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.label("Filter:");
+                if ui.text_edit_singleline(&mut self.filter).changed() {
+                    self.context.set_filter(self.filter.clone());
+                }
+                ui.menu_button("Packets", |ui| {
+                    ui.set_max_width(250.0);
+                    ui.set_max_height(400.0);
+                    egui::ScrollArea::vertical()
+                        .auto_shrink([true, true])
+                        .show(ui, |ui| {
+                            self.nested_menus(ui);
+                        });
+                });
+            });
+        });
+
+        egui::SidePanel::left("side_panel")
+            .min_width(150.0)
+            .default_width(250.0)
+            .show(ctx, |ui| {
+                // scroll container
+                ui.horizontal(|ui| {
+                    ui.heading("Packets");
+
+                    let count = self.context.packet_count.read().expect("Poisoned RwLock");
+                    let total = self.context.packets.read().expect("Poisoned RwLock").len();
+
+                    let all_selected = self.selected_packets.values().all(|v| *v);
+
+                    if self.filter.is_empty() && all_selected {
+                        ui.label(format!("({total})"));
+                    } else {
+                        ui.label(format!("({count}/{total})"));
+                    }
+
+                    if ui.button("Clear").clicked() {
+                        self.context.clear();
+                        self.buffer = String::new();
+                    }
+
+                    if ui.button("Export").clicked() {
+                        if let Some(path) = rfd::FileDialog::new()
+                            .add_filter("Text Document", &["txt"])
+                            .save_file()
+                        {
+                            match self.context.save(path) {
+                                Ok(_) => {}
+                                Err(err) => {
+                                    // some alert box?
+                                    eprintln!("Failed to save: {}", err);
+                                }
+                            }
+                        }
+                    }
+                });
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false, false])
+                    .stick_to_bottom(true)
+                    .show(ui, |ui| {
+                        let mut f = self.context.packets.write().expect("Poisoned RwLock");
+
+                        let f: Vec<&mut Packet> = f
+                            .iter_mut()
+                            .filter(|p| {
+                                // what if packets exist (or will exist) with the same name but
+                                // different direction?
+                                if !self.selected_packets.contains_key(&p.packet_name) {
+                                    self.selected_packets.insert(p.packet_name.clone(), true);
+                                }
+
+                                // filter selected_packets
+                                if let Some(selected) = self.selected_packets.get(&p.packet_name) {
+                                    if !*selected {
+                                        return false;
+                                    }
+                                }
+
+                                if self.filter.is_empty() {
+                                    return true;
+                                }
+
+                                if let Ok(re) = regex::Regex::new(&self.filter) {
+                                    return re.is_match(&p.packet_name);
+                                }
+
+                                false
+                            })
+                            .collect();
+
+                        *self.context.packet_count.write().expect("Poisoned RwLock") = f.len();
+
+                        for packet in f {
+                            {
+                                let selected = self
+                                    .context
+                                    .selected_packet
+                                    .read()
+                                    .expect("Poisoned RwLock");
+                                if let Some(idx) = *selected {
+                                    if idx == packet.id {
+                                        packet.selected(true);
+                                        self.buffer = packet.into();
+                                    } else {
+                                        packet.selected(false);
+                                    }
+                                } else {
+                                    packet.selected(false);
+                                }
+                            }
+
+                            if ui.add(packet.clone()).clicked() {
+                                self.context.set_selected_packet(packet.id);
+                            }
+                        }
+                    });
+            });
+        egui::CentralPanel::default().show(ctx, |ui| {
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                code_view_ui(ui, &self.buffer);
+            });
+        });
     }
 }
