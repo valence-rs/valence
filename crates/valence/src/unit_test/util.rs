@@ -1,15 +1,15 @@
 use std::sync::{Arc, Mutex};
 
 use bevy_app::prelude::*;
+use bevy_ecs::prelude::*;
 use bevy_ecs::query::WorldQuery;
 use bevy_ecs::schedule::{LogLevel, ScheduleBuildSettings};
-use bevy_ecs::prelude::*;
 use bytes::BytesMut;
 use valence_protocol::codec::{PacketDecoder, PacketEncoder};
 use valence_protocol::packet::S2cPlayPacket;
 use valence_protocol::Packet;
 
-use crate::client::{Client, ClientConnection, ClientBundle};
+use crate::client::{Client, ClientBundle, ClientConnection};
 use crate::config::{ConnectionMode, ServerPlugin};
 use crate::dimension::DimensionId;
 use crate::inventory::{Inventory, InventoryKind};
@@ -19,11 +19,11 @@ use crate::server::{NewClientInfo, Server};
 ///
 /// Returns the client, and a helper to inject packets as if the client sent
 /// them and receive packets as if the client received them.
-pub fn create_mock_client(client_info: NewClientInfo) -> (ClientBundle, MockClientHelper) {
+pub(crate) fn create_mock_client(client_info: NewClientInfo) -> (ClientBundle, MockClientHelper) {
     let mock_connection = MockClientConnection::new();
     let enc = PacketEncoder::new();
     let dec = PacketDecoder::new();
-    let bundle = ClientBundle::new(client_info, Box::new(mock_connection.clone()), enc, dec);;
+    let bundle = ClientBundle::new(client_info, Box::new(mock_connection.clone()), enc, dec);
 
     (bundle, MockClientHelper::new(mock_connection))
 }
@@ -173,11 +173,8 @@ pub fn scenario_single_client(app: &mut App) -> (Entity, MockClientHelper) {
     let (mut client, client_helper) = create_mock_client(info);
 
     // HACK: needed so client does not get disconnected on first update
-    client.set_instance(instance_ent);
-    let client_ent = app
-        .world
-        .spawn((client, Inventory::new(InventoryKind::Player)))
-        .id();
+    client.location.0 = instance_ent;
+    let client_ent = app.world.spawn(client).id();
 
     // Print warnings if there are ambiguities in the schedule.
     app.edit_schedule(CoreSchedule::Main, |schedule| {
