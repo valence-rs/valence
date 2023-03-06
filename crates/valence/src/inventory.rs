@@ -962,9 +962,9 @@ mod test {
         // Make the client click the slot and pick up the item.
         let state_id = app
             .world
-            .get::<Client>(client_ent)
+            .get::<PlayerInventoryState>(client_ent)
             .unwrap()
-            .inventory_state_id;
+            .state_id;
         client_helper.send(&valence_protocol::packet::c2s::play::ClickSlotC2s {
             window_id: 0,
             button: 0,
@@ -996,12 +996,12 @@ mod test {
             .get::<Inventory>(client_ent)
             .expect("could not find inventory for client");
         assert_eq!(inventory.slot(20), None);
-        let client = app
+        let cursor_item = app
             .world
-            .get::<Client>(client_ent)
+            .get::<CursorItem>(client_ent)
             .expect("could not find client");
         assert_eq!(
-            client.cursor_item,
+            cursor_item.0,
             Some(ItemStack::new(ItemKind::Diamond, 2, None))
         );
 
@@ -1093,12 +1093,9 @@ mod test {
         client_helper.clear_sent();
 
         // Make the client click the slot and pick up the item.
-        let state_id = app
-            .world
-            .get::<Client>(client_ent)
-            .unwrap()
-            .inventory_state_id;
-        let window_id = app.world.get::<Client>(client_ent).unwrap().window_id;
+        let inv_state = app.world.get::<PlayerInventoryState>(client_ent).unwrap();
+        let state_id = inv_state.state_id;
+        let window_id = inv_state.window_id;
         client_helper.send(&valence_protocol::packet::c2s::play::ClickSlotC2s {
             window_id,
             button: 0,
@@ -1130,12 +1127,12 @@ mod test {
             .get::<Inventory>(inventory_ent)
             .expect("could not find inventory");
         assert_eq!(inventory.slot(20), None);
-        let client = app
+        let cursor_item = app
             .world
-            .get::<Client>(client_ent)
+            .get::<CursorItem>(client_ent)
             .expect("could not find client");
         assert_eq!(
-            client.cursor_item,
+            cursor_item.0,
             Some(ItemStack::new(ItemKind::Diamond, 2, None))
         );
 
@@ -1212,11 +1209,11 @@ mod test {
     fn test_set_creative_mode_slot_handling() {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
-        let mut client = app
+        let mut game_mode = app
             .world
-            .get_mut::<Client>(client_ent)
+            .get_mut::<GameMode>(client_ent)
             .expect("could not find client");
-        client.set_game_mode(GameMode::Creative);
+        *game_mode.as_mut() = GameMode::Creative;
 
         // Process a tick to get past the "on join" logic.
         app.update();
@@ -1246,11 +1243,11 @@ mod test {
     fn test_ignore_set_creative_mode_slot_if_not_creative() {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
-        let mut client = app
+        let mut game_mode = app
             .world
-            .get_mut::<Client>(client_ent)
+            .get_mut::<GameMode>(client_ent)
             .expect("could not find client");
-        client.set_game_mode(GameMode::Survival);
+        *game_mode.as_mut() = GameMode::Survival;
 
         // Process a tick to get past the "on join" logic.
         app.update();
@@ -1302,11 +1299,11 @@ mod test {
         }
 
         // Make assertions
-        let client = app
+        let inv_state = app
             .world
-            .get::<Client>(client_ent)
+            .get::<PlayerInventoryState>(client_ent)
             .expect("could not find client");
-        assert_eq!(client.window_id, 3);
+        assert_eq!(inv_state.window_id, 3);
     }
 
     #[test]
@@ -1323,11 +1320,11 @@ mod test {
         app.update();
 
         // Make assertions
-        let client = app
+        let inv_state = app
             .world
-            .get::<Client>(client_ent)
+            .get::<PlayerInventoryState>(client_ent)
             .expect("could not find client");
-        assert_eq!(client.held_item_slot, 40);
+        assert_eq!(inv_state.held_item_slot, 40);
 
         Ok(())
     }
@@ -1420,11 +1417,11 @@ mod test {
             app.update();
 
             // Make assertions
-            let client = app
+            let inv_state = app
                 .world
-                .get::<Client>(client_ent)
+                .get::<PlayerInventoryState>(client_ent)
                 .expect("could not find client");
-            assert_eq!(client.held_item_slot(), 36);
+            assert_eq!(inv_state.held_item_slot, 36);
             let inventory = app
                 .world
                 .get::<Inventory>(client_ent)
@@ -1485,12 +1482,16 @@ mod test {
         fn should_drop_item_stack_click_container_outside() -> anyhow::Result<()> {
             let mut app = App::new();
             let (client_ent, mut client_helper) = scenario_single_client(&mut app);
-            let mut client = app
+            let mut cursor_item = app
                 .world
-                .get_mut::<Client>(client_ent)
+                .get_mut::<CursorItem>(client_ent)
                 .expect("could not find client");
-            client.cursor_item = Some(ItemStack::new(ItemKind::IronIngot, 32, None));
-            let state_id = client.inventory_state_id.0;
+            cursor_item.0 = Some(ItemStack::new(ItemKind::IronIngot, 32, None));
+            let inv_state = app
+                .world
+                .get_mut::<PlayerInventoryState>(client_ent)
+                .expect("could not find client");
+            let state_id = inv_state.state_id.0;
 
             // Process a tick to get past the "on join" logic.
             app.update();
@@ -1509,11 +1510,11 @@ mod test {
             app.update();
 
             // Make assertions
-            let client = app
+            let cursor_item = app
                 .world
-                .get::<Client>(client_ent)
+                .get::<CursorItem>(client_ent)
                 .expect("could not find client");
-            assert_eq!(client.cursor_item(), None);
+            assert_eq!(cursor_item.0, None);
             let events = app
                 .world
                 .get_resource::<Events<DropItemStack>>()
@@ -1534,11 +1535,11 @@ mod test {
         fn should_drop_item_click_container_with_dropkey_single() -> anyhow::Result<()> {
             let mut app = App::new();
             let (client_ent, mut client_helper) = scenario_single_client(&mut app);
-            let client = app
+            let inv_state = app
                 .world
-                .get_mut::<Client>(client_ent)
+                .get_mut::<PlayerInventoryState>(client_ent)
                 .expect("could not find client");
-            let state_id = client.inventory_state_id.0;
+            let state_id = inv_state.state_id.0;
             let mut inventory = app
                 .world
                 .get_mut::<Inventory>(client_ent)
@@ -1582,11 +1583,11 @@ mod test {
         fn should_drop_item_stack_click_container_with_dropkey() -> anyhow::Result<()> {
             let mut app = App::new();
             let (client_ent, mut client_helper) = scenario_single_client(&mut app);
-            let client = app
+            let inv_state = app
                 .world
-                .get_mut::<Client>(client_ent)
+                .get_mut::<PlayerInventoryState>(client_ent)
                 .expect("could not find client");
-            let state_id = client.inventory_state_id.0;
+            let state_id = inv_state.state_id.0;
             let mut inventory = app
                 .world
                 .get_mut::<Inventory>(client_ent)
