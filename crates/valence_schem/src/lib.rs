@@ -48,7 +48,7 @@ pub struct Schematic {
     pub offset: IVec3,
     blocks: Option<Box<[Block]>>,
     biomes: Option<Biomes>,
-    pub entities: Option<Box<[Entity]>>,
+    pub entities: Option<Vec<Entity>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -431,7 +431,7 @@ impl Schematic {
                             let Ok(id) = Ident::new(&id[..]) else {
                                 return Err(LoadSchematicError::InvalidBlockEntityId(id.clone()));
                             };
-                            let Some(kind) = BlockEntityKind::from_ident(id) else {
+                            let Some(kind) = BlockEntityKind::from_ident(id.as_str_ident()) else {
                                 return Err(LoadSchematicError::UnknownBlockEntity(id.to_string()));
                             };
 
@@ -465,10 +465,10 @@ impl Schematic {
                         let &Value::Int(i) = value else {
                                 return Err(LoadSchematicError::InvalidBiomePalette);
                             };
-                        let Ok(ident) = Ident::new(biome.clone()) else {
+                        let Ok(ident) = Ident::new(biome) else {
                                 return Err(LoadSchematicError::InvalidBiomeIdent(biome.clone()));
                             };
-                        Ok((i, ident))
+                        Ok((i, ident.to_string_ident()))
                     })
                     .collect();
                 let palette = palette?;
@@ -550,7 +550,7 @@ impl Schematic {
                             Entry::Occupied(entry) => *entry.get(),
                             Entry::Vacant(entry) => {
                                 let idx = palette.len();
-                                palette.push(biome.clone());
+                                palette.push(biome.to_string_ident());
                                 entry.insert(idx);
                                 idx
                             }
@@ -572,7 +572,7 @@ impl Schematic {
             _ => unreachable!(),
         };
 
-        let entities: Option<Box<[Entity]>> = match root.get("Entities") {
+        let entities = match root.get("Entities") {
             Some(Value::List(List::Compound(entities))) => {
                 let entities: Result<Vec<_>, _> = entities
                     .iter()
@@ -604,7 +604,7 @@ impl Schematic {
                         })
                     })
                     .collect();
-                Some(entities?.into_boxed_slice())
+                Some(entities?)
             }
             _ => None,
         };
@@ -1088,7 +1088,7 @@ mod test {
     fn schematic_load_save() {
         let schem1 = Schematic::load("../../assets/example_schem.schem").unwrap();
         const TEST_PATH: &str = "test.schem";
-        schem1.save(TEST_PATH, Compression::best()).unwrap();
+        schem1.save(TEST_PATH).unwrap();
         let schem2 = Schematic::load(TEST_PATH).unwrap();
         assert_eq!(schem1, schem2);
         fs::remove_file(TEST_PATH).unwrap();
