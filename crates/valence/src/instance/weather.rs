@@ -143,10 +143,11 @@ fn handle_weather_change_per_instance(
 
 fn handle_weather_for_joined_player(
     mut clients: Query<&mut Client, Added<Client>>,
-    instances: Query<&Instance>,
+    weathers: Query<&Weather, With<Instance>>
 ) {
     clients.par_iter_mut().for_each_mut(|mut client| {
-        if let Ok(weather) = instances.get_component::<Weather>(client.instance()) {
+        if let Ok(weather) = weathers.get_single() {
+            client.begin_raining();
             client.set_weather(weather);
         }
     })
