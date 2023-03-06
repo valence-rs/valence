@@ -116,7 +116,7 @@ pub(crate) fn check_mcentity_invariants(mut removed: RemovedComponents<McEntity>
 /// not common to every kind of entity, see [`Self::data`].
 #[derive(Component)]
 pub struct McEntity {
-    data: TrackedData,
+    pub(crate) data: TrackedData,
     protocol_id: i32,
     uuid: Uuid,
     /// The range of bytes in the partition cell containing this entity's update

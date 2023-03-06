@@ -132,6 +132,14 @@ impl Position {
     pub fn chunk_pos(&self) -> ChunkPos {
         ChunkPos::from_dvec3(self.0)
     }
+
+    pub fn get(&self) -> DVec3 {
+        self.0
+    }
+
+    pub fn set(&mut self, pos: impl Into<DVec3>) {
+        self.0 = pos.into();
+    }
 }
 
 #[derive(Component, Copy, Clone, PartialEq, Default, Debug)]

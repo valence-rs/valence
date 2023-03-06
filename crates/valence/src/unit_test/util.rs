@@ -1,29 +1,31 @@
 use std::sync::{Arc, Mutex};
 
-use bevy_app::{App, CoreSchedule};
-use bevy_ecs::prelude::Entity;
+use bevy_app::prelude::*;
+use bevy_ecs::query::WorldQuery;
 use bevy_ecs::schedule::{LogLevel, ScheduleBuildSettings};
+use bevy_ecs::prelude::*;
 use bytes::BytesMut;
 use valence_protocol::codec::{PacketDecoder, PacketEncoder};
 use valence_protocol::packet::S2cPlayPacket;
 use valence_protocol::Packet;
 
-use crate::client::{Client, ClientConnection};
+use crate::client::{Client, ClientConnection, ClientBundle};
 use crate::config::{ConnectionMode, ServerPlugin};
 use crate::dimension::DimensionId;
 use crate::inventory::{Inventory, InventoryKind};
 use crate::server::{NewClientInfo, Server};
 
-/// Creates a mock client that can be used for unit testing.
+/// Creates a mock client bundle that can be used for unit testing.
 ///
 /// Returns the client, and a helper to inject packets as if the client sent
 /// them and receive packets as if the client received them.
-pub fn create_mock_client(client_info: NewClientInfo) -> (Client, MockClientHelper) {
+pub fn create_mock_client(client_info: NewClientInfo) -> (ClientBundle, MockClientHelper) {
     let mock_connection = MockClientConnection::new();
     let enc = PacketEncoder::new();
     let dec = PacketDecoder::new();
-    let client = Client::new(client_info, Box::new(mock_connection.clone()), enc, dec);
-    (client, MockClientHelper::new(mock_connection))
+    let bundle = ClientBundle::new(client_info, Box::new(mock_connection.clone()), enc, dec);;
+
+    (bundle, MockClientHelper::new(mock_connection))
 }
 
 /// Creates a `NewClientInfo` with the given username and a random UUID.

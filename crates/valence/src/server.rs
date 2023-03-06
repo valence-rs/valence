@@ -21,7 +21,7 @@ use valence_protocol::types::Property;
 
 use crate::biome::{validate_biomes, Biome, BiomeId};
 use crate::client::event::{register_client_events, run_event_loop};
-use crate::client::{update_clients, Client, ClientBundle};
+use crate::client::{update_clients, ClientBundle};
 use crate::component::Despawned;
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerPlugin};
 use crate::dimension::{validate_dimensions, Dimension, DimensionId};
@@ -347,8 +347,7 @@ pub fn build_plugin(
             check_instance_invariants,
             update_player_list.before(update_instances_pre_client),
             update_instances_pre_client.after(init_mcentities),
-            update_clients.after(update_instances_pre_client),
-            update_instances_post_client.after(update_clients),
+            update_instances_post_client.after(update_instances_pre_client),
             deinit_despawned_mcentities.after(update_instances_post_client),
             despawn_marked_entities.after(deinit_despawned_mcentities),
             update_mcentities.after(despawn_marked_entities),
@@ -359,6 +358,12 @@ pub fn build_plugin(
         update_inventories()
             .in_base_set(CoreSet::PostUpdate)
             .before(init_mcentities),
+    )
+    .add_systems(
+        update_clients()
+            .in_base_set(CoreSet::PostUpdate)
+            .after(update_instances_pre_client)
+            .before(update_instances_post_client),
     )
     .add_system(increment_tick_counter.in_base_set(CoreSet::Last));
 
