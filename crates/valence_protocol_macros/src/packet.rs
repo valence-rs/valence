@@ -36,6 +36,7 @@ pub fn derive_packet(item: TokenStream) -> Result<TokenStream> {
     let (impl_generics, ty_generics, where_clause) =
         decode_split_for_impl(input.generics, lifetime.clone());
 
+    let name_str = input.ident.to_string();
     let name = input.ident;
 
     Ok(quote! {
@@ -48,6 +49,10 @@ pub fn derive_packet(item: TokenStream) -> Result<TokenStream> {
                 #packet_id
             }
 
+            fn packet_name(&self) -> &str {
+                #name_str
+            }
+
             fn encode_packet(&self, mut w: impl ::std::io::Write) -> ::valence_protocol::__private::Result<()> {
                 use ::valence_protocol::__private::{Encode, Context, VarInt};
 
@@ -55,16 +60,18 @@ pub fn derive_packet(item: TokenStream) -> Result<TokenStream> {
                     .encode(&mut w)
                     .context("failed to encode packet ID")?;
 
-                self.encode(w)
+                Encode::encode(self, w)
             }
 
             fn decode_packet(r: &mut &#lifetime [u8]) -> ::valence_protocol::__private::Result<Self> {
-                use ::valence_protocol::__private::{Decode, Context, VarInt, ensure};
+                use ::valence_protocol::__private::{Decode, Context, VarInt};
 
                 let id = VarInt::decode(r).context("failed to decode packet ID")?.0;
-                ensure!(id == #packet_id, "unexpected packet ID {} (expected {})", id, #packet_id);
+                ::valence_protocol::__private::ensure!(
+                    id == #packet_id, "unexpected packet ID {} (expected {})", id, #packet_id
+                );
 
-                Self::decode(r)
+                Decode::decode(r)
             }
         }
     })
