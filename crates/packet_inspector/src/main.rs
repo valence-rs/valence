@@ -1,3 +1,4 @@
+mod config;
 mod context;
 mod packet_widget;
 mod state;
@@ -10,6 +11,7 @@ use std::sync::{Arc, RwLock};
 
 use anyhow::bail;
 use clap::Parser;
+use config::ApplicationConfig;
 use context::{Context, Packet};
 use egui::{Align2, RichText};
 use regex::Regex;
@@ -284,6 +286,7 @@ async fn passthrough(mut read: OwnedReadHalf, mut write: OwnedWriteHalf) -> anyh
 }
 
 struct GuiApp {
+    config: ApplicationConfig,
     temp_server_addr: String,
     temp_client_addr: String,
     temp_max_connections: String,
@@ -314,7 +317,17 @@ impl GuiApp {
 
         let context = Arc::new(context);
 
+        let config = ApplicationConfig::load();
+
+        let temp_server_addr = config.server_addr().to_string();
+        let temp_client_addr = config.client_addr().to_string();
+        let temp_max_connections = match config.max_connections() {
+            Some(max_connections) => max_connections.to_string(),
+            None => String::new(),
+        };
+
         Self {
+            config,
             context,
             filter,
             selected_packets: BTreeMap::new(),
@@ -323,10 +336,9 @@ impl GuiApp {
             window_open: false,
             encryption_error_dialog_open: false,
 
-            temp_server_addr: "127.0.0.1:25565".to_string(), /* TODO: Save last used values in
-                                                              * config file or something */
-            temp_client_addr: "127.0.0.1:25566".to_string(),
-            temp_max_connections: "".to_string(),
+            temp_server_addr,
+            temp_client_addr,
+            temp_max_connections,
 
             server_addr_error: false,
             client_addr_error: false,
@@ -383,6 +395,16 @@ impl GuiApp {
 }
 
 impl eframe::App for GuiApp {
+    fn on_close_event(&mut self) -> bool {
+        match self.config.save() {
+            Ok(_) => {}
+            Err(e) => {
+                eprintln!("Failed to save config: {e}");
+            }
+        }
+        true
+    }
+
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if !*self.is_listening.read().expect("Poisoned is_listening") {
             self.window_open = true;
@@ -405,7 +427,8 @@ impl eframe::App for GuiApp {
                 .resizable(false)
                 .show(ctx, |ui| {
                     ui.label(
-                        "Encryption is enabled! Packet contents are inaccessible to the proxy. Disable online mode to fix this.",
+                        "Encryption is enabled! Packet contents are inaccessible to the proxy. \
+                         Disable online mode to fix this.",
                     );
                 });
 
@@ -497,6 +520,15 @@ impl eframe::App for GuiApp {
                     self.window_open = true;
                     return;
                 }
+
+                self.config.set_server_addr(server_addr.unwrap());
+                self.config.set_client_addr(client_addr.unwrap());
+                self.config
+                    .set_max_connections(if self.temp_max_connections.is_empty() {
+                        None
+                    } else {
+                        Some(self.temp_max_connections.parse::<usize>().unwrap())
+                    });
 
                 self.start_listening(
                     client_addr.unwrap(),
