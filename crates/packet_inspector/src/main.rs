@@ -373,29 +373,28 @@ impl FromStr for MetaPacket {
 
 impl Ord for MetaPacket {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        // this probably needs some prime magic to determine the order using both id and
-        // direction
-        let direction = match (&self.direction, &other.direction) {
-            (PacketDirection::ClientToServer, PacketDirection::ServerToClient) => {
-                std::cmp::Ordering::Less
-            }
-            (PacketDirection::ServerToClient, PacketDirection::ClientToServer) => {
-                std::cmp::Ordering::Greater
-            }
-            _ => std::cmp::Ordering::Equal,
-        };
+        // some prime magic to determine the order (which btreemap uses for uniqueness) using stage, id, and direction
 
         let stage: usize = self.stage.clone().into();
-        let other_stage: usize = other.stage.clone().into();
+        let stage = stage * 13337;
+        let direction: usize = match self.direction {
+            PacketDirection::ClientToServer => 1,
+            PacketDirection::ServerToClient => 2,
+        } * 15391;
+        let id = self.id as usize * 19609;
 
-        // if stage is the same, use id else use stage
-        if stage != other_stage {
-            stage.cmp(&other_stage)
-        } else if self.id == other.id {
-            direction
-        } else {
-            self.id.cmp(&other.id)
-        }
+        let other_stage: usize = other.stage.clone().into();
+        let other_stage = other_stage * 13337;
+        let other_direction: usize = match other.direction {
+            PacketDirection::ClientToServer => 1,
+            PacketDirection::ServerToClient => 2,
+        } * 15391;
+        let other_id = other.id as usize * 19609;
+
+        let own_value = stage + direction + id;
+        let other_value = other_stage + other_direction + other_id;
+
+        own_value.cmp(&other_value)
     }
 }
 
