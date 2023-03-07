@@ -218,7 +218,7 @@ async fn handle_connection(
                     c2s.rw_packet::<LoginKeyC2s>(Stage::LoginKeyC2s).await?;
 
                     eprintln!(
-                        "Encryption was enabled! Packet contents are inaccessible to the proxy. \
+                        "Encryption is enabled! Packet contents are inaccessible to the proxy. \
                          Disable online mode to fix this."
                     );
 
@@ -405,7 +405,7 @@ impl eframe::App for GuiApp {
                 .resizable(false)
                 .show(ctx, |ui| {
                     ui.label(
-                        "Encryption was enabled! Packet contents are inaccessible to the proxy. Disable online mode to fix this.",
+                        "Encryption is enabled! Packet contents are inaccessible to the proxy. Disable online mode to fix this.",
                     );
                 });
 
