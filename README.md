@@ -32,8 +32,8 @@ in Minecraft such as minigame servers.
 Valence aims to be the following:
 
 * **Complete**. Abstractions for the full breadth of the Minecraft protocol.
-* **Flexible**. Valence provides direct access to the lowest levels of Minecraft's protocol when necessary.
-* **Modular**. Pick and choose the features you actually need.
+* **Flexible**. Can easily extend Valence from within user code. Direct access to the Minecraft protocol is provided.
+* **Modular**. Pick and choose the components you need.
 * **Intuitive**. An API that is easy to use and difficult to misuse. Extensive documentation and examples are important.
 * **Efficient**. Optimal use of system resources with multiple CPU cores in mind. Valence uses very little memory and
   can
