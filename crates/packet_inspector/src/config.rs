@@ -1,5 +1,6 @@
+use std::collections::BTreeMap;
+use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::{collections::BTreeMap, net::SocketAddr};
 
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};

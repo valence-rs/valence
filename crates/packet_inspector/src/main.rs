@@ -294,7 +294,8 @@ pub struct MetaPacket {
     name: String,
 }
 
-// manually implement Serialize and Deserialize that use the ToString and FromStr implementaions for keys
+// manually implement Serialize and Deserialize that use the ToString and
+// FromStr implementaions for keys
 impl Serialize for MetaPacket {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
