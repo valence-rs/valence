@@ -16,8 +16,9 @@ pub struct PublicKeyData<'a> {
     pub signature: &'a [u8],
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
+#[derive(Copy, Clone, PartialEq, Eq, Default, Debug, Encode, Decode)]
 pub enum Hand {
+    #[default]
     Main,
     Off,
 }

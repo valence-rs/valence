@@ -261,9 +261,9 @@ pub trait Decode<'a>: Sized {
 /// type must implement [`Encode`], [`Decode`], and [`fmt::Debug`].
 ///
 /// ```
-/// use valence_protocol::{Encode, Packet};
+/// use valence_protocol::{Decode, Encode, Packet};
 ///
-/// #[derive(Encode, Packet, Debug)]
+/// #[derive(Encode, Decode, Packet, Debug)]
 /// #[packet_id = 42]
 /// struct MyStruct {
 ///     first: i32,
@@ -282,6 +282,11 @@ pub trait Packet<'a>: Sized + fmt::Debug {
     /// The packet returned by [`Self::packet_id`]. If the packet ID is not
     /// statically known, then a negative value is used instead.
     const PACKET_ID: i32 = -1;
+    /// Returns the ID of this packet.
+    fn packet_id(&self) -> i32;
+    /// Returns the name of this packet, typically without whitespace or
+    /// additional formatting.
+    fn packet_name(&self) -> &str;
     /// Like [`Encode::encode`], but a leading [`VarInt`] packet ID must be
     /// written first.
     ///
@@ -292,14 +297,14 @@ pub trait Packet<'a>: Sized + fmt::Debug {
     ///
     /// [`VarInt`]: var_int::VarInt
     fn decode_packet(r: &mut &'a [u8]) -> Result<Self>;
-    /// Returns the ID of this packet.
-    fn packet_id(&self) -> i32;
 }
 
 #[allow(dead_code)]
 #[cfg(test)]
-mod derive_tests {
+mod tests {
     use super::*;
+    use crate::packet::c2s::play::HandSwingC2s;
+    use crate::packet::C2sPlayPacket;
 
     #[derive(Encode, Decode, Packet, Debug)]
     #[packet_id = 1]
@@ -359,18 +364,39 @@ mod derive_tests {
     }
 
     #[allow(unconditional_recursion)]
-    fn has_impls<'a, T>()
+    fn assert_has_impls<'a, T>()
     where
         T: Encode + Decode<'a> + Packet<'a>,
     {
-        has_impls::<RegularStruct>();
-        has_impls::<UnitStruct>();
-        has_impls::<EmptyStruct>();
-        has_impls::<TupleStruct>();
-        has_impls::<StructWithGenerics>();
-        has_impls::<TupleStructWithGenerics>();
-        has_impls::<RegularEnum>();
-        has_impls::<EmptyEnum>();
-        has_impls::<EnumWithGenericsAndTags>();
+        assert_has_impls::<RegularStruct>();
+        assert_has_impls::<UnitStruct>();
+        assert_has_impls::<EmptyStruct>();
+        assert_has_impls::<TupleStruct>();
+        assert_has_impls::<StructWithGenerics>();
+        assert_has_impls::<TupleStructWithGenerics>();
+        assert_has_impls::<RegularEnum>();
+        assert_has_impls::<EmptyEnum>();
+        assert_has_impls::<EnumWithGenericsAndTags>();
+    }
+
+    #[test]
+    fn packet_name() {
+        assert_eq!(UnitStruct.packet_name(), "UnitStruct");
+        assert_eq!(RegularEnum::Empty.packet_name(), "RegularEnum");
+        assert_eq!(
+            StructWithGenerics {
+                foo: "blah",
+                bar: ()
+            }
+            .packet_name(),
+            "StructWithGenerics"
+        );
+        assert_eq!(
+            C2sPlayPacket::HandSwingC2s(HandSwingC2s {
+                hand: Default::default()
+            })
+            .packet_name(),
+            "HandSwingC2s"
+        );
     }
 }
