@@ -14,6 +14,9 @@ pub struct ApplicationConfig {
     max_connections: Option<usize>,
     filter: Option<String>,
     selected_packets: Option<BTreeMap<MetaPacket, bool>>,
+
+    #[serde(skip_serializing, skip_deserializing)]
+    must_save: bool,
 }
 
 impl Default for ApplicationConfig {
@@ -24,47 +27,25 @@ impl Default for ApplicationConfig {
             max_connections: None,
             filter: None,
             selected_packets: None,
+            must_save: false,
         }
     }
 }
 
 impl ApplicationConfig {
-    pub fn load() -> ApplicationConfig {
-        let config_dir = match get_or_create_project_dirs() {
-            Ok(dir) => dir,
-            Err(e) => {
-                eprintln!("Could not find config directory: {}", e);
-                return ApplicationConfig::default();
-            }
-        };
+    pub fn load() -> Result<ApplicationConfig, Box<dyn std::error::Error>> {
+        let config_dir = get_or_create_project_dirs()?;
 
         let config_file = config_dir.join("config.toml");
 
         if config_file.exists() {
-            let config = match std::fs::read_to_string(config_file) {
-                Ok(config) => config,
-                Err(e) => {
-                    eprintln!("Could not read config file: {}", e);
-                    return ApplicationConfig::default();
-                }
-            };
+            let config = std::fs::read_to_string(config_file)?;
 
-            match toml::from_str(&config) {
-                Ok(config) => config,
-                Err(e) => {
-                    eprintln!("Could not parse config file: {}", e);
-                    ApplicationConfig::default()
-                }
-            }
+            toml::from_str(&config).map_err(|e| e.into())
         } else {
             let config = toml::to_string(&ApplicationConfig::default()).unwrap();
-            match std::fs::write(config_file, config) {
-                Ok(_) => {}
-                Err(e) => {
-                    eprintln!("Could not write config file: {}", e);
-                }
-            }
-            ApplicationConfig::default()
+            std::fs::write(config_file, config)?;
+            Ok(ApplicationConfig::default())
         }
     }
 
@@ -89,26 +70,37 @@ impl ApplicationConfig {
     }
 
     pub fn set_server_addr(&mut self, addr: SocketAddr) {
+        self.must_save = true;
         self.server_addr = addr;
     }
 
     pub fn set_client_addr(&mut self, addr: SocketAddr) {
+        self.must_save = true;
         self.client_addr = addr;
     }
 
     pub fn set_max_connections(&mut self, max: Option<usize>) {
+        self.must_save = true;
         self.max_connections = max;
     }
 
     pub fn set_filter(&mut self, filter: Option<String>) {
+        self.must_save = true;
         self.filter = filter;
     }
 
     pub fn set_selected_packets(&mut self, packets: BTreeMap<MetaPacket, bool>) {
+        self.must_save = true;
         self.selected_packets = Some(packets);
     }
 
-    pub fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn save(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        if !self.must_save {
+            return Ok(());
+        }
+
+        self.must_save = false;
+
         let config_dir = match get_or_create_project_dirs() {
             Ok(dir) => dir,
             Err(e) => {

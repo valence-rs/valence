@@ -4,6 +4,7 @@ use std::sync::RwLock;
 
 use owo_colors::{OwoColorize, Style};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use valence_protocol::codec::PacketDecoder;
 use valence_protocol::packet::c2s::handshake::HandshakeC2s;
@@ -15,7 +16,7 @@ use valence_protocol::packet::{C2sPlayPacket, S2cLoginPacket, S2cPlayPacket};
 
 use crate::packet_widget::{systemtime_strftime, PacketDirection};
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum Stage {
     HandshakeC2s,
     QueryRequestC2s,
@@ -28,6 +29,45 @@ pub enum Stage {
     LoginSuccessS2c,
     C2sPlayPacket,
     S2cPlayPacket,
+}
+
+impl Into<usize> for Stage {
+    fn into(self) -> usize {
+        match self {
+            Stage::HandshakeC2s => 0,
+            Stage::QueryRequestC2s => 1,
+            Stage::QueryResponseS2c => 2,
+            Stage::QueryPingC2s => 3,
+            Stage::QueryPongS2c => 4,
+            Stage::LoginHelloC2s => 5,
+            Stage::S2cLoginPacket => 6,
+            Stage::LoginKeyC2s => 7,
+            Stage::LoginSuccessS2c => 8,
+            Stage::C2sPlayPacket => 9,
+            Stage::S2cPlayPacket => 10,
+        }
+    }
+}
+
+impl TryFrom<usize> for Stage {
+    type Error = anyhow::Error;
+
+    fn try_from(value: usize) -> anyhow::Result<Self> {
+        match value {
+            0 => Ok(Stage::HandshakeC2s),
+            1 => Ok(Stage::QueryRequestC2s),
+            2 => Ok(Stage::QueryResponseS2c),
+            3 => Ok(Stage::QueryPingC2s),
+            4 => Ok(Stage::QueryPongS2c),
+            5 => Ok(Stage::LoginHelloC2s),
+            6 => Ok(Stage::S2cLoginPacket),
+            7 => Ok(Stage::LoginKeyC2s),
+            8 => Ok(Stage::LoginSuccessS2c),
+            9 => Ok(Stage::C2sPlayPacket),
+            10 => Ok(Stage::S2cPlayPacket),
+            _ => Err(anyhow::anyhow!("Invalid stage")),
+        }
+    }
 }
 
 #[derive(Clone)]

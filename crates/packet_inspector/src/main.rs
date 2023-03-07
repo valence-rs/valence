@@ -290,6 +290,7 @@ async fn passthrough(mut read: OwnedReadHalf, mut write: OwnedWriteHalf) -> anyh
 #[derive(Clone)]
 pub struct MetaPacket {
     id: i32,
+    stage: Stage,
     direction: PacketDirection,
     name: String,
 }
@@ -315,9 +316,10 @@ impl<'de> Deserialize<'de> for MetaPacket {
     }
 }
 
-impl From<(i32, PacketDirection, String)> for MetaPacket {
-    fn from((id, direction, name): (i32, PacketDirection, String)) -> Self {
+impl From<(Stage, i32, PacketDirection, String)> for MetaPacket {
+    fn from((stage, id, direction, name): (Stage, i32, PacketDirection, String)) -> Self {
         Self {
+            stage,
             id,
             direction,
             name,
@@ -328,8 +330,11 @@ impl From<(i32, PacketDirection, String)> for MetaPacket {
 // to string and from string to be used in toml
 impl ToString for MetaPacket {
     fn to_string(&self) -> String {
+        let stage: usize = self.stage.clone().into();
+
         format!(
-            "{}:{}:{}",
+            "{}:{}:{}:{}",
+            stage.to_string(),
             self.id,
             match self.direction {
                 PacketDirection::ClientToServer => 0,
@@ -345,6 +350,10 @@ impl FromStr for MetaPacket {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut split = s.split(':');
+        let stage = match split.next().unwrap().parse::<usize>() {
+            Ok(stage) => Stage::try_from(stage)?,
+            Err(_) => bail!("invalid stage"),
+        };
         let id = split.next().unwrap().parse::<i32>()?;
         let direction = match split.next().unwrap().parse::<i32>()? {
             0 => PacketDirection::ClientToServer,
@@ -354,6 +363,7 @@ impl FromStr for MetaPacket {
         let name = split.next().unwrap().to_string();
 
         Ok(Self {
+            stage,
             id,
             direction,
             name,
@@ -363,7 +373,28 @@ impl FromStr for MetaPacket {
 
 impl Ord for MetaPacket {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.name.cmp(&other.name)
+        // this probably needs some prime magic to determine the order using both id and direction
+        let direction = match (&self.direction, &other.direction) {
+            (PacketDirection::ClientToServer, PacketDirection::ServerToClient) => {
+                std::cmp::Ordering::Less
+            }
+            (PacketDirection::ServerToClient, PacketDirection::ClientToServer) => {
+                std::cmp::Ordering::Greater
+            }
+            _ => std::cmp::Ordering::Equal,
+        };
+
+        let stage: usize = self.stage.clone().into();
+        let other_stage: usize = other.stage.clone().into();
+
+        // if stage is the same, use id else use stage
+        if stage != other_stage {
+            stage.cmp(&other_stage)
+        } else if self.id == other.id {
+            direction
+        } else {
+            self.id.cmp(&other.id)
+        }
     }
 }
 
@@ -398,6 +429,9 @@ struct GuiApp {
     is_listening: RwLock<bool>,
     window_open: bool,
     encryption_error_dialog_open: bool,
+
+    config_load_error: Option<String>,
+    config_load_error_window_open: bool,
 }
 
 impl GuiApp {
@@ -405,7 +439,16 @@ impl GuiApp {
         let ctx = cc.egui_ctx.clone();
 
         let context = Context::new(ContextMode::Gui(ctx));
-        let mut config = ApplicationConfig::load();
+
+        let mut config_load_error: Option<String> = None;
+
+        let mut config = match ApplicationConfig::load() {
+            Ok(config) => config,
+            Err(e) => {
+                config_load_error = Some(format!("Failed to load config:\n{}", e));
+                ApplicationConfig::default()
+            }
+        };
 
         let mut filter = filter;
 
@@ -453,6 +496,9 @@ impl GuiApp {
             server_addr_error: false,
             client_addr_error: false,
             max_connections_error: false,
+
+            config_load_error,
+            config_load_error_window_open: false,
         }
     }
 
@@ -556,6 +602,30 @@ impl eframe::App for GuiApp {
                     .has_encryption_enabled_error
                     .store(false, Ordering::Relaxed);
             }
+        }
+
+        if self.config_load_error.is_some() {
+            self.config_load_error_window_open = true;
+        }
+
+        if self.config_load_error_window_open {
+            if let Some(err) = &self.config_load_error {
+                egui::Window::new("Config Error")
+                    .anchor(Align2::CENTER_CENTER, [0.0, 0.0])
+                    .open(&mut self.config_load_error_window_open)
+                    .movable(false)
+                    .collapsible(false)
+                    .resizable(false)
+                    .show(ctx, |ui| {
+                        ui.label(err);
+                    });
+            }
+
+            if !self.config_load_error_window_open {
+                self.config_load_error = None;
+            }
+
+            return;
         }
 
         if self.window_open {
@@ -727,10 +797,8 @@ impl eframe::App for GuiApp {
                         let f: Vec<&mut Packet> = f
                             .iter_mut()
                             .filter(|p| {
-                                // what if packets exist (or will exist) with the same name but
-                                // different direction?
-
                                 let m_packet = MetaPacket {
+                                    stage: p.stage.clone(),
                                     id: p.packet_type,
                                     direction: p.direction.clone(),
                                     name: p.packet_name.clone(),
@@ -740,6 +808,17 @@ impl eframe::App for GuiApp {
                                     self.selected_packets.insert(m_packet.clone(), true);
                                     self.config
                                         .set_selected_packets(self.selected_packets.clone());
+                                } else {
+                                    // if it does exist, check if the names are the same, if not update the key
+                                    let (existing, value) =
+                                        self.selected_packets.get_key_value(&m_packet).unwrap();
+                                    if existing.name != m_packet.name {
+                                        let value = value.clone(); // keep the old value
+                                        self.selected_packets.remove(&m_packet);
+                                        self.selected_packets.insert(m_packet.clone(), value);
+                                        self.config
+                                            .set_selected_packets(self.selected_packets.clone());
+                                    }
                                 }
 
                                 if let Some(selected) = self.selected_packets.get(&m_packet) {
