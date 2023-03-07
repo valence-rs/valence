@@ -206,10 +206,15 @@ macro_rules! assert_packet_count {
         assert_eq!(
             count,
             $count,
-            "expected {} {} packets, got {}",
+            "expected {} {} packets, got {}\nPackets actually found:\n[\n\t{}\n]\n",
             $count,
             stringify!($packet),
-            count
+            count,
+            sent_packets
+                .iter()
+                .map(|p| format!("{:?}", p))
+                .collect::<Vec<_>>()
+                .join(",\n\t")
         );
     }};
 }
