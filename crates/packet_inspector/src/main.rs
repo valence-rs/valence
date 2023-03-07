@@ -334,7 +334,7 @@ impl ToString for MetaPacket {
 
         format!(
             "{}:{}:{}:{}",
-            stage.to_string(),
+            stage,
             self.id,
             match self.direction {
                 PacketDirection::ClientToServer => 0,
@@ -373,7 +373,8 @@ impl FromStr for MetaPacket {
 
 impl Ord for MetaPacket {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        // this probably needs some prime magic to determine the order using both id and direction
+        // this probably needs some prime magic to determine the order using both id and
+        // direction
         let direction = match (&self.direction, &other.direction) {
             (PacketDirection::ClientToServer, PacketDirection::ServerToClient) => {
                 std::cmp::Ordering::Less
@@ -809,11 +810,12 @@ impl eframe::App for GuiApp {
                                     self.config
                                         .set_selected_packets(self.selected_packets.clone());
                                 } else {
-                                    // if it does exist, check if the names are the same, if not update the key
+                                    // if it does exist, check if the names are the same, if not
+                                    // update the key
                                     let (existing, value) =
                                         self.selected_packets.get_key_value(&m_packet).unwrap();
                                     if existing.name != m_packet.name {
-                                        let value = value.clone(); // keep the old value
+                                        let value = *value; // keep the old value
                                         self.selected_packets.remove(&m_packet);
                                         self.selected_packets.insert(m_packet.clone(), value);
                                         self.config

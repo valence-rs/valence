@@ -31,9 +31,9 @@ pub enum Stage {
     S2cPlayPacket,
 }
 
-impl Into<usize> for Stage {
-    fn into(self) -> usize {
-        match self {
+impl From<Stage> for usize {
+    fn from(stage: Stage) -> Self {
+        match stage {
             Stage::HandshakeC2s => 0,
             Stage::QueryRequestC2s => 1,
             Stage::QueryResponseS2c => 2,
