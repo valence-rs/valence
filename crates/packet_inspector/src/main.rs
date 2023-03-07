@@ -219,7 +219,7 @@ async fn handle_connection(
 
                     eprintln!(
                         "Encryption was enabled! Packet contents are inaccessible to the proxy. \
-                         Set ConnectionMode to Offline to fix this."
+                         Disable online mode to fix this."
                     );
 
                     context
@@ -405,7 +405,7 @@ impl eframe::App for GuiApp {
                 .resizable(false)
                 .show(ctx, |ui| {
                     ui.label(
-                        "Encryption was enabled! Packet contents are inaccessible to the proxy. Set ConnectionMode to Offline to fix this.",
+                        "Encryption was enabled! Packet contents are inaccessible to the proxy. Disable online mode to fix this.",
                     );
                 });
 
