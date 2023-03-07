@@ -5,6 +5,7 @@ mod syntax_highlighting;
 
 use std::collections::BTreeMap;
 use std::net::SocketAddr;
+use std::sync::atomic::Ordering;
 use std::sync::{Arc, RwLock};
 
 use anyhow::bail;
@@ -218,8 +219,12 @@ async fn handle_connection(
 
                     eprintln!(
                         "Encryption was enabled! Packet contents are inaccessible to the proxy. \
-                         Disable online_mode to fix this."
+                         Set ConnectionMode to Offline to fix this."
                     );
+
+                    context
+                        .has_encryption_enabled_error
+                        .store(true, Ordering::Relaxed);
 
                     return tokio::select! {
                         c2s_res = passthrough(c2s.read, c2s.write) => c2s_res,
@@ -293,6 +298,7 @@ struct GuiApp {
     buffer: String,
     is_listening: RwLock<bool>,
     window_open: bool,
+    encryption_error_dialog_open: bool,
 }
 
 impl GuiApp {
@@ -315,6 +321,7 @@ impl GuiApp {
             buffer: String::new(),
             is_listening: RwLock::new(false),
             window_open: false,
+            encryption_error_dialog_open: false,
 
             temp_server_addr: "127.0.0.1:25565".to_string(), /* TODO: Save last used values in
                                                               * config file or something */
@@ -379,6 +386,35 @@ impl eframe::App for GuiApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if !*self.is_listening.read().expect("Poisoned is_listening") {
             self.window_open = true;
+        }
+
+        if self
+            .context
+            .has_encryption_enabled_error
+            .load(Ordering::Relaxed)
+        {
+            self.encryption_error_dialog_open = true;
+        }
+
+        if self.encryption_error_dialog_open {
+            egui::Window::new("Encryption Error")
+                .anchor(Align2::CENTER_CENTER, [0.0, 0.0])
+                .open(&mut self.encryption_error_dialog_open)
+                .movable(false)
+                .collapsible(false)
+                .resizable(false)
+                .show(ctx, |ui| {
+                    ui.label(
+                        "Encryption was enabled! Packet contents are inaccessible to the proxy. Set ConnectionMode to Offline to fix this.",
+                    );
+                });
+        }
+
+        // set this to false again to not keep the window open if the user closes the window
+        if !self.encryption_error_dialog_open {
+            self.context
+                .has_encryption_enabled_error
+                .store(false, Ordering::Relaxed);
         }
 
         if self.window_open {

@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::RwLock;
 
 use owo_colors::{OwoColorize, Style};
@@ -216,6 +216,7 @@ pub struct Context {
     pub selected_packet: RwLock<Option<usize>>,
     pub(crate) packets: RwLock<Vec<Packet>>,
     pub(crate) packet_count: RwLock<usize>,
+    pub(crate) has_encryption_enabled_error: AtomicBool,
     pub filter: RwLock<String>,
     c2s_style: Style,
     s2c_style: Style,
@@ -230,6 +231,8 @@ impl Context {
             packets: RwLock::new(Vec::new()),
             filter: RwLock::new("".into()),
             packet_count: RwLock::new(0),
+
+            has_encryption_enabled_error: AtomicBool::new(false),
 
             c2s_style: Style::new().green(),
             s2c_style: Style::new().purple(),
