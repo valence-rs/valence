@@ -43,21 +43,12 @@ pub struct Packet {
     pub(crate) created_at: OffsetDateTime,
 }
 
-impl From<&mut Packet> for String {
-    fn from(value: &mut Packet) -> Self {
-        if value.packet_data.len() > 1024 {
-            return "Packet too large".to_string();
-        }
-        value.get_packet_string()
-    }
-}
-
 impl Packet {
     pub(crate) fn selected(&mut self, value: bool) {
         self.selected = value;
     }
 
-    fn get_packet_string_no_format(&self) -> String {
+    pub fn get_packet_string(&self, formatted: bool) -> String {
         let mut dec = PacketDecoder::new();
         dec.set_compression(self.use_compression);
         dec.queue_slice(&self.packet_data);
@@ -69,7 +60,11 @@ impl Packet {
                     Ok(None) => return "HandshakeC2s".to_string(),
                     Err(err) => return format!("{:?}", err),
                 };
-                format!("{pkt:?}")
+                if formatted {
+                    format!("{pkt:#?}")
+                } else {
+                    format!("{pkt:?}")
+                }
             }
             Stage::QueryRequestC2s => {
                 let pkt = match dec.try_next_packet::<QueryRequestC2s>() {
@@ -77,7 +72,12 @@ impl Packet {
                     Ok(None) => return "QueryRequestC2s".to_string(),
                     Err(err) => return format!("{:?}", err),
                 };
-                format!("{pkt:?}")
+
+                if formatted {
+                    format!("{pkt:#?}")
+                } else {
+                    format!("{pkt:?}")
+                }
             }
             Stage::QueryResponseS2c => {
                 let pkt = match dec.try_next_packet::<QueryResponseS2c>() {
@@ -85,7 +85,12 @@ impl Packet {
                     Ok(None) => return "QueryResponseS2c".to_string(),
                     Err(err) => return format!("{:?}", err),
                 };
-                format!("{pkt:?}")
+
+                if formatted {
+                    format!("{pkt:#?}")
+                } else {
+                    format!("{pkt:?}")
+                }
             }
             Stage::QueryPingC2s => {
                 let pkt = match dec.try_next_packet::<QueryPingC2s>() {
@@ -93,7 +98,12 @@ impl Packet {
                     Ok(None) => return "QueryPingC2s".to_string(),
                     Err(err) => return format!("{:?}", err),
                 };
-                format!("{pkt:?}")
+
+                if formatted {
+                    format!("{pkt:#?}")
+                } else {
+                    format!("{pkt:?}")
+                }
             }
             Stage::QueryPongS2c => {
                 let pkt = match dec.try_next_packet::<QueryPongS2c>() {
@@ -101,7 +111,12 @@ impl Packet {
                     Ok(None) => return "QueryPongS2c".to_string(),
                     Err(err) => return format!("{:?}", err),
                 };
-                format!("{pkt:?}")
+
+                if formatted {
+                    format!("{pkt:#?}")
+                } else {
+                    format!("{pkt:?}")
+                }
             }
             Stage::LoginHelloC2s => {
                 let pkt = match dec.try_next_packet::<LoginHelloC2s>() {
@@ -109,7 +124,12 @@ impl Packet {
                     Ok(None) => return "LoginHelloC2s".to_string(),
                     Err(err) => return format!("{:?}", err),
                 };
-                format!("{pkt:?}")
+
+                if formatted {
+                    format!("{pkt:#?}")
+                } else {
+                    format!("{pkt:?}")
+                }
             }
             Stage::S2cLoginPacket => {
                 let pkt = match dec.try_next_packet::<S2cLoginPacket>() {
@@ -117,7 +137,12 @@ impl Packet {
                     Ok(None) => return "S2cLoginPacket".to_string(),
                     Err(err) => return format!("{:?}", err),
                 };
-                format!("{pkt:?}")
+
+                if formatted {
+                    format!("{pkt:#?}")
+                } else {
+                    format!("{pkt:?}")
+                }
             }
             Stage::LoginKeyC2s => {
                 let pkt = match dec.try_next_packet::<LoginKeyC2s>() {
@@ -125,7 +150,12 @@ impl Packet {
                     Ok(None) => return "LoginKeyC2s".to_string(),
                     Err(err) => return format!("{:?}", err),
                 };
-                format!("{pkt:?}")
+
+                if formatted {
+                    format!("{pkt:#?}")
+                } else {
+                    format!("{pkt:?}")
+                }
             }
             Stage::LoginSuccessS2c => {
                 let pkt = match dec.try_next_packet::<LoginSuccessS2c>() {
@@ -133,7 +163,12 @@ impl Packet {
                     Ok(None) => return "LoginSuccessS2c".to_string(),
                     Err(err) => return format!("{:?}", err),
                 };
-                format!("{pkt:?}")
+
+                if formatted {
+                    format!("{pkt:#?}")
+                } else {
+                    format!("{pkt:?}")
+                }
             }
             Stage::C2sPlayPacket => {
                 let pkt = match dec.try_next_packet::<C2sPlayPacket>() {
@@ -141,7 +176,12 @@ impl Packet {
                     Ok(None) => return "C2sPlayPacket".to_string(),
                     Err(err) => return format!("{:?}", err),
                 };
-                format!("{pkt:?}")
+
+                if formatted {
+                    format!("{pkt:#?}")
+                } else {
+                    format!("{pkt:?}")
+                }
             }
             Stage::S2cPlayPacket => {
                 let pkt = match dec.try_next_packet::<S2cPlayPacket>() {
@@ -149,104 +189,12 @@ impl Packet {
                     Ok(None) => return "S2cPlayPacket".to_string(),
                     Err(err) => return format!("{:?}", err),
                 };
-                format!("{pkt:?}")
-            }
-        }
-    }
 
-    fn get_packet_string(&self) -> String {
-        let mut dec = PacketDecoder::new();
-        dec.set_compression(self.use_compression);
-        dec.queue_slice(&self.packet_data);
-
-        match self.stage {
-            Stage::HandshakeC2s => {
-                let pkt = match dec.try_next_packet::<HandshakeC2s>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "HandshakeC2s".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-                format!("{pkt:#?}")
-            }
-            Stage::QueryRequestC2s => {
-                let pkt = match dec.try_next_packet::<QueryRequestC2s>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "QueryRequestC2s".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-                format!("{pkt:#?}")
-            }
-            Stage::QueryResponseS2c => {
-                let pkt = match dec.try_next_packet::<QueryResponseS2c>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "QueryResponseS2c".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-                format!("{pkt:#?}")
-            }
-            Stage::QueryPingC2s => {
-                let pkt = match dec.try_next_packet::<QueryPingC2s>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "QueryPingC2s".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-                format!("{pkt:#?}")
-            }
-            Stage::QueryPongS2c => {
-                let pkt = match dec.try_next_packet::<QueryPongS2c>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "QueryPongS2c".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-                format!("{pkt:#?}")
-            }
-            Stage::LoginHelloC2s => {
-                let pkt = match dec.try_next_packet::<LoginHelloC2s>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "LoginHelloC2s".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-                format!("{pkt:#?}")
-            }
-            Stage::S2cLoginPacket => {
-                let pkt = match dec.try_next_packet::<S2cLoginPacket>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "S2cLoginPacket".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-                format!("{pkt:#?}")
-            }
-            Stage::LoginKeyC2s => {
-                let pkt = match dec.try_next_packet::<LoginKeyC2s>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "LoginKeyC2s".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-                format!("{pkt:#?}")
-            }
-            Stage::LoginSuccessS2c => {
-                let pkt = match dec.try_next_packet::<LoginSuccessS2c>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "LoginSuccessS2c".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-                format!("{pkt:#?}")
-            }
-            Stage::C2sPlayPacket => {
-                let pkt = match dec.try_next_packet::<C2sPlayPacket>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "C2sPlayPacket".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-                format!("{pkt:#?}")
-            }
-            Stage::S2cPlayPacket => {
-                let pkt = match dec.try_next_packet::<S2cPlayPacket>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "S2cPlayPacket".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-                format!("{pkt:#?}")
+                if formatted {
+                    format!("{pkt:#?}")
+                } else {
+                    format!("{pkt:?}")
+                }
             }
         }
     }
@@ -321,17 +269,26 @@ impl Context {
                     PacketDirection::ServerToClient => "↓",
                 };
 
-                let style = match &packet.direction {
-                    PacketDirection::ClientToServer => self.c2s_style,
-                    PacketDirection::ServerToClient => self.s2c_style,
-                };
+                if atty::is(atty::Stream::Stdout) {
+                    let style = match &packet.direction {
+                        PacketDirection::ClientToServer => self.c2s_style,
+                        PacketDirection::ServerToClient => self.s2c_style,
+                    };
 
-                println!(
-                    "[{}] ({}) {}",
-                    systemtime_strftime(packet.created_at),
-                    arrow.style(style),
-                    packet.get_packet_string_no_format().style(style)
-                )
+                    println!(
+                        "[{}] ({}) {}",
+                        systemtime_strftime(packet.created_at),
+                        arrow.style(style),
+                        packet.get_packet_string(false).style(style)
+                    );
+                } else {
+                    println!(
+                        "[{}] ({}) {}",
+                        systemtime_strftime(packet.created_at),
+                        arrow,
+                        packet.get_packet_string(false)
+                    );
+                }
             }
         }
     }
@@ -351,9 +308,12 @@ impl Context {
             .read()
             .expect("Poisoned RwLock")
             .iter()
-            .filter(|packet| packet.packet_name != "ChunkDataAndUpdateLight") // temporarily blacklisting this packet because HUGE
             .map(|packet| {
-                format!("[{}] {}", systemtime_strftime(packet.created_at), packet.get_packet_string_no_format())
+                format!(
+                    "[{}] {}",
+                    systemtime_strftime(packet.created_at),
+                    packet.get_packet_string(false)
+                )
             })
             .collect::<Vec<String>>()
             .join("\n");

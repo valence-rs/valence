@@ -14,7 +14,6 @@ use crate::packet_widget::PacketDirection;
 pub struct State {
     pub direction: PacketDirection,
     pub context: Arc<Context>,
-    // cli: Arc<Cli>,
     pub enc: PacketEncoder,
     pub dec: PacketDecoder,
     pub read: OwnedReadHalf,
@@ -57,10 +56,7 @@ impl State {
 
         let time = match OffsetDateTime::now_local() {
             Ok(time) => time,
-            Err(_) => {
-                eprintln!("Unable to get local time, using UTC"); // this might get a bit spammy..
-                OffsetDateTime::now_utc()
-            }
+            Err(_) => OffsetDateTime::now_utc(),
         };
 
         self.context.add(Packet {
@@ -74,8 +70,6 @@ impl State {
             packet_type: pkt.packet_id(),
             packet_name: packet_name.to_string(),
         });
-
-        // println!("{}", self.buf);
 
         Ok(pkt)
     }

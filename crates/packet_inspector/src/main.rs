@@ -10,7 +10,7 @@ use std::sync::{Arc, RwLock};
 use anyhow::bail;
 use clap::Parser;
 use context::{Context, Packet};
-use egui::RichText;
+use egui::{Align2, RichText};
 use regex::Regex;
 use syntax_highlighting::code_view_ui;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -320,7 +320,7 @@ impl GuiApp {
 
             temp_server_addr: "127.0.0.1:25565".to_string(), /* TODO: Save last used values in
                                                               * config file or something */
-            temp_client_addr: "127.0.0.1:25560".to_string(),
+            temp_client_addr: "127.0.0.1:25566".to_string(),
             temp_max_connections: "".to_string(),
 
             server_addr_error: false,
@@ -385,6 +385,8 @@ impl eframe::App for GuiApp {
 
         if self.window_open {
             egui::Window::new("Setup")
+                .anchor(Align2::CENTER_CENTER, [0.0, 0.0])
+                .movable(false)
                 .collapsible(false)
                 .resizable(false)
                 .show(ctx, |ui| {
@@ -494,7 +496,6 @@ impl eframe::App for GuiApp {
             .min_width(150.0)
             .default_width(250.0)
             .show(ctx, |ui| {
-                // scroll container
                 ui.horizontal(|ui| {
                     ui.heading("Packets");
 
@@ -522,7 +523,6 @@ impl eframe::App for GuiApp {
                             match self.context.save(path) {
                                 Ok(_) => {}
                                 Err(err) => {
-                                    // some alert box?
                                     eprintln!("Failed to save: {}", err);
                                 }
                             }
@@ -544,7 +544,6 @@ impl eframe::App for GuiApp {
                                     self.selected_packets.insert(p.packet_name.clone(), true);
                                 }
 
-                                // filter selected_packets
                                 if let Some(selected) = self.selected_packets.get(&p.packet_name) {
                                     if !*selected {
                                         return false;
@@ -575,7 +574,7 @@ impl eframe::App for GuiApp {
                                 if let Some(idx) = *selected {
                                     if idx == packet.id {
                                         packet.selected(true);
-                                        self.buffer = packet.into();
+                                        self.buffer = packet.get_packet_string(true);
                                     } else {
                                         packet.selected(false);
                                     }

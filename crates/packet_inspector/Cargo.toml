@@ -30,3 +30,4 @@ syntect = { version = "5", optional = true, default-features = false, features =
 time = { version = "0.3.17", features = ["local-offset"] }
 rfd = "0.11"
 owo-colors = "3.5.0"
+atty = "0.2"
