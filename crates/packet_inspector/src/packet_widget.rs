@@ -16,7 +16,7 @@ pub fn systemtime_strftime(odt: OffsetDateTime) -> String {
     format!("{hour:0>2}:{minute:0>2}:{second:0>2}.{millis:0>4}")
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord)]
 pub enum PacketDirection {
     ClientToServer,
     ServerToClient,

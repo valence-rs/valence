@@ -285,6 +285,44 @@ async fn passthrough(mut read: OwnedReadHalf, mut write: OwnedWriteHalf) -> anyh
     }
 }
 
+#[derive(Clone)]
+struct MetaPacket {
+    id: i32,
+    direction: PacketDirection,
+    name: String,
+}
+
+impl From<(i32, PacketDirection, String)> for MetaPacket {
+    fn from((id, direction, name): (i32, PacketDirection, String)) -> Self {
+        Self {
+            id,
+            direction,
+            name,
+        }
+    }
+}
+
+// implement a compare to be used in BTreeMap
+impl Ord for MetaPacket {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.name.cmp(&other.name)
+    }
+}
+
+impl PartialOrd for MetaPacket {
+    fn partial_cmp(&self, other: &Self) -> std::option::Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for MetaPacket {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id && self.direction == other.direction
+    }
+}
+
+impl Eq for MetaPacket {}
+
 struct GuiApp {
     config: ApplicationConfig,
     temp_server_addr: String,
@@ -297,7 +335,7 @@ struct GuiApp {
 
     context: Arc<Context>,
     filter: String,
-    selected_packets: BTreeMap<String, bool>,
+    selected_packets: BTreeMap<MetaPacket, bool>,
     buffer: String,
     is_listening: RwLock<bool>,
     window_open: bool,
@@ -386,8 +424,9 @@ impl GuiApp {
     fn nested_menus(&mut self, ui: &mut egui::Ui) {
         self.selected_packets
             .iter_mut()
-            .for_each(|(name, selected)| {
-                if ui.checkbox(selected, name).changed() {
+            .for_each(|(m_packet, selected)| {
+                // todo: format, add arrows, etc
+                if ui.checkbox(selected, m_packet.name.clone()).changed() {
                     ui.ctx().request_repaint();
                 }
             });
@@ -606,11 +645,18 @@ impl eframe::App for GuiApp {
                             .filter(|p| {
                                 // what if packets exist (or will exist) with the same name but
                                 // different direction?
-                                if !self.selected_packets.contains_key(&p.packet_name) {
-                                    self.selected_packets.insert(p.packet_name.clone(), true);
+
+                                let m_packet = MetaPacket {
+                                    id: p.packet_type,
+                                    direction: p.direction.clone(),
+                                    name: p.packet_name.clone(),
+                                };
+
+                                if !self.selected_packets.contains_key(&m_packet) {
+                                    self.selected_packets.insert(m_packet.clone(), true);
                                 }
 
-                                if let Some(selected) = self.selected_packets.get(&p.packet_name) {
+                                if let Some(selected) = self.selected_packets.get(&m_packet) {
                                     if !*selected {
                                         return false;
                                     }
