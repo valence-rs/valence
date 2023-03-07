@@ -379,7 +379,7 @@ fn update_player_inventories(
             inv_state.slots_changed = 0;
         }
 
-        if cursor_item.is_changed() {
+        if cursor_item.is_changed() && !inv_state.client_updated_cursor_item {
             inv_state.state_id += 1;
 
             client.write_packet(&ScreenHandlerSlotUpdateS2c {
@@ -389,6 +389,8 @@ fn update_player_inventories(
                 slot_data: Cow::Borrowed(&cursor_item.0),
             });
         }
+
+        inv_state.client_updated_cursor_item = false;
     }
 }
 
@@ -479,6 +481,7 @@ fn update_open_inventories(
 
         open_inventory.client_changed = 0;
         inv_state.slots_changed = 0;
+        inv_state.client_updated_cursor_item = false;
         inventory.changed = 0;
     }
 }
@@ -600,7 +603,8 @@ fn handle_click_container(
 
             // TODO: do more validation on the click
 
-            cursor_item.0 = event.carried_item.clone();
+            cursor_item.set_if_neq(CursorItem(event.carried_item.clone()));
+            inv_state.client_updated_cursor_item = true;
 
             for slot in event.slot_changes.clone() {
                 if (0i16..client_inventory.slot_count() as i16).contains(&slot.idx) {

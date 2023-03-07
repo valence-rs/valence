@@ -136,6 +136,7 @@ impl ClientBundle {
                 window_id: 0,
                 state_id: Wrapping(0),
                 slots_changed: 0,
+                client_updated_cursor_item: false,
                 // First slot of the hotbar.
                 held_item_slot: 36,
             },
@@ -520,7 +521,7 @@ impl TeleportState {
     }
 }
 
-/// The item that the client thinks it's holding under the mouse
+/// The item stack that the client thinks it's holding under the mouse
 /// cursor.
 #[derive(Component, Clone, PartialEq, Default, Debug)]
 pub struct CursorItem(pub Option<ItemStack>);
@@ -535,6 +536,10 @@ pub struct PlayerInventoryState {
     /// Tracks what slots have been changed by this client in this tick, so we
     /// don't need to send updates for them.
     pub(crate) slots_changed: u64,
+    /// Whether the client has updated the cursor item in this tick. This is not
+    /// on the `CursorItem` component to make maintaining accurate change
+    /// detection for end users easier.
+    pub(crate) client_updated_cursor_item: bool,
     // TODO: make this a separate modifiable component.
     pub(crate) held_item_slot: u16,
 }
