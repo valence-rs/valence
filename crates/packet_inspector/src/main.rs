@@ -408,13 +408,13 @@ impl eframe::App for GuiApp {
                         "Encryption was enabled! Packet contents are inaccessible to the proxy. Set ConnectionMode to Offline to fix this.",
                     );
                 });
-        }
 
-        // set this to false again to not keep the window open if the user closes the window
-        if !self.encryption_error_dialog_open {
-            self.context
-                .has_encryption_enabled_error
-                .store(false, Ordering::Relaxed);
+            // it was true, now it's false, the user acknowledged the error, set it to false
+            if !self.encryption_error_dialog_open {
+                self.context
+                    .has_encryption_enabled_error
+                    .store(false, Ordering::Relaxed);
+            }
         }
 
         if self.window_open {
