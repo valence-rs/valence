@@ -6,6 +6,7 @@ mod syntax_highlighting;
 
 use std::collections::BTreeMap;
 use std::net::SocketAddr;
+use std::str::FromStr;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, RwLock};
 
@@ -15,6 +16,7 @@ use config::ApplicationConfig;
 use context::{Context, Packet};
 use egui::{Align2, RichText};
 use regex::Regex;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use syntax_highlighting::code_view_ui;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
@@ -286,10 +288,30 @@ async fn passthrough(mut read: OwnedReadHalf, mut write: OwnedWriteHalf) -> anyh
 }
 
 #[derive(Clone)]
-struct MetaPacket {
+pub struct MetaPacket {
     id: i32,
     direction: PacketDirection,
     name: String,
+}
+
+// manually implement Serialize and Deserialize that use the ToString and FromStr implementaions for keys
+impl Serialize for MetaPacket {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for MetaPacket {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        MetaPacket::from_str(&s).map_err(serde::de::Error::custom)
+    }
 }
 
 impl From<(i32, PacketDirection, String)> for MetaPacket {
@@ -302,7 +324,42 @@ impl From<(i32, PacketDirection, String)> for MetaPacket {
     }
 }
 
-// implement a compare to be used in BTreeMap
+// to string and from string to be used in toml
+impl ToString for MetaPacket {
+    fn to_string(&self) -> String {
+        format!(
+            "{}:{}:{}",
+            self.id,
+            match self.direction {
+                PacketDirection::ClientToServer => 0,
+                PacketDirection::ServerToClient => 1,
+            },
+            self.name
+        )
+    }
+}
+
+impl FromStr for MetaPacket {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut split = s.split(':');
+        let id = split.next().unwrap().parse::<i32>()?;
+        let direction = match split.next().unwrap().parse::<i32>()? {
+            0 => PacketDirection::ClientToServer,
+            1 => PacketDirection::ServerToClient,
+            _ => bail!("invalid direction"),
+        };
+        let name = split.next().unwrap().to_string();
+
+        Ok(Self {
+            id,
+            direction,
+            name,
+        })
+    }
+}
+
 impl Ord for MetaPacket {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.name.cmp(&other.name)
@@ -347,6 +404,17 @@ impl GuiApp {
         let ctx = cc.egui_ctx.clone();
 
         let context = Context::new(ContextMode::Gui(ctx));
+        let mut config = ApplicationConfig::load();
+
+        let mut filter = filter;
+
+        if filter.is_empty() {
+            if let Some(c_filter) = config.filter() {
+                filter = c_filter.to_string();
+            }
+        } else {
+            config.set_filter(Some(filter.clone()));
+        }
 
         {
             let mut f = context.filter.write().expect("Poisoned filter");
@@ -355,8 +423,6 @@ impl GuiApp {
 
         let context = Arc::new(context);
 
-        let config = ApplicationConfig::load();
-
         let temp_server_addr = config.server_addr().to_string();
         let temp_client_addr = config.client_addr().to_string();
         let temp_max_connections = match config.max_connections() {
@@ -364,11 +430,16 @@ impl GuiApp {
             None => String::new(),
         };
 
+        let selected_packets = match config.selected_packets().clone() {
+            Some(selected_packets) => selected_packets,
+            None => BTreeMap::new(),
+        };
+
         Self {
             config,
             context,
             filter,
-            selected_packets: BTreeMap::new(),
+            selected_packets,
             buffer: String::new(),
             is_listening: RwLock::new(false),
             window_open: false,
@@ -422,14 +493,21 @@ impl GuiApp {
     }
 
     fn nested_menus(&mut self, ui: &mut egui::Ui) {
+        let mut changed = false;
         self.selected_packets
             .iter_mut()
             .for_each(|(m_packet, selected)| {
                 // todo: format, add arrows, etc
                 if ui.checkbox(selected, m_packet.name.clone()).changed() {
+                    changed = true;
                     ui.ctx().request_repaint();
                 }
             });
+
+        if changed {
+            self.config
+                .set_selected_packets(self.selected_packets.clone());
+        }
     }
 }
 
@@ -584,6 +662,11 @@ impl eframe::App for GuiApp {
                 ui.label("Filter:");
                 if ui.text_edit_singleline(&mut self.filter).changed() {
                     self.context.set_filter(self.filter.clone());
+
+                    self.config.set_filter(match self.filter.is_empty() {
+                        true => None,
+                        false => Some(self.filter.clone()),
+                    });
                 }
                 ui.menu_button("Packets", |ui| {
                     ui.set_max_width(250.0);
@@ -654,6 +737,8 @@ impl eframe::App for GuiApp {
 
                                 if !self.selected_packets.contains_key(&m_packet) {
                                     self.selected_packets.insert(m_packet.clone(), true);
+                                    self.config
+                                        .set_selected_packets(self.selected_packets.clone());
                                 }
 
                                 if let Some(selected) = self.selected_packets.get(&m_packet) {

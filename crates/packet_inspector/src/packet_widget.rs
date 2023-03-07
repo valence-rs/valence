@@ -3,6 +3,7 @@ use egui::{
     Pos2, Rect, Response, Rgba, Rounding, Sense, Shape, Stroke, TextStyle, Ui, Vec2, Widget,
     WidgetText,
 };
+use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
 use crate::context::Packet;
@@ -16,7 +17,7 @@ pub fn systemtime_strftime(odt: OffsetDateTime) -> String {
     format!("{hour:0>2}:{minute:0>2}:{second:0>2}.{millis:0>4}")
 }
 
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Serialize, Deserialize)]
 pub enum PacketDirection {
     ClientToServer,
     ServerToClient,

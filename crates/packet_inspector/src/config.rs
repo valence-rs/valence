@@ -1,15 +1,18 @@
-use std::net::SocketAddr;
 use std::path::PathBuf;
+use std::{collections::BTreeMap, net::SocketAddr};
 
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
+
+use crate::MetaPacket;
 
 #[derive(Serialize, Deserialize)]
 pub struct ApplicationConfig {
     server_addr: SocketAddr,
     client_addr: SocketAddr,
     max_connections: Option<usize>,
-    // filter: Option<String>,
+    filter: Option<String>,
+    selected_packets: Option<BTreeMap<MetaPacket, bool>>,
     // packets: Option<Vec<String>>,
 }
 
@@ -19,6 +22,8 @@ impl Default for ApplicationConfig {
             server_addr: "127.0.0.1:25565".parse().unwrap(),
             client_addr: "127.0.0.1:25566".parse().unwrap(),
             max_connections: None,
+            filter: None,
+            selected_packets: None,
         }
     }
 }
@@ -75,6 +80,14 @@ impl ApplicationConfig {
         self.max_connections
     }
 
+    pub fn filter(&self) -> &Option<String> {
+        &self.filter
+    }
+
+    pub fn selected_packets(&self) -> &Option<BTreeMap<MetaPacket, bool>> {
+        &self.selected_packets
+    }
+
     pub fn set_server_addr(&mut self, addr: SocketAddr) {
         self.server_addr = addr;
     }
@@ -85,6 +98,14 @@ impl ApplicationConfig {
 
     pub fn set_max_connections(&mut self, max: Option<usize>) {
         self.max_connections = max;
+    }
+
+    pub fn set_filter(&mut self, filter: Option<String>) {
+        self.filter = filter;
+    }
+
+    pub fn set_selected_packets(&mut self, packets: BTreeMap<MetaPacket, bool>) {
+        self.selected_packets = Some(packets);
     }
 
     pub fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
