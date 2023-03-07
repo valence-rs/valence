@@ -1,4 +1,3 @@
-use std::fmt::Write;
 use std::io::ErrorKind;
 use std::sync::Arc;
 
@@ -18,7 +17,6 @@ pub struct State {
     pub dec: PacketDecoder,
     pub read: OwnedReadHalf,
     pub write: OwnedWriteHalf,
-    pub buf: String,
 }
 
 impl State {
@@ -40,15 +38,6 @@ impl State {
         let has_compression = self.dec.compression();
         let pkt: P = self.dec.try_next_packet()?.unwrap();
 
-        self.buf.clear();
-        write!(&mut self.buf, "{pkt:?}")?;
-
-        let packet_name = self
-            .buf
-            .split_once(|ch: char| !ch.is_ascii_alphanumeric())
-            .map(|(fst, _)| fst)
-            .unwrap_or(&self.buf);
-
         self.enc.append_packet(&pkt)?;
 
         let bytes = self.enc.take();
@@ -68,7 +57,7 @@ impl State {
             created_at: time,
             selected: false,
             packet_type: pkt.packet_id(),
-            packet_name: packet_name.to_string(),
+            packet_name: pkt.packet_name().to_string(),
         });
 
         Ok(pkt)

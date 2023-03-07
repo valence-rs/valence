@@ -182,7 +182,6 @@ async fn handle_connection(
         write: client_write,
         direction: PacketDirection::ServerToClient,
         context: context.clone(),
-        buf: String::new(),
     };
 
     let mut c2s = State {
@@ -192,7 +191,6 @@ async fn handle_connection(
         write: server_write,
         direction: PacketDirection::ClientToServer,
         context: context.clone(),
-        buf: String::new(),
     };
 
     let handshake: HandshakeC2s = c2s.rw_packet(Stage::HandshakeC2s).await?;
