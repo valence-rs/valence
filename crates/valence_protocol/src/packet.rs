@@ -155,7 +155,7 @@ macro_rules! packet_group {
                 }
 
                 fn packet_name(&self) -> &str {
-                    stringify!($packet_name)
+                    stringify!($packet)
                 }
 
                 #[allow(unused_imports)]
