@@ -13,7 +13,6 @@ pub struct ApplicationConfig {
     max_connections: Option<usize>,
     filter: Option<String>,
     selected_packets: Option<BTreeMap<MetaPacket, bool>>,
-    // packets: Option<Vec<String>>,
 }
 
 impl Default for ApplicationConfig {
