@@ -1,5 +1,5 @@
 use crate::ident::Ident;
-use crate::raw_bytes::RawBytes;
+use crate::raw::RawBytes;
 use crate::{Decode, Encode};
 
 #[derive(Copy, Clone, Debug, Encode, Decode)]
