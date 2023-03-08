@@ -1,5 +1,5 @@
 use crate::ident::Ident;
-use crate::raw_bytes::RawBytes;
+use crate::raw::RawBytes;
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 

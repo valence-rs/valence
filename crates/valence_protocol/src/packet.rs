@@ -41,6 +41,10 @@ macro_rules! packet_group {
                     $packet_id
                 }
 
+                fn packet_name(&self) -> &str {
+                    stringify!($packet)
+                }
+
                 #[allow(unused_imports)]
                 fn encode_packet(&self, mut w: impl std::io::Write) -> crate::Result<()> {
                     use ::valence_protocol::__private::{Encode, Context, VarInt};
@@ -69,6 +73,14 @@ macro_rules! packet_group {
                 match self {
                     $(
                         Self::$packet(_) => <$packet as crate::Packet>::PACKET_ID,
+                    )*
+                }
+            }
+
+            fn packet_name(&self) -> &str {
+                match self {
+                    $(
+                        Self::$packet(pkt) => pkt.packet_name(),
                     )*
                 }
             }
@@ -142,6 +154,10 @@ macro_rules! packet_group {
                     $packet_id
                 }
 
+                fn packet_name(&self) -> &str {
+                    stringify!($packet)
+                }
+
                 #[allow(unused_imports)]
                 fn encode_packet(&self, mut w: impl std::io::Write) -> crate::Result<()> {
                     use ::valence_protocol::__private::{Encode, Context, VarInt};
@@ -170,6 +186,14 @@ macro_rules! packet_group {
                 match self {
                     $(
                         Self::$packet(_) => <$packet as crate::Packet>::PACKET_ID,
+                    )*
+                }
+            }
+
+            fn packet_name(&self) -> &str {
+                match self {
+                    $(
+                        Self::$packet(pkt) => pkt.packet_name(),
                     )*
                 }
             }

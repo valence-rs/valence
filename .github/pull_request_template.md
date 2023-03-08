@@ -1,14 +1,13 @@
-<!-- Please make sure that your PR is aligned with the guidelines in CONTRIBUTING.md to the best of your ability. -->
-<!-- Good PRs have tests! Make sure you have sufficient test coverage. -->
-
 ## Description
 
-<!-- Describe the changes you've made. You may include any justification you want here. -->
+Describe the changes you've made. Link to any issues that this PR fixes or addresses.
 
 ## Test Plan
 
-<!-- Explain how you tested your changes, and include any code that you used to test this. -->
-<!-- If there is an example that is sufficient to use in place of a playground, replace the playground section with a note that indicates this.  -->
+Explain the steps necessary to test your changes. If you used a playground, include the code in the details below.
+
+Steps:
+1.
 
 <details>
 
@@ -19,11 +18,3 @@ PASTE YOUR PLAYGROUND CODE HERE
 ```
 
 </details>
-
-<!-- You need to include steps regardless of whether or not you are using a playground. -->
-Steps:
-1.
-
-#### Related
-
-<!-- Link to any issues that have context for this or that this PR fixes. -->
