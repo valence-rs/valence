@@ -50,11 +50,6 @@ struct Cli {
     /// there is no limit.
     #[clap(short, long)]
     max_connections: Option<usize>,
-
-    /// This does absolutely nothing. Added here to force a recompile on the action to compare times.
-    /// It will be removed again once the action is done.
-    #[clap(long)]
-    nogui: bool,
 }
 
 struct State {
