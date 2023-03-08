@@ -34,8 +34,10 @@ jobs:
           ~/.cargo/registry/cache/
           ~/.cargo/git/db/
           target/
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: ${{ runner.os }}-cargo-
+        key: ${{ runner.os }}-cargo-target-${{ hashFiles('**/Cargo.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-target-${{ hashFiles('**/Cargo.toml') }}
+          ${{ runner.os }}-cargo-target
     - name: Validate formatting
       run: cargo fmt --all -- --check
     - name: Validate documentation
