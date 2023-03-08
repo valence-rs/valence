@@ -58,7 +58,7 @@ fn init_clients(
     }
 }
 
-pub fn toggle_gamemode_on_sneak(
+fn toggle_gamemode_on_sneak(
     mut clients: Query<&mut GameMode>,
     mut events: EventReader<StartSneaking>,
 ) {
