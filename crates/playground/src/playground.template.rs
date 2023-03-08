@@ -34,15 +34,13 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<&mut Client, Added<Client>>,
+    mut clients: Query<(&mut Position, &mut Location, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
-    let instance = instances.get_single().unwrap();
-
-    for mut client in &mut clients {
-        client.set_position([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
-        client.set_instance(instance);
-        client.set_game_mode(GameMode::Survival);
+    for (mut pos, mut loc, mut game_mode) in &mut clients {
+        pos.0 = [0.5, SPAWN_Y as f64 + 1.0, 0.5].into();
+        loc.0 = instances.single();
+        *game_mode = GameMode::Survival;
     }
 }
 
