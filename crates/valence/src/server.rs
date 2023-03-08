@@ -300,7 +300,7 @@ pub fn build_plugin(
                 break
             };
 
-            world.spawn((client, Inventory::new(InventoryKind::Player)));
+            world.spawn(client);
         }
     };
 
