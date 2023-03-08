@@ -3,7 +3,7 @@ use valence::client::event::{
     default_event_handler, PlayerInteractBlock, StartDigging, StartSneaking, StopDestroyBlock,
 };
 use valence::prelude::*;
-use valence_protocol::types::Hand;
+use valence::protocol::types::Hand;
 
 const SPAWN_Y: i32 = 64;
 
