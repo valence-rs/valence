@@ -95,7 +95,7 @@ pub mod ident;
 mod impls;
 pub mod item;
 pub mod packet;
-pub mod raw_bytes;
+pub mod raw;
 pub mod sound;
 pub mod text;
 pub mod tracked_data;
