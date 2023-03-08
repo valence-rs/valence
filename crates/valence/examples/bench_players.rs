@@ -65,18 +65,25 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<(Entity, &mut Client), Added<Client>>,
+    mut clients: Query<
+        (
+            Entity,
+            &UniqueId,
+            &mut Position,
+            &mut Location,
+            &mut GameMode,
+        ),
+        Added<Client>,
+    >,
     instances: Query<Entity, With<Instance>>,
     mut commands: Commands,
 ) {
-    let instance = instances.single();
+    for (client_entity, unique_id, mut pos, mut loc, mut game_mode) in &mut clients {
+        pos.0 = [0.0, SPAWN_Y as f64 + 1.0, 0.0].into();
+        loc.0 = instances.single();
+        *game_mode = GameMode::Creative;
 
-    for (client_entity, mut client) in &mut clients {
-        client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
-        client.set_instance(instance);
-        client.set_game_mode(GameMode::Creative);
-
-        let player_entity = McEntity::with_uuid(EntityKind::Player, instance, client.uuid());
+        let player_entity = McEntity::with_uuid(EntityKind::Player, loc.0, unique_id.0);
 
         commands.entity(client_entity).insert(player_entity);
     }
