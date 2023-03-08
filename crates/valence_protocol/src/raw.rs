@@ -22,7 +22,7 @@ impl Encode for RawBytes<'_> {
 
 impl<'a> Decode<'a> for RawBytes<'a> {
     fn decode(r: &mut &'a [u8]) -> Result<Self> {
-        Ok(Self(mem::replace(r, &[])))
+        Ok(Self(mem::take(r)))
     }
 }
 
@@ -57,6 +57,6 @@ impl<'a> Packet<'a> for RawPacket<'a> {
     }
 
     fn decode_packet(r: &mut &'a [u8]) -> Result<Self> {
-        Ok(Self(mem::replace(r, &[])))
+        Ok(Self(mem::take(r)))
     }
 }
