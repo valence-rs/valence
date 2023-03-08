@@ -61,19 +61,19 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<&mut Client, Added<Client>>,
+    mut clients: Query<(&mut Position, &mut Yaw, &mut Location, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
-    for mut client in &mut clients {
-        client.set_position([1.5, FLOOR_Y as f64 + 1.0, 1.5]);
-        client.set_yaw(-90.0);
-        client.set_instance(instances.single());
-        client.set_game_mode(GameMode::Creative);
+    for (mut pos, mut yaw, mut loc, mut game_mode) in &mut clients {
+        pos.set([1.5, FLOOR_Y as f64 + 1.0, 1.5]);
+        yaw.0 = -90.0;
+        loc.0 = instances.single();
+        *game_mode = GameMode::Creative;
     }
 }
 
 fn event_handler(
-    clients: Query<&Client>,
+    clients: Query<(&Username, &Properties, &UniqueId)>,
     mut messages: EventReader<ChatMessage>,
     mut block_interacts: EventReader<PlayerInteractBlock>,
     mut instances: Query<&mut Instance>,
@@ -83,14 +83,14 @@ fn event_handler(
         client, message, ..
     } in messages.iter()
     {
-        let Ok(client) = clients.get(*client) else {
+        let Ok((username, _, _)) = clients.get(*client) else {
             continue
         };
 
         let mut sign = instance.block_mut(SIGN_POS).unwrap();
         let nbt = sign.nbt_mut().unwrap();
         nbt.insert("Text2", message.to_string().color(Color::DARK_GREEN));
-        nbt.insert("Text3", format!("~{}", client.username()).italic());
+        nbt.insert("Text3", format!("~{}", username).italic());
     }
 
     for PlayerInteractBlock {
@@ -101,19 +101,19 @@ fn event_handler(
     } in block_interacts.iter()
     {
         if *hand == Hand::Main && *position == SKULL_POS {
-            let Ok(client) = clients.get(*client) else {
+            let Ok((_, properties, uuid)) = clients.get(*client) else {
                 continue
             };
 
-            let Some(textures) = client.properties().iter().find(|prop| prop.name == "textures") else {
-                continue
+            let Some(textures) = properties.textures() else {
+                continue;
             };
 
             let mut skull = instance.block_mut(SKULL_POS).unwrap();
             let nbt = skull.nbt_mut().unwrap();
             *nbt = compound! {
                 "SkullOwner" => compound! {
-                    "Id" => client.uuid(),
+                    "Id" => uuid.0,
                     "Properties" => compound! {
                         "textures" => List::Compound(vec![compound! {
                             "Value" => textures.value.clone(),

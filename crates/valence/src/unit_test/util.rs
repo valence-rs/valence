@@ -10,6 +10,7 @@ use valence_protocol::packet::S2cPlayPacket;
 use valence_protocol::Packet;
 
 use crate::client::{Client, ClientBundle, ClientConnection};
+use crate::component::Location;
 use crate::config::{ConnectionMode, ServerPlugin};
 use crate::dimension::DimensionId;
 use crate::inventory::{Inventory, InventoryKind};
@@ -29,9 +30,9 @@ pub(crate) fn create_mock_client(client_info: NewClientInfo) -> (ClientBundle, M
 }
 
 /// Creates a `NewClientInfo` with the given username and a random UUID.
-pub fn gen_client_info(username: &str) -> NewClientInfo {
+pub fn gen_client_info(username: impl Into<String>) -> NewClientInfo {
     NewClientInfo {
-        username: username.to_owned(),
+        username: username.into(),
         uuid: uuid::Uuid::new_v4(),
         ip: std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
         properties: vec![],
@@ -169,12 +170,12 @@ pub fn scenario_single_client(app: &mut App) -> (Entity, MockClientHelper) {
     let server = app.world.resource::<Server>();
     let instance = server.new_instance(DimensionId::default());
     let instance_ent = app.world.spawn(instance).id();
-    let info = gen_client_info("test");
-    let (mut client, client_helper) = create_mock_client(info);
+    let (mut client, client_helper) = create_mock_client(gen_client_info("test"));
 
-    // HACK: needed so client does not get disconnected on first update
-    client.location.0 = instance_ent;
     let client_ent = app.world.spawn(client).id();
+
+    // Set initial location.
+    app.world.get_mut::<Location>(client_ent).unwrap().0 = instance_ent;
 
     // Print warnings if there are ambiguities in the schedule.
     app.edit_schedule(CoreSchedule::Main, |schedule| {

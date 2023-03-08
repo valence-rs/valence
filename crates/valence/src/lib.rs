@@ -53,7 +53,8 @@ pub mod prelude {
     pub use bevy_app::prelude::*;
     pub use bevy_ecs::prelude::*;
     pub use biome::{Biome, BiomeId};
-    pub use client::Client;
+    pub use client::*;
+    pub use component::*;
     pub use config::{
         AsyncCallbacks, ConnectionMode, PlayerSampleEntry, ServerListPing, ServerPlugin,
     };
@@ -69,7 +70,6 @@ pub mod prelude {
     pub use protocol::ident::Ident;
     pub use protocol::item::{ItemKind, ItemStack};
     pub use protocol::text::{Color, Text, TextFormat};
-    pub use protocol::types::GameMode;
     pub use server::{EventLoopSchedule, EventLoopSet, NewClientInfo, Server, SharedServer};
     pub use uuid::Uuid;
     pub use valence_nbt::Compound;

@@ -45,18 +45,21 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<&mut Client, Added<Client>>,
+    mut clients: Query<(&mut Client, &mut Position, &mut Location, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
-    for mut client in &mut clients {
-        client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
-        client.set_instance(instances.single());
-        client.set_game_mode(GameMode::Adventure);
+    for (mut client, pos, loc, game_mode) in &mut clients {
+        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
+        loc.0 = instances.single();
+        *game_mode = GameMode::Adventure;
         client.send_message("Welcome to Valence! Talk about something.".italic());
     }
 }
 
-fn handle_message_events(mut clients: Query<&mut Client>, mut messages: EventReader<ChatMessage>) {
+fn handle_message_events(
+    mut clients: Query<(&mut Client, &Username)>,
+    mut messages: EventReader<ChatMessage>,
+) {
     for message in messages.iter() {
         let Ok(client) = clients.get_component::<Client>(message.client) else {
             warn!("Unable to find client for message: {:?}", message);
@@ -65,10 +68,8 @@ fn handle_message_events(mut clients: Query<&mut Client>, mut messages: EventRea
 
         let message = message.message.to_string();
 
-        let formatted = format!("<{}>: ", client.username())
-            .bold()
-            .color(Color::YELLOW)
-            + message.into_text().not_bold().color(Color::WHITE);
+        let formatted = format!("<{}>: ", username).bold().color(Color::YELLOW)
+            + message.not_bold().color(Color::WHITE);
 
         // TODO: write message to instance buffer.
         for mut client in &mut clients {

@@ -722,7 +722,10 @@ pub(crate) fn run_event_loop(
     }
 }
 
-fn handle_one_packet(q: &mut EventLoopQueryItem, events: &mut ClientEvents) -> anyhow::Result<bool> {
+fn handle_one_packet(
+    q: &mut EventLoopQueryItem,
+    events: &mut ClientEvents,
+) -> anyhow::Result<bool> {
     let Some(pkt) = q.client.dec.try_next_packet::<C2sPlayPacket>()? else {
         // No packets to decode.
         return Ok(false);

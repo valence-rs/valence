@@ -41,15 +41,23 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<&mut Client, Added<Client>>,
+    mut clients: Query<
+        (
+            &mut Client,
+            &mut Position,
+            &mut HasRespawnScreen,
+            &mut Location,
+        ),
+        Added<Client>,
+    >,
     instances: Query<Entity, With<Instance>>,
 ) {
     let instance = instances.into_iter().next().unwrap();
 
-    for mut client in &mut clients {
-        client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
-        client.set_respawn_screen(true);
-        client.set_instance(instance);
+    for (mut client, mut pos, mut has_respawn_screen, mut loc) in &mut clients {
+        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
+        has_respawn_screen.0 = true;
+        loc.0 = instance;
         client.send_message(
             "Welcome to Valence! Press shift to die in the game (but not in real life).".italic(),
         );

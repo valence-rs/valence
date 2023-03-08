@@ -1,3 +1,5 @@
+use std::fmt;
+
 /// Contains shared components and world queries.
 use bevy_ecs::prelude::*;
 use bevy_ecs::query::WorldQuery;
@@ -29,6 +31,12 @@ pub struct UniqueId(pub Uuid);
 
 #[derive(Component, Clone, PartialEq, Eq, Debug)]
 pub struct Username(pub String);
+
+impl fmt::Display for Username {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 #[derive(Component, Clone, PartialEq, Eq, Debug)]
 pub struct Properties(pub Vec<Property>);
@@ -177,12 +185,12 @@ pub struct Pitch(pub f32);
 
 #[derive(WorldQuery, PartialEq, Debug)]
 #[world_query(mutable)]
-pub struct Direction {
+pub struct DirectionMut {
     pub yaw: &'static mut Yaw,
     pub pitch: &'static mut Pitch,
 }
 
-impl Direction {
+impl DirectionMutItem<'_> {
     pub fn vec(&self) -> Vec3 {
         from_yaw_and_pitch(self.yaw.0, self.pitch.0)
     }
@@ -211,7 +219,10 @@ impl Direction {
     }
 }
 
-impl DirectionReadOnly {
+pub use DirectionMutReadOnly as Direction;
+pub use DirectionMutReadOnlyItem as DirectionItem;
+
+impl DirectionItem<'_> {
     pub fn vec(&self) -> Vec3 {
         from_yaw_and_pitch(self.yaw.0, self.pitch.0)
     }

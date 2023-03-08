@@ -1,3 +1,5 @@
+use std::fmt;
+
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::default_event_handler;
 use valence::prelude::*;
@@ -55,13 +57,13 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<&mut Client, Added<Client>>,
+    mut clients: Query<(&mut Position, &mut Location, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
-    for mut client in &mut clients {
-        client.set_position([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
-        client.set_instance(instances.single());
-        client.set_game_mode(GameMode::Creative);
+    for (mut pos, mut loc, mut game_mode) in &mut clients {
+        pos.set([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
+        loc.0 = instances.single();
+        *game_mode = GameMode::Creative;
     }
 }
 
@@ -90,7 +92,7 @@ fn manage_particles(
     instance.set_action_bar(name.bold());
 }
 
-fn dbg_name(dbg: &impl std::fmt::Debug) -> String {
+fn dbg_name(dbg: &impl fmt::Debug) -> String {
     let string = format!("{dbg:?}");
 
     string

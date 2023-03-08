@@ -1,5 +1,4 @@
 use rand::Rng;
-use valence::client::despawn_disconnected_clients;
 use valence::client::event::default_event_handler;
 use valence::player_list::Entry;
 use valence::prelude::*;
@@ -49,14 +48,25 @@ fn setup(mut commands: Commands, server: Res<Server>, mut player_list: ResMut<Pl
 }
 
 fn init_clients(
-    mut clients: Query<&mut Client, Added<Client>>,
+    mut clients: Query<
+        (
+            &mut Client,
+            &mut Position,
+            &mut Location,
+            &mut GameMode,
+            &Username,
+            &Properties,
+            &UniqueId,
+        ),
+        Added<Client>,
+    >,
     instances: Query<Entity, With<Instance>>,
     mut player_list: ResMut<PlayerList>,
 ) {
-    for mut client in &mut clients {
-        client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
-        client.set_instance(instances.single());
-        client.set_game_mode(GameMode::Creative);
+    for (mut client, mut pos, mut loc, mut game_mode, username, props, uuid) in &mut clients {
+        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
+        loc.0 = instances.single();
+        *game_mode = GameMode::Creative;
 
         client.send_message(
             "Please open your player list (tab key)."
@@ -65,13 +75,13 @@ fn init_clients(
         );
 
         let entry = PlayerListEntry::new()
-            .with_username(client.username())
-            .with_properties(client.properties()) // For the player's skin and cape.
-            .with_game_mode(client.game_mode())
+            .with_username(&username.0)
+            .with_properties(props.0.clone()) // For the player's skin and cape.
+            .with_game_mode(*game_mode)
             .with_ping(0) // Use negative values to indicate missing.
             .with_display_name(Some("ඞ".color(Color::new(255, 87, 66))));
 
-        player_list.insert(client.uuid(), entry);
+        player_list.insert(uuid.0, entry);
     }
 }
 
@@ -108,12 +118,13 @@ fn update_player_list(mut player_list: ResMut<PlayerList>, server: Res<Server>) 
 }
 
 fn remove_disconnected_clients_from_player_list(
-    clients: Query<&mut Client>,
+    mut clients: RemovedComponents<Client>,
     mut player_list: ResMut<PlayerList>,
+    uuids: Query<&UniqueId>,
 ) {
-    for client in &clients {
-        if client.is_disconnected() {
-            player_list.remove(client.uuid());
+    for client in clients.iter() {
+        if let Ok(UniqueId(uuid)) = uuids.get(client) {
+            player_list.remove(*uuid);
         }
     }
 }

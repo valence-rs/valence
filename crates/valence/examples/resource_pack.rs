@@ -52,13 +52,13 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<&mut Client, Added<Client>>,
+    mut clients: Query<(&mut Client, &mut Position, &mut Location, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
-    for mut client in &mut clients {
-        client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
-        client.set_instance(instances.single());
-        client.set_game_mode(GameMode::Creative);
+    for (mut client, mut pos, mut loc, mut game_mode) in &mut clients {
+        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
+        loc.0 = instances.single();
+        *game_mode = GameMode::Creative;
 
         client.send_message("Hit the sheep to prompt for the resource pack.".italic());
     }

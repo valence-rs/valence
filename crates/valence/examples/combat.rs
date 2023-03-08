@@ -65,21 +65,21 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 
 fn init_clients(
     mut commands: Commands,
-    mut clients: Query<(Entity, &mut Client), Added<Client>>,
+    mut clients: Query<(Entity, &mut Position, &mut Location, &UniqueId), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
     let instance = instances.single();
 
-    for (entity, mut client) in &mut clients {
-        client.set_position([0.0, SPAWN_Y as f64, 0.0]);
-        client.set_instance(instance);
+    for (entity, mut pos, mut loc, uuid) in &mut clients {
+        pos.set([0.0, SPAWN_Y as f64, 0.0]);
+        loc.0 = instance;
 
         commands.entity(entity).insert((
             CombatState {
                 last_attacked_tick: 0,
                 has_bonus_knockback: false,
             },
-            McEntity::with_uuid(EntityKind::Player, instance, client.uuid()),
+            McEntity::with_uuid(EntityKind::Player, instance, uuid.0),
         ));
     }
 }

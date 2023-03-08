@@ -56,8 +56,8 @@ pub(crate) struct ClientBundle {
     uuid: UniqueId,
     ip: Ip,
     properties: Properties,
-    pub location: Location,
-    pub old_location: OldLocation,
+    location: Location,
+    old_location: OldLocation,
     position: Position,
     old_position: OldPosition,
     yaw: Yaw,
@@ -464,6 +464,38 @@ pub struct OldViewDistance(u8);
 impl OldViewDistance {
     pub fn get(&self) -> u8 {
         self.0
+    }
+}
+
+#[derive(WorldQuery)]
+#[derive(Copy, Clone, Debug)]
+pub struct View {
+    pub pos: &'static Position,
+    pub view_dist: &'static ViewDistance,
+}
+
+impl ViewItem<'_> {
+    pub fn get(&self) -> ChunkView {
+        ChunkView {
+            pos: self.pos.chunk_pos(),
+            dist: self.view_dist.0,
+        }
+    }
+}
+
+#[derive(WorldQuery)]
+#[derive(Copy, Clone, Debug)]
+pub struct OldView {
+    pub old_pos: &'static OldPosition,
+    pub old_view_dist: &'static OldViewDistance,
+}
+
+impl OldViewItem<'_> {
+    pub fn get(&self) -> ChunkView {
+        ChunkView {
+            pos: self.old_pos.chunk_pos(),
+            dist: self.old_view_dist.0,
+        }
     }
 }
 

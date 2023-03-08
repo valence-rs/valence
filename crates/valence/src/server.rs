@@ -22,7 +22,7 @@ use valence_protocol::types::Property;
 use crate::biome::{validate_biomes, Biome, BiomeId};
 use crate::client::event::{register_client_events, run_event_loop};
 use crate::client::{update_clients, ClientBundle};
-use crate::component::Despawned;
+use crate::component::{Despawned, OldLocation, OldPosition};
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerPlugin};
 use crate::dimension::{validate_dimensions, Dimension, DimensionId};
 use crate::entity::{
@@ -351,6 +351,8 @@ pub fn build_plugin(
             deinit_despawned_mcentities.after(update_instances_post_client),
             despawn_marked_entities.after(deinit_despawned_mcentities),
             update_mcentities.after(despawn_marked_entities),
+            OldPosition::update.after(despawn_marked_entities),
+            OldLocation::update.after(despawn_marked_entities),
         )
             .in_base_set(CoreSet::PostUpdate),
     )

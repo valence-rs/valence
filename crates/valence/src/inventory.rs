@@ -306,16 +306,16 @@ impl OpenInventory {
 pub(crate) fn update_inventories() -> SystemConfigs {
     (
         handle_set_held_item,
-        update_open_inventories,
-        handle_close_container,
-        update_client_on_close_inventory.after(update_open_inventories),
-        update_player_inventories,
         handle_click_container
             .before(update_open_inventories)
             .before(update_player_inventories),
         handle_set_slot_creative
             .before(update_open_inventories)
             .before(update_player_inventories),
+        update_open_inventories,
+        handle_close_container,
+        update_client_on_close_inventory.after(update_open_inventories),
+        update_player_inventories,
     )
         .into_configs()
 }
