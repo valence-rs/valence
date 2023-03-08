@@ -4,16 +4,14 @@ labels: [enhancement]
 body:
   - type: textarea
     attributes:
-      label: Is your feature request related to a problem? Please describe.
-      description: A clear and concise description of what the problem is.
-      placeholder: I'm always frustrated when...
+      label: Describe the problem related to your feature request.
+      description: A clear description of what the problem is.
     validations:
       required: true
   - type: textarea
     attributes:
-      label: Describe the solution you'd like
-      description: A clear and concise description of what you want to happen.
-      placeholder: I would like to be able to...
+      label: Describe the solution you would like.
+      description: The solution you propose for the problem presented.
     validations:
       required: true
   - type: textarea
