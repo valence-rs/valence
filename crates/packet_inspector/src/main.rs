@@ -1,5 +1,6 @@
 mod config;
 mod context;
+mod hex_viewer;
 mod packet_widget;
 mod state;
 mod syntax_highlighting;
@@ -15,6 +16,7 @@ use clap::Parser;
 use config::ApplicationConfig;
 use context::{Context, Packet};
 use egui::{Align2, RichText};
+use hex_viewer::hex_view_ui;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use syntax_highlighting::code_view_ui;
@@ -373,7 +375,8 @@ impl FromStr for MetaPacket {
 
 impl Ord for MetaPacket {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        // some prime magic to determine the order (which btreemap uses for uniqueness) using stage, id, and direction
+        // some prime magic to determine the order (which btreemap uses for uniqueness)
+        // using stage, id, and direction
 
         let stage: usize = self.stage.clone().into();
         let stage = stage * 13337;
@@ -432,6 +435,9 @@ struct GuiApp {
 
     config_load_error: Option<String>,
     config_load_error_window_open: bool,
+
+    raw_packet: Vec<u8>,
+    view_hex: bool,
 }
 
 impl GuiApp {
@@ -499,6 +505,9 @@ impl GuiApp {
 
             config_load_error,
             config_load_error_window_open: false,
+
+            raw_packet: Vec::new(),
+            view_hex: false,
         }
     }
 
@@ -772,6 +781,7 @@ impl eframe::App for GuiApp {
                     if ui.button("Clear").clicked() {
                         self.context.clear();
                         self.buffer = String::new();
+                        self.raw_packet = vec![];
                     }
 
                     if ui.button("Export").clicked() {
@@ -853,6 +863,7 @@ impl eframe::App for GuiApp {
                                     if idx == packet.id {
                                         packet.selected(true);
                                         self.buffer = packet.get_packet_string(true);
+                                        self.raw_packet = packet.get_raw_packet();
                                     } else {
                                         packet.selected(false);
                                     }
@@ -868,9 +879,19 @@ impl eframe::App for GuiApp {
                     });
             });
         egui::CentralPanel::default().show(ctx, |ui| {
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                code_view_ui(ui, &self.buffer);
+            ui.horizontal(|ui| {
+                ui.checkbox(&mut self.view_hex, "Hex View");
             });
+
+            egui::ScrollArea::both()
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    if self.view_hex {
+                        hex_view_ui(ui, &self.raw_packet);
+                    } else {
+                        code_view_ui(ui, &self.buffer);
+                    }
+                });
         });
     }
 }

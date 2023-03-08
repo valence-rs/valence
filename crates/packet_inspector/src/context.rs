@@ -13,6 +13,7 @@ use valence_protocol::packet::c2s::status::{QueryPingC2s, QueryRequestC2s};
 use valence_protocol::packet::s2c::login::LoginSuccessS2c;
 use valence_protocol::packet::s2c::status::{QueryPongS2c, QueryResponseS2c};
 use valence_protocol::packet::{C2sPlayPacket, S2cLoginPacket, S2cPlayPacket};
+use valence_protocol::raw::RawPacket;
 
 use crate::packet_widget::{systemtime_strftime, PacketDirection};
 
@@ -86,6 +87,23 @@ pub struct Packet {
 impl Packet {
     pub(crate) fn selected(&mut self, value: bool) {
         self.selected = value;
+    }
+
+    pub fn get_raw_packet(&self) -> Vec<u8> {
+        let mut dec = PacketDecoder::new();
+        dec.set_compression(self.use_compression);
+        dec.queue_slice(&self.packet_data);
+
+        let pkt = match dec.try_next_packet::<RawPacket>() {
+            Ok(Some(pkt)) => pkt,
+            Ok(None) => return vec![],
+            Err(e) => {
+                eprintln!("Error decoding packet: {e}");
+                return vec![];
+            }
+        };
+
+        pkt.0.to_vec()
     }
 
     pub fn get_packet_string(&self, formatted: bool) -> String {
