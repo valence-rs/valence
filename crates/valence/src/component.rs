@@ -238,3 +238,6 @@ impl DirectionItem<'_> {
 
 #[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct OnGround(pub bool);
+
+#[derive(Component, Default, Debug)]
+pub struct ScratchBuffer(pub Vec<u8>);

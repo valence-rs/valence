@@ -41,6 +41,7 @@ use crate::entity::{velocity_to_packet_units, EntityStatus, McEntity, TrackedDat
 use crate::instance::Instance;
 use crate::inventory::{Inventory, InventoryKind};
 use crate::packet::WritePacket;
+use crate::prelude::ScratchBuffer;
 use crate::server::{NewClientInfo, Server};
 use crate::view::{ChunkPos, ChunkView};
 
@@ -51,6 +52,7 @@ pub mod event;
 #[derive(Bundle)]
 pub(crate) struct ClientBundle {
     client: Client,
+    scratch: ScratchBuffer,
     entity_remove_buffer: EntityRemoveBuffer,
     username: Username,
     uuid: UniqueId,
@@ -93,12 +95,8 @@ impl ClientBundle {
         dec: PacketDecoder,
     ) -> Self {
         Self {
-            client: Client {
-                conn,
-                enc,
-                dec,
-                scratch: Vec::new(),
-            },
+            client: Client { conn, enc, dec },
+            scratch: ScratchBuffer::default(),
             entity_remove_buffer: EntityRemoveBuffer(vec![]),
             username: Username(info.username),
             uuid: UniqueId(info.uuid),
@@ -159,9 +157,6 @@ pub struct Client {
     conn: Box<dyn ClientConnection>,
     enc: PacketEncoder,
     dec: PacketDecoder,
-    /// Scratch buffer.
-    // TODO: move this to separate component.
-    scratch: Vec<u8>,
 }
 
 pub(crate) trait ClientConnection: Send + Sync + 'static {
@@ -472,8 +467,7 @@ impl OldViewDistance {
     }
 }
 
-#[derive(WorldQuery)]
-#[derive(Copy, Clone, Debug)]
+#[derive(WorldQuery, Copy, Clone, Debug)]
 pub struct View {
     pub pos: &'static Position,
     pub view_dist: &'static ViewDistance,
@@ -488,8 +482,7 @@ impl ViewItem<'_> {
     }
 }
 
-#[derive(WorldQuery)]
-#[derive(Copy, Clone, Debug)]
+#[derive(WorldQuery, Copy, Clone, Debug)]
 pub struct OldView {
     pub old_pos: &'static OldPosition,
     pub old_view_dist: &'static OldViewDistance,
@@ -766,6 +759,7 @@ fn update_chunk_load_dist(
 fn read_data_in_view(
     mut clients: Query<(
         &mut Client,
+        &mut ScratchBuffer,
         &mut EntityRemoveBuffer,
         &OldLocation,
         &OldPosition,
@@ -775,13 +769,10 @@ fn read_data_in_view(
     entities: Query<&McEntity>,
 ) {
     clients.par_iter_mut().for_each_mut(
-        |(client, mut remove_buf, old_loc, old_pos, old_view_dist)| {
+        |(mut client, mut scratch, mut remove_buf, old_loc, old_pos, old_view_dist)| {
             let Ok(instance) = instances.get(old_loc.get()) else {
                 return;
             };
-
-            // TODO: remove this and move scratch buffer out of `Client`.
-            let client = client.into_inner();
 
             // Send instance-wide packet data.
             client.write_packet_bytes(&instance.packet_buf);
@@ -818,7 +809,7 @@ fn read_data_in_view(
                                 entity.write_init_packets(
                                     &mut client.enc,
                                     entity.old_position(),
-                                    &mut client.scratch,
+                                    &mut scratch.0,
                                 );
                             }
                         }
@@ -851,6 +842,7 @@ fn update_view(
     mut clients: Query<
         (
             &mut Client,
+            &mut ScratchBuffer,
             &mut EntityRemoveBuffer,
             &Location,
             &OldLocation,
@@ -865,12 +857,20 @@ fn update_view(
     entities: Query<&McEntity>,
 ) {
     clients.par_iter_mut().for_each_mut(
-        |(client, mut remove_buf, loc, old_loc, pos, old_pos, view_dist, old_view_dist)| {
+        |(
+            mut client,
+            mut scratch,
+            mut remove_buf,
+            loc,
+            old_loc,
+            pos,
+            old_pos,
+            view_dist,
+            old_view_dist,
+        )| {
             // TODO: cache chunk pos?
             let view = ChunkView::new(ChunkPos::from_dvec3(pos.0), view_dist.0);
             let old_view = ChunkView::new(ChunkPos::from_dvec3(old_pos.get()), old_view_dist.0);
-
-            let client = client.into_inner();
 
             // Make sure the center chunk is set before loading chunks! Otherwise the client
             // may ignore the chunk.
@@ -918,7 +918,7 @@ fn update_view(
                                     &instance.info,
                                     pos,
                                     &mut client.enc,
-                                    &mut client.scratch,
+                                    &mut scratch.0,
                                 );
 
                                 chunk.mark_viewed();
@@ -930,7 +930,7 @@ fn update_view(
                                     entity.write_init_packets(
                                         &mut client.enc,
                                         entity.position(),
-                                        &mut client.scratch,
+                                        &mut scratch.0,
                                     );
                                 }
                             }
@@ -973,7 +973,7 @@ fn update_view(
                                     &instance.info,
                                     pos,
                                     &mut client.enc,
-                                    &mut client.scratch,
+                                    &mut scratch.0,
                                 );
 
                                 chunk.mark_viewed();
@@ -985,7 +985,7 @@ fn update_view(
                                     entity.write_init_packets(
                                         &mut client.enc,
                                         entity.position(),
-                                        &mut client.scratch,
+                                        &mut scratch.0,
                                     );
                                 }
                             }
@@ -1038,8 +1038,6 @@ fn teleport(
     >,
 ) {
     for (mut client, mut state, pos, yaw, pitch) in &mut clients {
-        // TODO: skip if client is added?
-
         let flags = PlayerPositionLookFlags::new()
             .with_x(!pos.is_changed())
             .with_y(!pos.is_changed())
@@ -1088,21 +1086,19 @@ fn flush_packets(
     }
 }
 
-fn update_tracked_data(mut clients: Query<(&mut Client, &McEntity)>) {
+fn update_tracked_data(mut clients: Query<(&mut Client, &McEntity)>, mut scratch: Local<Vec<u8>>) {
     for (mut client, entity) in &mut clients {
         if let TrackedData::Player(player) = &entity.data {
-            client.scratch.clear();
+            scratch.clear();
             // TODO: should some fields be ignored?
-            player.updated_tracked_data(&mut client.scratch);
+            player.updated_tracked_data(&mut scratch);
 
-            if !client.scratch.is_empty() {
-                client.scratch.push(0xff);
-
-                let client = client.into_inner();
+            if !scratch.is_empty() {
+                scratch.push(0xff);
 
                 client.enc.write_packet(&EntityTrackerUpdateS2c {
                     entity_id: VarInt(0),
-                    metadata: client.scratch.as_slice().into(),
+                    metadata: scratch.as_slice().into(),
                 })
             }
         }
