@@ -17,7 +17,7 @@ use valence_protocol::raw::RawPacket;
 
 use crate::packet_widget::{systemtime_strftime, PacketDirection};
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Stage {
     HandshakeC2s,
     QueryRequestC2s,

@@ -97,12 +97,12 @@ async fn start_cli(cli: Arc<Cli>) -> Result<(), Box<dyn std::error::Error>> {
 
     let client_addr = match cli.client_addr {
         Some(addr) => addr,
-        None => panic!("client_addr must be set"),
+        None => return Err("Missing Client Address".into()),
     };
 
     let server_addr = match cli.server_addr {
         Some(addr) => addr,
-        None => panic!("server_addr must be set"),
+        None => return Err("Missing Server Address".into()),
     };
 
     eprintln!("Waiting for connections on {}", client_addr);
@@ -375,29 +375,26 @@ impl FromStr for MetaPacket {
 
 impl Ord for MetaPacket {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        // some prime magic to determine the order (which btreemap uses for uniqueness)
-        // using stage, id, and direction
+        #[derive(PartialEq, Eq, PartialOrd, Ord)]
+        struct OrdMetaPacket {
+            stage: Stage,
+            id: i32,
+            direction: PacketDirection,
+        }
 
-        let stage: usize = self.stage.clone().into();
-        let stage = stage * 13337;
-        let direction: usize = match self.direction {
-            PacketDirection::ClientToServer => 1,
-            PacketDirection::ServerToClient => 2,
-        } * 15391;
-        let id = self.id as usize * 19609;
+        let left = OrdMetaPacket {
+            stage: self.stage.clone(),
+            id: self.id,
+            direction: self.direction.clone(),
+        };
 
-        let other_stage: usize = other.stage.clone().into();
-        let other_stage = other_stage * 13337;
-        let other_direction: usize = match other.direction {
-            PacketDirection::ClientToServer => 1,
-            PacketDirection::ServerToClient => 2,
-        } * 15391;
-        let other_id = other.id as usize * 19609;
+        let right = OrdMetaPacket {
+            stage: other.stage.clone(),
+            id: other.id,
+            direction: other.direction.clone(),
+        };
 
-        let own_value = stage + direction + id;
-        let other_value = other_stage + other_direction + other_id;
-
-        own_value.cmp(&other_value)
+        left.cmp(&right)
     }
 }
 
@@ -409,7 +406,7 @@ impl PartialOrd for MetaPacket {
 
 impl PartialEq for MetaPacket {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id && self.direction == other.direction
+        self.stage == other.stage && self.id == other.id && self.direction == other.direction
     }
 }
 
