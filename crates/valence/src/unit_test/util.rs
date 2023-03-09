@@ -2,18 +2,16 @@ use std::sync::{Arc, Mutex};
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use bevy_ecs::query::WorldQuery;
 use bevy_ecs::schedule::{LogLevel, ScheduleBuildSettings};
 use bytes::BytesMut;
 use valence_protocol::codec::{PacketDecoder, PacketEncoder};
 use valence_protocol::packet::S2cPlayPacket;
 use valence_protocol::Packet;
 
-use crate::client::{Client, ClientBundle, ClientConnection};
+use crate::client::{ClientBundle, ClientConnection};
 use crate::component::Location;
 use crate::config::{ConnectionMode, ServerPlugin};
 use crate::dimension::DimensionId;
-use crate::inventory::{Inventory, InventoryKind};
 use crate::server::{NewClientInfo, Server};
 
 /// Creates a mock client bundle that can be used for unit testing.
@@ -170,7 +168,7 @@ pub fn scenario_single_client(app: &mut App) -> (Entity, MockClientHelper) {
     let server = app.world.resource::<Server>();
     let instance = server.new_instance(DimensionId::default());
     let instance_ent = app.world.spawn(instance).id();
-    let (mut client, client_helper) = create_mock_client(gen_client_info("test"));
+    let (client, client_helper) = create_mock_client(gen_client_info("test"));
 
     let client_ent = app.world.spawn(client).id();
 

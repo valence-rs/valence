@@ -662,7 +662,7 @@ fn initial_join(
         _ = q.client.enc.prepend_packet(&GameJoinS2c {
             entity_id: 0, // We reserve ID 0 for clients.
             is_hardcore: q.is_hardcore.0,
-            game_mode: q.game_mode.clone().into(),
+            game_mode: (*q.game_mode).into(),
             previous_game_mode: q.prev_game_mode.0.map(|g| g as i8).unwrap_or(-1),
             dimension_names,
             registry_codec: Cow::Borrowed(server.registry_codec()),

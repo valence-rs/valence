@@ -62,11 +62,7 @@
     unused_import_braces,
     clippy::dbg_macro
 )]
-#![allow(
-    clippy::derive_partial_eq_without_eq,
-    clippy::unusual_byte_groupings,
-    clippy::comparison_chain
-)]
+#![allow(clippy::unusual_byte_groupings)]
 
 // Allows us to use our own proc macros internally.
 extern crate self as valence_protocol;

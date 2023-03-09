@@ -20,11 +20,7 @@
     unused_import_braces,
     clippy::dbg_macro
 )]
-#![allow(
-    clippy::derive_partial_eq_without_eq,
-    clippy::unusual_byte_groupings,
-    clippy::comparison_chain
-)]
+#![allow(clippy::type_complexity)] // ECS queries are often complicated.
 
 use bevy_ecs::prelude::*;
 pub use {
