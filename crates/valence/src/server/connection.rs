@@ -12,7 +12,7 @@ use tracing::debug;
 use valence_protocol::codec::{PacketDecoder, PacketEncoder};
 use valence_protocol::Packet;
 
-use crate::client::{Client, ClientBundle, ClientConnection};
+use crate::client::{ClientBundle, ClientConnection};
 use crate::server::byte_channel::{
     byte_channel, ByteReceiver, ByteSender, TryRecvError, TrySendError,
 };

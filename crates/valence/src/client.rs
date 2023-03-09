@@ -196,7 +196,12 @@ impl Client {
     ///
     /// Returns an error if flushing was unsuccessful.
     pub fn flush_packets(&mut self) -> anyhow::Result<()> {
-        self.conn.try_send(self.enc.take())
+        let bytes = self.enc.take();
+        if !bytes.is_empty() {
+            self.conn.try_send(bytes)
+        } else {
+            Ok(())
+        }
     }
 
     /// Sends a system message to the player which is visible in the chat. The
@@ -604,6 +609,7 @@ pub(crate) fn update_clients() -> SystemConfigs {
         read_data_in_view,
         update_view,
         remove_entities,
+        update_game_mode,
         teleport,
         update_compass_pos,
         update_tracked_data,

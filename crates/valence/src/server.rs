@@ -34,7 +34,6 @@ use crate::instance::{
 };
 use crate::inventory::update_inventories;
 use crate::player_list::{update_player_list, PlayerList};
-use crate::prelude::{Inventory, InventoryKind};
 use crate::server::connect::do_accept_loop;
 
 mod byte_channel;
@@ -344,6 +343,7 @@ pub fn build_plugin(
     app.add_systems(
         (
             init_mcentities,
+            check_mcentity_invariants.before(despawn_marked_entities),
             check_instance_invariants,
             update_player_list.before(update_instances_pre_client),
             update_instances_pre_client.after(init_mcentities),

@@ -1394,22 +1394,20 @@ pub fn default_event_handler(
         ..
     } in update_settings.iter()
     {
-        let Ok((mut client, entity, mut view_dist)) = clients.get_mut(*client) else {
-            continue
-        };
+        if let Ok((_, mcentity, mut view_dist)) = clients.get_mut(*client) {
+            view_dist.set(*view_distance);
 
-        view_dist.set(*view_distance);
-
-        if let Some(mut entity) = entity {
-            if let TrackedData::Player(player) = entity.data_mut() {
-                player.set_cape(displayed_skin_parts.cape());
-                player.set_jacket(displayed_skin_parts.jacket());
-                player.set_left_sleeve(displayed_skin_parts.left_sleeve());
-                player.set_right_sleeve(displayed_skin_parts.right_sleeve());
-                player.set_left_pants_leg(displayed_skin_parts.left_pants_leg());
-                player.set_right_pants_leg(displayed_skin_parts.right_pants_leg());
-                player.set_hat(displayed_skin_parts.hat());
-                player.set_main_arm(*main_hand as u8);
+            if let Some(mut entity) = mcentity {
+                if let TrackedData::Player(player) = entity.data_mut() {
+                    player.set_cape(displayed_skin_parts.cape());
+                    player.set_jacket(displayed_skin_parts.jacket());
+                    player.set_left_sleeve(displayed_skin_parts.left_sleeve());
+                    player.set_right_sleeve(displayed_skin_parts.right_sleeve());
+                    player.set_left_pants_leg(displayed_skin_parts.left_pants_leg());
+                    player.set_right_pants_leg(displayed_skin_parts.right_pants_leg());
+                    player.set_hat(displayed_skin_parts.hat());
+                    player.set_main_arm(*main_hand as u8);
+                }
             }
         }
     }
@@ -1423,67 +1421,55 @@ pub fn default_event_handler(
         ..
     } in player_move.iter()
     {
-        let Ok((_, Some(mut entity), _)) = clients.get_mut(*client) else {
-            continue
-        };
-
-        entity.set_position(*position);
-        entity.set_yaw(*yaw);
-        entity.set_head_yaw(*yaw);
-        entity.set_pitch(*pitch);
-        entity.set_on_ground(*on_ground);
+        if let Ok((_, Some(mut mcentity), _)) = clients.get_mut(*client) {
+            mcentity.set_position(*position);
+            mcentity.set_yaw(*yaw);
+            mcentity.set_head_yaw(*yaw);
+            mcentity.set_pitch(*pitch);
+            mcentity.set_on_ground(*on_ground);
+        }
     }
 
     for StartSneaking { client } in start_sneaking.iter() {
-        let Ok((_, Some(mut entity), _)) = clients.get_mut(*client) else {
-            continue
+        if let Ok((_, Some(mut entity), _)) = clients.get_mut(*client) {
+            if let TrackedData::Player(player) = entity.data_mut() {
+                player.set_pose(Pose::Sneaking);
+            }
         };
-
-        if let TrackedData::Player(player) = entity.data_mut() {
-            player.set_pose(Pose::Sneaking);
-        }
     }
 
     for StopSneaking { client } in stop_sneaking.iter() {
-        let Ok((_, Some(mut entity), _)) = clients.get_mut(*client) else {
-            continue
+        if let Ok((_, Some(mut entity), _)) = clients.get_mut(*client) {
+            if let TrackedData::Player(player) = entity.data_mut() {
+                player.set_pose(Pose::Standing);
+            }
         };
-
-        if let TrackedData::Player(player) = entity.data_mut() {
-            player.set_pose(Pose::Standing);
-        }
     }
 
     for StartSprinting { client } in start_sprinting.iter() {
-        let Ok((_, Some(mut entity), _)) = clients.get_mut(*client) else {
-            continue
+        if let Ok((_, Some(mut entity), _)) = clients.get_mut(*client) {
+            if let TrackedData::Player(player) = entity.data_mut() {
+                player.set_sprinting(true);
+            }
         };
-
-        if let TrackedData::Player(player) = entity.data_mut() {
-            player.set_sprinting(true);
-        }
     }
 
     for StopSprinting { client } in stop_sprinting.iter() {
-        let Ok((_, Some(mut entity), _)) = clients.get_mut(*client) else {
-            continue
+        if let Ok((_, Some(mut entity), _)) = clients.get_mut(*client) {
+            if let TrackedData::Player(player) = entity.data_mut() {
+                player.set_sprinting(false);
+            }
         };
-
-        if let TrackedData::Player(player) = entity.data_mut() {
-            player.set_sprinting(false);
-        }
     }
 
     for HandSwing { client, hand } in swing_arm.iter() {
-        let Ok((_, Some(mut entity), _)) = clients.get_mut(*client) else {
-            continue
+        if let Ok((_, Some(mut entity), _)) = clients.get_mut(*client) {
+            if entity.kind() == EntityKind::Player {
+                entity.trigger_animation(match hand {
+                    Hand::Main => EntityAnimation::SwingMainHand,
+                    Hand::Off => EntityAnimation::SwingOffHand,
+                });
+            }
         };
-
-        if entity.kind() == EntityKind::Player {
-            entity.trigger_animation(match hand {
-                Hand::Main => EntityAnimation::SwingMainHand,
-                Hand::Off => EntityAnimation::SwingOffHand,
-            });
-        }
     }
 }
