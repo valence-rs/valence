@@ -5,7 +5,6 @@ use egui::Color32;
 pub fn hex_view_ui(ui: &mut egui::Ui, mut file: &[u8]) {
     let mut buf = [0u8; 16];
     let mut count = 0;
-    // println!("{: <8} {: <47} {}", "count", "hex", "ascii");
 
     egui::Grid::new("hex_grid")
         .spacing([4.0, 1.5])
