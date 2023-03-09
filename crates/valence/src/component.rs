@@ -219,8 +219,7 @@ impl DirectionMutItem<'_> {
     }
 }
 
-pub use DirectionMutReadOnly as Direction;
-pub use DirectionMutReadOnlyItem as DirectionItem;
+pub use {DirectionMutReadOnly as Direction, DirectionMutReadOnlyItem as DirectionItem};
 
 impl DirectionItem<'_> {
     pub fn vec(&self) -> Vec3 {

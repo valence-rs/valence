@@ -604,6 +604,7 @@ pub(crate) fn update_clients() -> SystemConfigs {
         remove_entities,
         update_game_mode,
         teleport,
+        update_view_dist,
         update_compass_pos,
         update_tracked_data,
         update_op_level,
@@ -1060,6 +1061,14 @@ fn teleport(
 
         state.pending_teleports = state.pending_teleports.wrapping_add(1);
         state.teleport_id_counter = state.teleport_id_counter.wrapping_add(1);
+    }
+}
+
+fn update_view_dist(
+    mut clients: Query<(&mut OldViewDistance, &ViewDistance), Changed<ViewDistance>>,
+) {
+    for (mut old_dist, dist) in &mut clients {
+        old_dist.0 = dist.0;
     }
 }
 
