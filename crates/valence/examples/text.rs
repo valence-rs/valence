@@ -1,7 +1,7 @@
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::default_event_handler;
 use valence::prelude::*;
-use valence_protocol::translation_key;
+use valence::protocol::translation_key;
 
 const SPAWN_Y: i32 = 64;
 
