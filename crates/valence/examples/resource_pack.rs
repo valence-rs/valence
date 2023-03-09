@@ -3,7 +3,7 @@ use valence::client::event::{
     default_event_handler, PlayerInteract, ResourcePackStatus, ResourcePackStatusChange,
 };
 use valence::prelude::*;
-use valence_protocol::packet::c2s::play::player_interact::Interaction;
+use valence::protocol::packet::c2s::play::player_interact::Interaction;
 
 const SPAWN_Y: i32 = 64;
 

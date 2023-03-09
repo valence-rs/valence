@@ -1,8 +1,8 @@
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::{default_event_handler, ChatMessage, PlayerInteractBlock};
+use valence::nbt::{compound, List};
 use valence::prelude::*;
-use valence_nbt::{compound, List};
-use valence_protocol::types::Hand;
+use valence::protocol::types::Hand;
 
 const FLOOR_Y: i32 = 64;
 const SIGN_POS: [i32; 3] = [3, FLOOR_Y + 1, 2];
