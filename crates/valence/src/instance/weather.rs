@@ -153,12 +153,38 @@ fn handle_weather_for_joined_player(
     })
 }
 
+fn handle_weather_begin_per_client(mut query: Query<&mut Client, Added<Weather>>) {
+    query.par_iter_mut().for_each_mut(|mut client| {
+        client.begin_raining();
+    });
+}
+
+fn handle_weather_end_per_client(
+    mut query: Query<&mut Client>,
+    mut removed: RemovedComponents<Weather>,
+) {
+    removed.iter().for_each(|entity| {
+        if let Ok(mut client) = query.get_mut(entity) {
+            client.end_raining();
+        }
+    })
+}
+
+fn handle_weather_change_per_client(mut query: Query<(&mut Client, &Weather), Changed<Weather>>) {
+    query.par_iter_mut().for_each_mut(|(mut client, weather)| {
+        client.set_weather(weather);
+    });
+}
+
 pub(crate) fn update_weather() -> SystemConfigs {
     (
         handle_weather_begin_per_instance,
         handle_weather_end_per_instance,
         handle_weather_change_per_instance,
         handle_weather_for_joined_player,
+        handle_weather_begin_per_client,
+        handle_weather_end_per_client,
+        handle_weather_change_per_client,
     )
         .into_configs()
 }
@@ -173,52 +199,8 @@ mod test {
     use crate::unit_test::util::scenario_single_client;
     use crate::{assert_packet_count, assert_packet_order};
 
-    #[test]
-    fn test_weather_instance() -> anyhow::Result<()> {
-        let mut app = App::new();
-        let (_, mut client_helper) = scenario_single_client(&mut app);
-
-        // Process a tick to get past the "on join" logic.
-        app.update();
-        client_helper.clear_sent();
-
-        // Get the instance entity.
-        let instance_ent = app
-            .world
-            .iter_entities()
-            .find(|e| e.contains::<Instance>())
-            .expect("could not find instance")
-            .id();
-
-        // Insert a weather component to the instance.
-        app.world.entity_mut(instance_ent).insert(Weather {
-            rain: Some(0.5f32),
-            thunder: None,
-        });
-
-        // Handle weather event packets.
-        for _ in 0..3 {
-            app.update();
-        }
-
-        // Alter a weather component of the instance.
-        app.world.entity_mut(instance_ent).insert(Weather {
-            // Invalid values to assert they are clamped.
-            rain: Some(WEATHER_LEVEL_MAX + 1_f32),
-            thunder: Some(WEATHER_LEVEL_MIN - 1_f32),
-        });
-        app.update();
-
-        // Remove the weather component from the instance.
-        app.world.entity_mut(instance_ent).remove::<Weather>();
-        app.update();
-
-        // Make assertions.
-        let sent_packets = client_helper.collect_sent()?;
-
-        dbg!(sent_packets.clone());
-
-        assert_packet_count!(sent_packets, 5, S2cPlayPacket::GameStateChangeS2c(_));
+    fn assert_weather_packets(sent_packets: Vec<S2cPlayPacket>) {
+        assert_packet_count!(sent_packets, 6, S2cPlayPacket::GameStateChangeS2c(_));
 
         assert_packet_order!(
             sent_packets,
@@ -245,12 +227,114 @@ mod test {
         }
 
         if let S2cPlayPacket::GameStateChangeS2c(pkt) = sent_packets[2] {
-            assert_eq!(pkt.value, WEATHER_LEVEL_MAX);
+            assert_eq!(pkt.value, 0.5f32);
         }
 
         if let S2cPlayPacket::GameStateChangeS2c(pkt) = sent_packets[3] {
+            assert_eq!(pkt.value, WEATHER_LEVEL_MAX);
+        }
+
+        if let S2cPlayPacket::GameStateChangeS2c(pkt) = sent_packets[4] {
             assert_eq!(pkt.value, WEATHER_LEVEL_MIN);
         }
+    }
+
+    #[test]
+    fn test_weather_instance() -> anyhow::Result<()> {
+        let mut app = App::new();
+        let (_, mut client_helper) = scenario_single_client(&mut app);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        // Get the instance entity.
+        let instance_ent = app
+            .world
+            .iter_entities()
+            .find(|e| e.contains::<Instance>())
+            .expect("could not find instance")
+            .id();
+
+        // Insert a weather component to the instance.
+        app.world.entity_mut(instance_ent).insert(Weather {
+            rain: Some(0.5f32),
+            thunder: Some(0.5f32),
+        });
+
+        // Handle weather event packets.
+        for _ in 0..3 {
+            app.update();
+        }
+
+        // Alter a weather component of the instance.
+        app.world.entity_mut(instance_ent).insert(Weather {
+            // Invalid values to assert they are clamped.
+            rain: Some(WEATHER_LEVEL_MAX + 1_f32),
+            thunder: Some(WEATHER_LEVEL_MIN - 1_f32),
+        });
+        app.update();
+
+        // Remove the weather component from the instance.
+        app.world.entity_mut(instance_ent).remove::<Weather>();
+        app.update();
+
+        // Make assertions.
+        let sent_packets = client_helper.collect_sent()?;
+
+        dbg!(sent_packets.clone());
+
+        assert_weather_packets(sent_packets);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_weather_client() -> anyhow::Result<()> {
+        let mut app = App::new();
+        let (_, mut client_helper) = scenario_single_client(&mut app);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        // Get the client entity.
+        let client_ent = app
+            .world
+            .iter_entities()
+            .find(|e| e.contains::<Client>())
+            .expect("could not find client")
+            .id();
+
+        // Insert a weather component to the client.
+        app.world.entity_mut(client_ent).insert(Weather {
+            rain: Some(0.5f32),
+            thunder: Some(0.5f32),
+        });
+
+        // Handle weather event packets.
+        for _ in 0..3 {
+            app.update();
+        }
+
+        // Alter a weather component of the client.
+        app.world.entity_mut(client_ent).insert(Weather {
+            // Invalid values to assert they are clamped.
+            rain: Some(WEATHER_LEVEL_MAX + 1_f32),
+            thunder: Some(WEATHER_LEVEL_MIN - 1_f32),
+        });
+        app.update();
+
+        // Remove the weather component from the client.
+        app.world.entity_mut(client_ent).remove::<Weather>();
+        app.update();
+
+        // Make assertions.
+        let sent_packets = client_helper.collect_sent()?;
+
+        dbg!(sent_packets.clone());
+
+        assert_weather_packets(sent_packets);
 
         Ok(())
     }
