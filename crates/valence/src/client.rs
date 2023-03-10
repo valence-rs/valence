@@ -125,6 +125,9 @@ impl ClientBundle {
             teleport_state: TeleportState {
                 teleport_id_counter: 0,
                 pending_teleports: 0,
+                synced_pos: DVec3::ZERO,
+                synced_pitch: 0.0,
+                synced_yaw: 0.0,
             },
             is_hardcore: IsHardcore::default(),
             is_flat: IsFlat::default(),
@@ -539,6 +542,9 @@ pub struct TeleportState {
     /// confirmation. Inbound client position packets should be ignored while
     /// this is nonzero.
     pending_teleports: u32,
+    synced_pos: DVec3,
+    synced_pitch: f32,
+    synced_yaw: f32,
 }
 
 impl TeleportState {
@@ -1028,39 +1034,39 @@ fn update_game_mode(mut clients: Query<(&mut Client, &GameMode), Changed<GameMod
 
 fn teleport(
     mut clients: Query<
-        (
-            &mut Client,
-            &mut TeleportState,
-            Ref<Position>,
-            Ref<Yaw>,
-            Ref<Pitch>,
-        ),
+        (&mut Client, &mut TeleportState, &Position, &Yaw, &Pitch),
         Or<(Changed<Position>, Changed<Yaw>, Changed<Pitch>)>,
     >,
 ) {
     for (mut client, mut state, pos, yaw, pitch) in &mut clients {
-        let flags = PlayerPositionLookFlags::new()
-            .with_x(!pos.is_changed())
-            .with_y(!pos.is_changed())
-            .with_z(!pos.is_changed())
-            .with_y_rot(!yaw.is_changed())
-            .with_x_rot(!pitch.is_changed());
+        let changed_pos = pos.0 != state.synced_pos;
+        let changed_yaw = yaw.0 != state.synced_yaw;
+        let changed_pitch = pitch.0 != state.synced_pitch;
 
-        client.write_packet(&PlayerPositionLookS2c {
-            position: if pos.is_changed() {
-                pos.0.into()
-            } else {
-                [0.0; 3]
-            },
-            yaw: if yaw.is_changed() { yaw.0 } else { 0.0 },
-            pitch: if pitch.is_changed() { pitch.0 } else { 0.0 },
-            flags,
-            teleport_id: VarInt(state.teleport_id_counter as i32),
-            dismount_vehicle: false, // TODO?
-        });
+        if changed_pos || changed_yaw || changed_pitch {
+            state.synced_pos = pos.0;
+            state.synced_yaw = yaw.0;
+            state.synced_pitch = pitch.0;
 
-        state.pending_teleports = state.pending_teleports.wrapping_add(1);
-        state.teleport_id_counter = state.teleport_id_counter.wrapping_add(1);
+            let flags = PlayerPositionLookFlags::new()
+                .with_x(!changed_pos)
+                .with_y(!changed_pos)
+                .with_z(!changed_pos)
+                .with_y_rot(!changed_yaw)
+                .with_x_rot(!changed_pitch);
+
+            client.write_packet(&PlayerPositionLookS2c {
+                position: if changed_pos { pos.0.into() } else { [0.0; 3] },
+                yaw: if changed_yaw { yaw.0 } else { 0.0 },
+                pitch: if changed_pitch { pitch.0 } else { 0.0 },
+                flags,
+                teleport_id: VarInt(state.teleport_id_counter as i32),
+                dismount_vehicle: false, // TODO?
+            });
+
+            state.pending_teleports = state.pending_teleports.wrapping_add(1);
+            state.teleport_id_counter = state.teleport_id_counter.wrapping_add(1);
+        }
     }
 }
 

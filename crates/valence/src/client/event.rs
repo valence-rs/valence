@@ -660,7 +660,6 @@ pub(crate) struct EventLoopQuery {
 }
 
 /// An exclusive system for running the event loop schedule.
-#[allow(clippy::type_complexity)]
 pub(crate) fn run_event_loop(
     world: &mut World,
     state: &mut SystemState<(Query<EventLoopQuery>, ClientEvents, Commands)>,
@@ -943,6 +942,7 @@ fn handle_one_packet(
             });
 
             q.position.0 = p.position.into();
+            q.teleport_state.synced_pos = p.position.into();
             q.on_ground.0 = p.on_ground;
         }
         C2sPlayPacket::FullC2s(p) => {
@@ -959,8 +959,11 @@ fn handle_one_packet(
             });
 
             q.position.0 = p.position.into();
+            q.teleport_state.synced_pos = p.position.into();
             q.yaw.0 = p.yaw;
+            q.teleport_state.synced_yaw = p.yaw;
             q.pitch.0 = p.pitch;
+            q.teleport_state.synced_pitch = p.pitch;
             q.on_ground.0 = p.on_ground;
         }
         C2sPlayPacket::LookAndOnGroundC2s(p) => {
@@ -977,7 +980,9 @@ fn handle_one_packet(
             });
 
             q.yaw.0 = p.yaw;
+            q.teleport_state.synced_yaw = p.yaw;
             q.pitch.0 = p.pitch;
+            q.teleport_state.synced_pitch = p.pitch;
             q.on_ground.0 = p.on_ground;
         }
         C2sPlayPacket::OnGroundOnlyC2s(p) => {
@@ -1008,8 +1013,11 @@ fn handle_one_packet(
             });
 
             q.position.0 = p.position.into();
+            q.teleport_state.synced_pos = p.position.into();
             q.yaw.0 = p.yaw;
+            q.teleport_state.synced_yaw = p.yaw;
             q.pitch.0 = p.pitch;
+            q.teleport_state.synced_pitch = p.pitch;
         }
         C2sPlayPacket::BoatPaddleStateC2s(p) => {
             events.2.boat_paddle_state.send(BoatPaddleState {
