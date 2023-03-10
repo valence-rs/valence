@@ -111,7 +111,7 @@ impl Default for Location {
 pub struct OldLocation(Entity);
 
 impl OldLocation {
-    pub(crate) fn update(mut query: Query<(&Location, &mut OldLocation), Changed<OldLocation>>) {
+    pub(crate) fn update(mut query: Query<(&Location, &mut OldLocation), Changed<Location>>) {
         for (loc, mut old_loc) in &mut query {
             old_loc.0 = loc.0;
         }

@@ -1,4 +1,3 @@
-use tracing::warn;
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::{default_event_handler, PerformRespawn, StartSneaking};
 use valence::prelude::*;
@@ -71,25 +70,22 @@ fn init_clients(
 
 fn squat_and_die(mut clients: Query<&mut Client>, mut events: EventReader<StartSneaking>) {
     for event in events.iter() {
-        let Ok(mut client) = clients.get_mut(event.client) else {
-            warn!("Client {:?} not found", event.client);
-            continue;
-        };
-
-        client.kill(None, "Squatted too hard.");
+        if let Ok(mut client) = clients.get_mut(event.client) {
+            client.kill(None, "Squatted too hard.");
+        }
     }
 }
 
 fn necromancy(
-    mut clients: Query<(&mut Position, DirectionMut, &mut Location)>,
+    mut clients: Query<(&mut Position, &mut Look, &mut Location)>,
     mut events: EventReader<PerformRespawn>,
     instances: Query<Entity, With<Instance>>,
 ) {
     for event in events.iter() {
-        if let Ok((mut pos, mut dir, mut loc)) = clients.get_mut(event.client) {
+        if let Ok((mut pos, mut look, mut loc)) = clients.get_mut(event.client) {
             pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
-            dir.yaw.0 = 0.0;
-            dir.pitch.0 = 0.0;
+            look.yaw = 0.0;
+            look.pitch = 0.0;
 
             // make the client respawn in another instance
             let idx = instances.iter().position(|i| i == loc.0).unwrap();
