@@ -21,23 +21,7 @@ pub fn main() {
 }
 
 #[derive(Resource)]
-struct ParticleSpawner {
-    particles: Vec<Particle>,
-    index: usize,
-}
-
-impl ParticleSpawner {
-    pub fn new() -> Self {
-        Self {
-            particles: create_particle_vec(),
-            index: 0,
-        }
-    }
-
-    pub fn next(&mut self) {
-        self.index = (self.index + 1) % self.particles.len();
-    }
-}
+struct ParticleVec(Vec<Particle>);
 
 fn setup(mut commands: Commands, server: Res<Server>) {
     let mut instance = server.new_instance(DimensionId::default());
@@ -52,35 +36,48 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 
     commands.spawn(instance);
 
-    let spawner = ParticleSpawner::new();
-    commands.insert_resource(spawner)
+    commands.insert_resource(ParticleVec(create_particle_vec()));
 }
 
 fn init_clients(
-    mut clients: Query<(&mut Position, &mut Location, &mut GameMode), Added<Client>>,
+    mut clients: Query<
+        (
+            Entity,
+            &UniqueId,
+            &mut Position,
+            &mut Location,
+            &mut GameMode,
+        ),
+        Added<Client>,
+    >,
     instances: Query<Entity, With<Instance>>,
+    mut commands: Commands,
 ) {
-    for (mut pos, mut loc, mut game_mode) in &mut clients {
+    for (entity, uuid, mut pos, mut loc, mut game_mode) in &mut clients {
         pos.set([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
         loc.0 = instances.single();
         *game_mode = GameMode::Creative;
+
+        commands
+            .entity(entity)
+            .insert(McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0));
     }
 }
 
 fn manage_particles(
-    mut spawner: ResMut<ParticleSpawner>,
+    particles: Res<ParticleVec>,
     server: Res<Server>,
     mut instances: Query<&mut Instance>,
+    mut particle_idx: Local<usize>,
 ) {
-    if server.current_tick() % 20 == 0 {
-        spawner.next();
-    }
-
-    if server.current_tick() % 5 != 0 {
+    if server.current_tick() % 20 != 0 {
         return;
     }
 
-    let particle = &spawner.particles[spawner.index];
+    let particle = &particles.0[*particle_idx];
+
+    *particle_idx = (*particle_idx + 1) % particles.0.len();
+
     let name = dbg_name(particle);
 
     let pos = [0.5, SPAWN_Y as f64 + 2.0, 5.0];

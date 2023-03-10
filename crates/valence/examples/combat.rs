@@ -64,22 +64,20 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut commands: Commands,
-    mut clients: Query<(Entity, &mut Position, &mut Location, &UniqueId), Added<Client>>,
+    mut clients: Query<(Entity, &UniqueId, &mut Position, &mut Location), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
+    mut commands: Commands,
 ) {
-    let instance = instances.single();
-
-    for (entity, mut pos, mut loc, uuid) in &mut clients {
+    for (entity, uuid, mut pos, mut loc) in &mut clients {
         pos.set([0.0, SPAWN_Y as f64, 0.0]);
-        loc.0 = instance;
+        loc.0 = instances.single();
 
         commands.entity(entity).insert((
             CombatState {
                 last_attacked_tick: 0,
                 has_bonus_knockback: false,
             },
-            McEntity::with_uuid(EntityKind::Player, instance, uuid.0),
+            McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0),
         ));
     }
 }

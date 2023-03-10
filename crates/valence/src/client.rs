@@ -127,7 +127,8 @@ impl ClientBundle {
                 pending_teleports: 0,
                 synced_pos: DVec3::ZERO,
                 synced_pitch: 0.0,
-                synced_yaw: 0.0,
+                // Client starts facing north.
+                synced_yaw: 180.0,
             },
             is_hardcore: IsHardcore::default(),
             is_flat: IsFlat::default(),
@@ -944,7 +945,7 @@ fn update_view(
                         }
                     });
                 } else {
-                    warn!("Client entered nonexistent instance ({:?}).", loc.0);
+                    warn!("Client entered nonexistent instance ({loc:?}).");
                 }
             } else if old_view != view {
                 // Client changed their view without changing the instance.

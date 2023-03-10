@@ -9,7 +9,7 @@ pub fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(ServerPlugin::new(()))
+        .add_plugin(ServerPlugin::new(()).with_connection_mode(ConnectionMode::Offline))
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_systems(
@@ -43,6 +43,8 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 fn init_clients(
     mut clients: Query<
         (
+            Entity,
+            &UniqueId,
             &mut Client,
             &mut Position,
             &mut HasRespawnScreen,
@@ -51,22 +53,25 @@ fn init_clients(
         Added<Client>,
     >,
     instances: Query<Entity, With<Instance>>,
+    mut commands: Commands,
 ) {
-    let instance = instances.into_iter().next().unwrap();
-
-    for (mut client, mut pos, mut has_respawn_screen, mut loc) in &mut clients {
+    for (entity, uuid, mut client, mut pos, mut has_respawn_screen, mut loc) in &mut clients {
         pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
         has_respawn_screen.0 = true;
-        loc.0 = instance;
+        loc.0 = instances.iter().next().unwrap();
         client.send_message(
-            "Welcome to Valence! Press shift to die in the game (but not in real life).".italic(),
+            "Welcome to Valence! Sneak to die in the game (but not in real life).".italic(),
         );
+
+        commands
+            .entity(entity)
+            .insert(McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0));
     }
 }
 
 fn squat_and_die(mut clients: Query<&mut Client>, mut events: EventReader<StartSneaking>) {
     for event in events.iter() {
-        let Ok(mut client) = clients.get_component_mut::<Client>(event.client) else {
+        let Ok(mut client) = clients.get_mut(event.client) else {
             warn!("Client {:?} not found", event.client);
             continue;
         };
@@ -76,24 +81,22 @@ fn squat_and_die(mut clients: Query<&mut Client>, mut events: EventReader<StartS
 }
 
 fn necromancy(
-    mut clients: Query<&mut Client>,
+    mut clients: Query<(&mut Position, DirectionMut, &mut Location)>,
     mut events: EventReader<PerformRespawn>,
     instances: Query<Entity, With<Instance>>,
 ) {
     for event in events.iter() {
-        let Ok(mut client) = clients.get_component_mut::<Client>(event.client) else {
-            continue;
-        };
-        client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
-        client.set_velocity([0.0, 0.0, 0.0]);
-        client.set_yaw(0.0);
-        client.set_pitch(0.0);
-        // make the client respawn in another instance
-        let idx = instances
-            .iter()
-            .position(|i| i == client.instance())
-            .unwrap();
-        let count = instances.iter().count();
-        client.set_instance(instances.into_iter().nth((idx + 1) % count).unwrap());
+        if let Ok((mut pos, mut dir, mut loc)) = clients.get_mut(event.client) {
+            pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
+            dir.yaw.0 = 0.0;
+            dir.pitch.0 = 0.0;
+
+            // make the client respawn in another instance
+            let idx = instances.iter().position(|i| i == loc.0).unwrap();
+
+            let count = instances.iter().count();
+
+            loc.0 = instances.into_iter().nth((idx + 1) % count).unwrap();
+        }
     }
 }

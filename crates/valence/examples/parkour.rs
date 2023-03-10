@@ -51,11 +51,11 @@ struct GameState {
 }
 
 fn init_clients(
-    mut commands: Commands,
-    server: Res<Server>,
     mut clients: Query<(Entity, &mut Client), Added<Client>>,
+    server: Res<Server>,
+    mut commands: Commands,
 ) {
-    for (ent, mut client) in clients.iter_mut() {
+    for (entity, mut client) in clients.iter_mut() {
         let mut instance = server.new_instance(DimensionId::default());
 
         for pos in client.view().with_dist(VIEW_DIST).iter() {
@@ -68,7 +68,7 @@ fn init_clients(
             START_POS.z as f64 + 0.5,
         ]);
         client.set_flat(true);
-        client.set_instance(ent);
+        client.set_instance(entity);
         client.set_game_mode(GameMode::Adventure);
         client.send_message("Welcome to epic infinite parkour game!".italic());
 
@@ -82,8 +82,7 @@ fn init_clients(
 
         reset(&mut client, &mut state, &mut instance);
 
-        commands.entity(ent).insert(state);
-        commands.entity(ent).insert(instance);
+        commands.entity(entity).insert((state, instance));
     }
 }
 

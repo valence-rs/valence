@@ -65,10 +65,21 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<(&mut Client, &mut Position, &mut Location, &mut GameMode), Added<Client>>,
+    mut clients: Query<
+        (
+            Entity,
+            &UniqueId,
+            &mut Client,
+            &mut Position,
+            &mut Location,
+            &mut GameMode,
+        ),
+        Added<Client>,
+    >,
     instances: Query<Entity, With<Instance>>,
+    mut commands: Commands,
 ) {
-    for (mut client, mut pos, mut loc, mut game_mode) in &mut clients {
+    for (entity, uuid, mut client, mut pos, mut loc, mut game_mode) in &mut clients {
         pos.0 = SPAWN_POS;
         loc.0 = instances.single();
         *game_mode = GameMode::Survival;
@@ -79,6 +90,9 @@ fn init_clients(
              life."
                 .italic(),
         );
+        commands
+            .entity(entity)
+            .insert(McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0));
     }
 }
 

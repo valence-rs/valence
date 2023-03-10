@@ -108,18 +108,19 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 fn init_clients(
     mut clients: Query<
         (
+            Entity,
+            &UniqueId,
             &mut IsFlat,
             &mut GameMode,
             &mut Position,
             &mut Location,
-            &UniqueId,
         ),
         Added<Client>,
     >,
     instances: Query<Entity, With<Instance>>,
     mut commands: Commands,
 ) {
-    for (mut is_flat, mut game_mode, mut pos, mut loc, uuid) in &mut clients {
+    for (entity, uuid, mut is_flat, mut game_mode, mut pos, mut loc) in &mut clients {
         let instance = instances.single();
 
         is_flat.0 = true;
@@ -127,7 +128,9 @@ fn init_clients(
         pos.0 = SPAWN_POS;
         loc.0 = instance;
 
-        commands.spawn(McEntity::with_uuid(EntityKind::Player, instance, uuid.0));
+        commands
+            .entity(entity)
+            .insert(McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0));
     }
 }
 

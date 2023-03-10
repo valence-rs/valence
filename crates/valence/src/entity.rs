@@ -94,16 +94,6 @@ pub(crate) fn update_mcentities(mut mcentities: Query<&mut McEntity, Changed<McE
     }
 }
 
-pub(crate) fn check_mcentity_invariants(mut removed: RemovedComponents<McEntity>) {
-    for entity in removed.iter() {
-        warn!(
-            entity = ?entity,
-            "A `McEntity` component was removed from the world directly. You must use the \
-             `Despawned` marker component instead."
-        );
-    }
-}
-
 /// A component for Minecraft entities. For Valence to recognize a
 /// Minecraft entity, it must have this component attached.
 ///

@@ -78,13 +78,13 @@ fn init_clients(
     instances: Query<Entity, With<Instance>>,
     mut commands: Commands,
 ) {
-    for (client_entity, unique_id, mut pos, mut loc, mut game_mode) in &mut clients {
+    for (entity, unique_id, mut pos, mut loc, mut game_mode) in &mut clients {
         pos.0 = [0.0, SPAWN_Y as f64 + 1.0, 0.0].into();
         loc.0 = instances.single();
         *game_mode = GameMode::Creative;
 
-        let player_entity = McEntity::with_uuid(EntityKind::Player, loc.0, unique_id.0);
-
-        commands.entity(client_entity).insert(player_entity);
+        commands
+            .entity(entity)
+            .insert(McEntity::with_uuid(EntityKind::Player, loc.0, unique_id.0));
     }
 }

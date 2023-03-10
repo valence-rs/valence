@@ -61,14 +61,29 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<(&mut Position, &mut Yaw, &mut Location, &mut GameMode), Added<Client>>,
+    mut clients: Query<
+        (
+            Entity,
+            &UniqueId,
+            &mut Position,
+            &mut Yaw,
+            &mut Location,
+            &mut GameMode,
+        ),
+        Added<Client>,
+    >,
     instances: Query<Entity, With<Instance>>,
+    mut commands: Commands,
 ) {
-    for (mut pos, mut yaw, mut loc, mut game_mode) in &mut clients {
+    for (entity, uuid, mut pos, mut yaw, mut loc, mut game_mode) in &mut clients {
         pos.set([1.5, FLOOR_Y as f64 + 1.0, 1.5]);
         yaw.0 = -90.0;
         loc.0 = instances.single();
         *game_mode = GameMode::Creative;
+        
+        commands
+            .entity(entity)
+            .insert(McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0));
     }
 }
 

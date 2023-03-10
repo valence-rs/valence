@@ -26,8 +26,7 @@ use crate::component::{Despawned, OldLocation, OldPosition};
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerPlugin};
 use crate::dimension::{validate_dimensions, Dimension, DimensionId};
 use crate::entity::{
-    check_mcentity_invariants, deinit_despawned_mcentities, init_mcentities, update_mcentities,
-    McEntityManager,
+    deinit_despawned_mcentities, init_mcentities, update_mcentities, McEntityManager,
 };
 use crate::instance::{
     check_instance_invariants, update_instances_post_client, update_instances_pre_client, Instance,
@@ -343,7 +342,6 @@ pub fn build_plugin(
     app.add_systems(
         (
             init_mcentities,
-            check_mcentity_invariants.before(despawn_marked_entities),
             check_instance_invariants,
             update_player_list.before(update_instances_pre_client),
             update_instances_pre_client.after(init_mcentities),
