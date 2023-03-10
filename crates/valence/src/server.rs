@@ -374,7 +374,7 @@ pub fn build_plugin(
 #[derive(ScheduleLabel, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub struct EventLoopSchedule;
 
-/// The default base set for the event loop [`Schedule`].
+/// The default base set for [`EventLoopSchedule`].
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub struct EventLoopSet;
 

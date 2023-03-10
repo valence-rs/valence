@@ -696,6 +696,8 @@ pub(crate) fn run_event_loop(
         }
     }
 
+    state.apply(world);
+
     // Keep looping until all serverbound packets are decoded.
     while !clients_to_check.is_empty() {
         world.run_schedule(EventLoopSchedule);
@@ -717,6 +719,8 @@ pub(crate) fn run_event_loop(
                 }
             }
         });
+
+        state.apply(world);
     }
 }
 
