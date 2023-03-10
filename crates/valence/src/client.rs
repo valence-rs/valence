@@ -33,8 +33,8 @@ use valence_protocol::var_int::VarInt;
 use valence_protocol::Packet;
 
 use crate::component::{
-    Despawned, GameMode, Location, OldLocation, OldPosition, OnGround, Ping, Pitch, Position,
-    Properties, UniqueId, Username, Yaw,
+    Despawned, GameMode, Location, Look, OldLocation, OldPosition, OnGround, Ping, Position,
+    Properties, UniqueId, Username,
 };
 use crate::dimension::DimensionId;
 use crate::entity::{velocity_to_packet_units, EntityStatus, McEntity, TrackedData};
@@ -62,8 +62,7 @@ pub(crate) struct ClientBundle {
     old_location: OldLocation,
     position: Position,
     old_position: OldPosition,
-    yaw: Yaw,
-    pitch: Pitch,
+    direction: Look,
     on_ground: OnGround,
     compass_pos: CompassPos,
     game_mode: GameMode,
@@ -106,8 +105,7 @@ impl ClientBundle {
             old_location: OldLocation::default(),
             position: Position::default(),
             old_position: OldPosition::default(),
-            yaw: Yaw::default(),
-            pitch: Pitch::default(),
+            direction: Look::default(),
             on_ground: OnGround::default(),
             compass_pos: CompassPos::default(),
             game_mode: GameMode::default(),
@@ -126,9 +124,11 @@ impl ClientBundle {
                 teleport_id_counter: 0,
                 pending_teleports: 0,
                 synced_pos: DVec3::ZERO,
-                synced_pitch: 0.0,
-                // Client starts facing north.
-                synced_yaw: 180.0,
+                synced_look: Look {
+                    // Client starts facing north.
+                    yaw: 180.0,
+                    pitch: 0.0,
+                },
             },
             is_hardcore: IsHardcore::default(),
             is_flat: IsFlat::default(),
@@ -544,8 +544,7 @@ pub struct TeleportState {
     /// this is nonzero.
     pending_teleports: u32,
     synced_pos: DVec3,
-    synced_pitch: f32,
-    synced_yaw: f32,
+    synced_look: Look,
 }
 
 impl TeleportState {
@@ -1035,19 +1034,18 @@ fn update_game_mode(mut clients: Query<(&mut Client, &GameMode), Changed<GameMod
 
 fn teleport(
     mut clients: Query<
-        (&mut Client, &mut TeleportState, &Position, &Yaw, &Pitch),
-        Or<(Changed<Position>, Changed<Yaw>, Changed<Pitch>)>,
+        (&mut Client, &mut TeleportState, &Position, &Look),
+        Or<(Changed<Position>, Changed<Look>)>,
     >,
 ) {
-    for (mut client, mut state, pos, yaw, pitch) in &mut clients {
+    for (mut client, mut state, pos, look) in &mut clients {
         let changed_pos = pos.0 != state.synced_pos;
-        let changed_yaw = yaw.0 != state.synced_yaw;
-        let changed_pitch = pitch.0 != state.synced_pitch;
+        let changed_yaw = look.yaw != state.synced_look.yaw;
+        let changed_pitch = look.pitch != state.synced_look.pitch;
 
         if changed_pos || changed_yaw || changed_pitch {
             state.synced_pos = pos.0;
-            state.synced_yaw = yaw.0;
-            state.synced_pitch = pitch.0;
+            state.synced_look = *look;
 
             let flags = PlayerPositionLookFlags::new()
                 .with_x(!changed_pos)
@@ -1058,8 +1056,8 @@ fn teleport(
 
             client.write_packet(&PlayerPositionLookS2c {
                 position: if changed_pos { pos.0.into() } else { [0.0; 3] },
-                yaw: if changed_yaw { yaw.0 } else { 0.0 },
-                pitch: if changed_pitch { pitch.0 } else { 0.0 },
+                yaw: if changed_yaw { look.yaw } else { 0.0 },
+                pitch: if changed_pitch { look.pitch } else { 0.0 },
                 flags,
                 teleport_id: VarInt(state.teleport_id_counter as i32),
                 dismount_vehicle: false, // TODO?

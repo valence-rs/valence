@@ -2,7 +2,6 @@ use std::fmt;
 
 /// Contains shared components and world queries.
 use bevy_ecs::prelude::*;
-use bevy_ecs::query::WorldQuery;
 use glam::{DVec3, Vec3};
 use uuid::Uuid;
 use valence_protocol::types::{GameMode as ProtocolGameMode, Property};
@@ -177,61 +176,24 @@ impl OldPosition {
 #[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
 pub struct Velocity(pub Vec3);
 
+/// Describes the direction an entity is looking using pitch and yaw angles.
 #[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
-pub struct Yaw(pub f32);
-
-#[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
-pub struct Pitch(pub f32);
-
-#[derive(WorldQuery, PartialEq, Debug)]
-#[world_query(mutable)]
-pub struct DirectionMut {
-    pub yaw: &'static mut Yaw,
-    pub pitch: &'static mut Pitch,
+pub struct Look {
+    /// The yaw angle in degrees.
+    pub yaw: f32,
+    /// The pitch angle in degrees.
+    pub pitch: f32,
 }
 
-impl DirectionMutItem<'_> {
+impl Look {
+    /// Gets a normalized direction vector from the yaw and pitch.
     pub fn vec(&self) -> Vec3 {
-        from_yaw_and_pitch(self.yaw.0, self.pitch.0)
+        from_yaw_and_pitch(self.yaw, self.pitch)
     }
 
+    /// Sets the yaw and pitch using a normalized direction vector.
     pub fn set_vec(&mut self, vec: Vec3) {
-        let (yaw, pitch) = to_yaw_and_pitch(vec);
-
-        self.yaw.0 = yaw;
-        self.pitch.0 = pitch;
-    }
-
-    pub fn yaw(&self) -> f32 {
-        self.yaw.0
-    }
-
-    pub fn pitch(&self) -> f32 {
-        self.pitch.0
-    }
-
-    pub fn set_yaw(&mut self, yaw: f32) {
-        self.yaw.0 = yaw;
-    }
-
-    pub fn set_pitch(&mut self, pitch: f32) {
-        self.pitch.0 = pitch;
-    }
-}
-
-pub use {DirectionMutReadOnly as Direction, DirectionMutReadOnlyItem as DirectionItem};
-
-impl DirectionItem<'_> {
-    pub fn vec(&self) -> Vec3 {
-        from_yaw_and_pitch(self.yaw.0, self.pitch.0)
-    }
-
-    pub fn yaw(&self) -> f32 {
-        self.yaw.0
-    }
-
-    pub fn pitch(&self) -> f32 {
-        self.pitch.0
+        (self.yaw, self.pitch) = to_yaw_and_pitch(vec);
     }
 }
 

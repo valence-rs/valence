@@ -36,7 +36,7 @@ use super::{
     ViewDistance,
 };
 use crate::client::Client;
-use crate::component::{OnGround, Ping, Pitch, Position, Yaw};
+use crate::component::{Look, OnGround, Ping, Position};
 use crate::entity::{EntityAnimation, EntityKind, McEntity, TrackedData};
 use crate::inventory::Inventory;
 use crate::server::EventLoopSchedule;
@@ -651,8 +651,7 @@ pub(crate) struct EventLoopQuery {
     cursor_item: &'static mut CursorItem,
     inventory: &'static mut Inventory,
     position: &'static mut Position,
-    yaw: &'static mut Yaw,
-    pitch: &'static mut Pitch,
+    look: &'static mut Look,
     on_ground: &'static mut OnGround,
     ping: &'static mut Ping,
     player_action_sequence: &'static mut PlayerActionSequence,
@@ -936,8 +935,8 @@ fn handle_one_packet(
             events.1.player_move.send(PlayerMove {
                 client: entity,
                 position: p.position.into(),
-                yaw: q.yaw.0,
-                pitch: q.pitch.0,
+                yaw: q.look.yaw,
+                pitch: q.look.pitch,
                 on_ground: q.on_ground.0,
             });
 
@@ -960,10 +959,10 @@ fn handle_one_packet(
 
             q.position.0 = p.position.into();
             q.teleport_state.synced_pos = p.position.into();
-            q.yaw.0 = p.yaw;
-            q.teleport_state.synced_yaw = p.yaw;
-            q.pitch.0 = p.pitch;
-            q.teleport_state.synced_pitch = p.pitch;
+            q.look.yaw = p.yaw;
+            q.teleport_state.synced_look.yaw = p.yaw;
+            q.look.pitch = p.pitch;
+            q.teleport_state.synced_look.pitch = p.pitch;
             q.on_ground.0 = p.on_ground;
         }
         C2sPlayPacket::LookAndOnGroundC2s(p) => {
@@ -979,10 +978,10 @@ fn handle_one_packet(
                 on_ground: p.on_ground,
             });
 
-            q.yaw.0 = p.yaw;
-            q.teleport_state.synced_yaw = p.yaw;
-            q.pitch.0 = p.pitch;
-            q.teleport_state.synced_pitch = p.pitch;
+            q.look.yaw = p.yaw;
+            q.teleport_state.synced_look.yaw = p.yaw;
+            q.look.pitch = p.pitch;
+            q.teleport_state.synced_look.pitch = p.pitch;
             q.on_ground.0 = p.on_ground;
         }
         C2sPlayPacket::OnGroundOnlyC2s(p) => {
@@ -993,8 +992,8 @@ fn handle_one_packet(
             events.1.player_move.send(PlayerMove {
                 client: entity,
                 position: q.position.0,
-                yaw: q.yaw.0,
-                pitch: q.pitch.0,
+                yaw: q.look.yaw,
+                pitch: q.look.pitch,
                 on_ground: p.on_ground,
             });
 
@@ -1014,10 +1013,10 @@ fn handle_one_packet(
 
             q.position.0 = p.position.into();
             q.teleport_state.synced_pos = p.position.into();
-            q.yaw.0 = p.yaw;
-            q.teleport_state.synced_yaw = p.yaw;
-            q.pitch.0 = p.pitch;
-            q.teleport_state.synced_pitch = p.pitch;
+            q.look.yaw = p.yaw;
+            q.teleport_state.synced_look.yaw = p.yaw;
+            q.look.pitch = p.pitch;
+            q.teleport_state.synced_look.pitch = p.pitch;
         }
         C2sPlayPacket::BoatPaddleStateC2s(p) => {
             events.2.boat_paddle_state.send(BoatPaddleState {
