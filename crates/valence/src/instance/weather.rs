@@ -182,13 +182,7 @@ mod test {
         app.update();
         client_helper.clear_sent();
 
-        // Insert a weather component to the instance.
-        let weather = Weather {
-            // Invalid values to assert they are clamped.
-            rain: Some(WEATHER_LEVEL_MAX + 1_f32),
-            thunder: Some(WEATHER_LEVEL_MAX + 1_f32),
-        };
-
+        // Get the instance entity.
         let instance_ent = app
             .world
             .iter_entities()
@@ -196,12 +190,24 @@ mod test {
             .expect("could not find instance")
             .id();
 
-        app.world.entity_mut(instance_ent).insert(weather);
+        // Insert a weather component to the instance.
+        app.world.entity_mut(instance_ent).insert(Weather {
+            rain: Some(0.5f32),
+            thunder: None,
+        });
 
         // Handle weather event packets.
         for _ in 0..3 {
             app.update();
         }
+
+        // Alter a weather component of the instance.
+        app.world.entity_mut(instance_ent).insert(Weather {
+            // Invalid values to assert they are clamped.
+            rain: Some(WEATHER_LEVEL_MAX + 1_f32),
+            thunder: Some(WEATHER_LEVEL_MIN - 1_f32),
+        });
+        app.update();
 
         // Remove the weather component from the instance.
         app.world.entity_mut(instance_ent).remove::<Weather>();
@@ -210,7 +216,9 @@ mod test {
         // Make assertions.
         let sent_packets = client_helper.collect_sent()?;
 
-        assert_packet_count!(sent_packets, 4, S2cPlayPacket::GameStateChangeS2c(_));
+        dbg!(sent_packets.clone());
+
+        assert_packet_count!(sent_packets, 5, S2cPlayPacket::GameStateChangeS2c(_));
 
         assert_packet_order!(
             sent_packets,
@@ -232,14 +240,16 @@ mod test {
             })
         );
 
-        for pkt in sent_packets {
-            if let S2cPlayPacket::GameStateChangeS2c(pkt) = pkt {
-                match pkt.kind {
-                    GameEventKind::RainLevelChange => assert_eq!(pkt.value, WEATHER_LEVEL_MAX),
-                    GameEventKind::ThunderLevelChange => assert_eq!(pkt.value, WEATHER_LEVEL_MAX),
-                    _ => continue,
-                }
-            }
+        if let S2cPlayPacket::GameStateChangeS2c(pkt) = sent_packets[1] {
+            assert_eq!(pkt.value, 0.5f32);
+        }
+
+        if let S2cPlayPacket::GameStateChangeS2c(pkt) = sent_packets[2] {
+            assert_eq!(pkt.value, WEATHER_LEVEL_MAX);
+        }
+
+        if let S2cPlayPacket::GameStateChangeS2c(pkt) = sent_packets[3] {
+            assert_eq!(pkt.value, WEATHER_LEVEL_MIN);
         }
 
         Ok(())
