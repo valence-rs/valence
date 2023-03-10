@@ -31,7 +31,7 @@ use valence_protocol::packet::s2c::login::{
     LoginCompressionS2c, LoginDisconnectS2c, LoginHelloS2c, LoginQueryRequestS2c, LoginSuccessS2c,
 };
 use valence_protocol::packet::s2c::status::{QueryPongS2c, QueryResponseS2c};
-use valence_protocol::raw_bytes::RawBytes;
+use valence_protocol::raw::RawBytes;
 use valence_protocol::text::Text;
 use valence_protocol::types::Property;
 use valence_protocol::username::Username;

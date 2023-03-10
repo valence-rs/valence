@@ -6,9 +6,9 @@ use rand::Rng;
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::default_event_handler;
 use valence::prelude::*;
-use valence_protocol::packet::s2c::play::TitleFadeS2c;
-use valence_protocol::sound::Sound;
-use valence_protocol::types::SoundCategory;
+use valence::protocol::packet::s2c::play::TitleFadeS2c;
+use valence::protocol::sound::Sound;
+use valence::protocol::types::SoundCategory;
 
 const START_POS: BlockPos = BlockPos::new(0, 100, 0);
 const VIEW_DIST: u8 = 10;
