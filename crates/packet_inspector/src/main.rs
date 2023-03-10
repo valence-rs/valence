@@ -761,6 +761,14 @@ impl eframe::App for GuiApp {
             .min_width(150.0)
             .default_width(250.0)
             .show(ctx, |ui| {
+                if ui.input(|i| i.key_pressed(egui::Key::ArrowUp)) {
+                    self.context.select_previous_packet();
+                }
+
+                if ui.input(|i| i.key_pressed(egui::Key::ArrowDown)) {
+                    self.context.select_next_packet();
+                }
+
                 ui.horizontal(|ui| {
                     ui.heading("Packets");
 
