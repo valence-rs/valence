@@ -174,7 +174,7 @@ mod test {
     use crate::{assert_packet_count, assert_packet_order};
 
     #[test]
-    fn test_weather_events_emit() -> anyhow::Result<()> {
+    fn test_weather_instance() -> anyhow::Result<()> {
         let mut app = App::new();
         let (_, mut client_helper) = scenario_single_client(&mut app);
 
