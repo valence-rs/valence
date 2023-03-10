@@ -354,6 +354,34 @@ impl Context {
         }
     }
 
+    pub fn select_previous_packet(&self) {
+        let mut selected_packet = self.selected_packet.write().expect("Poisoned RwLock");
+        if let Some(idx) = *selected_packet {
+            if idx > 0 {
+                *selected_packet = Some(idx - 1);
+            }
+        } else {
+            let packets = self.packets.read().expect("Poisoned RwLock");
+            if !packets.is_empty() {
+                *selected_packet = Some(0);
+            }
+        }
+    }
+
+    pub fn select_next_packet(&self) {
+        let mut selected_packet = self.selected_packet.write().expect("Poisoned RwLock");
+        if let Some(idx) = *selected_packet {
+            if idx < self.packets.read().expect("Poisoned RwLock").len() - 1 {
+                *selected_packet = Some(idx + 1);
+            }
+        } else {
+            let packets = self.packets.read().expect("Poisoned RwLock");
+            if !packets.is_empty() {
+                *selected_packet = Some(1);
+            }
+        }
+    }
+
     pub fn set_selected_packet(&self, idx: usize) {
         *self.selected_packet.write().expect("Poisoned RwLock") = Some(idx);
     }
