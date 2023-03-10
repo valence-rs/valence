@@ -282,8 +282,6 @@ mod test {
         // Make assertions.
         let sent_packets = client_helper.collect_sent()?;
 
-        dbg!(sent_packets.clone());
-
         assert_weather_packets(sent_packets);
 
         Ok(())
@@ -331,8 +329,6 @@ mod test {
 
         // Make assertions.
         let sent_packets = client_helper.collect_sent()?;
-
-        dbg!(sent_packets.clone());
 
         assert_weather_packets(sent_packets);
 
