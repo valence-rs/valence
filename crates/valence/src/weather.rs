@@ -15,13 +15,13 @@ pub const WEATHER_LEVEL_RANGE: Range<f32> = 0_f32..1_f32;
 pub struct Weather {
     /// Contains the rain level.
     /// Valid value is a value within the [WEATHER_LEVEL_RANGE] range.
-    /// Invalid values would be clamped.
+    /// Invalid value would be clamped.
     ///
     /// The [`None`] value means no rain level.
     pub rain: Option<f32>,
     /// Contains the thunder level.
     /// Valid value is a value within the [WEATHER_LEVEL_RANGE] range.
-    /// Invalid values would be clamped.
+    /// Invalid value would be clamped.
     ///
     /// The [`None`] value means no thunder level.
     pub thunder: Option<f32>,
