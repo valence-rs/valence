@@ -118,7 +118,7 @@ impl Client {
 }
 
 fn handle_weather_begin_per_instance(mut query: Query<&mut Instance, Added<Weather>>) {
-    query.par_iter_mut().for_each_mut(|mut instance| {
+    query.for_each_mut(|mut instance| {
         instance.begin_raining();
     });
 }
@@ -137,18 +137,16 @@ fn handle_weather_end_per_instance(
 fn handle_weather_change_per_instance(
     mut query: Query<(&mut Instance, &Weather), Changed<Weather>>,
 ) {
-    query
-        .par_iter_mut()
-        .for_each_mut(|(mut instance, weather)| {
-            instance.set_weather(weather);
-        });
+    query.for_each_mut(|(mut instance, weather)| {
+        instance.set_weather(weather);
+    });
 }
 
 fn handle_weather_for_joined_player(
     mut clients: Query<&mut Client, Added<Client>>,
     weathers: Query<&Weather, With<Instance>>,
 ) {
-    clients.par_iter_mut().for_each_mut(|mut client| {
+    clients.for_each_mut(|mut client| {
         if let Ok(weather) = weathers.get_single() {
             client.begin_raining();
             client.set_weather(weather);
@@ -157,7 +155,7 @@ fn handle_weather_for_joined_player(
 }
 
 fn handle_weather_begin_per_client(mut query: Query<&mut Client, Added<Weather>>) {
-    query.par_iter_mut().for_each_mut(|mut client| {
+    query.for_each_mut(|mut client| {
         client.begin_raining();
     });
 }
@@ -174,7 +172,7 @@ fn handle_weather_end_per_client(
 }
 
 fn handle_weather_change_per_client(mut query: Query<(&mut Client, &Weather), Changed<Weather>>) {
-    query.par_iter_mut().for_each_mut(|(mut client, weather)| {
+    query.for_each_mut(|(mut client, weather)| {
         client.set_weather(weather);
     });
 }
