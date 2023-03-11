@@ -8,7 +8,7 @@ use valence_protocol::packet::s2c::play::GameStateChangeS2c;
 use crate::packet::WritePacket;
 use crate::prelude::*;
 
-pub const WEATHER_LEVEL_RANGE: Range<f32> = 0_f32..1_f32;
+pub const WEATHER_LEVEL: Range<f32> = 0_f32..1_f32;
 
 /// The weather state representation.
 #[derive(Component)]
@@ -48,7 +48,7 @@ impl Instance {
     fn set_rain_level(&mut self, level: f32) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::RainLevelChange,
-            value: level.clamp(WEATHER_LEVEL_RANGE.start, WEATHER_LEVEL_RANGE.end),
+            value: level.clamp(WEATHER_LEVEL.start, WEATHER_LEVEL.end),
         });
     }
 
@@ -56,7 +56,7 @@ impl Instance {
     fn set_thunder_level(&mut self, level: f32) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::ThunderLevelChange,
-            value: level.clamp(WEATHER_LEVEL_RANGE.start, WEATHER_LEVEL_RANGE.end),
+            value: level.clamp(WEATHER_LEVEL.start, WEATHER_LEVEL.end),
         });
     }
 
@@ -93,7 +93,7 @@ impl Client {
     fn set_rain_level(&mut self, level: f32) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::RainLevelChange,
-            value: level.clamp(WEATHER_LEVEL_RANGE.start, WEATHER_LEVEL_RANGE.end),
+            value: level.clamp(WEATHER_LEVEL.start, WEATHER_LEVEL.end),
         });
     }
 
@@ -101,7 +101,7 @@ impl Client {
     fn set_thunder_level(&mut self, level: f32) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::ThunderLevelChange,
-            value: level.clamp(WEATHER_LEVEL_RANGE.start, WEATHER_LEVEL_RANGE.end),
+            value: level.clamp(WEATHER_LEVEL.start, WEATHER_LEVEL.end),
         });
     }
 
@@ -137,9 +137,10 @@ fn handle_weather_end_per_instance(
 fn handle_weather_change_per_instance(
     mut query: Query<(&mut Instance, &Weather), Changed<Weather>>,
 ) {
-    query.for_each_mut(|(mut instance, weather)| {
-        instance.set_weather(weather);
-    });
+    query
+        .for_each_mut(|(mut instance, weather)| {
+            instance.set_weather(weather);
+        });
 }
 
 fn handle_weather_for_joined_player(
@@ -232,11 +233,11 @@ mod test {
         }
 
         if let S2cPlayPacket::GameStateChangeS2c(pkt) = sent_packets[3] {
-            assert_eq!(pkt.value, WEATHER_LEVEL_RANGE.end);
+            assert_eq!(pkt.value, WEATHER_LEVEL.end);
         }
 
         if let S2cPlayPacket::GameStateChangeS2c(pkt) = sent_packets[4] {
-            assert_eq!(pkt.value, WEATHER_LEVEL_RANGE.start);
+            assert_eq!(pkt.value, WEATHER_LEVEL.start);
         }
     }
 
@@ -271,8 +272,8 @@ mod test {
         // Alter a weather component of the instance.
         app.world.entity_mut(instance_ent).insert(Weather {
             // Invalid values to assert they are clamped.
-            rain: Some(WEATHER_LEVEL_RANGE.end + 1_f32),
-            thunder: Some(WEATHER_LEVEL_RANGE.start - 1_f32),
+            rain: Some(WEATHER_LEVEL.end + 1_f32),
+            thunder: Some(WEATHER_LEVEL.start - 1_f32),
         });
         app.update();
 
@@ -319,8 +320,8 @@ mod test {
         // Alter a weather component of the client.
         app.world.entity_mut(client_ent).insert(Weather {
             // Invalid values to assert they are clamped.
-            rain: Some(WEATHER_LEVEL_RANGE.end + 1_f32),
-            thunder: Some(WEATHER_LEVEL_RANGE.start - 1_f32),
+            rain: Some(WEATHER_LEVEL.end + 1_f32),
+            thunder: Some(WEATHER_LEVEL.start - 1_f32),
         });
         app.update();
 
