@@ -80,7 +80,7 @@ fn init_clients(
         look.yaw = -90.0;
         loc.0 = instances.single();
         *game_mode = GameMode::Creative;
-        
+
         commands
             .entity(entity)
             .insert(McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0));

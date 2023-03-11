@@ -54,6 +54,7 @@ fn init_clients(
         (
             Entity,
             &mut Client,
+            &UniqueId,
             &mut IsFlat,
             &mut Location,
             &mut GameMode,
@@ -63,7 +64,7 @@ fn init_clients(
     server: Res<Server>,
     mut commands: Commands,
 ) {
-    for (entity, mut client, mut is_flat, mut loc, mut game_mode) in clients.iter_mut() {
+    for (entity, mut client, uuid, mut is_flat, mut loc, mut game_mode) in clients.iter_mut() {
         is_flat.0 = true;
         loc.0 = entity;
         *game_mode = GameMode::Adventure;
@@ -79,7 +80,9 @@ fn init_clients(
 
         let instance = server.new_instance(DimensionId::default());
 
-        commands.entity(entity).insert((state, instance));
+        let mcentity = McEntity::with_uuid(EntityKind::Player, entity, uuid.0);
+
+        commands.entity(entity).insert((state, instance, mcentity));
     }
 }
 

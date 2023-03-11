@@ -9,8 +9,8 @@ const SPAWN_Y: i32 = 64;
 
 pub fn build_app(app: &mut App) {
     app.add_plugin(ServerPlugin::new(()))
-        .add_system(default_event_handler.in_schedule(EventLoopSchedule))
         .add_startup_system(setup)
+        .add_system(default_event_handler.in_schedule(EventLoopSchedule))
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients);
 }
@@ -34,13 +34,12 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<(&mut Position, &mut Location, &mut GameMode), Added<Client>>,
+    mut clients: Query<(&mut Position, &mut Location), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
-    for (mut pos, mut loc, mut game_mode) in &mut clients {
+    for (mut pos, mut loc) in &mut clients {
         pos.0 = [0.5, SPAWN_Y as f64 + 1.0, 0.5].into();
         loc.0 = instances.single();
-        *game_mode = GameMode::Survival;
     }
 }
 
