@@ -7,16 +7,13 @@ pub struct ScoreboardPlayerUpdateS2c<'a> {
     pub action: Action<'a>,
 }
 
-// TODO: this looks wrong.
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
 pub enum Action<'a> {
-    Create {
-        objective_value: &'a str,
-        objective_type: VarInt,
-    },
-    Remove,
     Update {
-        objective_value: &'a str,
-        objective_type: VarInt,
+        objective_name: &'a str,
+        objective_score: VarInt,
+    },
+    Remove {
+        objective_name: &'a str,
     },
 }
