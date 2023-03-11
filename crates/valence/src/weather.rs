@@ -137,10 +137,9 @@ fn handle_weather_end_per_instance(
 fn handle_weather_change_per_instance(
     mut query: Query<(&mut Instance, &Weather), Changed<Weather>>,
 ) {
-    query
-        .for_each_mut(|(mut instance, weather)| {
-            instance.set_weather(weather);
-        });
+    query.for_each_mut(|(mut instance, weather)| {
+        instance.set_weather(weather);
+    });
 }
 
 fn handle_weather_for_joined_player(
