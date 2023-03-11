@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use tracing::warn;
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::{default_event_handler, PlayerInteractBlock, StartSneaking};
@@ -48,30 +50,42 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<&mut Client, Added<Client>>,
+    mut clients: Query<
+        (
+            Entity,
+            &UniqueId,
+            &mut Position,
+            &mut Location,
+            &mut GameMode,
+        ),
+        Added<Client>,
+    >,
     instances: Query<Entity, With<Instance>>,
+    mut commands: Commands,
 ) {
-    for mut client in &mut clients {
-        client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
-        client.set_instance(instances.single());
-        client.set_game_mode(GameMode::Creative);
+    for (entity, uuid, mut pos, mut loc, mut game_mode) in &mut clients {
+        pos.0 = [0.5, SPAWN_Y as f64 + 1.0, 0.5].into();
+        loc.0 = instances.single();
+        *game_mode = GameMode::Creative;
+        commands
+            .entity(entity)
+            .insert(McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0));
     }
 }
 
 fn toggle_gamemode_on_sneak(
-    mut clients: Query<&mut Client>,
+    mut clients: Query<&mut GameMode>,
     mut events: EventReader<StartSneaking>,
 ) {
     for event in events.iter() {
-        let Ok(mut client) = clients.get_component_mut::<Client>(event.client) else {
+        let Ok(mut mode) = clients.get_component_mut::<GameMode>(event.client) else {
             continue;
         };
-        let mode = client.game_mode();
-        client.set_game_mode(match mode {
+        *mode = match *mode {
             GameMode::Survival => GameMode::Creative,
             GameMode::Creative => GameMode::Survival,
             _ => GameMode::Creative,
-        });
+        };
     }
 }
 

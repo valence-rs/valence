@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -106,23 +108,31 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<&mut Client, Added<Client>>,
+    mut clients: Query<
+        (
+            Entity,
+            &UniqueId,
+            &mut IsFlat,
+            &mut GameMode,
+            &mut Position,
+            &mut Location,
+        ),
+        Added<Client>,
+    >,
     instances: Query<Entity, With<Instance>>,
     mut commands: Commands,
 ) {
-    for mut client in &mut clients {
+    for (entity, uuid, mut is_flat, mut game_mode, mut pos, mut loc) in &mut clients {
         let instance = instances.single();
 
-        client.set_flat(true);
-        client.set_game_mode(GameMode::Creative);
-        client.set_position(SPAWN_POS);
-        client.set_instance(instance);
+        is_flat.0 = true;
+        *game_mode = GameMode::Creative;
+        pos.0 = SPAWN_POS;
+        loc.0 = instance;
 
-        commands.spawn(McEntity::with_uuid(
-            EntityKind::Player,
-            instance,
-            client.uuid(),
-        ));
+        commands
+            .entity(entity)
+            .insert(McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0));
     }
 }
 
@@ -134,13 +144,13 @@ fn remove_unviewed_chunks(mut instances: Query<&mut Instance>) {
 
 fn update_client_views(
     mut instances: Query<&mut Instance>,
-    mut clients: Query<&mut Client>,
+    mut clients: Query<(&mut Client, View, OldView)>,
     mut state: ResMut<GameState>,
 ) {
     let instance = instances.single_mut();
 
-    for client in &mut clients {
-        let view = client.view();
+    for (client, view, old_view) in &mut clients {
+        let view = view.get();
         let queue_pos = |pos| {
             if instance.chunk(pos).is_none() {
                 match state.pending.entry(pos) {
@@ -162,7 +172,7 @@ fn update_client_views(
         if client.is_added() {
             view.iter().for_each(queue_pos);
         } else {
-            let old_view = client.old_view();
+            let old_view = old_view.get();
             if old_view != view {
                 view.diff(old_view).for_each(queue_pos);
             }

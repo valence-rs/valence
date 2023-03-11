@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use bevy_app::App;
 use tracing::warn;
 use valence::client::despawn_disconnected_clients;
@@ -37,7 +39,7 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 
     for z in -25..25 {
         for x in -25..25 {
-            instance.set_block([x, SPAWN_Y, z], BlockState::BEDROCK);
+            instance.set_block([x, SPAWN_Y, z], BlockState::OAK_PLANKS);
         }
     }
 
@@ -45,33 +47,49 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<&mut Client, Added<Client>>,
+    mut clients: Query<
+        (
+            Entity,
+            &UniqueId,
+            &mut Client,
+            &mut Position,
+            &mut Location,
+            &mut GameMode,
+        ),
+        Added<Client>,
+    >,
     instances: Query<Entity, With<Instance>>,
+    mut commands: Commands,
 ) {
-    for mut client in &mut clients {
-        client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
-        client.set_instance(instances.single());
-        client.set_game_mode(GameMode::Adventure);
+    for (entity, uuid, mut client, mut pos, mut loc, mut game_mode) in &mut clients {
+        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
+        loc.0 = instances.single();
+        *game_mode = GameMode::Adventure;
         client.send_message("Welcome to Valence! Talk about something.".italic());
+
+        commands
+            .entity(entity)
+            .insert(McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0));
     }
 }
 
-fn handle_message_events(mut clients: Query<&mut Client>, mut messages: EventReader<ChatMessage>) {
+fn handle_message_events(
+    mut clients: Query<(&mut Client, &Username)>,
+    mut messages: EventReader<ChatMessage>,
+) {
     for message in messages.iter() {
-        let Ok(client) = clients.get_component::<Client>(message.client) else {
+        let Ok(username) = clients.get_component::<Username>(message.client) else {
             warn!("Unable to find client for message: {:?}", message);
             continue;
         };
 
         let message = message.message.to_string();
 
-        let formatted = format!("<{}>: ", client.username())
-            .bold()
-            .color(Color::YELLOW)
-            + message.into_text().not_bold().color(Color::WHITE);
+        let formatted = format!("<{}>: ", username.0).bold().color(Color::YELLOW)
+            + message.not_bold().color(Color::WHITE);
 
         // TODO: write message to instance buffer.
-        for mut client in &mut clients {
+        for (mut client, _) in &mut clients {
             client.send_message(formatted.clone());
         }
     }

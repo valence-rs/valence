@@ -18,10 +18,11 @@ use valence_protocol::packet::s2c::play::{
 use valence_protocol::tracked_data::{Facing, PaintingKind, Pose};
 use valence_protocol::var_int::VarInt;
 
+use crate::component::Despawned;
 use crate::config::DEFAULT_TPS;
-use crate::math::Aabb;
 use crate::packet::WritePacket;
-use crate::{Despawned, NULL_ENTITY};
+use crate::util::Aabb;
+use crate::NULL_ENTITY;
 
 pub mod data;
 
@@ -29,28 +30,28 @@ include!(concat!(env!("OUT_DIR"), "/entity_event.rs"));
 
 /// A [`Resource`] which maintains information about all the [`McEntity`]
 /// components on the server.
-#[derive(Resource)]
+#[derive(Resource, Debug)]
 pub struct McEntityManager {
-    protocol_id_to_entity: FxHashMap<i32, Entity>,
+    protocol_id_to_mcentity: FxHashMap<i32, Entity>,
     next_protocol_id: i32,
 }
 
 impl McEntityManager {
     pub(crate) fn new() -> Self {
         Self {
-            protocol_id_to_entity: HashMap::default(),
+            protocol_id_to_mcentity: HashMap::default(),
             next_protocol_id: 1,
         }
     }
 
     /// Gets the [`Entity`] of the [`McEntity`] with the given protocol ID.
     pub fn get_with_protocol_id(&self, id: i32) -> Option<Entity> {
-        self.protocol_id_to_entity.get(&id).cloned()
+        self.protocol_id_to_mcentity.get(&id).cloned()
     }
 }
 
-/// Sets the protocol ID of new entities.
-pub(crate) fn init_entities(
+/// Sets the protocol ID of new mcentities.
+pub(crate) fn init_mcentities(
     mut entities: Query<(Entity, &mut McEntity), Added<McEntity>>,
     mut manager: ResMut<McEntityManager>,
 ) {
@@ -65,31 +66,31 @@ pub(crate) fn init_entities(
         manager.next_protocol_id = manager.next_protocol_id.wrapping_add(1);
 
         manager
-            .protocol_id_to_entity
+            .protocol_id_to_mcentity
             .insert(mc_entity.protocol_id, entity);
     }
 }
 
-/// Removes despawned entities from the entity manager.
-pub(crate) fn deinit_despawned_entities(
+/// Removes despawned mcentities from the mcentity manager.
+pub(crate) fn deinit_despawned_mcentities(
     entities: Query<&mut McEntity, With<Despawned>>,
     mut manager: ResMut<McEntityManager>,
 ) {
     for entity in &entities {
-        manager.protocol_id_to_entity.remove(&entity.protocol_id);
+        manager.protocol_id_to_mcentity.remove(&entity.protocol_id);
     }
 }
 
-pub(crate) fn update_entities(mut entities: Query<&mut McEntity, Changed<McEntity>>) {
-    for mut entity in &mut entities {
-        entity.data.clear_modifications();
-        entity.old_position = entity.position;
-        entity.old_instance = entity.instance;
-        entity.statuses = 0;
-        entity.animations = 0;
-        entity.yaw_or_pitch_modified = false;
-        entity.head_yaw_modified = false;
-        entity.velocity_modified = false;
+pub(crate) fn update_mcentities(mut mcentities: Query<&mut McEntity, Changed<McEntity>>) {
+    for mut ent in &mut mcentities {
+        ent.data.clear_modifications();
+        ent.old_position = ent.position;
+        ent.old_instance = ent.instance;
+        ent.statuses = 0;
+        ent.animations = 0;
+        ent.yaw_or_pitch_modified = false;
+        ent.head_yaw_modified = false;
+        ent.velocity_modified = false;
     }
 }
 
@@ -105,7 +106,7 @@ pub(crate) fn update_entities(mut entities: Query<&mut McEntity, Changed<McEntit
 /// not common to every kind of entity, see [`Self::data`].
 #[derive(Component)]
 pub struct McEntity {
-    data: TrackedData,
+    pub(crate) data: TrackedData,
     protocol_id: i32,
     uuid: Uuid,
     /// The range of bytes in the partition cell containing this entity's update
