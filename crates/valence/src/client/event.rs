@@ -17,6 +17,7 @@ use valence_protocol::packet::c2s::play::client_settings::{
 };
 use valence_protocol::packet::c2s::play::player_action::Action as PlayerAction;
 use valence_protocol::packet::c2s::play::player_interact::Interaction;
+use valence_protocol::packet::c2s::play::player_session::PlayerSessionData;
 use valence_protocol::packet::c2s::play::recipe_category_options::RecipeBookId;
 use valence_protocol::packet::c2s::play::update_command_block::Mode as CommandBlockMode;
 use valence_protocol::packet::c2s::play::update_structure_block::{
@@ -51,7 +52,7 @@ pub struct UpdateDifficulty {
 #[derive(Clone, Debug)]
 pub struct MessageAcknowledgment {
     pub client: Entity,
-    pub message_count: i32,
+    pub message_index: i32,
 }
 
 #[derive(Clone, Debug)]
@@ -66,6 +67,10 @@ pub struct ChatMessage {
     pub client: Entity,
     pub message: Box<str>,
     pub timestamp: u64,
+    pub salt: u64,
+    pub signature: Option<Box<[u8; 256]>>,
+    pub message_index: i32,
+    pub acknowledgements: [u8; 3],
 }
 
 #[derive(Clone, Debug)]
@@ -330,10 +335,7 @@ pub struct PlayPong {
 #[derive(Clone, Debug)]
 pub struct PlayerSession {
     pub client: Entity,
-    pub session_id: Uuid,
-    pub expires_at: i64,
-    pub public_key_data: Box<[u8]>,
-    pub key_signature: Box<[u8]>,
+    pub session_data: PlayerSessionData,
 }
 
 #[derive(Clone, Debug)]
@@ -756,7 +758,7 @@ fn handle_one_packet(
         C2sPlayPacket::MessageAcknowledgmentC2s(p) => {
             events.0.message_acknowledgment.send(MessageAcknowledgment {
                 client: entity,
-                message_count: p.message_count.0,
+                message_index: p.message_index.0,
             });
         }
         C2sPlayPacket::CommandExecutionC2s(p) => {
@@ -771,6 +773,10 @@ fn handle_one_packet(
                 client: entity,
                 message: p.message.into(),
                 timestamp: p.timestamp,
+                salt: p.salt,
+                signature: p.signature.copied().map(Box::new),
+                message_index: p.message_index.0,
+                acknowledgements: p.acknowledgement,
             });
         }
         C2sPlayPacket::ClientStatusC2s(p) => match p {
@@ -1151,10 +1157,7 @@ fn handle_one_packet(
         C2sPlayPacket::PlayerSessionC2s(p) => {
             events.3.player_session.send(PlayerSession {
                 client: entity,
-                session_id: p.session_id,
-                expires_at: p.expires_at,
-                public_key_data: p.public_key_data.into(),
-                key_signature: p.key_signature.into(),
+                session_data: p.0.into_owned(),
             });
         }
         C2sPlayPacket::RecipeCategoryOptionsC2s(p) => {

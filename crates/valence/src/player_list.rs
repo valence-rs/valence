@@ -8,6 +8,7 @@ use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::SystemConfigs;
 use tracing::warn;
 use uuid::Uuid;
+use valence_protocol::packet::c2s::play::player_session::PlayerSessionData;
 use valence_protocol::packet::s2c::play::player_list::{
     Actions, Entry as PlayerInfoEntry, PlayerListS2c,
 };
@@ -222,6 +223,7 @@ impl PlayerList {
     pub(crate) fn write_init_packets(&self, mut writer: impl WritePacket) {
         let actions = Actions::new()
             .with_add_player(true)
+            .with_initialize_chat(true)
             .with_update_game_mode(true)
             .with_update_listed(true)
             .with_update_latency(true)
@@ -235,7 +237,7 @@ impl PlayerList {
                     player_uuid: uuid,
                     username: &entry.username,
                     properties: entry.properties().into(),
-                    chat_data: None,
+                    chat_data: entry.chat_data.as_ref().map(|d| d.into()),
                     listed: entry.listed,
                     ping: entry.ping,
                     game_mode: entry.game_mode,
@@ -273,6 +275,7 @@ impl PlayerList {
 pub struct PlayerListEntry {
     username: String, // TODO: Username<String>?
     properties: Vec<Property>,
+    chat_data: Option<PlayerSessionData>,
     game_mode: GameMode,
     old_game_mode: GameMode,
     ping: i32,
@@ -281,6 +284,7 @@ pub struct PlayerListEntry {
     old_listed: bool,
     is_new: bool,
     modified_ping: bool,
+    modified_chat_data: bool,
     modified_display_name: bool,
 }
 
@@ -289,6 +293,7 @@ impl Default for PlayerListEntry {
         Self {
             username: String::new(),
             properties: vec![],
+            chat_data: None,
             game_mode: GameMode::default(),
             old_game_mode: GameMode::default(),
             ping: -1, // Negative indicates absence.
@@ -297,6 +302,7 @@ impl Default for PlayerListEntry {
             listed: true,
             is_new: true,
             modified_ping: false,
+            modified_chat_data: false,
             modified_display_name: false,
         }
     }
@@ -339,6 +345,18 @@ impl PlayerListEntry {
     #[must_use]
     pub fn with_properties(mut self, properties: impl Into<Vec<Property>>) -> Self {
         self.properties = properties.into();
+        self
+    }
+
+    /// Set the chat data for the player list entry. Returns `Self` to chain
+    /// other options.
+    ///
+    /// The chat data contains information about the player's chat session.
+    /// This includes the session id and the player's public key data and
+    /// expiration. This data is used for chat verification amongst players.
+    #[must_use]
+    pub fn with_chat_data(mut self, chat_data: Option<PlayerSessionData>) -> Self {
+        self.chat_data = chat_data;
         self
     }
 
@@ -391,6 +409,23 @@ impl PlayerListEntry {
 
     pub fn properties(&self) -> &[Property] {
         &self.properties
+    }
+
+    pub fn chat_data(&self) -> Option<&PlayerSessionData> {
+        self.chat_data.as_ref()
+    }
+
+    /// Set the chat data for the player list entry.
+    ///
+    /// The chat data contains information about the player's chat session.
+    /// This includes the session id and the player's public key data and
+    /// expiration. This data is used for chat verification amongst players.
+    pub fn set_chat_data(&mut self, chat_data: Option<PlayerSessionData>) {
+        if self.chat_data != chat_data {
+            self.modified_chat_data = true;
+        }
+
+        self.chat_data = chat_data;
     }
 
     pub fn game_mode(&self) -> GameMode {
@@ -454,6 +489,7 @@ impl PlayerListEntry {
         self.old_game_mode = self.game_mode;
         self.old_listed = self.listed;
         self.modified_ping = false;
+        self.modified_chat_data = false;
         self.modified_display_name = false;
     }
 }
@@ -596,6 +632,10 @@ pub(crate) fn update_player_list(
                 actions.set_update_game_mode(true);
             }
 
+            if entry.chat_data.is_some() {
+                actions.set_initialize_chat(true);
+            }
+
             if entry.display_name.is_some() {
                 actions.set_update_display_name(true);
             }
@@ -606,7 +646,7 @@ pub(crate) fn update_player_list(
                 player_uuid: uuid,
                 username: &entry.username,
                 properties: Cow::Borrowed(&entry.properties),
-                chat_data: None,
+                chat_data: entry.chat_data.as_ref().map(|d| d.into()),
                 listed: entry.listed,
                 ping: entry.ping,
                 game_mode: entry.game_mode,
@@ -635,6 +675,11 @@ pub(crate) fn update_player_list(
                 actions.set_update_latency(true);
             }
 
+            if entry.modified_chat_data {
+                entry.modified_chat_data = false;
+                actions.set_initialize_chat(true);
+            }
+
             if entry.modified_display_name {
                 entry.modified_display_name = false;
                 actions.set_update_display_name(true);
@@ -647,7 +692,7 @@ pub(crate) fn update_player_list(
                         player_uuid: uuid,
                         username: &entry.username,
                         properties: Cow::default(),
-                        chat_data: None,
+                        chat_data: entry.chat_data.as_ref().map(|d| d.into()),
                         listed: entry.listed,
                         ping: entry.ping,
                         game_mode: entry.game_mode,

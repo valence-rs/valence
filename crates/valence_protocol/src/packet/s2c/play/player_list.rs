@@ -4,6 +4,7 @@ use std::io::Write;
 use bitfield_struct::bitfield;
 use uuid::Uuid;
 
+use crate::packet::c2s::play::player_session::PlayerSessionData;
 use crate::text::Text;
 use crate::types::{GameMode, Property};
 use crate::var_int::VarInt;
@@ -32,20 +33,11 @@ pub struct Entry<'a> {
     pub player_uuid: Uuid,
     pub username: &'a str,
     pub properties: Cow<'a, [Property]>,
-    pub chat_data: Option<ChatData<'a>>,
+    pub chat_data: Option<Cow<'a, PlayerSessionData>>,
     pub listed: bool,
     pub ping: i32,
     pub game_mode: GameMode,
     pub display_name: Option<Cow<'a, Text>>,
-}
-
-#[derive(Clone, PartialEq, Debug, Encode, Decode)]
-pub struct ChatData<'a> {
-    pub session_id: Uuid,
-    /// Unix timestamp in milliseconds.
-    pub key_expiry_time: i64,
-    pub public_key: &'a [u8],
-    pub public_key_signature: &'a [u8],
 }
 
 impl<'a> Encode for PlayerListS2c<'a> {
