@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use tracing::warn;
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::{default_event_handler, PlayerInteractBlock, StartSneaking};

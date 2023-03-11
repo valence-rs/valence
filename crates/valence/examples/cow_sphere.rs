@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use std::f64::consts::TAU;
 
 use glam::{DQuat, EulerRot};

@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::sync::Arc;

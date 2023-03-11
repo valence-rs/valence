@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use rand::Rng;
 use valence::client::event::default_event_handler;
 use valence::player_list::Entry;

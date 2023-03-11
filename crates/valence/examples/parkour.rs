@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use std::collections::VecDeque;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -127,7 +129,7 @@ fn reset_clients(
             instance.set_block(START_POS, BlockState::STONE);
 
             for _ in 0..10 {
-                generate_next_block(&mut *state, &mut *instance, false);
+                generate_next_block(&mut state, &mut instance, false);
             }
 
             pos.set([

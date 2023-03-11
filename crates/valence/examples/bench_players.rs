@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use std::time::Instant;
 
 use valence::client::despawn_disconnected_clients;

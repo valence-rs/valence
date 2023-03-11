@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use bevy_ecs::query::WorldQuery;
 use glam::Vec3Swizzles;
 use valence::client::despawn_disconnected_clients;
