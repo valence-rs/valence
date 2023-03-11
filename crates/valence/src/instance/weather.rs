@@ -266,7 +266,7 @@ mod test {
         });
 
         // Handle weather event packets.
-        for _ in 0..3 {
+        for _ in 0..4 {
             app.update();
         }
 
@@ -314,7 +314,7 @@ mod test {
         });
 
         // Handle weather event packets.
-        for _ in 0..3 {
+        for _ in 0..4 {
             app.update();
         }
 
