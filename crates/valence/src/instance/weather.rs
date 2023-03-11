@@ -6,6 +6,7 @@ use valence_protocol::packet::s2c::play::game_state_change::GameEventKind;
 use valence_protocol::packet::s2c::play::GameStateChangeS2c;
 
 use super::Instance;
+use crate::packet::WritePacket;
 use crate::prelude::*;
 
 pub const WEATHER_LEVEL_RANGE: Range<f32> = 0_f32..1_f32;
@@ -29,7 +30,7 @@ pub struct Weather {
 
 impl Instance {
     /// Sends the begin rain event to all players in the instance.
-    pub fn begin_raining(&mut self) {
+    fn begin_raining(&mut self) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::BeginRaining,
             value: f32::default(),
@@ -37,7 +38,7 @@ impl Instance {
     }
 
     /// Sends the end rain event to all players in the instance.
-    pub fn end_raining(&mut self) {
+    fn end_raining(&mut self) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::EndRaining,
             value: f32::default(),
@@ -45,7 +46,7 @@ impl Instance {
     }
 
     /// Sends the set rain level event to all players in the instance.
-    pub fn set_rain_level(&mut self, level: f32) {
+    fn set_rain_level(&mut self, level: f32) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::RainLevelChange,
             value: level.clamp(WEATHER_LEVEL_RANGE.start, WEATHER_LEVEL_RANGE.end),
@@ -53,7 +54,7 @@ impl Instance {
     }
 
     /// Sends the set thunder level event to all players in the instance.
-    pub fn set_thunder_level(&mut self, level: f32) {
+    fn set_thunder_level(&mut self, level: f32) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::ThunderLevelChange,
             value: level.clamp(WEATHER_LEVEL_RANGE.start, WEATHER_LEVEL_RANGE.end),
@@ -61,7 +62,7 @@ impl Instance {
     }
 
     /// Sends weather level events to all players in the instance.
-    pub fn set_weather(&mut self, weather: &Weather) {
+    fn set_weather(&mut self, weather: &Weather) {
         if let Some(rain_level) = weather.rain {
             self.set_rain_level(rain_level)
         }
@@ -74,7 +75,7 @@ impl Instance {
 
 impl Client {
     /// Sends the begin rain event to the client.
-    pub fn begin_raining(&mut self) {
+    fn begin_raining(&mut self) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::BeginRaining,
             value: f32::default(),
@@ -82,7 +83,7 @@ impl Client {
     }
 
     /// Sends the end rain event to the client.
-    pub fn end_raining(&mut self) {
+    fn end_raining(&mut self) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::EndRaining,
             value: f32::default(),
@@ -90,7 +91,7 @@ impl Client {
     }
 
     /// Sends the set rain level event to the client.
-    pub fn set_rain_level(&mut self, level: f32) {
+    fn set_rain_level(&mut self, level: f32) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::RainLevelChange,
             value: level.clamp(WEATHER_LEVEL_RANGE.start, WEATHER_LEVEL_RANGE.end),
@@ -98,7 +99,7 @@ impl Client {
     }
 
     /// Sends the set thunder level event to the client.
-    pub fn set_thunder_level(&mut self, level: f32) {
+    fn set_thunder_level(&mut self, level: f32) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::ThunderLevelChange,
             value: level.clamp(WEATHER_LEVEL_RANGE.start, WEATHER_LEVEL_RANGE.end),
@@ -106,7 +107,7 @@ impl Client {
     }
 
     /// Sends weather level events to the client.
-    pub fn set_weather(&mut self, weather: &Weather) {
+    fn set_weather(&mut self, weather: &Weather) {
         if let Some(rain_level) = weather.rain {
             self.set_rain_level(rain_level)
         }
@@ -149,7 +150,7 @@ fn handle_weather_for_joined_player(
     weathers: Query<&Weather, With<Instance>>,
 ) {
     clients.par_iter_mut().for_each_mut(|mut client| {
-        if let Ok(weather) = weathers.get(client.instance()) {
+        if let Ok(weather) = weathers.get_single() {
             client.begin_raining();
             client.set_weather(weather);
         }
