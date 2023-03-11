@@ -17,7 +17,7 @@ use valence_protocol::sound::Sound;
 use valence_protocol::text::Text;
 use valence_protocol::types::SoundCategory;
 use valence_protocol::Packet;
-pub use weather::{WEATHER_LEVEL_MAX, WEATHER_LEVEL_MIN};
+pub use weather::WEATHER_LEVEL_RANGE;
 
 use crate::dimension::DimensionId;
 use crate::entity::McEntity;

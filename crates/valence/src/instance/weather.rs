@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::SystemConfigs;
 use valence_protocol::packet::s2c::play::game_state_change::GameEventKind;
@@ -6,19 +8,20 @@ use valence_protocol::packet::s2c::play::GameStateChangeS2c;
 use super::Instance;
 use crate::prelude::*;
 
-pub const WEATHER_LEVEL_MIN: f32 = 0_f32;
-pub const WEATHER_LEVEL_MAX: f32 = 1_f32;
+pub const WEATHER_LEVEL_RANGE: Range<f32> = 0_f32..1_f32;
 
 /// The weather state representation.
 #[derive(Component)]
 pub struct Weather {
     /// Contains the rain level.
-    /// Should be between [`WEATHER_LEVEL_MIN`] and [`WEATHER_LEVEL_MAX`].
+    /// Valid value is a value within the [WEATHER_LEVEL_RANGE] range.
+    /// Invalid values would be clamped.
     ///
     /// The [`None`] value means no rain level.
     pub rain: Option<f32>,
     /// Contains the thunder level.
-    /// Should be between [`WEATHER_LEVEL_MIN`] and [`WEATHER_LEVEL_MAX`].
+    /// Valid value is a value within the [WEATHER_LEVEL_RANGE] range.
+    /// Invalid values would be clamped.
     ///
     /// The [`None`] value means no thunder level.
     pub thunder: Option<f32>,
@@ -45,7 +48,7 @@ impl Instance {
     pub fn set_rain_level(&mut self, level: f32) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::RainLevelChange,
-            value: level.clamp(WEATHER_LEVEL_MIN, WEATHER_LEVEL_MAX),
+            value: level.clamp(WEATHER_LEVEL_RANGE.start, WEATHER_LEVEL_RANGE.end),
         });
     }
 
@@ -53,7 +56,7 @@ impl Instance {
     pub fn set_thunder_level(&mut self, level: f32) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::ThunderLevelChange,
-            value: level.clamp(WEATHER_LEVEL_MIN, WEATHER_LEVEL_MAX),
+            value: level.clamp(WEATHER_LEVEL_RANGE.start, WEATHER_LEVEL_RANGE.end),
         });
     }
 
@@ -90,7 +93,7 @@ impl Client {
     pub fn set_rain_level(&mut self, level: f32) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::RainLevelChange,
-            value: level.clamp(WEATHER_LEVEL_MIN, WEATHER_LEVEL_MAX),
+            value: level.clamp(WEATHER_LEVEL_RANGE.start, WEATHER_LEVEL_RANGE.end),
         });
     }
 
@@ -98,7 +101,7 @@ impl Client {
     pub fn set_thunder_level(&mut self, level: f32) {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::ThunderLevelChange,
-            value: level.clamp(WEATHER_LEVEL_MIN, WEATHER_LEVEL_MAX),
+            value: level.clamp(WEATHER_LEVEL_RANGE.start, WEATHER_LEVEL_RANGE.end),
         });
     }
 
@@ -231,11 +234,11 @@ mod test {
         }
 
         if let S2cPlayPacket::GameStateChangeS2c(pkt) = sent_packets[3] {
-            assert_eq!(pkt.value, WEATHER_LEVEL_MAX);
+            assert_eq!(pkt.value, WEATHER_LEVEL_RANGE.end);
         }
 
         if let S2cPlayPacket::GameStateChangeS2c(pkt) = sent_packets[4] {
-            assert_eq!(pkt.value, WEATHER_LEVEL_MIN);
+            assert_eq!(pkt.value, WEATHER_LEVEL_RANGE.start);
         }
     }
 
@@ -270,8 +273,8 @@ mod test {
         // Alter a weather component of the instance.
         app.world.entity_mut(instance_ent).insert(Weather {
             // Invalid values to assert they are clamped.
-            rain: Some(WEATHER_LEVEL_MAX + 1_f32),
-            thunder: Some(WEATHER_LEVEL_MIN - 1_f32),
+            rain: Some(WEATHER_LEVEL_RANGE.end + 1_f32),
+            thunder: Some(WEATHER_LEVEL_RANGE.start - 1_f32),
         });
         app.update();
 
@@ -318,8 +321,8 @@ mod test {
         // Alter a weather component of the client.
         app.world.entity_mut(client_ent).insert(Weather {
             // Invalid values to assert they are clamped.
-            rain: Some(WEATHER_LEVEL_MAX + 1_f32),
-            thunder: Some(WEATHER_LEVEL_MIN - 1_f32),
+            rain: Some(WEATHER_LEVEL_RANGE.end + 1_f32),
+            thunder: Some(WEATHER_LEVEL_RANGE.start - 1_f32),
         });
         app.update();
 
