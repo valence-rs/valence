@@ -181,13 +181,13 @@ fn handle_weather_change_per_client(mut query: Query<(&mut Client, &Weather), Ch
 
 pub(crate) fn update_weather() -> SystemConfigs {
     (
-        handle_weather_begin_per_instance,
-        handle_weather_end_per_instance,
-        handle_weather_change_per_instance,
         handle_weather_for_joined_player,
-        handle_weather_begin_per_client,
+        handle_weather_begin_per_instance.before(handle_weather_change_per_instance),
+        handle_weather_change_per_instance.before(handle_weather_end_per_instance),
+        handle_weather_end_per_instance,
+        handle_weather_begin_per_client.before(handle_weather_change_per_client),
+        handle_weather_change_per_client.before(handle_weather_end_per_client),
         handle_weather_end_per_client,
-        handle_weather_change_per_client,
     )
         .into_configs()
 }
