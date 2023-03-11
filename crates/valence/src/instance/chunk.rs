@@ -19,8 +19,8 @@ use valence_protocol::Encode;
 use crate::biome::BiomeId;
 use crate::instance::paletted_container::PalettedContainer;
 use crate::instance::InstanceInfo;
-use crate::math::bit_width;
 use crate::packet::{PacketWriter, WritePacket};
+use crate::util::bit_width;
 use crate::view::ChunkPos;
 
 /// A chunk is a 16x16-meter segment of a world with a variable height. Chunks
@@ -333,31 +333,35 @@ impl Chunk<true> {
             self.write_init_packets(info, pos, writer, scratch)
         } else {
             for (sect_y, sect) in &mut self.sections.iter_mut().enumerate() {
-                if sect.section_updates.len() == 1 {
-                    let packed = sect.section_updates[0].0 as u64;
-                    let offset_y = packed & 0b1111;
-                    let offset_z = (packed >> 4) & 0b1111;
-                    let offset_x = (packed >> 8) & 0b1111;
-                    let block = packed >> 12;
+                match sect.section_updates.len() {
+                    0 => {}
+                    1 => {
+                        let packed = sect.section_updates[0].0 as u64;
+                        let offset_y = packed & 0b1111;
+                        let offset_z = (packed >> 4) & 0b1111;
+                        let offset_x = (packed >> 8) & 0b1111;
+                        let block = packed >> 12;
 
-                    let global_x = pos.x * 16 + offset_x as i32;
-                    let global_y = info.min_y + sect_y as i32 * 16 + offset_y as i32;
-                    let global_z = pos.z * 16 + offset_z as i32;
+                        let global_x = pos.x * 16 + offset_x as i32;
+                        let global_y = info.min_y + sect_y as i32 * 16 + offset_y as i32;
+                        let global_z = pos.z * 16 + offset_z as i32;
 
-                    writer.write_packet(&BlockUpdateS2c {
-                        position: BlockPos::new(global_x, global_y, global_z),
-                        block_id: VarInt(block as i32),
-                    })
-                } else if sect.section_updates.len() > 1 {
-                    let chunk_section_position = (pos.x as i64) << 42
-                        | (pos.z as i64 & 0x3fffff) << 20
-                        | (sect_y as i64 + info.min_y.div_euclid(16) as i64) & 0xfffff;
+                        writer.write_packet(&BlockUpdateS2c {
+                            position: BlockPos::new(global_x, global_y, global_z),
+                            block_id: VarInt(block as i32),
+                        })
+                    }
+                    _ => {
+                        let chunk_section_position = (pos.x as i64) << 42
+                            | (pos.z as i64 & 0x3fffff) << 20
+                            | (sect_y as i64 + info.min_y.div_euclid(16) as i64) & 0xfffff;
 
-                    writer.write_packet(&ChunkDeltaUpdateS2c {
-                        chunk_section_position,
-                        invert_trust_edges: false,
-                        blocks: Cow::Borrowed(&sect.section_updates),
-                    });
+                        writer.write_packet(&ChunkDeltaUpdateS2c {
+                            chunk_section_position,
+                            invert_trust_edges: false,
+                            blocks: Cow::Borrowed(&sect.section_updates),
+                        });
+                    }
                 }
             }
             for idx in &self.modified_block_entities {

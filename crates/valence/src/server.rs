@@ -18,23 +18,23 @@ use uuid::Uuid;
 use valence_nbt::{compound, Compound, List};
 use valence_protocol::ident;
 use valence_protocol::types::Property;
-use valence_protocol::username::Username;
 
 use crate::biome::{validate_biomes, Biome, BiomeId};
 use crate::client::event::{register_client_events, run_event_loop};
-use crate::client::{update_clients, Client};
+use crate::client::{update_clients, ClientBundle};
+use crate::component::{Despawned, OldLocation, OldPosition};
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerPlugin};
 use crate::dimension::{validate_dimensions, Dimension, DimensionId};
-use crate::entity::{deinit_despawned_entities, init_entities, update_entities, McEntityManager};
+use crate::entity::{
+    deinit_despawned_mcentities, init_mcentities, update_mcentities, McEntityManager,
+};
 use crate::instance::weather::update_weather;
 use crate::instance::{
     check_instance_invariants, update_instances_post_client, update_instances_pre_client, Instance,
 };
 use crate::inventory::update_inventories;
 use crate::player_list::{update_player_list, PlayerList};
-use crate::prelude::{Inventory, InventoryKind};
 use crate::server::connect::do_accept_loop;
-use crate::Despawned;
 
 mod byte_channel;
 mod connect;
@@ -93,9 +93,9 @@ struct SharedServerInner {
     /// Sent to all clients when joining.
     registry_codec: Compound,
     /// Sender for new clients past the login stage.
-    new_clients_send: Sender<Client>,
+    new_clients_send: Sender<ClientBundle>,
     /// Receiver for new clients past the login stage.
-    new_clients_recv: Receiver<Client>,
+    new_clients_recv: Receiver<ClientBundle>,
     /// A semaphore used to limit the number of simultaneous connections to the
     /// server. Closing this semaphore stops new connections.
     connection_sema: Arc<Semaphore>,
@@ -203,7 +203,7 @@ impl SharedServer {
 #[non_exhaustive]
 pub struct NewClientInfo {
     /// The username of the new client.
-    pub username: Username<String>,
+    pub username: String,
     /// The UUID of the new client.
     pub uuid: Uuid,
     /// The remote address of the new client.
@@ -299,7 +299,7 @@ pub fn build_plugin(
                 break
             };
 
-            world.spawn((client, Inventory::new(InventoryKind::Player)));
+            world.spawn(client);
         }
     };
 
@@ -342,22 +342,29 @@ pub fn build_plugin(
     // Add internal valence systems that run after `CoreSet::Update`.
     app.add_systems(
         (
-            init_entities,
+            init_mcentities,
             check_instance_invariants,
             update_player_list.before(update_instances_pre_client),
-            update_instances_pre_client.after(init_entities),
-            update_clients.after(update_instances_pre_client),
-            update_instances_post_client.after(update_clients),
-            deinit_despawned_entities.after(update_instances_post_client),
-            despawn_marked_entities.after(deinit_despawned_entities),
-            update_entities.after(despawn_marked_entities),
+            update_instances_pre_client.after(init_mcentities),
+            update_instances_post_client.after(update_instances_pre_client),
+            deinit_despawned_mcentities.after(update_instances_post_client),
+            despawn_marked_entities.after(deinit_despawned_mcentities),
+            update_mcentities.after(despawn_marked_entities),
+            OldPosition::update.after(despawn_marked_entities),
+            OldLocation::update.after(despawn_marked_entities),
         )
             .in_base_set(CoreSet::PostUpdate),
     )
     .add_systems(
         update_inventories()
             .in_base_set(CoreSet::PostUpdate)
-            .before(init_entities),
+            .before(init_mcentities),
+    )
+    .add_systems(
+        update_clients()
+            .in_base_set(CoreSet::PostUpdate)
+            .after(update_instances_pre_client)
+            .before(update_instances_post_client),
     )
     .add_systems(update_weather().in_base_set(CoreSet::PostUpdate))
     .add_system(increment_tick_counter.in_base_set(CoreSet::Last));
@@ -369,7 +376,7 @@ pub fn build_plugin(
 #[derive(ScheduleLabel, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub struct EventLoopSchedule;
 
-/// The default base set for the event loop [`Schedule`].
+/// The default base set for [`EventLoopSchedule`].
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
 pub struct EventLoopSet;
 

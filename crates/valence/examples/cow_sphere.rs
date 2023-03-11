@@ -1,10 +1,12 @@
+#![allow(clippy::type_complexity)]
+
 use std::f64::consts::TAU;
 
 use glam::{DQuat, EulerRot};
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::default_event_handler;
-use valence::math::to_yaw_and_pitch;
 use valence::prelude::*;
+use valence::util::to_yaw_and_pitch;
 
 const SPHERE_CENTER: DVec3 = DVec3::new(0.5, SPAWN_POS.y as f64 + 2.0, 0.5);
 const SPHERE_AMOUNT: usize = 200;
@@ -52,17 +54,31 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<&mut Client, Added<Client>>,
+    mut clients: Query<
+        (
+            Entity,
+            &UniqueId,
+            &mut Position,
+            &mut Location,
+            &mut GameMode,
+        ),
+        Added<Client>,
+    >,
     instances: Query<Entity, With<Instance>>,
+    mut commands: Commands,
 ) {
-    for mut client in &mut clients {
-        client.set_position([
+    for (entity, uuid, mut pos, mut loc, mut game_mode) in &mut clients {
+        pos.set([
             SPAWN_POS.x as f64 + 0.5,
             SPAWN_POS.y as f64 + 1.0,
             SPAWN_POS.z as f64 + 0.5,
         ]);
-        client.set_instance(instances.single());
-        client.set_game_mode(GameMode::Creative);
+        loc.0 = instances.single();
+        *game_mode = GameMode::Creative;
+
+        commands
+            .entity(entity)
+            .insert(McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0));
     }
 }
 

@@ -13,7 +13,6 @@ use valence_protocol::packet::c2s::play::{
     KeepAliveC2s, PositionAndOnGroundC2s, TeleportConfirmC2s,
 };
 use valence_protocol::packet::{C2sHandshakePacket, S2cLoginPacket, S2cPlayPacket};
-use valence_protocol::username::Username;
 use valence_protocol::var_int::VarInt;
 use valence_protocol::PROTOCOL_VERSION;
 
@@ -56,7 +55,7 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
     enc.append_packet(&handshake_pkt)?;
 
     enc.append_packet(&LoginHelloC2s {
-        username: Username::new(sess_name).unwrap(),
+        username: sess_name,
         profile_id: Some(Uuid::new_v4()),
     })?;
 

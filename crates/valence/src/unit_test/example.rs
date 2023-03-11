@@ -57,6 +57,7 @@ mod tests {
 
     use super::*;
     use crate::client::Client;
+    use crate::component::Position;
     use crate::inventory::{Inventory, InventoryKind, OpenInventory};
     use crate::{assert_packet_count, assert_packet_order};
 
@@ -90,8 +91,8 @@ mod tests {
         app.update();
 
         // Make assertions
-        let client: &Client = app.world.get(client_ent).expect("client not found");
-        assert_eq!(client.position(), [12.0, 64.0, 0.0].into());
+        let pos = app.world.get::<Position>(client_ent).unwrap();
+        assert_eq!(pos.0, [12.0, 64.0, 0.0].into());
     }
 
     /// A unit test where we want to test what packets are sent to the client.

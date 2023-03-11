@@ -13,9 +13,10 @@ use valence_protocol::packet::s2c::play::player_list::{
 };
 use valence_protocol::packet::s2c::play::{PlayerListHeaderS2c, PlayerRemoveS2c};
 use valence_protocol::text::Text;
-use valence_protocol::types::{GameMode, Property};
+use valence_protocol::types::Property;
 
 use crate::client::Client;
+use crate::component::{GameMode, Ping, Properties, UniqueId, Username};
 use crate::packet::{PacketWriter, WritePacket};
 use crate::server::Server;
 
@@ -55,27 +56,28 @@ impl PlayerList {
     /// When clients disconnect, they are removed from the player list.
     pub fn default_systems() -> SystemConfigs {
         fn add_new_clients_to_player_list(
-            clients: Query<&Client, Added<Client>>,
+            clients: Query<(&Username, &Properties, &GameMode, &Ping, &UniqueId), Added<Client>>,
             mut player_list: ResMut<PlayerList>,
         ) {
-            for client in &clients {
+            for (username, properties, game_mode, ping, uuid) in &clients {
                 let entry = PlayerListEntry::new()
-                    .with_username(client.username())
-                    .with_properties(client.properties())
-                    .with_game_mode(client.game_mode())
-                    .with_ping(client.ping());
+                    .with_username(&username.0)
+                    .with_properties(properties.0.clone())
+                    .with_game_mode(*game_mode)
+                    .with_ping(ping.0);
 
-                player_list.insert(client.uuid(), entry);
+                player_list.insert(uuid.0, entry);
             }
         }
 
         fn remove_disconnected_clients_from_player_list(
-            clients: Query<&mut Client>,
+            mut clients: RemovedComponents<Client>,
+            uuids: Query<&UniqueId>,
             mut player_list: ResMut<PlayerList>,
         ) {
-            for client in &clients {
-                if client.is_disconnected() {
-                    player_list.remove(client.uuid());
+            for entity in clients.iter() {
+                if let Ok(UniqueId(uuid)) = uuids.get(entity) {
+                    player_list.remove(*uuid);
                 }
             }
         }
@@ -238,7 +240,7 @@ impl PlayerList {
                     chat_data: None,
                     listed: entry.listed,
                     ping: entry.ping,
-                    game_mode: entry.game_mode,
+                    game_mode: entry.game_mode.into(),
                     display_name: entry.display_name.as_ref().map(|t| t.into()),
                 })
             })
@@ -271,7 +273,7 @@ impl PlayerList {
 /// ```
 #[derive(Clone, Debug)]
 pub struct PlayerListEntry {
-    username: String, // TODO: Username<String>?
+    username: String,
     properties: Vec<Property>,
     game_mode: GameMode,
     old_game_mode: GameMode,
@@ -609,7 +611,7 @@ pub(crate) fn update_player_list(
                 chat_data: None,
                 listed: entry.listed,
                 ping: entry.ping,
-                game_mode: entry.game_mode,
+                game_mode: entry.game_mode.into(),
                 display_name: entry.display_name.as_ref().map(|t| t.into()),
             };
 
@@ -650,7 +652,7 @@ pub(crate) fn update_player_list(
                         chat_data: None,
                         listed: entry.listed,
                         ping: entry.ping,
-                        game_mode: entry.game_mode,
+                        game_mode: entry.game_mode.into(),
                         display_name: entry.display_name.as_ref().map(|t| t.into()),
                     }]),
                 });
@@ -676,7 +678,7 @@ pub(crate) fn update_player_list(
     }
 
     for mut client in &mut clients {
-        if client.is_new() {
+        if client.is_added() {
             pl.write_init_packets(client.into_inner());
         } else {
             client.write_packet_bytes(&pl.cached_update_packets);

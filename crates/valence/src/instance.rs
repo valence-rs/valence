@@ -19,12 +19,12 @@ use valence_protocol::types::SoundCategory;
 use valence_protocol::Packet;
 pub use weather::WEATHER_LEVEL_RANGE;
 
+use crate::component::Despawned;
 use crate::dimension::DimensionId;
 use crate::entity::McEntity;
 use crate::packet::{PacketWriter, WritePacket};
 use crate::server::{Server, SharedServer};
 use crate::view::ChunkPos;
-use crate::Despawned;
 
 mod chunk;
 mod chunk_entry;
