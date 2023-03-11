@@ -76,13 +76,13 @@ pub(crate) const fn bit_width(n: usize) -> usize {
 /// # Examples
 ///
 /// ```
-/// use valence::util::is_valid_userrname;
+/// use valence::util::is_valid_username;
 ///
-/// assert!(Username::new("00a").is_ok());
-/// assert!(Username::new("jeb_").is_ok());
+/// assert!(is_valid_username("00a"));
+/// assert!(is_valid_username("jeb_"));
 ///
-/// assert!(Username::new("notavalidusername").is_err());
-/// assert!(Username::new("NotValid!").is_err());
+/// assert!(!is_valid_username("notavalidusername"));
+/// assert!(!is_valid_username("NotValid!"));
 /// ```
 pub fn is_valid_username(username: &str) -> bool {
     (3..=16).contains(&username.len())
