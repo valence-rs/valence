@@ -5,7 +5,6 @@ use bevy_ecs::schedule::SystemConfigs;
 use valence_protocol::packet::s2c::play::game_state_change::GameEventKind;
 use valence_protocol::packet::s2c::play::GameStateChangeS2c;
 
-use super::Instance;
 use crate::packet::WritePacket;
 use crate::prelude::*;
 

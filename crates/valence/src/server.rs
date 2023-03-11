@@ -28,13 +28,13 @@ use crate::dimension::{validate_dimensions, Dimension, DimensionId};
 use crate::entity::{
     deinit_despawned_mcentities, init_mcentities, update_mcentities, McEntityManager,
 };
-use crate::instance::weather::update_weather;
 use crate::instance::{
     check_instance_invariants, update_instances_post_client, update_instances_pre_client, Instance,
 };
 use crate::inventory::update_inventories;
 use crate::player_list::{update_player_list, PlayerList};
 use crate::server::connect::do_accept_loop;
+use crate::weather::update_weather;
 
 mod byte_channel;
 mod connect;

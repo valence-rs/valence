@@ -17,7 +17,6 @@ use valence_protocol::sound::Sound;
 use valence_protocol::text::Text;
 use valence_protocol::types::SoundCategory;
 use valence_protocol::Packet;
-pub use weather::WEATHER_LEVEL_RANGE;
 
 use crate::component::Despawned;
 use crate::dimension::DimensionId;
@@ -29,7 +28,6 @@ use crate::view::ChunkPos;
 mod chunk;
 mod chunk_entry;
 mod paletted_container;
-pub mod weather;
 
 /// An Instance represents a Minecraft world, which consist of [`Chunk`]s.
 /// It manages updating clients when chunks change, and caches chunk and entity
