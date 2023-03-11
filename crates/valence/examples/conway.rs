@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use std::mem;
 
 use valence::client::despawn_disconnected_clients;
@@ -65,13 +67,24 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<&mut Client, Added<Client>>,
+    mut clients: Query<
+        (
+            Entity,
+            &UniqueId,
+            &mut Client,
+            &mut Position,
+            &mut Location,
+            &mut GameMode,
+        ),
+        Added<Client>,
+    >,
     instances: Query<Entity, With<Instance>>,
+    mut commands: Commands,
 ) {
-    for mut client in &mut clients {
-        client.set_position(SPAWN_POS);
-        client.set_instance(instances.single());
-        client.set_game_mode(GameMode::Survival);
+    for (entity, uuid, mut client, mut pos, mut loc, mut game_mode) in &mut clients {
+        pos.0 = SPAWN_POS;
+        loc.0 = instances.single();
+        *game_mode = GameMode::Survival;
 
         client.send_message("Welcome to Conway's game of life in Minecraft!".italic());
         client.send_message(
@@ -79,6 +92,9 @@ fn init_clients(
              life."
                 .italic(),
         );
+        commands
+            .entity(entity)
+            .insert(McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0));
     }
 }
 
@@ -195,10 +211,13 @@ fn pause_on_crouch(
     }
 }
 
-fn reset_oob_clients(mut clients: Query<&mut Client>, mut board: ResMut<LifeBoard>) {
-    for mut client in &mut clients {
-        if client.position().y < 0.0 {
-            client.set_position(SPAWN_POS);
+fn reset_oob_clients(
+    mut clients: Query<&mut Position, With<Client>>,
+    mut board: ResMut<LifeBoard>,
+) {
+    for mut pos in &mut clients {
+        if pos.0.y < 0.0 {
+            pos.0 = SPAWN_POS;
             board.clear();
         }
     }

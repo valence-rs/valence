@@ -1,3 +1,6 @@
+#![allow(clippy::type_complexity)]
+
+use bevy_ecs::query::WorldQuery;
 use glam::Vec3Swizzles;
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::{
@@ -64,43 +67,50 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut commands: Commands,
-    mut clients: Query<(Entity, &mut Client), Added<Client>>,
+    mut clients: Query<(Entity, &UniqueId, &mut Position, &mut Location), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
+    mut commands: Commands,
 ) {
-    let instance = instances.single();
-
-    for (entity, mut client) in &mut clients {
-        client.set_position([0.0, SPAWN_Y as f64, 0.0]);
-        client.set_instance(instance);
+    for (entity, uuid, mut pos, mut loc) in &mut clients {
+        pos.set([0.0, SPAWN_Y as f64, 0.0]);
+        loc.0 = instances.single();
 
         commands.entity(entity).insert((
             CombatState {
                 last_attacked_tick: 0,
                 has_bonus_knockback: false,
             },
-            McEntity::with_uuid(EntityKind::Player, instance, client.uuid()),
+            McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0),
         ));
     }
+}
+
+#[derive(WorldQuery)]
+#[world_query(mutable)]
+struct CombatQuery {
+    client: &'static mut Client,
+    pos: &'static Position,
+    state: &'static mut CombatState,
+    entity: &'static mut McEntity,
 }
 
 fn handle_combat_events(
     manager: Res<McEntityManager>,
     server: Res<Server>,
+    mut clients: Query<CombatQuery>,
     mut start_sprinting: EventReader<StartSprinting>,
     mut stop_sprinting: EventReader<StopSprinting>,
     mut interact_with_entity: EventReader<PlayerInteract>,
-    mut clients: Query<(&mut Client, &mut CombatState, &mut McEntity)>,
 ) {
     for &StartSprinting { client } in start_sprinting.iter() {
-        if let Ok((_, mut state, _)) = clients.get_mut(client) {
-            state.has_bonus_knockback = true;
+        if let Ok(mut client) = clients.get_mut(client) {
+            client.state.has_bonus_knockback = true;
         }
     }
 
     for &StopSprinting { client } in stop_sprinting.iter() {
-        if let Ok((_, mut state, _)) = clients.get_mut(client) {
-            state.has_bonus_knockback = false;
+        if let Ok(mut client) = clients.get_mut(client) {
+            client.state.has_bonus_knockback = false;
         }
     }
 
@@ -115,49 +125,53 @@ fn handle_combat_events(
             continue
         };
 
-        let Ok([(attacker_client, mut attacker_state, _), (mut victim_client, mut victim_state, mut victim_entity)]) =
-            clients.get_many_mut([attacker_client, victim_client])
-        else {
+        let Ok([mut attacker, mut victim]) = clients.get_many_mut([attacker_client, victim_client]) else {
             // Victim or attacker does not exist, or the attacker is attacking itself.
             continue
         };
 
-        if server.current_tick() - victim_state.last_attacked_tick < 10 {
+        if server.current_tick() - victim.state.last_attacked_tick < 10 {
             // Victim is still on attack cooldown.
             continue;
         }
 
-        victim_state.last_attacked_tick = server.current_tick();
+        victim.state.last_attacked_tick = server.current_tick();
 
-        let victim_pos = victim_client.position().xz();
-        let attacker_pos = attacker_client.position().xz();
+        let victim_pos = victim.pos.0.xz();
+        let attacker_pos = attacker.pos.0.xz();
 
         let dir = (victim_pos - attacker_pos).normalize().as_vec2();
 
-        let knockback_xz = if attacker_state.has_bonus_knockback {
+        let knockback_xz = if attacker.state.has_bonus_knockback {
             18.0
         } else {
             8.0
         };
-        let knockback_y = if attacker_state.has_bonus_knockback {
+        let knockback_y = if attacker.state.has_bonus_knockback {
             8.432
         } else {
             6.432
         };
 
-        victim_client.set_velocity([dir.x * knockback_xz, knockback_y, dir.y * knockback_xz]);
+        victim
+            .client
+            .set_velocity([dir.x * knockback_xz, knockback_y, dir.y * knockback_xz]);
 
-        attacker_state.has_bonus_knockback = false;
+        attacker.state.has_bonus_knockback = false;
 
-        victim_client.trigger_status(EntityStatus::DamageFromGenericSource);
-        victim_entity.trigger_status(EntityStatus::DamageFromGenericSource);
+        victim
+            .client
+            .trigger_status(EntityStatus::DamageFromGenericSource);
+        victim
+            .entity
+            .trigger_status(EntityStatus::DamageFromGenericSource);
     }
 }
 
-fn teleport_oob_clients(mut clients: Query<&mut Client>) {
-    for mut client in &mut clients {
-        if client.position().y < 0.0 {
-            client.set_position([0.0, SPAWN_Y as _, 0.0]);
+fn teleport_oob_clients(mut clients: Query<&mut Position, With<Client>>) {
+    for mut pos in &mut clients {
+        if pos.0.y < 0.0 {
+            pos.set([0.0, SPAWN_Y as _, 0.0]);
         }
     }
 }

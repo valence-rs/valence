@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use std::collections::VecDeque;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -37,7 +39,6 @@ pub fn main() {
             manage_blocks,
             despawn_disconnected_clients,
         ))
-        .add_system(despawn_disconnected_clients)
         .run();
 }
 
@@ -51,28 +52,27 @@ struct GameState {
 }
 
 fn init_clients(
-    mut commands: Commands,
+    mut clients: Query<
+        (
+            Entity,
+            &mut Client,
+            &UniqueId,
+            &mut IsFlat,
+            &mut Location,
+            &mut GameMode,
+        ),
+        Added<Client>,
+    >,
     server: Res<Server>,
-    mut clients: Query<(Entity, &mut Client), Added<Client>>,
+    mut commands: Commands,
 ) {
-    for (ent, mut client) in clients.iter_mut() {
-        let mut instance = server.new_instance(DimensionId::default());
-
-        for pos in client.view().with_dist(VIEW_DIST).iter() {
-            assert!(instance.insert_chunk(pos, Chunk::default()).is_none());
-        }
-
-        client.set_position([
-            START_POS.x as f64 + 0.5,
-            START_POS.y as f64 + 1.0,
-            START_POS.z as f64 + 0.5,
-        ]);
-        client.set_flat(true);
-        client.set_instance(ent);
-        client.set_game_mode(GameMode::Adventure);
+    for (entity, mut client, uuid, mut is_flat, mut loc, mut game_mode) in clients.iter_mut() {
+        is_flat.0 = true;
+        loc.0 = entity;
+        *game_mode = GameMode::Adventure;
         client.send_message("Welcome to epic infinite parkour game!".italic());
 
-        let mut state = GameState {
+        let state = GameState {
             blocks: VecDeque::new(),
             score: 0,
             combo: 0,
@@ -80,39 +80,75 @@ fn init_clients(
             last_block_timestamp: 0,
         };
 
-        reset(&mut client, &mut state, &mut instance);
+        let instance = server.new_instance(DimensionId::default());
 
-        commands.entity(ent).insert(state);
-        commands.entity(ent).insert(instance);
+        let mcentity = McEntity::with_uuid(EntityKind::Player, entity, uuid.0);
+
+        commands.entity(entity).insert((state, instance, mcentity));
     }
 }
 
 fn reset_clients(
-    mut clients: Query<(&mut Client, &mut GameState, &mut Instance), With<GameState>>,
+    mut clients: Query<(
+        &mut Client,
+        &mut Position,
+        &mut Look,
+        &mut GameState,
+        &mut Instance,
+    )>,
 ) {
-    for (mut client, mut state, mut instance) in clients.iter_mut() {
-        if (client.position().y as i32) < START_POS.y - 32 {
-            client.send_message(
-                "Your score was ".italic()
-                    + state
-                        .score
-                        .to_string()
-                        .color(Color::GOLD)
-                        .bold()
-                        .not_italic(),
-            );
+    for (mut client, mut pos, mut look, mut state, mut instance) in clients.iter_mut() {
+        let out_of_bounds = (pos.0.y as i32) < START_POS.y - 32;
 
-            reset(&mut client, &mut state, &mut instance);
+        if out_of_bounds || state.is_added() {
+            if out_of_bounds && !state.is_added() {
+                client.send_message(
+                    "Your score was ".italic()
+                        + state
+                            .score
+                            .to_string()
+                            .color(Color::GOLD)
+                            .bold()
+                            .not_italic(),
+                );
+            }
+
+            // Init chunks.
+            for pos in ChunkView::new(ChunkPos::from_block_pos(START_POS), VIEW_DIST).iter() {
+                instance.insert_chunk(pos, Chunk::default());
+            }
+
+            state.score = 0;
+            state.combo = 0;
+
+            for block in &state.blocks {
+                instance.set_block(*block, BlockState::AIR);
+            }
+            state.blocks.clear();
+            state.blocks.push_back(START_POS);
+            instance.set_block(START_POS, BlockState::STONE);
+
+            for _ in 0..10 {
+                generate_next_block(&mut state, &mut instance, false);
+            }
+
+            pos.set([
+                START_POS.x as f64 + 0.5,
+                START_POS.y as f64 + 1.0,
+                START_POS.z as f64 + 0.5,
+            ]);
+            look.yaw = 0.0;
+            look.pitch = 0.0;
         }
     }
 }
 
-fn manage_blocks(mut clients: Query<(&mut Client, &mut GameState, &mut Instance)>) {
-    for (mut client, mut state, mut instance) in clients.iter_mut() {
+fn manage_blocks(mut clients: Query<(&mut Client, &Position, &mut GameState, &mut Instance)>) {
+    for (mut client, pos, mut state, mut instance) in clients.iter_mut() {
         let pos_under_player = BlockPos::new(
-            (client.position().x - 0.5).round() as i32,
-            client.position().y as i32 - 1,
-            (client.position().z - 0.5).round() as i32,
+            (pos.0.x - 0.5).round() as i32,
+            pos.0.y as i32 - 1,
+            (pos.0.z - 0.5).round() as i32,
         );
 
         if let Some(index) = state
@@ -140,11 +176,10 @@ fn manage_blocks(mut clients: Query<(&mut Client, &mut GameState, &mut Instance)
                 }
 
                 let pitch = 0.9 + ((state.combo as f32) - 1.0) * 0.05;
-                let pos = client.position();
                 client.play_sound(
                     Sound::BlockNoteBlockBass,
                     SoundCategory::Master,
-                    pos,
+                    pos.0,
                     1.0,
                     pitch,
                 );
@@ -163,14 +198,14 @@ fn manage_blocks(mut clients: Query<(&mut Client, &mut GameState, &mut Instance)
     }
 }
 
-fn manage_chunks(mut clients: Query<(&mut Client, &mut Instance)>) {
-    for (client, mut instance) in &mut clients {
-        let old_view = client.old_view().with_dist(VIEW_DIST);
-        let view = client.view().with_dist(VIEW_DIST);
+fn manage_chunks(mut clients: Query<(&Position, &OldPosition, &mut Instance), With<Client>>) {
+    for (pos, old_pos, mut instance) in &mut clients {
+        let old_view = ChunkView::new(old_pos.chunk_pos(), VIEW_DIST);
+        let view = ChunkView::new(pos.chunk_pos(), VIEW_DIST);
 
         if old_view != view {
             for pos in old_view.diff(view) {
-                instance.chunk_entry(pos).or_default();
+                instance.remove_chunk(pos);
             }
 
             for pos in view.diff(old_view) {
@@ -178,38 +213,6 @@ fn manage_chunks(mut clients: Query<(&mut Client, &mut Instance)>) {
             }
         }
     }
-}
-
-fn reset(client: &mut Client, state: &mut GameState, instance: &mut Instance) {
-    // Load chunks around spawn to avoid double void reset
-    for z in -1..3 {
-        for x in -2..2 {
-            instance.insert_chunk([x, z], Chunk::default());
-        }
-    }
-
-    state.score = 0;
-    state.combo = 0;
-
-    for block in &state.blocks {
-        instance.set_block(*block, BlockState::AIR);
-    }
-    state.blocks.clear();
-    state.blocks.push_back(START_POS);
-    instance.set_block(START_POS, BlockState::STONE);
-
-    for _ in 0..10 {
-        generate_next_block(state, instance, false);
-    }
-
-    client.set_position([
-        START_POS.x as f64 + 0.5,
-        START_POS.y as f64 + 1.0,
-        START_POS.z as f64 + 0.5,
-    ]);
-    client.set_velocity([0f32, 0f32, 0f32]);
-    client.set_yaw(0f32);
-    client.set_pitch(0f32)
 }
 
 fn generate_next_block(state: &mut GameState, instance: &mut Instance, in_game: bool) {

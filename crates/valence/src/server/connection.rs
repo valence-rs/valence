@@ -12,7 +12,7 @@ use tracing::debug;
 use valence_protocol::codec::{PacketDecoder, PacketEncoder};
 use valence_protocol::Packet;
 
-use crate::client::{Client, ClientConnection};
+use crate::client::{ClientBundle, ClientConnection};
 use crate::server::byte_channel::{
     byte_channel, ByteReceiver, ByteSender, TryRecvError, TrySendError,
 };
@@ -120,12 +120,12 @@ where
         self.dec.enable_encryption(key);
     }
 
-    pub fn into_client(
+    pub fn into_client_bundle(
         mut self,
         info: NewClientInfo,
         incoming_limit: usize,
         outgoing_limit: usize,
-    ) -> Client
+    ) -> ClientBundle
     where
         R: Send + 'static,
         W: Send + 'static,
@@ -171,7 +171,7 @@ where
             }
         });
 
-        Client::new(
+        ClientBundle::new(
             info,
             Box::new(RealClientConnection {
                 send: outgoing_sender,

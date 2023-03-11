@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use std::net::SocketAddr;
 
 use valence::prelude::*;

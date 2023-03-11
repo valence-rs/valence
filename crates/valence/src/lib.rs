@@ -20,11 +20,7 @@
     unused_import_braces,
     clippy::dbg_macro
 )]
-#![allow(
-    clippy::derive_partial_eq_without_eq,
-    clippy::unusual_byte_groupings,
-    clippy::comparison_chain
-)]
+#![allow(clippy::type_complexity)] // ECS queries are often complicated.
 
 use bevy_ecs::prelude::*;
 pub use {
@@ -33,18 +29,19 @@ pub use {
 
 pub mod biome;
 pub mod client;
+pub mod component;
 pub mod config;
 pub mod dimension;
 pub mod entity;
 pub mod instance;
 pub mod inventory;
-pub mod math;
-mod packet;
+pub mod packet;
 pub mod player_list;
 pub mod player_textures;
 pub mod server;
 #[cfg(any(test, doctest))]
 mod unit_test;
+pub mod util;
 pub mod view;
 
 pub mod prelude {
@@ -52,7 +49,8 @@ pub mod prelude {
     pub use bevy_app::prelude::*;
     pub use bevy_ecs::prelude::*;
     pub use biome::{Biome, BiomeId};
-    pub use client::Client;
+    pub use client::*;
+    pub use component::*;
     pub use config::{
         AsyncCallbacks, ConnectionMode, PlayerSampleEntry, ServerListPing, ServerPlugin,
     };
@@ -68,8 +66,6 @@ pub mod prelude {
     pub use protocol::ident::Ident;
     pub use protocol::item::{ItemKind, ItemStack};
     pub use protocol::text::{Color, Text, TextFormat};
-    pub use protocol::types::GameMode;
-    pub use protocol::username::Username;
     pub use server::{EventLoopSchedule, EventLoopSet, NewClientInfo, Server, SharedServer};
     pub use uuid::Uuid;
     pub use valence_nbt::Compound;
@@ -81,21 +77,6 @@ pub mod prelude {
 
     use super::*;
 }
-
-/// A [`Component`] for marking entities that should be despawned at the end of
-/// the tick.
-///
-/// In Valence, some built-in components such as [`McEntity`] are not allowed to
-/// be removed from the [`World`] directly. Instead, you must give the entities
-/// you wish to despawn the `Despawned` component. At the end of the tick,
-/// Valence will despawn all entities with this component for you.
-///
-/// It is legal to remove components or delete entities that Valence does not
-/// know about at any time.
-///
-/// [`McEntity`]: entity::McEntity
-#[derive(Copy, Clone, Component)]
-pub struct Despawned;
 
 /// Let's pretend that [`NULL_ENTITY`] was created by spawning an entity,
 /// immediately despawning it, and then stealing its [`Entity`] ID. The user

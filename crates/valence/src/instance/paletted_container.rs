@@ -5,7 +5,7 @@ use arrayvec::ArrayVec;
 use valence_protocol::var_int::VarInt;
 use valence_protocol::Encode;
 
-use crate::math::bit_width;
+use crate::util::bit_width;
 
 /// `HALF_LEN` must be equal to `ceil(LEN / 2)`.
 #[derive(Clone, Debug)]

@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::{default_event_handler, CommandExecution};
 use valence::prelude::*;
@@ -36,28 +38,47 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<&mut Client, Added<Client>>,
+    mut clients: Query<
+        (
+            Entity,
+            &UniqueId,
+            &mut Client,
+            &mut Position,
+            &mut Location,
+            &mut GameMode,
+            &mut OpLevel,
+        ),
+        Added<Client>,
+    >,
     instances: Query<Entity, With<Instance>>,
+    mut commands: Commands,
 ) {
-    for mut client in &mut clients {
-        client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
-        client.set_instance(instances.single());
-        client.set_game_mode(GameMode::Creative);
-        client.set_op_level(2); // required to use F3+F4, eg /gamemode
+    for (entity, uuid, mut client, mut pos, mut loc, mut game_mode, mut op_level) in &mut clients {
+        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
+        loc.0 = instances.single();
+        *game_mode = GameMode::Creative;
+        op_level.set(2); // required to use F3+F4, eg /gamemode
         client.send_message("Welcome to Valence! Use F3+F4 to change gamemode.".italic());
+
+        commands
+            .entity(entity)
+            .insert(McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0));
     }
 }
 
-fn interpret_command(mut clients: Query<&mut Client>, mut events: EventReader<CommandExecution>) {
+fn interpret_command(
+    mut clients: Query<(&mut Client, &OpLevel, &mut GameMode)>,
+    mut events: EventReader<CommandExecution>,
+) {
     for event in events.iter() {
-        let Ok(mut client) = clients.get_component_mut::<Client>(event.client) else {
+        let Ok((mut client, op_level, mut game_mode)) = clients.get_mut(event.client) else {
             continue;
         };
 
         let mut args = event.command.split_whitespace();
 
         if args.next() == Some("gamemode") {
-            if client.op_level() < 2 {
+            if op_level.get() < 2 {
                 // not enough permissions to use gamemode command
                 continue;
             }
@@ -72,7 +93,7 @@ fn interpret_command(mut clients: Query<&mut Client>, mut events: EventReader<Co
                     continue;
                 }
             };
-            client.set_game_mode(mode);
+            *game_mode = mode;
             client.send_message(format!("Set gamemode to {mode:?}.").italic());
         }
     }
