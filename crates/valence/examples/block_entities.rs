@@ -66,7 +66,7 @@ fn init_clients(
             Entity,
             &UniqueId,
             &mut Position,
-            &mut Yaw,
+            &mut Look,
             &mut Location,
             &mut GameMode,
         ),
@@ -75,9 +75,9 @@ fn init_clients(
     instances: Query<Entity, With<Instance>>,
     mut commands: Commands,
 ) {
-    for (entity, uuid, mut pos, mut yaw, mut loc, mut game_mode) in &mut clients {
+    for (entity, uuid, mut pos, mut look, mut loc, mut game_mode) in &mut clients {
         pos.set([1.5, FLOOR_Y as f64 + 1.0, 1.5]);
-        yaw.0 = -90.0;
+        look.yaw = -90.0;
         loc.0 = instances.single();
         *game_mode = GameMode::Creative;
         
