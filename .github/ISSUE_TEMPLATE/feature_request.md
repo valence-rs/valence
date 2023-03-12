@@ -20,5 +20,4 @@ Other solutions to solve and/or work around the problem presented.
 
 ## Additional context
 
-Any other information you would like to add such as related previous work,
-screenshots, benchmarks, etc.
+Any other information you would like to add such as related previous work, screenshots, benchmarks, etc.
