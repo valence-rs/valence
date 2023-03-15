@@ -1,6 +1,5 @@
-use crate::{Decode, Encode};
-
 use super::team::TeamColor;
+use crate::{Decode, Encode};
 
 #[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct ScoreboardDisplayS2c<'a> {

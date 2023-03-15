@@ -1410,7 +1410,7 @@ fn handle_one_packet(
 /// is subject to change.
 ///
 /// This system must be scheduled to run in the
-/// [`EventLoopSchedule`](crate::server::EventLoopSchedule). Otherwise, it may
+/// [`EventLoopSchedule`]. Otherwise, it may
 /// not function correctly.
 #[allow(clippy::too_many_arguments)]
 pub fn default_event_handler(
