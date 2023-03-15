@@ -10,22 +10,17 @@ use crate::prelude::*;
 
 pub const WEATHER_LEVEL: Range<f32> = 0_f32..1_f32;
 
-/// The weather state representation.
+/// Contains the rain level.
+/// Valid value is a value within the [WEATHER_LEVEL] range.
+/// Invalid value would be clamped.
 #[derive(Component)]
-pub struct Weather {
-    /// Contains the rain level.
-    /// Valid value is a value within the [WEATHER_LEVEL] range.
-    /// Invalid value would be clamped.
-    ///
-    /// The [`None`] value means no rain level.
-    pub rain: Option<f32>,
-    /// Contains the thunder level.
-    /// Valid value is a value within the [WEATHER_LEVEL] range.
-    /// Invalid value would be clamped.
-    ///
-    /// The [`None`] value means no thunder level.
-    pub thunder: Option<f32>,
-}
+pub struct Rain(f32);
+
+/// Contains the thunder level.
+/// Valid value is a value within the [WEATHER_LEVEL] range.
+/// Invalid value would be clamped.
+#[derive(Component)]
+pub struct Thunder(f32);
 
 impl Instance {
     /// Sends the begin rain event to all players in the instance.
@@ -58,17 +53,6 @@ impl Instance {
             kind: GameEventKind::ThunderLevelChange,
             value: level.clamp(WEATHER_LEVEL.start, WEATHER_LEVEL.end),
         });
-    }
-
-    /// Sends weather level events to all players in the instance.
-    fn set_weather(&mut self, weather: &Weather) {
-        if let Some(rain_level) = weather.rain {
-            self.set_rain_level(rain_level)
-        }
-
-        if let Some(thunder_level) = weather.thunder {
-            self.set_thunder_level(thunder_level)
-        }
     }
 }
 
@@ -104,39 +88,39 @@ impl Client {
             value: level.clamp(WEATHER_LEVEL.start, WEATHER_LEVEL.end),
         });
     }
-
-    /// Sends weather level events to the client.
-    fn set_weather(&mut self, weather: &Weather) {
-        if let Some(rain_level) = weather.rain {
-            self.set_rain_level(rain_level)
-        }
-
-        if let Some(thunder_level) = weather.thunder {
-            self.set_thunder_level(thunder_level)
-        }
-    }
 }
 
 fn handle_weather_for_joined_player(
     mut clients: Query<(&mut Client, &Location), Added<Client>>,
-    weathers: Query<&Weather, With<Instance>>,
+    weathers: Query<(Option<&Rain>, Option<&Thunder>), With<Instance>>,
 ) {
     clients.for_each_mut(|(mut client, loc)| {
-        if let Ok(weather) = weathers.get(loc.0) {
-            client.set_weather(weather);
+        if let Ok((rain, thunder)) = weathers.get(loc.0) {
+            if let Some(level) = rain {
+                client.begin_raining();
+                client.set_rain_level(level.0);
+            }
+
+            if let Some(level) = thunder {
+                client.set_thunder_level(level.0);
+            }
         }
     })
 }
 
-fn handle_weather_begin_per_instance(mut query: Query<&mut Instance, Added<Weather>>) {
+fn handle_rain_begin_per_instance(mut query: Query<&mut Instance, Added<Rain>>) {
     query.for_each_mut(|mut instance| {
         instance.begin_raining();
     });
 }
 
-fn handle_weather_end_per_instance(
+fn handle_rain_change_per_instance(mut query: Query<(&mut Instance, &Rain), Changed<Rain>>) {
+    query.for_each_mut(|(mut instance, rain)| instance.set_rain_level(rain.0));
+}
+
+fn handle_rain_end_per_instance(
     mut query: Query<&mut Instance>,
-    mut removed: RemovedComponents<Weather>,
+    mut removed: RemovedComponents<Rain>,
 ) {
     removed.iter().for_each(|entity| {
         if let Ok(mut instance) = query.get_mut(entity) {
@@ -145,26 +129,27 @@ fn handle_weather_end_per_instance(
     })
 }
 
-fn handle_weather_change_per_instance(
-    mut query: Query<(&mut Instance, &Weather), Changed<Weather>>,
+fn handle_thunder_change_per_instance(
+    mut query: Query<(&mut Instance, &Thunder), Changed<Thunder>>,
 ) {
-    query.for_each_mut(|(mut instance, weather)| {
-        instance.set_weather(weather);
-    });
+    query.for_each_mut(|(mut instance, thunder)| instance.set_thunder_level(thunder.0));
 }
 
-fn handle_weather_begin_per_client(
-    mut query: Query<&mut Client, (Added<Weather>, Without<Instance>)>,
-) {
+fn handle_rain_begin_per_client(mut query: Query<&mut Client, (Added<Rain>, Without<Instance>)>) {
     query.for_each_mut(|mut client| {
         client.begin_raining();
     });
 }
 
-fn handle_weather_end_per_client(
-    mut query: Query<&mut Client>,
-    mut removed: RemovedComponents<Weather>,
+fn handle_rain_change_per_client(
+    mut query: Query<(&mut Client, &Rain), (Changed<Rain>, Without<Instance>)>,
 ) {
+    query.for_each_mut(|(mut client, rain)| {
+        client.set_rain_level(rain.0);
+    });
+}
+
+fn handle_rain_end_per_client(mut query: Query<&mut Client>, mut removed: RemovedComponents<Rain>) {
     removed.iter().for_each(|entity| {
         if let Ok(mut client) = query.get_mut(entity) {
             client.end_raining();
@@ -172,23 +157,25 @@ fn handle_weather_end_per_client(
     })
 }
 
-fn handle_weather_change_per_client(
-    mut query: Query<(&mut Client, &Weather), (Changed<Weather>, Without<Instance>)>,
+fn handle_thunder_change_per_client(
+    mut query: Query<(&mut Client, &Thunder), (Changed<Thunder>, Without<Instance>)>,
 ) {
-    query.for_each_mut(|(mut client, weather)| {
-        client.set_weather(weather);
+    query.for_each_mut(|(mut client, thunder)| {
+        client.set_thunder_level(thunder.0);
     });
 }
 
 pub(crate) fn update_weather() -> SystemConfigs {
     (
         handle_weather_for_joined_player,
-        handle_weather_begin_per_instance,
-        handle_weather_change_per_instance,
-        handle_weather_end_per_instance,
-        handle_weather_begin_per_client,
-        handle_weather_change_per_client,
-        handle_weather_end_per_client,
+        handle_rain_begin_per_instance,
+        handle_rain_change_per_instance,
+        handle_rain_end_per_instance,
+        handle_thunder_change_per_instance,
+        handle_rain_begin_per_client,
+        handle_rain_change_per_client,
+        handle_rain_end_per_client,
+        handle_thunder_change_per_client,
     )
         .chain()
         .into_configs()
@@ -205,6 +192,8 @@ mod test {
     use crate::{assert_packet_count, assert_packet_order};
 
     fn assert_weather_packets(sent_packets: Vec<S2cPlayPacket>) {
+        dbg!(sent_packets.clone());
+
         assert_packet_count!(sent_packets, 6, S2cPlayPacket::GameStateChangeS2c(_));
 
         assert_packet_order!(
@@ -232,15 +221,15 @@ mod test {
         }
 
         if let S2cPlayPacket::GameStateChangeS2c(pkt) = sent_packets[2] {
-            assert_eq!(pkt.value, 0.5f32);
-        }
-
-        if let S2cPlayPacket::GameStateChangeS2c(pkt) = sent_packets[3] {
             assert_eq!(pkt.value, WEATHER_LEVEL.end);
         }
 
+        if let S2cPlayPacket::GameStateChangeS2c(pkt) = sent_packets[3] {
+            assert_eq!(pkt.value, 0.5f32);
+        }
+
         if let S2cPlayPacket::GameStateChangeS2c(pkt) = sent_packets[4] {
-            assert_eq!(pkt.value, WEATHER_LEVEL.start);
+            assert_eq!(pkt.value, WEATHER_LEVEL.end);
         }
     }
 
@@ -261,27 +250,32 @@ mod test {
             .expect("could not find instance")
             .id();
 
-        // Insert a weather component to the instance.
-        app.world.entity_mut(instance_ent).insert(Weather {
-            rain: Some(0.5f32),
-            thunder: Some(0.5f32),
-        });
-
-        // Handle weather event packets.
-        for _ in 0..4 {
+        // Insert a rain component to the instance.
+        app.world.entity_mut(instance_ent).insert(Rain(0.5f32));
+        for _ in 0..2 {
             app.update();
         }
 
-        // Alter a weather component of the instance.
-        app.world.entity_mut(instance_ent).insert(Weather {
-            // Invalid values to assert they are clamped.
-            rain: Some(WEATHER_LEVEL.end + 1_f32),
-            thunder: Some(WEATHER_LEVEL.start - 1_f32),
-        });
+        // Alter a rain component of the instance.
+        app.world.entity_mut(instance_ent).insert(Rain(
+            // Invalid value to assert it is clamped.
+            WEATHER_LEVEL.end + 1_f32,
+        ));
         app.update();
 
-        // Remove the weather component from the instance.
-        app.world.entity_mut(instance_ent).remove::<Weather>();
+        // Insert a thunder component to the instance.
+        app.world.entity_mut(instance_ent).insert(Thunder(0.5f32));
+        app.update();
+
+        // Alter a thunder component of the instance.
+        app.world.entity_mut(instance_ent).insert(Thunder(
+            // Invalid value to assert it is clamped.
+            WEATHER_LEVEL.end + 1_f32,
+        ));
+        app.update();
+
+        // Remove the rain component from the instance.
+        app.world.entity_mut(instance_ent).remove::<Rain>();
         app.update();
 
         // Make assertions.
@@ -309,27 +303,32 @@ mod test {
             .expect("could not find client")
             .id();
 
-        // Insert a weather component to the client.
-        app.world.entity_mut(client_ent).insert(Weather {
-            rain: Some(0.5f32),
-            thunder: Some(0.5f32),
-        });
-
-        // Handle weather event packets.
-        for _ in 0..4 {
+        // Insert a rain component to the client.
+        app.world.entity_mut(client_ent).insert(Rain(0.5f32));
+        for _ in 0..2 {
             app.update();
         }
 
-        // Alter a weather component of the client.
-        app.world.entity_mut(client_ent).insert(Weather {
-            // Invalid values to assert they are clamped.
-            rain: Some(WEATHER_LEVEL.end + 1_f32),
-            thunder: Some(WEATHER_LEVEL.start - 1_f32),
-        });
+        // Alter a rain component of the client.
+        app.world.entity_mut(client_ent).insert(Rain(
+            // Invalid value to assert it is clamped.
+            WEATHER_LEVEL.end + 1_f32,
+        ));
         app.update();
 
-        // Remove the weather component from the client.
-        app.world.entity_mut(client_ent).remove::<Weather>();
+        // Insert a thunder component to the client.
+        app.world.entity_mut(client_ent).insert(Thunder(0.5f32));
+        app.update();
+
+        // Alter a thunder component of the client.
+        app.world.entity_mut(client_ent).insert(Thunder(
+            // Invalid value to assert it is clamped.
+            WEATHER_LEVEL.end + 1_f32,
+        ));
+        app.update();
+
+        // Remove the rain component from the client.
+        app.world.entity_mut(client_ent).remove::<Rain>();
         app.update();
 
         // Make assertions.
