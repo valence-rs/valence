@@ -153,7 +153,9 @@ fn handle_weather_change_per_instance(
     });
 }
 
-fn handle_weather_begin_per_client(mut query: Query<&mut Client, Added<Weather>>) {
+fn handle_weather_begin_per_client(
+    mut query: Query<&mut Client, (Added<Weather>, Without<Instance>)>,
+) {
     query.for_each_mut(|mut client| {
         client.begin_raining();
     });
@@ -170,7 +172,9 @@ fn handle_weather_end_per_client(
     })
 }
 
-fn handle_weather_change_per_client(mut query: Query<(&mut Client, &Weather), Changed<Weather>>) {
+fn handle_weather_change_per_client(
+    mut query: Query<(&mut Client, &Weather), (Changed<Weather>, Without<Instance>)>,
+) {
     query.for_each_mut(|(mut client, weather)| {
         client.set_weather(weather);
     });
