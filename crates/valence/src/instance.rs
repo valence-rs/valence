@@ -3,6 +3,7 @@ use std::collections::hash_map::Entry;
 use std::collections::BTreeSet;
 use std::iter::FusedIterator;
 
+use bevy_app::{CoreSet, Plugin};
 use bevy_ecs::prelude::*;
 pub use chunk::{Block, BlockEntity, BlockMut, BlockRef, Chunk};
 pub use chunk_entry::*;
@@ -20,8 +21,9 @@ use valence_protocol::Packet;
 
 use crate::component::Despawned;
 use crate::dimension::DimensionId;
-use crate::entity::McEntity;
+use crate::entity::{InitEntitiesSet, McEntity};
 use crate::packet::{PacketWriter, WritePacket};
+use crate::prelude::FlushPacketsSet;
 use crate::server::{Server, SharedServer};
 use crate::view::ChunkPos;
 
@@ -433,7 +435,31 @@ impl Instance {
     }
 }
 
-pub(crate) fn update_instances_pre_client(
+pub(crate) struct InstancePlugin;
+
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub(crate) struct UpdateInstancesPreClientSet;
+
+impl Plugin for InstancePlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        app.configure_set(
+            UpdateInstancesPreClientSet
+                .after(InitEntitiesSet)
+                .in_base_set(CoreSet::PostUpdate),
+        )
+        .add_system(update_instances_pre_client.in_set(UpdateInstancesPreClientSet))
+        .add_system(
+            update_instances_post_client
+                .after(FlushPacketsSet)
+                .in_base_set(CoreSet::PostUpdate),
+        );
+
+        #[cfg(debug_assertions)]
+        app.add_system(check_instance_invariants.in_base_set(CoreSet::PostUpdate));
+    }
+}
+
+fn update_instances_pre_client(
     mut instances: Query<&mut Instance>,
     mut entities: Query<(Entity, &mut McEntity, Option<&Despawned>)>,
     server: Res<Server>,
@@ -575,7 +601,7 @@ pub(crate) fn update_instances_pre_client(
     }
 }
 
-pub(crate) fn update_instances_post_client(mut instances: Query<&mut Instance>) {
+fn update_instances_post_client(mut instances: Query<&mut Instance>) {
     for mut instance in &mut instances {
         instance.partition.retain(|_, cell| {
             cell.packet_buf.clear();
@@ -594,8 +620,8 @@ pub(crate) fn update_instances_post_client(mut instances: Query<&mut Instance>) 
     }
 }
 
-pub(crate) fn check_instance_invariants(instances: Query<&Instance>, entities: Query<&McEntity>) {
-    #[cfg(debug_assertions)]
+#[cfg(debug_assertions)]
+fn check_instance_invariants(instances: Query<&Instance>, entities: Query<&McEntity>) {
     for instance in &instances {
         for (pos, cell) in &instance.partition {
             for &id in &cell.entities {
@@ -606,7 +632,4 @@ pub(crate) fn check_instance_invariants(instances: Query<&Instance>, entities: Q
             }
         }
     }
-
-    let _ = instances;
-    let _ = entities;
 }

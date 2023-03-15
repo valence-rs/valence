@@ -1,8 +1,10 @@
 use std::cmp;
 
 use anyhow::bail;
+use bevy_app::{CoreSet, Plugin};
 use bevy_ecs::prelude::*;
 use bevy_ecs::query::WorldQuery;
+use bevy_ecs::schedule::ScheduleLabel;
 use bevy_ecs::system::{SystemParam, SystemState};
 use glam::{DVec3, Vec3};
 use paste::paste;
@@ -39,7 +41,6 @@ use crate::client::Client;
 use crate::component::{Look, OnGround, Ping, Position};
 use crate::entity::{EntityAnimation, EntityKind, McEntity, TrackedData};
 use crate::inventory::Inventory;
-use crate::server::EventLoopSchedule;
 
 #[derive(Clone, Debug)]
 pub struct QueryBlockNbt {
@@ -527,7 +528,7 @@ macro_rules! events {
         )*
     ) => {
         /// Inserts [`Events`] resources into the world for each client event.
-        pub(crate) fn register_client_events(world: &mut World) {
+        fn register_client_events(world: &mut World) {
             $(
                 $(
                     world.insert_resource(Events::<$name>::default());
@@ -641,6 +642,31 @@ events! {
     }
 }
 
+pub(crate) struct ClientEventPlugin;
+
+/// The [`ScheduleLabel`] for the event loop [`Schedule`].
+#[derive(ScheduleLabel, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
+pub struct EventLoopSchedule;
+
+/// The default base set for [`EventLoopSchedule`].
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
+pub struct EventLoopSet;
+
+impl Plugin for ClientEventPlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        register_client_events(&mut app.world);
+
+        app.configure_set(EventLoopSet.in_base_set(CoreSet::PreUpdate))
+            .add_system(run_event_loop.in_set(EventLoopSet));
+
+        // Add the event loop schedule.
+        let mut event_loop = Schedule::new();
+        event_loop.set_default_base_set(EventLoopSet);
+
+        app.add_schedule(EventLoopSchedule, event_loop);
+    }
+}
+
 #[derive(WorldQuery)]
 #[world_query(mutable)]
 pub(crate) struct EventLoopQuery {
@@ -659,7 +685,7 @@ pub(crate) struct EventLoopQuery {
 }
 
 /// An exclusive system for running the event loop schedule.
-pub(crate) fn run_event_loop(
+fn run_event_loop(
     world: &mut World,
     state: &mut SystemState<(Query<EventLoopQuery>, ClientEvents, Commands)>,
     mut clients_to_check: Local<Vec<Entity>>,
@@ -1384,7 +1410,7 @@ fn handle_one_packet(
 /// is subject to change.
 ///
 /// This system must be scheduled to run in the
-/// [`EventLoopSchedule`](crate::server::EventLoopSchedule). Otherwise, it may
+/// [`EventLoopSchedule`]. Otherwise, it may
 /// not function correctly.
 #[allow(clippy::too_many_arguments)]
 pub fn default_event_handler(

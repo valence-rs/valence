@@ -1,11 +1,13 @@
 use std::fmt;
 
+use bevy_app::{CoreSet, Plugin};
 /// Contains shared components and world queries.
 use bevy_ecs::prelude::*;
 use glam::{DVec3, Vec3};
 use uuid::Uuid;
 use valence_protocol::types::{GameMode as ProtocolGameMode, Property};
 
+use crate::prelude::FlushPacketsSet;
 use crate::util::{from_yaw_and_pitch, to_yaw_and_pitch};
 use crate::view::ChunkPos;
 use crate::NULL_ENTITY;
@@ -111,12 +113,6 @@ impl Default for Location {
 pub struct OldLocation(Entity);
 
 impl OldLocation {
-    pub(crate) fn update(mut query: Query<(&Location, &mut OldLocation), Changed<Location>>) {
-        for (loc, mut old_loc) in &mut query {
-            old_loc.0 = loc.0;
-        }
-    }
-
     pub fn new(instance: Entity) -> Self {
         Self(instance)
     }
@@ -153,12 +149,6 @@ impl Position {
 pub struct OldPosition(DVec3);
 
 impl OldPosition {
-    pub(crate) fn update(mut query: Query<(&Position, &mut OldPosition), Changed<Position>>) {
-        for (pos, mut old_pos) in &mut query {
-            old_pos.0 = pos.0;
-        }
-    }
-
     pub fn new(pos: DVec3) -> Self {
         Self(pos)
     }
@@ -201,4 +191,39 @@ impl Look {
 pub struct OnGround(pub bool);
 
 #[derive(Component, Default, Debug)]
-pub struct ScratchBuffer(pub Vec<u8>);
+pub struct ScratchBuf(pub Vec<u8>);
+
+pub(crate) struct ComponentPlugin;
+
+impl Plugin for ComponentPlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        app.add_systems(
+            (update_old_position, update_old_location)
+                .in_base_set(CoreSet::PostUpdate)
+                .after(FlushPacketsSet),
+        )
+        // This is fine because we're applying system buffers later.
+        .add_system(despawn_marked_entities.in_base_set(CoreSet::PostUpdate
+        ));
+    }
+}
+
+fn update_old_position(mut query: Query<(&Position, &mut OldPosition), Changed<Position>>) {
+    for (pos, mut old_pos) in &mut query {
+        old_pos.0 = pos.0;
+    }
+}
+
+fn update_old_location(mut query: Query<(&Location, &mut OldLocation), Changed<Location>>) {
+    for (loc, mut old_loc) in &mut query {
+        old_loc.0 = loc.0;
+    }
+}
+
+/// Despawns all the entities marked as despawned with the [`Despawned`]
+/// component.
+fn despawn_marked_entities(mut commands: Commands, entities: Query<Entity, With<Despawned>>) {
+    for entity in &entities {
+        commands.entity(entity).despawn();
+    }
+}
