@@ -280,7 +280,9 @@ mod test {
 
         // Remove the rain component from the instance.
         app.world.entity_mut(instance_ent).remove::<Rain>();
-        app.update();
+        for _ in 0..2 {
+            app.update();
+        }
 
         // Make assertions.
         let sent_packets = client_helper.collect_sent()?;
@@ -333,7 +335,9 @@ mod test {
 
         // Remove the rain component from the client.
         app.world.entity_mut(client_ent).remove::<Rain>();
-        app.update();
+        for _ in 0..2 {
+            app.update();
+        }
 
         // Make assertions.
         let sent_packets = client_helper.collect_sent()?;
