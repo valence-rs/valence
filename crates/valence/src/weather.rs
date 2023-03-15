@@ -134,6 +134,17 @@ fn handle_thunder_change_per_instance(
     query.for_each_mut(|(mut instance, thunder)| instance.set_thunder_level(thunder.0));
 }
 
+fn handle_thunder_end_per_instance(
+    mut query: Query<&mut Instance>,
+    mut removed: RemovedComponents<Thunder>,
+) {
+    removed.iter().for_each(|entity| {
+        if let Ok(mut instance) = query.get_mut(entity) {
+            instance.set_thunder_level(WEATHER_LEVEL.start);
+        }
+    })
+}
+
 fn handle_rain_begin_per_client(mut query: Query<&mut Client, (Added<Rain>, Without<Instance>)>) {
     query.for_each_mut(|mut client| {
         client.begin_raining();
@@ -164,6 +175,17 @@ fn handle_thunder_change_per_client(
     });
 }
 
+fn handle_thunder_end_per_client(
+    mut query: Query<&mut Client, Without<Instance>>,
+    mut removed: RemovedComponents<Thunder>,
+) {
+    removed.iter().for_each(|entity| {
+        if let Ok(mut client) = query.get_mut(entity) {
+            client.set_thunder_level(WEATHER_LEVEL.start);
+        }
+    })
+}
+
 pub(crate) struct WeatherPlugin;
 
 impl Plugin for WeatherPlugin {
@@ -175,10 +197,12 @@ impl Plugin for WeatherPlugin {
                 handle_rain_change_per_instance,
                 handle_rain_end_per_instance,
                 handle_thunder_change_per_instance,
+                handle_thunder_end_per_instance,
                 handle_rain_begin_per_client,
                 handle_rain_change_per_client,
                 handle_rain_end_per_client,
                 handle_thunder_change_per_client,
+                handle_thunder_end_per_client,
             )
                 .chain()
                 .in_base_set(CoreSet::PostUpdate),
