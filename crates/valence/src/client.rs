@@ -3,9 +3,9 @@ use std::net::IpAddr;
 use std::num::Wrapping;
 use std::time::Instant;
 
+use bevy_app::{CoreSet, Plugin};
 use bevy_ecs::prelude::*;
 use bevy_ecs::query::WorldQuery;
-use bevy_ecs::schedule::SystemConfigs;
 use bevy_ecs::system::Command;
 use bytes::BytesMut;
 use glam::{DVec3, Vec3};
@@ -38,10 +38,10 @@ use crate::component::{
 };
 use crate::dimension::DimensionId;
 use crate::entity::{velocity_to_packet_units, EntityStatus, McEntity, TrackedData};
-use crate::instance::Instance;
+use crate::instance::{Instance, UpdateInstancesPreClientSet};
 use crate::inventory::{Inventory, InventoryKind};
 use crate::packet::WritePacket;
-use crate::prelude::ScratchBuffer;
+use crate::prelude::ScratchBuf;
 use crate::server::{NewClientInfo, Server};
 use crate::view::{ChunkPos, ChunkView};
 
@@ -52,8 +52,8 @@ pub mod event;
 #[derive(Bundle)]
 pub(crate) struct ClientBundle {
     client: Client,
-    scratch: ScratchBuffer,
-    entity_remove_buffer: EntityRemoveBuffer,
+    scratch: ScratchBuf,
+    entity_remove_buffer: EntityRemoveBuf,
     username: Username,
     uuid: UniqueId,
     ip: Ip,
@@ -95,8 +95,8 @@ impl ClientBundle {
     ) -> Self {
         Self {
             client: Client { conn, enc, dec },
-            scratch: ScratchBuffer::default(),
-            entity_remove_buffer: EntityRemoveBuffer(vec![]),
+            scratch: ScratchBuf::default(),
+            entity_remove_buffer: EntityRemoveBuf(vec![]),
             username: Username(info.username),
             uuid: UniqueId(info.uuid),
             ip: Ip(info.ip),
@@ -396,9 +396,9 @@ impl Command for DisconnectClient {
 ///
 /// You should not need to use this directly under normal circumstances.
 #[derive(Component, Debug)]
-pub struct EntityRemoveBuffer(Vec<VarInt>);
+pub struct EntityRemoveBuf(Vec<VarInt>);
 
-impl EntityRemoveBuffer {
+impl EntityRemoveBuf {
     pub fn push(&mut self, entity_id: i32) {
         debug_assert!(
             entity_id != 0,
@@ -599,25 +599,45 @@ pub fn despawn_disconnected_clients(
     }
 }
 
-pub(crate) fn update_clients() -> SystemConfigs {
-    (
-        initial_join,
-        update_chunk_load_dist,
-        respawn,
-        send_keepalive,
-        read_data_in_view,
-        update_view,
-        remove_entities,
-        update_game_mode,
-        teleport,
-        update_view_dist,
-        update_compass_pos,
-        update_tracked_data,
-        update_op_level,
-        acknowledge_player_actions,
-        flush_packets,
-    )
-        .chain()
+pub(crate) struct ClientPlugin;
+
+/// When clients have their packet buffer flushed. Any system that writes
+/// packets to clients should happen before this. Otherwise, the data
+/// will arrive one tick late.
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub(crate) struct FlushPacketsSet;
+
+impl Plugin for ClientPlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        app.add_systems(
+            (
+                initial_join,
+                update_chunk_load_dist,
+                read_data_in_view
+                    .after(UpdateInstancesPreClientSet)
+                    .after(update_chunk_load_dist),
+                update_view.after(initial_join).after(read_data_in_view),
+                respawn.after(update_view),
+                remove_entities.after(update_view),
+                update_spawn_position.after(update_view),
+                update_old_view_dist.after(update_view),
+                teleport.after(update_view),
+                update_game_mode,
+                send_keepalive,
+                update_tracked_data,
+                update_op_level,
+                acknowledge_player_actions,
+            )
+                .in_base_set(CoreSet::PostUpdate)
+                .before(FlushPacketsSet),
+        )
+        .configure_set(
+            FlushPacketsSet
+                .in_base_set(CoreSet::PostUpdate)
+                .after(UpdateInstancesPreClientSet),
+        )
+        .add_system(flush_packets.in_set(FlushPacketsSet));
+    }
 }
 
 #[derive(WorldQuery)]
@@ -766,8 +786,8 @@ fn update_chunk_load_dist(
 fn read_data_in_view(
     mut clients: Query<(
         &mut Client,
-        &mut ScratchBuffer,
-        &mut EntityRemoveBuffer,
+        &mut ScratchBuf,
+        &mut EntityRemoveBuf,
         &OldLocation,
         &OldPosition,
         &OldViewDistance,
@@ -845,12 +865,15 @@ fn read_data_in_view(
 
 /// Updates the clients' view, i.e. the set of chunks that are visible from the
 /// client's chunk position.
+///
+/// This handles the situation when a client changes instances or chunk
+/// position. It must run after [`read_data_in_view`].
 fn update_view(
     mut clients: Query<
         (
             &mut Client,
-            &mut ScratchBuffer,
-            &mut EntityRemoveBuffer,
+            &mut ScratchBuf,
+            &mut EntityRemoveBuf,
             &Location,
             &OldLocation,
             &Position,
@@ -1004,8 +1027,9 @@ fn update_view(
     );
 }
 
+/// Removes all the entities that are queued to be removed for each client.
 fn remove_entities(
-    mut clients: Query<(&mut Client, &mut EntityRemoveBuffer), Changed<EntityRemoveBuffer>>,
+    mut clients: Query<(&mut Client, &mut EntityRemoveBuf), Changed<EntityRemoveBuf>>,
 ) {
     for (mut client, mut buf) in &mut clients {
         if !buf.0.is_empty() {
@@ -1032,6 +1056,10 @@ fn update_game_mode(mut clients: Query<(&mut Client, &GameMode), Changed<GameMod
     }
 }
 
+/// Syncs the client's position and look with the server.
+///
+/// This should happen after chunks are loaded so the client doesn't fall though
+/// the floor.
 fn teleport(
     mut clients: Query<
         (&mut Client, &mut TeleportState, &Position, &Look),
@@ -1069,7 +1097,7 @@ fn teleport(
     }
 }
 
-fn update_view_dist(
+fn update_old_view_dist(
     mut clients: Query<(&mut OldViewDistance, &ViewDistance), Changed<ViewDistance>>,
 ) {
     for (mut old_dist, dist) in &mut clients {
@@ -1077,9 +1105,11 @@ fn update_view_dist(
     }
 }
 
-fn update_compass_pos(mut clients: Query<(&mut Client, &CompassPos), Changed<CompassPos>>) {
-    // This also closes the "downloading terrain" screen when first joining, so
-    // we should do this after the initial chunks are written.
+/// Sets the client's compass position.
+///
+/// This also closes the "downloading terrain" screen when first joining, so
+/// it should happen after the initial chunks are written.
+fn update_spawn_position(mut clients: Query<(&mut Client, &CompassPos), Changed<CompassPos>>) {
     for (mut client, compass_pos) in &mut clients {
         client.write_packet(&PlayerSpawnPositionS2c {
             position: compass_pos.0,

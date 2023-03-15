@@ -8,7 +8,6 @@ use anyhow::ensure;
 use bevy_app::prelude::*;
 use bevy_app::{ScheduleRunnerPlugin, ScheduleRunnerSettings};
 use bevy_ecs::prelude::*;
-use bevy_ecs::schedule::ScheduleLabel;
 use flume::{Receiver, Sender};
 use rand::rngs::OsRng;
 use rsa::{PublicKeyParts, RsaPrivateKey};
@@ -20,19 +19,16 @@ use valence_protocol::ident;
 use valence_protocol::types::Property;
 
 use crate::biome::{validate_biomes, Biome, BiomeId};
-use crate::client::event::{register_client_events, run_event_loop};
-use crate::client::{update_clients, ClientBundle};
-use crate::component::{Despawned, OldLocation, OldPosition};
+use crate::client::event::EventLoopSet;
+use crate::client::{ClientBundle, ClientPlugin};
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerPlugin};
 use crate::dimension::{validate_dimensions, Dimension, DimensionId};
-use crate::entity::{
-    deinit_despawned_mcentities, init_mcentities, update_mcentities, McEntityManager,
-};
-use crate::instance::{
-    check_instance_invariants, update_instances_post_client, update_instances_pre_client, Instance,
-};
-use crate::inventory::update_inventories;
-use crate::player_list::{update_player_list, PlayerList};
+use crate::entity::EntityPlugin;
+use crate::instance::{Instance, InstancePlugin};
+use crate::inventory::InventoryPlugin;
+use crate::player_list::PlayerListPlugin;
+use crate::prelude::event::ClientEventPlugin;
+use crate::prelude::ComponentPlugin;
 use crate::server::connect::do_accept_loop;
 
 mod byte_channel;
@@ -305,17 +301,7 @@ pub fn build_plugin(
     let shared = server.shared.clone();
 
     // Insert resources.
-    app.insert_resource(server)
-        .insert_resource(McEntityManager::new())
-        .insert_resource(PlayerList::new());
-    register_client_events(&mut app.world);
-
-    // Add the event loop schedule.
-    let mut event_loop = Schedule::new();
-    event_loop.configure_set(EventLoopSet);
-    event_loop.set_default_base_set(EventLoopSet);
-
-    app.add_schedule(EventLoopSchedule, event_loop);
+    app.insert_resource(server);
 
     // Make the app loop forever at the configured TPS.
     {
@@ -333,57 +319,39 @@ pub fn build_plugin(
             .in_base_set(StartupSet::PostStartup),
     );
 
-    // Add `CoreSet:::PreUpdate` systems.
-    app.add_systems(
-        (spawn_new_clients.before(run_event_loop), run_event_loop).in_base_set(CoreSet::PreUpdate),
+    // Spawn new clients before the event loop starts.
+    app.add_system(
+        spawn_new_clients
+            .in_base_set(CoreSet::PreUpdate)
+            .before(EventLoopSet),
     );
 
-    // Add internal valence systems that run after `CoreSet::Update`.
-    app.add_systems(
-        (
-            init_mcentities,
-            check_instance_invariants,
-            update_player_list.before(update_instances_pre_client),
-            update_instances_pre_client.after(init_mcentities),
-            update_instances_post_client.after(update_instances_pre_client),
-            deinit_despawned_mcentities.after(update_instances_post_client),
-            despawn_marked_entities.after(deinit_despawned_mcentities),
-            update_mcentities.after(despawn_marked_entities),
-            OldPosition::update.after(despawn_marked_entities),
-            OldLocation::update.after(despawn_marked_entities),
+    app.add_system(increment_tick_counter.in_base_set(CoreSet::Last));
+
+    // Add internal plugins.
+    app.add_plugin(ComponentPlugin)
+        .add_plugin(ClientPlugin)
+        .add_plugin(ClientEventPlugin)
+        .add_plugin(EntityPlugin)
+        .add_plugin(InstancePlugin)
+        .add_plugin(InventoryPlugin)
+        .add_plugin(PlayerListPlugin);
+
+    /*
+    println!(
+        "{}",
+        bevy_mod_debugdump::schedule_graph_dot(
+            app,
+            CoreSchedule::Main,
+            &bevy_mod_debugdump::schedule_graph::Settings {
+                ambiguity_enable: false,
+                ..Default::default()
+            },
         )
-            .in_base_set(CoreSet::PostUpdate),
-    )
-    .add_systems(
-        update_inventories()
-            .in_base_set(CoreSet::PostUpdate)
-            .before(init_mcentities),
-    )
-    .add_systems(
-        update_clients()
-            .in_base_set(CoreSet::PostUpdate)
-            .after(update_instances_pre_client)
-            .before(update_instances_post_client),
-    )
-    .add_system(increment_tick_counter.in_base_set(CoreSet::Last));
+    );
+    */
 
     Ok(())
-}
-
-/// The [`ScheduleLabel`] for the event loop [`Schedule`].
-#[derive(ScheduleLabel, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
-pub struct EventLoopSchedule;
-
-/// The default base set for [`EventLoopSchedule`].
-#[derive(SystemSet, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
-pub struct EventLoopSet;
-
-/// Despawns all the entities marked as despawned with the [`Despawned`]
-/// component.
-fn despawn_marked_entities(mut commands: Commands, entities: Query<Entity, With<Despawned>>) {
-    for entity in &entities {
-        commands.entity(entity).despawn();
-    }
 }
 
 fn increment_tick_counter(mut server: ResMut<Server>) {

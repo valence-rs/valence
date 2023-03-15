@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::iter::FusedIterator;
 use std::mem;
 
+use bevy_app::{Plugin, CoreSet};
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::SystemConfigs;
 use tracing::warn;
@@ -18,6 +19,7 @@ use valence_protocol::types::Property;
 use crate::client::Client;
 use crate::component::{GameMode, Ping, Properties, UniqueId, Username};
 use crate::packet::{PacketWriter, WritePacket};
+use crate::prelude::FlushPacketsSet;
 use crate::server::Server;
 
 /// The global list of players on a server visible by pressing the tab key by
@@ -92,7 +94,7 @@ impl PlayerList {
 
 impl PlayerList {
     /// Create a new empty player list.
-    pub(crate) fn new() -> Self {
+    fn new() -> Self {
         Self {
             cached_update_packets: vec![],
             entries: HashMap::new(),
@@ -551,8 +553,20 @@ impl<'a> VacantEntry<'a> {
     }
 }
 
+pub(crate) struct PlayerListPlugin;
+
+impl Plugin for PlayerListPlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        app.insert_resource(PlayerList::new()).add_system(
+            update_player_list
+                .before(FlushPacketsSet)
+                .in_base_set(CoreSet::PostUpdate),
+        );
+    }
+}
+
 /// Manage all player lists on the server and send updates to clients.
-pub(crate) fn update_player_list(
+fn update_player_list(
     player_list: ResMut<PlayerList>,
     server: Res<Server>,
     mut clients: Query<&mut Client>,

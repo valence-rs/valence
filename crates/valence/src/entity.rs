@@ -3,6 +3,7 @@ use std::fmt;
 use std::fmt::Formatter;
 use std::ops::Range;
 
+use bevy_app::{App, CoreSet, Plugin};
 use bevy_ecs::prelude::*;
 pub use data::{EntityKind, TrackedData};
 use glam::{DVec3, UVec3, Vec3};
@@ -21,6 +22,7 @@ use valence_protocol::var_int::VarInt;
 use crate::component::Despawned;
 use crate::config::DEFAULT_TPS;
 use crate::packet::WritePacket;
+use crate::prelude::FlushPacketsSet;
 use crate::util::Aabb;
 use crate::NULL_ENTITY;
 
@@ -28,30 +30,32 @@ pub mod data;
 
 include!(concat!(env!("OUT_DIR"), "/entity_event.rs"));
 
-/// A [`Resource`] which maintains information about all the [`McEntity`]
-/// components on the server.
-#[derive(Resource, Debug)]
-pub struct McEntityManager {
-    protocol_id_to_mcentity: FxHashMap<i32, Entity>,
-    next_protocol_id: i32,
+pub(crate) struct EntityPlugin;
+
+/// When new Minecraft entities are initialized and added to
+/// [`McEntityManager`]. Systems that need all Minecraft entities to be in a
+/// valid state should run after this.
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub(crate) struct InitEntitiesSet;
+
+impl Plugin for EntityPlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(McEntityManager::new())
+            .configure_set(InitEntitiesSet.in_base_set(CoreSet::PostUpdate))
+            .add_system(init_mcentities.in_set(InitEntitiesSet))
+            .add_systems(
+                (
+                    remove_despawned_from_manager.after(init_mcentities),
+                    update_mcentities.after(FlushPacketsSet),
+                )
+                    .in_base_set(CoreSet::PostUpdate),
+            );
+    }
 }
 
-impl McEntityManager {
-    pub(crate) fn new() -> Self {
-        Self {
-            protocol_id_to_mcentity: HashMap::default(),
-            next_protocol_id: 1,
-        }
-    }
-
-    /// Gets the [`Entity`] of the [`McEntity`] with the given protocol ID.
-    pub fn get_with_protocol_id(&self, id: i32) -> Option<Entity> {
-        self.protocol_id_to_mcentity.get(&id).cloned()
-    }
-}
-
-/// Sets the protocol ID of new mcentities.
-pub(crate) fn init_mcentities(
+/// Sets the protocol ID of new mcentities and adds them to the
+/// [`McEntityManager`].
+fn init_mcentities(
     mut entities: Query<(Entity, &mut McEntity), Added<McEntity>>,
     mut manager: ResMut<McEntityManager>,
 ) {
@@ -72,7 +76,7 @@ pub(crate) fn init_mcentities(
 }
 
 /// Removes despawned mcentities from the mcentity manager.
-pub(crate) fn deinit_despawned_mcentities(
+fn remove_despawned_from_manager(
     entities: Query<&mut McEntity, With<Despawned>>,
     mut manager: ResMut<McEntityManager>,
 ) {
@@ -81,7 +85,7 @@ pub(crate) fn deinit_despawned_mcentities(
     }
 }
 
-pub(crate) fn update_mcentities(mut mcentities: Query<&mut McEntity, Changed<McEntity>>) {
+fn update_mcentities(mut mcentities: Query<&mut McEntity, Changed<McEntity>>) {
     for mut ent in &mut mcentities {
         ent.data.clear_modifications();
         ent.old_position = ent.position;
@@ -91,6 +95,28 @@ pub(crate) fn update_mcentities(mut mcentities: Query<&mut McEntity, Changed<McE
         ent.yaw_or_pitch_modified = false;
         ent.head_yaw_modified = false;
         ent.velocity_modified = false;
+    }
+}
+
+/// A [`Resource`] which maintains information about all the [`McEntity`]
+/// components on the server.
+#[derive(Resource, Debug)]
+pub struct McEntityManager {
+    protocol_id_to_mcentity: FxHashMap<i32, Entity>,
+    next_protocol_id: i32,
+}
+
+impl McEntityManager {
+    fn new() -> Self {
+        Self {
+            protocol_id_to_mcentity: HashMap::default(),
+            next_protocol_id: 1,
+        }
+    }
+
+    /// Gets the [`Entity`] of the [`McEntity`] with the given protocol ID.
+    pub fn get_with_protocol_id(&self, id: i32) -> Option<Entity> {
+        self.protocol_id_to_mcentity.get(&id).cloned()
     }
 }
 

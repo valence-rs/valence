@@ -30,8 +30,8 @@ use std::borrow::Cow;
 use std::iter::FusedIterator;
 use std::ops::Range;
 
+use bevy_app::{CoreSet, Plugin};
 use bevy_ecs::prelude::*;
-use bevy_ecs::schedule::SystemConfigs;
 use tracing::{debug, warn};
 use valence_protocol::item::ItemStack;
 use valence_protocol::packet::s2c::play::{
@@ -47,6 +47,7 @@ use crate::client::event::{
 use crate::client::{Client, CursorItem, PlayerInventoryState};
 use crate::component::GameMode;
 use crate::packet::WritePacket;
+use crate::prelude::FlushPacketsSet;
 
 #[derive(Debug, Clone, Component)]
 pub struct Inventory {
@@ -302,22 +303,28 @@ impl OpenInventory {
     }
 }
 
-/// The systems needed for updating the inventories.
-pub(crate) fn update_inventories() -> SystemConfigs {
-    (
-        handle_set_held_item,
-        handle_click_container
-            .before(update_open_inventories)
-            .before(update_player_inventories),
-        handle_set_slot_creative
-            .before(update_open_inventories)
-            .before(update_player_inventories),
-        update_open_inventories,
-        handle_close_container,
-        update_client_on_close_inventory.after(update_open_inventories),
-        update_player_inventories,
-    )
-        .into_configs()
+pub(crate) struct InventoryPlugin;
+
+impl Plugin for InventoryPlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        app.add_systems(
+            (
+                handle_set_held_item,
+                handle_click_container
+                    .before(update_open_inventories)
+                    .before(update_player_inventories),
+                handle_set_slot_creative
+                    .before(update_open_inventories)
+                    .before(update_player_inventories),
+                update_open_inventories,
+                handle_close_container,
+                update_client_on_close_inventory.after(update_open_inventories),
+                update_player_inventories,
+            )
+                .in_base_set(CoreSet::PostUpdate)
+                .before(FlushPacketsSet),
+        );
+    }
 }
 
 /// Send updates for each client's player inventory.
