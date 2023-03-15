@@ -21,6 +21,7 @@ use valence_protocol::types::Property;
 use valence_protocol::username::Username;
 
 use crate::biome::{validate_biomes, Biome, BiomeId};
+use crate::chat_type::{validate_chat_types, ChatType, ChatTypeId};
 use crate::client::event::{register_client_events, run_event_loop};
 use crate::client::{update_clients, Client};
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerPlugin};
@@ -88,6 +89,7 @@ struct SharedServerInner {
     _tokio_runtime: Option<Runtime>,
     dimensions: Arc<[Dimension]>,
     biomes: Arc<[Biome]>,
+    chat_types: Arc<[ChatType]>,
     /// Contains info about dimensions, biomes, and chats.
     /// Sent to all clients when joining.
     registry_codec: Compound,
@@ -193,6 +195,30 @@ impl SharedServer {
             .map(|(i, b)| (BiomeId(i as u16), b))
     }
 
+    /// Obtains a [`ChatType`] by using its corresponding [`ChatTypeId`].
+    #[track_caller]
+    pub fn chat_type(&self, id: ChatTypeId) -> &ChatType {
+        self.0
+            .chat_types
+            .get(id.0 as usize)
+            .expect("invalid chat type ID")
+    }
+
+    /// Returns an iterator over all added chat types and their associated
+    /// [`ChatTypeId`] in ascending order.
+    pub fn chat_types(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (ChatTypeId, &ChatType)>
+           + DoubleEndedIterator
+           + FusedIterator
+           + Clone {
+        self.0
+            .chat_types
+            .iter()
+            .enumerate()
+            .map(|(i, t)| (ChatTypeId(i as u16), t))
+    }
+
     pub(crate) fn registry_codec(&self) -> &Compound {
         &self.0.registry_codec
     }
@@ -248,8 +274,10 @@ pub fn build_plugin(
 
     validate_dimensions(&plugin.dimensions)?;
     validate_biomes(&plugin.biomes)?;
+    validate_chat_types(&plugin.chat_types)?;
 
-    let registry_codec = make_registry_codec(&plugin.dimensions, &plugin.biomes);
+    let registry_codec =
+        make_registry_codec(&plugin.dimensions, &plugin.biomes, &plugin.chat_types);
 
     let (new_clients_send, new_clients_recv) = flume::bounded(64);
 
@@ -265,6 +293,7 @@ pub fn build_plugin(
         _tokio_runtime: runtime,
         dimensions: plugin.dimensions.clone(),
         biomes: plugin.biomes.clone(),
+        chat_types: plugin.chat_types.clone(),
         registry_codec,
         new_clients_send,
         new_clients_recv,
@@ -383,7 +412,11 @@ fn increment_tick_counter(mut server: ResMut<Server>) {
     server.current_tick += 1;
 }
 
-fn make_registry_codec(dimensions: &[Dimension], biomes: &[Biome]) -> Compound {
+fn make_registry_codec(
+    dimensions: &[Dimension],
+    biomes: &[Biome],
+    chat_types: &[ChatType],
+) -> Compound {
     let dimensions = dimensions
         .iter()
         .enumerate()
@@ -394,6 +427,12 @@ fn make_registry_codec(dimensions: &[Dimension], biomes: &[Biome]) -> Compound {
         .iter()
         .enumerate()
         .map(|(id, biome)| biome.to_biome_registry_item(id as i32))
+        .collect();
+
+    let chat_types = chat_types
+        .iter()
+        .enumerate()
+        .map(|(id, chat_type)| chat_type.to_chat_type_registry_item(id as i32))
         .collect();
 
     compound! {
@@ -407,7 +446,7 @@ fn make_registry_codec(dimensions: &[Dimension], biomes: &[Biome]) -> Compound {
         },
         ident!("chat_type") => compound! {
             "type" => ident!("chat_type"),
-            "value" => List::Compound(vec![]),
+            "value" => List::Compound(chat_types),
         },
     }
 }

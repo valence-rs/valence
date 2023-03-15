@@ -32,6 +32,7 @@ pub use {
 };
 
 pub mod biome;
+pub mod chat_type;
 pub mod client;
 pub mod config;
 pub mod dimension;

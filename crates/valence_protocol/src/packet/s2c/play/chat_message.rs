@@ -19,17 +19,16 @@ pub struct ChatMessageS2c<'a> {
     pub previous_messages: Vec<MessageSignature<'a>>,
     pub unsigned_content: Option<Cow<'a, Text>>,
     pub filter_type: MessageFilterType,
-    pub filter_type_bits: Option<u8>,
     pub chat_type: VarInt,
     pub network_name: Cow<'a, Text>,
     pub network_target_name: Option<Cow<'a, Text>>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
+#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode)]
 pub enum MessageFilterType {
     PassThrough,
     FullyFiltered,
-    PartiallyFiltered,
+    PartiallyFiltered { mask: Vec<u64> },
 }
 
 impl<'a> Encode for ChatMessageS2c<'a> {
@@ -43,15 +42,6 @@ impl<'a> Encode for ChatMessageS2c<'a> {
         self.previous_messages.encode(&mut w)?;
         self.unsigned_content.encode(&mut w)?;
         self.filter_type.encode(&mut w)?;
-
-        if self.filter_type == MessageFilterType::PartiallyFiltered {
-            match self.filter_type_bits {
-                // Filler data
-                None => 0u8.encode(&mut w)?,
-                Some(bits) => bits.encode(&mut w)?,
-            }
-        }
-
         self.chat_type.encode(&mut w)?;
         self.network_name.encode(&mut w)?;
         self.network_target_name.encode(&mut w)?;
@@ -62,39 +52,19 @@ impl<'a> Encode for ChatMessageS2c<'a> {
 
 impl<'a> Decode<'a> for ChatMessageS2c<'a> {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
-        let sender = Uuid::decode(r)?;
-        let index = VarInt::decode(r)?;
-        let message_signature = Option::<&'a [u8; 256]>::decode(r)?;
-        let message = <&str>::decode(r)?;
-        let time_stamp = u64::decode(r)?;
-        let salt = u64::decode(r)?;
-        let previous_messages = Vec::<MessageSignature>::decode(r)?;
-        let unsigned_content = Option::<Cow<'a, Text>>::decode(r)?;
-        let filter_type = MessageFilterType::decode(r)?;
-
-        let filter_type_bits = match filter_type {
-            MessageFilterType::PartiallyFiltered => Some(u8::decode(r)?),
-            _ => None,
-        };
-
-        let chat_type = VarInt::decode(r)?;
-        let network_name = <Cow<'a, Text>>::decode(r)?;
-        let network_target_name = Option::<Cow<'a, Text>>::decode(r)?;
-
         Ok(Self {
-            sender,
-            index,
-            message_signature,
-            message,
-            time_stamp,
-            salt,
-            previous_messages,
-            unsigned_content,
-            filter_type,
-            filter_type_bits,
-            chat_type,
-            network_name,
-            network_target_name,
+            sender: Uuid::decode(r)?,
+            index: VarInt::decode(r)?,
+            message_signature: Option::<&'a [u8; 256]>::decode(r)?,
+            message: <&str>::decode(r)?,
+            time_stamp: u64::decode(r)?,
+            salt: u64::decode(r)?,
+            previous_messages: Vec::<MessageSignature>::decode(r)?,
+            unsigned_content: Option::<Cow<'a, Text>>::decode(r)?,
+            filter_type: MessageFilterType::decode(r)?,
+            chat_type: VarInt::decode(r)?,
+            network_name: <Cow<'a, Text>>::decode(r)?,
+            network_target_name: Option::<Cow<'a, Text>>::decode(r)?,
         })
     }
 }

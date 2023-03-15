@@ -1,10 +1,12 @@
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::time::SystemTime;
 
 use bevy_app::App;
 use rsa::pkcs8::DecodePublicKey;
 use rsa::{PaddingScheme, PublicKey, RsaPublicKey};
 use sha1::{Digest, Sha1};
-use tracing::{debug, info, Level, warn};
+use sha2::Sha256;
+use tracing::{debug, info, warn, Level};
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::{
     default_event_handler, ChatMessage, ClientSettings, CommandExecution, MessageAcknowledgment,
@@ -12,11 +14,16 @@ use valence::client::event::{
 };
 use valence::prelude::*;
 use valence::protocol::packet::c2s::play::client_settings::ChatMode;
+use valence::protocol::packet::s2c::play::chat_message::{ChatMessageS2c, MessageFilterType};
 use valence::protocol::translation_key::{
-    CHAT_DISABLED_OPTIONS, MULTIPLAYER_DISCONNECT_CHAT_VALIDATION_FAILED,
-    MULTIPLAYER_DISCONNECT_EXPIRED_PUBLIC_KEY, MULTIPLAYER_DISCONNECT_INVALID_PUBLIC_KEY_SIGNATURE,
-    MULTIPLAYER_DISCONNECT_OUT_OF_ORDER_CHAT,
+    CHAT_DISABLED_CHAIN_BROKEN, CHAT_DISABLED_EXPIRED_PROFILE_KEY,
+    CHAT_DISABLED_MISSING_PROFILE_KEY, CHAT_DISABLED_OPTIONS,
+    MULTIPLAYER_DISCONNECT_CHAT_VALIDATION_FAILED, MULTIPLAYER_DISCONNECT_EXPIRED_PUBLIC_KEY,
+    MULTIPLAYER_DISCONNECT_INVALID_PUBLIC_KEY_SIGNATURE, MULTIPLAYER_DISCONNECT_OUT_OF_ORDER_CHAT,
+    MULTIPLAYER_DISCONNECT_TOO_MANY_PENDING_CHATS, MULTIPLAYER_DISCONNECT_UNSIGNED_CHAT,
 };
+use valence::protocol::types::MessageSignature;
+use valence::protocol::var_int::VarInt;
 
 const SPAWN_Y: i32 = 64;
 
@@ -27,22 +34,84 @@ struct MojangServicesState {
     public_key: RsaPublicKey,
 }
 
-#[derive(Debug, Default)]
-struct AcknowledgementValidator {
-    messages: Vec<Option<AcknowledgedMessage>>,
-    last_signature: Option<Box<[u8; 256]>>,
+#[derive(Component, Debug)]
+struct ChatState {
+    last_message_timestamp: u64,
+    chat_mode: ChatMode,
+    validator: AcknowledgementValidator,
+    chain: MessageChain,
+    signature_storage: MessageSignatureStorage,
+    session: Option<ChatSession>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
+struct AcknowledgementValidator {
+    messages: Vec<Option<AcknowledgedMessage>>,
+    last_signature: Option<[u8; 256]>,
+}
+
+#[derive(Clone, Debug)]
 struct AcknowledgedMessage {
-    pub signature: Box<[u8; 256]>,
+    pub signature: [u8; 256],
     pub pending: bool,
 }
 
+#[derive(Clone, Debug)]
+struct MessageChain {
+    link: Option<MessageLink>,
+}
+
+#[derive(Copy, Clone, Debug)]
+struct MessageLink {
+    index: i32,
+    sender: Uuid,
+    session_id: Uuid,
+}
+
+#[derive(Clone, Debug)]
+struct MessageSignatureStorage {
+    signatures: [Option<[u8; 256]>; 128],
+    indices: HashMap<[u8; 256], i32>,
+}
+
+#[derive(Clone, Debug)]
+struct ChatSession {
+    expires_at: i64,
+    public_key: RsaPublicKey,
+}
+
+impl ChatState {
+    pub fn add_pending(&mut self, last_seen: &mut VecDeque<[u8; 256]>, signature: &[u8; 256]) {
+        self.signature_storage.add(last_seen, signature);
+        self.validator.add_pending(signature);
+    }
+}
+
 impl AcknowledgementValidator {
+    pub fn new() -> Self {
+        Self {
+            messages: vec![None; 20],
+            last_signature: None,
+        }
+    }
+
+    pub fn add_pending(&mut self, signature: &[u8; 256]) {
+        if matches!(&self.last_signature, Some(last_sig) if signature == last_sig.as_ref()) {
+            return;
+        }
+        self.messages.push(Some(AcknowledgedMessage {
+            signature: *signature,
+            pending: true,
+        }));
+        self.last_signature = Some(*signature);
+    }
+
     pub fn remove_until(&mut self, index: i32) -> bool {
         if index >= 0 && index <= (self.messages.len() - 20) as i32 {
             self.messages.drain(0..index as usize);
+            if self.messages.len() < 20 {
+                warn!("Message validator 'messages' shrunk!");
+            }
             return true;
         }
         false
@@ -52,7 +121,7 @@ impl AcknowledgementValidator {
         &mut self,
         acknowledgements: &[u8; 3],
         message_index: i32,
-    ) -> Option<Vec<[u8; 256]>> {
+    ) -> Option<VecDeque<[u8; 256]>> {
         if !self.remove_until(message_index) {
             // Invalid message index
             return None;
@@ -71,46 +140,107 @@ impl AcknowledgementValidator {
             return None;
         }
 
-        let mut list = Vec::with_capacity(acknowledged_count);
+        let mut list = VecDeque::with_capacity(acknowledged_count);
         for i in 0..20 {
             let acknowledgement = acknowledgements[i >> 3] & (0b1 << (i % 8)) != 0;
             let acknowledged_message = unsafe { self.messages.get_unchecked_mut(i) };
+            // Client has acknowledged the i-th message
             if acknowledgement {
-                // Client has acknowledged the i-th message
+                // The validator has the i-th message
                 if let Some(m) = acknowledged_message {
-                    // The validator has the i-th message
                     m.pending = false;
-                    list.push(*m.signature);
+                    list.push_back(m.signature);
                 } else {
                     // Client has acknowledged a non-existing message
+                    warn!("Client has acknowledged a non-existing message");
                     return None;
                 }
-            }
-            // Client has not acknowledged the i-th message
-            if matches!(acknowledged_message, Some(m) if !m.pending) {
-                // The validator has an i-th message that has already been validated
-                return None;
-            }
-            // If the validator has doesn't have an i-th message or it is pending
-            unsafe {
-                let m = self.messages.get_unchecked_mut(i);
-                *m = None;
+            } else {
+                // Client has not acknowledged the i-th message
+                if matches!(acknowledged_message, Some(m) if !m.pending) {
+                    // The validator has an i-th message that has been validated but the client
+                    // claims that it hasn't been validated yet
+                    warn!(
+                        "The validator has an i-th message that has been validated but the \
+                         clientclaims that it hasn't been validated yet"
+                    );
+                    return None;
+                }
+                // Honestly not entirely sure why this is done
+                if acknowledged_message.is_some() {
+                    *acknowledged_message = None;
+                }
             }
         }
         Some(list)
     }
+
+    pub fn message_count(&self) -> usize {
+        self.messages.len()
+    }
 }
 
-#[derive(Component)]
-struct ChatState {
-    last_message_timestamp: u64,
-    chat_mode: ChatMode,
-    validator: AcknowledgementValidator,
-    public_key: Option<RsaPublicKey>,
+impl MessageChain {
+    pub fn next_link(&mut self) -> Option<MessageLink> {
+        match &mut self.link {
+            None => self.link,
+            Some(current) => {
+                let temp = *current;
+                current.index += 1;
+                Some(temp)
+            }
+        }
+    }
+}
+
+impl MessageSignatureStorage {
+    fn index_of(&self, signature: &[u8; 256]) -> Option<&i32> {
+        self.indices.get(signature)
+    }
+
+    /// Consumes [last_seen]
+    pub fn add(&mut self, last_seen: &mut VecDeque<[u8; 256]>, signature: &[u8; 256]) {
+        last_seen.push_back(*signature);
+        let mut sig_set = HashSet::new();
+        for sig in last_seen.iter() {
+            sig_set.insert(*sig);
+        }
+        for i in 0..128 {
+            if last_seen.is_empty() {
+                return;
+            }
+            // Remove old message
+            let message_sig_data = self.signatures[i];
+            // Add previously seen message
+            self.signatures[i] = last_seen.pop_back();
+            if let Some(data) = self.signatures[i] {
+                self.indices.insert(data, i as i32);
+            }
+            // Reinsert old message if it is not already in last_seen
+            if let Some(data) = message_sig_data {
+                self.indices.remove(&data);
+                if sig_set.insert(data) {
+                    last_seen.push_front(data);
+                }
+            }
+        }
+    }
+}
+
+impl ChatSession {
+    pub fn is_expired(&self) -> bool {
+        SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("Unable to get Unix time")
+            .as_millis()
+            >= self.expires_at as u128
+    }
 }
 
 pub fn main() {
-    tracing_subscriber::fmt().with_max_level(Level::DEBUG).init();
+    tracing_subscriber::fmt()
+        .with_max_level(Level::DEBUG)
+        .init();
 
     App::new()
         .add_plugin(ServerPlugin::new(()))
@@ -123,8 +253,9 @@ pub fn main() {
                 handle_message_events,
                 handle_message_acknowledgement,
                 handle_command_events,
+                handle_chat_settings_event,
             )
-                .in_schedule(EventLoopSchedule)
+                .in_schedule(EventLoopSchedule),
         )
         .add_systems(PlayerList::default_systems())
         .add_system(despawn_disconnected_clients)
@@ -135,7 +266,9 @@ fn setup(mut commands: Commands, server: Res<Server>) {
     let mojang_pub_key = RsaPublicKey::from_public_key_der(MOJANG_KEY_DATA)
         .expect("Error creating Mojang public key");
 
-   commands.insert_resource(MojangServicesState { public_key: mojang_pub_key });
+    commands.insert_resource(MojangServicesState {
+        public_key: mojang_pub_key,
+    });
 
     let mut instance = server.new_instance(DimensionId::default());
 
@@ -167,14 +300,19 @@ fn init_clients(
         client.send_message("Welcome to Valence! Talk about something.".italic());
         client.set_instance(instance);
 
-        let mut state = ChatState {
+        let state = ChatState {
             last_message_timestamp: SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
                 .expect("Unable to get Unix time")
                 .as_millis() as u64,
             chat_mode: ChatMode::Enabled,
-            validator: Default::default(),
-            public_key: None,
+            validator: AcknowledgementValidator::new(),
+            chain: MessageChain { link: None },
+            signature_storage: MessageSignatureStorage {
+                signatures: [None; 128],
+                indices: HashMap::new(),
+            },
+            session: None,
         };
 
         commands.entity(entity).insert(state);
@@ -252,13 +390,26 @@ fn handle_session_events(
             continue;
         };
 
-        if let Ok(public_key) = RsaPublicKey::from_public_key_der(session.session_data.public_key_data.as_ref()) {
-            state.public_key = Some(public_key);
+        if let Ok(public_key) =
+            RsaPublicKey::from_public_key_der(session.session_data.public_key_data.as_ref())
+        {
+            state.chain.link = Some(MessageLink {
+                index: 0,
+                sender: client.uuid(),
+                session_id: session.session_data.session_id,
+            });
+            state.session = Some(ChatSession {
+                expires_at: session.session_data.expires_at,
+                public_key,
+            });
         } else {
-            // This shouldn't happen considering that it is highly unlikely that Mojang would
-            // provide the client with a malformed key. By this point the key signature has
-            // been verified
-            warn!("Received malformed profile key data from '{}'", client.username());
+            // This shouldn't happen considering that it is highly unlikely that Mojang
+            // would provide the client with a malformed key. By this point the
+            // key signature has been verified
+            warn!(
+                "Received malformed profile key data from '{}'",
+                client.username()
+            );
             client.kick(Text::translate(
                 MULTIPLAYER_DISCONNECT_EXPIRED_PUBLIC_KEY,
                 ["Malformed profile key data".color(Color::RED)],
@@ -302,13 +453,10 @@ fn handle_message_acknowledgement(
 }
 
 fn handle_message_events(
-    player_list: ResMut<PlayerList>,
     mut clients: Query<&mut Client>,
     mut states: Query<&mut ChatState>,
     mut messages: EventReader<ChatMessage>,
 ) {
-    let pl = player_list.into_inner();
-
     for message in messages.iter() {
         let Ok(mut client) = clients.get_component_mut::<Client>(message.client) else {
             warn!("Unable to find client for message '{:?}'", message);
@@ -320,6 +468,7 @@ fn handle_message_events(
             continue;
         };
 
+        // Ensure that the client isn't sending messages while their chat is hidden
         if state.chat_mode == ChatMode::Hidden {
             client.send_message(Text::translate(CHAT_DISABLED_OPTIONS, []).color(Color::RED));
             continue;
@@ -327,6 +476,7 @@ fn handle_message_events(
 
         let message_text = message.message.to_string();
 
+        // Ensure we are receiving chat messages in order
         if message.timestamp < state.last_message_timestamp {
             warn!(
                 "{:?} sent out-of-order chat: '{:?}'",
@@ -342,39 +492,127 @@ fn handle_message_events(
 
         state.last_message_timestamp = message.timestamp;
 
-        let Some(player_entry) = pl.get_mut(client.uuid()) else {
-            warn!("Unable to find '{}' in the player list", client.username());
-            continue;
-        };
-
-        match state.validator.validate(&message.acknowledgements, message.message_index) {
-            Some(last_seen) => {
-                // This process should probably be done on another thread similarly to chunk loading
-                // in the 'terrain.rs' example, as this is what the notchian server does
-                
-            }
+        // Validate the message acknowledgements
+        match state
+            .validator
+            .validate(&message.acknowledgements, message.message_index)
+        {
             None => {
                 warn!(
-                    "Failed to validate acknowledgements from {:?}",
-                    client.username()
+                    "Failed to validate acknowledgements from `{}`",
+                    client.username().as_str()
                 );
                 client.kick(MULTIPLAYER_DISCONNECT_CHAT_VALIDATION_FAILED);
+                continue;
             }
-        };
+            Some(mut last_seen) => {
+                // This whole process should probably be done on another thread similarly to
+                // chunk loading in the 'terrain.rs' example, as this is what
+                // the notchian server does
 
-        info!("{}: {}", client.username(), message_text);
+                let Some(link) = &state.chain.next_link() else {
+                    client.send_message(Text::translate(
+                        CHAT_DISABLED_CHAIN_BROKEN,
+                        [],
+                    ).color(Color::RED));
+                    continue;
+                };
 
-        // ############################################
+                let Some(session) = &state.session else {
+                    client.kick(Text::translate(
+                        CHAT_DISABLED_MISSING_PROFILE_KEY,
+                        [],
+                    ));
+                    continue;
+                };
 
-        let formatted = format!("<{}>: ", client.username())
-            .bold()
-            .color(Color::YELLOW)
-            + message_text.into_text().not_bold().color(Color::WHITE);
+                if session.is_expired() {
+                    client.send_message(
+                        Text::translate(CHAT_DISABLED_EXPIRED_PROFILE_KEY, []).color(Color::RED),
+                    );
+                    continue;
+                }
 
-        // TODO: write message to instance buffer.
-        for mut client in &mut clients {
-            client.send_message(formatted.clone());
+                let Some(message_signature) = &message.signature else {
+                    client.kick(Text::translate(
+                        MULTIPLAYER_DISCONNECT_UNSIGNED_CHAT,
+                        [],
+                    ));
+                    continue;
+                };
+
+                let mut hasher = Sha256::new();
+                hasher.update([0u8, 0, 0, 1]);
+                hasher.update(link.sender.into_bytes());
+                hasher.update(link.session_id.into_bytes());
+                hasher.update(link.index.to_be_bytes());
+                hasher.update(message.salt.to_be_bytes());
+                hasher.update((message.timestamp / 1000).to_be_bytes());
+                let bytes = message.message.as_bytes();
+                hasher.update((bytes.len() as u32).to_be_bytes());
+                hasher.update(bytes);
+                hasher.update((last_seen.len() as u32).to_be_bytes());
+                for sig in last_seen.iter() {
+                    hasher.update(sig);
+                }
+                let hashed = hasher.finalize();
+
+                if session
+                    .public_key
+                    .verify(
+                        PaddingScheme::new_pkcs1v15_sign::<Sha256>(),
+                        &hashed,
+                        message_signature.as_ref(),
+                    )
+                    .is_err()
+                {
+                    client.kick(Text::translate(MULTIPLAYER_DISCONNECT_UNSIGNED_CHAT, []));
+                    continue;
+                }
+
+                let previous = last_seen
+                    .iter()
+                    .map(|sig| match state.signature_storage.index_of(sig) {
+                        Some(index) => MessageSignature::ByIndex(*index),
+                        None => MessageSignature::BySignature(sig),
+                    })
+                    .collect::<Vec<_>>();
+
+                let packet = ChatMessageS2c {
+                    sender: link.sender,
+                    index: VarInt(link.index),
+                    message_signature: Some(message_signature.as_ref()),
+                    message: message.message.as_ref(),
+                    time_stamp: message.timestamp,
+                    salt: message.salt,
+                    previous_messages: previous,
+                    unsigned_content: None,
+                    filter_type: MessageFilterType::PassThrough,
+                    chat_type: VarInt(0),
+                    network_name: client.username().into_text().into(),
+                    network_target_name: None,
+                };
+
+                // TODO: clients.for_each
+                client.write_packet(&packet);
+
+                // Add pending acknowledgement
+                state.add_pending(&mut last_seen, message_signature.as_ref());
+                if state.validator.message_count() > 4096 {
+                    client.kick(Text::translate(
+                        MULTIPLAYER_DISCONNECT_TOO_MANY_PENDING_CHATS,
+                        [],
+                    ));
+                    continue;
+                }
+                // clients.for_each
+
+                info!("{}: {}", client.username(), message_text);
+            }
         }
+
+        // send chat message packets to each client and add pending
+        // acknowledgements for clients.iter_mut()
     }
 }
 
@@ -411,7 +649,5 @@ fn handle_chat_settings_event(
         };
 
         state.chat_mode = *chat_mode;
-
-        debug!("Client settings: {:?}", chat_mode);
     }
 }

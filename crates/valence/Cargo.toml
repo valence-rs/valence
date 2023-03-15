@@ -33,7 +33,7 @@ rustc-hash = "1.1.0"
 serde = { version = "1.0.145", features = ["derive"] }
 serde_json = "1.0.85"
 sha1 = { version = "0.10.5", features = ["oid"] }
-sha2 = "0.10.6"
+sha2 = { version = "0.10.6", features = ["oid"] }
 thiserror = "1.0.35"
 tokio = { version = "1.25.0", features = ["full"] }
 tracing = "0.1.37"
