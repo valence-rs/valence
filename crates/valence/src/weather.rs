@@ -118,11 +118,11 @@ impl Client {
 }
 
 fn handle_weather_for_joined_player(
-    mut clients: Query<(&mut Client, &McEntity), Added<Client>>,
+    mut clients: Query<(&mut Client, &Location), Added<Client>>,
     weathers: Query<&Weather, With<Instance>>,
 ) {
-    clients.for_each_mut(|(mut client, mc_ent)| {
-        if let Ok(weather) = weathers.get(mc_ent.instance()) {
+    clients.for_each_mut(|(mut client, loc)| {
+        if let Ok(weather) = weathers.get(loc.0) {
             client.set_weather(weather);
         }
     })
