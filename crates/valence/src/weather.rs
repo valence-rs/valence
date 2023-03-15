@@ -1,7 +1,6 @@
 use std::ops::Range;
 
 use bevy_ecs::prelude::*;
-use bevy_ecs::schedule::SystemConfigs;
 use valence_protocol::packet::s2c::play::game_state_change::GameEventKind;
 use valence_protocol::packet::s2c::play::GameStateChangeS2c;
 
@@ -14,13 +13,13 @@ pub const WEATHER_LEVEL: Range<f32> = 0_f32..1_f32;
 /// Valid value is a value within the [WEATHER_LEVEL] range.
 /// Invalid value would be clamped.
 #[derive(Component)]
-pub struct Rain(f32);
+pub struct Rain(pub f32);
 
 /// Contains the thunder level.
 /// Valid value is a value within the [WEATHER_LEVEL] range.
 /// Invalid value would be clamped.
 #[derive(Component)]
-pub struct Thunder(f32);
+pub struct Thunder(pub f32);
 
 impl Instance {
     /// Sends the begin rain event to all players in the instance.
@@ -165,20 +164,27 @@ fn handle_thunder_change_per_client(
     });
 }
 
-pub(crate) fn update_weather() -> SystemConfigs {
-    (
-        handle_weather_for_joined_player,
-        handle_rain_begin_per_instance,
-        handle_rain_change_per_instance,
-        handle_rain_end_per_instance,
-        handle_thunder_change_per_instance,
-        handle_rain_begin_per_client,
-        handle_rain_change_per_client,
-        handle_rain_end_per_client,
-        handle_thunder_change_per_client,
-    )
-        .chain()
-        .into_configs()
+pub(crate) struct WeatherPlugin;
+
+impl Plugin for WeatherPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(
+            (
+                handle_weather_for_joined_player,
+                handle_rain_begin_per_instance,
+                handle_rain_change_per_instance,
+                handle_rain_end_per_instance,
+                handle_thunder_change_per_instance,
+                handle_rain_begin_per_client,
+                handle_rain_change_per_client,
+                handle_rain_end_per_client,
+                handle_thunder_change_per_client,
+            )
+                .chain()
+                .in_base_set(CoreSet::PostUpdate),
+            // .before(FlushPacketsSet),
+        );
+    }
 }
 
 #[cfg(test)]
@@ -192,8 +198,6 @@ mod test {
     use crate::{assert_packet_count, assert_packet_order};
 
     fn assert_weather_packets(sent_packets: Vec<S2cPlayPacket>) {
-        dbg!(sent_packets.clone());
-
         assert_packet_count!(sent_packets, 6, S2cPlayPacket::GameStateChangeS2c(_));
 
         assert_packet_order!(

@@ -34,7 +34,7 @@ use crate::instance::{
 use crate::inventory::update_inventories;
 use crate::player_list::{update_player_list, PlayerList};
 use crate::server::connect::do_accept_loop;
-use crate::weather::update_weather;
+use crate::weather::WeatherPlugin;
 
 mod byte_channel;
 mod connect;
@@ -366,8 +366,8 @@ pub fn build_plugin(
             .after(update_instances_pre_client)
             .before(update_instances_post_client),
     )
-    .add_systems(update_weather().in_base_set(CoreSet::PostUpdate))
-    .add_system(increment_tick_counter.in_base_set(CoreSet::Last));
+    .add_system(increment_tick_counter.in_base_set(CoreSet::Last))
+    .add_plugin(WeatherPlugin);
 
     Ok(())
 }
