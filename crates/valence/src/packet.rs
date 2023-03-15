@@ -5,7 +5,7 @@ use valence_protocol::codec::{encode_packet, encode_packet_compressed, PacketEnc
 use valence_protocol::Packet;
 
 /// Types that can have packets written to them.
-pub(crate) trait WritePacket {
+pub trait WritePacket {
     /// Writes a packet to this object. Encoding errors are typically logged and
     /// discarded.
     fn write_packet<'a>(&mut self, packet: &impl Packet<'a>);
