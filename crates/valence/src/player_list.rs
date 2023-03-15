@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::iter::FusedIterator;
 use std::mem;
 
-use bevy_app::{Plugin, CoreSet};
+use bevy_app::{CoreSet, Plugin};
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::SystemConfigs;
 use tracing::warn;
