@@ -337,7 +337,7 @@ pub fn build_plugin(
         .add_plugin(InstancePlugin)
         .add_plugin(InventoryPlugin)
         .add_plugin(PlayerListPlugin)
-        .add_plugin(WeatherPlugin);;
+        .add_plugin(WeatherPlugin);
 
     /*
     println!(
@@ -351,6 +351,7 @@ pub fn build_plugin(
             },
         )
     );
+    */
 
     Ok(())
 }
