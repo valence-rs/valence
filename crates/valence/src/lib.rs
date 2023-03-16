@@ -50,6 +50,7 @@ pub mod prelude {
     pub use bevy_app::prelude::*;
     pub use bevy_ecs::prelude::*;
     pub use biome::{Biome, BiomeId};
+    pub use client::event::{EventLoopSchedule, EventLoopSet};
     pub use client::*;
     pub use component::*;
     pub use config::{
@@ -67,7 +68,7 @@ pub mod prelude {
     pub use protocol::ident::Ident;
     pub use protocol::item::{ItemKind, ItemStack};
     pub use protocol::text::{Color, Text, TextFormat};
-    pub use server::{EventLoopSchedule, EventLoopSet, NewClientInfo, Server, SharedServer};
+    pub use server::{NewClientInfo, Server, SharedServer};
     pub use uuid::Uuid;
     pub use valence_nbt::Compound;
     pub use valence_protocol::block::BlockKind;
