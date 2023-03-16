@@ -1,3 +1,20 @@
+//! The weather system.
+//!
+//! This module contains the systems and components needed to handle
+//! weather.
+//!
+//! # Components
+//!
+//! The components may be attached to clients or instances.
+//!
+//! - [`Rain`]: When attached, raining begin and rain level set events are
+//!   emitted. When removed, the end raining event is emitted.
+//! - [`Thunder`]: When attached, thunder level set event is emitted. When
+//!   removed, the thunder level set to zero event is emitted.
+//!
+//! New joined players are handled, so that they are get weather events from
+//! the instance.
+
 use std::ops::Range;
 
 use bevy_ecs::prelude::*;
