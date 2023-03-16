@@ -205,7 +205,7 @@ impl Plugin for WeatherPlugin {
                 handle_thunder_end_per_client,
             )
                 .chain()
-                .in_base_set(CoreSet::PostUpdate),
+                .in_base_set(CoreSet::PostUpdate)
                 .before(FlushPacketsSet),
         );
     }
