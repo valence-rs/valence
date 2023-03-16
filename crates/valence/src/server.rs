@@ -30,6 +30,7 @@ use crate::player_list::PlayerListPlugin;
 use crate::prelude::event::ClientEventPlugin;
 use crate::prelude::ComponentPlugin;
 use crate::server::connect::do_accept_loop;
+use crate::weather::WeatherPlugin;
 
 mod byte_channel;
 mod connect;
@@ -335,7 +336,8 @@ pub fn build_plugin(
         .add_plugin(EntityPlugin)
         .add_plugin(InstancePlugin)
         .add_plugin(InventoryPlugin)
-        .add_plugin(PlayerListPlugin);
+        .add_plugin(PlayerListPlugin)
+        .add_plugin(WeatherPlugin);
 
     /*
     println!(
