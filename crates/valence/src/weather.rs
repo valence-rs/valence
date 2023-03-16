@@ -206,7 +206,7 @@ impl Plugin for WeatherPlugin {
             )
                 .chain()
                 .in_base_set(CoreSet::PostUpdate),
-            // .before(FlushPacketsSet),
+                .before(FlushPacketsSet),
         );
     }
 }
