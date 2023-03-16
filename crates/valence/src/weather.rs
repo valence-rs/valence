@@ -21,6 +21,7 @@ use bevy_ecs::prelude::*;
 use valence_protocol::packet::s2c::play::game_state_change::GameEventKind;
 use valence_protocol::packet::s2c::play::GameStateChangeS2c;
 
+use crate::instance::UpdateInstancesPreClientSet;
 use crate::packet::WritePacket;
 use crate::prelude::*;
 
@@ -205,16 +206,41 @@ fn handle_thunder_end_per_client(
 
 pub(crate) struct WeatherPlugin;
 
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub(crate) struct UpdateWeatherPerInstanceSet;
+
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub(crate) struct UpdateWeatherPerClientSet;
+
 impl Plugin for WeatherPlugin {
     fn build(&self, app: &mut App) {
+        app.configure_set(
+            UpdateWeatherPerInstanceSet
+                .in_base_set(CoreSet::PostUpdate)
+                .before(UpdateInstancesPreClientSet),
+        );
+
+        app.configure_set(
+            UpdateWeatherPerClientSet
+                .in_base_set(CoreSet::PostUpdate)
+                .before(FlushPacketsSet),
+        );
+
         app.add_systems(
             (
-                handle_weather_for_joined_player,
                 handle_rain_begin_per_instance,
                 handle_rain_change_per_instance,
                 handle_rain_end_per_instance,
                 handle_thunder_change_per_instance,
                 handle_thunder_end_per_instance,
+            )
+                .chain()
+                .in_set(UpdateWeatherPerInstanceSet)
+                .before(UpdateWeatherPerClientSet),
+        );
+
+        app.add_systems(
+            (
                 handle_rain_begin_per_client,
                 handle_rain_change_per_client,
                 handle_rain_end_per_client,
@@ -222,9 +248,10 @@ impl Plugin for WeatherPlugin {
                 handle_thunder_end_per_client,
             )
                 .chain()
-                .in_base_set(CoreSet::PostUpdate)
-                .before(FlushPacketsSet),
+                .in_set(UpdateWeatherPerClientSet),
         );
+
+        app.add_system(handle_weather_for_joined_player.before(UpdateWeatherPerClientSet));
     }
 }
 
