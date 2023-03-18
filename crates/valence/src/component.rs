@@ -10,7 +10,6 @@ use valence_protocol::types::{GameMode as ProtocolGameMode, Property};
 use crate::prelude::FlushPacketsSet;
 use crate::util::{from_yaw_and_pitch, to_yaw_and_pitch};
 use crate::view::ChunkPos;
-use crate::NULL_ENTITY;
 
 /// A [`Component`] for marking entities that should be despawned at the end of
 /// the tick.
@@ -27,8 +26,23 @@ use crate::NULL_ENTITY;
 #[derive(Component, Copy, Clone, Default, PartialEq, Eq, Debug)]
 pub struct Despawned;
 
-#[derive(Component, Default, Clone, PartialEq, Eq, Debug)]
+/// The universally unique identifier of an entity. Component wrapper for a
+/// [`Uuid`].
+///
+/// This component is expected to remain _unique_ and _unmodified_ during the
+/// lifetime of the entity it is attached to.
+///
+/// Defaults to the "nil" UUID, which may be reassigned to a new random value by
+/// initialization systems.
+#[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
 pub struct UniqueId(pub Uuid);
+
+impl UniqueId {
+    /// Returns a new random UUID.
+    pub fn random() -> Self {
+        Self(Uuid::from_bytes(rand::random()))
+    }
+}
 
 #[derive(Component, Clone, PartialEq, Eq, Debug)]
 pub struct Username(pub String);
@@ -39,7 +53,7 @@ impl fmt::Display for Username {
     }
 }
 
-#[derive(Component, Clone, PartialEq, Eq, Debug)]
+#[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
 pub struct Properties(pub Vec<Property>);
 
 impl Properties {
@@ -54,7 +68,7 @@ impl Properties {
     }
 }
 
-#[derive(Component, Copy, Clone, PartialEq, Eq, Debug, Default)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
 
 pub enum GameMode {
     #[default]
@@ -105,7 +119,7 @@ pub struct Location(pub Entity);
 
 impl Default for Location {
     fn default() -> Self {
-        Self(NULL_ENTITY)
+        Self(Entity::PLACEHOLDER)
     }
 }
 
@@ -124,7 +138,7 @@ impl OldLocation {
 
 impl Default for OldLocation {
     fn default() -> Self {
-        Self(NULL_ENTITY)
+        Self(Entity::PLACEHOLDER)
     }
 }
 
@@ -161,10 +175,6 @@ impl OldPosition {
         ChunkPos::from_dvec3(self.0)
     }
 }
-
-/// Velocity in m/s.
-#[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
-pub struct Velocity(pub Vec3);
 
 /// Describes the direction an entity is looking using pitch and yaw angles.
 #[derive(Component, Copy, Clone, PartialEq, Default, Debug)]

@@ -39,7 +39,7 @@ use super::{
 };
 use crate::client::Client;
 use crate::component::{Look, OnGround, Ping, Position};
-use crate::entity::{EntityAnimation, EntityKind, McEntity, TrackedData};
+use crate::entity::{EntityAnimation, EntityKind};
 use crate::inventory::Inventory;
 
 #[derive(Clone, Debug)]
@@ -1397,6 +1397,9 @@ fn handle_one_packet(
     Ok(true)
 }
 
+// TODO: fix this up.
+
+/*
 /// The default event handler system which handles client events in a
 /// reasonable default way.
 ///
@@ -1510,3 +1513,4 @@ pub fn default_event_handler(
         };
     }
 }
+*/

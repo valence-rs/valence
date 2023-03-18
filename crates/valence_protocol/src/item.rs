@@ -40,6 +40,12 @@ impl ItemStack {
     }
 }
 
+impl Default for ItemStack {
+    fn default() -> Self {
+        Self::new(ItemKind::Air, 1, None)
+    }
+}
+
 impl Encode for Option<ItemStack> {
     fn encode(&self, w: impl Write) -> Result<()> {
         self.as_ref().encode(w)

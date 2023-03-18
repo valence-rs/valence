@@ -1,5 +1,7 @@
 pub use glam::*;
 
+use crate::config::DEFAULT_TPS;
+
 /// An axis-aligned bounding box. `min` is expected to be <= `max`
 /// componentwise.
 #[derive(Copy, Clone, PartialEq, Default, Debug)]
@@ -109,4 +111,12 @@ mod tests {
             assert_relative_eq!(d, d_new, epsilon = f32::EPSILON * 100.0);
         }
     }
+}
+
+#[inline]
+pub(crate) fn velocity_to_packet_units(vel: Vec3) -> [i16; 3] {
+    // The saturating casts to i16 are desirable.
+    (8000.0 / DEFAULT_TPS as f32 * vel)
+        .to_array()
+        .map(|v| v as i16)
 }

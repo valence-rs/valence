@@ -12,6 +12,7 @@ use glam::{DVec3, Vec3};
 use rand::Rng;
 use tracing::warn;
 use valence_protocol::block_pos::BlockPos;
+use valence_protocol::byte_angle::ByteAngle;
 use valence_protocol::codec::{PacketDecoder, PacketEncoder};
 use valence_protocol::ident::Ident;
 use valence_protocol::item::ItemStack;
@@ -20,11 +21,11 @@ use valence_protocol::packet::s2c::play::particle::Particle;
 use valence_protocol::packet::s2c::play::player_position_look::Flags as PlayerPositionLookFlags;
 use valence_protocol::packet::s2c::play::{
     ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, CustomPayloadS2c, DeathMessageS2c,
-    DisconnectS2c, EntitiesDestroyS2c, EntityStatusS2c, EntityTrackerUpdateS2c,
-    EntityVelocityUpdateS2c, GameJoinS2c, GameMessageS2c, GameStateChangeS2c, KeepAliveS2c,
-    OverlayMessageS2c, ParticleS2c, PlaySoundS2c, PlayerActionResponseS2c, PlayerPositionLookS2c,
-    PlayerRespawnS2c, PlayerSpawnPositionS2c, ResourcePackSendS2c, SubtitleS2c, TitleFadeS2c,
-    TitleS2c, UnloadChunkS2c,
+    DisconnectS2c, EntitiesDestroyS2c, EntitySetHeadYawS2c, EntitySpawnS2c, EntityStatusS2c,
+    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, ExperienceOrbSpawnS2c, GameJoinS2c,
+    GameMessageS2c, GameStateChangeS2c, KeepAliveS2c, OverlayMessageS2c, ParticleS2c, PlaySoundS2c,
+    PlayerActionResponseS2c, PlayerPositionLookS2c, PlayerRespawnS2c, PlayerSpawnPositionS2c,
+    PlayerSpawnS2c, ResourcePackSendS2c, SubtitleS2c, TitleFadeS2c, TitleS2c, UnloadChunkS2c,
 };
 use valence_protocol::sound::Sound;
 use valence_protocol::text::Text;
@@ -37,13 +38,16 @@ use crate::component::{
     Properties, UniqueId, Username,
 };
 use crate::dimension::DimensionId;
-use crate::entity::{velocity_to_packet_units, EntityStatus, McEntity, TrackedData};
+use crate::entity::data::TrackedData;
+use crate::entity::{EntityId, EntityStatus, HeadYaw, ObjectData, Velocity};
 use crate::instance::{Instance, UpdateInstancesPreClientSet};
 use crate::inventory::{Inventory, InventoryKind};
 use crate::packet::WritePacket;
 use crate::prelude::ScratchBuf;
 use crate::server::{NewClientInfo, Server};
+use crate::util::velocity_to_packet_units;
 use crate::view::{ChunkPos, ChunkView};
+use crate::entity::EntityKind;
 
 pub mod event;
 
@@ -221,10 +225,10 @@ impl Client {
 
     /// Kills the client and shows `message` on the death screen. If an entity
     /// killed the player, you should supply it as `killer`.
-    pub fn kill(&mut self, killer: Option<&McEntity>, message: impl Into<Text>) {
+    pub fn kill(&mut self, killer: Option<EntityId>, message: impl Into<Text>) {
         self.write_packet(&DeathMessageS2c {
             player_id: VarInt(0),
-            entity_id: killer.map_or(-1, |k| k.protocol_id()),
+            entity_id: killer.map(|id| id.get()).unwrap_or(-1),
             message: message.into().into(),
         });
     }
@@ -613,10 +617,10 @@ impl Plugin for ClientPlugin {
             (
                 initial_join,
                 update_chunk_load_dist,
-                read_data_in_view
+                read_data_in_old_view
                     .after(UpdateInstancesPreClientSet)
                     .after(update_chunk_load_dist),
-                update_view.after(initial_join).after(read_data_in_view),
+                update_view.after(initial_join).after(read_data_in_old_view),
                 respawn.after(update_view),
                 remove_entities.after(update_view),
                 update_spawn_position.after(update_view),
@@ -625,6 +629,7 @@ impl Plugin for ClientPlugin {
                 update_game_mode,
                 send_keepalive,
                 update_tracked_data,
+                init_tracked_data,
                 update_op_level,
                 acknowledge_player_actions,
             )
@@ -783,20 +788,83 @@ fn update_chunk_load_dist(
     }
 }
 
-fn read_data_in_view(
+#[derive(WorldQuery)]
+pub(crate) struct EntityInitQuery {
+    pub entity_id: &'static EntityId,
+    pub uuid: &'static UniqueId,
+    pub kind: &'static EntityKind,
+    pub look: &'static Look,
+    pub head_yaw: &'static HeadYaw,
+    pub on_ground: &'static OnGround,
+    pub object_data: &'static ObjectData,
+    pub velocity: &'static Velocity,
+    pub tracked_data: &'static TrackedData,
+}
+
+impl EntityInitQueryItem<'_> {
+    /// Writes the appropriate packets to initialize an entity. This will spawn
+    /// the entity and initialize tracked data.
+    pub fn write_init_packets(&self, pos: DVec3, mut writer: impl WritePacket) {
+        match *self.kind {
+            EntityKind::MARKER => {}
+            EntityKind::EXPERIENCE_ORB => {
+                writer.write_packet(&ExperienceOrbSpawnS2c {
+                    entity_id: self.entity_id.get().into(),
+                    position: pos.to_array(),
+                    count: self.object_data.0 as i16,
+                });
+            }
+            EntityKind::PLAYER => {
+                writer.write_packet(&PlayerSpawnS2c {
+                    entity_id: self.entity_id.get().into(),
+                    player_uuid: self.uuid.0,
+                    position: pos.to_array(),
+                    yaw: ByteAngle::from_degrees(self.look.yaw),
+                    pitch: ByteAngle::from_degrees(self.look.pitch),
+                });
+
+                // Player spawn packet doesn't include head yaw for some reason.
+                writer.write_packet(&EntitySetHeadYawS2c {
+                    entity_id: self.entity_id.get().into(),
+                    head_yaw: ByteAngle::from_degrees(self.head_yaw.0),
+                });
+            }
+            _ => writer.write_packet(&EntitySpawnS2c {
+                entity_id: self.entity_id.get().into(),
+                object_uuid: self.uuid.0,
+                kind: self.kind.0.into(),
+                position: pos.to_array(),
+                pitch: ByteAngle::from_degrees(self.look.pitch),
+                yaw: ByteAngle::from_degrees(self.look.yaw),
+                head_yaw: ByteAngle::from_degrees(self.head_yaw.0),
+                data: self.object_data.0.into(),
+                velocity: velocity_to_packet_units(self.velocity.0),
+            }),
+        }
+
+        if let Some(init_data) = self.tracked_data.init_data() {
+            writer.write_packet(&EntityTrackerUpdateS2c {
+                entity_id: self.entity_id.get().into(),
+                metadata: init_data.into(),
+            });
+        }
+    }
+}
+
+fn read_data_in_old_view(
     mut clients: Query<(
         &mut Client,
-        &mut ScratchBuf,
         &mut EntityRemoveBuf,
         &OldLocation,
         &OldPosition,
         &OldViewDistance,
     )>,
     instances: Query<&Instance>,
-    entities: Query<&McEntity>,
+    entities: Query<(EntityInitQuery, &OldPosition)>,
+    entity_ids: Query<&EntityId>,
 ) {
     clients.par_iter_mut().for_each_mut(
-        |(mut client, mut scratch, mut remove_buf, old_loc, old_pos, old_view_dist)| {
+        |(mut client, mut remove_buf, old_loc, old_pos, old_view_dist)| {
             let Ok(instance) = instances.get(old_loc.get()) else {
                 return;
             };
@@ -829,15 +897,12 @@ fn read_data_in_view(
                         if src_pos.map_or(true, |p| !view.contains(p)) {
                             // The incoming entity originated from outside the view distance, so it
                             // must be spawned.
-                            if let Ok(entity) = entities.get(id) {
-                                // Spawn the entity at the old position so that later relative
-                                // entity movement packets will not
-                                // set the entity to the wrong position.
-                                entity.write_init_packets(
-                                    &mut client.enc,
-                                    entity.old_position(),
-                                    &mut scratch.0,
-                                );
+                            if let Ok((entity, old_pos)) = entities.get(id) {
+                                // Notice we are spawning the entity at its old position rather than
+                                // the current position. This is because the client will also
+                                // receive update packets for this entity this tick, which may
+                                // include a relative entity movement.
+                                entity.write_init_packets(old_pos.get(), &mut client.enc);
                             }
                         }
                     }
@@ -847,8 +912,8 @@ fn read_data_in_view(
                         if dest_pos.map_or(true, |p| !view.contains(p)) {
                             // The outgoing entity moved outside the view distance, so it must be
                             // despawned.
-                            if let Ok(entity) = entities.get(id) {
-                                remove_buf.push(entity.protocol_id());
+                            if let Ok(entity_id) = entity_ids.get(id) {
+                                remove_buf.push(entity_id.get());
                             }
                         }
                     }
@@ -867,7 +932,7 @@ fn read_data_in_view(
 /// client's chunk position.
 ///
 /// This handles the situation when a client changes instances or chunk
-/// position. It must run after [`read_data_in_view`].
+/// position. It must run after [`read_data_in_old_view`].
 fn update_view(
     mut clients: Query<
         (
@@ -884,7 +949,8 @@ fn update_view(
         Or<(Changed<Location>, Changed<Position>, Changed<ViewDistance>)>,
     >,
     instances: Query<&Instance>,
-    entities: Query<&McEntity>,
+    entities: Query<(EntityInitQuery, &Position)>,
+    entity_ids: Query<&EntityId>,
 ) {
     clients.par_iter_mut().for_each_mut(
         |(
@@ -930,8 +996,8 @@ fn update_view(
 
                             // Unload all the entities in the cell.
                             for &id in &cell.entities {
-                                if let Ok(entity) = entities.get(id) {
-                                    remove_buf.push(entity.protocol_id());
+                                if let Ok(entity_id) = entity_ids.get(id) {
+                                    remove_buf.push(entity_id.get());
                                 }
                             }
                         }
@@ -956,12 +1022,8 @@ fn update_view(
 
                             // Load all the entities in this cell.
                             for &id in &cell.entities {
-                                if let Ok(entity) = entities.get(id) {
-                                    entity.write_init_packets(
-                                        &mut client.enc,
-                                        entity.position(),
-                                        &mut scratch.0,
-                                    );
+                                if let Ok((entity, pos)) = entities.get(id) {
+                                    entity.write_init_packets(pos.get(), &mut client.enc);
                                 }
                             }
                         }
@@ -988,8 +1050,8 @@ fn update_view(
 
                             // Unload all the entities in the cell.
                             for &id in &cell.entities {
-                                if let Ok(entity) = entities.get(id) {
-                                    remove_buf.push(entity.protocol_id());
+                                if let Ok(entity_id) = entity_ids.get(id) {
+                                    remove_buf.push(entity_id.get());
                                 }
                             }
                         }
@@ -1011,12 +1073,8 @@ fn update_view(
 
                             // Load all the entities in this cell.
                             for &id in &cell.entities {
-                                if let Ok(entity) = entities.get(id) {
-                                    entity.write_init_packets(
-                                        &mut client.enc,
-                                        entity.position(),
-                                        &mut scratch.0,
-                                    );
+                                if let Ok((entity, pos)) = entities.get(id) {
+                                    entity.write_init_packets(pos.get(), &mut client.enc);
                                 }
                             }
                         }
@@ -1130,21 +1188,24 @@ fn flush_packets(
     }
 }
 
-fn update_tracked_data(mut clients: Query<(&mut Client, &McEntity)>, mut scratch: Local<Vec<u8>>) {
-    for (mut client, entity) in &mut clients {
-        if let TrackedData::Player(player) = &entity.data {
-            scratch.clear();
-            // TODO: should some fields be ignored?
-            player.updated_tracked_data(&mut scratch);
+fn init_tracked_data(mut clients: Query<(&mut Client, &TrackedData), Added<TrackedData>>) {
+    for (mut client, tracked_data) in &mut clients {
+        if let Some(init_data) = tracked_data.init_data() {
+            client.write_packet(&EntityTrackerUpdateS2c {
+                entity_id: VarInt(0),
+                metadata: init_data.into(),
+            });
+        }
+    }
+}
 
-            if !scratch.is_empty() {
-                scratch.push(0xff);
-
-                client.enc.write_packet(&EntityTrackerUpdateS2c {
-                    entity_id: VarInt(0),
-                    metadata: scratch.as_slice().into(),
-                })
-            }
+fn update_tracked_data(mut clients: Query<(&mut Client, &TrackedData)>) {
+    for (mut client, tracked_data) in &mut clients {
+        if let Some(update_data) = tracked_data.update_data() {
+            client.write_packet(&EntityTrackerUpdateS2c {
+                entity_id: VarInt(0),
+                metadata: update_data.into(),
+            });
         }
     }
 }

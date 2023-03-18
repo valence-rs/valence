@@ -19,9 +19,9 @@ use valence_protocol::text::Text;
 use valence_protocol::types::SoundCategory;
 use valence_protocol::Packet;
 
-use crate::component::Despawned;
+use crate::component::{Despawned, Location, OldLocation, OldPosition, Position};
 use crate::dimension::DimensionId;
-use crate::entity::{InitEntitiesSet, McEntity};
+use crate::entity::{BaseEntity, InitEntitiesSet};
 use crate::packet::{PacketWriter, WritePacket};
 use crate::prelude::FlushPacketsSet;
 use crate::server::{Server, SharedServer};
@@ -461,33 +461,40 @@ impl Plugin for InstancePlugin {
 
 fn update_instances_pre_client(
     mut instances: Query<&mut Instance>,
-    mut entities: Query<(Entity, &mut McEntity, Option<&Despawned>)>,
+    mut entities: Query<
+        (
+            Entity,
+            &Position,
+            &OldPosition,
+            &Location,
+            &OldLocation,
+            Option<&Despawned>,
+        ),
+        With<BaseEntity>,
+    >,
     server: Res<Server>,
 ) {
-    for (entity_id, entity, despawned) in &entities {
-        let pos = ChunkPos::at(entity.position().x, entity.position().z);
-        let old_pos = ChunkPos::at(entity.old_position().x, entity.old_position().z);
-
-        let instance = entity.instance();
-        let old_instance = entity.old_instance();
+    for (entity_id, pos, old_pos, loc, old_loc, despawned) in &entities {
+        let pos = ChunkPos::at(pos.0.x, pos.0.z);
+        let old_pos = ChunkPos::at(old_pos.get().x, old_pos.get().z);
 
         if despawned.is_some() {
             // Entity was deleted. Remove it from the chunk it was in, if it was in a chunk
             // at all.
-            if let Ok(mut old_instance) = instances.get_mut(old_instance) {
+            if let Ok(mut old_instance) = instances.get_mut(old_loc.get()) {
                 if let Some(old_cell) = old_instance.partition.get_mut(&old_pos) {
                     if old_cell.entities.remove(&entity_id) {
                         old_cell.outgoing.push((entity_id, None));
                     }
                 }
             }
-        } else if old_instance != instance {
+        } else if old_loc.get() != loc.0 {
             // Entity changed the instance it is in. Remove it from old cell and
             // insert it in the new cell.
 
             // TODO: skip marker entity?
 
-            if let Ok(mut old_instance) = instances.get_mut(old_instance) {
+            if let Ok(mut old_instance) = instances.get_mut(old_loc.get()) {
                 if let Some(old_cell) = old_instance.partition.get_mut(&old_pos) {
                     if old_cell.entities.remove(&entity_id) {
                         old_cell.outgoing.push((entity_id, None));
@@ -495,7 +502,7 @@ fn update_instances_pre_client(
                 }
             }
 
-            if let Ok(mut instance) = instances.get_mut(instance) {
+            if let Ok(mut instance) = instances.get_mut(loc.0) {
                 match instance.partition.entry(pos) {
                     Entry::Occupied(oe) => {
                         let cell = oe.into_mut();
@@ -521,7 +528,7 @@ fn update_instances_pre_client(
 
             // TODO: skip marker entity?
 
-            if let Ok(mut instance) = instances.get_mut(instance) {
+            if let Ok(mut instance) = instances.get_mut(loc.0) {
                 if let Some(old_cell) = instance.partition.get_mut(&old_pos) {
                     if old_cell.entities.remove(&entity_id) {
                         old_cell.outgoing.push((entity_id, Some(pos)));
@@ -575,7 +582,7 @@ fn update_instances_pre_client(
 
             // Cache entity update packets into the packet buffer of this cell.
             for &id in &cell.entities {
-                let (_, mut entity, despawned) = entities
+                let (_, _, _, _, _, despawned) = entities
                     .get_mut(id)
                     .expect("missing entity in partition cell");
 
@@ -591,11 +598,13 @@ fn update_instances_pre_client(
                     &mut scratch_2,
                 );
 
-                entity.write_update_packets(writer, &mut scratch_1);
+                // TODO: write update packets.
+                // entity.write_update_packets(writer, &mut scratch_1);
 
                 let end = cell.packet_buf.len();
 
-                entity.self_update_range = start..end;
+                // TODO: set update range.
+                // entity.self_update_range = start..end;
             }
         }
     }
@@ -621,7 +630,7 @@ fn update_instances_post_client(mut instances: Query<&mut Instance>) {
 }
 
 #[cfg(debug_assertions)]
-fn check_instance_invariants(instances: Query<&Instance>, entities: Query<&McEntity>) {
+fn check_instance_invariants(instances: Query<&Instance>, entities: Query<(), With<BaseEntity>>) {
     for instance in &instances {
         for (pos, cell) in &instance.partition {
             for &id in &cell.entities {

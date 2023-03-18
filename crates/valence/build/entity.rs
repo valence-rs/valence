@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use heck::ToPascalCase;
+use heck::{ToPascalCase, ToShoutySnakeCase, ToSnakeCase};
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
 use serde::Deserialize;
@@ -27,7 +27,6 @@ struct Field {
     index: u8,
     #[serde(flatten)]
     default_value: Value,
-    bits: Vec<Bit>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -75,12 +74,6 @@ struct BlockPos {
     z: i32,
 }
 
-#[derive(Deserialize, Clone, Debug)]
-struct Bit {
-    name: String,
-    index: u8,
-}
-
 impl Value {
     pub fn type_id(&self) -> i32 {
         match self {
@@ -117,10 +110,10 @@ impl Value {
             Value::Integer(_) => quote!(i32),
             Value::Long(_) => quote!(i64),
             Value::Float(_) => quote!(f32),
-            Value::String(_) => quote!(Box<str>),
+            Value::String(_) => quote!(String),
             Value::TextComponent(_) => quote!(Text),
             Value::OptionalTextComponent(_) => quote!(Option<Text>),
-            Value::ItemStack(_) => quote!(()), // TODO
+            Value::ItemStack(_) => quote!(ItemStack),
             Value::Boolean(_) => quote!(bool),
             Value::Rotation { .. } => quote!(EulerAngle),
             Value::BlockPos(_) => quote!(BlockPos),
@@ -140,39 +133,25 @@ impl Value {
         }
     }
 
-    pub fn getter_return_type(&self) -> TokenStream {
-        match self {
-            Value::String(_) => quote!(&str),
-            Value::TextComponent(_) => quote!(&Text),
-            Value::OptionalTextComponent(_) => quote!(Option<&Text>),
-            Value::NbtCompound(_) => quote!(&valence_nbt::Compound),
-            _ => self.field_type(),
-        }
-    }
-
-    pub fn getter_return_expr(&self, field_name: &Ident) -> TokenStream {
-        match self {
-            Value::String(_) | Value::TextComponent(_) | Value::NbtCompound(_) => {
-                quote!(&self.#field_name)
-            }
-            Value::OptionalTextComponent(_) => quote!(self.#field_name.as_ref()),
-            _ => quote!(self.#field_name),
-        }
-    }
-
     pub fn default_expr(&self) -> TokenStream {
         match self {
             Value::Byte(b) => quote!(#b),
             Value::Integer(i) => quote!(#i),
             Value::Long(l) => quote!(#l),
             Value::Float(f) => quote!(#f),
-            Value::String(s) => quote!(#s.to_owned().into_boxed_str()),
-            Value::TextComponent(_) => quote!(Text::default()), // TODO
+            Value::String(s) => quote!(#s.to_owned()),
+            Value::TextComponent(txt) => {
+                assert!(txt.is_empty());
+                quote!(Text::default())
+            }
             Value::OptionalTextComponent(t) => {
                 assert!(t.is_none());
                 quote!(None)
             }
-            Value::ItemStack(_) => quote!(()), // TODO
+            Value::ItemStack(stack) => {
+                assert_eq!(stack, "1 air");
+                quote!(ItemStack::new(1, ItemKind::Air, None))
+            }
             Value::Boolean(b) => quote!(#b),
             Value::Rotation { pitch, yaw, roll } => quote! {
                 EulerAngle {
@@ -184,14 +163,26 @@ impl Value {
             Value::BlockPos(BlockPos { x, y, z }) => {
                 quote!(BlockPos { x: #x, y: #y, z: #z })
             }
-            Value::OptionalBlockPos(_) => quote!(None), // TODO
+            Value::OptionalBlockPos(pos) => {
+                assert!(pos.is_none());
+                quote!(None)
+            }
             Value::Facing(f) => {
                 let variant = ident(f.to_pascal_case());
                 quote!(Facing::#variant)
             }
-            Value::OptionalUuid(_) => quote!(None), // TODO
-            Value::OptionalBlockState(_) => quote!(BlockState::default()), // TODO
-            Value::NbtCompound(_) => quote!(valence_nbt::Compound::default()), // TODO
+            Value::OptionalUuid(uuid) => {
+                assert!(uuid.is_none());
+                quote!(None)
+            }
+            Value::OptionalBlockState(bs) => {
+                assert!(bs.is_none());
+                quote!(BlockState::default())
+            }
+            Value::NbtCompound(s) => {
+                assert_eq!(s, "{}");
+                quote!(valence_nbt::Compound::default())
+            }
             Value::Particle(p) => {
                 let variant = ident(p.to_pascal_case());
                 quote!(Particle::#variant)
@@ -240,279 +231,245 @@ impl Value {
 type Entities = BTreeMap<String, Entity>;
 
 pub fn build() -> anyhow::Result<TokenStream> {
-    let entities =
-        serde_json::from_str::<Entities>(include_str!("../../../extracted/entities.json"))?
-            .into_iter()
-            .map(|(k, mut v)| {
-                let strip = |s: String| {
-                    if let Some(stripped) = s.strip_suffix("Entity") {
-                        if !stripped.is_empty() {
-                            return stripped.to_owned();
-                        }
-                    }
-                    s
-                };
-                v.parent = v.parent.map(strip);
-                (strip(k), v)
-            })
-            .collect::<Entities>();
-
     let entity_types =
         serde_json::from_str::<EntityData>(include_str!("../../../extracted/entity_data.json"))?
             .types;
 
-    let concrete_entities = entities
-        .clone()
-        .into_iter()
-        .filter(|(_, v)| v.typ.is_some())
-        .collect::<Entities>();
-
-    let entity_kind_variants = concrete_entities.iter().map(|(name, e)| {
-        let name = ident(name);
-        let id = entity_types[e.typ.as_ref().unwrap()] as isize;
-        quote! {
-            #name = #id,
-        }
-    });
-
-    let concrete_entity_names = concrete_entities.keys().map(ident).collect::<Vec<_>>();
-
-    let concrete_entity_structs = concrete_entities.keys().map(|struct_name| {
-        let fields = collect_all_fields(struct_name, &entities);
-        let struct_name = ident(struct_name);
-
-        let modified_flags_type =
-            ident("u".to_owned() + &fields.len().next_power_of_two().max(8).to_string());
-
-        let struct_fields = fields.iter().map(|&field| {
-            let name = ident(&field.name);
-            let typ = field.default_value.field_type();
-            quote! {
-                #name: #typ,
-            }
-        });
-
-        let field_initializers = fields.iter().map(|&field| {
-            let field_name = ident(&field.name);
-            let init = field.default_value.default_expr();
-
-            quote! {
-                #field_name: #init,
-            }
-        });
-
-        let getter_setters = fields.iter().map(|&field| {
-            let field_name = ident(&field.name);
-            let field_type = field.default_value.field_type();
-            let field_index = field.index;
-
-            if !field.bits.is_empty() {
-                field
-                    .bits
-                    .iter()
-                    .map(|bit| {
-                        let bit_name = ident(&bit.name);
-                        let bit_index = bit.index;
-                        let getter_name = ident(format!("get_{}", &bit.name));
-                        let setter_name = ident(format!("set_{}", &bit.name));
-
-                        quote! {
-                            pub fn #getter_name(&self) -> bool {
-                                self.#field_name >> #bit_index as #field_type & 1 == 1
-                            }
-
-                            pub fn #setter_name(&mut self, #bit_name: bool) {
-                                if self.#getter_name() != #bit_name {
-                                    self.#field_name =
-                                        (self.#field_name & !(1 << #bit_index as #field_type))
-                                        | ((#bit_name as #field_type) << #bit_index);
-
-                                    self.__modified_flags |= 1 << #field_index
-                                }
-                            }
+    let entities: Entities =
+        serde_json::from_str::<Entities>(include_str!("../../../extracted/entities.json"))?
+            .into_iter()
+            .map(|(entity_name, mut entity)| {
+                let change_name = |mut name: String| {
+                    if let Some(stripped) = name.strip_suffix("Entity") {
+                        if !stripped.is_empty() {
+                            name = stripped.into();
                         }
-                    })
-                    .collect::<TokenStream>()
+                    }
+
+                    if name == "Entity" {
+                        // So we don't conflict with bevy entities.
+                        name = "BaseEntity".into();
+                    }
+
+                    name
+                };
+
+                entity.parent = entity.parent.map(change_name);
+                (change_name(entity_name), entity)
+            })
+            .collect();
+
+    let mut entity_kind_consts = TokenStream::new();
+    let mut entity_kind_fmt_args = TokenStream::new();
+    let mut translation_key_arms = TokenStream::new();
+    let mut bundles = TokenStream::new();
+    let mut components = TokenStream::new();
+
+    let mut modules = TokenStream::new();
+
+    for (entity_name, entity) in entities.clone() {
+        let entity_name_ident = ident(&entity_name);
+        let shouty_entity_name = entity_name.to_shouty_snake_case();
+        let snake_entity_name = entity_name.to_snake_case();
+        let shouty_entity_name_ident = ident(&shouty_entity_name);
+
+        // Is this a concrete entity type?
+        if let Some(entity_type) = entity.typ {
+            let entity_type_id = entity_types[&entity_type];
+
+            entity_kind_consts.extend(Some(quote! {
+                pub const #shouty_entity_name_ident: EntityKind = EntityKind(#entity_type_id);
+            }));
+
+            entity_kind_fmt_args.extend(Some(quote! {
+                EntityKind::#shouty_entity_name_ident => write!(f, "{} ({})", #shouty_entity_name, #entity_type_id),
+            }));
+
+            let translation_key_expr = if let Some(key) = entity.translation_key {
+                quote!(Some(#key))
             } else {
-                let getter_name = ident(format!("get_{}", &field.name));
-                let setter_name = ident(format!("set_{}", &field.name));
-                let getter_return_type = field.default_value.getter_return_type();
-                let getter_return_expr = field.default_value.getter_return_expr(&field_name);
+                quote!(None)
+            };
 
-                quote! {
-                    pub fn #getter_name(&self) -> #getter_return_type {
-                        #getter_return_expr
-                    }
+            translation_key_arms.extend(Some(quote! {
+                EntityKind::#shouty_entity_name_ident => #translation_key_expr,
+            }));
 
-                    pub fn #setter_name(&mut self, #field_name: impl Into<#field_type>) {
-                        let #field_name = #field_name.into();
-                        if self.#field_name != #field_name {
-                            self.__modified_flags |= 1 << #field_index as #modified_flags_type;
-                            self.#field_name = #field_name;
+            components.extend(Some(quote! {
+                #[doc = "Marker component for `"]
+                #[doc = #entity_type]
+                #[doc = "` entities."]
+                #[derive(Component, Copy, Clone, Default, Debug)]
+                pub struct #entity_name_ident;
+            }));
+
+            // Create bundle type.
+            let mut bundle_fields = TokenStream::new();
+            let mut bundle_init_fields = TokenStream::new();
+
+            for marker_or_field in collect_bundle_fields(&entity_name, &entities) {
+                match marker_or_field {
+                    MarkerOrField::Marker(entity_name) => {
+                        let field_name_ident = ident(entity_name.to_snake_case());
+                        let field_type_ident = ident(entity_name.to_pascal_case());
+
+                        bundle_fields.extend(Some(quote! {
+                            pub #field_name_ident: #field_type_ident,
+                        }));
+
+                        bundle_init_fields.extend(Some(quote! {
+                            #field_name_ident: Default::default(),
+                        }))
+                    },
+                    MarkerOrField::Field(field) => {
+                        let snake_field_name = field.name.to_snake_case();
+                        let pascal_field_name = field.name.to_pascal_case();
+
+                        let field_name_ident = ident(format!("{snake_entity_name}_{snake_field_name}"));
+                        let field_type_ident = ident(format!("{entity_name}{pascal_field_name}"));
+
+                        bundle_fields.extend(Some(quote! {
+                            pub #field_name_ident: #field_type_ident,
+                        }));
+
+                        bundle_init_fields.extend(Some(quote! {
+                            #field_name_ident: Default::default()
+                        }));
+                    },
+                }
+            }
+
+            bundle_fields.extend(Some(quote! {
+                pub kind: EntityKind,
+                pub id: EntityId,
+                pub uuid: UniqueId,
+                pub location: Location,
+                pub old_location: OldLocation,
+                pub position: Position,
+                pub old_position: OldPosition,
+                pub look: Look,
+                pub head_yaw: HeadYaw,
+                pub on_ground: OnGround,
+                pub velocity: Velocity,
+                pub statuses: EntityStatuses,
+                pub animations: EntityAnimations,
+                pub object_data: ObjectData,
+                pub tracked_fields: TrackedData,
+                pub packet_byte_range: PacketByteRange,
+            }));
+
+            bundle_init_fields.extend(Some(quote! {
+                kind: EntityKind::#shouty_entity_name_ident,
+                id: Default::default(),
+                uuid: Default::default(),
+                location: Default::default(),
+                old_location: Default::default(),
+                position: Default::default(),
+                old_position: Default::default(),
+                look: Default::default(),
+                head_yaw: Default::default(),
+                on_ground: Default::default(),
+                velocity: Default::default(),
+                statuses: Default::default(),
+                animations: Default::default(),
+                object_data: Default::default(),
+                tracked_fields: Default::default(),
+                packet_byte_range: Default::default(),
+            }));
+
+            let bundle_name_ident = ident(format!("{entity_name}Bundle"));
+
+            bundles.extend(Some(quote! {
+                #[derive(Bundle, Clone, Debug)]
+                pub struct #bundle_name_ident {
+                    #bundle_fields
+                }
+
+                impl Default for #bundle_name_ident {
+                    fn default() -> Self {
+                        Self {
+                            #bundle_init_fields
                         }
                     }
                 }
-            }
-        });
+            }));
+        }
 
-        let initial_tracked_data_stmts = fields.iter().map(|&field| {
-            let field_name = ident(&field.name);
-            let field_index = field.index;
+        for field in &entity.fields {
+            let pascal_field_name = field.name.to_pascal_case();
+
+            let comp_ident = ident(format!("{entity_name}{pascal_field_name}"));
+            let comp_inner_type = field.default_value.field_type();
             let default_expr = field.default_value.default_expr();
-            let type_id = field.default_value.type_id();
-            let encodable = field.default_value.encodable_expr(quote!(self.#field_name));
 
-            quote! {
-                if self.#field_name != (#default_expr) {
-                    data.push(#field_index);
-                    VarInt(#type_id).encode(&mut *data).unwrap();
-                    #encodable.encode(&mut *data).unwrap();
-                }
-            }
-        });
+            components.extend(Some(quote! {
+                #[derive(Component, Clone, Debug)]
+                pub struct #comp_ident(pub #comp_inner_type);
 
-        let updated_tracked_data_stmts = fields.iter().map(|&field| {
-            let field_name = ident(&field.name);
-            let field_index = field.index;
-            let type_id = field.default_value.type_id();
-            let encodable = field.default_value.encodable_expr(quote!(self.#field_name));
-
-            quote! {
-                if (self.__modified_flags >> #field_index as #modified_flags_type) & 1 == 1 {
-                    data.push(#field_index);
-                    VarInt(#type_id).encode(&mut *data).unwrap();
-                    #encodable.encode(&mut *data).unwrap();
-                }
-            }
-        });
-
-        quote! {
-            pub struct #struct_name {
-                /// Contains a set bit for every modified field.
-                __modified_flags: #modified_flags_type,
-                #(#struct_fields)*
-            }
-
-            impl #struct_name {
-                pub(crate) fn new() -> Self {
-                    Self {
-                        __modified_flags: 0,
-                        #(#field_initializers)*
+                impl Default for #comp_ident {
+                    fn default() -> Self {
+                        Self(#default_expr)
                     }
                 }
-
-                pub(crate) fn initial_tracked_data(&self, data: &mut Vec<u8>) {
-                    #(#initial_tracked_data_stmts)*
-                }
-
-                pub(crate) fn updated_tracked_data(&self, data: &mut Vec<u8>) {
-                    if self.__modified_flags != 0 {
-                        #(#updated_tracked_data_stmts)*
-                    }
-                }
-
-                pub(crate) fn clear_modifications(&mut self) {
-                    self.__modified_flags = 0;
-                }
-
-                #(#getter_setters)*
-            }
-        }
-    });
-
-    let translation_key_arms = concrete_entities.iter().map(|(k, v)| {
-        let name = ident(k);
-        let key = v
-            .translation_key
-            .as_ref()
-            .expect("translation key should be present for concrete entity");
-
-        quote! {
-            Self::#name => #key,
-        }
-    });
-
-    Ok(quote! {
-        /// Contains a variant for each concrete entity type.
-        #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-        pub enum EntityKind {
-            #(#entity_kind_variants)*
-        }
-
-        impl EntityKind {
-            pub fn translation_key(self) -> &'static str {
-                match self {
-                    #(#translation_key_arms)*
-                }
-            }
-        }
-
-        pub enum TrackedData {
-            #(#concrete_entity_names(#concrete_entity_names),)*
-        }
-
-        impl TrackedData {
-            pub(super) fn new(kind: EntityKind) -> Self {
-                match kind {
-                    #(EntityKind::#concrete_entity_names => Self::#concrete_entity_names(#concrete_entity_names::new()),)*
-                }
-            }
-
-            pub fn kind(&self) -> EntityKind {
-                match self {
-                    #(Self::#concrete_entity_names(_) => EntityKind::#concrete_entity_names,)*
-                }
-            }
-
-            pub(super) fn write_initial_tracked_data(&self, buf: &mut Vec<u8>) {
-                buf.clear();
-
-                match self {
-                    #(Self::#concrete_entity_names(e) => e.initial_tracked_data(buf),)*
-                }
-
-                if !buf.is_empty() {
-                    buf.push(0xff);
-                }
-            }
-
-            pub(super) fn write_updated_tracked_data(&self, buf: &mut Vec<u8>) {
-                buf.clear();
-
-                match self {
-                    #(Self::#concrete_entity_names(e) => e.updated_tracked_data(buf),)*
-                }
-
-                if !buf.is_empty() {
-                    buf.push(0xff);
-                }
-            }
-
-            pub(super) fn clear_modifications(&mut self) {
-                match self {
-                    #(Self::#concrete_entity_names(e) => e.clear_modifications(),)*
-                }
-            }
-        }
-
-        #(#concrete_entity_structs)*
-    })
-}
-
-fn collect_all_fields<'a>(entity_name: &str, entities: &'a Entities) -> Vec<&'a Field> {
-    fn rec<'a>(entity_name: &str, entities: &'a Entities, fields: &mut Vec<&'a Field>) {
-        let e = &entities[entity_name];
-        fields.extend(&e.fields);
-
-        if let Some(parent) = &e.parent {
-            rec(parent, entities, fields);
+            }));
         }
     }
 
-    let mut fields = vec![];
-    rec(entity_name, entities, &mut fields);
+    Ok(quote! {
+        // #bundles
 
-    fields.sort_by_key(|f| f.index);
+        /// Identifies the type of an entity.
+        /// As a component, the entity kind should not be modified.
+        #[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+        pub struct EntityKind(pub i32);
 
-    fields
+        impl EntityKind {
+            #entity_kind_consts
+
+            pub fn translation_key(self) -> Option<&'static str> {
+                match self {
+                    #translation_key_arms
+                    _ => None,
+                }
+            }
+        }
+
+        impl std::fmt::Debug for EntityKind {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                match *self {
+                    #entity_kind_fmt_args
+                    EntityKind(other) => write!(f, "{other}"),
+                }
+            }
+        }
+
+        #components
+    })
+}
+
+enum MarkerOrField<'a> {
+    Marker(&'a str),
+    Field(&'a Field),
+}
+
+fn collect_bundle_fields<'a>(
+    mut entity_name: &'a str,
+    entities: &'a Entities,
+) -> Vec<MarkerOrField<'a>> {
+    let mut res = vec![];
+
+    loop {
+        let e = &entities[entity_name];
+
+        res.push(MarkerOrField::Marker(entity_name));
+        res.extend(e.fields.iter().map(MarkerOrField::Field));
+
+        if let Some(parent) = &e.parent {
+            entity_name = parent;
+        } else {
+            break;
+        }
+    }
+
+    res
 }
