@@ -5,23 +5,40 @@ use super::Inventory;
 use crate::prelude::CursorItem;
 
 /// Validates a click slot packet enforcing that all fields are valid.
-pub(crate) fn validate_click_slot_impossible(packet: &ClickSlotC2s, inventory: &Inventory) -> bool {
+
+pub(crate) fn validate_click_slot_impossible(
+    packet: &ClickSlotC2s,
+    player_inventory: &Inventory,
+    open_inventory: Option<&Inventory>,
+) -> bool {
+    if (packet.window_id == 0) != open_inventory.is_none() {
+        return false;
+    }
+
+    let max_slot = match open_inventory {
+        Some(inv) => inv.slot_count() + 36,
+        None => player_inventory.slot_count(),
+    };
+
+    if !packet
+        .slots
+        .iter()
+        .all(|s| (0..=max_slot).contains(&(s.idx as u16)))
+    {
+        return false;
+    }
+
     match packet.mode {
         ClickMode::Click => {
             if !(0..=1).contains(&packet.button) {
                 return false;
             }
 
-            if !(0..=inventory.slot_count()).contains(&(packet.slot_idx as u16))
-                && packet.slot_idx != -999
-            {
+            if !(0..=max_slot).contains(&(packet.slot_idx as u16)) && packet.slot_idx != -999 {
                 return false;
             }
         }
-        ClickMode::ShiftClick => todo!(),
-        ClickMode::Hotbar => todo!(),
-        ClickMode::CreativeMiddleClick => todo!(),
-        ClickMode::DropKey => {
+        ClickMode::ShiftClick => {
             if !(0..=1).contains(&packet.button) {
                 return false;
             }
@@ -29,9 +46,18 @@ pub(crate) fn validate_click_slot_impossible(packet: &ClickSlotC2s, inventory: &
             if packet.carried_item.is_some() {
                 return false;
             }
+
+            if !(0..=max_slot).contains(&(packet.slot_idx as u16)) {
+                return false;
+            }
+        }
+        ClickMode::Hotbar => return matches!(packet.button, 0..=8 | 40),
+        ClickMode::CreativeMiddleClick => todo!(),
+        ClickMode::DropKey => {
+            return (0..=1).contains(&packet.button) && packet.carried_item.is_none()
         }
         ClickMode::Drag => todo!(),
-        ClickMode::DoubleClick => todo!(),
+        ClickMode::DoubleClick => return packet.button == 0,
     }
 
     true
@@ -41,7 +67,8 @@ pub(crate) fn validate_click_slot_impossible(packet: &ClickSlotC2s, inventory: &
 /// conservation of mass.
 pub(crate) fn validate_click_slot_item_duplication(
     packet: &ClickSlotC2s,
-    inventory: &Inventory,
+    player_inventory: &Inventory,
+    open_inventory: Option<&Inventory>,
     cursor_item: &CursorItem,
 ) -> bool {
     match packet.mode {
@@ -94,7 +121,7 @@ pub(crate) fn validate_click_slot_item_duplication(
             }
         }
         ClickMode::ShiftClick => todo!(),
-        ClickMode::Hotbar => matches!(packet.button, 0..=8 | 40),
+        ClickMode::Hotbar => todo!(),
         ClickMode::CreativeMiddleClick => todo!(),
         ClickMode::DropKey => matches!(packet.button, 0..=1),
         ClickMode::Drag => todo!(),
@@ -113,6 +140,7 @@ mod test {
 
     #[test]
     fn click_filled_slot_with_empty_cursor_success() {
+        let player_inventory = Inventory::new(InventoryKind::Player);
         let mut inventory = Inventory::new(InventoryKind::Generic9x1);
         inventory.set_slot(0, ItemStack::new(ItemKind::Diamond, 20, None));
         let cursor_item = CursorItem::default();
@@ -126,16 +154,22 @@ mod test {
             carried_item: inventory.slot(0).cloned(),
         };
 
-        assert!(validate_click_slot_impossible(&packet, &inventory));
+        assert!(validate_click_slot_impossible(
+            &packet,
+            &player_inventory,
+            Some(&inventory)
+        ));
         assert!(validate_click_slot_item_duplication(
             &packet,
-            &inventory,
+            &player_inventory,
+            Some(&inventory),
             &cursor_item
         ));
     }
 
     #[test]
     fn click_slot_with_filled_cursor_success() {
+        let player_inventory = Inventory::new(InventoryKind::Player);
         let inventory1 = Inventory::new(InventoryKind::Generic9x1);
         let mut inventory2 = Inventory::new(InventoryKind::Generic9x1);
         inventory2.set_slot(0, ItemStack::new(ItemKind::Diamond, 10, None));
@@ -165,23 +199,34 @@ mod test {
             carried_item: None,
         };
 
-        assert!(validate_click_slot_impossible(&packet1, &inventory1));
+        assert!(validate_click_slot_impossible(
+            &packet1,
+            &player_inventory,
+            Some(&inventory1),
+        ));
         assert!(validate_click_slot_item_duplication(
             &packet1,
-            &inventory1,
+            &player_inventory,
+            Some(&inventory1),
             &cursor_item
         ));
 
-        assert!(validate_click_slot_impossible(&packet2, &inventory2));
+        assert!(validate_click_slot_impossible(
+            &packet2,
+            &player_inventory,
+            Some(&inventory2)
+        ));
         assert!(validate_click_slot_item_duplication(
             &packet2,
-            &inventory2,
+            &player_inventory,
+            Some(&inventory2),
             &cursor_item
         ));
     }
 
     #[test]
     fn click_slot_with_filled_cursor_failure() {
+        let player_inventory = Inventory::new(InventoryKind::Player);
         let inventory1 = Inventory::new(InventoryKind::Generic9x1);
         let mut inventory2 = Inventory::new(InventoryKind::Generic9x1);
         inventory2.set_slot(0, ItemStack::new(ItemKind::Diamond, 10, None));
@@ -229,24 +274,39 @@ mod test {
             carried_item: None,
         };
 
-        assert!(validate_click_slot_impossible(&packet1, &inventory1));
+        assert!(validate_click_slot_impossible(
+            &packet1,
+            &player_inventory,
+            Some(&inventory1),
+        ));
         assert!(!validate_click_slot_item_duplication(
             &packet1,
-            &inventory1,
+            &player_inventory,
+            Some(&inventory1),
             &cursor_item
         ));
 
-        assert!(validate_click_slot_impossible(&packet2, &inventory2));
+        assert!(validate_click_slot_impossible(
+            &packet2,
+            &player_inventory,
+            Some(&inventory2)
+        ));
         assert!(!validate_click_slot_item_duplication(
             &packet2,
-            &inventory2,
+            &player_inventory,
+            Some(&inventory2),
             &cursor_item
         ));
 
-        assert!(validate_click_slot_impossible(&packet3, &inventory1));
+        assert!(validate_click_slot_impossible(
+            &packet3,
+            &player_inventory,
+            Some(&inventory1)
+        ));
         assert!(!validate_click_slot_item_duplication(
             &packet3,
-            &inventory1,
+            &player_inventory,
+            Some(&inventory1),
             &cursor_item
         ));
     }

@@ -41,6 +41,7 @@ use crate::client::Client;
 use crate::component::{Look, OnGround, Ping, Position};
 use crate::entity::{EntityAnimation, EntityKind, McEntity, TrackedData};
 use crate::inventory::Inventory;
+use crate::prelude::OpenInventory;
 
 #[derive(Clone, Debug)]
 pub struct QueryBlockNbt {
@@ -676,6 +677,7 @@ pub(crate) struct EventLoopQuery {
     keepalive_state: &'static mut KeepaliveState,
     cursor_item: &'static mut CursorItem,
     inventory: &'static mut Inventory,
+    open_inventory: Option<&'static mut OpenInventory>,
     position: &'static mut Position,
     look: &'static mut Look,
     on_ground: &'static mut OnGround,
@@ -687,10 +689,15 @@ pub(crate) struct EventLoopQuery {
 /// An exclusive system for running the event loop schedule.
 fn run_event_loop(
     world: &mut World,
-    state: &mut SystemState<(Query<EventLoopQuery>, ClientEvents, Commands)>,
+    state: &mut SystemState<(
+        Query<EventLoopQuery>,
+        ClientEvents,
+        Commands,
+        Query<&Inventory, Without<Client>>,
+    )>,
     mut clients_to_check: Local<Vec<Entity>>,
 ) {
-    let (mut clients, mut events, mut commands) = state.get_mut(world);
+    let (mut clients, mut events, mut commands, mut inventories) = state.get_mut(world);
 
     update_all_event_buffers(&mut events);
 
@@ -708,7 +715,7 @@ fn run_event_loop(
 
         q.client.dec.queue_bytes(bytes);
 
-        match handle_one_packet(&mut q, &mut events) {
+        match handle_one_packet(&mut q, &mut events, &mut inventories) {
             Ok(had_packet) => {
                 if had_packet {
                     // We decoded one packet, but there might be more.
@@ -728,7 +735,7 @@ fn run_event_loop(
     while !clients_to_check.is_empty() {
         world.run_schedule(EventLoopSchedule);
 
-        let (mut clients, mut events, mut commands) = state.get_mut(world);
+        let (mut clients, mut events, mut commands, mut inventories) = state.get_mut(world);
 
         clients_to_check.retain(|&entity| {
             let Ok(mut q) = clients.get_mut(entity) else {
@@ -736,7 +743,7 @@ fn run_event_loop(
                 return false;
             };
 
-            match handle_one_packet(&mut q, &mut events) {
+            match handle_one_packet(&mut q, &mut events, &mut inventories) {
                 Ok(had_packet) => had_packet,
                 Err(e) => {
                     warn!("failed to dispatch events for client {:?}: {e:?}", q.entity);
@@ -753,6 +760,7 @@ fn run_event_loop(
 fn handle_one_packet(
     q: &mut EventLoopQueryItem,
     events: &mut ClientEvents,
+    inventories: &mut Query<&Inventory, Without<Client>>,
 ) -> anyhow::Result<bool> {
     let Some(pkt) = q.client.dec.try_next_packet::<C2sPlayPacket>()? else {
         // No packets to decode.
@@ -852,13 +860,19 @@ fn handle_one_packet(
             });
         }
         C2sPlayPacket::ClickSlotC2s(p) => {
-            if !crate::inventory::validate_click_slot_impossible(&p, &q.inventory) {
+            let open_inv = q
+                .open_inventory
+                .as_ref()
+                .map(|open| inventories.get(open.entity).ok())
+                .flatten();
+            if !crate::inventory::validate_click_slot_impossible(&p, &q.inventory, open_inv) {
                 debug!("client {:#?} invalid click slot packet: {:#?}", q.entity, p);
                 return Ok(true);
             }
             if !crate::inventory::validate_click_slot_item_duplication(
                 &p,
                 &q.inventory,
+                open_inv,
                 &q.cursor_item,
             ) {
                 debug!(
