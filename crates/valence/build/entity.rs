@@ -281,7 +281,8 @@ pub fn build() -> anyhow::Result<TokenStream> {
         if let Some(parent_name) = entity.parent {
             let snake_parent_name = parent_name.to_snake_case();
 
-            let module_doc = format!("Parent class: [`{snake_parent_name}`][super::{snake_parent_name}].");
+            let module_doc =
+                format!("Parent class: [`{snake_parent_name}`][super::{snake_parent_name}].");
 
             module_body.extend([quote! {
                 #![doc = #module_doc]
@@ -388,7 +389,8 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }]);
 
             let bundle_name_ident = ident(format!("{entity_name}Bundle"));
-            let bundle_doc = format!("The bundle of components for spawning `{snake_entity_name}` entities.");
+            let bundle_doc =
+                format!("The bundle of components for spawning `{snake_entity_name}` entities.");
 
             module_body.extend([quote! {
                 #[doc = #bundle_doc]
