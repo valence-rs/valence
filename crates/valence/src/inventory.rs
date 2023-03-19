@@ -1102,6 +1102,11 @@ mod test {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
         let inventory_ent = set_up_open_inventory(&mut app, client_ent);
+        let mut inventory = app
+            .world
+            .get_mut::<Inventory>(inventory_ent)
+            .expect("could not find inventory for client");
+        inventory.set_slot(20, ItemStack::new(ItemKind::Diamond, 2, None));
 
         // Process a tick to get past the "on join" logic.
         app.update();
