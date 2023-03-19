@@ -55,7 +55,9 @@ pub(crate) fn validate_click_slot_impossible(
             return packet.button == 2 && (0..=max_slot).contains(&(packet.slot_idx as u16))
         }
         ClickMode::DropKey => {
-            return (0..=1).contains(&packet.button) && packet.carried_item.is_none()
+            return (0..=1).contains(&packet.button)
+                && packet.carried_item.is_none()
+                && (0..=max_slot).contains(&(packet.slot_idx as u16))
         }
         ClickMode::Drag => {
             return matches!(packet.button, 0..=2 | 4..=6 | 8..=10)
@@ -121,16 +123,63 @@ pub(crate) fn validate_click_slot_item_duplication(
                     return false;
                 }
 
-                true
+                let count_deltas =
+                    calculate_net_item_delta(packet, player_inventory, open_inventory, cursor_item);
+
+                return count_deltas == 0;
             }
         }
         ClickMode::ShiftClick => todo!(),
         ClickMode::Hotbar => todo!(),
         ClickMode::CreativeMiddleClick => todo!(),
-        ClickMode::DropKey => matches!(packet.button, 0..=1),
+        ClickMode::DropKey => {
+            let count_deltas =
+                calculate_net_item_delta(packet, player_inventory, open_inventory, cursor_item);
+
+            return match packet.button {
+                0 => count_deltas == -1,
+                1 => count_deltas < 0, // TODO: grab stack amount from target slot
+                _ => unreachable!(),
+            };
+        }
         ClickMode::Drag => todo!(),
         ClickMode::DoubleClick => todo!(),
     }
+}
+
+fn calculate_net_item_delta(
+    packet: &ClickSlotC2s,
+    player_inventory: &Inventory,
+    open_inventory: Option<&Inventory>,
+    cursor_item: &CursorItem,
+) -> i32 {
+    // impled by copilot, might be wrong
+    let mut net_item_delta: i32 = 0;
+
+    for slot in &packet.slots {
+        let item = match open_inventory {
+            Some(inv) => inv.slot(slot.idx as u16),
+            None => player_inventory.slot(slot.idx as u16),
+        };
+
+        if let Some(item) = item {
+            net_item_delta -= item.count() as i32;
+        }
+
+        if let Some(item) = &slot.item {
+            net_item_delta += item.count() as i32;
+        }
+    }
+
+    if let Some(item) = &packet.carried_item {
+        net_item_delta -= item.count() as i32;
+    }
+
+    if let Some(item) = &cursor_item.0 {
+        net_item_delta += item.count() as i32;
+    }
+
+    net_item_delta
 }
 
 #[cfg(test)]
