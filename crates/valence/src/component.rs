@@ -14,7 +14,7 @@ use crate::view::ChunkPos;
 /// A [`Component`] for marking entities that should be despawned at the end of
 /// the tick.
 ///
-/// In Valence, some built-in components such as [`McEntity`] are not allowed to
+/// In Valence, some entities such as [Minecraft entities] are not allowed to
 /// be removed from the [`World`] directly. Instead, you must give the entities
 /// you wish to despawn the `Despawned` component. At the end of the tick,
 /// Valence will despawn all entities with this component for you.
@@ -22,7 +22,7 @@ use crate::view::ChunkPos;
 /// It is legal to remove components or delete entities that Valence does not
 /// know about at any time.
 ///
-/// [`McEntity`]: crate::entity::McEntity
+/// [Minecraft entities]: crate::entity
 #[derive(Component, Copy, Clone, Default, PartialEq, Eq, Debug)]
 pub struct Despawned;
 
@@ -30,7 +30,7 @@ pub struct Despawned;
 /// [`Uuid`].
 ///
 /// This component is expected to remain _unique_ and _constant_ during the
-/// lifetime of the entity it is attached to.
+/// lifetime of the entity. The [`Default`] impl returns a random value.
 #[derive(Component, Clone, PartialEq, Eq, Debug)]
 pub struct UniqueId(pub Uuid);
 

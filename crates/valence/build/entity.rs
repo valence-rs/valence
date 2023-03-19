@@ -278,6 +278,16 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
         let mut module_body = TokenStream::new();
 
+        if let Some(parent_name) = entity.parent {
+            let snake_parent_name = parent_name.to_snake_case();
+
+            let module_doc = format!("Parent class: [`{snake_parent_name}`][super::{snake_parent_name}].");
+
+            module_body.extend([quote! {
+                #![doc = #module_doc]
+            }]);
+        }
+
         // Is this a concrete entity type?
         if let Some(entity_type) = entity.typ {
             let entity_type_id = entity_types[&entity_type];
@@ -354,7 +364,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 pub statuses: super::EntityStatuses,
                 pub animations: super::EntityAnimations,
                 pub object_data: super::ObjectData,
-                pub tracked_fields: super::TrackedData,
+                pub tracked_data: super::TrackedData,
                 pub packet_byte_range: super::PacketByteRange,
             }]);
 
@@ -373,13 +383,15 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 statuses: Default::default(),
                 animations: Default::default(),
                 object_data: Default::default(),
-                tracked_fields: Default::default(),
+                tracked_data: Default::default(),
                 packet_byte_range: Default::default(),
             }]);
 
             let bundle_name_ident = ident(format!("{entity_name}Bundle"));
+            let bundle_doc = format!("The bundle of components for spawning `{snake_entity_name}` entities.");
 
             module_body.extend([quote! {
+                #[doc = #bundle_doc]
                 #[derive(bevy_ecs::bundle::Bundle, Debug)]
                 pub struct #bundle_name_ident {
                     #bundle_fields
@@ -440,10 +452,10 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }]);
         }
 
+        let marker_doc = format!("Marker component for `{snake_entity_name}` entities.");
+
         module_body.extend([quote! {
-            #[doc = "Marker component for `"]
-            #[doc = #snake_entity_name]
-            #[doc = "` entities."]
+            #[doc = #marker_doc]
             #[derive(bevy_ecs::component::Component, Copy, Clone, Default, Debug)]
             pub struct #entity_name_ident;
         }]);

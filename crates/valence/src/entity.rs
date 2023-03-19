@@ -21,10 +21,10 @@ include!(concat!(env!("OUT_DIR"), "/entity.rs"));
 
 /// A Minecraft entity's ID according to the protocol.
 ///
-/// IDs should be unique between all spawned entities and should stay constant
-/// during the lifetime of the entity. IDs of -1 (the default) will be
-/// assigned to something else on the tick the entity is added. If you need to
-/// know the ID ahead of time, set this component to the value returned by
+/// IDs should be _unique_ for the duration of the server and  _constant_ for
+/// the lifetime of the entity. IDs of -1 (the default) will be assigned to
+/// something else on the tick the entity is added. If you need to know the ID
+/// ahead of time, set this component to the value returned by
 /// [`EntityManager::next_id`] before spawning.
 #[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct EntityId(i32);
