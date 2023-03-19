@@ -225,13 +225,18 @@ pub(crate) fn validate_click_slot_item_duplication(
                 }
 
                 let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
-
                 return count_deltas == 0;
             }
         }
-        ClickMode::ShiftClick => todo!(),
-        ClickMode::Hotbar => todo!(),
-        ClickMode::CreativeMiddleClick => todo!(),
+        ClickMode::ShiftClick | ClickMode::Hotbar => {
+            if packet.slots.len() != 2 {
+                return false;
+            }
+
+            let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
+            return count_deltas == 0;
+        }
+        ClickMode::CreativeMiddleClick => true,
         ClickMode::DropKey => {
             let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
 
@@ -247,8 +252,10 @@ pub(crate) fn validate_click_slot_item_duplication(
                 _ => unreachable!(),
             };
         }
-        ClickMode::Drag => todo!(),
-        ClickMode::DoubleClick => todo!(),
+        ClickMode::Drag | ClickMode::DoubleClick => {
+            let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
+            return count_deltas == 0;
+        }
     }
 }
 
@@ -372,6 +379,70 @@ mod test {
             &packet2,
             &player_inventory,
             Some(&inventory2),
+            &cursor_item
+        ));
+    }
+
+    #[test]
+    fn click_filled_slot_with_filled_cursor_stack_overflow_success() {
+        let player_inventory = Inventory::new(InventoryKind::Player);
+        let mut inventory = Inventory::new(InventoryKind::Generic9x1);
+        inventory.set_slot(0, ItemStack::new(ItemKind::Diamond, 20, None));
+        let cursor_item = CursorItem(Some(ItemStack::new(ItemKind::Diamond, 64, None)));
+        let packet = ClickSlotC2s {
+            window_id: 1,
+            button: 0,
+            mode: ClickMode::Click,
+            state_id: VarInt(0),
+            slot_idx: 0,
+            slots: vec![Slot {
+                idx: 0,
+                item: Some(ItemStack::new(ItemKind::Diamond, 64, None)),
+            }],
+            carried_item: Some(ItemStack::new(ItemKind::Diamond, 20, None)),
+        };
+
+        assert!(validate_click_slot_impossible(
+            &packet,
+            &player_inventory,
+            Some(&inventory),
+        ));
+        assert!(validate_click_slot_item_duplication(
+            &packet,
+            &player_inventory,
+            Some(&inventory),
+            &cursor_item
+        ));
+    }
+
+    #[test]
+    fn click_filled_slot_with_filled_cursor_different_item_success() {
+        let player_inventory = Inventory::new(InventoryKind::Player);
+        let mut inventory = Inventory::new(InventoryKind::Generic9x1);
+        inventory.set_slot(0, ItemStack::new(ItemKind::IronIngot, 2, None));
+        let cursor_item = CursorItem(Some(ItemStack::new(ItemKind::Diamond, 2, None)));
+        let packet = ClickSlotC2s {
+            window_id: 1,
+            button: 0,
+            mode: ClickMode::Click,
+            state_id: VarInt(0),
+            slot_idx: 0,
+            slots: vec![Slot {
+                idx: 0,
+                item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
+            }],
+            carried_item: Some(ItemStack::new(ItemKind::IronIngot, 2, None)),
+        };
+
+        assert!(validate_click_slot_impossible(
+            &packet,
+            &player_inventory,
+            Some(&inventory),
+        ));
+        assert!(validate_click_slot_item_duplication(
+            &packet,
+            &player_inventory,
+            Some(&inventory),
             &cursor_item
         ));
     }
