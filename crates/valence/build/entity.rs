@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use heck::{ToPascalCase, ToShoutySnakeCase, ToSnakeCase};
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::TokenStream;
 use quote::quote;
 use serde::Deserialize;
 
@@ -75,7 +75,7 @@ struct BlockPos {
 }
 
 impl Value {
-    pub fn type_id(&self) -> i32 {
+    pub fn type_id(&self) -> u8 {
         match self {
             Value::Byte(_) => 0,
             Value::Integer(_) => 1,
@@ -229,7 +229,9 @@ impl Value {
     pub fn encodable_expr(&self, self_lvalue: TokenStream) -> TokenStream {
         match self {
             Value::Integer(_) => quote!(VarInt(#self_lvalue)),
-            _ => self_lvalue,
+            Value::OptionalInt(_) => quote!(OptionalInt(#self_lvalue)),
+            Value::ItemStack(_) => quote!(Some(&#self_lvalue)),
+            _ => quote!(&#self_lvalue),
         }
     }
 }
@@ -264,6 +266,8 @@ pub fn build() -> anyhow::Result<TokenStream> {
     let mut entity_kind_fmt_args = TokenStream::new();
     let mut translation_key_arms = TokenStream::new();
     let mut modules = TokenStream::new();
+    let mut systems = TokenStream::new();
+    let mut system_names = vec![];
 
     for (entity_name, entity) in entities.clone() {
         let entity_name_ident = ident(&entity_name);
@@ -283,7 +287,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }]);
 
             entity_kind_fmt_args.extend([quote! {
-                EntityKind::#shouty_entity_name_ident => write!(f, "{} ({})", #shouty_entity_name, #entity_type_id),
+                EntityKind::#shouty_entity_name_ident => write!(f, "{} ({})", #entity_type_id, #shouty_entity_name),
             }]);
 
             let translation_key_expr = if let Some(key) = entity.translation_key {
@@ -393,6 +397,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
         for field in &entity.fields {
             let pascal_field_name_ident = ident(field.name.to_pascal_case());
+            let snake_field_name = field.name.to_snake_case();
             let inner_type = field.default_value.field_type();
             let default_expr = field.default_value.default_expr();
 
@@ -403,6 +408,33 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 impl Default for #pascal_field_name_ident {
                     fn default() -> Self {
                         Self(#default_expr)
+                    }
+                }
+            }]);
+
+            let system_name_ident = ident(format!("update_{snake_entity_name}_{snake_field_name}"));
+            let component_path = quote!(#snake_entity_name_ident::#pascal_field_name_ident);
+
+            system_names.push(quote!(#system_name_ident));
+
+            let data_index = field.index;
+            let data_type = field.default_value.type_id();
+            let encodable_expr = field.default_value.encodable_expr(quote!(value.0));
+
+            systems.extend([quote! {
+                fn #system_name_ident(
+                    mut query: Query<(&#component_path, &mut TrackedData), Changed<#component_path>>
+                ) {
+                    for (value, mut tracked_data) in &mut query {
+                        if *value == Default::default() {
+                            tracked_data.remove_init_value(#data_index);
+                        } else {
+                            tracked_data.insert_init_value(#data_index, #data_type, #encodable_expr);
+
+                            if !tracked_data.is_added() {
+                                tracked_data.append_update_value(#data_index, #data_type, #encodable_expr);
+                            }
+                        }
                     }
                 }
             }]);
@@ -438,7 +470,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 Self(inner)
             }
 
-            pub const fn inner(self) -> i32 {
+            pub const fn get(self) -> i32 {
                 self.0
             }
 
@@ -457,6 +489,16 @@ pub fn build() -> anyhow::Result<TokenStream> {
                     EntityKind(other) => write!(f, "{other}"),
                 }
             }
+        }
+
+        fn add_tracked_data_systems(app: &mut App) {
+            #systems
+
+            #(
+                app.add_system(
+                    #system_names.before(WriteUpdatePacketsToInstancesSet).in_base_set(CoreSet::PostUpdate)
+                );
+            )*
         }
     })
 }

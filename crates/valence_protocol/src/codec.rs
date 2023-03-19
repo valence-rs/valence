@@ -504,8 +504,8 @@ mod tests {
     use crate::ident::Ident;
     use crate::item::{ItemKind, ItemStack};
     use crate::text::{Text, TextFormat};
-    use crate::var_long::VarLong;
     use crate::types::Hand;
+    use crate::var_long::VarLong;
     use crate::Decode;
 
     #[cfg(feature = "encryption")]

@@ -232,6 +232,125 @@ impl Particle {
             Particle::Scrape => 91,
         }
     }
+
+    /// Decodes the particle assuming the given particle ID.
+    pub fn decode_with_id(particle_id: i32, r: &mut &[u8]) -> anyhow::Result<Self> {
+        Ok(match particle_id {
+            0 => Particle::AmbientEntityEffect,
+            1 => Particle::AngryVillager,
+            2 => Particle::Block(BlockState::decode(r)?),
+            3 => Particle::BlockMarker(BlockState::decode(r)?),
+            4 => Particle::Bubble,
+            5 => Particle::Cloud,
+            6 => Particle::Crit,
+            7 => Particle::DamageIndicator,
+            8 => Particle::DragonBreath,
+            9 => Particle::DrippingLava,
+            10 => Particle::FallingLava,
+            11 => Particle::LandingLava,
+            12 => Particle::DrippingWater,
+            13 => Particle::FallingWater,
+            14 => Particle::Dust {
+                rgb: <[f32; 3]>::decode(r)?,
+                scale: f32::decode(r)?,
+            },
+            15 => Particle::DustColorTransition {
+                from_rgb: <[f32; 3]>::decode(r)?,
+                scale: f32::decode(r)?,
+                to_rgb: <[f32; 3]>::decode(r)?,
+            },
+            16 => Particle::Effect,
+            17 => Particle::ElderGuardian,
+            18 => Particle::EnchantedHit,
+            19 => Particle::Enchant,
+            20 => Particle::EndRod,
+            21 => Particle::EntityEffect,
+            22 => Particle::ExplosionEmitter,
+            23 => Particle::Explosion,
+            24 => Particle::SonicBoom,
+            25 => Particle::FallingDust(BlockState::decode(r)?),
+            26 => Particle::Firework,
+            27 => Particle::Fishing,
+            28 => Particle::Flame,
+            29 => Particle::SculkSoul,
+            30 => Particle::SculkCharge {
+                roll: f32::decode(r)?,
+            },
+            31 => Particle::SculkChargePop,
+            32 => Particle::SoulFireFlame,
+            33 => Particle::Soul,
+            34 => Particle::Flash,
+            35 => Particle::HappyVillager,
+            36 => Particle::Composter,
+            37 => Particle::Heart,
+            38 => Particle::InstantEffect,
+            39 => Particle::Item(Decode::decode(r)?),
+            40 => match <&str>::decode(r)? {
+                "block" => Particle::VibrationBlock {
+                    block_pos: BlockPos::decode(r)?,
+                    ticks: VarInt::decode(r)?.0,
+                },
+                "entity" => Particle::VibrationEntity {
+                    entity_id: VarInt::decode(r)?.0,
+                    entity_eye_height: f32::decode(r)?,
+                    ticks: VarInt::decode(r)?.0,
+                },
+                invalid => bail!("invalid vibration position source of \"{invalid}\""),
+            },
+            41 => Particle::ItemSlime,
+            42 => Particle::ItemSnowball,
+            43 => Particle::LargeSmoke,
+            44 => Particle::Lava,
+            45 => Particle::Mycelium,
+            46 => Particle::Note,
+            47 => Particle::Poof,
+            48 => Particle::Portal,
+            49 => Particle::Rain,
+            50 => Particle::Smoke,
+            51 => Particle::Sneeze,
+            52 => Particle::Spit,
+            53 => Particle::SquidInk,
+            54 => Particle::SweepAttack,
+            55 => Particle::TotemOfUndying,
+            56 => Particle::Underwater,
+            57 => Particle::Splash,
+            58 => Particle::Witch,
+            59 => Particle::BubblePop,
+            60 => Particle::CurrentDown,
+            61 => Particle::BubbleColumnUp,
+            62 => Particle::Nautilus,
+            63 => Particle::Dolphin,
+            64 => Particle::CampfireCosySmoke,
+            65 => Particle::CampfireSignalSmoke,
+            66 => Particle::DrippingHoney,
+            67 => Particle::FallingHoney,
+            68 => Particle::LandingHoney,
+            69 => Particle::FallingNectar,
+            70 => Particle::FallingSporeBlossom,
+            71 => Particle::Ash,
+            72 => Particle::CrimsonSpore,
+            73 => Particle::WarpedSpore,
+            74 => Particle::SporeBlossomAir,
+            75 => Particle::DrippingObsidianTear,
+            76 => Particle::FallingObsidianTear,
+            77 => Particle::LandingObsidianTear,
+            78 => Particle::ReversePortal,
+            79 => Particle::WhiteAsh,
+            80 => Particle::SmallFlame,
+            81 => Particle::Snowflake,
+            82 => Particle::DrippingDripstoneLava,
+            83 => Particle::FallingDripstoneLava,
+            84 => Particle::DrippingDripstoneWater,
+            85 => Particle::FallingDripstoneWater,
+            86 => Particle::GlowSquidInk,
+            87 => Particle::Glow,
+            88 => Particle::WaxOn,
+            89 => Particle::WaxOff,
+            90 => Particle::ElectricSpark,
+            91 => Particle::Scrape,
+            id => bail!("invalid particle ID of {id}"),
+        })
+    }
 }
 
 impl Encode for ParticleS2c<'_> {
@@ -243,7 +362,34 @@ impl Encode for ParticleS2c<'_> {
         self.max_speed.encode(&mut w)?;
         self.count.encode(&mut w)?;
 
-        match self.particle.as_ref() {
+        self.particle.as_ref().encode(w)
+    }
+}
+
+impl<'a> Decode<'a> for ParticleS2c<'a> {
+    fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
+        let particle_id = VarInt::decode(r)?.0;
+        let long_distance = bool::decode(r)?;
+        let position = <[f64; 3]>::decode(r)?;
+        let offset = <[f32; 3]>::decode(r)?;
+        let max_speed = f32::decode(r)?;
+        let particle_count = i32::decode(r)?;
+
+        Ok(Self {
+            particle: Cow::Owned(Particle::decode_with_id(particle_id, r)?),
+            long_distance,
+            position,
+            offset,
+            max_speed,
+            count: particle_count,
+        })
+    }
+}
+
+/// Encodes the particle without an ID.
+impl Encode for Particle {
+    fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
+        match self {
             Particle::Block(block_state) => block_state.encode(w),
             Particle::BlockMarker(block_state) => block_state.encode(w),
             Particle::Dust { rgb, scale } => {
@@ -279,139 +425,5 @@ impl Encode for ParticleS2c<'_> {
             }
             _ => Ok(()),
         }
-    }
-}
-
-impl<'a> Decode<'a> for ParticleS2c<'a> {
-    fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
-        let particle_id = VarInt::decode(r)?.0;
-        let long_distance = bool::decode(r)?;
-        let position = <[f64; 3]>::decode(r)?;
-        let offset = <[f32; 3]>::decode(r)?;
-        let max_speed = f32::decode(r)?;
-        let particle_count = i32::decode(r)?;
-
-        Ok(Self {
-            particle: Cow::Owned(match particle_id {
-                0 => Particle::AmbientEntityEffect,
-                1 => Particle::AngryVillager,
-                2 => Particle::Block(BlockState::decode(r)?),
-                3 => Particle::BlockMarker(BlockState::decode(r)?),
-                4 => Particle::Bubble,
-                5 => Particle::Cloud,
-                6 => Particle::Crit,
-                7 => Particle::DamageIndicator,
-                8 => Particle::DragonBreath,
-                9 => Particle::DrippingLava,
-                10 => Particle::FallingLava,
-                11 => Particle::LandingLava,
-                12 => Particle::DrippingWater,
-                13 => Particle::FallingWater,
-                14 => Particle::Dust {
-                    rgb: <[f32; 3]>::decode(r)?,
-                    scale: f32::decode(r)?,
-                },
-                15 => Particle::DustColorTransition {
-                    from_rgb: <[f32; 3]>::decode(r)?,
-                    scale: f32::decode(r)?,
-                    to_rgb: <[f32; 3]>::decode(r)?,
-                },
-                16 => Particle::Effect,
-                17 => Particle::ElderGuardian,
-                18 => Particle::EnchantedHit,
-                19 => Particle::Enchant,
-                20 => Particle::EndRod,
-                21 => Particle::EntityEffect,
-                22 => Particle::ExplosionEmitter,
-                23 => Particle::Explosion,
-                24 => Particle::SonicBoom,
-                25 => Particle::FallingDust(BlockState::decode(r)?),
-                26 => Particle::Firework,
-                27 => Particle::Fishing,
-                28 => Particle::Flame,
-                29 => Particle::SculkSoul,
-                30 => Particle::SculkCharge {
-                    roll: f32::decode(r)?,
-                },
-                31 => Particle::SculkChargePop,
-                32 => Particle::SoulFireFlame,
-                33 => Particle::Soul,
-                34 => Particle::Flash,
-                35 => Particle::HappyVillager,
-                36 => Particle::Composter,
-                37 => Particle::Heart,
-                38 => Particle::InstantEffect,
-                39 => Particle::Item(Decode::decode(r)?),
-                40 => match <&str>::decode(r)? {
-                    "block" => Particle::VibrationBlock {
-                        block_pos: BlockPos::decode(r)?,
-                        ticks: VarInt::decode(r)?.0,
-                    },
-                    "entity" => Particle::VibrationEntity {
-                        entity_id: VarInt::decode(r)?.0,
-                        entity_eye_height: f32::decode(r)?,
-                        ticks: VarInt::decode(r)?.0,
-                    },
-                    invalid => bail!("invalid vibration position source of \"{invalid}\""),
-                },
-                41 => Particle::ItemSlime,
-                42 => Particle::ItemSnowball,
-                43 => Particle::LargeSmoke,
-                44 => Particle::Lava,
-                45 => Particle::Mycelium,
-                46 => Particle::Note,
-                47 => Particle::Poof,
-                48 => Particle::Portal,
-                49 => Particle::Rain,
-                50 => Particle::Smoke,
-                51 => Particle::Sneeze,
-                52 => Particle::Spit,
-                53 => Particle::SquidInk,
-                54 => Particle::SweepAttack,
-                55 => Particle::TotemOfUndying,
-                56 => Particle::Underwater,
-                57 => Particle::Splash,
-                58 => Particle::Witch,
-                59 => Particle::BubblePop,
-                60 => Particle::CurrentDown,
-                61 => Particle::BubbleColumnUp,
-                62 => Particle::Nautilus,
-                63 => Particle::Dolphin,
-                64 => Particle::CampfireCosySmoke,
-                65 => Particle::CampfireSignalSmoke,
-                66 => Particle::DrippingHoney,
-                67 => Particle::FallingHoney,
-                68 => Particle::LandingHoney,
-                69 => Particle::FallingNectar,
-                70 => Particle::FallingSporeBlossom,
-                71 => Particle::Ash,
-                72 => Particle::CrimsonSpore,
-                73 => Particle::WarpedSpore,
-                74 => Particle::SporeBlossomAir,
-                75 => Particle::DrippingObsidianTear,
-                76 => Particle::FallingObsidianTear,
-                77 => Particle::LandingObsidianTear,
-                78 => Particle::ReversePortal,
-                79 => Particle::WhiteAsh,
-                80 => Particle::SmallFlame,
-                81 => Particle::Snowflake,
-                82 => Particle::DrippingDripstoneLava,
-                83 => Particle::FallingDripstoneLava,
-                84 => Particle::DrippingDripstoneWater,
-                85 => Particle::FallingDripstoneWater,
-                86 => Particle::GlowSquidInk,
-                87 => Particle::Glow,
-                88 => Particle::WaxOn,
-                89 => Particle::WaxOff,
-                90 => Particle::ElectricSpark,
-                91 => Particle::Scrape,
-                id => bail!("invalid particle ID of {id}"),
-            }),
-            long_distance,
-            position,
-            offset,
-            max_speed,
-            count: particle_count,
-        })
     }
 }

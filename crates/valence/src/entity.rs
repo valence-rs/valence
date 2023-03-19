@@ -11,10 +11,10 @@ pub use valence_protocol::types::Direction;
 use valence_protocol::var_int::VarInt;
 use valence_protocol::{Decode, Encode};
 
-use crate::client::FlushPacketsSet;
 use crate::component::{
     Despawned, Location, Look, OldLocation, OldPosition, OnGround, Position, UniqueId,
 };
+use crate::instance::WriteUpdatePacketsToInstancesSet;
 
 include!(concat!(env!("OUT_DIR"), "/entity_event.rs"));
 include!(concat!(env!("OUT_DIR"), "/entity.rs"));
@@ -142,7 +142,7 @@ impl TrackedData {
         }
     }
 
-    pub fn insert_init_value(&mut self, index: u8, type_id: u8, value: &(impl Encode + ?Sized)) {
+    pub fn insert_init_value(&mut self, index: u8, type_id: u8, value: impl Encode) {
         debug_assert!(
             index != 0xff,
             "index of 0xff is reserved for the terminator"
@@ -186,7 +186,7 @@ impl TrackedData {
         false
     }
 
-    pub fn append_update_value(&mut self, index: u8, type_id: u8, value: &(impl Encode + ?Sized)) {
+    pub fn append_update_value(&mut self, index: u8, type_id: u8, value: impl Encode) {
         debug_assert!(
             index != 0xff,
             "index of 0xff is reserved for the terminator"
@@ -456,9 +456,11 @@ impl Plugin for EntityPlugin {
                     clear_animation_changes,
                     clear_tracked_data_changes,
                 )
-                    .after(FlushPacketsSet)
+                    .after(WriteUpdatePacketsToInstancesSet)
                     .in_base_set(CoreSet::PostUpdate),
             );
+
+        add_tracked_data_systems(app);
     }
 }
 

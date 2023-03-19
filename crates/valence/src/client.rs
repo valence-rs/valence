@@ -38,7 +38,9 @@ use crate::component::{
     Properties, UniqueId, Username,
 };
 use crate::dimension::DimensionId;
-use crate::entity::{EntityId, EntityStatus, HeadYaw, ObjectData, Velocity, TrackedData};
+use crate::entity::{
+    EntityId, EntityKind, EntityStatus, HeadYaw, ObjectData, TrackedData, Velocity,
+};
 use crate::instance::{Instance, WriteUpdatePacketsToInstancesSet};
 use crate::inventory::{Inventory, InventoryKind};
 use crate::packet::WritePacket;
@@ -46,7 +48,6 @@ use crate::prelude::ScratchBuf;
 use crate::server::{NewClientInfo, Server};
 use crate::util::velocity_to_packet_units;
 use crate::view::{ChunkPos, ChunkView};
-use crate::entity::EntityKind;
 
 pub mod event;
 
@@ -831,7 +832,7 @@ impl EntityInitQueryItem<'_> {
             _ => writer.write_packet(&EntitySpawnS2c {
                 entity_id: self.entity_id.get().into(),
                 object_uuid: self.uuid.0,
-                kind: self.kind.inner().into(),
+                kind: self.kind.get().into(),
                 position: pos.to_array(),
                 pitch: ByteAngle::from_degrees(self.look.pitch),
                 yaw: ByteAngle::from_degrees(self.look.yaw),
