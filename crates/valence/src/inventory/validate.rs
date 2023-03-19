@@ -173,7 +173,7 @@ pub(crate) fn validate_click_slot_item_duplication(
     open_inventory: Option<&Inventory>,
     cursor_item: &CursorItem,
 ) -> bool {
-    let mut window = InventoryWindowMut {
+    let window = InventoryWindow {
         player_inventory,
         open_inventory,
     };
@@ -224,8 +224,7 @@ pub(crate) fn validate_click_slot_item_duplication(
                     return false;
                 }
 
-                let count_deltas =
-                    calculate_net_item_delta(packet, player_inventory, open_inventory, cursor_item);
+                let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
 
                 return count_deltas == 0;
             }
@@ -234,12 +233,17 @@ pub(crate) fn validate_click_slot_item_duplication(
         ClickMode::Hotbar => todo!(),
         ClickMode::CreativeMiddleClick => todo!(),
         ClickMode::DropKey => {
-            let count_deltas =
-                calculate_net_item_delta(packet, player_inventory, open_inventory, cursor_item);
+            let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
 
             return match packet.button {
                 0 => count_deltas == -1,
-                1 => count_deltas < 0, // TODO: grab stack amount from target slot
+                1 => {
+                    count_deltas
+                        == window
+                            .slot(packet.slot_idx as u16)
+                            .map(|s| s.count() as i32)
+                            .unwrap_or(0)
+                }
                 _ => unreachable!(),
             };
         }
@@ -250,35 +254,29 @@ pub(crate) fn validate_click_slot_item_duplication(
 
 fn calculate_net_item_delta(
     packet: &ClickSlotC2s,
-    player_inventory: &Inventory,
-    open_inventory: Option<&Inventory>,
+    window: &InventoryWindow,
     cursor_item: &CursorItem,
 ) -> i32 {
-    // impled by copilot, might be wrong
     let mut net_item_delta: i32 = 0;
 
     for slot in &packet.slots {
-        let item = match open_inventory {
-            Some(inv) => inv.slot(slot.idx as u16),
-            None => player_inventory.slot(slot.idx as u16),
+        let old_slot = window.slot(slot.idx as u16);
+        let new_slot = slot.item.as_ref();
+
+        net_item_delta += match (old_slot, new_slot) {
+            (Some(old), Some(new)) => new.count() as i32 - old.count() as i32,
+            (Some(old), None) => -(old.count() as i32),
+            (None, Some(new)) => new.count() as i32,
+            (None, None) => 0,
         };
-
-        if let Some(item) = item {
-            net_item_delta -= item.count() as i32;
-        }
-
-        if let Some(item) = &slot.item {
-            net_item_delta += item.count() as i32;
-        }
     }
 
-    if let Some(item) = &packet.carried_item {
-        net_item_delta -= item.count() as i32;
-    }
-
-    if let Some(item) = &cursor_item.0 {
-        net_item_delta += item.count() as i32;
-    }
+    net_item_delta += match (cursor_item.0.as_ref(), packet.carried_item.as_ref()) {
+        (Some(old), Some(new)) => new.count() as i32 - old.count() as i32,
+        (Some(old), None) => -(old.count() as i32),
+        (None, Some(new)) => new.count() as i32,
+        (None, None) => 0,
+    };
 
     net_item_delta
 }
@@ -299,7 +297,7 @@ mod test {
         inventory.set_slot(0, ItemStack::new(ItemKind::Diamond, 20, None));
         let cursor_item = CursorItem::default();
         let packet = ClickSlotC2s {
-            window_id: 0,
+            window_id: 1,
             button: 0,
             mode: ClickMode::Click,
             state_id: VarInt(0),
@@ -329,7 +327,7 @@ mod test {
         inventory2.set_slot(0, ItemStack::new(ItemKind::Diamond, 10, None));
         let cursor_item = CursorItem(Some(ItemStack::new(ItemKind::Diamond, 20, None)));
         let packet1 = ClickSlotC2s {
-            window_id: 0,
+            window_id: 1,
             button: 0,
             mode: ClickMode::Click,
             state_id: VarInt(0),
@@ -341,7 +339,7 @@ mod test {
             carried_item: None,
         };
         let packet2 = ClickSlotC2s {
-            window_id: 0,
+            window_id: 1,
             button: 0,
             mode: ClickMode::Click,
             state_id: VarInt(0),
@@ -386,7 +384,7 @@ mod test {
         inventory2.set_slot(0, ItemStack::new(ItemKind::Diamond, 10, None));
         let cursor_item = CursorItem(Some(ItemStack::new(ItemKind::Diamond, 20, None)));
         let packet1 = ClickSlotC2s {
-            window_id: 0,
+            window_id: 1,
             button: 0,
             mode: ClickMode::Click,
             state_id: VarInt(0),
@@ -398,7 +396,7 @@ mod test {
             carried_item: None,
         };
         let packet2 = ClickSlotC2s {
-            window_id: 0,
+            window_id: 1,
             button: 0,
             mode: ClickMode::Click,
             state_id: VarInt(0),
@@ -410,7 +408,7 @@ mod test {
             carried_item: None,
         };
         let packet3 = ClickSlotC2s {
-            window_id: 0,
+            window_id: 1,
             button: 0,
             mode: ClickMode::Click,
             state_id: VarInt(0),
