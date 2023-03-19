@@ -39,7 +39,7 @@ use crate::component::{
 };
 use crate::dimension::DimensionId;
 use crate::entity::{EntityId, EntityStatus, HeadYaw, ObjectData, Velocity, TrackedData};
-use crate::instance::{Instance, UpdateInstancesPreClientSet};
+use crate::instance::{Instance, WriteUpdatePacketsToInstancesSet};
 use crate::inventory::{Inventory, InventoryKind};
 use crate::packet::WritePacket;
 use crate::prelude::ScratchBuf;
@@ -617,7 +617,7 @@ impl Plugin for ClientPlugin {
                 initial_join,
                 update_chunk_load_dist,
                 read_data_in_old_view
-                    .after(UpdateInstancesPreClientSet)
+                    .after(WriteUpdatePacketsToInstancesSet)
                     .after(update_chunk_load_dist),
                 update_view.after(initial_join).after(read_data_in_old_view),
                 respawn.after(update_view),
@@ -638,7 +638,7 @@ impl Plugin for ClientPlugin {
         .configure_set(
             FlushPacketsSet
                 .in_base_set(CoreSet::PostUpdate)
-                .after(UpdateInstancesPreClientSet),
+                .after(WriteUpdatePacketsToInstancesSet),
         )
         .add_system(flush_packets.in_set(FlushPacketsSet));
     }

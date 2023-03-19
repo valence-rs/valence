@@ -1,10 +1,9 @@
 use std::num::Wrapping;
+use std::ops::Range;
 
 use bevy_app::{App, CoreSet, Plugin};
 use bevy_ecs::prelude::*;
 use glam::Vec3;
-use rand::rngs::{OsRng, StdRng};
-use rand::{Rng, SeedableRng};
 use rustc_hash::FxHashMap;
 use tracing::warn;
 use uuid::Uuid;
@@ -16,8 +15,6 @@ use crate::client::FlushPacketsSet;
 use crate::component::{
     Despawned, Location, Look, OldLocation, OldPosition, OnGround, Position, UniqueId,
 };
-use crate::config::DEFAULT_TPS;
-use crate::packet::WritePacket;
 
 include!(concat!(env!("OUT_DIR"), "/entity_event.rs"));
 include!(concat!(env!("OUT_DIR"), "/entity.rs"));
@@ -54,7 +51,7 @@ pub struct HeadYaw(pub f32);
 pub struct Velocity(pub Vec3);
 
 #[derive(Component, Copy, Clone, Default, Debug)]
-pub struct EntityStatuses(u64);
+pub struct EntityStatuses(pub u64);
 
 impl EntityStatuses {
     pub fn trigger(&mut self, status: EntityStatus) {
@@ -71,7 +68,7 @@ impl EntityStatuses {
 }
 
 #[derive(Component, Default, Debug)]
-pub struct EntityAnimations(u8);
+pub struct EntityAnimations(pub u8);
 
 impl EntityAnimations {
     pub fn trigger(&mut self, status: EntityAnimation) {
@@ -103,10 +100,7 @@ pub struct ObjectData(pub i32);
 /// The range of packet bytes for this entity within the cell the entity is
 /// located in. For internal use only.
 #[derive(Component, Default, Debug)]
-pub struct PacketByteRange {
-    pub(crate) begin: usize,
-    pub(crate) end: usize,
-}
+pub struct PacketByteRange(pub(crate) Range<usize>);
 
 /// Cache for all the tracked data of an entity. Used for the
 /// [`EntityTrackerUpdateS2c`][packet] packet.
@@ -402,7 +396,6 @@ pub struct EntityManager {
     id_to_entity: FxHashMap<i32, Entity>,
     uuid_to_entity: FxHashMap<Uuid, Entity>,
     next_id: Wrapping<i32>,
-    uuid_rng: StdRng,
 }
 
 impl EntityManager {
@@ -411,7 +404,6 @@ impl EntityManager {
             id_to_entity: FxHashMap::default(),
             uuid_to_entity: FxHashMap::default(),
             next_id: Wrapping(1), // Skip 0.
-            uuid_rng: StdRng::from_rng(OsRng).unwrap(),
         }
     }
 
@@ -458,6 +450,15 @@ impl Plugin for EntityPlugin {
                 remove_despawned_from_manager
                     .in_base_set(CoreSet::PostUpdate)
                     .after(init_entities),
+            )
+            .add_systems(
+                (
+                    clear_status_changes,
+                    clear_animation_changes,
+                    clear_tracked_data_changes,
+                )
+                    .after(FlushPacketsSet)
+                    .in_base_set(CoreSet::PostUpdate),
             );
     }
 }
@@ -497,287 +498,22 @@ fn remove_despawned_from_manager(
     }
 }
 
-/*
-/// Sets the protocol ID of new mcentities and adds them to the
-/// [`McEntityManager`].
-fn init_mcentities(
-    mut entities: Query<(Entity, &mut McEntity), Added<McEntity>>,
-    mut manager: ResMut<McEntityManager>,
+fn clear_status_changes(mut statuses: Query<&mut EntityStatuses, Changed<EntityStatuses>>) {
+    for mut statuses in &mut statuses {
+        statuses.0 = 0;
+    }
+}
+
+fn clear_animation_changes(
+    mut animations: Query<&mut EntityAnimations, Changed<EntityAnimations>>,
 ) {
-    for (entity, mut mc_entity) in &mut entities {
-        if manager.next_protocol_id == 0 {
-            warn!("entity protocol ID overflow");
-            // ID 0 is reserved for clients so we skip over it.
-            manager.next_protocol_id = 1;
-        }
-
-        mc_entity.protocol_id = manager.next_protocol_id;
-        manager.next_protocol_id = manager.next_protocol_id.wrapping_add(1);
-
-        manager
-            .protocol_id_to_mcentity
-            .insert(mc_entity.protocol_id, entity);
+    for mut animations in &mut animations {
+        animations.0 = 0;
     }
 }
 
-/// Removes despawned mcentities from the mcentity manager.
-fn remove_despawned_from_manager(
-    entities: Query<&mut McEntity, With<Despawned>>,
-    mut manager: ResMut<McEntityManager>,
-) {
-    for entity in &entities {
-        manager.protocol_id_to_mcentity.remove(&entity.protocol_id);
+fn clear_tracked_data_changes(mut tracked_data: Query<&mut TrackedData, Changed<TrackedData>>) {
+    for mut tracked_data in &mut tracked_data {
+        tracked_data.clear_update_values();
     }
 }
-
-fn update_mcentities(mut mcentities: Query<&mut McEntity, Changed<McEntity>>) {
-    for mut ent in &mut mcentities {
-        ent.data.clear_modifications();
-        ent.old_position = ent.position;
-        ent.old_instance = ent.instance;
-        ent.statuses = 0;
-        ent.animations = 0;
-        ent.yaw_or_pitch_modified = false;
-        ent.head_yaw_modified = false;
-        ent.velocity_modified = false;
-    }
-}
-
-/// A [`Resource`] which maintains information about all the [`McEntity`]
-/// components on the server.
-#[derive(Resource, Debug)]
-pub struct McEntityManager {
-    protocol_id_to_mcentity: FxHashMap<i32, Entity>,
-    next_protocol_id: i32,
-}
-
-impl McEntityManager {
-    fn new() -> Self {
-        Self {
-            protocol_id_to_mcentity: HashMap::default(),
-            next_protocol_id: 1,
-        }
-    }
-
-    /// Gets the [`Entity`] of the [`McEntity`] with the given protocol ID.
-    pub fn get_with_protocol_id(&self, id: i32) -> Option<Entity> {
-        self.protocol_id_to_mcentity.get(&id).cloned()
-    }
-}
-
-/// A component for Minecraft entities. For Valence to recognize a
-/// Minecraft entity, it must have this component attached.
-///
-/// ECS entities with this component are not allowed to be removed from the
-/// [`World`] directly. Instead, you must mark these entities with [`Despawned`]
-/// to allow deinitialization to occur.
-///
-/// Every entity has common state which is accessible directly from this struct.
-/// This includes position, rotation, velocity, and UUID. To access data that is
-/// not common to every kind of entity, see [`Self::data`].
-#[derive(Component)]
-pub struct McEntity {
-    pub(crate) data: TrackedData,
-    protocol_id: i32,
-    uuid: Uuid,
-    /// The range of bytes in the partition cell containing this entity's update
-    /// packets.
-    pub(crate) self_update_range: Range<usize>,
-    /// Contains a set bit for every status triggered this tick.
-    statuses: u64,
-    /// Contains a set bit for every animation triggered this tick.
-    animations: u8,
-    instance: Entity,
-    old_instance: Entity,
-    position: DVec3,
-    old_position: DVec3,
-    yaw: f32,
-    pitch: f32,
-    yaw_or_pitch_modified: bool,
-    head_yaw: f32,
-    head_yaw_modified: bool,
-    velocity: Vec3,
-    velocity_modified: bool,
-    on_ground: bool,
-}
-
-    /// Sends the appropriate packets to initialize the entity. This will spawn
-    /// the entity and initialize tracked data.
-    pub(crate) fn write_init_packets(
-        &self,
-        mut writer: impl WritePacket,
-        position: DVec3,
-        scratch: &mut Vec<u8>,
-    ) {
-        let with_object_data = |data| EntitySpawnS2c {
-            entity_id: VarInt(self.protocol_id),
-            object_uuid: self.uuid,
-            kind: VarInt(self.kind() as i32),
-            position: position.to_array(),
-            pitch: ByteAngle::from_degrees(self.pitch),
-            yaw: ByteAngle::from_degrees(self.yaw),
-            head_yaw: ByteAngle::from_degrees(self.head_yaw),
-            data: VarInt(data),
-            velocity: velocity_to_packet_units(self.velocity),
-        };
-
-        match &self.data {
-            TrackedData::Marker(_) => {}
-            TrackedData::ExperienceOrb(_) => writer.write_packet(&ExperienceOrbSpawnS2c {
-                entity_id: VarInt(self.protocol_id),
-                position: position.to_array(),
-                count: 0, // TODO
-            }),
-            TrackedData::Player(_) => {
-                writer.write_packet(&PlayerSpawnS2c {
-                    entity_id: VarInt(self.protocol_id),
-                    player_uuid: self.uuid,
-                    position: position.to_array(),
-                    yaw: ByteAngle::from_degrees(self.yaw),
-                    pitch: ByteAngle::from_degrees(self.pitch),
-                });
-
-                // Player spawn packet doesn't include head yaw for some reason.
-                writer.write_packet(&EntitySetHeadYawS2c {
-                    entity_id: VarInt(self.protocol_id),
-                    head_yaw: ByteAngle::from_degrees(self.head_yaw),
-                });
-            }
-            TrackedData::ItemFrame(e) => writer.write_packet(&with_object_data(e.get_rotation())),
-            TrackedData::GlowItemFrame(e) => {
-                writer.write_packet(&with_object_data(e.get_rotation()))
-            }
-
-            TrackedData::Painting(_) => writer.write_packet(&with_object_data(
-                match ((self.yaw + 45.0).rem_euclid(360.0) / 90.0) as u8 {
-                    0 => 3,
-                    1 => 4,
-                    2 => 2,
-                    _ => 5,
-                },
-            )),
-            // TODO: set block state ID for falling block.
-            TrackedData::FallingBlock(_) => writer.write_packet(&with_object_data(1)),
-            TrackedData::FishingBobber(e) => {
-                writer.write_packet(&with_object_data(e.get_hook_entity_id()))
-            }
-            TrackedData::Warden(e) => {
-                writer.write_packet(&with_object_data((e.get_pose() == Pose::Emerging).into()))
-            }
-            _ => writer.write_packet(&with_object_data(0)),
-        }
-
-        scratch.clear();
-        self.data.write_initial_tracked_data(scratch);
-        if !scratch.is_empty() {
-            writer.write_packet(&EntityTrackerUpdateS2c {
-                entity_id: VarInt(self.protocol_id),
-                metadata: scratch.as_slice().into(),
-            });
-        }
-    }
-
-    /// Writes the appropriate packets to update the entity (Position, tracked
-    /// data, events, animations).
-    pub(crate) fn write_update_packets(&self, mut writer: impl WritePacket, scratch: &mut Vec<u8>) {
-        let entity_id = VarInt(self.protocol_id);
-
-        let position_delta = self.position - self.old_position;
-        let needs_teleport = position_delta.abs().max_element() >= 8.0;
-        let changed_position = self.position != self.old_position;
-
-        if changed_position && !needs_teleport && self.yaw_or_pitch_modified {
-            writer.write_packet(&RotateAndMoveRelativeS2c {
-                entity_id,
-                delta: (position_delta * 4096.0).to_array().map(|v| v as i16),
-                yaw: ByteAngle::from_degrees(self.yaw),
-                pitch: ByteAngle::from_degrees(self.pitch),
-                on_ground: self.on_ground,
-            });
-        } else {
-            if changed_position && !needs_teleport {
-                writer.write_packet(&MoveRelativeS2c {
-                    entity_id,
-                    delta: (position_delta * 4096.0).to_array().map(|v| v as i16),
-                    on_ground: self.on_ground,
-                });
-            }
-
-            if self.yaw_or_pitch_modified {
-                writer.write_packet(&RotateS2c {
-                    entity_id,
-                    yaw: ByteAngle::from_degrees(self.yaw),
-                    pitch: ByteAngle::from_degrees(self.pitch),
-                    on_ground: self.on_ground,
-                });
-            }
-        }
-
-        if needs_teleport {
-            writer.write_packet(&EntityPositionS2c {
-                entity_id,
-                position: self.position.to_array(),
-                yaw: ByteAngle::from_degrees(self.yaw),
-                pitch: ByteAngle::from_degrees(self.pitch),
-                on_ground: self.on_ground,
-            });
-        }
-
-        if self.velocity_modified {
-            writer.write_packet(&EntityVelocityUpdateS2c {
-                entity_id,
-                velocity: velocity_to_packet_units(self.velocity),
-            });
-        }
-
-        if self.head_yaw_modified {
-            writer.write_packet(&EntitySetHeadYawS2c {
-                entity_id,
-                head_yaw: ByteAngle::from_degrees(self.head_yaw),
-            });
-        }
-
-        scratch.clear();
-        self.data.write_updated_tracked_data(scratch);
-        if !scratch.is_empty() {
-            writer.write_packet(&EntityTrackerUpdateS2c {
-                entity_id,
-                metadata: scratch.as_slice().into(),
-            });
-        }
-
-        if self.statuses != 0 {
-            for i in 0..std::mem::size_of_val(&self.statuses) {
-                if (self.statuses >> i) & 1 == 1 {
-                    writer.write_packet(&EntityEventS2c {
-                        entity_id: entity_id.0,
-                        entity_status: i as u8,
-                    });
-                }
-            }
-        }
-
-        if self.animations != 0 {
-            for i in 0..std::mem::size_of_val(&self.animations) {
-                if (self.animations >> i) & 1 == 1 {
-                    writer.write_packet(&EntityAnimationS2c {
-                        entity_id,
-                        animation: i as u8,
-                    });
-                }
-            }
-        }
-    }
-}
-
-impl fmt::Debug for McEntity {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.debug_struct("McEntity")
-            .field("kind", &self.kind())
-            .field("protocol_id", &self.protocol_id)
-            .field("uuid", &self.uuid)
-            .field("position", &self.position)
-            .finish_non_exhaustive()
-    }
-}
-*/

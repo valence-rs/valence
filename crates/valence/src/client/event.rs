@@ -34,11 +34,9 @@ use valence_protocol::types::{Difficulty, Direction, Hand};
 
 use super::{
     CursorItem, KeepaliveState, PlayerActionSequence, PlayerInventoryState, TeleportState,
-    ViewDistance,
 };
 use crate::client::Client;
 use crate::component::{Look, OnGround, Ping, Position};
-use crate::entity::{EntityAnimation, EntityKind};
 use crate::inventory::Inventory;
 
 #[derive(Clone, Debug)]

@@ -21,7 +21,7 @@ use bevy_ecs::prelude::*;
 use valence_protocol::packet::s2c::play::game_state_change::GameEventKind;
 use valence_protocol::packet::s2c::play::GameStateChangeS2c;
 
-use crate::instance::UpdateInstancesPreClientSet;
+use crate::instance::WriteUpdatePacketsToInstancesSet;
 use crate::packet::WritePacket;
 use crate::prelude::*;
 
@@ -217,7 +217,7 @@ impl Plugin for WeatherPlugin {
         app.configure_set(
             UpdateWeatherPerInstanceSet
                 .in_base_set(CoreSet::PostUpdate)
-                .before(UpdateInstancesPreClientSet),
+                .before(WriteUpdatePacketsToInstancesSet),
         );
 
         app.configure_set(
