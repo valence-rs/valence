@@ -239,7 +239,7 @@ pub(crate) fn validate_click_slot_item_duplication(
                 0 => count_deltas == -1,
                 1 => {
                     count_deltas
-                        == window
+                        == -window
                             .slot(packet.slot_idx as u16)
                             .map(|s| s.count() as i32)
                             .unwrap_or(0)

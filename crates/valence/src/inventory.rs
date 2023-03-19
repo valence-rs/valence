@@ -1346,7 +1346,7 @@ mod test {
 
     mod dropping_items {
         use valence_protocol::block_pos::BlockPos;
-        use valence_protocol::packet::c2s::play::click_slot::ClickMode;
+        use valence_protocol::packet::c2s::play::click_slot::{ClickMode, Slot};
         use valence_protocol::packet::c2s::play::player_action::Action;
         use valence_protocol::types::Direction;
 
@@ -1571,7 +1571,10 @@ mod test {
                 button: 0,
                 mode: ClickMode::DropKey,
                 state_id: VarInt(state_id),
-                slots: vec![],
+                slots: vec![Slot {
+                    idx: 40,
+                    item: Some(ItemStack::new(ItemKind::IronIngot, 31, None)),
+                }],
                 carried_item: None,
             });
 
@@ -1619,7 +1622,10 @@ mod test {
                 button: 1, // pressing control
                 mode: ClickMode::DropKey,
                 state_id: VarInt(state_id),
-                slots: vec![],
+                slots: vec![Slot {
+                    idx: 40,
+                    item: None,
+                }],
                 carried_item: None,
             });
 
