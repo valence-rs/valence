@@ -5,7 +5,6 @@ use super::Inventory;
 use crate::prelude::CursorItem;
 
 /// Validates a click slot packet enforcing that all fields are valid.
-
 pub(crate) fn validate_click_slot_impossible(
     packet: &ClickSlotC2s,
     player_inventory: &Inventory,
@@ -52,11 +51,16 @@ pub(crate) fn validate_click_slot_impossible(
             }
         }
         ClickMode::Hotbar => return matches!(packet.button, 0..=8 | 40),
-        ClickMode::CreativeMiddleClick => todo!(),
+        ClickMode::CreativeMiddleClick => {
+            return packet.button == 2 && (0..=max_slot).contains(&(packet.slot_idx as u16))
+        }
         ClickMode::DropKey => {
             return (0..=1).contains(&packet.button) && packet.carried_item.is_none()
         }
-        ClickMode::Drag => todo!(),
+        ClickMode::Drag => {
+            return matches!(packet.button, 0..=2 | 4..=6 | 8..=10)
+                && ((0..=max_slot).contains(&(packet.slot_idx as u16)) || packet.slot_idx == -999)
+        }
         ClickMode::DoubleClick => return packet.button == 0,
     }
 
