@@ -8,7 +8,7 @@ use bevy_ecs::schedule::ScheduleLabel;
 use bevy_ecs::system::{SystemParam, SystemState};
 use glam::{DVec3, Vec3};
 use paste::paste;
-use tracing::warn;
+use tracing::{debug, warn};
 use uuid::Uuid;
 use valence_protocol::block_pos::BlockPos;
 use valence_protocol::ident::Ident;
@@ -852,6 +852,21 @@ fn handle_one_packet(
             });
         }
         C2sPlayPacket::ClickSlotC2s(p) => {
+            if !crate::inventory::validate_click_slot_impossible(&p, &q.inventory) {
+                debug!("client {:#?} invalid click slot packet: {:#?}", q.entity, p);
+                return Ok(true);
+            }
+            if !crate::inventory::validate_click_slot_item_duplication(
+                &p,
+                &q.inventory,
+                &q.cursor_item,
+            ) {
+                debug!(
+                    "client {:#?} click slot packet tried to incorrectly modify items: {:#?}",
+                    q.entity, p
+                );
+                return Ok(true);
+            }
             if p.slot_idx < 0 {
                 if let Some(stack) = q.cursor_item.0.take() {
                     events.2.drop_item_stack.send(DropItemStack {

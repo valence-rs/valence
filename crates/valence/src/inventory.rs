@@ -49,6 +49,10 @@ use crate::component::GameMode;
 use crate::packet::WritePacket;
 use crate::prelude::FlushPacketsSet;
 
+mod validate;
+
+pub(crate) use validate::*;
+
 #[derive(Debug, Clone, Component)]
 pub struct Inventory {
     title: Text,
