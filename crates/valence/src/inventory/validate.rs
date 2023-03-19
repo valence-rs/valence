@@ -1,8 +1,104 @@
+use valence_protocol::item::ItemStack;
 use valence_protocol::packet::c2s::play::click_slot::ClickMode;
 use valence_protocol::packet::c2s::play::ClickSlotC2s;
 
 use super::Inventory;
 use crate::prelude::CursorItem;
+
+/// Represents the inventory window that the player is currently viewing.
+/// Handles dispatching reads to the correct inventory.
+///
+/// This is a read-only version of [`InventoryWindowMut`].
+struct InventoryWindow<'a> {
+    player_inventory: &'a Inventory,
+    open_inventory: Option<&'a Inventory>,
+}
+
+impl InventoryWindow<'_> {
+    #[track_caller]
+    pub fn slot(&self, idx: u16) -> Option<&ItemStack> {
+        if let Some(open_inv) = self.open_inventory.as_ref() {
+            if idx < open_inv.slot_count() {
+                return open_inv.slot(idx);
+            } else {
+                return self
+                    .player_inventory
+                    .slot(super::convert_to_player_slot_id(open_inv.kind(), idx));
+            }
+        } else {
+            return self.player_inventory.slot(idx);
+        }
+    }
+
+    #[track_caller]
+    pub fn slot_count(&self) -> u16 {
+        match self.open_inventory.as_ref() {
+            Some(inv) => inv.slot_count() + 36,
+            None => self.player_inventory.slot_count(),
+        }
+    }
+}
+
+/// Represents the inventory window that the player is currently viewing.
+/// Handles dispatching reads/writes to the correct inventory.
+///
+/// This is a writable version of [`InventoryWindow`].
+struct InventoryWindowMut<'a> {
+    player_inventory: &'a mut Inventory,
+    open_inventory: Option<&'a mut Inventory>,
+}
+
+impl InventoryWindowMut<'_> {
+    #[track_caller]
+    pub fn slot(&self, idx: u16) -> Option<&ItemStack> {
+        if let Some(open_inv) = self.open_inventory.as_ref() {
+            if idx < open_inv.slot_count() {
+                return open_inv.slot(idx);
+            } else {
+                return self
+                    .player_inventory
+                    .slot(super::convert_to_player_slot_id(open_inv.kind(), idx));
+            }
+        } else {
+            return self.player_inventory.slot(idx);
+        }
+    }
+
+    #[track_caller]
+    #[must_use]
+    pub fn replace_slot(
+        &mut self,
+        idx: u16,
+        item: impl Into<Option<ItemStack>>,
+    ) -> Option<ItemStack> {
+        assert!(idx < self.slot_count(), "slot index of {idx} out of bounds");
+
+        if let Some(open_inv) = self.open_inventory.as_mut() {
+            if idx < open_inv.slot_count() {
+                return open_inv.replace_slot(idx, item);
+            } else {
+                return self
+                    .player_inventory
+                    .replace_slot(super::convert_to_player_slot_id(open_inv.kind(), idx), item);
+            }
+        } else {
+            return self.player_inventory.replace_slot(idx, item);
+        }
+    }
+
+    #[track_caller]
+    #[inline]
+    pub fn set_slot(&mut self, idx: u16, item: impl Into<Option<ItemStack>>) {
+        let _ = self.replace_slot(idx, item);
+    }
+
+    pub fn slot_count(&self) -> u16 {
+        match self.open_inventory.as_ref() {
+            Some(inv) => inv.slot_count() + 36,
+            None => self.player_inventory.slot_count(),
+        }
+    }
+}
 
 /// Validates a click slot packet enforcing that all fields are valid.
 pub(crate) fn validate_click_slot_impossible(
@@ -77,6 +173,11 @@ pub(crate) fn validate_click_slot_item_duplication(
     open_inventory: Option<&Inventory>,
     cursor_item: &CursorItem,
 ) -> bool {
+    let mut window = InventoryWindowMut {
+        player_inventory,
+        open_inventory,
+    };
+
     match packet.mode {
         ClickMode::Click => {
             if packet.slot_idx == -999 {
