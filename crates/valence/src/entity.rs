@@ -109,10 +109,9 @@ pub struct PacketByteRange(pub(crate) Range<usize>);
 #[derive(Component, Default, Debug)]
 pub struct TrackedData {
     init_data: Vec<u8>,
-    /// A map of tracked data indices to the offset in `init_data` where that
-    /// particular value begins. The offsets are in ascending order. The indices
-    /// are unordered.
-    init_offsets: Vec<(u8, u32)>,
+    /// A map of tracked data indices to the byte length of the entry in
+    /// `init_data`.
+    init_entries: Vec<(u8, u32)>,
     update_data: Vec<u8>,
 }
 
@@ -143,51 +142,51 @@ impl TrackedData {
         }
     }
 
-    pub fn append_init_value(&mut self, index: u8, type_id: u8, value: &impl Encode) {
+    pub fn insert_init_value(&mut self, index: u8, type_id: u8, value: &(impl Encode + ?Sized)) {
         debug_assert!(
             index != 0xff,
             "index of 0xff is reserved for the terminator"
         );
 
+        self.remove_init_value(index);
+
         self.init_data.pop(); // Remove terminator.
 
         // Append the new value to the end.
-        debug_assert!(u32::try_from(self.init_data.len()).is_ok(), "too much data");
-        let new_offset = self.init_data.len() as u32;
+        let len_before = self.init_data.len();
 
         self.init_data.extend_from_slice(&[index, type_id]);
         if let Err(e) = value.encode(&mut self.init_data) {
             warn!("failed to encode initial tracked data: {e:#}");
         }
 
-        self.init_offsets.push((index, new_offset));
+        let len = self.init_data.len() - len_before;
+
+        self.init_entries.push((index, len as u32));
 
         self.init_data.push(0xff); // Add terminator.
     }
 
-    pub fn remove_init_value(&mut self, index: u8) {
-        // Is the index in the data?
-        if let Some((offset_pos, (_, start))) = self
-            .init_offsets
-            .iter()
-            .enumerate()
-            .find(|(_, (idx, _))| *idx == index)
-        {
-            let start = *start as usize;
+    pub fn remove_init_value(&mut self, index: u8) -> bool {
+        let mut start = 0;
 
-            let end = self
-                .init_offsets
-                .get(offset_pos + 1)
-                .map(|(_, end)| *end as usize)
-                .unwrap_or(self.init_data.len() - 1); // -1 to skip terminator.
+        for (pos, &(idx, len)) in self.init_entries.iter().enumerate() {
+            if idx == index {
+                let end = start + len as usize;
 
-            // Remove the range of bytes for the value.
-            self.init_data.drain(start..end);
-            self.init_offsets.remove(offset_pos);
+                self.init_data.drain(start..end);
+                self.init_entries.remove(pos);
+
+                return true;
+            }
+
+            start += len as usize;
         }
+
+        false
     }
 
-    pub fn append_update_value(&mut self, index: u8, type_id: u8, value: &impl Encode) {
+    pub fn append_update_value(&mut self, index: u8, type_id: u8, value: &(impl Encode + ?Sized)) {
         debug_assert!(
             index != 0xff,
             "index of 0xff is reserved for the terminator"
@@ -515,5 +514,39 @@ fn clear_animation_changes(
 fn clear_tracked_data_changes(mut tracked_data: Query<&mut TrackedData, Changed<TrackedData>>) {
     for mut tracked_data in &mut tracked_data {
         tracked_data.clear_update_values();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn insert_remove_init_tracked_data() {
+        let mut td = TrackedData::default();
+
+        td.insert_init_value(0, 3, "foo");
+        dbg!(&td);
+        td.insert_init_value(10, 6, "bar");
+        dbg!(&td);
+        td.insert_init_value(5, 9, "baz");
+        dbg!(&td);
+
+        assert!(td.remove_init_value(10));
+        dbg!(&td);
+        assert!(!td.remove_init_value(10));
+        dbg!(&td);
+
+        // Insertion overwrites value at index 0.
+        td.insert_init_value(0, 64, "quux");
+        dbg!(&td);
+
+        assert!(td.remove_init_value(0));
+        assert!(td.remove_init_value(5));
+
+        assert!(td.init_data.as_slice().is_empty() || td.init_data.as_slice() == &[0xff]);
+        assert!(td.init_data().is_none());
+
+        assert!(td.update_data.is_empty());
     }
 }
