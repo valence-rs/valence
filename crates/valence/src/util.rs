@@ -20,6 +20,7 @@ impl Aabb {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn from_bottom_size(bottom: impl Into<DVec3>, size: impl Into<DVec3>) -> Self {
         let bottom = bottom.into();
         let size = size.into();

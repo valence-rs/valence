@@ -19,7 +19,7 @@ pub struct ParticleS2c<'a> {
     pub count: i32,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum Particle {
     AmbientEntityEffect,
     AngryVillager,

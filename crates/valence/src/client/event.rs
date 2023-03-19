@@ -30,7 +30,6 @@ use valence_protocol::packet::c2s::play::{
     AdvancementTabC2s, ClientStatusC2s, ResourcePackStatusC2s, UpdatePlayerAbilitiesC2s,
 };
 use valence_protocol::packet::C2sPlayPacket;
-use valence_protocol::tracked_data::Pose;
 use valence_protocol::types::{Difficulty, Direction, Hand};
 
 use super::{

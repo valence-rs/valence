@@ -29,17 +29,14 @@ pub struct Despawned;
 /// The universally unique identifier of an entity. Component wrapper for a
 /// [`Uuid`].
 ///
-/// This component is expected to remain _unique_ and _unmodified_ during the
+/// This component is expected to remain _unique_ and _constant_ during the
 /// lifetime of the entity it is attached to.
-///
-/// Defaults to the "nil" UUID, which may be reassigned to a new random value by
-/// initialization systems.
-#[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Component, Clone, PartialEq, Eq, Debug)]
 pub struct UniqueId(pub Uuid);
 
-impl UniqueId {
-    /// Returns a new random UUID.
-    pub fn random() -> Self {
+/// Returns a random UUID.
+impl Default for UniqueId {
+    fn default() -> Self {
         Self(Uuid::from_bytes(rand::random()))
     }
 }

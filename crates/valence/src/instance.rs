@@ -21,7 +21,7 @@ use valence_protocol::Packet;
 
 use crate::component::{Despawned, Location, OldLocation, OldPosition, Position};
 use crate::dimension::DimensionId;
-use crate::entity::{BaseEntity, InitEntitiesSet};
+use crate::entity::{EntityKind, InitEntitiesSet};
 use crate::packet::{PacketWriter, WritePacket};
 use crate::prelude::FlushPacketsSet;
 use crate::server::{Server, SharedServer};
@@ -470,7 +470,7 @@ fn update_instances_pre_client(
             &OldLocation,
             Option<&Despawned>,
         ),
-        With<BaseEntity>,
+        With<EntityKind>,
     >,
     server: Res<Server>,
 ) {
@@ -630,7 +630,7 @@ fn update_instances_post_client(mut instances: Query<&mut Instance>) {
 }
 
 #[cfg(debug_assertions)]
-fn check_instance_invariants(instances: Query<&Instance>, entities: Query<(), With<BaseEntity>>) {
+fn check_instance_invariants(instances: Query<&Instance>, entities: Query<(), With<EntityKind>>) {
     for instance in &instances {
         for (pos, cell) in &instance.partition {
             for &id in &cell.entities {

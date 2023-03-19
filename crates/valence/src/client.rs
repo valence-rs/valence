@@ -38,8 +38,7 @@ use crate::component::{
     Properties, UniqueId, Username,
 };
 use crate::dimension::DimensionId;
-use crate::entity::data::TrackedData;
-use crate::entity::{EntityId, EntityStatus, HeadYaw, ObjectData, Velocity};
+use crate::entity::{EntityId, EntityStatus, HeadYaw, ObjectData, Velocity, TrackedData};
 use crate::instance::{Instance, UpdateInstancesPreClientSet};
 use crate::inventory::{Inventory, InventoryKind};
 use crate::packet::WritePacket;
@@ -832,7 +831,7 @@ impl EntityInitQueryItem<'_> {
             _ => writer.write_packet(&EntitySpawnS2c {
                 entity_id: self.entity_id.get().into(),
                 object_uuid: self.uuid.0,
-                kind: self.kind.0.into(),
+                kind: self.kind.inner().into(),
                 position: pos.to_array(),
                 pitch: ByteAngle::from_degrees(self.look.pitch),
                 yaw: ByteAngle::from_degrees(self.look.yaw),

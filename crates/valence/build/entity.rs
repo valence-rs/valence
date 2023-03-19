@@ -111,25 +111,25 @@ impl Value {
             Value::Long(_) => quote!(i64),
             Value::Float(_) => quote!(f32),
             Value::String(_) => quote!(String),
-            Value::TextComponent(_) => quote!(Text),
-            Value::OptionalTextComponent(_) => quote!(Option<Text>),
-            Value::ItemStack(_) => quote!(ItemStack),
+            Value::TextComponent(_) => quote!(crate::protocol::text::Text),
+            Value::OptionalTextComponent(_) => quote!(Option<crate::protocol::text::Text>),
+            Value::ItemStack(_) => quote!(crate::protocol::item::ItemStack),
             Value::Boolean(_) => quote!(bool),
-            Value::Rotation { .. } => quote!(EulerAngle),
-            Value::BlockPos(_) => quote!(BlockPos),
-            Value::OptionalBlockPos(_) => quote!(Option<BlockPos>),
-            Value::Facing(_) => quote!(Facing),
-            Value::OptionalUuid(_) => quote!(Option<Uuid>),
-            Value::OptionalBlockState(_) => quote!(BlockState),
-            Value::NbtCompound(_) => quote!(valence_nbt::Compound),
-            Value::Particle(_) => quote!(Particle),
-            Value::VillagerData { .. } => quote!(VillagerData),
-            Value::OptionalInt(_) => quote!(OptionalInt),
-            Value::EntityPose(_) => quote!(Pose),
-            Value::CatVariant(_) => quote!(CatKind),
-            Value::FrogVariant(_) => quote!(FrogKind),
+            Value::Rotation { .. } => quote!(crate::entity::EulerAngle),
+            Value::BlockPos(_) => quote!(crate::protocol::block_pos::BlockPos),
+            Value::OptionalBlockPos(_) => quote!(Option<crate::protocol::block_pos::BlockPos>),
+            Value::Facing(_) => quote!(crate::protocol::types::Direction),
+            Value::OptionalUuid(_) => quote!(Option<::uuid::Uuid>),
+            Value::OptionalBlockState(_) => quote!(crate::protocol::block::BlockState),
+            Value::NbtCompound(_) => quote!(crate::nbt::Compound),
+            Value::Particle(_) => quote!(crate::protocol::packet::s2c::play::particle::Particle),
+            Value::VillagerData { .. } => quote!(crate::entity::VillagerData),
+            Value::OptionalInt(_) => quote!(Option<i32>),
+            Value::EntityPose(_) => quote!(crate::entity::Pose),
+            Value::CatVariant(_) => quote!(crate::entity::CatKind),
+            Value::FrogVariant(_) => quote!(crate::entity::FrogKind),
             Value::OptionalGlobalPos(_) => quote!(()), // TODO
-            Value::PaintingVariant(_) => quote!(PaintingKind),
+            Value::PaintingVariant(_) => quote!(crate::entity::PaintingKind),
         }
     }
 
@@ -142,7 +142,7 @@ impl Value {
             Value::String(s) => quote!(#s.to_owned()),
             Value::TextComponent(txt) => {
                 assert!(txt.is_empty());
-                quote!(Text::default())
+                quote!(crate::protocol::text::Text::default())
             }
             Value::OptionalTextComponent(t) => {
                 assert!(t.is_none());
@@ -150,18 +150,18 @@ impl Value {
             }
             Value::ItemStack(stack) => {
                 assert_eq!(stack, "1 air");
-                quote!(ItemStack::new(1, ItemKind::Air, None))
+                quote!(crate::protocol::item::ItemStack::default())
             }
             Value::Boolean(b) => quote!(#b),
             Value::Rotation { pitch, yaw, roll } => quote! {
-                EulerAngle {
+                crate::entity::EulerAngle {
                     pitch: #pitch,
                     yaw: #yaw,
                     roll: #roll,
                 }
             },
             Value::BlockPos(BlockPos { x, y, z }) => {
-                quote!(BlockPos { x: #x, y: #y, z: #z })
+                quote!(crate::protocol::block_pos::BlockPos { x: #x, y: #y, z: #z })
             }
             Value::OptionalBlockPos(pos) => {
                 assert!(pos.is_none());
@@ -169,7 +169,7 @@ impl Value {
             }
             Value::Facing(f) => {
                 let variant = ident(f.to_pascal_case());
-                quote!(Facing::#variant)
+                quote!(crate::protocol::types::Direction::#variant)
             }
             Value::OptionalUuid(uuid) => {
                 assert!(uuid.is_none());
@@ -177,15 +177,15 @@ impl Value {
             }
             Value::OptionalBlockState(bs) => {
                 assert!(bs.is_none());
-                quote!(BlockState::default())
+                quote!(crate::protocol::block::BlockState::default())
             }
             Value::NbtCompound(s) => {
                 assert_eq!(s, "{}");
-                quote!(valence_nbt::Compound::default())
+                quote!(crate::nbt::Compound::default())
             }
             Value::Particle(p) => {
                 let variant = ident(p.to_pascal_case());
-                quote!(Particle::#variant)
+                quote!(crate::protocol::packet::s2c::play::particle::Particle::#variant)
             }
             Value::VillagerData {
                 typ,
@@ -194,28 +194,34 @@ impl Value {
             } => {
                 let typ = ident(typ.to_pascal_case());
                 let profession = ident(profession.to_pascal_case());
-                quote!(VillagerData::new(VillagerKind::#typ, VillagerProfession::#profession, #level))
+                quote! {
+                    crate::entity::VillagerData {
+                        kind: crate::entity::VillagerKind::#typ,
+                        profession: crate::entity::VillagerProfession::#profession,
+                        level: #level,
+                    }
+                }
             }
             Value::OptionalInt(i) => {
                 assert!(i.is_none());
-                quote!(OptionalInt::default())
+                quote!(None)
             }
             Value::EntityPose(p) => {
                 let variant = ident(p.to_pascal_case());
-                quote!(Pose::#variant)
+                quote!(crate::entity::Pose::#variant)
             }
             Value::CatVariant(c) => {
                 let variant = ident(c.to_pascal_case());
-                quote!(CatKind::#variant)
+                quote!(crate::entity::CatKind::#variant)
             }
             Value::FrogVariant(f) => {
                 let variant = ident(f.to_pascal_case());
-                quote!(FrogKind::#variant)
+                quote!(crate::entity::FrogKind::#variant)
             }
             Value::OptionalGlobalPos(_) => quote!(()),
             Value::PaintingVariant(p) => {
                 let variant = ident(p.to_pascal_case());
-                quote!(PaintingKind::#variant)
+                quote!(crate::entity::PaintingKind::#variant)
             }
         }
     }
@@ -246,11 +252,6 @@ pub fn build() -> anyhow::Result<TokenStream> {
                         }
                     }
 
-                    if name == "Entity" {
-                        // So we don't conflict with bevy entities.
-                        name = "BaseEntity".into();
-                    }
-
                     name
                 };
 
@@ -262,28 +263,28 @@ pub fn build() -> anyhow::Result<TokenStream> {
     let mut entity_kind_consts = TokenStream::new();
     let mut entity_kind_fmt_args = TokenStream::new();
     let mut translation_key_arms = TokenStream::new();
-    let mut bundles = TokenStream::new();
-    let mut components = TokenStream::new();
-
     let mut modules = TokenStream::new();
 
     for (entity_name, entity) in entities.clone() {
         let entity_name_ident = ident(&entity_name);
         let shouty_entity_name = entity_name.to_shouty_snake_case();
-        let snake_entity_name = entity_name.to_snake_case();
         let shouty_entity_name_ident = ident(&shouty_entity_name);
+        let snake_entity_name = entity_name.to_snake_case();
+        let snake_entity_name_ident = ident(&snake_entity_name);
+
+        let mut module_body = TokenStream::new();
 
         // Is this a concrete entity type?
         if let Some(entity_type) = entity.typ {
             let entity_type_id = entity_types[&entity_type];
 
-            entity_kind_consts.extend(Some(quote! {
+            entity_kind_consts.extend([quote! {
                 pub const #shouty_entity_name_ident: EntityKind = EntityKind(#entity_type_id);
-            }));
+            }]);
 
-            entity_kind_fmt_args.extend(Some(quote! {
+            entity_kind_fmt_args.extend([quote! {
                 EntityKind::#shouty_entity_name_ident => write!(f, "{} ({})", #shouty_entity_name, #entity_type_id),
-            }));
+            }]);
 
             let translation_key_expr = if let Some(key) = entity.translation_key {
                 quote!(Some(#key))
@@ -291,17 +292,9 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 quote!(None)
             };
 
-            translation_key_arms.extend(Some(quote! {
+            translation_key_arms.extend([quote! {
                 EntityKind::#shouty_entity_name_ident => #translation_key_expr,
-            }));
-
-            components.extend(Some(quote! {
-                #[doc = "Marker component for `"]
-                #[doc = #entity_type]
-                #[doc = "` entities."]
-                #[derive(Component, Copy, Clone, Default, Debug)]
-                pub struct #entity_name_ident;
-            }));
+            }]);
 
             // Create bundle type.
             let mut bundle_fields = TokenStream::new();
@@ -309,57 +302,60 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
             for marker_or_field in collect_bundle_fields(&entity_name, &entities) {
                 match marker_or_field {
-                    MarkerOrField::Marker(entity_name) => {
-                        let field_name_ident = ident(entity_name.to_snake_case());
-                        let field_type_ident = ident(entity_name.to_pascal_case());
+                    MarkerOrField::Marker { entity_name } => {
+                        let snake_entity_name_ident = ident(entity_name.to_snake_case());
+                        let pascal_entity_name_ident = ident(entity_name.to_pascal_case());
 
-                        bundle_fields.extend(Some(quote! {
-                            pub #field_name_ident: #field_type_ident,
-                        }));
+                        bundle_fields.extend([quote! {
+                            pub #snake_entity_name_ident: super::#snake_entity_name_ident::#pascal_entity_name_ident,
+                        }]);
 
-                        bundle_init_fields.extend(Some(quote! {
-                            #field_name_ident: Default::default(),
-                        }))
-                    },
-                    MarkerOrField::Field(field) => {
+                        bundle_init_fields.extend([quote! {
+                            #snake_entity_name_ident: Default::default(),
+                        }]);
+                    }
+                    MarkerOrField::Field { entity_name, field } => {
                         let snake_field_name = field.name.to_snake_case();
                         let pascal_field_name = field.name.to_pascal_case();
+                        let pascal_field_name_ident = ident(&pascal_field_name);
+                        let snake_entity_name = entity_name.to_snake_case();
+                        let snake_entity_name_ident = ident(&snake_entity_name);
 
-                        let field_name_ident = ident(format!("{snake_entity_name}_{snake_field_name}"));
-                        let field_type_ident = ident(format!("{entity_name}{pascal_field_name}"));
+                        let field_name_ident =
+                            ident(format!("{snake_entity_name}_{snake_field_name}"));
 
-                        bundle_fields.extend(Some(quote! {
-                            pub #field_name_ident: #field_type_ident,
-                        }));
+                        bundle_fields.extend([quote! {
+                            pub #field_name_ident: super::#snake_entity_name_ident::#pascal_field_name_ident,
+                        }]);
 
-                        bundle_init_fields.extend(Some(quote! {
-                            #field_name_ident: Default::default()
-                        }));
-                    },
+                        bundle_init_fields.extend([quote! {
+                            #field_name_ident: Default::default(),
+                        }]);
+                    }
                 }
             }
 
-            bundle_fields.extend(Some(quote! {
-                pub kind: EntityKind,
-                pub id: EntityId,
-                pub uuid: UniqueId,
-                pub location: Location,
-                pub old_location: OldLocation,
-                pub position: Position,
-                pub old_position: OldPosition,
-                pub look: Look,
-                pub head_yaw: HeadYaw,
-                pub on_ground: OnGround,
-                pub velocity: Velocity,
-                pub statuses: EntityStatuses,
-                pub animations: EntityAnimations,
-                pub object_data: ObjectData,
-                pub tracked_fields: TrackedData,
-                pub packet_byte_range: PacketByteRange,
-            }));
+            bundle_fields.extend([quote! {
+                pub kind: super::EntityKind,
+                pub id: super::EntityId,
+                pub uuid: super::UniqueId,
+                pub location: super::Location,
+                pub old_location: super::OldLocation,
+                pub position: super::Position,
+                pub old_position: super::OldPosition,
+                pub look: super::Look,
+                pub head_yaw: super::HeadYaw,
+                pub on_ground: super::OnGround,
+                pub velocity: super::Velocity,
+                pub statuses: super::EntityStatuses,
+                pub animations: super::EntityAnimations,
+                pub object_data: super::ObjectData,
+                pub tracked_fields: super::TrackedData,
+                pub packet_byte_range: super::PacketByteRange,
+            }]);
 
-            bundle_init_fields.extend(Some(quote! {
-                kind: EntityKind::#shouty_entity_name_ident,
+            bundle_init_fields.extend([quote! {
+                kind: super::EntityKind::#shouty_entity_name_ident,
                 id: Default::default(),
                 uuid: Default::default(),
                 location: Default::default(),
@@ -375,12 +371,12 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 object_data: Default::default(),
                 tracked_fields: Default::default(),
                 packet_byte_range: Default::default(),
-            }));
+            }]);
 
             let bundle_name_ident = ident(format!("{entity_name}Bundle"));
 
-            bundles.extend(Some(quote! {
-                #[derive(Bundle, Clone, Debug)]
+            module_body.extend([quote! {
+                #[derive(bevy_ecs::bundle::Bundle, Debug)]
                 pub struct #bundle_name_ident {
                     #bundle_fields
                 }
@@ -392,41 +388,61 @@ pub fn build() -> anyhow::Result<TokenStream> {
                         }
                     }
                 }
-            }));
+            }]);
         }
 
         for field in &entity.fields {
-            let pascal_field_name = field.name.to_pascal_case();
-
-            let comp_ident = ident(format!("{entity_name}{pascal_field_name}"));
-            let comp_inner_type = field.default_value.field_type();
+            let pascal_field_name_ident = ident(field.name.to_pascal_case());
+            let inner_type = field.default_value.field_type();
             let default_expr = field.default_value.default_expr();
 
-            components.extend(Some(quote! {
-                #[derive(Component, Clone, Debug)]
-                pub struct #comp_ident(pub #comp_inner_type);
+            module_body.extend([quote! {
+                #[derive(bevy_ecs::component::Component, PartialEq, Clone, Debug)]
+                pub struct #pascal_field_name_ident(pub #inner_type);
 
-                impl Default for #comp_ident {
+                impl Default for #pascal_field_name_ident {
                     fn default() -> Self {
                         Self(#default_expr)
                     }
                 }
-            }));
+            }]);
         }
+
+        module_body.extend([quote! {
+            #[doc = "Marker component for `"]
+            #[doc = #snake_entity_name]
+            #[doc = "` entities."]
+            #[derive(bevy_ecs::component::Component, Copy, Clone, Default, Debug)]
+            pub struct #entity_name_ident;
+        }]);
+
+        modules.extend([quote! {
+            pub mod #snake_entity_name_ident {
+                #module_body
+            }
+        }]);
     }
 
     Ok(quote! {
-        // #bundles
+        #modules
 
         /// Identifies the type of an entity.
         /// As a component, the entity kind should not be modified.
         #[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-        pub struct EntityKind(pub i32);
+        pub struct EntityKind(i32);
 
         impl EntityKind {
             #entity_kind_consts
 
-            pub fn translation_key(self) -> Option<&'static str> {
+            pub const fn new(inner: i32) -> Self {
+                Self(inner)
+            }
+
+            pub const fn inner(self) -> i32 {
+                self.0
+            }
+
+            pub const fn translation_key(self) -> Option<&'static str> {
                 match self {
                     #translation_key_arms
                     _ => None,
@@ -442,14 +458,17 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
         }
-
-        #components
     })
 }
 
 enum MarkerOrField<'a> {
-    Marker(&'a str),
-    Field(&'a Field),
+    Marker {
+        entity_name: &'a str,
+    },
+    Field {
+        entity_name: &'a str,
+        field: &'a Field,
+    },
 }
 
 fn collect_bundle_fields<'a>(
@@ -461,8 +480,12 @@ fn collect_bundle_fields<'a>(
     loop {
         let e = &entities[entity_name];
 
-        res.push(MarkerOrField::Marker(entity_name));
-        res.extend(e.fields.iter().map(MarkerOrField::Field));
+        res.push(MarkerOrField::Marker { entity_name });
+        res.extend(
+            e.fields
+                .iter()
+                .map(|field| MarkerOrField::Field { entity_name, field }),
+        );
 
         if let Some(parent) = &e.parent {
             entity_name = parent;
