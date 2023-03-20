@@ -259,6 +259,11 @@ pub(crate) fn validate_click_slot_item_duplication(
     }
 }
 
+/// Calculate the total difference in item counts if the changes in this packet
+/// were to be applied.
+///
+/// Returns a positive number if items were added to the window, and a negative
+/// number if items were removed from the window.
 fn calculate_net_item_delta(
     packet: &ClickSlotC2s,
     window: &InventoryWindow,
@@ -296,6 +301,82 @@ mod test {
 
     use super::*;
     use crate::prelude::InventoryKind;
+
+    #[test]
+    fn net_item_delta_1() {
+        let drag_packet = ClickSlotC2s {
+            window_id: 2,
+            state_id: VarInt(14),
+            slot_idx: -999,
+            button: 2,
+            mode: ClickMode::Drag,
+            slots: vec![
+                Slot {
+                    idx: 4,
+                    item: Some(ItemStack::new(ItemKind::Diamond, 21, None)),
+                },
+                Slot {
+                    idx: 3,
+                    item: Some(ItemStack::new(ItemKind::Diamond, 21, None)),
+                },
+                Slot {
+                    idx: 5,
+                    item: Some(ItemStack::new(ItemKind::Diamond, 21, None)),
+                },
+            ],
+            carried_item: Some(ItemStack::new(ItemKind::Diamond, 1, None)),
+        };
+
+        let player_inventory = Inventory::new(InventoryKind::Player);
+        let inventory = Inventory::new(InventoryKind::Generic9x1);
+        let window = InventoryWindow::new(&player_inventory, Some(&inventory));
+        let cursor_item = CursorItem(Some(ItemStack::new(ItemKind::Diamond, 64, None)));
+
+        assert_eq!(
+            calculate_net_item_delta(&drag_packet, &window, &cursor_item),
+            0
+        );
+    }
+
+    #[test]
+    fn net_item_delta_2() {
+        let drag_packet = ClickSlotC2s {
+            window_id: 2,
+            state_id: VarInt(14),
+            slot_idx: -999,
+            button: 2,
+            mode: ClickMode::Click,
+            slots: vec![
+                Slot {
+                    idx: 2,
+                    item: Some(ItemStack::new(ItemKind::Diamond, 2, None)),
+                },
+                Slot {
+                    idx: 3,
+                    item: Some(ItemStack::new(ItemKind::IronIngot, 2, None)),
+                },
+                Slot {
+                    idx: 4,
+                    item: Some(ItemStack::new(ItemKind::GoldIngot, 2, None)),
+                },
+                Slot {
+                    idx: 5,
+                    item: Some(ItemStack::new(ItemKind::Emerald, 2, None)),
+                },
+            ],
+            carried_item: Some(ItemStack::new(ItemKind::OakWood, 2, None)),
+        };
+
+        let player_inventory = Inventory::new(InventoryKind::Player);
+        let inventory = Inventory::new(InventoryKind::Generic9x1);
+        let window = InventoryWindow::new(&player_inventory, Some(&inventory));
+        let cursor_item = CursorItem::default();
+
+        assert_eq!(
+            calculate_net_item_delta(&drag_packet, &window, &cursor_item),
+            10
+        );
+    }
 
     #[test]
     fn click_filled_slot_with_empty_cursor_success() {
