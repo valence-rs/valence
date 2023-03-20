@@ -14,7 +14,14 @@ struct InventoryWindow<'a> {
     open_inventory: Option<&'a Inventory>,
 }
 
-impl InventoryWindow<'_> {
+impl<'a> InventoryWindow<'a> {
+    pub fn new(player_inventory: &'a Inventory, open_inventory: Option<&'a Inventory>) -> Self {
+        Self {
+            player_inventory,
+            open_inventory,
+        }
+    }
+
     #[track_caller]
     pub fn slot(&self, idx: u16) -> Option<&ItemStack> {
         if let Some(open_inv) = self.open_inventory.as_ref() {
@@ -252,7 +259,14 @@ pub(crate) fn validate_click_slot_item_duplication(
                 _ => unreachable!(),
             };
         }
-        ClickMode::Drag | ClickMode::DoubleClick => {
+        ClickMode::Drag => {
+            if matches!(packet.button, 2 | 6 | 10) {
+                let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
+                return count_deltas == 0;
+            }
+            return packet.slots.is_empty() && packet.carried_item == cursor_item.0;
+        }
+        ClickMode::DoubleClick => {
             let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
             return count_deltas == 0;
         }
