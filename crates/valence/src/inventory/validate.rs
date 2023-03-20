@@ -626,12 +626,12 @@ mod test {
 
         for (i, packet) in packets.iter().enumerate() {
             assert!(
-                validate_click_slot_impossible(&packet, &player_inventory, None,),
+                validate_click_slot_impossible(packet, &player_inventory, None,),
                 "packet {i} failed validation"
             );
             assert!(
                 !validate_click_slot_item_duplication(
-                    &packet,
+                    packet,
                     &player_inventory,
                     None,
                     &cursor_item
