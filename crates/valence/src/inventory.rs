@@ -307,6 +307,118 @@ impl OpenInventory {
     }
 }
 
+/// A helper to represent the inventory window that the player is currently
+/// viewing. Handles dispatching reads to the correct inventory.
+///
+/// This is a read-only version of [`InventoryWindowMut`].
+pub struct InventoryWindow<'a> {
+    player_inventory: &'a Inventory,
+    open_inventory: Option<&'a Inventory>,
+}
+
+impl<'a> InventoryWindow<'a> {
+    pub fn new(player_inventory: &'a Inventory, open_inventory: Option<&'a Inventory>) -> Self {
+        Self {
+            player_inventory,
+            open_inventory,
+        }
+    }
+
+    #[track_caller]
+    pub fn slot(&self, idx: u16) -> Option<&ItemStack> {
+        if let Some(open_inv) = self.open_inventory.as_ref() {
+            if idx < open_inv.slot_count() {
+                return open_inv.slot(idx);
+            } else {
+                return self
+                    .player_inventory
+                    .slot(convert_to_player_slot_id(open_inv.kind(), idx));
+            }
+        } else {
+            return self.player_inventory.slot(idx);
+        }
+    }
+
+    #[track_caller]
+    pub fn slot_count(&self) -> u16 {
+        match self.open_inventory.as_ref() {
+            Some(inv) => inv.slot_count() + 36,
+            None => self.player_inventory.slot_count(),
+        }
+    }
+}
+
+/// A helper to represent the inventory window that the player is currently
+/// viewing. Handles dispatching reads/writes to the correct inventory.
+///
+/// This is a writable version of [`InventoryWindow`].
+pub struct InventoryWindowMut<'a> {
+    player_inventory: &'a mut Inventory,
+    open_inventory: Option<&'a mut Inventory>,
+}
+
+impl<'a> InventoryWindowMut<'a> {
+    pub fn new(
+        player_inventory: &'a mut Inventory,
+        open_inventory: Option<&'a mut Inventory>,
+    ) -> Self {
+        Self {
+            player_inventory,
+            open_inventory,
+        }
+    }
+
+    #[track_caller]
+    pub fn slot(&self, idx: u16) -> Option<&ItemStack> {
+        if let Some(open_inv) = self.open_inventory.as_ref() {
+            if idx < open_inv.slot_count() {
+                return open_inv.slot(idx);
+            } else {
+                return self
+                    .player_inventory
+                    .slot(convert_to_player_slot_id(open_inv.kind(), idx));
+            }
+        } else {
+            return self.player_inventory.slot(idx);
+        }
+    }
+
+    #[track_caller]
+    #[must_use]
+    pub fn replace_slot(
+        &mut self,
+        idx: u16,
+        item: impl Into<Option<ItemStack>>,
+    ) -> Option<ItemStack> {
+        assert!(idx < self.slot_count(), "slot index of {idx} out of bounds");
+
+        if let Some(open_inv) = self.open_inventory.as_mut() {
+            if idx < open_inv.slot_count() {
+                return open_inv.replace_slot(idx, item);
+            } else {
+                return self
+                    .player_inventory
+                    .replace_slot(convert_to_player_slot_id(open_inv.kind(), idx), item);
+            }
+        } else {
+            return self.player_inventory.replace_slot(idx, item);
+        }
+    }
+
+    #[track_caller]
+    #[inline]
+    pub fn set_slot(&mut self, idx: u16, item: impl Into<Option<ItemStack>>) {
+        let _ = self.replace_slot(idx, item);
+    }
+
+    pub fn slot_count(&self) -> u16 {
+        match self.open_inventory.as_ref() {
+            Some(inv) => inv.slot_count() + 36,
+            None => self.player_inventory.slot_count(),
+        }
+    }
+}
+
 pub(crate) struct InventoryPlugin;
 
 impl Plugin for InventoryPlugin {
@@ -578,7 +690,7 @@ fn handle_click_container(
                 continue;
             }
 
-            cursor_item.0 = event.carried_item.clone();
+            cursor_item.set_if_neq(CursorItem(event.carried_item.clone()));
 
             for slot in event.slot_changes.clone() {
                 if (0i16..target_inventory.slot_count() as i16).contains(&slot.idx) {
