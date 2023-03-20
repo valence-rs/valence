@@ -612,8 +612,6 @@ fn handle_click_container(
                 continue;
             }
 
-            // TODO: do more validation on the click
-
             cursor_item.set_if_neq(CursorItem(event.carried_item.clone()));
             inv_state.client_updated_cursor_item = true;
 
@@ -1657,7 +1655,7 @@ mod test {
     }
 
     #[test]
-    fn dragging_items() {
+    fn dragging_items() -> anyhow::Result<()> {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
         app.world.get_mut::<CursorItem>(client_ent).unwrap().0 =
@@ -1667,9 +1665,13 @@ mod test {
         app.update();
         client_helper.clear_sent();
 
+        let inv_state = app.world.get::<PlayerInventoryState>(client_ent).unwrap();
+        let window_id = inv_state.window_id;
+        let state_id = inv_state.state_id.0;
+
         let drag_packet = ClickSlotC2s {
-            window_id: 0,
-            state_id: VarInt(0),
+            window_id,
+            state_id: VarInt(state_id),
             slot_idx: -999,
             button: 2,
             mode: ClickMode::Drag,
@@ -1692,6 +1694,8 @@ mod test {
         client_helper.send(&drag_packet);
 
         app.update();
+        let sent_packets = client_helper.collect_sent()?;
+        assert_eq!(sent_packets.len(), 0);
 
         let cursor_item = app
             .world
@@ -1711,5 +1715,7 @@ mod test {
                 Some(&ItemStack::new(ItemKind::Diamond, 21, None))
             );
         }
+
+        Ok(())
     }
 }

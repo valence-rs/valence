@@ -881,7 +881,7 @@ fn handle_one_packet(
                 );
                 return Ok(true);
             }
-            if p.slot_idx < 0 {
+            if p.slot_idx < 0 && p.mode == ClickMode::Click {
                 if let Some(stack) = q.cursor_item.0.take() {
                     events.2.drop_item_stack.send(DropItemStack {
                         client: entity,
