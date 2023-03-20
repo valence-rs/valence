@@ -136,7 +136,7 @@ pub(crate) fn validate_click_slot_item_duplication(
                 } else {
                     // assert that a merge occurs
                     let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
-                    return count_deltas == 0;
+                    count_deltas == 0
                 }
             }
         }
@@ -164,7 +164,7 @@ pub(crate) fn validate_click_slot_item_duplication(
         }
         ClickMode::CreativeMiddleClick => true,
         ClickMode::DropKey => {
-            if packet.slots.len() == 0
+            if packet.slots.is_empty()
                 || packet.slot_idx != packet.slots.first().map(|s| s.idx).unwrap_or(-2)
             {
                 return false;
@@ -185,22 +185,23 @@ pub(crate) fn validate_click_slot_item_duplication(
 
             let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
 
-            return match packet.button {
+            match packet.button {
                 0 => count_deltas == -1,
                 1 => count_deltas == -old_slot.map(|s| s.count() as i32).unwrap_or(0),
                 _ => unreachable!(),
-            };
+            }
         }
         ClickMode::Drag => {
             if matches!(packet.button, 2 | 6 | 10) {
                 let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
-                return count_deltas == 0;
+                count_deltas == 0
+            } else {
+                packet.slots.is_empty() && packet.carried_item == cursor_item.0
             }
-            return packet.slots.is_empty() && packet.carried_item == cursor_item.0;
         }
         ClickMode::DoubleClick => {
             let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
-            return count_deltas == 0;
+            count_deltas == 0
         }
     }
 }

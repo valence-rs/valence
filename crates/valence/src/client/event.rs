@@ -863,8 +863,7 @@ fn handle_one_packet(
             let open_inv = q
                 .open_inventory
                 .as_ref()
-                .map(|open| inventories.get(open.entity).ok())
-                .flatten();
+                .and_then(|open| inventories.get(open.entity).ok());
             if !crate::inventory::validate_click_slot_impossible(&p, &q.inventory, open_inv) {
                 debug!("client {:#?} invalid click slot packet: {:#?}", q.entity, p);
                 return Ok(true);

@@ -418,14 +418,13 @@ impl<'a> InventoryWindowMut<'a> {
 
         if let Some(open_inv) = self.open_inventory.as_mut() {
             if idx < open_inv.slot_count() {
-                return open_inv.replace_slot(idx, item);
+                open_inv.replace_slot(idx, item)
             } else {
-                return self
-                    .player_inventory
-                    .replace_slot(convert_to_player_slot_id(open_inv.kind(), idx), item);
+                self.player_inventory
+                    .replace_slot(convert_to_player_slot_id(open_inv.kind(), idx), item)
             }
         } else {
-            return self.player_inventory.replace_slot(idx, item);
+            self.player_inventory.replace_slot(idx, item)
         }
     }
 
