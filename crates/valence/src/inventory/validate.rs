@@ -106,33 +106,19 @@ pub(crate) fn validate_click_slot_item_duplication(
                 }
 
                 // Clicked outside the window
-                match packet.button {
+                let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
+                return match packet.button {
+                    1 => count_deltas == -1,
                     0 => {
-                        // drop entire stack
-                        if packet.carried_item.is_none() {
-                            // Dropping an item
-                            return true;
-                        }
+                        count_deltas
+                            == -cursor_item
+                                .0
+                                .as_ref()
+                                .map(|s| s.count() as i32)
+                                .unwrap_or(0)
                     }
-                    1 => {
-                        // drop single item from stack
-                        return match (&cursor_item.0, &packet.carried_item) {
-                            (Some(server_item), Some(client_item)) => {
-                                server_item.count() - 1 == client_item.count()
-                            }
-                            (Some(server_item), None) => server_item.count() == 1,
-                            (None, _) => {
-                                // can't possibly drop an item
-                                false
-                            }
-                        };
-                    }
-                    _ => {
-                        // Invalid button
-                        return false;
-                    }
-                }
-                true
+                    _ => unreachable!(),
+                };
             } else {
                 if packet.slots.len() != 1 {
                     return false;
