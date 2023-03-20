@@ -148,7 +148,21 @@ pub(crate) fn validate_click_slot_item_duplication(
             }
 
             let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
-            return count_deltas == 0;
+            if count_deltas != 0 {
+                return false;
+            }
+
+            // assert that a swap occurs
+            let old_slots = [
+                window.slot(packet.slots[0].idx as u16),
+                window.slot(packet.slots[1].idx as u16),
+            ];
+            return old_slots
+                .iter()
+                .any(|s| s == &packet.slots[0].item.as_ref())
+                && old_slots
+                    .iter()
+                    .any(|s| s == &packet.slots[1].item.as_ref());
         }
         ClickMode::CreativeMiddleClick => true,
         ClickMode::DropKey => {
