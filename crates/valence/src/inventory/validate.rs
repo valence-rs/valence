@@ -138,8 +138,20 @@ pub(crate) fn validate_click_slot_item_duplication(
                     return false;
                 }
 
-                let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
-                return count_deltas == 0;
+                let old_slot = window.slot(packet.slots[0].idx as u16);
+                if old_slot.is_none()
+                    || cursor_item.0.is_none()
+                    || (old_slot.unwrap().item != cursor_item.0.as_ref().unwrap().item
+                        && old_slot.unwrap().nbt != cursor_item.0.as_ref().unwrap().nbt)
+                {
+                    // assert that a swap occurs
+                    return old_slot == packet.carried_item.as_ref()
+                        && cursor_item.0 == packet.slots[0].item;
+                } else {
+                    // assert that a merge occurs
+                    let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
+                    return count_deltas == 0;
+                }
             }
         }
         ClickMode::ShiftClick | ClickMode::Hotbar => {
