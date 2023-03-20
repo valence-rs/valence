@@ -533,4 +533,83 @@ mod test {
             &cursor_item
         ));
     }
+
+    #[test]
+    fn disallow_item_transmutation() {
+        // no alchemy allowed - make sure that lead can't be turned into gold
+
+        let mut player_inventory = Inventory::new(InventoryKind::Player);
+        player_inventory.set_slot(9, ItemStack::new(ItemKind::Lead, 2, None));
+        let cursor_item = CursorItem::default();
+
+        let packets = vec![
+            ClickSlotC2s {
+                window_id: 0,
+                button: 0,
+                mode: ClickMode::ShiftClick,
+                state_id: VarInt(0),
+                slot_idx: 9,
+                slots: vec![
+                    Slot { idx: 9, item: None },
+                    Slot {
+                        idx: 36,
+                        item: Some(ItemStack::new(ItemKind::GoldIngot, 2, None)),
+                    },
+                ],
+                carried_item: None,
+            },
+            ClickSlotC2s {
+                window_id: 0,
+                button: 0,
+                mode: ClickMode::Hotbar,
+                state_id: VarInt(0),
+                slot_idx: 9,
+                slots: vec![
+                    Slot { idx: 9, item: None },
+                    Slot {
+                        idx: 36,
+                        item: Some(ItemStack::new(ItemKind::GoldIngot, 2, None)),
+                    },
+                ],
+                carried_item: None,
+            },
+            ClickSlotC2s {
+                window_id: 0,
+                button: 0,
+                mode: ClickMode::Click,
+                state_id: VarInt(0),
+                slot_idx: 9,
+                slots: vec![Slot { idx: 9, item: None }],
+                carried_item: Some(ItemStack::new(ItemKind::GoldIngot, 2, None)),
+            },
+            ClickSlotC2s {
+                window_id: 0,
+                button: 0,
+                mode: ClickMode::DropKey,
+                state_id: VarInt(0),
+                slot_idx: 9,
+                slots: vec![Slot {
+                    idx: 9,
+                    item: Some(ItemStack::new(ItemKind::GoldIngot, 1, None)),
+                }],
+                carried_item: None,
+            },
+        ];
+
+        for (i, packet) in packets.iter().enumerate() {
+            assert!(
+                validate_click_slot_impossible(&packet, &player_inventory, None,),
+                "packet {i} failed validation"
+            );
+            assert!(
+                !validate_click_slot_item_duplication(
+                    &packet,
+                    &player_inventory,
+                    None,
+                    &cursor_item
+                ),
+                "packet {i} passed item duplication check when it should have failed"
+            );
+        }
+    }
 }
