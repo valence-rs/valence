@@ -122,10 +122,20 @@ pub(crate) fn validate_click_slot_impossible(
         None => player_inventory.slot_count(),
     };
 
+    // check all slot ids and item counts are valid
+    if !packet.slots.iter().all(|s| {
+        (0..=max_slot).contains(&(s.idx as u16))
+            && (0..=64).contains(&(s.item.as_ref().map(|i| i.count()).unwrap_or(0)))
+    }) {
+        return false;
+    }
+
+    // check carried item count is valid
     if !packet
-        .slots
-        .iter()
-        .all(|s| (0..=max_slot).contains(&(s.idx as u16)))
+        .carried_item
+        .as_ref()
+        .map(|i| (0..=64).contains(&i.count()))
+        .unwrap_or(true)
     {
         return false;
     }
