@@ -831,6 +831,8 @@ impl From<WindowType> for InventoryKind {
 mod test {
     use bevy_app::App;
     use valence_protocol::item::ItemKind;
+    use valence_protocol::packet::c2s::play::click_slot::{ClickMode, Slot};
+    use valence_protocol::packet::c2s::play::ClickSlotC2s;
     use valence_protocol::packet::S2cPlayPacket;
 
     use super::*;
@@ -1651,6 +1653,63 @@ mod test {
             );
 
             Ok(())
+        }
+    }
+
+    #[test]
+    fn dragging_items() {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+        app.world.get_mut::<CursorItem>(client_ent).unwrap().0 =
+            Some(ItemStack::new(ItemKind::Diamond, 64, None));
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        let drag_packet = ClickSlotC2s {
+            window_id: 0,
+            state_id: VarInt(0),
+            slot_idx: -999,
+            button: 2,
+            mode: ClickMode::Drag,
+            slots: vec![
+                Slot {
+                    idx: 9,
+                    item: Some(ItemStack::new(ItemKind::Diamond, 21, None)),
+                },
+                Slot {
+                    idx: 10,
+                    item: Some(ItemStack::new(ItemKind::Diamond, 21, None)),
+                },
+                Slot {
+                    idx: 11,
+                    item: Some(ItemStack::new(ItemKind::Diamond, 21, None)),
+                },
+            ],
+            carried_item: Some(ItemStack::new(ItemKind::Diamond, 1, None)),
+        };
+        client_helper.send(&drag_packet);
+
+        app.update();
+
+        let cursor_item = app
+            .world
+            .get::<CursorItem>(client_ent)
+            .expect("could not find client");
+        assert_eq!(
+            cursor_item.0,
+            Some(ItemStack::new(ItemKind::Diamond, 1, None))
+        );
+        let inventory = app
+            .world
+            .get::<Inventory>(client_ent)
+            .expect("could not find inventory");
+        for i in 9..12 {
+            assert_eq!(
+                inventory.slot(i),
+                Some(&ItemStack::new(ItemKind::Diamond, 21, None))
+            );
         }
     }
 }
