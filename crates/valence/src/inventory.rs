@@ -311,6 +311,18 @@ impl OpenInventory {
 /// viewing. Handles dispatching reads to the correct inventory.
 ///
 /// This is a read-only version of [`InventoryWindowMut`].
+///
+/// ```
+/// # use valence::prelude::*;
+/// let mut player_inventory = Inventory::new(InventoryKind::Player);
+/// player_inventory.set_slot(36, ItemStack::new(ItemKind::Diamond, 1, None));
+/// let target_inventory = Inventory::new(InventoryKind::Generic9x3);
+/// let window = InventoryWindow::new(&player_inventory, Some(&target_inventory));
+/// assert_eq!(
+///     window.slot(54),
+///     Some(&ItemStack::new(ItemKind::Diamond, 1, None))
+/// );
+/// ```
 pub struct InventoryWindow<'a> {
     player_inventory: &'a Inventory,
     open_inventory: Option<&'a Inventory>,
@@ -352,6 +364,18 @@ impl<'a> InventoryWindow<'a> {
 /// viewing. Handles dispatching reads/writes to the correct inventory.
 ///
 /// This is a writable version of [`InventoryWindow`].
+///
+/// ```
+/// # use valence::prelude::*;
+/// let mut player_inventory = Inventory::new(InventoryKind::Player);
+/// let mut target_inventory = Inventory::new(InventoryKind::Generic9x3);
+/// let mut window = InventoryWindowMut::new(&mut player_inventory, Some(&mut target_inventory));
+/// window.set_slot(54, ItemStack::new(ItemKind::Diamond, 1, None));
+/// assert_eq!(
+///     player_inventory.slot(36),
+///     Some(&ItemStack::new(ItemKind::Diamond, 1, None))
+/// );
+/// ```
 pub struct InventoryWindowMut<'a> {
     player_inventory: &'a mut Inventory,
     open_inventory: Option<&'a mut Inventory>,
