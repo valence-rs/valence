@@ -164,17 +164,30 @@ pub(crate) fn validate_click_slot_item_duplication(
         }
         ClickMode::CreativeMiddleClick => true,
         ClickMode::DropKey => {
+            if packet.slots.len() == 0
+                || packet.slot_idx != packet.slots.first().map(|s| s.idx).unwrap_or(-2)
+            {
+                return false;
+            }
+
+            let old_slot = window.slot(packet.slot_idx as u16);
+            let new_slot = packet.slots[0].item.as_ref();
+            let is_transmuting = match (old_slot, new_slot) {
+                (Some(old_slot), Some(new_slot)) => {
+                    old_slot.item != new_slot.item || old_slot.nbt != new_slot.nbt
+                }
+                (_, None) => false,
+                (None, Some(_)) => true,
+            };
+            if is_transmuting {
+                return false;
+            }
+
             let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
 
             return match packet.button {
                 0 => count_deltas == -1,
-                1 => {
-                    count_deltas
-                        == -window
-                            .slot(packet.slot_idx as u16)
-                            .map(|s| s.count() as i32)
-                            .unwrap_or(0)
-                }
+                1 => count_deltas == -old_slot.map(|s| s.count() as i32).unwrap_or(0),
                 _ => unreachable!(),
             };
         }
