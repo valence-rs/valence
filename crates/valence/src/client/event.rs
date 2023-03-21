@@ -15,9 +15,7 @@ use valence_protocol::ident::Ident;
 use valence_protocol::item::ItemStack;
 use valence_protocol::packet::c2s::play::click_slot::{ClickMode, Slot};
 use valence_protocol::packet::c2s::play::client_command::Action as ClientCommandAction;
-use valence_protocol::packet::c2s::play::client_settings::{
-    ChatMode, DisplayedSkinParts, MainArm,
-};
+use valence_protocol::packet::c2s::play::client_settings::{ChatMode, DisplayedSkinParts, MainArm};
 use valence_protocol::packet::c2s::play::player_action::Action as PlayerAction;
 use valence_protocol::packet::c2s::play::player_interact::Interaction;
 use valence_protocol::packet::c2s::play::recipe_category_options::RecipeBookId;

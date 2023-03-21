@@ -49,8 +49,8 @@ use crate::server::{NewClientInfo, Server};
 use crate::util::velocity_to_packet_units;
 use crate::view::{ChunkPos, ChunkView};
 
-pub mod event;
 mod default_event_handler;
+pub mod event;
 
 pub use default_event_handler::*;
 

@@ -3,11 +3,12 @@ use bevy_ecs::query::WorldQuery;
 use valence_protocol::types::Hand;
 
 use super::event::{
-    ClientSettings, HandSwing, StartSneaking, StartSprinting, StopSneaking, StopSprinting,
+    ClientSettings, HandSwing, PlayerMove, StartSneaking, StartSprinting, StopSneaking,
+    StopSprinting,
 };
 use super::{Client, ViewDistance};
 use crate::entity::player::PlayerModelParts;
-use crate::entity::{entity, player, EntityAnimation, EntityAnimations, EntityKind, Pose};
+use crate::entity::{entity, player, EntityAnimation, EntityAnimations, EntityKind, HeadYaw, Pose};
 
 #[doc(hidden)]
 #[derive(WorldQuery)]
@@ -15,6 +16,7 @@ use crate::entity::{entity, player, EntityAnimation, EntityAnimations, EntityKin
 pub struct DefaultEventHandlerQuery {
     client: &'static mut Client,
     view_dist: &'static mut ViewDistance,
+    head_yaw: &'static mut HeadYaw,
     player_model_parts: Option<&'static mut PlayerModelParts>,
     pose: &'static mut entity::Pose,
     flags: &'static mut entity::Flags,
@@ -42,8 +44,8 @@ pub struct DefaultEventHandlerQuery {
 pub fn default_event_handler(
     mut clients: Query<DefaultEventHandlerQuery>,
     mut update_settings_events: EventReader<ClientSettings>,
-    // mut player_move_events: EventReader<PlayerMove>,
-    mut start_sneaking_events: EventReader<StartSneaking>,
+    mut player_move: EventReader<PlayerMove>,
+    mut start_sneaking: EventReader<StartSneaking>,
     mut stop_sneaking: EventReader<StopSneaking>,
     mut start_sprinting: EventReader<StartSprinting>,
     mut stop_sprinting: EventReader<StopSprinting>,
@@ -70,27 +72,13 @@ pub fn default_event_handler(
         }
     }
 
-    /*
-    for PlayerMove {
-        client,
-        position,
-        yaw,
-        pitch,
-        on_ground,
-        ..
-    } in player_move.iter()
-    {
-        if let Ok((_, Some(mut mcentity), _)) = clients.get_mut(*client) {
-            mcentity.set_position(*position);
-            mcentity.set_yaw(*yaw);
-            mcentity.set_head_yaw(*yaw);
-            mcentity.set_pitch(*pitch);
-            mcentity.set_on_ground(*on_ground);
+    for PlayerMove { client, yaw, .. } in player_move.iter() {
+        if let Ok(mut q) = clients.get_mut(*client) {
+            q.head_yaw.set_if_neq(HeadYaw(*yaw));
         }
     }
-    */
 
-    for StartSneaking { client } in start_sneaking_events.iter() {
+    for StartSneaking { client } in start_sneaking.iter() {
         if let Ok(mut q) = clients.get_mut(*client) {
             q.pose.set_if_neq(entity::Pose(Pose::Sneaking));
         }

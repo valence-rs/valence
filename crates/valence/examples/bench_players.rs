@@ -2,8 +2,7 @@
 
 use std::time::Instant;
 
-use valence::client::despawn_disconnected_clients;
-use valence::client::default_event_handler;
+use valence::client::{default_event_handler, despawn_disconnected_clients};
 use valence::entity::player::PlayerBundle;
 use valence::instance::{Chunk, Instance};
 use valence::prelude::*;

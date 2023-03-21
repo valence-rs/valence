@@ -449,6 +449,7 @@ macro_rules! flags {
                     #[doc = "Gets the bit at offset "]
                     #[doc = stringify!($offset)]
                     #[doc = "."]
+                    #[inline]
                     pub const fn $flag(&self) -> bool {
                         (self.0 >> $offset) & 1 == 1
                     }
@@ -457,8 +458,9 @@ macro_rules! flags {
                         #[doc = "Sets the bit at offset "]
                         #[doc = stringify!($offset)]
                         #[doc = "."]
+                        #[inline]
                         pub fn [< set_$flag >] (&mut self, $flag: bool) {
-                            self.0 |= (($flag as u8) << $offset);
+                            self.0 = (self.0 & !(1 << $offset)) | (($flag as u8) << $offset);
                         }
                     }
                 )*
@@ -674,5 +676,18 @@ mod tests {
         assert!(td.init_data().is_none());
 
         assert!(td.update_data.is_empty());
+    }
+
+    #[test]
+    fn get_set_flags() {
+        let mut flags = entity::Flags(0);
+
+        flags.set_on_fire(true);
+        let before = flags.clone();
+        assert_ne!(flags.0, 0);
+        flags.set_on_fire(true);
+        assert_eq!(before, flags);
+        flags.set_on_fire(false);
+        assert_eq!(flags.0, 0);
     }
 }

@@ -444,10 +444,10 @@ pub fn build() -> anyhow::Result<TokenStream> {
                             tracked_data.remove_init_value(#data_index);
                         } else {
                             tracked_data.insert_init_value(#data_index, #data_type, #encodable_expr);
+                        }
 
-                            if !tracked_data.is_added() {
-                                tracked_data.append_update_value(#data_index, #data_type, #encodable_expr);
-                            }
+                        if !tracked_data.is_added() {
+                            tracked_data.append_update_value(#data_index, #data_type, #encodable_expr);
                         }
                     }
                 }
