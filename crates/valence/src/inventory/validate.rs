@@ -126,26 +126,21 @@ pub(crate) fn validate_click_slot_item_duplication(
 
                 // Clicked outside the window
                 let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
-                match packet.button {
-                    1 => ensure!(
-                        count_deltas == -1,
-                        "invalid item delta: expected -1, got {}",
-                        count_deltas
-                    ),
-                    0 => {
-                        ensure!(
-                            count_deltas
-                                == -cursor_item
-                                    .0
-                                    .as_ref()
-                                    .map(|s| s.count() as i32)
-                                    .unwrap_or(0),
-                            "invalid item delta: {}",
-                            count_deltas
-                        )
-                    }
+                let expected_delta = match packet.button {
+                    1 => -1,
+                    0 => -cursor_item
+                        .0
+                        .as_ref()
+                        .map(|s| s.count() as i32)
+                        .unwrap_or(0),
                     _ => unreachable!(),
-                }
+                };
+                ensure!(
+                    count_deltas == expected_delta,
+                    "invalid item delta: expected {}, got {}",
+                    expected_delta,
+                    count_deltas
+                );
             } else {
                 ensure!(
                     packet.slots.len() == 1,
