@@ -667,11 +667,9 @@ mod test {
             validate_click_slot_impossible(packet, &player_inventory, None)
                 .unwrap_or_else(|e| panic!("packet {i} should be valid: {e}"));
             validate_click_slot_item_duplication(packet, &player_inventory, None, &cursor_item)
-                .unwrap_or_else(|e| {
-                    panic!(
-                        "packet {i} passed item duplication check when it should have failed: {e}"
-                    )
-                });
+                .expect_err(&format!(
+                    "packet {i} passed item duplication check when it should have failed"
+                ));
         }
     }
 }
