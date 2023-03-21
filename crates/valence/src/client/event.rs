@@ -888,6 +888,7 @@ fn handle_one_packet(
                 });
                 return Ok(true);
             }
+            #[cfg(feature = "anti_cheat_item_duplication")]
             if let Err(msg) = crate::inventory::validate_click_slot_item_duplication(
                 &p,
                 &q.inventory,
