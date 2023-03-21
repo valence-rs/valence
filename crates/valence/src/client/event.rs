@@ -864,8 +864,13 @@ fn handle_one_packet(
                 .open_inventory
                 .as_ref()
                 .and_then(|open| inventories.get(open.entity).ok());
-            if !crate::inventory::validate_click_slot_impossible(&p, &q.inventory, open_inv) {
-                debug!("client {:#?} invalid click slot packet: {:#?}", q.entity, p);
+            if let Err(msg) =
+                crate::inventory::validate_click_slot_impossible(&p, &q.inventory, open_inv)
+            {
+                debug!(
+                    "client {:#?} invalid click slot packet: \"{}\" {:#?}",
+                    q.entity, msg, p
+                );
                 return Ok(true);
             }
             if !crate::inventory::validate_click_slot_item_duplication(
