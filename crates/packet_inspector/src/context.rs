@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::RwLock;
@@ -16,6 +17,7 @@ use valence_protocol::packet::{C2sPlayPacket, S2cLoginPacket, S2cPlayPacket};
 use valence_protocol::raw::RawPacket;
 
 use crate::packet_widget::{systemtime_strftime, PacketDirection};
+use crate::MetaPacket;
 
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Stage {
@@ -276,6 +278,7 @@ pub struct Context {
     pub(crate) packet_count: RwLock<usize>,
     pub(crate) has_encryption_enabled_error: AtomicBool,
     pub filter: RwLock<String>,
+    pub visible_packets: RwLock<BTreeMap<MetaPacket, bool>>,
     c2s_style: Style,
     s2c_style: Style,
 }
@@ -287,7 +290,10 @@ impl Context {
             last_packet: AtomicUsize::new(0),
             selected_packet: RwLock::new(None),
             packets: RwLock::new(Vec::new()),
+
             filter: RwLock::new("".into()),
+            visible_packets: RwLock::new(BTreeMap::new()),
+
             packet_count: RwLock::new(0),
 
             has_encryption_enabled_error: AtomicBool::new(false),
@@ -354,11 +360,52 @@ impl Context {
         }
     }
 
+    pub fn set_selected_packets(&self, packets: BTreeMap<MetaPacket, bool>) {
+        *self.visible_packets.write().expect("Poisoned RwLock") = packets;
+    }
+
+    pub fn is_packet_hidden(&self, index: usize) -> bool {
+        let packets = self.packets.read().expect("Poisoned RwLock");
+        let packet = packets.get(index).expect("Packet not found");
+
+        let visible_packets = self.visible_packets.read().expect("Poisoned RwLock");
+
+        let meta_packet: MetaPacket = (*packet).clone().into();
+
+        if let Some(visible) = visible_packets.get(&meta_packet) {
+            if !visible {
+                return true;
+            }
+        }
+
+        let filter = self.filter.read().expect("Poisoned RwLock");
+        let filter = filter.as_str();
+        if !filter.is_empty() {
+            if packet
+                .packet_name
+                .to_lowercase()
+                .contains(&filter.to_lowercase())
+            {
+                return true;
+            }
+        }
+
+        false
+    }
+
     pub fn select_previous_packet(&self) {
         let mut selected_packet = self.selected_packet.write().expect("Poisoned RwLock");
         if let Some(idx) = *selected_packet {
             if idx > 0 {
-                *selected_packet = Some(idx - 1);
+                let mut new_index = idx - 1;
+                while self.is_packet_hidden(new_index) {
+                    if new_index == 0 {
+                        new_index = idx;
+                        break;
+                    }
+                    new_index -= 1;
+                }
+                *selected_packet = Some(new_index);
             }
         } else {
             let packets = self.packets.read().expect("Poisoned RwLock");
@@ -372,7 +419,16 @@ impl Context {
         let mut selected_packet = self.selected_packet.write().expect("Poisoned RwLock");
         if let Some(idx) = *selected_packet {
             if idx < self.packets.read().expect("Poisoned RwLock").len() - 1 {
-                *selected_packet = Some(idx + 1);
+                let mut new_index = idx + 1;
+                while self.is_packet_hidden(new_index) {
+                    if new_index == self.packets.read().expect("Poisoned RwLock").len() - 1 {
+                        new_index = idx;
+                        break;
+                    }
+                    new_index += 1;
+                }
+
+                *selected_packet = Some(new_index);
             }
         } else {
             let packets = self.packets.read().expect("Poisoned RwLock");

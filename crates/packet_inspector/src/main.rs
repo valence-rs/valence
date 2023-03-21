@@ -329,6 +329,17 @@ impl From<(Stage, i32, PacketDirection, String)> for MetaPacket {
     }
 }
 
+impl From<Packet> for MetaPacket {
+    fn from(packet: Packet) -> Self {
+        Self {
+            stage: packet.stage,
+            id: packet.packet_type,
+            direction: packet.direction,
+            name: packet.packet_name,
+        }
+    }
+}
+
 // to string and from string to be used in toml
 impl ToString for MetaPacket {
     fn to_string(&self) -> String {
@@ -485,6 +496,8 @@ impl GuiApp {
             None => BTreeMap::new(),
         };
 
+        context.set_selected_packets(selected_packets.clone());
+
         Self {
             config,
             context,
@@ -572,6 +585,8 @@ impl GuiApp {
 
         if changed {
             self.config
+                .set_selected_packets(self.selected_packets.clone());
+            self.context
                 .set_selected_packets(self.selected_packets.clone());
         }
     }
@@ -839,6 +854,8 @@ impl eframe::App for GuiApp {
                                     self.selected_packets.insert(m_packet.clone(), true);
                                     self.config
                                         .set_selected_packets(self.selected_packets.clone());
+                                    self.context
+                                        .set_selected_packets(self.selected_packets.clone());
                                 } else {
                                     // if it does exist, check if the names are the same, if not
                                     // update the key
@@ -849,6 +866,8 @@ impl eframe::App for GuiApp {
                                         self.selected_packets.remove(&m_packet);
                                         self.selected_packets.insert(m_packet.clone(), value);
                                         self.config
+                                            .set_selected_packets(self.selected_packets.clone());
+                                        self.context
                                             .set_selected_packets(self.selected_packets.clone());
                                     }
                                 }
@@ -863,8 +882,11 @@ impl eframe::App for GuiApp {
                                     return true;
                                 }
 
-                                if let Ok(re) = regex::Regex::new(&self.filter) {
-                                    return re.is_match(&p.packet_name);
+                                if p.packet_name
+                                    .to_lowercase()
+                                    .contains(&self.filter.to_lowercase())
+                                {
+                                    return true;
                                 }
 
                                 false
