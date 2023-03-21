@@ -149,10 +149,11 @@ pub(crate) fn validate_click_slot_item_duplication(
                 );
 
                 let old_slot = window.slot(packet.slots[0].idx as u16);
-                if old_slot.is_none()
-                    || cursor_item.0.is_none()
-                    || (old_slot.unwrap().item != cursor_item.0.as_ref().unwrap().item
-                        && old_slot.unwrap().nbt != cursor_item.0.as_ref().unwrap().nbt)
+                if packet.button == 0
+                    && (old_slot.is_none()
+                        || cursor_item.0.is_none()
+                        || (old_slot.unwrap().item != cursor_item.0.as_ref().unwrap().item
+                            && old_slot.unwrap().nbt != cursor_item.0.as_ref().unwrap().nbt))
                 {
                     // assert that a swap occurs
                     ensure!(

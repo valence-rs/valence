@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cmp;
 
 use anyhow::bail;
@@ -29,9 +30,11 @@ use valence_protocol::packet::c2s::play::update_structure_block::{
 use valence_protocol::packet::c2s::play::{
     AdvancementTabC2s, ClientStatusC2s, ResourcePackStatusC2s, UpdatePlayerAbilitiesC2s,
 };
+use valence_protocol::packet::s2c::play::InventoryS2c;
 use valence_protocol::packet::C2sPlayPacket;
 use valence_protocol::tracked_data::Pose;
 use valence_protocol::types::{Difficulty, Direction, Hand};
+use valence_protocol::var_int::VarInt;
 
 use super::{
     CursorItem, KeepaliveState, PlayerActionSequence, PlayerInventoryState, TeleportState,
@@ -41,6 +44,7 @@ use crate::client::Client;
 use crate::component::{Look, OnGround, Ping, Position};
 use crate::entity::{EntityAnimation, EntityKind, McEntity, TrackedData};
 use crate::inventory::Inventory;
+use crate::packet::WritePacket;
 use crate::prelude::OpenInventory;
 
 #[derive(Clone, Debug)]
@@ -863,7 +867,7 @@ fn handle_one_packet(
             let open_inv = q
                 .open_inventory
                 .as_ref()
-                .and_then(|open| inventories.get(open.entity).ok());
+                .and_then(|open| inventories.get_mut(open.entity).ok());
             if let Err(msg) =
                 crate::inventory::validate_click_slot_impossible(&p, &q.inventory, open_inv)
             {
@@ -871,6 +875,17 @@ fn handle_one_packet(
                     "client {:#?} invalid click slot packet: \"{}\" {:#?}",
                     q.entity, msg, p
                 );
+                let inventory = open_inv.unwrap_or(&q.inventory);
+                q.client.write_packet(&InventoryS2c {
+                    window_id: if open_inv.is_some() {
+                        q.player_inventory_state.window_id
+                    } else {
+                        0
+                    },
+                    state_id: VarInt(q.player_inventory_state.state_id.0),
+                    slots: Cow::Borrowed(inventory.slot_slice()),
+                    carried_item: Cow::Borrowed(&q.cursor_item.0),
+                });
                 return Ok(true);
             }
             if let Err(msg) = crate::inventory::validate_click_slot_item_duplication(
@@ -884,6 +899,17 @@ fn handle_one_packet(
                      {:#?}",
                     q.entity, msg, p
                 );
+                let inventory = open_inv.unwrap_or(&q.inventory);
+                q.client.write_packet(&InventoryS2c {
+                    window_id: if open_inv.is_some() {
+                        q.player_inventory_state.window_id
+                    } else {
+                        0
+                    },
+                    state_id: VarInt(q.player_inventory_state.state_id.0),
+                    slots: Cow::Borrowed(inventory.slot_slice()),
+                    carried_item: Cow::Borrowed(&q.cursor_item.0),
+                });
                 return Ok(true);
             }
             if p.slot_idx < 0 && p.mode == ClickMode::Click {

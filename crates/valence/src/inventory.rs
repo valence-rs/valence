@@ -245,7 +245,7 @@ impl Inventory {
         std::mem::replace(&mut self.title, title.into())
     }
 
-    fn slot_slice(&self) -> &[Option<ItemStack>] {
+    pub(crate) fn slot_slice(&self) -> &[Option<ItemStack>] {
         self.slots.as_ref()
     }
 
