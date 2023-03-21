@@ -1,7 +1,7 @@
 use valence_protocol::packet::c2s::play::click_slot::ClickMode;
 use valence_protocol::packet::c2s::play::ClickSlotC2s;
 
-use super::{Inventory, InventoryWindow};
+use super::{Inventory, InventoryWindow, PLAYER_INVENTORY_MAIN_SLOTS_COUNT};
 use crate::prelude::CursorItem;
 
 /// Validates a click slot packet enforcing that all fields are valid.
@@ -15,14 +15,16 @@ pub(crate) fn validate_click_slot_impossible(
     }
 
     let max_slot = match open_inventory {
-        Some(inv) => inv.slot_count() + 36,
+        Some(inv) => inv.slot_count() + PLAYER_INVENTORY_MAIN_SLOTS_COUNT,
         None => player_inventory.slot_count(),
     };
 
     // check all slot ids and item counts are valid
     if !packet.slots.iter().all(|s| {
         (0..=max_slot).contains(&(s.idx as u16))
-            && s.item.as_ref().map_or(true, |i| (1..=64).contains(&i.count()))
+            && s.item
+                .as_ref()
+                .map_or(true, |i| (1..=64).contains(&i.count()))
     }) {
         return false;
     }

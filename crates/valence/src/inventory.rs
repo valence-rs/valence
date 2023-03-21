@@ -53,6 +53,10 @@ mod validate;
 
 pub(crate) use validate::*;
 
+/// The number of slots in the "main" part of the player inventory. 3 rows of 9,
+/// plus the hotbar.
+pub const PLAYER_INVENTORY_MAIN_SLOTS_COUNT: u16 = 36;
+
 #[derive(Debug, Clone, Component)]
 pub struct Inventory {
     title: Text,
@@ -354,7 +358,7 @@ impl<'a> InventoryWindow<'a> {
     #[track_caller]
     pub fn slot_count(&self) -> u16 {
         match self.open_inventory.as_ref() {
-            Some(inv) => inv.slot_count() + 36,
+            Some(inv) => inv.slot_count() + PLAYER_INVENTORY_MAIN_SLOTS_COUNT,
             None => self.player_inventory.slot_count(),
         }
     }
@@ -436,7 +440,7 @@ impl<'a> InventoryWindowMut<'a> {
 
     pub fn slot_count(&self) -> u16 {
         match self.open_inventory.as_ref() {
-            Some(inv) => inv.slot_count() + 36,
+            Some(inv) => inv.slot_count() + PLAYER_INVENTORY_MAIN_SLOTS_COUNT,
             None => self.player_inventory.slot_count(),
         }
     }
@@ -829,7 +833,7 @@ fn convert_to_player_slot_id(target_kind: InventoryKind, slot_id: u16) -> u16 {
 }
 
 fn convert_hotbar_slot_id(slot_id: u16) -> u16 {
-    slot_id + 36
+    slot_id + PLAYER_INVENTORY_MAIN_SLOTS_COUNT
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
