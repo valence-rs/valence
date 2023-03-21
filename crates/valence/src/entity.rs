@@ -562,7 +562,7 @@ flags! {
 pub(crate) struct EntityPlugin;
 
 /// When new Minecraft entities are initialized and added to
-/// [`McEntityManager`]. Systems that need all Minecraft entities to be in a
+/// [`EntityManager`]. Systems that need all Minecraft entities to be in a
 /// valid state should run after this.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct InitEntitiesSet;
