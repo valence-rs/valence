@@ -82,6 +82,8 @@ pub(crate) fn validate_click_slot_impossible(
 
 /// Validates a click slot packet, enforcing that items can't be duplicated, eg.
 /// conservation of mass.
+///
+/// Relies on assertions made by [`validate_click_slot_impossible`].
 pub(crate) fn validate_click_slot_item_duplication(
     packet: &ClickSlotC2s,
     player_inventory: &Inventory,
