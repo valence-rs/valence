@@ -631,8 +631,8 @@ impl Plugin for ClientPlugin {
                 teleport.after(update_view),
                 update_game_mode,
                 send_keepalive,
-                update_tracked_data,
-                init_tracked_data,
+                update_tracked_data.after(WriteUpdatePacketsToInstancesSet),
+                init_tracked_data.after(WriteUpdatePacketsToInstancesSet),
                 update_op_level,
                 acknowledge_player_actions,
             )
@@ -902,7 +902,7 @@ fn read_data_in_old_view(
                             // must be spawned.
                             if let Ok((entity, old_pos)) = entities.get(id) {
                                 // Notice we are spawning the entity at its old position rather than
-                                // the current position. This is because the client will also
+                                // the current position. This is because the client could also
                                 // receive update packets for this entity this tick, which may
                                 // include a relative entity movement.
                                 entity.write_init_packets(old_pos.get(), &mut client.enc);

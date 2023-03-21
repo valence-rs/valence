@@ -121,8 +121,8 @@ impl Default for Location {
 }
 
 /// The value of [`Location`] from the end of the previous tick.
-/// 
-/// **NOTE**: You should not modify this component yourself.
+///
+/// **NOTE**: You should not modify this component after the entity is spawned.
 #[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct OldLocation(Entity);
 
@@ -141,7 +141,6 @@ impl Default for OldLocation {
         Self(Entity::PLACEHOLDER)
     }
 }
-
 
 #[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
 pub struct Position(pub DVec3);
@@ -165,12 +164,16 @@ impl Position {
 }
 
 /// The value of [`Location`] from the end of the previous tick.
-/// 
-/// **NOTE**: You should not modify this component yourself.
+///
+/// **NOTE**: You should not modify this component after the entity is spawned.
 #[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
-pub struct OldPosition(pub(crate) DVec3);
+pub struct OldPosition(DVec3);
 
 impl OldPosition {
+    pub fn new(pos: impl Into<DVec3>) -> Self {
+        Self(pos.into())
+    }
+
     pub fn get(self) -> DVec3 {
         self.0
     }
@@ -190,6 +193,10 @@ pub struct Look {
 }
 
 impl Look {
+    pub const fn new(yaw: f32, pitch: f32) -> Self {
+        Self { yaw, pitch }
+    }
+
     /// Gets a normalized direction vector from the yaw and pitch.
     pub fn vec(&self) -> Vec3 {
         from_yaw_and_pitch(self.yaw, self.pitch)

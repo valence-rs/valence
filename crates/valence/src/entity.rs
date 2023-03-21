@@ -12,6 +12,7 @@ pub use valence_protocol::types::Direction;
 use valence_protocol::var_int::VarInt;
 use valence_protocol::{Decode, Encode};
 
+use crate::client::FlushPacketsSet;
 use crate::component::{
     Despawned, Location, Look, OldLocation, OldPosition, OnGround, Position, UniqueId,
 };
@@ -577,12 +578,13 @@ impl Plugin for EntityPlugin {
                     .after(init_entities),
             )
             .add_systems(
-                (
-                    clear_status_changes,
-                    clear_animation_changes,
-                    clear_tracked_data_changes,
-                )
+                (clear_status_changes, clear_animation_changes)
                     .after(WriteUpdatePacketsToInstancesSet)
+                    .in_base_set(CoreSet::PostUpdate),
+            )
+            .add_system(
+                clear_tracked_data_changes
+                    .after(FlushPacketsSet)
                     .in_base_set(CoreSet::PostUpdate),
             );
 
@@ -604,7 +606,7 @@ fn init_entities(
     mut manager: ResMut<EntityManager>,
 ) {
     for (entity, mut id, uuid, pos, mut old_pos) in &mut entities {
-        old_pos.0 = pos.0;
+        *old_pos = OldPosition::new(pos.0);
 
         if *id == EntityId::default() {
             *id = manager.next_id();
@@ -665,20 +667,14 @@ mod tests {
         let mut td = TrackedData::default();
 
         td.insert_init_value(0, 3, "foo");
-        dbg!(&td);
         td.insert_init_value(10, 6, "bar");
-        dbg!(&td);
         td.insert_init_value(5, 9, "baz");
-        dbg!(&td);
 
         assert!(td.remove_init_value(10));
-        dbg!(&td);
         assert!(!td.remove_init_value(10));
-        dbg!(&td);
 
         // Insertion overwrites value at index 0.
         td.insert_init_value(0, 64, "quux");
-        dbg!(&td);
 
         assert!(td.remove_init_value(0));
         assert!(td.remove_init_value(5));
