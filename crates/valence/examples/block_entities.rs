@@ -1,10 +1,11 @@
 #![allow(clippy::type_complexity)]
 
-use valence::client::despawn_disconnected_clients;
-use valence::client::event::{default_event_handler, ChatMessage, PlayerInteractBlock};
+use valence::client::event::{ChatMessage, PlayerInteractBlock};
+use valence::client::{default_event_handler, despawn_disconnected_clients};
 use valence::nbt::{compound, List};
 use valence::prelude::*;
 use valence::protocol::types::Hand;
+use valence::entity::player::PlayerBundle;
 
 const FLOOR_Y: i32 = 64;
 const SIGN_POS: [i32; 3] = [3, FLOOR_Y + 1, 2];
@@ -83,9 +84,13 @@ fn init_clients(
         loc.0 = instances.single();
         *game_mode = GameMode::Creative;
 
-        commands
-            .entity(entity)
-            .insert(McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0));
+        commands.entity(entity).insert(PlayerBundle {
+            location: Location(instances.single()),
+            position: *pos,
+            look: *look,
+            uuid: *uuid,
+            ..Default::default()
+        });
     }
 }
 

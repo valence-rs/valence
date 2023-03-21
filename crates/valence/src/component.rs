@@ -120,6 +120,9 @@ impl Default for Location {
     }
 }
 
+/// The value of [`Location`] from the end of the previous tick.
+/// 
+/// **NOTE**: You should not modify this component yourself.
 #[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct OldLocation(Entity);
 
@@ -139,15 +142,20 @@ impl Default for OldLocation {
     }
 }
 
+
 #[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
 pub struct Position(pub DVec3);
 
 impl Position {
+    pub fn new(pos: impl Into<DVec3>) -> Self {
+        Self(pos.into())
+    }
+
     pub fn chunk_pos(&self) -> ChunkPos {
         ChunkPos::from_dvec3(self.0)
     }
 
-    pub fn get(&self) -> DVec3 {
+    pub fn get(self) -> DVec3 {
         self.0
     }
 
@@ -156,19 +164,18 @@ impl Position {
     }
 }
 
+/// The value of [`Location`] from the end of the previous tick.
+/// 
+/// **NOTE**: You should not modify this component yourself.
 #[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
-pub struct OldPosition(DVec3);
+pub struct OldPosition(pub(crate) DVec3);
 
 impl OldPosition {
-    pub fn new(pos: DVec3) -> Self {
-        Self(pos)
-    }
-
-    pub fn get(&self) -> DVec3 {
+    pub fn get(self) -> DVec3 {
         self.0
     }
 
-    pub fn chunk_pos(&self) -> ChunkPos {
+    pub fn chunk_pos(self) -> ChunkPos {
         ChunkPos::from_dvec3(self.0)
     }
 }

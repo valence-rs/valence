@@ -1,7 +1,7 @@
 #![allow(clippy::type_complexity)]
 
 use valence::client::despawn_disconnected_clients;
-use valence::client::event::default_event_handler;
+use valence::client::default_event_handler;
 use valence::prelude::*;
 
 const SPAWN_Y: i32 = 0;

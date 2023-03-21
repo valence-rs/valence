@@ -591,10 +591,21 @@ impl Plugin for EntityPlugin {
 }
 
 fn init_entities(
-    mut entities: Query<(Entity, &mut EntityId, &mut UniqueId), Added<EntityKind>>,
+    mut entities: Query<
+        (
+            Entity,
+            &mut EntityId,
+            &mut UniqueId,
+            &Position,
+            &mut OldPosition,
+        ),
+        Added<EntityKind>,
+    >,
     mut manager: ResMut<EntityManager>,
 ) {
-    for (entity, mut id, uuid) in &mut entities {
+    for (entity, mut id, uuid, pos, mut old_pos) in &mut entities {
+        old_pos.0 = pos.0;
+
         if *id == EntityId::default() {
             *id = manager.next_id();
         }
