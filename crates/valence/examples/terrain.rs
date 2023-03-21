@@ -9,8 +9,8 @@ use std::time::SystemTime;
 use flume::{Receiver, Sender};
 use noise::{NoiseFn, SuperSimplex};
 use tracing::info;
-use valence::client::despawn_disconnected_clients;
-use valence::client::event::default_event_handler;
+use valence::client::{default_event_handler, despawn_disconnected_clients};
+use valence::entity::player::PlayerBundle;
 use valence::prelude::*;
 
 const SPAWN_POS: DVec3 = DVec3::new(0.0, 200.0, 0.0);
@@ -108,31 +108,20 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<
-        (
-            Entity,
-            &UniqueId,
-            &mut IsFlat,
-            &mut GameMode,
-            &mut Position,
-            &mut Location,
-        ),
-        Added<Client>,
-    >,
+    mut clients: Query<(Entity, &UniqueId, &mut IsFlat, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
     mut commands: Commands,
 ) {
-    for (entity, uuid, mut is_flat, mut game_mode, mut pos, mut loc) in &mut clients {
-        let instance = instances.single();
-
+    for (entity, uuid, mut is_flat, mut game_mode) in &mut clients {
         is_flat.0 = true;
         *game_mode = GameMode::Creative;
-        pos.0 = SPAWN_POS;
-        loc.0 = instance;
 
-        commands
-            .entity(entity)
-            .insert(McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0));
+        commands.entity(entity).insert(PlayerBundle {
+            location: Location(instances.single()),
+            position: Position(SPAWN_POS),
+            uuid: *uuid,
+            ..Default::default()
+        });
     }
 }
 

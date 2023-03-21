@@ -7,8 +7,8 @@ use clap::Parser;
 use flume::{Receiver, Sender};
 use tracing::warn;
 use valence::bevy_app::AppExit;
-use valence::client::despawn_disconnected_clients;
-use valence::client::event::default_event_handler;
+use valence::client::{default_event_handler, despawn_disconnected_clients};
+use valence::entity::player::PlayerBundle;
 use valence::prelude::*;
 use valence_anvil::{AnvilChunk, AnvilWorld};
 
@@ -90,28 +90,20 @@ fn setup(world: &mut World) {
 }
 
 fn init_clients(
-    mut clients: Query<
-        (
-            &mut Position,
-            &mut Location,
-            &mut GameMode,
-            &mut IsFlat,
-            &UniqueId,
-        ),
-        Added<Client>,
-    >,
+    mut clients: Query<(Entity, &mut GameMode, &mut IsFlat, &UniqueId), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
     mut commands: Commands,
 ) {
-    for (mut pos, mut loc, mut game_mode, mut is_flat, uuid) in &mut clients {
-        let instance = instances.single();
-
-        pos.0 = SPAWN_POS;
-        loc.0 = instance;
+    for (entity, mut game_mode, mut is_flat, uuid) in &mut clients {
         *game_mode = GameMode::Creative;
         is_flat.0 = true;
 
-        commands.spawn(McEntity::with_uuid(EntityKind::Player, instance, uuid.0));
+        commands.entity(entity).insert(PlayerBundle {
+            location: Location(instances.single()),
+            position: Position(SPAWN_POS),
+            uuid: *uuid,
+            ..Default::default()
+        });
     }
 }
 

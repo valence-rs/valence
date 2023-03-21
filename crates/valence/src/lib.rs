@@ -56,7 +56,7 @@ pub mod prelude {
         AsyncCallbacks, ConnectionMode, PlayerSampleEntry, ServerListPing, ServerPlugin,
     };
     pub use dimension::{Dimension, DimensionId};
-    pub use entity::{EntityAnimation, EntityKind, EntityManager, EntityStatus};
+    pub use entity::{EntityAnimation, EntityKind, EntityManager, EntityStatus, HeadYaw};
     pub use glam::DVec3;
     pub use instance::{Block, BlockMut, BlockRef, Chunk, Instance};
     pub use inventory::{Inventory, InventoryKind, OpenInventory};
