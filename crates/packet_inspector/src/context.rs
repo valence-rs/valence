@@ -380,14 +380,13 @@ impl Context {
 
         let filter = self.filter.read().expect("Poisoned RwLock");
         let filter = filter.as_str();
-        if !filter.is_empty() {
-            if packet
+        if !filter.is_empty()
+            && packet
                 .packet_name
                 .to_lowercase()
                 .contains(&filter.to_lowercase())
-            {
-                return true;
-            }
+        {
+            return true;
         }
 
         false
