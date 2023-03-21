@@ -1,3 +1,4 @@
+use anyhow::ensure;
 use valence_protocol::packet::c2s::play::click_slot::ClickMode;
 use valence_protocol::packet::c2s::play::ClickSlotC2s;
 
@@ -9,10 +10,13 @@ pub(crate) fn validate_click_slot_impossible(
     packet: &ClickSlotC2s,
     player_inventory: &Inventory,
     open_inventory: Option<&Inventory>,
-) -> bool {
-    if (packet.window_id == 0) != open_inventory.is_none() {
-        return false;
-    }
+) -> anyhow::Result<()> {
+    ensure!(
+        (packet.window_id == 0) == open_inventory.is_none(),
+        "window id and open inventory mismatch: window_id: {} open_inventory: {}",
+        packet.window_id,
+        open_inventory.is_some()
+    );
 
     let max_slot = match open_inventory {
         Some(inv) => inv.slot_count() + PLAYER_INVENTORY_MAIN_SLOTS_COUNT,
@@ -20,64 +24,83 @@ pub(crate) fn validate_click_slot_impossible(
     };
 
     // check all slot ids and item counts are valid
-    if !packet.slots.iter().all(|s| {
-        (0..=max_slot).contains(&(s.idx as u16))
-            && s.item
-                .as_ref()
-                .map_or(true, |i| (1..=64).contains(&i.count()))
-    }) {
-        return false;
-    }
+    ensure!(
+        packet.slots.iter().all(|s| {
+            (0..=max_slot).contains(&(s.idx as u16))
+                && s.item
+                    .as_ref()
+                    .map_or(true, |i| (1..=127).contains(&i.count()))
+        }),
+        "invalid slot ids or item counts"
+    );
 
     // check carried item count is valid
-    if !packet
-        .carried_item
-        .as_ref()
-        .map_or(true, |i| (1..=64).contains(&i.count()))
-    {
-        return false;
-    }
+    ensure!(
+        packet
+            .carried_item
+            .as_ref()
+            .map_or(true, |i| (1..=127).contains(&i.count())),
+        "invalid carried item count"
+    );
 
     match packet.mode {
         ClickMode::Click => {
-            if !(0..=1).contains(&packet.button) {
-                return false;
-            }
-
-            if !(0..=max_slot).contains(&(packet.slot_idx as u16)) && packet.slot_idx != -999 {
-                return false;
-            }
+            ensure!((0..=1).contains(&packet.button), "invalid button");
+            ensure!(
+                (0..=max_slot).contains(&(packet.slot_idx as u16)) || packet.slot_idx == -999,
+                "invalid slot index"
+            )
         }
         ClickMode::ShiftClick => {
-            if !(0..=1).contains(&packet.button) {
-                return false;
-            }
-
-            if packet.carried_item.is_some() {
-                return false;
-            }
-
-            if !(0..=max_slot).contains(&(packet.slot_idx as u16)) {
-                return false;
-            }
+            ensure!((0..=1).contains(&packet.button), "invalid button");
+            ensure!(
+                packet.carried_item.is_none(),
+                "carried item must be empty for a hotbar swap"
+            );
+            ensure!(
+                (0..=max_slot).contains(&(packet.slot_idx as u16)),
+                "invalid slot index"
+            )
         }
-        ClickMode::Hotbar => return matches!(packet.button, 0..=8 | 40),
+        ClickMode::Hotbar => {
+            ensure!(matches!(packet.button, 0..=8 | 40), "invalid button");
+            ensure!(
+                packet.carried_item.is_none(),
+                "carried item must be empty for a hotbar swap"
+            );
+        }
         ClickMode::CreativeMiddleClick => {
-            return packet.button == 2 && (0..=max_slot).contains(&(packet.slot_idx as u16))
+            ensure!(packet.button == 2, "invalid button");
+            ensure!(
+                (0..=max_slot).contains(&(packet.slot_idx as u16)),
+                "invalid slot index"
+            )
         }
         ClickMode::DropKey => {
-            return (0..=1).contains(&packet.button)
-                && packet.carried_item.is_none()
-                && (0..=max_slot).contains(&(packet.slot_idx as u16))
+            ensure!((0..=1).contains(&packet.button), "invalid button");
+            ensure!(
+                packet.carried_item.is_none(),
+                "carried item must be empty for an item drop"
+            );
+            ensure!(
+                (0..=max_slot).contains(&(packet.slot_idx as u16)),
+                "invalid slot index"
+            )
         }
         ClickMode::Drag => {
-            return matches!(packet.button, 0..=2 | 4..=6 | 8..=10)
-                && ((0..=max_slot).contains(&(packet.slot_idx as u16)) || packet.slot_idx == -999)
+            ensure!(
+                matches!(packet.button, 0..=2 | 4..=6 | 8..=10),
+                "invalid button"
+            );
+            ensure!(
+                (0..=max_slot).contains(&(packet.slot_idx as u16)) || packet.slot_idx == -999,
+                "invalid slot index"
+            )
         }
-        ClickMode::DoubleClick => return packet.button == 0,
+        ClickMode::DoubleClick => ensure!(packet.button == 0, "invalid button"),
     }
 
-    true
+    Ok(())
 }
 
 /// Validates a click slot packet, enforcing that items can't be duplicated, eg.
