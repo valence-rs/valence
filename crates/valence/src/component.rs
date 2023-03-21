@@ -30,11 +30,11 @@ pub struct Despawned;
 /// [`Uuid`].
 ///
 /// This component is expected to remain _unique_ and _constant_ during the
-/// lifetime of the entity. The [`Default`] impl returns a random value.
-#[derive(Component, Clone, PartialEq, Eq, Debug)]
+/// lifetime of the entity. The [`Default`] impl generates a new random UUID.
+#[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct UniqueId(pub Uuid);
 
-/// Returns a random UUID.
+/// Generates a new random UUID.
 impl Default for UniqueId {
     fn default() -> Self {
         Self(Uuid::from_bytes(rand::random()))

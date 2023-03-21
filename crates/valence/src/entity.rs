@@ -72,8 +72,8 @@ impl EntityStatuses {
 pub struct EntityAnimations(pub u8);
 
 impl EntityAnimations {
-    pub fn trigger(&mut self, status: EntityAnimation) {
-        self.set(status, true);
+    pub fn trigger(&mut self, anim: EntityAnimation) {
+        self.set(anim, true);
     }
 
     pub fn set(&mut self, anim: EntityAnimation, triggered: bool) {
@@ -433,6 +433,7 @@ impl EntityManager {
     }
 }
 
+// TODO: should `set_if_neq` behavior be the default behavior for setters?
 macro_rules! flags {
     (
         $(
@@ -493,6 +494,9 @@ flags! {
         left_pants_leg: 4,
         right_pants_leg: 5,
         hat: 6,
+    }
+    player::MainArm {
+        right: 0,
     }
     armor_stand::ArmorStandFlags {
         small: 0,

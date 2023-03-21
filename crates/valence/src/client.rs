@@ -50,6 +50,9 @@ use crate::util::velocity_to_packet_units;
 use crate::view::{ChunkPos, ChunkView};
 
 pub mod event;
+mod default_event_handler;
+
+pub use default_event_handler::*;
 
 /// The bundle of components needed for clients to function. All components are
 /// required unless otherwise stated.

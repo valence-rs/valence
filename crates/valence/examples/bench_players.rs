@@ -3,7 +3,8 @@
 use std::time::Instant;
 
 use valence::client::despawn_disconnected_clients;
-use valence::client::event::default_event_handler;
+use valence::client::default_event_handler;
+use valence::entity::player::PlayerBundle;
 use valence::instance::{Chunk, Instance};
 use valence::prelude::*;
 
@@ -80,13 +81,15 @@ fn init_clients(
     instances: Query<Entity, With<Instance>>,
     mut commands: Commands,
 ) {
-    for (entity, unique_id, mut pos, mut loc, mut game_mode) in &mut clients {
+    for (entity, uuid, mut pos, mut loc, mut game_mode) in &mut clients {
         pos.0 = [0.0, SPAWN_Y as f64 + 1.0, 0.0].into();
         loc.0 = instances.single();
         *game_mode = GameMode::Creative;
 
-        commands
-            .entity(entity)
-            .insert(McEntity::with_uuid(EntityKind::Player, loc.0, unique_id.0));
+        commands.entity(entity).insert(PlayerBundle {
+            location: *loc,
+            uuid: *uuid,
+            ..Default::default()
+        });
     }
 }
