@@ -873,15 +873,16 @@ fn handle_one_packet(
                 );
                 return Ok(true);
             }
-            if !crate::inventory::validate_click_slot_item_duplication(
+            if let Err(msg) = crate::inventory::validate_click_slot_item_duplication(
                 &p,
                 &q.inventory,
                 open_inv,
                 &q.cursor_item,
             ) {
                 debug!(
-                    "client {:#?} click slot packet tried to incorrectly modify items: {:#?}",
-                    q.entity, p
+                    "client {:#?} click slot packet tried to incorrectly modify items: \"{}\" \
+                     {:#?}",
+                    q.entity, msg, p
                 );
                 return Ok(true);
             }

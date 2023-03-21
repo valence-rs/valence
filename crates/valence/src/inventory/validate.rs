@@ -112,7 +112,7 @@ pub(crate) fn validate_click_slot_item_duplication(
     player_inventory: &Inventory,
     open_inventory: Option<&Inventory>,
     cursor_item: &CursorItem,
-) -> bool {
+) -> anyhow::Result<()> {
     let window = InventoryWindow {
         player_inventory,
         open_inventory,
@@ -122,33 +122,36 @@ pub(crate) fn validate_click_slot_item_duplication(
         ClickMode::Click => {
             if packet.slot_idx == -999 {
                 // Clicked outside the window, so the client is dropping an item
-                if cursor_item.0.is_none() {
-                    // Nothing to drop
-                    return false;
-                }
-
-                if !packet.slots.is_empty() {
-                    return false;
-                }
+                ensure!(packet.slots.is_empty(), "slot modifications must be empty");
 
                 // Clicked outside the window
                 let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
-                return match packet.button {
-                    1 => count_deltas == -1,
-                    0 => {
+                match packet.button {
+                    1 => ensure!(
+                        count_deltas == -1,
+                        "invalid item delta: expected -1, got {}",
                         count_deltas
-                            == -cursor_item
-                                .0
-                                .as_ref()
-                                .map(|s| s.count() as i32)
-                                .unwrap_or(0)
+                    ),
+                    0 => {
+                        ensure!(
+                            count_deltas
+                                == -cursor_item
+                                    .0
+                                    .as_ref()
+                                    .map(|s| s.count() as i32)
+                                    .unwrap_or(0),
+                            "invalid item delta: {}",
+                            count_deltas
+                        )
                     }
                     _ => unreachable!(),
-                };
-            } else {
-                if packet.slots.len() != 1 {
-                    return false;
                 }
+            } else {
+                ensure!(
+                    packet.slots.len() == 1,
+                    "click must modify one slot, got {}",
+                    packet.slots.len()
+                );
 
                 let old_slot = window.slot(packet.slots[0].idx as u16);
                 if old_slot.is_none()
@@ -157,44 +160,60 @@ pub(crate) fn validate_click_slot_item_duplication(
                         && old_slot.unwrap().nbt != cursor_item.0.as_ref().unwrap().nbt)
                 {
                     // assert that a swap occurs
-                    return old_slot == packet.carried_item.as_ref()
-                        && cursor_item.0 == packet.slots[0].item;
+                    ensure!(
+                        old_slot == packet.carried_item.as_ref()
+                            && cursor_item.0 == packet.slots[0].item,
+                        "swapped items must match"
+                    );
                 } else {
                     // assert that a merge occurs
                     let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
-                    count_deltas == 0
+                    ensure!(
+                        count_deltas == 0,
+                        "invalid item delta for stack merge: {}",
+                        count_deltas
+                    );
                 }
             }
         }
         ClickMode::ShiftClick | ClickMode::Hotbar => {
-            if packet.slots.len() != 2 {
-                return false;
-            }
+            ensure!(
+                packet.slots.len() == 2,
+                "shift click and hotbar swaps must modify exactly two slots"
+            );
 
             let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
-            if count_deltas != 0 {
-                return false;
-            }
+            ensure!(
+                count_deltas == 0,
+                "invalid item delta: expected 0, got {}",
+                count_deltas
+            );
 
             // assert that a swap occurs
             let old_slots = [
                 window.slot(packet.slots[0].idx as u16),
                 window.slot(packet.slots[1].idx as u16),
             ];
-            return old_slots
-                .iter()
-                .any(|s| s == &packet.slots[0].item.as_ref())
-                && old_slots
+            ensure!(
+                old_slots
                     .iter()
-                    .any(|s| s == &packet.slots[1].item.as_ref());
+                    .any(|s| s == &packet.slots[0].item.as_ref())
+                    && old_slots
+                        .iter()
+                        .any(|s| s == &packet.slots[1].item.as_ref()),
+                "swapped items must match"
+            );
         }
-        ClickMode::CreativeMiddleClick => true,
+        ClickMode::CreativeMiddleClick => {}
         ClickMode::DropKey => {
-            if packet.slots.is_empty()
-                || packet.slot_idx != packet.slots.first().map(|s| s.idx).unwrap_or(-2)
-            {
-                return false;
-            }
+            ensure!(
+                packet.slots.len() == 1,
+                "drop key must modify exactly one slot"
+            );
+            ensure!(
+                packet.slot_idx == packet.slots.first().map(|s| s.idx).unwrap_or(-2),
+                "slot index does not match modified slot"
+            );
 
             let old_slot = window.slot(packet.slot_idx as u16);
             let new_slot = packet.slots[0].item.as_ref();
@@ -205,31 +224,45 @@ pub(crate) fn validate_click_slot_item_duplication(
                 (_, None) => false,
                 (None, Some(_)) => true,
             };
-            if is_transmuting {
-                return false;
-            }
+            ensure!(!is_transmuting, "transmuting items is not allowed");
 
             let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
 
-            match packet.button {
-                0 => count_deltas == -1,
-                1 => count_deltas == -old_slot.map(|s| s.count() as i32).unwrap_or(0),
+            let expected_delta = match packet.button {
+                0 => -1,
+                1 => -old_slot.map(|s| s.count() as i32).unwrap_or(0),
                 _ => unreachable!(),
-            }
+            };
+            ensure!(
+                count_deltas == expected_delta,
+                "invalid item delta: expected {}, got {}",
+                expected_delta,
+                count_deltas
+            );
         }
         ClickMode::Drag => {
             if matches!(packet.button, 2 | 6 | 10) {
                 let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
-                count_deltas == 0
+                ensure!(
+                    count_deltas == 0,
+                    "invalid item delta: expected 0, got {}",
+                    count_deltas
+                );
             } else {
-                packet.slots.is_empty() && packet.carried_item == cursor_item.0
+                ensure!(packet.slots.is_empty() && packet.carried_item == cursor_item.0);
             }
         }
         ClickMode::DoubleClick => {
             let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
-            count_deltas == 0
+            ensure!(
+                count_deltas == 0,
+                "invalid item delta: expected 0, got {}",
+                count_deltas
+            );
         }
     }
+
+    Ok(())
 }
 
 /// Calculate the total difference in item counts if the changes in this packet
@@ -369,12 +402,13 @@ mod test {
 
         validate_click_slot_impossible(&packet, &player_inventory, Some(&inventory))
             .expect("packet should be valid");
-        assert!(validate_click_slot_item_duplication(
+        validate_click_slot_item_duplication(
             &packet,
             &player_inventory,
             Some(&inventory),
-            &cursor_item
-        ));
+            &cursor_item,
+        )
+        .expect("packet should not fail item duplication check");
     }
 
     #[test]
@@ -411,21 +445,23 @@ mod test {
 
         validate_click_slot_impossible(&packet1, &player_inventory, Some(&inventory1))
             .expect("packet should be valid");
-        assert!(validate_click_slot_item_duplication(
+        validate_click_slot_item_duplication(
             &packet1,
             &player_inventory,
             Some(&inventory1),
-            &cursor_item
-        ));
+            &cursor_item,
+        )
+        .expect("packet should not fail item duplication check");
 
         validate_click_slot_impossible(&packet2, &player_inventory, Some(&inventory2))
             .expect("packet should be valid");
-        assert!(validate_click_slot_item_duplication(
+        validate_click_slot_item_duplication(
             &packet2,
             &player_inventory,
             Some(&inventory2),
-            &cursor_item
-        ));
+            &cursor_item,
+        )
+        .expect("packet should not fail item duplication check");
     }
 
     #[test]
@@ -449,12 +485,13 @@ mod test {
 
         validate_click_slot_impossible(&packet, &player_inventory, Some(&inventory))
             .expect("packet should be valid");
-        assert!(validate_click_slot_item_duplication(
+        validate_click_slot_item_duplication(
             &packet,
             &player_inventory,
             Some(&inventory),
-            &cursor_item
-        ));
+            &cursor_item,
+        )
+        .expect("packet should not fail item duplication check");
     }
 
     #[test]
@@ -478,12 +515,13 @@ mod test {
 
         validate_click_slot_impossible(&packet, &player_inventory, Some(&inventory))
             .expect("packet should be valid");
-        assert!(validate_click_slot_item_duplication(
+        validate_click_slot_item_duplication(
             &packet,
             &player_inventory,
             Some(&inventory),
-            &cursor_item
-        ));
+            &cursor_item,
+        )
+        .expect("packet should not fail item duplication check");
     }
 
     #[test]
@@ -537,31 +575,34 @@ mod test {
         };
 
         validate_click_slot_impossible(&packet1, &player_inventory, Some(&inventory1))
-            .expect("packet should be valid");
-        assert!(!validate_click_slot_item_duplication(
+            .expect("packet 1 should be valid");
+        validate_click_slot_item_duplication(
             &packet1,
             &player_inventory,
             Some(&inventory1),
-            &cursor_item
-        ));
+            &cursor_item,
+        )
+        .expect_err("packet 1 should fail item duplication check");
 
         validate_click_slot_impossible(&packet2, &player_inventory, Some(&inventory2))
-            .expect("packet should be valid");
-        assert!(!validate_click_slot_item_duplication(
+            .expect("packet 2 should be valid");
+        validate_click_slot_item_duplication(
             &packet2,
             &player_inventory,
             Some(&inventory2),
-            &cursor_item
-        ));
+            &cursor_item,
+        )
+        .expect_err("packet 2 should fail item duplication check");
 
         validate_click_slot_impossible(&packet3, &player_inventory, Some(&inventory1))
-            .expect("packet should be valid");
-        assert!(!validate_click_slot_item_duplication(
+            .expect("packet 3 should be valid");
+        validate_click_slot_item_duplication(
             &packet3,
             &player_inventory,
             Some(&inventory1),
-            &cursor_item
-        ));
+            &cursor_item,
+        )
+        .expect_err("packet 3 should fail item duplication check");
     }
 
     #[test]
@@ -629,15 +670,11 @@ mod test {
         for (i, packet) in packets.iter().enumerate() {
             validate_click_slot_impossible(packet, &player_inventory, None)
                 .expect(format!("packet {i} should be valid").as_str());
-            assert!(
-                !validate_click_slot_item_duplication(
-                    packet,
-                    &player_inventory,
-                    None,
-                    &cursor_item
-                ),
-                "packet {i} passed item duplication check when it should have failed"
-            );
+            validate_click_slot_item_duplication(packet, &player_inventory, None, &cursor_item)
+                .expect_err(
+                    format!("packet {i} passed item duplication check when it should have failed")
+                        .as_str(),
+                );
         }
     }
 }
