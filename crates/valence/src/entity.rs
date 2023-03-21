@@ -679,7 +679,7 @@ mod tests {
         assert!(td.remove_init_value(0));
         assert!(td.remove_init_value(5));
 
-        assert!(td.init_data.as_slice().is_empty() || td.init_data.as_slice() == &[0xff]);
+        assert!(td.init_data.as_slice().is_empty() || td.init_data.as_slice() == [0xff]);
         assert!(td.init_data().is_none());
 
         assert!(td.update_data.is_empty());
