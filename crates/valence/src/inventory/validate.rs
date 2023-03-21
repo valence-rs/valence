@@ -665,12 +665,13 @@ mod test {
 
         for (i, packet) in packets.iter().enumerate() {
             validate_click_slot_impossible(packet, &player_inventory, None)
-                .expect(format!("packet {i} should be valid").as_str());
+                .unwrap_or_else(|e| panic!("packet {i} should be valid: {e}"));
             validate_click_slot_item_duplication(packet, &player_inventory, None, &cursor_item)
-                .expect_err(
-                    format!("packet {i} passed item duplication check when it should have failed")
-                        .as_str(),
-                );
+                .unwrap_or_else(|e| {
+                    panic!(
+                        "packet {i} passed item duplication check when it should have failed: {e}"
+                    )
+                });
         }
     }
 }
