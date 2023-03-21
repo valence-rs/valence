@@ -22,7 +22,7 @@ pub(crate) fn validate_click_slot_impossible(
     // check all slot ids and item counts are valid
     if !packet.slots.iter().all(|s| {
         (0..=max_slot).contains(&(s.idx as u16))
-            && (0..=64).contains(&(s.item.as_ref().map(|i| i.count()).unwrap_or(0)))
+            && s.item.as_ref().map_or(true, |i| (1..=64).contains(&i.count()))
     }) {
         return false;
     }
