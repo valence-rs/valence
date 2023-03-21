@@ -31,8 +31,7 @@ pub(crate) fn validate_click_slot_impossible(
     if !packet
         .carried_item
         .as_ref()
-        .map(|i| (0..=64).contains(&i.count()))
-        .unwrap_or(true)
+        .map_or(true, |i| (1..=64).contains(&i.count()))
     {
         return false;
     }
