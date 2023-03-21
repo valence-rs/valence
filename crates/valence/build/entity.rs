@@ -419,6 +419,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 #[derive(bevy_ecs::component::Component, PartialEq, Clone, Debug)]
                 pub struct #pascal_field_name_ident(pub #inner_type);
 
+                #[allow(clippy::derivable_impls)]
                 impl Default for #pascal_field_name_ident {
                     fn default() -> Self {
                         Self(#default_expr)
@@ -436,6 +437,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             let encodable_expr = field.default_value.encodable_expr(quote!(value.0));
 
             systems.extend([quote! {
+                #[allow(clippy::needless_borrow)]
                 fn #system_name_ident(
                     mut query: Query<(&#component_path, &mut TrackedData), Changed<#component_path>>
                 ) {
@@ -463,6 +465,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         }]);
 
         modules.extend([quote! {
+            #[allow(clippy::module_inception)]
             pub mod #snake_entity_name_ident {
                 #module_body
             }
@@ -497,6 +500,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         }
 
         impl std::fmt::Debug for EntityKind {
+            #[allow(clippy::write_literal)]
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
                 match *self {
                     #entity_kind_fmt_args

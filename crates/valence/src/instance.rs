@@ -716,7 +716,7 @@ impl UpdateEntityQueryItem<'_> {
         }
 
         if self.statuses.0 != 0 {
-            for i in 0..mem::size_of_val(&self.statuses) {
+            for i in 0..mem::size_of_val(self.statuses) {
                 if (self.statuses.0 >> i) & 1 == 1 {
                     writer.write_packet(&EntityStatusS2c {
                         entity_id: entity_id.0,
@@ -727,7 +727,7 @@ impl UpdateEntityQueryItem<'_> {
         }
 
         if self.animations.0 != 0 {
-            for i in 0..mem::size_of_val(&self.animations) {
+            for i in 0..mem::size_of_val(self.animations) {
                 if (self.animations.0 >> i) & 1 == 1 {
                     writer.write_packet(&EntityAnimationS2c {
                         entity_id,

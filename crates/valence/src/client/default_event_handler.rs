@@ -38,8 +38,8 @@ pub struct DefaultEventHandlerQuery {
 /// is subject to change.
 ///
 /// This system must be scheduled to run in the
-/// [`EventLoopSchedule`]. Otherwise, it may
-/// not function correctly.
+/// [`EventLoopSchedule`](crate::client::event::EventLoopSchedule). Otherwise,
+/// it may not function correctly.
 #[allow(clippy::too_many_arguments)]
 pub fn default_event_handler(
     mut clients: Query<DefaultEventHandlerQuery>,
