@@ -160,11 +160,13 @@ pub(crate) fn validate_click_slot_item_duplication(
                 );
 
                 let old_slot = window.slot(packet.slots[0].idx as u16);
+                // TODO: make sure NBT is the same
+                // Sometimes, the client will add nbt data to an item if it's missing, like
+                // "Damage" to a sword
                 if packet.button == 0
                     && (old_slot.is_none()
                         || cursor_item.0.is_none()
-                        || (old_slot.unwrap().item != cursor_item.0.as_ref().unwrap().item
-                            && old_slot.unwrap().nbt != cursor_item.0.as_ref().unwrap().nbt))
+                        || old_slot.unwrap().item != cursor_item.0.as_ref().unwrap().item)
                 {
                     // assert that a swap occurs
                     ensure!(
@@ -225,9 +227,10 @@ pub(crate) fn validate_click_slot_item_duplication(
             let old_slot = window.slot(packet.slot_idx as u16);
             let new_slot = packet.slots[0].item.as_ref();
             let is_transmuting = match (old_slot, new_slot) {
-                (Some(old_slot), Some(new_slot)) => {
-                    old_slot.item != new_slot.item || old_slot.nbt != new_slot.nbt
-                }
+                // TODO: make sure NBT is the same
+                // Sometimes, the client will add nbt data to an item if it's missing, like "Damage"
+                // to a sword
+                (Some(old_slot), Some(new_slot)) => old_slot.item != new_slot.item,
                 (_, None) => false,
                 (None, Some(_)) => true,
             };
