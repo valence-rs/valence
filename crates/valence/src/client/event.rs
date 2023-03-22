@@ -868,9 +868,12 @@ fn handle_one_packet(
                 .open_inventory
                 .as_ref()
                 .and_then(|open| inventories.get_mut(open.entity).ok());
-            if let Err(msg) =
-                crate::inventory::validate_click_slot_impossible(&p, &q.inventory, open_inv)
-            {
+            if let Err(msg) = crate::inventory::validate_click_slot_impossible(
+                &p,
+                &q.inventory,
+                open_inv,
+                &q.cursor_item,
+            ) {
                 debug!(
                     "client {:#?} invalid click slot packet: \"{}\" {:#?}",
                     q.entity, msg, p

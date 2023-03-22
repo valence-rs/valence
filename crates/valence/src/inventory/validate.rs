@@ -10,6 +10,7 @@ pub(crate) fn validate_click_slot_impossible(
     packet: &ClickSlotC2s,
     player_inventory: &Inventory,
     open_inventory: Option<&Inventory>,
+    cursor_item: &CursorItem,
 ) -> anyhow::Result<()> {
     ensure!(
         (packet.window_id == 0) == open_inventory.is_none(),
@@ -23,23 +24,33 @@ pub(crate) fn validate_click_slot_impossible(
         None => player_inventory.slot_count(),
     };
 
+    let window = InventoryWindow::new(player_inventory, open_inventory);
+
     // check all slot ids and item counts are valid
     ensure!(
         packet.slots.iter().all(|s| {
             (0..=max_slot).contains(&(s.idx as u16))
-                && s.item
-                    .as_ref()
-                    .map_or(true, |i| (1..=127).contains(&i.count()))
+                && s.item.as_ref().map_or(true, |i| {
+                    (1..=i.item.max_stack().max(
+                        window
+                            .slot(s.idx as u16)
+                            .as_ref()
+                            .map(|c| c.count())
+                            .unwrap_or(0),
+                    ))
+                        .contains(&i.count())
+                })
         }),
         "invalid slot ids or item counts"
     );
 
     // check carried item count is valid
     ensure!(
-        packet
-            .carried_item
-            .as_ref()
-            .map_or(true, |i| (1..=127).contains(&i.count())),
+        packet.carried_item.as_ref().map_or(true, |i| (1..=i
+            .item
+            .max_stack()
+            .max(cursor_item.0.as_ref().map(|c| c.count()).unwrap_or(0)))
+            .contains(&i.count())),
         "invalid carried item count"
     );
 
