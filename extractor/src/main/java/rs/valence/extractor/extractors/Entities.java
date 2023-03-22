@@ -29,116 +29,6 @@ import java.lang.reflect.ParameterizedType;
 import java.util.*;
 
 public class Entities implements Main.Extractor {
-    private final static Map<String, Bit[]> BIT_FIELDS = Map.ofEntries(
-            // @formatter:off
-            bits(
-                    "flags",
-                    bit("on_fire", 0),
-                    bit("sneaking", 1),
-                    bit("sprinting", 3),
-                    bit("swimming", 4),
-                    bit("invisible", 5),
-                    bit("glowing", 6),
-                    bit("fall_flying", 7)
-            ),
-            bits(
-                    "projectile_flags",
-                    bit("critical", 0),
-                    bit("no_clip", 1)
-            ),
-            bits(
-                    "living_flags",
-                    bit("using_item", 0),
-                    bit("off_hand_active", 1),
-                    bit("using_riptide", 2)
-            ),
-            bits(
-                    "player_model_parts",
-                    bit("cape", 0),
-                    bit("jacket", 1),
-                    bit("left_sleeve", 2),
-                    bit("right_sleeve", 3),
-                    bit("left_pants_leg", 4),
-                    bit("right_pants_leg", 5),
-                    bit("hat", 6)
-            ),
-            bits(
-                    "armor_stand_flags",
-                    bit("small", 0),
-                    bit("show_arms", 1),
-                    bit("hide_base_plate", 2),
-                    bit("marker", 3)
-            ),
-            bits(
-                    "mob_flags",
-                    bit("ai_disabled", 0),
-                    bit("left_handed", 1),
-                    bit("attacking", 2)
-            ),
-            bits(
-                    "bat_flags",
-                    bit("hanging", 0)
-            ),
-            bits(
-                    "horse_flags",
-                    bit("tamed", 1),
-                    bit("saddled", 2),
-                    bit("bred", 3),
-                    bit("eating_grass", 4),
-                    bit("angry", 5),
-                    bit("eating", 6)
-            ),
-            bits(
-                    "bee_flags",
-                    bit("near_target", 1),
-                    bit("has_stung", 2),
-                    bit("has_nectar", 3)
-            ),
-            bits(
-                    "fox_flags",
-                    bit("sitting", 0),
-                    bit("crouching", 2),
-                    bit("rolling_head", 3),
-                    bit("chasing", 4),
-                    bit("sleeping", 5),
-                    bit("walking", 6),
-                    bit("aggressive", 7)
-            ),
-            bits(
-                    "panda_flags",
-                    bit("sneezing", 1),
-                    bit("playing", 2),
-                    bit("sitting", 3),
-                    bit("lying_on_back", 4)
-            ),
-            bits(
-                    "tameable_flags",
-                    bit("sitting_pose", 0),
-                    bit("tamed", 2)
-            ),
-            bits(
-                    "iron_golem_flags",
-                    bit("player_created", 0)
-            ),
-            bits(
-                    "snow_golem_flags",
-                    bit("has_pumpkin", 4)
-            ),
-            bits(
-                    "blaze_flags",
-                    bit("fire_active", 0)
-            ),
-            bits(
-                    "vex_flags",
-                    bit("charging", 0)
-            ),
-            bits(
-                    "spider_flags",
-                    bit("climbing_wall", 0)
-            )
-            // @formatter:on
-    );
-
     public Entities() {
     }
 
@@ -320,15 +210,6 @@ public class Entities implements Main.Extractor {
                         var data = Entities.trackedDataToJson(trackedData, dataTracker);
                         fieldJson.addProperty("type", data.left());
                         fieldJson.add("default_value", data.right());
-
-                        var bitsJson = new JsonArray();
-                        for (var bit : BIT_FIELDS.getOrDefault(fieldName, new Bit[]{})) {
-                            var bitJson = new JsonObject();
-                            bitJson.addProperty("name", bit.name);
-                            bitJson.addProperty("index", bit.index);
-                            bitsJson.add(bitJson);
-                        }
-                        fieldJson.add("bits", bitsJson);
 
                         fieldsJson.add(fieldJson);
                     }

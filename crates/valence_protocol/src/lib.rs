@@ -94,7 +94,6 @@ pub mod packet;
 pub mod raw;
 pub mod sound;
 pub mod text;
-pub mod tracked_data;
 pub mod translation_key;
 pub mod types;
 pub mod var_int;

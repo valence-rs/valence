@@ -2,8 +2,9 @@
 
 use std::mem;
 
-use valence::client::despawn_disconnected_clients;
-use valence::client::event::{default_event_handler, StartDigging, StartSneaking};
+use valence::client::event::{StartDigging, StartSneaking};
+use valence::client::{default_event_handler, despawn_disconnected_clients};
+use valence::entity::player::PlayerBundle;
 use valence::prelude::*;
 
 const BOARD_MIN_X: i32 = -30;
@@ -67,23 +68,11 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<
-        (
-            Entity,
-            &UniqueId,
-            &mut Client,
-            &mut Position,
-            &mut Location,
-            &mut GameMode,
-        ),
-        Added<Client>,
-    >,
+    mut clients: Query<(Entity, &UniqueId, &mut Client, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
     mut commands: Commands,
 ) {
-    for (entity, uuid, mut client, mut pos, mut loc, mut game_mode) in &mut clients {
-        pos.0 = SPAWN_POS;
-        loc.0 = instances.single();
+    for (entity, uuid, mut client, mut game_mode) in &mut clients {
         *game_mode = GameMode::Survival;
 
         client.send_message("Welcome to Conway's game of life in Minecraft!".italic());
@@ -92,9 +81,13 @@ fn init_clients(
              life."
                 .italic(),
         );
-        commands
-            .entity(entity)
-            .insert(McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0));
+
+        commands.entity(entity).insert(PlayerBundle {
+            location: Location(instances.single()),
+            position: Position(SPAWN_POS),
+            uuid: *uuid,
+            ..Default::default()
+        });
     }
 }
 

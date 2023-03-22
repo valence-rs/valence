@@ -1,7 +1,8 @@
 #![allow(clippy::type_complexity)]
 
-use valence::client::despawn_disconnected_clients;
-use valence::client::event::{default_event_handler, PerformRespawn, StartSneaking};
+use valence::client::event::{PerformRespawn, StartSneaking};
+use valence::client::{default_event_handler, despawn_disconnected_clients};
+use valence::entity::player::PlayerBundle;
 use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;
@@ -42,31 +43,22 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<
-        (
-            Entity,
-            &UniqueId,
-            &mut Client,
-            &mut Position,
-            &mut HasRespawnScreen,
-            &mut Location,
-        ),
-        Added<Client>,
-    >,
+    mut clients: Query<(Entity, &UniqueId, &mut Client, &mut HasRespawnScreen), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
     mut commands: Commands,
 ) {
-    for (entity, uuid, mut client, mut pos, mut has_respawn_screen, mut loc) in &mut clients {
-        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
+    for (entity, uuid, mut client, mut has_respawn_screen) in &mut clients {
         has_respawn_screen.0 = true;
-        loc.0 = instances.iter().next().unwrap();
         client.send_message(
             "Welcome to Valence! Sneak to die in the game (but not in real life).".italic(),
         );
 
-        commands
-            .entity(entity)
-            .insert(McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0));
+        commands.entity(entity).insert(PlayerBundle {
+            location: Location(instances.iter().next().unwrap()),
+            position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 0.0]),
+            uuid: *uuid,
+            ..Default::default()
+        });
     }
 }
 

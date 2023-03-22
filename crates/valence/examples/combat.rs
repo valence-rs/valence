@@ -2,10 +2,10 @@
 
 use bevy_ecs::query::WorldQuery;
 use glam::Vec3Swizzles;
-use valence::client::despawn_disconnected_clients;
-use valence::client::event::{
-    default_event_handler, PlayerInteract, StartSprinting, StopSprinting,
-};
+use valence::client::event::{PlayerInteract, StartSprinting, StopSprinting};
+use valence::client::{default_event_handler, despawn_disconnected_clients};
+use valence::entity::player::PlayerBundle;
+use valence::entity::EntityStatuses;
 use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;
@@ -67,20 +67,22 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<(Entity, &UniqueId, &mut Position, &mut Location), Added<Client>>,
+    mut clients: Query<(Entity, &UniqueId), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
     mut commands: Commands,
 ) {
-    for (entity, uuid, mut pos, mut loc) in &mut clients {
-        pos.set([0.0, SPAWN_Y as f64, 0.0]);
-        loc.0 = instances.single();
-
+    for (entity, uuid) in &mut clients {
         commands.entity(entity).insert((
             CombatState {
                 last_attacked_tick: 0,
                 has_bonus_knockback: false,
             },
-            McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0),
+            PlayerBundle {
+                location: Location(instances.single()),
+                position: Position::new([0.5, SPAWN_Y as f64, 0.5]),
+                uuid: *uuid,
+                ..Default::default()
+            },
         ));
     }
 }
@@ -91,11 +93,11 @@ struct CombatQuery {
     client: &'static mut Client,
     pos: &'static Position,
     state: &'static mut CombatState,
-    entity: &'static mut McEntity,
+    statuses: &'static mut EntityStatuses,
 }
 
 fn handle_combat_events(
-    manager: Res<McEntityManager>,
+    manager: Res<EntityManager>,
     server: Res<Server>,
     mut clients: Query<CombatQuery>,
     mut start_sprinting: EventReader<StartSprinting>,
@@ -120,7 +122,7 @@ fn handle_combat_events(
         ..
     } in interact_with_entity.iter()
     {
-        let Some(victim_client) = manager.get_with_protocol_id(entity_id) else {
+        let Some(victim_client) = manager.get_with_id(entity_id) else {
             // Attacked entity doesn't exist.
             continue
         };
@@ -162,9 +164,10 @@ fn handle_combat_events(
         victim
             .client
             .trigger_status(EntityStatus::DamageFromGenericSource);
+
         victim
-            .entity
-            .trigger_status(EntityStatus::DamageFromGenericSource);
+            .statuses
+            .trigger(EntityStatus::DamageFromGenericSource);
     }
 }
 

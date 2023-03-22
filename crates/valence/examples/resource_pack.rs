@@ -1,9 +1,9 @@
 #![allow(clippy::type_complexity)]
 
-use valence::client::despawn_disconnected_clients;
-use valence::client::event::{
-    default_event_handler, PlayerInteract, ResourcePackStatus, ResourcePackStatusChange,
-};
+use valence::client::event::{PlayerInteract, ResourcePackStatus, ResourcePackStatusChange};
+use valence::client::{default_event_handler, despawn_disconnected_clients};
+use valence::entity::player::PlayerBundle;
+use valence::entity::sheep::SheepBundle;
 use valence::prelude::*;
 use valence::protocol::packet::c2s::play::player_interact::Interaction;
 
@@ -46,38 +46,31 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 
     let instance_ent = commands.spawn(instance).id();
 
-    let mut sheep = McEntity::new(EntityKind::Sheep, instance_ent);
-    sheep.set_position([0.0, SPAWN_Y as f64 + 1.0, 2.0]);
-    sheep.set_yaw(180.0);
-    sheep.set_head_yaw(180.0);
-    commands.spawn(sheep);
+    commands.spawn(SheepBundle {
+        location: Location(instance_ent),
+        position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 2.0]),
+        look: Look::new(180.0, 0.0),
+        head_yaw: HeadYaw(180.0),
+        ..Default::default()
+    });
 }
 
 fn init_clients(
-    mut clients: Query<
-        (
-            Entity,
-            &UniqueId,
-            &mut Client,
-            &mut Position,
-            &mut Location,
-            &mut GameMode,
-        ),
-        Added<Client>,
-    >,
+    mut clients: Query<(Entity, &UniqueId, &mut Client, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
     mut commands: Commands,
 ) {
-    for (entity, uuid, mut client, mut pos, mut loc, mut game_mode) in &mut clients {
-        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
-        loc.0 = instances.single();
+    for (entity, uuid, mut client, mut game_mode) in &mut clients {
         *game_mode = GameMode::Creative;
 
         client.send_message("Hit the sheep to prompt for the resource pack.".italic());
 
-        commands
-            .entity(entity)
-            .insert(McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0));
+        commands.entity(entity).insert(PlayerBundle {
+            location: Location(instances.single()),
+            position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 0.0]),
+            uuid: *uuid,
+            ..Default::default()
+        });
     }
 }
 

@@ -1,811 +1,700 @@
-use std::collections::HashMap;
-use std::fmt;
-use std::fmt::Formatter;
+use std::num::Wrapping;
 use std::ops::Range;
 
 use bevy_app::{App, CoreSet, Plugin};
 use bevy_ecs::prelude::*;
-pub use data::{EntityKind, TrackedData};
-use glam::{DVec3, UVec3, Vec3};
+use glam::Vec3;
+use paste::paste;
 use rustc_hash::FxHashMap;
 use tracing::warn;
 use uuid::Uuid;
-use valence_protocol::byte_angle::ByteAngle;
-use valence_protocol::packet::s2c::play::{
-    EntityAnimationS2c, EntityPositionS2c, EntitySetHeadYawS2c, EntitySpawnS2c,
-    EntityStatusS2c as EntityEventS2c, EntityTrackerUpdateS2c, EntityVelocityUpdateS2c,
-    ExperienceOrbSpawnS2c, MoveRelativeS2c, PlayerSpawnS2c, RotateAndMoveRelativeS2c, RotateS2c,
-};
-use valence_protocol::tracked_data::{Facing, PaintingKind, Pose};
+pub use valence_protocol::types::Direction;
 use valence_protocol::var_int::VarInt;
+use valence_protocol::{Decode, Encode};
 
-use crate::component::Despawned;
-use crate::config::DEFAULT_TPS;
-use crate::packet::WritePacket;
-use crate::prelude::FlushPacketsSet;
-use crate::util::Aabb;
-use crate::NULL_ENTITY;
-
-pub mod data;
+use crate::client::FlushPacketsSet;
+use crate::component::{
+    Despawned, Location, Look, OldLocation, OldPosition, OnGround, Position, UniqueId,
+};
+use crate::instance::WriteUpdatePacketsToInstancesSet;
 
 include!(concat!(env!("OUT_DIR"), "/entity_event.rs"));
+include!(concat!(env!("OUT_DIR"), "/entity.rs"));
+
+/// A Minecraft entity's ID according to the protocol.
+///
+/// IDs should be _unique_ for the duration of the server and  _constant_ for
+/// the lifetime of the entity. IDs of -1 (the default) will be assigned to
+/// something else on the tick the entity is added. If you need to know the ID
+/// ahead of time, set this component to the value returned by
+/// [`EntityManager::next_id`] before spawning.
+#[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct EntityId(i32);
+
+impl EntityId {
+    /// Returns the underlying entity ID as an integer.
+    pub fn get(self) -> i32 {
+        self.0
+    }
+}
+
+/// Returns an entity ID of -1.
+impl Default for EntityId {
+    fn default() -> Self {
+        Self(-1)
+    }
+}
+
+#[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
+pub struct HeadYaw(pub f32);
+
+/// Entity velocity in m/s.
+#[derive(Component, Copy, Clone, Default, Debug)]
+pub struct Velocity(pub Vec3);
+
+#[derive(Component, Copy, Clone, Default, Debug)]
+pub struct EntityStatuses(pub u64);
+
+impl EntityStatuses {
+    pub fn trigger(&mut self, status: EntityStatus) {
+        self.set(status, true);
+    }
+
+    pub fn set(&mut self, status: EntityStatus, triggered: bool) {
+        self.0 |= (triggered as u64) << status as u64;
+    }
+
+    pub fn get(&self, status: EntityStatus) -> bool {
+        (self.0 >> status as u64) & 1 == 1
+    }
+}
+
+#[derive(Component, Default, Debug)]
+pub struct EntityAnimations(pub u8);
+
+impl EntityAnimations {
+    pub fn trigger(&mut self, anim: EntityAnimation) {
+        self.set(anim, true);
+    }
+
+    pub fn set(&mut self, anim: EntityAnimation, triggered: bool) {
+        self.0 |= (triggered as u8) << anim as u8;
+    }
+
+    pub fn get(&self, anim: EntityAnimation) -> bool {
+        (self.0 >> anim as u8) & 1 == 1
+    }
+}
+
+/// Extra integer data passed to the entity spawn packet. The meaning depends on
+/// the type of entity being spawned.
+///
+/// Some examples:
+/// - **Experience Orb**: Experience count
+/// - **(Glowing) Item Frame**: Rotation
+/// - **Painting**: Rotation
+/// - **Falling Block**: Block state
+/// - **Fishing Bobber**: Hook entity ID
+/// - **Warden**: Initial pose
+#[derive(Component, Default, Debug)]
+pub struct ObjectData(pub i32);
+
+/// The range of packet bytes for this entity within the cell the entity is
+/// located in. For internal use only.
+#[derive(Component, Default, Debug)]
+pub struct PacketByteRange(pub(crate) Range<usize>);
+
+/// Cache for all the tracked data of an entity. Used for the
+/// [`EntityTrackerUpdateS2c`][packet] packet.
+///
+/// [packet]: valence_protocol::packet::s2c::play::EntityTrackerUpdateS2c
+#[derive(Component, Default, Debug)]
+pub struct TrackedData {
+    init_data: Vec<u8>,
+    /// A map of tracked data indices to the byte length of the entry in
+    /// `init_data`.
+    init_entries: Vec<(u8, u32)>,
+    update_data: Vec<u8>,
+}
+
+impl TrackedData {
+    /// Returns initial tracked data for the entity, ready to be sent in the
+    /// [`EntityTrackerUpdateS2c`][packet] packet. This is used when the entity
+    /// enters the view of a client.
+    ///
+    /// [packet]: valence_protocol::packet::s2c::play::EntityTrackerUpdateS2c
+    pub fn init_data(&self) -> Option<&[u8]> {
+        if self.init_data.len() > 1 {
+            Some(&self.init_data)
+        } else {
+            None
+        }
+    }
+
+    /// Contains updated tracked data for the entity, ready to be sent in the
+    /// [`EntityTrackerUpdateS2c`][packet] packet. This is used when tracked
+    /// data is changed and the client is already in view of the entity.
+    ///
+    /// [packet]: valence_protocol::packet::s2c::play::EntityTrackerUpdateS2c
+    pub fn update_data(&self) -> Option<&[u8]> {
+        if self.update_data.len() > 1 {
+            Some(&self.update_data)
+        } else {
+            None
+        }
+    }
+
+    pub fn insert_init_value(&mut self, index: u8, type_id: u8, value: impl Encode) {
+        debug_assert!(
+            index != 0xff,
+            "index of 0xff is reserved for the terminator"
+        );
+
+        self.remove_init_value(index);
+
+        self.init_data.pop(); // Remove terminator.
+
+        // Append the new value to the end.
+        let len_before = self.init_data.len();
+
+        self.init_data.extend_from_slice(&[index, type_id]);
+        if let Err(e) = value.encode(&mut self.init_data) {
+            warn!("failed to encode initial tracked data: {e:#}");
+        }
+
+        let len = self.init_data.len() - len_before;
+
+        self.init_entries.push((index, len as u32));
+
+        self.init_data.push(0xff); // Add terminator.
+    }
+
+    pub fn remove_init_value(&mut self, index: u8) -> bool {
+        let mut start = 0;
+
+        for (pos, &(idx, len)) in self.init_entries.iter().enumerate() {
+            if idx == index {
+                let end = start + len as usize;
+
+                self.init_data.drain(start..end);
+                self.init_entries.remove(pos);
+
+                return true;
+            }
+
+            start += len as usize;
+        }
+
+        false
+    }
+
+    pub fn append_update_value(&mut self, index: u8, type_id: u8, value: impl Encode) {
+        debug_assert!(
+            index != 0xff,
+            "index of 0xff is reserved for the terminator"
+        );
+
+        self.update_data.pop(); // Remove terminator.
+
+        self.update_data.extend_from_slice(&[index, type_id]);
+        if let Err(e) = value.encode(&mut self.update_data) {
+            warn!("failed to encode updated tracked data: {e:#}");
+        }
+
+        self.update_data.push(0xff); // Add terminator.
+    }
+
+    pub fn clear_update_values(&mut self) {
+        self.update_data.clear();
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encode, Decode)]
+pub struct VillagerData {
+    pub kind: VillagerKind,
+    pub profession: VillagerProfession,
+    pub level: i32,
+}
+
+impl VillagerData {
+    pub const fn new(kind: VillagerKind, profession: VillagerProfession, level: i32) -> Self {
+        Self {
+            kind,
+            profession,
+            level,
+        }
+    }
+}
+
+impl Default for VillagerData {
+    fn default() -> Self {
+        Self {
+            kind: Default::default(),
+            profession: Default::default(),
+            level: 1,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug, Encode, Decode)]
+pub enum VillagerKind {
+    Desert,
+    Jungle,
+    #[default]
+    Plains,
+    Savanna,
+    Snow,
+    Swamp,
+    Taiga,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug, Encode, Decode)]
+pub enum VillagerProfession {
+    #[default]
+    None,
+    Armorer,
+    Butcher,
+    Cartographer,
+    Cleric,
+    Farmer,
+    Fisherman,
+    Fletcher,
+    Leatherworker,
+    Librarian,
+    Mason,
+    Nitwit,
+    Shepherd,
+    Toolsmith,
+    Weaponsmith,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug, Encode, Decode)]
+pub enum Pose {
+    #[default]
+    Standing,
+    FallFlying,
+    Sleeping,
+    Swimming,
+    SpinAttack,
+    Sneaking,
+    LongJumping,
+    Dying,
+    Croaking,
+    UsingTongue,
+    Roaring,
+    Sniffing,
+    Emerging,
+    Digging,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug, Encode, Decode)]
+pub enum BoatKind {
+    #[default]
+    Oak,
+    Spruce,
+    Birch,
+    Jungle,
+    Acacia,
+    DarkOak,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug, Encode, Decode)]
+pub enum CatKind {
+    Tabby,
+    #[default]
+    Black,
+    Red,
+    Siamese,
+    BritishShorthair,
+    Calico,
+    Persian,
+    Ragdoll,
+    White,
+    Jellie,
+    AllBlack,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug, Encode, Decode)]
+pub enum FrogKind {
+    #[default]
+    Temperate,
+    Warm,
+    Cold,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug, Encode, Decode)]
+pub enum PaintingKind {
+    #[default]
+    Kebab,
+    Aztec,
+    Alban,
+    Aztec2,
+    Bomb,
+    Plant,
+    Wasteland,
+    Pool,
+    Courbet,
+    Sea,
+    Sunset,
+    Creebet,
+    Wanderer,
+    Graham,
+    Match,
+    Bust,
+    Stage,
+    Void,
+    SkullAndRoses,
+    Wither,
+    Fighters,
+    Pointer,
+    Pigscene,
+    BurningSkull,
+    Skeleton,
+    Earth,
+    Wind,
+    Water,
+    Fire,
+    DonkeyKong,
+}
+
+#[derive(Clone, Copy, PartialEq, PartialOrd, Debug, Encode, Decode)]
+pub struct EulerAngle {
+    pub pitch: f32,
+    pub yaw: f32,
+    pub roll: f32,
+}
+
+#[derive(Copy, Clone)]
+struct OptionalInt(Option<i32>);
+
+impl Encode for OptionalInt {
+    fn encode(&self, w: impl std::io::Write) -> anyhow::Result<()> {
+        if let Some(n) = self.0 {
+            VarInt(n.wrapping_add(1))
+        } else {
+            VarInt(0)
+        }
+        .encode(w)
+    }
+}
+
+impl Decode<'_> for OptionalInt {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
+        let n = VarInt::decode(r)?.0;
+
+        Ok(Self(if n == 0 {
+            None
+        } else {
+            Some(n.wrapping_sub(1))
+        }))
+    }
+}
+
+/// Maintains information about all spawned Minecraft entities.
+#[derive(Resource, Debug)]
+pub struct EntityManager {
+    /// Maps protocol IDs to ECS entities.
+    id_to_entity: FxHashMap<i32, Entity>,
+    uuid_to_entity: FxHashMap<Uuid, Entity>,
+    next_id: Wrapping<i32>,
+}
+
+impl EntityManager {
+    fn new() -> Self {
+        Self {
+            id_to_entity: FxHashMap::default(),
+            uuid_to_entity: FxHashMap::default(),
+            next_id: Wrapping(1), // Skip 0.
+        }
+    }
+
+    /// Returns the next unique entity ID and increments the counter.
+    pub fn next_id(&mut self) -> EntityId {
+        if self.next_id.0 == 0 {
+            warn!("entity ID overflow!");
+            // ID 0 is reserved for clients, so skip over it.
+            self.next_id.0 = 1;
+        }
+
+        let id = EntityId(self.next_id.0);
+
+        self.next_id += 1;
+
+        id
+    }
+
+    /// Gets the entity with the given entity ID.
+    pub fn get_with_id(&self, entity_id: i32) -> Option<Entity> {
+        self.id_to_entity.get(&entity_id).cloned()
+    }
+
+    /// Gets the entity with the given UUID.
+    pub fn get_with_uuid(&self, uuid: Uuid) -> Option<Entity> {
+        self.uuid_to_entity.get(&uuid).cloned()
+    }
+}
+
+// TODO: should `set_if_neq` behavior be the default behavior for setters?
+macro_rules! flags {
+    (
+        $(
+            $component:path {
+                $($flag:ident: $offset:literal),* $(,)?
+            }
+        )*
+
+    ) => {
+        $(
+            impl $component {
+                $(
+                    #[doc = "Gets the bit at offset "]
+                    #[doc = stringify!($offset)]
+                    #[doc = "."]
+                    #[inline]
+                    pub const fn $flag(&self) -> bool {
+                        (self.0 >> $offset) & 1 == 1
+                    }
+
+                    paste! {
+                        #[doc = "Sets the bit at offset "]
+                        #[doc = stringify!($offset)]
+                        #[doc = "."]
+                        #[inline]
+                        pub fn [< set_$flag >] (&mut self, $flag: bool) {
+                            self.0 = (self.0 & !(1 << $offset)) | (($flag as u8) << $offset);
+                        }
+                    }
+                )*
+            }
+        )*
+    }
+}
+
+flags! {
+    entity::Flags {
+        on_fire: 0,
+        sneaking: 1,
+        sprinting: 3,
+        swimming: 4,
+        invisible: 5,
+        glowing: 6,
+        fall_flying: 7,
+    }
+    persistent_projectile::ProjectileFlags {
+        critical: 0,
+        no_clip: 1,
+    }
+    living::LivingFlags {
+        using_item: 0,
+        off_hand_active: 1,
+        using_riptide: 2,
+    }
+    player::PlayerModelParts {
+        cape: 0,
+        jacket: 1,
+        left_sleeve: 2,
+        right_sleeve: 3,
+        left_pants_leg: 4,
+        right_pants_leg: 5,
+        hat: 6,
+    }
+    player::MainArm {
+        right: 0,
+    }
+    armor_stand::ArmorStandFlags {
+        small: 0,
+        show_arms: 1,
+        hide_base_plate: 2,
+        marker: 3,
+    }
+    mob::MobFlags {
+        ai_disabled: 0,
+        left_handed: 1,
+        attacking: 2,
+    }
+    bat::BatFlags {
+        hanging: 0,
+    }
+    abstract_horse::HorseFlags {
+        tamed: 1,
+        saddled: 2,
+        bred: 3,
+        eating_grass: 4,
+        angry: 5,
+        eating: 6,
+    }
+    fox::FoxFlags {
+        sitting: 0,
+        crouching: 2,
+        rolling_head: 3,
+        chasing: 4,
+        sleeping: 5,
+        walking: 6,
+        aggressive: 7,
+    }
+    panda::PandaFlags {
+        sneezing: 1,
+        playing: 2,
+        sitting: 3,
+        lying_on_back: 4,
+    }
+    tameable::TameableFlags {
+        sitting_pose: 0,
+        tamed: 2,
+    }
+    iron_golem::IronGolemFlags {
+        player_created: 0,
+    }
+    snow_golem::SnowGolemFlags {
+        has_pumpkin: 4,
+    }
+    blaze::BlazeFlags {
+        fire_active: 0,
+    }
+    vex::VexFlags {
+        charging: 0,
+    }
+    spider::SpiderFlags {
+        climbing_wall: 0,
+    }
+}
 
 pub(crate) struct EntityPlugin;
 
 /// When new Minecraft entities are initialized and added to
-/// [`McEntityManager`]. Systems that need all Minecraft entities to be in a
+/// [`EntityManager`]. Systems that need all Minecraft entities to be in a
 /// valid state should run after this.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct InitEntitiesSet;
 
 impl Plugin for EntityPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(McEntityManager::new())
+        app.insert_resource(EntityManager::new())
             .configure_set(InitEntitiesSet.in_base_set(CoreSet::PostUpdate))
-            .add_system(init_mcentities.in_set(InitEntitiesSet))
+            .add_system(init_entities.in_set(InitEntitiesSet))
+            .add_system(
+                remove_despawned_from_manager
+                    .in_base_set(CoreSet::PostUpdate)
+                    .after(init_entities),
+            )
             .add_systems(
-                (
-                    remove_despawned_from_manager.after(init_mcentities),
-                    update_mcentities.after(FlushPacketsSet),
-                )
+                (clear_status_changes, clear_animation_changes)
+                    .after(WriteUpdatePacketsToInstancesSet)
+                    .in_base_set(CoreSet::PostUpdate),
+            )
+            .add_system(
+                clear_tracked_data_changes
+                    .after(FlushPacketsSet)
                     .in_base_set(CoreSet::PostUpdate),
             );
+
+        add_tracked_data_systems(app);
     }
 }
 
-/// Sets the protocol ID of new mcentities and adds them to the
-/// [`McEntityManager`].
-fn init_mcentities(
-    mut entities: Query<(Entity, &mut McEntity), Added<McEntity>>,
-    mut manager: ResMut<McEntityManager>,
+fn init_entities(
+    mut entities: Query<
+        (
+            Entity,
+            &mut EntityId,
+            &mut UniqueId,
+            &Position,
+            &mut OldPosition,
+        ),
+        Added<EntityKind>,
+    >,
+    mut manager: ResMut<EntityManager>,
 ) {
-    for (entity, mut mc_entity) in &mut entities {
-        if manager.next_protocol_id == 0 {
-            warn!("entity protocol ID overflow");
-            // ID 0 is reserved for clients so we skip over it.
-            manager.next_protocol_id = 1;
+    for (entity, mut id, uuid, pos, mut old_pos) in &mut entities {
+        *old_pos = OldPosition::new(pos.0);
+
+        if *id == EntityId::default() {
+            *id = manager.next_id();
         }
 
-        mc_entity.protocol_id = manager.next_protocol_id;
-        manager.next_protocol_id = manager.next_protocol_id.wrapping_add(1);
+        if let Some(conflict) = manager.id_to_entity.insert(id.0, entity) {
+            warn!(
+                "entity {entity:?} has conflicting entity ID of {} with entity {conflict:?}",
+                id.0
+            );
+        }
 
-        manager
-            .protocol_id_to_mcentity
-            .insert(mc_entity.protocol_id, entity);
+        if let Some(conflict) = manager.uuid_to_entity.insert(uuid.0, entity) {
+            warn!(
+                "entity {entity:?} has conflicting UUID of {} with entity {conflict:?}",
+                uuid.0
+            );
+        }
     }
 }
 
-/// Removes despawned mcentities from the mcentity manager.
 fn remove_despawned_from_manager(
-    entities: Query<&mut McEntity, With<Despawned>>,
-    mut manager: ResMut<McEntityManager>,
+    entities: Query<(&EntityId, &UniqueId), (With<EntityKind>, With<Despawned>)>,
+    mut manager: ResMut<EntityManager>,
 ) {
-    for entity in &entities {
-        manager.protocol_id_to_mcentity.remove(&entity.protocol_id);
+    for (id, uuid) in &entities {
+        manager.id_to_entity.remove(&id.0);
+        manager.uuid_to_entity.remove(&uuid.0);
     }
 }
 
-fn update_mcentities(mut mcentities: Query<&mut McEntity, Changed<McEntity>>) {
-    for mut ent in &mut mcentities {
-        ent.data.clear_modifications();
-        ent.old_position = ent.position;
-        ent.old_instance = ent.instance;
-        ent.statuses = 0;
-        ent.animations = 0;
-        ent.yaw_or_pitch_modified = false;
-        ent.head_yaw_modified = false;
-        ent.velocity_modified = false;
+fn clear_status_changes(mut statuses: Query<&mut EntityStatuses, Changed<EntityStatuses>>) {
+    for mut statuses in &mut statuses {
+        statuses.0 = 0;
     }
 }
 
-/// A [`Resource`] which maintains information about all the [`McEntity`]
-/// components on the server.
-#[derive(Resource, Debug)]
-pub struct McEntityManager {
-    protocol_id_to_mcentity: FxHashMap<i32, Entity>,
-    next_protocol_id: i32,
-}
-
-impl McEntityManager {
-    fn new() -> Self {
-        Self {
-            protocol_id_to_mcentity: HashMap::default(),
-            next_protocol_id: 1,
-        }
-    }
-
-    /// Gets the [`Entity`] of the [`McEntity`] with the given protocol ID.
-    pub fn get_with_protocol_id(&self, id: i32) -> Option<Entity> {
-        self.protocol_id_to_mcentity.get(&id).cloned()
+fn clear_animation_changes(
+    mut animations: Query<&mut EntityAnimations, Changed<EntityAnimations>>,
+) {
+    for mut animations in &mut animations {
+        animations.0 = 0;
     }
 }
 
-/// A component for Minecraft entities. For Valence to recognize a
-/// Minecraft entity, it must have this component attached.
-///
-/// ECS entities with this component are not allowed to be removed from the
-/// [`World`] directly. Instead, you must mark these entities with [`Despawned`]
-/// to allow deinitialization to occur.
-///
-/// Every entity has common state which is accessible directly from this struct.
-/// This includes position, rotation, velocity, and UUID. To access data that is
-/// not common to every kind of entity, see [`Self::data`].
-#[derive(Component)]
-pub struct McEntity {
-    pub(crate) data: TrackedData,
-    protocol_id: i32,
-    uuid: Uuid,
-    /// The range of bytes in the partition cell containing this entity's update
-    /// packets.
-    pub(crate) self_update_range: Range<usize>,
-    /// Contains a set bit for every status triggered this tick.
-    statuses: u64,
-    /// Contains a set bit for every animation triggered this tick.
-    animations: u8,
-    instance: Entity,
-    old_instance: Entity,
-    position: DVec3,
-    old_position: DVec3,
-    yaw: f32,
-    pitch: f32,
-    yaw_or_pitch_modified: bool,
-    head_yaw: f32,
-    head_yaw_modified: bool,
-    velocity: Vec3,
-    velocity_modified: bool,
-    on_ground: bool,
-}
-
-impl McEntity {
-    /// Creates a new [`McEntity`] component with a random UUID.
-    ///
-    /// - `kind`: The type of Minecraft entity this should be.
-    /// - `instance`: The [`Entity`] that has an [`Instance`] that this entity
-    ///   will be located in.
-    ///
-    /// [`Instance`]: crate::instance::Instance
-    pub fn new(kind: EntityKind, instance: Entity) -> Self {
-        Self::with_uuid(kind, instance, Uuid::from_u128(rand::random()))
-    }
-
-    /// Like [`Self::new`], but allows specifying the UUID of the entity.
-    pub fn with_uuid(kind: EntityKind, instance: Entity, uuid: Uuid) -> Self {
-        Self {
-            data: TrackedData::new(kind),
-            self_update_range: 0..0,
-            statuses: 0,
-            animations: 0,
-            instance,
-            old_instance: NULL_ENTITY,
-            position: DVec3::ZERO,
-            old_position: DVec3::ZERO,
-            yaw: 0.0,
-            pitch: 0.0,
-            yaw_or_pitch_modified: false,
-            head_yaw: 0.0,
-            head_yaw_modified: false,
-            velocity: Vec3::ZERO,
-            velocity_modified: false,
-            protocol_id: 0,
-            uuid,
-            on_ground: false,
-        }
-    }
-
-    /// Returns a reference to this entity's tracked data.
-    pub fn data(&self) -> &TrackedData {
-        &self.data
-    }
-
-    /// Returns a mutable reference to this entity's tracked data.
-    pub fn data_mut(&mut self) -> &mut TrackedData {
-        &mut self.data
-    }
-
-    /// Gets the [`EntityKind`] of this entity.
-    pub fn kind(&self) -> EntityKind {
-        self.data.kind()
-    }
-
-    /// Returns a handle to the [`Instance`] this entity is located in.
-    ///
-    /// [`Instance`]: crate::instance::Instance
-    pub fn instance(&self) -> Entity {
-        self.instance
-    }
-
-    /// Sets the [`Instance`] this entity is located in.
-    ///
-    /// [`Instance`]: crate::instance::Instance
-    pub fn set_instance(&mut self, instance: Entity) {
-        self.instance = instance;
-    }
-
-    pub(crate) fn old_instance(&self) -> Entity {
-        self.old_instance
-    }
-
-    /// Gets the UUID of this entity.
-    pub fn uuid(&self) -> Uuid {
-        self.uuid
-    }
-
-    /// Returns the raw protocol ID of this entity. IDs for new entities are not
-    /// initialized until the end of the tick.
-    pub fn protocol_id(&self) -> i32 {
-        self.protocol_id
-    }
-
-    /// Gets the position of this entity in the world it inhabits.
-    ///
-    /// The position of an entity is located on the bottom of its
-    /// hitbox and not the center.
-    pub fn position(&self) -> DVec3 {
-        self.position
-    }
-
-    /// Sets the position of this entity in the world it inhabits.
-    ///
-    /// The position of an entity is located on the bottom of its
-    /// hitbox and not the center.
-    pub fn set_position(&mut self, pos: impl Into<DVec3>) {
-        self.position = pos.into();
-    }
-
-    /// Returns the position of this entity as it existed at the end of the
-    /// previous tick.
-    pub(crate) fn old_position(&self) -> DVec3 {
-        self.old_position
-    }
-
-    /// Gets the yaw of this entity in degrees.
-    pub fn yaw(&self) -> f32 {
-        self.yaw
-    }
-
-    /// Sets the yaw of this entity in degrees.
-    pub fn set_yaw(&mut self, yaw: f32) {
-        if self.yaw != yaw {
-            self.yaw = yaw;
-            self.yaw_or_pitch_modified = true;
-        }
-    }
-
-    /// Gets the pitch of this entity in degrees.
-    pub fn pitch(&self) -> f32 {
-        self.pitch
-    }
-
-    /// Sets the pitch of this entity in degrees.
-    pub fn set_pitch(&mut self, pitch: f32) {
-        if self.pitch != pitch {
-            self.pitch = pitch;
-            self.yaw_or_pitch_modified = true;
-        }
-    }
-
-    /// Gets the head yaw of this entity in degrees.
-    pub fn head_yaw(&self) -> f32 {
-        self.head_yaw
-    }
-
-    /// Sets the head yaw of this entity in degrees.
-    pub fn set_head_yaw(&mut self, head_yaw: f32) {
-        if self.head_yaw != head_yaw {
-            self.head_yaw = head_yaw;
-            self.head_yaw_modified = true;
-        }
-    }
-
-    /// Gets the velocity of this entity in meters per second.
-    pub fn velocity(&self) -> Vec3 {
-        self.velocity
-    }
-
-    /// Sets the velocity of this entity in meters per second.
-    pub fn set_velocity(&mut self, velocity: impl Into<Vec3>) {
-        let new_vel = velocity.into();
-
-        if self.velocity != new_vel {
-            self.velocity = new_vel;
-            self.velocity_modified = true;
-        }
-    }
-
-    /// Gets the value of the "on ground" flag.
-    pub fn on_ground(&self) -> bool {
-        self.on_ground
-    }
-
-    /// Sets the value of the "on ground" flag.
-    pub fn set_on_ground(&mut self, on_ground: bool) {
-        self.on_ground = on_ground;
-        // TODO: on ground modified flag?
-    }
-
-    pub fn trigger_status(&mut self, status: EntityStatus) {
-        self.statuses |= 1 << status as u64;
-    }
-
-    pub fn trigger_animation(&mut self, animation: EntityAnimation) {
-        self.animations |= 1 << animation as u8;
-    }
-
-    /// Returns the hitbox of this entity.
-    ///
-    /// The hitbox describes the space that an entity occupies. Clients interact
-    /// with this space to create an [interact event].
-    ///
-    /// The hitbox of an entity is determined by its position, entity type, and
-    /// other state specific to that type.
-    ///
-    /// [interact event]: crate::client::event::PlayerInteract
-    pub fn hitbox(&self) -> Aabb {
-        fn baby(is_baby: bool, adult_hitbox: [f64; 3]) -> [f64; 3] {
-            if is_baby {
-                adult_hitbox.map(|a| a / 2.0)
-            } else {
-                adult_hitbox
-            }
-        }
-
-        fn item_frame(pos: DVec3, rotation: i32) -> Aabb {
-            let mut center_pos = pos + 0.5;
-
-            match rotation {
-                0 => center_pos.y += 0.46875,
-                1 => center_pos.y -= 0.46875,
-                2 => center_pos.z += 0.46875,
-                3 => center_pos.z -= 0.46875,
-                4 => center_pos.x += 0.46875,
-                5 => center_pos.x -= 0.46875,
-                _ => center_pos.y -= 0.46875,
-            };
-
-            let bounds = DVec3::from(match rotation {
-                0 | 1 => [0.75, 0.0625, 0.75],
-                2 | 3 => [0.75, 0.75, 0.0625],
-                4 | 5 => [0.0625, 0.75, 0.75],
-                _ => [0.75, 0.0625, 0.75],
-            });
-
-            Aabb {
-                min: center_pos - bounds / 2.0,
-                max: center_pos + bounds / 2.0,
-            }
-        }
-
-        let dimensions = match &self.data {
-            TrackedData::Allay(_) => [0.6, 0.35, 0.6],
-            TrackedData::ChestBoat(_) => [1.375, 0.5625, 1.375],
-            TrackedData::Frog(_) => [0.5, 0.5, 0.5],
-            TrackedData::Tadpole(_) => [0.4, 0.3, 0.4],
-            TrackedData::Warden(e) => match e.get_pose() {
-                Pose::Emerging | Pose::Digging => [0.9, 1.0, 0.9],
-                _ => [0.9, 2.9, 0.9],
-            },
-            TrackedData::AreaEffectCloud(e) => [
-                e.get_radius() as f64 * 2.0,
-                0.5,
-                e.get_radius() as f64 * 2.0,
-            ],
-            TrackedData::ArmorStand(e) => {
-                if e.get_marker() {
-                    [0.0, 0.0, 0.0]
-                } else if e.get_small() {
-                    [0.5, 0.9875, 0.5]
-                } else {
-                    [0.5, 1.975, 0.5]
-                }
-            }
-            TrackedData::Arrow(_) => [0.5, 0.5, 0.5],
-            TrackedData::Axolotl(_) => [1.3, 0.6, 1.3],
-            TrackedData::Bat(_) => [0.5, 0.9, 0.5],
-            TrackedData::Bee(e) => baby(e.get_child(), [0.7, 0.6, 0.7]),
-            TrackedData::Blaze(_) => [0.6, 1.8, 0.6],
-            TrackedData::Boat(_) => [1.375, 0.5625, 1.375],
-            TrackedData::Camel(e) => baby(e.get_child(), [1.7, 2.375, 1.7]),
-            TrackedData::Cat(_) => [0.6, 0.7, 0.6],
-            TrackedData::CaveSpider(_) => [0.7, 0.5, 0.7],
-            TrackedData::Chicken(e) => baby(e.get_child(), [0.4, 0.7, 0.4]),
-            TrackedData::Cod(_) => [0.5, 0.3, 0.5],
-            TrackedData::Cow(e) => baby(e.get_child(), [0.9, 1.4, 0.9]),
-            TrackedData::Creeper(_) => [0.6, 1.7, 0.6],
-            TrackedData::Dolphin(_) => [0.9, 0.6, 0.9],
-            TrackedData::Donkey(e) => baby(e.get_child(), [1.5, 1.39648, 1.5]),
-            TrackedData::DragonFireball(_) => [1.0, 1.0, 1.0],
-            TrackedData::Drowned(e) => baby(e.get_baby(), [0.6, 1.95, 0.6]),
-            TrackedData::ElderGuardian(_) => [1.9975, 1.9975, 1.9975],
-            TrackedData::EndCrystal(_) => [2.0, 2.0, 2.0],
-            TrackedData::EnderDragon(_) => [16.0, 8.0, 16.0],
-            TrackedData::Enderman(_) => [0.6, 2.9, 0.6],
-            TrackedData::Endermite(_) => [0.4, 0.3, 0.4],
-            TrackedData::Evoker(_) => [0.6, 1.95, 0.6],
-            TrackedData::EvokerFangs(_) => [0.5, 0.8, 0.5],
-            TrackedData::ExperienceOrb(_) => [0.5, 0.5, 0.5],
-            TrackedData::EyeOfEnder(_) => [0.25, 0.25, 0.25],
-            TrackedData::FallingBlock(_) => [0.98, 0.98, 0.98],
-            TrackedData::FireworkRocket(_) => [0.25, 0.25, 0.25],
-            TrackedData::Fox(e) => baby(e.get_child(), [0.6, 0.7, 0.6]),
-            TrackedData::Ghast(_) => [4.0, 4.0, 4.0],
-            TrackedData::Giant(_) => [3.6, 12.0, 3.6],
-            TrackedData::GlowItemFrame(e) => return item_frame(self.position, e.get_rotation()),
-            TrackedData::GlowSquid(_) => [0.8, 0.8, 0.8],
-            TrackedData::Goat(e) => {
-                if e.get_pose() == Pose::LongJumping {
-                    baby(e.get_child(), [0.63, 0.91, 0.63])
-                } else {
-                    baby(e.get_child(), [0.9, 1.3, 0.9])
-                }
-            }
-            TrackedData::Guardian(_) => [0.85, 0.85, 0.85],
-            TrackedData::Hoglin(e) => baby(e.get_child(), [1.39648, 1.4, 1.39648]),
-            TrackedData::Horse(e) => baby(e.get_child(), [1.39648, 1.6, 1.39648]),
-            TrackedData::Husk(e) => baby(e.get_baby(), [0.6, 1.95, 0.6]),
-            TrackedData::Illusioner(_) => [0.6, 1.95, 0.6],
-            TrackedData::IronGolem(_) => [1.4, 2.7, 1.4],
-            TrackedData::Item(_) => [0.25, 0.25, 0.25],
-            TrackedData::ItemFrame(e) => return item_frame(self.position, e.get_rotation()),
-            TrackedData::Fireball(_) => [1.0, 1.0, 1.0],
-            TrackedData::LeashKnot(_) => [0.375, 0.5, 0.375],
-            TrackedData::Lightning(_) => [0.0, 0.0, 0.0],
-            TrackedData::Llama(e) => baby(e.get_child(), [0.9, 1.87, 0.9]),
-            TrackedData::LlamaSpit(_) => [0.25, 0.25, 0.25],
-            TrackedData::MagmaCube(e) => {
-                let s = 0.5202 * e.get_slime_size() as f64;
-                [s, s, s]
-            }
-            TrackedData::Marker(_) => [0.0, 0.0, 0.0],
-            TrackedData::Minecart(_) => [0.98, 0.7, 0.98],
-            TrackedData::ChestMinecart(_) => [0.98, 0.7, 0.98],
-            TrackedData::CommandBlockMinecart(_) => [0.98, 0.7, 0.98],
-            TrackedData::FurnaceMinecart(_) => [0.98, 0.7, 0.98],
-            TrackedData::HopperMinecart(_) => [0.98, 0.7, 0.98],
-            TrackedData::SpawnerMinecart(_) => [0.98, 0.7, 0.98],
-            TrackedData::TntMinecart(_) => [0.98, 0.7, 0.98],
-            TrackedData::Mule(e) => baby(e.get_child(), [1.39648, 1.6, 1.39648]),
-            TrackedData::Mooshroom(e) => baby(e.get_child(), [0.9, 1.4, 0.9]),
-            TrackedData::Ocelot(e) => baby(e.get_child(), [0.6, 0.7, 0.6]),
-            TrackedData::Painting(e) => {
-                let bounds: UVec3 = match e.get_variant() {
-                    PaintingKind::Kebab => [1, 1, 1],
-                    PaintingKind::Aztec => [1, 1, 1],
-                    PaintingKind::Alban => [1, 1, 1],
-                    PaintingKind::Aztec2 => [1, 1, 1],
-                    PaintingKind::Bomb => [1, 1, 1],
-                    PaintingKind::Plant => [1, 1, 1],
-                    PaintingKind::Wasteland => [1, 1, 1],
-                    PaintingKind::Pool => [2, 1, 2],
-                    PaintingKind::Courbet => [2, 1, 2],
-                    PaintingKind::Sea => [2, 1, 2],
-                    PaintingKind::Sunset => [2, 1, 2],
-                    PaintingKind::Creebet => [2, 1, 2],
-                    PaintingKind::Wanderer => [1, 2, 1],
-                    PaintingKind::Graham => [1, 2, 1],
-                    PaintingKind::Match => [2, 2, 2],
-                    PaintingKind::Bust => [2, 2, 2],
-                    PaintingKind::Stage => [2, 2, 2],
-                    PaintingKind::Void => [2, 2, 2],
-                    PaintingKind::SkullAndRoses => [2, 2, 2],
-                    PaintingKind::Wither => [2, 2, 2],
-                    PaintingKind::Fighters => [4, 2, 4],
-                    PaintingKind::Pointer => [4, 4, 4],
-                    PaintingKind::Pigscene => [4, 4, 4],
-                    PaintingKind::BurningSkull => [4, 4, 4],
-                    PaintingKind::Skeleton => [4, 3, 4],
-                    PaintingKind::Earth => [2, 2, 2],
-                    PaintingKind::Wind => [2, 2, 2],
-                    PaintingKind::Water => [2, 2, 2],
-                    PaintingKind::Fire => [2, 2, 2],
-                    PaintingKind::DonkeyKong => [4, 3, 4],
-                }
-                .into();
-
-                let mut center_pos = self.position + 0.5;
-
-                let (facing_x, facing_z, cc_facing_x, cc_facing_z) =
-                    match ((self.yaw + 45.0).rem_euclid(360.0) / 90.0) as u8 {
-                        0 => (0, 1, 1, 0),   // South
-                        1 => (-1, 0, 0, 1),  // West
-                        2 => (0, -1, -1, 0), // North
-                        _ => (1, 0, 0, -1),  // East
-                    };
-
-                center_pos.x -= facing_x as f64 * 0.46875;
-                center_pos.z -= facing_z as f64 * 0.46875;
-
-                center_pos.x += cc_facing_x as f64 * if bounds.x % 2 == 0 { 0.5 } else { 0.0 };
-                center_pos.y += if bounds.y % 2 == 0 { 0.5 } else { 0.0 };
-                center_pos.z += cc_facing_z as f64 * if bounds.z % 2 == 0 { 0.5 } else { 0.0 };
-
-                let bounds = match (facing_x, facing_z) {
-                    (1, 0) | (-1, 0) => DVec3::new(0.0625, bounds.y as f64, bounds.z as f64),
-                    _ => DVec3::new(bounds.x as f64, bounds.y as f64, 0.0625),
-                };
-
-                return Aabb {
-                    min: center_pos - bounds / 2.0,
-                    max: center_pos + bounds / 2.0,
-                };
-            }
-            TrackedData::Panda(e) => baby(e.get_child(), [1.3, 1.25, 1.3]),
-            TrackedData::Parrot(_) => [0.5, 0.9, 0.5],
-            TrackedData::Phantom(_) => [0.9, 0.5, 0.9],
-            TrackedData::Pig(e) => baby(e.get_child(), [0.9, 0.9, 0.9]),
-            TrackedData::Piglin(e) => baby(e.get_baby(), [0.6, 1.95, 0.6]),
-            TrackedData::PiglinBrute(_) => [0.6, 1.95, 0.6],
-            TrackedData::Pillager(_) => [0.6, 1.95, 0.6],
-            TrackedData::PolarBear(e) => baby(e.get_child(), [1.4, 1.4, 1.4]),
-            TrackedData::Tnt(_) => [0.98, 0.98, 0.98],
-            TrackedData::Pufferfish(_) => [0.7, 0.7, 0.7],
-            TrackedData::Rabbit(e) => baby(e.get_child(), [0.4, 0.5, 0.4]),
-            TrackedData::Ravager(_) => [1.95, 2.2, 1.95],
-            TrackedData::Salmon(_) => [0.7, 0.4, 0.7],
-            TrackedData::Sheep(e) => baby(e.get_child(), [0.9, 1.3, 0.9]),
-            TrackedData::Shulker(e) => {
-                const PI: f64 = std::f64::consts::PI;
-
-                let pos = self.position + 0.5;
-                let mut min = pos - 0.5;
-                let mut max = pos + 0.5;
-
-                let peek = 0.5 - f64::cos(e.get_peek_amount() as f64 * 0.01 * PI) * 0.5;
-
-                match e.get_attached_face() {
-                    Facing::Down => max.y += peek,
-                    Facing::Up => min.y -= peek,
-                    Facing::North => max.z += peek,
-                    Facing::South => min.z -= peek,
-                    Facing::West => max.x += peek,
-                    Facing::East => min.x -= peek,
-                }
-
-                return Aabb { min, max };
-            }
-            TrackedData::ShulkerBullet(_) => [0.3125, 0.3125, 0.3125],
-            TrackedData::Silverfish(_) => [0.4, 0.3, 0.4],
-            TrackedData::Skeleton(_) => [0.6, 1.99, 0.6],
-            TrackedData::SkeletonHorse(e) => baby(e.get_child(), [1.39648, 1.6, 1.39648]),
-            TrackedData::Slime(e) => {
-                let s = 0.5202 * e.get_slime_size() as f64;
-                [s, s, s]
-            }
-            TrackedData::SmallFireball(_) => [0.3125, 0.3125, 0.3125],
-            TrackedData::SnowGolem(_) => [0.7, 1.9, 0.7],
-            TrackedData::Snowball(_) => [0.25, 0.25, 0.25],
-            TrackedData::SpectralArrow(_) => [0.5, 0.5, 0.5],
-            TrackedData::Spider(_) => [1.4, 0.9, 1.4],
-            TrackedData::Squid(_) => [0.8, 0.8, 0.8],
-            TrackedData::Stray(_) => [0.6, 1.99, 0.6],
-            TrackedData::Strider(e) => baby(e.get_child(), [0.9, 1.7, 0.9]),
-            TrackedData::Egg(_) => [0.25, 0.25, 0.25],
-            TrackedData::EnderPearl(_) => [0.25, 0.25, 0.25],
-            TrackedData::ExperienceBottle(_) => [0.25, 0.25, 0.25],
-            TrackedData::Potion(_) => [0.25, 0.25, 0.25],
-            TrackedData::Trident(_) => [0.5, 0.5, 0.5],
-            TrackedData::TraderLlama(_) => [0.9, 1.87, 0.9],
-            TrackedData::TropicalFish(_) => [0.5, 0.4, 0.5],
-            TrackedData::Turtle(e) => {
-                if e.get_child() {
-                    [0.36, 0.12, 0.36]
-                } else {
-                    [1.2, 0.4, 1.2]
-                }
-            }
-            TrackedData::Vex(_) => [0.4, 0.8, 0.4],
-            TrackedData::Villager(e) => baby(e.get_child(), [0.6, 1.95, 0.6]),
-            TrackedData::Vindicator(_) => [0.6, 1.95, 0.6],
-            TrackedData::WanderingTrader(_) => [0.6, 1.95, 0.6],
-            TrackedData::Witch(_) => [0.6, 1.95, 0.6],
-            TrackedData::Wither(_) => [0.9, 3.5, 0.9],
-            TrackedData::WitherSkeleton(_) => [0.7, 2.4, 0.7],
-            TrackedData::WitherSkull(_) => [0.3125, 0.3125, 0.3125],
-            TrackedData::Wolf(e) => baby(e.get_child(), [0.6, 0.85, 0.6]),
-            TrackedData::Zoglin(e) => baby(e.get_baby(), [1.39648, 1.4, 1.39648]),
-            TrackedData::Zombie(e) => baby(e.get_baby(), [0.6, 1.95, 0.6]),
-            TrackedData::ZombieHorse(e) => baby(e.get_child(), [1.39648, 1.6, 1.39648]),
-            TrackedData::ZombieVillager(e) => baby(e.get_baby(), [0.6, 1.95, 0.6]),
-            TrackedData::ZombifiedPiglin(e) => baby(e.get_baby(), [0.6, 1.95, 0.6]),
-            TrackedData::Player(e) => match e.get_pose() {
-                Pose::Standing => [0.6, 1.8, 0.6],
-                Pose::Sleeping => [0.2, 0.2, 0.2],
-                Pose::FallFlying => [0.6, 0.6, 0.6],
-                Pose::Swimming => [0.6, 0.6, 0.6],
-                Pose::SpinAttack => [0.6, 0.6, 0.6],
-                Pose::Sneaking => [0.6, 1.5, 0.6],
-                Pose::Dying => [0.2, 0.2, 0.2],
-                _ => [0.6, 1.8, 0.6],
-            },
-            TrackedData::FishingBobber(_) => [0.25, 0.25, 0.25],
-        };
-
-        Aabb::from_bottom_size(self.position, dimensions)
-    }
-
-    /// Sends the appropriate packets to initialize the entity. This will spawn
-    /// the entity and initialize tracked data.
-    pub(crate) fn write_init_packets(
-        &self,
-        mut writer: impl WritePacket,
-        position: DVec3,
-        scratch: &mut Vec<u8>,
-    ) {
-        let with_object_data = |data| EntitySpawnS2c {
-            entity_id: VarInt(self.protocol_id),
-            object_uuid: self.uuid,
-            kind: VarInt(self.kind() as i32),
-            position: position.to_array(),
-            pitch: ByteAngle::from_degrees(self.pitch),
-            yaw: ByteAngle::from_degrees(self.yaw),
-            head_yaw: ByteAngle::from_degrees(self.head_yaw),
-            data: VarInt(data),
-            velocity: velocity_to_packet_units(self.velocity),
-        };
-
-        match &self.data {
-            TrackedData::Marker(_) => {}
-            TrackedData::ExperienceOrb(_) => writer.write_packet(&ExperienceOrbSpawnS2c {
-                entity_id: VarInt(self.protocol_id),
-                position: position.to_array(),
-                count: 0, // TODO
-            }),
-            TrackedData::Player(_) => {
-                writer.write_packet(&PlayerSpawnS2c {
-                    entity_id: VarInt(self.protocol_id),
-                    player_uuid: self.uuid,
-                    position: position.to_array(),
-                    yaw: ByteAngle::from_degrees(self.yaw),
-                    pitch: ByteAngle::from_degrees(self.pitch),
-                });
-
-                // Player spawn packet doesn't include head yaw for some reason.
-                writer.write_packet(&EntitySetHeadYawS2c {
-                    entity_id: VarInt(self.protocol_id),
-                    head_yaw: ByteAngle::from_degrees(self.head_yaw),
-                });
-            }
-            TrackedData::ItemFrame(e) => writer.write_packet(&with_object_data(e.get_rotation())),
-            TrackedData::GlowItemFrame(e) => {
-                writer.write_packet(&with_object_data(e.get_rotation()))
-            }
-
-            TrackedData::Painting(_) => writer.write_packet(&with_object_data(
-                match ((self.yaw + 45.0).rem_euclid(360.0) / 90.0) as u8 {
-                    0 => 3,
-                    1 => 4,
-                    2 => 2,
-                    _ => 5,
-                },
-            )),
-            // TODO: set block state ID for falling block.
-            TrackedData::FallingBlock(_) => writer.write_packet(&with_object_data(1)),
-            TrackedData::FishingBobber(e) => {
-                writer.write_packet(&with_object_data(e.get_hook_entity_id()))
-            }
-            TrackedData::Warden(e) => {
-                writer.write_packet(&with_object_data((e.get_pose() == Pose::Emerging).into()))
-            }
-            _ => writer.write_packet(&with_object_data(0)),
-        }
-
-        scratch.clear();
-        self.data.write_initial_tracked_data(scratch);
-        if !scratch.is_empty() {
-            writer.write_packet(&EntityTrackerUpdateS2c {
-                entity_id: VarInt(self.protocol_id),
-                metadata: scratch.as_slice().into(),
-            });
-        }
-    }
-
-    /// Writes the appropriate packets to update the entity (Position, tracked
-    /// data, events, animations).
-    pub(crate) fn write_update_packets(&self, mut writer: impl WritePacket, scratch: &mut Vec<u8>) {
-        let entity_id = VarInt(self.protocol_id);
-
-        let position_delta = self.position - self.old_position;
-        let needs_teleport = position_delta.abs().max_element() >= 8.0;
-        let changed_position = self.position != self.old_position;
-
-        if changed_position && !needs_teleport && self.yaw_or_pitch_modified {
-            writer.write_packet(&RotateAndMoveRelativeS2c {
-                entity_id,
-                delta: (position_delta * 4096.0).to_array().map(|v| v as i16),
-                yaw: ByteAngle::from_degrees(self.yaw),
-                pitch: ByteAngle::from_degrees(self.pitch),
-                on_ground: self.on_ground,
-            });
-        } else {
-            if changed_position && !needs_teleport {
-                writer.write_packet(&MoveRelativeS2c {
-                    entity_id,
-                    delta: (position_delta * 4096.0).to_array().map(|v| v as i16),
-                    on_ground: self.on_ground,
-                });
-            }
-
-            if self.yaw_or_pitch_modified {
-                writer.write_packet(&RotateS2c {
-                    entity_id,
-                    yaw: ByteAngle::from_degrees(self.yaw),
-                    pitch: ByteAngle::from_degrees(self.pitch),
-                    on_ground: self.on_ground,
-                });
-            }
-        }
-
-        if needs_teleport {
-            writer.write_packet(&EntityPositionS2c {
-                entity_id,
-                position: self.position.to_array(),
-                yaw: ByteAngle::from_degrees(self.yaw),
-                pitch: ByteAngle::from_degrees(self.pitch),
-                on_ground: self.on_ground,
-            });
-        }
-
-        if self.velocity_modified {
-            writer.write_packet(&EntityVelocityUpdateS2c {
-                entity_id,
-                velocity: velocity_to_packet_units(self.velocity),
-            });
-        }
-
-        if self.head_yaw_modified {
-            writer.write_packet(&EntitySetHeadYawS2c {
-                entity_id,
-                head_yaw: ByteAngle::from_degrees(self.head_yaw),
-            });
-        }
-
-        scratch.clear();
-        self.data.write_updated_tracked_data(scratch);
-        if !scratch.is_empty() {
-            writer.write_packet(&EntityTrackerUpdateS2c {
-                entity_id,
-                metadata: scratch.as_slice().into(),
-            });
-        }
-
-        if self.statuses != 0 {
-            for i in 0..std::mem::size_of_val(&self.statuses) {
-                if (self.statuses >> i) & 1 == 1 {
-                    writer.write_packet(&EntityEventS2c {
-                        entity_id: entity_id.0,
-                        entity_status: i as u8,
-                    });
-                }
-            }
-        }
-
-        if self.animations != 0 {
-            for i in 0..std::mem::size_of_val(&self.animations) {
-                if (self.animations >> i) & 1 == 1 {
-                    writer.write_packet(&EntityAnimationS2c {
-                        entity_id,
-                        animation: i as u8,
-                    });
-                }
-            }
-        }
+fn clear_tracked_data_changes(mut tracked_data: Query<&mut TrackedData, Changed<TrackedData>>) {
+    for mut tracked_data in &mut tracked_data {
+        tracked_data.clear_update_values();
     }
 }
 
-#[inline]
-pub(crate) fn velocity_to_packet_units(vel: Vec3) -> [i16; 3] {
-    // The saturating casts to i16 are desirable.
-    (8000.0 / DEFAULT_TPS as f32 * vel)
-        .to_array()
-        .map(|v| v as i16)
-}
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-impl fmt::Debug for McEntity {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        f.debug_struct("McEntity")
-            .field("kind", &self.kind())
-            .field("protocol_id", &self.protocol_id)
-            .field("uuid", &self.uuid)
-            .field("position", &self.position)
-            .finish_non_exhaustive()
+    #[test]
+    fn insert_remove_init_tracked_data() {
+        let mut td = TrackedData::default();
+
+        td.insert_init_value(0, 3, "foo");
+        td.insert_init_value(10, 6, "bar");
+        td.insert_init_value(5, 9, "baz");
+
+        assert!(td.remove_init_value(10));
+        assert!(!td.remove_init_value(10));
+
+        // Insertion overwrites value at index 0.
+        td.insert_init_value(0, 64, "quux");
+
+        assert!(td.remove_init_value(0));
+        assert!(td.remove_init_value(5));
+
+        assert!(td.init_data.as_slice().is_empty() || td.init_data.as_slice() == [0xff]);
+        assert!(td.init_data().is_none());
+
+        assert!(td.update_data.is_empty());
+    }
+
+    #[test]
+    fn get_set_flags() {
+        let mut flags = entity::Flags(0);
+
+        flags.set_on_fire(true);
+        let before = flags.clone();
+        assert_ne!(flags.0, 0);
+        flags.set_on_fire(true);
+        assert_eq!(before, flags);
+        flags.set_on_fire(false);
+        assert_eq!(flags.0, 0);
     }
 }

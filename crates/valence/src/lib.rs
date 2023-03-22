@@ -22,7 +22,6 @@
 )]
 #![allow(clippy::type_complexity)] // ECS queries are often complicated.
 
-use bevy_ecs::prelude::*;
 pub use {
     anyhow, async_trait, bevy_app, bevy_ecs, uuid, valence_nbt as nbt, valence_protocol as protocol,
 };
@@ -57,9 +56,7 @@ pub mod prelude {
         AsyncCallbacks, ConnectionMode, PlayerSampleEntry, ServerListPing, ServerPlugin,
     };
     pub use dimension::{Dimension, DimensionId};
-    pub use entity::{
-        EntityAnimation, EntityKind, EntityStatus, McEntity, McEntityManager, TrackedData,
-    };
+    pub use entity::{EntityAnimation, EntityKind, EntityManager, EntityStatus, HeadYaw};
     pub use glam::DVec3;
     pub use instance::{Block, BlockMut, BlockRef, Chunk, Instance};
     pub use inventory::{
@@ -81,8 +78,3 @@ pub mod prelude {
 
     use super::*;
 }
-
-/// Let's pretend that [`NULL_ENTITY`] was created by spawning an entity,
-/// immediately despawning it, and then stealing its [`Entity`] ID. The user
-/// doesn't need to know about this.
-const NULL_ENTITY: Entity = Entity::from_bits(u64::MAX);

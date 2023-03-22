@@ -1,9 +1,9 @@
 #![allow(clippy::type_complexity)]
 
-use bevy_app::App;
 use tracing::warn;
-use valence::client::despawn_disconnected_clients;
-use valence::client::event::{default_event_handler, ChatMessage, CommandExecution};
+use valence::client::event::{ChatMessage, CommandExecution};
+use valence::client::{default_event_handler, despawn_disconnected_clients};
+use valence::entity::player::PlayerBundle;
 use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;
@@ -12,7 +12,7 @@ pub fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(ServerPlugin::new(()).with_connection_mode(ConnectionMode::Offline))
+        .add_plugin(ServerPlugin::new(()))
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_systems(
@@ -47,29 +47,20 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<
-        (
-            Entity,
-            &UniqueId,
-            &mut Client,
-            &mut Position,
-            &mut Location,
-            &mut GameMode,
-        ),
-        Added<Client>,
-    >,
+    mut clients: Query<(Entity, &UniqueId, &mut Client, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
     mut commands: Commands,
 ) {
-    for (entity, uuid, mut client, mut pos, mut loc, mut game_mode) in &mut clients {
-        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
-        loc.0 = instances.single();
+    for (entity, uuid, mut client, mut game_mode) in &mut clients {
         *game_mode = GameMode::Adventure;
         client.send_message("Welcome to Valence! Talk about something.".italic());
 
-        commands
-            .entity(entity)
-            .insert(McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0));
+        commands.entity(entity).insert(PlayerBundle {
+            location: Location(instances.single()),
+            position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 0.0]),
+            uuid: *uuid,
+            ..Default::default()
+        });
     }
 }
 

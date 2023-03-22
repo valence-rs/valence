@@ -1,5 +1,4 @@
-use valence::client::despawn_disconnected_clients;
-use valence::client::event::default_event_handler;
+use valence::client::{default_event_handler, despawn_disconnected_clients};
 use valence::prelude::*;
 
 #[allow(unused_imports)]

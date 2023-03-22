@@ -1,7 +1,8 @@
 #![allow(clippy::type_complexity)]
 
-use valence::client::despawn_disconnected_clients;
-use valence::client::event::{default_event_handler, CommandExecution};
+use valence::client::event::CommandExecution;
+use valence::client::{default_event_handler, despawn_disconnected_clients};
+use valence::entity::player::PlayerBundle;
 use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;
@@ -39,30 +40,23 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 
 fn init_clients(
     mut clients: Query<
-        (
-            Entity,
-            &UniqueId,
-            &mut Client,
-            &mut Position,
-            &mut Location,
-            &mut GameMode,
-            &mut OpLevel,
-        ),
+        (Entity, &UniqueId, &mut Client, &mut GameMode, &mut OpLevel),
         Added<Client>,
     >,
     instances: Query<Entity, With<Instance>>,
     mut commands: Commands,
 ) {
-    for (entity, uuid, mut client, mut pos, mut loc, mut game_mode, mut op_level) in &mut clients {
-        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
-        loc.0 = instances.single();
+    for (entity, uuid, mut client, mut game_mode, mut op_level) in &mut clients {
         *game_mode = GameMode::Creative;
         op_level.set(2); // required to use F3+F4, eg /gamemode
         client.send_message("Welcome to Valence! Use F3+F4 to change gamemode.".italic());
 
-        commands
-            .entity(entity)
-            .insert(McEntity::with_uuid(EntityKind::Player, loc.0, uuid.0));
+        commands.entity(entity).insert(PlayerBundle {
+            location: Location(instances.single()),
+            position: Position::new([0.5, SPAWN_Y as f64 + 1.0, 0.5]),
+            uuid: *uuid,
+            ..Default::default()
+        });
     }
 }
 
