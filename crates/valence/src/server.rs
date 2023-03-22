@@ -25,7 +25,7 @@ use crate::config::{AsyncCallbacks, ConnectionMode, ServerPlugin};
 use crate::dimension::{validate_dimensions, Dimension, DimensionId};
 use crate::entity::EntityPlugin;
 use crate::instance::{Instance, InstancePlugin};
-use crate::inventory::InventoryPlugin;
+use crate::inventory::{InventoryPlugin, InventorySettings};
 use crate::player_list::PlayerListPlugin;
 use crate::prelude::event::ClientEventPlugin;
 use crate::prelude::ComponentPlugin;
@@ -303,6 +303,7 @@ pub fn build_plugin(
 
     // Insert resources.
     app.insert_resource(server);
+    app.insert_resource(InventorySettings::default());
 
     // Make the app loop forever at the configured TPS.
     {

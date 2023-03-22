@@ -43,7 +43,7 @@ use super::{
 use crate::client::Client;
 use crate::component::{Look, OnGround, Ping, Position};
 use crate::entity::{EntityAnimation, EntityKind, McEntity, TrackedData};
-use crate::inventory::Inventory;
+use crate::inventory::{Inventory, InventorySettings};
 use crate::packet::WritePacket;
 use crate::prelude::OpenInventory;
 
@@ -698,10 +698,12 @@ fn run_event_loop(
         ClientEvents,
         Commands,
         Query<&Inventory, Without<Client>>,
+        Res<InventorySettings>,
     )>,
     mut clients_to_check: Local<Vec<Entity>>,
 ) {
-    let (mut clients, mut events, mut commands, mut inventories) = state.get_mut(world);
+    let (mut clients, mut events, mut commands, mut inventories, inventory_settings) =
+        state.get_mut(world);
 
     update_all_event_buffers(&mut events);
 
@@ -719,7 +721,7 @@ fn run_event_loop(
 
         q.client.dec.queue_bytes(bytes);
 
-        match handle_one_packet(&mut q, &mut events, &mut inventories) {
+        match handle_one_packet(&mut q, &mut events, &mut inventories, &inventory_settings) {
             Ok(had_packet) => {
                 if had_packet {
                     // We decoded one packet, but there might be more.
@@ -739,7 +741,8 @@ fn run_event_loop(
     while !clients_to_check.is_empty() {
         world.run_schedule(EventLoopSchedule);
 
-        let (mut clients, mut events, mut commands, mut inventories) = state.get_mut(world);
+        let (mut clients, mut events, mut commands, mut inventories, inventory_settings) =
+            state.get_mut(world);
 
         clients_to_check.retain(|&entity| {
             let Ok(mut q) = clients.get_mut(entity) else {
@@ -747,7 +750,7 @@ fn run_event_loop(
                 return false;
             };
 
-            match handle_one_packet(&mut q, &mut events, &mut inventories) {
+            match handle_one_packet(&mut q, &mut events, &mut inventories, &inventory_settings) {
                 Ok(had_packet) => had_packet,
                 Err(e) => {
                     warn!("failed to dispatch events for client {:?}: {e:?}", q.entity);
@@ -765,6 +768,7 @@ fn handle_one_packet(
     q: &mut EventLoopQueryItem,
     events: &mut ClientEvents,
     inventories: &mut Query<&Inventory, Without<Client>>,
+    inventory_settings: &Res<InventorySettings>,
 ) -> anyhow::Result<bool> {
     let Some(pkt) = q.client.dec.try_next_packet::<C2sPlayPacket>()? else {
         // No packets to decode.
@@ -891,30 +895,31 @@ fn handle_one_packet(
                 });
                 return Ok(true);
             }
-            #[cfg(feature = "anti_cheat_item_duplication")]
-            if let Err(msg) = crate::inventory::validate_click_slot_item_duplication(
-                &p,
-                &q.inventory,
-                open_inv,
-                &q.cursor_item,
-            ) {
-                debug!(
-                    "client {:#?} click slot packet tried to incorrectly modify items: \"{}\" \
-                     {:#?}",
-                    q.entity, msg, p
-                );
-                let inventory = open_inv.unwrap_or(&q.inventory);
-                q.client.write_packet(&InventoryS2c {
-                    window_id: if open_inv.is_some() {
-                        q.player_inventory_state.window_id
-                    } else {
-                        0
-                    },
-                    state_id: VarInt(q.player_inventory_state.state_id.0),
-                    slots: Cow::Borrowed(inventory.slot_slice()),
-                    carried_item: Cow::Borrowed(&q.cursor_item.0),
-                });
-                return Ok(true);
+            if inventory_settings.enable_item_dupe_check {
+                if let Err(msg) = crate::inventory::validate_click_slot_item_duplication(
+                    &p,
+                    &q.inventory,
+                    open_inv,
+                    &q.cursor_item,
+                ) {
+                    debug!(
+                        "client {:#?} click slot packet tried to incorrectly modify items: \"{}\" \
+                         {:#?}",
+                        q.entity, msg, p
+                    );
+                    let inventory = open_inv.unwrap_or(&q.inventory);
+                    q.client.write_packet(&InventoryS2c {
+                        window_id: if open_inv.is_some() {
+                            q.player_inventory_state.window_id
+                        } else {
+                            0
+                        },
+                        state_id: VarInt(q.player_inventory_state.state_id.0),
+                        slots: Cow::Borrowed(inventory.slot_slice()),
+                        carried_item: Cow::Borrowed(&q.cursor_item.0),
+                    });
+                    return Ok(true);
+                }
             }
             if p.slot_idx < 0 && p.mode == ClickMode::Click {
                 if let Some(stack) = q.cursor_item.0.take() {

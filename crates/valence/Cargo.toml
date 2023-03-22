@@ -11,10 +11,6 @@ categories = ["game-engines"]
 build = "build/main.rs"
 authors = ["Ryan Johnson <ryanj00a@gmail.com>"]
 
-[features]
-default = ["anti_cheat_item_duplication"]
-anti_cheat_item_duplication = []
-
 [dependencies]
 anyhow = "1.0.65"
 arrayvec = "0.7.2"

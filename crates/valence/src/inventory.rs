@@ -964,6 +964,19 @@ impl From<WindowType> for InventoryKind {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Resource)]
+pub struct InventorySettings {
+    pub enable_item_dupe_check: bool,
+}
+
+impl Default for InventorySettings {
+    fn default() -> Self {
+        Self {
+            enable_item_dupe_check: true,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use bevy_app::App;
