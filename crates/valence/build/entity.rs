@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
-use heck::ToPascalCase;
-use proc_macro2::{Ident, TokenStream};
+use heck::{ToPascalCase, ToShoutySnakeCase, ToSnakeCase};
+use proc_macro2::TokenStream;
 use quote::quote;
 use serde::Deserialize;
 
@@ -27,7 +27,6 @@ struct Field {
     index: u8,
     #[serde(flatten)]
     default_value: Value,
-    bits: Vec<Bit>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -75,14 +74,8 @@ struct BlockPos {
     z: i32,
 }
 
-#[derive(Deserialize, Clone, Debug)]
-struct Bit {
-    name: String,
-    index: u8,
-}
-
 impl Value {
-    pub fn type_id(&self) -> i32 {
+    pub fn type_id(&self) -> u8 {
         match self {
             Value::Byte(_) => 0,
             Value::Integer(_) => 1,
@@ -117,46 +110,26 @@ impl Value {
             Value::Integer(_) => quote!(i32),
             Value::Long(_) => quote!(i64),
             Value::Float(_) => quote!(f32),
-            Value::String(_) => quote!(Box<str>),
-            Value::TextComponent(_) => quote!(Text),
-            Value::OptionalTextComponent(_) => quote!(Option<Text>),
-            Value::ItemStack(_) => quote!(()), // TODO
+            Value::String(_) => quote!(String),
+            Value::TextComponent(_) => quote!(crate::protocol::text::Text),
+            Value::OptionalTextComponent(_) => quote!(Option<crate::protocol::text::Text>),
+            Value::ItemStack(_) => quote!(crate::protocol::item::ItemStack),
             Value::Boolean(_) => quote!(bool),
-            Value::Rotation { .. } => quote!(EulerAngle),
-            Value::BlockPos(_) => quote!(BlockPos),
-            Value::OptionalBlockPos(_) => quote!(Option<BlockPos>),
-            Value::Facing(_) => quote!(Facing),
-            Value::OptionalUuid(_) => quote!(Option<Uuid>),
-            Value::OptionalBlockState(_) => quote!(BlockState),
-            Value::NbtCompound(_) => quote!(valence_nbt::Compound),
-            Value::Particle(_) => quote!(Particle),
-            Value::VillagerData { .. } => quote!(VillagerData),
-            Value::OptionalInt(_) => quote!(OptionalInt),
-            Value::EntityPose(_) => quote!(Pose),
-            Value::CatVariant(_) => quote!(CatKind),
-            Value::FrogVariant(_) => quote!(FrogKind),
+            Value::Rotation { .. } => quote!(crate::entity::EulerAngle),
+            Value::BlockPos(_) => quote!(crate::protocol::block_pos::BlockPos),
+            Value::OptionalBlockPos(_) => quote!(Option<crate::protocol::block_pos::BlockPos>),
+            Value::Facing(_) => quote!(crate::protocol::types::Direction),
+            Value::OptionalUuid(_) => quote!(Option<::uuid::Uuid>),
+            Value::OptionalBlockState(_) => quote!(crate::protocol::block::BlockState),
+            Value::NbtCompound(_) => quote!(crate::nbt::Compound),
+            Value::Particle(_) => quote!(crate::protocol::packet::s2c::play::particle::Particle),
+            Value::VillagerData { .. } => quote!(crate::entity::VillagerData),
+            Value::OptionalInt(_) => quote!(Option<i32>),
+            Value::EntityPose(_) => quote!(crate::entity::Pose),
+            Value::CatVariant(_) => quote!(crate::entity::CatKind),
+            Value::FrogVariant(_) => quote!(crate::entity::FrogKind),
             Value::OptionalGlobalPos(_) => quote!(()), // TODO
-            Value::PaintingVariant(_) => quote!(PaintingKind),
-        }
-    }
-
-    pub fn getter_return_type(&self) -> TokenStream {
-        match self {
-            Value::String(_) => quote!(&str),
-            Value::TextComponent(_) => quote!(&Text),
-            Value::OptionalTextComponent(_) => quote!(Option<&Text>),
-            Value::NbtCompound(_) => quote!(&valence_nbt::Compound),
-            _ => self.field_type(),
-        }
-    }
-
-    pub fn getter_return_expr(&self, field_name: &Ident) -> TokenStream {
-        match self {
-            Value::String(_) | Value::TextComponent(_) | Value::NbtCompound(_) => {
-                quote!(&self.#field_name)
-            }
-            Value::OptionalTextComponent(_) => quote!(self.#field_name.as_ref()),
-            _ => quote!(self.#field_name),
+            Value::PaintingVariant(_) => quote!(crate::entity::PaintingKind),
         }
     }
 
@@ -166,35 +139,53 @@ impl Value {
             Value::Integer(i) => quote!(#i),
             Value::Long(l) => quote!(#l),
             Value::Float(f) => quote!(#f),
-            Value::String(s) => quote!(#s.to_owned().into_boxed_str()),
-            Value::TextComponent(_) => quote!(Text::default()), // TODO
+            Value::String(s) => quote!(#s.to_owned()),
+            Value::TextComponent(txt) => {
+                assert!(txt.is_empty());
+                quote!(crate::protocol::text::Text::default())
+            }
             Value::OptionalTextComponent(t) => {
                 assert!(t.is_none());
                 quote!(None)
             }
-            Value::ItemStack(_) => quote!(()), // TODO
+            Value::ItemStack(stack) => {
+                assert_eq!(stack, "1 air");
+                quote!(crate::protocol::item::ItemStack::default())
+            }
             Value::Boolean(b) => quote!(#b),
             Value::Rotation { pitch, yaw, roll } => quote! {
-                EulerAngle {
+                crate::entity::EulerAngle {
                     pitch: #pitch,
                     yaw: #yaw,
                     roll: #roll,
                 }
             },
             Value::BlockPos(BlockPos { x, y, z }) => {
-                quote!(BlockPos { x: #x, y: #y, z: #z })
+                quote!(crate::protocol::block_pos::BlockPos { x: #x, y: #y, z: #z })
             }
-            Value::OptionalBlockPos(_) => quote!(None), // TODO
+            Value::OptionalBlockPos(pos) => {
+                assert!(pos.is_none());
+                quote!(None)
+            }
             Value::Facing(f) => {
                 let variant = ident(f.to_pascal_case());
-                quote!(Facing::#variant)
+                quote!(crate::protocol::types::Direction::#variant)
             }
-            Value::OptionalUuid(_) => quote!(None), // TODO
-            Value::OptionalBlockState(_) => quote!(BlockState::default()), // TODO
-            Value::NbtCompound(_) => quote!(valence_nbt::Compound::default()), // TODO
+            Value::OptionalUuid(uuid) => {
+                assert!(uuid.is_none());
+                quote!(None)
+            }
+            Value::OptionalBlockState(bs) => {
+                assert!(bs.is_none());
+                quote!(crate::protocol::block::BlockState::default())
+            }
+            Value::NbtCompound(s) => {
+                assert_eq!(s, "{}");
+                quote!(crate::nbt::Compound::default())
+            }
             Value::Particle(p) => {
                 let variant = ident(p.to_pascal_case());
-                quote!(Particle::#variant)
+                quote!(crate::protocol::packet::s2c::play::particle::Particle::#variant)
             }
             Value::VillagerData {
                 typ,
@@ -203,28 +194,34 @@ impl Value {
             } => {
                 let typ = ident(typ.to_pascal_case());
                 let profession = ident(profession.to_pascal_case());
-                quote!(VillagerData::new(VillagerKind::#typ, VillagerProfession::#profession, #level))
+                quote! {
+                    crate::entity::VillagerData {
+                        kind: crate::entity::VillagerKind::#typ,
+                        profession: crate::entity::VillagerProfession::#profession,
+                        level: #level,
+                    }
+                }
             }
             Value::OptionalInt(i) => {
                 assert!(i.is_none());
-                quote!(OptionalInt::default())
+                quote!(None)
             }
             Value::EntityPose(p) => {
                 let variant = ident(p.to_pascal_case());
-                quote!(Pose::#variant)
+                quote!(crate::entity::Pose::#variant)
             }
             Value::CatVariant(c) => {
                 let variant = ident(c.to_pascal_case());
-                quote!(CatKind::#variant)
+                quote!(crate::entity::CatKind::#variant)
             }
             Value::FrogVariant(f) => {
                 let variant = ident(f.to_pascal_case());
-                quote!(FrogKind::#variant)
+                quote!(crate::entity::FrogKind::#variant)
             }
             Value::OptionalGlobalPos(_) => quote!(()),
             Value::PaintingVariant(p) => {
                 let variant = ident(p.to_pascal_case());
-                quote!(PaintingKind::#variant)
+                quote!(crate::entity::PaintingKind::#variant)
             }
         }
     }
@@ -232,7 +229,9 @@ impl Value {
     pub fn encodable_expr(&self, self_lvalue: TokenStream) -> TokenStream {
         match self {
             Value::Integer(_) => quote!(VarInt(#self_lvalue)),
-            _ => self_lvalue,
+            Value::OptionalInt(_) => quote!(OptionalInt(#self_lvalue)),
+            Value::ItemStack(_) => quote!(Some(&#self_lvalue)),
+            _ => quote!(&#self_lvalue),
         }
     }
 }
@@ -240,279 +239,320 @@ impl Value {
 type Entities = BTreeMap<String, Entity>;
 
 pub fn build() -> anyhow::Result<TokenStream> {
-    let entities =
-        serde_json::from_str::<Entities>(include_str!("../../../extracted/entities.json"))?
-            .into_iter()
-            .map(|(k, mut v)| {
-                let strip = |s: String| {
-                    if let Some(stripped) = s.strip_suffix("Entity") {
-                        if !stripped.is_empty() {
-                            return stripped.to_owned();
-                        }
-                    }
-                    s
-                };
-                v.parent = v.parent.map(strip);
-                (strip(k), v)
-            })
-            .collect::<Entities>();
-
     let entity_types =
         serde_json::from_str::<EntityData>(include_str!("../../../extracted/entity_data.json"))?
             .types;
 
-    let concrete_entities = entities
-        .clone()
-        .into_iter()
-        .filter(|(_, v)| v.typ.is_some())
-        .collect::<Entities>();
-
-    let entity_kind_variants = concrete_entities.iter().map(|(name, e)| {
-        let name = ident(name);
-        let id = entity_types[e.typ.as_ref().unwrap()] as isize;
-        quote! {
-            #name = #id,
-        }
-    });
-
-    let concrete_entity_names = concrete_entities.keys().map(ident).collect::<Vec<_>>();
-
-    let concrete_entity_structs = concrete_entities.keys().map(|struct_name| {
-        let fields = collect_all_fields(struct_name, &entities);
-        let struct_name = ident(struct_name);
-
-        let modified_flags_type =
-            ident("u".to_owned() + &fields.len().next_power_of_two().max(8).to_string());
-
-        let struct_fields = fields.iter().map(|&field| {
-            let name = ident(&field.name);
-            let typ = field.default_value.field_type();
-            quote! {
-                #name: #typ,
-            }
-        });
-
-        let field_initializers = fields.iter().map(|&field| {
-            let field_name = ident(&field.name);
-            let init = field.default_value.default_expr();
-
-            quote! {
-                #field_name: #init,
-            }
-        });
-
-        let getter_setters = fields.iter().map(|&field| {
-            let field_name = ident(&field.name);
-            let field_type = field.default_value.field_type();
-            let field_index = field.index;
-
-            if !field.bits.is_empty() {
-                field
-                    .bits
-                    .iter()
-                    .map(|bit| {
-                        let bit_name = ident(&bit.name);
-                        let bit_index = bit.index;
-                        let getter_name = ident(format!("get_{}", &bit.name));
-                        let setter_name = ident(format!("set_{}", &bit.name));
-
-                        quote! {
-                            pub fn #getter_name(&self) -> bool {
-                                self.#field_name >> #bit_index as #field_type & 1 == 1
-                            }
-
-                            pub fn #setter_name(&mut self, #bit_name: bool) {
-                                if self.#getter_name() != #bit_name {
-                                    self.#field_name =
-                                        (self.#field_name & !(1 << #bit_index as #field_type))
-                                        | ((#bit_name as #field_type) << #bit_index);
-
-                                    self.__modified_flags |= 1 << #field_index
-                                }
-                            }
+    let entities: Entities =
+        serde_json::from_str::<Entities>(include_str!("../../../extracted/entities.json"))?
+            .into_iter()
+            .map(|(entity_name, mut entity)| {
+                let change_name = |mut name: String| {
+                    if let Some(stripped) = name.strip_suffix("Entity") {
+                        if !stripped.is_empty() {
+                            name = stripped.into();
                         }
-                    })
-                    .collect::<TokenStream>()
+                    }
+
+                    name
+                };
+
+                entity.parent = entity.parent.map(change_name);
+                (change_name(entity_name), entity)
+            })
+            .collect();
+
+    let mut entity_kind_consts = TokenStream::new();
+    let mut entity_kind_fmt_args = TokenStream::new();
+    let mut translation_key_arms = TokenStream::new();
+    let mut modules = TokenStream::new();
+    let mut systems = TokenStream::new();
+    let mut system_names = vec![];
+
+    for (entity_name, entity) in entities.clone() {
+        let entity_name_ident = ident(&entity_name);
+        let shouty_entity_name = entity_name.to_shouty_snake_case();
+        let shouty_entity_name_ident = ident(&shouty_entity_name);
+        let snake_entity_name = entity_name.to_snake_case();
+        let snake_entity_name_ident = ident(&snake_entity_name);
+
+        let mut module_body = TokenStream::new();
+
+        if let Some(parent_name) = entity.parent {
+            let snake_parent_name = parent_name.to_snake_case();
+
+            let module_doc =
+                format!("Parent class: [`{snake_parent_name}`][super::{snake_parent_name}].");
+
+            module_body.extend([quote! {
+                #![doc = #module_doc]
+            }]);
+        }
+
+        // Is this a concrete entity type?
+        if let Some(entity_type) = entity.typ {
+            let entity_type_id = entity_types[&entity_type];
+
+            entity_kind_consts.extend([quote! {
+                pub const #shouty_entity_name_ident: EntityKind = EntityKind(#entity_type_id);
+            }]);
+
+            entity_kind_fmt_args.extend([quote! {
+                EntityKind::#shouty_entity_name_ident => write!(f, "{} ({})", #entity_type_id, #shouty_entity_name),
+            }]);
+
+            let translation_key_expr = if let Some(key) = entity.translation_key {
+                quote!(Some(#key))
             } else {
-                let getter_name = ident(format!("get_{}", &field.name));
-                let setter_name = ident(format!("set_{}", &field.name));
-                let getter_return_type = field.default_value.getter_return_type();
-                let getter_return_expr = field.default_value.getter_return_expr(&field_name);
+                quote!(None)
+            };
 
-                quote! {
-                    pub fn #getter_name(&self) -> #getter_return_type {
-                        #getter_return_expr
+            translation_key_arms.extend([quote! {
+                EntityKind::#shouty_entity_name_ident => #translation_key_expr,
+            }]);
+
+            // Create bundle type.
+            let mut bundle_fields = TokenStream::new();
+            let mut bundle_init_fields = TokenStream::new();
+
+            for marker_or_field in collect_bundle_fields(&entity_name, &entities) {
+                match marker_or_field {
+                    MarkerOrField::Marker { entity_name } => {
+                        let snake_entity_name_ident = ident(entity_name.to_snake_case());
+                        let pascal_entity_name_ident = ident(entity_name.to_pascal_case());
+
+                        bundle_fields.extend([quote! {
+                            pub #snake_entity_name_ident: super::#snake_entity_name_ident::#pascal_entity_name_ident,
+                        }]);
+
+                        bundle_init_fields.extend([quote! {
+                            #snake_entity_name_ident: Default::default(),
+                        }]);
                     }
+                    MarkerOrField::Field { entity_name, field } => {
+                        let snake_field_name = field.name.to_snake_case();
+                        let pascal_field_name = field.name.to_pascal_case();
+                        let pascal_field_name_ident = ident(&pascal_field_name);
+                        let snake_entity_name = entity_name.to_snake_case();
+                        let snake_entity_name_ident = ident(&snake_entity_name);
 
-                    pub fn #setter_name(&mut self, #field_name: impl Into<#field_type>) {
-                        let #field_name = #field_name.into();
-                        if self.#field_name != #field_name {
-                            self.__modified_flags |= 1 << #field_index as #modified_flags_type;
-                            self.#field_name = #field_name;
+                        let field_name_ident =
+                            ident(format!("{snake_entity_name}_{snake_field_name}"));
+
+                        bundle_fields.extend([quote! {
+                            pub #field_name_ident: super::#snake_entity_name_ident::#pascal_field_name_ident,
+                        }]);
+
+                        bundle_init_fields.extend([quote! {
+                            #field_name_ident: Default::default(),
+                        }]);
+                    }
+                }
+            }
+
+            bundle_fields.extend([quote! {
+                pub kind: super::EntityKind,
+                pub id: super::EntityId,
+                pub uuid: super::UniqueId,
+                pub location: super::Location,
+                pub old_location: super::OldLocation,
+                pub position: super::Position,
+                pub old_position: super::OldPosition,
+                pub look: super::Look,
+                pub head_yaw: super::HeadYaw,
+                pub on_ground: super::OnGround,
+                pub velocity: super::Velocity,
+                pub statuses: super::EntityStatuses,
+                pub animations: super::EntityAnimations,
+                pub object_data: super::ObjectData,
+                pub tracked_data: super::TrackedData,
+                pub packet_byte_range: super::PacketByteRange,
+            }]);
+
+            bundle_init_fields.extend([quote! {
+                kind: super::EntityKind::#shouty_entity_name_ident,
+                id: Default::default(),
+                uuid: Default::default(),
+                location: Default::default(),
+                old_location: Default::default(),
+                position: Default::default(),
+                old_position: Default::default(),
+                look: Default::default(),
+                head_yaw: Default::default(),
+                on_ground: Default::default(),
+                velocity: Default::default(),
+                statuses: Default::default(),
+                animations: Default::default(),
+                object_data: Default::default(),
+                tracked_data: Default::default(),
+                packet_byte_range: Default::default(),
+            }]);
+
+            let bundle_name_ident = ident(format!("{entity_name}Bundle"));
+            let bundle_doc =
+                format!("The bundle of components for spawning `{snake_entity_name}` entities.");
+
+            module_body.extend([quote! {
+                #[doc = #bundle_doc]
+                #[derive(bevy_ecs::bundle::Bundle, Debug)]
+                pub struct #bundle_name_ident {
+                    #bundle_fields
+                }
+
+                impl Default for #bundle_name_ident {
+                    fn default() -> Self {
+                        Self {
+                            #bundle_init_fields
                         }
                     }
                 }
-            }
-        });
+            }]);
+        }
 
-        let initial_tracked_data_stmts = fields.iter().map(|&field| {
-            let field_name = ident(&field.name);
-            let field_index = field.index;
+        for field in &entity.fields {
+            let pascal_field_name_ident = ident(field.name.to_pascal_case());
+            let snake_field_name = field.name.to_snake_case();
+            let inner_type = field.default_value.field_type();
             let default_expr = field.default_value.default_expr();
-            let type_id = field.default_value.type_id();
-            let encodable = field.default_value.encodable_expr(quote!(self.#field_name));
 
-            quote! {
-                if self.#field_name != (#default_expr) {
-                    data.push(#field_index);
-                    VarInt(#type_id).encode(&mut *data).unwrap();
-                    #encodable.encode(&mut *data).unwrap();
-                }
-            }
-        });
+            module_body.extend([quote! {
+                #[derive(bevy_ecs::component::Component, PartialEq, Clone, Debug)]
+                pub struct #pascal_field_name_ident(pub #inner_type);
 
-        let updated_tracked_data_stmts = fields.iter().map(|&field| {
-            let field_name = ident(&field.name);
-            let field_index = field.index;
-            let type_id = field.default_value.type_id();
-            let encodable = field.default_value.encodable_expr(quote!(self.#field_name));
-
-            quote! {
-                if (self.__modified_flags >> #field_index as #modified_flags_type) & 1 == 1 {
-                    data.push(#field_index);
-                    VarInt(#type_id).encode(&mut *data).unwrap();
-                    #encodable.encode(&mut *data).unwrap();
-                }
-            }
-        });
-
-        quote! {
-            pub struct #struct_name {
-                /// Contains a set bit for every modified field.
-                __modified_flags: #modified_flags_type,
-                #(#struct_fields)*
-            }
-
-            impl #struct_name {
-                pub(crate) fn new() -> Self {
-                    Self {
-                        __modified_flags: 0,
-                        #(#field_initializers)*
+                #[allow(clippy::derivable_impls)]
+                impl Default for #pascal_field_name_ident {
+                    fn default() -> Self {
+                        Self(#default_expr)
                     }
                 }
+            }]);
 
-                pub(crate) fn initial_tracked_data(&self, data: &mut Vec<u8>) {
-                    #(#initial_tracked_data_stmts)*
-                }
+            let system_name_ident = ident(format!("update_{snake_entity_name}_{snake_field_name}"));
+            let component_path = quote!(#snake_entity_name_ident::#pascal_field_name_ident);
 
-                pub(crate) fn updated_tracked_data(&self, data: &mut Vec<u8>) {
-                    if self.__modified_flags != 0 {
-                        #(#updated_tracked_data_stmts)*
+            system_names.push(quote!(#system_name_ident));
+
+            let data_index = field.index;
+            let data_type = field.default_value.type_id();
+            let encodable_expr = field.default_value.encodable_expr(quote!(value.0));
+
+            systems.extend([quote! {
+                #[allow(clippy::needless_borrow)]
+                fn #system_name_ident(
+                    mut query: Query<(&#component_path, &mut TrackedData), Changed<#component_path>>
+                ) {
+                    for (value, mut tracked_data) in &mut query {
+                        if *value == Default::default() {
+                            tracked_data.remove_init_value(#data_index);
+                        } else {
+                            tracked_data.insert_init_value(#data_index, #data_type, #encodable_expr);
+                        }
+
+                        if !tracked_data.is_added() {
+                            tracked_data.append_update_value(#data_index, #data_type, #encodable_expr);
+                        }
                     }
                 }
+            }]);
+        }
 
-                pub(crate) fn clear_modifications(&mut self) {
-                    self.__modified_flags = 0;
-                }
+        let marker_doc = format!("Marker component for `{snake_entity_name}` entities.");
 
-                #(#getter_setters)*
+        module_body.extend([quote! {
+            #[doc = #marker_doc]
+            #[derive(bevy_ecs::component::Component, Copy, Clone, Default, Debug)]
+            pub struct #entity_name_ident;
+        }]);
+
+        modules.extend([quote! {
+            #[allow(clippy::module_inception)]
+            pub mod #snake_entity_name_ident {
+                #module_body
             }
-        }
-    });
-
-    let translation_key_arms = concrete_entities.iter().map(|(k, v)| {
-        let name = ident(k);
-        let key = v
-            .translation_key
-            .as_ref()
-            .expect("translation key should be present for concrete entity");
-
-        quote! {
-            Self::#name => #key,
-        }
-    });
+        }]);
+    }
 
     Ok(quote! {
-        /// Contains a variant for each concrete entity type.
-        #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-        pub enum EntityKind {
-            #(#entity_kind_variants)*
-        }
+        #modules
+
+        /// Identifies the type of an entity.
+        /// As a component, the entity kind should not be modified.
+        #[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+        pub struct EntityKind(i32);
 
         impl EntityKind {
-            pub fn translation_key(self) -> &'static str {
+            #entity_kind_consts
+
+            pub const fn new(inner: i32) -> Self {
+                Self(inner)
+            }
+
+            pub const fn get(self) -> i32 {
+                self.0
+            }
+
+            pub const fn translation_key(self) -> Option<&'static str> {
                 match self {
-                    #(#translation_key_arms)*
+                    #translation_key_arms
+                    _ => None,
                 }
             }
         }
 
-        pub enum TrackedData {
-            #(#concrete_entity_names(#concrete_entity_names),)*
-        }
-
-        impl TrackedData {
-            pub(super) fn new(kind: EntityKind) -> Self {
-                match kind {
-                    #(EntityKind::#concrete_entity_names => Self::#concrete_entity_names(#concrete_entity_names::new()),)*
-                }
-            }
-
-            pub fn kind(&self) -> EntityKind {
-                match self {
-                    #(Self::#concrete_entity_names(_) => EntityKind::#concrete_entity_names,)*
-                }
-            }
-
-            pub(super) fn write_initial_tracked_data(&self, buf: &mut Vec<u8>) {
-                buf.clear();
-
-                match self {
-                    #(Self::#concrete_entity_names(e) => e.initial_tracked_data(buf),)*
-                }
-
-                if !buf.is_empty() {
-                    buf.push(0xff);
-                }
-            }
-
-            pub(super) fn write_updated_tracked_data(&self, buf: &mut Vec<u8>) {
-                buf.clear();
-
-                match self {
-                    #(Self::#concrete_entity_names(e) => e.updated_tracked_data(buf),)*
-                }
-
-                if !buf.is_empty() {
-                    buf.push(0xff);
-                }
-            }
-
-            pub(super) fn clear_modifications(&mut self) {
-                match self {
-                    #(Self::#concrete_entity_names(e) => e.clear_modifications(),)*
+        impl std::fmt::Debug for EntityKind {
+            #[allow(clippy::write_literal)]
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                match *self {
+                    #entity_kind_fmt_args
+                    EntityKind(other) => write!(f, "{other}"),
                 }
             }
         }
 
-        #(#concrete_entity_structs)*
+        fn add_tracked_data_systems(app: &mut App) {
+            #systems
+
+            #(
+                app.add_system(
+                    #system_names.before(WriteUpdatePacketsToInstancesSet).in_base_set(CoreSet::PostUpdate)
+                );
+            )*
+        }
     })
 }
 
-fn collect_all_fields<'a>(entity_name: &str, entities: &'a Entities) -> Vec<&'a Field> {
-    fn rec<'a>(entity_name: &str, entities: &'a Entities, fields: &mut Vec<&'a Field>) {
+enum MarkerOrField<'a> {
+    Marker {
+        entity_name: &'a str,
+    },
+    Field {
+        entity_name: &'a str,
+        field: &'a Field,
+    },
+}
+
+fn collect_bundle_fields<'a>(
+    mut entity_name: &'a str,
+    entities: &'a Entities,
+) -> Vec<MarkerOrField<'a>> {
+    let mut res = vec![];
+
+    loop {
         let e = &entities[entity_name];
-        fields.extend(&e.fields);
+
+        res.push(MarkerOrField::Marker { entity_name });
+        res.extend(
+            e.fields
+                .iter()
+                .map(|field| MarkerOrField::Field { entity_name, field }),
+        );
 
         if let Some(parent) = &e.parent {
-            rec(parent, entities, fields);
+            entity_name = parent;
+        } else {
+            break;
         }
     }
 
-    let mut fields = vec![];
-    rec(entity_name, entities, &mut fields);
-
-    fields.sort_by_key(|f| f.index);
-
-    fields
+    res
 }

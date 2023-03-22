@@ -12,6 +12,7 @@ build = "build/main.rs"
 authors = ["Ryan Johnson <ryanj00a@gmail.com>"]
 
 [dependencies]
+#bevy_mod_debugdump = "0.7.0"
 anyhow = "1.0.65"
 arrayvec = "0.7.2"
 async-trait = "0.1.60"

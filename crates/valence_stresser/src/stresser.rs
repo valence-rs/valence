@@ -100,7 +100,7 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
         }
     }
 
-    println!("{sess_name} logined");
+    println!("{sess_name} logged in");
 
     loop {
         while !dec.has_next_packet()? {
@@ -128,8 +128,6 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
 
                     enc.append_packet(&KeepAliveC2s { id: p.id })?;
                     conn.write_all(&enc.take()).await?;
-
-                    println!("{sess_name} keep alive")
                 }
 
                 S2cPlayPacket::PlayerPositionLookS2c(p) => {
@@ -145,8 +143,6 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
                     })?;
 
                     conn.write_all(&enc.take()).await?;
-
-                    println!("{sess_name} spawned")
                 }
                 _ => (),
             },

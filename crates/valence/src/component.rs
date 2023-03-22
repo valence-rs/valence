@@ -10,12 +10,11 @@ use valence_protocol::types::{GameMode as ProtocolGameMode, Property};
 use crate::prelude::FlushPacketsSet;
 use crate::util::{from_yaw_and_pitch, to_yaw_and_pitch};
 use crate::view::ChunkPos;
-use crate::NULL_ENTITY;
 
 /// A [`Component`] for marking entities that should be despawned at the end of
 /// the tick.
 ///
-/// In Valence, some built-in components such as [`McEntity`] are not allowed to
+/// In Valence, some entities such as [Minecraft entities] are not allowed to
 /// be removed from the [`World`] directly. Instead, you must give the entities
 /// you wish to despawn the `Despawned` component. At the end of the tick,
 /// Valence will despawn all entities with this component for you.
@@ -23,12 +22,24 @@ use crate::NULL_ENTITY;
 /// It is legal to remove components or delete entities that Valence does not
 /// know about at any time.
 ///
-/// [`McEntity`]: crate::entity::McEntity
+/// [Minecraft entities]: crate::entity
 #[derive(Component, Copy, Clone, Default, PartialEq, Eq, Debug)]
 pub struct Despawned;
 
-#[derive(Component, Default, Clone, PartialEq, Eq, Debug)]
+/// The universally unique identifier of an entity. Component wrapper for a
+/// [`Uuid`].
+///
+/// This component is expected to remain _unique_ and _constant_ during the
+/// lifetime of the entity. The [`Default`] impl generates a new random UUID.
+#[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct UniqueId(pub Uuid);
+
+/// Generates a new random UUID.
+impl Default for UniqueId {
+    fn default() -> Self {
+        Self(Uuid::from_bytes(rand::random()))
+    }
+}
 
 #[derive(Component, Clone, PartialEq, Eq, Debug)]
 pub struct Username(pub String);
@@ -39,7 +50,7 @@ impl fmt::Display for Username {
     }
 }
 
-#[derive(Component, Clone, PartialEq, Eq, Debug)]
+#[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
 pub struct Properties(pub Vec<Property>);
 
 impl Properties {
@@ -54,7 +65,7 @@ impl Properties {
     }
 }
 
-#[derive(Component, Copy, Clone, PartialEq, Eq, Debug, Default)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
 
 pub enum GameMode {
     #[default]
@@ -105,10 +116,13 @@ pub struct Location(pub Entity);
 
 impl Default for Location {
     fn default() -> Self {
-        Self(NULL_ENTITY)
+        Self(Entity::PLACEHOLDER)
     }
 }
 
+/// The value of [`Location`] from the end of the previous tick.
+///
+/// **NOTE**: You should not modify this component after the entity is spawned.
 #[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct OldLocation(Entity);
 
@@ -124,7 +138,7 @@ impl OldLocation {
 
 impl Default for OldLocation {
     fn default() -> Self {
-        Self(NULL_ENTITY)
+        Self(Entity::PLACEHOLDER)
     }
 }
 
@@ -132,11 +146,15 @@ impl Default for OldLocation {
 pub struct Position(pub DVec3);
 
 impl Position {
+    pub fn new(pos: impl Into<DVec3>) -> Self {
+        Self(pos.into())
+    }
+
     pub fn chunk_pos(&self) -> ChunkPos {
         ChunkPos::from_dvec3(self.0)
     }
 
-    pub fn get(&self) -> DVec3 {
+    pub fn get(self) -> DVec3 {
         self.0
     }
 
@@ -145,26 +163,25 @@ impl Position {
     }
 }
 
+/// The value of [`Location`] from the end of the previous tick.
+///
+/// **NOTE**: You should not modify this component after the entity is spawned.
 #[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
 pub struct OldPosition(DVec3);
 
 impl OldPosition {
-    pub fn new(pos: DVec3) -> Self {
-        Self(pos)
+    pub fn new(pos: impl Into<DVec3>) -> Self {
+        Self(pos.into())
     }
 
-    pub fn get(&self) -> DVec3 {
+    pub fn get(self) -> DVec3 {
         self.0
     }
 
-    pub fn chunk_pos(&self) -> ChunkPos {
+    pub fn chunk_pos(self) -> ChunkPos {
         ChunkPos::from_dvec3(self.0)
     }
 }
-
-/// Velocity in m/s.
-#[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
-pub struct Velocity(pub Vec3);
 
 /// Describes the direction an entity is looking using pitch and yaw angles.
 #[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
@@ -176,6 +193,10 @@ pub struct Look {
 }
 
 impl Look {
+    pub const fn new(yaw: f32, pitch: f32) -> Self {
+        Self { yaw, pitch }
+    }
+
     /// Gets a normalized direction vector from the yaw and pitch.
     pub fn vec(&self) -> Vec3 {
         from_yaw_and_pitch(self.yaw, self.pitch)

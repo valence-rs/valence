@@ -1,7 +1,7 @@
 #![allow(clippy::type_complexity)]
 
 use rand::Rng;
-use valence::client::event::default_event_handler;
+use valence::client::{default_event_handler, despawn_disconnected_clients};
 use valence::player_list::Entry;
 use valence::prelude::*;
 

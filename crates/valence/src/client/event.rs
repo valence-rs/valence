@@ -15,9 +15,7 @@ use valence_protocol::ident::Ident;
 use valence_protocol::item::ItemStack;
 use valence_protocol::packet::c2s::play::click_slot::{ClickMode, Slot};
 use valence_protocol::packet::c2s::play::client_command::Action as ClientCommandAction;
-use valence_protocol::packet::c2s::play::client_settings::{
-    ChatMode, DisplayedSkinParts, MainHand,
-};
+use valence_protocol::packet::c2s::play::client_settings::{ChatMode, DisplayedSkinParts, MainArm};
 use valence_protocol::packet::c2s::play::player_action::Action as PlayerAction;
 use valence_protocol::packet::c2s::play::player_interact::Interaction;
 use valence_protocol::packet::c2s::play::recipe_category_options::RecipeBookId;
@@ -30,16 +28,13 @@ use valence_protocol::packet::c2s::play::{
     AdvancementTabC2s, ClientStatusC2s, ResourcePackStatusC2s, UpdatePlayerAbilitiesC2s,
 };
 use valence_protocol::packet::C2sPlayPacket;
-use valence_protocol::tracked_data::Pose;
 use valence_protocol::types::{Difficulty, Direction, Hand};
 
 use super::{
     CursorItem, KeepaliveState, PlayerActionSequence, PlayerInventoryState, TeleportState,
-    ViewDistance,
 };
 use crate::client::Client;
 use crate::component::{Look, OnGround, Ping, Position};
-use crate::entity::{EntityAnimation, EntityKind, McEntity, TrackedData};
 use crate::inventory::Inventory;
 
 #[derive(Clone, Debug)]
@@ -98,7 +93,7 @@ pub struct ClientSettings {
     /// `true` if the client has chat colors enabled, `false` otherwise.
     pub chat_colors: bool,
     pub displayed_skin_parts: DisplayedSkinParts,
-    pub main_hand: MainHand,
+    pub main_arm: MainArm,
     pub enable_text_filtering: bool,
     pub allow_server_listings: bool,
 }
@@ -829,7 +824,7 @@ fn handle_one_packet(
                 chat_mode: p.chat_mode,
                 chat_colors: p.chat_colors,
                 displayed_skin_parts: p.displayed_skin_parts,
-                main_hand: p.main_hand,
+                main_arm: p.main_arm,
                 enable_text_filtering: p.enable_text_filtering,
                 allow_server_listings: p.allow_server_listings,
             });
@@ -1395,118 +1390,4 @@ fn handle_one_packet(
     }
 
     Ok(true)
-}
-
-/// The default event handler system which handles client events in a
-/// reasonable default way.
-///
-/// For instance, movement events are handled by changing the entity's
-/// position/rotation to match the received movement, crouching makes the
-/// entity crouch, etc.
-///
-/// This system's primary purpose is to reduce boilerplate code in the
-/// examples, but it can be used as a quick way to get started in your own
-/// code. The precise behavior of this system is left unspecified and
-/// is subject to change.
-///
-/// This system must be scheduled to run in the
-/// [`EventLoopSchedule`]. Otherwise, it may
-/// not function correctly.
-#[allow(clippy::too_many_arguments)]
-pub fn default_event_handler(
-    mut clients: Query<(&mut Client, Option<&mut McEntity>, &mut ViewDistance)>,
-    mut update_settings: EventReader<ClientSettings>,
-    mut player_move: EventReader<PlayerMove>,
-    mut start_sneaking: EventReader<StartSneaking>,
-    mut stop_sneaking: EventReader<StopSneaking>,
-    mut start_sprinting: EventReader<StartSprinting>,
-    mut stop_sprinting: EventReader<StopSprinting>,
-    mut swing_arm: EventReader<HandSwing>,
-) {
-    for ClientSettings {
-        client,
-        view_distance,
-        displayed_skin_parts,
-        main_hand,
-        ..
-    } in update_settings.iter()
-    {
-        if let Ok((_, mcentity, mut view_dist)) = clients.get_mut(*client) {
-            view_dist.set(*view_distance);
-
-            if let Some(mut entity) = mcentity {
-                if let TrackedData::Player(player) = entity.data_mut() {
-                    player.set_cape(displayed_skin_parts.cape());
-                    player.set_jacket(displayed_skin_parts.jacket());
-                    player.set_left_sleeve(displayed_skin_parts.left_sleeve());
-                    player.set_right_sleeve(displayed_skin_parts.right_sleeve());
-                    player.set_left_pants_leg(displayed_skin_parts.left_pants_leg());
-                    player.set_right_pants_leg(displayed_skin_parts.right_pants_leg());
-                    player.set_hat(displayed_skin_parts.hat());
-                    player.set_main_arm(*main_hand as u8);
-                }
-            }
-        }
-    }
-
-    for PlayerMove {
-        client,
-        position,
-        yaw,
-        pitch,
-        on_ground,
-        ..
-    } in player_move.iter()
-    {
-        if let Ok((_, Some(mut mcentity), _)) = clients.get_mut(*client) {
-            mcentity.set_position(*position);
-            mcentity.set_yaw(*yaw);
-            mcentity.set_head_yaw(*yaw);
-            mcentity.set_pitch(*pitch);
-            mcentity.set_on_ground(*on_ground);
-        }
-    }
-
-    for StartSneaking { client } in start_sneaking.iter() {
-        if let Ok((_, Some(mut entity), _)) = clients.get_mut(*client) {
-            if let TrackedData::Player(player) = entity.data_mut() {
-                player.set_pose(Pose::Sneaking);
-            }
-        };
-    }
-
-    for StopSneaking { client } in stop_sneaking.iter() {
-        if let Ok((_, Some(mut entity), _)) = clients.get_mut(*client) {
-            if let TrackedData::Player(player) = entity.data_mut() {
-                player.set_pose(Pose::Standing);
-            }
-        };
-    }
-
-    for StartSprinting { client } in start_sprinting.iter() {
-        if let Ok((_, Some(mut entity), _)) = clients.get_mut(*client) {
-            if let TrackedData::Player(player) = entity.data_mut() {
-                player.set_sprinting(true);
-            }
-        };
-    }
-
-    for StopSprinting { client } in stop_sprinting.iter() {
-        if let Ok((_, Some(mut entity), _)) = clients.get_mut(*client) {
-            if let TrackedData::Player(player) = entity.data_mut() {
-                player.set_sprinting(false);
-            }
-        };
-    }
-
-    for HandSwing { client, hand } in swing_arm.iter() {
-        if let Ok((_, Some(mut entity), _)) = clients.get_mut(*client) {
-            if entity.kind() == EntityKind::Player {
-                entity.trigger_animation(match hand {
-                    Hand::Main => EntityAnimation::SwingMainHand,
-                    Hand::Off => EntityAnimation::SwingOffHand,
-                });
-            }
-        };
-    }
 }

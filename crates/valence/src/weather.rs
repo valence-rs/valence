@@ -21,7 +21,7 @@ use bevy_ecs::prelude::*;
 use valence_protocol::packet::s2c::play::game_state_change::GameEventKind;
 use valence_protocol::packet::s2c::play::GameStateChangeS2c;
 
-use crate::instance::UpdateInstancesPreClientSet;
+use crate::instance::WriteUpdatePacketsToInstancesSet;
 use crate::packet::WritePacket;
 use crate::prelude::*;
 
@@ -217,16 +217,14 @@ impl Plugin for WeatherPlugin {
         app.configure_set(
             UpdateWeatherPerInstanceSet
                 .in_base_set(CoreSet::PostUpdate)
-                .before(UpdateInstancesPreClientSet),
-        );
-
-        app.configure_set(
+                .before(WriteUpdatePacketsToInstancesSet),
+        )
+        .configure_set(
             UpdateWeatherPerClientSet
                 .in_base_set(CoreSet::PostUpdate)
                 .before(FlushPacketsSet),
-        );
-
-        app.add_systems(
+        )
+        .add_systems(
             (
                 handle_rain_begin_per_instance,
                 handle_rain_change_per_instance,
@@ -237,9 +235,8 @@ impl Plugin for WeatherPlugin {
                 .chain()
                 .in_set(UpdateWeatherPerInstanceSet)
                 .before(UpdateWeatherPerClientSet),
-        );
-
-        app.add_systems(
+        )
+        .add_systems(
             (
                 handle_rain_begin_per_client,
                 handle_rain_change_per_client,
@@ -249,9 +246,12 @@ impl Plugin for WeatherPlugin {
             )
                 .chain()
                 .in_set(UpdateWeatherPerClientSet),
+        )
+        .add_system(
+            handle_weather_for_joined_player
+                .before(UpdateWeatherPerClientSet)
+                .in_base_set(CoreSet::PostUpdate),
         );
-
-        app.add_system(handle_weather_for_joined_player.before(UpdateWeatherPerClientSet));
     }
 }
 

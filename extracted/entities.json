@@ -15,8 +15,7 @@
         "name": "chest",
         "index": 19,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -32,14 +31,13 @@
         "name": "item",
         "index": 8,
         "type": "item_stack",
-        "default_value": "1 air",
-        "bits": []
+        "default_value": "1 air"
       }
     ],
     "default_bounding_box": {
-      "size_x": 1.0,
-      "size_y": 1.0,
-      "size_z": 1.0
+      "size_x": 0.3125,
+      "size_y": 0.3125,
+      "size_z": 0.3125
     }
   },
   "AbstractHorseEntity": {
@@ -49,46 +47,19 @@
         "name": "horse_flags",
         "index": 17,
         "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "tamed",
-            "index": 1
-          },
-          {
-            "name": "saddled",
-            "index": 2
-          },
-          {
-            "name": "bred",
-            "index": 3
-          },
-          {
-            "name": "eating_grass",
-            "index": 4
-          },
-          {
-            "name": "angry",
-            "index": 5
-          },
-          {
-            "name": "eating",
-            "index": 6
-          }
-        ]
+        "default_value": 0
       },
       {
         "name": "owner_uuid",
         "index": 18,
         "type": "optional_uuid",
-        "default_value": null,
-        "bits": []
+        "default_value": null
       }
     ],
     "default_bounding_box": {
-      "size_x": 1.396484375,
-      "size_y": 1.600000023841858,
-      "size_z": 1.396484375
+      "size_x": 0.8999999761581421,
+      "size_y": 1.8700000047683716,
+      "size_z": 0.8999999761581421
     }
   },
   "AbstractMinecartEntity": {
@@ -98,43 +69,37 @@
         "name": "damage_wobble_ticks",
         "index": 8,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "damage_wobble_side",
         "index": 9,
         "type": "integer",
-        "default_value": 1,
-        "bits": []
+        "default_value": 1
       },
       {
         "name": "damage_wobble_strength",
         "index": 10,
         "type": "float",
-        "default_value": 0.0,
-        "bits": []
+        "default_value": 0.0
       },
       {
         "name": "custom_block_id",
         "index": 11,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "custom_block_offset",
         "index": 12,
         "type": "integer",
-        "default_value": 6,
-        "bits": []
+        "default_value": 6
       },
       {
         "name": "custom_block_present",
         "index": 13,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -150,8 +115,7 @@
         "name": "immune_to_zombification",
         "index": 16,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -164,9 +128,9 @@
     "parent": "HostileEntity",
     "fields": [],
     "default_bounding_box": {
-      "size_x": 0.699999988079071,
-      "size_y": 2.4000000953674316,
-      "size_z": 0.699999988079071
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9900000095367432,
+      "size_z": 0.6000000238418579
     }
   },
   "AllayEntity": {
@@ -178,15 +142,13 @@
         "name": "dancing",
         "index": 16,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "can_duplicate",
         "index": 17,
         "type": "boolean",
-        "default_value": true,
-        "bits": []
+        "default_value": true
       }
     ],
     "default_bounding_box": {
@@ -208,9 +170,9 @@
     "parent": "PassiveEntity",
     "fields": [],
     "default_bounding_box": {
-      "size_x": 0.75,
-      "size_y": 0.41999998688697815,
-      "size_z": 0.75
+      "size_x": 0.4000000059604645,
+      "size_y": 0.699999988079071,
+      "size_z": 0.4000000059604645
     }
   },
   "AreaEffectCloudEntity": {
@@ -222,29 +184,25 @@
         "name": "radius",
         "index": 8,
         "type": "float",
-        "default_value": 3.0,
-        "bits": []
+        "default_value": 3.0
       },
       {
         "name": "color",
         "index": 9,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "waiting",
         "index": 10,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "particle_id",
         "index": 11,
         "type": "particle",
-        "default_value": "entity_effect",
-        "bits": []
+        "default_value": "entity_effect"
       }
     ],
     "default_bounding_box": {
@@ -262,25 +220,7 @@
         "name": "armor_stand_flags",
         "index": 15,
         "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "small",
-            "index": 0
-          },
-          {
-            "name": "show_arms",
-            "index": 1
-          },
-          {
-            "name": "hide_base_plate",
-            "index": 2
-          },
-          {
-            "name": "marker",
-            "index": 3
-          }
-        ]
+        "default_value": 0
       },
       {
         "name": "tracker_head_rotation",
@@ -290,8 +230,7 @@
           "pitch": 0.0,
           "yaw": 0.0,
           "roll": 0.0
-        },
-        "bits": []
+        }
       },
       {
         "name": "tracker_body_rotation",
@@ -301,8 +240,7 @@
           "pitch": 0.0,
           "yaw": 0.0,
           "roll": 0.0
-        },
-        "bits": []
+        }
       },
       {
         "name": "tracker_left_arm_rotation",
@@ -312,8 +250,7 @@
           "pitch": -10.0,
           "yaw": 0.0,
           "roll": -10.0
-        },
-        "bits": []
+        }
       },
       {
         "name": "tracker_right_arm_rotation",
@@ -323,8 +260,7 @@
           "pitch": -15.0,
           "yaw": 0.0,
           "roll": 10.0
-        },
-        "bits": []
+        }
       },
       {
         "name": "tracker_left_leg_rotation",
@@ -334,8 +270,7 @@
           "pitch": -1.0,
           "yaw": 0.0,
           "roll": -1.0
-        },
-        "bits": []
+        }
       },
       {
         "name": "tracker_right_leg_rotation",
@@ -345,8 +280,7 @@
           "pitch": 1.0,
           "yaw": 0.0,
           "roll": 1.0
-        },
-        "bits": []
+        }
       }
     ],
     "default_bounding_box": {
@@ -364,8 +298,7 @@
         "name": "color",
         "index": 10,
         "type": "integer",
-        "default_value": -1,
-        "bits": []
+        "default_value": -1
       }
     ],
     "default_bounding_box": {
@@ -383,22 +316,19 @@
         "name": "variant",
         "index": 17,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "playing_dead",
         "index": 18,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "from_bucket",
         "index": 19,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -416,13 +346,7 @@
         "name": "bat_flags",
         "index": 16,
         "type": "byte",
-        "default_value": 1,
-        "bits": [
-          {
-            "name": "hanging",
-            "index": 0
-          }
-        ]
+        "default_value": 1
       }
     ],
     "default_bounding_box": {
@@ -440,28 +364,13 @@
         "name": "bee_flags",
         "index": 17,
         "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "near_target",
-            "index": 1
-          },
-          {
-            "name": "has_stung",
-            "index": 2
-          },
-          {
-            "name": "has_nectar",
-            "index": 3
-          }
-        ]
+        "default_value": 0
       },
       {
         "name": "anger",
         "index": 18,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -479,13 +388,7 @@
         "name": "blaze_flags",
         "index": 16,
         "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "fire_active",
-            "index": 0
-          }
-        ]
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -503,50 +406,43 @@
         "name": "damage_wobble_ticks",
         "index": 8,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "damage_wobble_side",
         "index": 9,
         "type": "integer",
-        "default_value": 1,
-        "bits": []
+        "default_value": 1
       },
       {
         "name": "damage_wobble_strength",
         "index": 10,
         "type": "float",
-        "default_value": 0.0,
-        "bits": []
+        "default_value": 0.0
       },
       {
         "name": "boat_type",
         "index": 11,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "left_paddle_moving",
         "index": 12,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "right_paddle_moving",
         "index": 13,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "bubble_wobble_ticks",
         "index": 14,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -564,15 +460,13 @@
         "name": "dashing",
         "index": 19,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "last_pose_tick",
         "index": 20,
         "type": "long",
-        "default_value": -52,
-        "bits": []
+        "default_value": -52
       }
     ],
     "default_bounding_box": {
@@ -590,29 +484,25 @@
         "name": "cat_variant",
         "index": 19,
         "type": "cat_variant",
-        "default_value": "black",
-        "bits": []
+        "default_value": "black"
       },
       {
         "name": "in_sleeping_pose",
         "index": 20,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "head_down",
         "index": 21,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "collar_color",
         "index": 22,
         "type": "integer",
-        "default_value": 14,
-        "bits": []
+        "default_value": 14
       }
     ],
     "default_bounding_box": {
@@ -685,15 +575,13 @@
         "name": "command",
         "index": 14,
         "type": "string",
-        "default_value": "",
-        "bits": []
+        "default_value": ""
       },
       {
         "name": "last_output",
         "index": 15,
         "type": "text_component",
-        "default_value": "",
-        "bits": []
+        "default_value": ""
       }
     ],
     "default_bounding_box": {
@@ -722,22 +610,19 @@
         "name": "fuse_speed",
         "index": 16,
         "type": "integer",
-        "default_value": -1,
-        "bits": []
+        "default_value": -1
       },
       {
         "name": "charged",
         "index": 17,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "ignited",
         "index": 18,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -759,22 +644,19 @@
           "x": 0,
           "y": 0,
           "z": 0
-        },
-        "bits": []
+        }
       },
       {
         "name": "has_fish",
         "index": 17,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "moistness",
         "index": 18,
         "type": "integer",
-        "default_value": 2400,
-        "bits": []
+        "default_value": 2400
       }
     ],
     "default_bounding_box": {
@@ -847,15 +729,13 @@
         "name": "beam_target",
         "index": 8,
         "type": "optional_block_pos",
-        "default_value": null,
-        "bits": []
+        "default_value": null
       },
       {
         "name": "show_bottom",
         "index": 9,
         "type": "boolean",
-        "default_value": true,
-        "bits": []
+        "default_value": true
       }
     ],
     "default_bounding_box": {
@@ -873,8 +753,7 @@
         "name": "phase_type",
         "index": 16,
         "type": "integer",
-        "default_value": 10,
-        "bits": []
+        "default_value": 10
       }
     ],
     "default_bounding_box": {
@@ -903,22 +782,19 @@
         "name": "carried_block",
         "index": 16,
         "type": "optional_block_state",
-        "default_value": null,
-        "bits": []
+        "default_value": null
       },
       {
         "name": "angry",
         "index": 17,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "provoked",
         "index": 18,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -944,92 +820,55 @@
         "name": "flags",
         "index": 0,
         "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "on_fire",
-            "index": 0
-          },
-          {
-            "name": "sneaking",
-            "index": 1
-          },
-          {
-            "name": "sprinting",
-            "index": 3
-          },
-          {
-            "name": "swimming",
-            "index": 4
-          },
-          {
-            "name": "invisible",
-            "index": 5
-          },
-          {
-            "name": "glowing",
-            "index": 6
-          },
-          {
-            "name": "fall_flying",
-            "index": 7
-          }
-        ]
+        "default_value": 0
       },
       {
         "name": "air",
         "index": 1,
         "type": "integer",
-        "default_value": 300,
-        "bits": []
+        "default_value": 300
       },
       {
         "name": "custom_name",
         "index": 2,
         "type": "optional_text_component",
-        "default_value": null,
-        "bits": []
+        "default_value": null
       },
       {
         "name": "name_visible",
         "index": 3,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "silent",
         "index": 4,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "no_gravity",
         "index": 5,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "pose",
         "index": 6,
         "type": "entity_pose",
-        "default_value": "standing",
-        "bits": []
+        "default_value": "standing"
       },
       {
         "name": "frozen_ticks",
         "index": 7,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
-      "size_x": 1.396484375,
-      "size_y": 1.399999976158142,
-      "size_z": 1.396484375
+      "size_x": 1.0,
+      "size_y": 1.0,
+      "size_z": 1.0
     }
   },
   "EvokerEntity": {
@@ -1080,9 +919,9 @@
     "parent": "ProjectileEntity",
     "fields": [],
     "default_bounding_box": {
-      "size_x": 1.0,
-      "size_y": 1.0,
-      "size_z": 1.0
+      "size_x": 0.3125,
+      "size_y": 0.3125,
+      "size_z": 0.3125
     }
   },
   "EyeOfEnderEntity": {
@@ -1094,8 +933,7 @@
         "name": "item",
         "index": 8,
         "type": "item_stack",
-        "default_value": "1 air",
-        "bits": []
+        "default_value": "1 air"
       }
     ],
     "default_bounding_box": {
@@ -1117,8 +955,7 @@
           "x": 0,
           "y": 0,
           "z": 0
-        },
-        "bits": []
+        }
       }
     ],
     "default_bounding_box": {
@@ -1147,22 +984,19 @@
         "name": "item",
         "index": 8,
         "type": "item_stack",
-        "default_value": "1 air",
-        "bits": []
+        "default_value": "1 air"
       },
       {
         "name": "shooter_entity_id",
         "index": 9,
         "type": "optional_int",
-        "default_value": null,
-        "bits": []
+        "default_value": null
       },
       {
         "name": "shot_at_angle",
         "index": 10,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -1178,14 +1012,13 @@
         "name": "from_bucket",
         "index": 16,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
-      "size_x": 0.5,
+      "size_x": 0.699999988079071,
       "size_y": 0.4000000059604645,
-      "size_z": 0.5
+      "size_z": 0.699999988079071
     }
   },
   "FishingBobberEntity": {
@@ -1197,15 +1030,13 @@
         "name": "hook_entity_id",
         "index": 8,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "caught_fish",
         "index": 9,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -1218,9 +1049,9 @@
     "parent": "MobEntity",
     "fields": [],
     "default_bounding_box": {
-      "size_x": 0.8999999761581421,
-      "size_y": 0.5,
-      "size_z": 0.8999999761581421
+      "size_x": 4.0,
+      "size_y": 4.0,
+      "size_z": 4.0
     }
   },
   "FoxEntity": {
@@ -1232,58 +1063,25 @@
         "name": "type",
         "index": 17,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "fox_flags",
         "index": 18,
         "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "sitting",
-            "index": 0
-          },
-          {
-            "name": "crouching",
-            "index": 2
-          },
-          {
-            "name": "rolling_head",
-            "index": 3
-          },
-          {
-            "name": "chasing",
-            "index": 4
-          },
-          {
-            "name": "sleeping",
-            "index": 5
-          },
-          {
-            "name": "walking",
-            "index": 6
-          },
-          {
-            "name": "aggressive",
-            "index": 7
-          }
-        ]
+        "default_value": 0
       },
       {
         "name": "owner",
         "index": 19,
         "type": "optional_uuid",
-        "default_value": null,
-        "bits": []
+        "default_value": null
       },
       {
         "name": "other_trusted",
         "index": 20,
         "type": "optional_uuid",
-        "default_value": null,
-        "bits": []
+        "default_value": null
       }
     ],
     "default_bounding_box": {
@@ -1301,15 +1099,13 @@
         "name": "variant",
         "index": 17,
         "type": "frog_variant",
-        "default_value": "temperate",
-        "bits": []
+        "default_value": "temperate"
       },
       {
         "name": "target",
         "index": 18,
         "type": "optional_int",
-        "default_value": null,
-        "bits": []
+        "default_value": null
       }
     ],
     "default_bounding_box": {
@@ -1327,8 +1123,7 @@
         "name": "lit",
         "index": 14,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -1346,8 +1141,7 @@
         "name": "shooting",
         "index": 16,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -1387,8 +1181,7 @@
         "name": "dark_ticks_remaining",
         "index": 16,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -1406,22 +1199,19 @@
         "name": "screaming",
         "index": 17,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "left_horn",
         "index": 18,
         "type": "boolean",
-        "default_value": true,
-        "bits": []
+        "default_value": true
       },
       {
         "name": "right_horn",
         "index": 19,
         "type": "boolean",
-        "default_value": true,
-        "bits": []
+        "default_value": true
       }
     ],
     "default_bounding_box": {
@@ -1448,21 +1238,19 @@
         "name": "spikes_retracted",
         "index": 16,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "beam_target_id",
         "index": 17,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
-      "size_x": 0.8500000238418579,
-      "size_y": 0.8500000238418579,
-      "size_z": 0.8500000238418579
+      "size_x": 1.997499942779541,
+      "size_y": 1.997499942779541,
+      "size_z": 1.997499942779541
     }
   },
   "HoglinEntity": {
@@ -1474,8 +1262,7 @@
         "name": "baby",
         "index": 17,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -1504,8 +1291,7 @@
         "name": "variant",
         "index": 19,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -1518,9 +1304,9 @@
     "parent": "PathAwareEntity",
     "fields": [],
     "default_bounding_box": {
-      "size_x": 1.396484375,
-      "size_y": 1.399999976158142,
-      "size_z": 1.396484375
+      "size_x": 0.6000000238418579,
+      "size_y": 1.9900000095367432,
+      "size_z": 0.6000000238418579
     }
   },
   "HuskEntity": {
@@ -1563,13 +1349,7 @@
         "name": "iron_golem_flags",
         "index": 16,
         "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "player_created",
-            "index": 0
-          }
-        ]
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -1587,8 +1367,7 @@
         "name": "stack",
         "index": 8,
         "type": "item_stack",
-        "default_value": "1 air",
-        "bits": []
+        "default_value": "1 air"
       }
     ],
     "default_bounding_box": {
@@ -1606,15 +1385,13 @@
         "name": "item_stack",
         "index": 8,
         "type": "item_stack",
-        "default_value": "1 air",
-        "bits": []
+        "default_value": "1 air"
       },
       {
         "name": "rotation",
         "index": 9,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -1652,69 +1429,49 @@
         "name": "living_flags",
         "index": 8,
         "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "using_item",
-            "index": 0
-          },
-          {
-            "name": "off_hand_active",
-            "index": 1
-          },
-          {
-            "name": "using_riptide",
-            "index": 2
-          }
-        ]
+        "default_value": 0
       },
       {
         "name": "health",
         "index": 9,
         "type": "float",
-        "default_value": 40.0,
-        "bits": []
+        "default_value": 30.0
       },
       {
         "name": "potion_swirls_color",
         "index": 10,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "potion_swirls_ambient",
         "index": 11,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "stuck_arrow_count",
         "index": 12,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "stinger_count",
         "index": 13,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "sleeping_position",
         "index": 14,
         "type": "optional_block_pos",
-        "default_value": null,
-        "bits": []
+        "default_value": null
       }
     ],
     "default_bounding_box": {
-      "size_x": 1.396484375,
-      "size_y": 1.399999976158142,
-      "size_z": 1.396484375
+      "size_x": 1.0,
+      "size_y": 1.0,
+      "size_z": 1.0
     }
   },
   "LlamaEntity": {
@@ -1726,22 +1483,19 @@
         "name": "strength",
         "index": 20,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "carpet_color",
         "index": 21,
         "type": "integer",
-        "default_value": -1,
-        "bits": []
+        "default_value": -1
       },
       {
         "name": "variant",
         "index": 22,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -1790,8 +1544,7 @@
         "name": "head_rolling_time_left",
         "index": 17,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -1818,27 +1571,13 @@
         "name": "mob_flags",
         "index": 15,
         "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "ai_disabled",
-            "index": 0
-          },
-          {
-            "name": "left_handed",
-            "index": 1
-          },
-          {
-            "name": "attacking",
-            "index": 2
-          }
-        ]
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
-      "size_x": 1.396484375,
-      "size_y": 1.399999976158142,
-      "size_z": 1.396484375
+      "size_x": 1.0,
+      "size_y": 1.0,
+      "size_z": 1.0
     }
   },
   "MooshroomEntity": {
@@ -1850,8 +1589,7 @@
         "name": "type",
         "index": 17,
         "type": "string",
-        "default_value": "red",
-        "bits": []
+        "default_value": "red"
       }
     ],
     "default_bounding_box": {
@@ -1880,8 +1618,7 @@
         "name": "trusting",
         "index": 17,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -1899,8 +1636,7 @@
         "name": "variant",
         "index": 8,
         "type": "painting_variant",
-        "default_value": "kebab",
-        "bits": []
+        "default_value": "kebab"
       }
     ],
     "default_bounding_box": {
@@ -1918,60 +1654,37 @@
         "name": "ask_for_bamboo_ticks",
         "index": 17,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "sneeze_progress",
         "index": 18,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "eating_ticks",
         "index": 19,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "main_gene",
         "index": 20,
         "type": "byte",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "hidden_gene",
         "index": 21,
         "type": "byte",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "panda_flags",
         "index": 22,
         "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "sneezing",
-            "index": 1
-          },
-          {
-            "name": "playing",
-            "index": 2
-          },
-          {
-            "name": "sitting",
-            "index": 3
-          },
-          {
-            "name": "lying_on_back",
-            "index": 4
-          }
-        ]
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -1989,8 +1702,7 @@
         "name": "variant",
         "index": 19,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -2006,23 +1718,22 @@
         "name": "child",
         "index": 16,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
-      "size_x": 0.75,
-      "size_y": 0.41999998688697815,
-      "size_z": 0.75
+      "size_x": 0.4000000059604645,
+      "size_y": 0.699999988079071,
+      "size_z": 0.4000000059604645
     }
   },
   "PathAwareEntity": {
     "parent": "MobEntity",
     "fields": [],
     "default_bounding_box": {
-      "size_x": 1.396484375,
-      "size_y": 1.399999976158142,
-      "size_z": 1.396484375
+      "size_x": 1.0,
+      "size_y": 1.0,
+      "size_z": 1.0
     }
   },
   "PatrolEntity": {
@@ -2041,24 +1752,13 @@
         "name": "projectile_flags",
         "index": 8,
         "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "critical",
-            "index": 0
-          },
-          {
-            "name": "no_clip",
-            "index": 1
-          }
-        ]
+        "default_value": 0
       },
       {
         "name": "pierce_level",
         "index": 9,
         "type": "byte",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -2076,8 +1776,7 @@
         "name": "size",
         "index": 16,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -2095,15 +1794,13 @@
         "name": "saddled",
         "index": 17,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "boost_time",
         "index": 18,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -2132,22 +1829,19 @@
         "name": "baby",
         "index": 17,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "charging",
         "index": 18,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "dancing",
         "index": 19,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -2165,8 +1859,7 @@
         "name": "charging",
         "index": 17,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -2184,72 +1877,37 @@
         "name": "absorption_amount",
         "index": 15,
         "type": "float",
-        "default_value": 0.0,
-        "bits": []
+        "default_value": 0.0
       },
       {
         "name": "score",
         "index": 16,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "player_model_parts",
         "index": 17,
         "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "cape",
-            "index": 0
-          },
-          {
-            "name": "jacket",
-            "index": 1
-          },
-          {
-            "name": "left_sleeve",
-            "index": 2
-          },
-          {
-            "name": "right_sleeve",
-            "index": 3
-          },
-          {
-            "name": "left_pants_leg",
-            "index": 4
-          },
-          {
-            "name": "right_pants_leg",
-            "index": 5
-          },
-          {
-            "name": "hat",
-            "index": 6
-          }
-        ]
+        "default_value": 0
       },
       {
         "name": "main_arm",
         "index": 18,
         "type": "byte",
-        "default_value": 1,
-        "bits": []
+        "default_value": 1
       },
       {
         "name": "left_shoulder_entity",
         "index": 19,
         "type": "nbt_compound",
-        "default_value": "{}",
-        "bits": []
+        "default_value": "{}"
       },
       {
         "name": "right_shoulder_entity",
         "index": 20,
         "type": "nbt_compound",
-        "default_value": "{}",
-        "bits": []
+        "default_value": "{}"
       }
     ]
   },
@@ -2262,8 +1920,7 @@
         "name": "warning",
         "index": 17,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -2287,9 +1944,9 @@
     "parent": "Entity",
     "fields": [],
     "default_bounding_box": {
-      "size_x": 0.5,
-      "size_y": 0.5,
-      "size_z": 0.5
+      "size_x": 0.25,
+      "size_y": 0.25,
+      "size_z": 0.25
     }
   },
   "PufferfishEntity": {
@@ -2301,8 +1958,7 @@
         "name": "puff_state",
         "index": 17,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -2320,8 +1976,7 @@
         "name": "rabbit_type",
         "index": 17,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -2337,8 +1992,7 @@
         "name": "celebrating",
         "index": 16,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -2373,9 +2027,9 @@
     "parent": "FishEntity",
     "fields": [],
     "default_bounding_box": {
-      "size_x": 0.5,
+      "size_x": 0.699999988079071,
       "size_y": 0.4000000059604645,
-      "size_z": 0.5
+      "size_z": 0.699999988079071
     }
   },
   "SheepEntity": {
@@ -2387,8 +2041,7 @@
         "name": "color",
         "index": 17,
         "type": "byte",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -2417,22 +2070,19 @@
         "name": "attached_face",
         "index": 16,
         "type": "facing",
-        "default_value": "down",
-        "bits": []
+        "default_value": "down"
       },
       {
         "name": "peek_amount",
         "index": 17,
         "type": "byte",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "color",
         "index": 18,
         "type": "byte",
-        "default_value": 16,
-        "bits": []
+        "default_value": 16
       }
     ],
     "default_bounding_box": {
@@ -2461,8 +2111,7 @@
         "name": "converting",
         "index": 16,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -2491,8 +2140,7 @@
         "name": "slime_size",
         "index": 16,
         "type": "integer",
-        "default_value": 1,
-        "bits": []
+        "default_value": 1
       }
     ],
     "default_bounding_box": {
@@ -2521,13 +2169,7 @@
         "name": "snow_golem_flags",
         "index": 16,
         "type": "byte",
-        "default_value": 16,
-        "bits": [
-          {
-            "name": "has_pumpkin",
-            "index": 4
-          }
-        ]
+        "default_value": 16
       }
     ],
     "default_bounding_box": {
@@ -2576,8 +2218,7 @@
         "name": "spell",
         "index": 17,
         "type": "byte",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -2595,19 +2236,13 @@
         "name": "spider_flags",
         "index": 16,
         "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "climbing_wall",
-            "index": 0
-          }
-        ]
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
-      "size_x": 0.699999988079071,
-      "size_y": 0.5,
-      "size_z": 0.699999988079071
+      "size_x": 1.399999976158142,
+      "size_y": 0.8999999761581421,
+      "size_z": 1.399999976158142
     }
   },
   "SquidEntity": {
@@ -2650,22 +2285,19 @@
         "name": "boost_time",
         "index": 17,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "cold",
         "index": 18,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "saddled",
         "index": 19,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -2692,24 +2324,13 @@
         "name": "tameable_flags",
         "index": 17,
         "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "sitting_pose",
-            "index": 0
-          },
-          {
-            "name": "tamed",
-            "index": 2
-          }
-        ]
+        "default_value": 0
       },
       {
         "name": "owner_uuid",
         "index": 18,
         "type": "optional_uuid",
-        "default_value": null,
-        "bits": []
+        "default_value": null
       }
     ],
     "default_bounding_box": {
@@ -2743,8 +2364,7 @@
         "name": "item",
         "index": 8,
         "type": "item_stack",
-        "default_value": "1 air",
-        "bits": []
+        "default_value": "1 air"
       }
     ],
     "default_bounding_box": {
@@ -2762,8 +2382,7 @@
         "name": "fuse",
         "index": 8,
         "type": "integer",
-        "default_value": 80,
-        "bits": []
+        "default_value": 80
       }
     ],
     "default_bounding_box": {
@@ -2803,15 +2422,13 @@
         "name": "loyalty",
         "index": 10,
         "type": "byte",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "enchanted",
         "index": 11,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -2829,8 +2446,7 @@
         "name": "variant",
         "index": 17,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -2852,22 +2468,19 @@
           "x": 0,
           "y": 0,
           "z": 0
-        },
-        "bits": []
+        }
       },
       {
         "name": "has_egg",
         "index": 18,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "digging_sand",
         "index": 19,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "travel_pos",
@@ -2877,22 +2490,19 @@
           "x": 0,
           "y": 0,
           "z": 0
-        },
-        "bits": []
+        }
       },
       {
         "name": "land_bound",
         "index": 21,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "actively_traveling",
         "index": 22,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -2910,13 +2520,7 @@
         "name": "vex_flags",
         "index": 16,
         "type": "byte",
-        "default_value": 0,
-        "bits": [
-          {
-            "name": "charging",
-            "index": 0
-          }
-        ]
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -2938,8 +2542,7 @@
           "type": "plains",
           "profession": "none",
           "level": 1
-        },
-        "bits": []
+        }
       }
     ],
     "default_bounding_box": {
@@ -2979,8 +2582,7 @@
         "name": "anger",
         "index": 16,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -2993,9 +2595,9 @@
     "parent": "PathAwareEntity",
     "fields": [],
     "default_bounding_box": {
-      "size_x": 0.5,
-      "size_y": 0.4000000059604645,
-      "size_z": 0.5
+      "size_x": 0.8999999761581421,
+      "size_y": 0.6000000238418579,
+      "size_z": 0.8999999761581421
     }
   },
   "WitchEntity": {
@@ -3007,8 +2609,7 @@
         "name": "drinking",
         "index": 17,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -3026,29 +2627,25 @@
         "name": "tracked_entity_id_1",
         "index": 16,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "tracked_entity_id_2",
         "index": 17,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "tracked_entity_id_3",
         "index": 18,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "invul_timer",
         "index": 19,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -3077,8 +2674,7 @@
         "name": "charged",
         "index": 8,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -3096,22 +2692,19 @@
         "name": "begging",
         "index": 19,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "collar_color",
         "index": 20,
         "type": "integer",
-        "default_value": 14,
-        "bits": []
+        "default_value": 14
       },
       {
         "name": "anger_time",
         "index": 21,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -3129,8 +2722,7 @@
         "name": "baby",
         "index": 16,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -3148,22 +2740,19 @@
         "name": "baby",
         "index": 16,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "zombie_type",
         "index": 17,
         "type": "integer",
-        "default_value": 0,
-        "bits": []
+        "default_value": 0
       },
       {
         "name": "converting_in_water",
         "index": 18,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       }
     ],
     "default_bounding_box": {
@@ -3192,8 +2781,7 @@
         "name": "converting",
         "index": 19,
         "type": "boolean",
-        "default_value": false,
-        "bits": []
+        "default_value": false
       },
       {
         "name": "villager_data",
@@ -3201,10 +2789,9 @@
         "type": "villager_data",
         "default_value": {
           "type": "plains",
-          "profession": "mason",
+          "profession": "fletcher",
           "level": 1
-        },
-        "bits": []
+        }
       }
     ],
     "default_bounding_box": {
