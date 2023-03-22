@@ -1,6 +1,6 @@
 #![allow(clippy::type_complexity)]
 
-use tracing::{warn, Level};
+use tracing::warn;
 use valence::client::despawn_disconnected_clients;
 use valence::client::event::{default_event_handler, PlayerInteractBlock, StartSneaking};
 use valence::prelude::*;
@@ -9,12 +9,10 @@ const SPAWN_Y: i32 = 64;
 const CHEST_POS: [i32; 3] = [0, SPAWN_Y + 1, 3];
 
 pub fn main() {
-    tracing_subscriber::fmt()
-        .with_max_level(Level::DEBUG)
-        .init();
+    tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(ServerPlugin::new(()).with_connection_mode(ConnectionMode::Offline))
+        .add_plugin(ServerPlugin::new(()))
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_systems(
