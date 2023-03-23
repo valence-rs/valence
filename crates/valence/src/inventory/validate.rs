@@ -33,7 +33,11 @@ pub(crate) fn validate_click_slot_impossible(
                 return false;
             }
             if let Some(slot) = s.item.as_ref() {
-                let max_stack_size = slot.item.max_stack().max(slot.count());
+                let max_stack_size = slot
+                    .item
+                    .max_stack()
+                    .max(slot.count())
+                    .min(valence_protocol::item::STACK_MAX);
                 if !(1..=max_stack_size).contains(&slot.count()) {
                     return false;
                 }
@@ -46,7 +50,11 @@ pub(crate) fn validate_click_slot_impossible(
 
     // check carried item count is valid
     if let Some(carried_item) = &packet.carried_item {
-        let max_stack_size = carried_item.item.max_stack().max(carried_item.count());
+        let max_stack_size = carried_item
+            .item
+            .max_stack()
+            .max(carried_item.count())
+            .min(valence_protocol::item::STACK_MAX);
         ensure!(
             (1..=max_stack_size).contains(&carried_item.count()),
             "invalid carried item count"
