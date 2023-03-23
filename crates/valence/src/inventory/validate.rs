@@ -29,30 +29,29 @@ pub(crate) fn validate_click_slot_impossible(
     // check all slot ids and item counts are valid
     ensure!(
         packet.slots.iter().all(|s| {
-            (0..=max_slot).contains(&(s.idx as u16))
-                && s.item.as_ref().map_or(true, |i| {
-                    (1..=i.item.max_stack().max(
-                        window
-                            .slot(s.idx as u16)
-                            .as_ref()
-                            .map(|c| c.count())
-                            .unwrap_or(0),
-                    ))
-                        .contains(&i.count())
-                })
+            if !(0..=max_slot).contains(&(s.idx as u16)) {
+                return false;
+            }
+            if let Some(slot) = s.item.as_ref() {
+                let max_stack_size = slot.item.max_stack().max(slot.count());
+                if !(1..=max_stack_size).contains(&slot.count()) {
+                    return false;
+                }
+            }
+
+            true
         }),
         "invalid slot ids or item counts"
     );
 
     // check carried item count is valid
-    ensure!(
-        packet.carried_item.as_ref().map_or(true, |i| (1..=i
-            .item
-            .max_stack()
-            .max(cursor_item.0.as_ref().map(|c| c.count()).unwrap_or(0)))
-            .contains(&i.count())),
-        "invalid carried item count"
-    );
+    if let Some(carried_item) = &packet.carried_item {
+        let max_stack_size = carried_item.item.max_stack().max(carried_item.count());
+        ensure!(
+            (1..=max_stack_size).contains(&carried_item.count()),
+            "invalid carried item count"
+        );
+    }
 
     match packet.mode {
         ClickMode::Click => {
