@@ -463,7 +463,7 @@ mod test {
             carried_item: inventory.slot(0).cloned(),
         };
 
-        validate_click_slot_impossible(&packet, &player_inventory, Some(&inventory), &cursor_item)
+        validate_click_slot_impossible(&packet, &player_inventory, Some(&inventory))
             .expect("packet should be valid");
         validate_click_slot_item_duplication(
             &packet,
@@ -506,13 +506,8 @@ mod test {
             carried_item: None,
         };
 
-        validate_click_slot_impossible(
-            &packet1,
-            &player_inventory,
-            Some(&inventory1),
-            &cursor_item,
-        )
-        .expect("packet should be valid");
+        validate_click_slot_impossible(&packet1, &player_inventory, Some(&inventory1))
+            .expect("packet should be valid");
         validate_click_slot_item_duplication(
             &packet1,
             &player_inventory,
@@ -521,13 +516,8 @@ mod test {
         )
         .expect("packet should not fail item duplication check");
 
-        validate_click_slot_impossible(
-            &packet2,
-            &player_inventory,
-            Some(&inventory2),
-            &cursor_item,
-        )
-        .expect("packet should be valid");
+        validate_click_slot_impossible(&packet2, &player_inventory, Some(&inventory2))
+            .expect("packet should be valid");
         validate_click_slot_item_duplication(
             &packet2,
             &player_inventory,
@@ -556,7 +546,7 @@ mod test {
             carried_item: Some(ItemStack::new(ItemKind::Diamond, 20, None)),
         };
 
-        validate_click_slot_impossible(&packet, &player_inventory, Some(&inventory), &cursor_item)
+        validate_click_slot_impossible(&packet, &player_inventory, Some(&inventory))
             .expect("packet should be valid");
         validate_click_slot_item_duplication(
             &packet,
@@ -586,7 +576,7 @@ mod test {
             carried_item: Some(ItemStack::new(ItemKind::IronIngot, 2, None)),
         };
 
-        validate_click_slot_impossible(&packet, &player_inventory, Some(&inventory), &cursor_item)
+        validate_click_slot_impossible(&packet, &player_inventory, Some(&inventory))
             .expect("packet should be valid");
         validate_click_slot_item_duplication(
             &packet,
@@ -647,13 +637,8 @@ mod test {
             carried_item: None,
         };
 
-        validate_click_slot_impossible(
-            &packet1,
-            &player_inventory,
-            Some(&inventory1),
-            &cursor_item,
-        )
-        .expect("packet 1 should be valid");
+        validate_click_slot_impossible(&packet1, &player_inventory, Some(&inventory1))
+            .expect("packet 1 should be valid");
         validate_click_slot_item_duplication(
             &packet1,
             &player_inventory,
@@ -662,13 +647,8 @@ mod test {
         )
         .expect_err("packet 1 should fail item duplication check");
 
-        validate_click_slot_impossible(
-            &packet2,
-            &player_inventory,
-            Some(&inventory2),
-            &cursor_item,
-        )
-        .expect("packet 2 should be valid");
+        validate_click_slot_impossible(&packet2, &player_inventory, Some(&inventory2))
+            .expect("packet 2 should be valid");
         validate_click_slot_item_duplication(
             &packet2,
             &player_inventory,
@@ -677,13 +657,8 @@ mod test {
         )
         .expect_err("packet 2 should fail item duplication check");
 
-        validate_click_slot_impossible(
-            &packet3,
-            &player_inventory,
-            Some(&inventory1),
-            &cursor_item,
-        )
-        .expect("packet 3 should be valid");
+        validate_click_slot_impossible(&packet3, &player_inventory, Some(&inventory1))
+            .expect("packet 3 should be valid");
         validate_click_slot_item_duplication(
             &packet3,
             &player_inventory,
@@ -756,7 +731,7 @@ mod test {
         ];
 
         for (i, packet) in packets.iter().enumerate() {
-            validate_click_slot_impossible(packet, &player_inventory, None, &cursor_item)
+            validate_click_slot_impossible(packet, &player_inventory, None)
                 .unwrap_or_else(|e| panic!("packet {i} should be valid: {e}"));
             validate_click_slot_item_duplication(packet, &player_inventory, None, &cursor_item)
                 .expect_err(&format!(
@@ -792,7 +767,7 @@ mod test {
             carried_item: None,
         };
 
-        validate_click_slot_impossible(&packet, &player_inventory, None, &cursor_item)
+        validate_click_slot_impossible(&packet, &player_inventory, None)
             .expect("packet should be valid");
         validate_click_slot_item_duplication(&packet, &player_inventory, None, &cursor_item)
             .expect("packet should pass item duplication check");
@@ -814,7 +789,7 @@ mod test {
             carried_item: Some(ItemStack::new(ItemKind::Apple, 100, None)),
         };
 
-        validate_click_slot_impossible(&packet, &player_inventory, None, &cursor_item)
+        validate_click_slot_impossible(&packet, &player_inventory, None)
             .expect("packet should be valid");
         validate_click_slot_item_duplication(&packet, &player_inventory, None, &cursor_item)
             .expect("packet should pass item duplication check");
@@ -838,7 +813,7 @@ mod test {
             carried_item: Some(ItemStack::new(ItemKind::Apple, 36, None)),
         };
 
-        validate_click_slot_impossible(&packet, &player_inventory, None, &cursor_item)
+        validate_click_slot_impossible(&packet, &player_inventory, None)
             .expect("packet should be valid");
         validate_click_slot_item_duplication(&packet, &player_inventory, None, &cursor_item)
             .expect("packet should pass item duplication check");
