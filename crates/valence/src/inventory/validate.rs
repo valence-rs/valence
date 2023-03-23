@@ -10,7 +10,6 @@ pub(crate) fn validate_click_slot_impossible(
     packet: &ClickSlotC2s,
     player_inventory: &Inventory,
     open_inventory: Option<&Inventory>,
-    cursor_item: &CursorItem,
 ) -> anyhow::Result<()> {
     ensure!(
         (packet.window_id == 0) == open_inventory.is_none(),
@@ -23,8 +22,6 @@ pub(crate) fn validate_click_slot_impossible(
         Some(inv) => inv.slot_count() + PLAYER_INVENTORY_MAIN_SLOTS_COUNT,
         None => player_inventory.slot_count(),
     };
-
-    let window = InventoryWindow::new(player_inventory, open_inventory);
 
     // check all slot ids and item counts are valid
     ensure!(
