@@ -340,20 +340,6 @@ pub fn build_plugin(
         .add_plugin(PlayerListPlugin)
         .add_plugin(WeatherPlugin);
 
-    /*
-    println!(
-        "{}",
-        bevy_mod_debugdump::schedule_graph_dot(
-            app,
-            CoreSchedule::Main,
-            &bevy_mod_debugdump::schedule_graph::Settings {
-                ambiguity_enable: false,
-                ..Default::default()
-            },
-        )
-    );
-    */
-
     Ok(())
 }
 
