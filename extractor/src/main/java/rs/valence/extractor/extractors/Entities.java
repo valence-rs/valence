@@ -146,7 +146,7 @@ public class Entities implements Main.Extractor {
             var variant = ((RegistryEntry<?>) val).getKey().map(k -> k.getValue().getPath()).orElse("");
             return new Pair<>("painting_variant", new JsonPrimitive(variant));
         } else if (handler == TrackedDataHandlerRegistry.SNIFFER_STATE) {
-            return new Pair<>("sniffer_state", new JsonPrimitive(((SnifferEntity.State) val).ordinal()));
+            return new Pair<>("sniffer_state", new JsonPrimitive(((SnifferEntity.State) val).name().toLowerCase(Locale.ROOT)));
         } else if (handler == TrackedDataHandlerRegistry.VECTOR3F) {
             var vec = (Vector3f) val;
             var json = new JsonObject();
@@ -249,7 +249,7 @@ public class Entities implements Main.Extractor {
                 entityJson.add("fields", fieldsJson);
 
                 var bb = entityInstance.getBoundingBox();
-                if (bb != null) {
+                if (bb != null && entityType != null) {
                     var boundingBoxJson = new JsonObject();
 
                     boundingBoxJson.addProperty("size_x", bb.getXLength());
