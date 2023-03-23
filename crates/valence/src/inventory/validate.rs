@@ -170,11 +170,17 @@ pub(crate) fn validate_click_slot_item_duplication(
                 // TODO: make sure NBT is the same
                 // Sometimes, the client will add nbt data to an item if it's missing, like
                 // "Damage" to a sword
-                if packet.button == 0
-                    && (old_slot.is_none()
-                        || cursor_item.0.is_none()
-                        || old_slot.unwrap().item != cursor_item.0.as_ref().unwrap().item)
-                {
+                let should_swap = packet.button == 0
+                    && match (old_slot, cursor_item.0.as_ref()) {
+                        (Some(old_slot), Some(cursor_item)) => old_slot.item != cursor_item.item,
+                        (Some(_), None) => true,
+                        (None, Some(cursor_item)) => {
+                            cursor_item.count() <= cursor_item.item.max_stack()
+                        }
+                        (None, None) => false,
+                    };
+
+                if should_swap {
                     // assert that a swap occurs
                     ensure!(
                         old_slot == packet.carried_item.as_ref()
@@ -766,6 +772,30 @@ mod test {
             mode: ClickMode::Click,
             slots: vec![Slot { idx: 9, item: None }],
             carried_item: Some(ItemStack::new(ItemKind::Apple, 100, None)),
+        };
+
+        validate_click_slot_impossible(&packet, &player_inventory, None, &cursor_item)
+            .expect("packet should be valid");
+        validate_click_slot_item_duplication(&packet, &player_inventory, None, &cursor_item)
+            .expect("packet should pass item duplication check");
+    }
+
+    #[test]
+    fn allow_place_overfull_stack_click() {
+        let player_inventory = Inventory::new(InventoryKind::Player);
+        let cursor_item = CursorItem(Some(ItemStack::new(ItemKind::Apple, 100, None)));
+
+        let packet = ClickSlotC2s {
+            window_id: 0,
+            state_id: VarInt(2),
+            slot_idx: 9,
+            button: 0,
+            mode: ClickMode::Click,
+            slots: vec![Slot {
+                idx: 9,
+                item: Some(ItemStack::new(ItemKind::Apple, 64, None)),
+            }],
+            carried_item: Some(ItemStack::new(ItemKind::Apple, 36, None)),
         };
 
         validate_click_slot_impossible(&packet, &player_inventory, None, &cursor_item)
