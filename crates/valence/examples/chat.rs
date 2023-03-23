@@ -193,6 +193,14 @@ impl MessageChain {
     }
 }
 
+impl MessageLink {
+    pub fn update_hash(&self, hasher: &mut impl Digest) {
+        hasher.update(self.sender.into_bytes());
+        hasher.update(self.session_id.into_bytes());
+        hasher.update(self.index.to_be_bytes());
+    }
+}
+
 impl MessageSignatureStorage {
     fn index_of(&self, signature: &[u8; 256]) -> Option<&i32> {
         self.indices.get(signature)
@@ -367,8 +375,8 @@ fn handle_session_events(
         hasher.update(&serialized);
         let hash = hasher.finalize();
 
-        // Verify the session key signature using the hashed session data and the Mojang
-        // public key
+        // Verify the session data using Mojang's public key and the hashed session data
+        // against the message signature
         if services_state
             .public_key
             .verify(
@@ -385,14 +393,17 @@ fn handle_session_events(
             ));
         }
 
+        // Get the player's chat state
         let Ok(mut state) = states.get_component_mut::<ChatState>(session.client) else {
             warn!("Unable to find chat state for client '{:?}'", client.username());
             continue;
         };
 
+        // Decode the player's session public key from the data
         if let Ok(public_key) =
             RsaPublicKey::from_public_key_der(session.session_data.public_key_data.as_ref())
         {
+            // Update the player's chat state data with the new player session data
             state.chain.link = Some(MessageLink {
                 index: 0,
                 sender: client.uuid(),
@@ -416,6 +427,8 @@ fn handle_session_events(
             ));
         }
 
+        // Update the player list with the new session data
+        // The player list will then send this new session data to the other clients
         player_entry.set_chat_data(Some(session.session_data.clone()));
     }
 }
@@ -456,7 +469,10 @@ fn handle_message_events(
     mut clients: Query<&mut Client>,
     mut states: Query<&mut ChatState>,
     mut messages: EventReader<ChatMessage>,
+    mut instances: Query<&mut Instance>,
 ) {
+    let mut instance = instances.single_mut();
+
     for message in messages.iter() {
         let Ok(mut client) = clients.get_component_mut::<Client>(message.client) else {
             warn!("Unable to find client for message '{:?}'", message);
@@ -474,14 +490,12 @@ fn handle_message_events(
             continue;
         }
 
-        let message_text = message.message.to_string();
-
         // Ensure we are receiving chat messages in order
         if message.timestamp < state.last_message_timestamp {
             warn!(
                 "{:?} sent out-of-order chat: '{:?}'",
                 client.username(),
-                message_text
+                message.message.as_ref()
             );
             client.kick(Text::translate(
                 MULTIPLAYER_DISCONNECT_OUT_OF_ORDER_CHAT,
@@ -526,6 +540,7 @@ fn handle_message_events(
                     continue;
                 };
 
+                // Verify that the player's session has not expired
                 if session.is_expired() {
                     client.send_message(
                         Text::translate(CHAT_DISABLED_EXPIRED_PROFILE_KEY, []).color(Color::RED),
@@ -533,6 +548,7 @@ fn handle_message_events(
                     continue;
                 }
 
+                // Verify that the chat message is signed
                 let Some(message_signature) = &message.signature else {
                     client.kick(Text::translate(
                         MULTIPLAYER_DISCONNECT_UNSIGNED_CHAT,
@@ -541,11 +557,13 @@ fn handle_message_events(
                     continue;
                 };
 
-                let mut hasher = Sha256::new();
-                hasher.update([0u8, 0, 0, 1]);
-                hasher.update(link.sender.into_bytes());
-                hasher.update(link.session_id.into_bytes());
-                hasher.update(link.index.to_be_bytes());
+                // Create the hash digest used to verify the chat message
+                let mut hasher = Sha256::new_with_prefix([0u8, 0, 0, 1]);
+
+                // Update the hash with the player's message chain state
+                link.update_hash(&mut hasher);
+
+                // Update the hash with the message contents
                 hasher.update(message.salt.to_be_bytes());
                 hasher.update((message.timestamp / 1000).to_be_bytes());
                 let bytes = message.message.as_bytes();
@@ -557,6 +575,8 @@ fn handle_message_events(
                 }
                 let hashed = hasher.finalize();
 
+                // Verify the chat message using the player's session public key and hashed data
+                // against the message signature
                 if session
                     .public_key
                     .verify(
@@ -570,6 +590,7 @@ fn handle_message_events(
                     continue;
                 }
 
+                // Create a list of messages that have been seen by the client
                 let previous = last_seen
                     .iter()
                     .map(|sig| match state.signature_storage.index_of(sig) {
@@ -578,7 +599,9 @@ fn handle_message_events(
                     })
                     .collect::<Vec<_>>();
 
-                let packet = ChatMessageS2c {
+                info!("{}: {}", client.username(), message.message.as_ref());
+
+                instance.write_packet(&ChatMessageS2c {
                     sender: link.sender,
                     index: VarInt(link.index),
                     message_signature: Some(message_signature.as_ref()),
@@ -591,28 +614,21 @@ fn handle_message_events(
                     chat_type: VarInt(0),
                     network_name: client.username().into_text().into(),
                     network_target_name: None,
-                };
+                });
 
-                // TODO: clients.for_each
-                client.write_packet(&packet);
-
-                // Add pending acknowledgement
-                state.add_pending(&mut last_seen, message_signature.as_ref());
-                if state.validator.message_count() > 4096 {
-                    client.kick(Text::translate(
-                        MULTIPLAYER_DISCONNECT_TOO_MANY_PENDING_CHATS,
-                        [],
-                    ));
-                    continue;
+                for mut client in clients.iter_mut() {
+                    // Add pending acknowledgement
+                    state.add_pending(&mut last_seen, message_signature.as_ref());
+                    if state.validator.message_count() > 4096 {
+                        client.kick(Text::translate(
+                            MULTIPLAYER_DISCONNECT_TOO_MANY_PENDING_CHATS,
+                            [],
+                        ));
+                        continue;
+                    }
                 }
-                // clients.for_each
-
-                info!("{}: {}", client.username(), message_text);
             }
         }
-
-        // send chat message packets to each client and add pending
-        // acknowledgements for clients.iter_mut()
     }
 }
 
