@@ -1,4 +1,4 @@
-use anyhow::ensure;
+use anyhow::{bail, ensure};
 use valence_protocol::packet::c2s::play::click_slot::ClickMode;
 use valence_protocol::packet::c2s::play::ClickSlotC2s;
 
@@ -198,10 +198,53 @@ pub(crate) fn validate_click_slot_item_duplication(
                 }
             }
         }
-        ClickMode::ShiftClick | ClickMode::Hotbar => {
+        ClickMode::ShiftClick => {
+            ensure!(
+                (2..=3).contains(&packet.slots.len()),
+                "shift click must modify 2 or 3 slots, got {}",
+                packet.slots.len()
+            );
+
+            let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
+            ensure!(
+                count_deltas == 0,
+                "invalid item delta: expected 0, got {}",
+                count_deltas
+            );
+
+            let Some(item_kind) = packet
+                .slots
+                .iter()
+                .filter_map(|s| s.item.as_ref())
+                .next()
+                .map(|s| s.item) else {
+                    bail!("shift click must move an item");
+                };
+
+            let Some(old_slot_kind) = window.slot(packet.slot_idx as u16).map(|s| s.item) else {
+                bail!("shift click must move an item");
+            };
+            ensure!(
+                old_slot_kind == item_kind,
+                "shift click must move the same item kind as modified slots"
+            );
+
+            // assert all moved items are the same kind
+            ensure!(
+                packet
+                    .slots
+                    .iter()
+                    .filter_map(|s| s.item.as_ref())
+                    .all(|s| s.item == item_kind),
+                "shift click must move the same item kind"
+            );
+        }
+
+        ClickMode::Hotbar => {
             ensure!(
                 packet.slots.len() == 2,
-                "shift click and hotbar swaps must modify exactly two slots"
+                "hotbar swap must modify two slots, got {}",
+                packet.slots.len()
             );
 
             let count_deltas = calculate_net_item_delta(packet, &window, cursor_item);
