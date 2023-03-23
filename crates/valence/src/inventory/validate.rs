@@ -710,4 +710,59 @@ mod test {
                 ));
         }
     }
+
+    #[test]
+    fn allow_shift_click_overflow_to_new_stack() {
+        let mut player_inventory = Inventory::new(InventoryKind::Player);
+        player_inventory.set_slot(9, ItemStack::new(ItemKind::Diamond, 64, None));
+        player_inventory.set_slot(36, ItemStack::new(ItemKind::Diamond, 32, None));
+        let cursor_item = CursorItem::default();
+
+        let packet = ClickSlotC2s {
+            window_id: 0,
+            state_id: VarInt(2),
+            slot_idx: 9,
+            button: 0,
+            mode: ClickMode::ShiftClick,
+            slots: vec![
+                Slot {
+                    idx: 37,
+                    item: Some(ItemStack::new(ItemKind::Diamond, 32, None)),
+                },
+                Slot {
+                    idx: 36,
+                    item: Some(ItemStack::new(ItemKind::Diamond, 64, None)),
+                },
+                Slot { idx: 9, item: None },
+            ],
+            carried_item: None,
+        };
+
+        validate_click_slot_impossible(&packet, &player_inventory, None, &cursor_item)
+            .expect("packet should be valid");
+        validate_click_slot_item_duplication(&packet, &player_inventory, None, &cursor_item)
+            .expect("packet should pass item duplication check");
+    }
+
+    #[test]
+    fn allow_pickup_overfull_stack_click() {
+        let mut player_inventory = Inventory::new(InventoryKind::Player);
+        player_inventory.set_slot(9, ItemStack::new(ItemKind::Apple, 100, None));
+        let cursor_item = CursorItem::default();
+
+        let packet = ClickSlotC2s {
+            window_id: 0,
+            state_id: VarInt(2),
+            slot_idx: 9,
+            button: 0,
+            mode: ClickMode::Click,
+            slots: vec![Slot { idx: 9, item: None }],
+            carried_item: Some(ItemStack::new(ItemKind::Apple, 100, None)),
+        };
+
+        validate_click_slot_impossible(&packet, &player_inventory, None, &cursor_item)
+            .expect("packet should be valid");
+        validate_click_slot_item_duplication(&packet, &player_inventory, None, &cursor_item)
+            .expect("packet should pass item duplication check");
+    }
 }
