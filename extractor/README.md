@@ -12,4 +12,10 @@ From this directory, run the following
 ./gradlew runServer
 ```
 
-This will run the extractor and immediately exit, outputting the files that are listed in the logs. These need to be manually moved to `extracted` to be committed.
+This will run the extractor and immediately exit, outputting the files that are listed in the logs. 
+
+Next, run `copy_extractor_output.sh`. This copies the files to `extracted` so that they can be comitted.
+
+```sh
+./copy_extractor_output.sh`
+```

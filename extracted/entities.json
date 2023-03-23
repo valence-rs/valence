@@ -3,9 +3,9 @@
     "parent": "Entity",
     "fields": [],
     "default_bounding_box": {
-      "size_x": 0.0,
-      "size_y": 0.0,
-      "size_z": 0.0
+      "size_x": 0.375,
+      "size_y": 0.5,
+      "size_z": 0.375
     }
   },
   "AbstractDonkeyEntity": {
@@ -13,7 +13,7 @@
     "fields": [
       {
         "name": "chest",
-        "index": 19,
+        "index": 18,
         "type": "boolean",
         "default_value": false
       }
@@ -35,9 +35,9 @@
       }
     ],
     "default_bounding_box": {
-      "size_x": 0.3125,
-      "size_y": 0.3125,
-      "size_z": 0.3125
+      "size_x": 1.0,
+      "size_y": 1.0,
+      "size_z": 1.0
     }
   },
   "AbstractHorseEntity": {
@@ -48,18 +48,12 @@
         "index": 17,
         "type": "byte",
         "default_value": 0
-      },
-      {
-        "name": "owner_uuid",
-        "index": 18,
-        "type": "optional_uuid",
-        "default_value": null
       }
     ],
     "default_bounding_box": {
-      "size_x": 0.8999999761581421,
-      "size_y": 1.8700000047683716,
-      "size_z": 0.8999999761581421
+      "size_x": 1.396484375,
+      "size_y": 1.600000023841858,
+      "size_z": 1.396484375
     }
   },
   "AbstractMinecartEntity": {
@@ -170,9 +164,9 @@
     "parent": "PassiveEntity",
     "fields": [],
     "default_bounding_box": {
-      "size_x": 0.4000000059604645,
-      "size_y": 0.699999988079071,
-      "size_z": 0.4000000059604645
+      "size_x": 0.699999988079071,
+      "size_y": 0.6000000238418579,
+      "size_z": 0.699999988079071
     }
   },
   "AreaEffectCloudEntity": {
@@ -397,6 +391,24 @@
       "size_z": 0.6000000238418579
     }
   },
+  "BlockDisplayEntity": {
+    "parent": "DisplayEntity",
+    "type": "block_display",
+    "translation_key": "entity.minecraft.block_display",
+    "fields": [
+      {
+        "name": "block_state",
+        "index": 22,
+        "type": "block state",
+        "default_value": "Block{minecraft:air}"
+      }
+    ],
+    "default_bounding_box": {
+      "size_x": 0.0,
+      "size_y": 0.0,
+      "size_z": 0.0
+    }
+  },
   "BoatEntity": {
     "parent": "Entity",
     "type": "boat",
@@ -458,15 +470,15 @@
     "fields": [
       {
         "name": "dashing",
-        "index": 19,
+        "index": 18,
         "type": "boolean",
         "default_value": false
       },
       {
         "name": "last_pose_tick",
-        "index": 20,
+        "index": 19,
         "type": "long",
-        "default_value": -52
+        "default_value": 0
       }
     ],
     "default_bounding_box": {
@@ -629,6 +641,118 @@
       "size_x": 0.6000000238418579,
       "size_y": 1.7000000476837158,
       "size_z": 0.6000000238418579
+    }
+  },
+  "DisplayEntity": {
+    "parent": "Entity",
+    "fields": [
+      {
+        "name": "start_interpolation",
+        "index": 8,
+        "type": "integer",
+        "default_value": 0
+      },
+      {
+        "name": "interpolation_duration",
+        "index": 9,
+        "type": "integer",
+        "default_value": 0
+      },
+      {
+        "name": "translation",
+        "index": 10,
+        "type": "vector3f",
+        "default_value": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        }
+      },
+      {
+        "name": "scale",
+        "index": 11,
+        "type": "vector3f",
+        "default_value": {
+          "x": 1.0,
+          "y": 1.0,
+          "z": 1.0
+        }
+      },
+      {
+        "name": "left_rotation",
+        "index": 12,
+        "type": "quaternionf",
+        "default_value": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0,
+          "w": 1.0
+        }
+      },
+      {
+        "name": "right_rotation",
+        "index": 13,
+        "type": "quaternionf",
+        "default_value": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0,
+          "w": 1.0
+        }
+      },
+      {
+        "name": "billboard",
+        "index": 14,
+        "type": "byte",
+        "default_value": 0
+      },
+      {
+        "name": "brightness",
+        "index": 15,
+        "type": "integer",
+        "default_value": -1
+      },
+      {
+        "name": "view_range",
+        "index": 16,
+        "type": "float",
+        "default_value": 1.0
+      },
+      {
+        "name": "shadow_radius",
+        "index": 17,
+        "type": "float",
+        "default_value": 0.0
+      },
+      {
+        "name": "shadow_strength",
+        "index": 18,
+        "type": "float",
+        "default_value": 1.0
+      },
+      {
+        "name": "width",
+        "index": 19,
+        "type": "float",
+        "default_value": 0.0
+      },
+      {
+        "name": "height",
+        "index": 20,
+        "type": "float",
+        "default_value": 0.0
+      },
+      {
+        "name": "glow_color_override",
+        "index": 21,
+        "type": "integer",
+        "default_value": -1
+      }
+    ],
+    "default_bounding_box": {
+      "size_x": 0.0,
+      "size_y": 0.0,
+      "size_z": 0.0
     }
   },
   "DolphinEntity": {
@@ -866,9 +990,9 @@
       }
     ],
     "default_bounding_box": {
-      "size_x": 1.0,
-      "size_y": 1.0,
-      "size_z": 1.0
+      "size_x": 0.8500000238418579,
+      "size_y": 0.8500000238418579,
+      "size_z": 0.8500000238418579
     }
   },
   "EvokerEntity": {
@@ -919,9 +1043,9 @@
     "parent": "ProjectileEntity",
     "fields": [],
     "default_bounding_box": {
-      "size_x": 0.3125,
-      "size_y": 0.3125,
-      "size_z": 0.3125
+      "size_x": 1.0,
+      "size_y": 1.0,
+      "size_z": 1.0
     }
   },
   "EyeOfEnderEntity": {
@@ -1016,9 +1140,9 @@
       }
     ],
     "default_bounding_box": {
-      "size_x": 0.699999988079071,
-      "size_y": 0.4000000059604645,
-      "size_z": 0.699999988079071
+      "size_x": 0.3499999940395355,
+      "size_y": 0.3499999940395355,
+      "size_z": 0.3499999940395355
     }
   },
   "FishingBobberEntity": {
@@ -1049,9 +1173,9 @@
     "parent": "MobEntity",
     "fields": [],
     "default_bounding_box": {
-      "size_x": 4.0,
-      "size_y": 4.0,
-      "size_z": 4.0
+      "size_x": 0.8999999761581421,
+      "size_y": 0.5,
+      "size_z": 0.8999999761581421
     }
   },
   "FoxEntity": {
@@ -1224,9 +1348,9 @@
     "parent": "PathAwareEntity",
     "fields": [],
     "default_bounding_box": {
-      "size_x": 1.0,
-      "size_y": 1.0,
-      "size_z": 1.0
+      "size_x": 1.399999976158142,
+      "size_y": 2.700000047683716,
+      "size_z": 1.399999976158142
     }
   },
   "GuardianEntity": {
@@ -1248,9 +1372,9 @@
       }
     ],
     "default_bounding_box": {
-      "size_x": 1.997499942779541,
-      "size_y": 1.997499942779541,
-      "size_z": 1.997499942779541
+      "size_x": 0.8500000238418579,
+      "size_y": 0.8500000238418579,
+      "size_z": 0.8500000238418579
     }
   },
   "HoglinEntity": {
@@ -1289,7 +1413,7 @@
     "fields": [
       {
         "name": "variant",
-        "index": 19,
+        "index": 18,
         "type": "integer",
         "default_value": 0
       }
@@ -1304,9 +1428,9 @@
     "parent": "PathAwareEntity",
     "fields": [],
     "default_bounding_box": {
-      "size_x": 0.6000000238418579,
-      "size_y": 1.9900000095367432,
-      "size_z": 0.6000000238418579
+      "size_x": 0.8500000238418579,
+      "size_y": 0.8500000238418579,
+      "size_z": 0.8500000238418579
     }
   },
   "HuskEntity": {
@@ -1340,6 +1464,36 @@
       "size_z": 0.6000000238418579
     }
   },
+  "InteractionEntity": {
+    "parent": "Entity",
+    "type": "interaction",
+    "translation_key": "entity.minecraft.interaction",
+    "fields": [
+      {
+        "name": "width",
+        "index": 8,
+        "type": "float",
+        "default_value": 1.0
+      },
+      {
+        "name": "height",
+        "index": 9,
+        "type": "float",
+        "default_value": 1.0
+      },
+      {
+        "name": "response",
+        "index": 10,
+        "type": "boolean",
+        "default_value": false
+      }
+    ],
+    "default_bounding_box": {
+      "size_x": 1.0,
+      "size_y": 1.0,
+      "size_z": 1.0
+    }
+  },
   "IronGolemEntity": {
     "parent": "GolemEntity",
     "type": "iron_golem",
@@ -1356,6 +1510,30 @@
       "size_x": 1.399999976158142,
       "size_y": 2.700000047683716,
       "size_z": 1.399999976158142
+    }
+  },
+  "ItemDisplayEntity": {
+    "parent": "DisplayEntity",
+    "type": "item_display",
+    "translation_key": "entity.minecraft.item_display",
+    "fields": [
+      {
+        "name": "item",
+        "index": 22,
+        "type": "item_stack",
+        "default_value": "1 air"
+      },
+      {
+        "name": "item_display",
+        "index": 23,
+        "type": "byte",
+        "default_value": 0
+      }
+    ],
+    "default_bounding_box": {
+      "size_x": 0.0,
+      "size_y": 0.0,
+      "size_z": 0.0
     }
   },
   "ItemEntity": {
@@ -1469,9 +1647,9 @@
       }
     ],
     "default_bounding_box": {
-      "size_x": 1.0,
-      "size_y": 1.0,
-      "size_z": 1.0
+      "size_x": 0.8500000238418579,
+      "size_y": 0.8500000238418579,
+      "size_z": 0.8500000238418579
     }
   },
   "LlamaEntity": {
@@ -1481,19 +1659,19 @@
     "fields": [
       {
         "name": "strength",
-        "index": 20,
+        "index": 19,
         "type": "integer",
         "default_value": 0
       },
       {
         "name": "carpet_color",
-        "index": 21,
+        "index": 20,
         "type": "integer",
         "default_value": -1
       },
       {
         "name": "variant",
-        "index": 22,
+        "index": 21,
         "type": "integer",
         "default_value": 0
       }
@@ -1575,9 +1753,9 @@
       }
     ],
     "default_bounding_box": {
-      "size_x": 1.0,
-      "size_y": 1.0,
-      "size_z": 1.0
+      "size_x": 0.8500000238418579,
+      "size_y": 0.8500000238418579,
+      "size_z": 0.8500000238418579
     }
   },
   "MooshroomEntity": {
@@ -1722,18 +1900,18 @@
       }
     ],
     "default_bounding_box": {
-      "size_x": 0.4000000059604645,
-      "size_y": 0.699999988079071,
-      "size_z": 0.4000000059604645
+      "size_x": 0.699999988079071,
+      "size_y": 0.6000000238418579,
+      "size_z": 0.699999988079071
     }
   },
   "PathAwareEntity": {
     "parent": "MobEntity",
     "fields": [],
     "default_bounding_box": {
-      "size_x": 1.0,
-      "size_y": 1.0,
-      "size_z": 1.0
+      "size_x": 0.8500000238418579,
+      "size_y": 0.8500000238418579,
+      "size_z": 0.8500000238418579
     }
   },
   "PatrolEntity": {
@@ -1944,9 +2122,9 @@
     "parent": "Entity",
     "fields": [],
     "default_bounding_box": {
-      "size_x": 0.25,
-      "size_y": 0.25,
-      "size_z": 0.25
+      "size_x": 0.3125,
+      "size_y": 0.3125,
+      "size_z": 0.3125
     }
   },
   "PufferfishEntity": {
@@ -2027,9 +2205,9 @@
     "parent": "FishEntity",
     "fields": [],
     "default_bounding_box": {
-      "size_x": 0.699999988079071,
-      "size_y": 0.4000000059604645,
-      "size_z": 0.699999988079071
+      "size_x": 0.5,
+      "size_y": 0.30000001192092896,
+      "size_z": 0.5
     }
   },
   "SheepEntity": {
@@ -2158,6 +2336,30 @@
       "size_x": 0.3125,
       "size_y": 0.3125,
       "size_z": 0.3125
+    }
+  },
+  "SnifferEntity": {
+    "parent": "AnimalEntity",
+    "type": "sniffer",
+    "translation_key": "entity.minecraft.sniffer",
+    "fields": [
+      {
+        "name": "state",
+        "index": 17,
+        "type": "sniffer_state",
+        "default_value": 0
+      },
+      {
+        "name": "finish_dig_time",
+        "index": 18,
+        "type": "integer",
+        "default_value": 0
+      }
+    ],
+    "default_bounding_box": {
+      "size_x": 1.899999976158142,
+      "size_y": 1.75,
+      "size_z": 1.899999976158142
     }
   },
   "SnowGolemEntity": {
@@ -2335,7 +2537,7 @@
     ],
     "default_bounding_box": {
       "size_x": 0.6000000238418579,
-      "size_y": 0.699999988079071,
+      "size_y": 0.8500000238418579,
       "size_z": 0.6000000238418579
     }
   },
@@ -2346,6 +2548,48 @@
       "size_x": 0.5,
       "size_y": 0.8999999761581421,
       "size_z": 0.5
+    }
+  },
+  "TextDisplayEntity": {
+    "parent": "DisplayEntity",
+    "type": "text_display",
+    "translation_key": "entity.minecraft.text_display",
+    "fields": [
+      {
+        "name": "text",
+        "index": 22,
+        "type": "text_component",
+        "default_value": ""
+      },
+      {
+        "name": "line_width",
+        "index": 23,
+        "type": "integer",
+        "default_value": 200
+      },
+      {
+        "name": "background",
+        "index": 24,
+        "type": "integer",
+        "default_value": 1073741824
+      },
+      {
+        "name": "text_opacity",
+        "index": 25,
+        "type": "byte",
+        "default_value": -1
+      },
+      {
+        "name": "text_display_flags",
+        "index": 26,
+        "type": "byte",
+        "default_value": 0
+      }
+    ],
+    "default_bounding_box": {
+      "size_x": 0.0,
+      "size_y": 0.0,
+      "size_z": 0.0
     }
   },
   "ThrownEntity": {
@@ -2595,9 +2839,9 @@
     "parent": "PathAwareEntity",
     "fields": [],
     "default_bounding_box": {
-      "size_x": 0.8999999761581421,
-      "size_y": 0.6000000238418579,
-      "size_z": 0.8999999761581421
+      "size_x": 0.3499999940395355,
+      "size_y": 0.3499999940395355,
+      "size_z": 0.3499999940395355
     }
   },
   "WitchEntity": {
@@ -2789,7 +3033,7 @@
         "type": "villager_data",
         "default_value": {
           "type": "plains",
-          "profession": "fletcher",
+          "profession": "farmer",
           "level": 1
         }
       }

@@ -56,8 +56,8 @@ public class DummyWorld extends World {
         }
     }
 
-    private DummyWorld(MutableWorldProperties properties, RegistryKey<World> registryRef, RegistryEntry<DimensionType> dimension, Supplier<Profiler> profiler, boolean isClient, boolean debugWorld, long seed, int maxChainedNeighborUpdates) {
-        super(properties, registryRef, dimension, profiler, isClient, debugWorld, seed, maxChainedNeighborUpdates);
+    private DummyWorld(MutableWorldProperties properties, RegistryKey<World> registryRef, DynamicRegistryManager registryManager, RegistryEntry<DimensionType> dimension, Supplier<Profiler> profiler, boolean isClient, boolean debugWorld, long seed, int maxChainedNeighborUpdates) {
+        super(properties, registryRef, registryManager, dimension, profiler, isClient, debugWorld, seed, maxChainedNeighborUpdates);
     }
 
     @Override
