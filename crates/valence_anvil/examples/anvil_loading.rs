@@ -7,8 +7,8 @@ use clap::Parser;
 use flume::{Receiver, Sender};
 use tracing::warn;
 use valence::bevy_app::AppExit;
-use valence::client::despawn_disconnected_clients;
-use valence::client::event::default_event_handler;
+use valence::client::{default_event_handler, despawn_disconnected_clients};
+use valence::entity::player::PlayerBundle;
 use valence::prelude::*;
 use valence_anvil::{AnvilChunk, AnvilWorld};
 
@@ -90,23 +90,20 @@ fn setup(world: &mut World) {
 }
 
 fn init_clients(
-    mut clients: Query<&mut Client, Added<Client>>,
+    mut clients: Query<(Entity, &mut GameMode, &mut IsFlat, &UniqueId), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
     mut commands: Commands,
 ) {
-    for mut client in &mut clients {
-        let instance = instances.single();
+    for (entity, mut game_mode, mut is_flat, uuid) in &mut clients {
+        *game_mode = GameMode::Creative;
+        is_flat.0 = true;
 
-        client.set_flat(true);
-        client.set_game_mode(GameMode::Creative);
-        client.set_position(SPAWN_POS);
-        client.set_instance(instance);
-
-        commands.spawn(McEntity::with_uuid(
-            EntityKind::Player,
-            instance,
-            client.uuid(),
-        ));
+        commands.entity(entity).insert(PlayerBundle {
+            location: Location(instances.single()),
+            position: Position(SPAWN_POS),
+            uuid: *uuid,
+            ..Default::default()
+        });
     }
 }
 
@@ -118,13 +115,13 @@ fn remove_unviewed_chunks(mut instances: Query<&mut Instance>) {
 
 fn update_client_views(
     mut instances: Query<&mut Instance>,
-    mut clients: Query<&mut Client>,
+    mut clients: Query<(&mut Client, View, OldView)>,
     mut state: ResMut<GameState>,
 ) {
     let instance = instances.single_mut();
 
-    for client in &mut clients {
-        let view = client.view();
+    for (client, view, old_view) in &mut clients {
+        let view = view.get();
         let queue_pos = |pos| {
             if instance.chunk(pos).is_none() {
                 match state.pending.entry(pos) {
@@ -146,7 +143,7 @@ fn update_client_views(
         if client.is_added() {
             view.iter().for_each(queue_pos);
         } else {
-            let old_view = client.old_view();
+            let old_view = old_view.get();
             if old_view != view {
                 view.diff(old_view).for_each(queue_pos);
             }

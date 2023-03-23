@@ -4,19 +4,18 @@ use tracing::warn;
 use valence_protocol::codec::{encode_packet, encode_packet_compressed, PacketEncoder};
 use valence_protocol::Packet;
 
-pub(crate) trait WritePacket {
-    fn write_packet<'a, P>(&mut self, packet: &P)
-    where
-        P: Packet<'a>;
-
+/// Types that can have packets written to them.
+pub trait WritePacket {
+    /// Writes a packet to this object. Encoding errors are typically logged and
+    /// discarded.
+    fn write_packet<'a>(&mut self, packet: &impl Packet<'a>);
+    /// Copies raw packet data directly into this object. Don't use this unless
+    /// you know what you're doing.
     fn write_packet_bytes(&mut self, bytes: &[u8]);
 }
 
 impl<W: WritePacket> WritePacket for &mut W {
-    fn write_packet<'a, P>(&mut self, packet: &P)
-    where
-        P: Packet<'a>,
-    {
+    fn write_packet<'a>(&mut self, packet: &impl Packet<'a>) {
         (*self).write_packet(packet)
     }
 
@@ -25,6 +24,7 @@ impl<W: WritePacket> WritePacket for &mut W {
     }
 }
 
+/// An implementor of [`WritePacket`] backed by a `Vec` reference.
 pub(crate) struct PacketWriter<'a> {
     buf: &'a mut Vec<u8>,
     threshold: Option<u32>,
@@ -42,10 +42,7 @@ impl<'a> PacketWriter<'a> {
 }
 
 impl WritePacket for PacketWriter<'_> {
-    fn write_packet<'a, P>(&mut self, pkt: &P)
-    where
-        P: Packet<'a>,
-    {
+    fn write_packet<'a>(&mut self, pkt: &impl Packet<'a>) {
         let res = if let Some(threshold) = self.threshold {
             encode_packet_compressed(self.buf, pkt, threshold, self.scratch)
         } else {
@@ -65,10 +62,7 @@ impl WritePacket for PacketWriter<'_> {
 }
 
 impl WritePacket for PacketEncoder {
-    fn write_packet<'a, P>(&mut self, packet: &P)
-    where
-        P: Packet<'a>,
-    {
+    fn write_packet<'a>(&mut self, packet: &impl Packet<'a>) {
         if let Err(e) = self.append_packet(packet) {
             warn!("failed to write packet: {e:#}");
         }

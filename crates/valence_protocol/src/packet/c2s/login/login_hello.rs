@@ -1,10 +1,9 @@
 use uuid::Uuid;
 
-use crate::username::Username;
 use crate::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct LoginHelloC2s<'a> {
-    pub username: Username<&'a str>,
+    pub username: &'a str, // TODO: bound this
     pub profile_id: Option<Uuid>,
 }

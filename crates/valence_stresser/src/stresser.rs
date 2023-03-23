@@ -13,7 +13,6 @@ use valence_protocol::packet::c2s::play::{
     KeepAliveC2s, PositionAndOnGroundC2s, TeleportConfirmC2s,
 };
 use valence_protocol::packet::{C2sHandshakePacket, S2cLoginPacket, S2cPlayPacket};
-use valence_protocol::username::Username;
 use valence_protocol::var_int::VarInt;
 use valence_protocol::PROTOCOL_VERSION;
 
@@ -56,7 +55,7 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
     enc.append_packet(&handshake_pkt)?;
 
     enc.append_packet(&LoginHelloC2s {
-        username: Username::new(sess_name).unwrap(),
+        username: sess_name,
         profile_id: Some(Uuid::new_v4()),
     })?;
 
@@ -101,7 +100,7 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
         }
     }
 
-    println!("{sess_name} logined");
+    println!("{sess_name} logged in");
 
     loop {
         while !dec.has_next_packet()? {
@@ -129,8 +128,6 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
 
                     enc.append_packet(&KeepAliveC2s { id: p.id })?;
                     conn.write_all(&enc.take()).await?;
-
-                    println!("{sess_name} keep alive")
                 }
 
                 S2cPlayPacket::PlayerPositionLookS2c(p) => {
@@ -146,8 +143,6 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
                     })?;
 
                     conn.write_all(&enc.take()).await?;
-
-                    println!("{sess_name} spawned")
                 }
                 _ => (),
             },

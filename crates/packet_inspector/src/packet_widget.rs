@@ -1,7 +1,7 @@
 use eframe::epaint::{PathShape, RectShape};
 use egui::{
-    Pos2, Rect, Response, Rgba, Rounding, Sense, Shape, Stroke, TextStyle, Ui, Vec2, Widget,
-    WidgetText,
+    Color32, Pos2, Rect, Response, Rgba, Rounding, Sense, Shape, Stroke, TextStyle, Ui, Vec2,
+    Widget, WidgetText,
 };
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -87,8 +87,13 @@ impl Widget for Packet {
         );
 
         let fill = match self.selected {
-            true => Rgba::from_rgba_premultiplied(0.0, 0.0, 0.0, 0.4),
+            true => Rgba::from_rgba_premultiplied(0.3, 0.3, 0.3, 0.4),
             false => Rgba::from_rgba_premultiplied(0.0, 0.0, 0.0, 0.0),
+        };
+
+        let text_color: Color32 = match self.selected {
+            true => Rgba::from_rgba_premultiplied(0.0, 0.0, 0.0, 1.0).into(),
+            false => ui.visuals().strong_text_color(),
         };
 
         if ui.is_rect_visible(rect) {
@@ -133,7 +138,7 @@ impl Widget for Packet {
                     x: rect.left() + 55.0,
                     y: rect.top() + 6.0,
                 },
-                ui.visuals().strong_text_color(),
+                text_color,
             );
 
             timestamp.paint_with_fallback_color(

@@ -1,37 +1,36 @@
 use std::sync::{Arc, Mutex};
 
-use bevy_app::{App, CoreSchedule};
-use bevy_ecs::prelude::Entity;
+use bevy_app::prelude::*;
+use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::{LogLevel, ScheduleBuildSettings};
 use bytes::BytesMut;
 use valence_protocol::codec::{PacketDecoder, PacketEncoder};
 use valence_protocol::packet::S2cPlayPacket;
-use valence_protocol::username::Username;
 use valence_protocol::Packet;
 
-use crate::client::{Client, ClientConnection};
+use crate::client::{ClientBundle, ClientConnection};
+use crate::component::Location;
 use crate::config::{ConnectionMode, ServerPlugin};
 use crate::dimension::DimensionId;
-use crate::inventory::{Inventory, InventoryKind};
 use crate::server::{NewClientInfo, Server};
 
-/// Creates a mock client that can be used for unit testing.
+/// Creates a mock client bundle that can be used for unit testing.
 ///
 /// Returns the client, and a helper to inject packets as if the client sent
 /// them and receive packets as if the client received them.
-pub fn create_mock_client(client_info: NewClientInfo) -> (Client, MockClientHelper) {
+pub(crate) fn create_mock_client(client_info: NewClientInfo) -> (ClientBundle, MockClientHelper) {
     let mock_connection = MockClientConnection::new();
     let enc = PacketEncoder::new();
     let dec = PacketDecoder::new();
-    let client = Client::new(client_info, Box::new(mock_connection.clone()), enc, dec);
-    (client, MockClientHelper::new(mock_connection))
+    let bundle = ClientBundle::new(client_info, Box::new(mock_connection.clone()), enc, dec);
+
+    (bundle, MockClientHelper::new(mock_connection))
 }
 
 /// Creates a `NewClientInfo` with the given username and a random UUID.
-/// Panics if the username is invalid.
-pub fn gen_client_info(username: &str) -> NewClientInfo {
+pub fn gen_client_info(username: impl Into<String>) -> NewClientInfo {
     NewClientInfo {
-        username: Username::new(username.to_owned()).unwrap(),
+        username: username.into(),
         uuid: uuid::Uuid::new_v4(),
         ip: std::net::IpAddr::V4(std::net::Ipv4Addr::new(127, 0, 0, 1)),
         properties: vec![],
@@ -169,15 +168,12 @@ pub fn scenario_single_client(app: &mut App) -> (Entity, MockClientHelper) {
     let server = app.world.resource::<Server>();
     let instance = server.new_instance(DimensionId::default());
     let instance_ent = app.world.spawn(instance).id();
-    let info = gen_client_info("test");
-    let (mut client, client_helper) = create_mock_client(info);
+    let (client, client_helper) = create_mock_client(gen_client_info("test"));
 
-    // HACK: needed so client does not get disconnected on first update
-    client.set_instance(instance_ent);
-    let client_ent = app
-        .world
-        .spawn((client, Inventory::new(InventoryKind::Player)))
-        .id();
+    let client_ent = app.world.spawn(client).id();
+
+    // Set initial location.
+    app.world.get_mut::<Location>(client_ent).unwrap().0 = instance_ent;
 
     // Print warnings if there are ambiguities in the schedule.
     app.edit_schedule(CoreSchedule::Main, |schedule| {
@@ -209,10 +205,15 @@ macro_rules! assert_packet_count {
         assert_eq!(
             count,
             $count,
-            "expected {} {} packets, got {}",
+            "expected {} {} packets, got {}\nPackets actually found:\n[\n\t{}\n]\n",
             $count,
             stringify!($packet),
-            count
+            count,
+            sent_packets
+                .iter()
+                .map(|p| format!("{:?}", p))
+                .collect::<Vec<_>>()
+                .join(",\n\t")
         );
     }};
 }

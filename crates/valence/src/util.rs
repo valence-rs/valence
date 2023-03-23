@@ -1,5 +1,7 @@
 pub use glam::*;
 
+use crate::config::DEFAULT_TPS;
+
 /// An axis-aligned bounding box. `min` is expected to be <= `max`
 /// componentwise.
 #[derive(Copy, Clone, PartialEq, Default, Debug)]
@@ -18,6 +20,7 @@ impl Aabb {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn from_bottom_size(bottom: impl Into<DVec3>, size: impl Into<DVec3>) -> Self {
         let bottom = bottom.into();
         let size = size.into();
@@ -67,6 +70,30 @@ pub(crate) const fn bit_width(n: usize) -> usize {
     (usize::BITS - n.leading_zeros()) as _
 }
 
+/// Returns whether or not the given string is a valid Minecraft username.
+///
+/// A valid username is 3 to 16 characters long with only ASCII alphanumeric
+/// characters. The username must match the regex `^[a-zA-Z0-9_]{3,16}$` to be
+/// considered valid.
+///
+/// # Examples
+///
+/// ```
+/// use valence::util::is_valid_username;
+///
+/// assert!(is_valid_username("00a"));
+/// assert!(is_valid_username("jeb_"));
+///
+/// assert!(!is_valid_username("notavalidusername"));
+/// assert!(!is_valid_username("NotValid!"));
+/// ```
+pub fn is_valid_username(username: &str) -> bool {
+    (3..=16).contains(&username.len())
+        && username
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_')
+}
+
 #[cfg(test)]
 mod tests {
     use approx::assert_relative_eq;
@@ -85,4 +112,12 @@ mod tests {
             assert_relative_eq!(d, d_new, epsilon = f32::EPSILON * 100.0);
         }
     }
+}
+
+#[inline]
+pub(crate) fn velocity_to_packet_units(vel: Vec3) -> [i16; 3] {
+    // The saturating casts to i16 are desirable.
+    (8000.0 / DEFAULT_TPS as f32 * vel)
+        .to_array()
+        .map(|v| v as i16)
 }

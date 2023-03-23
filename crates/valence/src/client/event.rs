@@ -1,7 +1,10 @@
 use std::cmp;
 
 use anyhow::bail;
+use bevy_app::{CoreSet, Plugin};
 use bevy_ecs::prelude::*;
+use bevy_ecs::query::WorldQuery;
+use bevy_ecs::schedule::ScheduleLabel;
 use bevy_ecs::system::{SystemParam, SystemState};
 use glam::{DVec3, Vec3};
 use paste::paste;
@@ -12,9 +15,7 @@ use valence_protocol::ident::Ident;
 use valence_protocol::item::ItemStack;
 use valence_protocol::packet::c2s::play::click_slot::{ClickMode, Slot};
 use valence_protocol::packet::c2s::play::client_command::Action as ClientCommandAction;
-use valence_protocol::packet::c2s::play::client_settings::{
-    ChatMode, DisplayedSkinParts, MainHand,
-};
+use valence_protocol::packet::c2s::play::client_settings::{ChatMode, DisplayedSkinParts, MainArm};
 use valence_protocol::packet::c2s::play::player_action::Action as PlayerAction;
 use valence_protocol::packet::c2s::play::player_interact::Interaction;
 use valence_protocol::packet::c2s::play::player_session::PlayerSessionData;
@@ -28,13 +29,14 @@ use valence_protocol::packet::c2s::play::{
     AdvancementTabC2s, ClientStatusC2s, ResourcePackStatusC2s, UpdatePlayerAbilitiesC2s,
 };
 use valence_protocol::packet::C2sPlayPacket;
-use valence_protocol::tracked_data::Pose;
 use valence_protocol::types::{Difficulty, Direction, Hand};
 
+use super::{
+    CursorItem, KeepaliveState, PlayerActionSequence, PlayerInventoryState, TeleportState,
+};
 use crate::client::Client;
-use crate::entity::{EntityAnimation, EntityKind, McEntity, TrackedData};
+use crate::component::{Look, OnGround, Ping, Position};
 use crate::inventory::Inventory;
-use crate::server::EventLoopSchedule;
 
 #[derive(Clone, Debug)]
 pub struct QueryBlockNbt {
@@ -96,7 +98,7 @@ pub struct ClientSettings {
     /// `true` if the client has chat colors enabled, `false` otherwise.
     pub chat_colors: bool,
     pub displayed_skin_parts: DisplayedSkinParts,
-    pub main_hand: MainHand,
+    pub main_arm: MainArm,
     pub enable_text_filtering: bool,
     pub allow_server_listings: bool,
 }
@@ -523,7 +525,7 @@ macro_rules! events {
         )*
     ) => {
         /// Inserts [`Events`] resources into the world for each client event.
-        pub(crate) fn register_client_events(world: &mut World) {
+        fn register_client_events(world: &mut World) {
             $(
                 $(
                     world.insert_resource(Events::<$name>::default());
@@ -637,24 +639,62 @@ events! {
     }
 }
 
+pub(crate) struct ClientEventPlugin;
+
+/// The [`ScheduleLabel`] for the event loop [`Schedule`].
+#[derive(ScheduleLabel, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
+pub struct EventLoopSchedule;
+
+/// The default base set for [`EventLoopSchedule`].
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
+pub struct EventLoopSet;
+
+impl Plugin for ClientEventPlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        register_client_events(&mut app.world);
+
+        app.configure_set(EventLoopSet.in_base_set(CoreSet::PreUpdate))
+            .add_system(run_event_loop.in_set(EventLoopSet));
+
+        // Add the event loop schedule.
+        let mut event_loop = Schedule::new();
+        event_loop.set_default_base_set(EventLoopSet);
+
+        app.add_schedule(EventLoopSchedule, event_loop);
+    }
+}
+
+#[derive(WorldQuery)]
+#[world_query(mutable)]
+pub(crate) struct EventLoopQuery {
+    entity: Entity,
+    client: &'static mut Client,
+    teleport_state: &'static mut TeleportState,
+    keepalive_state: &'static mut KeepaliveState,
+    cursor_item: &'static mut CursorItem,
+    inventory: &'static mut Inventory,
+    position: &'static mut Position,
+    look: &'static mut Look,
+    on_ground: &'static mut OnGround,
+    ping: &'static mut Ping,
+    player_action_sequence: &'static mut PlayerActionSequence,
+    player_inventory_state: &'static mut PlayerInventoryState,
+}
+
 /// An exclusive system for running the event loop schedule.
-#[allow(clippy::type_complexity)]
-pub(crate) fn run_event_loop(
+fn run_event_loop(
     world: &mut World,
-    state: &mut SystemState<(Query<(Entity, &mut Client, &mut Inventory)>, ClientEvents)>,
+    state: &mut SystemState<(Query<EventLoopQuery>, ClientEvents, Commands)>,
     mut clients_to_check: Local<Vec<Entity>>,
 ) {
-    let (mut clients, mut events) = state.get_mut(world);
+    let (mut clients, mut events, mut commands) = state.get_mut(world);
 
     update_all_event_buffers(&mut events);
 
-    for (entity, client, inventory) in &mut clients {
-        let client = client.into_inner();
-        let inventory = inventory.into_inner();
-
-        let Ok(bytes) = client.conn.try_recv() else {
+    for mut q in &mut clients {
+        let Ok(bytes) = q.client.conn.try_recv() else {
             // Client is disconnected.
-            client.is_disconnected = true;
+            commands.entity(q.entity).remove::<Client>();
             continue;
         };
 
@@ -663,81 +703,75 @@ pub(crate) fn run_event_loop(
             continue;
         }
 
-        client.dec.queue_bytes(bytes);
+        q.client.dec.queue_bytes(bytes);
 
-        match handle_one_packet(client, inventory, entity, &mut events) {
+        match handle_one_packet(&mut q, &mut events) {
             Ok(had_packet) => {
                 if had_packet {
                     // We decoded one packet, but there might be more.
-                    clients_to_check.push(entity);
+                    clients_to_check.push(q.entity);
                 }
             }
             Err(e) => {
-                warn!(
-                    username = %client.username,
-                    uuid = %client.uuid,
-                    ip = %client.ip,
-                    "failed to dispatch events: {e:#}"
-                );
-                client.is_disconnected = true;
+                warn!("failed to dispatch events for client {:?}: {e:?}", q.entity);
+                commands.entity(q.entity).remove::<Client>();
             }
         }
     }
+
+    state.apply(world);
 
     // Keep looping until all serverbound packets are decoded.
     while !clients_to_check.is_empty() {
         world.run_schedule(EventLoopSchedule);
 
-        let (mut clients, mut events) = state.get_mut(world);
+        let (mut clients, mut events, mut commands) = state.get_mut(world);
 
         clients_to_check.retain(|&entity| {
-            let Ok((_, mut client, mut inventory)) = clients.get_mut(entity) else {
+            let Ok(mut q) = clients.get_mut(entity) else {
                 // Client must have been deleted during the last run of the schedule.
                 return false;
             };
 
-            match handle_one_packet(&mut client, &mut inventory, entity, &mut events) {
+            match handle_one_packet(&mut q, &mut events) {
                 Ok(had_packet) => had_packet,
                 Err(e) => {
-                    warn!(
-                        username = %client.username,
-                        uuid = %client.uuid,
-                        ip = %client.ip,
-                        "failed to dispatch events: {e:#}"
-                    );
-                    client.is_disconnected = true;
-
+                    warn!("failed to dispatch events for client {:?}: {e:?}", q.entity);
+                    commands.entity(entity).remove::<Client>();
                     false
                 }
             }
         });
+
+        state.apply(world);
     }
 }
 
 fn handle_one_packet(
-    client: &mut Client,
-    inventory: &mut Inventory,
-    entity: Entity,
+    q: &mut EventLoopQueryItem,
     events: &mut ClientEvents,
 ) -> anyhow::Result<bool> {
-    let Some(pkt) = client.dec.try_next_packet::<C2sPlayPacket>()? else {
+    let Some(pkt) = q.client.dec.try_next_packet::<C2sPlayPacket>()? else {
         // No packets to decode.
         return Ok(false);
     };
 
+    let entity = q.entity;
+
     match pkt {
         C2sPlayPacket::TeleportConfirmC2s(p) => {
-            if client.pending_teleports == 0 {
+            if q.teleport_state.pending_teleports == 0 {
                 bail!("unexpected teleport confirmation");
             }
 
             let got = p.teleport_id.0 as u32;
-            let expected = client
+            let expected = q
+                .teleport_state
                 .teleport_id_counter
-                .wrapping_sub(client.pending_teleports);
+                .wrapping_sub(q.teleport_state.pending_teleports);
 
             if got == expected {
-                client.pending_teleports -= 1;
+                q.teleport_state.pending_teleports -= 1;
             } else {
                 bail!("unexpected teleport ID (expected {expected}, got {got}");
             }
@@ -796,7 +830,7 @@ fn handle_one_packet(
                 chat_mode: p.chat_mode,
                 chat_colors: p.chat_colors,
                 displayed_skin_parts: p.displayed_skin_parts,
-                main_hand: p.main_hand,
+                main_arm: p.main_arm,
                 enable_text_filtering: p.enable_text_filtering,
                 allow_server_listings: p.allow_server_listings,
             });
@@ -820,7 +854,7 @@ fn handle_one_packet(
         }
         C2sPlayPacket::ClickSlotC2s(p) => {
             if p.slot_idx < 0 {
-                if let Some(stack) = client.cursor_item.take() {
+                if let Some(stack) = q.cursor_item.0.take() {
                     events.2.drop_item_stack.send(DropItemStack {
                         client: entity,
                         from_slot: None,
@@ -829,13 +863,13 @@ fn handle_one_packet(
                 }
             } else if p.mode == ClickMode::DropKey {
                 let entire_stack = p.button == 1;
-                if let Some(stack) = inventory.slot(p.slot_idx as u16) {
+                if let Some(stack) = q.inventory.slot(p.slot_idx as u16) {
                     let dropped = if entire_stack || stack.count() == 1 {
-                        inventory.replace_slot(p.slot_idx as u16, None)
+                        q.inventory.replace_slot(p.slot_idx as u16, None)
                     } else {
                         let mut stack = stack.clone();
                         stack.set_count(stack.count() - 1);
-                        let mut old_slot = inventory.replace_slot(p.slot_idx as u16, Some(stack));
+                        let mut old_slot = q.inventory.replace_slot(p.slot_idx as u16, Some(stack));
                         // we already checked that the slot was not empty and that the
                         // stack count is > 1
                         old_slot.as_mut().unwrap().set_count(1);
@@ -905,17 +939,17 @@ fn handle_one_packet(
             });
         }
         C2sPlayPacket::KeepAliveC2s(p) => {
-            if client.got_keepalive {
+            if q.keepalive_state.got_keepalive {
                 bail!("unexpected keepalive");
-            } else if p.id != client.last_keepalive_id {
+            } else if p.id != q.keepalive_state.last_keepalive_id {
                 bail!(
                     "keepalive IDs don't match (expected {}, got {})",
-                    client.last_keepalive_id,
+                    q.keepalive_state.last_keepalive_id,
                     p.id
                 );
             } else {
-                client.got_keepalive = true;
-                client.ping = client.keepalive_sent_time.elapsed().as_millis() as i32;
+                q.keepalive_state.got_keepalive = true;
+                q.ping.0 = q.keepalive_state.keepalive_sent_time.elapsed().as_millis() as i32;
             }
         }
         C2sPlayPacket::UpdateDifficultyLockC2s(p) => {
@@ -925,23 +959,24 @@ fn handle_one_packet(
             });
         }
         C2sPlayPacket::PositionAndOnGroundC2s(p) => {
-            if client.pending_teleports != 0 {
+            if q.teleport_state.pending_teleports != 0 {
                 return Ok(false);
             }
 
             events.1.player_move.send(PlayerMove {
                 client: entity,
                 position: p.position.into(),
-                yaw: client.yaw,
-                pitch: client.pitch,
-                on_ground: client.on_ground,
+                yaw: q.look.yaw,
+                pitch: q.look.pitch,
+                on_ground: q.on_ground.0,
             });
 
-            client.position = p.position.into();
-            client.on_ground = p.on_ground;
+            q.position.0 = p.position.into();
+            q.teleport_state.synced_pos = p.position.into();
+            q.on_ground.0 = p.on_ground;
         }
         C2sPlayPacket::FullC2s(p) => {
-            if client.pending_teleports != 0 {
+            if q.teleport_state.pending_teleports != 0 {
                 return Ok(false);
             }
 
@@ -953,45 +988,50 @@ fn handle_one_packet(
                 on_ground: p.on_ground,
             });
 
-            client.position = p.position.into();
-            client.yaw = p.yaw;
-            client.pitch = p.pitch;
-            client.on_ground = p.on_ground;
+            q.position.0 = p.position.into();
+            q.teleport_state.synced_pos = p.position.into();
+            q.look.yaw = p.yaw;
+            q.teleport_state.synced_look.yaw = p.yaw;
+            q.look.pitch = p.pitch;
+            q.teleport_state.synced_look.pitch = p.pitch;
+            q.on_ground.0 = p.on_ground;
         }
         C2sPlayPacket::LookAndOnGroundC2s(p) => {
-            if client.pending_teleports != 0 {
+            if q.teleport_state.pending_teleports != 0 {
                 return Ok(false);
             }
 
             events.1.player_move.send(PlayerMove {
                 client: entity,
-                position: client.position,
+                position: q.position.0,
                 yaw: p.yaw,
                 pitch: p.pitch,
                 on_ground: p.on_ground,
             });
 
-            client.yaw = p.yaw;
-            client.pitch = p.pitch;
-            client.on_ground = p.on_ground;
+            q.look.yaw = p.yaw;
+            q.teleport_state.synced_look.yaw = p.yaw;
+            q.look.pitch = p.pitch;
+            q.teleport_state.synced_look.pitch = p.pitch;
+            q.on_ground.0 = p.on_ground;
         }
         C2sPlayPacket::OnGroundOnlyC2s(p) => {
-            if client.pending_teleports != 0 {
+            if q.teleport_state.pending_teleports != 0 {
                 return Ok(false);
             }
 
             events.1.player_move.send(PlayerMove {
                 client: entity,
-                position: client.position,
-                yaw: client.yaw,
-                pitch: client.pitch,
+                position: q.position.0,
+                yaw: q.look.yaw,
+                pitch: q.look.pitch,
                 on_ground: p.on_ground,
             });
 
-            client.on_ground = p.on_ground;
+            q.on_ground.0 = p.on_ground;
         }
         C2sPlayPacket::VehicleMoveC2s(p) => {
-            if client.pending_teleports != 0 {
+            if q.teleport_state.pending_teleports != 0 {
                 return Ok(false);
             }
 
@@ -1002,9 +1042,12 @@ fn handle_one_packet(
                 pitch: p.pitch,
             });
 
-            client.position = p.position.into();
-            client.yaw = p.yaw;
-            client.pitch = p.pitch;
+            q.position.0 = p.position.into();
+            q.teleport_state.synced_pos = p.position.into();
+            q.look.yaw = p.yaw;
+            q.teleport_state.synced_look.yaw = p.yaw;
+            q.look.pitch = p.pitch;
+            q.teleport_state.synced_look.pitch = p.pitch;
         }
         C2sPlayPacket::BoatPaddleStateC2s(p) => {
             events.2.boat_paddle_state.send(BoatPaddleState {
@@ -1037,7 +1080,7 @@ fn handle_one_packet(
         },
         C2sPlayPacket::PlayerActionC2s(p) => {
             if p.sequence.0 != 0 {
-                client.block_change_sequence = cmp::max(p.sequence.0, client.block_change_sequence);
+                q.player_action_sequence.0 = cmp::max(p.sequence.0, q.player_action_sequence.0);
             }
 
             match p.action {
@@ -1064,31 +1107,41 @@ fn handle_one_packet(
                     })
                 }
                 PlayerAction::DropAllItems => {
-                    if let Some(stack) = inventory.replace_slot(client.held_item_slot(), None) {
-                        client.inventory_slots_modified |= 1 << client.held_item_slot();
+                    if let Some(stack) = q
+                        .inventory
+                        .replace_slot(q.player_inventory_state.held_item_slot(), None)
+                    {
+                        q.player_inventory_state.slots_changed |=
+                            1 << q.player_inventory_state.held_item_slot();
                         events.2.drop_item_stack.send(DropItemStack {
                             client: entity,
-                            from_slot: Some(client.held_item_slot()),
+                            from_slot: Some(q.player_inventory_state.held_item_slot()),
                             stack,
                         });
                     }
                 }
                 PlayerAction::DropItem => {
-                    if let Some(stack) = inventory.slot(client.held_item_slot()) {
+                    if let Some(stack) = q.inventory.slot(q.player_inventory_state.held_item_slot())
+                    {
                         let mut old_slot = if stack.count() == 1 {
-                            inventory.replace_slot(client.held_item_slot(), None)
+                            q.inventory
+                                .replace_slot(q.player_inventory_state.held_item_slot(), None)
                         } else {
                             let mut stack = stack.clone();
                             stack.set_count(stack.count() - 1);
-                            inventory.replace_slot(client.held_item_slot(), Some(stack.clone()))
+                            q.inventory.replace_slot(
+                                q.player_inventory_state.held_item_slot(),
+                                Some(stack.clone()),
+                            )
                         }
                         .expect("old slot should exist"); // we already checked that the slot was not empty
-                        client.inventory_slots_modified |= 1 << client.held_item_slot();
+                        q.player_inventory_state.slots_changed |=
+                            1 << q.player_inventory_state.held_item_slot();
                         old_slot.set_count(1);
 
                         events.2.drop_item_stack.send(DropItemStack {
                             client: entity,
-                            from_slot: Some(client.held_item_slot()),
+                            from_slot: Some(q.player_inventory_state.held_item_slot()),
                             stack: old_slot,
                         });
                     }
@@ -1313,7 +1366,7 @@ fn handle_one_packet(
         }
         C2sPlayPacket::PlayerInteractBlockC2s(p) => {
             if p.sequence.0 != 0 {
-                client.block_change_sequence = cmp::max(p.sequence.0, client.block_change_sequence);
+                q.player_action_sequence.0 = cmp::max(p.sequence.0, q.player_action_sequence.0);
             }
 
             events.4.player_interact_block.send(PlayerInteractBlock {
@@ -1328,7 +1381,7 @@ fn handle_one_packet(
         }
         C2sPlayPacket::PlayerInteractItemC2s(p) => {
             if p.sequence.0 != 0 {
-                client.block_change_sequence = cmp::max(p.sequence.0, client.block_change_sequence);
+                q.player_action_sequence.0 = cmp::max(p.sequence.0, q.player_action_sequence.0);
             }
 
             events.4.player_interact_item.send(PlayerInteractItem {
@@ -1340,143 +1393,4 @@ fn handle_one_packet(
     }
 
     Ok(true)
-}
-
-/// The default event handler system which handles client events in a
-/// reasonable default way.
-///
-/// For instance, movement events are handled by changing the entity's
-/// position/rotation to match the received movement, crouching makes the
-/// entity crouch, etc.
-///
-/// This system's primary purpose is to reduce boilerplate code in the
-/// examples, but it can be used as a quick way to get started in your own
-/// code. The precise behavior of this system is left unspecified and
-/// is subject to change.
-///
-/// This system must be scheduled to run in the
-/// [`EventLoopSchedule`](crate::server::EventLoopSchedule). Otherwise, it may
-/// not function correctly.
-#[allow(clippy::too_many_arguments)]
-pub fn default_event_handler(
-    mut clients: Query<(&mut Client, Option<&mut McEntity>)>,
-    mut update_settings: EventReader<ClientSettings>,
-    mut player_move: EventReader<PlayerMove>,
-    mut start_sneaking: EventReader<StartSneaking>,
-    mut stop_sneaking: EventReader<StopSneaking>,
-    mut start_sprinting: EventReader<StartSprinting>,
-    mut stop_sprinting: EventReader<StopSprinting>,
-    mut swing_arm: EventReader<HandSwing>,
-) {
-    for ClientSettings {
-        client,
-        view_distance,
-        displayed_skin_parts,
-        main_hand,
-        ..
-    } in update_settings.iter()
-    {
-        let Ok((mut client, entity)) = clients.get_mut(*client) else {
-            continue
-        };
-
-        client.set_view_distance(*view_distance);
-
-        let player = client.player_mut();
-
-        player.set_cape(displayed_skin_parts.cape());
-        player.set_jacket(displayed_skin_parts.jacket());
-        player.set_left_sleeve(displayed_skin_parts.left_sleeve());
-        player.set_right_sleeve(displayed_skin_parts.right_sleeve());
-        player.set_left_pants_leg(displayed_skin_parts.left_pants_leg());
-        player.set_right_pants_leg(displayed_skin_parts.right_pants_leg());
-        player.set_hat(displayed_skin_parts.hat());
-        player.set_main_arm(*main_hand as u8);
-
-        if let Some(mut entity) = entity {
-            if let TrackedData::Player(player) = entity.data_mut() {
-                player.set_cape(displayed_skin_parts.cape());
-                player.set_jacket(displayed_skin_parts.jacket());
-                player.set_left_sleeve(displayed_skin_parts.left_sleeve());
-                player.set_right_sleeve(displayed_skin_parts.right_sleeve());
-                player.set_left_pants_leg(displayed_skin_parts.left_pants_leg());
-                player.set_right_pants_leg(displayed_skin_parts.right_pants_leg());
-                player.set_hat(displayed_skin_parts.hat());
-                player.set_main_arm(*main_hand as u8);
-            }
-        }
-    }
-
-    for PlayerMove {
-        client,
-        position,
-        yaw,
-        pitch,
-        on_ground,
-        ..
-    } in player_move.iter()
-    {
-        let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
-            continue
-        };
-
-        entity.set_position(*position);
-        entity.set_yaw(*yaw);
-        entity.set_head_yaw(*yaw);
-        entity.set_pitch(*pitch);
-        entity.set_on_ground(*on_ground);
-    }
-
-    for StartSneaking { client } in start_sneaking.iter() {
-        let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
-            continue
-        };
-
-        if let TrackedData::Player(player) = entity.data_mut() {
-            player.set_pose(Pose::Sneaking);
-        }
-    }
-
-    for StopSneaking { client } in stop_sneaking.iter() {
-        let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
-            continue
-        };
-
-        if let TrackedData::Player(player) = entity.data_mut() {
-            player.set_pose(Pose::Standing);
-        }
-    }
-
-    for StartSprinting { client } in start_sprinting.iter() {
-        let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
-            continue
-        };
-
-        if let TrackedData::Player(player) = entity.data_mut() {
-            player.set_sprinting(true);
-        }
-    }
-
-    for StopSprinting { client } in stop_sprinting.iter() {
-        let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
-            continue
-        };
-
-        if let TrackedData::Player(player) = entity.data_mut() {
-            player.set_sprinting(false);
-        }
-    }
-
-    for HandSwing { client, hand } in swing_arm.iter() {
-        let Ok((_, Some(mut entity))) = clients.get_mut(*client) else {
-            continue
-        };
-
-        if entity.kind() == EntityKind::Player {
-            entity.trigger_animation(match hand {
-                Hand::Main => EntityAnimation::SwingMainHand,
-                Hand::Off => EntityAnimation::SwingOffHand,
-            });
-        }
-    }
 }

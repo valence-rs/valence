@@ -1,5 +1,4 @@
-use valence::client::despawn_disconnected_clients;
-use valence::client::event::default_event_handler;
+use valence::client::{default_event_handler, despawn_disconnected_clients};
 use valence::prelude::*;
 
 #[allow(unused_imports)]
@@ -9,8 +8,8 @@ const SPAWN_Y: i32 = 64;
 
 pub fn build_app(app: &mut App) {
     app.add_plugin(ServerPlugin::new(()))
-        .add_system(default_event_handler.in_schedule(EventLoopSchedule))
         .add_startup_system(setup)
+        .add_system(default_event_handler.in_schedule(EventLoopSchedule))
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients);
 }
@@ -34,15 +33,12 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<&mut Client, Added<Client>>,
+    mut clients: Query<(&mut Position, &mut Location), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
-    let instance = instances.get_single().unwrap();
-
-    for mut client in &mut clients {
-        client.set_position([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
-        client.set_instance(instance);
-        client.set_game_mode(GameMode::Survival);
+    for (mut pos, mut loc) in &mut clients {
+        pos.0 = [0.5, SPAWN_Y as f64 + 1.0, 0.5].into();
+        loc.0 = instances.single();
     }
 }
 

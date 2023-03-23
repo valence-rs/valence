@@ -9,7 +9,7 @@ pub struct ClientSettingsC2s<'a> {
     pub chat_mode: ChatMode,
     pub chat_colors: bool,
     pub displayed_skin_parts: DisplayedSkinParts,
-    pub main_hand: MainHand,
+    pub main_arm: MainArm,
     pub enable_text_filtering: bool,
     pub allow_server_listings: bool,
 }
@@ -35,7 +35,7 @@ pub struct DisplayedSkinParts {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default, Encode, Decode)]
-pub enum MainHand {
+pub enum MainArm {
     Left,
     #[default]
     Right,

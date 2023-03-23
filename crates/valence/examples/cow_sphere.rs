@@ -1,14 +1,16 @@
+#![allow(clippy::type_complexity)]
+
 use std::f64::consts::TAU;
 
 use glam::{DQuat, EulerRot};
-use valence::client::despawn_disconnected_clients;
-use valence::client::event::default_event_handler;
-use valence::math::to_yaw_and_pitch;
+use valence::client::{default_event_handler, despawn_disconnected_clients};
+use valence::entity::player::PlayerBundle;
 use valence::prelude::*;
+
+type SpherePartBundle = valence::entity::cow::CowBundle;
 
 const SPHERE_CENTER: DVec3 = DVec3::new(0.5, SPAWN_POS.y as f64 + 2.0, 0.5);
 const SPHERE_AMOUNT: usize = 200;
-const SPHERE_KIND: EntityKind = EntityKind::Cow;
 const SPHERE_MIN_RADIUS: f64 = 6.0;
 const SPHERE_MAX_RADIUS: f64 = 12.0;
 const SPHERE_FREQ: f64 = 0.5;
@@ -46,27 +48,42 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 
     let instance_id = commands.spawn(instance).id();
 
-    commands.spawn_batch(
-        [0; SPHERE_AMOUNT].map(|_| (McEntity::new(SPHERE_KIND, instance_id), SpherePart)),
-    );
+    commands.spawn_batch([0; SPHERE_AMOUNT].map(|_| {
+        (
+            SpherePartBundle {
+                location: Location(instance_id),
+                ..Default::default()
+            },
+            SpherePart,
+        )
+    }));
 }
 
 fn init_clients(
-    mut clients: Query<&mut Client, Added<Client>>,
+    mut clients: Query<(Entity, &UniqueId, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
+    mut commands: Commands,
 ) {
-    for mut client in &mut clients {
-        client.set_position([
-            SPAWN_POS.x as f64 + 0.5,
-            SPAWN_POS.y as f64 + 1.0,
-            SPAWN_POS.z as f64 + 0.5,
-        ]);
-        client.set_instance(instances.single());
-        client.set_game_mode(GameMode::Creative);
+    for (entity, uuid, mut game_mode) in &mut clients {
+        *game_mode = GameMode::Creative;
+
+        commands.entity(entity).insert(PlayerBundle {
+            location: Location(instances.single()),
+            position: Position::new([
+                SPAWN_POS.x as f64 + 0.5,
+                SPAWN_POS.y as f64 + 1.0,
+                SPAWN_POS.z as f64 + 0.5,
+            ]),
+            uuid: *uuid,
+            ..Default::default()
+        });
     }
 }
 
-fn update_sphere(server: Res<Server>, mut parts: Query<&mut McEntity, With<SpherePart>>) {
+fn update_sphere(
+    server: Res<Server>,
+    mut parts: Query<(&mut Position, &mut Look, &mut HeadYaw), With<SpherePart>>,
+) {
     let time = server.current_tick() as f64 / server.tps() as f64;
 
     let rot_angles = DVec3::new(0.2, 0.4, 0.6) * SPHERE_FREQ * time * TAU % TAU;
@@ -78,16 +95,16 @@ fn update_sphere(server: Res<Server>, mut parts: Query<&mut McEntity, With<Spher
         ((time * SPHERE_FREQ * TAU).sin() + 1.0) / 2.0,
     );
 
-    for (mut entity, p) in parts.iter_mut().zip(fibonacci_spiral(SPHERE_AMOUNT)) {
+    for ((mut pos, mut look, mut head_yaw), p) in
+        parts.iter_mut().zip(fibonacci_spiral(SPHERE_AMOUNT))
+    {
         debug_assert!(p.is_normalized());
 
         let dir = rot * p;
-        let (yaw, pitch) = to_yaw_and_pitch(dir.as_vec3());
 
-        entity.set_position(SPHERE_CENTER + dir * radius);
-        entity.set_yaw(yaw);
-        entity.set_head_yaw(yaw);
-        entity.set_pitch(pitch);
+        pos.0 = SPHERE_CENTER + dir * radius;
+        look.set_vec(dir.as_vec3());
+        head_yaw.0 = look.yaw;
     }
 }
 

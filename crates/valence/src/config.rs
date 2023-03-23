@@ -8,7 +8,6 @@ use tokio::runtime::Handle;
 use tracing::error;
 use uuid::Uuid;
 use valence_protocol::text::Text;
-use valence_protocol::username::Username;
 
 use crate::biome::Biome;
 use crate::chat_type::ChatType;
@@ -329,7 +328,7 @@ pub trait AsyncCallbacks: Send + Sync + 'static {
     async fn session_server(
         &self,
         shared: &SharedServer,
-        username: Username<&str>,
+        username: &str,
         auth_digest: &str,
         player_ip: &IpAddr,
     ) -> String {

@@ -1,5 +1,9 @@
-use valence::client::despawn_disconnected_clients;
-use valence::client::event::default_event_handler;
+#![allow(clippy::type_complexity)]
+
+use std::fmt;
+
+use valence::client::{default_event_handler, despawn_disconnected_clients};
+use valence::entity::player::PlayerBundle;
 use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;
@@ -19,23 +23,7 @@ pub fn main() {
 }
 
 #[derive(Resource)]
-struct ParticleSpawner {
-    particles: Vec<Particle>,
-    index: usize,
-}
-
-impl ParticleSpawner {
-    pub fn new() -> Self {
-        Self {
-            particles: create_particle_vec(),
-            index: 0,
-        }
-    }
-
-    pub fn next(&mut self) {
-        self.index = (self.index + 1) % self.particles.len();
-    }
-}
+struct ParticleVec(Vec<Particle>);
 
 fn setup(mut commands: Commands, server: Res<Server>) {
     let mut instance = server.new_instance(DimensionId::default());
@@ -50,35 +38,40 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 
     commands.spawn(instance);
 
-    let spawner = ParticleSpawner::new();
-    commands.insert_resource(spawner)
+    commands.insert_resource(ParticleVec(create_particle_vec()));
 }
 
 fn init_clients(
-    mut clients: Query<&mut Client, Added<Client>>,
+    mut clients: Query<(Entity, &UniqueId, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
+    mut commands: Commands,
 ) {
-    for mut client in &mut clients {
-        client.set_position([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
-        client.set_instance(instances.single());
-        client.set_game_mode(GameMode::Creative);
+    for (entity, uuid, mut game_mode) in &mut clients {
+        *game_mode = GameMode::Creative;
+
+        commands.entity(entity).insert(PlayerBundle {
+            location: Location(instances.single()),
+            position: Position::new([0.5, SPAWN_Y as f64 + 1.0, 0.5]),
+            uuid: *uuid,
+            ..Default::default()
+        });
     }
 }
 
 fn manage_particles(
-    mut spawner: ResMut<ParticleSpawner>,
+    particles: Res<ParticleVec>,
     server: Res<Server>,
     mut instances: Query<&mut Instance>,
+    mut particle_idx: Local<usize>,
 ) {
-    if server.current_tick() % 20 == 0 {
-        spawner.next();
-    }
-
-    if server.current_tick() % 5 != 0 {
+    if server.current_tick() % 20 != 0 {
         return;
     }
 
-    let particle = &spawner.particles[spawner.index];
+    let particle = &particles.0[*particle_idx];
+
+    *particle_idx = (*particle_idx + 1) % particles.0.len();
+
     let name = dbg_name(particle);
 
     let pos = [0.5, SPAWN_Y as f64 + 2.0, 5.0];
@@ -90,7 +83,7 @@ fn manage_particles(
     instance.set_action_bar(name.bold());
 }
 
-fn dbg_name(dbg: &impl std::fmt::Debug) -> String {
+fn dbg_name(dbg: &impl fmt::Debug) -> String {
     let string = format!("{dbg:?}");
 
     string

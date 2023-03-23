@@ -1,6 +1,6 @@
 ## Description
 
-Describe the changes you've made. Link to any issues that this PR fixes or addresses.
+Describe the changes you've made. Link to any issues this PR fixes or addresses.
 
 ## Test Plan
 

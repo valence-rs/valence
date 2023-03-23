@@ -1,7 +1,8 @@
-use valence::client::despawn_disconnected_clients;
-use valence::client::event::{
-    default_event_handler, PlayerInteractBlock, StartDigging, StartSneaking, StopDestroyBlock,
-};
+#![allow(clippy::type_complexity)]
+
+use valence::client::event::{PlayerInteractBlock, StartDigging, StartSneaking, StopDestroyBlock};
+use valence::client::{default_event_handler, despawn_disconnected_clients};
+use valence::entity::player::PlayerBundle;
 use valence::prelude::*;
 use valence::protocol::types::Hand;
 
@@ -48,77 +49,82 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<&mut Client, Added<Client>>,
+    mut clients: Query<(Entity, &UniqueId, &mut Client, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
+    mut commands: Commands,
 ) {
-    for mut client in &mut clients {
-        client.set_position([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
-        client.set_instance(instances.single());
-        client.set_game_mode(GameMode::Creative);
+    for (entity, uuid, mut client, mut game_mode) in &mut clients {
+        *game_mode = GameMode::Creative;
         client.send_message("Welcome to Valence! Build something cool.".italic());
-    }
-}
 
-fn toggle_gamemode_on_sneak(
-    mut clients: Query<&mut Client>,
-    mut events: EventReader<StartSneaking>,
-) {
-    for event in events.iter() {
-        let Ok(mut client) = clients.get_component_mut::<Client>(event.client) else {
-            continue;
-        };
-        let mode = client.game_mode();
-        client.set_game_mode(match mode {
-            GameMode::Survival => GameMode::Creative,
-            GameMode::Creative => GameMode::Survival,
-            _ => GameMode::Creative,
+        commands.entity(entity).insert(PlayerBundle {
+            location: Location(instances.single()),
+            position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 0.0]),
+            uuid: *uuid,
+            ..Default::default()
         });
     }
 }
 
+fn toggle_gamemode_on_sneak(
+    mut clients: Query<&mut GameMode>,
+    mut events: EventReader<StartSneaking>,
+) {
+    for event in events.iter() {
+        let Ok(mut mode) = clients.get_mut(event.client) else {
+            continue;
+        };
+        *mode = match *mode {
+            GameMode::Survival => GameMode::Creative,
+            GameMode::Creative => GameMode::Survival,
+            _ => GameMode::Creative,
+        };
+    }
+}
+
 fn digging_creative_mode(
-    clients: Query<&Client>,
+    clients: Query<&GameMode>,
     mut instances: Query<&mut Instance>,
     mut events: EventReader<StartDigging>,
 ) {
     let mut instance = instances.single_mut();
 
     for event in events.iter() {
-        let Ok(client) = clients.get_component::<Client>(event.client) else {
+        let Ok(game_mode) = clients.get(event.client) else {
             continue;
         };
-        if client.game_mode() == GameMode::Creative {
+        if *game_mode == GameMode::Creative {
             instance.set_block(event.position, BlockState::AIR);
         }
     }
 }
 
 fn digging_survival_mode(
-    clients: Query<&Client>,
+    clients: Query<&GameMode>,
     mut instances: Query<&mut Instance>,
     mut events: EventReader<StopDestroyBlock>,
 ) {
     let mut instance = instances.single_mut();
 
     for event in events.iter() {
-        let Ok(client) = clients.get_component::<Client>(event.client) else {
+        let Ok(game_mode) = clients.get(event.client) else {
             continue;
         };
-        if client.game_mode() == GameMode::Survival {
+        if *game_mode == GameMode::Survival {
             instance.set_block(event.position, BlockState::AIR);
         }
     }
 }
 
 fn place_blocks(
-    mut clients: Query<(&Client, &mut Inventory)>,
+    mut clients: Query<(&mut Inventory, &GameMode, &PlayerInventoryState)>,
     mut instances: Query<&mut Instance>,
     mut events: EventReader<PlayerInteractBlock>,
 ) {
     let mut instance = instances.single_mut();
 
     for event in events.iter() {
-        let Ok((client, mut inventory)) = clients.get_mut(event.client) else {
+        let Ok((mut inventory, game_mode, inv_state)) = clients.get_mut(event.client) else {
             continue;
         };
         if event.hand != Hand::Main {
@@ -126,7 +132,7 @@ fn place_blocks(
         }
 
         // get the held item
-        let slot_id = client.held_item_slot();
+        let slot_id = inv_state.held_item_slot();
         let Some(stack) = inventory.slot(slot_id) else {
             // no item in the slot
             continue;
@@ -137,7 +143,7 @@ fn place_blocks(
             continue;
         };
 
-        if client.game_mode() == GameMode::Survival {
+        if *game_mode == GameMode::Survival {
             // check if the player has the item in their inventory and remove
             // it.
             if stack.count() > 1 {
