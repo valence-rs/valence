@@ -530,7 +530,9 @@ fn update_player_inventories(
         }
 
         if cursor_item.is_changed() && !inv_state.client_updated_cursor_item {
-            inv_state.state_id += 1;
+            // Contrary to what you might think, we actually don't want to increment the
+            // state ID here because the client doesn't actually acknowledge the
+            // state_id change for this packet specifically. See #304.
 
             client.write_packet(&ScreenHandlerSlotUpdateS2c {
                 window_id: -1,
@@ -1497,6 +1499,39 @@ mod test {
             .get::<PlayerInventoryState>(client_ent)
             .expect("could not find client");
         assert_eq!(inv_state.held_item_slot, 40);
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_not_increment_state_id_on_cursor_item_change() -> anyhow::Result<()> {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+
+        let inv_state = app
+            .world
+            .get::<PlayerInventoryState>(client_ent)
+            .expect("could not find client");
+        let expected_state_id = inv_state.state_id.0;
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        let mut cursor_item = app.world.get_mut::<CursorItem>(client_ent).unwrap();
+        cursor_item.0 = Some(ItemStack::new(ItemKind::Diamond, 2, None));
+
+        app.update();
+
+        // Make assertions
+        let inv_state = app
+            .world
+            .get::<PlayerInventoryState>(client_ent)
+            .expect("could not find client");
+        assert_eq!(
+            inv_state.state_id.0, expected_state_id,
+            "state id should not have changed"
+        );
 
         Ok(())
     }
