@@ -7,6 +7,8 @@ pub struct ClickSlotC2s {
     pub window_id: u8,
     pub state_id: VarInt,
     pub slot_idx: i16,
+    /// The button used to click the slot. An enum can't easily be used for this
+    /// because the meaning of this value depends on the mode.
     pub button: i8,
     pub mode: ClickMode,
     pub slots: Vec<Slot>,

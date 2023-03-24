@@ -49,6 +49,14 @@ use crate::component::GameMode;
 use crate::packet::WritePacket;
 use crate::prelude::FlushPacketsSet;
 
+mod validate;
+
+pub(crate) use validate::*;
+
+/// The number of slots in the "main" part of the player inventory. 3 rows of 9,
+/// plus the hotbar.
+pub const PLAYER_INVENTORY_MAIN_SLOTS_COUNT: u16 = 36;
+
 #[derive(Debug, Clone, Component)]
 pub struct Inventory {
     title: Text,
@@ -237,7 +245,7 @@ impl Inventory {
         std::mem::replace(&mut self.title, title.into())
     }
 
-    fn slot_slice(&self) -> &[Option<ItemStack>] {
+    pub(crate) fn slot_slice(&self) -> &[Option<ItemStack>] {
         self.slots.as_ref()
     }
 
@@ -300,6 +308,141 @@ impl OpenInventory {
 
     pub fn entity(&self) -> Entity {
         self.entity
+    }
+}
+
+/// A helper to represent the inventory window that the player is currently
+/// viewing. Handles dispatching reads to the correct inventory.
+///
+/// This is a read-only version of [`InventoryWindowMut`].
+///
+/// ```
+/// # use valence::prelude::*;
+/// let mut player_inventory = Inventory::new(InventoryKind::Player);
+/// player_inventory.set_slot(36, ItemStack::new(ItemKind::Diamond, 1, None));
+/// let target_inventory = Inventory::new(InventoryKind::Generic9x3);
+/// let window = InventoryWindow::new(&player_inventory, Some(&target_inventory));
+/// assert_eq!(
+///     window.slot(54),
+///     Some(&ItemStack::new(ItemKind::Diamond, 1, None))
+/// );
+/// ```
+pub struct InventoryWindow<'a> {
+    player_inventory: &'a Inventory,
+    open_inventory: Option<&'a Inventory>,
+}
+
+impl<'a> InventoryWindow<'a> {
+    pub fn new(player_inventory: &'a Inventory, open_inventory: Option<&'a Inventory>) -> Self {
+        Self {
+            player_inventory,
+            open_inventory,
+        }
+    }
+
+    #[track_caller]
+    pub fn slot(&self, idx: u16) -> Option<&ItemStack> {
+        if let Some(open_inv) = self.open_inventory.as_ref() {
+            if idx < open_inv.slot_count() {
+                return open_inv.slot(idx);
+            } else {
+                return self
+                    .player_inventory
+                    .slot(convert_to_player_slot_id(open_inv.kind(), idx));
+            }
+        } else {
+            return self.player_inventory.slot(idx);
+        }
+    }
+
+    #[track_caller]
+    pub fn slot_count(&self) -> u16 {
+        match self.open_inventory.as_ref() {
+            Some(inv) => inv.slot_count() + PLAYER_INVENTORY_MAIN_SLOTS_COUNT,
+            None => self.player_inventory.slot_count(),
+        }
+    }
+}
+
+/// A helper to represent the inventory window that the player is currently
+/// viewing. Handles dispatching reads/writes to the correct inventory.
+///
+/// This is a writable version of [`InventoryWindow`].
+///
+/// ```
+/// # use valence::prelude::*;
+/// let mut player_inventory = Inventory::new(InventoryKind::Player);
+/// let mut target_inventory = Inventory::new(InventoryKind::Generic9x3);
+/// let mut window = InventoryWindowMut::new(&mut player_inventory, Some(&mut target_inventory));
+/// window.set_slot(54, ItemStack::new(ItemKind::Diamond, 1, None));
+/// assert_eq!(
+///     player_inventory.slot(36),
+///     Some(&ItemStack::new(ItemKind::Diamond, 1, None))
+/// );
+/// ```
+pub struct InventoryWindowMut<'a> {
+    player_inventory: &'a mut Inventory,
+    open_inventory: Option<&'a mut Inventory>,
+}
+
+impl<'a> InventoryWindowMut<'a> {
+    pub fn new(
+        player_inventory: &'a mut Inventory,
+        open_inventory: Option<&'a mut Inventory>,
+    ) -> Self {
+        Self {
+            player_inventory,
+            open_inventory,
+        }
+    }
+
+    #[track_caller]
+    pub fn slot(&self, idx: u16) -> Option<&ItemStack> {
+        if let Some(open_inv) = self.open_inventory.as_ref() {
+            if idx < open_inv.slot_count() {
+                return open_inv.slot(idx);
+            } else {
+                return self
+                    .player_inventory
+                    .slot(convert_to_player_slot_id(open_inv.kind(), idx));
+            }
+        } else {
+            return self.player_inventory.slot(idx);
+        }
+    }
+
+    #[track_caller]
+    #[must_use]
+    pub fn replace_slot(
+        &mut self,
+        idx: u16,
+        item: impl Into<Option<ItemStack>>,
+    ) -> Option<ItemStack> {
+        assert!(idx < self.slot_count(), "slot index of {idx} out of bounds");
+
+        if let Some(open_inv) = self.open_inventory.as_mut() {
+            if idx < open_inv.slot_count() {
+                open_inv.replace_slot(idx, item)
+            } else {
+                self.player_inventory
+                    .replace_slot(convert_to_player_slot_id(open_inv.kind(), idx), item)
+            }
+        } else {
+            self.player_inventory.replace_slot(idx, item)
+        }
+    }
+
+    #[track_caller]
+    #[inline]
+    pub fn set_slot(&mut self, idx: u16, item: impl Into<Option<ItemStack>>) {
+        let _ = self.replace_slot(idx, item);
+    }
+
+    pub fn slot_count(&self) -> u16 {
+        match self.open_inventory.as_ref() {
+            Some(inv) => inv.slot_count() + PLAYER_INVENTORY_MAIN_SLOTS_COUNT,
+            None => self.player_inventory.slot_count(),
+        }
     }
 }
 
@@ -574,7 +717,7 @@ fn handle_click_container(
                 continue;
             }
 
-            cursor_item.0 = event.carried_item.clone();
+            cursor_item.set_if_neq(CursorItem(event.carried_item.clone()));
 
             for slot in event.slot_changes.clone() {
                 if (0i16..target_inventory.slot_count() as i16).contains(&slot.idx) {
@@ -607,8 +750,6 @@ fn handle_click_container(
 
                 continue;
             }
-
-            // TODO: do more validation on the click
 
             cursor_item.set_if_neq(CursorItem(event.carried_item.clone()));
             inv_state.client_updated_cursor_item = true;
@@ -692,7 +833,7 @@ fn convert_to_player_slot_id(target_kind: InventoryKind, slot_id: u16) -> u16 {
 }
 
 fn convert_hotbar_slot_id(slot_id: u16) -> u16 {
-    slot_id + 36
+    slot_id + PLAYER_INVENTORY_MAIN_SLOTS_COUNT
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -823,10 +964,25 @@ impl From<WindowType> for InventoryKind {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Resource)]
+pub struct InventorySettings {
+    pub enable_item_dupe_check: bool,
+}
+
+impl Default for InventorySettings {
+    fn default() -> Self {
+        Self {
+            enable_item_dupe_check: true,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use bevy_app::App;
     use valence_protocol::item::ItemKind;
+    use valence_protocol::packet::c2s::play::click_slot::{ClickMode, Slot};
+    use valence_protocol::packet::c2s::play::ClickSlotC2s;
     use valence_protocol::packet::S2cPlayPacket;
 
     use super::*;
@@ -1098,6 +1254,11 @@ mod test {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
         let inventory_ent = set_up_open_inventory(&mut app, client_ent);
+        let mut inventory = app
+            .world
+            .get_mut::<Inventory>(inventory_ent)
+            .expect("could not find inventory for client");
+        inventory.set_slot(20, ItemStack::new(ItemKind::Diamond, 2, None));
 
         // Process a tick to get past the "on join" logic.
         app.update();
@@ -1342,7 +1503,7 @@ mod test {
 
     mod dropping_items {
         use valence_protocol::block_pos::BlockPos;
-        use valence_protocol::packet::c2s::play::click_slot::ClickMode;
+        use valence_protocol::packet::c2s::play::click_slot::{ClickMode, Slot};
         use valence_protocol::packet::c2s::play::player_action::Action;
         use valence_protocol::types::Direction;
 
@@ -1567,7 +1728,10 @@ mod test {
                 button: 0,
                 mode: ClickMode::DropKey,
                 state_id: VarInt(state_id),
-                slots: vec![],
+                slots: vec![Slot {
+                    idx: 40,
+                    item: Some(ItemStack::new(ItemKind::IronIngot, 31, None)),
+                }],
                 carried_item: None,
             });
 
@@ -1615,7 +1779,10 @@ mod test {
                 button: 1, // pressing control
                 mode: ClickMode::DropKey,
                 state_id: VarInt(state_id),
-                slots: vec![],
+                slots: vec![Slot {
+                    idx: 40,
+                    item: None,
+                }],
                 carried_item: None,
             });
 
@@ -1637,5 +1804,70 @@ mod test {
 
             Ok(())
         }
+    }
+
+    #[test]
+    fn dragging_items() -> anyhow::Result<()> {
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+        app.world.get_mut::<CursorItem>(client_ent).unwrap().0 =
+            Some(ItemStack::new(ItemKind::Diamond, 64, None));
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
+        let inv_state = app.world.get::<PlayerInventoryState>(client_ent).unwrap();
+        let window_id = inv_state.window_id;
+        let state_id = inv_state.state_id.0;
+
+        let drag_packet = ClickSlotC2s {
+            window_id,
+            state_id: VarInt(state_id),
+            slot_idx: -999,
+            button: 2,
+            mode: ClickMode::Drag,
+            slots: vec![
+                Slot {
+                    idx: 9,
+                    item: Some(ItemStack::new(ItemKind::Diamond, 21, None)),
+                },
+                Slot {
+                    idx: 10,
+                    item: Some(ItemStack::new(ItemKind::Diamond, 21, None)),
+                },
+                Slot {
+                    idx: 11,
+                    item: Some(ItemStack::new(ItemKind::Diamond, 21, None)),
+                },
+            ],
+            carried_item: Some(ItemStack::new(ItemKind::Diamond, 1, None)),
+        };
+        client_helper.send(&drag_packet);
+
+        app.update();
+        let sent_packets = client_helper.collect_sent()?;
+        assert_eq!(sent_packets.len(), 0);
+
+        let cursor_item = app
+            .world
+            .get::<CursorItem>(client_ent)
+            .expect("could not find client");
+        assert_eq!(
+            cursor_item.0,
+            Some(ItemStack::new(ItemKind::Diamond, 1, None))
+        );
+        let inventory = app
+            .world
+            .get::<Inventory>(client_ent)
+            .expect("could not find inventory");
+        for i in 9..12 {
+            assert_eq!(
+                inventory.slot(i),
+                Some(&ItemStack::new(ItemKind::Diamond, 21, None))
+            );
+        }
+
+        Ok(())
     }
 }

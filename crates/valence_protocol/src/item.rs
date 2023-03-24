@@ -16,8 +16,8 @@ pub struct ItemStack {
     pub nbt: Option<Compound>,
 }
 
-const STACK_MIN: u8 = 1;
-const STACK_MAX: u8 = 127;
+pub const STACK_MIN: u8 = 1;
+pub const STACK_MAX: u8 = 127;
 
 impl ItemStack {
     pub fn new(item: ItemKind, count: u8, nbt: Option<Compound>) -> Self {

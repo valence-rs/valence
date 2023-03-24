@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cmp;
 
 use anyhow::bail;
@@ -8,7 +9,7 @@ use bevy_ecs::schedule::ScheduleLabel;
 use bevy_ecs::system::{SystemParam, SystemState};
 use glam::{DVec3, Vec3};
 use paste::paste;
-use tracing::warn;
+use tracing::{debug, warn};
 use uuid::Uuid;
 use valence_protocol::block_pos::BlockPos;
 use valence_protocol::ident::Ident;
@@ -27,15 +28,19 @@ use valence_protocol::packet::c2s::play::update_structure_block::{
 use valence_protocol::packet::c2s::play::{
     AdvancementTabC2s, ClientStatusC2s, ResourcePackStatusC2s, UpdatePlayerAbilitiesC2s,
 };
+use valence_protocol::packet::s2c::play::InventoryS2c;
 use valence_protocol::packet::C2sPlayPacket;
 use valence_protocol::types::{Difficulty, Direction, Hand};
+use valence_protocol::var_int::VarInt;
 
 use super::{
     CursorItem, KeepaliveState, PlayerActionSequence, PlayerInventoryState, TeleportState,
 };
 use crate::client::Client;
 use crate::component::{Look, OnGround, Ping, Position};
-use crate::inventory::Inventory;
+use crate::inventory::{Inventory, InventorySettings};
+use crate::packet::WritePacket;
+use crate::prelude::OpenInventory;
 
 #[derive(Clone, Debug)]
 pub struct QueryBlockNbt {
@@ -671,6 +676,7 @@ pub(crate) struct EventLoopQuery {
     keepalive_state: &'static mut KeepaliveState,
     cursor_item: &'static mut CursorItem,
     inventory: &'static mut Inventory,
+    open_inventory: Option<&'static mut OpenInventory>,
     position: &'static mut Position,
     look: &'static mut Look,
     on_ground: &'static mut OnGround,
@@ -682,10 +688,17 @@ pub(crate) struct EventLoopQuery {
 /// An exclusive system for running the event loop schedule.
 fn run_event_loop(
     world: &mut World,
-    state: &mut SystemState<(Query<EventLoopQuery>, ClientEvents, Commands)>,
+    state: &mut SystemState<(
+        Query<EventLoopQuery>,
+        ClientEvents,
+        Commands,
+        Query<&Inventory, Without<Client>>,
+        Res<InventorySettings>,
+    )>,
     mut clients_to_check: Local<Vec<Entity>>,
 ) {
-    let (mut clients, mut events, mut commands) = state.get_mut(world);
+    let (mut clients, mut events, mut commands, mut inventories, inventory_settings) =
+        state.get_mut(world);
 
     update_all_event_buffers(&mut events);
 
@@ -703,7 +716,7 @@ fn run_event_loop(
 
         q.client.dec.queue_bytes(bytes);
 
-        match handle_one_packet(&mut q, &mut events) {
+        match handle_one_packet(&mut q, &mut events, &mut inventories, &inventory_settings) {
             Ok(had_packet) => {
                 if had_packet {
                     // We decoded one packet, but there might be more.
@@ -723,7 +736,8 @@ fn run_event_loop(
     while !clients_to_check.is_empty() {
         world.run_schedule(EventLoopSchedule);
 
-        let (mut clients, mut events, mut commands) = state.get_mut(world);
+        let (mut clients, mut events, mut commands, mut inventories, inventory_settings) =
+            state.get_mut(world);
 
         clients_to_check.retain(|&entity| {
             let Ok(mut q) = clients.get_mut(entity) else {
@@ -731,7 +745,7 @@ fn run_event_loop(
                 return false;
             };
 
-            match handle_one_packet(&mut q, &mut events) {
+            match handle_one_packet(&mut q, &mut events, &mut inventories, &inventory_settings) {
                 Ok(had_packet) => had_packet,
                 Err(e) => {
                     warn!("failed to dispatch events for client {:?}: {e:?}", q.entity);
@@ -748,6 +762,8 @@ fn run_event_loop(
 fn handle_one_packet(
     q: &mut EventLoopQueryItem,
     events: &mut ClientEvents,
+    inventories: &mut Query<&Inventory, Without<Client>>,
+    inventory_settings: &Res<InventorySettings>,
 ) -> anyhow::Result<bool> {
     let Some(pkt) = q.client.dec.try_next_packet::<C2sPlayPacket>()? else {
         // No packets to decode.
@@ -847,7 +863,57 @@ fn handle_one_packet(
             });
         }
         C2sPlayPacket::ClickSlotC2s(p) => {
-            if p.slot_idx < 0 {
+            let open_inv = q
+                .open_inventory
+                .as_ref()
+                .and_then(|open| inventories.get_mut(open.entity).ok());
+            if let Err(msg) =
+                crate::inventory::validate_click_slot_impossible(&p, &q.inventory, open_inv)
+            {
+                debug!(
+                    "client {:#?} invalid click slot packet: \"{}\" {:#?}",
+                    q.entity, msg, p
+                );
+                let inventory = open_inv.unwrap_or(&q.inventory);
+                q.client.write_packet(&InventoryS2c {
+                    window_id: if open_inv.is_some() {
+                        q.player_inventory_state.window_id
+                    } else {
+                        0
+                    },
+                    state_id: VarInt(q.player_inventory_state.state_id.0),
+                    slots: Cow::Borrowed(inventory.slot_slice()),
+                    carried_item: Cow::Borrowed(&q.cursor_item.0),
+                });
+                return Ok(true);
+            }
+            if inventory_settings.enable_item_dupe_check {
+                if let Err(msg) = crate::inventory::validate_click_slot_item_duplication(
+                    &p,
+                    &q.inventory,
+                    open_inv,
+                    &q.cursor_item,
+                ) {
+                    debug!(
+                        "client {:#?} click slot packet tried to incorrectly modify items: \"{}\" \
+                         {:#?}",
+                        q.entity, msg, p
+                    );
+                    let inventory = open_inv.unwrap_or(&q.inventory);
+                    q.client.write_packet(&InventoryS2c {
+                        window_id: if open_inv.is_some() {
+                            q.player_inventory_state.window_id
+                        } else {
+                            0
+                        },
+                        state_id: VarInt(q.player_inventory_state.state_id.0),
+                        slots: Cow::Borrowed(inventory.slot_slice()),
+                        carried_item: Cow::Borrowed(&q.cursor_item.0),
+                    });
+                    return Ok(true);
+                }
+            }
+            if p.slot_idx < 0 && p.mode == ClickMode::Click {
                 if let Some(stack) = q.cursor_item.0.take() {
                     events.2.drop_item_stack.send(DropItemStack {
                         client: entity,
