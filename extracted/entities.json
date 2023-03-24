@@ -1528,7 +1528,7 @@
         "name": "health",
         "index": 9,
         "type": "float",
-        "default_value": 30.0
+        "default_value": 20.0
       },
       {
         "name": "potion_swirls_color",
@@ -2302,9 +2302,9 @@
       }
     ],
     "default_bounding_box": {
-      "size_x": 1.399999976158142,
-      "size_y": 0.8999999761581421,
-      "size_z": 1.399999976158142
+      "size_x": 0.699999988079071,
+      "size_y": 0.5,
+      "size_z": 0.699999988079071
     }
   },
   "SquidEntity": {

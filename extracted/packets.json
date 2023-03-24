@@ -1,721 +1,1052 @@
-{
-  "serverbound": {
-    "handshaking": [
-      {
-        "name": "HandshakeC2SPacket",
-        "id": 0
-      }
-    ],
-    "play": [
-      {
-        "name": "TeleportConfirmC2SPacket",
-        "id": 0
-      },
-      {
-        "name": "QueryBlockNbtC2SPacket",
-        "id": 1
-      },
-      {
-        "name": "UpdateDifficultyC2SPacket",
-        "id": 2
-      },
-      {
-        "name": "MessageAcknowledgmentC2SPacket",
-        "id": 3
-      },
-      {
-        "name": "CommandExecutionC2SPacket",
-        "id": 4
-      },
-      {
-        "name": "ChatMessageC2SPacket",
-        "id": 5
-      },
-      {
-        "name": "PlayerSessionC2SPacket",
-        "id": 6
-      },
-      {
-        "name": "ClientStatusC2SPacket",
-        "id": 7
-      },
-      {
-        "name": "ClientSettingsC2SPacket",
-        "id": 8
-      },
-      {
-        "name": "RequestCommandCompletionsC2SPacket",
-        "id": 9
-      },
-      {
-        "name": "ButtonClickC2SPacket",
-        "id": 10
-      },
-      {
-        "name": "ClickSlotC2SPacket",
-        "id": 11
-      },
-      {
-        "name": "CloseHandledScreenC2SPacket",
-        "id": 12
-      },
-      {
-        "name": "CustomPayloadC2SPacket",
-        "id": 13
-      },
-      {
-        "name": "BookUpdateC2SPacket",
-        "id": 14
-      },
-      {
-        "name": "QueryEntityNbtC2SPacket",
-        "id": 15
-      },
-      {
-        "name": "PlayerInteractEntityC2SPacket",
-        "id": 16
-      },
-      {
-        "name": "JigsawGeneratingC2SPacket",
-        "id": 17
-      },
-      {
-        "name": "KeepAliveC2SPacket",
-        "id": 18
-      },
-      {
-        "name": "UpdateDifficultyLockC2SPacket",
-        "id": 19
-      },
-      {
-        "name": "PositionAndOnGround",
-        "id": 20
-      },
-      {
-        "name": "Full",
-        "id": 21
-      },
-      {
-        "name": "LookAndOnGround",
-        "id": 22
-      },
-      {
-        "name": "OnGroundOnly",
-        "id": 23
-      },
-      {
-        "name": "VehicleMoveC2SPacket",
-        "id": 24
-      },
-      {
-        "name": "BoatPaddleStateC2SPacket",
-        "id": 25
-      },
-      {
-        "name": "PickFromInventoryC2SPacket",
-        "id": 26
-      },
-      {
-        "name": "CraftRequestC2SPacket",
-        "id": 27
-      },
-      {
-        "name": "UpdatePlayerAbilitiesC2SPacket",
-        "id": 28
-      },
-      {
-        "name": "PlayerActionC2SPacket",
-        "id": 29
-      },
-      {
-        "name": "ClientCommandC2SPacket",
-        "id": 30
-      },
-      {
-        "name": "PlayerInputC2SPacket",
-        "id": 31
-      },
-      {
-        "name": "PlayPongC2SPacket",
-        "id": 32
-      },
-      {
-        "name": "RecipeCategoryOptionsC2SPacket",
-        "id": 33
-      },
-      {
-        "name": "RecipeBookDataC2SPacket",
-        "id": 34
-      },
-      {
-        "name": "RenameItemC2SPacket",
-        "id": 35
-      },
-      {
-        "name": "ResourcePackStatusC2SPacket",
-        "id": 36
-      },
-      {
-        "name": "AdvancementTabC2SPacket",
-        "id": 37
-      },
-      {
-        "name": "SelectMerchantTradeC2SPacket",
-        "id": 38
-      },
-      {
-        "name": "UpdateBeaconC2SPacket",
-        "id": 39
-      },
-      {
-        "name": "UpdateSelectedSlotC2SPacket",
-        "id": 40
-      },
-      {
-        "name": "UpdateCommandBlockC2SPacket",
-        "id": 41
-      },
-      {
-        "name": "UpdateCommandBlockMinecartC2SPacket",
-        "id": 42
-      },
-      {
-        "name": "CreativeInventoryActionC2SPacket",
-        "id": 43
-      },
-      {
-        "name": "UpdateJigsawC2SPacket",
-        "id": 44
-      },
-      {
-        "name": "UpdateStructureBlockC2SPacket",
-        "id": 45
-      },
-      {
-        "name": "UpdateSignC2SPacket",
-        "id": 46
-      },
-      {
-        "name": "HandSwingC2SPacket",
-        "id": 47
-      },
-      {
-        "name": "SpectatorTeleportC2SPacket",
-        "id": 48
-      },
-      {
-        "name": "PlayerInteractBlockC2SPacket",
-        "id": 49
-      },
-      {
-        "name": "PlayerInteractItemC2SPacket",
-        "id": 50
-      }
-    ],
-    "status": [
-      {
-        "name": "QueryRequestC2SPacket",
-        "id": 0
-      },
-      {
-        "name": "QueryPingC2SPacket",
-        "id": 1
-      }
-    ],
-    "login": [
-      {
-        "name": "LoginHelloC2SPacket",
-        "id": 0
-      },
-      {
-        "name": "LoginKeyC2SPacket",
-        "id": 1
-      },
-      {
-        "name": "LoginQueryResponseC2SPacket",
-        "id": 2
-      }
-    ]
+[
+  {
+    "name": "HandshakeC2SPacket",
+    "side": "serverbound",
+    "state": "handshaking",
+    "id": 0
   },
-  "clientbound": {
-    "handshaking": [],
-    "play": [
-      {
-        "name": "BundleSplitterPacket",
-        "id": 0
-      },
-      {
-        "name": "EntitySpawnS2CPacket",
-        "id": 1
-      },
-      {
-        "name": "ExperienceOrbSpawnS2CPacket",
-        "id": 2
-      },
-      {
-        "name": "PlayerSpawnS2CPacket",
-        "id": 3
-      },
-      {
-        "name": "EntityAnimationS2CPacket",
-        "id": 4
-      },
-      {
-        "name": "StatisticsS2CPacket",
-        "id": 5
-      },
-      {
-        "name": "PlayerActionResponseS2CPacket",
-        "id": 6
-      },
-      {
-        "name": "BlockBreakingProgressS2CPacket",
-        "id": 7
-      },
-      {
-        "name": "BlockEntityUpdateS2CPacket",
-        "id": 8
-      },
-      {
-        "name": "BlockEventS2CPacket",
-        "id": 9
-      },
-      {
-        "name": "BlockUpdateS2CPacket",
-        "id": 10
-      },
-      {
-        "name": "BossBarS2CPacket",
-        "id": 11
-      },
-      {
-        "name": "DifficultyS2CPacket",
-        "id": 12
-      },
-      {
-        "name": "ChunkBiomeDataS2CPacket",
-        "id": 13
-      },
-      {
-        "name": "ClearTitleS2CPacket",
-        "id": 14
-      },
-      {
-        "name": "CommandSuggestionsS2CPacket",
-        "id": 15
-      },
-      {
-        "name": "CommandTreeS2CPacket",
-        "id": 16
-      },
-      {
-        "name": "CloseScreenS2CPacket",
-        "id": 17
-      },
-      {
-        "name": "InventoryS2CPacket",
-        "id": 18
-      },
-      {
-        "name": "ScreenHandlerPropertyUpdateS2CPacket",
-        "id": 19
-      },
-      {
-        "name": "ScreenHandlerSlotUpdateS2CPacket",
-        "id": 20
-      },
-      {
-        "name": "CooldownUpdateS2CPacket",
-        "id": 21
-      },
-      {
-        "name": "ChatSuggestionsS2CPacket",
-        "id": 22
-      },
-      {
-        "name": "CustomPayloadS2CPacket",
-        "id": 23
-      },
-      {
-        "name": "EntityDamageS2CPacket",
-        "id": 24
-      },
-      {
-        "name": "RemoveMessageS2CPacket",
-        "id": 25
-      },
-      {
-        "name": "DisconnectS2CPacket",
-        "id": 26
-      },
-      {
-        "name": "ProfilelessChatMessageS2CPacket",
-        "id": 27
-      },
-      {
-        "name": "EntityStatusS2CPacket",
-        "id": 28
-      },
-      {
-        "name": "ExplosionS2CPacket",
-        "id": 29
-      },
-      {
-        "name": "UnloadChunkS2CPacket",
-        "id": 30
-      },
-      {
-        "name": "GameStateChangeS2CPacket",
-        "id": 31
-      },
-      {
-        "name": "OpenHorseScreenS2CPacket",
-        "id": 32
-      },
-      {
-        "name": "DamageTiltS2CPacket",
-        "id": 33
-      },
-      {
-        "name": "WorldBorderInitializeS2CPacket",
-        "id": 34
-      },
-      {
-        "name": "KeepAliveS2CPacket",
-        "id": 35
-      },
-      {
-        "name": "ChunkDataS2CPacket",
-        "id": 36
-      },
-      {
-        "name": "WorldEventS2CPacket",
-        "id": 37
-      },
-      {
-        "name": "ParticleS2CPacket",
-        "id": 38
-      },
-      {
-        "name": "LightUpdateS2CPacket",
-        "id": 39
-      },
-      {
-        "name": "GameJoinS2CPacket",
-        "id": 40
-      },
-      {
-        "name": "MapUpdateS2CPacket",
-        "id": 41
-      },
-      {
-        "name": "SetTradeOffersS2CPacket",
-        "id": 42
-      },
-      {
-        "name": "MoveRelative",
-        "id": 43
-      },
-      {
-        "name": "RotateAndMoveRelative",
-        "id": 44
-      },
-      {
-        "name": "Rotate",
-        "id": 45
-      },
-      {
-        "name": "VehicleMoveS2CPacket",
-        "id": 46
-      },
-      {
-        "name": "OpenWrittenBookS2CPacket",
-        "id": 47
-      },
-      {
-        "name": "OpenScreenS2CPacket",
-        "id": 48
-      },
-      {
-        "name": "SignEditorOpenS2CPacket",
-        "id": 49
-      },
-      {
-        "name": "PlayPingS2CPacket",
-        "id": 50
-      },
-      {
-        "name": "CraftFailedResponseS2CPacket",
-        "id": 51
-      },
-      {
-        "name": "PlayerAbilitiesS2CPacket",
-        "id": 52
-      },
-      {
-        "name": "ChatMessageS2CPacket",
-        "id": 53
-      },
-      {
-        "name": "EndCombatS2CPacket",
-        "id": 54
-      },
-      {
-        "name": "EnterCombatS2CPacket",
-        "id": 55
-      },
-      {
-        "name": "DeathMessageS2CPacket",
-        "id": 56
-      },
-      {
-        "name": "PlayerRemoveS2CPacket",
-        "id": 57
-      },
-      {
-        "name": "PlayerListS2CPacket",
-        "id": 58
-      },
-      {
-        "name": "LookAtS2CPacket",
-        "id": 59
-      },
-      {
-        "name": "PlayerPositionLookS2CPacket",
-        "id": 60
-      },
-      {
-        "name": "UnlockRecipesS2CPacket",
-        "id": 61
-      },
-      {
-        "name": "EntitiesDestroyS2CPacket",
-        "id": 62
-      },
-      {
-        "name": "RemoveEntityStatusEffectS2CPacket",
-        "id": 63
-      },
-      {
-        "name": "ResourcePackSendS2CPacket",
-        "id": 64
-      },
-      {
-        "name": "PlayerRespawnS2CPacket",
-        "id": 65
-      },
-      {
-        "name": "EntitySetHeadYawS2CPacket",
-        "id": 66
-      },
-      {
-        "name": "ChunkDeltaUpdateS2CPacket",
-        "id": 67
-      },
-      {
-        "name": "SelectAdvancementTabS2CPacket",
-        "id": 68
-      },
-      {
-        "name": "ServerMetadataS2CPacket",
-        "id": 69
-      },
-      {
-        "name": "OverlayMessageS2CPacket",
-        "id": 70
-      },
-      {
-        "name": "WorldBorderCenterChangedS2CPacket",
-        "id": 71
-      },
-      {
-        "name": "WorldBorderInterpolateSizeS2CPacket",
-        "id": 72
-      },
-      {
-        "name": "WorldBorderSizeChangedS2CPacket",
-        "id": 73
-      },
-      {
-        "name": "WorldBorderWarningTimeChangedS2CPacket",
-        "id": 74
-      },
-      {
-        "name": "WorldBorderWarningBlocksChangedS2CPacket",
-        "id": 75
-      },
-      {
-        "name": "SetCameraEntityS2CPacket",
-        "id": 76
-      },
-      {
-        "name": "UpdateSelectedSlotS2CPacket",
-        "id": 77
-      },
-      {
-        "name": "ChunkRenderDistanceCenterS2CPacket",
-        "id": 78
-      },
-      {
-        "name": "ChunkLoadDistanceS2CPacket",
-        "id": 79
-      },
-      {
-        "name": "PlayerSpawnPositionS2CPacket",
-        "id": 80
-      },
-      {
-        "name": "ScoreboardDisplayS2CPacket",
-        "id": 81
-      },
-      {
-        "name": "EntityTrackerUpdateS2CPacket",
-        "id": 82
-      },
-      {
-        "name": "EntityAttachS2CPacket",
-        "id": 83
-      },
-      {
-        "name": "EntityVelocityUpdateS2CPacket",
-        "id": 84
-      },
-      {
-        "name": "EntityEquipmentUpdateS2CPacket",
-        "id": 85
-      },
-      {
-        "name": "ExperienceBarUpdateS2CPacket",
-        "id": 86
-      },
-      {
-        "name": "HealthUpdateS2CPacket",
-        "id": 87
-      },
-      {
-        "name": "ScoreboardObjectiveUpdateS2CPacket",
-        "id": 88
-      },
-      {
-        "name": "EntityPassengersSetS2CPacket",
-        "id": 89
-      },
-      {
-        "name": "TeamS2CPacket",
-        "id": 90
-      },
-      {
-        "name": "ScoreboardPlayerUpdateS2CPacket",
-        "id": 91
-      },
-      {
-        "name": "SimulationDistanceS2CPacket",
-        "id": 92
-      },
-      {
-        "name": "SubtitleS2CPacket",
-        "id": 93
-      },
-      {
-        "name": "WorldTimeUpdateS2CPacket",
-        "id": 94
-      },
-      {
-        "name": "TitleS2CPacket",
-        "id": 95
-      },
-      {
-        "name": "TitleFadeS2CPacket",
-        "id": 96
-      },
-      {
-        "name": "PlaySoundFromEntityS2CPacket",
-        "id": 97
-      },
-      {
-        "name": "PlaySoundS2CPacket",
-        "id": 98
-      },
-      {
-        "name": "StopSoundS2CPacket",
-        "id": 99
-      },
-      {
-        "name": "GameMessageS2CPacket",
-        "id": 100
-      },
-      {
-        "name": "PlayerListHeaderS2CPacket",
-        "id": 101
-      },
-      {
-        "name": "NbtQueryResponseS2CPacket",
-        "id": 102
-      },
-      {
-        "name": "ItemPickupAnimationS2CPacket",
-        "id": 103
-      },
-      {
-        "name": "EntityPositionS2CPacket",
-        "id": 104
-      },
-      {
-        "name": "AdvancementUpdateS2CPacket",
-        "id": 105
-      },
-      {
-        "name": "EntityAttributesS2CPacket",
-        "id": 106
-      },
-      {
-        "name": "FeaturesS2CPacket",
-        "id": 107
-      },
-      {
-        "name": "EntityStatusEffectS2CPacket",
-        "id": 108
-      },
-      {
-        "name": "SynchronizeRecipesS2CPacket",
-        "id": 109
-      },
-      {
-        "name": "SynchronizeTagsS2CPacket",
-        "id": 110
-      }
-    ],
-    "status": [
-      {
-        "name": "QueryResponseS2CPacket",
-        "id": 0
-      },
-      {
-        "name": "QueryPongS2CPacket",
-        "id": 1
-      }
-    ],
-    "login": [
-      {
-        "name": "LoginDisconnectS2CPacket",
-        "id": 0
-      },
-      {
-        "name": "LoginHelloS2CPacket",
-        "id": 1
-      },
-      {
-        "name": "LoginSuccessS2CPacket",
-        "id": 2
-      },
-      {
-        "name": "LoginCompressionS2CPacket",
-        "id": 3
-      },
-      {
-        "name": "LoginQueryRequestS2CPacket",
-        "id": 4
-      }
-    ]
+  {
+    "name": "TeleportConfirmC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 0
+  },
+  {
+    "name": "QueryBlockNbtC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 1
+  },
+  {
+    "name": "UpdateDifficultyC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 2
+  },
+  {
+    "name": "MessageAcknowledgmentC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 3
+  },
+  {
+    "name": "CommandExecutionC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 4
+  },
+  {
+    "name": "ChatMessageC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 5
+  },
+  {
+    "name": "PlayerSessionC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 6
+  },
+  {
+    "name": "ClientStatusC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 7
+  },
+  {
+    "name": "ClientSettingsC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 8
+  },
+  {
+    "name": "RequestCommandCompletionsC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 9
+  },
+  {
+    "name": "ButtonClickC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 10
+  },
+  {
+    "name": "ClickSlotC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 11
+  },
+  {
+    "name": "CloseHandledScreenC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 12
+  },
+  {
+    "name": "CustomPayloadC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 13
+  },
+  {
+    "name": "BookUpdateC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 14
+  },
+  {
+    "name": "QueryEntityNbtC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 15
+  },
+  {
+    "name": "PlayerInteractEntityC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 16
+  },
+  {
+    "name": "JigsawGeneratingC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 17
+  },
+  {
+    "name": "KeepAliveC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 18
+  },
+  {
+    "name": "UpdateDifficultyLockC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 19
+  },
+  {
+    "name": "PositionAndOnGround",
+    "side": "serverbound",
+    "state": "play",
+    "id": 20
+  },
+  {
+    "name": "Full",
+    "side": "serverbound",
+    "state": "play",
+    "id": 21
+  },
+  {
+    "name": "LookAndOnGround",
+    "side": "serverbound",
+    "state": "play",
+    "id": 22
+  },
+  {
+    "name": "OnGroundOnly",
+    "side": "serverbound",
+    "state": "play",
+    "id": 23
+  },
+  {
+    "name": "VehicleMoveC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 24
+  },
+  {
+    "name": "BoatPaddleStateC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 25
+  },
+  {
+    "name": "PickFromInventoryC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 26
+  },
+  {
+    "name": "CraftRequestC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 27
+  },
+  {
+    "name": "UpdatePlayerAbilitiesC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 28
+  },
+  {
+    "name": "PlayerActionC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 29
+  },
+  {
+    "name": "ClientCommandC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 30
+  },
+  {
+    "name": "PlayerInputC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 31
+  },
+  {
+    "name": "PlayPongC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 32
+  },
+  {
+    "name": "RecipeCategoryOptionsC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 33
+  },
+  {
+    "name": "RecipeBookDataC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 34
+  },
+  {
+    "name": "RenameItemC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 35
+  },
+  {
+    "name": "ResourcePackStatusC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 36
+  },
+  {
+    "name": "AdvancementTabC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 37
+  },
+  {
+    "name": "SelectMerchantTradeC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 38
+  },
+  {
+    "name": "UpdateBeaconC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 39
+  },
+  {
+    "name": "UpdateSelectedSlotC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 40
+  },
+  {
+    "name": "UpdateCommandBlockC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 41
+  },
+  {
+    "name": "UpdateCommandBlockMinecartC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 42
+  },
+  {
+    "name": "CreativeInventoryActionC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 43
+  },
+  {
+    "name": "UpdateJigsawC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 44
+  },
+  {
+    "name": "UpdateStructureBlockC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 45
+  },
+  {
+    "name": "UpdateSignC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 46
+  },
+  {
+    "name": "HandSwingC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 47
+  },
+  {
+    "name": "SpectatorTeleportC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 48
+  },
+  {
+    "name": "PlayerInteractBlockC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 49
+  },
+  {
+    "name": "PlayerInteractItemC2SPacket",
+    "side": "serverbound",
+    "state": "play",
+    "id": 50
+  },
+  {
+    "name": "QueryRequestC2SPacket",
+    "side": "serverbound",
+    "state": "status",
+    "id": 0
+  },
+  {
+    "name": "QueryPingC2SPacket",
+    "side": "serverbound",
+    "state": "status",
+    "id": 1
+  },
+  {
+    "name": "LoginHelloC2SPacket",
+    "side": "serverbound",
+    "state": "login",
+    "id": 0
+  },
+  {
+    "name": "LoginKeyC2SPacket",
+    "side": "serverbound",
+    "state": "login",
+    "id": 1
+  },
+  {
+    "name": "LoginQueryResponseC2SPacket",
+    "side": "serverbound",
+    "state": "login",
+    "id": 2
+  },
+  {
+    "name": "BundleSplitterPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 0
+  },
+  {
+    "name": "EntitySpawnS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 1
+  },
+  {
+    "name": "ExperienceOrbSpawnS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 2
+  },
+  {
+    "name": "PlayerSpawnS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 3
+  },
+  {
+    "name": "EntityAnimationS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 4
+  },
+  {
+    "name": "StatisticsS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 5
+  },
+  {
+    "name": "PlayerActionResponseS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 6
+  },
+  {
+    "name": "BlockBreakingProgressS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 7
+  },
+  {
+    "name": "BlockEntityUpdateS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 8
+  },
+  {
+    "name": "BlockEventS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 9
+  },
+  {
+    "name": "BlockUpdateS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 10
+  },
+  {
+    "name": "BossBarS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 11
+  },
+  {
+    "name": "DifficultyS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 12
+  },
+  {
+    "name": "ChunkBiomeDataS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 13
+  },
+  {
+    "name": "ClearTitleS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 14
+  },
+  {
+    "name": "CommandSuggestionsS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 15
+  },
+  {
+    "name": "CommandTreeS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 16
+  },
+  {
+    "name": "CloseScreenS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 17
+  },
+  {
+    "name": "InventoryS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 18
+  },
+  {
+    "name": "ScreenHandlerPropertyUpdateS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 19
+  },
+  {
+    "name": "ScreenHandlerSlotUpdateS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 20
+  },
+  {
+    "name": "CooldownUpdateS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 21
+  },
+  {
+    "name": "ChatSuggestionsS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 22
+  },
+  {
+    "name": "CustomPayloadS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 23
+  },
+  {
+    "name": "EntityDamageS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 24
+  },
+  {
+    "name": "RemoveMessageS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 25
+  },
+  {
+    "name": "DisconnectS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 26
+  },
+  {
+    "name": "ProfilelessChatMessageS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 27
+  },
+  {
+    "name": "EntityStatusS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 28
+  },
+  {
+    "name": "ExplosionS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 29
+  },
+  {
+    "name": "UnloadChunkS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 30
+  },
+  {
+    "name": "GameStateChangeS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 31
+  },
+  {
+    "name": "OpenHorseScreenS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 32
+  },
+  {
+    "name": "DamageTiltS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 33
+  },
+  {
+    "name": "WorldBorderInitializeS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 34
+  },
+  {
+    "name": "KeepAliveS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 35
+  },
+  {
+    "name": "ChunkDataS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 36
+  },
+  {
+    "name": "WorldEventS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 37
+  },
+  {
+    "name": "ParticleS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 38
+  },
+  {
+    "name": "LightUpdateS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 39
+  },
+  {
+    "name": "GameJoinS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 40
+  },
+  {
+    "name": "MapUpdateS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 41
+  },
+  {
+    "name": "SetTradeOffersS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 42
+  },
+  {
+    "name": "MoveRelative",
+    "side": "clientbound",
+    "state": "play",
+    "id": 43
+  },
+  {
+    "name": "RotateAndMoveRelative",
+    "side": "clientbound",
+    "state": "play",
+    "id": 44
+  },
+  {
+    "name": "Rotate",
+    "side": "clientbound",
+    "state": "play",
+    "id": 45
+  },
+  {
+    "name": "VehicleMoveS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 46
+  },
+  {
+    "name": "OpenWrittenBookS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 47
+  },
+  {
+    "name": "OpenScreenS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 48
+  },
+  {
+    "name": "SignEditorOpenS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 49
+  },
+  {
+    "name": "PlayPingS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 50
+  },
+  {
+    "name": "CraftFailedResponseS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 51
+  },
+  {
+    "name": "PlayerAbilitiesS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 52
+  },
+  {
+    "name": "ChatMessageS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 53
+  },
+  {
+    "name": "EndCombatS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 54
+  },
+  {
+    "name": "EnterCombatS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 55
+  },
+  {
+    "name": "DeathMessageS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 56
+  },
+  {
+    "name": "PlayerRemoveS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 57
+  },
+  {
+    "name": "PlayerListS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 58
+  },
+  {
+    "name": "LookAtS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 59
+  },
+  {
+    "name": "PlayerPositionLookS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 60
+  },
+  {
+    "name": "UnlockRecipesS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 61
+  },
+  {
+    "name": "EntitiesDestroyS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 62
+  },
+  {
+    "name": "RemoveEntityStatusEffectS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 63
+  },
+  {
+    "name": "ResourcePackSendS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 64
+  },
+  {
+    "name": "PlayerRespawnS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 65
+  },
+  {
+    "name": "EntitySetHeadYawS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 66
+  },
+  {
+    "name": "ChunkDeltaUpdateS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 67
+  },
+  {
+    "name": "SelectAdvancementTabS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 68
+  },
+  {
+    "name": "ServerMetadataS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 69
+  },
+  {
+    "name": "OverlayMessageS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 70
+  },
+  {
+    "name": "WorldBorderCenterChangedS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 71
+  },
+  {
+    "name": "WorldBorderInterpolateSizeS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 72
+  },
+  {
+    "name": "WorldBorderSizeChangedS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 73
+  },
+  {
+    "name": "WorldBorderWarningTimeChangedS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 74
+  },
+  {
+    "name": "WorldBorderWarningBlocksChangedS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 75
+  },
+  {
+    "name": "SetCameraEntityS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 76
+  },
+  {
+    "name": "UpdateSelectedSlotS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 77
+  },
+  {
+    "name": "ChunkRenderDistanceCenterS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 78
+  },
+  {
+    "name": "ChunkLoadDistanceS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 79
+  },
+  {
+    "name": "PlayerSpawnPositionS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 80
+  },
+  {
+    "name": "ScoreboardDisplayS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 81
+  },
+  {
+    "name": "EntityTrackerUpdateS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 82
+  },
+  {
+    "name": "EntityAttachS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 83
+  },
+  {
+    "name": "EntityVelocityUpdateS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 84
+  },
+  {
+    "name": "EntityEquipmentUpdateS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 85
+  },
+  {
+    "name": "ExperienceBarUpdateS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 86
+  },
+  {
+    "name": "HealthUpdateS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 87
+  },
+  {
+    "name": "ScoreboardObjectiveUpdateS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 88
+  },
+  {
+    "name": "EntityPassengersSetS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 89
+  },
+  {
+    "name": "TeamS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 90
+  },
+  {
+    "name": "ScoreboardPlayerUpdateS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 91
+  },
+  {
+    "name": "SimulationDistanceS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 92
+  },
+  {
+    "name": "SubtitleS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 93
+  },
+  {
+    "name": "WorldTimeUpdateS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 94
+  },
+  {
+    "name": "TitleS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 95
+  },
+  {
+    "name": "TitleFadeS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 96
+  },
+  {
+    "name": "PlaySoundFromEntityS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 97
+  },
+  {
+    "name": "PlaySoundS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 98
+  },
+  {
+    "name": "StopSoundS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 99
+  },
+  {
+    "name": "GameMessageS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 100
+  },
+  {
+    "name": "PlayerListHeaderS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 101
+  },
+  {
+    "name": "NbtQueryResponseS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 102
+  },
+  {
+    "name": "ItemPickupAnimationS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 103
+  },
+  {
+    "name": "EntityPositionS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 104
+  },
+  {
+    "name": "AdvancementUpdateS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 105
+  },
+  {
+    "name": "EntityAttributesS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 106
+  },
+  {
+    "name": "FeaturesS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 107
+  },
+  {
+    "name": "EntityStatusEffectS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 108
+  },
+  {
+    "name": "SynchronizeRecipesS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 109
+  },
+  {
+    "name": "SynchronizeTagsS2CPacket",
+    "side": "clientbound",
+    "state": "play",
+    "id": 110
+  },
+  {
+    "name": "QueryResponseS2CPacket",
+    "side": "clientbound",
+    "state": "status",
+    "id": 0
+  },
+  {
+    "name": "QueryPongS2CPacket",
+    "side": "clientbound",
+    "state": "status",
+    "id": 1
+  },
+  {
+    "name": "LoginDisconnectS2CPacket",
+    "side": "clientbound",
+    "state": "login",
+    "id": 0
+  },
+  {
+    "name": "LoginHelloS2CPacket",
+    "side": "clientbound",
+    "state": "login",
+    "id": 1
+  },
+  {
+    "name": "LoginSuccessS2CPacket",
+    "side": "clientbound",
+    "state": "login",
+    "id": 2
+  },
+  {
+    "name": "LoginCompressionS2CPacket",
+    "side": "clientbound",
+    "state": "login",
+    "id": 3
+  },
+  {
+    "name": "LoginQueryRequestS2CPacket",
+    "side": "clientbound",
+    "state": "login",
+    "id": 4
   }
-}
+]
