@@ -510,6 +510,15 @@
     "scrape": 94,
     "shriek": 95
   },
+  "sniffer_state": {
+    "idling": 0,
+    "feeling_happy": 1,
+    "scenting": 2,
+    "sniffing": 3,
+    "searching": 4,
+    "digging": 5,
+    "rising": 6
+  },
   "tracked_data_handler": {
     "byte": 0,
     "integer": 1,

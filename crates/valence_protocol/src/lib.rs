@@ -75,11 +75,11 @@ pub use valence_protocol_macros::{ident_str, Decode, Encode, Packet};
 pub use {uuid, valence_nbt as nbt};
 
 /// The Minecraft protocol version this library currently targets.
-pub const PROTOCOL_VERSION: i32 = 761;
+pub const PROTOCOL_VERSION: i32 = 762;
 
 /// The stringified name of the Minecraft version this library currently
 /// targets.
-pub const MINECRAFT_VERSION: &str = "1.19.3";
+pub const MINECRAFT_VERSION: &str = "1.19.4";
 
 pub mod array;
 pub mod block;

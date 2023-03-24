@@ -21,7 +21,7 @@ bevy_ecs = "0.10"
 bitfield-struct = "0.3.1"
 bytes = "1.2.1"
 flume = "0.10.14"
-glam = "0.22.0"
+glam = "0.23.0"
 hmac = "0.12.1"
 num = "0.4.0"
 parking_lot = "0.12.1"
@@ -45,6 +45,7 @@ valence_nbt = { version = "0.5.0", path = "../valence_nbt", features = [
 valence_protocol = { version = "0.1.0", path = "../valence_protocol", features = [
     "encryption",
     "compression",
+    "glam",
 ] }
 
 [dependencies.reqwest]

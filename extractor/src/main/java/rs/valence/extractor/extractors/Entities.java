@@ -96,7 +96,7 @@ public class Entities implements Main.Extractor {
         } else if (handler == TrackedDataHandlerRegistry.BLOCK_STATE) {
             // TODO: get raw block state ID.
             var state = (BlockState) val;
-            return new Pair<>("block state", new JsonPrimitive(state.toString()));
+            return new Pair<>("block_state", new JsonPrimitive(state.toString()));
         } else if (handler == TrackedDataHandlerRegistry.OPTIONAL_BLOCK_STATE) {
             // TODO: get raw block state ID.
             var res = ((Optional<?>) val).map(o -> (JsonElement) new JsonPrimitive(o.toString()))
