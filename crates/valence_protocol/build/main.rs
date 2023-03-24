@@ -8,9 +8,9 @@ use proc_macro2::{Ident, Span};
 mod block;
 mod enchant;
 mod item;
+mod packet_id;
 mod sound;
 mod translation_key;
-mod packet_id;
 
 pub fn main() -> anyhow::Result<()> {
     println!("cargo:rerun-if-changed=../../extracted/");

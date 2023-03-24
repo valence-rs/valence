@@ -22,8 +22,8 @@ pub mod status {
     packet_group! {
         #[derive(Clone)]
         C2sStatusPacket {
-            QueryRequestC2s,
             QueryPingC2s,
+            QueryRequestC2s,
         }
     }
 }
@@ -70,8 +70,8 @@ pub mod play {
     pub use play_pong::PlayPongC2s;
     pub use player_action::PlayerActionC2s;
     pub use player_input::PlayerInputC2s;
-    pub use player_interact_entity::PlayerInteractEntityC2s;
     pub use player_interact_block::PlayerInteractBlockC2s;
+    pub use player_interact_entity::PlayerInteractEntityC2s;
     pub use player_interact_item::PlayerInteractItemC2s;
     pub use player_move::{Full, LookAndOnGround, OnGroundOnly, PositionAndOnGround};
     pub use player_session::PlayerSessionC2s;
@@ -119,8 +119,8 @@ pub mod play {
     pub mod play_pong;
     pub mod player_action;
     pub mod player_input;
-    pub mod player_interact_entity;
     pub mod player_interact_block;
+    pub mod player_interact_entity;
     pub mod player_interact_item;
     pub mod player_move;
     pub mod player_session;
@@ -149,57 +149,57 @@ pub mod play {
     packet_group! {
         #[derive(Clone)]
         C2sPlayPacket<'a> {
-            TeleportConfirmC2s,
-            QueryBlockNbtC2s,
-            UpdateDifficultyC2s,
-            MessageAcknowledgmentC2s,
-            CommandExecutionC2s<'a>,
-            ChatMessageC2s<'a>,
-            ClientStatusC2s,
-            ClientSettingsC2s<'a>,
-            RequestCommandCompletionsC2s<'a>,
-            ButtonClickC2s,
-            ClickSlotC2s,
-            CloseHandledScreenC2s,
-            CustomPayloadC2s<'a>,
+            AdvancementTabC2s<'a>,
+            BoatPaddleStateC2s,
             BookUpdateC2s<'a>,
-            QueryEntityNbtC2s,
-            PlayerInteractEntityC2s,
+            ButtonClickC2s,
+            ChatMessageC2s<'a>,
+            ClickSlotC2s,
+            ClientCommandC2s,
+            ClientSettingsC2s<'a>,
+            ClientStatusC2s,
+            CloseHandledScreenC2s,
+            CommandExecutionC2s<'a>,
+            CraftRequestC2s<'a>,
+            CreativeInventoryActionC2s,
+            CustomPayloadC2s<'a>,
+            Full,
+            HandSwingC2s,
             JigsawGeneratingC2s,
             KeepAliveC2s,
-            UpdateDifficultyLockC2s,
-            PositionAndOnGround,
-            Full,
             LookAndOnGround,
+            MessageAcknowledgmentC2s,
             OnGroundOnly,
-            VehicleMoveC2s,
-            BoatPaddleStateC2s,
             PickFromInventoryC2s,
-            CraftRequestC2s<'a>,
-            UpdatePlayerAbilitiesC2s,
             PlayerActionC2s,
-            ClientCommandC2s,
             PlayerInputC2s,
-            PlayPongC2s,
+            PlayerInteractBlockC2s,
+            PlayerInteractEntityC2s,
+            PlayerInteractItemC2s,
             PlayerSessionC2s<'a>,
-            RecipeCategoryOptionsC2s,
+            PlayPongC2s,
+            PositionAndOnGround,
+            QueryBlockNbtC2s,
+            QueryEntityNbtC2s,
             RecipeBookDataC2s<'a>,
+            RecipeCategoryOptionsC2s,
             RenameItemC2s<'a>,
+            RequestCommandCompletionsC2s<'a>,
             ResourcePackStatusC2s,
-            AdvancementTabC2s<'a>,
             SelectMerchantTradeC2s,
+            SpectatorTeleportC2s,
+            TeleportConfirmC2s,
             UpdateBeaconC2s,
-            UpdateSelectedSlotC2s,
             UpdateCommandBlockC2s<'a>,
             UpdateCommandBlockMinecartC2s<'a>,
-            CreativeInventoryActionC2s,
+            UpdateDifficultyC2s,
+            UpdateDifficultyLockC2s,
             UpdateJigsawC2s<'a>,
-            UpdateStructureBlockC2s<'a>,
+            UpdatePlayerAbilitiesC2s,
+            UpdateSelectedSlotC2s,
             UpdateSignC2s<'a>,
-            HandSwingC2s,
-            SpectatorTeleportC2s,
-            PlayerInteractBlockC2s,
-            PlayerInteractItemC2s
+            UpdateStructureBlockC2s<'a>,
+            VehicleMoveC2s,
         }
     }
 }
