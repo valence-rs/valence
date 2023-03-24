@@ -125,7 +125,8 @@ impl AcknowledgementValidator {
 
     /// Validate a set of `acknowledgements` offset by `message_index`.
     ///
-    /// Returns a [`VecDeque`] of acknowledged message signatures if the `acknowledgements` are valid and `None` if they are invalid.
+    /// Returns a [`VecDeque`] of acknowledged message signatures if the
+    /// `acknowledgements` are valid and `None` if they are invalid.
     pub fn validate(
         &mut self,
         acknowledgements: &[u8; 3],
@@ -218,7 +219,8 @@ impl MessageSignatureStorage {
         self.indices.get(signature).copied()
     }
 
-    /// Update the signature storage according to `last_seen` while adding `signature` to the storage.
+    /// Update the signature storage according to `last_seen` while adding
+    /// `signature` to the storage.
     ///
     /// Warning: this consumes `last_seen`.
     pub fn add(&mut self, last_seen: &mut VecDeque<[u8; 256]>, signature: &[u8; 256]) {
