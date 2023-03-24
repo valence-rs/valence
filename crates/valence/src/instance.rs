@@ -18,8 +18,8 @@ use valence_protocol::byte_angle::ByteAngle;
 use valence_protocol::packet::s2c::play::particle::Particle;
 use valence_protocol::packet::s2c::play::{
     EntityAnimationS2c, EntityPositionS2c, EntitySetHeadYawS2c, EntityStatusS2c,
-    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, MoveRelativeS2c, OverlayMessageS2c,
-    ParticleS2c, PlaySoundS2c, RotateAndMoveRelativeS2c, RotateS2c,
+    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, MoveRelative, OverlayMessageS2c,
+    ParticleS2c, PlaySoundS2c, RotateAndMoveRelative, Rotate,
 };
 use valence_protocol::sound::Sound;
 use valence_protocol::text::Text;
@@ -658,7 +658,7 @@ impl UpdateEntityQueryItem<'_> {
         let changed_position = self.pos.0 != self.old_pos.get();
 
         if changed_position && !needs_teleport && self.look.is_changed() {
-            writer.write_packet(&RotateAndMoveRelativeS2c {
+            writer.write_packet(&RotateAndMoveRelative {
                 entity_id,
                 delta: (position_delta * 4096.0).to_array().map(|v| v as i16),
                 yaw: ByteAngle::from_degrees(self.look.yaw),
@@ -667,7 +667,7 @@ impl UpdateEntityQueryItem<'_> {
             });
         } else {
             if changed_position && !needs_teleport {
-                writer.write_packet(&MoveRelativeS2c {
+                writer.write_packet(&MoveRelative {
                     entity_id,
                     delta: (position_delta * 4096.0).to_array().map(|v| v as i16),
                     on_ground: self.on_ground.0,
@@ -675,7 +675,7 @@ impl UpdateEntityQueryItem<'_> {
             }
 
             if self.look.is_changed() {
-                writer.write_packet(&RotateS2c {
+                writer.write_packet(&Rotate {
                     entity_id,
                     yaw: ByteAngle::from_degrees(self.look.yaw),
                     pitch: ByteAngle::from_degrees(self.look.pitch),

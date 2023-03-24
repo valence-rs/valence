@@ -1,11 +1,11 @@
 #![allow(clippy::type_complexity)]
 
-use valence::client::event::{PlayerInteract, ResourcePackStatus, ResourcePackStatusChange};
+use valence::client::event::{PlayerInteractEntity, ResourcePackStatus, ResourcePackStatusChange};
 use valence::client::{default_event_handler, despawn_disconnected_clients};
 use valence::entity::player::PlayerBundle;
 use valence::entity::sheep::SheepBundle;
 use valence::prelude::*;
-use valence::protocol::packet::c2s::play::player_interact::Interaction;
+use valence::protocol::packet::c2s::play::player_interact_entity::EntityInteraction;
 
 const SPAWN_Y: i32 = 64;
 
@@ -74,12 +74,12 @@ fn init_clients(
     }
 }
 
-fn prompt_on_punch(mut clients: Query<&mut Client>, mut events: EventReader<PlayerInteract>) {
+fn prompt_on_punch(mut clients: Query<&mut Client>, mut events: EventReader<PlayerInteractEntity>) {
     for event in events.iter() {
         let Ok(mut client) = clients.get_mut(event.client) else {
             continue;
         };
-        if event.interact == Interaction::Attack {
+        if event.interact == EntityInteraction::Attack {
             client.set_resource_pack(
                 "https://github.com/valence-rs/valence/raw/main/assets/example_pack.zip",
                 "d7c6108849fb190ec2a49f2d38b7f1f897d9ce9f",

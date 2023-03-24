@@ -2,7 +2,7 @@
 
 use bevy_ecs::query::WorldQuery;
 use glam::Vec3Swizzles;
-use valence::client::event::{PlayerInteract, StartSprinting, StopSprinting};
+use valence::client::event::{PlayerInteractEntity, StartSprinting, StopSprinting};
 use valence::client::{default_event_handler, despawn_disconnected_clients};
 use valence::entity::player::PlayerBundle;
 use valence::entity::EntityStatuses;
@@ -102,7 +102,7 @@ fn handle_combat_events(
     mut clients: Query<CombatQuery>,
     mut start_sprinting: EventReader<StartSprinting>,
     mut stop_sprinting: EventReader<StopSprinting>,
-    mut interact_with_entity: EventReader<PlayerInteract>,
+    mut interact_with_entity: EventReader<PlayerInteractEntity>,
 ) {
     for &StartSprinting { client } in start_sprinting.iter() {
         if let Ok(mut client) = clients.get_mut(client) {
@@ -116,7 +116,7 @@ fn handle_combat_events(
         }
     }
 
-    for &PlayerInteract {
+    for &PlayerInteractEntity {
         client: attacker_client,
         entity_id,
         ..

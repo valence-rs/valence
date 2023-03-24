@@ -81,7 +81,7 @@ mod tests {
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
 
         // Send a packet as the client to the server.
-        let packet = valence_protocol::packet::c2s::play::PositionAndOnGroundC2s {
+        let packet = valence_protocol::packet::c2s::play::PositionAndOnGround {
             position: [12.0, 64.0, 0.0],
             on_ground: true,
         };
