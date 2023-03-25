@@ -379,18 +379,30 @@ impl<'a> Decode<'a> for Recipe<'a> {
                     "minecraft:crafting_special_bookcloning" => SpecialCraftingKind::BookCloning,
                     "minecraft:crafting_special_mapcloning" => SpecialCraftingKind::MapCloning,
                     "minecraft:crafting_special_mapextending" => SpecialCraftingKind::MapExtending,
-                    "minecraft:crafting_special_firework_rocket" => SpecialCraftingKind::FireworkRocket,
+                    "minecraft:crafting_special_firework_rocket" => {
+                        SpecialCraftingKind::FireworkRocket
+                    }
                     "minecraft:crafting_special_firework_star" => SpecialCraftingKind::FireworkStar,
-                    "minecraft:crafting_special_firework_star_fade" => SpecialCraftingKind::FireworkStarFade,
+                    "minecraft:crafting_special_firework_star_fade" => {
+                        SpecialCraftingKind::FireworkStarFade
+                    }
                     "minecraft:crafting_special_repairitem" => SpecialCraftingKind::RepairItem,
                     "minecraft:crafting_special_tippedarrow" => SpecialCraftingKind::TippedArrow,
-                    "minecraft:crafting_special_bannerduplicate" => SpecialCraftingKind::BannerDuplicate,
-                    "minecraft:crafting_special_banneraddpattern" => SpecialCraftingKind::BannerAddPattern,
-                    "minecraft:crafting_special_shielddecoration" => SpecialCraftingKind::ShieldDecoration,
+                    "minecraft:crafting_special_bannerduplicate" => {
+                        SpecialCraftingKind::BannerDuplicate
+                    }
+                    "minecraft:crafting_special_banneraddpattern" => {
+                        SpecialCraftingKind::BannerAddPattern
+                    }
+                    "minecraft:crafting_special_shielddecoration" => {
+                        SpecialCraftingKind::ShieldDecoration
+                    }
                     "minecraft:crafting_special_shulkerboxcoloring" => {
                         SpecialCraftingKind::ShulkerBoxColoring
                     }
-                    "minecraft:crafting_special_suspiciousstew" => SpecialCraftingKind::SuspiciousStew,
+                    "minecraft:crafting_special_suspiciousstew" => {
+                        SpecialCraftingKind::SuspiciousStew
+                    }
                     _ => bail!("unknown recipe type \"{other}\""),
                 },
                 recipe_id: Decode::decode(r)?,

@@ -23,7 +23,9 @@ pub struct UnlockRecipesS2c<'a> {
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum UpdateRecipeBookAction<'a> {
-    Init { recipe_ids: Vec<Ident<Cow<'a, str>>> },
+    Init {
+        recipe_ids: Vec<Ident<Cow<'a, str>>>,
+    },
     Add,
     Remove,
 }

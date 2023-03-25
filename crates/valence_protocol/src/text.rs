@@ -1084,8 +1084,7 @@ mod tests {
         let txt = Text::storage_nbt(ident!("foo"), "bar", Some(true), Some("baz".into()));
         let serialized = serde_json::to_string(&txt).unwrap();
         let deserialized: Text = serde_json::from_str(&serialized).unwrap();
-        let expected =
-            r#"{"storage":"minecraft:foo","nbt":"bar","interpret":true,"separator":{"text":"baz"}}"#;
+        let expected = r#"{"storage":"minecraft:foo","nbt":"bar","interpret":true,"separator":{"text":"baz"}}"#;
         assert_eq!(serialized, expected);
         assert_eq!(txt, deserialized);
     }

@@ -34,7 +34,7 @@ use valence_protocol::raw::RawBytes;
 use valence_protocol::text::Text;
 use valence_protocol::types::Property;
 use valence_protocol::var_int::VarInt;
-use valence_protocol::{translation_key, Decode, MINECRAFT_VERSION, PROTOCOL_VERSION, ident_str};
+use valence_protocol::{ident_str, translation_key, Decode, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerListPing};
 use crate::server::connection::InitialConnection;
