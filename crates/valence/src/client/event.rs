@@ -138,7 +138,7 @@ pub struct CloseHandledScreen {
 #[derive(Clone, Debug)]
 pub struct CustomPayload {
     pub client: Entity,
-    pub channel: Ident<Box<str>>,
+    pub channel: Ident<String>,
     pub data: Box<[u8]>,
 }
 
@@ -263,7 +263,7 @@ pub struct PickFromInventory {
 pub struct CraftRequest {
     pub client: Entity,
     pub window_id: i8,
-    pub recipe: Ident<Box<str>>,
+    pub recipe: Ident<String>,
     pub make_all: bool,
 }
 
@@ -354,7 +354,7 @@ pub struct RecipeCategoryOptions {
 #[derive(Clone, Debug)]
 pub struct RecipeBookData {
     pub client: Entity,
-    pub recipe_id: Ident<Box<str>>,
+    pub recipe_id: Ident<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -395,7 +395,7 @@ pub struct ResourcePackStatusChange {
 #[derive(Clone, Debug)]
 pub struct OpenAdvancementTab {
     pub client: Entity,
-    pub tab_id: Ident<Box<str>>,
+    pub tab_id: Ident<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -452,9 +452,9 @@ pub struct CreativeInventoryAction {
 pub struct UpdateJigsaw {
     pub client: Entity,
     pub position: BlockPos,
-    pub name: Ident<Box<str>>,
-    pub target: Ident<Box<str>>,
-    pub pool: Ident<Box<str>>,
+    pub name: Ident<String>,
+    pub target: Ident<String>,
+    pub pool: Ident<String>,
     pub final_state: Box<str>,
     pub joint_type: Box<str>,
 }

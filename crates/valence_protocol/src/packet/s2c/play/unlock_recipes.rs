@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::io::Write;
 
 use anyhow::bail;
@@ -17,12 +18,12 @@ pub struct UnlockRecipesS2c<'a> {
     pub blast_furnace_recipe_book_filter_active: bool,
     pub smoker_recipe_book_open: bool,
     pub smoker_recipe_book_filter_active: bool,
-    pub recipe_ids: Vec<Ident<&'a str>>,
+    pub recipe_ids: Vec<Ident<Cow<'a, str>>>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum UpdateRecipeBookAction<'a> {
-    Init { recipe_ids: Vec<Ident<&'a str>> },
+    Init { recipe_ids: Vec<Ident<Cow<'a, str>>> },
     Add,
     Remove,
 }

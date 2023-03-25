@@ -10,16 +10,16 @@ use crate::{Decode, Encode};
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct AdvancementUpdateS2c<'a> {
     pub reset: bool,
-    pub advancement_mapping: Vec<(Ident<&'a str>, Advancement<'a>)>,
-    pub identifiers: Vec<Ident<&'a str>>,
-    pub progress_mapping: Vec<(Ident<&'a str>, Vec<AdvancementCriteria<'a>>)>,
+    pub advancement_mapping: Vec<(Ident<Cow<'a, str>>, Advancement<'a>)>,
+    pub identifiers: Vec<Ident<Cow<'a, str>>>,
+    pub progress_mapping: Vec<(Ident<Cow<'a, str>>, Vec<AdvancementCriteria<'a>>)>,
 }
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
 pub struct Advancement<'a> {
-    pub parent_id: Option<Ident<&'a str>>,
+    pub parent_id: Option<Ident<Cow<'a, str>>>,
     pub display_data: Option<AdvancementDisplay<'a>>,
-    pub criteria: Vec<(Ident<&'a str>, ())>,
+    pub criteria: Vec<(Ident<Cow<'a, str>>, ())>,
     pub requirements: Vec<AdvancementRequirements<'a>>,
 }
 
@@ -35,14 +35,14 @@ pub struct AdvancementDisplay<'a> {
     pub icon: Option<ItemStack>,
     pub frame_type: VarInt,
     pub flags: i32,
-    pub background_texture: Option<Ident<&'a str>>,
+    pub background_texture: Option<Ident<Cow<'a, str>>>,
     pub x_coord: f32,
     pub y_coord: f32,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Encode, Decode)]
 pub struct AdvancementCriteria<'a> {
-    pub criterion_identifier: Ident<&'a str>,
+    pub criterion_identifier: Ident<Cow<'a, str>>,
     /// If present, the criteria has been achieved at the
     /// time wrapped; time represented as millis since epoch
     pub criterion_progress: Option<i64>,
@@ -56,7 +56,7 @@ impl Encode for AdvancementDisplay<'_> {
         self.frame_type.encode(&mut w)?;
         self.flags.encode(&mut w)?;
 
-        match self.background_texture {
+        match self.background_texture.as_ref() {
             None => {}
             Some(texture) => texture.encode(&mut w)?,
         }
@@ -77,7 +77,7 @@ impl<'a> Decode<'a> for AdvancementDisplay<'a> {
         let flags = i32::decode(r)?;
 
         let background_texture = if flags & 1 == 1 {
-            Some(Ident::<&'a str>::decode(r)?)
+            Some(Ident::decode(r)?)
         } else {
             None
         };

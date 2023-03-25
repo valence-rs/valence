@@ -221,7 +221,7 @@ impl Client {
 
     pub fn send_custom_payload(&mut self, channel: Ident<&str>, data: &[u8]) {
         self.write_packet(&CustomPayloadS2c {
-            channel,
+            channel: channel.into(),
             data: data.into(),
         });
     }
@@ -682,13 +682,13 @@ fn initial_join(
 
         let dimension_names = server
             .dimensions()
-            .map(|(_, dim)| dim.name.as_str_ident())
+            .map(|(_, dim)| dim.name.as_str_ident().into())
             .collect();
 
         let dimension_name = server.dimension(instance.dimension()).name.as_str_ident();
 
         let last_death_location = q.death_loc.0.map(|(id, pos)| GlobalPos {
-            dimension_name: server.dimension(id).name.as_str_ident(),
+            dimension_name: server.dimension(id).name.as_str_ident().into(),
             position: pos,
         });
 
@@ -701,8 +701,8 @@ fn initial_join(
             previous_game_mode: q.prev_game_mode.0.map(|g| g as i8).unwrap_or(-1),
             dimension_names,
             registry_codec: Cow::Borrowed(server.registry_codec()),
-            dimension_type_name: dimension_name,
-            dimension_name,
+            dimension_type_name: dimension_name.into(),
+            dimension_name: dimension_name.into(),
             hashed_seed: q.hashed_seed.0 as i64,
             max_players: VarInt(0), // Ignored by clients.
             view_distance: VarInt(q.view_distance.0 as i32),
@@ -756,13 +756,13 @@ fn respawn(
         let dimension_name = server.dimension(instance.dimension()).name.as_str_ident();
 
         let last_death_location = death_loc.0.map(|(id, pos)| GlobalPos {
-            dimension_name: server.dimension(id).name.as_str_ident(),
+            dimension_name: server.dimension(id).name.as_str_ident().into(),
             position: pos,
         });
 
         client.write_packet(&PlayerRespawnS2c {
-            dimension_type_name: dimension_name,
-            dimension_name,
+            dimension_type_name: dimension_name.into(),
+            dimension_name: dimension_name.into(),
             hashed_seed: hashed_seed.0,
             game_mode: (*game_mode).into(),
             previous_game_mode: prev_game_mode.0.map(|g| g as i8).unwrap_or(-1),
