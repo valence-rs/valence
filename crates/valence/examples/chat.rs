@@ -26,7 +26,7 @@ use valence::protocol::var_int::VarInt;
 
 const SPAWN_Y: i32 = 64;
 
-const MOJANG_KEY_DATA: &[u8] = include_bytes!("./yggdrasil_session_pubkey.der");
+const MOJANG_KEY_DATA: &[u8] = include_bytes!("../../../assets/yggdrasil_session_pubkey.der");
 
 #[derive(Resource)]
 struct MojangServicesState {
