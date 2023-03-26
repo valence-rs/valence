@@ -58,7 +58,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             let str_name = &sound.name;
             let name = ident(str_name.to_pascal_case());
             quote! {
-                Self::#name => #str_name,
+                Self::#name => ident_str!(#str_name),
             }
         })
         .collect::<TokenStream>();
@@ -105,8 +105,8 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            /// Gets the snake_case name of this sound.
-            pub const fn to_str(self) -> &'static str {
+            /// Gets the identifier of this sound.
+            pub const fn to_ident(self) -> Ident<&'static str> {
                 match self {
                     #sound_to_str_arms
                 }

@@ -59,7 +59,9 @@ pub mod prelude {
     pub use entity::{EntityAnimation, EntityKind, EntityManager, EntityStatus, HeadYaw};
     pub use glam::DVec3;
     pub use instance::{Block, BlockMut, BlockRef, Chunk, Instance};
-    pub use inventory::{Inventory, InventoryKind, OpenInventory};
+    pub use inventory::{
+        Inventory, InventoryKind, InventoryWindow, InventoryWindowMut, OpenInventory,
+    };
     pub use player_list::{PlayerList, PlayerListEntry};
     pub use protocol::block::{BlockState, PropName, PropValue};
     pub use protocol::ident::Ident;

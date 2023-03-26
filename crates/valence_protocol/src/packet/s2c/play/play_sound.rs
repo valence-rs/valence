@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::io::Write;
 
 use crate::ident::Ident;
@@ -5,7 +6,7 @@ use crate::types::SoundCategory;
 use crate::var_int::VarInt;
 use crate::{Decode, Encode};
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct PlaySoundS2c<'a> {
     pub id: SoundId<'a>,
     pub category: SoundCategory,
@@ -15,10 +16,10 @@ pub struct PlaySoundS2c<'a> {
     pub seed: i64,
 }
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum SoundId<'a> {
     Direct {
-        id: Ident<&'a str>,
+        id: Ident<Cow<'a, str>>,
         range: Option<f32>,
     },
     Reference {
@@ -47,7 +48,7 @@ impl<'a> Decode<'a> for SoundId<'a> {
 
         if i == 0 {
             Ok(SoundId::Direct {
-                id: <Ident<&'a str>>::decode(r)?,
+                id: Ident::decode(r)?,
                 range: <Option<f32>>::decode(r)?,
             })
         } else {

@@ -14,10 +14,10 @@ pub struct GameJoinS2c<'a> {
     pub game_mode: GameMode,
     /// Same values as `game_mode` but with -1 to indicate no previous.
     pub previous_game_mode: i8,
-    pub dimension_names: Vec<Ident<&'a str>>,
+    pub dimension_names: Vec<Ident<Cow<'a, str>>>,
     pub registry_codec: Cow<'a, Compound>,
-    pub dimension_type_name: Ident<&'a str>,
-    pub dimension_name: Ident<&'a str>,
+    pub dimension_type_name: Ident<Cow<'a, str>>,
+    pub dimension_name: Ident<Cow<'a, str>>,
     pub hashed_seed: i64,
     pub max_players: VarInt,
     pub view_distance: VarInt,

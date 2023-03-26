@@ -1,5 +1,6 @@
 //! Miscellaneous type definitions used in packets.
 
+use std::borrow::Cow;
 use std::io::Write;
 
 use serde::{Deserialize, Serialize};
@@ -61,9 +62,9 @@ pub enum GameMode {
     Spectator,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
+#[derive(Clone, PartialEq, Eq, Debug, Encode, Decode)]
 pub struct GlobalPos<'a> {
-    pub dimension_name: Ident<&'a str>,
+    pub dimension_name: Ident<Cow<'a, str>>,
     pub position: BlockPos,
 }
 

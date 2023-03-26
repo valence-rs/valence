@@ -16,26 +16,22 @@ fn check_path(s: &str) -> bool {
 
 pub fn ident_str(item: TokenStream) -> Result<TokenStream> {
     let ident_lit: LitStr = parse2(item)?;
-    let mut ident = &ident_lit.value()[..];
+    let mut ident = ident_lit.value();
 
-    let path_start = match ident.split_once(':') {
-        Some(("minecraft", path)) if check_path(path) => {
-            ident = path;
-            0
+    match ident.split_once(':') {
+        Some((namespace, path)) if check_namespace(namespace) && check_path(path) => {}
+        None if check_path(&ident) => {
+            ident = format!("minecraft:{ident}");
         }
-        Some((namespace, path)) if check_namespace(namespace) && check_path(path) => {
-            namespace.len() + 1
-        }
-        None if check_path(ident) => 0,
         _ => {
             return Err(syn::Error::new(
                 ident_lit.span(),
-                "string cannot be parsed as ident",
+                "string cannot be parsed as a resource identifier",
             ))
         }
-    };
+    }
 
     Ok(quote! {
-        ::valence_protocol::ident::Ident::new_unchecked(#ident, #path_start)
+        ::valence_protocol::ident::Ident::new_unchecked(#ident)
     })
 }

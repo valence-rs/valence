@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use num_integer::{div_ceil, Integer};
 use thiserror::Error;
 use valence::biome::BiomeId;
@@ -210,11 +212,11 @@ where
         converted_biome_palette.clear();
 
         for biome_name in palette {
-            let Ok(ident) = Ident::new(biome_name.as_str()) else {
+            let Ok(ident) = Ident::<Cow<str>>::new(biome_name) else {
                 return Err(ToValenceError::BadBiomeName)
             };
 
-            converted_biome_palette.push(map_biome(ident));
+            converted_biome_palette.push(map_biome(ident.as_str_ident()));
         }
 
         if converted_biome_palette.len() == 1 {
@@ -274,7 +276,7 @@ where
             let Ok(ident) = Ident::new(&ident[..]) else {
                 return Err(ToValenceError::UnknownBlockEntityIdent(ident.clone()));
             };
-            let Some(kind) = BlockEntityKind::from_ident(ident) else {
+            let Some(kind) = BlockEntityKind::from_ident(ident.as_str_ident()) else {
                 return Err(ToValenceError::UnknownBlockEntityIdent(ident.as_str().to_string()));
             };
             let block_entity = BlockEntity {
