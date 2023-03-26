@@ -3,7 +3,7 @@
 use std::time::Instant;
 
 use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerBundle;
+use valence::entity::player::PlayerEntityBundle;
 use valence::instance::{Chunk, Instance};
 use valence::prelude::*;
 
@@ -74,7 +74,7 @@ fn init_clients(
     for (entity, uuid, mut game_mode) in &mut clients {
         *game_mode = GameMode::Creative;
 
-        commands.entity(entity).insert(PlayerBundle {
+        commands.entity(entity).insert(PlayerEntityBundle {
             location: Location(instances.single()),
             position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 0.0]),
             uuid: *uuid,

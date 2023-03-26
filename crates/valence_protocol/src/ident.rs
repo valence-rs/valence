@@ -64,6 +64,15 @@ impl<S> Ident<S> {
         }
     }
 
+    pub fn to_string_ident(&self) -> Ident<String>
+    where
+        S: AsRef<str>,
+    {
+        Ident {
+            string: self.as_str().to_owned(),
+        }
+    }
+
     pub fn into_inner(self) -> S {
         self.string
     }
@@ -135,6 +144,12 @@ impl<S> AsRef<S> for Ident<S> {
 impl<S: Borrow<str>> Borrow<str> for Ident<S> {
     fn borrow(&self) -> &str {
         self.string.borrow()
+    }
+}
+
+impl From<Ident<&str>> for String {
+    fn from(value: Ident<&str>) -> Self {
+        value.as_str().to_owned()
     }
 }
 

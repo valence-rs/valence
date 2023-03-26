@@ -83,6 +83,8 @@ impl AnvilWorld {
             Entry::Vacant(ve) => {
                 // Load the region file if it exists. Otherwise, the chunk is considered absent.
 
+                // TODO: Add tombstone for missing region file in `regions`.
+
                 let path = self
                     .region_root
                     .join(format!("r.{region_x}.{region_z}.mca"));

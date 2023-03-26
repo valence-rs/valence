@@ -2,7 +2,7 @@
 
 use valence::client::event::{PlayerInteractEntity, ResourcePackStatus, ResourcePackStatusChange};
 use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerBundle;
+use valence::entity::player::PlayerEntityBundle;
 use valence::entity::sheep::SheepBundle;
 use valence::prelude::*;
 use valence::protocol::packet::c2s::play::player_interact_entity::EntityInteraction;
@@ -65,7 +65,7 @@ fn init_clients(
 
         client.send_message("Hit the sheep to prompt for the resource pack.".italic());
 
-        commands.entity(entity).insert(PlayerBundle {
+        commands.entity(entity).insert(PlayerEntityBundle {
             location: Location(instances.single()),
             position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 0.0]),
             uuid: *uuid,

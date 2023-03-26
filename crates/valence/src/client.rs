@@ -612,13 +612,13 @@ pub(crate) struct ClientPlugin;
 /// packets to clients should happen before this. Otherwise, the data
 /// will arrive one tick late.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub(crate) struct FlushPacketsSet;
+pub struct FlushPacketsSet;
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.add_systems(
             (
-                initial_join,
+                initial_join, /* .after(RegistryCodecSet) */
                 update_chunk_load_dist,
                 read_data_in_old_view
                     .after(WriteUpdatePacketsToInstancesSet)
@@ -1149,7 +1149,6 @@ fn teleport(
                 pitch: if changed_pitch { look.pitch } else { 0.0 },
                 flags,
                 teleport_id: VarInt(state.teleport_id_counter as i32),
-                dismount_vehicle: false, // TODO?
             });
 
             state.pending_teleports = state.pending_teleports.wrapping_add(1);

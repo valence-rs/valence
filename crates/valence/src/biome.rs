@@ -30,6 +30,7 @@ pub struct Biome {
     /// The unique name for this biome. The name can be
     /// seen in the F3 debug menu.
     pub name: Ident<String>,
+    // TODO: this stuff is probably wrong by now.
     pub precipitation: BiomePrecipitation,
     pub sky_color: u32,
     pub water_fog_color: u32,
@@ -43,13 +44,7 @@ pub struct Biome {
     pub additions_sound: Option<BiomeAdditionsSound>,
     pub mood_sound: Option<BiomeMoodSound>,
     pub particle: Option<BiomeParticle>,
-    // TODO
-    // * depth: f32
-    // * temperature: f32
-    // * scale: f32
-    // * downfall: f32
-    // * category
-    // * temperature_modifier
+    pub has_precipitation: bool,
 }
 
 impl Biome {
@@ -68,6 +63,7 @@ impl Biome {
                 "scale" => 0.05_f32,
                 "downfall" => 0.4_f32,
                 "category" => "none",
+                "has_precipitation" => self.has_precipitation,
                 "effects" => {
                     let mut eff = compound! {
                         "sky_color" => self.sky_color as i32,
@@ -183,6 +179,7 @@ impl Default for Biome {
             additions_sound: None,
             mood_sound: None,
             particle: None,
+            has_precipitation: true,
         }
     }
 }

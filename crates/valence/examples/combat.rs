@@ -4,7 +4,7 @@ use bevy_ecs::query::WorldQuery;
 use glam::Vec3Swizzles;
 use valence::client::event::{PlayerInteractEntity, StartSprinting, StopSprinting};
 use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerBundle;
+use valence::entity::player::PlayerEntityBundle;
 use valence::entity::EntityStatuses;
 use valence::prelude::*;
 
@@ -77,7 +77,7 @@ fn init_clients(
                 last_attacked_tick: 0,
                 has_bonus_knockback: false,
             },
-            PlayerBundle {
+            PlayerEntityBundle {
                 location: Location(instances.single()),
                 position: Position::new([0.5, SPAWN_Y as f64, 0.5]),
                 uuid: *uuid,

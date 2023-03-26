@@ -98,8 +98,6 @@ impl List {
     }
 }
 
-/// We can not create new identities in stable Rust using macros, so we provide
-/// them in the macro invocation itself.
 macro_rules! nbt_conversion {
     ( $($nbt_type:ident = $value_type:ty => $is_function:ident $as_function:ident $as_mut_function:ident $into_function:ident)+ ) => {
         $(

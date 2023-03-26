@@ -2,7 +2,7 @@
 
 use valence::client::event::{PerformRespawn, StartSneaking};
 use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerBundle;
+use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;
@@ -53,7 +53,7 @@ fn init_clients(
             "Welcome to Valence! Sneak to die in the game (but not in real life).".italic(),
         );
 
-        commands.entity(entity).insert(PlayerBundle {
+        commands.entity(entity).insert(PlayerEntityBundle {
             location: Location(instances.iter().next().unwrap()),
             position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 0.0]),
             uuid: *uuid,

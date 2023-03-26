@@ -8,7 +8,7 @@ use flume::{Receiver, Sender};
 use tracing::warn;
 use valence::bevy_app::AppExit;
 use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerBundle;
+use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
 use valence_anvil::{AnvilChunk, AnvilWorld};
 
@@ -98,7 +98,7 @@ fn init_clients(
         *game_mode = GameMode::Creative;
         is_flat.0 = true;
 
-        commands.entity(entity).insert(PlayerBundle {
+        commands.entity(entity).insert(PlayerEntityBundle {
             location: Location(instances.single()),
             position: Position(SPAWN_POS),
             uuid: *uuid,

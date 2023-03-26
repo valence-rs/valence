@@ -2,7 +2,7 @@
 
 use valence::client::event::{PlayerInteractBlock, StartDigging, StartSneaking, StopDestroyBlock};
 use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerBundle;
+use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
 use valence::protocol::types::Hand;
 
@@ -57,7 +57,7 @@ fn init_clients(
         *game_mode = GameMode::Creative;
         client.send_message("Welcome to Valence! Build something cool.".italic());
 
-        commands.entity(entity).insert(PlayerBundle {
+        commands.entity(entity).insert(PlayerEntityBundle {
             location: Location(instances.single()),
             position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 0.0]),
             uuid: *uuid,

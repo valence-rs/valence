@@ -6,7 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use rand::seq::SliceRandom;
 use rand::Rng;
 use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerBundle;
+use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
 use valence::protocol::packet::s2c::play::TitleFadeS2c;
 use valence::protocol::sound::Sound;
@@ -71,7 +71,7 @@ fn init_clients(
 
         let instance = server.new_instance(DimensionId::default());
 
-        let player = PlayerBundle {
+        let player = PlayerEntityBundle {
             location: Location(entity),
             uuid: *uuid,
             ..Default::default()

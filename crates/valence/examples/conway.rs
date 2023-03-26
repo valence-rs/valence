@@ -4,7 +4,7 @@ use std::mem;
 
 use valence::client::event::{StartDigging, StartSneaking};
 use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerBundle;
+use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
 
 const BOARD_MIN_X: i32 = -30;
@@ -82,7 +82,7 @@ fn init_clients(
                 .italic(),
         );
 
-        commands.entity(entity).insert(PlayerBundle {
+        commands.entity(entity).insert(PlayerEntityBundle {
             location: Location(instances.single()),
             position: Position(SPAWN_POS),
             uuid: *uuid,

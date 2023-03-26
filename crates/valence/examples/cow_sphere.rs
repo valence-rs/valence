@@ -4,7 +4,7 @@ use std::f64::consts::TAU;
 
 use glam::{DQuat, EulerRot};
 use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerBundle;
+use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
 
 type SpherePartBundle = valence::entity::cow::CowBundle;
@@ -67,7 +67,7 @@ fn init_clients(
     for (entity, uuid, mut game_mode) in &mut clients {
         *game_mode = GameMode::Creative;
 
-        commands.entity(entity).insert(PlayerBundle {
+        commands.entity(entity).insert(PlayerEntityBundle {
             location: Location(instances.single()),
             position: Position::new([
                 SPAWN_POS.x as f64 + 0.5,

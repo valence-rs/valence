@@ -18,8 +18,8 @@ use valence_protocol::byte_angle::ByteAngle;
 use valence_protocol::packet::s2c::play::particle::Particle;
 use valence_protocol::packet::s2c::play::{
     EntityAnimationS2c, EntityPositionS2c, EntitySetHeadYawS2c, EntityStatusS2c,
-    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, MoveRelative, OverlayMessageS2c,
-    ParticleS2c, PlaySoundS2c, RotateAndMoveRelative, Rotate,
+    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, MoveRelative, OverlayMessageS2c, ParticleS2c,
+    PlaySoundS2c, Rotate, RotateAndMoveRelative,
 };
 use valence_protocol::sound::Sound;
 use valence_protocol::text::Text;

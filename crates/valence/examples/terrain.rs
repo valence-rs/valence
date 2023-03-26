@@ -10,7 +10,7 @@ use flume::{Receiver, Sender};
 use noise::{NoiseFn, SuperSimplex};
 use tracing::info;
 use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerBundle;
+use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
 
 const SPAWN_POS: DVec3 = DVec3::new(0.0, 200.0, 0.0);
@@ -116,7 +116,7 @@ fn init_clients(
         is_flat.0 = true;
         *game_mode = GameMode::Creative;
 
-        commands.entity(entity).insert(PlayerBundle {
+        commands.entity(entity).insert(PlayerEntityBundle {
             location: Location(instances.single()),
             position: Position(SPAWN_POS),
             uuid: *uuid,
