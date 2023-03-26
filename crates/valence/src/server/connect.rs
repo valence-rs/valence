@@ -22,7 +22,6 @@ use tokio::sync::OwnedSemaphorePermit;
 use tracing::{error, info, instrument, trace, warn};
 use uuid::Uuid;
 use valence_protocol::codec::{PacketDecoder, PacketEncoder};
-use valence_protocol::ident::Ident;
 use valence_protocol::packet::c2s::handshake::handshake::NextState;
 use valence_protocol::packet::c2s::handshake::HandshakeC2s;
 use valence_protocol::packet::c2s::login::{LoginHelloC2s, LoginKeyC2s, LoginQueryResponseC2s};
@@ -35,7 +34,7 @@ use valence_protocol::raw::RawBytes;
 use valence_protocol::text::Text;
 use valence_protocol::types::Property;
 use valence_protocol::var_int::VarInt;
-use valence_protocol::{translation_key, Decode, MINECRAFT_VERSION, PROTOCOL_VERSION};
+use valence_protocol::{ident_str, translation_key, Decode, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerListPing};
 use crate::server::connection::InitialConnection;
@@ -440,7 +439,7 @@ pub(super) async fn login_velocity(
     // Send Player Info Request into the Plugin Channel
     conn.send_packet(&LoginQueryRequestS2c {
         message_id: VarInt(message_id),
-        channel: Ident::new("velocity:player_info").unwrap(),
+        channel: ident_str!("velocity:player_info").into(),
         data: RawBytes(&[VELOCITY_MIN_SUPPORTED_VERSION]),
     })
     .await?;

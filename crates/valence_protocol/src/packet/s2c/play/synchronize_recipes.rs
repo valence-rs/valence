@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::io::Write;
 
 use anyhow::{bail, ensure};
@@ -15,14 +16,14 @@ pub struct SynchronizeRecipesS2c<'a> {
 #[derive(Clone, PartialEq, Debug)]
 pub enum Recipe<'a> {
     CraftingShapeless {
-        recipe_id: Ident<&'a str>,
+        recipe_id: Ident<Cow<'a, str>>,
         group: &'a str,
         category: CraftingCategory,
         ingredients: Vec<Ingredient>,
         result: Option<ItemStack>,
     },
     CraftingShaped {
-        recipe_id: Ident<&'a str>,
+        recipe_id: Ident<Cow<'a, str>>,
         width: VarInt,
         height: VarInt,
         group: &'a str,
@@ -32,11 +33,11 @@ pub enum Recipe<'a> {
     },
     CraftingSpecial {
         kind: SpecialCraftingKind,
-        recipe_id: Ident<&'a str>,
+        recipe_id: Ident<Cow<'a, str>>,
         category: CraftingCategory,
     },
     Smelting {
-        recipe_id: Ident<&'a str>,
+        recipe_id: Ident<Cow<'a, str>>,
         group: &'a str,
         category: SmeltCategory,
         ingredient: Ingredient,
@@ -45,7 +46,7 @@ pub enum Recipe<'a> {
         cooking_time: VarInt,
     },
     Blasting {
-        recipe_id: Ident<&'a str>,
+        recipe_id: Ident<Cow<'a, str>>,
         group: &'a str,
         category: SmeltCategory,
         ingredient: Ingredient,
@@ -54,7 +55,7 @@ pub enum Recipe<'a> {
         cooking_time: VarInt,
     },
     Smoking {
-        recipe_id: Ident<&'a str>,
+        recipe_id: Ident<Cow<'a, str>>,
         group: &'a str,
         category: SmeltCategory,
         ingredient: Ingredient,
@@ -63,7 +64,7 @@ pub enum Recipe<'a> {
         cooking_time: VarInt,
     },
     CampfireCooking {
-        recipe_id: Ident<&'a str>,
+        recipe_id: Ident<Cow<'a, str>>,
         group: &'a str,
         category: SmeltCategory,
         ingredient: Ingredient,
@@ -72,13 +73,13 @@ pub enum Recipe<'a> {
         cooking_time: VarInt,
     },
     Stonecutting {
-        recipe_id: Ident<&'a str>,
+        recipe_id: Ident<Cow<'a, str>>,
         group: &'a str,
         ingredient: Ingredient,
         result: Option<ItemStack>,
     },
     Smithing {
-        recipe_id: Ident<&'a str>,
+        recipe_id: Ident<Cow<'a, str>>,
         base: Ingredient,
         addition: Ingredient,
         result: Option<ItemStack>,
@@ -294,16 +295,16 @@ impl<'a> Encode for Recipe<'a> {
 
 impl<'a> Decode<'a> for Recipe<'a> {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
-        Ok(match Ident::<&str>::decode(r)?.path() {
-            "crafting_shapeless" => Self::CraftingShapeless {
+        Ok(match Ident::<Cow<str>>::decode(r)?.as_str() {
+            "minecraft:crafting_shapeless" => Self::CraftingShapeless {
                 recipe_id: Decode::decode(r)?,
                 group: Decode::decode(r)?,
                 category: Decode::decode(r)?,
                 ingredients: Decode::decode(r)?,
                 result: Decode::decode(r)?,
             },
-            "crafting_shaped" => {
-                let recipe_id = Ident::<&str>::decode(r)?;
+            "minecraft:crafting_shaped" => {
+                let recipe_id = Ident::decode(r)?;
                 let width = VarInt::decode(r)?.0;
                 let height = VarInt::decode(r)?.0;
                 let group = <&str>::decode(r)?;
@@ -324,7 +325,7 @@ impl<'a> Decode<'a> for Recipe<'a> {
                     result: Decode::decode(r)?,
                 }
             }
-            "smelting" => Self::Smelting {
+            "minecraft:smelting" => Self::Smelting {
                 recipe_id: Decode::decode(r)?,
                 group: Decode::decode(r)?,
                 category: Decode::decode(r)?,
@@ -333,7 +334,7 @@ impl<'a> Decode<'a> for Recipe<'a> {
                 experience: Decode::decode(r)?,
                 cooking_time: Decode::decode(r)?,
             },
-            "blasting" => Self::Blasting {
+            "minecraft:blasting" => Self::Blasting {
                 recipe_id: Decode::decode(r)?,
                 group: Decode::decode(r)?,
                 category: Decode::decode(r)?,
@@ -342,7 +343,7 @@ impl<'a> Decode<'a> for Recipe<'a> {
                 experience: Decode::decode(r)?,
                 cooking_time: Decode::decode(r)?,
             },
-            "smoking" => Self::Smoking {
+            "minecraft:smoking" => Self::Smoking {
                 recipe_id: Decode::decode(r)?,
                 group: Decode::decode(r)?,
                 category: Decode::decode(r)?,
@@ -351,7 +352,7 @@ impl<'a> Decode<'a> for Recipe<'a> {
                 experience: Decode::decode(r)?,
                 cooking_time: Decode::decode(r)?,
             },
-            "campfire_cooking" => Self::CampfireCooking {
+            "minecraft:campfire_cooking" => Self::CampfireCooking {
                 recipe_id: Decode::decode(r)?,
                 group: Decode::decode(r)?,
                 category: Decode::decode(r)?,
@@ -360,13 +361,13 @@ impl<'a> Decode<'a> for Recipe<'a> {
                 experience: Decode::decode(r)?,
                 cooking_time: Decode::decode(r)?,
             },
-            "stonecutting" => Self::Stonecutting {
+            "minecraft:stonecutting" => Self::Stonecutting {
                 recipe_id: Decode::decode(r)?,
                 group: Decode::decode(r)?,
                 ingredient: Decode::decode(r)?,
                 result: Decode::decode(r)?,
             },
-            "smithing" => Self::Smithing {
+            "minecraft:smithing" => Self::Smithing {
                 recipe_id: Decode::decode(r)?,
                 base: Decode::decode(r)?,
                 addition: Decode::decode(r)?,
@@ -374,22 +375,34 @@ impl<'a> Decode<'a> for Recipe<'a> {
             },
             other => Self::CraftingSpecial {
                 kind: match other {
-                    "crafting_special_armordye" => SpecialCraftingKind::ArmorDye,
-                    "crafting_special_bookcloning" => SpecialCraftingKind::BookCloning,
-                    "crafting_special_mapcloning" => SpecialCraftingKind::MapCloning,
-                    "crafting_special_mapextending" => SpecialCraftingKind::MapExtending,
-                    "crafting_special_firework_rocket" => SpecialCraftingKind::FireworkRocket,
-                    "crafting_special_firework_star" => SpecialCraftingKind::FireworkStar,
-                    "crafting_special_firework_star_fade" => SpecialCraftingKind::FireworkStarFade,
-                    "crafting_special_repairitem" => SpecialCraftingKind::RepairItem,
-                    "crafting_special_tippedarrow" => SpecialCraftingKind::TippedArrow,
-                    "crafting_special_bannerduplicate" => SpecialCraftingKind::BannerDuplicate,
-                    "crafting_special_banneraddpattern" => SpecialCraftingKind::BannerAddPattern,
-                    "crafting_special_shielddecoration" => SpecialCraftingKind::ShieldDecoration,
-                    "crafting_special_shulkerboxcoloring" => {
+                    "minecraft:crafting_special_armordye" => SpecialCraftingKind::ArmorDye,
+                    "minecraft:crafting_special_bookcloning" => SpecialCraftingKind::BookCloning,
+                    "minecraft:crafting_special_mapcloning" => SpecialCraftingKind::MapCloning,
+                    "minecraft:crafting_special_mapextending" => SpecialCraftingKind::MapExtending,
+                    "minecraft:crafting_special_firework_rocket" => {
+                        SpecialCraftingKind::FireworkRocket
+                    }
+                    "minecraft:crafting_special_firework_star" => SpecialCraftingKind::FireworkStar,
+                    "minecraft:crafting_special_firework_star_fade" => {
+                        SpecialCraftingKind::FireworkStarFade
+                    }
+                    "minecraft:crafting_special_repairitem" => SpecialCraftingKind::RepairItem,
+                    "minecraft:crafting_special_tippedarrow" => SpecialCraftingKind::TippedArrow,
+                    "minecraft:crafting_special_bannerduplicate" => {
+                        SpecialCraftingKind::BannerDuplicate
+                    }
+                    "minecraft:crafting_special_banneraddpattern" => {
+                        SpecialCraftingKind::BannerAddPattern
+                    }
+                    "minecraft:crafting_special_shielddecoration" => {
+                        SpecialCraftingKind::ShieldDecoration
+                    }
+                    "minecraft:crafting_special_shulkerboxcoloring" => {
                         SpecialCraftingKind::ShulkerBoxColoring
                     }
-                    "crafting_special_suspiciousstew" => SpecialCraftingKind::SuspiciousStew,
+                    "minecraft:crafting_special_suspiciousstew" => {
+                        SpecialCraftingKind::SuspiciousStew
+                    }
                     _ => bail!("unknown recipe type \"{other}\""),
                 },
                 recipe_id: Decode::decode(r)?,

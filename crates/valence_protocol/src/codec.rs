@@ -499,6 +499,8 @@ impl PacketDecoder {
 
 #[cfg(test)]
 mod tests {
+    use std::borrow::Cow;
+
     use super::*;
     use crate::block_pos::BlockPos;
     use crate::ident::Ident;
@@ -521,7 +523,7 @@ mod tests {
         e: f64,
         f: BlockPos,
         g: Hand,
-        h: Ident<&'a str>,
+        h: Ident<Cow<'a, str>>,
         i: Option<ItemStack>,
         j: Text,
         k: VarInt,
