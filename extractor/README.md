@@ -17,7 +17,7 @@ This will run the extractor and immediately exit, outputting the files that are 
 Next, run `copy_extractor_output.sh`. This copies the files to `extracted` so that they can be comitted.
 
 ```sh
-./copy_extractor_output.sh`
+./copy_extractor_output.sh
 ```
 
 ## Contributing
