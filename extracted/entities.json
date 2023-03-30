@@ -1297,9 +1297,9 @@
       }
     ],
     "default_bounding_box": {
-      "size_x": 0.8500000238418579,
-      "size_y": 0.8500000238418579,
-      "size_z": 0.8500000238418579
+      "size_x": 1.997499942779541,
+      "size_y": 1.997499942779541,
+      "size_z": 1.997499942779541
     }
   },
   "HoglinEntity": {
@@ -1528,7 +1528,7 @@
         "name": "health",
         "index": 9,
         "type": "float",
-        "default_value": 20.0
+        "default_value": 10.0
       },
       {
         "name": "potion_swirls_color",
@@ -2863,7 +2863,7 @@
         "type": "villager_data",
         "default_value": {
           "type": "plains",
-          "profession": "none",
+          "profession": "leatherworker",
           "level": 1
         }
       }
