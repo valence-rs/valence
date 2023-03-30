@@ -38,6 +38,7 @@ pub mod inventory;
 pub mod packet;
 pub mod player_list;
 pub mod player_textures;
+pub mod secure_chat;
 pub mod server;
 #[cfg(any(test, doctest))]
 mod unit_test;

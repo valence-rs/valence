@@ -20,7 +20,8 @@ use valence_protocol::text::Color;
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct ChatTypeId(pub(crate) u16);
 
-/// Contains the configuration for a chat type.
+/// Contains information about how chat is styled, such as the chat color. The
+/// notchian server has different chat types for team chat and direct messages.
 ///
 /// Chat types are registered once at startup through
 /// [`ServerPlugin::with_chat_types`]
