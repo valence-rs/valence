@@ -338,38 +338,6 @@ where
     }
 }
 
-/// Convenience macro for constructing an [`Ident<String>`] from a format
-/// string.
-///
-/// The arguments to this macro are forwarded to [`std::format`].
-///
-/// # Panics
-///
-/// The macro will cause a panic if the formatted string is not a valid resource
-/// identifier. See [`Ident`] for more information.
-///
-/// [`Ident<String>`]: [Ident]
-///
-/// # Examples
-///
-/// ```
-/// use valence_protocol::ident;
-///
-/// let namespace = "my_namespace";
-/// let path = "my_path";
-///
-/// let id = ident!("{namespace}:{path}");
-///
-/// assert_eq!(id.namespace(), "my_namespace");
-/// assert_eq!(id.path(), "my_path");
-/// ```
-#[macro_export]
-macro_rules! ident {
-    ($($arg:tt)*) => {{
-        $crate::ident::Ident::<String>::try_from(::std::format!($($arg)*)).unwrap()
-    }}
-}
-
 #[cfg(test)]
 mod tests {
     #[test]

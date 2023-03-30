@@ -219,6 +219,12 @@ impl From<String> for Value {
     }
 }
 
+impl From<&String> for Value {
+    fn from(value: &String) -> Self {
+        Self::String(value.clone())
+    }
+}
+
 impl<'a> From<&'a str> for Value {
     fn from(v: &'a str) -> Self {
         Self::String(v.to_owned())

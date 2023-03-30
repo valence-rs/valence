@@ -34,7 +34,7 @@ use valence_protocol::raw::RawBytes;
 use valence_protocol::text::Text;
 use valence_protocol::types::Property;
 use valence_protocol::var_int::VarInt;
-use valence_protocol::{ident_str, translation_key, Decode, MINECRAFT_VERSION, PROTOCOL_VERSION};
+use valence_protocol::{ident, translation_key, Decode, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerListPing};
 use crate::server::connection::InitialConnection;
@@ -439,7 +439,7 @@ pub(super) async fn login_velocity(
     // Send Player Info Request into the Plugin Channel
     conn.send_packet(&LoginQueryRequestS2c {
         message_id: VarInt(message_id),
-        channel: ident_str!("velocity:player_info").into(),
+        channel: ident!("velocity:player_info").into(),
         data: RawBytes(&[VELOCITY_MIN_SUPPORTED_VERSION]),
     })
     .await?;

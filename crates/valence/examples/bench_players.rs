@@ -48,8 +48,18 @@ fn print_tick_time(server: Res<Server>, time: Res<TickStart>, clients: Query<(),
     }
 }
 
-fn setup(mut commands: Commands, server: Res<Server>) {
-    let mut instance = server.new_instance(DimensionId::default());
+fn setup(
+    mut commands: Commands,
+    server: Res<Server>,
+    dimensions: Query<&DimensionType>,
+    biomes: Query<&Biome>,
+) {
+    let mut instance = Instance::new(
+        ident!("minecraft:overworld").into(),
+        &dimensions,
+        &biomes,
+        &server,
+    );
 
     for z in -5..5 {
         for x in -5..5 {

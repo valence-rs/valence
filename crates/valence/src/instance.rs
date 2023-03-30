@@ -15,6 +15,7 @@ use rustc_hash::FxHashMap;
 use valence_protocol::array::LengthPrefixedArray;
 use valence_protocol::block_pos::BlockPos;
 use valence_protocol::byte_angle::ByteAngle;
+use valence_protocol::ident::Ident;
 use valence_protocol::packet::s2c::play::particle::Particle;
 use valence_protocol::packet::s2c::play::{
     EntityAnimationS2c, EntityPositionS2c, EntitySetHeadYawS2c, EntityStatusS2c,
@@ -27,9 +28,10 @@ use valence_protocol::types::SoundCategory;
 use valence_protocol::var_int::VarInt;
 use valence_protocol::Packet;
 
+use crate::biome::Biome;
 use crate::client::FlushPacketsSet;
 use crate::component::{Despawned, Location, Look, OldLocation, OldPosition, OnGround, Position};
-use crate::dimension::DimensionId;
+use crate::dimension::DimensionType;
 use crate::entity::{
     EntityAnimations, EntityId, EntityKind, EntityStatuses, HeadYaw, InitEntitiesSet,
     PacketByteRange, TrackedData, Velocity,
@@ -79,7 +81,7 @@ pub struct Instance {
 }
 
 pub(crate) struct InstanceInfo {
-    dimension: DimensionId,
+    dimension_name: Ident<String>,
     section_count: usize,
     min_y: i32,
     biome_registry_len: usize,
@@ -110,8 +112,15 @@ pub(crate) struct PartitionCell {
 }
 
 impl Instance {
-    pub(crate) fn new(dimension: DimensionId, shared: &SharedServer) -> Self {
-        let dim = shared.dimension(dimension);
+    pub fn new(
+        dimension_name: Ident<String>,
+        dimensions: &Query<&DimensionType>,
+        biomes: &Query<&Biome>,
+        shared: &SharedServer,
+    ) -> Self {
+        let Some(dim) = dimensions.iter().find(|d| d.name == dimension_name) else {
+            panic!("missing dimension with name \"{dimension_name}\"")
+        };
 
         let light_section_count = (dim.height / 16 + 2) as usize;
 
@@ -124,10 +133,10 @@ impl Instance {
         Self {
             partition: FxHashMap::default(),
             info: InstanceInfo {
-                dimension,
-                section_count: (dim.height / 16) as usize,
+                dimension_name,
+                section_count: (dim.min_y / 16) as usize,
                 min_y: dim.min_y,
-                biome_registry_len: shared.biomes().len(),
+                biome_registry_len: biomes.iter().count(),
                 compression_threshold: shared.compression_threshold(),
                 filler_sky_light_mask: sky_light_mask.into(),
                 filler_sky_light_arrays: vec![
@@ -141,8 +150,8 @@ impl Instance {
         }
     }
 
-    pub fn dimension(&self) -> DimensionId {
-        self.info.dimension
+    pub fn dimension_name(&self) -> Ident<&str> {
+        self.info.dimension_name.as_str_ident()
     }
 
     pub fn section_count(&self) -> usize {

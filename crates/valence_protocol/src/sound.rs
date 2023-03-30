@@ -1,5 +1,5 @@
+use crate::ident;
 use crate::ident::Ident;
-use crate::ident_str;
 use crate::packet::s2c::play::play_sound::SoundId;
 
 include!(concat!(env!("OUT_DIR"), "/sound.rs"));

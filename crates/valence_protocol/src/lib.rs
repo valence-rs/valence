@@ -71,7 +71,7 @@ use std::io::Write;
 use std::{fmt, io};
 
 pub use anyhow::{Error, Result};
-pub use valence_protocol_macros::{ident_str, Decode, Encode, Packet};
+pub use valence_protocol_macros::{ident, Decode, Encode, Packet};
 pub use {uuid, valence_nbt as nbt};
 
 /// The Minecraft protocol version this library currently targets.

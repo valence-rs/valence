@@ -58,7 +58,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             let str_name = &sound.name;
             let name = ident(str_name.to_pascal_case());
             quote! {
-                Self::#name => ident_str!(#str_name),
+                Self::#name => ident!(#str_name),
             }
         })
         .collect::<TokenStream>();

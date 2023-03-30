@@ -19,6 +19,7 @@ mod to_valence;
 pub struct AnvilWorld {
     /// Path to the "region" subdirectory in the world root.
     region_root: PathBuf,
+    // TODO: LRU cache for region file handles.
     /// Maps region (x, z) positions to region files.
     regions: BTreeMap<(i32, i32), Region>,
 }
