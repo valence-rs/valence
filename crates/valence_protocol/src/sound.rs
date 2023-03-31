@@ -22,7 +22,7 @@ mod tests {
         assert_eq!(
             Sound::BlockBellUse.to_id(),
             SoundId::Direct {
-                id: Ident::new("block.bell.use").unwrap(),
+                id: ident!("block.bell.use").into(),
                 range: None
             },
         );

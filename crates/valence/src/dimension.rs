@@ -28,11 +28,11 @@ impl DimensionTypeRegistry {
     pub const KEY: Ident<&str> = ident!("minecraft:dimension_type");
 
     pub fn get_by_name(&self, name: Ident<&str>) -> Option<Entity> {
-        self.name_to_dimension.get(name.as_str()).cloned()
+        self.name_to_dimension.get(name.as_str()).copied()
     }
 
-    pub fn dimension_count(&self) -> usize {
-        self.name_to_dimension.len()
+    pub fn dimensions(&self) -> impl Iterator<Item = Entity> + '_ {
+        self.name_to_dimension.values().copied()
     }
 }
 
@@ -127,7 +127,7 @@ impl Plugin for DimensionPlugin {
                 remove_dimension_types_from_registry,
             )
                 .chain()
-                .in_base_set(StartupSet::PreStartup)
+                .in_base_set(CoreSet::PostUpdate)
                 .before(RegistryCodecSet),
         )
         .add_startup_system(load_default_dimension_types.in_base_set(StartupSet::PreStartup));

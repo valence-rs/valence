@@ -687,7 +687,7 @@ fn initial_join(
             .map(|value| value.name.as_str_ident().into())
             .collect();
 
-        let dimension_name: Ident<Cow<str>> = instance.dimension_name().into();
+        let dimension_name: Ident<Cow<str>> = instance.dimension_type_name().into();
 
         let last_death_location = q.death_loc.0.as_ref().map(|(id, pos)| GlobalPos {
             dimension_name: id.as_str_ident().into(),
@@ -754,7 +754,7 @@ fn respawn(
             continue
         };
 
-        let dimension_name = instance.dimension_name();
+        let dimension_name = instance.dimension_type_name();
 
         let last_death_location = death_loc.0.as_ref().map(|(id, pos)| GlobalPos {
             dimension_name: id.as_str_ident().into(),

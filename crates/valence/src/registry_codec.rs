@@ -124,17 +124,19 @@ fn cache_registry_codec(codec: ResMut<RegistryCodec>) {
         codec.cached_codec.clear();
 
         for (reg_name, reg) in &codec.registries {
-            let mut value = Compound::new();
+            let mut value = vec![];
 
             for (id, v) in reg.iter().enumerate() {
-                value.insert("id", id as i32);
-                value.insert("name", v.name.as_str());
-                value.insert("element", v.element.clone());
+                value.push(compound! {
+                    "id" => id as i32,
+                    "name" => v.name.as_str(),
+                    "element" => v.element.clone(),
+                });
             }
 
             let registry = compound! {
                 "type" => reg_name.as_str(),
-                "value" => value,
+                "value" => List::Compound(value),
             };
 
             codec.cached_codec.insert(reg_name.as_str(), registry);

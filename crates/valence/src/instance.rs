@@ -28,7 +28,6 @@ use valence_protocol::types::SoundCategory;
 use valence_protocol::var_int::VarInt;
 use valence_protocol::Packet;
 
-use crate::biome::Biome;
 use crate::client::FlushPacketsSet;
 use crate::component::{Despawned, Location, Look, OldLocation, OldPosition, OnGround, Position};
 use crate::dimension::DimensionType;
@@ -37,6 +36,7 @@ use crate::entity::{
     PacketByteRange, TrackedData, Velocity,
 };
 use crate::packet::{PacketWriter, WritePacket};
+use crate::prelude::BiomeRegistry;
 use crate::server::{Server, SharedServer};
 use crate::util::velocity_to_packet_units;
 use crate::view::ChunkPos;
@@ -113,14 +113,18 @@ pub(crate) struct PartitionCell {
 
 impl Instance {
     pub fn new(
-        dimension_name: Ident<String>,
+        dimension_type_name: impl Into<Ident<String>>,
         dimensions: &Query<&DimensionType>,
-        biomes: &Query<&Biome>,
+        biome_registry: &BiomeRegistry,
         shared: &SharedServer,
     ) -> Self {
-        let Some(dim) = dimensions.iter().find(|d| d.name == dimension_name) else {
-            panic!("missing dimension with name \"{dimension_name}\"")
+        let dimension_type_name = dimension_type_name.into();
+
+        let Some(dim) = dimensions.iter().find(|d| d.name == dimension_type_name) else {
+            panic!("missing dimension type with name \"{dimension_type_name}\"")
         };
+
+        assert!(dim.height > 0, "invalid dimension height of {}", dim.height);
 
         let light_section_count = (dim.height / 16 + 2) as usize;
 
@@ -133,10 +137,10 @@ impl Instance {
         Self {
             partition: FxHashMap::default(),
             info: InstanceInfo {
-                dimension_name,
-                section_count: (dim.min_y / 16) as usize,
+                dimension_name: dimension_type_name,
+                section_count: (dim.height / 16) as usize,
                 min_y: dim.min_y,
-                biome_registry_len: biomes.iter().count(),
+                biome_registry_len: biome_registry.iter().count(),
                 compression_threshold: shared.compression_threshold(),
                 filler_sky_light_mask: sky_light_mask.into(),
                 filler_sky_light_arrays: vec![
@@ -150,7 +154,7 @@ impl Instance {
         }
     }
 
-    pub fn dimension_name(&self) -> Ident<&str> {
+    pub fn dimension_type_name(&self) -> Ident<&str> {
         self.info.dimension_name.as_str_ident()
     }
 

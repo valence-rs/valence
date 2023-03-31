@@ -52,14 +52,9 @@ fn setup(
     mut commands: Commands,
     server: Res<Server>,
     dimensions: Query<&DimensionType>,
-    biomes: Query<&Biome>,
+    biome_reg: Res<BiomeRegistry>,
 ) {
-    let mut instance = Instance::new(
-        ident!("minecraft:overworld").into(),
-        &dimensions,
-        &biomes,
-        &server,
-    );
+    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biome_reg, &server);
 
     for z in -5..5 {
         for x in -5..5 {
