@@ -33,14 +33,47 @@ impl Compound {
         written_size(self, root_name)
     }
 
-    // TODO: document.
-    pub fn insert_all(&mut self, other: Compound) {
+    /// Inserts all items from `other` into `self` recursively.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use valence_nbt::compound;
+    ///
+    /// let mut this = compound! {
+    ///     "foo" => 10,
+    ///     "bar" => compound! {
+    ///         "baz" => 20,
+    ///     }
+    /// };
+    ///
+    /// let other = compound! {
+    ///     "foo" => 15,
+    ///     "bar" => compound! {
+    ///         "quux" => "hello",
+    ///     }
+    /// };
+    ///
+    /// this.merge(other);
+    ///
+    /// assert_eq!(
+    ///     this,
+    ///     compound! {
+    ///         "foo" => 15,
+    ///         "bar" => compound! {
+    ///             "baz" => 20,
+    ///             "quux" => "hello",
+    ///         }
+    ///     }
+    /// );
+    /// ```
+    pub fn merge(&mut self, other: Compound) {
         for (k, v) in other {
             match (self.entry(k), v) {
                 (Entry::Occupied(mut oe), Value::Compound(other)) => {
                     if let Value::Compound(this) = oe.get_mut() {
                         // Insert compound recursively.
-                        this.insert_all(other);
+                        this.merge(other);
                     }
                 }
                 (Entry::Occupied(mut oe), value) => {
@@ -469,38 +502,3 @@ pub struct ValuesMut<'a> {
 }
 
 impl_iterator_traits!((ValuesMut<'a>) => &'a mut Value);
-
-#[cfg(test)]
-mod test {
-    use crate::compound;
-
-    #[test]
-    fn insert_all() {
-        let mut this = compound! {
-            "foo" => 10,
-            "bar" => compound! {
-                "baz" => 20,
-            }
-        };
-
-        let other = compound! {
-            "foo" => 15,
-            "bar" => compound! {
-                "quux" => "hello",
-            }
-        };
-
-        this.insert_all(other);
-
-        assert_eq!(
-            this,
-            compound! {
-                "foo" => 15,
-                "bar" => compound! {
-                    "baz" => 20,
-                    "quux" => "hello",
-                }
-            }
-        );
-    }
-}
