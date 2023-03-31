@@ -340,6 +340,9 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::ident;
+
     #[test]
     fn check_namespace_and_path() {
         let id = ident!("namespace:path");
@@ -357,19 +360,19 @@ mod tests {
     #[test]
     #[should_panic]
     fn parse_invalid_0() {
-        ident!("");
+        Ident::new("").unwrap();
     }
 
     #[test]
     #[should_panic]
     fn parse_invalid_1() {
-        ident!(":");
+        Ident::new(":").unwrap();
     }
 
     #[test]
     #[should_panic]
     fn parse_invalid_2() {
-        ident!("foo:bar:baz");
+        Ident::new("foo:bar:baz").unwrap();
     }
 
     #[test]

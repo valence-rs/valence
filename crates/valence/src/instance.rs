@@ -48,27 +48,6 @@ mod paletted_container;
 /// An Instance represents a Minecraft world, which consist of [`Chunk`]s.
 /// It manages updating clients when chunks change, and caches chunk and entity
 /// update packets on a per-chunk basis.
-///
-/// To create a new instance, use [`SharedServer::new_instance`].
-/// ```
-/// use bevy_app::prelude::*;
-/// use valence::prelude::*;
-///
-/// let mut app = App::new();
-/// app.add_plugin(ServerPlugin::new(()));
-/// let server = app.world.get_resource::<Server>().unwrap();
-/// let instance = server.new_instance(DimensionId::default());
-/// ```
-/// Now you can actually spawn a new [`Entity`] with `instance`.
-/// ```
-/// # use bevy_app::prelude::*;
-/// # use valence::prelude::*;
-/// # let mut app = App::new();
-/// # app.add_plugin(ServerPlugin::new(()));
-/// # let server = app.world.get_resource::<Server>().unwrap();
-/// # let instance = server.new_instance(DimensionId::default());
-/// let instance_entity = app.world.spawn(instance);
-/// ```
 #[derive(Component)]
 pub struct Instance {
     pub(crate) partition: FxHashMap<ChunkPos, PartitionCell>,
@@ -81,7 +60,7 @@ pub struct Instance {
 }
 
 pub(crate) struct InstanceInfo {
-    dimension_name: Ident<String>,
+    dimension_type_name: Ident<String>,
     section_count: usize,
     min_y: i32,
     biome_registry_len: usize,
@@ -137,7 +116,7 @@ impl Instance {
         Self {
             partition: FxHashMap::default(),
             info: InstanceInfo {
-                dimension_name: dimension_type_name,
+                dimension_type_name,
                 section_count: (dim.height / 16) as usize,
                 min_y: dim.min_y,
                 biome_registry_len: biomes.iter().count(),
@@ -154,8 +133,30 @@ impl Instance {
         }
     }
 
+    /// TODO: Temporary hack for unit testing. Do not use!
+    #[doc(hidden)]
+    pub fn new_unit_testing(
+        dimension_type_name: impl Into<Ident<String>>,
+        shared: &SharedServer,
+    ) -> Self {
+        Self {
+            partition: FxHashMap::default(),
+            info: InstanceInfo {
+                dimension_type_name: dimension_type_name.into(),
+                section_count: 24,
+                min_y: -64,
+                biome_registry_len: 1,
+                compression_threshold: shared.compression_threshold(),
+                filler_sky_light_mask: vec![].into(),
+                filler_sky_light_arrays: vec![].into(),
+            },
+            packet_buf: vec![],
+            scratch: vec![],
+        }
+    }
+
     pub fn dimension_type_name(&self) -> Ident<&str> {
-        self.info.dimension_name.as_str_ident()
+        self.info.dimension_type_name.as_str_ident()
     }
 
     pub fn section_count(&self) -> usize {
