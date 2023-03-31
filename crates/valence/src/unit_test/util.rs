@@ -166,7 +166,7 @@ pub fn scenario_single_client(app: &mut App) -> (Entity, MockClientHelper) {
     );
 
     let server = app.world.resource::<Server>();
-    let instance = Instance::new_unit_testing(ident!("overworld"), &server);
+    let instance = Instance::new_unit_testing(ident!("overworld"), server);
     let instance_ent = app.world.spawn(instance).id();
     let (client, client_helper) = create_mock_client(gen_client_info("test"));
 
