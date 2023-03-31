@@ -9,9 +9,7 @@ use valence_protocol::codec::{PacketDecoder, PacketEncoder};
 use valence_protocol::packet::c2s::handshake::handshake::NextState;
 use valence_protocol::packet::c2s::handshake::HandshakeC2s;
 use valence_protocol::packet::c2s::login::LoginHelloC2s;
-use valence_protocol::packet::c2s::play::{
-    KeepAliveC2s, PositionAndOnGroundC2s, TeleportConfirmC2s,
-};
+use valence_protocol::packet::c2s::play::{KeepAliveC2s, PositionAndOnGround, TeleportConfirmC2s};
 use valence_protocol::packet::{C2sHandshakePacket, S2cLoginPacket, S2cPlayPacket};
 use valence_protocol::var_int::VarInt;
 use valence_protocol::PROTOCOL_VERSION;
@@ -137,7 +135,7 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
                         teleport_id: p.teleport_id,
                     })?;
 
-                    enc.append_packet(&PositionAndOnGroundC2s {
+                    enc.append_packet(&PositionAndOnGround {
                         position: p.position,
                         on_ground: true,
                     })?;

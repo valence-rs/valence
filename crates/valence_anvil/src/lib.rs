@@ -19,6 +19,7 @@ mod to_valence;
 pub struct AnvilWorld {
     /// Path to the "region" subdirectory in the world root.
     region_root: PathBuf,
+    // TODO: LRU cache for region file handles.
     /// Maps region (x, z) positions to region files.
     regions: BTreeMap<(i32, i32), Region>,
 }
@@ -82,6 +83,8 @@ impl AnvilWorld {
         let region = match self.regions.entry((region_x, region_z)) {
             Entry::Vacant(ve) => {
                 // Load the region file if it exists. Otherwise, the chunk is considered absent.
+
+                // TODO: Add tombstone for missing region file in `regions`.
 
                 let path = self
                     .region_root

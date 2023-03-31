@@ -32,6 +32,59 @@ impl Compound {
     pub fn written_size(&self, root_name: &str) -> usize {
         written_size(self, root_name)
     }
+
+    /// Inserts all items from `other` into `self` recursively.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use valence_nbt::compound;
+    ///
+    /// let mut this = compound! {
+    ///     "foo" => 10,
+    ///     "bar" => compound! {
+    ///         "baz" => 20,
+    ///     }
+    /// };
+    ///
+    /// let other = compound! {
+    ///     "foo" => 15,
+    ///     "bar" => compound! {
+    ///         "quux" => "hello",
+    ///     }
+    /// };
+    ///
+    /// this.merge(other);
+    ///
+    /// assert_eq!(
+    ///     this,
+    ///     compound! {
+    ///         "foo" => 15,
+    ///         "bar" => compound! {
+    ///             "baz" => 20,
+    ///             "quux" => "hello",
+    ///         }
+    ///     }
+    /// );
+    /// ```
+    pub fn merge(&mut self, other: Compound) {
+        for (k, v) in other {
+            match (self.entry(k), v) {
+                (Entry::Occupied(mut oe), Value::Compound(other)) => {
+                    if let Value::Compound(this) = oe.get_mut() {
+                        // Insert compound recursively.
+                        this.merge(other);
+                    }
+                }
+                (Entry::Occupied(mut oe), value) => {
+                    oe.insert(value);
+                }
+                (Entry::Vacant(ve), value) => {
+                    ve.insert(value);
+                }
+            }
+        }
+    }
 }
 
 impl fmt::Debug for Compound {

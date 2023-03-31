@@ -18,9 +18,9 @@ pub fn main() -> anyhow::Result<()> {
 
     let out_dir = env::var_os("OUT_DIR").context("can't get OUT_DIR env var")?;
 
-    for (g, file_name) in generators {
+    for (generator, file_name) in generators {
         let path = Path::new(&out_dir).join(file_name);
-        let code = g()?.to_string();
+        let code = generator()?.to_string();
         fs::write(&path, code)?;
 
         // Format the output for debugging purposes.

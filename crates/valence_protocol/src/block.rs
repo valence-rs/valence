@@ -6,12 +6,11 @@ use std::io::Write;
 use std::iter::FusedIterator;
 
 use anyhow::Context;
-use valence_protocol_macros::ident_str;
 
 use crate::ident::Ident;
 use crate::item::ItemKind;
 use crate::var_int::VarInt;
-use crate::{Decode, Encode, Result};
+use crate::{ident, Decode, Encode, Result};
 
 include!(concat!(env!("OUT_DIR"), "/block.rs"));
 

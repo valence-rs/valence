@@ -7,15 +7,21 @@ use crate::extras::*;
 const SPAWN_Y: i32 = 64;
 
 pub fn build_app(app: &mut App) {
-    app.add_plugin(ServerPlugin::new(()))
+    app.add_plugin(ServerPlugin::new(()).with_connection_mode(ConnectionMode::Offline))
         .add_startup_system(setup)
         .add_system(default_event_handler.in_schedule(EventLoopSchedule))
         .add_system(init_clients)
-        .add_system(despawn_disconnected_clients);
+        .add_system(despawn_disconnected_clients)
+        .add_system(toggle_gamemode_on_sneak.in_schedule(EventLoopSchedule));
 }
 
-fn setup(mut commands: Commands, server: Res<Server>) {
-    let mut instance = server.new_instance(DimensionId::default());
+fn setup(
+    mut commands: Commands,
+    server: Res<Server>,
+    biomes: Query<&Biome>,
+    dimensions: Query<&DimensionType>,
+) {
+    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {

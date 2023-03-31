@@ -64,6 +64,15 @@ impl<S> Ident<S> {
         }
     }
 
+    pub fn to_string_ident(&self) -> Ident<String>
+    where
+        S: AsRef<str>,
+    {
+        Ident {
+            string: self.as_str().to_owned(),
+        }
+    }
+
     pub fn into_inner(self) -> S {
         self.string
     }
@@ -135,6 +144,12 @@ impl<S> AsRef<S> for Ident<S> {
 impl<S: Borrow<str>> Borrow<str> for Ident<S> {
     fn borrow(&self) -> &str {
         self.string.borrow()
+    }
+}
+
+impl From<Ident<&str>> for String {
+    fn from(value: Ident<&str>) -> Self {
+        value.as_str().to_owned()
     }
 }
 
@@ -323,40 +338,11 @@ where
     }
 }
 
-/// Convenience macro for constructing an [`Ident<String>`] from a format
-/// string.
-///
-/// The arguments to this macro are forwarded to [`std::format`].
-///
-/// # Panics
-///
-/// The macro will cause a panic if the formatted string is not a valid resource
-/// identifier. See [`Ident`] for more information.
-///
-/// [`Ident<String>`]: [Ident]
-///
-/// # Examples
-///
-/// ```
-/// use valence_protocol::ident;
-///
-/// let namespace = "my_namespace";
-/// let path = "my_path";
-///
-/// let id = ident!("{namespace}:{path}");
-///
-/// assert_eq!(id.namespace(), "my_namespace");
-/// assert_eq!(id.path(), "my_path");
-/// ```
-#[macro_export]
-macro_rules! ident {
-    ($($arg:tt)*) => {{
-        $crate::ident::Ident::<String>::try_from(::std::format!($($arg)*)).unwrap()
-    }}
-}
-
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::ident;
+
     #[test]
     fn check_namespace_and_path() {
         let id = ident!("namespace:path");
@@ -374,19 +360,19 @@ mod tests {
     #[test]
     #[should_panic]
     fn parse_invalid_0() {
-        ident!("");
+        Ident::new("").unwrap();
     }
 
     #[test]
     #[should_panic]
     fn parse_invalid_1() {
-        ident!(":");
+        Ident::new(":").unwrap();
     }
 
     #[test]
     #[should_panic]
     fn parse_invalid_2() {
-        ident!("foo:bar:baz");
+        Ident::new("foo:bar:baz").unwrap();
     }
 
     #[test]

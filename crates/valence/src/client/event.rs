@@ -18,7 +18,7 @@ use valence_protocol::packet::c2s::play::click_slot::{ClickMode, Slot};
 use valence_protocol::packet::c2s::play::client_command::Action as ClientCommandAction;
 use valence_protocol::packet::c2s::play::client_settings::{ChatMode, DisplayedSkinParts, MainArm};
 use valence_protocol::packet::c2s::play::player_action::Action as PlayerAction;
-use valence_protocol::packet::c2s::play::player_interact::Interaction;
+use valence_protocol::packet::c2s::play::player_interact_entity::EntityInteraction;
 use valence_protocol::packet::c2s::play::recipe_category_options::RecipeBookId;
 use valence_protocol::packet::c2s::play::update_command_block::Mode as CommandBlockMode;
 use valence_protocol::packet::c2s::play::update_structure_block::{
@@ -158,14 +158,14 @@ pub struct QueryEntityNbt {
 
 /// Left or right click interaction with an entity's hitbox.
 #[derive(Clone, Debug)]
-pub struct PlayerInteract {
+pub struct PlayerInteractEntity {
     pub client: Entity,
     /// The raw ID of the entity being interacted with.
     pub entity_id: i32,
     /// If the client was sneaking during the interaction.
     pub sneaking: bool,
     /// The kind of interaction that occurred.
-    pub interact: Interaction,
+    pub interact: EntityInteraction,
 }
 
 #[derive(Clone, Debug)]
@@ -586,7 +586,7 @@ events! {
         QueryEntityNbt
     }
     1 {
-        PlayerInteract
+        PlayerInteractEntity
         JigsawGenerating
         UpdateDifficultyLock
         PlayerMove
@@ -982,8 +982,8 @@ fn handle_one_packet(
                 entity_id: p.entity_id.0,
             });
         }
-        C2sPlayPacket::PlayerInteractC2s(p) => {
-            events.1.player_interact.send(PlayerInteract {
+        C2sPlayPacket::PlayerInteractEntityC2s(p) => {
+            events.1.player_interact_entity.send(PlayerInteractEntity {
                 client: entity,
                 entity_id: p.entity_id.0,
                 sneaking: p.sneaking,
@@ -1018,7 +1018,7 @@ fn handle_one_packet(
                 locked: p.locked,
             });
         }
-        C2sPlayPacket::PositionAndOnGroundC2s(p) => {
+        C2sPlayPacket::PositionAndOnGround(p) => {
             if q.teleport_state.pending_teleports != 0 {
                 return Ok(false);
             }
@@ -1035,7 +1035,7 @@ fn handle_one_packet(
             q.teleport_state.synced_pos = p.position.into();
             q.on_ground.0 = p.on_ground;
         }
-        C2sPlayPacket::FullC2s(p) => {
+        C2sPlayPacket::Full(p) => {
             if q.teleport_state.pending_teleports != 0 {
                 return Ok(false);
             }
@@ -1056,7 +1056,7 @@ fn handle_one_packet(
             q.teleport_state.synced_look.pitch = p.pitch;
             q.on_ground.0 = p.on_ground;
         }
-        C2sPlayPacket::LookAndOnGroundC2s(p) => {
+        C2sPlayPacket::LookAndOnGround(p) => {
             if q.teleport_state.pending_teleports != 0 {
                 return Ok(false);
             }
@@ -1075,7 +1075,7 @@ fn handle_one_packet(
             q.teleport_state.synced_look.pitch = p.pitch;
             q.on_ground.0 = p.on_ground;
         }
-        C2sPlayPacket::OnGroundOnlyC2s(p) => {
+        C2sPlayPacket::OnGroundOnly(p) => {
             if q.teleport_state.pending_teleports != 0 {
                 return Ok(false);
             }

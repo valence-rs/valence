@@ -10,7 +10,8 @@ use crate::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct SynchronizeRecipesS2c<'a> {
-    pub recipes: Vec<Recipe<'a>>,
+    // TODO: this should be a Vec<Recipe<'a>>
+    pub recipes: crate::raw::RawBytes<'a>,
 }
 
 #[derive(Clone, PartialEq, Debug)]

@@ -10,7 +10,6 @@ pub struct PlayerPositionLookS2c {
     pub pitch: f32,
     pub flags: Flags,
     pub teleport_id: VarInt,
-    pub dismount_vehicle: bool,
 }
 
 #[bitfield(u8)]

@@ -10,7 +10,7 @@ use flume::{Receiver, Sender};
 use noise::{NoiseFn, SuperSimplex};
 use tracing::info;
 use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerBundle;
+use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
 
 const SPAWN_POS: DVec3 = DVec3::new(0.0, 200.0, 0.0);
@@ -61,7 +61,12 @@ pub fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, server: Res<Server>) {
+fn setup(
+    mut commands: Commands,
+    server: Res<Server>,
+    dimensions: Query<&DimensionType>,
+    biomes: Query<&Biome>,
+) {
     let seconds_per_day = 86_400;
     let seed = (SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
@@ -102,7 +107,7 @@ fn setup(mut commands: Commands, server: Res<Server>) {
         receiver: finished_receiver,
     });
 
-    let instance = server.new_instance(DimensionId::default());
+    let instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     commands.spawn(instance);
 }
@@ -116,7 +121,7 @@ fn init_clients(
         is_flat.0 = true;
         *game_mode = GameMode::Creative;
 
-        commands.entity(entity).insert(PlayerBundle {
+        commands.entity(entity).insert(PlayerEntityBundle {
             location: Location(instances.single()),
             position: Position(SPAWN_POS),
             uuid: *uuid,

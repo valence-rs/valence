@@ -1,4 +1,3 @@
-use std::iter::FusedIterator;
 use std::net::{IpAddr, SocketAddr};
 use std::ops::Deref;
 use std::sync::Arc;
@@ -14,21 +13,20 @@ use rsa::{PublicKeyParts, RsaPrivateKey};
 use tokio::runtime::{Handle, Runtime};
 use tokio::sync::Semaphore;
 use uuid::Uuid;
-use valence_nbt::{compound, Compound, List};
-use valence_protocol::ident;
 use valence_protocol::types::Property;
 
-use crate::biome::{validate_biomes, Biome, BiomeId};
+use crate::biome::BiomePlugin;
 use crate::client::event::EventLoopSet;
 use crate::client::{ClientBundle, ClientPlugin};
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerPlugin};
-use crate::dimension::{validate_dimensions, Dimension, DimensionId};
+use crate::dimension::DimensionPlugin;
 use crate::entity::EntityPlugin;
-use crate::instance::{Instance, InstancePlugin};
+use crate::instance::InstancePlugin;
 use crate::inventory::{InventoryPlugin, InventorySettings};
 use crate::player_list::PlayerListPlugin;
 use crate::prelude::event::ClientEventPlugin;
 use crate::prelude::ComponentPlugin;
+use crate::registry_codec::RegistryCodecPlugin;
 use crate::server::connect::do_accept_loop;
 use crate::weather::WeatherPlugin;
 
@@ -83,11 +81,6 @@ struct SharedServerInner {
     /// Holding a runtime handle is not enough to keep tokio working. We need
     /// to store the runtime here so we don't drop it.
     _tokio_runtime: Option<Runtime>,
-    dimensions: Arc<[Dimension]>,
-    biomes: Arc<[Biome]>,
-    /// Contains info about dimensions, biomes, and chats.
-    /// Sent to all clients when joining.
-    registry_codec: Compound,
     /// Sender for new clients past the login stage.
     new_clients_send: Sender<ClientBundle>,
     /// Receiver for new clients past the login stage.
@@ -105,12 +98,6 @@ struct SharedServerInner {
 }
 
 impl SharedServer {
-    /// Creates a new [`Instance`] component with the given dimension.
-    #[must_use]
-    pub fn new_instance(&self, dimension: DimensionId) -> Instance {
-        Instance::new(dimension, self)
-    }
-
     /// Gets the socket address this server is bound to.
     pub fn address(&self) -> SocketAddr {
         self.0.address
@@ -150,48 +137,6 @@ impl SharedServer {
     /// Gets a handle to the tokio instance this server is using.
     pub fn tokio_handle(&self) -> &Handle {
         &self.0.tokio_handle
-    }
-
-    /// Obtains a [`Dimension`] by using its corresponding [`DimensionId`].
-    #[track_caller]
-    pub fn dimension(&self, id: DimensionId) -> &Dimension {
-        self.0
-            .dimensions
-            .get(id.0 as usize)
-            .expect("invalid dimension ID")
-    }
-
-    /// Returns an iterator over all added dimensions and their associated
-    /// [`DimensionId`].
-    pub fn dimensions(&self) -> impl FusedIterator<Item = (DimensionId, &Dimension)> + Clone {
-        self.0
-            .dimensions
-            .iter()
-            .enumerate()
-            .map(|(i, d)| (DimensionId(i as u16), d))
-    }
-
-    /// Obtains a [`Biome`] by using its corresponding [`BiomeId`].
-    #[track_caller]
-    pub fn biome(&self, id: BiomeId) -> &Biome {
-        self.0.biomes.get(id.0 as usize).expect("invalid biome ID")
-    }
-
-    /// Returns an iterator over all added biomes and their associated
-    /// [`BiomeId`] in ascending order.
-    pub fn biomes(
-        &self,
-    ) -> impl ExactSizeIterator<Item = (BiomeId, &Biome)> + DoubleEndedIterator + FusedIterator + Clone
-    {
-        self.0
-            .biomes
-            .iter()
-            .enumerate()
-            .map(|(i, b)| (BiomeId(i as u16), b))
-    }
-
-    pub(crate) fn registry_codec(&self) -> &Compound {
-        &self.0.registry_codec
     }
 }
 
@@ -243,11 +188,6 @@ pub fn build_plugin(
         None => plugin.tokio_handle.clone().unwrap(),
     };
 
-    validate_dimensions(&plugin.dimensions)?;
-    validate_biomes(&plugin.biomes)?;
-
-    let registry_codec = make_registry_codec(&plugin.dimensions, &plugin.biomes);
-
     let (new_clients_send, new_clients_recv) = flume::bounded(64);
 
     let shared = SharedServer(Arc::new(SharedServerInner {
@@ -260,9 +200,6 @@ pub fn build_plugin(
         outgoing_capacity: plugin.outgoing_capacity,
         tokio_handle,
         _tokio_runtime: runtime,
-        dimensions: plugin.dimensions.clone(),
-        biomes: plugin.biomes.clone(),
-        registry_codec,
         new_clients_send,
         new_clients_recv,
         connection_sema: Arc::new(Semaphore::new(plugin.max_connections)),
@@ -331,7 +268,10 @@ pub fn build_plugin(
     app.add_system(increment_tick_counter.in_base_set(CoreSet::Last));
 
     // Add internal plugins.
-    app.add_plugin(ComponentPlugin)
+    app.add_plugin(RegistryCodecPlugin)
+        .add_plugin(BiomePlugin)
+        .add_plugin(DimensionPlugin)
+        .add_plugin(ComponentPlugin)
         .add_plugin(ClientPlugin)
         .add_plugin(ClientEventPlugin)
         .add_plugin(EntityPlugin)
@@ -345,33 +285,4 @@ pub fn build_plugin(
 
 fn increment_tick_counter(mut server: ResMut<Server>) {
     server.current_tick += 1;
-}
-
-fn make_registry_codec(dimensions: &[Dimension], biomes: &[Biome]) -> Compound {
-    let dimensions = dimensions
-        .iter()
-        .enumerate()
-        .map(|(id, dim)| dim.to_dimension_registry_item(id as i32))
-        .collect();
-
-    let biomes = biomes
-        .iter()
-        .enumerate()
-        .map(|(id, biome)| biome.to_biome_registry_item(id as i32))
-        .collect();
-
-    compound! {
-        ident!("dimension_type") => compound! {
-            "type" => ident!("dimension_type"),
-            "value" => List::Compound(dimensions),
-        },
-        ident!("worldgen/biome") => compound! {
-            "type" => ident!("worldgen/biome"),
-            "value" => List::Compound(biomes),
-        },
-        ident!("chat_type") => compound! {
-            "type" => ident!("chat_type"),
-            "value" => List::Compound(vec![]),
-        },
-    }
 }

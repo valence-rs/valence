@@ -15,11 +15,12 @@ use rustc_hash::FxHashMap;
 use valence_protocol::array::LengthPrefixedArray;
 use valence_protocol::block_pos::BlockPos;
 use valence_protocol::byte_angle::ByteAngle;
+use valence_protocol::ident::Ident;
 use valence_protocol::packet::s2c::play::particle::Particle;
 use valence_protocol::packet::s2c::play::{
     EntityAnimationS2c, EntityPositionS2c, EntitySetHeadYawS2c, EntityStatusS2c,
-    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, MoveRelativeS2c, OverlayMessageS2c,
-    ParticleS2c, PlaySoundS2c, RotateAndMoveRelativeS2c, RotateS2c,
+    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, MoveRelative, OverlayMessageS2c, ParticleS2c,
+    PlaySoundS2c, Rotate, RotateAndMoveRelative,
 };
 use valence_protocol::sound::Sound;
 use valence_protocol::text::Text;
@@ -27,9 +28,10 @@ use valence_protocol::types::SoundCategory;
 use valence_protocol::var_int::VarInt;
 use valence_protocol::Packet;
 
+use crate::biome::Biome;
 use crate::client::FlushPacketsSet;
 use crate::component::{Despawned, Location, Look, OldLocation, OldPosition, OnGround, Position};
-use crate::dimension::DimensionId;
+use crate::dimension::DimensionType;
 use crate::entity::{
     EntityAnimations, EntityId, EntityKind, EntityStatuses, HeadYaw, InitEntitiesSet,
     PacketByteRange, TrackedData, Velocity,
@@ -46,27 +48,6 @@ mod paletted_container;
 /// An Instance represents a Minecraft world, which consist of [`Chunk`]s.
 /// It manages updating clients when chunks change, and caches chunk and entity
 /// update packets on a per-chunk basis.
-///
-/// To create a new instance, use [`SharedServer::new_instance`].
-/// ```
-/// use bevy_app::prelude::*;
-/// use valence::prelude::*;
-///
-/// let mut app = App::new();
-/// app.add_plugin(ServerPlugin::new(()));
-/// let server = app.world.get_resource::<Server>().unwrap();
-/// let instance = server.new_instance(DimensionId::default());
-/// ```
-/// Now you can actually spawn a new [`Entity`] with `instance`.
-/// ```
-/// # use bevy_app::prelude::*;
-/// # use valence::prelude::*;
-/// # let mut app = App::new();
-/// # app.add_plugin(ServerPlugin::new(()));
-/// # let server = app.world.get_resource::<Server>().unwrap();
-/// # let instance = server.new_instance(DimensionId::default());
-/// let instance_entity = app.world.spawn(instance);
-/// ```
 #[derive(Component)]
 pub struct Instance {
     pub(crate) partition: FxHashMap<ChunkPos, PartitionCell>,
@@ -79,7 +60,7 @@ pub struct Instance {
 }
 
 pub(crate) struct InstanceInfo {
-    dimension: DimensionId,
+    dimension_type_name: Ident<String>,
     section_count: usize,
     min_y: i32,
     biome_registry_len: usize,
@@ -110,8 +91,19 @@ pub(crate) struct PartitionCell {
 }
 
 impl Instance {
-    pub(crate) fn new(dimension: DimensionId, shared: &SharedServer) -> Self {
-        let dim = shared.dimension(dimension);
+    pub fn new(
+        dimension_type_name: impl Into<Ident<String>>,
+        dimensions: &Query<&DimensionType>,
+        biomes: &Query<&Biome>,
+        shared: &SharedServer,
+    ) -> Self {
+        let dimension_type_name = dimension_type_name.into();
+
+        let Some(dim) = dimensions.iter().find(|d| d.name == dimension_type_name) else {
+            panic!("missing dimension type with name \"{dimension_type_name}\"")
+        };
+
+        assert!(dim.height > 0, "invalid dimension height of {}", dim.height);
 
         let light_section_count = (dim.height / 16 + 2) as usize;
 
@@ -124,10 +116,10 @@ impl Instance {
         Self {
             partition: FxHashMap::default(),
             info: InstanceInfo {
-                dimension,
+                dimension_type_name,
                 section_count: (dim.height / 16) as usize,
                 min_y: dim.min_y,
-                biome_registry_len: shared.biomes().len(),
+                biome_registry_len: biomes.iter().count(),
                 compression_threshold: shared.compression_threshold(),
                 filler_sky_light_mask: sky_light_mask.into(),
                 filler_sky_light_arrays: vec![
@@ -141,8 +133,30 @@ impl Instance {
         }
     }
 
-    pub fn dimension(&self) -> DimensionId {
-        self.info.dimension
+    /// TODO: Temporary hack for unit testing. Do not use!
+    #[doc(hidden)]
+    pub fn new_unit_testing(
+        dimension_type_name: impl Into<Ident<String>>,
+        shared: &SharedServer,
+    ) -> Self {
+        Self {
+            partition: FxHashMap::default(),
+            info: InstanceInfo {
+                dimension_type_name: dimension_type_name.into(),
+                section_count: 24,
+                min_y: -64,
+                biome_registry_len: 1,
+                compression_threshold: shared.compression_threshold(),
+                filler_sky_light_mask: vec![].into(),
+                filler_sky_light_arrays: vec![].into(),
+            },
+            packet_buf: vec![],
+            scratch: vec![],
+        }
+    }
+
+    pub fn dimension_type_name(&self) -> Ident<&str> {
+        self.info.dimension_type_name.as_str_ident()
     }
 
     pub fn section_count(&self) -> usize {
@@ -658,7 +672,7 @@ impl UpdateEntityQueryItem<'_> {
         let changed_position = self.pos.0 != self.old_pos.get();
 
         if changed_position && !needs_teleport && self.look.is_changed() {
-            writer.write_packet(&RotateAndMoveRelativeS2c {
+            writer.write_packet(&RotateAndMoveRelative {
                 entity_id,
                 delta: (position_delta * 4096.0).to_array().map(|v| v as i16),
                 yaw: ByteAngle::from_degrees(self.look.yaw),
@@ -667,7 +681,7 @@ impl UpdateEntityQueryItem<'_> {
             });
         } else {
             if changed_position && !needs_teleport {
-                writer.write_packet(&MoveRelativeS2c {
+                writer.write_packet(&MoveRelative {
                     entity_id,
                     delta: (position_delta * 4096.0).to_array().map(|v| v as i16),
                     on_ground: self.on_ground.0,
@@ -675,7 +689,7 @@ impl UpdateEntityQueryItem<'_> {
             }
 
             if self.look.is_changed() {
-                writer.write_packet(&RotateS2c {
+                writer.write_packet(&Rotate {
                     entity_id,
                     yaw: ByteAngle::from_degrees(self.look.yaw),
                     pitch: ByteAngle::from_degrees(self.look.pitch),

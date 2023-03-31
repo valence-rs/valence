@@ -2,7 +2,7 @@
 
 use valence::client::event::{ChatMessage, PlayerInteractBlock};
 use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerBundle;
+use valence::entity::player::PlayerEntityBundle;
 use valence::nbt::{compound, List};
 use valence::prelude::*;
 use valence::protocol::types::Hand;
@@ -27,8 +27,13 @@ pub fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, server: Res<Server>) {
-    let mut instance = server.new_instance(DimensionId::default());
+fn setup(
+    mut commands: Commands,
+    server: Res<Server>,
+    dimensions: Query<&DimensionType>,
+    biomes: Query<&Biome>,
+) {
+    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
@@ -71,7 +76,7 @@ fn init_clients(
     for (entity, uuid, mut game_mode) in &mut clients {
         *game_mode = GameMode::Creative;
 
-        commands.entity(entity).insert(PlayerBundle {
+        commands.entity(entity).insert(PlayerEntityBundle {
             location: Location(instances.single()),
             position: Position::new([1.5, FLOOR_Y as f64 + 1.0, 1.5]),
             look: Look::new(-90.0, 0.0),

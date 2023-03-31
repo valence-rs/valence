@@ -1,5 +1,5 @@
+use crate::ident;
 use crate::ident::Ident;
-use crate::ident_str;
 use crate::packet::s2c::play::play_sound::SoundId;
 
 include!(concat!(env!("OUT_DIR"), "/sound.rs"));
@@ -22,7 +22,7 @@ mod tests {
         assert_eq!(
             Sound::BlockBellUse.to_id(),
             SoundId::Direct {
-                id: Ident::new("block.bell.use").unwrap(),
+                id: ident!("block.bell.use").into(),
                 range: None
             },
         );
