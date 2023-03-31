@@ -49,7 +49,7 @@ pub mod prelude {
     pub use async_trait::async_trait;
     pub use bevy_app::prelude::*;
     pub use bevy_ecs::prelude::*;
-    pub use biome::{Biome, BiomeRegistry};
+    pub use biome::{Biome, BiomeId, BiomeRegistry};
     pub use client::event::{EventLoopSchedule, EventLoopSet};
     pub use client::*;
     pub use component::*;

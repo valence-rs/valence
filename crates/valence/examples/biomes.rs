@@ -23,10 +23,11 @@ pub fn main() {
 fn setup(
     mut commands: Commands,
     dimensions: Query<&DimensionType>,
+    biomes: Query<&Biome>,
     biome_reg: Res<BiomeRegistry>,
     server: Res<Server>,
 ) {
-    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biome_reg, &server);
+    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     let biome_count = biome_reg.iter().count();
 

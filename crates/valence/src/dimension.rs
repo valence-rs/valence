@@ -166,7 +166,7 @@ fn update_dimension_type_registry(
 
         if let Some(value) = dimension_type_reg.iter_mut().find(|v| v.name == dim.name) {
             value.name = dim.name.clone();
-            value.element.insert_all(dimension_type_compound);
+            value.element.merge(dimension_type_compound);
         } else {
             dimension_type_reg.push(RegistryValue {
                 name: dim.name.clone(),

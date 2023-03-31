@@ -61,7 +61,12 @@ pub fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, server: Res<Server>) {
+fn setup(
+    mut commands: Commands,
+    server: Res<Server>,
+    dimensions: Query<&DimensionType>,
+    biomes: Query<&Biome>,
+) {
     let seconds_per_day = 86_400;
     let seed = (SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
@@ -102,7 +107,7 @@ fn setup(mut commands: Commands, server: Res<Server>) {
         receiver: finished_receiver,
     });
 
-    let instance = server.new_instance(DimensionId::default());
+    let instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     commands.spawn(instance);
 }

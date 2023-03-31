@@ -3,7 +3,7 @@
 use valence::client::event::{PlayerInteractEntity, ResourcePackStatus, ResourcePackStatusChange};
 use valence::client::{default_event_handler, despawn_disconnected_clients};
 use valence::entity::player::PlayerEntityBundle;
-use valence::entity::sheep::SheepBundle;
+use valence::entity::sheep::SheepEntityBundle;
 use valence::prelude::*;
 use valence::protocol::packet::c2s::play::player_interact_entity::EntityInteraction;
 
@@ -29,8 +29,13 @@ pub fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, server: Res<Server>) {
-    let mut instance = server.new_instance(DimensionId::default());
+fn setup(
+    mut commands: Commands,
+    server: Res<Server>,
+    dimensions: Query<&DimensionType>,
+    biomes: Query<&Biome>,
+) {
+    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
@@ -46,7 +51,7 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 
     let instance_ent = commands.spawn(instance).id();
 
-    commands.spawn(SheepBundle {
+    commands.spawn(SheepEntityBundle {
         location: Location(instance_ent),
         position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 2.0]),
         look: Look::new(180.0, 0.0),

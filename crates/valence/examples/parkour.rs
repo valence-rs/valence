@@ -54,6 +54,8 @@ struct GameState {
 fn init_clients(
     mut clients: Query<(Entity, &mut Client, &UniqueId, &mut IsFlat, &mut GameMode), Added<Client>>,
     server: Res<Server>,
+    dimensions: Query<&DimensionType>,
+    biomes: Query<&Biome>,
     mut commands: Commands,
 ) {
     for (entity, mut client, uuid, mut is_flat, mut game_mode) in clients.iter_mut() {
@@ -69,7 +71,7 @@ fn init_clients(
             last_block_timestamp: 0,
         };
 
-        let instance = server.new_instance(DimensionId::default());
+        let instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
         let player = PlayerEntityBundle {
             location: Location(entity),

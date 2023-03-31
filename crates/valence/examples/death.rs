@@ -22,9 +22,14 @@ pub fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, server: Res<Server>) {
+fn setup(
+    mut commands: Commands,
+    server: Res<Server>,
+    dimensions: Query<&DimensionType>,
+    biomes: Query<&Biome>,
+) {
     for block in [BlockState::GRASS_BLOCK, BlockState::DEEPSLATE] {
-        let mut instance = server.new_instance(DimensionId::default());
+        let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
         for z in -5..5 {
             for x in -5..5 {

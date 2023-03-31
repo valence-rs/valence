@@ -26,8 +26,14 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, server: Res<Server>, mut player_list: ResMut<PlayerList>) {
-    let mut instance = server.new_instance(DimensionId::default());
+fn setup(
+    mut commands: Commands,
+    mut player_list: ResMut<PlayerList>,
+    server: Res<Server>,
+    dimensions: Query<&DimensionType>,
+    biomes: Query<&Biome>,
+) {
+    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {

@@ -1,6 +1,6 @@
 [package]
 name = "valence"
-version = "0.2.0+mc1.19.3"
+version = "0.2.0+mc1.19.4"
 edition = "2021"
 description = "A framework for building Minecraft servers in Rust."
 repository = "https://github.com/rj00a/valence"

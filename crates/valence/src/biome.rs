@@ -63,6 +63,7 @@ pub struct Biome {
     pub sky_color: i32,
     pub water_color: i32,
     pub water_fog_color: i32,
+    pub grass_color: Option<i32>,
     pub has_precipitation: bool,
     pub temperature: f32,
     // TODO: more stuff.
@@ -71,12 +72,13 @@ pub struct Biome {
 impl Default for Biome {
     fn default() -> Self {
         Self {
-            name: ident!("minecraft:plains").into(),
+            name: ident!("plains").into(),
             downfall: 0.4,
             fog_color: 12638463,
             sky_color: 7907327,
             water_color: 4159204,
             water_fog_color: 329011,
+            grass_color: None,
             has_precipitation: true,
             temperature: 0.8,
         }
@@ -137,6 +139,8 @@ fn load_default_biomes(
                 .and_then(|v| v.as_int())
                 .context("invalid water fog color")?;
 
+            let grass_color = effects.get("grass_color").and_then(|v| v.as_int()).copied();
+
             let has_precipitation = *value
                 .element
                 .get("has_precipitation")
@@ -158,6 +162,7 @@ fn load_default_biomes(
                     sky_color,
                     water_color,
                     water_fog_color,
+                    grass_color,
                     has_precipitation,
                     temperature,
                 })
@@ -183,21 +188,27 @@ fn update_biome_registry(
     for (entity, biome) in &biomes {
         let biome_registry = codec.registry_mut(BiomeRegistry::KEY);
 
+        let mut effects = compound! {
+            "fog_color" => biome.fog_color,
+            "sky_color" => biome.sky_color,
+            "water_color" => biome.water_color,
+            "water_fog_color" => biome.water_fog_color,
+        };
+
+        if let Some(grass_color) = biome.grass_color {
+            effects.insert("grass_color", grass_color);
+        }
+
         let biome_compound = compound! {
             "downfall" => biome.downfall,
-            "effects" => compound! {
-                "fog_color" => biome.fog_color,
-                "sky_color" => biome.sky_color,
-                "water_color" => biome.water_color,
-                "water_fog_color" => biome.water_fog_color,
-            },
+            "effects" => effects,
             "has_precipitation" => biome.has_precipitation,
             "temperature" => biome.temperature,
         };
 
         if let Some(value) = biome_registry.iter_mut().find(|v| v.name == biome.name) {
             value.name = biome.name.clone();
-            value.element.insert_all(biome_compound);
+            value.element.merge(biome_compound);
         } else {
             biome_registry.push(RegistryValue {
                 name: biome.name.clone(),
