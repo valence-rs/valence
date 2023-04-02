@@ -4,7 +4,7 @@ use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::{LogLevel, ScheduleBuildSettings};
 use bytes::BytesMut;
-use valence_protocol::codec::{PacketDecoder, PacketEncoder};
+use valence_protocol::decoder::{PacketDecoder, PacketEncoder};
 use valence_protocol::packet::S2cPlayPacket;
 use valence_protocol::{ident, Packet};
 

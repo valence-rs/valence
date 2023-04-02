@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::cmp;
 
-use anyhow::bail;
+use anyhow::{bail, ensure, Context};
 use bevy_app::{CoreSet, Plugin};
 use bevy_ecs::prelude::*;
 use bevy_ecs::query::WorldQuery;
@@ -32,6 +32,7 @@ use valence_protocol::packet::s2c::play::InventoryS2c;
 use valence_protocol::packet::C2sPlayPacket;
 use valence_protocol::types::{Difficulty, Direction, Hand};
 use valence_protocol::var_int::VarInt;
+use valence_protocol::Packet;
 
 use super::{
     CursorItem, KeepaliveState, PlayerActionSequence, PlayerInventoryState, TeleportState,
@@ -765,10 +766,21 @@ fn handle_one_packet(
     inventories: &mut Query<&Inventory, Without<Client>>,
     inventory_settings: &Res<InventorySettings>,
 ) -> anyhow::Result<bool> {
-    let Some(pkt) = q.client.dec.try_next_packet::<C2sPlayPacket>()? else {
+    let Some(frame) = q.client.dec.try_next_packet()? else {
         // No packets to decode.
         return Ok(false);
     };
+
+    let mut r = &frame[..];
+
+    let pkt =
+        C2sPlayPacket::decode_packet(&mut r).context("failed to decode serverbound play packet")?;
+
+    ensure!(
+        r.is_empty(),
+        "serverbound play packet missed {} bytes",
+        r.len()
+    );
 
     let entity = q.entity;
 

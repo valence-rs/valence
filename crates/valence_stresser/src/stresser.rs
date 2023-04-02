@@ -5,7 +5,8 @@ use anyhow::bail;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use uuid::Uuid;
-use valence_protocol::codec::{PacketDecoder, PacketEncoder};
+use valence_protocol::decoder::{decode_packet, PacketDecoder};
+use valence_protocol::encoder::PacketEncoder;
 use valence_protocol::packet::c2s::handshake::handshake::NextState;
 use valence_protocol::packet::c2s::handshake::HandshakeC2s;
 use valence_protocol::packet::c2s::login::LoginHelloC2s;
@@ -76,24 +77,26 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
 
         dec.queue_bytes(read_buf);
 
-        if let Ok(Some(pkt)) = dec.try_next_packet::<S2cLoginPacket>() {
-            match pkt {
-                S2cLoginPacket::LoginCompressionS2c(p) => {
-                    let threshold = p.threshold.0 as u32;
+        if let Ok(Some(frame)) = dec.try_next_packet() {
+            if let Ok(pkt) = decode_packet::<S2cLoginPacket>(&frame) {
+                match pkt {
+                    S2cLoginPacket::LoginCompressionS2c(p) => {
+                        let threshold = p.threshold.0 as u32;
 
-                    dec.set_compression(true);
-                    enc.set_compression(Some(threshold));
+                        dec.set_compression(Some(threshold));
+                        enc.set_compression(Some(threshold));
+                    }
+
+                    S2cLoginPacket::LoginSuccessS2c(_) => {
+                        break;
+                    }
+
+                    S2cLoginPacket::LoginHelloS2c(_) => {
+                        bail!("encryption not implemented");
+                    }
+
+                    _ => (),
                 }
-
-                S2cLoginPacket::LoginSuccessS2c(_) => {
-                    break;
-                }
-
-                S2cLoginPacket::LoginHelloS2c(_) => {
-                    bail!("encryption not implemented");
-                }
-
-                _ => (),
             }
         }
     }
@@ -101,26 +104,8 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
     println!("{sess_name} logged in");
 
     loop {
-        while !dec.has_next_packet()? {
-            dec.reserve(rb_size);
-
-            let mut read_buf = dec.take_capacity();
-
-            conn.readable().await?;
-
-            match conn.try_read_buf(&mut read_buf) {
-                Ok(0) => return Err(io::Error::from(ErrorKind::UnexpectedEof).into()),
-                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => continue,
-                Err(e) => return Err(e.into()),
-                Ok(_) => (),
-            };
-
-            dec.queue_bytes(read_buf);
-        }
-
-        match dec.try_next_packet::<S2cPlayPacket>() {
-            Ok(None) => continue,
-            Ok(Some(pkt)) => match pkt {
+        while let Some(frame) = dec.try_next_packet()? {
+            match decode_packet(&frame)? {
                 S2cPlayPacket::KeepAliveS2c(p) => {
                     enc.clear();
 
@@ -143,8 +128,22 @@ pub async fn make_session<'a>(params: &SessionParams<'a>) -> anyhow::Result<()> 
                     conn.write_all(&enc.take()).await?;
                 }
                 _ => (),
-            },
-            Err(err) => return Err(err),
+            }
         }
+
+        dec.reserve(rb_size);
+
+        let mut read_buf = dec.take_capacity();
+
+        conn.readable().await?;
+
+        match conn.try_read_buf(&mut read_buf) {
+            Ok(0) => return Err(io::Error::from(ErrorKind::UnexpectedEof).into()),
+            Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => continue,
+            Err(e) => return Err(e.into()),
+            Ok(_) => (),
+        };
+
+        dec.queue_bytes(read_buf);
     }
 }

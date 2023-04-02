@@ -7,7 +7,7 @@ use valence_nbt::{compound, List};
 use valence_protocol::array::LengthPrefixedArray;
 use valence_protocol::block::{BlockKind, BlockState, PropName, PropValue};
 use valence_protocol::byte_angle::ByteAngle;
-use valence_protocol::codec::{
+use valence_protocol::decoder::{
     encode_packet, encode_packet_compressed, PacketDecoder, PacketEncoder,
 };
 use valence_protocol::item::ItemKind;
