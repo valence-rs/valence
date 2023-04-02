@@ -69,7 +69,7 @@ fn manage_particles(
     mut instances: Query<&mut Instance>,
     mut particle_idx: Local<usize>,
 ) {
-    if server.current_tick() % 20 != 0 {
+    if server.current_tick() % 10 != 0 {
         return;
     }
 
@@ -210,6 +210,6 @@ fn create_particle_vec() -> Vec<Particle> {
         Particle::WaxOff,
         Particle::ElectricSpark,
         Particle::Scrape,
-        Particle::Shriek,
+        Particle::Shriek { delay: 0 },
     ]
 }

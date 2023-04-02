@@ -135,7 +135,9 @@ pub enum Particle {
     WaxOff,
     ElectricSpark,
     Scrape,
-    Shriek,
+    Shriek {
+        delay: i32,
+    },
 }
 
 impl Particle {
@@ -359,7 +361,9 @@ impl Particle {
             92 => Particle::WaxOff,
             93 => Particle::ElectricSpark,
             94 => Particle::Scrape,
-            95 => Particle::Shriek,
+            95 => Particle::Shriek {
+                delay: VarInt::decode(r)?.0,
+            },
             id => bail!("invalid particle ID of {id}"),
         })
     }
@@ -435,6 +439,7 @@ impl Encode for Particle {
                 entity_eye_height.encode(&mut w)?;
                 VarInt(*ticks).encode(w)
             }
+            Particle::Shriek { delay } => VarInt(*delay).encode(w),
             _ => Ok(()),
         }
     }
