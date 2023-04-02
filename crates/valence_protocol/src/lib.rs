@@ -67,8 +67,8 @@
 // Allows us to use our own proc macros internally.
 extern crate self as valence_protocol;
 
+use std::fmt;
 use std::io::Write;
-use std::{fmt, io};
 
 pub use anyhow::{Error, Result};
 pub use valence_protocol_macros::{ident, Decode, Encode, Packet};
@@ -172,17 +172,17 @@ pub trait Encode {
 
     /// Hack to get around the lack of specialization. Not public API.
     #[doc(hidden)]
-    fn write_slice(slice: &[Self], w: impl Write) -> io::Result<()>
+    fn encode_slice(slice: &[Self], w: impl Write) -> Result<()>
     where
         Self: Sized,
     {
         let _ = (slice, w);
-        unimplemented!("for internal use in valence_protocol only")
+        unimplemented!("no implementation of `encode_slice`")
     }
 
     /// Hack to get around the lack of specialization. Not public API.
     #[doc(hidden)]
-    const HAS_WRITE_SLICE: bool = false;
+    const HAS_ENCODE_SLICE: bool = false;
 }
 
 /// The `Decode` trait allows objects to be read from the Minecraft protocol. It
