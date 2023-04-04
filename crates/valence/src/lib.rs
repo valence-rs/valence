@@ -44,6 +44,7 @@ mod unit_test;
 pub mod util;
 pub mod view;
 pub mod weather;
+pub mod event_loop;
 
 pub mod prelude {
     pub use async_trait::async_trait;

@@ -16,15 +16,14 @@ use uuid::Uuid;
 use valence_protocol::types::Property;
 
 use crate::biome::BiomePlugin;
-use crate::client::event::EventLoopSet;
 use crate::client::{ClientBundle, ClientPlugin};
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerPlugin};
 use crate::dimension::DimensionPlugin;
 use crate::entity::EntityPlugin;
+use crate::event_loop::{EventLoopPlugin, EventLoopSet};
 use crate::instance::InstancePlugin;
 use crate::inventory::{InventoryPlugin, InventorySettings};
 use crate::player_list::PlayerListPlugin;
-use crate::prelude::event::ClientEventPlugin;
 use crate::prelude::ComponentPlugin;
 use crate::registry_codec::RegistryCodecPlugin;
 use crate::server::connect::do_accept_loop;
@@ -273,7 +272,7 @@ pub fn build_plugin(
         .add_plugin(DimensionPlugin)
         .add_plugin(ComponentPlugin)
         .add_plugin(ClientPlugin)
-        .add_plugin(ClientEventPlugin)
+        .add_plugin(EventLoopPlugin)
         .add_plugin(EntityPlugin)
         .add_plugin(InstancePlugin)
         .add_plugin(InventoryPlugin)

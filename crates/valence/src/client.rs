@@ -7,7 +7,7 @@ use bevy_app::{CoreSet, Plugin};
 use bevy_ecs::prelude::*;
 use bevy_ecs::query::WorldQuery;
 use bevy_ecs::system::Command;
-use bytes::BytesMut;
+use bytes::{BytesMut, Bytes};
 use glam::{DVec3, Vec3};
 use rand::Rng;
 use tracing::warn;
@@ -172,9 +172,28 @@ pub struct Client {
     dec: PacketDecoder,
 }
 
-pub(crate) trait ClientConnection: Send + Sync + 'static {
-    fn try_send(&mut self, bytes: BytesMut) -> anyhow::Result<()>;
-    fn try_recv(&mut self) -> anyhow::Result<BytesMut>;
+/// Represents the bidirectional packet channel between the server and a client
+/// in the "play" state.
+pub trait ClientConnection: Send + Sync + 'static {
+    /// Sends encoded clientbound packet data. This function must not block and
+    /// the data should be sent as soon as possible.
+    fn try_send(&mut self, bytes: Bytes) -> anyhow::Result<()>;
+    /// Receives the next pending serverbound packet. This must return
+    /// immediately without blocking.
+    fn try_recv(&mut self) -> anyhow::Result<Option<ReceivedPacket>>;
+    /// The number of pending packets waiting to be received via [`Self::recv`].
+    fn len(&self) -> usize;
+}
+
+#[derive(Clone, Debug)]
+pub struct ReceivedPacket {
+    /// The moment in time this packet arrived. This is _not_ the instant this
+    /// packet was returned from [`ClientConnection::recv`].
+    pub when: Instant,
+    /// This packet's ID.
+    pub id: i32,
+    /// The content of the packet, excluding the leading varint packet ID.
+    pub data: Bytes,
 }
 
 impl Drop for Client {
@@ -196,6 +215,14 @@ impl WritePacket for Client {
 }
 
 impl Client {
+    pub fn connection(&self) -> &dyn ClientConnection {
+        self.conn.as_ref()
+    }
+
+    pub fn connection_mut(&mut self) -> &mut dyn ClientConnection {
+        self.conn.as_mut()
+    }
+
     /// Flushes the packet queue to the underlying connection.
     ///
     /// This is called automatically at the end of the tick and when the client
@@ -206,7 +233,7 @@ impl Client {
     pub fn flush_packets(&mut self) -> anyhow::Result<()> {
         let bytes = self.enc.take();
         if !bytes.is_empty() {
-            self.conn.try_send(bytes)
+            self.conn.try_send(bytes.freeze())
         } else {
             Ok(())
         }
