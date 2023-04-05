@@ -22,7 +22,7 @@ use crate::dimension::DimensionPlugin;
 use crate::entity::EntityPlugin;
 use crate::event_loop::{EventLoopPlugin, EventLoopSet};
 use crate::instance::InstancePlugin;
-use crate::inventory::{InventoryPlugin, InventorySettings};
+use crate::inventory::InventoryPlugin;
 use crate::player_list::PlayerListPlugin;
 use crate::prelude::ComponentPlugin;
 use crate::registry_codec::RegistryCodecPlugin;
@@ -239,7 +239,6 @@ pub fn build_plugin(
 
     // Insert resources.
     app.insert_resource(server);
-    app.insert_resource(InventorySettings::default());
 
     // Make the app loop forever at the configured TPS.
     {

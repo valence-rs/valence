@@ -122,7 +122,7 @@ fn digging_survival_mode(
 }
 
 fn place_blocks(
-    mut clients: Query<(&mut Inventory, &GameMode, &PlayerInventoryState)>,
+    mut clients: Query<(&mut Inventory, &GameMode, &ClientInventoryState)>,
     mut instances: Query<&mut Instance>,
     mut events: EventReader<PlayerInteractBlock>,
 ) {

@@ -30,10 +30,14 @@ use std::borrow::Cow;
 use std::iter::FusedIterator;
 use std::ops::Range;
 
-use bevy_app::{CoreSet, Plugin};
+use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use tracing::{debug, warn};
 use valence_protocol::item::ItemStack;
+use valence_protocol::packet::c2s::play::click_slot::{ClickMode, Slot};
+use valence_protocol::packet::c2s::play::{
+    ClickSlotC2s, CloseHandledScreenC2s, CreativeInventoryActionC2s, UpdateSelectedSlotC2s,
+};
 use valence_protocol::packet::s2c::play::{
     CloseScreenS2c, InventoryS2c, OpenScreenS2c, ScreenHandlerSlotUpdateS2c,
 };
@@ -41,17 +45,13 @@ use valence_protocol::text::Text;
 use valence_protocol::types::WindowType;
 use valence_protocol::var_int::VarInt;
 
-use crate::client::event::{
-    ClickSlot, CloseHandledScreen, CreativeInventoryAction, UpdateSelectedSlot,
-};
-use crate::client::{Client, CursorItem, PlayerInventoryState};
+use crate::client::{Client, ClientInventoryState, CursorItem};
 use crate::component::GameMode;
+use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 use crate::packet::WritePacket;
 use crate::prelude::FlushPacketsSet;
 
 mod validate;
-
-pub(crate) use validate::*;
 
 /// The number of slots in the "main" part of the player inventory. 3 rows of 9,
 /// plus the hotbar.
@@ -292,9 +292,9 @@ impl Inventory {
 /// an inventory.
 #[derive(Component, Clone, Debug)]
 pub struct OpenInventory {
-    /// The Entity with the `Inventory` component that the client is currently
+    /// The entity with the `Inventory` component that the client is currently
     /// viewing.
-    pub(crate) entity: Entity,
+    pub entity: Entity,
     client_changed: u64,
 }
 
@@ -304,10 +304,6 @@ impl OpenInventory {
             entity,
             client_changed: 0,
         }
-    }
-
-    pub fn entity(&self) -> Entity {
-        self.entity
     }
 }
 
@@ -452,21 +448,23 @@ impl Plugin for InventoryPlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.add_systems(
             (
-                handle_set_held_item,
-                handle_click_container
-                    .before(update_open_inventories)
-                    .before(update_player_inventories),
-                handle_set_slot_creative
-                    .before(update_open_inventories)
-                    .before(update_player_inventories),
                 update_open_inventories,
-                handle_close_container,
                 update_client_on_close_inventory.after(update_open_inventories),
                 update_player_inventories,
             )
                 .in_base_set(CoreSet::PostUpdate)
                 .before(FlushPacketsSet),
-        );
+        )
+        .add_systems(
+            (
+                handle_update_selected_slot,
+                handle_click_slot,
+                handle_creative_inventory_action,
+            )
+                .in_set(EventLoopSet)
+                .in_schedule(EventLoopSchedule),
+        )
+        .init_resource::<InventorySettings>();
     }
 }
 
@@ -476,7 +474,7 @@ fn update_player_inventories(
         (
             &mut Inventory,
             &mut Client,
-            &mut PlayerInventoryState,
+            &mut ClientInventoryState,
             Ref<CursorItem>,
         ),
         Without<OpenInventory>,
@@ -553,7 +551,7 @@ fn update_open_inventories(
     mut clients: Query<(
         Entity,
         &mut Client,
-        &mut PlayerInventoryState,
+        &mut ClientInventoryState,
         &CursorItem,
         &mut OpenInventory,
     )>,
@@ -611,7 +609,7 @@ fn update_open_inventories(
             } else {
                 // Send the changed slots.
 
-                // The slots that were NOT changed by this client, and they need to be sent
+                // The slots that were NOT changed by this client, and they need to be sent.
                 let changed_filtered = inventory.changed & !open_inventory.client_changed;
 
                 if changed_filtered != 0 {
@@ -639,10 +637,12 @@ fn update_open_inventories(
 }
 
 /// Handles clients telling the server that they are closing an inventory.
-fn handle_close_container(mut events: EventReader<CloseHandledScreen>, mut commands: Commands) {
-    for event in events.iter() {
-        if let Some(mut entity) = commands.get_entity(event.client) {
-            entity.remove::<OpenInventory>();
+fn handle_close_handled_screen(mut packets: EventReader<PacketEvent>, mut commands: Commands) {
+    for packet in packets.iter() {
+        if packet.decode::<CloseHandledScreenC2s>().is_some() {
+            if let Some(mut entity) = commands.get_entity(packet.client) {
+                entity.remove::<OpenInventory>();
+            }
         }
     }
 }
@@ -651,7 +651,7 @@ fn handle_close_container(mut events: EventReader<CloseHandledScreen>, mut comma
 /// indicates that the client is no longer viewing an inventory.
 fn update_client_on_close_inventory(
     mut removals: RemovedComponents<OpenInventory>,
-    mut clients: Query<(&mut Client, &PlayerInventoryState)>,
+    mut clients: Query<(&mut Client, &ClientInventoryState)>,
 ) {
     for entity in &mut removals {
         if let Ok((mut client, inv_state)) = clients.get_mut(entity) {
@@ -662,142 +662,263 @@ fn update_client_on_close_inventory(
     }
 }
 
-// TODO: Do this logic in c2s packet handler?
-fn handle_click_container(
+// TODO: make this event user friendly.
+#[derive(Clone, Debug)]
+pub struct ClickSlot {
+    pub client: Entity,
+    pub window_id: u8,
+    pub state_id: i32,
+    pub slot_id: i16,
+    pub button: i8,
+    pub mode: ClickMode,
+    pub slot_changes: Vec<Slot>,
+    pub carried_item: Option<ItemStack>,
+}
+
+#[derive(Clone, Debug)]
+pub struct DropItemStack {
+    pub client: Entity,
+    pub from_slot: Option<u16>,
+    pub stack: ItemStack,
+}
+
+fn handle_click_slot(
+    mut packets: EventReader<PacketEvent>,
     mut clients: Query<(
         &mut Client,
         &mut Inventory,
-        &mut PlayerInventoryState,
+        &mut ClientInventoryState,
         Option<&mut OpenInventory>,
         &mut CursorItem,
     )>,
-    // TODO: this query matches disconnected clients. Define client marker component to avoid
-    // problem?
     mut inventories: Query<&mut Inventory, Without<Client>>,
-    mut events: EventReader<ClickSlot>,
+    mut events: EventWriter<CreativeInventoryAction>,
+    mut drop_item_stack_events: EventWriter<DropItemStack>,
+    mut click_slot_events: EventWriter<ClickSlot>,
 ) {
-    for event in events.iter() {
-        let Ok((mut client, mut client_inventory, mut inv_state, open_inventory, mut cursor_item)) =
-            clients.get_mut(event.client) else {
-                // The client does not exist, ignore.
-                continue;
-            };
+    for packet in packets.iter() {
+        let Some(pkt) = packet.decode::<ClickSlotC2s>() else {
+            // Not the packet we're looking for.
+            continue
+        };
 
-        // Validate the window id.
-        if (event.window_id == 0) != open_inventory.is_none() {
-            warn!(
-                "Client sent a click with an invalid window id for current state: window_id = {}, \
-                 open_inventory present = {}",
-                event.window_id,
-                open_inventory.is_some()
+        let Ok((
+            mut client,
+            mut client_inv,
+            mut inv_state,
+            open_inventory,
+            mut cursor_item
+        )) = clients.get_mut(packet.client) else {
+            // The client does not exist, ignore.
+            continue;
+        };
+
+        let open_inv = open_inventory.and_then(|open| inventories.get_mut(open.entity).ok());
+
+        if let Err(e) = validate::validate_click_slot_packet(
+            &pkt,
+            &client_inv,
+            open_inv.as_deref(),
+            &cursor_item,
+        ) {
+            debug!(
+                "failed to validate click slot packet for client {:#?}: \"{e:#}\" {pkt:#?}",
+                packet.client
             );
+
+            // Resync the inventory.
+
+            client.write_packet(&InventoryS2c {
+                window_id: if open_inv.is_some() {
+                    inv_state.window_id
+                } else {
+                    0
+                },
+                state_id: VarInt(inv_state.state_id.0),
+                slots: Cow::Borrowed(open_inv.unwrap_or(client_inv).slot_slice()),
+                carried_item: Cow::Borrowed(&cursor_item.0),
+            });
+
             continue;
         }
 
-        if let Some(mut open_inventory) = open_inventory {
-            // The player is interacting with an inventory that is open.
+        if pkt.slot_idx < 0 && pkt.mode == ClickMode::Click {
+            // The client is dropping the cursor item by clicking outside the window.
 
-            let Ok(mut target_inventory) = inventories.get_mut(open_inventory.entity) else {
-                // The inventory does not exist, ignore.
-                continue;
-            };
-
-            if inv_state.state_id.0 != event.state_id {
-                // Client is out of sync. Resync and ignore click.
-
-                debug!("Client state id mismatch, resyncing");
-
-                inv_state.state_id += 1;
-
-                client.write_packet(&InventoryS2c {
-                    window_id: inv_state.window_id,
-                    state_id: VarInt(inv_state.state_id.0),
-                    slots: Cow::Borrowed(target_inventory.slot_slice()),
-                    carried_item: Cow::Borrowed(&cursor_item.0),
+            if let Some(stack) = cursor_item.0.take() {
+                drop_item_stack_events.send(DropItemStack {
+                    client: packet.client,
+                    from_slot: None,
+                    stack,
                 });
-
-                continue;
             }
+        } else if pkt.mode == ClickMode::DropKey {
+            // The client is dropping an item by pressing the drop key.
 
-            cursor_item.set_if_neq(CursorItem(event.carried_item.clone()));
-
-            for slot in event.slot_changes.clone() {
-                if (0i16..target_inventory.slot_count() as i16).contains(&slot.idx) {
-                    // The client is interacting with a slot in the target inventory.
-                    target_inventory.set_slot(slot.idx as u16, slot.item);
-                    open_inventory.client_changed |= 1 << slot.idx;
+            let entire_stack = pkt.button == 1;
+            if let Some(stack) = client_inv.slot(pkt.slot_idx as u16) {
+                // TODO: is the use of `replace_slot` here causing unnecessary packets to be
+                // sent?
+                let dropped = if entire_stack || stack.count() == 1 {
+                    client_inv.replace_slot(pkt.slot_idx as u16, None)
                 } else {
-                    // The client is interacting with a slot in their own inventory.
-                    let slot_id = convert_to_player_slot_id(target_inventory.kind, slot.idx as u16);
-                    client_inventory.set_slot(slot_id, slot.item);
-                    inv_state.slots_changed |= 1 << slot_id;
+                    let mut stack = stack.clone();
+                    stack.set_count(stack.count() - 1);
+                    let mut old_slot = client_inv.replace_slot(pkt.slot_idx as u16, Some(stack));
+                    // we already checked that the slot was not empty and that the
+                    // stack count is > 1
+                    old_slot.as_mut().unwrap().set_count(1);
+                    old_slot
                 }
+                .expect("dropped item should exist"); // we already checked that the slot was not empty
+
+                drop_item_stack_events.send(DropItemStack {
+                    client: packet.client,
+                    from_slot: Some(pkt.slot_idx as u16),
+                    stack: dropped,
+                });
             }
         } else {
-            // The client is interacting with their own inventory.
+            // The player is clicking a slot in an inventory.
 
-            if inv_state.state_id.0 != event.state_id {
-                // Client is out of sync. Resync and ignore the click.
-
-                debug!("Client state id mismatch, resyncing");
-
-                inv_state.state_id += 1;
-
-                client.write_packet(&InventoryS2c {
-                    window_id: inv_state.window_id,
-                    state_id: VarInt(inv_state.state_id.0),
-                    slots: Cow::Borrowed(client_inventory.slot_slice()),
-                    carried_item: Cow::Borrowed(&cursor_item.0),
-                });
-
+            // Validate the window id.
+            if (pkt.window_id == 0) != open_inventory.is_none() {
+                warn!(
+                    "Client sent a click with an invalid window id for current state: window_id = \
+                     {}, open_inventory present = {}",
+                    pkt.window_id,
+                    open_inventory.is_some()
+                );
                 continue;
             }
 
-            cursor_item.set_if_neq(CursorItem(event.carried_item.clone()));
-            inv_state.client_updated_cursor_item = true;
+            if let Some(mut open_inventory) = open_inventory {
+                // The player is interacting with an inventory that is open.
 
-            for slot in event.slot_changes.clone() {
-                if (0i16..client_inventory.slot_count() as i16).contains(&slot.idx) {
-                    client_inventory.set_slot(slot.idx as u16, slot.item);
-                    inv_state.slots_changed |= 1 << slot.idx;
-                } else {
-                    // The client is trying to interact with a slot that does not exist,
-                    // ignore.
-                    warn!(
-                        "Client attempted to interact with slot {} which does not exist",
-                        slot.idx
-                    );
+                let Ok(mut target_inventory) = inventories.get_mut(open_inventory.entity) else {
+                    // The inventory does not exist, ignore.
+                    continue;
+                };
+
+                if inv_state.state_id.0 != pkt.state_id.0 {
+                    // Client is out of sync. Resync and ignore click.
+
+                    debug!("Client state id mismatch, resyncing");
+
+                    inv_state.state_id += 1;
+
+                    client.write_packet(&InventoryS2c {
+                        window_id: inv_state.window_id,
+                        state_id: VarInt(inv_state.state_id.0),
+                        slots: Cow::Borrowed(target_inventory.slot_slice()),
+                        carried_item: Cow::Borrowed(&cursor_item.0),
+                    });
+
+                    continue;
+                }
+
+                cursor_item.set_if_neq(CursorItem(pkt.carried_item.clone()));
+
+                for slot in pkt.slot_changes.clone() {
+                    if (0i16..target_inventory.slot_count() as i16).contains(&slot.idx) {
+                        // The client is interacting with a slot in the target inventory.
+                        target_inventory.set_slot(slot.idx as u16, slot.item);
+                        open_inventory.client_changed |= 1 << slot.idx;
+                    } else {
+                        // The client is interacting with a slot in their own inventory.
+                        let slot_id =
+                            convert_to_player_slot_id(target_inventory.kind, slot.idx as u16);
+                        client_inv.set_slot(slot_id, slot.item);
+                        inv_state.slots_changed |= 1 << slot_id;
+                    }
+                }
+            } else {
+                // The client is interacting with their own inventory.
+
+                if inv_state.state_id.0 != pkt.state_id.0 {
+                    // Client is out of sync. Resync and ignore the click.
+
+                    debug!("Client state id mismatch, resyncing");
+
+                    inv_state.state_id += 1;
+
+                    client.write_packet(&InventoryS2c {
+                        window_id: inv_state.window_id,
+                        state_id: VarInt(inv_state.state_id.0),
+                        slots: Cow::Borrowed(client_inv.slot_slice()),
+                        carried_item: Cow::Borrowed(&cursor_item.0),
+                    });
+
+                    continue;
+                }
+
+                cursor_item.set_if_neq(CursorItem(pkt.carried_item.clone()));
+                inv_state.client_updated_cursor_item = true;
+
+                for slot in pkt.slot_changes.clone() {
+                    if (0i16..client_inv.slot_count() as i16).contains(&slot.idx) {
+                        client_inv.set_slot(slot.idx as u16, slot.item);
+                        inv_state.slots_changed |= 1 << slot.idx;
+                    } else {
+                        // The client is trying to interact with a slot that does not exist,
+                        // ignore.
+                        warn!(
+                            "Client attempted to interact with slot {} which does not exist",
+                            slot.idx
+                        );
+                    }
                 }
             }
+
+            click_slot_events.send(ClickSlot {
+                client: packet.client,
+                window_id: pkt.window_id,
+                state_id: pkt.state_id.0,
+                slot_id: pkt.slot_idx,
+                button: pkt.button,
+                mode: pkt.mode,
+                slot_changes: pkt.slot_changes,
+                carried_item: pkt.carried_item,
+            });
         }
     }
 }
 
-fn handle_set_slot_creative(
+#[derive(Clone, Debug)]
+pub struct CreativeInventoryAction {
+    pub client: Entity,
+    pub slot: i16,
+    pub clicked_item: Option<ItemStack>,
+}
+
+fn handle_creative_inventory_action(
+    mut packets: EventReader<PacketEvent>,
     mut clients: Query<(
         &mut Client,
         &mut Inventory,
-        &mut PlayerInventoryState,
+        &mut ClientInventoryState,
         &GameMode,
     )>,
-    mut events: EventReader<CreativeInventoryAction>,
+    mut events: EventWriter<CreativeInventoryAction>,
 ) {
-    for event in events.iter() {
-        if let Ok((mut client, mut inventory, mut inv_state, game_mode)) =
-            clients.get_mut(event.client)
-        {
+    for packet in packets.iter() {
+        if let Some(pkt) = packet.decode::<CreativeInventoryActionC2s>() {
+            let Ok((mut client, mut inventory, mut inv_state, game_mode)) = clients.get_mut(packet.client) else {
+                continue
+            };
+
             if *game_mode != GameMode::Creative {
                 // The client is not in creative mode, ignore.
                 continue;
             }
 
-            if event.slot < 0 || event.slot >= inventory.slot_count() as i16 {
+            if pkt.slot < 0 || pkt.slot >= inventory.slot_count() as i16 {
                 // The client is trying to interact with a slot that does not exist, ignore.
                 continue;
             }
 
             // Set the slot without marking it as changed.
-            inventory.slots[event.slot as usize] = event.clicked_item.clone();
+            inventory.slots[pkt.slot as usize] = pkt.clicked_item.clone();
 
             inv_state.state_id += 1;
 
@@ -808,20 +929,41 @@ fn handle_set_slot_creative(
             client.write_packet(&ScreenHandlerSlotUpdateS2c {
                 window_id: 0,
                 state_id: VarInt(inv_state.state_id.0),
-                slot_idx: event.slot,
-                slot_data: Cow::Borrowed(&event.clicked_item),
+                slot_idx: pkt.slot,
+                slot_data: Cow::Borrowed(&pkt.clicked_item),
+            });
+
+            events.send(CreativeInventoryAction {
+                client: packet.client,
+                slot: pkt.slot,
+                clicked_item: pkt.clicked_item,
             });
         }
     }
 }
 
-fn handle_set_held_item(
-    mut clients: Query<&mut PlayerInventoryState>,
-    mut events: EventReader<UpdateSelectedSlot>,
+#[derive(Clone, Debug)]
+pub struct UpdateSelectedSlot {
+    pub client: Entity,
+    pub slot: i16,
+}
+
+fn handle_update_selected_slot(
+    mut packets: EventReader<PacketEvent>,
+    mut clients: Query<&mut ClientInventoryState>,
+    mut events: EventWriter<UpdateSelectedSlot>,
 ) {
-    for event in events.iter() {
-        if let Ok(mut inv_state) = clients.get_mut(event.client) {
-            inv_state.held_item_slot = convert_hotbar_slot_id(event.slot as u16);
+    for packet in packets.iter() {
+        if let Some(pkt) = packet.decode::<UpdateSelectedSlotC2s>() {
+            if let Ok(mut inv_state) = clients.get_mut(packet.client) {
+                // TODO: validate this.
+                inv_state.held_item_slot = convert_hotbar_slot_id(pkt.slot as u16);
+
+                events.send(UpdateSelectedSlot {
+                    client: packet.client,
+                    slot: pkt.slot,
+                });
+            }
         }
     }
 }
@@ -1131,7 +1273,7 @@ mod test {
         // Make the client click the slot and pick up the item.
         let state_id = app
             .world
-            .get::<PlayerInventoryState>(client_ent)
+            .get::<ClientInventoryState>(client_ent)
             .unwrap()
             .state_id;
         client_helper.send(&valence_protocol::packet::c2s::play::ClickSlotC2s {
@@ -1140,7 +1282,7 @@ mod test {
             mode: valence_protocol::packet::c2s::play::click_slot::ClickMode::Click,
             state_id: VarInt(state_id.0),
             slot_idx: 20,
-            slots: vec![valence_protocol::packet::c2s::play::click_slot::Slot {
+            slot_changes: vec![valence_protocol::packet::c2s::play::click_slot::Slot {
                 idx: 20,
                 item: None,
             }],
@@ -1267,7 +1409,7 @@ mod test {
         client_helper.clear_sent();
 
         // Make the client click the slot and pick up the item.
-        let inv_state = app.world.get::<PlayerInventoryState>(client_ent).unwrap();
+        let inv_state = app.world.get::<ClientInventoryState>(client_ent).unwrap();
         let state_id = inv_state.state_id;
         let window_id = inv_state.window_id;
         client_helper.send(&valence_protocol::packet::c2s::play::ClickSlotC2s {
@@ -1276,7 +1418,7 @@ mod test {
             mode: valence_protocol::packet::c2s::play::click_slot::ClickMode::Click,
             state_id: VarInt(state_id.0),
             slot_idx: 20,
-            slots: vec![valence_protocol::packet::c2s::play::click_slot::Slot {
+            slot_changes: vec![valence_protocol::packet::c2s::play::click_slot::Slot {
                 idx: 20,
                 item: None,
             }],
@@ -1475,7 +1617,7 @@ mod test {
         // Make assertions
         let inv_state = app
             .world
-            .get::<PlayerInventoryState>(client_ent)
+            .get::<ClientInventoryState>(client_ent)
             .expect("could not find client");
         assert_eq!(inv_state.window_id, 3);
     }
@@ -1496,7 +1638,7 @@ mod test {
         // Make assertions
         let inv_state = app
             .world
-            .get::<PlayerInventoryState>(client_ent)
+            .get::<ClientInventoryState>(client_ent)
             .expect("could not find client");
         assert_eq!(inv_state.held_item_slot, 40);
 
@@ -1510,7 +1652,7 @@ mod test {
 
         let inv_state = app
             .world
-            .get::<PlayerInventoryState>(client_ent)
+            .get::<ClientInventoryState>(client_ent)
             .expect("could not find client");
         let expected_state_id = inv_state.state_id.0;
 
@@ -1526,7 +1668,7 @@ mod test {
         // Make assertions
         let inv_state = app
             .world
-            .get::<PlayerInventoryState>(client_ent)
+            .get::<ClientInventoryState>(client_ent)
             .expect("could not find client");
         assert_eq!(
             inv_state.state_id.0, expected_state_id,
@@ -1543,7 +1685,6 @@ mod test {
         use valence_protocol::types::Direction;
 
         use super::*;
-        use crate::client::event::DropItemStack;
 
         #[test]
         fn should_drop_item_player_action() -> anyhow::Result<()> {
@@ -1626,7 +1767,7 @@ mod test {
             // Make assertions
             let inv_state = app
                 .world
-                .get::<PlayerInventoryState>(client_ent)
+                .get::<ClientInventoryState>(client_ent)
                 .expect("could not find client");
             assert_eq!(inv_state.held_item_slot, 36);
             let inventory = app
@@ -1696,7 +1837,7 @@ mod test {
             cursor_item.0 = Some(ItemStack::new(ItemKind::IronIngot, 32, None));
             let inv_state = app
                 .world
-                .get_mut::<PlayerInventoryState>(client_ent)
+                .get_mut::<ClientInventoryState>(client_ent)
                 .expect("could not find client");
             let state_id = inv_state.state_id.0;
 
@@ -1710,7 +1851,7 @@ mod test {
                 button: 0,
                 mode: ClickMode::Click,
                 state_id: VarInt(state_id),
-                slots: vec![],
+                slot_changes: vec![],
                 carried_item: None,
             });
 
@@ -1744,7 +1885,7 @@ mod test {
             let (client_ent, mut client_helper) = scenario_single_client(&mut app);
             let inv_state = app
                 .world
-                .get_mut::<PlayerInventoryState>(client_ent)
+                .get_mut::<ClientInventoryState>(client_ent)
                 .expect("could not find client");
             let state_id = inv_state.state_id.0;
             let mut inventory = app
@@ -1763,7 +1904,7 @@ mod test {
                 button: 0,
                 mode: ClickMode::DropKey,
                 state_id: VarInt(state_id),
-                slots: vec![Slot {
+                slot_changes: vec![Slot {
                     idx: 40,
                     item: Some(ItemStack::new(ItemKind::IronIngot, 31, None)),
                 }],
@@ -1795,7 +1936,7 @@ mod test {
             let (client_ent, mut client_helper) = scenario_single_client(&mut app);
             let inv_state = app
                 .world
-                .get_mut::<PlayerInventoryState>(client_ent)
+                .get_mut::<ClientInventoryState>(client_ent)
                 .expect("could not find client");
             let state_id = inv_state.state_id.0;
             let mut inventory = app
@@ -1814,7 +1955,7 @@ mod test {
                 button: 1, // pressing control
                 mode: ClickMode::DropKey,
                 state_id: VarInt(state_id),
-                slots: vec![Slot {
+                slot_changes: vec![Slot {
                     idx: 40,
                     item: None,
                 }],
@@ -1852,7 +1993,7 @@ mod test {
         app.update();
         client_helper.clear_sent();
 
-        let inv_state = app.world.get::<PlayerInventoryState>(client_ent).unwrap();
+        let inv_state = app.world.get::<ClientInventoryState>(client_ent).unwrap();
         let window_id = inv_state.window_id;
         let state_id = inv_state.state_id.0;
 
@@ -1862,7 +2003,7 @@ mod test {
             slot_idx: -999,
             button: 2,
             mode: ClickMode::Drag,
-            slots: vec![
+            slot_changes: vec![
                 Slot {
                     idx: 9,
                     item: Some(ItemStack::new(ItemKind::Diamond, 21, None)),

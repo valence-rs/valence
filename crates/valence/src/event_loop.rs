@@ -15,7 +15,7 @@ pub struct PacketEvent {
     /// The client this packet originated from.
     pub client: Entity,
     /// The moment in time this packet arrived.
-    pub when: Instant,
+    pub timestamp: Instant,
     /// This packet's ID.
     pub id: i32,
     /// The content of the packet, excluding the leading varint packet ID.
@@ -23,7 +23,7 @@ pub struct PacketEvent {
 }
 
 impl PacketEvent {
-    pub fn decode_packet<'a, P>(&'a self) -> Option<P>
+    pub fn decode<'a, P>(&'a self) -> Option<P>
     where
         P: Packet<'a> + Decode<'a>,
     {
@@ -32,7 +32,7 @@ impl PacketEvent {
 
             match P::decode(&mut r) {
                 Ok(pkt) => {
-                    if !r.is_empty() {
+                    if r.is_empty() {
                         return Some(pkt);
                     }
 
@@ -80,7 +80,7 @@ pub(crate) fn run_event_loop(
             Ok(Some(pkt)) => {
                 event_writer.send(PacketEvent {
                     client: entity,
-                    when: pkt.when,
+                    timestamp: pkt.timestamp,
                     id: pkt.id,
                     data: pkt.data,
                 });
@@ -114,7 +114,7 @@ pub(crate) fn run_event_loop(
                     Ok(Some(pkt)) => {
                         event_writer.send(PacketEvent {
                             client: *entity,
-                            when: pkt.when,
+                            timestamp: pkt.timestamp,
                             id: pkt.id,
                             data: pkt.data,
                         });

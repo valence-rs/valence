@@ -7,7 +7,7 @@ use bevy_app::{CoreSet, Plugin};
 use bevy_ecs::prelude::*;
 use bevy_ecs::query::WorldQuery;
 use bevy_ecs::system::Command;
-use bytes::{BytesMut, Bytes};
+use bytes::Bytes;
 use glam::{DVec3, Vec3};
 use rand::Rng;
 use tracing::warn;
@@ -91,7 +91,7 @@ pub(crate) struct ClientBundle {
     is_flat: IsFlat,
     teleport_state: TeleportState,
     cursor_item: CursorItem,
-    player_inventory_state: PlayerInventoryState,
+    player_inventory_state: ClientInventoryState,
     inventory: Inventory,
 }
 
@@ -143,7 +143,7 @@ impl ClientBundle {
             is_flat: IsFlat::default(),
             has_respawn_screen: HasRespawnScreen::default(),
             cursor_item: CursorItem::default(),
-            player_inventory_state: PlayerInventoryState {
+            player_inventory_state: ClientInventoryState {
                 window_id: 0,
                 state_id: Wrapping(0),
                 slots_changed: 0,
@@ -189,7 +189,7 @@ pub trait ClientConnection: Send + Sync + 'static {
 pub struct ReceivedPacket {
     /// The moment in time this packet arrived. This is _not_ the instant this
     /// packet was returned from [`ClientConnection::recv`].
-    pub when: Instant,
+    pub timestamp: Instant,
     /// This packet's ID.
     pub id: i32,
     /// The content of the packet, excluding the leading varint packet ID.
@@ -601,7 +601,7 @@ pub struct CursorItem(pub Option<ItemStack>);
 // TODO: move this component to inventory module?
 /// Miscellaneous inventory data.
 #[derive(Component, Debug)]
-pub struct PlayerInventoryState {
+pub struct ClientInventoryState {
     /// The current window ID. Incremented when inventories are opened.
     pub(crate) window_id: u8,
     pub(crate) state_id: Wrapping<i32>,
@@ -616,7 +616,7 @@ pub struct PlayerInventoryState {
     pub(crate) held_item_slot: u16,
 }
 
-impl PlayerInventoryState {
+impl ClientInventoryState {
     pub fn held_item_slot(&self) -> u16 {
         self.held_item_slot
     }
