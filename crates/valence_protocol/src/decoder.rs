@@ -226,12 +226,6 @@ impl PacketDecoder {
         }
     }
 
-    #[deprecated]
-    pub fn queued_bytes(&self) -> &[u8] {
-        // TODO: skip prepared packet?
-        self.buf.as_ref()
-    }
-
     pub fn take_capacity(&mut self) -> BytesMut {
         self.buf.split_off(self.buf.len())
     }

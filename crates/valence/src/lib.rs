@@ -51,7 +51,6 @@ pub mod prelude {
     pub use bevy_app::prelude::*;
     pub use bevy_ecs::prelude::*;
     pub use biome::{Biome, BiomeId, BiomeRegistry};
-    pub use client::event::{EventLoopSchedule, EventLoopSet};
     pub use client::*;
     pub use component::*;
     pub use config::{
@@ -59,6 +58,7 @@ pub mod prelude {
     };
     pub use dimension::{DimensionType, DimensionTypeRegistry};
     pub use entity::{EntityAnimation, EntityKind, EntityManager, EntityStatus, HeadYaw};
+    pub use event_loop::{EventLoopSchedule, EventLoopSet};
     pub use glam::DVec3;
     pub use instance::{Block, BlockMut, BlockRef, Chunk, Instance};
     pub use inventory::{

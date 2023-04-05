@@ -2,6 +2,7 @@ use bevy_ecs::prelude::*;
 use bevy_ecs::query::WorldQuery;
 use valence_protocol::types::Hand;
 
+/*
 use super::event::{
     ClientSettings, HandSwing, PlayerMove, StartSneaking, StartSprinting, StopSneaking,
     StopSprinting,
@@ -114,3 +115,4 @@ pub fn default_event_handler(
         }
     }
 }
+*/

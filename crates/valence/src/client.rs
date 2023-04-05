@@ -7,7 +7,7 @@ use bevy_app::{CoreSet, Plugin};
 use bevy_ecs::prelude::*;
 use bevy_ecs::query::WorldQuery;
 use bevy_ecs::system::Command;
-use bytes::Bytes;
+use bytes::{Bytes, BytesMut};
 use glam::{DVec3, Vec3};
 use rand::Rng;
 use tracing::warn;
@@ -100,10 +100,9 @@ impl ClientBundle {
         info: NewClientInfo,
         conn: Box<dyn ClientConnection>,
         enc: PacketEncoder,
-        dec: PacketDecoder,
     ) -> Self {
         Self {
-            client: Client { conn, enc, dec },
+            client: Client { conn, enc },
             scratch: ScratchBuf::default(),
             entity_remove_buffer: EntityRemoveBuf(vec![]),
             username: Username(info.username),
@@ -169,7 +168,6 @@ impl ClientBundle {
 pub struct Client {
     conn: Box<dyn ClientConnection>,
     enc: PacketEncoder,
-    dec: PacketDecoder,
 }
 
 /// Represents the bidirectional packet channel between the server and a client
@@ -177,18 +175,18 @@ pub struct Client {
 pub trait ClientConnection: Send + Sync + 'static {
     /// Sends encoded clientbound packet data. This function must not block and
     /// the data should be sent as soon as possible.
-    fn try_send(&mut self, bytes: Bytes) -> anyhow::Result<()>;
+    fn try_send(&mut self, bytes: BytesMut) -> anyhow::Result<()>;
     /// Receives the next pending serverbound packet. This must return
     /// immediately without blocking.
     fn try_recv(&mut self) -> anyhow::Result<Option<ReceivedPacket>>;
-    /// The number of pending packets waiting to be received via [`Self::recv`].
+    /// The number of pending packets waiting to be received via [`Self::try_recv`].
     fn len(&self) -> usize;
 }
 
 #[derive(Clone, Debug)]
 pub struct ReceivedPacket {
     /// The moment in time this packet arrived. This is _not_ the instant this
-    /// packet was returned from [`ClientConnection::recv`].
+    /// packet was returned from [`ClientConnection::try_recv`].
     pub timestamp: Instant,
     /// This packet's ID.
     pub id: i32,
@@ -233,7 +231,7 @@ impl Client {
     pub fn flush_packets(&mut self) -> anyhow::Result<()> {
         let bytes = self.enc.take();
         if !bytes.is_empty() {
-            self.conn.try_send(bytes.freeze())
+            self.conn.try_send(bytes)
         } else {
             Ok(())
         }

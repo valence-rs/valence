@@ -33,6 +33,8 @@ mod byte_channel;
 mod connect;
 pub(crate) mod connection;
 
+use connection::NewClientArgs;
+
 /// Contains global server state accessible as a [`Resource`].
 #[derive(Resource)]
 pub struct Server {
@@ -81,9 +83,9 @@ struct SharedServerInner {
     /// to store the runtime here so we don't drop it.
     _tokio_runtime: Option<Runtime>,
     /// Sender for new clients past the login stage.
-    new_clients_send: Sender<ClientBundle>,
+    new_clients_send: Sender<NewClientArgs>,
     /// Receiver for new clients past the login stage.
-    new_clients_recv: Receiver<ClientBundle>,
+    new_clients_recv: Receiver<NewClientArgs>,
     /// A semaphore used to limit the number of simultaneous connections to the
     /// server. Closing this semaphore stops new connections.
     connection_sema: Arc<Semaphore>,
@@ -227,11 +229,15 @@ pub fn build_plugin(
     // System to spawn new clients.
     let spawn_new_clients = move |world: &mut World| {
         for _ in 0..shared.0.new_clients_recv.len() {
-            let Ok(client) = shared.0.new_clients_recv.try_recv() else {
+            let Ok(args) = shared.0.new_clients_recv.try_recv() else {
                 break
             };
 
-            world.spawn(client);
+            world.spawn(ClientBundle::new(
+                args.info,
+                args.conn,
+                args.enc,
+            ));
         }
     };
 

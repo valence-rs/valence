@@ -150,7 +150,7 @@ async fn handle_handshake(
                 .context("error handling login")?
             {
                 Some(info) => {
-                    let client = conn.into_client_bundle(
+                    let client = conn.into_client_args(
                         info,
                         shared.0.incoming_capacity,
                         shared.0.outgoing_capacity,
