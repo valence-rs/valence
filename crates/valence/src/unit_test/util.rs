@@ -1,14 +1,18 @@
+use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::{LogLevel, ScheduleBuildSettings};
-use bytes::BytesMut;
-use valence_protocol::decoder::{PacketDecoder, PacketEncoder};
+use bytes::{Buf, BufMut, BytesMut};
+use valence_protocol::decoder::{decode_packet, PacketDecoder};
+use valence_protocol::encoder::PacketEncoder;
 use valence_protocol::packet::S2cPlayPacket;
+use valence_protocol::var_int::VarInt;
 use valence_protocol::{ident, Packet};
 
-use crate::client::{ClientBundle, ClientConnection};
+use crate::client::{ClientBundle, ClientConnection, ReceivedPacket};
 use crate::component::Location;
 use crate::config::{ConnectionMode, ServerPlugin};
 use crate::instance::Instance;
@@ -21,8 +25,7 @@ use crate::server::{NewClientInfo, Server};
 pub(crate) fn create_mock_client(client_info: NewClientInfo) -> (ClientBundle, MockClientHelper) {
     let mock_connection = MockClientConnection::new();
     let enc = PacketEncoder::new();
-    let dec = PacketDecoder::new();
-    let bundle = ClientBundle::new(client_info, Box::new(mock_connection.clone()), enc, dec);
+    let bundle = ClientBundle::new(client_info, Box::new(mock_connection.clone()), enc);
 
     (bundle, MockClientHelper::new(mock_connection))
 }
@@ -42,13 +45,13 @@ pub fn gen_client_info(username: impl Into<String>) -> NewClientInfo {
 /// Safe to clone, but note that the clone will share the same buffers.
 #[derive(Clone)]
 pub(crate) struct MockClientConnection {
-    buffers: Arc<Mutex<MockClientBuffers>>,
+    inner: Arc<Mutex<MockClientConnectionInner>>,
 }
 
-struct MockClientBuffers {
+struct MockClientConnectionInner {
     /// The queue of packets to receive from the client to be processed by the
     /// server.
-    recv_buf: BytesMut,
+    recv_buf: VecDeque<ReceivedPacket>,
     /// The queue of packets to send from the server to the client.
     send_buf: BytesMut,
 }
@@ -56,63 +59,49 @@ struct MockClientBuffers {
 impl MockClientConnection {
     pub fn new() -> Self {
         Self {
-            buffers: Arc::new(Mutex::new(MockClientBuffers {
-                recv_buf: BytesMut::new(),
+            inner: Arc::new(Mutex::new(MockClientConnectionInner {
+                recv_buf: VecDeque::new(),
                 send_buf: BytesMut::new(),
             })),
         }
     }
 
-    pub fn inject_recv(&mut self, bytes: BytesMut) {
-        self.buffers.lock().unwrap().recv_buf.unsplit(bytes);
+    /// Injects a (Packet ID + data) frame to be received by the server.
+    pub fn inject_recv(&mut self, mut bytes: BytesMut) {
+        let id = VarInt::decode_partial((&mut bytes).reader()).expect("failed to decode packet ID");
+
+        self.inner
+            .lock()
+            .unwrap()
+            .recv_buf
+            .push_back(ReceivedPacket {
+                timestamp: Instant::now(),
+                id,
+                data: bytes.freeze(),
+            });
     }
 
     pub fn take_sent(&mut self) -> BytesMut {
-        self.buffers.lock().unwrap().send_buf.split()
+        self.inner.lock().unwrap().send_buf.split()
     }
 
     pub fn clear_sent(&mut self) {
-        self.buffers.lock().unwrap().send_buf.clear();
+        self.inner.lock().unwrap().send_buf.clear();
     }
 }
 
 impl ClientConnection for MockClientConnection {
     fn try_send(&mut self, bytes: BytesMut) -> anyhow::Result<()> {
-        self.buffers.lock().unwrap().send_buf.unsplit(bytes);
+        self.inner.lock().unwrap().send_buf.unsplit(bytes);
         Ok(())
     }
 
-    fn try_recv(&mut self) -> anyhow::Result<BytesMut> {
-        Ok(self.buffers.lock().unwrap().recv_buf.split())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_mock_client_recv() -> anyhow::Result<()> {
-        let msg = 0xdeadbeefu32.to_be_bytes();
-        let b = BytesMut::from(&msg[..]);
-        let mut client = MockClientConnection::new();
-        client.inject_recv(b);
-        let b = client.try_recv()?;
-        assert_eq!(b, BytesMut::from(&msg[..]));
-
-        Ok(())
+    fn try_recv(&mut self) -> anyhow::Result<Option<ReceivedPacket>> {
+        Ok(self.inner.lock().unwrap().recv_buf.pop_front())
     }
 
-    #[test]
-    fn test_mock_client_send() -> anyhow::Result<()> {
-        let msg = 0xdeadbeefu32.to_be_bytes();
-        let b = BytesMut::from(&msg[..]);
-        let mut client = MockClientConnection::new();
-        client.try_send(b)?;
-        let b = client.take_sent();
-        assert_eq!(b, BytesMut::from(&msg[..]));
-
-        Ok(())
+    fn len(&self) -> usize {
+        self.inner.lock().unwrap().recv_buf.len()
     }
 }
 
@@ -120,33 +109,49 @@ mod tests {
 /// and read packets from the send stream.
 pub struct MockClientHelper {
     conn: MockClientConnection,
-    enc: PacketEncoder,
     dec: PacketDecoder,
+    scratch: BytesMut,
+    collected_frames: Vec<BytesMut>,
 }
 
 impl MockClientHelper {
     fn new(conn: MockClientConnection) -> Self {
         Self {
             conn,
-            enc: PacketEncoder::new(),
             dec: PacketDecoder::new(),
+            scratch: BytesMut::new(),
+            collected_frames: vec![],
         }
     }
 
     /// Inject a packet to be treated as a packet inbound to the server. Panics
     /// if the packet cannot be sent.
     pub fn send<'a>(&mut self, packet: &impl Packet<'a>) {
-        self.enc
-            .append_packet(packet)
+        packet
+            .encode_packet((&mut self.scratch).writer())
             .expect("failed to encode packet");
-        self.conn.inject_recv(self.enc.take());
+
+        self.conn.inject_recv(self.scratch.split());
     }
 
     /// Collect all packets that have been sent to the client.
-    pub fn collect_sent<'a>(&'a mut self) -> anyhow::Result<Vec<S2cPlayPacket<'a>>> {
+    pub fn collect_sent<'a>(&'a mut self) -> Vec<S2cPlayPacket<'a>> {
         self.dec.queue_bytes(self.conn.take_sent());
 
-        self.dec.collect_into_vec::<S2cPlayPacket<'a>>()
+        self.collected_frames.clear();
+
+        while let Some(frame) = self
+            .dec
+            .try_next_packet()
+            .expect("failed to decode packet frame")
+        {
+            self.collected_frames.push(frame);
+        }
+
+        self.collected_frames
+            .iter()
+            .map(|frame| decode_packet(frame).expect("failed to decode packet"))
+            .collect()
     }
 
     pub fn clear_sent(&mut self) {

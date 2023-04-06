@@ -559,8 +559,14 @@ pub struct HashedSeed(pub u64);
 #[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct ReducedDebugInfo(pub bool);
 
-#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct HasRespawnScreen(pub bool);
+
+impl Default for HasRespawnScreen {
+    fn default() -> Self {
+        Self(true)
+    }
+}
 
 #[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct IsDebug(pub bool);
@@ -1348,7 +1354,7 @@ mod tests {
 
         let mut loaded_chunks = BTreeSet::new();
 
-        for pkt in client_helper.collect_sent().unwrap() {
+        for pkt in client_helper.collect_sent() {
             if let S2cPlayPacket::ChunkDataS2c(ChunkDataS2c {
                 chunk_x, chunk_z, ..
             }) = pkt
@@ -1373,7 +1379,7 @@ mod tests {
         app.update();
         let client = app.world.entity_mut(client_ent);
 
-        for pkt in client_helper.collect_sent().unwrap() {
+        for pkt in client_helper.collect_sent() {
             match pkt {
                 S2cPlayPacket::ChunkDataS2c(ChunkDataS2c {
                     chunk_x, chunk_z, ..

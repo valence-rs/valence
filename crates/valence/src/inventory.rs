@@ -460,11 +460,16 @@ impl Plugin for InventoryPlugin {
                 handle_update_selected_slot,
                 handle_click_slot,
                 handle_creative_inventory_action,
+                handle_close_handled_screen,
             )
                 .in_set(EventLoopSet)
                 .in_schedule(EventLoopSchedule),
         )
-        .init_resource::<InventorySettings>();
+        .init_resource::<InventorySettings>()
+        .add_event::<ClickSlot>()
+        .add_event::<DropItemStack>()
+        .add_event::<CreativeInventoryAction>()
+        .add_event::<UpdateSelectedSlot>();
     }
 }
 
@@ -712,7 +717,9 @@ fn handle_click_slot(
             continue;
         };
 
-        let open_inv = open_inventory.as_ref().and_then(|open| inventories.get_mut(open.entity).ok());
+        let open_inv = open_inventory
+            .as_ref()
+            .and_then(|open| inventories.get_mut(open.entity).ok());
 
         if let Err(e) = validate::validate_click_slot_packet(
             &pkt,
@@ -1109,13 +1116,13 @@ impl From<WindowType> for InventoryKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Resource)]
 pub struct InventorySettings {
-    pub enable_item_dupe_check: bool,
+    pub validate_actions: bool,
 }
 
 impl Default for InventorySettings {
     fn default() -> Self {
         Self {
-            enable_item_dupe_check: true,
+            validate_actions: true,
         }
     }
 }
@@ -1148,7 +1155,7 @@ mod test {
     }
 
     #[test]
-    fn test_should_open_inventory() -> anyhow::Result<()> {
+    fn test_should_open_inventory() {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
 
@@ -1169,7 +1176,7 @@ mod test {
         app.update();
 
         // Make assertions
-        let sent_packets = client_helper.collect_sent()?;
+        let sent_packets = client_helper.collect_sent();
 
         assert_packet_count!(sent_packets, 1, S2cPlayPacket::OpenScreenS2c(_));
         assert_packet_count!(sent_packets, 1, S2cPlayPacket::InventoryS2c(_));
@@ -1178,12 +1185,10 @@ mod test {
             S2cPlayPacket::OpenScreenS2c(_),
             S2cPlayPacket::InventoryS2c(_)
         );
-
-        Ok(())
     }
 
     #[test]
-    fn test_should_close_inventory() -> anyhow::Result<()> {
+    fn test_should_close_inventory() {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
 
@@ -1213,15 +1218,13 @@ mod test {
         app.update();
 
         // Make assertions
-        let sent_packets = client_helper.collect_sent()?;
+        let sent_packets = client_helper.collect_sent();
 
         assert_packet_count!(sent_packets, 1, S2cPlayPacket::CloseScreenS2c(_));
-
-        Ok(())
     }
 
     #[test]
-    fn test_should_remove_invalid_open_inventory() -> anyhow::Result<()> {
+    fn test_should_remove_invalid_open_inventory() {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
 
@@ -1249,14 +1252,12 @@ mod test {
 
         // Make assertions
         assert!(app.world.get::<OpenInventory>(client_ent).is_none());
-        let sent_packets = client_helper.collect_sent()?;
+        let sent_packets = client_helper.collect_sent();
         assert_packet_count!(sent_packets, 1, S2cPlayPacket::CloseScreenS2c(_));
-
-        Ok(())
     }
 
     #[test]
-    fn test_should_modify_player_inventory_click_slot() -> anyhow::Result<()> {
+    fn test_should_modify_player_inventory_click_slot() {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
         let mut inventory = app
@@ -1291,7 +1292,7 @@ mod test {
         app.update();
 
         // Make assertions
-        let sent_packets = client_helper.collect_sent()?;
+        let sent_packets = client_helper.collect_sent();
 
         // because the inventory was changed as a result of the client's click, the
         // server should not send any packets to the client because the client
@@ -1314,12 +1315,10 @@ mod test {
             cursor_item.0,
             Some(ItemStack::new(ItemKind::Diamond, 2, None))
         );
-
-        Ok(())
     }
 
     #[test]
-    fn test_should_modify_player_inventory_server_side() -> anyhow::Result<()> {
+    fn test_should_modify_player_inventory_server_side() {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
         let mut inventory = app
@@ -1342,7 +1341,7 @@ mod test {
         app.update();
 
         // Make assertions
-        let sent_packets = client_helper.collect_sent()?;
+        let sent_packets = client_helper.collect_sent();
         // because the inventory was modified server side, the client needs to be
         // updated with the change.
         assert_packet_count!(
@@ -1350,12 +1349,10 @@ mod test {
             1,
             S2cPlayPacket::ScreenHandlerSlotUpdateS2c(_)
         );
-
-        Ok(())
     }
 
     #[test]
-    fn test_should_sync_entire_player_inventory() -> anyhow::Result<()> {
+    fn test_should_sync_entire_player_inventory() {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
 
@@ -1372,10 +1369,8 @@ mod test {
         app.update();
 
         // Make assertions
-        let sent_packets = client_helper.collect_sent()?;
+        let sent_packets = client_helper.collect_sent();
         assert_packet_count!(sent_packets, 1, S2cPlayPacket::InventoryS2c(_));
-
-        Ok(())
     }
 
     fn set_up_open_inventory(app: &mut App, client_ent: Entity) -> Entity {
@@ -1393,7 +1388,7 @@ mod test {
     }
 
     #[test]
-    fn test_should_modify_open_inventory_click_slot() -> anyhow::Result<()> {
+    fn test_should_modify_open_inventory_click_slot() {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
         let inventory_ent = set_up_open_inventory(&mut app, client_ent);
@@ -1427,7 +1422,7 @@ mod test {
         app.update();
 
         // Make assertions
-        let sent_packets = client_helper.collect_sent()?;
+        let sent_packets = client_helper.collect_sent();
 
         // because the inventory was modified as a result of the client's click, the
         // server should not send any packets to the client because the client
@@ -1450,12 +1445,10 @@ mod test {
             cursor_item.0,
             Some(ItemStack::new(ItemKind::Diamond, 2, None))
         );
-
-        Ok(())
     }
 
     #[test]
-    fn test_should_modify_open_inventory_server_side() -> anyhow::Result<()> {
+    fn test_should_modify_open_inventory_server_side() {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
         let inventory_ent = set_up_open_inventory(&mut app, client_ent);
@@ -1474,7 +1467,7 @@ mod test {
         app.update();
 
         // Make assertions
-        let sent_packets = client_helper.collect_sent()?;
+        let sent_packets = client_helper.collect_sent();
 
         // because the inventory was modified server side, the client needs to be
         // updated with the change.
@@ -1491,12 +1484,10 @@ mod test {
             inventory.slot(5),
             Some(&ItemStack::new(ItemKind::IronIngot, 1, None))
         );
-
-        Ok(())
     }
 
     #[test]
-    fn test_should_sync_entire_open_inventory() -> anyhow::Result<()> {
+    fn test_should_sync_entire_open_inventory() {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
         let inventory_ent = set_up_open_inventory(&mut app, client_ent);
@@ -1514,10 +1505,8 @@ mod test {
         app.update();
 
         // Make assertions
-        let sent_packets = client_helper.collect_sent()?;
+        let sent_packets = client_helper.collect_sent();
         assert_packet_count!(sent_packets, 1, S2cPlayPacket::InventoryS2c(_));
-
-        Ok(())
     }
 
     #[test]
@@ -1622,7 +1611,7 @@ mod test {
     }
 
     #[test]
-    fn test_should_handle_set_held_item() -> anyhow::Result<()> {
+    fn test_should_handle_set_held_item() {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
 
@@ -1640,12 +1629,10 @@ mod test {
             .get::<ClientInventoryState>(client_ent)
             .expect("could not find client");
         assert_eq!(inv_state.held_item_slot, 40);
-
-        Ok(())
     }
 
     #[test]
-    fn should_not_increment_state_id_on_cursor_item_change() -> anyhow::Result<()> {
+    fn should_not_increment_state_id_on_cursor_item_change() {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
 
@@ -1673,8 +1660,6 @@ mod test {
             inv_state.state_id.0, expected_state_id,
             "state id should not have changed"
         );
-
-        Ok(())
     }
 
     mod dropping_items {
@@ -1686,7 +1671,7 @@ mod test {
         use super::*;
 
         #[test]
-        fn should_drop_item_player_action() -> anyhow::Result<()> {
+        fn should_drop_item_player_action() {
             let mut app = App::new();
             let (client_ent, mut client_helper) = scenario_single_client(&mut app);
             let mut inventory = app
@@ -1730,18 +1715,16 @@ mod test {
                 ItemStack::new(ItemKind::IronIngot, 1, None)
             );
 
-            let sent_packets = client_helper.collect_sent()?;
+            let sent_packets = client_helper.collect_sent();
             assert_packet_count!(
                 sent_packets,
                 0,
                 S2cPlayPacket::ScreenHandlerSlotUpdateS2c(_)
             );
-
-            Ok(())
         }
 
         #[test]
-        fn should_drop_item_stack_player_action() -> anyhow::Result<()> {
+        fn should_drop_item_stack_player_action() {
             let mut app = App::new();
             let (client_ent, mut client_helper) = scenario_single_client(&mut app);
             let mut inventory = app
@@ -1786,12 +1769,10 @@ mod test {
                 events[0].stack,
                 ItemStack::new(ItemKind::IronIngot, 32, None)
             );
-
-            Ok(())
         }
 
         #[test]
-        fn should_drop_item_stack_set_creative_mode_slot() -> anyhow::Result<()> {
+        fn should_drop_item_stack_set_creative_mode_slot() {
             let mut app = App::new();
             let (client_ent, mut client_helper) = scenario_single_client(&mut app);
 
@@ -1821,12 +1802,10 @@ mod test {
                 events[0].stack,
                 ItemStack::new(ItemKind::IronIngot, 32, None)
             );
-
-            Ok(())
         }
 
         #[test]
-        fn should_drop_item_stack_click_container_outside() -> anyhow::Result<()> {
+        fn should_drop_item_stack_click_container_outside() {
             let mut app = App::new();
             let (client_ent, mut client_helper) = scenario_single_client(&mut app);
             let mut cursor_item = app
@@ -1874,12 +1853,10 @@ mod test {
                 events[0].stack,
                 ItemStack::new(ItemKind::IronIngot, 32, None)
             );
-
-            Ok(())
         }
 
         #[test]
-        fn should_drop_item_click_container_with_dropkey_single() -> anyhow::Result<()> {
+        fn should_drop_item_click_container_with_dropkey_single() {
             let mut app = App::new();
             let (client_ent, mut client_helper) = scenario_single_client(&mut app);
             let inv_state = app
@@ -1925,12 +1902,10 @@ mod test {
                 events[0].stack,
                 ItemStack::new(ItemKind::IronIngot, 1, None)
             );
-
-            Ok(())
         }
 
         #[test]
-        fn should_drop_item_stack_click_container_with_dropkey() -> anyhow::Result<()> {
+        fn should_drop_item_stack_click_container_with_dropkey() {
             let mut app = App::new();
             let (client_ent, mut client_helper) = scenario_single_client(&mut app);
             let inv_state = app
@@ -1976,13 +1951,11 @@ mod test {
                 events[0].stack,
                 ItemStack::new(ItemKind::IronIngot, 32, None)
             );
-
-            Ok(())
         }
     }
 
     #[test]
-    fn dragging_items() -> anyhow::Result<()> {
+    fn dragging_items() {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
         app.world.get_mut::<CursorItem>(client_ent).unwrap().0 =
@@ -2021,7 +1994,7 @@ mod test {
         client_helper.send(&drag_packet);
 
         app.update();
-        let sent_packets = client_helper.collect_sent()?;
+        let sent_packets = client_helper.collect_sent();
         assert_eq!(sent_packets.len(), 0);
 
         let cursor_item = app
@@ -2042,7 +2015,5 @@ mod test {
                 Some(&ItemStack::new(ItemKind::Diamond, 21, None))
             );
         }
-
-        Ok(())
     }
 }
