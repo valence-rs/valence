@@ -113,7 +113,7 @@ where
         R: Send + 'static,
         W: Send + 'static,
     {
-        let (mut incoming_sender, incoming_receiver) = flume::unbounded();
+        let (incoming_sender, incoming_receiver) = flume::unbounded();
 
         let recv_sem = Arc::new(Semaphore::new(incoming_limit));
         let recv_sem_clone = recv_sem.clone();
@@ -186,7 +186,7 @@ where
                 permits.forget();
 
                 let packet = ReceivedPacket {
-                    timestamp: Instant::now(),
+                    timestamp,
                     id: packet_id,
                     data: data.freeze(),
                 };

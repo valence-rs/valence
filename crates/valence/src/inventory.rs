@@ -692,7 +692,6 @@ fn handle_click_slot(
         &mut CursorItem,
     )>,
     mut inventories: Query<&mut Inventory, Without<Client>>,
-    mut events: EventWriter<CreativeInventoryAction>,
     mut drop_item_stack_events: EventWriter<DropItemStack>,
     mut click_slot_events: EventWriter<ClickSlot>,
 ) {
@@ -713,7 +712,7 @@ fn handle_click_slot(
             continue;
         };
 
-        let open_inv = open_inventory.and_then(|open| inventories.get_mut(open.entity).ok());
+        let open_inv = open_inventory.as_ref().and_then(|open| inventories.get_mut(open.entity).ok());
 
         if let Err(e) = validate::validate_click_slot_packet(
             &pkt,
