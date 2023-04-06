@@ -120,6 +120,12 @@ impl Default for Location {
     }
 }
 
+impl PartialEq<OldLocation> for Location {
+    fn eq(&self, other: &OldLocation) -> bool {
+        self.0 == other.0
+    }
+}
+
 /// The value of [`Location`] from the end of the previous tick.
 ///
 /// **NOTE**: You should not modify this component after the entity is spawned.
@@ -139,6 +145,12 @@ impl OldLocation {
 impl Default for OldLocation {
     fn default() -> Self {
         Self(Entity::PLACEHOLDER)
+    }
+}
+
+impl PartialEq<Location> for OldLocation {
+    fn eq(&self, other: &Location) -> bool {
+        self.0 == other.0
     }
 }
 
@@ -163,6 +175,12 @@ impl Position {
     }
 }
 
+impl PartialEq<OldPosition> for Position {
+    fn eq(&self, other: &OldPosition) -> bool {
+        self.0 == other.0
+    }
+}
+
 /// The value of [`Location`] from the end of the previous tick.
 ///
 /// **NOTE**: You should not modify this component after the entity is spawned.
@@ -180,6 +198,12 @@ impl OldPosition {
 
     pub fn chunk_pos(self) -> ChunkPos {
         ChunkPos::from_dvec3(self.0)
+    }
+}
+
+impl PartialEq<Position> for OldPosition {
+    fn eq(&self, other: &Position) -> bool {
+        self.0 == other.0
     }
 }
 
