@@ -1,11 +1,11 @@
 #![allow(clippy::type_complexity)]
 
-use valence::client::event::{PlayerInteract, ResourcePackStatus, ResourcePackStatusChange};
+use valence::client::event::{PlayerInteractEntity, ResourcePackStatus, ResourcePackStatusChange};
 use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerBundle;
-use valence::entity::sheep::SheepBundle;
+use valence::entity::player::PlayerEntityBundle;
+use valence::entity::sheep::SheepEntityBundle;
 use valence::prelude::*;
-use valence::protocol::packet::c2s::play::player_interact::Interaction;
+use valence::protocol::packet::c2s::play::player_interact_entity::EntityInteraction;
 
 const SPAWN_Y: i32 = 64;
 
@@ -29,8 +29,13 @@ pub fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, server: Res<Server>) {
-    let mut instance = server.new_instance(DimensionId::default());
+fn setup(
+    mut commands: Commands,
+    server: Res<Server>,
+    dimensions: Query<&DimensionType>,
+    biomes: Query<&Biome>,
+) {
+    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
@@ -46,7 +51,7 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 
     let instance_ent = commands.spawn(instance).id();
 
-    commands.spawn(SheepBundle {
+    commands.spawn(SheepEntityBundle {
         location: Location(instance_ent),
         position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 2.0]),
         look: Look::new(180.0, 0.0),
@@ -65,7 +70,7 @@ fn init_clients(
 
         client.send_message("Hit the sheep to prompt for the resource pack.".italic());
 
-        commands.entity(entity).insert(PlayerBundle {
+        commands.entity(entity).insert(PlayerEntityBundle {
             location: Location(instances.single()),
             position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 0.0]),
             uuid: *uuid,
@@ -74,12 +79,12 @@ fn init_clients(
     }
 }
 
-fn prompt_on_punch(mut clients: Query<&mut Client>, mut events: EventReader<PlayerInteract>) {
+fn prompt_on_punch(mut clients: Query<&mut Client>, mut events: EventReader<PlayerInteractEntity>) {
     for event in events.iter() {
         let Ok(mut client) = clients.get_mut(event.client) else {
             continue;
         };
-        if event.interact == Interaction::Attack {
+        if event.interact == EntityInteraction::Attack {
             client.set_resource_pack(
                 "https://github.com/valence-rs/valence/raw/main/assets/example_pack.zip",
                 "d7c6108849fb190ec2a49f2d38b7f1f897d9ce9f",

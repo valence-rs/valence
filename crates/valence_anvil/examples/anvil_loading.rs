@@ -6,9 +6,8 @@ use std::thread;
 use clap::Parser;
 use flume::{Receiver, Sender};
 use tracing::warn;
-use valence::bevy_app::AppExit;
 use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerBundle;
+use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
 use valence_anvil::{AnvilChunk, AnvilWorld};
 
@@ -38,8 +37,35 @@ type Priority = u64;
 pub fn main() {
     tracing_subscriber::fmt().init();
 
+    let cli = Cli::parse();
+    let dir = cli.path;
+
+    if !dir.exists() {
+        eprintln!("Directory `{}` does not exist. Exiting.", dir.display());
+        return;
+    } else if !dir.is_dir() {
+        eprintln!("`{}` is not a directory. Exiting.", dir.display());
+        return;
+    }
+
+    let anvil = AnvilWorld::new(dir);
+
+    let (finished_sender, finished_receiver) = flume::unbounded();
+    let (pending_sender, pending_receiver) = flume::unbounded();
+
+    // Process anvil chunks in a different thread to avoid blocking the main tick
+    // loop.
+    thread::spawn(move || anvil_worker(pending_receiver, finished_sender, anvil));
+
+    let game_state = GameState {
+        pending: HashMap::new(),
+        sender: pending_sender,
+        receiver: finished_receiver,
+    };
+
     App::new()
         .add_plugin(ServerPlugin::new(()))
+        .insert_resource(game_state)
         .add_startup_system(setup)
         .add_system(default_event_handler.in_schedule(EventLoopSchedule))
         .add_systems(
@@ -55,38 +81,14 @@ pub fn main() {
         .run();
 }
 
-fn setup(world: &mut World) {
-    let cli = Cli::parse();
-    let dir = cli.path;
-
-    if !dir.exists() {
-        eprintln!("Directory `{}` does not exist. Exiting.", dir.display());
-        world.send_event(AppExit);
-    } else if !dir.is_dir() {
-        eprintln!("`{}` is not a directory. Exiting.", dir.display());
-        world.send_event(AppExit);
-    }
-
-    let anvil = AnvilWorld::new(dir);
-
-    let (finished_sender, finished_receiver) = flume::unbounded();
-    let (pending_sender, pending_receiver) = flume::unbounded();
-
-    // Process anvil chunks in a different thread to avoid blocking the main tick
-    // loop.
-    thread::spawn(move || anvil_worker(pending_receiver, finished_sender, anvil));
-
-    world.insert_resource(GameState {
-        pending: HashMap::new(),
-        sender: pending_sender,
-        receiver: finished_receiver,
-    });
-
-    let instance = world
-        .resource::<Server>()
-        .new_instance(DimensionId::default());
-
-    world.spawn(instance);
+fn setup(
+    mut commands: Commands,
+    dimensions: Query<&DimensionType>,
+    biomes: Query<&Biome>,
+    server: Res<Server>,
+) {
+    let instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
+    commands.spawn(instance);
 }
 
 fn init_clients(
@@ -98,7 +100,7 @@ fn init_clients(
         *game_mode = GameMode::Creative;
         is_flat.0 = true;
 
-        commands.entity(entity).insert(PlayerBundle {
+        commands.entity(entity).insert(PlayerEntityBundle {
             location: Location(instances.single()),
             position: Position(SPAWN_POS),
             uuid: *uuid,

@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::io::Write;
 
 use crate::ident::Ident;
@@ -7,12 +8,12 @@ use crate::{Decode, Encode};
 #[derive(Clone, PartialEq, Debug)]
 pub struct StopSoundS2c<'a> {
     pub source: Option<SoundCategory>,
-    pub sound: Option<Ident<&'a str>>,
+    pub sound: Option<Ident<Cow<'a, str>>>,
 }
 
 impl Encode for StopSoundS2c<'_> {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
-        match (self.source, self.sound) {
+        match (self.source, self.sound.as_ref()) {
             (Some(source), Some(sound)) => {
                 3i8.encode(&mut w)?;
                 source.encode(&mut w)?;
@@ -38,9 +39,9 @@ impl<'a> Decode<'a> for StopSoundS2c<'a> {
         let (source, sound) = match i8::decode(r)? {
             3 => (
                 Some(SoundCategory::decode(r)?),
-                Some(<Ident<&'a str>>::decode(r)?),
+                Some(<Ident<Cow<'a, str>>>::decode(r)?),
             ),
-            2 => (None, Some(<Ident<&'a str>>::decode(r)?)),
+            2 => (None, Some(<Ident<Cow<'a, str>>>::decode(r)?)),
             1 => (Some(SoundCategory::decode(r)?), None),
             _ => (None, None),
         };

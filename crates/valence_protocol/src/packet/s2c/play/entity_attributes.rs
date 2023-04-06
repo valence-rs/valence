@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use uuid::Uuid;
 
 use crate::ident::Ident;
@@ -12,7 +14,7 @@ pub struct EntityAttributesS2c<'a> {
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
 pub struct AttributeProperty<'a> {
-    pub key: Ident<&'a str>,
+    pub key: Ident<Cow<'a, str>>,
     pub value: f64,
     pub modifiers: Vec<AttributeModifier>,
 }

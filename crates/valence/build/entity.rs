@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use anyhow::Context;
 use heck::{ToPascalCase, ToShoutySnakeCase, ToSnakeCase};
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -17,8 +18,8 @@ struct Entity {
 }
 
 #[derive(Deserialize, Clone, Debug)]
-struct EntityData {
-    types: BTreeMap<String, i32>,
+struct EntityTypes {
+    entity_type: BTreeMap<String, i32>,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -32,7 +33,7 @@ struct Field {
 #[derive(Deserialize, Clone, Debug)]
 #[serde(tag = "type", content = "default_value", rename_all = "snake_case")]
 enum Value {
-    Byte(u8),
+    Byte(i8),
     Integer(i32),
     Long(i64),
     Float(f32),
@@ -50,6 +51,7 @@ enum Value {
     OptionalBlockPos(Option<BlockPos>),
     Facing(String),
     OptionalUuid(Option<String>),
+    BlockState(String),
     OptionalBlockState(Option<String>),
     NbtCompound(String),
     Particle(String),
@@ -65,6 +67,18 @@ enum Value {
     FrogVariant(String),
     OptionalGlobalPos(Option<()>), // TODO
     PaintingVariant(String),
+    SnifferState(String),
+    Vector3f {
+        x: f32,
+        y: f32,
+        z: f32,
+    },
+    Quaternionf {
+        x: f32,
+        y: f32,
+        z: f32,
+        w: f32,
+    },
 }
 
 #[derive(Deserialize, Debug, Clone, Copy)]
@@ -91,22 +105,26 @@ impl Value {
             Value::OptionalBlockPos(_) => 11,
             Value::Facing(_) => 12,
             Value::OptionalUuid(_) => 13,
-            Value::OptionalBlockState(_) => 14,
-            Value::NbtCompound(_) => 15,
-            Value::Particle(_) => 16,
-            Value::VillagerData { .. } => 17,
-            Value::OptionalInt(_) => 18,
-            Value::EntityPose(_) => 19,
-            Value::CatVariant(_) => 20,
-            Value::FrogVariant(_) => 21,
-            Value::OptionalGlobalPos(_) => 22,
-            Value::PaintingVariant(_) => 23,
+            Value::BlockState(_) => 14,
+            Value::OptionalBlockState(_) => 15,
+            Value::NbtCompound(_) => 16,
+            Value::Particle(_) => 17,
+            Value::VillagerData { .. } => 18,
+            Value::OptionalInt(_) => 19,
+            Value::EntityPose(_) => 20,
+            Value::CatVariant(_) => 21,
+            Value::FrogVariant(_) => 22,
+            Value::OptionalGlobalPos(_) => 23,
+            Value::PaintingVariant(_) => 24,
+            Value::SnifferState(_) => 25,
+            Value::Vector3f { .. } => 26,
+            Value::Quaternionf { .. } => 27,
         }
     }
 
     pub fn field_type(&self) -> TokenStream {
         match self {
-            Value::Byte(_) => quote!(u8),
+            Value::Byte(_) => quote!(i8),
             Value::Integer(_) => quote!(i32),
             Value::Long(_) => quote!(i64),
             Value::Float(_) => quote!(f32),
@@ -120,6 +138,7 @@ impl Value {
             Value::OptionalBlockPos(_) => quote!(Option<crate::protocol::block_pos::BlockPos>),
             Value::Facing(_) => quote!(crate::protocol::types::Direction),
             Value::OptionalUuid(_) => quote!(Option<::uuid::Uuid>),
+            Value::BlockState(_) => quote!(crate::protocol::block::BlockState),
             Value::OptionalBlockState(_) => quote!(crate::protocol::block::BlockState),
             Value::NbtCompound(_) => quote!(crate::nbt::Compound),
             Value::Particle(_) => quote!(crate::protocol::packet::s2c::play::particle::Particle),
@@ -130,6 +149,9 @@ impl Value {
             Value::FrogVariant(_) => quote!(crate::entity::FrogKind),
             Value::OptionalGlobalPos(_) => quote!(()), // TODO
             Value::PaintingVariant(_) => quote!(crate::entity::PaintingKind),
+            Value::SnifferState(_) => quote!(crate::entity::SnifferState),
+            Value::Vector3f { .. } => quote!(::glam::f32::Vec3),
+            Value::Quaternionf { .. } => quote!(::glam::f32::Quat),
         }
     }
 
@@ -174,6 +196,9 @@ impl Value {
             Value::OptionalUuid(uuid) => {
                 assert!(uuid.is_none());
                 quote!(None)
+            }
+            Value::BlockState(_) => {
+                quote!(crate::protocol::block::BlockState::default())
             }
             Value::OptionalBlockState(bs) => {
                 assert!(bs.is_none());
@@ -223,6 +248,14 @@ impl Value {
                 let variant = ident(p.to_pascal_case());
                 quote!(crate::entity::PaintingKind::#variant)
             }
+            Value::SnifferState(s) => {
+                let state = ident(s.to_pascal_case());
+                quote!(crate::entity::SnifferState::#state)
+            }
+            Value::Vector3f { x, y, z } => quote!(::glam::f32::Vec3::new(#x, #y, #z)),
+            Value::Quaternionf { x, y, z, w } => quote! {
+                ::glam::f32::Quat::from_xyzw(#x, #y, #z, #w)
+            },
         }
     }
 
@@ -240,26 +273,14 @@ type Entities = BTreeMap<String, Entity>;
 
 pub fn build() -> anyhow::Result<TokenStream> {
     let entity_types =
-        serde_json::from_str::<EntityData>(include_str!("../../../extracted/entity_data.json"))?
-            .types;
+        serde_json::from_str::<EntityTypes>(include_str!("../../../extracted/misc.json"))
+            .context("failed to deserialize misc.json")?
+            .entity_type;
 
     let entities: Entities =
-        serde_json::from_str::<Entities>(include_str!("../../../extracted/entities.json"))?
+        serde_json::from_str::<Entities>(include_str!("../../../extracted/entities.json"))
+            .context("failed to deserialize entities.json")?
             .into_iter()
-            .map(|(entity_name, mut entity)| {
-                let change_name = |mut name: String| {
-                    if let Some(stripped) = name.strip_suffix("Entity") {
-                        if !stripped.is_empty() {
-                            name = stripped.into();
-                        }
-                    }
-
-                    name
-                };
-
-                entity.parent = entity.parent.map(change_name);
-                (change_name(entity_name), entity)
-            })
             .collect();
 
     let mut entity_kind_consts = TokenStream::new();
@@ -271,18 +292,20 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
     for (entity_name, entity) in entities.clone() {
         let entity_name_ident = ident(&entity_name);
-        let shouty_entity_name = entity_name.to_shouty_snake_case();
-        let shouty_entity_name_ident = ident(&shouty_entity_name);
-        let snake_entity_name = entity_name.to_snake_case();
-        let snake_entity_name_ident = ident(&snake_entity_name);
+        let stripped_shouty_entity_name = strip_entity_suffix(&entity_name).to_shouty_snake_case();
+        let stripped_shouty_entity_name_ident = ident(&stripped_shouty_entity_name);
+        let stripped_snake_entity_name = strip_entity_suffix(&entity_name).to_snake_case();
+        let stripped_snake_entity_name_ident = ident(&stripped_snake_entity_name);
 
         let mut module_body = TokenStream::new();
 
         if let Some(parent_name) = entity.parent {
-            let snake_parent_name = parent_name.to_snake_case();
+            let stripped_snake_parent_name = strip_entity_suffix(&parent_name).to_snake_case();
 
-            let module_doc =
-                format!("Parent class: [`{snake_parent_name}`][super::{snake_parent_name}].");
+            let module_doc = format!(
+                "Parent class: \
+                 [`{stripped_snake_parent_name}`][super::{stripped_snake_parent_name}]."
+            );
 
             module_body.extend([quote! {
                 #![doc = #module_doc]
@@ -294,11 +317,11 @@ pub fn build() -> anyhow::Result<TokenStream> {
             let entity_type_id = entity_types[&entity_type];
 
             entity_kind_consts.extend([quote! {
-                pub const #shouty_entity_name_ident: EntityKind = EntityKind(#entity_type_id);
+                pub const #stripped_shouty_entity_name_ident: EntityKind = EntityKind(#entity_type_id);
             }]);
 
             entity_kind_fmt_args.extend([quote! {
-                EntityKind::#shouty_entity_name_ident => write!(f, "{} ({})", #entity_type_id, #shouty_entity_name),
+                EntityKind::#stripped_shouty_entity_name_ident => write!(f, "{} ({})", #entity_type_id, #stripped_shouty_entity_name),
             }]);
 
             let translation_key_expr = if let Some(key) = entity.translation_key {
@@ -308,7 +331,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             };
 
             translation_key_arms.extend([quote! {
-                EntityKind::#shouty_entity_name_ident => #translation_key_expr,
+                EntityKind::#stripped_shouty_entity_name_ident => #translation_key_expr,
             }]);
 
             // Create bundle type.
@@ -318,11 +341,15 @@ pub fn build() -> anyhow::Result<TokenStream> {
             for marker_or_field in collect_bundle_fields(&entity_name, &entities) {
                 match marker_or_field {
                     MarkerOrField::Marker { entity_name } => {
+                        let stripped_entity_name = strip_entity_suffix(entity_name);
+
                         let snake_entity_name_ident = ident(entity_name.to_snake_case());
+                        let stripped_snake_entity_name_ident =
+                            ident(stripped_entity_name.to_snake_case());
                         let pascal_entity_name_ident = ident(entity_name.to_pascal_case());
 
                         bundle_fields.extend([quote! {
-                            pub #snake_entity_name_ident: super::#snake_entity_name_ident::#pascal_entity_name_ident,
+                            pub #snake_entity_name_ident: super::#stripped_snake_entity_name_ident::#pascal_entity_name_ident,
                         }]);
 
                         bundle_init_fields.extend([quote! {
@@ -333,14 +360,15 @@ pub fn build() -> anyhow::Result<TokenStream> {
                         let snake_field_name = field.name.to_snake_case();
                         let pascal_field_name = field.name.to_pascal_case();
                         let pascal_field_name_ident = ident(&pascal_field_name);
-                        let snake_entity_name = entity_name.to_snake_case();
-                        let snake_entity_name_ident = ident(&snake_entity_name);
+                        let stripped_entity_name = strip_entity_suffix(entity_name);
+                        let stripped_snake_entity_name = stripped_entity_name.to_snake_case();
+                        let stripped_snake_entity_name_ident = ident(&stripped_snake_entity_name);
 
                         let field_name_ident =
-                            ident(format!("{snake_entity_name}_{snake_field_name}"));
+                            ident(format!("{stripped_snake_entity_name}_{snake_field_name}"));
 
                         bundle_fields.extend([quote! {
-                            pub #field_name_ident: super::#snake_entity_name_ident::#pascal_field_name_ident,
+                            pub #field_name_ident: super::#stripped_snake_entity_name_ident::#pascal_field_name_ident,
                         }]);
 
                         bundle_init_fields.extend([quote! {
@@ -370,7 +398,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }]);
 
             bundle_init_fields.extend([quote! {
-                kind: super::EntityKind::#shouty_entity_name_ident,
+                kind: super::EntityKind::#stripped_shouty_entity_name_ident,
                 id: Default::default(),
                 uuid: Default::default(),
                 location: Default::default(),
@@ -389,8 +417,9 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }]);
 
             let bundle_name_ident = ident(format!("{entity_name}Bundle"));
-            let bundle_doc =
-                format!("The bundle of components for spawning `{snake_entity_name}` entities.");
+            let bundle_doc = format!(
+                "The bundle of components for spawning `{stripped_snake_entity_name}` entities."
+            );
 
             module_body.extend([quote! {
                 #[doc = #bundle_doc]
@@ -427,8 +456,11 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }]);
 
-            let system_name_ident = ident(format!("update_{snake_entity_name}_{snake_field_name}"));
-            let component_path = quote!(#snake_entity_name_ident::#pascal_field_name_ident);
+            let system_name_ident = ident(format!(
+                "update_{stripped_snake_entity_name}_{snake_field_name}"
+            ));
+            let component_path =
+                quote!(#stripped_snake_entity_name_ident::#pascal_field_name_ident);
 
             system_names.push(quote!(#system_name_ident));
 
@@ -456,7 +488,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             }]);
         }
 
-        let marker_doc = format!("Marker component for `{snake_entity_name}` entities.");
+        let marker_doc = format!("Marker component for `{stripped_snake_entity_name}` entities.");
 
         module_body.extend([quote! {
             #[doc = #marker_doc]
@@ -466,7 +498,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
 
         modules.extend([quote! {
             #[allow(clippy::module_inception)]
-            pub mod #snake_entity_name_ident {
+            pub mod #stripped_snake_entity_name_ident {
                 #module_body
             }
         }]);
@@ -555,4 +587,15 @@ fn collect_bundle_fields<'a>(
     }
 
     res
+}
+
+fn strip_entity_suffix(string: &str) -> String {
+    let stripped = string.strip_suffix("Entity").unwrap_or(string);
+
+    if stripped.is_empty() {
+        string
+    } else {
+        stripped
+    }
+    .to_owned()
 }

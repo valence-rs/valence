@@ -8,8 +8,8 @@ pub mod status {
     packet_group! {
         #[derive(Clone)]
         S2cStatusPacket<'a> {
-            0 = QueryResponseS2c<'a>,
-            1 = QueryPongS2c,
+            QueryPongS2c,
+            QueryResponseS2c<'a>,
         }
     }
 }
@@ -30,11 +30,11 @@ pub mod login {
     packet_group! {
         #[derive(Clone)]
         S2cLoginPacket<'a> {
-            0 = LoginDisconnectS2c<'a>,
-            1 = LoginHelloS2c<'a>,
-            2 = LoginSuccessS2c<'a>,
-            3 = LoginCompressionS2c,
-            4 = LoginQueryRequestS2c<'a>,
+            LoginCompressionS2c,
+            LoginDisconnectS2c<'a>,
+            LoginHelloS2c<'a>,
+            LoginQueryRequestS2c<'a>,
+            LoginSuccessS2c<'a>,
         }
     }
 }
@@ -46,30 +46,34 @@ pub mod play {
     pub use block_event::BlockEventS2c;
     pub use block_update::BlockUpdateS2c;
     pub use boss_bar::BossBarS2c;
+    pub use bundle_splitter::BundleSplitter;
     pub use chat_message::ChatMessageS2c;
     pub use chat_suggestions::ChatSuggestionsS2c;
+    pub use chunk_biome_data::ChunkBiomeDataS2c;
     pub use chunk_data::ChunkDataS2c;
     pub use chunk_delta_update::ChunkDeltaUpdateS2c;
     pub use chunk_load_distance::ChunkLoadDistanceS2c;
     pub use chunk_render_distance_center::ChunkRenderDistanceCenterS2c;
-    pub use clear_titles::ClearTitlesS2c;
+    pub use clear_title::ClearTitleS2c;
     pub use close_screen::CloseScreenS2c;
     pub use command_suggestions::CommandSuggestionsS2c;
     pub use command_tree::CommandTreeS2c;
     pub use cooldown_update::CooldownUpdateS2c;
     pub use craft_failed_response::CraftFailedResponseS2c;
     pub use custom_payload::CustomPayloadS2c;
+    pub use damage_tilt::DamageTiltS2c;
     pub use death_message::DeathMessageS2c;
     pub use difficulty::DifficultyS2c;
     pub use disconnect::DisconnectS2c;
     pub use end_combat::EndCombatS2c;
     pub use enter_combat::EnterCombatS2c;
     pub use entities_destroy::EntitiesDestroyS2c;
-    pub use entity::{MoveRelativeS2c, RotateAndMoveRelativeS2c, RotateS2c};
     pub use entity_animation::EntityAnimationS2c;
     pub use entity_attach::EntityAttachS2c;
     pub use entity_attributes::EntityAttributesS2c;
+    pub use entity_damage::EntityDamageS2c;
     pub use entity_equipment_update::EntityEquipmentUpdateS2c;
+    pub use entity_move::{MoveRelative, Rotate, RotateAndMoveRelative};
     pub use entity_passengers_set::EntityPassengersSetS2c;
     pub use entity_position::EntityPositionS2c;
     pub use entity_set_head_yaw::EntitySetHeadYawS2c;
@@ -119,11 +123,11 @@ pub mod play {
     pub use scoreboard_player_update::ScoreboardPlayerUpdateS2c;
     pub use screen_handler_property_update::ScreenHandlerPropertyUpdateS2c;
     pub use screen_handler_slot_update::ScreenHandlerSlotUpdateS2c;
-    pub use select_advancements_tab::SelectAdvancementsTabS2c;
+    pub use select_advancement_tab::SelectAdvancementTabS2c;
     pub use server_metadata::ServerMetadataS2c;
     pub use set_camera_entity::SetCameraEntityS2c;
     pub use set_trade_offers::SetTradeOffersS2c;
-    pub use sign_editor_open::SignEditorOpen;
+    pub use sign_editor_open::SignEditorOpenS2c;
     pub use simulation_distance::SimulationDistanceS2c;
     pub use statistics::StatisticsS2c;
     pub use stop_sound::StopSoundS2c;
@@ -152,30 +156,34 @@ pub mod play {
     pub mod block_event;
     pub mod block_update;
     pub mod boss_bar;
+    pub mod bundle_splitter;
     pub mod chat_message;
     pub mod chat_suggestions;
+    pub mod chunk_biome_data;
     pub mod chunk_data;
     pub mod chunk_delta_update;
     pub mod chunk_load_distance;
     pub mod chunk_render_distance_center;
-    pub mod clear_titles;
+    pub mod clear_title;
     pub mod close_screen;
     pub mod command_suggestions;
     pub mod command_tree;
     pub mod cooldown_update;
     pub mod craft_failed_response;
     pub mod custom_payload;
+    pub mod damage_tilt;
     pub mod death_message;
     pub mod difficulty;
     pub mod disconnect;
     pub mod end_combat;
     pub mod enter_combat;
     pub mod entities_destroy;
-    pub mod entity;
     pub mod entity_animation;
     pub mod entity_attach;
     pub mod entity_attributes;
+    pub mod entity_damage;
     pub mod entity_equipment_update;
+    pub mod entity_move;
     pub mod entity_passengers_set;
     pub mod entity_position;
     pub mod entity_set_head_yaw;
@@ -225,7 +233,7 @@ pub mod play {
     pub mod scoreboard_player_update;
     pub mod screen_handler_property_update;
     pub mod screen_handler_slot_update;
-    pub mod select_advancements_tab;
+    pub mod select_advancement_tab;
     pub mod server_metadata;
     pub mod set_camera_entity;
     pub mod set_trade_offers;
@@ -255,113 +263,117 @@ pub mod play {
     packet_group! {
         #[derive(Clone)]
         S2cPlayPacket<'a> {
-            0 = EntitySpawnS2c,
-            1 = ExperienceOrbSpawnS2c,
-            2 = PlayerSpawnS2c,
-            3 = EntityAnimationS2c,
-            4 = StatisticsS2c,
-            5 = PlayerActionResponseS2c,
-            6 = BlockBreakingProgressS2c,
-            7 = BlockEntityUpdateS2c<'a>,
-            8 = BlockEventS2c,
-            9 = BlockUpdateS2c,
-            10 = BossBarS2c,
-            11 = DifficultyS2c,
-            12 = ClearTitlesS2c,
-            13 = CommandSuggestionsS2c<'a>,
-            14 = CommandTreeS2c<'a>,
-            15 = CloseScreenS2c,
-            16 = InventoryS2c<'a>,
-            17 = ScreenHandlerPropertyUpdateS2c,
-            18 = ScreenHandlerSlotUpdateS2c<'a>,
-            19 = CooldownUpdateS2c,
-            20 = ChatSuggestionsS2c<'a>,
-            21 = CustomPayloadS2c<'a>,
-            22 = RemoveMessageS2c<'a>,
-            23 = DisconnectS2c<'a>,
-            24 = ProfilelessChatMessageS2c<'a>,
-            25 = EntityStatusS2c,
-            26 = ExplosionS2c<'a>,
-            27 = UnloadChunkS2c,
-            28 = GameStateChangeS2c,
-            29 = OpenHorseScreenS2c,
-            30 = WorldBorderInitializeS2c,
-            31 = KeepAliveS2c,
-            32 = ChunkDataS2c<'a>,
-            33 = WorldEventS2c,
-            34 = ParticleS2c<'a>,
-            35 = LightUpdateS2c,
-            36 = GameJoinS2c<'a>,
-            37 = MapUpdateS2c<'a>,
-            38 = SetTradeOffersS2c,
-            39 = MoveRelativeS2c,
-            40 = RotateAndMoveRelativeS2c,
-            41 = RotateS2c,
-            42 = VehicleMoveS2c,
-            43 = OpenWrittenBookS2c,
-            44 = OpenScreenS2c<'a>,
-            45 = SignEditorOpen,
-            46 = PlayPingS2c,
-            47 = CraftFailedResponseS2c<'a>,
-            48 = PlayerAbilitiesS2c,
-            49 = ChatMessageS2c<'a>,
-            50 = EndCombatS2c,
-            51 = EnterCombatS2c,
-            52 = DeathMessageS2c<'a>,
-            53 = PlayerRemoveS2c<'a>,
-            54 = PlayerListS2c<'a>,
-            55 = LookAtS2c,
-            56 = PlayerPositionLookS2c,
-            57 = UnlockRecipesS2c<'a>,
-            58 = EntitiesDestroyS2c<'a>,
-            59 = RemoveEntityStatusEffectS2c,
-            60 = ResourcePackSendS2c<'a>,
-            61 = PlayerRespawnS2c<'a>,
-            62 = EntitySetHeadYawS2c,
-            63 = ChunkDeltaUpdateS2c<'a>,
-            64 = SelectAdvancementsTabS2c<'a>,
-            65 = ServerMetadataS2c<'a>,
-            66 = OverlayMessageS2c<'a>,
-            67 = WorldBorderCenterChangedS2c,
-            68 = WorldBorderInterpolateSizeS2c,
-            69 = WorldBorderSizeChangedS2c,
-            70 = WorldBorderWarningTimeChangedS2c,
-            71 = WorldBorderWarningBlocksChangedS2c,
-            72 = SetCameraEntityS2c,
-            73 = UpdateSelectedSlotS2c,
-            74 = ChunkRenderDistanceCenterS2c,
-            75 = ChunkLoadDistanceS2c,
-            76 = PlayerSpawnPositionS2c,
-            77 = ScoreboardDisplayS2c<'a>,
-            78 = EntityTrackerUpdateS2c<'a>,
-            79 = EntityAttachS2c,
-            80 = EntityVelocityUpdateS2c,
-            81 = EntityEquipmentUpdateS2c,
-            82 = ExperienceBarUpdateS2c,
-            83 = HealthUpdateS2c,
-            84 = ScoreboardObjectiveUpdateS2c<'a>,
-            85 = EntityPassengersSetS2c,
-            86 = TeamS2c<'a>,
-            87 = ScoreboardPlayerUpdateS2c<'a>,
-            88 = SimulationDistanceS2c,
-            89 = SubtitleS2c<'a>,
-            90 = WorldTimeUpdateS2c,
-            91 = TitleS2c<'a>,
-            92 = TitleFadeS2c,
-            93 = PlaySoundFromEntityS2c,
-            94 = PlaySoundS2c<'a>,
-            95 = StopSoundS2c<'a>,
-            96 = GameMessageS2c<'a>,
-            97 = PlayerListHeaderS2c<'a>,
-            98 = NbtQueryResponseS2c,
-            99 = ItemPickupAnimationS2c,
-            100 = EntityPositionS2c,
-            101 = AdvancementUpdateS2c<'a>,
-            102 = EntityAttributesS2c<'a>,
-            103 = FeaturesS2c<'a>,
-            104 = EntityStatusEffectS2c,
-            105 = SynchronizeRecipesS2c<'a>,
-            106 = SynchronizeTagsS2c<'a>,
+            AdvancementUpdateS2c<'a>,
+            BlockBreakingProgressS2c,
+            BlockEntityUpdateS2c<'a>,
+            BlockEventS2c,
+            BlockUpdateS2c,
+            BossBarS2c,
+            BundleSplitter,
+            ChatMessageS2c<'a>,
+            ChatSuggestionsS2c<'a>,
+            ChunkBiomeDataS2c<'a>,
+            ChunkDataS2c<'a>,
+            ChunkDeltaUpdateS2c<'a>,
+            ChunkLoadDistanceS2c,
+            ChunkRenderDistanceCenterS2c,
+            ClearTitleS2c,
+            CloseScreenS2c,
+            CommandSuggestionsS2c<'a>,
+            CommandTreeS2c<'a>,
+            CooldownUpdateS2c,
+            CraftFailedResponseS2c<'a>,
+            CustomPayloadS2c<'a>,
+            DamageTiltS2c,
+            DeathMessageS2c<'a>,
+            DifficultyS2c,
+            DisconnectS2c<'a>,
+            EndCombatS2c,
+            EnterCombatS2c,
+            EntitiesDestroyS2c<'a>,
+            EntityAnimationS2c,
+            EntityAttachS2c,
+            EntityAttributesS2c<'a>,
+            EntityDamageS2c,
+            EntityEquipmentUpdateS2c,
+            EntityPassengersSetS2c,
+            EntityPositionS2c,
+            EntitySetHeadYawS2c,
+            EntitySpawnS2c,
+            EntityStatusEffectS2c,
+            EntityStatusS2c,
+            EntityTrackerUpdateS2c<'a>,
+            EntityVelocityUpdateS2c,
+            ExperienceBarUpdateS2c,
+            ExperienceOrbSpawnS2c,
+            ExplosionS2c<'a>,
+            FeaturesS2c<'a>,
+            GameJoinS2c<'a>,
+            GameMessageS2c<'a>,
+            GameStateChangeS2c,
+            HealthUpdateS2c,
+            InventoryS2c<'a>,
+            ItemPickupAnimationS2c,
+            KeepAliveS2c,
+            LightUpdateS2c,
+            LookAtS2c,
+            MapUpdateS2c<'a>,
+            MoveRelative,
+            NbtQueryResponseS2c,
+            OpenHorseScreenS2c,
+            OpenScreenS2c<'a>,
+            OpenWrittenBookS2c,
+            OverlayMessageS2c<'a>,
+            ParticleS2c<'a>,
+            PlayerAbilitiesS2c,
+            PlayerActionResponseS2c,
+            PlayerListHeaderS2c<'a>,
+            PlayerListS2c<'a>,
+            PlayerPositionLookS2c,
+            PlayerRemoveS2c<'a>,
+            PlayerRespawnS2c<'a>,
+            PlayerSpawnPositionS2c,
+            PlayerSpawnS2c,
+            PlayPingS2c,
+            PlaySoundFromEntityS2c,
+            PlaySoundS2c<'a>,
+            ProfilelessChatMessageS2c<'a>,
+            RemoveEntityStatusEffectS2c,
+            RemoveMessageS2c<'a>,
+            ResourcePackSendS2c<'a>,
+            Rotate,
+            RotateAndMoveRelative,
+            ScoreboardDisplayS2c<'a>,
+            ScoreboardObjectiveUpdateS2c<'a>,
+            ScoreboardPlayerUpdateS2c<'a>,
+            ScreenHandlerPropertyUpdateS2c,
+            ScreenHandlerSlotUpdateS2c<'a>,
+            SelectAdvancementTabS2c<'a>,
+            ServerMetadataS2c<'a>,
+            SetCameraEntityS2c,
+            SetTradeOffersS2c,
+            SignEditorOpenS2c,
+            SimulationDistanceS2c,
+            StatisticsS2c,
+            StopSoundS2c<'a>,
+            SubtitleS2c<'a>,
+            SynchronizeRecipesS2c<'a>,
+            SynchronizeTagsS2c<'a>,
+            TeamS2c<'a>,
+            TitleFadeS2c,
+            TitleS2c<'a>,
+            UnloadChunkS2c,
+            UnlockRecipesS2c<'a>,
+            UpdateSelectedSlotS2c,
+            VehicleMoveS2c,
+            WorldBorderCenterChangedS2c,
+            WorldBorderInitializeS2c,
+            WorldBorderInterpolateSizeS2c,
+            WorldBorderSizeChangedS2c,
+            WorldBorderWarningBlocksChangedS2c,
+            WorldBorderWarningTimeChangedS2c,
+            WorldEventS2c,
+            WorldTimeUpdateS2c,
         }
     }
 }

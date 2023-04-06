@@ -4,7 +4,7 @@ use std::mem;
 
 use valence::client::event::{StartDigging, StartSneaking};
 use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerBundle;
+use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
 
 const BOARD_MIN_X: i32 = -30;
@@ -26,10 +26,8 @@ pub fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(ServerPlugin::new(()).with_biomes(vec![Biome {
-            grass_color: Some(0x00ff00),
-            ..Default::default()
-        }]))
+        .add_plugin(ServerPlugin::new(()))
+        .add_startup_system(setup_biomes.before(setup))
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_systems((default_event_handler, toggle_cell_on_dig).in_schedule(EventLoopSchedule))
@@ -43,8 +41,20 @@ pub fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, server: Res<Server>) {
-    let mut instance = server.new_instance(DimensionId::default());
+// TODO: this is a hack.
+fn setup_biomes(mut biomes: Query<&mut Biome>) {
+    for mut biome in &mut biomes {
+        biome.grass_color = Some(0x00ff00);
+    }
+}
+
+fn setup(
+    mut commands: Commands,
+    server: Res<Server>,
+    dimensions: Query<&DimensionType>,
+    biomes: Query<&Biome>,
+) {
+    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -10..10 {
         for x in -10..10 {
@@ -82,7 +92,7 @@ fn init_clients(
                 .italic(),
         );
 
-        commands.entity(entity).insert(PlayerBundle {
+        commands.entity(entity).insert(PlayerEntityBundle {
             location: Location(instances.single()),
             position: Position(SPAWN_POS),
             uuid: *uuid,

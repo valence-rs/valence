@@ -8,6 +8,7 @@ use proc_macro2::{Ident, Span};
 mod block;
 mod enchant;
 mod item;
+mod packet_id;
 mod sound;
 mod translation_key;
 
@@ -20,6 +21,7 @@ pub fn main() -> anyhow::Result<()> {
         (item::build, "item.rs"),
         (sound::build, "sound.rs"),
         (translation_key::build, "translation_key.rs"),
+        (packet_id::build, "packet_id.rs"),
     ];
 
     let out_dir = env::var_os("OUT_DIR").context("failed to get OUT_DIR env var")?;

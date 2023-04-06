@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::io::Write;
 
 use anyhow::bail;
@@ -86,10 +87,10 @@ pub enum Parser<'a> {
     Dimension,
     GameMode,
     Time,
-    ResourceOrTag { registry: Ident<&'a str> },
-    ResourceOrTagKey { registry: Ident<&'a str> },
-    Resource { registry: Ident<&'a str> },
-    ResourceKey { registry: Ident<&'a str> },
+    ResourceOrTag { registry: Ident<Cow<'a, str>> },
+    ResourceOrTagKey { registry: Ident<Cow<'a, str>> },
+    Resource { registry: Ident<Cow<'a, str>> },
+    ResourceKey { registry: Ident<Cow<'a, str>> },
     TemplateMirror,
     TemplateRotation,
     Uuid,
@@ -182,12 +183,12 @@ impl<'a> Decode<'a> for Node<'a> {
                 name: <&str>::decode(r)?,
                 parser: Parser::decode(r)?,
                 suggestion: if flags & 0x10 != 0 {
-                    Some(match Ident::<&str>::decode(r)?.path() {
-                        "ask_server" => Suggestion::AskServer,
-                        "all_recipes" => Suggestion::AllRecipes,
-                        "available_sounds" => Suggestion::AvailableSounds,
-                        "available_biomes" => Suggestion::AvailableBiomes,
-                        "summonable_entities" => Suggestion::SummonableEntities,
+                    Some(match Ident::<Cow<str>>::decode(r)?.as_str() {
+                        "minecraft:ask_server" => Suggestion::AskServer,
+                        "minecraft:all_recipes" => Suggestion::AllRecipes,
+                        "minecraft:available_sounds" => Suggestion::AvailableSounds,
+                        "minecraft:available_biomes" => Suggestion::AvailableBiomes,
+                        "minecraft:summonable_entities" => Suggestion::SummonableEntities,
                         other => bail!("unknown command suggestion type of \"{other}\""),
                     })
                 } else {

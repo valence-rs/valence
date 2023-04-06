@@ -357,6 +357,18 @@ pub enum PaintingKind {
     DonkeyKong,
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug, Encode, Decode)]
+pub enum SnifferState {
+    #[default]
+    Idling,
+    FeelingHappy,
+    Scenting,
+    Sniffing,
+    Searching,
+    Digging,
+    Rising,
+}
+
 #[derive(Clone, Copy, PartialEq, PartialOrd, Debug, Encode, Decode)]
 pub struct EulerAngle {
     pub pitch: f32,
@@ -390,7 +402,8 @@ impl Decode<'_> for OptionalInt {
     }
 }
 
-/// Maintains information about all spawned Minecraft entities.
+/// A [`Resource`] which maintains information about all spawned Minecraft
+/// entities.
 #[derive(Resource, Debug)]
 pub struct EntityManager {
     /// Maps protocol IDs to ECS entities.
@@ -461,7 +474,7 @@ macro_rules! flags {
                         #[doc = "."]
                         #[inline]
                         pub fn [< set_$flag >] (&mut self, $flag: bool) {
-                            self.0 = (self.0 & !(1 << $offset)) | (($flag as u8) << $offset);
+                            self.0 = (self.0 & !(1 << $offset)) | (($flag as i8) << $offset);
                         }
                     }
                 )*

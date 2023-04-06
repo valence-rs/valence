@@ -1,8 +1,10 @@
+use std::borrow::Cow;
+
 use crate::ident::Ident;
 use crate::{Decode, Encode};
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode)]
 pub enum AdvancementTabC2s<'a> {
-    OpenedTab { tab_id: Ident<&'a str> },
+    OpenedTab { tab_id: Ident<Cow<'a, str>> },
     ClosedScreen,
 }

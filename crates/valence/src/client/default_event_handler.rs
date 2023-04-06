@@ -63,7 +63,7 @@ pub fn default_event_handler(
             q.view_dist.0 = *view_distance;
 
             if let Some(mut parts) = q.player_model_parts {
-                parts.set_if_neq(PlayerModelParts(u8::from(*displayed_skin_parts)));
+                parts.set_if_neq(PlayerModelParts(u8::from(*displayed_skin_parts) as i8));
             }
 
             if let Some(mut player_main_arm) = q.main_arm {

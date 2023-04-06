@@ -1,13 +1,13 @@
 use crate::{Decode, Encode};
 
 #[derive(Copy, Clone, Debug, Encode, Decode)]
-pub struct PositionAndOnGroundC2s {
+pub struct PositionAndOnGround {
     pub position: [f64; 3],
     pub on_ground: bool,
 }
 
 #[derive(Copy, Clone, Debug, Encode, Decode)]
-pub struct FullC2s {
+pub struct Full {
     pub position: [f64; 3],
     pub yaw: f32,
     pub pitch: f32,
@@ -15,13 +15,13 @@ pub struct FullC2s {
 }
 
 #[derive(Copy, Clone, Debug, Encode, Decode)]
-pub struct LookAndOnGroundC2s {
+pub struct LookAndOnGround {
     pub yaw: f32,
     pub pitch: f32,
     pub on_ground: bool,
 }
 
 #[derive(Copy, Clone, Debug, Encode, Decode)]
-pub struct OnGroundOnlyC2s {
+pub struct OnGroundOnly {
     pub on_ground: bool,
 }

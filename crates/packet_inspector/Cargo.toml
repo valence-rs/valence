@@ -34,3 +34,4 @@ atty = "0.2"
 directories = "4.0"
 serde = { version = "1.0.152", features = ["derive"] }
 toml = "0.7.2"
+valence_nbt = { path = "../valence_nbt", version = "0.5.0", features = ["preserve_order"] }

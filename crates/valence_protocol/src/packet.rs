@@ -17,7 +17,7 @@ macro_rules! packet_group {
     (
         $(#[$attrs:meta])*
         $enum_name:ident<$enum_life:lifetime> {
-            $($packet_id:literal = $packet:ident $(<$life:lifetime>)?),* $(,)?
+            $($packet:ident $(<$life:lifetime>)?),* $(,)?
         }
     ) => {
         $(#[$attrs])*
@@ -35,10 +35,10 @@ macro_rules! packet_group {
             }
 
             impl<$enum_life> crate::Packet<$enum_life> for $packet$(<$life>)? {
-                const PACKET_ID: i32 = $packet_id;
+                const PACKET_ID: i32 = crate::packet::id::$packet;
 
                 fn packet_id(&self) -> i32 {
-                    $packet_id
+                    Self::PACKET_ID
                 }
 
                 fn packet_name(&self) -> &str {
@@ -49,7 +49,7 @@ macro_rules! packet_group {
                 fn encode_packet(&self, mut w: impl std::io::Write) -> crate::Result<()> {
                     use ::valence_protocol::__private::{Encode, Context, VarInt};
 
-                    VarInt($packet_id)
+                    VarInt(Self::PACKET_ID)
                         .encode(&mut w)
                         .context("failed to encode packet ID")?;
 
@@ -61,7 +61,7 @@ macro_rules! packet_group {
                     use ::valence_protocol::__private::{Decode, Context, VarInt, ensure};
 
                     let id = VarInt::decode(r).context("failed to decode packet ID")?.0;
-                    ensure!(id == $packet_id, "unexpected packet ID {} (expected {})", id, $packet_id);
+                    ensure!(id == Self::PACKET_ID, "unexpected packet ID {} (expected {})", id, Self::PACKET_ID);
 
                     Self::decode(r)
                 }
@@ -130,7 +130,7 @@ macro_rules! packet_group {
     (
         $(#[$attrs:meta])*
         $enum_name:ident {
-            $($packet_id:literal = $packet:ident),* $(,)?
+            $($packet:ident),* $(,)?
         }
     ) => {
         $(#[$attrs])*
@@ -148,10 +148,10 @@ macro_rules! packet_group {
             }
 
             impl crate::Packet<'_> for $packet {
-                const PACKET_ID: i32 = $packet_id;
+                const PACKET_ID: i32 = crate::packet::id::$packet;
 
                 fn packet_id(&self) -> i32 {
-                    $packet_id
+                    Self::PACKET_ID
                 }
 
                 fn packet_name(&self) -> &str {
@@ -162,7 +162,7 @@ macro_rules! packet_group {
                 fn encode_packet(&self, mut w: impl std::io::Write) -> crate::Result<()> {
                     use ::valence_protocol::__private::{Encode, Context, VarInt};
 
-                    VarInt($packet_id)
+                    VarInt(Self::PACKET_ID)
                         .encode(&mut w)
                         .context("failed to encode packet ID")?;
 
@@ -174,7 +174,7 @@ macro_rules! packet_group {
                     use ::valence_protocol::__private::{Decode, Context, VarInt, ensure};
 
                     let id = VarInt::decode(r).context("failed to decode packet ID")?.0;
-                    ensure!(id == $packet_id, "unexpected packet ID {} (expected {})", id, $packet_id);
+                    ensure!(id == Self::PACKET_ID, "unexpected packet ID {} (expected {})", id, Self::PACKET_ID);
 
                     Self::decode(r)
                 }
@@ -243,3 +243,9 @@ macro_rules! packet_group {
 
 pub mod c2s;
 pub mod s2c;
+
+/// Contains the packet ID for every packet. The compiler will yell at us when
+/// we forget to use one, which is nice.
+mod id {
+    include!(concat!(env!("OUT_DIR"), "/packet_id.rs"));
+}

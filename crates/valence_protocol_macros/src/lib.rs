@@ -14,7 +14,7 @@ use syn::{
 
 mod decode;
 mod encode;
-mod ident_str;
+mod ident;
 mod packet;
 
 #[proc_macro_derive(Encode, attributes(tag))]
@@ -42,8 +42,8 @@ pub fn derive_packet(item: StdTokenStream) -> StdTokenStream {
 }
 
 #[proc_macro]
-pub fn ident_str(item: StdTokenStream) -> StdTokenStream {
-    match ident_str::ident_str(item.into()) {
+pub fn ident(item: StdTokenStream) -> StdTokenStream {
+    match ident::ident(item.into()) {
         Ok(tokens) => tokens.into(),
         Err(e) => e.into_compile_error().into(),
     }

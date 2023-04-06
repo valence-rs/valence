@@ -15,4 +15,4 @@ rust-mc-bot
 flamegraph*.svg
 perf.data
 perf.data.old
-/graph.gv
+/graph.svg

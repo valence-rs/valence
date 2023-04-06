@@ -3,7 +3,7 @@
 use tracing::warn;
 use valence::client::event::{PlayerInteractBlock, StartSneaking};
 use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerBundle;
+use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;
@@ -25,8 +25,13 @@ pub fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, server: Res<Server>) {
-    let mut instance = server.new_instance(DimensionId::default());
+fn setup(
+    mut commands: Commands,
+    server: Res<Server>,
+    dimensions: Query<&DimensionType>,
+    biomes: Query<&Biome>,
+) {
+    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
@@ -58,7 +63,7 @@ fn init_clients(
     for (entity, uuid, mut game_mode) in &mut clients {
         *game_mode = GameMode::Creative;
 
-        commands.entity(entity).insert(PlayerBundle {
+        commands.entity(entity).insert(PlayerEntityBundle {
             location: Location(instances.single()),
             position: Position::new([0.5, SPAWN_Y as f64 + 1.0, 0.5]),
             uuid: *uuid,

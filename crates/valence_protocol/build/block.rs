@@ -473,7 +473,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             let ident = &block_entity.ident;
 
             quote! {
-                Self::#name => ident_str!(#ident),
+                Self::#name => ident!(#ident),
             }
         })
         .collect::<TokenStream>();

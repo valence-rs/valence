@@ -33,18 +33,19 @@ use valence_protocol::types::{GlobalPos, SoundCategory};
 use valence_protocol::var_int::VarInt;
 use valence_protocol::Packet;
 
+use crate::biome::BiomeRegistry;
 use crate::component::{
     Despawned, GameMode, Location, Look, OldLocation, OldPosition, OnGround, Ping, Position,
     Properties, UniqueId, Username,
 };
-use crate::dimension::DimensionId;
 use crate::entity::{
-    EntityId, EntityKind, EntityStatus, HeadYaw, ObjectData, TrackedData, Velocity,
+    EntityId, EntityKind, EntityStatus, HeadYaw, ObjectData, PacketByteRange, TrackedData, Velocity,
 };
 use crate::instance::{Instance, WriteUpdatePacketsToInstancesSet};
 use crate::inventory::{Inventory, InventoryKind};
 use crate::packet::WritePacket;
 use crate::prelude::ScratchBuf;
+use crate::registry_codec::{RegistryCodec, RegistryCodecSet};
 use crate::server::{NewClientInfo, Server};
 use crate::util::velocity_to_packet_units;
 use crate::view::{ChunkPos, ChunkView};
@@ -221,7 +222,7 @@ impl Client {
 
     pub fn send_custom_payload(&mut self, channel: Ident<&str>, data: &[u8]) {
         self.write_packet(&CustomPayloadS2c {
-            channel,
+            channel: channel.into(),
             data: data.into(),
         });
     }
@@ -508,8 +509,8 @@ impl OldViewItem<'_> {
     }
 }
 
-#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
-pub struct DeathLocation(pub Option<(DimensionId, BlockPos)>);
+#[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
+pub struct DeathLocation(pub Option<(Ident<String>, BlockPos)>);
 
 #[derive(Component, Debug)]
 pub struct KeepaliveState {
@@ -612,13 +613,13 @@ pub(crate) struct ClientPlugin;
 /// packets to clients should happen before this. Otherwise, the data
 /// will arrive one tick late.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub(crate) struct FlushPacketsSet;
+pub struct FlushPacketsSet;
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.add_systems(
             (
-                initial_join,
+                initial_join.after(RegistryCodecSet),
                 update_chunk_load_dist,
                 read_data_in_old_view
                     .after(WriteUpdatePacketsToInstancesSet)
@@ -668,28 +669,29 @@ struct ClientJoinQuery {
 }
 
 fn initial_join(
-    server: Res<Server>,
+    codec: Res<RegistryCodec>,
     mut clients: Query<ClientJoinQuery, Added<Client>>,
     instances: Query<&Instance>,
     mut commands: Commands,
 ) {
     for mut q in &mut clients {
         let Ok(instance) = instances.get(q.loc.0) else {
-            warn!("Client {:?} joined nonexistent instance {:?}. Disconnecting.", q.entity, q.loc.0);
+            warn!("client {:?} joined nonexistent instance {:?}", q.entity, q.loc.0);
             commands.entity(q.entity).remove::<Client>();
             continue
         };
 
-        let dimension_names = server
-            .dimensions()
-            .map(|(_, dim)| dim.name.as_str_ident())
+        let dimension_names: Vec<Ident<Cow<str>>> = codec
+            .registry(BiomeRegistry::KEY)
+            .iter()
+            .map(|value| value.name.as_str_ident().into())
             .collect();
 
-        let dimension_name = server.dimension(instance.dimension()).name.as_str_ident();
+        let dimension_name: Ident<Cow<str>> = instance.dimension_type_name().into();
 
-        let last_death_location = q.death_loc.0.map(|(id, pos)| GlobalPos {
-            dimension_name: server.dimension(id).name.as_str_ident(),
-            position: pos,
+        let last_death_location = q.death_loc.0.as_ref().map(|(id, pos)| GlobalPos {
+            dimension_name: id.as_str_ident().into(),
+            position: *pos,
         });
 
         // The login packet is prepended so that it's sent before all the other packets.
@@ -700,8 +702,8 @@ fn initial_join(
             game_mode: (*q.game_mode).into(),
             previous_game_mode: q.prev_game_mode.0.map(|g| g as i8).unwrap_or(-1),
             dimension_names,
-            registry_codec: Cow::Borrowed(server.registry_codec()),
-            dimension_type_name: dimension_name,
+            registry_codec: Cow::Borrowed(codec.cached_codec()),
+            dimension_type_name: dimension_name.clone(),
             dimension_name,
             hashed_seed: q.hashed_seed.0 as i64,
             max_players: VarInt(0), // Ignored by clients.
@@ -738,7 +740,6 @@ fn respawn(
         Changed<Location>,
     >,
     instances: Query<&Instance>,
-    server: Res<Server>,
 ) {
     for (mut client, loc, death_loc, hashed_seed, game_mode, prev_game_mode, is_debug, is_flat) in
         &mut clients
@@ -753,16 +754,16 @@ fn respawn(
             continue
         };
 
-        let dimension_name = server.dimension(instance.dimension()).name.as_str_ident();
+        let dimension_name = instance.dimension_type_name();
 
-        let last_death_location = death_loc.0.map(|(id, pos)| GlobalPos {
-            dimension_name: server.dimension(id).name.as_str_ident(),
-            position: pos,
+        let last_death_location = death_loc.0.as_ref().map(|(id, pos)| GlobalPos {
+            dimension_name: id.as_str_ident().into(),
+            position: *pos,
         });
 
         client.write_packet(&PlayerRespawnS2c {
-            dimension_type_name: dimension_name,
-            dimension_name,
+            dimension_type_name: dimension_name.into(),
+            dimension_name: dimension_name.into(),
             hashed_seed: hashed_seed.0,
             game_mode: (*game_mode).into(),
             previous_game_mode: prev_game_mode.0.map(|g| g as i8).unwrap_or(-1),
@@ -858,16 +859,19 @@ fn read_data_in_old_view(
     mut clients: Query<(
         &mut Client,
         &mut EntityRemoveBuf,
+        &Location,
         &OldLocation,
+        &Position,
         &OldPosition,
         &OldViewDistance,
+        Option<&PacketByteRange>,
     )>,
     instances: Query<&Instance>,
     entities: Query<(EntityInitQuery, &OldPosition)>,
     entity_ids: Query<&EntityId>,
 ) {
     clients.par_iter_mut().for_each_mut(
-        |(mut client, mut remove_buf, old_loc, old_pos, old_view_dist)| {
+        |(mut client, mut remove_buf, loc, old_loc, pos, old_pos, old_view_dist, byte_range)| {
             let Ok(instance) = instances.get(old_loc.get()) else {
                 return;
             };
@@ -876,9 +880,10 @@ fn read_data_in_old_view(
             client.write_packet_bytes(&instance.packet_buf);
 
             // TODO: cache the chunk position?
-            let chunk_pos = old_pos.chunk_pos();
+            let old_chunk_pos = old_pos.chunk_pos();
+            let new_chunk_pos = pos.chunk_pos();
 
-            let view = ChunkView::new(chunk_pos, old_view_dist.0);
+            let view = ChunkView::new(old_chunk_pos, old_view_dist.0);
 
             // Iterate over all visible chunks from the previous tick.
             view.for_each(|pos| {
@@ -924,7 +929,16 @@ fn read_data_in_old_view(
                     // Send all data in the chunk's packet buffer to this client. This will update
                     // entities in the cell, spawn or update the chunk in the cell, or send any
                     // other packet data that was added here by users.
-                    client.write_packet_bytes(&cell.packet_buf);
+                    match byte_range {
+                        Some(byte_range) if pos == new_chunk_pos && loc == old_loc => {
+                            // Skip range of bytes for the client's own entity.
+                            client.write_packet_bytes(&cell.packet_buf[..byte_range.0.start]);
+                            client.write_packet_bytes(&cell.packet_buf[byte_range.0.end..]);
+                        }
+                        _ => {
+                            client.write_packet_bytes(&cell.packet_buf);
+                        }
+                    }
                 }
             });
         },
@@ -939,6 +953,7 @@ fn read_data_in_old_view(
 fn update_view(
     mut clients: Query<
         (
+            Entity,
             &mut Client,
             &mut ScratchBuf,
             &mut EntityRemoveBuf,
@@ -957,6 +972,7 @@ fn update_view(
 ) {
     clients.par_iter_mut().for_each_mut(
         |(
+            entity,
             mut client,
             mut scratch,
             mut remove_buf,
@@ -999,8 +1015,11 @@ fn update_view(
 
                             // Unload all the entities in the cell.
                             for &id in &cell.entities {
-                                if let Ok(entity_id) = entity_ids.get(id) {
-                                    remove_buf.push(entity_id.get());
+                                // Skip client's own entity.
+                                if id != entity {
+                                    if let Ok(entity_id) = entity_ids.get(id) {
+                                        remove_buf.push(entity_id.get());
+                                    }
                                 }
                             }
                         }
@@ -1025,8 +1044,11 @@ fn update_view(
 
                             // Load all the entities in this cell.
                             for &id in &cell.entities {
-                                if let Ok((entity, pos)) = entities.get(id) {
-                                    entity.write_init_packets(pos.get(), &mut client.enc);
+                                // Skip client's own entity.
+                                if id != entity {
+                                    if let Ok((entity, pos)) = entities.get(id) {
+                                        entity.write_init_packets(pos.get(), &mut client.enc);
+                                    }
                                 }
                             }
                         }
@@ -1149,7 +1171,6 @@ fn teleport(
                 pitch: if changed_pitch { look.pitch } else { 0.0 },
                 flags,
                 teleport_id: VarInt(state.teleport_id_counter as i32),
-                dismount_vehicle: false, // TODO?
             });
 
             state.pending_teleports = state.pending_teleports.wrapping_add(1);

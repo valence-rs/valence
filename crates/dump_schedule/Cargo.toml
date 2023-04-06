@@ -1,0 +1,8 @@
+[package]
+name = "dump_schedule"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy_mod_debugdump = "0.7.0"
+valence = { path = "../valence", version = "0.2.0" }
