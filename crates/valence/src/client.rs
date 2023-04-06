@@ -40,7 +40,7 @@ use crate::component::{
     Properties, UniqueId, Username,
 };
 use crate::entity::{
-    EntityId, EntityKind, EntityStatus, HeadYaw, ObjectData, TrackedData, Velocity,
+    EntityId, EntityKind, EntityStatus, HeadYaw, ObjectData, PacketByteRange, TrackedData, Velocity,
 };
 use crate::instance::{Instance, WriteUpdatePacketsToInstancesSet};
 use crate::inventory::{Inventory, InventoryKind};
@@ -885,16 +885,19 @@ fn read_data_in_old_view(
     mut clients: Query<(
         &mut Client,
         &mut EntityRemoveBuf,
+        &Location,
         &OldLocation,
+        &Position,
         &OldPosition,
         &OldViewDistance,
+        Option<&PacketByteRange>,
     )>,
     instances: Query<&Instance>,
     entities: Query<(EntityInitQuery, &OldPosition)>,
     entity_ids: Query<&EntityId>,
 ) {
     clients.par_iter_mut().for_each_mut(
-        |(mut client, mut remove_buf, old_loc, old_pos, old_view_dist)| {
+        |(mut client, mut remove_buf, loc, old_loc, pos, old_pos, old_view_dist, byte_range)| {
             let Ok(instance) = instances.get(old_loc.get()) else {
                 return;
             };
@@ -903,9 +906,10 @@ fn read_data_in_old_view(
             client.write_packet_bytes(&instance.packet_buf);
 
             // TODO: cache the chunk position?
-            let chunk_pos = old_pos.chunk_pos();
+            let old_chunk_pos = old_pos.chunk_pos();
+            let new_chunk_pos = pos.chunk_pos();
 
-            let view = ChunkView::new(chunk_pos, old_view_dist.0);
+            let view = ChunkView::new(old_chunk_pos, old_view_dist.0);
 
             // Iterate over all visible chunks from the previous tick.
             view.for_each(|pos| {
@@ -951,7 +955,16 @@ fn read_data_in_old_view(
                     // Send all data in the chunk's packet buffer to this client. This will update
                     // entities in the cell, spawn or update the chunk in the cell, or send any
                     // other packet data that was added here by users.
-                    client.write_packet_bytes(&cell.packet_buf);
+                    match byte_range {
+                        Some(byte_range) if pos == new_chunk_pos && loc == old_loc => {
+                            // Skip range of bytes for the client's own entity.
+                            client.write_packet_bytes(&cell.packet_buf[..byte_range.0.start]);
+                            client.write_packet_bytes(&cell.packet_buf[byte_range.0.end..]);
+                        }
+                        _ => {
+                            client.write_packet_bytes(&cell.packet_buf);
+                        }
+                    }
                 }
             });
         },
@@ -966,6 +979,7 @@ fn read_data_in_old_view(
 fn update_view(
     mut clients: Query<
         (
+            Entity,
             &mut Client,
             &mut ScratchBuf,
             &mut EntityRemoveBuf,
@@ -984,6 +998,7 @@ fn update_view(
 ) {
     clients.par_iter_mut().for_each_mut(
         |(
+            entity,
             mut client,
             mut scratch,
             mut remove_buf,
@@ -1026,8 +1041,11 @@ fn update_view(
 
                             // Unload all the entities in the cell.
                             for &id in &cell.entities {
-                                if let Ok(entity_id) = entity_ids.get(id) {
-                                    remove_buf.push(entity_id.get());
+                                // Skip client's own entity.
+                                if id != entity {
+                                    if let Ok(entity_id) = entity_ids.get(id) {
+                                        remove_buf.push(entity_id.get());
+                                    }
                                 }
                             }
                         }
@@ -1052,8 +1070,11 @@ fn update_view(
 
                             // Load all the entities in this cell.
                             for &id in &cell.entities {
-                                if let Ok((entity, pos)) = entities.get(id) {
-                                    entity.write_init_packets(pos.get(), &mut client.enc);
+                                // Skip client's own entity.
+                                if id != entity {
+                                    if let Ok((entity, pos)) = entities.get(id) {
+                                        entity.write_init_packets(pos.get(), &mut client.enc);
+                                    }
                                 }
                             }
                         }
