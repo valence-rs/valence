@@ -36,7 +36,8 @@ use tracing::{debug, warn};
 use valence_protocol::item::ItemStack;
 use valence_protocol::packet::c2s::play::click_slot::{ClickMode, Slot};
 use valence_protocol::packet::c2s::play::{
-    ClickSlotC2s, CloseHandledScreenC2s, CreativeInventoryActionC2s, UpdateSelectedSlotC2s,
+    ClickSlotC2s, CloseHandledScreenC2s, CreativeInventoryActionC2s, PlayerActionC2s,
+    UpdateSelectedSlotC2s,
 };
 use valence_protocol::packet::s2c::play::{
     CloseScreenS2c, InventoryS2c, OpenScreenS2c, ScreenHandlerSlotUpdateS2c,
@@ -52,6 +53,38 @@ use crate::packet::WritePacket;
 use crate::prelude::FlushPacketsSet;
 
 mod validate;
+
+pub(crate) struct InventoryPlugin;
+
+impl Plugin for InventoryPlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        app.add_systems(
+            (
+                update_open_inventories,
+                update_client_on_close_inventory.after(update_open_inventories),
+                update_player_inventories,
+            )
+                .in_base_set(CoreSet::PostUpdate)
+                .before(FlushPacketsSet),
+        )
+        .add_systems(
+            (
+                handle_update_selected_slot,
+                handle_click_slot,
+                handle_creative_inventory_action,
+                handle_close_handled_screen,
+                handle_player_action_drop_item,
+            )
+                .in_base_set(EventLoopSet::PreUpdate)
+                .in_schedule(EventLoopSchedule),
+        )
+        .init_resource::<InventorySettings>()
+        .add_event::<ClickSlot>()
+        .add_event::<DropItemStack>()
+        .add_event::<CreativeInventoryAction>()
+        .add_event::<UpdateSelectedSlot>();
+    }
+}
 
 /// The number of slots in the "main" part of the player inventory. 3 rows of 9,
 /// plus the hotbar.
@@ -439,37 +472,6 @@ impl<'a> InventoryWindowMut<'a> {
             Some(inv) => inv.slot_count() + PLAYER_INVENTORY_MAIN_SLOTS_COUNT,
             None => self.player_inventory.slot_count(),
         }
-    }
-}
-
-pub(crate) struct InventoryPlugin;
-
-impl Plugin for InventoryPlugin {
-    fn build(&self, app: &mut bevy_app::App) {
-        app.add_systems(
-            (
-                update_open_inventories,
-                update_client_on_close_inventory.after(update_open_inventories),
-                update_player_inventories,
-            )
-                .in_base_set(CoreSet::PostUpdate)
-                .before(FlushPacketsSet),
-        )
-        .add_systems(
-            (
-                handle_update_selected_slot,
-                handle_click_slot,
-                handle_creative_inventory_action,
-                handle_close_handled_screen,
-            )
-                .in_base_set(EventLoopSet::PreUpdate)
-                .in_schedule(EventLoopSchedule),
-        )
-        .init_resource::<InventorySettings>()
-        .add_event::<ClickSlot>()
-        .add_event::<DropItemStack>()
-        .add_event::<CreativeInventoryAction>()
-        .add_event::<UpdateSelectedSlot>();
     }
 }
 
@@ -890,6 +892,59 @@ fn handle_click_slot(
     }
 }
 
+fn handle_player_action_drop_item(
+    mut packets: EventReader<PacketEvent>,
+    mut clients: Query<(&mut Inventory, &mut ClientInventoryState)>,
+    mut drop_item_stack_events: EventWriter<DropItemStack>,
+) {
+    for packet in packets.iter() {
+        if let Some(pkt) = packet.decode::<PlayerActionC2s>() {
+            use valence_protocol::packet::c2s::play::player_action::Action;
+
+            match pkt.action {
+                Action::DropAllItems => {
+                    if let Ok((mut inv, mut inv_state)) = clients.get_mut(packet.client) {
+                        if let Some(stack) = inv.replace_slot(inv_state.held_item_slot, None) {
+                            inv_state.slots_changed |= 1 << inv_state.held_item_slot;
+
+                            drop_item_stack_events.send(DropItemStack {
+                                client: packet.client,
+                                from_slot: Some(inv_state.held_item_slot),
+                                stack,
+                            });
+                        }
+                    }
+                }
+                Action::DropItem => {
+                    if let Ok((mut inv, mut inv_state)) = clients.get_mut(packet.client) {
+                        if let Some(mut stack) = inv.replace_slot(inv_state.held_item_slot(), None)
+                        {
+                            if stack.count() > 1 {
+                                inv.set_slot(
+                                    inv_state.held_item_slot(),
+                                    stack.clone().with_count(stack.count() - 1),
+                                );
+
+                                stack.set_count(1);
+                            }
+
+                            inv_state.slots_changed |= 1 << inv_state.held_item_slot();
+
+                            drop_item_stack_events.send(DropItemStack {
+                                client: packet.client,
+                                from_slot: Some(inv_state.held_item_slot()),
+                                stack,
+                            })
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+// TODO: make this event user friendly.
 #[derive(Clone, Debug)]
 pub struct CreativeInventoryAction {
     pub client: Entity,
@@ -905,7 +960,8 @@ fn handle_creative_inventory_action(
         &mut ClientInventoryState,
         &GameMode,
     )>,
-    mut events: EventWriter<CreativeInventoryAction>,
+    mut inv_action_events: EventWriter<CreativeInventoryAction>,
+    mut drop_item_stack_events: EventWriter<DropItemStack>,
 ) {
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<CreativeInventoryActionC2s>() {
@@ -915,6 +971,17 @@ fn handle_creative_inventory_action(
 
             if *game_mode != GameMode::Creative {
                 // The client is not in creative mode, ignore.
+                continue;
+            }
+
+            if pkt.slot == -1 {
+                if let Some(stack) = pkt.clicked_item.clone() {
+                    drop_item_stack_events.send(DropItemStack {
+                        client: packet.client,
+                        from_slot: None,
+                        stack,
+                    });
+                }
                 continue;
             }
 
@@ -939,7 +1006,7 @@ fn handle_creative_inventory_action(
                 slot_data: Cow::Borrowed(&pkt.clicked_item),
             });
 
-            events.send(CreativeInventoryAction {
+            inv_action_events.send(CreativeInventoryAction {
                 client: packet.client,
                 slot: pkt.slot,
                 clicked_item: pkt.clicked_item,
@@ -1780,6 +1847,8 @@ mod test {
             app.update();
             client_helper.clear_sent();
 
+            app.world.entity_mut(client_ent).insert(GameMode::Creative);
+
             client_helper.send(
                 &valence_protocol::packet::c2s::play::CreativeInventoryActionC2s {
                     slot: -1,
@@ -1793,8 +1862,10 @@ mod test {
             let events = app
                 .world
                 .get_resource::<Events<DropItemStack>>()
-                .expect("expected drop item stack events");
-            let events = events.iter_current_update_events().collect::<Vec<_>>();
+                .expect("expected drop item stack events")
+                .iter_current_update_events()
+                .collect::<Vec<_>>();
+
             assert_eq!(events.len(), 1);
             assert_eq!(events[0].client, client_ent);
             assert_eq!(events[0].from_slot, None);
