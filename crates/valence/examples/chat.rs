@@ -1,7 +1,9 @@
-use tracing::{info, warn, Level};
+#![allow(clippy::type_complexity)]
+
+use tracing::{warn, Level};
 use valence::client::event::CommandExecution;
 use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerBundle;
+use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
 use valence::secure_chat::SecureChatPlugin;
 
@@ -17,14 +19,25 @@ pub fn main() {
         .add_plugin(SecureChatPlugin)
         .add_startup_system(setup)
         .add_system(init_clients)
-        .add_systems((default_event_handler, handle_command_events).in_schedule(EventLoopSchedule))
-        .add_systems(PlayerList::default_systems())
         .add_system(despawn_disconnected_clients)
+        .add_systems(
+            (
+                default_event_handler,
+                handle_command_events
+            )
+                .in_schedule(EventLoopSchedule),
+        )
+        .add_systems(PlayerList::default_systems())
         .run();
 }
 
-fn setup(mut commands: Commands, server: Res<Server>) {
-    let mut instance = server.new_instance(DimensionId::default());
+fn setup(
+    mut commands: Commands,
+    server: Res<Server>,
+    dimensions: Query<&DimensionType>,
+    biomes: Query<&Biome>,
+) {
+    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
     for z in -5..5 {
         for x in -5..5 {
@@ -34,7 +47,7 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 
     for z in -25..25 {
         for x in -25..25 {
-            instance.set_block([x, SPAWN_Y, z], BlockState::BEDROCK);
+            instance.set_block([x, SPAWN_Y, z], BlockState::GRASS_BLOCK);
         }
     }
 
@@ -42,22 +55,20 @@ fn setup(mut commands: Commands, server: Res<Server>) {
 }
 
 fn init_clients(
-    mut clients: Query<(Entity, &UniqueId, &Username, &mut Client, &mut GameMode), Added<Client>>,
+    mut clients: Query<(Entity, &UniqueId, &mut Client, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
     mut commands: Commands,
 ) {
-    for (entity, uuid, username, mut client, mut game_mode) in &mut clients {
-        *game_mode = GameMode::Adventure;
-        client.send_message("Welcome to Valence! Talk about something.".italic());
+    for (entity, uuid, mut client, mut game_mode) in &mut clients {
+        *game_mode = GameMode::Creative;
+        client.send_message("Welcome to Valence! Say something.".italic());
 
-        commands.entity(entity).insert(PlayerBundle {
+        commands.entity(entity).insert(PlayerEntityBundle {
             location: Location(instances.single()),
             position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 0.0]),
             uuid: *uuid,
             ..Default::default()
         });
-
-        info!("{} logged in!", username.0);
     }
 }
 

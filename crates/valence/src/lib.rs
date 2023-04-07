@@ -38,6 +38,7 @@ pub mod inventory;
 pub mod packet;
 pub mod player_list;
 pub mod player_textures;
+pub mod registry_codec;
 pub mod secure_chat;
 pub mod server;
 #[cfg(any(test, doctest))]
@@ -50,18 +51,21 @@ pub mod prelude {
     pub use async_trait::async_trait;
     pub use bevy_app::prelude::*;
     pub use bevy_ecs::prelude::*;
-    pub use biome::{Biome, BiomeId};
+    pub use biome::{Biome, BiomeId, BiomeRegistry};
+    pub use chat_type::{ChatType, ChatTypeId, ChatTypeRegistry};
     pub use client::event::{EventLoopSchedule, EventLoopSet};
     pub use client::*;
     pub use component::*;
     pub use config::{
         AsyncCallbacks, ConnectionMode, PlayerSampleEntry, ServerListPing, ServerPlugin,
     };
-    pub use dimension::{Dimension, DimensionId};
+    pub use dimension::{DimensionType, DimensionTypeRegistry};
     pub use entity::{EntityAnimation, EntityKind, EntityManager, EntityStatus, HeadYaw};
     pub use glam::DVec3;
     pub use instance::{Block, BlockMut, BlockRef, Chunk, Instance};
-    pub use inventory::{Inventory, InventoryKind, OpenInventory};
+    pub use inventory::{
+        Inventory, InventoryKind, InventoryWindow, InventoryWindowMut, OpenInventory,
+    };
     pub use player_list::{PlayerList, PlayerListEntry};
     pub use protocol::block::{BlockState, PropName, PropValue};
     pub use protocol::ident::Ident;

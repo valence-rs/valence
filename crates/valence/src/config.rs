@@ -9,9 +9,6 @@ use tracing::error;
 use uuid::Uuid;
 use valence_protocol::text::Text;
 
-use crate::biome::Biome;
-use crate::chat_type::ChatType;
-use crate::dimension::Dimension;
 use crate::server::{NewClientInfo, SharedServer};
 
 #[derive(Clone)]
@@ -102,49 +99,6 @@ pub struct ServerPlugin<A> {
     /// An unspecified value is used that should be adequate for most
     /// situations. This default may change in future versions.
     pub outgoing_capacity: usize,
-    /// The list of [`Dimension`]s usable on the server.
-    ///
-    /// The dimensions returned by [`ServerPlugin::dimensions`] will be in the
-    /// same order as this `Vec`.
-    ///
-    /// The number of elements in the `Vec` must be in `1..=u16::MAX`.
-    /// Additionally, the documented requirements on the fields of [`Dimension`]
-    /// must be met.
-    ///
-    /// # Default Value
-    ///
-    /// `vec![Dimension::default()]`
-    pub dimensions: Arc<[Dimension]>,
-    /// The list of [`Biome`]s usable on the server.
-    ///
-    /// The biomes returned by [`SharedServer::biomes`] will be in the same
-    /// order as this `Vec`.
-    ///
-    /// The number of elements in the `Vec` must be in `1..=u16::MAX`.
-    /// Additionally, the documented requirements on the fields of [`Biome`]
-    /// must be met.
-    ///
-    /// **NOTE**: As of 1.19.2, there is a bug in the client which prevents
-    /// joining the game when a biome named "minecraft:plains" is not present.
-    /// Ensure there is a biome named "plains".
-    ///
-    /// # Default Value
-    ///
-    /// `vec![Biome::default()]`.
-    pub biomes: Arc<[Biome]>,
-    /// The list of [`ChatType`]s usable on the server.
-    ///
-    /// The chat types returned by [`ServerPlugin::chat_types`] will be in the
-    /// same order as this `Vec`.
-    ///
-    /// The number of elements in the `Vec` must be in `1..=u16::MAX`.
-    /// Additionally, the documented requirements on the fields of [`ChatType`]
-    /// must be met.
-    ///
-    /// # Default Value
-    ///
-    /// `vec![ChatType::default()]`
-    pub chat_types: Arc<[ChatType]>,
 }
 
 impl<A: AsyncCallbacks> ServerPlugin<A> {
@@ -162,9 +116,6 @@ impl<A: AsyncCallbacks> ServerPlugin<A> {
             compression_threshold: Some(256),
             incoming_capacity: 2097152, // 2 MiB
             outgoing_capacity: 8388608, // 8 MiB
-            dimensions: [Dimension::default()].as_slice().into(),
-            biomes: [Biome::default()].as_slice().into(),
-            chat_types: [ChatType::default()].as_slice().into(),
         }
     }
 
@@ -221,27 +172,6 @@ impl<A: AsyncCallbacks> ServerPlugin<A> {
     #[must_use]
     pub fn with_outgoing_capacity(mut self, outgoing_capacity: usize) -> Self {
         self.outgoing_capacity = outgoing_capacity;
-        self
-    }
-
-    /// See [`Self::dimensions`].
-    #[must_use]
-    pub fn with_dimensions(mut self, dimensions: impl Into<Arc<[Dimension]>>) -> Self {
-        self.dimensions = dimensions.into();
-        self
-    }
-
-    /// See [`Self::biomes`].
-    #[must_use]
-    pub fn with_biomes(mut self, biomes: impl Into<Arc<[Biome]>>) -> Self {
-        self.biomes = biomes.into();
-        self
-    }
-
-    /// See [`Self::chat_types`].
-    #[must_use]
-    pub fn with_chat_types(mut self, chat_types: impl Into<Arc<[ChatType]>>) -> Self {
-        self.chat_types = chat_types.into();
         self
     }
 }

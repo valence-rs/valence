@@ -531,6 +531,7 @@ fn handle_message_events(
                 };
 
                 let Some(session) = &state.session else {
+                    warn!("Player `{}` doesn't have a chat session", username.0);
                     commands.add(DisconnectClient {
                         client: message.client,
                         reason: Text::translate(CHAT_DISABLED_MISSING_PROFILE_KEY, [])
@@ -540,6 +541,7 @@ fn handle_message_events(
 
                 // Verify that the player's session has not expired
                 if session.is_expired() {
+                    warn!("Player `{}` has an expired chat session", username.0);
                     commands.add(DisconnectClient {
                         client: message.client,
                         reason: Text::translate(CHAT_DISABLED_EXPIRED_PROFILE_KEY, []),
@@ -549,6 +551,7 @@ fn handle_message_events(
 
                 // Verify that the chat message is signed
                 let Some(message_signature) = &message.signature else {
+                    warn!("Received unsigned chat message from `{}`", username.0);
                     commands.add(DisconnectClient {
                         client: message.client,
                         reason: Text::translate(MULTIPLAYER_DISCONNECT_UNSIGNED_CHAT, [])
@@ -585,6 +588,7 @@ fn handle_message_events(
                     )
                     .is_err()
                 {
+                    warn!("Failed to verify chat message from `{}`", username.0);
                     commands.add(DisconnectClient {
                         client: message.client,
                         reason: Text::translate(MULTIPLAYER_DISCONNECT_UNSIGNED_CHAT, []),
