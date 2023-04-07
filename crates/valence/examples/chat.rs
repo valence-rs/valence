@@ -20,13 +20,7 @@ pub fn main() {
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
-        .add_systems(
-            (
-                default_event_handler,
-                handle_command_events
-            )
-                .in_schedule(EventLoopSchedule),
-        )
+        .add_systems((default_event_handler, handle_command_events).in_schedule(EventLoopSchedule))
         .add_systems(PlayerList::default_systems())
         .run();
 }
