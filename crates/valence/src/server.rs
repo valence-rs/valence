@@ -20,7 +20,7 @@ use crate::client::{ClientBundle, ClientPlugin};
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerPlugin};
 use crate::dimension::DimensionPlugin;
 use crate::entity::EntityPlugin;
-use crate::event_loop::{EventLoopPlugin, EventLoopSet};
+use crate::event_loop::{EventLoopPlugin, RunEventLoopSet};
 use crate::instance::InstancePlugin;
 use crate::inventory::InventoryPlugin;
 use crate::player_list::PlayerListPlugin;
@@ -233,11 +233,7 @@ pub fn build_plugin(
                 break
             };
 
-            world.spawn(ClientBundle::new(
-                args.info,
-                args.conn,
-                args.enc,
-            ));
+            world.spawn(ClientBundle::new(args.info, args.conn, args.enc));
         }
     };
 
@@ -266,18 +262,18 @@ pub fn build_plugin(
     app.add_system(
         spawn_new_clients
             .in_base_set(CoreSet::PreUpdate)
-            .before(EventLoopSet),
+            .before(RunEventLoopSet),
     );
 
     app.add_system(increment_tick_counter.in_base_set(CoreSet::Last));
 
     // Add internal plugins.
-    app.add_plugin(RegistryCodecPlugin)
+    app.add_plugin(EventLoopPlugin)
+        .add_plugin(RegistryCodecPlugin)
         .add_plugin(BiomePlugin)
         .add_plugin(DimensionPlugin)
         .add_plugin(ComponentPlugin)
         .add_plugin(ClientPlugin)
-        .add_plugin(EventLoopPlugin)
         .add_plugin(EntityPlugin)
         .add_plugin(InstancePlugin)
         .add_plugin(InventoryPlugin)

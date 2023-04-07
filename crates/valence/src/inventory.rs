@@ -462,7 +462,7 @@ impl Plugin for InventoryPlugin {
                 handle_creative_inventory_action,
                 handle_close_handled_screen,
             )
-                .in_set(EventLoopSet)
+                .in_base_set(EventLoopSet::PreUpdate)
                 .in_schedule(EventLoopSchedule),
         )
         .init_resource::<InventorySettings>()

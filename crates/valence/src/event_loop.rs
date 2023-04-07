@@ -10,6 +10,43 @@ use valence_protocol::{Decode, Packet};
 
 use crate::client::Client;
 
+pub(crate) struct EventLoopPlugin;
+
+impl Plugin for EventLoopPlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        app.configure_set(RunEventLoopSet.in_base_set(CoreSet::PreUpdate))
+            .add_system(run_event_loop.in_set(RunEventLoopSet))
+            .add_event::<PacketEvent>();
+
+        // Add the event loop schedule.
+        let mut event_loop = Schedule::new();
+        event_loop.set_default_base_set(EventLoopSet::Update);
+        event_loop.configure_sets((
+            EventLoopSet::PreUpdate.before(EventLoopSet::Update),
+            EventLoopSet::Update.before(EventLoopSet::PostUpdate),
+            EventLoopSet::PostUpdate,
+        ));
+
+        app.add_schedule(EventLoopSchedule, event_loop);
+    }
+}
+
+/// The [`ScheduleLabel`] for the event loop [`Schedule`].
+#[derive(ScheduleLabel, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
+pub struct EventLoopSchedule;
+
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
+#[system_set(base)]
+pub enum EventLoopSet {
+    PreUpdate,
+    #[default]
+    Update,
+    PostUpdate,
+}
+
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
+pub struct RunEventLoopSet;
+
 #[derive(Clone, Debug)]
 pub struct PacketEvent {
     /// The client this packet originated from.
@@ -23,11 +60,15 @@ pub struct PacketEvent {
 }
 
 impl PacketEvent {
+    /// Attempts to decode this packet as the packet `P`.
+    ///
+    /// If the packet ID is mismatched or an error occurs, `None` is returned.
+    /// Otherwise, `Some` is returned containing the decoded packet.
     pub fn decode<'a, P>(&'a self) -> Option<P>
     where
         P: Packet<'a> + Decode<'a>,
     {
-        if P::PACKET_ID == self.id {
+        if self.id == P::PACKET_ID {
             let mut r = &self.data[..];
 
             match P::decode(&mut r) {
@@ -37,8 +78,9 @@ impl PacketEvent {
                     }
 
                     warn!(
-                        "missed {} bytes while decoding packet with ID of {}",
+                        "missed {} bytes while decoding packet {} (ID = {})",
                         r.len(),
+                        pkt.packet_name(),
                         P::PACKET_ID
                     );
                     debug!("complete packet after partial decode: {pkt:?}");
@@ -52,14 +94,6 @@ impl PacketEvent {
         None
     }
 }
-
-/// The [`ScheduleLabel`] for the event loop [`Schedule`].
-#[derive(ScheduleLabel, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
-pub struct EventLoopSchedule;
-
-/// The default base set for [`EventLoopSchedule`].
-#[derive(SystemSet, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug)]
-pub struct EventLoopSet;
 
 /// An exclusive system for running the event loop schedule.
 pub(crate) fn run_event_loop(
@@ -138,21 +172,5 @@ pub(crate) fn run_event_loop(
 
         state.apply(world);
         world.run_schedule(EventLoopSchedule);
-    }
-}
-
-pub(crate) struct EventLoopPlugin;
-
-impl Plugin for EventLoopPlugin {
-    fn build(&self, app: &mut bevy_app::App) {
-        app.configure_set(EventLoopSet.in_base_set(CoreSet::PreUpdate))
-            .add_system(run_event_loop.in_set(EventLoopSet))
-            .add_event::<PacketEvent>();
-
-        // Add the event loop schedule.
-        let mut event_loop = Schedule::new();
-        event_loop.set_default_base_set(EventLoopSet);
-
-        app.add_schedule(EventLoopSchedule, event_loop);
     }
 }

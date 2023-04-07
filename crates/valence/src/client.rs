@@ -3,7 +3,7 @@ use std::net::IpAddr;
 use std::num::Wrapping;
 use std::time::Instant;
 
-use bevy_app::{CoreSet, Plugin};
+use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_ecs::query::WorldQuery;
 use bevy_ecs::system::Command;
@@ -13,7 +13,6 @@ use rand::Rng;
 use tracing::warn;
 use valence_protocol::block_pos::BlockPos;
 use valence_protocol::byte_angle::ByteAngle;
-use valence_protocol::decoder::PacketDecoder;
 use valence_protocol::encoder::PacketEncoder;
 use valence_protocol::ident::Ident;
 use valence_protocol::item::ItemStack;
@@ -42,6 +41,7 @@ use crate::component::{
 use crate::entity::{
     EntityId, EntityKind, EntityStatus, HeadYaw, ObjectData, PacketByteRange, TrackedData, Velocity,
 };
+use crate::event_loop::{EventLoopSchedule, EventLoopSet};
 use crate::instance::{Instance, WriteUpdatePacketsToInstancesSet};
 use crate::inventory::{Inventory, InventoryKind};
 use crate::packet::WritePacket;
@@ -53,8 +53,58 @@ use crate::view::{ChunkPos, ChunkView};
 
 mod default_event_handler;
 pub mod event;
+pub mod movement;
 
 pub use default_event_handler::*;
+
+pub(crate) struct ClientPlugin;
+
+/// When clients have their packet buffer flushed. Any system that writes
+/// packets to clients should happen before this. Otherwise, the data
+/// will arrive one tick late.
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct FlushPacketsSet;
+
+impl Plugin for ClientPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(
+            (
+                initial_join.after(RegistryCodecSet),
+                update_chunk_load_dist,
+                read_data_in_old_view
+                    .after(WriteUpdatePacketsToInstancesSet)
+                    .after(update_chunk_load_dist),
+                update_view.after(initial_join).after(read_data_in_old_view),
+                respawn.after(update_view),
+                remove_entities.after(update_view),
+                update_spawn_position.after(update_view),
+                update_old_view_dist.after(update_view),
+                teleport.after(update_view),
+                update_game_mode,
+                send_keepalive,
+                update_tracked_data.after(WriteUpdatePacketsToInstancesSet),
+                init_tracked_data.after(WriteUpdatePacketsToInstancesSet),
+                update_op_level,
+                acknowledge_player_actions,
+            )
+                .in_base_set(CoreSet::PostUpdate)
+                .before(FlushPacketsSet),
+        )
+        .configure_set(
+            FlushPacketsSet
+                .in_base_set(CoreSet::PostUpdate)
+                .after(WriteUpdatePacketsToInstancesSet),
+        )
+        .add_system(flush_packets.in_set(FlushPacketsSet))
+        .add_event::<movement::Movement>()
+        .init_resource::<movement::MovementSettings>()
+        .add_system(
+            movement::handle_client_movement
+                .in_base_set(EventLoopSet::PreUpdate)
+                .in_schedule(EventLoopSchedule),
+        );
+    }
+}
 
 /// The bundle of components needed for clients to function. All components are
 /// required unless otherwise stated.
@@ -179,7 +229,8 @@ pub trait ClientConnection: Send + Sync + 'static {
     /// Receives the next pending serverbound packet. This must return
     /// immediately without blocking.
     fn try_recv(&mut self) -> anyhow::Result<Option<ReceivedPacket>>;
-    /// The number of pending packets waiting to be received via [`Self::try_recv`].
+    /// The number of pending packets waiting to be received via
+    /// [`Self::try_recv`].
     fn len(&self) -> usize;
 }
 
@@ -636,48 +687,6 @@ pub fn despawn_disconnected_clients(
         if let Some(mut entity) = commands.get_entity(entity) {
             entity.insert(Despawned);
         }
-    }
-}
-
-pub(crate) struct ClientPlugin;
-
-/// When clients have their packet buffer flushed. Any system that writes
-/// packets to clients should happen before this. Otherwise, the data
-/// will arrive one tick late.
-#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct FlushPacketsSet;
-
-impl Plugin for ClientPlugin {
-    fn build(&self, app: &mut bevy_app::App) {
-        app.add_systems(
-            (
-                initial_join.after(RegistryCodecSet),
-                update_chunk_load_dist,
-                read_data_in_old_view
-                    .after(WriteUpdatePacketsToInstancesSet)
-                    .after(update_chunk_load_dist),
-                update_view.after(initial_join).after(read_data_in_old_view),
-                respawn.after(update_view),
-                remove_entities.after(update_view),
-                update_spawn_position.after(update_view),
-                update_old_view_dist.after(update_view),
-                teleport.after(update_view),
-                update_game_mode,
-                send_keepalive,
-                update_tracked_data.after(WriteUpdatePacketsToInstancesSet),
-                init_tracked_data.after(WriteUpdatePacketsToInstancesSet),
-                update_op_level,
-                acknowledge_player_actions,
-            )
-                .in_base_set(CoreSet::PostUpdate)
-                .before(FlushPacketsSet),
-        )
-        .configure_set(
-            FlushPacketsSet
-                .in_base_set(CoreSet::PostUpdate)
-                .after(WriteUpdatePacketsToInstancesSet),
-        )
-        .add_system(flush_packets.in_set(FlushPacketsSet));
     }
 }
 
