@@ -5,10 +5,26 @@ use valence_protocol::packet::c2s::play::{
     Full, LookAndOnGround, OnGroundOnly, PositionAndOnGround, VehicleMoveC2s,
 };
 
-use super::TeleportState;
+use super::teleport::TeleportState;
 use crate::component::{Look, OnGround, Position};
 use crate::entity::HeadYaw;
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+
+pub(super) fn build(app: &mut App) {
+    app.init_resource::<MovementSettings>()
+        .add_event::<Movement>()
+        .add_system(
+            handle_client_movement
+                .in_schedule(EventLoopSchedule)
+                .in_base_set(EventLoopSet::PreUpdate),
+        );
+}
+
+/// Configuration resource for client movement checks.
+#[derive(Resource, Default)]
+pub struct MovementSettings {
+    // TODO
+}
 
 /// Event sent when a client successfully moves.
 #[derive(Clone, Debug)]
@@ -22,22 +38,6 @@ pub struct Movement {
     pub old_on_ground: bool,
 }
 
-/// Configuration resource for client movement checks.
-#[derive(Resource, Default)]
-pub struct MovementSettings {
-    // TODO
-}
-
-pub(super) fn build(app: &mut App) {
-    app.init_resource::<MovementSettings>()
-        .add_event::<Movement>()
-        .add_system(
-            handle_client_movement
-                .in_schedule(EventLoopSchedule)
-                .in_base_set(EventLoopSet::PreUpdate),
-        );
-}
-
 fn handle_client_movement(
     mut packets: EventReader<PacketEvent>,
     mut clients: Query<(
@@ -45,7 +45,7 @@ fn handle_client_movement(
         &mut Look,
         &mut HeadYaw,
         &mut OnGround,
-        &TeleportState,
+        &mut TeleportState,
     )>,
     mut movement_events: EventWriter<Movement>,
 ) {
@@ -189,10 +189,10 @@ fn handle(
     mut look: Mut<Look>,
     mut head_yaw: Mut<HeadYaw>,
     mut on_ground: Mut<OnGround>,
-    teleport_state: &TeleportState,
+    mut teleport_state: Mut<TeleportState>,
     movement_events: &mut EventWriter<Movement>,
 ) {
-    if teleport_state.pending_teleports != 0 {
+    if teleport_state.pending_teleports() != 0 {
         return;
     }
 
@@ -200,7 +200,9 @@ fn handle(
     // TODO: check that the client isn't clipping through blocks.
 
     pos.set_if_neq(Position(mov.position));
+    teleport_state.synced_pos = mov.position;
     look.set_if_neq(mov.look);
+    teleport_state.synced_look = mov.look;
     head_yaw.set_if_neq(HeadYaw(mov.look.yaw));
     on_ground.set_if_neq(OnGround(mov.on_ground));
 

@@ -6,6 +6,20 @@ use valence_protocol::types::Direction;
 use super::*;
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 
+pub(super) fn build(app: &mut App) {
+    app.add_event::<Digging>()
+        .add_system(
+            handle_player_action
+                .in_schedule(EventLoopSchedule)
+                .in_base_set(EventLoopSet::PreUpdate),
+        )
+        .add_system(
+            acknowledge_player_actions
+                .in_base_set(CoreSet::PostUpdate)
+                .before(FlushPacketsSet),
+        );
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct Digging {
     pub client: Entity,
@@ -23,20 +37,6 @@ pub enum DiggingState {
 
 #[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct ActionSequence(i32);
-
-pub(super) fn build(app: &mut App) {
-    app.add_event::<Digging>()
-        .add_system(
-            handle_player_action
-                .in_schedule(EventLoopSchedule)
-                .in_base_set(EventLoopSet::PreUpdate),
-        )
-        .add_system(
-            acknowledge_player_actions
-                .in_base_set(CoreSet::PostUpdate)
-                .before(FlushPacketsSet),
-        );
-}
 
 impl ActionSequence {
     pub fn update(&mut self, val: i32) {

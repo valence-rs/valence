@@ -8,18 +8,18 @@ use valence_protocol::types::Hand;
 use super::action::ActionSequence;
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 
-#[derive(Copy, Clone, Debug)]
-pub struct HandSwing {
-    pub client: Entity,
-    pub hand: Hand,
-}
-
 pub(super) fn build(app: &mut App) {
     app.add_event::<HandSwing>().add_system(
         handle_misc_packets
             .in_schedule(EventLoopSchedule)
             .in_base_set(EventLoopSet::PreUpdate),
     );
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct HandSwing {
+    pub client: Entity,
+    pub hand: Hand,
 }
 
 fn handle_misc_packets(

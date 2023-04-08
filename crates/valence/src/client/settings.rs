@@ -6,6 +6,14 @@ use super::*;
 pub use crate::entity::player::{MainArm, PlayerModelParts};
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 
+pub(super) fn build(app: &mut App) {
+    app.add_system(
+        handle_client_settings
+            .in_schedule(EventLoopSchedule)
+            .in_base_set(EventLoopSet::PreUpdate),
+    );
+}
+
 #[derive(Component, Default, Debug)]
 pub struct ClientSettings {
     pub locale: Box<str>,
@@ -13,14 +21,6 @@ pub struct ClientSettings {
     pub chat_colors: bool,
     pub enable_text_filtering: bool,
     pub allow_server_listings: bool,
-}
-
-pub(super) fn build(app: &mut App) {
-    app.add_system(
-        handle_client_settings
-            .in_schedule(EventLoopSchedule)
-            .in_base_set(EventLoopSet::PreUpdate),
-    );
 }
 
 fn handle_client_settings(

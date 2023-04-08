@@ -6,6 +6,14 @@ use valence_protocol::packet::c2s::play::PlayerInteractEntityC2s;
 use crate::entity::EntityManager;
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 
+pub(super) fn build(app: &mut App) {
+    app.add_event::<InteractEntity>().add_system(
+        handle_interact_entity
+            .in_schedule(EventLoopSchedule)
+            .in_base_set(EventLoopSet::PreUpdate),
+    );
+}
+
 #[derive(Copy, Clone, Debug)]
 pub struct InteractEntity {
     pub client: Entity,
@@ -15,14 +23,6 @@ pub struct InteractEntity {
     pub sneaking: bool,
     /// The kind of interaction that occurred.
     pub interact: EntityInteraction,
-}
-
-pub(super) fn build(app: &mut App) {
-    app.add_event::<InteractEntity>().add_system(
-        handle_interact_entity
-            .in_schedule(EventLoopSchedule)
-            .in_base_set(EventLoopSet::PreUpdate),
-    );
 }
 
 fn handle_interact_entity(

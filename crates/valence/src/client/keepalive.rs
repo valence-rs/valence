@@ -3,6 +3,19 @@ use valence_protocol::packet::c2s::play::KeepAliveC2s;
 use super::*;
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 
+pub(super) fn build(app: &mut App) {
+    app.add_system(
+        send_keepalive
+            .in_base_set(CoreSet::PostUpdate)
+            .before(FlushPacketsSet),
+    )
+    .add_system(
+        handle_keepalive_response
+            .in_base_set(EventLoopSet::PreUpdate)
+            .in_schedule(EventLoopSchedule),
+    );
+}
+
 #[derive(Component, Debug)]
 pub struct KeepaliveState {
     got_keepalive: bool,
@@ -18,19 +31,6 @@ impl KeepaliveState {
             keepalive_sent_time: Instant::now(),
         }
     }
-}
-
-pub(super) fn build(app: &mut App) {
-    app.add_system(
-        send_keepalive
-            .in_base_set(CoreSet::PostUpdate)
-            .before(FlushPacketsSet),
-    )
-    .add_system(
-        handle_keepalive_response
-            .in_base_set(EventLoopSet::PreUpdate)
-            .in_schedule(EventLoopSchedule),
-    );
 }
 
 fn send_keepalive(

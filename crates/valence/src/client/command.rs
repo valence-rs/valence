@@ -6,6 +6,18 @@ use valence_protocol::packet::c2s::play::ClientCommandC2s;
 use crate::entity::entity::Flags;
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 
+pub(super) fn build(app: &mut App) {
+    app.add_event::<Sprinting>()
+        .add_event::<Sneaking>()
+        .add_event::<JumpWithHorse>()
+        .add_event::<LeaveBed>()
+        .add_system(
+            handle_client_command
+                .in_schedule(EventLoopSchedule)
+                .in_base_set(EventLoopSet::PreUpdate),
+        );
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Sprinting {
     pub client: Entity,
@@ -48,18 +60,6 @@ pub enum JumpWithHorseState {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct LeaveBed {
     pub client: Entity,
-}
-
-pub(super) fn build(app: &mut App) {
-    app.add_event::<Sprinting>()
-        .add_event::<Sneaking>()
-        .add_event::<JumpWithHorse>()
-        .add_event::<LeaveBed>()
-        .add_system(
-            handle_client_command
-                .in_schedule(EventLoopSchedule)
-                .in_base_set(EventLoopSet::PreUpdate),
-        );
 }
 
 fn handle_client_command(

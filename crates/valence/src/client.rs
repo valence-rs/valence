@@ -57,6 +57,7 @@ pub mod keepalive;
 pub mod misc;
 pub mod movement;
 pub mod settings;
+pub mod teleport;
 
 pub(crate) struct ClientPlugin;
 
@@ -80,7 +81,6 @@ impl Plugin for ClientPlugin {
                 remove_entities.after(update_view),
                 update_spawn_position.after(update_view),
                 update_old_view_dist.after(update_view),
-                teleport.after(update_view),
                 update_game_mode,
                 update_tracked_data.after(WriteUpdatePacketsToInstancesSet),
                 init_tracked_data.after(WriteUpdatePacketsToInstancesSet),
@@ -103,6 +103,7 @@ impl Plugin for ClientPlugin {
         settings::build(app);
         misc::build(app);
         action::build(app);
+        teleport::build(app);
     }
 }
 
@@ -133,7 +134,7 @@ pub(crate) struct ClientBundle {
     has_respawn_screen: HasRespawnScreen,
     is_debug: IsDebug,
     is_flat: IsFlat,
-    teleport_state: TeleportState,
+    teleport_state: teleport::TeleportState,
     cursor_item: CursorItem,
     player_inventory_state: ClientInventoryState,
     inventory: Inventory,
@@ -163,7 +164,7 @@ impl ClientBundle {
             death_location: DeathLocation::default(),
             keepalive_state: keepalive::KeepaliveState::new(),
             ping: Ping::default(),
-            teleport_state: TeleportState::new(),
+            teleport_state: teleport::TeleportState::new(),
             is_hardcore: IsHardcore::default(),
             is_flat: IsFlat::default(),
             has_respawn_screen: HasRespawnScreen::default(),
@@ -593,41 +594,6 @@ pub struct IsDebug(pub bool);
 /// Changes the perceived horizon line (used for superflat worlds).
 #[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct IsFlat(pub bool);
-
-#[derive(Component, Debug)]
-pub struct TeleportState {
-    /// Counts up as teleports are made.
-    teleport_id_counter: u32,
-    /// The number of pending client teleports that have yet to receive a
-    /// confirmation. Inbound client position packets should be ignored while
-    /// this is nonzero.
-    pending_teleports: u32,
-    synced_pos: DVec3,
-    synced_look: Look,
-}
-
-impl TeleportState {
-    fn new() -> Self {
-        Self {
-            teleport_id_counter: 0,
-            pending_teleports: 0,
-            synced_pos: DVec3::ZERO,
-            synced_look: Look {
-                // Client starts facing north.
-                yaw: 180.0,
-                pitch: 0.0,
-            },
-        }
-    }
-
-    pub fn teleport_id_counter(&self) -> u32 {
-        self.teleport_id_counter
-    }
-
-    pub fn pending_teleports(&self) -> u32 {
-        self.pending_teleports
-    }
-}
 
 /// The item stack that the client thinks it's holding under the mouse
 /// cursor.
@@ -1169,46 +1135,6 @@ fn update_game_mode(mut clients: Query<(&mut Client, &GameMode), Changed<GameMod
             kind: GameEventKind::ChangeGameMode,
             value: *game_mode as i32 as f32,
         })
-    }
-}
-
-/// Syncs the client's position and look with the server.
-///
-/// This should happen after chunks are loaded so the client doesn't fall though
-/// the floor.
-fn teleport(
-    mut clients: Query<
-        (&mut Client, &mut TeleportState, &Position, &Look),
-        Or<(Changed<Position>, Changed<Look>)>,
-    >,
-) {
-    for (mut client, mut state, pos, look) in &mut clients {
-        let changed_pos = pos.0 != state.synced_pos;
-        let changed_yaw = look.yaw != state.synced_look.yaw;
-        let changed_pitch = look.pitch != state.synced_look.pitch;
-
-        if changed_pos || changed_yaw || changed_pitch {
-            state.synced_pos = pos.0;
-            state.synced_look = *look;
-
-            let flags = PlayerPositionLookFlags::new()
-                .with_x(!changed_pos)
-                .with_y(!changed_pos)
-                .with_z(!changed_pos)
-                .with_y_rot(!changed_yaw)
-                .with_x_rot(!changed_pitch);
-
-            client.write_packet(&PlayerPositionLookS2c {
-                position: if changed_pos { pos.0.into() } else { [0.0; 3] },
-                yaw: if changed_yaw { look.yaw } else { 0.0 },
-                pitch: if changed_pitch { look.pitch } else { 0.0 },
-                flags,
-                teleport_id: VarInt(state.teleport_id_counter as i32),
-            });
-
-            state.pending_teleports = state.pending_teleports.wrapping_add(1);
-            state.teleport_id_counter = state.teleport_id_counter.wrapping_add(1);
-        }
     }
 }
 
