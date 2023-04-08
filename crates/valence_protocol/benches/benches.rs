@@ -246,7 +246,8 @@ fn packets(c: &mut Criterion) {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decode_packet::<PlayerListHeaderS2c>(&decoder.try_next_packet().unwrap().unwrap()).unwrap();
+            decode_packet::<PlayerListHeaderS2c>(&decoder.try_next_packet().unwrap().unwrap())
+                .unwrap();
 
             black_box(decoder);
         });
@@ -298,7 +299,8 @@ fn packets(c: &mut Criterion) {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decode_packet::<PlayerListHeaderS2c>(&decoder.try_next_packet().unwrap().unwrap()).unwrap();
+            decode_packet::<PlayerListHeaderS2c>(&decoder.try_next_packet().unwrap().unwrap())
+                .unwrap();
 
             black_box(decoder);
         });
