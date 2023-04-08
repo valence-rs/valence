@@ -108,7 +108,7 @@ fn handle_misc_packets(
             interact_block_events.send(InteractBlock {
                 client: packet.client,
                 hand: pkt.hand,
-                position: pkt.position.into(),
+                position: pkt.position,
                 face: pkt.face,
                 cursor_pos: pkt.cursor_pos.into(),
                 head_inside_block: pkt.head_inside_block,

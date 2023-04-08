@@ -206,6 +206,9 @@ pub trait ClientConnection: Send + Sync + 'static {
     /// The number of pending packets waiting to be received via
     /// [`Self::try_recv`].
     fn len(&self) -> usize;
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 #[derive(Clone, Debug)]
