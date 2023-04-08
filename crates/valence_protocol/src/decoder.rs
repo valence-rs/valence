@@ -4,80 +4,12 @@ use anyhow::{bail, ensure};
 use bytes::{Buf, BufMut, BytesMut};
 
 use crate::var_int::{VarInt, VarIntDecodeError};
-use crate::{Encode, Packet, Result, MAX_PACKET_SIZE};
+use crate::{Packet, Result, MAX_PACKET_SIZE};
 
 /// The AES block cipher with a 128 bit key, using the CFB-8 mode of
 /// operation.
 #[cfg(feature = "encryption")]
 type Cipher = cfb8::Cfb8<aes::Aes128>;
-
-#[cfg(feature = "compression")]
-pub fn encode_packet_compressed<'a, P>(
-    buf: &mut Vec<u8>,
-    pkt: &P,
-    threshold: u32,
-    scratch: &mut Vec<u8>,
-) -> Result<()>
-where
-    P: Packet<'a>,
-{
-    use std::io::Read;
-
-    use flate2::bufread::ZlibEncoder;
-    use flate2::Compression;
-
-    let start_len = buf.len();
-
-    pkt.encode_packet(&mut *buf)?;
-
-    let data_len = buf.len() - start_len;
-
-    if data_len > threshold as usize {
-        let mut z = ZlibEncoder::new(&buf[start_len..], Compression::new(4));
-
-        scratch.clear();
-
-        let data_len_size = VarInt(data_len as i32).written_size();
-
-        let packet_len = data_len_size + z.read_to_end(scratch)?;
-
-        ensure!(
-            packet_len <= MAX_PACKET_SIZE as usize,
-            "packet exceeds maximum length"
-        );
-
-        drop(z);
-
-        buf.truncate(start_len);
-
-        VarInt(packet_len as i32).encode(&mut *buf)?;
-        VarInt(data_len as i32).encode(&mut *buf)?;
-        buf.extend_from_slice(scratch);
-    } else {
-        let data_len_size = 1;
-        let packet_len = data_len_size + data_len;
-
-        ensure!(
-            packet_len <= MAX_PACKET_SIZE as usize,
-            "packet exceeds maximum length"
-        );
-
-        let packet_len_size = VarInt(packet_len as i32).written_size();
-
-        let data_prefix_len = packet_len_size + data_len_size;
-
-        buf.put_bytes(0, data_prefix_len);
-        buf.copy_within(start_len..start_len + data_len, start_len + data_prefix_len);
-
-        let mut front = &mut buf[start_len..];
-
-        VarInt(packet_len as i32).encode(&mut front)?;
-        // Zero for no compression on this packet.
-        VarInt(0).encode(front)?;
-    }
-
-    Ok(())
-}
 
 #[derive(Default)]
 pub struct PacketDecoder {

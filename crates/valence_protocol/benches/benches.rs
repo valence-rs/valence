@@ -7,9 +7,8 @@ use valence_nbt::{compound, List};
 use valence_protocol::array::LengthPrefixedArray;
 use valence_protocol::block::{BlockKind, BlockState, PropName, PropValue};
 use valence_protocol::byte_angle::ByteAngle;
-use valence_protocol::decoder::{
-    encode_packet, encode_packet_compressed, PacketDecoder, PacketEncoder,
-};
+use valence_protocol::decoder::{decode_packet, PacketDecoder};
+use valence_protocol::encoder::{encode_packet, encode_packet_compressed, PacketEncoder};
 use valence_protocol::item::ItemKind;
 use valence_protocol::packet::s2c::play::{ChunkDataS2c, EntitySpawnS2c, PlayerListHeaderS2c};
 use valence_protocol::text::{Color, TextFormat};
@@ -233,7 +232,7 @@ fn packets(c: &mut Criterion) {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decoder.try_next_packet::<ChunkDataS2c>().unwrap();
+            decode_packet::<ChunkDataS2c>(&decoder.try_next_packet().unwrap().unwrap()).unwrap();
 
             black_box(decoder);
         });
@@ -247,7 +246,7 @@ fn packets(c: &mut Criterion) {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decoder.try_next_packet::<PlayerListHeaderS2c>().unwrap();
+            decode_packet::<PlayerListHeaderS2c>(&decoder.try_next_packet().unwrap().unwrap()).unwrap();
 
             black_box(decoder);
         });
@@ -261,13 +260,13 @@ fn packets(c: &mut Criterion) {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decoder.try_next_packet::<EntitySpawnS2c>().unwrap();
+            decode_packet::<EntitySpawnS2c>(&decoder.try_next_packet().unwrap().unwrap()).unwrap();
 
             black_box(decoder);
         });
     });
 
-    decoder.set_compression(true);
+    decoder.set_compression(Some(256));
 
     let mut scratch = vec![];
 
@@ -279,7 +278,7 @@ fn packets(c: &mut Criterion) {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decoder.try_next_packet::<ChunkDataS2c>().unwrap();
+            decode_packet::<ChunkDataS2c>(&decoder.try_next_packet().unwrap().unwrap()).unwrap();
 
             black_box(decoder);
         });
@@ -299,7 +298,7 @@ fn packets(c: &mut Criterion) {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decoder.try_next_packet::<PlayerListHeaderS2c>().unwrap();
+            decode_packet::<PlayerListHeaderS2c>(&decoder.try_next_packet().unwrap().unwrap()).unwrap();
 
             black_box(decoder);
         });
@@ -313,7 +312,7 @@ fn packets(c: &mut Criterion) {
             let decoder = black_box(&mut decoder);
 
             decoder.queue_slice(&packet_buf);
-            decoder.try_next_packet::<EntitySpawnS2c>().unwrap();
+            decode_packet::<EntitySpawnS2c>(&decoder.try_next_packet().unwrap().unwrap()).unwrap();
 
             black_box(decoder);
         });
