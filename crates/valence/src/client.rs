@@ -3,17 +3,17 @@ use std::net::IpAddr;
 use std::num::Wrapping;
 use std::time::Instant;
 
-use bevy_app::{CoreSet, Plugin};
+use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use bevy_ecs::query::WorldQuery;
 use bevy_ecs::system::Command;
-use bytes::BytesMut;
+use bytes::{Bytes, BytesMut};
 use glam::{DVec3, Vec3};
 use rand::Rng;
 use tracing::warn;
 use valence_protocol::block_pos::BlockPos;
 use valence_protocol::byte_angle::ByteAngle;
-use valence_protocol::codec::{PacketDecoder, PacketEncoder};
+use valence_protocol::encoder::PacketEncoder;
 use valence_protocol::ident::Ident;
 use valence_protocol::item::ItemStack;
 use valence_protocol::packet::s2c::play::game_state_change::GameEventKind;
@@ -36,50 +36,96 @@ use valence_protocol::Packet;
 use crate::biome::BiomeRegistry;
 use crate::component::{
     Despawned, GameMode, Location, Look, OldLocation, OldPosition, OnGround, Ping, Position,
-    Properties, UniqueId, Username,
+    Properties, ScratchBuf, UniqueId, Username,
 };
+use crate::entity::player::PlayerEntityBundle;
 use crate::entity::{
     EntityId, EntityKind, EntityStatus, HeadYaw, ObjectData, PacketByteRange, TrackedData, Velocity,
 };
 use crate::instance::{Instance, WriteUpdatePacketsToInstancesSet};
 use crate::inventory::{Inventory, InventoryKind};
 use crate::packet::WritePacket;
-use crate::prelude::ScratchBuf;
 use crate::registry_codec::{RegistryCodec, RegistryCodecSet};
 use crate::server::{NewClientInfo, Server};
 use crate::util::velocity_to_packet_units;
 use crate::view::{ChunkPos, ChunkView};
 
-mod default_event_handler;
-pub mod event;
+pub mod action;
+pub mod command;
+pub mod interact_entity;
+pub mod keepalive;
+pub mod misc;
+pub mod movement;
+pub mod settings;
+pub mod teleport;
 
-pub use default_event_handler::*;
+pub(crate) struct ClientPlugin;
+
+/// When clients have their packet buffer flushed. Any system that writes
+/// packets to clients should happen before this. Otherwise, the data
+/// will arrive one tick late.
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct FlushPacketsSet;
+
+impl Plugin for ClientPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(
+            (
+                initial_join.after(RegistryCodecSet),
+                update_chunk_load_dist,
+                read_data_in_old_view
+                    .after(WriteUpdatePacketsToInstancesSet)
+                    .after(update_chunk_load_dist),
+                update_view.after(initial_join).after(read_data_in_old_view),
+                respawn.after(update_view),
+                remove_entities.after(update_view),
+                update_spawn_position.after(update_view),
+                update_old_view_dist.after(update_view),
+                update_game_mode,
+                update_tracked_data.after(WriteUpdatePacketsToInstancesSet),
+                init_tracked_data.after(WriteUpdatePacketsToInstancesSet),
+                update_op_level,
+            )
+                .in_base_set(CoreSet::PostUpdate)
+                .before(FlushPacketsSet),
+        )
+        .configure_set(
+            FlushPacketsSet
+                .in_base_set(CoreSet::PostUpdate)
+                .after(WriteUpdatePacketsToInstancesSet),
+        )
+        .add_system(flush_packets.in_set(FlushPacketsSet));
+
+        movement::build(app);
+        command::build(app);
+        keepalive::build(app);
+        interact_entity::build(app);
+        settings::build(app);
+        misc::build(app);
+        action::build(app);
+        teleport::build(app);
+    }
+}
 
 /// The bundle of components needed for clients to function. All components are
 /// required unless otherwise stated.
 #[derive(Bundle)]
 pub(crate) struct ClientBundle {
     client: Client,
+    settings: settings::ClientSettings,
     scratch: ScratchBuf,
     entity_remove_buffer: EntityRemoveBuf,
     username: Username,
-    uuid: UniqueId,
     ip: Ip,
     properties: Properties,
-    location: Location,
-    old_location: OldLocation,
-    position: Position,
-    old_position: OldPosition,
-    look: Look,
-    on_ground: OnGround,
     compass_pos: CompassPos,
     game_mode: GameMode,
     op_level: OpLevel,
-    player_action_sequence: PlayerActionSequence,
+    action_sequence: action::ActionSequence,
     view_distance: ViewDistance,
     old_view_distance: OldViewDistance,
     death_location: DeathLocation,
-    keepalive_state: KeepaliveState,
+    keepalive_state: keepalive::KeepaliveState,
     ping: Ping,
     is_hardcore: IsHardcore,
     prev_game_mode: PrevGameMode,
@@ -88,10 +134,11 @@ pub(crate) struct ClientBundle {
     has_respawn_screen: HasRespawnScreen,
     is_debug: IsDebug,
     is_flat: IsFlat,
-    teleport_state: TeleportState,
+    teleport_state: teleport::TeleportState,
     cursor_item: CursorItem,
-    player_inventory_state: PlayerInventoryState,
+    player_inventory_state: ClientInventoryState,
     inventory: Inventory,
+    player: PlayerEntityBundle,
 }
 
 impl ClientBundle {
@@ -99,62 +146,39 @@ impl ClientBundle {
         info: NewClientInfo,
         conn: Box<dyn ClientConnection>,
         enc: PacketEncoder,
-        dec: PacketDecoder,
     ) -> Self {
         Self {
-            client: Client { conn, enc, dec },
+            client: Client { conn, enc },
+            settings: settings::ClientSettings::default(),
             scratch: ScratchBuf::default(),
             entity_remove_buffer: EntityRemoveBuf(vec![]),
             username: Username(info.username),
-            uuid: UniqueId(info.uuid),
             ip: Ip(info.ip),
             properties: Properties(info.properties),
-            location: Location::default(),
-            old_location: OldLocation::default(),
-            position: Position::default(),
-            old_position: OldPosition::default(),
-            look: Look::default(),
-            on_ground: OnGround::default(),
             compass_pos: CompassPos::default(),
             game_mode: GameMode::default(),
             op_level: OpLevel::default(),
-            player_action_sequence: PlayerActionSequence(0),
+            action_sequence: action::ActionSequence::default(),
             view_distance: ViewDistance::default(),
             old_view_distance: OldViewDistance(2),
             death_location: DeathLocation::default(),
-            keepalive_state: KeepaliveState {
-                got_keepalive: true,
-                last_keepalive_id: 0,
-                keepalive_sent_time: Instant::now(),
-            },
+            keepalive_state: keepalive::KeepaliveState::new(),
             ping: Ping::default(),
-            teleport_state: TeleportState {
-                teleport_id_counter: 0,
-                pending_teleports: 0,
-                synced_pos: DVec3::ZERO,
-                synced_look: Look {
-                    // Client starts facing north.
-                    yaw: 180.0,
-                    pitch: 0.0,
-                },
-            },
+            teleport_state: teleport::TeleportState::new(),
             is_hardcore: IsHardcore::default(),
             is_flat: IsFlat::default(),
             has_respawn_screen: HasRespawnScreen::default(),
             cursor_item: CursorItem::default(),
-            player_inventory_state: PlayerInventoryState {
-                window_id: 0,
-                state_id: Wrapping(0),
-                slots_changed: 0,
-                client_updated_cursor_item: false,
-                // First slot of the hotbar.
-                held_item_slot: 36,
-            },
+            player_inventory_state: ClientInventoryState::new(),
             inventory: Inventory::new(InventoryKind::Player),
             prev_game_mode: PrevGameMode::default(),
             hashed_seed: HashedSeed::default(),
             reduced_debug_info: ReducedDebugInfo::default(),
             is_debug: IsDebug::default(),
+            player: PlayerEntityBundle {
+                uuid: UniqueId(info.uuid),
+                ..Default::default()
+            },
         }
     }
 }
@@ -168,12 +192,34 @@ impl ClientBundle {
 pub struct Client {
     conn: Box<dyn ClientConnection>,
     enc: PacketEncoder,
-    dec: PacketDecoder,
 }
 
-pub(crate) trait ClientConnection: Send + Sync + 'static {
+/// Represents the bidirectional packet channel between the server and a client
+/// in the "play" state.
+pub trait ClientConnection: Send + Sync + 'static {
+    /// Sends encoded clientbound packet data. This function must not block and
+    /// the data should be sent as soon as possible.
     fn try_send(&mut self, bytes: BytesMut) -> anyhow::Result<()>;
-    fn try_recv(&mut self) -> anyhow::Result<BytesMut>;
+    /// Receives the next pending serverbound packet. This must return
+    /// immediately without blocking.
+    fn try_recv(&mut self) -> anyhow::Result<Option<ReceivedPacket>>;
+    /// The number of pending packets waiting to be received via
+    /// [`Self::try_recv`].
+    fn len(&self) -> usize;
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ReceivedPacket {
+    /// The moment in time this packet arrived. This is _not_ the instant this
+    /// packet was returned from [`ClientConnection::try_recv`].
+    pub timestamp: Instant,
+    /// This packet's ID.
+    pub id: i32,
+    /// The content of the packet, excluding the leading varint packet ID.
+    pub data: Bytes,
 }
 
 impl Drop for Client {
@@ -195,6 +241,14 @@ impl WritePacket for Client {
 }
 
 impl Client {
+    pub fn connection(&self) -> &dyn ClientConnection {
+        self.conn.as_ref()
+    }
+
+    pub fn connection_mut(&mut self) -> &mut dyn ClientConnection {
+        self.conn.as_mut()
+    }
+
     /// Flushes the packet queue to the underlying connection.
     ///
     /// This is called automatically at the end of the tick and when the client
@@ -443,14 +497,16 @@ impl OpLevel {
     }
 }
 
-#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
-pub struct PlayerActionSequence(i32);
-
 #[derive(Component, Clone, PartialEq, Eq, Debug)]
-
 pub struct ViewDistance(u8);
 
 impl ViewDistance {
+    pub fn new(dist: u8) -> Self {
+        let mut new = Self(0);
+        new.set(dist);
+        new
+    }
+
     pub fn get(&self) -> u8 {
         self.0
     }
@@ -512,13 +568,6 @@ impl OldViewItem<'_> {
 #[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
 pub struct DeathLocation(pub Option<(Ident<String>, BlockPos)>);
 
-#[derive(Component, Debug)]
-pub struct KeepaliveState {
-    got_keepalive: bool,
-    last_keepalive_id: u64,
-    keepalive_sent_time: Instant,
-}
-
 #[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct IsHardcore(pub bool);
 
@@ -533,8 +582,14 @@ pub struct HashedSeed(pub u64);
 #[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct ReducedDebugInfo(pub bool);
 
-#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
+#[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct HasRespawnScreen(pub bool);
+
+impl Default for HasRespawnScreen {
+    fn default() -> Self {
+        Self(true)
+    }
+}
 
 #[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct IsDebug(pub bool);
@@ -542,28 +597,6 @@ pub struct IsDebug(pub bool);
 /// Changes the perceived horizon line (used for superflat worlds).
 #[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct IsFlat(pub bool);
-
-#[derive(Component, Debug)]
-pub struct TeleportState {
-    /// Counts up as teleports are made.
-    teleport_id_counter: u32,
-    /// The number of pending client teleports that have yet to receive a
-    /// confirmation. Inbound client position packets should be ignored while
-    /// this is nonzero.
-    pending_teleports: u32,
-    synced_pos: DVec3,
-    synced_look: Look,
-}
-
-impl TeleportState {
-    pub fn teleport_id_counter(&self) -> u32 {
-        self.teleport_id_counter
-    }
-
-    pub fn pending_teleports(&self) -> u32 {
-        self.pending_teleports
-    }
-}
 
 /// The item stack that the client thinks it's holding under the mouse
 /// cursor.
@@ -573,7 +606,7 @@ pub struct CursorItem(pub Option<ItemStack>);
 // TODO: move this component to inventory module?
 /// Miscellaneous inventory data.
 #[derive(Component, Debug)]
-pub struct PlayerInventoryState {
+pub struct ClientInventoryState {
     /// The current window ID. Incremented when inventories are opened.
     pub(crate) window_id: u8,
     pub(crate) state_id: Wrapping<i32>,
@@ -588,7 +621,18 @@ pub struct PlayerInventoryState {
     pub(crate) held_item_slot: u16,
 }
 
-impl PlayerInventoryState {
+impl ClientInventoryState {
+    fn new() -> Self {
+        Self {
+            window_id: 0,
+            state_id: Wrapping(0),
+            slots_changed: 0,
+            client_updated_cursor_item: false,
+            // First slot of the hotbar.
+            held_item_slot: 36,
+        }
+    }
+
     pub fn held_item_slot(&self) -> u16 {
         self.held_item_slot
     }
@@ -604,48 +648,6 @@ pub fn despawn_disconnected_clients(
         if let Some(mut entity) = commands.get_entity(entity) {
             entity.insert(Despawned);
         }
-    }
-}
-
-pub(crate) struct ClientPlugin;
-
-/// When clients have their packet buffer flushed. Any system that writes
-/// packets to clients should happen before this. Otherwise, the data
-/// will arrive one tick late.
-#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct FlushPacketsSet;
-
-impl Plugin for ClientPlugin {
-    fn build(&self, app: &mut bevy_app::App) {
-        app.add_systems(
-            (
-                initial_join.after(RegistryCodecSet),
-                update_chunk_load_dist,
-                read_data_in_old_view
-                    .after(WriteUpdatePacketsToInstancesSet)
-                    .after(update_chunk_load_dist),
-                update_view.after(initial_join).after(read_data_in_old_view),
-                respawn.after(update_view),
-                remove_entities.after(update_view),
-                update_spawn_position.after(update_view),
-                update_old_view_dist.after(update_view),
-                teleport.after(update_view),
-                update_game_mode,
-                send_keepalive,
-                update_tracked_data.after(WriteUpdatePacketsToInstancesSet),
-                init_tracked_data.after(WriteUpdatePacketsToInstancesSet),
-                update_op_level,
-                acknowledge_player_actions,
-            )
-                .in_base_set(CoreSet::PostUpdate)
-                .before(FlushPacketsSet),
-        )
-        .configure_set(
-            FlushPacketsSet
-                .in_base_set(CoreSet::PostUpdate)
-                .after(WriteUpdatePacketsToInstancesSet),
-        )
-        .add_system(flush_packets.in_set(FlushPacketsSet));
     }
 }
 
@@ -1139,46 +1141,6 @@ fn update_game_mode(mut clients: Query<(&mut Client, &GameMode), Changed<GameMod
     }
 }
 
-/// Syncs the client's position and look with the server.
-///
-/// This should happen after chunks are loaded so the client doesn't fall though
-/// the floor.
-fn teleport(
-    mut clients: Query<
-        (&mut Client, &mut TeleportState, &Position, &Look),
-        Or<(Changed<Position>, Changed<Look>)>,
-    >,
-) {
-    for (mut client, mut state, pos, look) in &mut clients {
-        let changed_pos = pos.0 != state.synced_pos;
-        let changed_yaw = look.yaw != state.synced_look.yaw;
-        let changed_pitch = look.pitch != state.synced_look.pitch;
-
-        if changed_pos || changed_yaw || changed_pitch {
-            state.synced_pos = pos.0;
-            state.synced_look = *look;
-
-            let flags = PlayerPositionLookFlags::new()
-                .with_x(!changed_pos)
-                .with_y(!changed_pos)
-                .with_z(!changed_pos)
-                .with_y_rot(!changed_yaw)
-                .with_x_rot(!changed_pitch);
-
-            client.write_packet(&PlayerPositionLookS2c {
-                position: if changed_pos { pos.0.into() } else { [0.0; 3] },
-                yaw: if changed_yaw { look.yaw } else { 0.0 },
-                pitch: if changed_pitch { look.pitch } else { 0.0 },
-                flags,
-                teleport_id: VarInt(state.teleport_id_counter as i32),
-            });
-
-            state.pending_teleports = state.pending_teleports.wrapping_add(1);
-            state.teleport_id_counter = state.teleport_id_counter.wrapping_add(1);
-        }
-    }
-}
-
 fn update_old_view_dist(
     mut clients: Query<(&mut OldViewDistance, &ViewDistance), Changed<ViewDistance>>,
 ) {
@@ -1243,44 +1205,6 @@ fn update_op_level(mut clients: Query<(&mut Client, &OpLevel), Changed<OpLevel>>
     }
 }
 
-fn acknowledge_player_actions(
-    mut clients: Query<(&mut Client, &mut PlayerActionSequence), Changed<PlayerActionSequence>>,
-) {
-    for (mut client, mut action_seq) in &mut clients {
-        if action_seq.0 != 0 {
-            client.write_packet(&PlayerActionResponseS2c {
-                sequence: VarInt(action_seq.0),
-            });
-
-            action_seq.0 = 0;
-        }
-    }
-}
-
-fn send_keepalive(
-    mut clients: Query<(Entity, &mut Client, &mut KeepaliveState)>,
-    server: Res<Server>,
-    mut commands: Commands,
-) {
-    if server.current_tick() % (server.tps() * 10) == 0 {
-        let mut rng = rand::thread_rng();
-
-        for (entity, mut client, mut state) in &mut clients {
-            if state.got_keepalive {
-                let id = rng.gen();
-                client.write_packet(&KeepAliveS2c { id });
-
-                state.got_keepalive = false;
-                state.last_keepalive_id = id;
-                state.keepalive_sent_time = Instant::now();
-            } else {
-                warn!("Client {entity:?} timed out (no keepalive response)");
-                commands.entity(entity).remove::<Client>();
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeSet;
@@ -1322,7 +1246,7 @@ mod tests {
 
         let mut loaded_chunks = BTreeSet::new();
 
-        for pkt in client_helper.collect_sent().unwrap() {
+        for pkt in client_helper.collect_sent() {
             if let S2cPlayPacket::ChunkDataS2c(ChunkDataS2c {
                 chunk_x, chunk_z, ..
             }) = pkt
@@ -1347,7 +1271,7 @@ mod tests {
         app.update();
         let client = app.world.entity_mut(client_ent);
 
-        for pkt in client_helper.collect_sent().unwrap() {
+        for pkt in client_helper.collect_sent() {
             match pkt {
                 S2cPlayPacket::ChunkDataS2c(ChunkDataS2c {
                     chunk_x, chunk_z, ..

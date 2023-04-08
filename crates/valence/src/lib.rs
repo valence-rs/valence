@@ -32,6 +32,7 @@ pub mod component;
 pub mod config;
 pub mod dimension;
 pub mod entity;
+pub mod event_loop;
 pub mod instance;
 pub mod inventory;
 pub mod packet;
@@ -50,14 +51,21 @@ pub mod prelude {
     pub use bevy_app::prelude::*;
     pub use bevy_ecs::prelude::*;
     pub use biome::{Biome, BiomeId, BiomeRegistry};
-    pub use client::event::{EventLoopSchedule, EventLoopSet};
-    pub use client::*;
+    pub use client::action::*;
+    pub use client::command::*;
+    pub use client::interact_entity::*;
+    pub use client::{
+        despawn_disconnected_clients, Client, CompassPos, CursorItem, DeathLocation,
+        HasRespawnScreen, HashedSeed, Ip, IsDebug, IsFlat, IsHardcore, OldView, OldViewDistance,
+        OpLevel, PrevGameMode, ReducedDebugInfo, View, ViewDistance,
+    };
     pub use component::*;
     pub use config::{
         AsyncCallbacks, ConnectionMode, PlayerSampleEntry, ServerListPing, ServerPlugin,
     };
     pub use dimension::{DimensionType, DimensionTypeRegistry};
     pub use entity::{EntityAnimation, EntityKind, EntityManager, EntityStatus, HeadYaw};
+    pub use event_loop::{EventLoopSchedule, EventLoopSet};
     pub use glam::DVec3;
     pub use instance::{Block, BlockMut, BlockRef, Chunk, Instance};
     pub use inventory::{

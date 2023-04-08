@@ -1,21 +1,22 @@
-use std::io;
 use std::io::ErrorKind;
-use std::time::Duration;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+use std::{io, mem};
 
 use anyhow::bail;
-use bytes::BytesMut;
+use bytes::{Buf, BytesMut};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-use tokio::sync::OwnedSemaphorePermit;
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
-use tracing::debug;
-use valence_protocol::codec::{PacketDecoder, PacketEncoder};
-use valence_protocol::Packet;
+use tracing::{debug, warn};
+use valence_protocol::decoder::{decode_packet, PacketDecoder};
+use valence_protocol::encoder::PacketEncoder;
+use valence_protocol::var_int::VarInt;
+use valence_protocol::{Decode, Packet};
 
-use crate::client::{ClientBundle, ClientConnection};
-use crate::server::byte_channel::{
-    byte_channel, ByteReceiver, ByteSender, TryRecvError, TrySendError,
-};
+use crate::client::{ClientConnection, ReceivedPacket};
+use crate::server::byte_channel::{byte_channel, ByteSender, TrySendError};
 use crate::server::NewClientInfo;
 
 pub(super) struct InitialConnection<R, W> {
@@ -23,6 +24,7 @@ pub(super) struct InitialConnection<R, W> {
     writer: W,
     enc: PacketEncoder,
     dec: PacketDecoder,
+    frame: BytesMut,
     timeout: Duration,
     permit: OwnedSemaphorePermit,
 }
@@ -47,6 +49,7 @@ where
             writer,
             enc,
             dec,
+            frame: BytesMut::new(),
             timeout,
             permit,
         }
@@ -67,30 +70,11 @@ where
         P: Packet<'a>,
     {
         timeout(self.timeout, async {
-            while !self.dec.has_next_packet()? {
-                self.dec.reserve(READ_BUF_SIZE);
-                let mut buf = self.dec.take_capacity();
-
-                if self.reader.read_buf(&mut buf).await? == 0 {
-                    return Err(io::Error::from(ErrorKind::UnexpectedEof).into());
-                }
-
-                // This should always be an O(1) unsplit because we reserved space earlier and
-                // the call to `read_buf` shouldn't have grown the allocation.
-                self.dec.queue_bytes(buf);
-            }
-
-            Ok(self
-                .dec
-                .try_next_packet()?
-                .expect("decoder said it had another packet"))
-
-            // The following is what I want to write but can't due to borrow
-            // checker errors I don't understand.
-            /*
             loop {
-                if let Some(pkt) = self.dec.try_next_packet()? {
-                    return Ok(pkt);
+                if let Some(frame) = self.dec.try_next_packet()? {
+                    self.frame = frame;
+
+                    return decode_packet(&self.frame);
                 }
 
                 self.dec.reserve(READ_BUF_SIZE);
@@ -104,7 +88,6 @@ where
                 // the call to `read_buf` shouldn't have grown the allocation.
                 self.dec.queue_bytes(buf);
             }
-            */
         })
         .await?
     }
@@ -112,7 +95,7 @@ where
     #[allow(dead_code)]
     pub fn set_compression(&mut self, threshold: Option<u32>) {
         self.enc.set_compression(threshold);
-        self.dec.set_compression(threshold.is_some());
+        self.dec.set_compression(threshold);
     }
 
     pub fn enable_encryption(&mut self, key: &[u8; 16]) {
@@ -120,34 +103,99 @@ where
         self.dec.enable_encryption(key);
     }
 
-    pub fn into_client_bundle(
+    pub fn into_client_args(
         mut self,
         info: NewClientInfo,
         incoming_limit: usize,
         outgoing_limit: usize,
-    ) -> ClientBundle
+    ) -> NewClientArgs
     where
         R: Send + 'static,
         W: Send + 'static,
     {
-        let (mut incoming_sender, incoming_receiver) = byte_channel(incoming_limit);
+        let (incoming_sender, incoming_receiver) = flume::unbounded();
+
+        let recv_sem = Arc::new(Semaphore::new(incoming_limit));
+        let recv_sem_clone = recv_sem.clone();
 
         let reader_task = tokio::spawn(async move {
-            loop {
-                let mut buf = incoming_sender.take_capacity(READ_BUF_SIZE);
+            let mut buf = BytesMut::new();
 
-                match self.reader.read_buf(&mut buf).await {
-                    Ok(0) => break,
+            loop {
+                let mut data = match self.dec.try_next_packet() {
+                    Ok(Some(data)) => data,
+                    Ok(None) => {
+                        // Incomplete packet. Need more data.
+
+                        buf.reserve(READ_BUF_SIZE);
+                        match self.reader.read_buf(&mut buf).await {
+                            Ok(0) => break, // Reader is at EOF.
+                            Ok(_) => {}
+                            Err(e) => {
+                                debug!("error reading data from stream: {e}");
+                                break;
+                            }
+                        }
+
+                        self.dec.queue_bytes(buf.split());
+
+                        continue;
+                    }
                     Err(e) => {
-                        debug!("error reading packet data: {e}");
+                        warn!("error decoding packet frame: {e:#}");
                         break;
                     }
-                    _ => {}
+                };
+
+                let timestamp = Instant::now();
+
+                // Remove the packet ID from the front of the data.
+                let packet_id = {
+                    let mut r = &data[..];
+
+                    match VarInt::decode(&mut r) {
+                        Ok(id) => {
+                            data.advance(data.len() - r.len());
+                            id.0
+                        }
+                        Err(e) => {
+                            warn!("failed to decode packet ID: {e:#}");
+                            break;
+                        }
+                    }
+                };
+
+                // Estimate memory usage of this packet.
+                let cost = mem::size_of::<ReceivedPacket>() + data.len();
+
+                if cost > incoming_limit {
+                    debug!(
+                        cost,
+                        incoming_limit,
+                        "cost of received packet is greater than the incoming memory limit"
+                    );
+                    // We would never acquire enough permits, so we should exit instead of getting
+                    // stuck.
+                    break;
                 }
 
-                // This should always be an O(1) unsplit because we reserved space earlier.
-                if let Err(e) = incoming_sender.send_async(buf).await {
-                    debug!("error sending packet data: {e}");
+                // Wait until there's enough space for this packet.
+                let Ok(permits) = recv_sem.acquire_many(cost as u32).await else {
+                    // Semaphore closed.
+                    break;
+                };
+
+                // The permits will be added back on the other side of the channel.
+                permits.forget();
+
+                let packet = ReceivedPacket {
+                    timestamp,
+                    id: packet_id,
+                    data: data.freeze(),
+                };
+
+                if incoming_sender.try_send(packet).is_err() {
+                    // Channel closed.
                     break;
                 }
             }
@@ -166,32 +214,41 @@ where
                 };
 
                 if let Err(e) = self.writer.write_all(&bytes).await {
-                    debug!("error writing packet data: {e}");
+                    debug!("error writing data to stream: {e}");
                 }
             }
         });
 
-        ClientBundle::new(
+        NewClientArgs {
             info,
-            Box::new(RealClientConnection {
+            conn: Box::new(RealClientConnection {
                 send: outgoing_sender,
                 recv: incoming_receiver,
-                _permit: self.permit,
+                recv_sem: recv_sem_clone,
+                _client_permit: self.permit,
                 reader_task,
                 writer_task,
             }),
-            self.enc,
-            self.dec,
-        )
+            enc: self.enc,
+        }
     }
+}
+
+pub struct NewClientArgs {
+    pub info: NewClientInfo,
+    pub conn: Box<dyn ClientConnection>,
+    pub enc: PacketEncoder,
 }
 
 struct RealClientConnection {
     send: ByteSender,
-    recv: ByteReceiver,
-    /// Ensures that we don't allow more connections to the server until the
-    /// client is dropped.
-    _permit: OwnedSemaphorePermit,
+    recv: flume::Receiver<ReceivedPacket>,
+    /// Limits the amount of data queued in the `recv` channel. Each permit
+    /// represents one byte.
+    recv_sem: Arc<Semaphore>,
+    /// Limits the number of new clients that can connect to the server. Permit
+    /// is released when the connection is dropped.
+    _client_permit: OwnedSemaphorePermit,
     reader_task: JoinHandle<()>,
     writer_task: JoinHandle<()>,
 }
@@ -215,11 +272,22 @@ impl ClientConnection for RealClientConnection {
         }
     }
 
-    fn try_recv(&mut self) -> anyhow::Result<BytesMut> {
+    fn try_recv(&mut self) -> anyhow::Result<Option<ReceivedPacket>> {
         match self.recv.try_recv() {
-            Ok(bytes) => Ok(bytes),
-            Err(TryRecvError::Empty) => Ok(BytesMut::new()),
-            Err(TryRecvError::Disconnected) => bail!("client disconnected"),
+            Ok(packet) => {
+                let cost = mem::size_of::<ReceivedPacket>() + packet.data.len();
+
+                // Add the permits back that we removed eariler.
+                self.recv_sem.add_permits(cost);
+
+                Ok(Some(packet))
+            }
+            Err(flume::TryRecvError::Empty) => Ok(None),
+            Err(flume::TryRecvError::Disconnected) => bail!("client disconnected"),
         }
+    }
+
+    fn len(&self) -> usize {
+        self.recv.len()
     }
 }

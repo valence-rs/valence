@@ -1,9 +1,6 @@
 #![allow(clippy::type_complexity)]
 
-use tracing::warn;
-use valence::client::event::{PlayerInteractBlock, StartSneaking};
-use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerEntityBundle;
+use valence::client::misc::InteractBlock;
 use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;
@@ -16,10 +13,7 @@ pub fn main() {
         .add_plugin(ServerPlugin::new(()))
         .add_startup_system(setup)
         .add_system(init_clients)
-        .add_systems(
-            (default_event_handler, toggle_gamemode_on_sneak, open_chest)
-                .in_schedule(EventLoopSchedule),
-        )
+        .add_systems((toggle_gamemode_on_sneak, open_chest))
         .add_systems(PlayerList::default_systems())
         .add_system(despawn_disconnected_clients)
         .run();
@@ -56,53 +50,42 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(Entity, &UniqueId, &mut GameMode), Added<Client>>,
+    mut clients: Query<(&mut Location, &mut Position, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
-    mut commands: Commands,
 ) {
-    for (entity, uuid, mut game_mode) in &mut clients {
+    for (mut loc, mut pos, mut game_mode) in &mut clients {
+        loc.0 = instances.single();
+        pos.set([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
         *game_mode = GameMode::Creative;
-
-        commands.entity(entity).insert(PlayerEntityBundle {
-            location: Location(instances.single()),
-            position: Position::new([0.5, SPAWN_Y as f64 + 1.0, 0.5]),
-            uuid: *uuid,
-            ..Default::default()
-        });
     }
 }
 
-fn toggle_gamemode_on_sneak(
-    mut clients: Query<&mut GameMode>,
-    mut events: EventReader<StartSneaking>,
-) {
+fn toggle_gamemode_on_sneak(mut clients: Query<&mut GameMode>, mut events: EventReader<Sneaking>) {
     for event in events.iter() {
         let Ok(mut mode) = clients.get_mut(event.client) else {
             continue;
         };
-        *mode = match *mode {
-            GameMode::Survival => GameMode::Creative,
-            GameMode::Creative => GameMode::Survival,
-            _ => GameMode::Creative,
-        };
+
+        if event.state == SneakState::Start {
+            *mode = match *mode {
+                GameMode::Survival => GameMode::Creative,
+                GameMode::Creative => GameMode::Survival,
+                _ => GameMode::Creative,
+            };
+        }
     }
 }
 
 fn open_chest(
     mut commands: Commands,
     inventories: Query<Entity, (With<Inventory>, Without<Client>)>,
-    mut events: EventReader<PlayerInteractBlock>,
+    mut events: EventReader<InteractBlock>,
 ) {
-    let Ok(inventory) = inventories.get_single() else {
-        warn!("No inventories");
-        return;
-    };
-
     for event in events.iter() {
         if event.position != CHEST_POS.into() {
             continue;
         }
-        let open_inventory = OpenInventory::new(inventory);
+        let open_inventory = OpenInventory::new(inventories.single());
         commands.entity(event.client).insert(open_inventory);
     }
 }

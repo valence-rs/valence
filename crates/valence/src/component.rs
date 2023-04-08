@@ -7,7 +7,7 @@ use glam::{DVec3, Vec3};
 use uuid::Uuid;
 use valence_protocol::types::{GameMode as ProtocolGameMode, Property};
 
-use crate::prelude::FlushPacketsSet;
+use crate::client::FlushPacketsSet;
 use crate::util::{from_yaw_and_pitch, to_yaw_and_pitch};
 use crate::view::ChunkPos;
 

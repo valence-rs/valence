@@ -2,10 +2,10 @@ use std::borrow::Cow;
 use std::collections::{BTreeSet, HashSet};
 use std::hash::{BuildHasher, Hash};
 use std::io::Write;
+use std::mem;
 use std::mem::MaybeUninit;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::{io, mem};
 
 use anyhow::ensure;
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -22,20 +22,20 @@ impl Encode for bool {
         Ok(w.write_u8(*self as u8)?)
     }
 
-    fn write_slice(slice: &[bool], mut w: impl Write) -> io::Result<()> {
+    fn encode_slice(slice: &[bool], mut w: impl Write) -> Result<()> {
         // SAFETY: Bools have the same layout as u8.
         // Bools are guaranteed to have the correct bit pattern.
         let bytes: &[u8] = unsafe { mem::transmute(slice) };
-        w.write_all(bytes)
+        Ok(w.write_all(bytes)?)
     }
 
-    const HAS_WRITE_SLICE: bool = true;
+    const HAS_ENCODE_SLICE: bool = true;
 }
 
 impl Decode<'_> for bool {
     fn decode(r: &mut &[u8]) -> Result<Self> {
         let n = r.read_u8()?;
-        ensure!(n <= 1, "decoded boolean is not 0 or 1");
+        ensure!(n <= 1, "decoded boolean is not 0 or 1 (got {n})");
         Ok(n == 1)
     }
 }
@@ -45,11 +45,11 @@ impl Encode for u8 {
         Ok(w.write_u8(*self)?)
     }
 
-    fn write_slice(slice: &[u8], mut w: impl Write) -> io::Result<()> {
-        w.write_all(slice)
+    fn encode_slice(slice: &[u8], mut w: impl Write) -> Result<()> {
+        Ok(w.write_all(slice)?)
     }
 
-    const HAS_WRITE_SLICE: bool = true;
+    const HAS_ENCODE_SLICE: bool = true;
 }
 
 impl Decode<'_> for u8 {
@@ -63,15 +63,13 @@ impl Encode for i8 {
         Ok(w.write_i8(*self)?)
     }
 
-    fn write_slice(slice: &[i8], mut w: impl Write) -> io::Result<()>
-    where
-        Self: Sized,
-    {
+    fn encode_slice(slice: &[i8], mut w: impl Write) -> Result<()> {
+        // SAFETY: i8 has the same layout as u8.
         let bytes: &[u8] = unsafe { mem::transmute(slice) };
-        w.write_all(bytes)
+        Ok(w.write_all(bytes)?)
     }
 
-    const HAS_WRITE_SLICE: bool = true;
+    const HAS_ENCODE_SLICE: bool = true;
 }
 
 impl Decode<'_> for i8 {
@@ -455,8 +453,8 @@ impl_tuple!(A B C D E F G H I J K L);
 /// Like tuples, arrays are encoded and decoded without a VarInt length prefix.
 impl<const N: usize, T: Encode> Encode for [T; N] {
     fn encode(&self, mut w: impl Write) -> Result<()> {
-        if T::HAS_WRITE_SLICE {
-            return Ok(T::write_slice(self, w)?);
+        if T::HAS_ENCODE_SLICE {
+            return T::encode_slice(self, w);
         }
 
         for t in self {
@@ -519,8 +517,8 @@ impl<T: Encode> Encode for [T] {
 
         VarInt(len as i32).encode(&mut w)?;
 
-        if T::HAS_WRITE_SLICE {
-            return Ok(T::write_slice(self, w)?);
+        if T::HAS_ENCODE_SLICE {
+            return T::encode_slice(self, w);
         }
 
         for t in self {

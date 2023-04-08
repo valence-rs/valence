@@ -97,7 +97,7 @@ mod tests {
 
     /// A unit test where we want to test what packets are sent to the client.
     #[test]
-    fn example_test_open_inventory() -> anyhow::Result<()> {
+    fn example_test_open_inventory() {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
 
@@ -122,7 +122,7 @@ mod tests {
         app.world
             .get::<Client>(client_ent)
             .expect("client not found");
-        let sent_packets = client_helper.collect_sent()?;
+        let sent_packets = client_helper.collect_sent();
 
         assert_packet_count!(sent_packets, 1, S2cPlayPacket::OpenScreenS2c(_));
         assert_packet_count!(sent_packets, 1, S2cPlayPacket::InventoryS2c(_));
@@ -131,7 +131,5 @@ mod tests {
             S2cPlayPacket::OpenScreenS2c(_),
             S2cPlayPacket::InventoryS2c(_)
         );
-
-        Ok(())
     }
 }

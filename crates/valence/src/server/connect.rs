@@ -21,7 +21,8 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::OwnedSemaphorePermit;
 use tracing::{error, info, instrument, trace, warn};
 use uuid::Uuid;
-use valence_protocol::codec::{PacketDecoder, PacketEncoder};
+use valence_protocol::decoder::PacketDecoder;
+use valence_protocol::encoder::PacketEncoder;
 use valence_protocol::packet::c2s::handshake::handshake::NextState;
 use valence_protocol::packet::c2s::handshake::HandshakeC2s;
 use valence_protocol::packet::c2s::login::{LoginHelloC2s, LoginKeyC2s, LoginQueryResponseC2s};
@@ -149,7 +150,7 @@ async fn handle_handshake(
                 .context("error handling login")?
             {
                 Some(info) => {
-                    let client = conn.into_client_bundle(
+                    let client = conn.into_client_args(
                         info,
                         shared.0.incoming_capacity,
                         shared.0.outgoing_capacity,

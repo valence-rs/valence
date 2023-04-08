@@ -26,7 +26,9 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
 use tracing_subscriber::filter::LevelFilter;
-use valence_protocol::codec::{PacketDecoder, PacketEncoder};
+use valence_protocol::bytes::BytesMut;
+use valence_protocol::decoder::PacketDecoder;
+use valence_protocol::encoder::PacketEncoder;
 use valence_protocol::packet::c2s::handshake::handshake::NextState;
 use valence_protocol::packet::c2s::handshake::HandshakeC2s;
 use valence_protocol::packet::c2s::login::{LoginHelloC2s, LoginKeyC2s};
@@ -189,6 +191,7 @@ async fn handle_connection(
         write: client_write,
         direction: PacketDirection::ServerToClient,
         context: context.clone(),
+        frame: BytesMut::new(),
     };
 
     let mut c2s = State {
@@ -198,6 +201,7 @@ async fn handle_connection(
         write: server_write,
         direction: PacketDirection::ClientToServer,
         context: context.clone(),
+        frame: BytesMut::new(),
     };
 
     let handshake: HandshakeC2s = c2s.rw_packet(Stage::HandshakeC2s).await?;
@@ -241,9 +245,9 @@ async fn handle_connection(
                     let threshold = pkt.threshold.0 as u32;
 
                     s2c.enc.set_compression(Some(threshold));
-                    s2c.dec.set_compression(true);
+                    s2c.dec.set_compression(Some(threshold));
                     c2s.enc.set_compression(Some(threshold));
-                    c2s.dec.set_compression(true);
+                    c2s.dec.set_compression(Some(threshold));
 
                     s2c.rw_packet::<LoginSuccessS2c>(Stage::LoginSuccessS2c)
                         .await?;

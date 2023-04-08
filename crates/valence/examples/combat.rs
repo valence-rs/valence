@@ -2,9 +2,6 @@
 
 use bevy_ecs::query::WorldQuery;
 use glam::Vec3Swizzles;
-use valence::client::event::{PlayerInteractEntity, StartSprinting, StopSprinting};
-use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerEntityBundle;
 use valence::entity::EntityStatuses;
 use valence::prelude::*;
 
@@ -26,7 +23,7 @@ pub fn main() {
         .add_plugin(ServerPlugin::new(()))
         .add_startup_system(setup)
         .add_system(init_clients)
-        .add_systems((default_event_handler, handle_combat_events).in_schedule(EventLoopSchedule))
+        .add_system(handle_combat_events.in_schedule(EventLoopSchedule))
         .add_systems(PlayerList::default_systems())
         .add_system(despawn_disconnected_clients)
         .add_system(teleport_oob_clients)
@@ -72,23 +69,18 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(Entity, &UniqueId), Added<Client>>,
+    mut clients: Query<(Entity, &mut Location, &mut Position), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
     mut commands: Commands,
 ) {
-    for (entity, uuid) in &mut clients {
-        commands.entity(entity).insert((
-            CombatState {
-                last_attacked_tick: 0,
-                has_bonus_knockback: false,
-            },
-            PlayerEntityBundle {
-                location: Location(instances.single()),
-                position: Position::new([0.5, SPAWN_Y as f64, 0.5]),
-                uuid: *uuid,
-                ..Default::default()
-            },
-        ));
+    for (entity, mut loc, mut pos) in &mut clients {
+        loc.0 = instances.single();
+        pos.set([0.5, SPAWN_Y as f64, 0.5]);
+
+        commands.entity(entity).insert((CombatState {
+            last_attacked_tick: 0,
+            has_bonus_knockback: false,
+        },));
     }
 }
 
@@ -102,36 +94,23 @@ struct CombatQuery {
 }
 
 fn handle_combat_events(
-    manager: Res<EntityManager>,
     server: Res<Server>,
     mut clients: Query<CombatQuery>,
-    mut start_sprinting: EventReader<StartSprinting>,
-    mut stop_sprinting: EventReader<StopSprinting>,
-    mut interact_with_entity: EventReader<PlayerInteractEntity>,
+    mut sprinting: EventReader<Sprinting>,
+    mut interact_entity: EventReader<InteractEntity>,
 ) {
-    for &StartSprinting { client } in start_sprinting.iter() {
+    for &Sprinting { client, state } in sprinting.iter() {
         if let Ok(mut client) = clients.get_mut(client) {
-            client.state.has_bonus_knockback = true;
+            client.state.has_bonus_knockback = state == SprintState::Start;
         }
     }
 
-    for &StopSprinting { client } in stop_sprinting.iter() {
-        if let Ok(mut client) = clients.get_mut(client) {
-            client.state.has_bonus_knockback = false;
-        }
-    }
-
-    for &PlayerInteractEntity {
+    for &InteractEntity {
         client: attacker_client,
-        entity_id,
+        entity: victim_client,
         ..
-    } in interact_with_entity.iter()
+    } in interact_entity.iter()
     {
-        let Some(victim_client) = manager.get_with_id(entity_id) else {
-            // Attacked entity doesn't exist.
-            continue
-        };
-
         let Ok([mut attacker, mut victim]) = clients.get_many_mut([attacker_client, victim_client]) else {
             // Victim or attacker does not exist, or the attacker is attacking itself.
             continue

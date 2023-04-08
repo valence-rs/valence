@@ -1,7 +1,6 @@
 #![allow(clippy::type_complexity)]
 
 use rand::Rng;
-use valence::client::{default_event_handler, despawn_disconnected_clients};
 use valence::player_list::Entry;
 use valence::prelude::*;
 
@@ -15,7 +14,6 @@ fn main() {
     App::new()
         .add_plugin(ServerPlugin::new(()))
         .add_startup_system(setup)
-        .add_system(default_event_handler.in_schedule(EventLoopSchedule))
         .add_systems(PlayerList::default_systems())
         .add_systems((
             init_clients,

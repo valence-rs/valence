@@ -2,9 +2,6 @@
 
 use std::mem;
 
-use valence::client::event::{StartDigging, StartSneaking};
-use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
 
 const BOARD_MIN_X: i32 = -30;
@@ -30,10 +27,10 @@ pub fn main() {
         .add_startup_system(setup_biomes.before(setup))
         .add_startup_system(setup)
         .add_system(init_clients)
-        .add_systems((default_event_handler, toggle_cell_on_dig).in_schedule(EventLoopSchedule))
         .add_systems(PlayerList::default_systems())
         .add_systems((
             despawn_disconnected_clients,
+            toggle_cell_on_dig,
             update_board,
             pause_on_crouch,
             reset_oob_clients,
@@ -78,13 +75,10 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(Entity, &UniqueId, &mut Client, &mut GameMode), Added<Client>>,
+    mut clients: Query<(&mut Client, &mut Location, &mut Position), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
-    mut commands: Commands,
 ) {
-    for (entity, uuid, mut client, mut game_mode) in &mut clients {
-        *game_mode = GameMode::Survival;
-
+    for (mut client, mut loc, mut pos) in &mut clients {
         client.send_message("Welcome to Conway's game of life in Minecraft!".italic());
         client.send_message(
             "Sneak to toggle running the simulation and the left mouse button to bring blocks to \
@@ -92,12 +86,8 @@ fn init_clients(
                 .italic(),
         );
 
-        commands.entity(entity).insert(PlayerEntityBundle {
-            location: Location(instances.single()),
-            position: Position(SPAWN_POS),
-            uuid: *uuid,
-            ..Default::default()
-        });
+        loc.0 = instances.single();
+        pos.set(SPAWN_POS);
     }
 }
 
@@ -163,12 +153,14 @@ impl LifeBoard {
     }
 }
 
-fn toggle_cell_on_dig(mut events: EventReader<StartDigging>, mut board: ResMut<LifeBoard>) {
+fn toggle_cell_on_dig(mut events: EventReader<Digging>, mut board: ResMut<LifeBoard>) {
     for event in events.iter() {
-        let (x, z) = (event.position.x, event.position.z);
+        if event.state == DiggingState::Start {
+            let (x, z) = (event.position.x, event.position.z);
 
-        let live = board.get(x, z);
-        board.set(x, z, !live);
+            let live = board.get(x, z);
+            board.set(x, z, !live);
+        }
     }
 }
 
@@ -197,18 +189,20 @@ fn update_board(
 }
 
 fn pause_on_crouch(
-    mut events: EventReader<StartSneaking>,
+    mut events: EventReader<Sneaking>,
     mut board: ResMut<LifeBoard>,
     mut clients: Query<&mut Client>,
 ) {
-    for _ in events.iter() {
-        board.paused = !board.paused;
+    for event in events.iter() {
+        if event.state == SneakState::Start {
+            board.paused = !board.paused;
 
-        for mut client in clients.iter_mut() {
-            if board.paused {
-                client.set_action_bar("Paused".italic().color(Color::RED));
-            } else {
-                client.set_action_bar("Playing".italic().color(Color::GREEN));
+            for mut client in clients.iter_mut() {
+                if board.paused {
+                    client.set_action_bar("Paused".italic().color(Color::RED));
+                } else {
+                    client.set_action_bar("Playing".italic().color(Color::GREEN));
+                }
             }
         }
     }
