@@ -2,7 +2,7 @@
 
 use std::mem;
 
-use valence::client::event::{StartDigging, StartSneaking};
+use valence::client::misc::{StartDigging, StartSneaking};
 use valence::client::{default_event_handler, despawn_disconnected_clients};
 use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;

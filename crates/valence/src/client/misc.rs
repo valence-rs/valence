@@ -1,3 +1,54 @@
+use bevy_app::prelude::*;
+use bevy_ecs::prelude::*;
+use valence_protocol::packet::c2s::play::{
+    HandSwingC2s, PlayerInteractBlockC2s, PlayerInteractItemC2s,
+};
+use valence_protocol::types::Hand;
+
+use super::action::ActionSequence;
+use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+
+#[derive(Copy, Clone, Debug)]
+pub struct HandSwing {
+    pub client: Entity,
+    pub hand: Hand,
+}
+
+pub(super) fn build(app: &mut App) {
+    app.add_event::<HandSwing>().add_system(
+        handle_misc_packets
+            .in_schedule(EventLoopSchedule)
+            .in_base_set(EventLoopSet::PreUpdate),
+    );
+}
+
+fn handle_misc_packets(
+    mut packets: EventReader<PacketEvent>,
+    mut clients: Query<&mut ActionSequence>,
+    mut hand_swing_events: EventWriter<HandSwing>,
+) {
+    for packet in packets.iter() {
+        if let Some(pkt) = packet.decode::<HandSwingC2s>() {
+            hand_swing_events.send(HandSwing {
+                client: packet.client,
+                hand: pkt.hand,
+            });
+        } else if let Some(pkt) = packet.decode::<PlayerInteractBlockC2s>() {
+            if let Ok(mut action_seq) = clients.get_mut(packet.client) {
+                action_seq.update(pkt.sequence.0);
+            }
+
+            // TODO
+        } else if let Some(pkt) = packet.decode::<PlayerInteractItemC2s>() {
+            if let Ok(mut action_seq) = clients.get_mut(packet.client) {
+                action_seq.update(pkt.sequence.0);
+            }
+
+            // TODO
+        }
+    }
+}
+
 /*
 use std::borrow::Cow;
 use std::cmp;

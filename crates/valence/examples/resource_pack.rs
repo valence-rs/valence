@@ -1,6 +1,6 @@
 #![allow(clippy::type_complexity)]
 
-use valence::client::event::{PlayerInteractEntity, ResourcePackStatus, ResourcePackStatusChange};
+use valence::client::misc::{PlayerInteractEntity, ResourcePackStatus, ResourcePackStatusChange};
 use valence::client::{default_event_handler, despawn_disconnected_clients};
 use valence::entity::player::PlayerEntityBundle;
 use valence::entity::sheep::SheepEntityBundle;

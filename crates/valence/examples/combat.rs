@@ -2,7 +2,7 @@
 
 use bevy_ecs::query::WorldQuery;
 use glam::Vec3Swizzles;
-use valence::client::event::{PlayerInteractEntity, StartSprinting, StopSprinting};
+use valence::client::misc::{PlayerInteractEntity, StartSprinting, StopSprinting};
 use valence::client::{default_event_handler, despawn_disconnected_clients};
 use valence::entity::player::PlayerEntityBundle;
 use valence::entity::EntityStatuses;
@@ -127,7 +127,7 @@ fn handle_combat_events(
         ..
     } in interact_with_entity.iter()
     {
-        let Some(victim_client) = manager.get_with_id(entity_id) else {
+        let Some(victim_client) = manager.get_by_id(entity_id) else {
             // Attacked entity doesn't exist.
             continue
         };

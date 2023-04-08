@@ -36,26 +36,27 @@ use valence_protocol::Packet;
 use crate::biome::BiomeRegistry;
 use crate::component::{
     Despawned, GameMode, Location, Look, OldLocation, OldPosition, OnGround, Ping, Position,
-    Properties, UniqueId, Username,
+    Properties, ScratchBuf, UniqueId, Username,
 };
+use crate::entity::player::PlayerEntityBundle;
 use crate::entity::{
     EntityId, EntityKind, EntityStatus, HeadYaw, ObjectData, PacketByteRange, TrackedData, Velocity,
 };
-use crate::event_loop::{EventLoopSchedule, EventLoopSet};
 use crate::instance::{Instance, WriteUpdatePacketsToInstancesSet};
 use crate::inventory::{Inventory, InventoryKind};
 use crate::packet::WritePacket;
-use crate::prelude::ScratchBuf;
 use crate::registry_codec::{RegistryCodec, RegistryCodecSet};
 use crate::server::{NewClientInfo, Server};
 use crate::util::velocity_to_packet_units;
 use crate::view::{ChunkPos, ChunkView};
 
-mod default_event_handler;
-pub mod event;
+pub mod action;
+pub mod command;
+pub mod interact_entity;
+pub mod keepalive;
+pub mod misc;
 pub mod movement;
-
-pub use default_event_handler::*;
+pub mod settings;
 
 pub(crate) struct ClientPlugin;
 
@@ -81,11 +82,9 @@ impl Plugin for ClientPlugin {
                 update_old_view_dist.after(update_view),
                 teleport.after(update_view),
                 update_game_mode,
-                send_keepalive,
                 update_tracked_data.after(WriteUpdatePacketsToInstancesSet),
                 init_tracked_data.after(WriteUpdatePacketsToInstancesSet),
                 update_op_level,
-                acknowledge_player_actions,
             )
                 .in_base_set(CoreSet::PostUpdate)
                 .before(FlushPacketsSet),
@@ -95,14 +94,15 @@ impl Plugin for ClientPlugin {
                 .in_base_set(CoreSet::PostUpdate)
                 .after(WriteUpdatePacketsToInstancesSet),
         )
-        .add_system(flush_packets.in_set(FlushPacketsSet))
-        .add_event::<movement::Movement>()
-        .init_resource::<movement::MovementSettings>()
-        .add_system(
-            movement::handle_client_movement
-                .in_base_set(EventLoopSet::PreUpdate)
-                .in_schedule(EventLoopSchedule),
-        );
+        .add_system(flush_packets.in_set(FlushPacketsSet));
+
+        movement::build(app);
+        command::build(app);
+        keepalive::build(app);
+        interact_entity::build(app);
+        settings::build(app);
+        misc::build(app);
+        action::build(app);
     }
 }
 
@@ -111,26 +111,20 @@ impl Plugin for ClientPlugin {
 #[derive(Bundle)]
 pub(crate) struct ClientBundle {
     client: Client,
+    settings: settings::ClientSettings,
     scratch: ScratchBuf,
     entity_remove_buffer: EntityRemoveBuf,
     username: Username,
-    uuid: UniqueId,
     ip: Ip,
     properties: Properties,
-    location: Location,
-    old_location: OldLocation,
-    position: Position,
-    old_position: OldPosition,
-    look: Look,
-    on_ground: OnGround,
     compass_pos: CompassPos,
     game_mode: GameMode,
     op_level: OpLevel,
-    player_action_sequence: PlayerActionSequence,
+    action_sequence: action::ActionSequence,
     view_distance: ViewDistance,
     old_view_distance: OldViewDistance,
     death_location: DeathLocation,
-    keepalive_state: KeepaliveState,
+    keepalive_state: keepalive::KeepaliveState,
     ping: Ping,
     is_hardcore: IsHardcore,
     prev_game_mode: PrevGameMode,
@@ -143,6 +137,7 @@ pub(crate) struct ClientBundle {
     cursor_item: CursorItem,
     player_inventory_state: ClientInventoryState,
     inventory: Inventory,
+    player: PlayerEntityBundle,
 }
 
 impl ClientBundle {
@@ -153,58 +148,36 @@ impl ClientBundle {
     ) -> Self {
         Self {
             client: Client { conn, enc },
+            settings: settings::ClientSettings::default(),
             scratch: ScratchBuf::default(),
             entity_remove_buffer: EntityRemoveBuf(vec![]),
             username: Username(info.username),
-            uuid: UniqueId(info.uuid),
             ip: Ip(info.ip),
             properties: Properties(info.properties),
-            location: Location::default(),
-            old_location: OldLocation::default(),
-            position: Position::default(),
-            old_position: OldPosition::default(),
-            look: Look::default(),
-            on_ground: OnGround::default(),
             compass_pos: CompassPos::default(),
             game_mode: GameMode::default(),
             op_level: OpLevel::default(),
-            player_action_sequence: PlayerActionSequence(0),
+            action_sequence: action::ActionSequence::default(),
             view_distance: ViewDistance::default(),
             old_view_distance: OldViewDistance(2),
             death_location: DeathLocation::default(),
-            keepalive_state: KeepaliveState {
-                got_keepalive: true,
-                last_keepalive_id: 0,
-                keepalive_sent_time: Instant::now(),
-            },
+            keepalive_state: keepalive::KeepaliveState::new(),
             ping: Ping::default(),
-            teleport_state: TeleportState {
-                teleport_id_counter: 0,
-                pending_teleports: 0,
-                synced_pos: DVec3::ZERO,
-                synced_look: Look {
-                    // Client starts facing north.
-                    yaw: 180.0,
-                    pitch: 0.0,
-                },
-            },
+            teleport_state: TeleportState::new(),
             is_hardcore: IsHardcore::default(),
             is_flat: IsFlat::default(),
             has_respawn_screen: HasRespawnScreen::default(),
             cursor_item: CursorItem::default(),
-            player_inventory_state: ClientInventoryState {
-                window_id: 0,
-                state_id: Wrapping(0),
-                slots_changed: 0,
-                client_updated_cursor_item: false,
-                // First slot of the hotbar.
-                held_item_slot: 36,
-            },
+            player_inventory_state: ClientInventoryState::new(),
             inventory: Inventory::new(InventoryKind::Player),
             prev_game_mode: PrevGameMode::default(),
             hashed_seed: HashedSeed::default(),
             reduced_debug_info: ReducedDebugInfo::default(),
             is_debug: IsDebug::default(),
+            player: PlayerEntityBundle {
+                uuid: UniqueId(info.uuid),
+                ..Default::default()
+            },
         }
     }
 }
@@ -520,14 +493,16 @@ impl OpLevel {
     }
 }
 
-#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
-pub struct PlayerActionSequence(i32);
-
 #[derive(Component, Clone, PartialEq, Eq, Debug)]
-
 pub struct ViewDistance(u8);
 
 impl ViewDistance {
+    pub fn new(dist: u8) -> Self {
+        let mut new = Self(0);
+        new.set(dist);
+        new
+    }
+
     pub fn get(&self) -> u8 {
         self.0
     }
@@ -589,13 +564,6 @@ impl OldViewItem<'_> {
 #[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
 pub struct DeathLocation(pub Option<(Ident<String>, BlockPos)>);
 
-#[derive(Component, Debug)]
-pub struct KeepaliveState {
-    got_keepalive: bool,
-    last_keepalive_id: u64,
-    keepalive_sent_time: Instant,
-}
-
 #[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct IsHardcore(pub bool);
 
@@ -639,6 +607,19 @@ pub struct TeleportState {
 }
 
 impl TeleportState {
+    fn new() -> Self {
+        Self {
+            teleport_id_counter: 0,
+            pending_teleports: 0,
+            synced_pos: DVec3::ZERO,
+            synced_look: Look {
+                // Client starts facing north.
+                yaw: 180.0,
+                pitch: 0.0,
+            },
+        }
+    }
+
     pub fn teleport_id_counter(&self) -> u32 {
         self.teleport_id_counter
     }
@@ -672,6 +653,17 @@ pub struct ClientInventoryState {
 }
 
 impl ClientInventoryState {
+    fn new() -> Self {
+        Self {
+            window_id: 0,
+            state_id: Wrapping(0),
+            slots_changed: 0,
+            client_updated_cursor_item: false,
+            // First slot of the hotbar.
+            held_item_slot: 36,
+        }
+    }
+
     pub fn held_item_slot(&self) -> u16 {
         self.held_item_slot
     }
@@ -1281,44 +1273,6 @@ fn update_op_level(mut clients: Query<(&mut Client, &OpLevel), Changed<OpLevel>>
             entity_id: 0,
             entity_status: 24 + lvl.0,
         });
-    }
-}
-
-fn acknowledge_player_actions(
-    mut clients: Query<(&mut Client, &mut PlayerActionSequence), Changed<PlayerActionSequence>>,
-) {
-    for (mut client, mut action_seq) in &mut clients {
-        if action_seq.0 != 0 {
-            client.write_packet(&PlayerActionResponseS2c {
-                sequence: VarInt(action_seq.0),
-            });
-
-            action_seq.0 = 0;
-        }
-    }
-}
-
-fn send_keepalive(
-    mut clients: Query<(Entity, &mut Client, &mut KeepaliveState)>,
-    server: Res<Server>,
-    mut commands: Commands,
-) {
-    if server.current_tick() % (server.tps() * 10) == 0 {
-        let mut rng = rand::thread_rng();
-
-        for (entity, mut client, mut state) in &mut clients {
-            if state.got_keepalive {
-                let id = rng.gen();
-                client.write_packet(&KeepAliveS2c { id });
-
-                state.got_keepalive = false;
-                state.last_keepalive_id = id;
-                state.keepalive_sent_time = Instant::now();
-            } else {
-                warn!("Client {entity:?} timed out (no keepalive response)");
-                commands.entity(entity).remove::<Client>();
-            }
-        }
     }
 }
 

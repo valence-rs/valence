@@ -73,7 +73,7 @@ impl Plugin for InventoryPlugin {
                 handle_click_slot,
                 handle_creative_inventory_action,
                 handle_close_handled_screen,
-                handle_player_action_drop_item,
+                handle_player_actions,
             )
                 .in_base_set(EventLoopSet::PreUpdate)
                 .in_schedule(EventLoopSchedule),
@@ -892,7 +892,7 @@ fn handle_click_slot(
     }
 }
 
-fn handle_player_action_drop_item(
+fn handle_player_actions(
     mut packets: EventReader<PacketEvent>,
     mut clients: Query<(&mut Inventory, &mut ClientInventoryState)>,
     mut drop_item_stack_events: EventWriter<DropItemStack>,
@@ -937,6 +937,9 @@ fn handle_player_action_drop_item(
                             })
                         }
                     }
+                }
+                Action::SwapItemWithOffhand => {
+                    // TODO
                 }
                 _ => {}
             }

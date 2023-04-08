@@ -1,3 +1,4 @@
+use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use glam::DVec3;
 use valence_protocol::packet::c2s::play::{
@@ -6,7 +7,8 @@ use valence_protocol::packet::c2s::play::{
 
 use super::TeleportState;
 use crate::component::{Look, OnGround, Position};
-use crate::event_loop::PacketEvent;
+use crate::entity::HeadYaw;
+use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 
 /// Event sent when a client successfully moves.
 #[derive(Clone, Debug)]
@@ -26,14 +28,32 @@ pub struct MovementSettings {
     // TODO
 }
 
-pub(super) fn handle_client_movement(
+pub(super) fn build(app: &mut App) {
+    app.init_resource::<MovementSettings>()
+        .add_event::<Movement>()
+        .add_system(
+            handle_client_movement
+                .in_schedule(EventLoopSchedule)
+                .in_base_set(EventLoopSet::PreUpdate),
+        );
+}
+
+fn handle_client_movement(
     mut packets: EventReader<PacketEvent>,
-    mut clients: Query<(&mut Position, &mut Look, &mut OnGround, &TeleportState)>,
+    mut clients: Query<(
+        &mut Position,
+        &mut Look,
+        &mut HeadYaw,
+        &mut OnGround,
+        &TeleportState,
+    )>,
     mut movement_events: EventWriter<Movement>,
 ) {
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<PositionAndOnGround>() {
-            if let Ok((pos, look, on_ground, teleport_state)) = clients.get_mut(packet.client) {
+            if let Ok((pos, look, head_yaw, on_ground, teleport_state)) =
+                clients.get_mut(packet.client)
+            {
                 let mov = Movement {
                     client: packet.client,
                     position: pkt.position.into(),
@@ -48,13 +68,16 @@ pub(super) fn handle_client_movement(
                     mov,
                     pos,
                     look,
+                    head_yaw,
                     on_ground,
                     teleport_state,
                     &mut movement_events,
                 );
             }
         } else if let Some(pkt) = packet.decode::<Full>() {
-            if let Ok((pos, look, on_ground, teleport_state)) = clients.get_mut(packet.client) {
+            if let Ok((pos, look, head_yaw, on_ground, teleport_state)) =
+                clients.get_mut(packet.client)
+            {
                 let mov = Movement {
                     client: packet.client,
                     position: pkt.position.into(),
@@ -72,13 +95,16 @@ pub(super) fn handle_client_movement(
                     mov,
                     pos,
                     look,
+                    head_yaw,
                     on_ground,
                     teleport_state,
                     &mut movement_events,
                 );
             }
         } else if let Some(pkt) = packet.decode::<LookAndOnGround>() {
-            if let Ok((pos, look, on_ground, teleport_state)) = clients.get_mut(packet.client) {
+            if let Ok((pos, look, head_yaw, on_ground, teleport_state)) =
+                clients.get_mut(packet.client)
+            {
                 let mov = Movement {
                     client: packet.client,
                     position: pos.0,
@@ -96,13 +122,16 @@ pub(super) fn handle_client_movement(
                     mov,
                     pos,
                     look,
+                    head_yaw,
                     on_ground,
                     teleport_state,
                     &mut movement_events,
                 );
             }
         } else if let Some(pkt) = packet.decode::<OnGroundOnly>() {
-            if let Ok((pos, look, on_ground, teleport_state)) = clients.get_mut(packet.client) {
+            if let Ok((pos, look, head_yaw, on_ground, teleport_state)) =
+                clients.get_mut(packet.client)
+            {
                 let mov = Movement {
                     client: packet.client,
                     position: pos.0,
@@ -117,13 +146,16 @@ pub(super) fn handle_client_movement(
                     mov,
                     pos,
                     look,
+                    head_yaw,
                     on_ground,
                     teleport_state,
                     &mut movement_events,
                 );
             }
         } else if let Some(pkt) = packet.decode::<VehicleMoveC2s>() {
-            if let Ok((pos, look, on_ground, teleport_state)) = clients.get_mut(packet.client) {
+            if let Ok((pos, look, head_yaw, on_ground, teleport_state)) =
+                clients.get_mut(packet.client)
+            {
                 let mov = Movement {
                     client: packet.client,
                     position: pkt.position.into(),
@@ -141,6 +173,7 @@ pub(super) fn handle_client_movement(
                     mov,
                     pos,
                     look,
+                    head_yaw,
                     on_ground,
                     teleport_state,
                     &mut movement_events,
@@ -154,6 +187,7 @@ fn handle(
     mov: Movement,
     mut pos: Mut<Position>,
     mut look: Mut<Look>,
+    mut head_yaw: Mut<HeadYaw>,
     mut on_ground: Mut<OnGround>,
     teleport_state: &TeleportState,
     movement_events: &mut EventWriter<Movement>,
@@ -167,6 +201,7 @@ fn handle(
 
     pos.set_if_neq(Position(mov.position));
     look.set_if_neq(mov.look);
+    head_yaw.set_if_neq(HeadYaw(mov.look.yaw));
     on_ground.set_if_neq(OnGround(mov.on_ground));
 
     movement_events.send(mov);

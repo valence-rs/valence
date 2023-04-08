@@ -1,6 +1,6 @@
 #![allow(clippy::type_complexity)]
 
-use valence::client::event::{PlayerInteractBlock, StartDigging, StartSneaking, StopDestroyBlock};
+use valence::client::misc::{PlayerInteractBlock, StartDigging, StartSneaking, StopDestroyBlock};
 use valence::client::{default_event_handler, despawn_disconnected_clients};
 use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;

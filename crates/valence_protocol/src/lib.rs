@@ -5,8 +5,8 @@
 //! and serverbound packets are defined in the [`packet`] module. Packets are
 //! encoded and decoded using the [`PacketEncoder`] and [`PacketDecoder`] types.
 //!
-//! [`PacketEncoder`]: codec::PacketEncoder
-//! [`PacketDecoder`]: codec::PacketDecoder
+//! [`PacketEncoder`]: encoder::PacketEncoder
+//! [`PacketDecoder`]: decoder::PacketDecoder
 //!
 //! # Examples
 //!

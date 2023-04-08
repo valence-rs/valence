@@ -1,7 +1,7 @@
 #![allow(clippy::type_complexity)]
 
 use tracing::warn;
-use valence::client::event::{PlayerInteractBlock, StartSneaking};
+use valence::client::misc::{PlayerInteractBlock, StartSneaking};
 use valence::client::{default_event_handler, despawn_disconnected_clients};
 use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
