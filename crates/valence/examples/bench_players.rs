@@ -2,8 +2,7 @@
 
 use std::time::Instant;
 
-use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerEntityBundle;
+use valence::client::despawn_disconnected_clients;
 use valence::instance::{Chunk, Instance};
 use valence::prelude::*;
 
@@ -24,7 +23,6 @@ fn main() {
         )
         .add_startup_system(setup)
         .add_systems((
-            default_event_handler.in_schedule(EventLoopSchedule),
             record_tick_start_time.in_base_set(CoreSet::First),
             print_tick_time.in_base_set(CoreSet::Last),
             init_clients,
@@ -72,18 +70,12 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(Entity, &UniqueId, &mut GameMode), Added<Client>>,
+    mut clients: Query<(&mut Location, &mut Position, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
-    mut commands: Commands,
 ) {
-    for (entity, uuid, mut game_mode) in &mut clients {
+    for (mut loc, mut pos, mut game_mode) in &mut clients {
+        loc.0 = instances.single();
+        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
         *game_mode = GameMode::Creative;
-
-        commands.entity(entity).insert(PlayerEntityBundle {
-            location: Location(instances.single()),
-            position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 0.0]),
-            uuid: *uuid,
-            ..Default::default()
-        });
     }
 }

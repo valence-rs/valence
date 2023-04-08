@@ -122,22 +122,25 @@ where
             let mut buf = BytesMut::new();
 
             loop {
-                buf.reserve(READ_BUF_SIZE);
-
-                match self.reader.read_buf(&mut buf).await {
-                    Ok(0) => break, // Reader is at EOF.
-                    Ok(_) => {}
-                    Err(e) => {
-                        debug!("error reading data from stream: {e}");
-                        break;
-                    }
-                }
-
-                self.dec.queue_bytes(buf.split());
-
                 let mut data = match self.dec.try_next_packet() {
                     Ok(Some(data)) => data,
-                    Ok(None) => continue, // Incomplete packet. Need more data.
+                    Ok(None) => {
+                        // Incomplete packet. Need more data.
+
+                        buf.reserve(READ_BUF_SIZE);
+                        match self.reader.read_buf(&mut buf).await {
+                            Ok(0) => break, // Reader is at EOF.
+                            Ok(_) => {}
+                            Err(e) => {
+                                debug!("error reading data from stream: {e}");
+                                break;
+                            }
+                        }
+        
+                        self.dec.queue_bytes(buf.split());
+
+                        continue;
+                    },
                     Err(e) => {
                         warn!("error decoding packet frame: {e:#}");
                         break;
@@ -280,7 +283,7 @@ impl ClientConnection for RealClientConnection {
                 Ok(Some(packet))
             }
             Err(flume::TryRecvError::Empty) => Ok(None),
-            Err(flume::TryRecvError::Disconnected) => bail!("disconnected"),
+            Err(flume::TryRecvError::Disconnected) => bail!("client disconnected"),
         }
     }
 
