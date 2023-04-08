@@ -136,11 +136,11 @@ where
                                 break;
                             }
                         }
-        
+
                         self.dec.queue_bytes(buf.split());
 
                         continue;
-                    },
+                    }
                     Err(e) => {
                         warn!("error decoding packet frame: {e:#}");
                         break;

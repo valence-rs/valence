@@ -46,7 +46,7 @@ use valence_protocol::text::Text;
 use valence_protocol::types::WindowType;
 use valence_protocol::var_int::VarInt;
 
-use crate::client::{Client, FlushPacketsSet, ClientInventoryState, CursorItem};
+use crate::client::{Client, ClientInventoryState, CursorItem, FlushPacketsSet};
 use crate::component::GameMode;
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 use crate::packet::WritePacket;
