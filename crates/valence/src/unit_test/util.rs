@@ -135,7 +135,7 @@ impl MockClientHelper {
     }
 
     /// Collect all packets that have been sent to the client.
-    pub fn collect_sent<'a>(&'a mut self) -> Vec<S2cPlayPacket<'a>> {
+    pub fn collect_sent(&mut self) -> Vec<S2cPlayPacket> {
         self.dec.queue_bytes(self.conn.take_sent());
 
         self.collected_frames.clear();
