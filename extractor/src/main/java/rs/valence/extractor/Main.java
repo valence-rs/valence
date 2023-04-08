@@ -2,7 +2,10 @@ package rs.valence.extractor;
 
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
+import io.netty.handler.codec.EncoderException;
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.minecraft.nbt.NbtIo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rs.valence.extractor.extractors.*;
@@ -70,8 +73,28 @@ public class Main implements ModInitializer {
             }
         }
 
-        LOGGER.info("Done.");
-        System.exit(0);
+        ServerLifecycleEvents.SERVER_STARTING.register(server -> {
+            LOGGER.info("Server starting, Extracting registry codec...");
+            var codecExtractor = new Codec(server);
+
+            try {
+                var out = outputDirectory.resolve(codecExtractor.fileName());
+                var compound = codecExtractor.extract();
+                // read the compound byte-wise and write it to the file
+                try {
+                    NbtIo.write(compound, out.toFile());
+                } catch (IOException var3) {
+                    throw new EncoderException(var3);
+                }
+
+                LOGGER.info("Wrote " + out.toAbsolutePath());
+            } catch (Exception e) {
+                LOGGER.error("Extractor for \"" + codecExtractor.fileName() + "\" failed.", e);
+            }
+
+            LOGGER.info("Done.");
+            server.shutdown();
+        });
     }
 
     public interface Extractor {
