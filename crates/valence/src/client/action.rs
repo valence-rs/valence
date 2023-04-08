@@ -25,7 +25,7 @@ pub struct Digging {
     pub client: Entity,
     pub position: BlockPos,
     pub direction: Direction,
-    pub digging_state: DiggingState,
+    pub state: DiggingState,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -67,19 +67,19 @@ fn handle_player_action(
                     client: packet.client,
                     position: pkt.position,
                     direction: pkt.direction,
-                    digging_state: DiggingState::Start,
+                    state: DiggingState::Start,
                 }),
                 Action::AbortDestroyBlock => digging_events.send(Digging {
                     client: packet.client,
                     position: pkt.position,
                     direction: pkt.direction,
-                    digging_state: DiggingState::Abort,
+                    state: DiggingState::Abort,
                 }),
                 Action::StopDestroyBlock => digging_events.send(Digging {
                     client: packet.client,
                     position: pkt.position,
                     direction: pkt.direction,
-                    digging_state: DiggingState::Stop,
+                    state: DiggingState::Stop,
                 }),
                 Action::DropAllItems => {}
                 Action::DropItem => {}

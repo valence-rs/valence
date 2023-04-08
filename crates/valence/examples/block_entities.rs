@@ -1,8 +1,6 @@
 #![allow(clippy::type_complexity)]
 
-use valence::client::misc::{ChatMessage, PlayerInteractBlock};
-use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerEntityBundle;
+use valence::client::misc::{ChatMessage, InteractBlock};
 use valence::nbt::{compound, List};
 use valence::prelude::*;
 use valence::protocol::types::Hand;
@@ -17,12 +15,7 @@ pub fn main() {
     App::new()
         .add_plugin(ServerPlugin::new(()))
         .add_startup_system(setup)
-        .add_systems((
-            default_event_handler.in_schedule(EventLoopSchedule),
-            event_handler.in_schedule(EventLoopSchedule),
-            init_clients,
-            despawn_disconnected_clients,
-        ))
+        .add_systems((event_handler, init_clients, despawn_disconnected_clients))
         .add_systems(PlayerList::default_systems())
         .run();
 }
@@ -69,27 +62,22 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(Entity, &UniqueId, &mut GameMode), Added<Client>>,
+    mut clients: Query<(&mut Location, &mut Position, &mut Look, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
-    mut commands: Commands,
 ) {
-    for (entity, uuid, mut game_mode) in &mut clients {
-        *game_mode = GameMode::Creative;
+    for (mut loc, mut pos, mut look, mut game_mode) in &mut clients {
+        loc.0 = instances.single();
+        pos.set([1.5, FLOOR_Y as f64 + 1.0, 1.5]);
+        *look = Look::new(-90.0, 0.0);
 
-        commands.entity(entity).insert(PlayerEntityBundle {
-            location: Location(instances.single()),
-            position: Position::new([1.5, FLOOR_Y as f64 + 1.0, 1.5]),
-            look: Look::new(-90.0, 0.0),
-            uuid: *uuid,
-            ..Default::default()
-        });
+        *game_mode = GameMode::Creative;
     }
 }
 
 fn event_handler(
     clients: Query<(&Username, &Properties, &UniqueId)>,
     mut messages: EventReader<ChatMessage>,
-    mut block_interacts: EventReader<PlayerInteractBlock>,
+    mut block_interacts: EventReader<InteractBlock>,
     mut instances: Query<&mut Instance>,
 ) {
     let mut instance = instances.single_mut();
@@ -107,7 +95,7 @@ fn event_handler(
         nbt.insert("Text3", format!("~{}", username).italic());
     }
 
-    for PlayerInteractBlock {
+    for InteractBlock {
         client,
         position,
         hand,

@@ -51,7 +51,14 @@ pub mod prelude {
     pub use bevy_app::prelude::*;
     pub use bevy_ecs::prelude::*;
     pub use biome::{Biome, BiomeId, BiomeRegistry};
-    pub use client::*;
+    pub use client::action::*;
+    pub use client::command::*;
+    pub use client::interact_entity::*;
+    pub use client::{
+        despawn_disconnected_clients, Client, CompassPos, CursorItem, DeathLocation,
+        HasRespawnScreen, HashedSeed, Ip, IsDebug, IsFlat, IsHardcore, OldView, OldViewDistance,
+        OpLevel, PrevGameMode, ReducedDebugInfo, View, ViewDistance,
+    };
     pub use component::*;
     pub use config::{
         AsyncCallbacks, ConnectionMode, PlayerSampleEntry, ServerListPing, ServerPlugin,

@@ -2,7 +2,6 @@
 
 use std::time::Instant;
 
-use valence::client::despawn_disconnected_clients;
 use valence::instance::{Chunk, Instance};
 use valence::prelude::*;
 

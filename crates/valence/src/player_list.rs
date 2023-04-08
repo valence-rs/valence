@@ -16,10 +16,9 @@ use valence_protocol::packet::s2c::play::{PlayerListHeaderS2c, PlayerRemoveS2c};
 use valence_protocol::text::Text;
 use valence_protocol::types::Property;
 
-use crate::client::Client;
+use crate::client::{Client, FlushPacketsSet};
 use crate::component::{GameMode, Ping, Properties, UniqueId, Username};
 use crate::packet::{PacketWriter, WritePacket};
-use crate::prelude::FlushPacketsSet;
 use crate::server::Server;
 
 /// The global list of players on a server visible by pressing the tab key by

@@ -5,8 +5,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use rand::seq::SliceRandom;
 use rand::Rng;
-use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
 use valence::protocol::packet::s2c::play::TitleFadeS2c;
 use valence::protocol::sound::Sound;
@@ -31,7 +29,6 @@ pub fn main() {
     App::new()
         .add_plugin(ServerPlugin::new(()))
         .add_system(init_clients)
-        .add_system(default_event_handler.in_schedule(EventLoopSchedule))
         .add_systems(PlayerList::default_systems())
         .add_systems((
             reset_clients.after(init_clients),
@@ -52,15 +49,26 @@ struct GameState {
 }
 
 fn init_clients(
-    mut clients: Query<(Entity, &mut Client, &UniqueId, &mut IsFlat, &mut GameMode), Added<Client>>,
+    mut clients: Query<
+        (
+            Entity,
+            &mut Client,
+            &mut Location,
+            &mut IsFlat,
+            &mut GameMode,
+        ),
+        Added<Client>,
+    >,
     server: Res<Server>,
     dimensions: Query<&DimensionType>,
     biomes: Query<&Biome>,
     mut commands: Commands,
 ) {
-    for (entity, mut client, uuid, mut is_flat, mut game_mode) in clients.iter_mut() {
+    for (entity, mut client, mut loc, mut is_flat, mut game_mode) in clients.iter_mut() {
+        loc.0 = entity;
         is_flat.0 = true;
         *game_mode = GameMode::Adventure;
+
         client.send_message("Welcome to epic infinite parkour game!".italic());
 
         let state = GameState {
@@ -73,13 +81,7 @@ fn init_clients(
 
         let instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
-        let player = PlayerEntityBundle {
-            location: Location(entity),
-            uuid: *uuid,
-            ..Default::default()
-        };
-
-        commands.entity(entity).insert((state, instance, player));
+        commands.entity(entity).insert((state, instance));
     }
 }
 
