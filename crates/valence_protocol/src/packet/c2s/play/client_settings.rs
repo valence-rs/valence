@@ -14,10 +14,11 @@ pub struct ClientSettingsC2s<'a> {
     pub allow_server_listings: bool,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
+#[derive(Copy, Clone, PartialEq, Eq, Default, Debug, Encode, Decode)]
 pub enum ChatMode {
     Enabled,
     CommandsOnly,
+    #[default]
     Hidden,
 }
 

@@ -437,12 +437,12 @@ impl EntityManager {
     }
 
     /// Gets the entity with the given entity ID.
-    pub fn get_with_id(&self, entity_id: i32) -> Option<Entity> {
+    pub fn get_by_id(&self, entity_id: i32) -> Option<Entity> {
         self.id_to_entity.get(&entity_id).cloned()
     }
 
     /// Gets the entity with the given UUID.
-    pub fn get_with_uuid(&self, uuid: Uuid) -> Option<Entity> {
+    pub fn get_by_uuid(&self, uuid: Uuid) -> Option<Entity> {
         self.uuid_to_entity.get(&uuid).cloned()
     }
 }

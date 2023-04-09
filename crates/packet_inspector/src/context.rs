@@ -7,14 +7,13 @@ use owo_colors::{OwoColorize, Style};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
-use valence_protocol::codec::PacketDecoder;
+use valence_protocol::decoder::PacketDecoder;
 use valence_protocol::packet::c2s::handshake::HandshakeC2s;
 use valence_protocol::packet::c2s::login::{LoginHelloC2s, LoginKeyC2s};
 use valence_protocol::packet::c2s::status::{QueryPingC2s, QueryRequestC2s};
 use valence_protocol::packet::s2c::login::LoginSuccessS2c;
 use valence_protocol::packet::s2c::status::{QueryPongS2c, QueryResponseS2c};
 use valence_protocol::packet::{C2sPlayPacket, S2cLoginPacket, S2cPlayPacket};
-use valence_protocol::raw::RawPacket;
 
 use crate::packet_widget::{systemtime_strftime, PacketDirection};
 use crate::MetaPacket;
@@ -78,7 +77,7 @@ pub struct Packet {
     pub(crate) id: usize,
     pub(crate) direction: PacketDirection,
     pub(crate) selected: bool,
-    pub(crate) use_compression: bool,
+    pub(crate) compression_threshold: Option<u32>,
     pub(crate) packet_data: Vec<u8>,
     pub(crate) stage: Stage,
     pub(crate) packet_type: i32,
@@ -93,169 +92,58 @@ impl Packet {
 
     pub fn get_raw_packet(&self) -> Vec<u8> {
         let mut dec = PacketDecoder::new();
-        dec.set_compression(self.use_compression);
+        dec.set_compression(self.compression_threshold);
         dec.queue_slice(&self.packet_data);
 
-        let pkt = match dec.try_next_packet::<RawPacket>() {
-            Ok(Some(pkt)) => pkt,
-            Ok(None) => return vec![],
+        match dec.try_next_packet() {
+            Ok(Some(data)) => data.into(),
+            Ok(None) => vec![],
             Err(e) => {
-                eprintln!("Error decoding packet: {e}");
-                return vec![];
+                eprintln!("Error decoding packet: {e:#}");
+                vec![]
             }
-        };
-
-        pkt.0.to_vec()
+        }
     }
 
     pub fn get_packet_string(&self, formatted: bool) -> String {
         let mut dec = PacketDecoder::new();
-        dec.set_compression(self.use_compression);
+        dec.set_compression(self.compression_threshold);
         dec.queue_slice(&self.packet_data);
 
+        macro_rules! get {
+            ($packet:ident) => {
+                match dec.try_next_packet() {
+                    Ok(Some(frame)) => {
+                        if let Ok(pkt) =
+                            <$packet as valence_protocol::Packet>::decode_packet(&mut &frame[..])
+                        {
+                            if formatted {
+                                format!("{pkt:#?}")
+                            } else {
+                                format!("{pkt:?}")
+                            }
+                        } else {
+                            stringify!($packet).into()
+                        }
+                    }
+                    Ok(None) => stringify!($packet).into(),
+                    Err(e) => format!("{e:#}"),
+                }
+            };
+        }
+
         match self.stage {
-            Stage::HandshakeC2s => {
-                let pkt = match dec.try_next_packet::<HandshakeC2s>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "HandshakeC2s".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-                if formatted {
-                    format!("{pkt:#?}")
-                } else {
-                    format!("{pkt:?}")
-                }
-            }
-            Stage::QueryRequestC2s => {
-                let pkt = match dec.try_next_packet::<QueryRequestC2s>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "QueryRequestC2s".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-
-                if formatted {
-                    format!("{pkt:#?}")
-                } else {
-                    format!("{pkt:?}")
-                }
-            }
-            Stage::QueryResponseS2c => {
-                let pkt = match dec.try_next_packet::<QueryResponseS2c>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "QueryResponseS2c".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-
-                if formatted {
-                    format!("{pkt:#?}")
-                } else {
-                    format!("{pkt:?}")
-                }
-            }
-            Stage::QueryPingC2s => {
-                let pkt = match dec.try_next_packet::<QueryPingC2s>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "QueryPingC2s".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-
-                if formatted {
-                    format!("{pkt:#?}")
-                } else {
-                    format!("{pkt:?}")
-                }
-            }
-            Stage::QueryPongS2c => {
-                let pkt = match dec.try_next_packet::<QueryPongS2c>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "QueryPongS2c".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-
-                if formatted {
-                    format!("{pkt:#?}")
-                } else {
-                    format!("{pkt:?}")
-                }
-            }
-            Stage::LoginHelloC2s => {
-                let pkt = match dec.try_next_packet::<LoginHelloC2s>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "LoginHelloC2s".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-
-                if formatted {
-                    format!("{pkt:#?}")
-                } else {
-                    format!("{pkt:?}")
-                }
-            }
-            Stage::S2cLoginPacket => {
-                let pkt = match dec.try_next_packet::<S2cLoginPacket>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "S2cLoginPacket".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-
-                if formatted {
-                    format!("{pkt:#?}")
-                } else {
-                    format!("{pkt:?}")
-                }
-            }
-            Stage::LoginKeyC2s => {
-                let pkt = match dec.try_next_packet::<LoginKeyC2s>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "LoginKeyC2s".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-
-                if formatted {
-                    format!("{pkt:#?}")
-                } else {
-                    format!("{pkt:?}")
-                }
-            }
-            Stage::LoginSuccessS2c => {
-                let pkt = match dec.try_next_packet::<LoginSuccessS2c>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "LoginSuccessS2c".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-
-                if formatted {
-                    format!("{pkt:#?}")
-                } else {
-                    format!("{pkt:?}")
-                }
-            }
-            Stage::C2sPlayPacket => {
-                let pkt = match dec.try_next_packet::<C2sPlayPacket>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "C2sPlayPacket".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-
-                if formatted {
-                    format!("{pkt:#?}")
-                } else {
-                    format!("{pkt:?}")
-                }
-            }
-            Stage::S2cPlayPacket => {
-                let pkt = match dec.try_next_packet::<S2cPlayPacket>() {
-                    Ok(Some(pkt)) => pkt,
-                    Ok(None) => return "S2cPlayPacket".to_string(),
-                    Err(err) => return format!("{:?}", err),
-                };
-
-                if formatted {
-                    format!("{pkt:#?}")
-                } else {
-                    format!("{pkt:?}")
-                }
-            }
+            Stage::HandshakeC2s => get!(HandshakeC2s),
+            Stage::QueryRequestC2s => get!(QueryRequestC2s),
+            Stage::QueryResponseS2c => get!(QueryResponseS2c),
+            Stage::QueryPingC2s => get!(QueryPingC2s),
+            Stage::QueryPongS2c => get!(QueryPongS2c),
+            Stage::LoginHelloC2s => get!(LoginHelloC2s),
+            Stage::S2cLoginPacket => get!(S2cLoginPacket),
+            Stage::LoginKeyC2s => get!(LoginKeyC2s),
+            Stage::LoginSuccessS2c => get!(LoginSuccessS2c),
+            Stage::C2sPlayPacket => get!(C2sPlayPacket),
+            Stage::S2cPlayPacket => get!(S2cPlayPacket),
         }
     }
 }

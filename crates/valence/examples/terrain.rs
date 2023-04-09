@@ -9,8 +9,6 @@ use std::time::SystemTime;
 use flume::{Receiver, Sender};
 use noise::{NoiseFn, SuperSimplex};
 use tracing::info;
-use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
 
 const SPAWN_POS: DVec3 = DVec3::new(0.0, 200.0, 0.0);
@@ -46,7 +44,6 @@ pub fn main() {
     App::new()
         .add_plugin(ServerPlugin::new(()))
         .add_startup_system(setup)
-        .add_system(default_event_handler.in_schedule(EventLoopSchedule))
         .add_systems(
             (
                 init_clients,
@@ -113,20 +110,14 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(Entity, &UniqueId, &mut IsFlat, &mut GameMode), Added<Client>>,
+    mut clients: Query<(&mut Location, &mut Position, &mut IsFlat, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
-    mut commands: Commands,
 ) {
-    for (entity, uuid, mut is_flat, mut game_mode) in &mut clients {
+    for (mut loc, mut pos, mut is_flat, mut game_mode) in &mut clients {
+        loc.0 = instances.single();
+        pos.set(SPAWN_POS);
         is_flat.0 = true;
         *game_mode = GameMode::Creative;
-
-        commands.entity(entity).insert(PlayerEntityBundle {
-            location: Location(instances.single()),
-            position: Position(SPAWN_POS),
-            uuid: *uuid,
-            ..Default::default()
-        });
     }
 }
 

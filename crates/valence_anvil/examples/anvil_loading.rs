@@ -6,8 +6,6 @@ use std::thread;
 use clap::Parser;
 use flume::{Receiver, Sender};
 use tracing::warn;
-use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
 use valence_anvil::{AnvilChunk, AnvilWorld};
 
@@ -67,7 +65,6 @@ pub fn main() {
         .add_plugin(ServerPlugin::new(()))
         .insert_resource(game_state)
         .add_startup_system(setup)
-        .add_system(default_event_handler.in_schedule(EventLoopSchedule))
         .add_systems(
             (
                 init_clients,
@@ -92,20 +89,14 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(Entity, &mut GameMode, &mut IsFlat, &UniqueId), Added<Client>>,
+    mut clients: Query<(&mut Location, &mut Position, &mut GameMode, &mut IsFlat), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
-    mut commands: Commands,
 ) {
-    for (entity, mut game_mode, mut is_flat, uuid) in &mut clients {
+    for (mut loc, mut pos, mut game_mode, mut is_flat) in &mut clients {
+        loc.0 = instances.single();
+        pos.set(SPAWN_POS);
         *game_mode = GameMode::Creative;
         is_flat.0 = true;
-
-        commands.entity(entity).insert(PlayerEntityBundle {
-            location: Location(instances.single()),
-            position: Position(SPAWN_POS),
-            uuid: *uuid,
-            ..Default::default()
-        });
     }
 }
 

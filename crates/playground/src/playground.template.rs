@@ -1,4 +1,4 @@
-use valence::client::{default_event_handler, despawn_disconnected_clients};
+use valence::client::despawn_disconnected_clients;
 use valence::prelude::*;
 
 #[allow(unused_imports)]
@@ -9,7 +9,6 @@ const SPAWN_Y: i32 = 64;
 pub fn build_app(app: &mut App) {
     app.add_plugin(ServerPlugin::new(()).with_connection_mode(ConnectionMode::Offline))
         .add_startup_system(setup)
-        .add_system(default_event_handler.in_schedule(EventLoopSchedule))
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
         .add_system(toggle_gamemode_on_sneak.in_schedule(EventLoopSchedule));
@@ -39,13 +38,13 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(&mut Position, &mut Location), Added<Client>>,
+    mut clients: Query<(&mut Location, &mut Position), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
-    for (mut pos, mut loc) in &mut clients {
-        pos.0 = [0.5, SPAWN_Y as f64 + 1.0, 0.5].into();
+    for (mut loc, mut pos) in &mut clients {
         loc.0 = instances.single();
+        pos.set([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
     }
 }
 
-// Add new systems here!
+// Add more systems here!

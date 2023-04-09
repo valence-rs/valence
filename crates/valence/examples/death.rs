@@ -1,8 +1,6 @@
 #![allow(clippy::type_complexity)]
 
-use valence::client::event::{PerformRespawn, StartSneaking};
-use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerEntityBundle;
+use valence::client::misc::Respawn;
 use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;
@@ -13,10 +11,7 @@ pub fn main() {
     App::new()
         .add_plugin(ServerPlugin::new(()).with_connection_mode(ConnectionMode::Offline))
         .add_startup_system(setup)
-        .add_system(init_clients)
-        .add_systems(
-            (default_event_handler, squat_and_die, necromancy).in_schedule(EventLoopSchedule),
-        )
+        .add_systems((init_clients, squat_and_die, necromancy))
         .add_systems(PlayerList::default_systems())
         .add_system(despawn_disconnected_clients)
         .run();
@@ -48,36 +43,41 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(Entity, &UniqueId, &mut Client, &mut HasRespawnScreen), Added<Client>>,
+    mut clients: Query<
+        (
+            &mut Client,
+            &mut Location,
+            &mut Position,
+            &mut HasRespawnScreen,
+        ),
+        Added<Client>,
+    >,
     instances: Query<Entity, With<Instance>>,
-    mut commands: Commands,
 ) {
-    for (entity, uuid, mut client, mut has_respawn_screen) in &mut clients {
+    for (mut client, mut loc, mut pos, mut has_respawn_screen) in &mut clients {
+        loc.0 = instances.iter().next().unwrap();
+        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
         has_respawn_screen.0 = true;
+
         client.send_message(
             "Welcome to Valence! Sneak to die in the game (but not in real life).".italic(),
         );
-
-        commands.entity(entity).insert(PlayerEntityBundle {
-            location: Location(instances.iter().next().unwrap()),
-            position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 0.0]),
-            uuid: *uuid,
-            ..Default::default()
-        });
     }
 }
 
-fn squat_and_die(mut clients: Query<&mut Client>, mut events: EventReader<StartSneaking>) {
+fn squat_and_die(mut clients: Query<&mut Client>, mut events: EventReader<Sneaking>) {
     for event in events.iter() {
-        if let Ok(mut client) = clients.get_mut(event.client) {
-            client.kill(None, "Squatted too hard.");
+        if event.state == SneakState::Start {
+            if let Ok(mut client) = clients.get_mut(event.client) {
+                client.kill(None, "Squatted too hard.");
+            }
         }
     }
 }
 
 fn necromancy(
     mut clients: Query<(&mut Position, &mut Look, &mut Location)>,
-    mut events: EventReader<PerformRespawn>,
+    mut events: EventReader<Respawn>,
     instances: Query<Entity, With<Instance>>,
 ) {
     for event in events.iter() {

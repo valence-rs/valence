@@ -1,7 +1,6 @@
 #![allow(clippy::type_complexity)]
 
-use valence::client::event::{PlayerInteractEntity, ResourcePackStatus, ResourcePackStatusChange};
-use valence::client::{default_event_handler, despawn_disconnected_clients};
+use valence::client::misc::{ResourcePackStatus, ResourcePackStatusChange};
 use valence::entity::player::PlayerEntityBundle;
 use valence::entity::sheep::SheepEntityBundle;
 use valence::prelude::*;
@@ -15,15 +14,7 @@ pub fn main() {
     App::new()
         .add_plugin(ServerPlugin::new(()))
         .add_startup_system(setup)
-        .add_system(init_clients)
-        .add_systems(
-            (
-                default_event_handler,
-                prompt_on_punch,
-                on_resource_pack_status,
-            )
-                .in_schedule(EventLoopSchedule),
-        )
+        .add_systems((init_clients, prompt_on_punch, on_resource_pack_status))
         .add_systems(PlayerList::default_systems())
         .add_system(despawn_disconnected_clients)
         .run();
@@ -79,19 +70,18 @@ fn init_clients(
     }
 }
 
-fn prompt_on_punch(mut clients: Query<&mut Client>, mut events: EventReader<PlayerInteractEntity>) {
+fn prompt_on_punch(mut clients: Query<&mut Client>, mut events: EventReader<InteractEntity>) {
     for event in events.iter() {
-        let Ok(mut client) = clients.get_mut(event.client) else {
-            continue;
+        if let Ok(mut client) = clients.get_mut(event.client) {
+            if event.interact == EntityInteraction::Attack {
+                client.set_resource_pack(
+                    "https://github.com/valence-rs/valence/raw/main/assets/example_pack.zip",
+                    "d7c6108849fb190ec2a49f2d38b7f1f897d9ce9f",
+                    false,
+                    None,
+                );
+            }
         };
-        if event.interact == EntityInteraction::Attack {
-            client.set_resource_pack(
-                "https://github.com/valence-rs/valence/raw/main/assets/example_pack.zip",
-                "d7c6108849fb190ec2a49f2d38b7f1f897d9ce9f",
-                false,
-                None,
-            );
-        }
     }
 }
 
@@ -100,22 +90,22 @@ fn on_resource_pack_status(
     mut events: EventReader<ResourcePackStatusChange>,
 ) {
     for event in events.iter() {
-        let Ok(mut client) = clients.get_mut(event.client) else {
-            continue;
+        if let Ok(mut client) = clients.get_mut(event.client) {
+            match event.status {
+                ResourcePackStatus::Accepted => {
+                    client.send_message("Resource pack accepted.".color(Color::GREEN));
+                }
+                ResourcePackStatus::Declined => {
+                    client.send_message("Resource pack declined.".color(Color::RED));
+                }
+                ResourcePackStatus::FailedDownload => {
+                    client.send_message("Resource pack failed to download.".color(Color::RED));
+                }
+                ResourcePackStatus::Loaded => {
+                    client
+                        .send_message("Resource pack successfully downloaded.".color(Color::BLUE));
+                }
+            }
         };
-        match event.status {
-            ResourcePackStatus::Accepted => {
-                client.send_message("Resource pack accepted.".color(Color::GREEN));
-            }
-            ResourcePackStatus::Declined => {
-                client.send_message("Resource pack declined.".color(Color::RED));
-            }
-            ResourcePackStatus::FailedDownload => {
-                client.send_message("Resource pack failed to download.".color(Color::RED));
-            }
-            ResourcePackStatus::Loaded => {
-                client.send_message("Resource pack successfully downloaded.".color(Color::BLUE));
-            }
-        }
     }
 }

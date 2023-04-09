@@ -16,15 +16,14 @@ use uuid::Uuid;
 use valence_protocol::types::Property;
 
 use crate::biome::BiomePlugin;
-use crate::client::event::EventLoopSet;
 use crate::client::{ClientBundle, ClientPlugin};
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerPlugin};
 use crate::dimension::DimensionPlugin;
 use crate::entity::EntityPlugin;
+use crate::event_loop::{EventLoopPlugin, RunEventLoopSet};
 use crate::instance::InstancePlugin;
-use crate::inventory::{InventoryPlugin, InventorySettings};
+use crate::inventory::InventoryPlugin;
 use crate::player_list::PlayerListPlugin;
-use crate::prelude::event::ClientEventPlugin;
 use crate::prelude::ComponentPlugin;
 use crate::registry_codec::RegistryCodecPlugin;
 use crate::server::connect::do_accept_loop;
@@ -33,6 +32,8 @@ use crate::weather::WeatherPlugin;
 mod byte_channel;
 mod connect;
 pub(crate) mod connection;
+
+use connection::NewClientArgs;
 
 /// Contains global server state accessible as a [`Resource`].
 #[derive(Resource)]
@@ -82,9 +83,9 @@ struct SharedServerInner {
     /// to store the runtime here so we don't drop it.
     _tokio_runtime: Option<Runtime>,
     /// Sender for new clients past the login stage.
-    new_clients_send: Sender<ClientBundle>,
+    new_clients_send: Sender<NewClientArgs>,
     /// Receiver for new clients past the login stage.
-    new_clients_recv: Receiver<ClientBundle>,
+    new_clients_recv: Receiver<NewClientArgs>,
     /// A semaphore used to limit the number of simultaneous connections to the
     /// server. Closing this semaphore stops new connections.
     connection_sema: Arc<Semaphore>,
@@ -228,11 +229,11 @@ pub fn build_plugin(
     // System to spawn new clients.
     let spawn_new_clients = move |world: &mut World| {
         for _ in 0..shared.0.new_clients_recv.len() {
-            let Ok(client) = shared.0.new_clients_recv.try_recv() else {
+            let Ok(args) = shared.0.new_clients_recv.try_recv() else {
                 break
             };
 
-            world.spawn(client);
+            world.spawn(ClientBundle::new(args.info, args.conn, args.enc));
         }
     };
 
@@ -240,7 +241,6 @@ pub fn build_plugin(
 
     // Insert resources.
     app.insert_resource(server);
-    app.insert_resource(InventorySettings::default());
 
     // Make the app loop forever at the configured TPS.
     {
@@ -262,18 +262,18 @@ pub fn build_plugin(
     app.add_system(
         spawn_new_clients
             .in_base_set(CoreSet::PreUpdate)
-            .before(EventLoopSet),
+            .before(RunEventLoopSet),
     );
 
     app.add_system(increment_tick_counter.in_base_set(CoreSet::Last));
 
     // Add internal plugins.
-    app.add_plugin(RegistryCodecPlugin)
+    app.add_plugin(EventLoopPlugin)
+        .add_plugin(RegistryCodecPlugin)
         .add_plugin(BiomePlugin)
         .add_plugin(DimensionPlugin)
         .add_plugin(ComponentPlugin)
         .add_plugin(ClientPlugin)
-        .add_plugin(ClientEventPlugin)
         .add_plugin(EntityPlugin)
         .add_plugin(InstancePlugin)
         .add_plugin(InventoryPlugin)

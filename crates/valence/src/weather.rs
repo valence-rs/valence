@@ -21,6 +21,7 @@ use bevy_ecs::prelude::*;
 use valence_protocol::packet::s2c::play::game_state_change::GameEventKind;
 use valence_protocol::packet::s2c::play::GameStateChangeS2c;
 
+use crate::client::FlushPacketsSet;
 use crate::instance::WriteUpdatePacketsToInstancesSet;
 use crate::packet::WritePacket;
 use crate::prelude::*;
@@ -257,7 +258,6 @@ impl Plugin for WeatherPlugin {
 
 #[cfg(test)]
 mod test {
-    use anyhow::Ok;
     use bevy_app::App;
     use valence_protocol::packet::S2cPlayPacket;
 
@@ -306,7 +306,7 @@ mod test {
     }
 
     #[test]
-    fn test_weather_instance() -> anyhow::Result<()> {
+    fn test_weather_instance() {
         let mut app = App::new();
         let (_, mut client_helper) = scenario_single_client(&mut app);
 
@@ -353,15 +353,13 @@ mod test {
         }
 
         // Make assertions.
-        let sent_packets = client_helper.collect_sent()?;
+        let sent_packets = client_helper.collect_sent();
 
         assert_weather_packets(sent_packets);
-
-        Ok(())
     }
 
     #[test]
-    fn test_weather_client() -> anyhow::Result<()> {
+    fn test_weather_client() {
         let mut app = App::new();
         let (_, mut client_helper) = scenario_single_client(&mut app);
 
@@ -408,10 +406,8 @@ mod test {
         }
 
         // Make assertions.
-        let sent_packets = client_helper.collect_sent()?;
+        let sent_packets = client_helper.collect_sent();
 
         assert_weather_packets(sent_packets);
-
-        Ok(())
     }
 }
