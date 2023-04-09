@@ -23,7 +23,8 @@ use valence_protocol::translation_key::{
 use valence_protocol::types::MessageSignature;
 use valence_protocol::var_int::VarInt;
 
-use crate::client::event::{ChatMessage, ClientSettings, MessageAcknowledgment, PlayerSession};
+use crate::client::misc::{ChatMessage, MessageAcknowledgment, PlayerSession};
+use crate::client::settings::ClientSettings;
 use crate::client::{Client, DisconnectClient, FlushPacketsSet};
 use crate::component::{UniqueId, Username};
 use crate::instance::Instance;
@@ -45,7 +46,6 @@ impl MojangServicesState {
 #[derive(Debug, Component)]
 struct ChatState {
     last_message_timestamp: u64,
-    chat_mode: ChatMode,
     validator: AcknowledgementValidator,
     chain: MessageChain,
     signature_storage: MessageSignatureStorage,
@@ -59,7 +59,6 @@ impl Default for ChatState {
                 .duration_since(SystemTime::UNIX_EPOCH)
                 .expect("Unable to get Unix time")
                 .as_millis() as u64,
-            chat_mode: ChatMode::Enabled,
             validator: AcknowledgementValidator::new(),
             chain: MessageChain::new(),
             signature_storage: MessageSignatureStorage::new(),
@@ -320,9 +319,6 @@ impl Plugin for SecureChatPlugin {
                     handle_message_acknowledgement
                         .after(init_chat_states)
                         .before(handle_message_events),
-                    handle_chat_settings_event
-                        .after(init_chat_states)
-                        .before(handle_message_events),
                     handle_message_events.after(init_chat_states),
                 )
                     .in_base_set(CoreSet::PostUpdate)
@@ -463,7 +459,7 @@ fn handle_message_acknowledgement(
 }
 
 fn handle_message_events(
-    mut clients: Query<(&Username, &mut Client)>,
+    mut clients: Query<(&Username, &ClientSettings, &mut Client)>,
     mut states: Query<&mut ChatState>,
     mut messages: EventReader<ChatMessage>,
     mut instances: Query<&mut Instance>,
@@ -472,7 +468,7 @@ fn handle_message_events(
     let mut instance = instances.single_mut();
 
     for message in messages.iter() {
-        let Ok((username, mut client)) = clients.get_mut(message.client) else {
+        let Ok((username, settings, mut client)) = clients.get_mut(message.client) else {
             warn!("Unable to find client for message '{:?}'", message);
             continue;
         };
@@ -483,7 +479,7 @@ fn handle_message_events(
         };
 
         // Ensure that the client isn't sending messages while their chat is hidden
-        if state.chat_mode == ChatMode::Hidden {
+        if settings.chat_mode == ChatMode::Hidden {
             client.send_message(Text::translate(CHAT_DISABLED_OPTIONS, []).color(Color::RED));
             continue;
         }
@@ -639,22 +635,5 @@ fn handle_message_events(
                 }
             }
         }
-    }
-}
-
-fn handle_chat_settings_event(
-    mut states: Query<&mut ChatState>,
-    mut settings: EventReader<ClientSettings>,
-) {
-    for ClientSettings {
-        client, chat_mode, ..
-    } in settings.iter()
-    {
-        let Ok(mut state) = states.get_component_mut::<ChatState>(*client) else {
-            warn!("Unable to find chat state for client");
-            continue;
-        };
-
-        state.chat_mode = *chat_mode;
     }
 }

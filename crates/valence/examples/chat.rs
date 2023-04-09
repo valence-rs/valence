@@ -1,8 +1,9 @@
 #![allow(clippy::type_complexity)]
 
 use tracing::{warn, Level};
-use valence::client::event::CommandExecution;
-use valence::client::{default_event_handler, despawn_disconnected_clients};
+use valence::client::despawn_disconnected_clients;
+// TODO: Add CommandExecution event
+use valence::client::misc::CommandExecution;
 use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
 use valence::secure_chat::SecureChatPlugin;
@@ -20,7 +21,7 @@ pub fn main() {
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
-        .add_systems((default_event_handler, handle_command_events).in_schedule(EventLoopSchedule))
+        .add_system(handle_command_events.in_schedule(EventLoopSchedule))
         .add_systems(PlayerList::default_systems())
         .run();
 }
