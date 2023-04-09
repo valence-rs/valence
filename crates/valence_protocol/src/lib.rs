@@ -5,14 +5,16 @@
 //! and serverbound packets are defined in the [`packet`] module. Packets are
 //! encoded and decoded using the [`PacketEncoder`] and [`PacketDecoder`] types.
 //!
-//! [`PacketEncoder`]: codec::PacketEncoder
-//! [`PacketDecoder`]: codec::PacketDecoder
+//! [`PacketEncoder`]: encoder::PacketEncoder
+//! [`PacketDecoder`]: decoder::PacketDecoder
 //!
 //! # Examples
 //!
 //! ```
-//! use valence_protocol::codec::{PacketDecoder, PacketEncoder};
+//! use valence_protocol::decoder::PacketDecoder;
+//! use valence_protocol::encoder::PacketEncoder;
 //! use valence_protocol::packet::c2s::play::RenameItemC2s;
+//! use valence_protocol::Packet;
 //!
 //! let mut enc = PacketEncoder::new();
 //!
@@ -26,7 +28,9 @@
 //!
 //! dec.queue_bytes(enc.take());
 //!
-//! let incoming = dec.try_next_packet::<RenameItemC2s>().unwrap().unwrap();
+//! let frame = dec.try_next_packet().unwrap().unwrap();
+//!
+//! let incoming = RenameItemC2s::decode_packet(&mut &frame[..]).unwrap();
 //!
 //! assert_eq!(outgoing.item_name, incoming.item_name);
 //! ```
@@ -67,12 +71,12 @@
 // Allows us to use our own proc macros internally.
 extern crate self as valence_protocol;
 
+use std::fmt;
 use std::io::Write;
-use std::{fmt, io};
 
 pub use anyhow::{Error, Result};
 pub use valence_protocol_macros::{ident, Decode, Encode, Packet};
-pub use {uuid, valence_nbt as nbt};
+pub use {bytes, uuid, valence_nbt as nbt};
 
 /// The Minecraft protocol version this library currently targets.
 pub const PROTOCOL_VERSION: i32 = 762;
@@ -85,8 +89,9 @@ pub mod array;
 pub mod block;
 pub mod block_pos;
 pub mod byte_angle;
-pub mod codec;
+pub mod decoder;
 pub mod enchant;
+pub mod encoder;
 pub mod ident;
 mod impls;
 pub mod item;
@@ -172,17 +177,17 @@ pub trait Encode {
 
     /// Hack to get around the lack of specialization. Not public API.
     #[doc(hidden)]
-    fn write_slice(slice: &[Self], w: impl Write) -> io::Result<()>
+    fn encode_slice(slice: &[Self], w: impl Write) -> Result<()>
     where
         Self: Sized,
     {
         let _ = (slice, w);
-        unimplemented!("for internal use in valence_protocol only")
+        unimplemented!("no implementation of `encode_slice`")
     }
 
     /// Hack to get around the lack of specialization. Not public API.
     #[doc(hidden)]
-    const HAS_WRITE_SLICE: bool = false;
+    const HAS_ENCODE_SLICE: bool = false;
 }
 
 /// The `Decode` trait allows objects to be read from the Minecraft protocol. It
@@ -296,7 +301,13 @@ pub trait Packet<'a>: Sized + fmt::Debug {
 #[allow(dead_code)]
 #[cfg(test)]
 mod tests {
+    use std::borrow::Cow;
+
+    use bytes::BytesMut;
+
     use super::*;
+    use crate::decoder::{decode_packet, PacketDecoder};
+    use crate::encoder::PacketEncoder;
     use crate::packet::c2s::play::HandSwingC2s;
     use crate::packet::C2sPlayPacket;
 
@@ -392,5 +403,102 @@ mod tests {
             .packet_name(),
             "HandSwingC2s"
         );
+    }
+
+    use crate::block_pos::BlockPos;
+    use crate::ident::Ident;
+    use crate::item::{ItemKind, ItemStack};
+    use crate::text::{Text, TextFormat};
+    use crate::types::Hand;
+    use crate::var_int::VarInt;
+    use crate::var_long::VarLong;
+
+    #[cfg(feature = "encryption")]
+    const CRYPT_KEY: [u8; 16] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+
+    #[derive(PartialEq, Debug, Encode, Decode, Packet)]
+    #[packet_id = 42]
+    struct TestPacket<'a> {
+        a: bool,
+        b: u8,
+        c: i32,
+        d: f32,
+        e: f64,
+        f: BlockPos,
+        g: Hand,
+        h: Ident<Cow<'a, str>>,
+        i: Option<ItemStack>,
+        j: Text,
+        k: VarInt,
+        l: VarLong,
+        m: &'a str,
+        n: &'a [u8; 10],
+        o: [u128; 3],
+    }
+
+    impl<'a> TestPacket<'a> {
+        fn new(string: &'a str) -> Self {
+            Self {
+                a: true,
+                b: 12,
+                c: -999,
+                d: 5.001,
+                e: 1e10,
+                f: BlockPos::new(1, 2, 3),
+                g: Hand::Off,
+                h: Ident::new("minecraft:whatever").unwrap(),
+                i: Some(ItemStack::new(ItemKind::WoodenSword, 12, None)),
+                j: "my ".into_text() + "fancy".italic() + " text",
+                k: VarInt(123),
+                l: VarLong(456),
+                m: string,
+                n: &[7; 10],
+                o: [123456789; 3],
+            }
+        }
+    }
+
+    fn check_test_packet(dec: &mut PacketDecoder, string: &str) {
+        let frame = dec.try_next_packet().unwrap().unwrap();
+
+        let pkt = decode_packet::<TestPacket>(&frame).unwrap();
+
+        assert_eq!(&pkt, &TestPacket::new(string));
+    }
+
+    #[test]
+    fn packets_round_trip() {
+        let mut buf = BytesMut::new();
+
+        let mut enc = PacketEncoder::new();
+
+        enc.append_packet(&TestPacket::new("first")).unwrap();
+        #[cfg(feature = "compression")]
+        enc.set_compression(Some(0));
+        enc.append_packet(&TestPacket::new("second")).unwrap();
+        buf.unsplit(enc.take());
+        #[cfg(feature = "encryption")]
+        enc.enable_encryption(&CRYPT_KEY);
+        enc.append_packet(&TestPacket::new("third")).unwrap();
+        enc.prepend_packet(&TestPacket::new("fourth")).unwrap();
+
+        buf.unsplit(enc.take());
+
+        let mut dec = PacketDecoder::new();
+
+        dec.queue_bytes(buf);
+
+        check_test_packet(&mut dec, "first");
+
+        #[cfg(feature = "compression")]
+        dec.set_compression(Some(0));
+
+        check_test_packet(&mut dec, "second");
+
+        #[cfg(feature = "encryption")]
+        dec.enable_encryption(&CRYPT_KEY);
+
+        check_test_packet(&mut dec, "fourth");
+        check_test_packet(&mut dec, "third");
     }
 }

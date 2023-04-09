@@ -3,8 +3,6 @@
 use std::f64::consts::TAU;
 
 use glam::{DQuat, EulerRot};
-use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
 
 type SpherePartBundle = valence::entity::cow::CowEntityBundle;
@@ -28,7 +26,6 @@ fn main() {
         .add_plugin(ServerPlugin::new(()))
         .add_startup_system(setup)
         .add_system(init_clients)
-        .add_system(default_event_handler.in_schedule(EventLoopSchedule))
         .add_systems(PlayerList::default_systems())
         .add_system(update_sphere)
         .add_system(despawn_disconnected_clients)
@@ -65,23 +62,18 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(Entity, &UniqueId, &mut GameMode), Added<Client>>,
+    mut clients: Query<(&mut Location, &mut Position, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
-    mut commands: Commands,
 ) {
-    for (entity, uuid, mut game_mode) in &mut clients {
-        *game_mode = GameMode::Creative;
+    for (mut loc, mut pos, mut game_mode) in &mut clients {
+        loc.0 = instances.single();
+        pos.set([
+            SPAWN_POS.x as f64 + 0.5,
+            SPAWN_POS.y as f64 + 1.0,
+            SPAWN_POS.z as f64 + 0.5,
+        ]);
 
-        commands.entity(entity).insert(PlayerEntityBundle {
-            location: Location(instances.single()),
-            position: Position::new([
-                SPAWN_POS.x as f64 + 0.5,
-                SPAWN_POS.y as f64 + 1.0,
-                SPAWN_POS.z as f64 + 0.5,
-            ]),
-            uuid: *uuid,
-            ..Default::default()
-        });
+        *game_mode = GameMode::Creative;
     }
 }
 

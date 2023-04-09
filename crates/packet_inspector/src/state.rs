@@ -4,7 +4,9 @@ use std::sync::Arc;
 use time::OffsetDateTime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use valence_protocol::codec::{PacketDecoder, PacketEncoder};
+use valence_protocol::bytes::BytesMut;
+use valence_protocol::decoder::{decode_packet, PacketDecoder};
+use valence_protocol::encoder::PacketEncoder;
 use valence_protocol::Packet as ValencePacket;
 
 use crate::context::{Context, Packet, Stage};
@@ -15,6 +17,7 @@ pub struct State {
     pub context: Arc<Context>,
     pub enc: PacketEncoder,
     pub dec: PacketDecoder,
+    pub frame: BytesMut,
     pub read: OwnedReadHalf,
     pub write: OwnedWriteHalf,
 }
@@ -24,7 +27,37 @@ impl State {
     where
         P: ValencePacket<'a>,
     {
-        while !self.dec.has_next_packet()? {
+        loop {
+            if let Some(frame) = self.dec.try_next_packet()? {
+                self.frame = frame;
+
+                let pkt: P = decode_packet(&self.frame)?;
+
+                self.enc.append_packet(&pkt)?;
+
+                let bytes = self.enc.take();
+                self.write.write_all(&bytes).await?;
+
+                let time = match OffsetDateTime::now_local() {
+                    Ok(time) => time,
+                    Err(_) => OffsetDateTime::now_utc(),
+                };
+
+                self.context.add(Packet {
+                    id: 0, // updated when added to context
+                    direction: self.direction.clone(),
+                    compression_threshold: self.dec.compression(),
+                    packet_data: bytes.to_vec(),
+                    stage,
+                    created_at: time,
+                    selected: false,
+                    packet_type: pkt.packet_id(),
+                    packet_name: pkt.packet_name().to_string(),
+                });
+
+                return Ok(pkt);
+            }
+
             self.dec.reserve(4096);
             let mut buf = self.dec.take_capacity();
 
@@ -34,32 +67,5 @@ impl State {
 
             self.dec.queue_bytes(buf);
         }
-
-        let has_compression = self.dec.compression();
-        let pkt: P = self.dec.try_next_packet()?.unwrap();
-
-        self.enc.append_packet(&pkt)?;
-
-        let bytes = self.enc.take();
-        self.write.write_all(&bytes).await?;
-
-        let time = match OffsetDateTime::now_local() {
-            Ok(time) => time,
-            Err(_) => OffsetDateTime::now_utc(),
-        };
-
-        self.context.add(Packet {
-            id: 0, // updated when added to context
-            direction: self.direction.clone(),
-            use_compression: has_compression,
-            packet_data: bytes.to_vec(),
-            stage,
-            created_at: time,
-            selected: false,
-            packet_type: pkt.packet_id(),
-            packet_name: pkt.packet_name().to_string(),
-        });
-
-        Ok(pkt)
     }
 }

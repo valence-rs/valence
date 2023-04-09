@@ -20,12 +20,31 @@ pub const STACK_MIN: u8 = 1;
 pub const STACK_MAX: u8 = 127;
 
 impl ItemStack {
+    #[must_use]
     pub fn new(item: ItemKind, count: u8, nbt: Option<Compound>) -> Self {
         Self {
             item,
             count: count.clamp(STACK_MIN, STACK_MAX),
             nbt,
         }
+    }
+
+    #[must_use]
+    pub fn with_count(mut self, count: u8) -> Self {
+        self.set_count(count);
+        self
+    }
+
+    #[must_use]
+    pub fn with_item(mut self, item: ItemKind) -> Self {
+        self.item = item;
+        self
+    }
+
+    #[must_use]
+    pub fn with_nbt(mut self, nbt: impl Into<Option<Compound>>) -> Self {
+        self.nbt = nbt.into();
+        self
     }
 
     /// Gets the number of items in this stack.

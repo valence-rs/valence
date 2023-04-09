@@ -1,8 +1,7 @@
 #![allow(clippy::type_complexity)]
 
-use valence::client::event::{PlayerInteractBlock, StartDigging, StartSneaking, StopDestroyBlock};
-use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerEntityBundle;
+use valence::client::misc::InteractBlock;
+use valence::client::ClientInventoryState;
 use valence::prelude::*;
 use valence::protocol::types::Hand;
 
@@ -16,16 +15,12 @@ pub fn main() {
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
-        .add_systems(
-            (
-                default_event_handler,
-                toggle_gamemode_on_sneak,
-                digging_creative_mode,
-                digging_survival_mode,
-                place_blocks,
-            )
-                .in_schedule(EventLoopSchedule),
-        )
+        .add_systems((
+            toggle_gamemode_on_sneak,
+            digging_creative_mode,
+            digging_survival_mode,
+            place_blocks,
+        ))
         .add_systems(PlayerList::default_systems())
         .run();
 }
@@ -54,43 +49,37 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(Entity, &UniqueId, &mut Client, &mut GameMode), Added<Client>>,
+    mut clients: Query<(&mut Client, &mut Location, &mut Position, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
-    mut commands: Commands,
 ) {
-    for (entity, uuid, mut client, mut game_mode) in &mut clients {
+    for (mut client, mut loc, mut pos, mut game_mode) in &mut clients {
         *game_mode = GameMode::Creative;
-        client.send_message("Welcome to Valence! Build something cool.".italic());
+        loc.0 = instances.single();
+        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
 
-        commands.entity(entity).insert(PlayerEntityBundle {
-            location: Location(instances.single()),
-            position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 0.0]),
-            uuid: *uuid,
-            ..Default::default()
-        });
+        client.send_message("Welcome to Valence! Build something cool.".italic());
     }
 }
 
-fn toggle_gamemode_on_sneak(
-    mut clients: Query<&mut GameMode>,
-    mut events: EventReader<StartSneaking>,
-) {
+fn toggle_gamemode_on_sneak(mut clients: Query<&mut GameMode>, mut events: EventReader<Sneaking>) {
     for event in events.iter() {
         let Ok(mut mode) = clients.get_mut(event.client) else {
             continue;
         };
-        *mode = match *mode {
-            GameMode::Survival => GameMode::Creative,
-            GameMode::Creative => GameMode::Survival,
-            _ => GameMode::Creative,
-        };
+        if event.state == SneakState::Start {
+            *mode = match *mode {
+                GameMode::Survival => GameMode::Creative,
+                GameMode::Creative => GameMode::Survival,
+                _ => GameMode::Creative,
+            };
+        }
     }
 }
 
 fn digging_creative_mode(
     clients: Query<&GameMode>,
     mut instances: Query<&mut Instance>,
-    mut events: EventReader<StartDigging>,
+    mut events: EventReader<Digging>,
 ) {
     let mut instance = instances.single_mut();
 
@@ -98,7 +87,7 @@ fn digging_creative_mode(
         let Ok(game_mode) = clients.get(event.client) else {
             continue;
         };
-        if *game_mode == GameMode::Creative {
+        if *game_mode == GameMode::Creative && event.state == DiggingState::Start {
             instance.set_block(event.position, BlockState::AIR);
         }
     }
@@ -107,7 +96,7 @@ fn digging_creative_mode(
 fn digging_survival_mode(
     clients: Query<&GameMode>,
     mut instances: Query<&mut Instance>,
-    mut events: EventReader<StopDestroyBlock>,
+    mut events: EventReader<Digging>,
 ) {
     let mut instance = instances.single_mut();
 
@@ -115,16 +104,16 @@ fn digging_survival_mode(
         let Ok(game_mode) = clients.get(event.client) else {
             continue;
         };
-        if *game_mode == GameMode::Survival {
+        if *game_mode == GameMode::Survival && event.state == DiggingState::Stop {
             instance.set_block(event.position, BlockState::AIR);
         }
     }
 }
 
 fn place_blocks(
-    mut clients: Query<(&mut Inventory, &GameMode, &PlayerInventoryState)>,
+    mut clients: Query<(&mut Inventory, &GameMode, &ClientInventoryState)>,
     mut instances: Query<&mut Instance>,
-    mut events: EventReader<PlayerInteractBlock>,
+    mut events: EventReader<InteractBlock>,
 ) {
     let mut instance = instances.single_mut();
 
@@ -158,7 +147,7 @@ fn place_blocks(
                 inventory.set_slot(slot_id, None);
             }
         }
-        let real_pos = event.position.get_in_direction(event.direction);
+        let real_pos = event.position.get_in_direction(event.face);
         instance.set_block(real_pos, block_kind.to_state());
     }
 }

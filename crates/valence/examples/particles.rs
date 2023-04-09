@@ -2,8 +2,6 @@
 
 use std::fmt;
 
-use valence::client::{default_event_handler, despawn_disconnected_clients};
-use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;
@@ -15,7 +13,6 @@ pub fn main() {
         .add_plugin(ServerPlugin::new(()))
         .add_startup_system(setup)
         .add_system(init_clients)
-        .add_system(default_event_handler.in_schedule(EventLoopSchedule))
         .add_systems(PlayerList::default_systems())
         .add_system(despawn_disconnected_clients)
         .add_system(manage_particles)
@@ -47,19 +44,13 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(Entity, &UniqueId, &mut GameMode), Added<Client>>,
+    mut clients: Query<(&mut Location, &mut Position, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
-    mut commands: Commands,
 ) {
-    for (entity, uuid, mut game_mode) in &mut clients {
+    for (mut loc, mut pos, mut game_mode) in &mut clients {
+        loc.0 = instances.single();
+        pos.set([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
         *game_mode = GameMode::Creative;
-
-        commands.entity(entity).insert(PlayerEntityBundle {
-            location: Location(instances.single()),
-            position: Position::new([0.5, SPAWN_Y as f64 + 1.0, 0.5]),
-            uuid: *uuid,
-            ..Default::default()
-        });
     }
 }
 

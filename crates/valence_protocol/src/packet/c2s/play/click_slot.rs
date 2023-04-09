@@ -11,7 +11,7 @@ pub struct ClickSlotC2s {
     /// because the meaning of this value depends on the mode.
     pub button: i8,
     pub mode: ClickMode,
-    pub slots: Vec<Slot>,
+    pub slot_changes: Vec<Slot>,
     pub carried_item: Option<ItemStack>,
 }
 
