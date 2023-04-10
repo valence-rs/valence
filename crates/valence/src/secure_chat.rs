@@ -28,7 +28,7 @@ use crate::client::settings::ClientSettings;
 use crate::client::{Client, DisconnectClient, FlushPacketsSet};
 use crate::component::{UniqueId, Username};
 use crate::instance::Instance;
-use crate::player_list::PlayerList;
+use crate::player_list::{ChatSession, PlayerListEntry};
 
 const MOJANG_KEY_DATA: &[u8] = include_bytes!("../../../assets/yggdrasil_session_pubkey.der");
 
@@ -49,7 +49,6 @@ struct ChatState {
     validator: AcknowledgementValidator,
     chain: MessageChain,
     signature_storage: MessageSignatureStorage,
-    session: Option<ChatSession>,
 }
 
 impl Default for ChatState {
@@ -62,7 +61,6 @@ impl Default for ChatState {
             validator: AcknowledgementValidator::new(),
             chain: MessageChain::new(),
             signature_storage: MessageSignatureStorage::new(),
-            session: None,
         }
     }
 }
@@ -286,22 +284,6 @@ impl MessageSignatureStorage {
     }
 }
 
-#[derive(Clone, Debug)]
-struct ChatSession {
-    expires_at: i64,
-    public_key: RsaPublicKey,
-}
-
-impl ChatSession {
-    pub fn is_expired(&self) -> bool {
-        SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .expect("Unable to get Unix time")
-            .as_millis()
-            >= self.expires_at as u128
-    }
-}
-
 pub struct SecureChatPlugin;
 
 impl Plugin for SecureChatPlugin {
@@ -335,21 +317,13 @@ fn init_chat_states(clients: Query<Entity, Added<Client>>, mut commands: Command
 
 fn handle_session_events(
     services_state: Res<MojangServicesState>,
-    player_list: ResMut<PlayerList>,
-    mut clients: Query<(&UniqueId, &Username, &mut ChatState)>,
+    mut clients: Query<(&UniqueId, &Username, &mut ChatState), With<PlayerListEntry>>,
     mut sessions: EventReader<PlayerSession>,
     mut commands: Commands,
 ) {
-    let pl = player_list.into_inner();
-
     for session in sessions.iter() {
         let Ok((uuid, username, mut state)) = clients.get_mut(session.client) else {
-            warn!("Unable to find client for session");
-            continue;
-        };
-
-        let Some(player_entry) = pl.get_mut(uuid.0) else {
-            warn!("Unable to find '{}' in the player list", username.0);
+            warn!("Unable to find client in player list for session");
             continue;
         };
 
@@ -407,9 +381,12 @@ fn handle_session_events(
                 sender: uuid.0,
                 session_id: session.session_data.session_id,
             });
-            state.session = Some(ChatSession {
-                expires_at: session.session_data.expires_at,
+
+            // Add the chat session data to player.
+            // The player list will then send this new session data to the other clients.
+            commands.entity(session.client).insert(ChatSession {
                 public_key,
+                session_data: session.session_data.clone(),
             });
         } else {
             // This shouldn't happen considering that it is highly unlikely that Mojang
@@ -424,10 +401,6 @@ fn handle_session_events(
                 ),
             });
         }
-
-        // Update the player list with the new session data
-        // The player list will then send this new session data to the other clients
-        player_entry.set_chat_data(Some(session.session_data.clone()));
     }
 }
 
@@ -459,7 +432,8 @@ fn handle_message_acknowledgement(
 }
 
 fn handle_message_events(
-    mut clients: Query<(&Username, &ClientSettings, &mut Client)>,
+    mut clients: Query<(&Username, &ClientSettings, &mut Client), With<PlayerListEntry>>,
+    sessions: Query<&ChatSession, With<PlayerListEntry>>,
     mut states: Query<&mut ChatState>,
     mut messages: EventReader<ChatMessage>,
     mut instances: Query<&mut Instance>,
@@ -469,7 +443,16 @@ fn handle_message_events(
 
     for message in messages.iter() {
         let Ok((username, settings, mut client)) = clients.get_mut(message.client) else {
-            warn!("Unable to find client for message '{:?}'", message);
+            warn!("Unable to find client in player list for message '{:?}'", message);
+            continue;
+        };
+
+        let Ok(chat_session) = sessions.get_component::<ChatSession>(message.client) else {
+            warn!("Player `{}` doesn't have a chat session", username.0);
+            commands.add(DisconnectClient {
+                client: message.client,
+                reason: Text::translate(CHAT_DISABLED_MISSING_PROFILE_KEY, [])
+            });
             continue;
         };
 
@@ -526,17 +509,13 @@ fn handle_message_events(
                     continue;
                 };
 
-                let Some(session) = &state.session else {
-                    warn!("Player `{}` doesn't have a chat session", username.0);
-                    commands.add(DisconnectClient {
-                        client: message.client,
-                        reason: Text::translate(CHAT_DISABLED_MISSING_PROFILE_KEY, [])
-                    });
-                    continue;
-                };
-
                 // Verify that the player's session has not expired
-                if session.is_expired() {
+                if SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .expect("Unable to get Unix time")
+                    .as_millis()
+                    >= chat_session.session_data.expires_at as u128
+                {
                     warn!("Player `{}` has an expired chat session", username.0);
                     commands.add(DisconnectClient {
                         client: message.client,
@@ -575,7 +554,7 @@ fn handle_message_events(
 
                 // Verify the chat message using the player's session public key and hashed data
                 // against the message signature
-                if session
+                if chat_session
                     .public_key
                     .verify(
                         PaddingScheme::new_pkcs1v15_sign::<Sha256>(),

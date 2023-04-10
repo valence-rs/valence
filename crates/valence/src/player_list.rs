@@ -2,6 +2,7 @@ use std::borrow::Cow;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use rsa::RsaPublicKey;
 use uuid::Uuid;
 use valence_protocol::packet::c2s::play::player_session::PlayerSessionData;
 use valence_protocol::packet::s2c::play::player_list::{Actions, Entry, PlayerListS2c};
@@ -105,7 +106,6 @@ pub struct PlayerListEntryBundle {
     pub ping: Ping,
     pub display_name: DisplayName,
     pub listed: Listed,
-    pub chat_session: ChatSession,
 }
 
 /// Marker component for player list entries.
@@ -120,13 +120,18 @@ pub struct DisplayName(pub Option<Text>);
 #[derive(Component, Copy, Clone, Debug)]
 pub struct Listed(pub bool);
 
-#[derive(Component, Clone, Default, Debug)]
-pub struct ChatSession(pub PlayerSessionData);
-
 impl Default for Listed {
     fn default() -> Self {
         Self(true)
     }
+}
+
+/// Contains information for the player's chat message verification.
+/// Not required.
+#[derive(Component, Clone, Debug)]
+pub struct ChatSession {
+    pub public_key: RsaPublicKey,
+    pub session_data: PlayerSessionData,
 }
 
 fn update_header_footer(player_list: ResMut<PlayerList>, server: Res<Server>) {
@@ -261,6 +266,7 @@ fn update_entries(
             Ref<Ping>,
             Ref<DisplayName>,
             Ref<Listed>,
+            Option<Ref<ChatSession>>,
         ),
         (
             With<PlayerListEntry>,
@@ -272,6 +278,7 @@ fn update_entries(
                 Changed<Ping>,
                 Changed<DisplayName>,
                 Changed<Listed>,
+                Changed<ChatSession>,
             )>,
         ),
     >,
@@ -286,7 +293,7 @@ fn update_entries(
         &mut player_list.scratch,
     );
 
-    for (uuid, username, props, game_mode, ping, display_name, listed) in &entries {
+    for (uuid, username, props, game_mode, ping, display_name, listed, chat_session) in &entries {
         let mut actions = Actions::new();
 
         // Did a change occur that would force us to overwrite the entry? This also adds
@@ -309,6 +316,10 @@ fn update_entries(
             if listed.0 {
                 actions.set_update_listed(true);
             }
+
+            if chat_session.is_some() {
+                actions.set_initialize_chat(true);
+            }
         } else {
             if game_mode.is_changed() {
                 actions.set_update_game_mode(true);
@@ -326,6 +337,10 @@ fn update_entries(
                 actions.set_update_listed(true);
             }
 
+            if matches!(&chat_session, Some(session) if session.is_changed()) {
+                actions.set_initialize_chat(true);
+            }
+
             debug_assert_ne!(u8::from(actions), 0);
         }
 
@@ -333,7 +348,7 @@ fn update_entries(
             player_uuid: uuid.0,
             username: &username.0,
             properties: (&props.0).into(),
-            chat_data: Some(),
+            chat_data: chat_session.map(|s| s.session_data.clone().into()),
             listed: listed.0,
             ping: ping.0,
             game_mode: (*game_mode).into(),
