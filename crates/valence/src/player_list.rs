@@ -7,8 +7,9 @@ use valence_protocol::packet::s2c::play::player_list::{Actions, Entry, PlayerLis
 use valence_protocol::packet::s2c::play::{PlayerListHeaderS2c, PlayerRemoveS2c};
 use valence_protocol::text::Text;
 
-use crate::client::{Client, FlushPacketsSet};
+use crate::client::Client;
 use crate::component::{Despawned, GameMode, Ping, Properties, UniqueId, Username};
+use crate::instance::WriteUpdatePacketsToInstancesSet;
 use crate::packet::{PacketWriter, WritePacket};
 use crate::server::Server;
 
@@ -27,7 +28,7 @@ impl Plugin for PlayerListPlugin {
                 write_player_list_changes,
             )
                 .chain()
-                .before(FlushPacketsSet)
+                .before(WriteUpdatePacketsToInstancesSet)
                 .in_base_set(CoreSet::PostUpdate),
         );
     }

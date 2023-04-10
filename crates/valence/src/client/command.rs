@@ -4,6 +4,7 @@ use valence_protocol::packet::c2s::play::client_command::Action;
 use valence_protocol::packet::c2s::play::ClientCommandC2s;
 
 use crate::entity::entity::Flags;
+use crate::entity::{entity, Pose};
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
@@ -64,7 +65,7 @@ pub struct LeaveBed {
 
 fn handle_client_command(
     mut packets: EventReader<PacketEvent>,
-    mut clients: Query<&mut Flags>,
+    mut clients: Query<(&mut entity::Pose, &mut Flags)>,
     mut sprinting_events: EventWriter<Sprinting>,
     mut sneaking_events: EventWriter<Sneaking>,
     mut jump_with_horse_events: EventWriter<JumpWithHorse>,
@@ -74,7 +75,8 @@ fn handle_client_command(
         if let Some(pkt) = packet.decode::<ClientCommandC2s>() {
             match pkt.action {
                 Action::StartSneaking => {
-                    if let Ok(mut flags) = clients.get_mut(packet.client) {
+                    if let Ok((mut pose, mut flags)) = clients.get_mut(packet.client) {
+                        pose.0 = Pose::Sneaking;
                         flags.set_sneaking(true);
                     }
 
@@ -84,7 +86,8 @@ fn handle_client_command(
                     })
                 }
                 Action::StopSneaking => {
-                    if let Ok(mut flags) = clients.get_mut(packet.client) {
+                    if let Ok((mut pose, mut flags)) = clients.get_mut(packet.client) {
+                        pose.0 = Pose::Standing;
                         flags.set_sneaking(false);
                     }
 
@@ -97,7 +100,7 @@ fn handle_client_command(
                     client: packet.client,
                 }),
                 Action::StartSprinting => {
-                    if let Ok(mut flags) = clients.get_mut(packet.client) {
+                    if let Ok((_, mut flags)) = clients.get_mut(packet.client) {
                         flags.set_sprinting(true);
                     }
 
@@ -107,7 +110,7 @@ fn handle_client_command(
                     });
                 }
                 Action::StopSprinting => {
-                    if let Ok(mut flags) = clients.get_mut(packet.client) {
+                    if let Ok((_, mut flags)) = clients.get_mut(packet.client) {
                         flags.set_sprinting(false);
                     }
 
@@ -126,8 +129,14 @@ fn handle_client_command(
                     client: packet.client,
                     state: JumpWithHorseState::Stop,
                 }),
-                Action::OpenHorseInventory => {}    // TODO
-                Action::StartFlyingWithElytra => {} // TODO
+                Action::OpenHorseInventory => {} // TODO
+                Action::StartFlyingWithElytra => {
+                    if let Ok((mut pose, _)) = clients.get_mut(packet.client) {
+                        pose.0 = Pose::FallFlying;
+                    }
+
+                    // TODO.
+                }
             }
         }
     }
