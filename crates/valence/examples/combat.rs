@@ -24,7 +24,6 @@ pub fn main() {
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(handle_combat_events.in_schedule(EventLoopSchedule))
-        .add_systems(PlayerList::default_systems())
         .add_system(despawn_disconnected_clients)
         .add_system(teleport_oob_clients)
         .run();

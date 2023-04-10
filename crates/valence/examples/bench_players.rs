@@ -27,7 +27,6 @@ fn main() {
             init_clients,
             despawn_disconnected_clients,
         ))
-        .add_systems(PlayerList::default_systems())
         .run();
 }
 

@@ -13,7 +13,6 @@ pub fn main() {
         .add_plugin(ServerPlugin::new(()))
         .add_startup_system(setup)
         .add_system(init_clients)
-        .add_systems(PlayerList::default_systems())
         .add_system(despawn_disconnected_clients)
         .add_system(manage_particles)
         .run();
