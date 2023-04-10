@@ -10,6 +10,7 @@ use valence_protocol::packet::c2s::play::{
 use valence_protocol::types::{Direction, Hand};
 
 use super::action::ActionSequence;
+use crate::entity::{EntityAnimation, EntityAnimations};
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
@@ -113,7 +114,7 @@ pub struct ResourcePackStatusChange {
 #[allow(clippy::too_many_arguments)]
 fn handle_misc_packets(
     mut packets: EventReader<PacketEvent>,
-    mut clients: Query<&mut ActionSequence>,
+    mut clients: Query<(&mut ActionSequence, &mut EntityAnimations)>,
     mut hand_swing_events: EventWriter<HandSwing>,
     mut interact_block_events: EventWriter<InteractBlock>,
     mut command_execution_events: EventWriter<CommandExecution>,
@@ -126,12 +127,19 @@ fn handle_misc_packets(
 ) {
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<HandSwingC2s>() {
+            if let Ok((_, mut animations)) = clients.get_mut(packet.client) {
+                animations.trigger(match pkt.hand {
+                    Hand::Main => EntityAnimation::SwingMainHand,
+                    Hand::Off => EntityAnimation::SwingOffHand,
+                });
+            }
+
             hand_swing_events.send(HandSwing {
                 client: packet.client,
                 hand: pkt.hand,
             });
         } else if let Some(pkt) = packet.decode::<PlayerInteractBlockC2s>() {
-            if let Ok(mut action_seq) = clients.get_mut(packet.client) {
+            if let Ok((mut action_seq, _)) = clients.get_mut(packet.client) {
                 action_seq.update(pkt.sequence.0);
             }
 
@@ -145,7 +153,7 @@ fn handle_misc_packets(
                 sequence: pkt.sequence.0,
             });
         } else if let Some(pkt) = packet.decode::<PlayerInteractItemC2s>() {
-            if let Ok(mut action_seq) = clients.get_mut(packet.client) {
+            if let Ok((mut action_seq, _)) = clients.get_mut(packet.client) {
                 action_seq.update(pkt.sequence.0);
             }
 

@@ -21,7 +21,6 @@ pub fn main() {
             digging_survival_mode,
             place_blocks,
         ))
-        .add_systems(PlayerList::default_systems())
         .run();
 }
 

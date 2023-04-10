@@ -40,6 +40,7 @@ fn send_keepalive(
 ) {
     if server.current_tick() % (server.tps() * 10) == 0 {
         let mut rng = rand::thread_rng();
+        let now = Instant::now();
 
         for (entity, mut client, mut state) in &mut clients {
             if state.got_keepalive {
@@ -48,8 +49,7 @@ fn send_keepalive(
 
                 state.got_keepalive = false;
                 state.last_keepalive_id = id;
-                // TODO: start timing when the packets are flushed.
-                state.keepalive_sent_time = Instant::now();
+                state.keepalive_sent_time = now;
             } else {
                 warn!("Client {entity:?} timed out (no keepalive response)");
                 commands.entity(entity).remove::<Client>();

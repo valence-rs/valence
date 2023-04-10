@@ -15,7 +15,6 @@ pub fn main() {
         .add_plugin(ServerPlugin::new(()))
         .add_startup_system(setup)
         .add_systems((init_clients, prompt_on_punch, on_resource_pack_status))
-        .add_systems(PlayerList::default_systems())
         .add_system(despawn_disconnected_clients)
         .run();
 }

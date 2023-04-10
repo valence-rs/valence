@@ -54,7 +54,6 @@ pub fn main() {
                 .chain(),
         )
         .add_system(despawn_disconnected_clients)
-        .add_systems(PlayerList::default_systems())
         .run();
 }
 
