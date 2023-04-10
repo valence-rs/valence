@@ -29,7 +29,6 @@ pub fn main() {
     App::new()
         .add_plugin(ServerPlugin::new(()))
         .add_system(init_clients)
-        .add_systems(PlayerList::default_systems())
         .add_systems((
             reset_clients.after(init_clients),
             manage_chunks.after(reset_clients).before(manage_blocks),

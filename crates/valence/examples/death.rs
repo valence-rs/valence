@@ -12,7 +12,6 @@ pub fn main() {
         .add_plugin(ServerPlugin::new(()).with_connection_mode(ConnectionMode::Offline))
         .add_startup_system(setup)
         .add_systems((init_clients, squat_and_die, necromancy))
-        .add_systems(PlayerList::default_systems())
         .add_system(despawn_disconnected_clients)
         .run();
 }

@@ -14,7 +14,6 @@ pub fn main() {
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_systems((toggle_gamemode_on_sneak, open_chest))
-        .add_systems(PlayerList::default_systems())
         .add_system(despawn_disconnected_clients)
         .run();
 }

@@ -27,7 +27,6 @@ pub fn main() {
         .add_startup_system(setup_biomes.before(setup))
         .add_startup_system(setup)
         .add_system(init_clients)
-        .add_systems(PlayerList::default_systems())
         .add_systems((
             despawn_disconnected_clients,
             toggle_cell_on_dig,

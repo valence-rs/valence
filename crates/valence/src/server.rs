@@ -17,6 +17,7 @@ use valence_protocol::types::Property;
 
 use crate::biome::BiomePlugin;
 use crate::client::{ClientBundle, ClientPlugin};
+use crate::component::ComponentPlugin;
 use crate::config::{AsyncCallbacks, ConnectionMode, ServerPlugin};
 use crate::dimension::DimensionPlugin;
 use crate::entity::EntityPlugin;
@@ -24,7 +25,6 @@ use crate::event_loop::{EventLoopPlugin, RunEventLoopSet};
 use crate::instance::InstancePlugin;
 use crate::inventory::InventoryPlugin;
 use crate::player_list::PlayerListPlugin;
-use crate::prelude::ComponentPlugin;
 use crate::registry_codec::RegistryCodecPlugin;
 use crate::server::connect::do_accept_loop;
 use crate::weather::WeatherPlugin;
