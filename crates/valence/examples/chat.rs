@@ -22,7 +22,6 @@ pub fn main() {
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
         .add_system(handle_command_events.in_schedule(EventLoopSchedule))
-        .add_systems(PlayerList::default_systems())
         .run();
 }
 
