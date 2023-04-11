@@ -1,8 +1,7 @@
 #![allow(clippy::type_complexity)]
 
-use tracing::{warn, Level};
+use tracing::warn;
 use valence::client::despawn_disconnected_clients;
-// TODO: Add CommandExecution event
 use valence::client::misc::CommandExecution;
 use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
@@ -11,9 +10,7 @@ use valence::secure_chat::SecureChatPlugin;
 const SPAWN_Y: i32 = 64;
 
 pub fn main() {
-    tracing_subscriber::fmt()
-        .with_max_level(Level::DEBUG)
-        .init();
+    tracing_subscriber::fmt().init();
 
     App::new()
         .add_plugin(ServerPlugin::new(()))
