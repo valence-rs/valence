@@ -1,10 +1,11 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::VecDeque;
 use std::time::SystemTime;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use rsa::pkcs8::DecodePublicKey;
 use rsa::{PaddingScheme, PublicKey, RsaPublicKey};
+use rustc_hash::{FxHashMap, FxHashSet};
 use sha1::{Digest, Sha1};
 use sha2::Sha256;
 use tracing::{debug, info, warn};
@@ -21,7 +22,6 @@ use valence_protocol::translation_key::{
     MULTIPLAYER_DISCONNECT_TOO_MANY_PENDING_CHATS, MULTIPLAYER_DISCONNECT_UNSIGNED_CHAT,
 };
 use valence_protocol::types::MessageSignature;
-use valence_protocol::var_int::VarInt;
 
 use crate::client::misc::{ChatMessage, MessageAcknowledgment, PlayerSession};
 use crate::client::settings::ClientSettings;
@@ -66,8 +66,11 @@ impl Default for ChatState {
 }
 
 impl ChatState {
-    pub fn add_pending(&mut self, last_seen: &mut VecDeque<[u8; 256]>, signature: &[u8; 256]) {
-        self.signature_storage.add(last_seen, signature);
+    /// Updates the chat state's previously seen signatures with a new one
+    /// `signature`.
+    pub fn add_pending(&mut self, last_seen: &VecDeque<[u8; 256]>, signature: &[u8; 256]) {
+        self.signature_storage
+            .add(&mut last_seen.clone(), signature);
         self.validator.add_pending(signature);
     }
 }
@@ -88,6 +91,7 @@ impl AcknowledgementValidator {
 
     /// Add a message pending acknowledgement via its `signature`.
     pub fn add_pending(&mut self, signature: &[u8; 256]) {
+        // Attempting to add the last signature again.
         if matches!(&self.last_signature, Some(last_sig) if signature == last_sig.as_ref()) {
             return;
         }
@@ -104,12 +108,13 @@ impl AcknowledgementValidator {
     /// validator with at least 20 messages. Returns `true` if messages are
     /// removed and `false` if they are not.
     pub fn remove_until(&mut self, index: i32) -> bool {
-        // Ensure that there will still be 20 messages in the array
+        // Ensure that there will still be 20 messages in the array.
         if index >= 0 && index <= (self.messages.len() - 20) as i32 {
             self.messages.drain(0..index as usize);
-            if self.messages.len() < 20 {
-                warn!("Message validator 'messages' shrunk!");
-            }
+            debug_assert!(
+                self.messages.len() >= 20,
+                "Message validator 'messages' shrunk!"
+            );
             return true;
         }
         false
@@ -205,7 +210,7 @@ impl MessageChain {
             None => self.link,
             Some(current) => {
                 let temp = *current;
-                current.index += 1;
+                current.index = current.index.wrapping_add(1);
                 Some(temp)
             }
         }
@@ -230,14 +235,14 @@ impl MessageLink {
 #[derive(Clone, Debug)]
 struct MessageSignatureStorage {
     signatures: [Option<[u8; 256]>; 128],
-    indices: HashMap<[u8; 256], i32>,
+    indices: FxHashMap<[u8; 256], i32>,
 }
 
 impl Default for MessageSignatureStorage {
     fn default() -> Self {
         Self {
             signatures: [None; 128],
-            indices: HashMap::new(),
+            indices: FxHashMap::default(),
         }
     }
 }
@@ -258,7 +263,7 @@ impl MessageSignatureStorage {
     /// Warning: this consumes `last_seen`.
     pub fn add(&mut self, last_seen: &mut VecDeque<[u8; 256]>, signature: &[u8; 256]) {
         last_seen.push_back(*signature);
-        let mut sig_set = HashSet::new();
+        let mut sig_set = FxHashSet::default();
         for sig in last_seen.iter() {
             sig_set.insert(*sig);
         }
@@ -327,7 +332,7 @@ fn handle_session_events(
             continue;
         };
 
-        // Verify that the session key has not expired
+        // Verify that the session key has not expired.
         if SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .expect("Unable to get Unix time")
@@ -342,19 +347,19 @@ fn handle_session_events(
             continue;
         }
 
-        // Serialize the session data
+        // Serialize the session data.
         let mut serialized = Vec::with_capacity(318);
         serialized.extend_from_slice(uuid.0.into_bytes().as_slice());
         serialized.extend_from_slice(session.session_data.expires_at.to_be_bytes().as_ref());
         serialized.extend_from_slice(session.session_data.public_key_data.as_ref());
 
-        // Hash the session data using the SHA-1 algorithm
+        // Hash the session data using the SHA-1 algorithm.
         let mut hasher = Sha1::new();
         hasher.update(&serialized);
         let hash = hasher.finalize();
 
         // Verify the session data using Mojang's public key and the hashed session data
-        // against the message signature
+        // against the message signature.
         if services_state
             .public_key
             .verify(
@@ -371,11 +376,11 @@ fn handle_session_events(
             });
         }
 
-        // Decode the player's session public key from the data
+        // Decode the player's session public key from the data.
         if let Ok(public_key) =
             RsaPublicKey::from_public_key_der(session.session_data.public_key_data.as_ref())
         {
-            // Update the player's chat state data with the new player session data
+            // Update the player's chat state data with the new player session data.
             state.chain.link = Some(MessageLink {
                 index: 0,
                 sender: uuid.0,
@@ -391,7 +396,7 @@ fn handle_session_events(
         } else {
             // This shouldn't happen considering that it is highly unlikely that Mojang
             // would provide the client with a malformed key. By this point the
-            // key signature has been verified
+            // key signature has been verified.
             warn!("Received malformed profile key data from '{}'", username.0);
             commands.add(DisconnectClient {
                 client: session.client,
@@ -434,7 +439,7 @@ fn handle_message_acknowledgement(
 fn handle_message_events(
     mut clients: Query<(&Username, &ClientSettings, &mut Client), With<PlayerListEntry>>,
     sessions: Query<&ChatSession, With<PlayerListEntry>>,
-    mut states: Query<&mut ChatState>,
+    mut states: Query<&mut ChatState, With<Client>>,
     mut messages: EventReader<ChatMessage>,
     mut instances: Query<&mut Instance>,
     mut commands: Commands,
@@ -461,13 +466,13 @@ fn handle_message_events(
             continue;
         };
 
-        // Ensure that the client isn't sending messages while their chat is hidden
+        // Ensure that the client isn't sending messages while their chat is hidden.
         if settings.chat_mode == ChatMode::Hidden {
             client.send_message(Text::translate(CHAT_DISABLED_OPTIONS, []).color(Color::RED));
             continue;
         }
 
-        // Ensure we are receiving chat messages in order
+        // Ensure we are receiving chat messages in order.
         if message.timestamp < state.last_message_timestamp {
             warn!(
                 "{:?} sent out-of-order chat: '{:?}'",
@@ -483,7 +488,7 @@ fn handle_message_events(
 
         state.last_message_timestamp = message.timestamp;
 
-        // Validate the message acknowledgements
+        // Validate the message acknowledgements.
         match state
             .validator
             .validate(&message.acknowledgements, message.message_index)
@@ -496,11 +501,7 @@ fn handle_message_events(
                 });
                 continue;
             }
-            Some(mut last_seen) => {
-                // This whole process should probably be done on another thread similarly to
-                // chunk loading in the 'terrain.rs' example, as this is what
-                // the notchian server does
-
+            Some(last_seen) => {
                 let Some(link) = &state.chain.next_link() else {
                     client.send_message(Text::translate(
                         CHAT_DISABLED_CHAIN_BROKEN,
@@ -509,7 +510,7 @@ fn handle_message_events(
                     continue;
                 };
 
-                // Verify that the player's session has not expired
+                // Verify that the player's session has not expired.
                 if SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)
                     .expect("Unable to get Unix time")
@@ -524,7 +525,7 @@ fn handle_message_events(
                     continue;
                 }
 
-                // Verify that the chat message is signed
+                // Verify that the chat message is signed.
                 let Some(message_signature) = &message.signature else {
                     warn!("Received unsigned chat message from `{}`", username.0);
                     commands.add(DisconnectClient {
@@ -534,13 +535,13 @@ fn handle_message_events(
                     continue;
                 };
 
-                // Create the hash digest used to verify the chat message
+                // Create the hash digest used to verify the chat message.
                 let mut hasher = Sha256::new_with_prefix([0u8, 0, 0, 1]);
 
-                // Update the hash with the player's message chain state
+                // Update the hash with the player's message chain state.
                 link.update_hash(&mut hasher);
 
-                // Update the hash with the message contents
+                // Update the hash with the message contents.
                 hasher.update(message.salt.to_be_bytes());
                 hasher.update((message.timestamp / 1000).to_be_bytes());
                 let bytes = message.message.as_bytes();
@@ -553,7 +554,7 @@ fn handle_message_events(
                 let hashed = hasher.finalize();
 
                 // Verify the chat message using the player's session public key and hashed data
-                // against the message signature
+                // against the message signature.
                 if chat_session
                     .public_key
                     .verify(
@@ -571,7 +572,7 @@ fn handle_message_events(
                     continue;
                 }
 
-                // Create a list of messages that have been seen by the client
+                // Create a list of messages that have been seen by the client.
                 let previous = last_seen
                     .iter()
                     .map(|sig| match state.signature_storage.index_of(sig) {
@@ -584,7 +585,7 @@ fn handle_message_events(
 
                 instance.write_packet(&ChatMessageS2c {
                     sender: link.sender,
-                    index: VarInt(link.index),
+                    index: link.index.into(),
                     message_signature: Some(message_signature.as_ref()),
                     message: message.message.as_ref(),
                     time_stamp: message.timestamp,
@@ -592,15 +593,15 @@ fn handle_message_events(
                     previous_messages: previous,
                     unsigned_content: None,
                     filter_type: MessageFilterType::PassThrough,
-                    chat_type: VarInt(0),
+                    chat_type: 0.into(),
                     network_name: Text::from(username.0.clone()).into(),
                     network_target_name: None,
                 });
 
-                // Update the other clients' chat states
+                // Update the other clients' chat states.
                 for mut state in states.iter_mut() {
-                    // Add pending acknowledgement
-                    state.add_pending(&mut last_seen, message_signature.as_ref());
+                    // Add pending acknowledgement.
+                    state.add_pending(&last_seen, message_signature.as_ref());
                     if state.validator.message_count() > 4096 {
                         commands.add(DisconnectClient {
                             client: message.client,
