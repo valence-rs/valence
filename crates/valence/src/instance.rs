@@ -37,9 +37,9 @@ use crate::entity::{
     PacketByteRange, TrackedData, Velocity,
 };
 use crate::packet::{PacketWriter, WritePacket};
-use crate::server::{Server, SharedServer};
 use crate::util::velocity_to_packet_units;
 use crate::view::ChunkPos;
+use crate::Server;
 
 mod chunk;
 mod chunk_entry;
@@ -95,7 +95,7 @@ impl Instance {
         dimension_type_name: impl Into<Ident<String>>,
         dimensions: &Query<&DimensionType>,
         biomes: &Query<&Biome>,
-        shared: &SharedServer,
+        server: &Server,
     ) -> Self {
         let dimension_type_name = dimension_type_name.into();
 
@@ -120,7 +120,7 @@ impl Instance {
                 section_count: (dim.height / 16) as usize,
                 min_y: dim.min_y,
                 biome_registry_len: biomes.iter().count(),
-                compression_threshold: shared.compression_threshold(),
+                compression_threshold: server.compression_threshold(),
                 filler_sky_light_mask: sky_light_mask.into(),
                 filler_sky_light_arrays: vec![
                     LengthPrefixedArray([0xff; 2048]);
@@ -137,7 +137,7 @@ impl Instance {
     #[doc(hidden)]
     pub fn new_unit_testing(
         dimension_type_name: impl Into<Ident<String>>,
-        shared: &SharedServer,
+        server: &Server,
     ) -> Self {
         Self {
             partition: FxHashMap::default(),
@@ -146,7 +146,7 @@ impl Instance {
                 section_count: 24,
                 min_y: -64,
                 biome_registry_len: 1,
-                compression_threshold: shared.compression_threshold(),
+                compression_threshold: server.compression_threshold(),
                 filler_sky_light_mask: vec![].into(),
                 filler_sky_light_arrays: vec![].into(),
             },

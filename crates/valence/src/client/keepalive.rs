@@ -1,7 +1,7 @@
 use valence_protocol::packet::c2s::play::KeepAliveC2s;
 
 use super::*;
-use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::{event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent}, ServerSettings};
 
 pub(super) fn build(app: &mut App) {
     app.add_system(
@@ -36,9 +36,10 @@ impl KeepaliveState {
 fn send_keepalive(
     mut clients: Query<(Entity, &mut Client, &mut KeepaliveState)>,
     server: Res<Server>,
+    settings: Res<ServerSettings>,
     mut commands: Commands,
 ) {
-    if server.current_tick() % (server.tps() * 10) == 0 {
+    if server.current_tick() % (settings.tick_rate.get() * 10) as i64 == 0 {
         let mut rng = rand::thread_rng();
         let now = Instant::now();
 

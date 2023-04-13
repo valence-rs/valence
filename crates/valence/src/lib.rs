@@ -18,6 +18,7 @@
     trivial_numeric_casts,
     unused_lifetimes,
     unused_import_braces,
+    unreachable_pub,
     clippy::dbg_macro
 )]
 #![allow(clippy::type_complexity)] // ECS queries are often complicated.
@@ -29,7 +30,6 @@ pub use {
 pub mod biome;
 pub mod client;
 pub mod component;
-pub mod config;
 pub mod dimension;
 pub mod entity;
 pub mod event_loop;
@@ -39,12 +39,30 @@ pub mod packet;
 pub mod player_list;
 pub mod player_textures;
 pub mod registry_codec;
-pub mod server;
 #[cfg(any(test, doctest))]
 mod unit_test;
 pub mod util;
 pub mod view;
 pub mod weather;
+
+use std::num::NonZeroU32;
+use std::time::Duration;
+
+use bevy_app::prelude::*;
+use bevy_app::{ScheduleRunnerPlugin, ScheduleRunnerSettings};
+use bevy_ecs::prelude::*;
+use component::ComponentPlugin;
+
+use crate::biome::BiomePlugin;
+use crate::client::ClientPlugin;
+use crate::dimension::DimensionPlugin;
+use crate::entity::EntityPlugin;
+use crate::event_loop::EventLoopPlugin;
+use crate::instance::InstancePlugin;
+use crate::inventory::InventoryPlugin;
+use crate::player_list::PlayerListPlugin;
+use crate::registry_codec::RegistryCodecPlugin;
+use crate::weather::WeatherPlugin;
 
 pub mod prelude {
     pub use async_trait::async_trait;
@@ -60,9 +78,6 @@ pub mod prelude {
         OpLevel, PrevGameMode, ReducedDebugInfo, View, ViewDistance,
     };
     pub use component::*;
-    pub use config::{
-        AsyncCallbacks, ConnectionMode, PlayerSampleEntry, ServerListPing, ServerPlugin,
-    };
     pub use dimension::{DimensionType, DimensionTypeRegistry};
     pub use entity::{EntityAnimation, EntityKind, EntityManager, EntityStatus, HeadYaw};
     pub use event_loop::{EventLoopSchedule, EventLoopSet};
@@ -76,7 +91,6 @@ pub mod prelude {
     pub use protocol::ident::Ident;
     pub use protocol::item::{ItemKind, ItemStack};
     pub use protocol::text::{Color, Text, TextFormat};
-    pub use server::{NewClientInfo, Server, SharedServer};
     pub use uuid::Uuid;
     pub use valence_nbt::Compound;
     pub use valence_protocol::block::BlockKind;
@@ -86,4 +100,114 @@ pub mod prelude {
     pub use view::{ChunkPos, ChunkView};
 
     use super::*;
+    pub use crate::Server;
+}
+
+pub struct ServerPlugin;
+
+impl Plugin for ServerPlugin {
+    fn build(&self, app: &mut App) {
+        let settings = app
+            .world
+            .get_resource_or_insert_with(ServerSettings::default);
+
+        let compression_threshold = settings.compression_threshold;
+        let tick_rate = settings.tick_rate;
+
+        app.insert_resource(Server {
+            current_tick: 0,
+            compression_threshold,
+        });
+
+        let tick_period = Duration::from_secs_f64((tick_rate.get() as f64).recip());
+
+        // Make the app loop forever at the configured TPS.
+        app.insert_resource(ScheduleRunnerSettings::run_loop(tick_period))
+            .add_plugin(ScheduleRunnerPlugin);
+
+        fn increment_tick_counter(mut server: ResMut<Server>) {
+            server.current_tick += 1;
+        }
+
+        app.add_system(increment_tick_counter.in_base_set(CoreSet::Last));
+
+        // Add internal plugins.
+        app.add_plugin(EventLoopPlugin)
+            .add_plugin(RegistryCodecPlugin)
+            .add_plugin(BiomePlugin)
+            .add_plugin(DimensionPlugin)
+            .add_plugin(ComponentPlugin)
+            .add_plugin(ClientPlugin)
+            .add_plugin(EntityPlugin)
+            .add_plugin(InstancePlugin)
+            .add_plugin(InventoryPlugin)
+            .add_plugin(PlayerListPlugin)
+            .add_plugin(WeatherPlugin);
+    }
+}
+
+#[derive(Resource, Debug)]
+pub struct ServerSettings {
+    /// The target ticks per second (TPS) of the server. This is the number of
+    /// game updates that should occur in one second.
+    ///
+    /// On each game update (tick), the server is expected to update game logic
+    /// and respond to packets from clients. Once this is complete, the server
+    /// will sleep for any remaining time until a full tick duration has passed.
+    ///
+    /// Note that the official Minecraft client only processes packets at 20hz,
+    /// so there is little benefit to a tick rate higher than the default 20.
+    ///
+    /// # Default Value
+    ///
+    /// [`DEFAULT_TPS`]
+    pub tick_rate: NonZeroU32,
+    /// The compression threshold to use for compressing packets. For a
+    /// compression threshold of `Some(N)`, packets with encoded lengths >= `N`
+    /// are compressed while all others are not. `None` disables compression
+    /// completely.
+    ///
+    /// If the server is used behind a proxy on the same machine, you will
+    /// likely want to disable compression.
+    ///
+    /// # Default Value
+    ///
+    /// Compression is enabled with an unspecified value. This value may
+    /// change in future versions.
+    pub compression_threshold: Option<u32>,
+}
+
+impl Default for ServerSettings {
+    fn default() -> Self {
+        Self {
+            tick_rate: DEFAULT_TPS,
+            compression_threshold: Some(256),
+        }
+    }
+}
+
+/// Minecraft's standard ticks per second (TPS).
+pub const DEFAULT_TPS: NonZeroU32 = match NonZeroU32::new(20) {
+    Some(n) => n,
+    None => unreachable!(),
+};
+
+/// Contains global server state accessible as a [`Resource`].
+#[derive(Resource)]
+pub struct Server {
+    /// Incremented on every tick.
+    current_tick: i64,
+    compression_threshold: Option<u32>,
+}
+
+impl Server {
+    /// Returns the number of ticks that have elapsed since the server began.
+    pub fn current_tick(&self) -> i64 {
+        self.current_tick
+    }
+
+    /// Returns the server's compression threshold.
+    pub fn compression_threshold(&self) -> Option<u32> {
+        self.compression_threshold
+    }
 }

@@ -11,7 +11,7 @@ use crate::client::Client;
 use crate::component::{Despawned, GameMode, Ping, Properties, UniqueId, Username};
 use crate::instance::WriteUpdatePacketsToInstancesSet;
 use crate::packet::{PacketWriter, WritePacket};
-use crate::server::Server;
+use crate::Server;
 
 pub(crate) struct PlayerListPlugin;
 

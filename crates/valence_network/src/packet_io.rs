@@ -5,53 +5,44 @@ use std::{io, mem};
 
 use anyhow::bail;
 use bytes::{Buf, BytesMut};
-use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
-use tokio::sync::{OwnedSemaphorePermit, Semaphore};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
+use tokio::sync::Semaphore;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 use tracing::{debug, warn};
+use valence::client::{ClientBundleArgs, ClientConnection, ReceivedPacket};
 use valence_protocol::decoder::{decode_packet, PacketDecoder};
 use valence_protocol::encoder::PacketEncoder;
 use valence_protocol::var_int::VarInt;
 use valence_protocol::{Decode, Packet};
 
-use crate::client::{ClientConnection, ReceivedPacket};
-use crate::server::byte_channel::{byte_channel, ByteSender, TrySendError};
-use crate::server::NewClientInfo;
+use crate::byte_channel::{byte_channel, ByteSender, TrySendError};
+use crate::{CleanupOnDrop, NewClientInfo};
 
-pub(super) struct InitialConnection<R, W> {
-    reader: R,
-    writer: W,
+pub(crate) struct PacketIo {
+    stream: TcpStream,
     enc: PacketEncoder,
     dec: PacketDecoder,
     frame: BytesMut,
     timeout: Duration,
-    permit: OwnedSemaphorePermit,
 }
 
 const READ_BUF_SIZE: usize = 4096;
 
-impl<R, W> InitialConnection<R, W>
-where
-    R: AsyncRead + Unpin,
-    W: AsyncWrite + Unpin,
-{
+impl PacketIo {
     pub fn new(
-        reader: R,
-        writer: W,
+        stream: TcpStream,
         enc: PacketEncoder,
         dec: PacketDecoder,
         timeout: Duration,
-        permit: OwnedSemaphorePermit,
     ) -> Self {
         Self {
-            reader,
-            writer,
+            stream,
             enc,
             dec,
             frame: BytesMut::new(),
             timeout,
-            permit,
         }
     }
 
@@ -61,7 +52,7 @@ where
     {
         self.enc.append_packet(pkt)?;
         let bytes = self.enc.take();
-        timeout(self.timeout, self.writer.write_all(&bytes)).await??;
+        timeout(self.timeout, self.stream.write_all(&bytes)).await??;
         Ok(())
     }
 
@@ -80,7 +71,7 @@ where
                 self.dec.reserve(READ_BUF_SIZE);
                 let mut buf = self.dec.take_capacity();
 
-                if self.reader.read_buf(&mut buf).await? == 0 {
+                if self.stream.read_buf(&mut buf).await? == 0 {
                     return Err(io::Error::from(ErrorKind::UnexpectedEof).into());
                 }
 
@@ -106,17 +97,18 @@ where
     pub fn into_client_args(
         mut self,
         info: NewClientInfo,
-        incoming_limit: usize,
-        outgoing_limit: usize,
-    ) -> NewClientArgs
-    where
-        R: Send + 'static,
-        W: Send + 'static,
-    {
+        incoming_byte_limit: usize,
+        outgoing_byte_limit: usize,
+        cleanup: CleanupOnDrop,
+    ) -> ClientBundleArgs {
         let (incoming_sender, incoming_receiver) = flume::unbounded();
 
-        let recv_sem = Arc::new(Semaphore::new(incoming_limit));
+        let incoming_byte_limit = incoming_byte_limit.min(Semaphore::MAX_PERMITS);
+
+        let recv_sem = Arc::new(Semaphore::new(incoming_byte_limit));
         let recv_sem_clone = recv_sem.clone();
+
+        let (mut reader, mut writer) = self.stream.into_split();
 
         let reader_task = tokio::spawn(async move {
             let mut buf = BytesMut::new();
@@ -128,7 +120,7 @@ where
                         // Incomplete packet. Need more data.
 
                         buf.reserve(READ_BUF_SIZE);
-                        match self.reader.read_buf(&mut buf).await {
+                        match reader.read_buf(&mut buf).await {
                             Ok(0) => break, // Reader is at EOF.
                             Ok(_) => {}
                             Err(e) => {
@@ -168,10 +160,10 @@ where
                 // Estimate memory usage of this packet.
                 let cost = mem::size_of::<ReceivedPacket>() + data.len();
 
-                if cost > incoming_limit {
+                if cost > incoming_byte_limit {
                     debug!(
                         cost,
-                        incoming_limit,
+                        incoming_byte_limit,
                         "cost of received packet is greater than the incoming memory limit"
                     );
                     // We would never acquire enough permits, so we should exit instead of getting
@@ -201,7 +193,7 @@ where
             }
         });
 
-        let (outgoing_sender, mut outgoing_receiver) = byte_channel(outgoing_limit);
+        let (outgoing_sender, mut outgoing_receiver) = byte_channel(outgoing_byte_limit);
 
         let writer_task = tokio::spawn(async move {
             loop {
@@ -213,31 +205,28 @@ where
                     }
                 };
 
-                if let Err(e) = self.writer.write_all(&bytes).await {
+                if let Err(e) = writer.write_all(&bytes).await {
                     debug!("error writing data to stream: {e}");
                 }
             }
         });
 
-        NewClientArgs {
-            info,
+        ClientBundleArgs {
+            username: info.username,
+            uuid: info.uuid,
+            ip: info.ip,
+            properties: info.properties.0,
             conn: Box::new(RealClientConnection {
                 send: outgoing_sender,
                 recv: incoming_receiver,
                 recv_sem: recv_sem_clone,
-                _client_permit: self.permit,
                 reader_task,
                 writer_task,
+                _cleanup: cleanup,
             }),
             enc: self.enc,
         }
     }
-}
-
-pub struct NewClientArgs {
-    pub info: NewClientInfo,
-    pub conn: Box<dyn ClientConnection>,
-    pub enc: PacketEncoder,
 }
 
 struct RealClientConnection {
@@ -246,18 +235,9 @@ struct RealClientConnection {
     /// Limits the amount of data queued in the `recv` channel. Each permit
     /// represents one byte.
     recv_sem: Arc<Semaphore>,
-    /// Limits the number of new clients that can connect to the server. Permit
-    /// is released when the connection is dropped.
-    _client_permit: OwnedSemaphorePermit,
+    _cleanup: CleanupOnDrop,
     reader_task: JoinHandle<()>,
     writer_task: JoinHandle<()>,
-}
-
-impl Drop for RealClientConnection {
-    fn drop(&mut self) {
-        self.writer_task.abort();
-        self.reader_task.abort();
-    }
 }
 
 impl ClientConnection for RealClientConnection {
@@ -289,5 +269,12 @@ impl ClientConnection for RealClientConnection {
 
     fn len(&self) -> usize {
         self.recv.len()
+    }
+}
+
+impl Drop for RealClientConnection {
+    fn drop(&mut self) {
+        self.writer_task.abort();
+        self.reader_task.abort();
     }
 }

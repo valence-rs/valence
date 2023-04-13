@@ -11,6 +11,7 @@ use bytes::{Bytes, BytesMut};
 use glam::{DVec3, Vec3};
 use rand::Rng;
 use tracing::warn;
+use uuid::Uuid;
 use valence_protocol::block_pos::BlockPos;
 use valence_protocol::byte_angle::ByteAngle;
 use valence_protocol::encoder::PacketEncoder;
@@ -29,7 +30,7 @@ use valence_protocol::packet::s2c::play::{
 };
 use valence_protocol::sound::Sound;
 use valence_protocol::text::Text;
-use valence_protocol::types::{GlobalPos, SoundCategory};
+use valence_protocol::types::{GlobalPos, Property, SoundCategory};
 use valence_protocol::var_int::VarInt;
 use valence_protocol::Packet;
 
@@ -46,7 +47,7 @@ use crate::instance::{Instance, WriteUpdatePacketsToInstancesSet};
 use crate::inventory::{Inventory, InventoryKind};
 use crate::packet::WritePacket;
 use crate::registry_codec::{RegistryCodec, RegistryCodecSet};
-use crate::server::{NewClientInfo, Server};
+use crate::Server;
 use crate::util::velocity_to_packet_units;
 use crate::view::{ChunkPos, ChunkView};
 
@@ -110,51 +111,50 @@ impl Plugin for ClientPlugin {
 /// The bundle of components needed for clients to function. All components are
 /// required unless otherwise stated.
 #[derive(Bundle)]
-pub(crate) struct ClientBundle {
-    client: Client,
-    settings: settings::ClientSettings,
-    scratch: ScratchBuf,
-    entity_remove_buf: EntityRemoveBuf,
-    username: Username,
-    ip: Ip,
-    properties: Properties,
-    compass_pos: CompassPos,
-    game_mode: GameMode,
-    op_level: OpLevel,
-    action_sequence: action::ActionSequence,
-    view_distance: ViewDistance,
-    old_view_distance: OldViewDistance,
-    death_location: DeathLocation,
-    keepalive_state: keepalive::KeepaliveState,
-    ping: Ping,
-    is_hardcore: IsHardcore,
-    prev_game_mode: PrevGameMode,
-    hashed_seed: HashedSeed,
-    reduced_debug_info: ReducedDebugInfo,
-    has_respawn_screen: HasRespawnScreen,
-    is_debug: IsDebug,
-    is_flat: IsFlat,
-    teleport_state: teleport::TeleportState,
-    cursor_item: CursorItem,
-    player_inventory_state: ClientInventoryState,
-    inventory: Inventory,
-    player: PlayerEntityBundle,
+pub struct ClientBundle {
+    pub client: Client,
+    pub settings: settings::ClientSettings,
+    pub scratch: ScratchBuf,
+    pub entity_remove_buf: EntityRemoveBuf,
+    pub username: Username,
+    pub ip: Ip,
+    pub properties: Properties,
+    pub compass_pos: CompassPos,
+    pub game_mode: GameMode,
+    pub op_level: OpLevel,
+    pub action_sequence: action::ActionSequence,
+    pub view_distance: ViewDistance,
+    pub old_view_distance: OldViewDistance,
+    pub death_location: DeathLocation,
+    pub keepalive_state: keepalive::KeepaliveState,
+    pub ping: Ping,
+    pub is_hardcore: IsHardcore,
+    pub prev_game_mode: PrevGameMode,
+    pub hashed_seed: HashedSeed,
+    pub reduced_debug_info: ReducedDebugInfo,
+    pub has_respawn_screen: HasRespawnScreen,
+    pub is_debug: IsDebug,
+    pub is_flat: IsFlat,
+    pub teleport_state: teleport::TeleportState,
+    pub cursor_item: CursorItem,
+    pub player_inventory_state: ClientInventoryState,
+    pub inventory: Inventory,
+    pub player: PlayerEntityBundle,
 }
 
 impl ClientBundle {
-    pub(crate) fn new(
-        info: NewClientInfo,
-        conn: Box<dyn ClientConnection>,
-        enc: PacketEncoder,
-    ) -> Self {
+    pub fn new(args: ClientBundleArgs) -> Self {
         Self {
-            client: Client { conn, enc },
+            client: Client {
+                conn: args.conn,
+                enc: args.enc,
+            },
             settings: settings::ClientSettings::default(),
             scratch: ScratchBuf::default(),
             entity_remove_buf: EntityRemoveBuf(vec![]),
-            username: Username(info.username),
-            ip: Ip(info.ip),
-            properties: Properties(info.properties),
+            username: Username(args.username),
+            ip: Ip(args.ip),
+            properties: Properties(args.properties),
             compass_pos: CompassPos::default(),
             game_mode: GameMode::default(),
             op_level: OpLevel::default(),
@@ -176,11 +176,23 @@ impl ClientBundle {
             reduced_debug_info: ReducedDebugInfo::default(),
             is_debug: IsDebug::default(),
             player: PlayerEntityBundle {
-                uuid: UniqueId(info.uuid),
+                uuid: UniqueId(args.uuid),
                 ..Default::default()
             },
         }
     }
+}
+
+/// Arguments for [`ClientBundle::new`].
+pub struct ClientBundleArgs {
+    /// The username for the client.
+    pub username: String,
+    pub uuid: Uuid,
+    pub ip: IpAddr,
+    pub properties: Vec<Property>,
+    pub conn: Box<dyn ClientConnection>,
+    /// The packet encoder to use. This should be in sync with [`Self::conn`].
+    pub enc: PacketEncoder,
 }
 
 /// The main client component. Contains the underlying network connection and

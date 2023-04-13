@@ -1,4 +1,5 @@
 use std::fmt;
+use std::ops::Deref;
 
 use bevy_app::{CoreSet, Plugin};
 /// Contains shared components and world queries.
@@ -8,7 +9,7 @@ use uuid::Uuid;
 use valence_protocol::types::{GameMode as ProtocolGameMode, Property};
 
 use crate::client::FlushPacketsSet;
-use crate::util::{from_yaw_and_pitch, to_yaw_and_pitch};
+use crate::util::{from_yaw_and_pitch, to_yaw_and_pitch, is_valid_username};
 use crate::view::ChunkPos;
 
 pub(crate) struct ComponentPlugin;
@@ -77,6 +78,12 @@ impl Default for UniqueId {
 #[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
 pub struct Username(pub String);
 
+impl Username {
+    pub fn is_valid(&self) -> bool {
+        is_valid_username(&self.0)
+    }
+}
+
 impl fmt::Display for Username {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
@@ -95,6 +102,20 @@ impl Properties {
     /// Finds the property with the name "textures".
     pub fn textures_mut(&mut self) -> Option<&mut Property> {
         self.0.iter_mut().find(|prop| prop.name == "textures")
+    }
+}
+
+impl From<Vec<Property>> for Properties {
+    fn from(value: Vec<Property>) -> Self {
+        Self(value)
+    }
+}
+
+impl Deref for Properties {
+    type Target = [Property];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
