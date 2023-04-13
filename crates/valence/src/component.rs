@@ -9,7 +9,7 @@ use uuid::Uuid;
 use valence_protocol::types::{GameMode as ProtocolGameMode, Property};
 
 use crate::client::FlushPacketsSet;
-use crate::util::{from_yaw_and_pitch, to_yaw_and_pitch, is_valid_username};
+use crate::util::{from_yaw_and_pitch, is_valid_username, to_yaw_and_pitch};
 use crate::view::ChunkPos;
 
 pub(crate) struct ComponentPlugin;

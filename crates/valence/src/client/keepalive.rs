@@ -1,7 +1,8 @@
 use valence_protocol::packet::c2s::play::KeepAliveC2s;
 
 use super::*;
-use crate::{event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent}, ServerSettings};
+use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::ServerSettings;
 
 pub(super) fn build(app: &mut App) {
     app.add_system(

@@ -32,7 +32,11 @@ pub(crate) struct PacketWriter<'a> {
 }
 
 impl<'a> PacketWriter<'a> {
-    pub fn new(buf: &'a mut Vec<u8>, threshold: Option<u32>, scratch: &'a mut Vec<u8>) -> Self {
+    pub(crate) fn new(
+        buf: &'a mut Vec<u8>,
+        threshold: Option<u32>,
+        scratch: &'a mut Vec<u8>,
+    ) -> Self {
         Self {
             buf,
             threshold,

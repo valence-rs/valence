@@ -47,9 +47,9 @@ use crate::instance::{Instance, WriteUpdatePacketsToInstancesSet};
 use crate::inventory::{Inventory, InventoryKind};
 use crate::packet::WritePacket;
 use crate::registry_codec::{RegistryCodec, RegistryCodecSet};
-use crate::Server;
 use crate::util::velocity_to_packet_units;
 use crate::view::{ChunkPos, ChunkView};
+use crate::Server;
 
 pub mod action;
 pub mod command;
@@ -807,22 +807,22 @@ fn update_chunk_load_dist(
 }
 
 #[derive(WorldQuery)]
-pub(crate) struct EntityInitQuery {
-    pub entity_id: &'static EntityId,
-    pub uuid: &'static UniqueId,
-    pub kind: &'static EntityKind,
-    pub look: &'static Look,
-    pub head_yaw: &'static HeadYaw,
-    pub on_ground: &'static OnGround,
-    pub object_data: &'static ObjectData,
-    pub velocity: &'static Velocity,
-    pub tracked_data: &'static TrackedData,
+struct EntityInitQuery {
+    entity_id: &'static EntityId,
+    uuid: &'static UniqueId,
+    kind: &'static EntityKind,
+    look: &'static Look,
+    head_yaw: &'static HeadYaw,
+    on_ground: &'static OnGround,
+    object_data: &'static ObjectData,
+    velocity: &'static Velocity,
+    tracked_data: &'static TrackedData,
 }
 
 impl EntityInitQueryItem<'_> {
     /// Writes the appropriate packets to initialize an entity. This will spawn
     /// the entity and initialize tracked data.
-    pub fn write_init_packets(&self, pos: DVec3, mut writer: impl WritePacket) {
+    fn write_init_packets(&self, pos: DVec3, mut writer: impl WritePacket) {
         match *self.kind {
             EntityKind::MARKER => {}
             EntityKind::EXPERIENCE_ORB => {
