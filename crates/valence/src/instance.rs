@@ -10,7 +10,7 @@ use bevy_ecs::query::WorldQuery;
 pub use chunk::{Block, BlockEntity, BlockMut, BlockRef, Chunk};
 pub use chunk_entry::*;
 use glam::{DVec3, Vec3};
-use num::integer::div_ceil;
+use num_integer::div_ceil;
 use rustc_hash::FxHashMap;
 use valence_protocol::array::LengthPrefixedArray;
 use valence_protocol::block_pos::BlockPos;

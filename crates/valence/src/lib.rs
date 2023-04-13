@@ -23,9 +23,7 @@
 )]
 #![allow(clippy::type_complexity)] // ECS queries are often complicated.
 
-pub use {
-    anyhow, async_trait, bevy_app, bevy_ecs, uuid, valence_nbt as nbt, valence_protocol as protocol,
-};
+pub use {anyhow, bevy_app, bevy_ecs, uuid, valence_nbt as nbt, valence_protocol as protocol};
 
 pub mod biome;
 pub mod client;
@@ -65,7 +63,6 @@ use crate::registry_codec::RegistryCodecPlugin;
 use crate::weather::WeatherPlugin;
 
 pub mod prelude {
-    pub use async_trait::async_trait;
     pub use bevy_app::prelude::*;
     pub use bevy_ecs::prelude::*;
     pub use biome::{Biome, BiomeId, BiomeRegistry};

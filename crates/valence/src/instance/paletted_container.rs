@@ -2,6 +2,7 @@ use std::array;
 use std::io::Write;
 
 use arrayvec::ArrayVec;
+use num_integer::div_ceil;
 use valence_protocol::var_int::VarInt;
 use valence_protocol::Encode;
 
@@ -28,7 +29,7 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize>
     PalettedContainer<T, LEN, HALF_LEN>
 {
     pub(crate) fn new() -> Self {
-        assert_eq!(num::Integer::div_ceil(&LEN, &2), HALF_LEN);
+        assert_eq!(div_ceil(LEN, 2), HALF_LEN);
         assert_ne!(LEN, 0);
 
         Self::Single(T::default())
@@ -256,9 +257,10 @@ impl<T: Copy + Eq + Default, const LEN: usize, const HALF_LEN: usize> Indirect<T
     }
 }
 
+#[inline]
 fn compact_u64s_len(vals_count: usize, bits_per_val: usize) -> usize {
     let vals_per_u64 = 64 / bits_per_val;
-    num::Integer::div_ceil(&vals_count, &vals_per_u64)
+    div_ceil(vals_count, vals_per_u64)
 }
 
 #[inline]

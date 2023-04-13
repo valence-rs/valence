@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use anyhow::Context;
-use async_trait::async_trait;
+pub use async_trait::async_trait;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use connect::do_accept_loop;
@@ -24,7 +24,7 @@ use uuid::Uuid;
 use valence::client::{ClientBundle, ClientBundleArgs};
 use valence::component::Properties;
 use valence::event_loop::RunEventLoopSet;
-use valence::server::Server;
+use valence::Server;
 use valence_protocol::text::Text;
 
 pub struct NetworkPlugin;
