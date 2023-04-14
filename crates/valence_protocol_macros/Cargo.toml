@@ -1,12 +1,12 @@
 [package]
 name = "valence_protocol_macros"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [lib]
 proc-macro = true
 
 [dependencies]
-syn = { version = "1.0.103", features = ["full"] }
-quote = "1.0.21"
-proc-macro2 = "1.0.47"
+proc-macro2.workspace = true
+quote.workspace = true
+syn = { workspace = true, features = ["full"] }

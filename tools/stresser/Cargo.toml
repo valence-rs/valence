@@ -1,0 +1,13 @@
+[package]
+name = "stresser"
+description = "A stresser for Valence Minecraft server framework development purposes."
+authors = ["qualterz <qualterz@tutamail.com>"]
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+tokio.workspace = true
+uuid = { workspace = true, features = ["v4"] }
+valence_protocol = { workspace = true, features = ["compression"] }
