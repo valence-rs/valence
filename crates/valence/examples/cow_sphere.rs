@@ -78,7 +78,7 @@ fn init_clients(
 
 fn update_sphere(
     server: Res<Server>,
-    mut parts: Query<(&mut Position, &mut Look, &mut HeadYaw), With<SpherePart>>,
+    mut parts: Query<(&mut Position, &mut Direction, &mut HeadYaw), With<SpherePart>>,
 ) {
     let time = server.current_tick() as f64 / server.tps() as f64;
 

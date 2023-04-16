@@ -75,7 +75,7 @@ fn squat_and_die(mut clients: Query<&mut Client>, mut events: EventReader<Sneaki
 }
 
 fn necromancy(
-    mut clients: Query<(&mut Position, &mut Look, &mut Location)>,
+    mut clients: Query<(&mut Position, &mut Direction, &mut Location)>,
     mut events: EventReader<Respawn>,
     instances: Query<Entity, With<Instance>>,
 ) {

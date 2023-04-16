@@ -31,4 +31,4 @@ tokio.workspace = true
 toml.workspace = true
 tracing-subscriber.workspace = true
 valence_nbt = { workspace = true, features = ["preserve_order"] }
-valence_protocol = { workspace = true, features = ["compression"] }
+valence_core = { workspace = true, features = ["compression"] }

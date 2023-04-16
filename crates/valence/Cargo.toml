@@ -9,7 +9,6 @@ readme = "README.md"
 license.workspace = true
 keywords = ["minecraft", "gamedev", "server", "ecs"]
 categories = ["game-engines"]
-build = "build/main.rs"
 
 [dependencies]
 anyhow.workspace = true
@@ -33,24 +32,9 @@ tracing.workspace = true
 url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true, features = ["serde"] }
 valence_nbt = { workspace = true, features = ["uuid"] }
-valence_protocol = { workspace = true, features = [
-    "encryption",
-    "compression",
-    "glam",
-] }
 
 [dev-dependencies]
 approx.workspace = true
 glam = { workspace = true, features = ["approx"] }
 noise.workspace = true
 tracing-subscriber.workspace = true
-
-[build-dependencies]
-anyhow.workspace = true
-heck.workspace = true
-proc-macro2.workspace = true
-quote.workspace = true
-serde = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
-rayon.workspace = true
-num.workspace = true

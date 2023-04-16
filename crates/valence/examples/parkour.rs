@@ -88,7 +88,7 @@ fn reset_clients(
     mut clients: Query<(
         &mut Client,
         &mut Position,
-        &mut Look,
+        &mut Direction,
         &mut GameState,
         &mut Instance,
     )>,

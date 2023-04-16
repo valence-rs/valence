@@ -44,7 +44,7 @@ fn setup(
     commands.spawn(SheepEntityBundle {
         location: Location(instance_ent),
         position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 2.0]),
-        look: Look::new(180.0, 0.0),
+        look: Direction::new(180.0, 0.0),
         head_yaw: HeadYaw(180.0),
         ..Default::default()
     });

@@ -25,23 +25,8 @@
 
 pub use {anyhow, bevy_app, bevy_ecs, uuid, valence_nbt as nbt, valence_protocol as protocol};
 
-pub mod biome;
-pub mod client;
-pub mod component;
-pub mod dimension;
-pub mod entity;
-pub mod event_loop;
-pub mod instance;
-pub mod inventory;
-pub mod packet;
-pub mod player_list;
-pub mod player_textures;
-pub mod registry_codec;
 #[cfg(any(test, doctest))]
-mod unit_test;
-pub mod util;
-pub mod view;
-pub mod weather;
+mod tests;
 
 use std::num::NonZeroU32;
 use std::time::Duration;

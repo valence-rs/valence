@@ -24,8 +24,8 @@ thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 uuid.workspace = true
-valence_protocol.workspace = true
-valence.workspace = true
+valence_core.workspace = true
+valence_entity.workspace = true
 
 [dependencies.reqwest]
 workspace = true
