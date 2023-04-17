@@ -4,7 +4,7 @@ use anyhow::bail;
 use byteorder::ReadBytesExt;
 use thiserror::Error;
 
-use crate::{Decode, Encode};
+use crate::packet::{Decode, Encode};
 
 /// An `i32` encoded with variable length.
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]

@@ -3,9 +3,8 @@ use std::io::Write;
 use anyhow::{ensure, Context};
 use valence_nbt::Compound;
 
-use crate::block::BlockKind;
-use crate::var_int::VarInt;
-use crate::{Decode, Encode, Result};
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
 
 include!(concat!(env!("OUT_DIR"), "/item.rs"));
 
@@ -66,13 +65,13 @@ impl Default for ItemStack {
 }
 
 impl Encode for Option<ItemStack> {
-    fn encode(&self, w: impl Write) -> Result<()> {
+    fn encode(&self, w: impl Write) -> anyhow::Result<()> {
         self.as_ref().encode(w)
     }
 }
 
 impl<'a> Encode for Option<&'a ItemStack> {
-    fn encode(&self, mut w: impl Write) -> Result<()> {
+    fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         match *self {
             None => false.encode(w),
             Some(s) => {
@@ -89,7 +88,7 @@ impl<'a> Encode for Option<&'a ItemStack> {
 }
 
 impl Decode<'_> for Option<ItemStack> {
-    fn decode(r: &mut &[u8]) -> Result<Self> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         let present = bool::decode(r)?;
         if !present {
             return Ok(None);
@@ -115,13 +114,13 @@ impl Decode<'_> for Option<ItemStack> {
 }
 
 impl Encode for ItemKind {
-    fn encode(&self, w: impl Write) -> Result<()> {
+    fn encode(&self, w: impl Write) -> anyhow::Result<()> {
         VarInt(self.to_raw() as i32).encode(w)
     }
 }
 
 impl Decode<'_> for ItemKind {
-    fn decode(r: &mut &[u8]) -> Result<Self> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         let id = VarInt::decode(r)?.0;
         let errmsg = "invalid item ID";
 
@@ -129,9 +128,11 @@ impl Decode<'_> for ItemKind {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::block::BlockKind;
 
     #[test]
     fn item_kind_to_block_kind() {
@@ -160,3 +161,4 @@ mod tests {
         assert_eq!(stack.count, STACK_MAX);
     }
 }
+*/

@@ -1,14 +1,13 @@
 use uuid::Uuid;
 
-use crate::byte_angle::ByteAngle;
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
+use crate::packet::byte_angle::ByteAngle;
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
 
 #[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct EntitySpawnS2c {
     pub entity_id: VarInt,
     pub object_uuid: Uuid,
-    // TODO: EntityKind type?
     pub kind: VarInt,
     pub position: [f64; 3],
     pub pitch: ByteAngle,

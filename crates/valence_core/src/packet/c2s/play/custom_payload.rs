@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use crate::ident::Ident;
-use crate::raw::RawBytes;
-use crate::{Decode, Encode};
+use crate::packet::raw::RawBytes;
+use crate::packet::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct CustomPayloadC2s<'a> {

@@ -1,4 +1,4 @@
-use valence_macro_utils::{rerun_if_changed, write_generated_file};
+use valence_build_utils::{rerun_if_changed, write_generated_file};
 
 mod item;
 mod packet_id;

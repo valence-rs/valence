@@ -1,6 +1,6 @@
-use crate::array::LengthPrefixedArray;
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
+use crate::packet::array::LengthPrefixedArray;
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct LightUpdateS2c {

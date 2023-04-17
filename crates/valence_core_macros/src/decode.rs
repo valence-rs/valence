@@ -63,7 +63,7 @@ pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
 
             add_trait_bounds(
                 &mut input.generics,
-                quote!(::valence_protocol::Decode<#lifetime>),
+                quote!(::valence_core::__private::Decode<#lifetime>),
             );
 
             let (impl_generics, ty_generics, where_clause) =
@@ -71,11 +71,11 @@ pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
 
             Ok(quote! {
                 #[allow(unused_imports)]
-                impl #impl_generics ::valence_protocol::__private::Decode<#lifetime> for #input_name #ty_generics
+                impl #impl_generics ::valence_core::__private::Decode<#lifetime> for #input_name #ty_generics
                 #where_clause
                 {
-                    fn decode(_r: &mut &#lifetime [u8]) -> ::valence_protocol::__private::Result<Self> {
-                        use ::valence_protocol::__private::{Decode, Context, ensure};
+                    fn decode(_r: &mut &#lifetime [u8]) -> ::valence_core::__private::Result<Self> {
+                        use ::valence_core::__private::{Decode, Context, ensure};
 
                         Ok(#decode_fields)
                     }
@@ -135,7 +135,7 @@ pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
 
             add_trait_bounds(
                 &mut input.generics,
-                quote!(::valence_protocol::Decode<#lifetime>),
+                quote!(::valence_core::__private::Decode<#lifetime>),
             );
 
             let (impl_generics, ty_generics, where_clause) =
@@ -143,11 +143,11 @@ pub fn derive_decode(item: TokenStream) -> Result<TokenStream> {
 
             Ok(quote! {
                 #[allow(unused_imports)]
-                impl #impl_generics ::valence_protocol::__private::Decode<#lifetime> for #input_name #ty_generics
+                impl #impl_generics ::valence_core::__private::Decode<#lifetime> for #input_name #ty_generics
                 #where_clause
                 {
-                    fn decode(_r: &mut &#lifetime [u8]) -> ::valence_protocol::__private::Result<Self> {
-                        use ::valence_protocol::__private::{Decode, Context, VarInt, bail};
+                    fn decode(_r: &mut &#lifetime [u8]) -> ::valence_core::__private::Result<Self> {
+                        use ::valence_core::__private::{Decode, Context, VarInt, bail};
 
                         let ctx = concat!("failed to decode enum discriminant in `", stringify!(#input_name), "`");
                         let disc = VarInt::decode(_r).context(ctx)?.0;

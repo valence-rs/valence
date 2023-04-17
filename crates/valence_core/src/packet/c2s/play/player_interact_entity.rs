@@ -1,6 +1,6 @@
-use crate::types::Hand;
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
+use crate::hand::Hand;
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
 
 #[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct PlayerInteractEntityC2s {

@@ -17,7 +17,7 @@ byteorder.workspace = true
 bytes.workspace = true
 cfb8 = { workspace = true, optional = true }
 flate2 = { workspace = true, optional = true }
-glam = { workspace = true, optional = true }
+glam.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 thiserror.workspace = true
@@ -25,6 +25,9 @@ tracing.workspace = true
 uuid = { workspace = true, features = ["serde"] }
 valence_nbt.workspace = true
 valence_core_macros.workspace = true
+url.workspace = true
+base64.workspace = true
+rand.workspace = true
 
 [dev-dependencies]
 rand.workspace = true
@@ -38,7 +41,7 @@ proc-macro2.workspace = true
 quote.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
-valence_macro_utils.workspace = true
+valence_build_utils.workspace = true
 
 [[bench]]
 name = "benches"

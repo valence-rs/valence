@@ -1,7 +1,7 @@
 use bitfield_struct::bitfield;
 
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
 
 #[derive(Copy, Clone, PartialEq, Debug, Encode, Decode)]
 pub struct PlayerPositionLookS2c {

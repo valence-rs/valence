@@ -1,3 +1,5 @@
+//! [`Encode`] and [`Decode`] impls on foreign types.
+
 use std::borrow::Cow;
 use std::collections::{BTreeSet, HashSet};
 use std::hash::{BuildHasher, Hash};
@@ -7,13 +9,14 @@ use std::mem::MaybeUninit;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use anyhow::ensure;
+use anyhow::{ensure, Result};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use glam::*;
 use uuid::Uuid;
 use valence_nbt::Compound;
 
-use crate::var_int::VarInt;
-use crate::{Decode, Encode, Result, MAX_PACKET_SIZE};
+use super::var_int::VarInt;
+use super::{Decode, Encode, MAX_PACKET_SIZE};
 
 // ==== Primitive ==== //
 
@@ -28,8 +31,6 @@ impl Encode for bool {
         let bytes: &[u8] = unsafe { mem::transmute(slice) };
         Ok(w.write_all(bytes)?)
     }
-
-    const HAS_ENCODE_SLICE: bool = true;
 }
 
 impl Decode<'_> for bool {
@@ -48,8 +49,6 @@ impl Encode for u8 {
     fn encode_slice(slice: &[u8], mut w: impl Write) -> Result<()> {
         Ok(w.write_all(slice)?)
     }
-
-    const HAS_ENCODE_SLICE: bool = true;
 }
 
 impl Decode<'_> for u8 {
@@ -68,8 +67,6 @@ impl Encode for i8 {
         let bytes: &[u8] = unsafe { mem::transmute(slice) };
         Ok(w.write_all(bytes)?)
     }
-
-    const HAS_ENCODE_SLICE: bool = true;
 }
 
 impl Decode<'_> for i8 {
@@ -213,10 +210,6 @@ impl Decode<'_> for f64 {
 }
 
 // ==== Glam ==== //
-
-use ::glam::*;
-
-use super::*;
 
 impl Encode for Vec2 {
     fn encode(&self, mut w: impl Write) -> Result<()> {
@@ -449,18 +442,11 @@ impl_tuple!(A B C D E F G H I J K L);
 
 // ==== Sequence ==== //
 
-/// Like tuples, arrays are encoded and decoded without a VarInt length prefix.
+/// Like tuples, fixed-length arrays are encoded and decoded without a VarInt
+/// length prefix.
 impl<const N: usize, T: Encode> Encode for [T; N] {
-    fn encode(&self, mut w: impl Write) -> Result<()> {
-        if T::HAS_ENCODE_SLICE {
-            return T::encode_slice(self, w);
-        }
-
-        for t in self {
-            t.encode(&mut w)?;
-        }
-
-        Ok(())
+    fn encode(&self, w: impl Write) -> Result<()> {
+        T::encode_slice(self, w)
     }
 }
 
@@ -516,15 +502,7 @@ impl<T: Encode> Encode for [T] {
 
         VarInt(len as i32).encode(&mut w)?;
 
-        if T::HAS_ENCODE_SLICE {
-            return T::encode_slice(self, w);
-        }
-
-        for t in self {
-            t.encode(&mut w)?;
-        }
-
-        Ok(())
+        T::encode_slice(self, w)
     }
 }
 

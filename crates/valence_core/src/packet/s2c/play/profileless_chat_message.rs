@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
 use crate::text::Text;
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct ProfilelessChatMessageS2c<'a> {

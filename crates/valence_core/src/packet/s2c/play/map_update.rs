@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 use std::io::Write;
 
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
 use crate::text::Text;
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct MapUpdateS2c<'a> {

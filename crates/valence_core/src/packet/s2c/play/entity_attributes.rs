@@ -3,8 +3,8 @@ use std::borrow::Cow;
 use uuid::Uuid;
 
 use crate::ident::Ident;
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct EntityAttributesS2c<'a> {

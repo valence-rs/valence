@@ -3,7 +3,7 @@ use heck::ToPascalCase;
 use proc_macro2::TokenStream;
 use quote::quote;
 use serde::Deserialize;
-use valence_macro_utils::ident;
+use valence_build_utils::ident;
 
 #[derive(Deserialize, Clone, Debug)]
 struct Item {
@@ -279,6 +279,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
+            /*
             /// Constructs an item kind from a block kind.
             ///
             /// [`ItemKind::Air`] is used to indicate the absence of an item.
@@ -291,7 +292,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
             /// If the given item kind doesn't have a corresponding block kind, `None` is returned.
             pub const fn to_block_kind(self) -> Option<BlockKind> {
                 BlockKind::from_item_kind(self)
-            }
+            }*/
 
             /// An array of all item kinds.
             pub const ALL: [Self; #item_kind_count] = [#(Self::#item_kind_variants,)*];

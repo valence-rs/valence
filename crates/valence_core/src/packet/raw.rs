@@ -1,7 +1,7 @@
 use std::io::Write;
 use std::mem;
 
-use crate::{Decode, Encode, Packet, Result};
+use crate::packet::{Decode, Encode, Packet};
 
 /// While [encoding], the contained slice is written directly to the output
 /// without any length prefix or metadata.
@@ -15,13 +15,13 @@ use crate::{Decode, Encode, Packet, Result};
 pub struct RawBytes<'a>(pub &'a [u8]);
 
 impl Encode for RawBytes<'_> {
-    fn encode(&self, mut w: impl Write) -> Result<()> {
+    fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         Ok(w.write_all(self.0)?)
     }
 }
 
 impl<'a> Decode<'a> for RawBytes<'a> {
-    fn decode(r: &mut &'a [u8]) -> Result<Self> {
+    fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
         Ok(Self(mem::take(r)))
     }
 }
@@ -52,11 +52,11 @@ impl<'a> Packet<'a> for RawPacket<'a> {
         "RawPacket"
     }
 
-    fn encode_packet(&self, mut w: impl Write) -> Result<()> {
+    fn encode_packet(&self, mut w: impl Write) -> anyhow::Result<()> {
         Ok(w.write_all(self.0)?)
     }
 
-    fn decode_packet(r: &mut &'a [u8]) -> Result<Self> {
+    fn decode_packet(r: &mut &'a [u8]) -> anyhow::Result<Self> {
         Ok(Self(mem::take(r)))
     }
 }

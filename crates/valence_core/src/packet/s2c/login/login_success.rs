@@ -2,8 +2,8 @@ use std::borrow::Cow;
 
 use uuid::Uuid;
 
-use crate::types::Property;
-use crate::{Decode, Encode};
+use crate::packet::{Decode, Encode};
+use crate::property::Property;
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct LoginSuccessS2c<'a> {

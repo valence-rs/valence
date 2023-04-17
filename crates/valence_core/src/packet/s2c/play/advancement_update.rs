@@ -3,9 +3,9 @@ use std::io::Write;
 
 use crate::ident::Ident;
 use crate::item::ItemStack;
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
 use crate::text::Text;
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct AdvancementUpdateS2c<'a> {

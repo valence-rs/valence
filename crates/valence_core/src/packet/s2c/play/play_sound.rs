@@ -2,9 +2,9 @@ use std::borrow::Cow;
 use std::io::Write;
 
 use crate::ident::Ident;
-use crate::types::SoundCategory;
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
+use crate::sound::SoundCategory;
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct PlaySoundS2c<'a> {

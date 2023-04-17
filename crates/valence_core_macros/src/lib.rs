@@ -1,9 +1,3 @@
-//! This crate provides derive macros for [`Encode`], [`Decode`], and
-//! [`Packet`]. It also provides the procedural macro [`ident!`] for parsing
-//! identifiers at compile time.
-//!
-//! See `valence_protocol`'s documentation for more information.
-
 use proc_macro::TokenStream as StdTokenStream;
 use proc_macro2::TokenStream;
 use quote::ToTokens;
@@ -42,8 +36,8 @@ pub fn derive_packet(item: StdTokenStream) -> StdTokenStream {
 }
 
 #[proc_macro]
-pub fn ident(item: StdTokenStream) -> StdTokenStream {
-    match ident::ident(item.into()) {
+pub fn parse_ident_str(item: StdTokenStream) -> StdTokenStream {
+    match ident::parse_ident_str(item.into()) {
         Ok(tokens) => tokens.into(),
         Err(e) => e.into_compile_error().into(),
     }

@@ -2,14 +2,14 @@ use std::borrow::Cow;
 
 use valence_nbt::Compound;
 
-use crate::array::LengthPrefixedArray;
-use crate::block::BlockEntityKind;
-use crate::{Decode, Encode};
+use crate::chunk_pos::ChunkPos;
+use crate::packet::array::LengthPrefixedArray;
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct ChunkDataS2c<'a> {
-    pub chunk_x: i32,
-    pub chunk_z: i32,
+    pub pos: ChunkPos,
     pub heightmaps: Cow<'a, Compound>,
     pub blocks_and_biomes: &'a [u8],
     pub block_entities: Cow<'a, [ChunkDataBlockEntity<'a>]>,
@@ -26,6 +26,6 @@ pub struct ChunkDataS2c<'a> {
 pub struct ChunkDataBlockEntity<'a> {
     pub packed_xz: i8,
     pub y: i16,
-    pub kind: BlockEntityKind,
+    pub kind: VarInt,
     pub data: Cow<'a, Compound>,
 }

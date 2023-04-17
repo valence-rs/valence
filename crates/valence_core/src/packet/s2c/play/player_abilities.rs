@@ -1,6 +1,6 @@
 use bitfield_struct::bitfield;
 
-use crate::{Decode, Encode};
+use crate::packet::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct PlayerAbilitiesS2c {

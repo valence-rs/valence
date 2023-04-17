@@ -1,10 +1,10 @@
 #[cfg(feature = "encryption")]
 use aes::cipher::{AsyncStreamCipher, NewCipher};
 use anyhow::{bail, ensure};
-use bytes::{Buf, BufMut, BytesMut};
+use bytes::{Buf, BytesMut};
 
-use crate::var_int::{VarInt, VarIntDecodeError};
-use crate::{Packet, Result, MAX_PACKET_SIZE};
+use crate::packet::var_int::{VarInt, VarIntDecodeError};
+use crate::packet::{Packet, MAX_PACKET_SIZE};
 
 /// The AES block cipher with a 128 bit key, using the CFB-8 mode of
 /// operation.
@@ -27,7 +27,7 @@ impl PacketDecoder {
         Self::default()
     }
 
-    pub fn try_next_packet(&mut self) -> Result<Option<BytesMut>> {
+    pub fn try_next_packet(&mut self) -> anyhow::Result<Option<BytesMut>> {
         let mut r = &self.buf[..];
 
         let packet_len = match VarInt::decode_partial(&mut r) {
@@ -52,9 +52,10 @@ impl PacketDecoder {
         if let Some(threshold) = self.compression_threshold {
             use std::io::Write;
 
+            use bytes::BufMut;
             use flate2::write::ZlibDecoder;
 
-            use crate::Decode;
+            use crate::packet::Decode;
 
             r = &r[..packet_len as usize];
 

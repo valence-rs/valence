@@ -1,8 +1,8 @@
 use bitfield_struct::bitfield;
 use uuid::Uuid;
 
+use crate::packet::{Decode, Encode};
 use crate::text::Text;
-use crate::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct BossBarS2c {

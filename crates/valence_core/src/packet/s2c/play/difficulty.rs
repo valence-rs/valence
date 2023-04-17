@@ -1,5 +1,5 @@
-use crate::types::Difficulty;
-use crate::{Decode, Encode};
+use crate::difficulty::Difficulty;
+use crate::packet::{Decode, Encode};
 
 #[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct DifficultyS2c {

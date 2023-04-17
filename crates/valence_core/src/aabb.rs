@@ -1,3 +1,5 @@
+use glam::DVec3;
+
 /// An axis-aligned bounding box. `min` is expected to be <= `max`
 /// componentwise.
 #[derive(Copy, Clone, PartialEq, Default, Debug)]

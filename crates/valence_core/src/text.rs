@@ -11,7 +11,7 @@ use uuid::Uuid;
 use valence_nbt::Value;
 
 use crate::ident::Ident;
-use crate::{Decode, Encode, Result};
+use crate::packet::{Decode, Encode};
 
 /// Represents formatted text in Minecraft's JSON text format.
 ///
@@ -26,7 +26,7 @@ use crate::{Decode, Encode, Result};
 ///
 /// With [`TextFormat`] in scope, you can write the following:
 /// ```
-/// use valence_protocol::text::{Color, Text, TextFormat};
+/// use valence_core::text::{Color, Text, TextFormat};
 ///
 /// let txt = "The text is ".into_text()
 ///     + "Red".color(Color::RED)
@@ -853,13 +853,13 @@ impl fmt::Display for Text {
 }
 
 impl Encode for Text {
-    fn encode(&self, w: impl Write) -> Result<()> {
+    fn encode(&self, w: impl Write) -> anyhow::Result<()> {
         serde_json::to_string(self)?.encode(w)
     }
 }
 
 impl Decode<'_> for Text {
-    fn decode(r: &mut &[u8]) -> Result<Self> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         let string = <&str>::decode(r)?;
         if string.is_empty() {
             Ok(Self::default())

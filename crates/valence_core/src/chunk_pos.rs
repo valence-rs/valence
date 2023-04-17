@@ -1,9 +1,11 @@
 use glam::DVec3;
-use valence_protocol::block_pos::BlockPos;
+
+use crate::block_pos::BlockPos;
+use crate::packet::{Decode, Encode};
 
 /// The X and Z position of a chunk in an
 /// [`Instance`](crate::instance::Instance).
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash, Debug, Encode, Decode)]
 pub struct ChunkPos {
     /// The X position of the chunk.
     pub x: i32,
@@ -120,7 +122,7 @@ impl ChunkView {
     // The foreach-based methods are optimizing better than the iterator ones.
 
     #[inline]
-    pub(crate) fn for_each(self, mut f: impl FnMut(ChunkPos)) {
+    pub fn for_each(self, mut f: impl FnMut(ChunkPos)) {
         let true_dist = self.dist as i32 + EXTRA_VIEW_RADIUS;
 
         for z in self.pos.z - true_dist..=self.pos.z + true_dist {
@@ -134,7 +136,7 @@ impl ChunkView {
     }
 
     #[inline]
-    pub(crate) fn diff_for_each(self, other: Self, mut f: impl FnMut(ChunkPos)) {
+    pub fn diff_for_each(self, other: Self, mut f: impl FnMut(ChunkPos)) {
         self.for_each(|p| {
             if !other.contains(p) {
                 f(p);

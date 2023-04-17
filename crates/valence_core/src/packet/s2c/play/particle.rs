@@ -3,11 +3,10 @@ use std::io::Write;
 
 use anyhow::bail;
 
-use crate::block::BlockState;
 use crate::block_pos::BlockPos;
 use crate::item::ItemStack;
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
 
 #[derive(Clone, Debug)]
 pub struct ParticleS2c<'a> {
@@ -23,7 +22,7 @@ pub struct ParticleS2c<'a> {
 pub enum Particle {
     AmbientEntityEffect,
     AngryVillager,
-    Block(i32), // TODO: use BlockState type.
+    Block(i32),       // TODO: use BlockState type.
     BlockMarker(i32), // TODO: use BlockState type.
     Bubble,
     Cloud,
@@ -406,8 +405,8 @@ impl<'a> Decode<'a> for ParticleS2c<'a> {
 impl Encode for Particle {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         match self {
-            Particle::Block(block_state) => VarInt(block_state).encode(w),
-            Particle::BlockMarker(block_state) => VarInt(block_state).encode(w),
+            Particle::Block(block_state) => VarInt(*block_state).encode(w),
+            Particle::BlockMarker(block_state) => VarInt(*block_state).encode(w),
             Particle::Dust { rgb, scale } => {
                 rgb.encode(&mut w)?;
                 scale.encode(w)
@@ -421,7 +420,7 @@ impl Encode for Particle {
                 scale.encode(&mut w)?;
                 to_rgb.encode(w)
             }
-            Particle::FallingDust(block_state) => VarInt(block_state).encode(w),
+            Particle::FallingDust(block_state) => VarInt(*block_state).encode(w),
             Particle::SculkCharge { roll } => roll.encode(w),
             Particle::Item(stack) => stack.encode(w),
             Particle::VibrationBlock { block_pos, ticks } => {

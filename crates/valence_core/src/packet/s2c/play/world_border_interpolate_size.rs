@@ -1,5 +1,5 @@
-use crate::var_long::VarLong;
-use crate::{Decode, Encode};
+use crate::packet::var_long::VarLong;
+use crate::packet::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct WorldBorderInterpolateSizeS2c {

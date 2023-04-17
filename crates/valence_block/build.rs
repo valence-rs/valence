@@ -4,7 +4,7 @@ use heck::{ToPascalCase, ToShoutySnakeCase};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use serde::Deserialize;
-use valence_macro_utils::{rerun_if_changed, write_generated_file, ident};
+use valence_macro_utils::{ident, rerun_if_changed, write_generated_file};
 
 #[derive(Deserialize, Clone, Debug)]
 struct TopLevel {

@@ -1,6 +1,6 @@
-use crate::raw::RawBytes;
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
+use crate::packet::raw::RawBytes;
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
 
 #[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct EntityTrackerUpdateS2c<'a> {

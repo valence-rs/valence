@@ -2,10 +2,11 @@ use std::borrow::Cow;
 
 use valence_nbt::Compound;
 
+use crate::game_mode::GameMode;
 use crate::ident::Ident;
-use crate::types::{GameMode, GlobalPos};
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
+use crate::packet::global_pos::GlobalPos;
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct GameJoinS2c<'a> {

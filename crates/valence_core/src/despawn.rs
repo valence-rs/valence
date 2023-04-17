@@ -15,11 +15,3 @@ use bevy_ecs::prelude::*;
 /// about. The entity will be despawned regardless.
 #[derive(Component, Copy, Clone, Default, PartialEq, Eq, Debug)]
 pub struct Despawned;
-
-/// Despawns all the entities marked as despawned with the [`Despawned`]
-/// component.
-pub(super) fn despawn_marked_entities(mut commands: Commands, entities: Query<Entity, With<Despawned>>) {
-    for entity in &entities {
-        commands.entity(entity).despawn();
-    }
-}

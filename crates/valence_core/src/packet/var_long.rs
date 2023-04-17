@@ -3,7 +3,7 @@ use std::io::Write;
 use anyhow::bail;
 use byteorder::ReadBytesExt;
 
-use crate::{Decode, Encode, Result};
+use crate::packet::{Decode, Encode};
 
 /// An `i64` encoded with variable length.
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -32,7 +32,7 @@ impl Encode for VarLong {
         any(target_arch = "x86", target_arch = "x86_64"),
         not(target_os = "macos")
     ))]
-    fn encode(&self, mut w: impl Write) -> Result<()> {
+    fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         #[cfg(target_arch = "x86")]
         use std::arch::x86::*;
         #[cfg(target_arch = "x86_64")]
@@ -81,7 +81,7 @@ impl Encode for VarLong {
         not(any(target_arch = "x86", target_arch = "x86_64")),
         target_os = "macos"
     ))]
-    fn encode(&self, mut w: impl Write) -> Result<()> {
+    fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         use byteorder::WriteBytesExt;
 
         let mut val = self.0 as u64;
@@ -97,7 +97,7 @@ impl Encode for VarLong {
 }
 
 impl Decode<'_> for VarLong {
-    fn decode(r: &mut &[u8]) -> Result<Self> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         let mut val = 0;
         for i in 0..Self::MAX_SIZE {
             let byte = r.read_u8()?;

@@ -11,7 +11,12 @@ use serde::de::Error as _;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 
-use crate::{nbt, Decode, Encode};
+use crate::packet::{Decode, Encode};
+
+#[doc(hidden)]
+pub mod __private {
+    pub use valence_core_macros::parse_ident_str;
+}
 
 /// A wrapper around a string type `S` which guarantees the wrapped string is a
 /// valid resource identifier.
@@ -27,6 +32,29 @@ use crate::{nbt, Decode, Encode};
 #[derive(Copy, Clone, Eq, Ord, Hash)]
 pub struct Ident<S> {
     string: S,
+}
+
+/// Creates a new [`Ident`] at compile time from a string literal. A compile
+/// error is raised if the string is not a valid resource identifier.
+///
+/// The type of the expression returned by this macro is `Ident<&'static str>`.
+///
+/// # Examples
+///
+/// ```
+/// # use valence_core::{ident, ident::Ident};
+///
+/// let my_ident: Ident<&'static str> = ident!("apple");
+///
+/// println!("{my_ident}");
+/// ```
+#[macro_export]
+macro_rules! ident {
+    ($string:literal) => {
+        $crate::ident::Ident::<&'static str>::new_unchecked(
+            $crate::ident::__private::parse_ident_str!($string),
+        )
+    };
 }
 
 /// The error type created when an [`Ident`] cannot be parsed from a
@@ -307,9 +335,9 @@ where
     }
 }
 
-impl<S> From<Ident<S>> for nbt::Value
+impl<S> From<Ident<S>> for valence_nbt::Value
 where
-    S: Into<nbt::Value>,
+    S: Into<valence_nbt::Value>,
 {
     fn from(value: Ident<S>) -> Self {
         value.into_inner().into()
@@ -341,7 +369,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ident;
 
     #[test]
     fn check_namespace_and_path() {

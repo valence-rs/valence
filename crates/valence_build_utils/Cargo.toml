@@ -1,5 +1,5 @@
 [package]
-name = "valence_macro_utils"
+name = "valence_build_utils"
 version.workspace = true
 edition.workspace = true
 

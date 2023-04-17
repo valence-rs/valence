@@ -1,6 +1,6 @@
 use uuid::Uuid;
 
-use crate::{Decode, Encode};
+use crate::packet::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct LoginHelloC2s<'a> {

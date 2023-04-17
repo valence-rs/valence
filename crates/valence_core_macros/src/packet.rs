@@ -23,12 +23,12 @@ pub fn derive_packet(item: TokenStream) -> Result<TokenStream> {
 
     add_trait_bounds(
         &mut input.generics,
-        quote!(::valence_protocol::__private::Encode),
+        quote!(::valence_core::__private::Encode),
     );
 
     add_trait_bounds(
         &mut input.generics,
-        quote!(::valence_protocol::__private::Decode<#lifetime>),
+        quote!(::valence_core::__private::Decode<#lifetime>),
     );
 
     add_trait_bounds(&mut input.generics, quote!(::std::fmt::Debug));
@@ -40,7 +40,7 @@ pub fn derive_packet(item: TokenStream) -> Result<TokenStream> {
     let name = input.ident;
 
     Ok(quote! {
-        impl #impl_generics ::valence_protocol::__private::Packet<#lifetime> for #name #ty_generics
+        impl #impl_generics ::valence_core::__private::Packet<#lifetime> for #name #ty_generics
         #where_clause
         {
             const PACKET_ID: i32 = #packet_id;
@@ -53,8 +53,8 @@ pub fn derive_packet(item: TokenStream) -> Result<TokenStream> {
                 #name_str
             }
 
-            fn encode_packet(&self, mut w: impl ::std::io::Write) -> ::valence_protocol::__private::Result<()> {
-                use ::valence_protocol::__private::{Encode, Context, VarInt};
+            fn encode_packet(&self, mut w: impl ::std::io::Write) -> ::valence_core::__private::Result<()> {
+                use ::valence_core::__private::{Encode, Context, VarInt};
 
                 VarInt(#packet_id)
                     .encode(&mut w)
@@ -63,11 +63,11 @@ pub fn derive_packet(item: TokenStream) -> Result<TokenStream> {
                 Encode::encode(self, w)
             }
 
-            fn decode_packet(r: &mut &#lifetime [u8]) -> ::valence_protocol::__private::Result<Self> {
-                use ::valence_protocol::__private::{Decode, Context, VarInt};
+            fn decode_packet(r: &mut &#lifetime [u8]) -> ::valence_core::__private::Result<Self> {
+                use ::valence_core::__private::{Decode, Context, VarInt};
 
                 let id = VarInt::decode(r).context("failed to decode packet ID")?.0;
-                ::valence_protocol::__private::ensure!(
+                ::valence_core::__private::ensure!(
                     id == #packet_id, "unexpected packet ID {} (expected {})", id, #packet_id
                 );
 

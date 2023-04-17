@@ -1,5 +1,5 @@
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
 pub struct RemoveEntityStatusEffectS2c {

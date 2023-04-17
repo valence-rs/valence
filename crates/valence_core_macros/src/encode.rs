@@ -12,7 +12,7 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
 
     add_trait_bounds(
         &mut input.generics,
-        quote!(::valence_protocol::__private::Encode),
+        quote!(::valence_core::__private::Encode),
     );
 
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
@@ -45,11 +45,11 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
 
             Ok(quote! {
                 #[allow(unused_imports)]
-                impl #impl_generics ::valence_protocol::__private::Encode for #input_name #ty_generics
+                impl #impl_generics ::valence_core::__private::Encode for #input_name #ty_generics
                 #where_clause
                 {
-                    fn encode(&self, mut _w: impl ::std::io::Write) -> ::valence_protocol::__private::Result<()> {
-                        use ::valence_protocol::__private::{Encode, Context};
+                    fn encode(&self, mut _w: impl ::std::io::Write) -> ::valence_core::__private::Result<()> {
+                        use ::valence_core::__private::{Encode, Context};
 
                         #encode_fields
 
@@ -143,11 +143,11 @@ pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
 
             Ok(quote! {
                 #[allow(unused_imports, unreachable_code)]
-                impl #impl_generics ::valence_protocol::Encode for #input_name #ty_generics
+                impl #impl_generics ::valence_core::__private::Encode for #input_name #ty_generics
                 #where_clause
                 {
-                    fn encode(&self, mut _w: impl ::std::io::Write) -> ::valence_protocol::__private::Result<()> {
-                        use ::valence_protocol::__private::{Encode, VarInt, Context};
+                    fn encode(&self, mut _w: impl ::std::io::Write) -> ::valence_core::__private::Result<()> {
+                        use ::valence_core::__private::{Encode, VarInt, Context};
 
                         match self {
                             #encode_arms

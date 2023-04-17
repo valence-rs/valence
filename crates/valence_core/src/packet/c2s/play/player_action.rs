@@ -1,7 +1,7 @@
 use crate::block_pos::BlockPos;
-use crate::types::Direction;
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
+use crate::direction::Direction;
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
 
 #[derive(Copy, Clone, Debug, Encode, Decode)]
 pub struct PlayerActionC2s {

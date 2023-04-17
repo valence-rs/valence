@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::{Decode, Encode};
+use crate::packet::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct ChatSuggestionsS2c<'a> {

@@ -5,7 +5,7 @@ use heck::{ToPascalCase, ToShoutySnakeCase, ToSnakeCase};
 use proc_macro2::TokenStream;
 use quote::quote;
 use serde::Deserialize;
-use valence_macro_utils::{rerun_if_changed, write_generated_file, ident};
+use valence_macro_utils::{ident, rerun_if_changed, write_generated_file};
 
 #[derive(Deserialize, Clone, Debug)]
 struct Entity {
@@ -515,25 +515,33 @@ fn build() -> anyhow::Result<TokenStream> {
         entity_animation: BTreeMap<String, u8>,
     }
 
-    let misc_entity_data: MiscEntityData = serde_json::from_str(include_str!("../../extracted/misc.json"))?;
+    let misc_entity_data: MiscEntityData =
+        serde_json::from_str(include_str!("../../extracted/misc.json"))?;
 
-    let entity_status_variants = misc_entity_data.entity_status.into_iter().map(|(name, code)| {
-        let name = ident(name);
-        let code = code as isize;
+    let entity_status_variants = misc_entity_data
+        .entity_status
+        .into_iter()
+        .map(|(name, code)| {
+            let name = ident(name);
+            let code = code as isize;
 
-        quote! {
-            #name = #code,
-        }
-    });
+            quote! {
+                #name = #code,
+            }
+        });
 
-    let entity_animation_variants = misc_entity_data.entity_animation.into_iter().map(|(name, code)| {
-        let name = ident(name);
-        let code = code as isize;
+    let entity_animation_variants =
+        misc_entity_data
+            .entity_animation
+            .into_iter()
+            .map(|(name, code)| {
+                let name = ident(name);
+                let code = code as isize;
 
-        quote! {
-            #name = #code,
-        }
-    });
+                quote! {
+                    #name = #code,
+                }
+            });
 
     Ok(quote! {
         #modules

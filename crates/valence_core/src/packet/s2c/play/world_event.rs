@@ -1,5 +1,5 @@
 use crate::block_pos::BlockPos;
-use crate::{Decode, Encode};
+use crate::packet::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct WorldEventS2c {

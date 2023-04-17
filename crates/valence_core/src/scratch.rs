@@ -1,3 +1,5 @@
+use bevy_ecs::prelude::*;
+
 /// General-purpose reusable byte buffer.
 ///
 /// No guarantees are made about the buffer's contents between systems.

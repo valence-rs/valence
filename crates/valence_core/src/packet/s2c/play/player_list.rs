@@ -4,10 +4,11 @@ use std::io::Write;
 use bitfield_struct::bitfield;
 use uuid::Uuid;
 
+use crate::game_mode::GameMode;
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
+use crate::property::Property;
 use crate::text::Text;
-use crate::types::{GameMode, Property};
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
 
 #[derive(Clone, Debug)]
 pub struct PlayerListS2c<'a> {

@@ -2,8 +2,8 @@ use std::io::Write;
 
 use anyhow::ensure;
 
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
 
 /// A fixed-size array encoded and decoded with a [`VarInt`] length prefix.
 ///

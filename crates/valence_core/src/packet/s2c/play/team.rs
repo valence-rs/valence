@@ -4,8 +4,8 @@ use std::io::Write;
 use anyhow::bail;
 use bitfield_struct::bitfield;
 
+use crate::packet::{Decode, Encode};
 use crate::text::Text;
-use crate::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct TeamS2c<'a> {

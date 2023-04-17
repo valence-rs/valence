@@ -143,4 +143,3 @@ impl Default for RegistryCodec {
         }
     }
 }
-

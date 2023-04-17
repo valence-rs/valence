@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use crate::ident::Ident;
-use crate::{Decode, Encode};
+use crate::packet::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct FeaturesS2c<'a> {

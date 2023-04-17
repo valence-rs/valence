@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 
+use crate::game_mode::GameMode;
 use crate::ident::Ident;
-use crate::types::{GameMode, GlobalPos};
-use crate::{Decode, Encode};
+use crate::packet::global_pos::GlobalPos;
+use crate::packet::{Decode, Encode};
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
 pub struct PlayerRespawnS2c<'a> {

@@ -3,10 +3,10 @@ use std::io::Write;
 
 use uuid::Uuid;
 
+use crate::packet::message_signature::MessageSignature;
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
 use crate::text::Text;
-use crate::types::MessageSignature;
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct ChatMessageS2c<'a> {

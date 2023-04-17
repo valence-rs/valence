@@ -3,7 +3,7 @@ use heck::ToShoutySnakeCase;
 use proc_macro2::TokenStream;
 use quote::quote;
 use serde::Deserialize;
-use valence_macro_utils::ident;
+use valence_build_utils::ident;
 
 #[derive(Deserialize, Clone, Debug)]
 struct Translation {

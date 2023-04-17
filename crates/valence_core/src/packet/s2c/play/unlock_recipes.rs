@@ -4,8 +4,8 @@ use std::io::Write;
 use anyhow::bail;
 
 use crate::ident::Ident;
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct UnlockRecipesS2c<'a> {

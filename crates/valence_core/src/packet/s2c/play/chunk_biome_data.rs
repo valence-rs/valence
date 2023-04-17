@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
-use crate::{Decode, Encode};
+use crate::chunk_pos::ChunkPos;
+use crate::packet::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct ChunkBiomeDataS2c<'a> {
@@ -9,8 +10,7 @@ pub struct ChunkBiomeDataS2c<'a> {
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct ChunkBiome<'a> {
-    pub chunk_x: i32,
-    pub chunk_z: i32,
+    pub pos: ChunkPos,
     /// Chunk data structure, with sections containing only the `Biomes` field.
     pub data: &'a [u8],
 }

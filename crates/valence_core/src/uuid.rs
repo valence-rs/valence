@@ -1,3 +1,4 @@
+use bevy_ecs::prelude::*;
 use uuid::Uuid;
 
 /// The universally unique identifier of an entity. Component wrapper for a
@@ -14,4 +15,3 @@ impl Default for UniqueId {
         Self(Uuid::from_bytes(rand::random()))
     }
 }
-

@@ -1,7 +1,7 @@
 use std::f32::consts::TAU;
 use std::io::Write;
 
-use crate::{Decode, Encode, Result};
+use crate::packet::{Decode, Encode};
 
 /// Represents an angle in steps of 1/256 of a full turn.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -26,13 +26,13 @@ impl ByteAngle {
 }
 
 impl Encode for ByteAngle {
-    fn encode(&self, w: impl Write) -> Result<()> {
+    fn encode(&self, w: impl Write) -> anyhow::Result<()> {
         self.0.encode(w)
     }
 }
 
 impl Decode<'_> for ByteAngle {
-    fn decode(r: &mut &[u8]) -> Result<Self> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         u8::decode(r).map(ByteAngle)
     }
 }

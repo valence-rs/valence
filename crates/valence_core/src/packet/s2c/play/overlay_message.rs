@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
+use crate::packet::{Decode, Encode};
 use crate::text::Text;
-use crate::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct OverlayMessageS2c<'a> {

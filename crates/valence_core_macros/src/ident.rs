@@ -14,7 +14,7 @@ fn check_path(s: &str) -> bool {
             .all(|c| matches!(c, 'a'..='z' | '0'..='9' | '_' | '.' | '-' | '/'))
 }
 
-pub fn ident(item: TokenStream) -> Result<TokenStream> {
+pub fn parse_ident_str(item: TokenStream) -> Result<TokenStream> {
     let ident_lit: LitStr = parse2(item)?;
     let mut ident = ident_lit.value();
 
@@ -31,7 +31,5 @@ pub fn ident(item: TokenStream) -> Result<TokenStream> {
         }
     }
 
-    Ok(quote! {
-        ::valence_protocol::ident::Ident::new_unchecked(#ident)
-    })
+    Ok(quote!(#ident))
 }

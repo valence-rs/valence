@@ -1,8 +1,8 @@
 use bitfield_struct::bitfield;
 use valence_nbt::Compound;
 
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct EntityStatusEffectS2c {

@@ -5,13 +5,13 @@ use anyhow::{bail, ensure};
 
 use crate::ident::Ident;
 use crate::item::ItemStack;
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct SynchronizeRecipesS2c<'a> {
     // TODO: this should be a Vec<Recipe<'a>>
-    pub recipes: crate::raw::RawBytes<'a>,
+    pub recipes: crate::packet::raw::RawBytes<'a>,
 }
 
 #[derive(Clone, PartialEq, Debug)]

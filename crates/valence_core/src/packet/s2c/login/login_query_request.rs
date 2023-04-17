@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 
 use crate::ident::Ident;
-use crate::raw::RawBytes;
-use crate::var_int::VarInt;
-use crate::{Decode, Encode};
+use crate::packet::raw::RawBytes;
+use crate::packet::var_int::VarInt;
+use crate::packet::{Decode, Encode};
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct LoginQueryRequestS2c<'a> {

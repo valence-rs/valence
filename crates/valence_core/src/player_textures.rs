@@ -4,7 +4,8 @@ use anyhow::Context;
 use base64::prelude::*;
 use serde::Deserialize;
 use url::Url;
-use valence_protocol::types::Property;
+
+use crate::property::Property;
 
 /// Contains URLs to the skin and cape of a player.
 #[derive(Clone, PartialEq, Eq, Debug)]
