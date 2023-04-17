@@ -6,6 +6,11 @@ use std::io::Write;
 use std::iter::FusedIterator;
 
 use anyhow::Context;
+use valence_core::ident::Ident;
+use valence_core::ident;
+use valence_core::item::ItemKind;
+use valence_core::packet::var_int::VarInt;
+use valence_core::packet::{Decode, Encode};
 
 include!(concat!(env!("OUT_DIR"), "/block.rs"));
 
@@ -48,13 +53,13 @@ fn fmt_block_state(bs: BlockState, f: &mut fmt::Formatter) -> fmt::Result {
 }
 
 impl Encode for BlockState {
-    fn encode(&self, w: impl Write) -> Result<()> {
+    fn encode(&self, w: impl Write) -> anyhow::Result<()> {
         VarInt(self.to_raw() as i32).encode(w)
     }
 }
 
 impl Decode<'_> for BlockState {
-    fn decode(r: &mut &[u8]) -> Result<Self> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         let id = VarInt::decode(r)?.0;
         let errmsg = "invalid block state ID";
 
@@ -63,13 +68,13 @@ impl Decode<'_> for BlockState {
 }
 
 impl Encode for BlockKind {
-    fn encode(&self, w: impl Write) -> Result<()> {
+    fn encode(&self, w: impl Write) -> anyhow::Result<()> {
         VarInt(self.to_raw() as i32).encode(w)
     }
 }
 
 impl Decode<'_> for BlockKind {
-    fn decode(r: &mut &[u8]) -> Result<Self> {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
         let id = VarInt::decode(r)?.0;
         let errmsg = "invalid block kind ID";
 

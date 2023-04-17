@@ -5,7 +5,7 @@ use heck::{ToPascalCase, ToShoutySnakeCase, ToSnakeCase};
 use proc_macro2::TokenStream;
 use quote::quote;
 use serde::Deserialize;
-use valence_macro_utils::{ident, rerun_if_changed, write_generated_file};
+use valence_build_utils::{ident, rerun_if_changed, write_generated_file};
 
 #[derive(Deserialize, Clone, Debug)]
 struct Entity {

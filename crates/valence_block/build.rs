@@ -4,7 +4,7 @@ use heck::{ToPascalCase, ToShoutySnakeCase};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use serde::Deserialize;
-use valence_macro_utils::{ident, rerun_if_changed, write_generated_file};
+use valence_build_utils::{ident, rerun_if_changed, write_generated_file};
 
 #[derive(Deserialize, Clone, Debug)]
 struct TopLevel {
@@ -953,13 +953,13 @@ fn build() -> anyhow::Result<TokenStream> {
         }
 
         impl Encode for BlockEntityKind {
-            fn encode(&self, w: impl Write) -> Result<()> {
+            fn encode(&self, w: impl Write) -> anyhow::Result<()> {
                 VarInt(self.id() as i32).encode(w)
             }
         }
 
         impl<'a> Decode<'a> for BlockEntityKind {
-            fn decode(r: &mut &'a [u8]) -> Result<Self> {
+            fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
                 let id = VarInt::decode(r)?;
                 Self::from_id(id.0 as u32).with_context(|| format!("id {}", id.0))
             }
