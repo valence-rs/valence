@@ -1,3 +1,4 @@
+use glam::DVec3;
 use uuid::Uuid;
 
 use crate::packet::byte_angle::ByteAngle;
@@ -9,7 +10,7 @@ pub struct EntitySpawnS2c {
     pub entity_id: VarInt,
     pub object_uuid: Uuid,
     pub kind: VarInt,
-    pub position: [f64; 3],
+    pub position: DVec3,
     pub pitch: ByteAngle,
     pub yaw: ByteAngle,
     pub head_yaw: ByteAngle,

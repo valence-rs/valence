@@ -1,3 +1,5 @@
+use glam::Vec3;
+
 use crate::block_pos::BlockPos;
 use crate::direction::Direction;
 use crate::hand::Hand;
@@ -9,7 +11,7 @@ pub struct PlayerInteractBlockC2s {
     pub hand: Hand,
     pub position: BlockPos,
     pub face: Direction,
-    pub cursor_pos: [f32; 3],
+    pub cursor_pos: Vec3,
     pub head_inside_block: bool,
     pub sequence: VarInt,
 }

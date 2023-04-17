@@ -259,6 +259,24 @@ impl Decode<'_> for Vec3A {
     }
 }
 
+impl Encode for IVec3 {
+    fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
+        self.x.encode(&mut w)?;
+        self.y.encode(&mut w)?;
+        self.z.encode(w)
+    }
+}
+
+impl Decode<'_> for IVec3 {
+    fn decode(r: &mut &[u8]) -> anyhow::Result<Self> {
+        Ok(Self {
+            x: i32::decode(r)?,
+            y: i32::decode(r)?,
+            z: i32::decode(r)?,
+        })
+    }
+}
+
 impl Encode for Vec4 {
     fn encode(&self, mut w: impl Write) -> Result<()> {
         self.x.encode(&mut w)?;

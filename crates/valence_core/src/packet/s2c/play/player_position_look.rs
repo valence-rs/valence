@@ -1,11 +1,12 @@
 use bitfield_struct::bitfield;
+use glam::DVec3;
 
 use crate::packet::var_int::VarInt;
 use crate::packet::{Decode, Encode};
 
 #[derive(Copy, Clone, PartialEq, Debug, Encode, Decode)]
 pub struct PlayerPositionLookS2c {
-    pub position: [f64; 3],
+    pub position: DVec3,
     pub yaw: f32,
     pub pitch: f32,
     pub flags: Flags,

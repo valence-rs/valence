@@ -1,10 +1,12 @@
+use glam::DVec3;
+
 use crate::packet::var_int::VarInt;
 use crate::packet::{Decode, Encode};
 
 #[derive(Copy, Clone, PartialEq, Debug, Encode, Decode)]
 pub struct LookAtS2c {
     pub feet_or_eyes: FeetOrEyes,
-    pub target_position: [f64; 3],
+    pub target_position: DVec3,
     pub entity_to_face: Option<LookAtEntity>,
 }
 

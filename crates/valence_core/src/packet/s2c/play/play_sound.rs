@@ -1,6 +1,8 @@
 use std::borrow::Cow;
 use std::io::Write;
 
+use glam::IVec3;
+
 use crate::ident::Ident;
 use crate::packet::var_int::VarInt;
 use crate::packet::{Decode, Encode};
@@ -10,7 +12,7 @@ use crate::sound::SoundCategory;
 pub struct PlaySoundS2c<'a> {
     pub id: SoundId<'a>,
     pub category: SoundCategory,
-    pub position: [i32; 3],
+    pub position: IVec3,
     pub volume: f32,
     pub pitch: f32,
     pub seed: i64,

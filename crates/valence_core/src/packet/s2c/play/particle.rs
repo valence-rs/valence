@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::io::Write;
 
 use anyhow::bail;
+use glam::{DVec3, Vec3};
 
 use crate::block_pos::BlockPos;
 use crate::item::ItemStack;
@@ -12,8 +13,8 @@ use crate::packet::{Decode, Encode};
 pub struct ParticleS2c<'a> {
     pub particle: Cow<'a, Particle>,
     pub long_distance: bool,
-    pub position: [f64; 3],
-    pub offset: [f32; 3],
+    pub position: DVec3,
+    pub offset: Vec3,
     pub max_speed: f32,
     pub count: i32,
 }
@@ -35,13 +36,13 @@ pub enum Particle {
     DrippingWater,
     FallingWater,
     Dust {
-        rgb: [f32; 3],
+        rgb: Vec3,
         scale: f32,
     },
     DustColorTransition {
-        from_rgb: [f32; 3],
+        from_rgb: Vec3,
         scale: f32,
-        to_rgb: [f32; 3],
+        to_rgb: Vec3,
     },
     Effect,
     ElderGuardian,
@@ -260,13 +261,13 @@ impl Particle {
             12 => Particle::DrippingWater,
             13 => Particle::FallingWater,
             14 => Particle::Dust {
-                rgb: <[f32; 3]>::decode(r)?,
-                scale: f32::decode(r)?,
+                rgb: Decode::decode(r)?,
+                scale: Decode::decode(r)?,
             },
             15 => Particle::DustColorTransition {
-                from_rgb: <[f32; 3]>::decode(r)?,
-                scale: f32::decode(r)?,
-                to_rgb: <[f32; 3]>::decode(r)?,
+                from_rgb: Decode::decode(r)?,
+                scale: Decode::decode(r)?,
+                to_rgb: Decode::decode(r)?,
             },
             16 => Particle::Effect,
             17 => Particle::ElderGuardian,
@@ -385,8 +386,8 @@ impl<'a> Decode<'a> for ParticleS2c<'a> {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
         let particle_id = VarInt::decode(r)?.0;
         let long_distance = bool::decode(r)?;
-        let position = <[f64; 3]>::decode(r)?;
-        let offset = <[f32; 3]>::decode(r)?;
+        let position = Decode::decode(r)?;
+        let offset = Decode::decode(r)?;
         let max_speed = f32::decode(r)?;
         let particle_count = i32::decode(r)?;
 

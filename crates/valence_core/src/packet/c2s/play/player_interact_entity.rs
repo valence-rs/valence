@@ -1,3 +1,5 @@
+use glam::Vec3;
+
 use crate::hand::Hand;
 use crate::packet::var_int::VarInt;
 use crate::packet::{Decode, Encode};
@@ -13,5 +15,5 @@ pub struct PlayerInteractEntityC2s {
 pub enum EntityInteraction {
     Interact(Hand),
     Attack,
-    InteractAt { target: [f32; 3], hand: Hand },
+    InteractAt { target: Vec3, hand: Hand },
 }

@@ -1,3 +1,4 @@
+use glam::DVec3;
 use uuid::Uuid;
 
 use crate::packet::byte_angle::ByteAngle;
@@ -8,7 +9,7 @@ use crate::packet::{Decode, Encode};
 pub struct PlayerSpawnS2c {
     pub entity_id: VarInt,
     pub player_uuid: Uuid,
-    pub position: [f64; 3],
+    pub position: DVec3,
     pub yaw: ByteAngle,
     pub pitch: ByteAngle,
 }

@@ -1,3 +1,5 @@
+use glam::DVec3;
+
 use crate::packet::var_int::VarInt;
 use crate::packet::{Decode, Encode};
 
@@ -19,5 +21,5 @@ pub struct EntityDamageS2c {
     pub source_direct_id: VarInt,
     /// The Notchian server sends the Source Position when the damage was dealt
     /// by the /damage command and a position was specified
-    pub source_pos: Option<[f64; 3]>,
+    pub source_pos: Option<DVec3>,
 }
