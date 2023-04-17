@@ -1,11 +1,12 @@
 use std::collections::BTreeMap;
 
-use bevy_app::{CoreSet, Plugin};
+use bevy_app::prelude::*;
 pub use bevy_ecs::prelude::*;
 use tracing::error;
 use valence_nbt::{compound, Compound, List, Value};
-use valence_protocol::ident::Ident;
+use valence_core::ident::Ident;
 
+#[doc(hidden)]
 pub struct RegistryCodecPlugin;
 
 /// The [`SystemSet`] where the [`RegistryCodec`] cache is rebuilt. Systems that

@@ -83,7 +83,7 @@ valence_inventory.path = "crates/valence_inventory"
 valence_nbt.path = "crates/valence_nbt"
 valence_network.path = "crates/valence_network"
 valence_player_list.path = "crates/valence_player_list"
-valence_registry_codec.path = "crates/valence_registry_codec"
+valence_registry.path = "crates/valence_registry"
 valence.path = "crates/valence"
 zip = "0.6.3"
 
