@@ -168,12 +168,6 @@ impl Default for ServerSettings {
     }
 }
 
-/// Minecraft's standard ticks per second (TPS).
-pub const DEFAULT_TPS: NonZeroU32 = match NonZeroU32::new(20) {
-    Some(n) => n,
-    None => unreachable!(),
-};
-
 /// Contains global server state accessible as a [`Resource`].
 #[derive(Resource)]
 pub struct Server {

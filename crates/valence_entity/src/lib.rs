@@ -3,22 +3,18 @@ use std::ops::Range;
 
 use bevy_app::{App, CoreSet, Plugin};
 use bevy_ecs::prelude::*;
-use glam::Vec3;
+use glam::{DVec3, Vec3};
 use paste::paste;
 use rustc_hash::FxHashMap;
 use tracing::warn;
 use uuid::Uuid;
-pub use valence_protocol::types::Direction;
-use valence_protocol::var_int::VarInt;
-use valence_protocol::{Decode, Encode};
+use valence_core::chunk_pos::ChunkPos;
+use valence_core::despawn::Despawned;
+use valence_core::packet::var_int::VarInt;
+use valence_core::packet::{Decode, Encode};
+use valence_core::uuid::UniqueId;
+use valence_core::DEFAULT_TPS;
 
-use crate::client::FlushPacketsSet;
-use crate::component::{
-    Despawned, Location, Look, OldLocation, OldPosition, OnGround, Position, UniqueId,
-};
-use crate::instance::WriteUpdatePacketsToInstancesSet;
-
-include!(concat!(env!("OUT_DIR"), "/entity_event.rs"));
 include!(concat!(env!("OUT_DIR"), "/entity.rs"));
 
 pub struct EntityPlugin;
@@ -29,26 +25,33 @@ pub struct EntityPlugin;
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct InitEntitiesSet;
 
+/// When entities are updated and changes from the current tick are cleared.
+/// Systems that need to observe changes to entities (Such as the difference
+/// between [`Position`] and [`OldPosition`]) should run _before_ this set.
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct UpdateEntitiesSet;
+
 impl Plugin for EntityPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(EntityManager::new())
-            .configure_set(InitEntitiesSet.in_base_set(CoreSet::PostUpdate))
+            .configure_sets((
+                InitEntitiesSet.in_base_set(CoreSet::PostUpdate),
+                UpdateEntitiesSet
+                    .after(InitEntitiesSet)
+                    .in_base_set(CoreSet::PostUpdate),
+            ))
             .add_system(init_entities.in_set(InitEntitiesSet))
-            .add_system(
-                remove_despawned_from_manager
-                    .in_base_set(CoreSet::PostUpdate)
-                    .after(init_entities),
-            )
             .add_systems(
-                (clear_status_changes, clear_animation_changes)
-                    .after(WriteUpdatePacketsToInstancesSet)
-                    .in_base_set(CoreSet::PostUpdate),
+                (
+                    clear_status_changes,
+                    clear_animation_changes,
+                    clear_tracked_data_changes,
+                    update_old_position,
+                    update_old_location,
+                )
+                    .in_set(UpdateEntitiesSet),
             )
-            .add_system(
-                clear_tracked_data_changes
-                    .after(FlushPacketsSet)
-                    .in_base_set(CoreSet::PostUpdate),
-            );
+            .add_system(remove_despawned_from_manager.after(InitEntitiesSet));
 
         add_tracked_data_systems(app);
     }
@@ -132,10 +135,8 @@ fn clear_tracked_data_changes(mut tracked_data: Query<&mut TrackedData, Changed<
     }
 }
 
-/// Contains the [`Instance`] an entity is located in. For the coordinates
+/// Contains the `Instance` an entity is located in. For the coordinates
 /// within the instance, see [`Position`].
-///
-/// [`Instance`]: crate::instance::Instance
 #[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
 pub struct Location(pub Entity);
 
@@ -307,7 +308,7 @@ pub struct Velocity(pub Vec3);
 impl Velocity {
     pub fn to_packet_units(self) -> [i16; 3] {
         // The saturating casts to i16 are desirable.
-        (8000.0 / DEFAULT_TPS.get() as f32 * vel)
+        (8000.0 / DEFAULT_TPS.get() as f32 * self.0)
             .to_array()
             .map(|v| v as i16)
     }

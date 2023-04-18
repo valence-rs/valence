@@ -15,6 +15,8 @@
 )]
 #![allow(clippy::unusual_byte_groupings)]
 
+use std::num::NonZeroU32;
+
 /// Used only by macros. Not public API.
 #[doc(hidden)]
 pub mod __private {
@@ -33,6 +35,12 @@ pub const PROTOCOL_VERSION: i32 = 762;
 /// The stringified name of the Minecraft version this library currently
 /// targets.
 pub const MINECRAFT_VERSION: &str = "1.19.4";
+
+/// Minecraft's standard ticks per second (TPS).
+pub const DEFAULT_TPS: NonZeroU32 = match NonZeroU32::new(20) {
+    Some(n) => n,
+    None => unreachable!(),
+};
 
 pub mod aabb;
 pub mod block_pos;

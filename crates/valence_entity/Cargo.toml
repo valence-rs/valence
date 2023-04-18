@@ -4,7 +4,17 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+anyhow.workspace = true
+uuid.workspace = true
+tracing.workspace = true
+rustc-hash.workspace = true
+paste.workspace = true
+glam.workspace = true
+bevy_app.workspace = true
+bevy_ecs.workspace = true
 valence_core.workspace = true
+valence_block.workspace = true
+valence_nbt.workspace = true
 
 [build-dependencies]
 anyhow.workspace = true

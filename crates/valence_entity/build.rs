@@ -128,29 +128,29 @@ impl Value {
             Value::Long(_) => quote!(i64),
             Value::Float(_) => quote!(f32),
             Value::String(_) => quote!(String),
-            Value::TextComponent(_) => quote!(crate::protocol::text::Text),
-            Value::OptionalTextComponent(_) => quote!(Option<crate::protocol::text::Text>),
-            Value::ItemStack(_) => quote!(crate::protocol::item::ItemStack),
+            Value::TextComponent(_) => quote!(valence_core::text::Text),
+            Value::OptionalTextComponent(_) => quote!(Option<valence_core::text::Text>),
+            Value::ItemStack(_) => quote!(valence_core::item::ItemStack),
             Value::Boolean(_) => quote!(bool),
-            Value::Rotation { .. } => quote!(crate::entity::EulerAngle),
-            Value::BlockPos(_) => quote!(crate::protocol::block_pos::BlockPos),
-            Value::OptionalBlockPos(_) => quote!(Option<crate::protocol::block_pos::BlockPos>),
-            Value::Facing(_) => quote!(crate::protocol::types::Direction),
+            Value::Rotation { .. } => quote!(crate::EulerAngle),
+            Value::BlockPos(_) => quote!(valence_core::block_pos::BlockPos),
+            Value::OptionalBlockPos(_) => quote!(Option<valence_core::block_pos::BlockPos>),
+            Value::Facing(_) => quote!(valence_core::direction::Direction),
             Value::OptionalUuid(_) => quote!(Option<::uuid::Uuid>),
-            Value::BlockState(_) => quote!(crate::protocol::block::BlockState),
-            Value::OptionalBlockState(_) => quote!(crate::protocol::block::BlockState),
-            Value::NbtCompound(_) => quote!(crate::nbt::Compound),
-            Value::Particle(_) => quote!(crate::protocol::packet::s2c::play::particle::Particle),
-            Value::VillagerData { .. } => quote!(crate::entity::VillagerData),
+            Value::BlockState(_) => quote!(valence_block::BlockState),
+            Value::OptionalBlockState(_) => quote!(valence_block::BlockState),
+            Value::NbtCompound(_) => quote!(valence_nbt::Compound),
+            Value::Particle(_) => quote!(valence_core::packet::s2c::play::particle::Particle),
+            Value::VillagerData { .. } => quote!(crate::VillagerData),
             Value::OptionalInt(_) => quote!(Option<i32>),
-            Value::EntityPose(_) => quote!(crate::entity::Pose),
-            Value::CatVariant(_) => quote!(crate::entity::CatKind),
-            Value::FrogVariant(_) => quote!(crate::entity::FrogKind),
+            Value::EntityPose(_) => quote!(crate::Pose),
+            Value::CatVariant(_) => quote!(crate::CatKind),
+            Value::FrogVariant(_) => quote!(crate::FrogKind),
             Value::OptionalGlobalPos(_) => quote!(()), // TODO
-            Value::PaintingVariant(_) => quote!(crate::entity::PaintingKind),
-            Value::SnifferState(_) => quote!(crate::entity::SnifferState),
-            Value::Vector3f { .. } => quote!(::glam::f32::Vec3),
-            Value::Quaternionf { .. } => quote!(::glam::f32::Quat),
+            Value::PaintingVariant(_) => quote!(crate::PaintingKind),
+            Value::SnifferState(_) => quote!(crate::SnifferState),
+            Value::Vector3f { .. } => quote!(glam::f32::Vec3),
+            Value::Quaternionf { .. } => quote!(glam::f32::Quat),
         }
     }
 
@@ -163,7 +163,7 @@ impl Value {
             Value::String(s) => quote!(#s.to_owned()),
             Value::TextComponent(txt) => {
                 assert!(txt.is_empty());
-                quote!(crate::protocol::text::Text::default())
+                quote!(valence_core::text::Text::default())
             }
             Value::OptionalTextComponent(t) => {
                 assert!(t.is_none());
@@ -171,18 +171,18 @@ impl Value {
             }
             Value::ItemStack(stack) => {
                 assert_eq!(stack, "1 air");
-                quote!(crate::protocol::item::ItemStack::default())
+                quote!(valence_core::item::ItemStack::default())
             }
             Value::Boolean(b) => quote!(#b),
             Value::Rotation { pitch, yaw, roll } => quote! {
-                crate::entity::EulerAngle {
+                crate::EulerAngle {
                     pitch: #pitch,
                     yaw: #yaw,
                     roll: #roll,
                 }
             },
             Value::BlockPos(BlockPos { x, y, z }) => {
-                quote!(crate::protocol::block_pos::BlockPos { x: #x, y: #y, z: #z })
+                quote!(valence_core::block_pos::BlockPos { x: #x, y: #y, z: #z })
             }
             Value::OptionalBlockPos(pos) => {
                 assert!(pos.is_none());
@@ -190,26 +190,26 @@ impl Value {
             }
             Value::Facing(f) => {
                 let variant = ident(f.to_pascal_case());
-                quote!(crate::protocol::types::Direction::#variant)
+                quote!(valence_core::direction::Direction::#variant)
             }
             Value::OptionalUuid(uuid) => {
                 assert!(uuid.is_none());
                 quote!(None)
             }
             Value::BlockState(_) => {
-                quote!(crate::protocol::block::BlockState::default())
+                quote!(valence_block::BlockState::default())
             }
             Value::OptionalBlockState(bs) => {
                 assert!(bs.is_none());
-                quote!(crate::protocol::block::BlockState::default())
+                quote!(valence_block::BlockState::default())
             }
             Value::NbtCompound(s) => {
                 assert_eq!(s, "{}");
-                quote!(crate::nbt::Compound::default())
+                quote!(valence_nbt::Compound::default())
             }
             Value::Particle(p) => {
                 let variant = ident(p.to_pascal_case());
-                quote!(crate::protocol::packet::s2c::play::particle::Particle::#variant)
+                quote!(valence_core::packet::s2c::play::particle::Particle::#variant)
             }
             Value::VillagerData {
                 typ,
@@ -219,9 +219,9 @@ impl Value {
                 let typ = ident(typ.to_pascal_case());
                 let profession = ident(profession.to_pascal_case());
                 quote! {
-                    crate::entity::VillagerData {
-                        kind: crate::entity::VillagerKind::#typ,
-                        profession: crate::entity::VillagerProfession::#profession,
+                    crate::VillagerData {
+                        kind: crate::VillagerKind::#typ,
+                        profession: crate::VillagerProfession::#profession,
                         level: #level,
                     }
                 }
@@ -232,28 +232,28 @@ impl Value {
             }
             Value::EntityPose(p) => {
                 let variant = ident(p.to_pascal_case());
-                quote!(crate::entity::Pose::#variant)
+                quote!(crate::Pose::#variant)
             }
             Value::CatVariant(c) => {
                 let variant = ident(c.to_pascal_case());
-                quote!(crate::entity::CatKind::#variant)
+                quote!(crate::CatKind::#variant)
             }
             Value::FrogVariant(f) => {
                 let variant = ident(f.to_pascal_case());
-                quote!(crate::entity::FrogKind::#variant)
+                quote!(crate::FrogKind::#variant)
             }
             Value::OptionalGlobalPos(_) => quote!(()),
             Value::PaintingVariant(p) => {
                 let variant = ident(p.to_pascal_case());
-                quote!(crate::entity::PaintingKind::#variant)
+                quote!(crate::PaintingKind::#variant)
             }
             Value::SnifferState(s) => {
                 let state = ident(s.to_pascal_case());
-                quote!(crate::entity::SnifferState::#state)
+                quote!(crate::SnifferState::#state)
             }
-            Value::Vector3f { x, y, z } => quote!(::glam::f32::Vec3::new(#x, #y, #z)),
+            Value::Vector3f { x, y, z } => quote!(glam::f32::Vec3::new(#x, #y, #z)),
             Value::Quaternionf { x, y, z, w } => quote! {
-                ::glam::f32::Quat::from_xyzw(#x, #y, #z, #w)
+                glam::f32::Quat::from_xyzw(#x, #y, #z, #w)
             },
         }
     }
@@ -522,7 +522,7 @@ fn build() -> anyhow::Result<TokenStream> {
         .entity_status
         .into_iter()
         .map(|(name, code)| {
-            let name = ident(name);
+            let name = ident(name.to_pascal_case());
             let code = code as isize;
 
             quote! {
@@ -535,7 +535,7 @@ fn build() -> anyhow::Result<TokenStream> {
             .entity_animation
             .into_iter()
             .map(|(name, code)| {
-                let name = ident(name);
+                let name = ident(name.to_pascal_case());
                 let code = code as isize;
 
                 quote! {
@@ -595,7 +595,7 @@ fn build() -> anyhow::Result<TokenStream> {
 
             #(
                 app.add_system(
-                    #system_names.before(WriteUpdatePacketsToInstancesSet).in_base_set(CoreSet::PostUpdate)
+                    #system_names.in_set(UpdateEntitiesSet)
                 );
             )*
         }
