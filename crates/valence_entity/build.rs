@@ -595,7 +595,7 @@ fn build() -> anyhow::Result<TokenStream> {
 
             #(
                 app.add_system(
-                    #system_names.in_set(UpdateEntitiesSet)
+                    #system_names.in_set(InitEntitiesSet)
                 );
             )*
         }

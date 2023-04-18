@@ -11,6 +11,7 @@ compression =  ["dep:flate2"]
 [dependencies]
 aes = { workspace = true, optional = true }
 anyhow.workspace = true
+bevy_app.workspace = true
 bevy_ecs.workspace = true
 bitfield-struct.workspace = true
 byteorder.workspace = true

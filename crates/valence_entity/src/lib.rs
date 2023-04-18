@@ -20,27 +20,35 @@ include!(concat!(env!("OUT_DIR"), "/entity.rs"));
 pub struct EntityPlugin;
 
 /// When new Minecraft entities are initialized and added to
-/// [`EntityManager`]. Systems that need all Minecraft entities to be in a
-/// valid state should run after this.
+/// [`EntityManager`]. Also when tracked data changes are written to
+/// [`TrackedData`].
+///
+/// Systems that need Minecraft entities to be in a valid state should run
+/// _after_ this set.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct InitEntitiesSet;
 
 /// When entities are updated and changes from the current tick are cleared.
 /// Systems that need to observe changes to entities (Such as the difference
-/// between [`Position`] and [`OldPosition`]) should run _before_ this set.
+/// between [`Position`] and [`OldPosition`]) should run _before_ this set (and
+/// probably after [`InitEntitiesSet`]).
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct UpdateEntitiesSet;
+pub struct ClearEntityChangesSet;
 
 impl Plugin for EntityPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(EntityManager::new())
             .configure_sets((
                 InitEntitiesSet.in_base_set(CoreSet::PostUpdate),
-                UpdateEntitiesSet
+                ClearEntityChangesSet
                     .after(InitEntitiesSet)
                     .in_base_set(CoreSet::PostUpdate),
             ))
-            .add_system(init_entities.in_set(InitEntitiesSet))
+            .add_systems(
+                (init_entities, remove_despawned_from_manager)
+                    .chain()
+                    .in_set(InitEntitiesSet),
+            )
             .add_systems(
                 (
                     clear_status_changes,
@@ -49,9 +57,8 @@ impl Plugin for EntityPlugin {
                     update_old_position,
                     update_old_location,
                 )
-                    .in_set(UpdateEntitiesSet),
-            )
-            .add_system(remove_despawned_from_manager.after(InitEntitiesSet));
+                    .in_set(ClearEntityChangesSet),
+            );
 
         add_tracked_data_systems(app);
     }
@@ -364,7 +371,7 @@ pub struct ObjectData(pub i32);
 /// The range of packet bytes for this entity within the cell the entity is
 /// located in. For internal use only.
 #[derive(Component, Default, Debug)]
-pub struct PacketByteRange(pub(crate) Range<usize>);
+pub struct PacketByteRange(pub Range<usize>);
 
 /// Cache for all the tracked data of an entity. Used for the
 /// [`EntityTrackerUpdateS2c`][packet] packet.

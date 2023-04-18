@@ -3,25 +3,23 @@ use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::atomic::{AtomicBool, Ordering};
 
-// Using nonstandard mutex to avoid poisoning API.
-use parking_lot::Mutex;
-use valence_nbt::{compound, Compound};
-use valence_protocol::block::{BlockEntityKind, BlockState};
-use valence_protocol::block_pos::BlockPos;
-use valence_protocol::packet::s2c::play::chunk_data::ChunkDataBlockEntity;
-use valence_protocol::packet::s2c::play::{
+use parking_lot::Mutex; // Using nonstandard mutex to avoid poisoning API.
+use valence_biome::BiomeId;
+use valence_block::{BlockEntityKind, BlockState};
+use valence_core::block_pos::BlockPos;
+use valence_core::chunk_pos::ChunkPos;
+use valence_core::packet::encode::{PacketWriter, WritePacket};
+use valence_core::packet::s2c::play::chunk_data::ChunkDataBlockEntity;
+use valence_core::packet::s2c::play::{
     BlockEntityUpdateS2c, BlockUpdateS2c, ChunkDataS2c, ChunkDeltaUpdateS2c,
 };
-use valence_protocol::var_int::VarInt;
-use valence_protocol::var_long::VarLong;
-use valence_protocol::Encode;
+use valence_core::packet::var_int::VarInt;
+use valence_core::packet::var_long::VarLong;
+use valence_core::packet::Encode;
+use valence_nbt::{compound, Compound};
 
-use crate::biome::BiomeId;
-use crate::instance::paletted_container::PalettedContainer;
-use crate::instance::InstanceInfo;
-use crate::packet::{PacketWriter, WritePacket};
-use crate::util::bit_width;
-use crate::view::ChunkPos;
+use crate::paletted_container::PalettedContainer;
+use crate::{bit_width, InstanceInfo};
 
 /// A chunk is a 16x16-meter segment of a world with a variable height. Chunks
 /// primarily contain blocks, biomes, and block entities.
@@ -300,7 +298,8 @@ impl Chunk<true> {
     }
 
     /// Marks this chunk as being seen by a client.
-    pub(crate) fn mark_viewed(&self) {
+    #[doc(hidden)]
+    pub fn mark_viewed(&self) {
         self.viewed.store(true, Ordering::Relaxed);
     }
 
@@ -378,7 +377,7 @@ impl Chunk<true> {
 
                 writer.write_packet(&BlockEntityUpdateS2c {
                     position: BlockPos::new(global_x, global_y, global_z),
-                    kind: block_entity.kind,
+                    kind: VarInt(block_entity.kind as i32),
                     data: Cow::Borrowed(&block_entity.nbt),
                 })
             }
@@ -442,7 +441,7 @@ impl Chunk<true> {
                     ChunkDataBlockEntity {
                         packed_xz: ((x << 4) | z) as i8,
                         y,
-                        kind: block_entity.kind,
+                        kind: VarInt(block_entity.kind as i32),
                         data: Cow::Borrowed(&block_entity.nbt),
                     }
                 })
@@ -453,8 +452,7 @@ impl Chunk<true> {
             };
 
             writer.write_packet(&ChunkDataS2c {
-                chunk_x: pos.x,
-                chunk_z: pos.z,
+                pos,
                 heightmaps: Cow::Owned(heightmaps),
                 blocks_and_biomes: scratch,
                 block_entities: Cow::Borrowed(&block_entities),
@@ -917,17 +915,11 @@ impl<const LOADED: bool> Chunk<LOADED> {
     }
 }
 
-/// Returns the minimum number of bits needed to represent the integer `n`.
-pub(crate) const fn bit_width(n: usize) -> usize {
-    (usize::BITS - n.leading_zeros()) as _
-}
-
 #[cfg(test)]
 mod tests {
-    use valence_protocol::block::BlockEntityKind;
+    use valence_block::{BlockEntityKind, BlockState};
 
     use super::*;
-    use crate::protocol::block::BlockState;
 
     fn check<const LOADED: bool>(chunk: &Chunk<LOADED>, total_expected_change_count: usize) {
         assert!(!chunk.refresh, "chunk should not be refreshed for the test");

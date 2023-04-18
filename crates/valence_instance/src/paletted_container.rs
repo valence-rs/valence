@@ -3,10 +3,10 @@ use std::io::Write;
 
 use arrayvec::ArrayVec;
 use num_integer::div_ceil;
-use valence_protocol::var_int::VarInt;
-use valence_protocol::Encode;
+use valence_core::packet::var_int::VarInt;
+use valence_core::packet::Encode;
 
-use crate::util::bit_width;
+use crate::bit_width;
 
 /// `HALF_LEN` must be equal to `ceil(LEN / 2)`.
 #[derive(Clone, Debug)]

@@ -6,8 +6,8 @@
 
 pub mod array;
 pub mod byte_angle;
-pub mod decoder;
-pub mod encoder;
+pub mod decode;
+pub mod encode;
 pub mod global_pos;
 pub mod impls;
 pub mod message_signature;
@@ -458,8 +458,8 @@ mod tests {
 
     use super::*;
     use crate::packet::c2s::play::{C2sPlayPacket, HandSwingC2s};
-    use crate::packet::decoder::{decode_packet, PacketDecoder};
-    use crate::packet::encoder::PacketEncoder;
+    use crate::packet::decode::{decode_packet, PacketDecoder};
+    use crate::packet::encode::PacketEncoder;
 
     #[derive(Encode, Decode, Packet, Debug)]
     #[packet_id = 1]
