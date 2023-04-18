@@ -763,28 +763,86 @@ fn handle_click_slot(
             // The client is dropping an item by pressing the drop key.
 
             let entire_stack = pkt.button == 1;
-            if let Some(stack) = client_inv.slot(pkt.slot_idx as u16) {
-                // TODO: is the use of `replace_slot` here causing unnecessary packets to be
-                // sent?
-                let dropped = if entire_stack || stack.count() == 1 {
-                    client_inv.replace_slot(pkt.slot_idx as u16, None)
-                } else {
-                    let mut stack = stack.clone();
-                    stack.set_count(stack.count() - 1);
-                    let mut old_slot = client_inv.replace_slot(pkt.slot_idx as u16, Some(stack));
-                    // we already checked that the slot was not empty and that the
-                    // stack count is > 1
-                    old_slot.as_mut().unwrap().set_count(1);
-                    old_slot
-                }
-                .expect("dropped item should exist"); // we already checked that the slot was not empty
 
-                drop_item_stack_events.send(DropItemStack {
-                    client: packet.client,
-                    from_slot: Some(pkt.slot_idx as u16),
-                    stack: dropped,
-                });
+            // Needs to open the inventory for if the player is dropping an item while having an inventory open.
+            if let Some(open_inventory) = open_inventory {
+                // The player is interacting with an inventory that is open.
+
+                let Ok(mut target_inventory) = inventories.get_mut(open_inventory.entity) else {
+                    // The inventory does not exist, ignore.
+                    continue;
+                };
+
+                if inv_state.state_id.0 != pkt.state_id.0 {
+                    // Client is out of sync. Resync and ignore click.
+
+                    debug!("Client state id mismatch, resyncing");
+
+                    inv_state.state_id += 1;
+
+                    client.write_packet(&InventoryS2c {
+                        window_id: inv_state.window_id,
+                        state_id: VarInt(inv_state.state_id.0),
+                        slots: Cow::Borrowed(target_inventory.slot_slice()),
+                        carried_item: Cow::Borrowed(&cursor_item.0),
+                    });
+
+                    continue;
+                }
+
+                if (0i16..target_inventory.slot_count() as i16).contains(&pkt.slot_idx) {
+                    // The player is dropping an item from another inventory.
+
+                    if let Some(stack) = target_inventory.slot(pkt.slot_idx as u16) {
+                        // TODO: is the use of `replace_slot` here causing unnecessary packets to be
+                        // sent?
+                        let dropped = if entire_stack || stack.count() == 1 {
+                            target_inventory.replace_slot(pkt.slot_idx as u16, None)
+                        } else {
+                            let mut stack = stack.clone();
+                            stack.set_count(stack.count() - 1);
+                            let mut old_slot = target_inventory.replace_slot(pkt.slot_idx as u16, Some(stack));
+                            // we already checked that the slot was not empty and that the
+                            // stack count is > 1
+                            old_slot.as_mut().unwrap().set_count(1);
+                            old_slot
+                        }
+                        .expect("dropped item should exist"); // we already checked that the slot was not empty
+        
+                        drop_item_stack_events.send(DropItemStack {
+                            client: packet.client,
+                            from_slot: Some(pkt.slot_idx as u16),
+                            stack: dropped,
+                        });
+                    }
+                } else {
+                    // The player is dropping an item from their inventory.
+                    let slot_id = convert_to_player_slot_id(target_inventory.kind, pkt.slot_idx as u16);
+                    if let Some(stack) = client_inv.slot(slot_id) {
+                        // TODO: is the use of `replace_slot` here causing unnecessary packets to be
+                        // sent?
+                        let dropped = if entire_stack || stack.count() == 1 {
+                            client_inv.replace_slot(slot_id, None)
+                        } else {
+                            let mut stack = stack.clone();
+                            stack.set_count(stack.count() - 1);
+                            let mut old_slot = client_inv.replace_slot(slot_id, Some(stack));
+                            // we already checked that the slot was not empty and that the
+                            // stack count is > 1
+                            old_slot.as_mut().unwrap().set_count(1);
+                            old_slot
+                        }
+                        .expect("dropped item should exist"); // we already checked that the slot was not empty
+        
+                        drop_item_stack_events.send(DropItemStack {
+                            client: packet.client,
+                            from_slot: Some(slot_id),
+                            stack: dropped,
+                        });
+                    }
+                }
             }
+ 
         } else {
             // The player is clicking a slot in an inventory.
 
