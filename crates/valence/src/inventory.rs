@@ -801,14 +801,15 @@ fn handle_click_slot(
                         } else {
                             let mut stack = stack.clone();
                             stack.set_count(stack.count() - 1);
-                            let mut old_slot = target_inventory.replace_slot(pkt.slot_idx as u16, Some(stack));
+                            let mut old_slot =
+                                target_inventory.replace_slot(pkt.slot_idx as u16, Some(stack));
                             // we already checked that the slot was not empty and that the
                             // stack count is > 1
                             old_slot.as_mut().unwrap().set_count(1);
                             old_slot
                         }
                         .expect("dropped item should exist"); // we already checked that the slot was not empty
-        
+
                         drop_item_stack_events.send(DropItemStack {
                             client: packet.client,
                             from_slot: Some(pkt.slot_idx as u16),
@@ -817,7 +818,8 @@ fn handle_click_slot(
                     }
                 } else {
                     // The player is dropping an item from their inventory.
-                    let slot_id = convert_to_player_slot_id(target_inventory.kind, pkt.slot_idx as u16);
+                    let slot_id =
+                        convert_to_player_slot_id(target_inventory.kind, pkt.slot_idx as u16);
                     if let Some(stack) = client_inv.slot(slot_id) {
                         // TODO: is the use of `replace_slot` here causing unnecessary packets to be
                         // sent?
@@ -833,7 +835,7 @@ fn handle_click_slot(
                             old_slot
                         }
                         .expect("dropped item should exist"); // we already checked that the slot was not empty
-        
+
                         drop_item_stack_events.send(DropItemStack {
                             client: packet.client,
                             from_slot: Some(slot_id),
@@ -851,14 +853,15 @@ fn handle_click_slot(
                     } else {
                         let mut stack = stack.clone();
                         stack.set_count(stack.count() - 1);
-                        let mut old_slot = client_inv.replace_slot(pkt.slot_idx as u16, Some(stack));
+                        let mut old_slot =
+                            client_inv.replace_slot(pkt.slot_idx as u16, Some(stack));
                         // we already checked that the slot was not empty and that the
                         // stack count is > 1
                         old_slot.as_mut().unwrap().set_count(1);
                         old_slot
                     }
                     .expect("dropped item should exist"); // we already checked that the slot was not empty
-    
+
                     drop_item_stack_events.send(DropItemStack {
                         client: packet.client,
                         from_slot: Some(pkt.slot_idx as u16),
@@ -866,7 +869,6 @@ fn handle_click_slot(
                     });
                 }
             }
- 
         } else {
             // The player is clicking a slot in an inventory.
 
@@ -2118,17 +2120,20 @@ mod test {
                 .world
                 .get_mut::<Inventory>(client_ent)
                 .expect("could not find inventory");
-            inventory.set_slot(convert_to_player_slot_id(InventoryKind::Generic9x3, 50), ItemStack::new(ItemKind::IronIngot, 32, None)); 
-            let _inventory_ent = set_up_open_inventory(&mut app, client_ent); 
+            inventory.set_slot(
+                convert_to_player_slot_id(InventoryKind::Generic9x3, 50),
+                ItemStack::new(ItemKind::IronIngot, 32, None),
+            );
+            let _inventory_ent = set_up_open_inventory(&mut app, client_ent);
 
             // Process a tick to get past the "on join" logic.
             app.update();
             client_helper.clear_sent();
 
             let inv_state = app
-            .world
-            .get_mut::<ClientInventoryState>(client_ent)
-            .expect("could not find client");
+                .world
+                .get_mut::<ClientInventoryState>(client_ent)
+                .expect("could not find client");
 
             let state_id = inv_state.state_id.0;
             let window_id = inv_state.window_id;
@@ -2160,7 +2165,10 @@ mod test {
             let events = events.iter_current_update_events().collect::<Vec<_>>();
             assert_eq!(events.len(), 1);
             assert_eq!(events[0].client, client_ent);
-            assert_eq!(events[0].from_slot, Some(convert_to_player_slot_id(InventoryKind::Generic9x3, 50)));
+            assert_eq!(
+                events[0].from_slot,
+                Some(convert_to_player_slot_id(InventoryKind::Generic9x3, 50))
+            );
             assert_eq!(
                 events[0].stack,
                 ItemStack::new(ItemKind::IronIngot, 1, None)
@@ -2171,76 +2179,76 @@ mod test {
                 player_inventory.slot(expected_player_slot_id),
                 Some(&ItemStack::new(ItemKind::IronIngot, 31, None))
             );
-
         }
     }
 
     #[test]
-        fn should_drop_item_stack_player_open_inventory_with_dropkey() {
-            // The item stack should be dropped successfully, if the player has an inventory open and the slot id points to his inventory.
+    fn should_drop_item_stack_player_open_inventory_with_dropkey() {
+        // The item stack should be dropped successfully, if the player has an inventory open and the slot id points to his inventory.
 
-            let mut app = App::new();
-            let (client_ent, mut client_helper) = scenario_single_client(&mut app);
-            let mut inventory = app
-                .world
-                .get_mut::<Inventory>(client_ent)
-                .expect("could not find inventory");
-            inventory.set_slot(convert_to_player_slot_id(InventoryKind::Generic9x3, 50), ItemStack::new(ItemKind::IronIngot, 32, None)); 
-            let _inventory_ent = set_up_open_inventory(&mut app, client_ent); 
+        let mut app = App::new();
+        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+        let mut inventory = app
+            .world
+            .get_mut::<Inventory>(client_ent)
+            .expect("could not find inventory");
+        inventory.set_slot(
+            convert_to_player_slot_id(InventoryKind::Generic9x3, 50),
+            ItemStack::new(ItemKind::IronIngot, 32, None),
+        );
+        let _inventory_ent = set_up_open_inventory(&mut app, client_ent);
 
-            // Process a tick to get past the "on join" logic.
-            app.update();
-            client_helper.clear_sent();
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
 
-            let inv_state = app
+        let inv_state = app
             .world
             .get_mut::<ClientInventoryState>(client_ent)
             .expect("could not find client");
 
-            let state_id = inv_state.state_id.0;
-            let window_id = inv_state.window_id;
+        let state_id = inv_state.state_id.0;
+        let window_id = inv_state.window_id;
 
-            client_helper.send(&valence_protocol::packet::c2s::play::ClickSlotC2s {
-                window_id,
-                slot_idx: 50,
-                button: 1, // pressing control, the whole stack is dropped
-                mode: ClickMode::DropKey,
-                state_id: VarInt(state_id),
-                slot_changes: vec![Slot {
-                    idx: 50,
-                    item: None,
-                }],
-                carried_item: None,
-            });
+        client_helper.send(&valence_protocol::packet::c2s::play::ClickSlotC2s {
+            window_id,
+            slot_idx: 50,
+            button: 1, // pressing control, the whole stack is dropped
+            mode: ClickMode::DropKey,
+            state_id: VarInt(state_id),
+            slot_changes: vec![Slot {
+                idx: 50,
+                item: None,
+            }],
+            carried_item: None,
+        });
 
-            app.update();
+        app.update();
 
-            // Make assertions
-            let events = app
-                .world
-                .get_resource::<Events<DropItemStack>>()
-                .expect("expected drop item stack events");
-            let player_inventory = app
-                .world
-                .get::<Inventory>(client_ent)
-                .expect("could not find inventory");
-            let events = events.iter_current_update_events().collect::<Vec<_>>();
-            assert_eq!(events.len(), 1);
-            assert_eq!(events[0].client, client_ent);
-            assert_eq!(events[0].from_slot, Some(convert_to_player_slot_id(InventoryKind::Generic9x3, 50)));
-            assert_eq!(
-                events[0].stack,
-                ItemStack::new(ItemKind::IronIngot, 32, None)
-            );
-            // Also make sure that the player inventory was updated correctly.
-            let expected_player_slot_id = convert_to_player_slot_id(InventoryKind::Generic9x3, 50);
-            assert_eq!(
-                player_inventory.slot(expected_player_slot_id),
-                None
-            );
-
-        }
-    
+        // Make assertions
+        let events = app
+            .world
+            .get_resource::<Events<DropItemStack>>()
+            .expect("expected drop item stack events");
+        let player_inventory = app
+            .world
+            .get::<Inventory>(client_ent)
+            .expect("could not find inventory");
+        let events = events.iter_current_update_events().collect::<Vec<_>>();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].client, client_ent);
+        assert_eq!(
+            events[0].from_slot,
+            Some(convert_to_player_slot_id(InventoryKind::Generic9x3, 50))
+        );
+        assert_eq!(
+            events[0].stack,
+            ItemStack::new(ItemKind::IronIngot, 32, None)
+        );
+        // Also make sure that the player inventory was updated correctly.
+        let expected_player_slot_id = convert_to_player_slot_id(InventoryKind::Generic9x3, 50);
+        assert_eq!(player_inventory.slot(expected_player_slot_id), None);
+    }
 
     #[test]
     fn dragging_items() {
