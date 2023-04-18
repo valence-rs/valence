@@ -67,7 +67,7 @@ Valence aims to be the following:
 - Proxy support ([Velocity](https://velocitypowered.com/), [Bungeecord](https://www.spigotmc.org/wiki/bungeecord/)
   and [Waterfall](https://docs.papermc.io/waterfall))
 
-Here is a [short video](https://www.youtube.com/watch?v=6P072lKE01s) (outdated) showing the examples and some of
+Here is a [short video](https://www.youtube.com/watch?v=jkw9fZx9Etg) showing the examples and some of
 Valence's capabilities.
 
 # Getting Started
