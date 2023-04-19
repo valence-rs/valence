@@ -174,7 +174,6 @@ fn remove_biomes_from_registry(
     }
 }
 
-
 #[derive(Resource)]
 pub struct BiomeRegistry {
     id_to_biome: Vec<Entity>,

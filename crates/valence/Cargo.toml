@@ -37,5 +37,9 @@ valence_inventory = { workspace = true, optional = true }
 valence_anvil = { workspace = true, optional = true }
 
 [dev-dependencies]
+anyhow.workspace = true
+bytes.workspace = true
 noise.workspace = true
 tracing-subscriber.workspace = true
+rand.workspace = true
+

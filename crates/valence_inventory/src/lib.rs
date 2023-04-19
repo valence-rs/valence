@@ -103,7 +103,8 @@ pub struct Inventory {
     kind: InventoryKind,
     slots: Box<[Option<ItemStack>]>,
     /// Contains a set bit for each modified slot in `slots`.
-    changed: u64,
+    #[doc(hidden)]
+    pub changed: u64,
 }
 
 impl Inventory {
@@ -363,6 +364,16 @@ pub struct ClientInventoryState {
 impl ClientInventoryState {
     pub fn held_item_slot(&self) -> u16 {
         self.held_item_slot
+    }
+
+    #[doc(hidden)]
+    pub fn window_id(&self) -> u8 {
+        self.window_id
+    }
+
+    #[doc(hidden)]
+    pub fn state_id(&self) -> Wrapping<i32> {
+        self.state_id
     }
 }
 
@@ -1202,7 +1213,8 @@ fn handle_update_selected_slot(
 
 /// Convert a slot that is outside a target inventory's range to a slot that is
 /// inside the player's inventory.
-fn convert_to_player_slot_id(target_kind: InventoryKind, slot_id: u16) -> u16 {
+#[doc(hidden)]
+pub fn convert_to_player_slot_id(target_kind: InventoryKind, slot_id: u16) -> u16 {
     // the first slot in the player's general inventory
     let offset = target_kind.slot_count() as u16;
     slot_id - offset + 9
@@ -1350,5 +1362,23 @@ impl Default for InventorySettings {
         Self {
             validate_actions: true,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_convert_to_player_slot() {
+        assert_eq!(convert_to_player_slot_id(InventoryKind::Generic9x3, 27), 9);
+        assert_eq!(convert_to_player_slot_id(InventoryKind::Generic9x3, 36), 18);
+        assert_eq!(convert_to_player_slot_id(InventoryKind::Generic9x3, 54), 36);
+        assert_eq!(convert_to_player_slot_id(InventoryKind::Generic9x1, 9), 9);
+    }
+
+    #[test]
+    fn test_convert_hotbar_slot_id() {
+        assert_eq!(convert_hotbar_slot_id(0), 36);
+        assert_eq!(convert_hotbar_slot_id(4), 40);
+        assert_eq!(convert_hotbar_slot_id(8), 44);
     }
 }
