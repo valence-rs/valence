@@ -3,15 +3,16 @@ use std::borrow::Cow;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use uuid::Uuid;
-use valence_protocol::packet::s2c::play::player_list::{Actions, Entry, PlayerListS2c};
-use valence_protocol::packet::s2c::play::{PlayerListHeaderS2c, PlayerRemoveS2c};
-use valence_protocol::text::Text;
-
-use crate::client::Client;
-use crate::component::{Despawned, GameMode, Ping, Properties, UniqueId, Username};
-use crate::instance::WriteUpdatePacketsToInstancesSet;
-use crate::packet::{PacketWriter, WritePacket};
-use crate::Server;
+use valence_client::{Client, Ping, Properties, Username};
+use valence_core::despawn::Despawned;
+use valence_core::game_mode::GameMode;
+use valence_core::packet::encode::{PacketWriter, WritePacket};
+use valence_core::packet::s2c::play::player_list::{Actions, Entry, PlayerListS2c};
+use valence_core::packet::s2c::play::{PlayerListHeaderS2c, PlayerRemoveS2c};
+use valence_core::text::Text;
+use valence_core::uuid::UniqueId;
+use valence_core::Server;
+use valence_instance::WriteUpdatesToInstancesSet;
 
 pub(crate) struct PlayerListPlugin;
 
@@ -28,8 +29,9 @@ impl Plugin for PlayerListPlugin {
                 write_player_list_changes,
             )
                 .chain()
-                .before(WriteUpdatePacketsToInstancesSet)
-                .in_base_set(CoreSet::PostUpdate),
+                .in_base_set(CoreSet::PostUpdate)
+                // Needs to happen before player entities are initialized. Otherwise, they will appear invisible.
+                .before(WriteUpdatesToInstancesSet),
         );
     }
 }
