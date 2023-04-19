@@ -4,7 +4,7 @@ use glam::DVec3;
 use valence_core::packet::c2s::play::{
     Full, LookAndOnGround, OnGroundOnly, PositionAndOnGround, VehicleMoveC2s,
 };
-use valence_entity::{Look, Position, HeadYaw, OnGround};
+use valence_entity::{HeadYaw, Look, OnGround, Position};
 
 use super::teleport::TeleportState;
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};

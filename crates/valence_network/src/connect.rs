@@ -18,22 +18,23 @@ use sha2::{Digest, Sha256};
 use tokio::net::{TcpListener, TcpStream};
 use tracing::{error, info, trace, warn};
 use uuid::Uuid;
-use valence::util::is_valid_username;
-use valence_protocol::decoder::PacketDecoder;
-use valence_protocol::encoder::PacketEncoder;
-use valence_protocol::packet::c2s::handshake::handshake::NextState;
-use valence_protocol::packet::c2s::handshake::HandshakeC2s;
-use valence_protocol::packet::c2s::login::{LoginHelloC2s, LoginKeyC2s, LoginQueryResponseC2s};
-use valence_protocol::packet::c2s::status::{QueryPingC2s, QueryRequestC2s};
-use valence_protocol::packet::s2c::login::{
+use valence_client::is_valid_username;
+use valence_core::packet::c2s::handshake::handshake::NextState;
+use valence_core::packet::c2s::handshake::HandshakeC2s;
+use valence_core::packet::c2s::login::{LoginHelloC2s, LoginKeyC2s, LoginQueryResponseC2s};
+use valence_core::packet::c2s::status::{QueryPingC2s, QueryRequestC2s};
+use valence_core::packet::decode::PacketDecoder;
+use valence_core::packet::encode::PacketEncoder;
+use valence_core::packet::raw::RawBytes;
+use valence_core::packet::s2c::login::{
     LoginCompressionS2c, LoginDisconnectS2c, LoginHelloS2c, LoginQueryRequestS2c, LoginSuccessS2c,
 };
-use valence_protocol::packet::s2c::status::{QueryPongS2c, QueryResponseS2c};
-use valence_protocol::raw::RawBytes;
-use valence_protocol::text::Text;
-use valence_protocol::types::Property;
-use valence_protocol::var_int::VarInt;
-use valence_protocol::{ident, translation_key, Decode, MINECRAFT_VERSION, PROTOCOL_VERSION};
+use valence_core::packet::s2c::status::{QueryPongS2c, QueryResponseS2c};
+use valence_core::packet::var_int::VarInt;
+use valence_core::packet::Decode;
+use valence_core::property::Property;
+use valence_core::text::Text;
+use valence_core::{ident, translation_key, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
 use crate::packet_io::PacketIo;
 use crate::{CleanupOnDrop, ConnectionMode, NewClientInfo, ServerListPing, SharedNetworkState};

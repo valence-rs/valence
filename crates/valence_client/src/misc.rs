@@ -8,9 +8,9 @@ use valence_core::packet::c2s::play::{
     ChatMessageC2s, ClientStatusC2s, HandSwingC2s, PlayerInteractBlockC2s, PlayerInteractItemC2s,
     ResourcePackStatusC2s,
 };
+use valence_entity::{EntityAnimation, EntityAnimations};
 
 use super::action::ActionSequence;
-use valence_entity::{EntityAnimation, EntityAnimations};
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 
 pub(super) fn build(app: &mut App) {

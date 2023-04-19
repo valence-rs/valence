@@ -21,11 +21,9 @@ use tokio::runtime::{Handle, Runtime};
 use tokio::sync::Semaphore;
 use tracing::error;
 use uuid::Uuid;
-use valence::client::{ClientBundle, ClientBundleArgs};
-use valence::component::Properties;
-use valence::event_loop::RunEventLoopSet;
-use valence::Server;
-use valence_protocol::text::Text;
+use valence_client::{ClientBundle, ClientBundleArgs, Properties, SpawnClientsSet};
+use valence_core::text::Text;
+use valence_core::Server;
 
 pub struct NetworkPlugin;
 

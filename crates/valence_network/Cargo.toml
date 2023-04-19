@@ -1,7 +1,12 @@
 [package]
 name = "valence_network"
-version = "0.2.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
+
+[features]
+default = ["encryption", "compression"] # TODO: remove this.
+encryption = ["valence_core/encryption"]
+compression = ["valence_core/compression"]
 
 [dependencies]
 anyhow.workspace = true
@@ -24,6 +29,7 @@ thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 uuid.workspace = true
+valence_client.workspace = true
 valence_core.workspace = true
 valence_entity.workspace = true
 

@@ -1,5 +1,5 @@
-use valence_core::CoreSettings;
 use valence_core::packet::c2s::play::KeepAliveC2s;
+use valence_core::CoreSettings;
 
 use super::*;
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
