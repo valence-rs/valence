@@ -6,15 +6,14 @@ use tracing::error;
 use valence_core::ident::Ident;
 use valence_nbt::{compound, Compound, List, Value};
 
-#[doc(hidden)]
-pub struct RegistryCodecPlugin;
+pub struct RegistryPlugin;
 
 /// The [`SystemSet`] where the [`RegistryCodec`] cache is rebuilt. Systems that
 /// modify the registry codec should run _before_ this.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct RegistryCodecSet;
 
-impl Plugin for RegistryCodecPlugin {
+impl Plugin for RegistryPlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.init_resource::<RegistryCodec>()
             .configure_set(RegistryCodecSet.in_base_set(CoreSet::PostUpdate))

@@ -18,102 +18,7 @@ use valence_core::ident::Ident;
 use valence_nbt::{compound, Value};
 use valence_registry::{RegistryCodec, RegistryCodecSet, RegistryValue};
 
-#[derive(Resource)]
-pub struct DimensionTypeRegistry {
-    name_to_dimension: BTreeMap<Ident<String>, Entity>,
-}
-
-impl DimensionTypeRegistry {
-    pub const KEY: Ident<&str> = ident!("minecraft:dimension_type");
-
-    pub fn get_by_name(&self, name: Ident<&str>) -> Option<Entity> {
-        self.name_to_dimension.get(name.as_str()).copied()
-    }
-
-    pub fn dimensions(&self) -> impl Iterator<Item = Entity> + '_ {
-        self.name_to_dimension.values().copied()
-    }
-}
-
-#[derive(Component, Clone, PartialEq, Debug)]
-pub struct DimensionType {
-    pub name: Ident<String>,
-    pub ambient_light: f32,
-    pub bed_works: bool,
-    pub coordinate_scale: f64,
-    pub effects: DimensionEffects,
-    pub has_ceiling: bool,
-    pub has_raids: bool,
-    pub has_skylight: bool,
-    pub height: i32,
-    pub infiniburn: String,
-    pub logical_height: i32,
-    pub min_y: i32,
-    pub monster_spawn_block_light_limit: i32,
-    /// TODO: monster_spawn_light_level
-    pub natural: bool,
-    pub piglin_safe: bool,
-    pub respawn_anchor_works: bool,
-    pub ultrawarm: bool,
-}
-
-impl Default for DimensionType {
-    fn default() -> Self {
-        Self {
-            name: ident!("minecraft:overworld").into(),
-            ambient_light: 1.0,
-            bed_works: true,
-            coordinate_scale: 1.0,
-            effects: DimensionEffects::default(),
-            has_ceiling: false,
-            has_raids: true,
-            has_skylight: true,
-            height: 384,
-            infiniburn: "#minecraft:infiniburn_overworld".into(),
-            logical_height: 384,
-            min_y: -64,
-            monster_spawn_block_light_limit: 0,
-            natural: true,
-            piglin_safe: false,
-            respawn_anchor_works: true,
-            ultrawarm: false,
-        }
-    }
-}
-
-/// Determines what skybox/fog effects to use in dimensions.
-#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
-pub enum DimensionEffects {
-    #[default]
-    Overworld,
-    TheNether,
-    TheEnd,
-}
-
-impl From<DimensionEffects> for Ident<&'static str> {
-    fn from(value: DimensionEffects) -> Self {
-        match value {
-            DimensionEffects::Overworld => ident!("overworld"),
-            DimensionEffects::TheNether => ident!("the_nether"),
-            DimensionEffects::TheEnd => ident!("the_end"),
-        }
-    }
-}
-
-impl FromStr for DimensionEffects {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match Ident::new(s)?.as_str() {
-            "minecraft:overworld" => Ok(DimensionEffects::Overworld),
-            "minecraft:the_nether" => Ok(DimensionEffects::TheNether),
-            "minecraft:the_end" => Ok(DimensionEffects::TheEnd),
-            other => bail!("unknown dimension effect \"{other}\""),
-        }
-    }
-}
-
-pub(crate) struct DimensionPlugin;
+pub struct DimensionPlugin;
 
 impl Plugin for DimensionPlugin {
     fn build(&self, app: &mut App) {
@@ -250,5 +155,100 @@ fn load_default_dimension_types(
 
     if let Err(e) = helper() {
         error!("failed to load default dimension types from registry codec: {e:#}");
+    }
+}
+
+#[derive(Resource)]
+pub struct DimensionTypeRegistry {
+    name_to_dimension: BTreeMap<Ident<String>, Entity>,
+}
+
+impl DimensionTypeRegistry {
+    pub const KEY: Ident<&str> = ident!("minecraft:dimension_type");
+
+    pub fn get_by_name(&self, name: Ident<&str>) -> Option<Entity> {
+        self.name_to_dimension.get(name.as_str()).copied()
+    }
+
+    pub fn dimensions(&self) -> impl Iterator<Item = Entity> + '_ {
+        self.name_to_dimension.values().copied()
+    }
+}
+
+#[derive(Component, Clone, PartialEq, Debug)]
+pub struct DimensionType {
+    pub name: Ident<String>,
+    pub ambient_light: f32,
+    pub bed_works: bool,
+    pub coordinate_scale: f64,
+    pub effects: DimensionEffects,
+    pub has_ceiling: bool,
+    pub has_raids: bool,
+    pub has_skylight: bool,
+    pub height: i32,
+    pub infiniburn: String,
+    pub logical_height: i32,
+    pub min_y: i32,
+    pub monster_spawn_block_light_limit: i32,
+    /// TODO: monster_spawn_light_level
+    pub natural: bool,
+    pub piglin_safe: bool,
+    pub respawn_anchor_works: bool,
+    pub ultrawarm: bool,
+}
+
+impl Default for DimensionType {
+    fn default() -> Self {
+        Self {
+            name: ident!("minecraft:overworld").into(),
+            ambient_light: 1.0,
+            bed_works: true,
+            coordinate_scale: 1.0,
+            effects: DimensionEffects::default(),
+            has_ceiling: false,
+            has_raids: true,
+            has_skylight: true,
+            height: 384,
+            infiniburn: "#minecraft:infiniburn_overworld".into(),
+            logical_height: 384,
+            min_y: -64,
+            monster_spawn_block_light_limit: 0,
+            natural: true,
+            piglin_safe: false,
+            respawn_anchor_works: true,
+            ultrawarm: false,
+        }
+    }
+}
+
+/// Determines what skybox/fog effects to use in dimensions.
+#[derive(Clone, Copy, PartialEq, Eq, Default, Debug)]
+pub enum DimensionEffects {
+    #[default]
+    Overworld,
+    TheNether,
+    TheEnd,
+}
+
+impl From<DimensionEffects> for Ident<&'static str> {
+    fn from(value: DimensionEffects) -> Self {
+        match value {
+            DimensionEffects::Overworld => ident!("overworld"),
+            DimensionEffects::TheNether => ident!("the_nether"),
+            DimensionEffects::TheEnd => ident!("the_end"),
+        }
+    }
+}
+
+impl FromStr for DimensionEffects {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match Ident::new(s)?.as_str() {
+            "minecraft:overworld" => Ok(DimensionEffects::Overworld),
+            "minecraft:the_nether" => Ok(DimensionEffects::TheNether),
+            "minecraft:the_end" => Ok(DimensionEffects::TheEnd),
+            other => bail!("unknown dimension effect \"{other}\""),
+        }
     }
 }

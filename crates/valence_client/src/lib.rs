@@ -46,7 +46,7 @@ use valence_entity::{
     EntityId, EntityKind, EntityStatus, HeadYaw, Location, Look, ObjectData, OldLocation,
     OldPosition, OnGround, PacketByteRange, Position, TrackedData, Velocity,
 };
-use valence_instance::{Instance, WriteEntityUpdatesToInstancesSet};
+use valence_instance::{Instance, WriteUpdatesToInstancesSet};
 use valence_registry::{RegistryCodec, RegistryCodecSet};
 
 pub mod action;
@@ -58,6 +58,7 @@ pub mod misc;
 pub mod movement;
 pub mod settings;
 pub mod teleport;
+pub mod weather;
 
 pub struct ClientPlugin;
 
@@ -82,7 +83,7 @@ impl Plugin for ClientPlugin {
                 initial_join.after(RegistryCodecSet),
                 update_chunk_load_dist,
                 read_data_in_old_view
-                    .after(WriteEntityUpdatesToInstancesSet)
+                    .after(WriteUpdatesToInstancesSet)
                     .after(update_chunk_load_dist),
                 update_view.after(initial_join).after(read_data_in_old_view),
                 respawn.after(update_view),
@@ -90,8 +91,8 @@ impl Plugin for ClientPlugin {
                 update_spawn_position.after(update_view),
                 update_old_view_dist.after(update_view),
                 update_game_mode,
-                update_tracked_data.after(WriteEntityUpdatesToInstancesSet),
-                init_tracked_data.after(WriteEntityUpdatesToInstancesSet),
+                update_tracked_data.after(WriteUpdatesToInstancesSet),
+                init_tracked_data.after(WriteUpdatesToInstancesSet),
                 update_op_level,
             )
                 .in_base_set(CoreSet::PostUpdate)
@@ -101,7 +102,7 @@ impl Plugin for ClientPlugin {
             SpawnClientsSet.in_base_set(CoreSet::PreUpdate),
             FlushPacketsSet
                 .in_base_set(CoreSet::PostUpdate)
-                .after(WriteEntityUpdatesToInstancesSet),
+                .after(WriteUpdatesToInstancesSet),
         ))
         .add_system(flush_packets.in_set(FlushPacketsSet));
 
@@ -113,6 +114,7 @@ impl Plugin for ClientPlugin {
         misc::build(app);
         action::build(app);
         teleport::build(app);
+        weather::build(app);
     }
 }
 

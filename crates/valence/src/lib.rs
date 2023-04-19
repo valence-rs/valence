@@ -22,64 +22,125 @@
     clippy::dbg_macro
 )]
 
-pub use {anyhow, bevy_app, bevy_ecs, uuid, valence_nbt as nbt, valence_protocol as protocol};
+use bevy_app::{PluginGroup, PluginGroupBuilder};
 
-#[cfg(any(test, doctest))]
+#[cfg(test)]
 mod tests;
 
-use std::num::NonZeroU32;
-use std::time::Duration;
+#[cfg(feature = "anvil")]
+pub use valence_anvil as anvil;
+pub use valence_core::*;
+#[cfg(feature = "inventory")]
+pub use valence_inventory as inventory;
+#[cfg(feature = "network")]
+pub use valence_network as network;
+#[cfg(feature = "player_list")]
+pub use valence_player_list as player_list;
+pub use {
+    bevy_app as app, bevy_ecs as ecs, glam, valence_biome as biome, valence_block as block,
+    valence_client as client, valence_dimension as dimension, valence_entity as entity,
+    valence_instance as instance, valence_nbt as nbt, valence_registry as registry,
+};
 
-use bevy_app::prelude::*;
-use bevy_app::{ScheduleRunnerPlugin, ScheduleRunnerSettings};
-use bevy_ecs::prelude::*;
-use component::ComponentPlugin;
-
-use crate::biome::BiomePlugin;
-use crate::client::ClientPlugin;
-use crate::dimension::DimensionPlugin;
-use crate::entity::EntityPlugin;
-use crate::event_loop::EventLoopPlugin;
-use crate::instance::InstancePlugin;
-use crate::inventory::InventoryPlugin;
-use crate::player_list::PlayerListPlugin;
-use crate::registry_codec::RegistryCodecPlugin;
-use crate::weather::WeatherPlugin;
-
+/// Contains the most frequently used items in Valence projects. This should be
+/// glob imported like so:
+///
+/// ```
+/// use valence::prelude::*; // Glob import.
+///
+/// let mut app = App::new();
+/// app.add_system(|| println!("yippee!"));
+/// // ...
+/// ```
 pub mod prelude {
-    pub use bevy_app::prelude::*;
-    pub use bevy_ecs::prelude::*;
+    pub use ::uuid::Uuid;
+    pub use app::prelude::*;
     pub use biome::{Biome, BiomeId, BiomeRegistry};
+    pub use block::{BlockKind, BlockState, PropName, PropValue};
+    pub use block_pos::BlockPos;
+    pub use chunk_pos::{ChunkPos, ChunkView};
     pub use client::action::*;
     pub use client::command::*;
+    pub use client::event_loop::{EventLoopSchedule, EventLoopSet};
     pub use client::interact_entity::*;
     pub use client::{
-        despawn_disconnected_clients, Client, CompassPos, CursorItem, DeathLocation,
-        HasRespawnScreen, HashedSeed, Ip, IsDebug, IsFlat, IsHardcore, OldView, OldViewDistance,
-        OpLevel, PrevGameMode, ReducedDebugInfo, View, ViewDistance,
+        despawn_disconnected_clients, Client, CompassPos, DeathLocation, HasRespawnScreen,
+        HashedSeed, Ip, IsDebug, IsFlat, IsHardcore, OldView, OldViewDistance, OpLevel,
+        PrevGameMode, ReducedDebugInfo, View, ViewDistance,
     };
-    pub use component::*;
+    pub use despawn::Despawned;
     pub use dimension::{DimensionType, DimensionTypeRegistry};
-    pub use entity::{EntityAnimation, EntityKind, EntityManager, EntityStatus, HeadYaw};
-    pub use event_loop::{EventLoopSchedule, EventLoopSet};
-    pub use glam::DVec3;
-    pub use instance::{Block, BlockMut, BlockRef, Chunk, Instance};
-    pub use inventory::{
-        Inventory, InventoryKind, InventoryWindow, InventoryWindowMut, OpenInventory,
+    pub use direction::Direction;
+    pub use ecs::prelude::*;
+    pub use entity::{
+        EntityAnimation, EntityKind, EntityManager, EntityStatus, HeadYaw, Location, Look,
+        OldLocation, OldPosition, Position,
     };
+    pub use glam::*;
+    pub use ident::Ident;
+    pub use instance::{Block, BlockMut, BlockRef, Chunk, Instance};
+    #[cfg(feature = "inventory")]
+    pub use inventory::{
+        CursorItem, Inventory, InventoryKind, InventoryWindow, InventoryWindowMut, OpenInventory,
+    };
+    pub use item::{ItemKind, ItemStack};
+    pub use nbt::Compound;
+    #[cfg(feature = "network")]
+    pub use network::{
+        ErasedNetworkCallbacks, NetworkCallbacks, NetworkSettings, NewClientInfo,
+        SharedNetworkState,
+    };
+    pub use packet::s2c::play::particle::Particle;
+    #[cfg(feature = "player_list")]
     pub use player_list::{PlayerList, PlayerListEntry};
-    pub use protocol::block::{BlockState, PropName, PropValue};
-    pub use protocol::ident::Ident;
-    pub use protocol::item::{ItemKind, ItemStack};
-    pub use protocol::text::{Color, Text, TextFormat};
-    pub use uuid::Uuid;
-    pub use valence_nbt::Compound;
-    pub use valence_protocol::block::BlockKind;
-    pub use valence_protocol::block_pos::BlockPos;
-    pub use valence_protocol::ident;
-    pub use valence_protocol::packet::s2c::play::particle::Particle;
-    pub use view::{ChunkPos, ChunkView};
+    pub use text::{Color, Text, TextFormat};
+    pub use valence_core::ident; // Export the `ident!` macro.
+    pub use valence_core::uuid::UniqueId;
+    pub use valence_core::{CoreSettings, Server};
 
     use super::*;
-    pub use crate::Server;
+}
+
+/// This plugin group will add all the default plugins for a Valence
+/// application.
+///
+/// [`DefaultPlugins`] obeys Cargo feature flags. Users may exert control over
+/// this plugin group by disabling `default-features` in their `Cargo.toml` and
+/// enabling only those features that they wish to use.
+pub struct DefaultPlugins;
+
+impl PluginGroup for DefaultPlugins {
+    fn build(self) -> PluginGroupBuilder {
+        #[allow(unused_mut)]
+        let mut group = PluginGroupBuilder::start::<Self>()
+            .add(valence_core::CorePlugin)
+            .add(valence_registry::RegistryPlugin)
+            .add(valence_biome::BiomePlugin)
+            .add(valence_dimension::DimensionPlugin)
+            .add(valence_entity::EntityPlugin)
+            .add(valence_instance::InstancePlugin)
+            .add(valence_client::ClientPlugin);
+
+        #[cfg(feature = "network")]
+        {
+            group = group.add(valence_network::NetworkPlugin);
+        }
+
+        #[cfg(feature = "player_list")]
+        {
+            group = group.add(valence_player_list::PlayerListPlugin);
+        }
+
+        #[cfg(feature = "inventory")]
+        {
+            group = group.add(valence_player_list::PlayerListPlugin);
+        }
+
+        #[cfg(feature = "anvil")]
+        {
+            // No plugin... yet.
+        }
+
+        group
+    }
 }

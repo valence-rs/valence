@@ -10,31 +10,32 @@ license.workspace = true
 keywords = ["minecraft", "gamedev", "server", "ecs"]
 categories = ["game-engines"]
 
+[features]
+default = ["network", "player_list", "inventory", "anvil"]
+network = ["dep:valence_network"]
+player_list = ["dep:valence_player_list"]
+inventory = ["dep:valence_inventory"]
+anvil = ["dep:valence_anvil"]
+
 [dependencies]
-anyhow.workspace = true
-arrayvec.workspace = true
-base64.workspace = true
 bevy_app.workspace = true
 bevy_ecs.workspace = true
-bitfield-struct.workspace = true
-bytes.workspace = true
-flume.workspace = true
 glam.workspace = true
-num-integer.workspace = true
-parking_lot.workspace = true
-paste.workspace = true
-rand.workspace = true
-rustc-hash.workspace = true
-serde = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
-thiserror.workspace = true
-tracing.workspace = true
-url = { workspace = true, features = ["serde"] }
-uuid = { workspace = true, features = ["serde"] }
-valence_nbt = { workspace = true, features = ["uuid"] }
+uuid.workspace = true
+valence_nbt.workspace = true
+valence_core.workspace = true
+valence_registry.workspace = true
+valence_block.workspace = true
+valence_biome.workspace = true
+valence_dimension.workspace = true
+valence_entity.workspace = true
+valence_instance.workspace = true
+valence_client.workspace = true
+valence_network = { workspace = true, optional = true }
+valence_player_list = { workspace = true, optional = true }
+valence_inventory = { workspace = true, optional = true }
+valence_anvil = { workspace = true, optional = true }
 
 [dev-dependencies]
-approx.workspace = true
-glam = { workspace = true, features = ["approx"] }
 noise.workspace = true
 tracing-subscriber.workspace = true

@@ -46,7 +46,7 @@ pub struct InstancePlugin;
 /// When Minecraft entity changes are written to the packet buffers of chunks.
 /// Systems that read from the packet buffer of chunks should run _after_ this.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct WriteEntityUpdatesToInstancesSet;
+pub struct WriteUpdatesToInstancesSet;
 
 /// When instances are updated and changes from the current tick are cleared.
 /// Systems that read changes from instances should run _before_ this.
@@ -56,21 +56,21 @@ pub struct ClearInstanceChangesSet;
 impl Plugin for InstancePlugin {
     fn build(&self, app: &mut App) {
         app.configure_sets((
-            WriteEntityUpdatesToInstancesSet.in_base_set(CoreSet::PostUpdate),
+            WriteUpdatesToInstancesSet.in_base_set(CoreSet::PostUpdate),
             ClearInstanceChangesSet
-                .after(WriteEntityUpdatesToInstancesSet)
+                .after(WriteUpdatesToInstancesSet)
                 .in_base_set(CoreSet::PostUpdate),
         ))
         .add_system(
             // This can run at the same time as entity init because we're only looking at position
             // + location.
-            update_entity_cell_positions.in_set(WriteEntityUpdatesToInstancesSet),
+            update_entity_cell_positions.in_set(WriteUpdatesToInstancesSet),
         )
         .add_system(
             write_update_packets_to_instances
                 .after(update_entity_cell_positions)
                 .after(InitEntitiesSet)
-                .in_set(WriteEntityUpdatesToInstancesSet),
+                .in_set(WriteUpdatesToInstancesSet),
         )
         .add_system(clear_instance_changes.in_set(ClearInstanceChangesSet));
 

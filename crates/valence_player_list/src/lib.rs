@@ -14,7 +14,7 @@ use valence_core::uuid::UniqueId;
 use valence_core::Server;
 use valence_instance::WriteUpdatesToInstancesSet;
 
-pub(crate) struct PlayerListPlugin;
+pub struct PlayerListPlugin;
 
 impl Plugin for PlayerListPlugin {
     fn build(&self, app: &mut App) {

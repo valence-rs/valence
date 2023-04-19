@@ -20,71 +20,7 @@ use valence_core::ident::Ident;
 use valence_nbt::{compound, Value};
 use valence_registry::{RegistryCodec, RegistryCodecSet, RegistryValue};
 
-#[derive(Resource)]
-pub struct BiomeRegistry {
-    id_to_biome: Vec<Entity>,
-}
-
-impl BiomeRegistry {
-    pub const KEY: Ident<&str> = ident!("minecraft:worldgen/biome");
-
-    pub fn get_by_id(&self, id: BiomeId) -> Option<Entity> {
-        self.id_to_biome.get(id.0 as usize).cloned()
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = (BiomeId, Entity)> + '_ {
-        self.id_to_biome
-            .iter()
-            .enumerate()
-            .map(|(id, biome)| (BiomeId(id as _), *biome))
-    }
-}
-
-impl Index<BiomeId> for BiomeRegistry {
-    type Output = Entity;
-
-    fn index(&self, index: BiomeId) -> &Self::Output {
-        self.id_to_biome
-            .get(index.0 as usize)
-            .unwrap_or_else(|| panic!("invalid {index:?}"))
-    }
-}
-
-/// An index into the biome registry.
-#[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
-pub struct BiomeId(pub u16);
-
-#[derive(Component, Clone, Debug)]
-pub struct Biome {
-    pub name: Ident<String>,
-    pub downfall: f32,
-    pub fog_color: i32,
-    pub sky_color: i32,
-    pub water_color: i32,
-    pub water_fog_color: i32,
-    pub grass_color: Option<i32>,
-    pub has_precipitation: bool,
-    pub temperature: f32,
-    // TODO: more stuff.
-}
-
-impl Default for Biome {
-    fn default() -> Self {
-        Self {
-            name: ident!("plains").into(),
-            downfall: 0.4,
-            fog_color: 12638463,
-            sky_color: 7907327,
-            water_color: 4159204,
-            water_fog_color: 329011,
-            grass_color: None,
-            has_precipitation: true,
-            temperature: 0.8,
-        }
-    }
-}
-
-pub(crate) struct BiomePlugin;
+pub struct BiomePlugin;
 
 impl Plugin for BiomePlugin {
     fn build(&self, app: &mut bevy_app::App) {
@@ -234,6 +170,71 @@ fn remove_biomes_from_registry(
         if let Some(idx) = reg.id_to_biome.iter().position(|entity| *entity == biome) {
             reg.id_to_biome.remove(idx);
             codec.registry_mut(BiomeRegistry::KEY).remove(idx);
+        }
+    }
+}
+
+
+#[derive(Resource)]
+pub struct BiomeRegistry {
+    id_to_biome: Vec<Entity>,
+}
+
+impl BiomeRegistry {
+    pub const KEY: Ident<&str> = ident!("minecraft:worldgen/biome");
+
+    pub fn get_by_id(&self, id: BiomeId) -> Option<Entity> {
+        self.id_to_biome.get(id.0 as usize).cloned()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (BiomeId, Entity)> + '_ {
+        self.id_to_biome
+            .iter()
+            .enumerate()
+            .map(|(id, biome)| (BiomeId(id as _), *biome))
+    }
+}
+
+impl Index<BiomeId> for BiomeRegistry {
+    type Output = Entity;
+
+    fn index(&self, index: BiomeId) -> &Self::Output {
+        self.id_to_biome
+            .get(index.0 as usize)
+            .unwrap_or_else(|| panic!("invalid {index:?}"))
+    }
+}
+
+/// An index into the biome registry.
+#[derive(Component, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Default)]
+pub struct BiomeId(pub u16);
+
+#[derive(Component, Clone, Debug)]
+pub struct Biome {
+    pub name: Ident<String>,
+    pub downfall: f32,
+    pub fog_color: i32,
+    pub sky_color: i32,
+    pub water_color: i32,
+    pub water_fog_color: i32,
+    pub grass_color: Option<i32>,
+    pub has_precipitation: bool,
+    pub temperature: f32,
+    // TODO: more stuff.
+}
+
+impl Default for Biome {
+    fn default() -> Self {
+        Self {
+            name: ident!("plains").into(),
+            downfall: 0.4,
+            fog_color: 12638463,
+            sky_color: 7907327,
+            water_color: 4159204,
+            water_fog_color: 329011,
+            grass_color: None,
+            has_precipitation: true,
+            temperature: 0.8,
         }
     }
 }
