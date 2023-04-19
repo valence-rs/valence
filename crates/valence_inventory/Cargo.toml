@@ -1,8 +1,12 @@
 [package]
 name = "valence_inventory"
-version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
+anyhow.workspace = true
+bevy_app.workspace = true
+bevy_ecs.workspace = true
+tracing.workspace = true
+valence_client.workspace = true
+valence_core.workspace = true

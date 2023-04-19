@@ -1,9 +1,9 @@
 use anyhow::{bail, ensure};
-use valence_protocol::packet::c2s::play::click_slot::ClickMode;
-use valence_protocol::packet::c2s::play::ClickSlotC2s;
+use valence_core::item::ItemStack;
+use valence_core::packet::c2s::play::click_slot::ClickMode;
+use valence_core::packet::c2s::play::ClickSlotC2s;
 
-use super::{Inventory, InventoryWindow, PLAYER_INVENTORY_MAIN_SLOTS_COUNT};
-use crate::client::CursorItem;
+use super::{CursorItem, Inventory, InventoryWindow, PLAYER_INVENTORY_MAIN_SLOTS_COUNT};
 
 /// Validates a click slot packet enforcing that all fields are valid.
 pub(super) fn validate_click_slot_packet(
@@ -35,7 +35,7 @@ pub(super) fn validate_click_slot_packet(
                     .item
                     .max_stack()
                     .max(slot.count())
-                    .min(valence_protocol::item::STACK_MAX);
+                    .min(ItemStack::STACK_MAX);
                 if !(1..=max_stack_size).contains(&slot.count()) {
                     return false;
                 }
@@ -52,7 +52,7 @@ pub(super) fn validate_click_slot_packet(
             .item
             .max_stack()
             .max(carried_item.count())
-            .min(valence_protocol::item::STACK_MAX);
+            .min(ItemStack::STACK_MAX);
         ensure!(
             (1..=max_stack_size).contains(&carried_item.count()),
             "invalid carried item count"
@@ -356,13 +356,13 @@ fn calculate_net_item_delta(
 }
 
 #[cfg(test)]
-mod test {
-    use valence_protocol::item::{ItemKind, ItemStack};
-    use valence_protocol::packet::c2s::play::click_slot::Slot;
-    use valence_protocol::var_int::VarInt;
+mod tests {
+    use valence_core::item::{ItemKind, ItemStack};
+    use valence_core::packet::c2s::play::click_slot::Slot;
+    use valence_core::packet::var_int::VarInt;
 
     use super::*;
-    use crate::prelude::InventoryKind;
+    use crate::InventoryKind;
 
     #[test]
     fn net_item_delta_1() {

@@ -15,15 +15,15 @@ pub struct ItemStack {
     pub nbt: Option<Compound>,
 }
 
-pub const STACK_MIN: u8 = 1;
-pub const STACK_MAX: u8 = 127;
-
 impl ItemStack {
+    pub const STACK_MIN: u8 = 1;
+    pub const STACK_MAX: u8 = 127;
+
     #[must_use]
     pub fn new(item: ItemKind, count: u8, nbt: Option<Compound>) -> Self {
         Self {
             item,
-            count: count.clamp(STACK_MIN, STACK_MAX),
+            count: count.clamp(Self::STACK_MIN, Self::STACK_MAX),
             nbt,
         }
     }
@@ -54,7 +54,7 @@ impl ItemStack {
     /// Sets the number of items in this stack. Values are clamped to 1-127,
     /// which are the positive values accepted by clients.
     pub fn set_count(&mut self, count: u8) {
-        self.count = count.clamp(STACK_MIN, STACK_MAX);
+        self.count = count.clamp(Self::STACK_MIN, Self::STACK_MAX);
     }
 }
 
@@ -98,8 +98,10 @@ impl Decode<'_> for Option<ItemStack> {
         let count = u8::decode(r)?;
 
         ensure!(
-            (STACK_MIN..=STACK_MAX).contains(&count),
-            "invalid item stack count (got {count}, expected {STACK_MIN}..={STACK_MAX})"
+            (ItemStack::STACK_MIN..=ItemStack::STACK_MAX).contains(&count),
+            "invalid item stack count (got {count}, expected {}..={})",
+            ItemStack::STACK_MIN,
+            ItemStack::STACK_MAX,
         );
 
         let nbt = if let [0, rest @ ..] = *r {

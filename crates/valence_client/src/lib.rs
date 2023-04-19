@@ -19,7 +19,6 @@ use valence_core::chunk_pos::{ChunkPos, ChunkView};
 use valence_core::despawn::Despawned;
 use valence_core::game_mode::GameMode;
 use valence_core::ident::Ident;
-use valence_core::item::ItemStack;
 use valence_core::packet::byte_angle::ByteAngle;
 use valence_core::packet::encode::{PacketEncoder, WritePacket};
 use valence_core::packet::global_pos::GlobalPos;
@@ -145,7 +144,6 @@ pub struct ClientBundle {
     pub is_debug: IsDebug,
     pub is_flat: IsFlat,
     pub teleport_state: teleport::TeleportState,
-    pub cursor_item: CursorItem,
     pub player: PlayerEntityBundle,
 }
 
@@ -175,7 +173,6 @@ impl ClientBundle {
             is_hardcore: IsHardcore::default(),
             is_flat: IsFlat::default(),
             has_respawn_screen: HasRespawnScreen::default(),
-            cursor_item: CursorItem::default(),
             prev_game_mode: PrevGameMode::default(),
             hashed_seed: HashedSeed::default(),
             reduced_debug_info: ReducedDebugInfo::default(),
@@ -693,11 +690,6 @@ pub struct IsDebug(pub bool);
 /// Changes the perceived horizon line (used for superflat worlds).
 #[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
 pub struct IsFlat(pub bool);
-
-/// The item stack that the client thinks it's holding under the mouse
-/// cursor.
-#[derive(Component, Clone, PartialEq, Default, Debug)]
-pub struct CursorItem(pub Option<ItemStack>);
 
 /// A system for adding [`Despawned`] components to disconnected clients. This
 /// works by listening for removed [`Client`] components.
