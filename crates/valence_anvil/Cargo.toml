@@ -9,15 +9,15 @@ keywords = ["anvil", "minecraft", "deserialization"]
 version.workspace = true
 edition.workspace = true
 
-[features]
-default = ["valence"]
-
 [dependencies]
 byteorder.workspace = true
 flate2.workspace = true
 num-integer.workspace = true
 thiserror.workspace = true
-valence = { workspace = true, optional = true }
+valence_biome.workspace = true
+valence_block.workspace = true
+valence_core.workspace = true
+valence_instance.workspace = true
 valence_nbt.workspace = true
 
 [dev-dependencies]
