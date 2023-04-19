@@ -57,31 +57,32 @@ pub(crate) struct InventoryPlugin;
 
 impl Plugin for InventoryPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.add_systems(
-            (
-                update_open_inventories,
-                update_client_on_close_inventory.after(update_open_inventories),
-                update_player_inventories,
+        app.add_system(init_new_client_inventories.in_set(SpawnClientsSet))
+            .add_systems(
+                (
+                    update_open_inventories,
+                    update_client_on_close_inventory.after(update_open_inventories),
+                    update_player_inventories,
+                )
+                    .in_base_set(CoreSet::PostUpdate)
+                    .before(FlushPacketsSet),
             )
-                .in_base_set(CoreSet::PostUpdate)
-                .before(FlushPacketsSet),
-        )
-        .add_systems(
-            (
-                handle_update_selected_slot,
-                handle_click_slot,
-                handle_creative_inventory_action,
-                handle_close_handled_screen,
-                handle_player_actions,
+            .add_systems(
+                (
+                    handle_update_selected_slot,
+                    handle_click_slot,
+                    handle_creative_inventory_action,
+                    handle_close_handled_screen,
+                    handle_player_actions,
+                )
+                    .in_base_set(EventLoopSet::PreUpdate)
+                    .in_schedule(EventLoopSchedule),
             )
-                .in_base_set(EventLoopSet::PreUpdate)
-                .in_schedule(EventLoopSchedule),
-        )
-        .init_resource::<InventorySettings>()
-        .add_event::<ClickSlot>()
-        .add_event::<DropItemStack>()
-        .add_event::<CreativeInventoryAction>()
-        .add_event::<UpdateSelectedSlot>();
+            .init_resource::<InventorySettings>()
+            .add_event::<ClickSlot>()
+            .add_event::<DropItemStack>()
+            .add_event::<CreativeInventoryAction>()
+            .add_event::<UpdateSelectedSlot>();
     }
 }
 
@@ -320,6 +321,40 @@ impl Inventory {
     }
 }
 
+/// Miscellaneous inventory data.
+#[derive(Component, Debug)]
+pub struct ClientInventoryState {
+    /// The current window ID. Incremented when inventories are opened.
+    window_id: u8,
+    state_id: Wrapping<i32>,
+    /// Tracks what slots have been changed by this client in this tick, so we
+    /// don't need to send updates for them.
+    slots_changed: u64,
+    /// Whether the client has updated the cursor item in this tick. This is not
+    /// on the `CursorItem` component to make maintaining accurate change
+    /// detection for end users easier.
+    client_updated_cursor_item: bool,
+    // TODO: make this a separate modifiable component.
+    held_item_slot: u16,
+}
+
+impl ClientInventoryState {
+    fn new() -> Self {
+        Self {
+            window_id: 0,
+            state_id: Wrapping(0),
+            slots_changed: 0,
+            client_updated_cursor_item: false,
+            // First slot of the hotbar.
+            held_item_slot: 36,
+        }
+    }
+
+    pub fn held_item_slot(&self) -> u16 {
+        self.held_item_slot
+    }
+}
+
 /// Used to indicate that the client with this component is currently viewing
 /// an inventory.
 #[derive(Component, Clone, Debug)]
@@ -472,6 +507,11 @@ impl<'a> InventoryWindowMut<'a> {
             None => self.player_inventory.slot_count(),
         }
     }
+}
+
+/// Attach the inventory components to new clients.
+fn init_new_client_inventories(clients: Query<Entity, Added<Client>>, mut commands: Commands) {
+    todo!("attach `Inventory` and `ClientInventoryState` to the new client");
 }
 
 /// Send updates for each client's player inventory.
@@ -764,7 +804,8 @@ fn handle_click_slot(
 
             let entire_stack = pkt.button == 1;
 
-            // Needs to open the inventory for if the player is dropping an item while having an inventory open.
+            // Needs to open the inventory for if the player is dropping an item while
+            // having an inventory open.
             if let Some(open_inventory) = open_inventory {
                 // The player is interacting with an inventory that is open.
 
@@ -794,8 +835,6 @@ fn handle_click_slot(
                     // The player is dropping an item from another inventory.
 
                     if let Some(stack) = target_inventory.slot(pkt.slot_idx as u16) {
-                        // TODO: is the use of `replace_slot` here causing unnecessary packets to be
-                        // sent?
                         let dropped = if entire_stack || stack.count() == 1 {
                             target_inventory.replace_slot(pkt.slot_idx as u16, None)
                         } else {
@@ -821,8 +860,6 @@ fn handle_click_slot(
                     let slot_id =
                         convert_to_player_slot_id(target_inventory.kind, pkt.slot_idx as u16);
                     if let Some(stack) = client_inv.slot(slot_id) {
-                        // TODO: is the use of `replace_slot` here causing unnecessary packets to be
-                        // sent?
                         let dropped = if entire_stack || stack.count() == 1 {
                             client_inv.replace_slot(slot_id, None)
                         } else {
@@ -844,10 +881,9 @@ fn handle_click_slot(
                     }
                 }
             } else {
-                // The player has no inventory open and is dropping an item from their inventory.
+                // The player has no inventory open and is dropping an item from their
+                // inventory.
                 if let Some(stack) = client_inv.slot(pkt.slot_idx as u16) {
-                    // TODO: is the use of `replace_slot` here causing unnecessary packets to be
-                    // sent?
                     let dropped = if entire_stack || stack.count() == 1 {
                         client_inv.replace_slot(pkt.slot_idx as u16, None)
                     } else {
@@ -2112,7 +2148,8 @@ mod test {
 
         #[test]
         fn should_drop_item_player_open_inventory_with_dropkey() {
-            // The item should be dropped successfully, if the player has an inventory open and the slot id points to his inventory.
+            // The item should be dropped successfully, if the player has an inventory open
+            // and the slot id points to his inventory.
 
             let mut app = App::new();
             let (client_ent, mut client_helper) = scenario_single_client(&mut app);
@@ -2184,7 +2221,8 @@ mod test {
 
     #[test]
     fn should_drop_item_stack_player_open_inventory_with_dropkey() {
-        // The item stack should be dropped successfully, if the player has an inventory open and the slot id points to his inventory.
+        // The item stack should be dropped successfully, if the player has an inventory
+        // open and the slot id points to his inventory.
 
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);

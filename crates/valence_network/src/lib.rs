@@ -117,11 +117,7 @@ fn build_plugin(app: &mut App) -> anyhow::Result<()> {
     );
 
     // Spawn new clients before the event loop starts.
-    app.add_system(
-        spawn_new_clients
-            .in_base_set(CoreSet::PreUpdate)
-            .before(RunEventLoopSet),
-    );
+    app.add_system(spawn_new_clients.in_set(SpawnClientsSet));
 
     Ok(())
 }

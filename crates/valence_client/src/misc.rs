@@ -1,15 +1,16 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use glam::Vec3;
-use valence_protocol::block_pos::BlockPos;
-use valence_protocol::packet::c2s::play::{
+use valence_core::block_pos::BlockPos;
+use valence_core::direction::Direction;
+use valence_core::hand::Hand;
+use valence_core::packet::c2s::play::{
     ChatMessageC2s, ClientStatusC2s, HandSwingC2s, PlayerInteractBlockC2s, PlayerInteractItemC2s,
     ResourcePackStatusC2s,
 };
-use valence_protocol::types::{Direction, Hand};
 
 use super::action::ActionSequence;
-use crate::entity::{EntityAnimation, EntityAnimations};
+use valence_entity::{EntityAnimation, EntityAnimations};
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 
 pub(super) fn build(app: &mut App) {

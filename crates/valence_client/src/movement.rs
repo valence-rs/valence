@@ -1,13 +1,12 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use glam::DVec3;
-use valence_protocol::packet::c2s::play::{
+use valence_core::packet::c2s::play::{
     Full, LookAndOnGround, OnGroundOnly, PositionAndOnGround, VehicleMoveC2s,
 };
+use valence_entity::{Look, Position, HeadYaw, OnGround};
 
 use super::teleport::TeleportState;
-use crate::component::{Look, OnGround, Position};
-use crate::entity::HeadYaw;
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 
 pub(super) fn build(app: &mut App) {

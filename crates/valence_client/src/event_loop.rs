@@ -6,17 +6,21 @@ use bevy_ecs::schedule::ScheduleLabel;
 use bevy_ecs::system::SystemState;
 use bytes::Bytes;
 use tracing::{debug, warn};
-use valence_protocol::{Decode, Packet};
+use valence_core::packet::{Decode, Packet};
 
-use crate::client::Client;
+use crate::{Client, SpawnClientsSet};
 
-pub(crate) struct EventLoopPlugin;
+pub struct EventLoopPlugin;
 
 impl Plugin for EventLoopPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.configure_set(RunEventLoopSet.in_base_set(CoreSet::PreUpdate))
-            .add_system(run_event_loop.in_set(RunEventLoopSet))
-            .add_event::<PacketEvent>();
+        app.configure_set(
+            RunEventLoopSet
+                .in_base_set(CoreSet::PreUpdate)
+                .after(SpawnClientsSet),
+        )
+        .add_system(run_event_loop.in_set(RunEventLoopSet))
+        .add_event::<PacketEvent>();
 
         // Add the event loop schedule.
         let mut event_loop = Schedule::new();
@@ -97,7 +101,7 @@ impl PacketEvent {
 }
 
 /// An exclusive system for running the event loop schedule.
-pub(crate) fn run_event_loop(
+fn run_event_loop(
     world: &mut World,
     state: &mut SystemState<(
         Query<(Entity, &mut Client)>,

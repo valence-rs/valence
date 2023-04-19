@@ -56,22 +56,21 @@ pub struct ClearInstanceChangesSet;
 impl Plugin for InstancePlugin {
     fn build(&self, app: &mut App) {
         app.configure_sets((
-            WriteEntityUpdatesToInstancesSet
-                .in_base_set(CoreSet::PostUpdate),
+            WriteEntityUpdatesToInstancesSet.in_base_set(CoreSet::PostUpdate),
             ClearInstanceChangesSet
                 .after(WriteEntityUpdatesToInstancesSet)
                 .in_base_set(CoreSet::PostUpdate),
         ))
         .add_system(
-            // This can run at the same time as entity init because we're only looking at position + location.
-            update_entity_cell_positions
-                .in_set(WriteEntityUpdatesToInstancesSet)
+            // This can run at the same time as entity init because we're only looking at position
+            // + location.
+            update_entity_cell_positions.in_set(WriteEntityUpdatesToInstancesSet),
         )
         .add_system(
             write_update_packets_to_instances
-            .after(update_entity_cell_positions)
-            .after(InitEntitiesSet)
-            .in_set(WriteEntityUpdatesToInstancesSet),
+                .after(update_entity_cell_positions)
+                .after(InitEntitiesSet)
+                .in_set(WriteEntityUpdatesToInstancesSet),
         )
         .add_system(clear_instance_changes.in_set(ClearInstanceChangesSet));
 
@@ -381,16 +380,18 @@ fn check_instance_invariants(instances: Query<&Instance>, entities: Query<(), Wi
 /// update packets on a per-chunk basis.
 #[derive(Component)]
 pub struct Instance {
-    pub(crate) partition: FxHashMap<ChunkPos, PartitionCell>,
-    pub(crate) info: InstanceInfo,
+    #[doc(hidden)]
+    pub partition: FxHashMap<ChunkPos, PartitionCell>,
+    pub info: InstanceInfo,
     /// Packet data to send to all clients in this instance at the end of the
     /// tick.
-    pub(crate) packet_buf: Vec<u8>,
+    pub packet_buf: Vec<u8>,
     /// Scratch space for writing packets.
     scratch: Vec<u8>,
 }
 
-pub(crate) struct InstanceInfo {
+#[doc(hidden)]
+pub struct InstanceInfo {
     dimension_type_name: Ident<String>,
     section_count: usize,
     min_y: i32,
@@ -402,23 +403,30 @@ pub(crate) struct InstanceInfo {
     filler_sky_light_arrays: Box<[LengthPrefixedArray<u8, 2048>]>,
 }
 
+#[doc(hidden)]
 #[derive(Debug)]
-pub(crate) struct PartitionCell {
+pub struct PartitionCell {
     /// The chunk in this cell.
-    pub(crate) chunk: Option<Chunk<true>>,
+    #[doc(hidden)]
+    pub chunk: Option<Chunk<true>>,
     /// If `chunk` went from `Some` to `None` this tick.
-    pub(crate) chunk_removed: bool,
+    #[doc(hidden)]
+    pub chunk_removed: bool,
     /// Minecraft entities in this cell.
-    pub(crate) entities: BTreeSet<Entity>,
+    #[doc(hidden)]
+    pub entities: BTreeSet<Entity>,
     /// Minecraft entities that have entered the chunk this tick, paired with
     /// the cell position in this instance they came from.
-    pub(crate) incoming: Vec<(Entity, Option<ChunkPos>)>,
+    #[doc(hidden)]
+    pub incoming: Vec<(Entity, Option<ChunkPos>)>,
     /// Minecraft entities that have left the chunk this tick, paired with the
     /// cell position in this world they arrived at.
-    pub(crate) outgoing: Vec<(Entity, Option<ChunkPos>)>,
+    #[doc(hidden)]
+    pub outgoing: Vec<(Entity, Option<ChunkPos>)>,
     /// A cache of packets to send to all clients that are in view of this cell
     /// at the end of the tick.
-    pub(crate) packet_buf: Vec<u8>,
+    #[doc(hidden)]
+    pub packet_buf: Vec<u8>,
 }
 
 impl Instance {

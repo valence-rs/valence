@@ -1,9 +1,8 @@
-pub use valence_protocol::packet::c2s::play::client_settings::ChatMode;
-// use valence_protocol::packet::c2s::play::client_settings::MainArm;
-use valence_protocol::packet::c2s::play::ClientSettingsC2s;
+pub use valence_core::packet::c2s::play::client_settings::ChatMode;
+use valence_core::packet::c2s::play::ClientSettingsC2s;
+pub use valence_entity::player::{MainArm, PlayerModelParts};
 
 use super::*;
-pub use crate::entity::player::{MainArm, PlayerModelParts};
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 
 pub(super) fn build(app: &mut App) {

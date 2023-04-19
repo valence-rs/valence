@@ -6,8 +6,8 @@ use std::io::Write;
 use std::iter::FusedIterator;
 
 use anyhow::Context;
-use valence_core::ident::Ident;
 use valence_core::ident;
+use valence_core::ident::Ident;
 use valence_core::item::ItemKind;
 use valence_core::packet::var_int::VarInt;
 use valence_core::packet::{Decode, Encode};

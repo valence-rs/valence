@@ -1,4 +1,4 @@
-use valence_protocol::packet::c2s::play::TeleportConfirmC2s;
+use valence_core::packet::c2s::play::TeleportConfirmC2s;
 
 use super::*;
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
@@ -79,7 +79,7 @@ fn teleport(
                 .with_x_rot(!changed_pitch);
 
             client.write_packet(&PlayerPositionLookS2c {
-                position: if changed_pos { pos.0.into() } else { [0.0; 3] },
+                position: if changed_pos { pos.0 } else { DVec3::ZERO },
                 yaw: if changed_yaw { look.yaw } else { 0.0 },
                 pitch: if changed_pitch { look.pitch } else { 0.0 },
                 flags,

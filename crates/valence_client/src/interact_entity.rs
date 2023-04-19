@@ -1,9 +1,9 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_protocol::packet::c2s::play::player_interact_entity::EntityInteraction;
-use valence_protocol::packet::c2s::play::PlayerInteractEntityC2s;
+use valence_core::packet::c2s::play::player_interact_entity::EntityInteraction;
+use valence_core::packet::c2s::play::PlayerInteractEntityC2s;
 
-use crate::entity::EntityManager;
+use valence_entity::EntityManager;
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 
 pub(super) fn build(app: &mut App) {

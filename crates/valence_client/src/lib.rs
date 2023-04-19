@@ -1,6 +1,7 @@
 use std::borrow::Cow;
+use std::fmt;
 use std::net::IpAddr;
-use std::num::Wrapping;
+use std::ops::Deref;
 use std::time::Instant;
 
 use bevy_app::prelude::*;
@@ -12,15 +13,20 @@ use glam::{DVec3, Vec3};
 use rand::Rng;
 use tracing::warn;
 use uuid::Uuid;
-use valence_protocol::block_pos::BlockPos;
-use valence_protocol::byte_angle::ByteAngle;
-use valence_protocol::encoder::PacketEncoder;
-use valence_protocol::ident::Ident;
-use valence_protocol::item::ItemStack;
-use valence_protocol::packet::s2c::play::game_state_change::GameEventKind;
-use valence_protocol::packet::s2c::play::particle::Particle;
-use valence_protocol::packet::s2c::play::player_position_look::Flags as PlayerPositionLookFlags;
-use valence_protocol::packet::s2c::play::{
+use valence_biome::BiomeRegistry;
+use valence_core::block_pos::BlockPos;
+use valence_core::chunk_pos::{ChunkPos, ChunkView};
+use valence_core::despawn::Despawned;
+use valence_core::game_mode::GameMode;
+use valence_core::ident::Ident;
+use valence_core::item::ItemStack;
+use valence_core::packet::byte_angle::ByteAngle;
+use valence_core::packet::encode::{PacketEncoder, WritePacket};
+use valence_core::packet::global_pos::GlobalPos;
+use valence_core::packet::s2c::play::game_state_change::GameEventKind;
+use valence_core::packet::s2c::play::particle::Particle;
+use valence_core::packet::s2c::play::player_position_look::Flags as PlayerPositionLookFlags;
+use valence_core::packet::s2c::play::{
     ChunkLoadDistanceS2c, ChunkRenderDistanceCenterS2c, CustomPayloadS2c, DeathMessageS2c,
     DisconnectS2c, EntitiesDestroyS2c, EntitySetHeadYawS2c, EntitySpawnS2c, EntityStatusS2c,
     EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, ExperienceOrbSpawnS2c, GameJoinS2c,
@@ -28,31 +34,25 @@ use valence_protocol::packet::s2c::play::{
     PlayerActionResponseS2c, PlayerPositionLookS2c, PlayerRespawnS2c, PlayerSpawnPositionS2c,
     PlayerSpawnS2c, ResourcePackSendS2c, SubtitleS2c, TitleFadeS2c, TitleS2c, UnloadChunkS2c,
 };
-use valence_protocol::sound::Sound;
-use valence_protocol::text::Text;
-use valence_protocol::types::{GlobalPos, Property, SoundCategory};
-use valence_protocol::var_int::VarInt;
-use valence_protocol::Packet;
-
-use crate::biome::BiomeRegistry;
-use crate::component::{
-    Despawned, GameMode, Location, Look, OldLocation, OldPosition, OnGround, Ping, Position,
-    Properties, ScratchBuf, UniqueId, Username,
+use valence_core::packet::var_int::VarInt;
+use valence_core::packet::Packet;
+use valence_core::property::Property;
+use valence_core::scratch::ScratchBuf;
+use valence_core::sound::{Sound, SoundCategory};
+use valence_core::text::Text;
+use valence_core::uuid::UniqueId;
+use valence_core::Server;
+use valence_entity::player::PlayerEntityBundle;
+use valence_entity::{
+    EntityId, EntityKind, EntityStatus, HeadYaw, Location, Look, ObjectData, OldLocation,
+    OldPosition, OnGround, PacketByteRange, Position, TrackedData, Velocity,
 };
-use crate::entity::player::PlayerEntityBundle;
-use crate::entity::{
-    EntityId, EntityKind, EntityStatus, HeadYaw, ObjectData, PacketByteRange, TrackedData, Velocity,
-};
-use crate::instance::{Instance, WriteUpdatePacketsToInstancesSet};
-use crate::inventory::{Inventory, InventoryKind};
-use crate::packet::WritePacket;
-use crate::registry_codec::{RegistryCodec, RegistryCodecSet};
-use crate::util::velocity_to_packet_units;
-use crate::view::{ChunkPos, ChunkView};
-use crate::Server;
+use valence_instance::{Instance, WriteEntityUpdatesToInstancesSet};
+use valence_registry::{RegistryCodec, RegistryCodecSet};
 
 pub mod action;
 pub mod command;
+pub mod event_loop;
 pub mod interact_entity;
 pub mod keepalive;
 pub mod misc;
@@ -60,13 +60,21 @@ pub mod movement;
 pub mod settings;
 pub mod teleport;
 
-pub(crate) struct ClientPlugin;
+pub struct ClientPlugin;
 
 /// When clients have their packet buffer flushed. Any system that writes
-/// packets to clients should happen before this. Otherwise, the data
+/// packets to clients should happen _before_ this. Otherwise, the data
 /// will arrive one tick late.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FlushPacketsSet;
+
+/// The [`SystemSet`] in [`CoreSet::PreUpdate`] where new clients should be
+/// spawned. Systems that need to perform initialization work on clients before
+/// users get access to it should run _after_ this set in
+/// [`CoreSet::PreUpdate`].
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+
+pub struct SpawnClientsSet;
 
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
@@ -75,7 +83,7 @@ impl Plugin for ClientPlugin {
                 initial_join.after(RegistryCodecSet),
                 update_chunk_load_dist,
                 read_data_in_old_view
-                    .after(WriteUpdatePacketsToInstancesSet)
+                    .after(WriteEntityUpdatesToInstancesSet)
                     .after(update_chunk_load_dist),
                 update_view.after(initial_join).after(read_data_in_old_view),
                 respawn.after(update_view),
@@ -83,18 +91,19 @@ impl Plugin for ClientPlugin {
                 update_spawn_position.after(update_view),
                 update_old_view_dist.after(update_view),
                 update_game_mode,
-                update_tracked_data.after(WriteUpdatePacketsToInstancesSet),
-                init_tracked_data.after(WriteUpdatePacketsToInstancesSet),
+                update_tracked_data.after(WriteEntityUpdatesToInstancesSet),
+                init_tracked_data.after(WriteEntityUpdatesToInstancesSet),
                 update_op_level,
             )
                 .in_base_set(CoreSet::PostUpdate)
                 .before(FlushPacketsSet),
         )
-        .configure_set(
+        .configure_sets((
+            SpawnClientsSet.in_base_set(CoreSet::PreUpdate),
             FlushPacketsSet
                 .in_base_set(CoreSet::PostUpdate)
-                .after(WriteUpdatePacketsToInstancesSet),
-        )
+                .after(WriteEntityUpdatesToInstancesSet),
+        ))
         .add_system(flush_packets.in_set(FlushPacketsSet));
 
         movement::build(app);
@@ -137,8 +146,6 @@ pub struct ClientBundle {
     pub is_flat: IsFlat,
     pub teleport_state: teleport::TeleportState,
     pub cursor_item: CursorItem,
-    pub player_inventory_state: ClientInventoryState,
-    pub inventory: Inventory,
     pub player: PlayerEntityBundle,
 }
 
@@ -169,8 +176,6 @@ impl ClientBundle {
             is_flat: IsFlat::default(),
             has_respawn_screen: HasRespawnScreen::default(),
             cursor_item: CursorItem::default(),
-            player_inventory_state: ClientInventoryState::new(),
-            inventory: Inventory::new(InventoryKind::Player),
             prev_game_mode: PrevGameMode::default(),
             hashed_seed: HashedSeed::default(),
             reduced_debug_info: ReducedDebugInfo::default(),
@@ -218,6 +223,7 @@ pub trait ClientConnection: Send + Sync + 'static {
     /// The number of pending packets waiting to be received via
     /// [`Self::try_recv`].
     fn len(&self) -> usize;
+
     fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -429,7 +435,7 @@ impl Client {
     pub fn set_velocity(&mut self, velocity: impl Into<Vec3>) {
         self.write_packet(&EntityVelocityUpdateS2c {
             entity_id: VarInt(0),
-            velocity: velocity_to_packet_units(velocity.into()),
+            velocity: Velocity(velocity.into()).to_packet_units(),
         });
     }
 
@@ -693,41 +699,6 @@ pub struct IsFlat(pub bool);
 #[derive(Component, Clone, PartialEq, Default, Debug)]
 pub struct CursorItem(pub Option<ItemStack>);
 
-// TODO: move this component to inventory module?
-/// Miscellaneous inventory data.
-#[derive(Component, Debug)]
-pub struct ClientInventoryState {
-    /// The current window ID. Incremented when inventories are opened.
-    pub(crate) window_id: u8,
-    pub(crate) state_id: Wrapping<i32>,
-    /// Tracks what slots have been changed by this client in this tick, so we
-    /// don't need to send updates for them.
-    pub(crate) slots_changed: u64,
-    /// Whether the client has updated the cursor item in this tick. This is not
-    /// on the `CursorItem` component to make maintaining accurate change
-    /// detection for end users easier.
-    pub(crate) client_updated_cursor_item: bool,
-    // TODO: make this a separate modifiable component.
-    pub(crate) held_item_slot: u16,
-}
-
-impl ClientInventoryState {
-    fn new() -> Self {
-        Self {
-            window_id: 0,
-            state_id: Wrapping(0),
-            slots_changed: 0,
-            client_updated_cursor_item: false,
-            // First slot of the hotbar.
-            held_item_slot: 36,
-        }
-    }
-
-    pub fn held_item_slot(&self) -> u16 {
-        self.held_item_slot
-    }
-}
-
 /// A system for adding [`Despawned`] components to disconnected clients. This
 /// works by listening for removed [`Client`] components.
 pub fn despawn_disconnected_clients(
@@ -906,7 +877,7 @@ impl EntityInitQueryItem<'_> {
             EntityKind::EXPERIENCE_ORB => {
                 writer.write_packet(&ExperienceOrbSpawnS2c {
                     entity_id: self.entity_id.get().into(),
-                    position: pos.to_array(),
+                    position: pos,
                     count: self.object_data.0 as i16,
                 });
             }
@@ -914,7 +885,7 @@ impl EntityInitQueryItem<'_> {
                 writer.write_packet(&PlayerSpawnS2c {
                     entity_id: self.entity_id.get().into(),
                     player_uuid: self.uuid.0,
-                    position: pos.to_array(),
+                    position: pos,
                     yaw: ByteAngle::from_degrees(self.look.yaw),
                     pitch: ByteAngle::from_degrees(self.look.pitch),
                 });
@@ -929,12 +900,12 @@ impl EntityInitQueryItem<'_> {
                 entity_id: self.entity_id.get().into(),
                 object_uuid: self.uuid.0,
                 kind: self.kind.get().into(),
-                position: pos.to_array(),
+                position: pos,
                 pitch: ByteAngle::from_degrees(self.look.pitch),
                 yaw: ByteAngle::from_degrees(self.look.yaw),
                 head_yaw: ByteAngle::from_degrees(self.head_yaw.0),
                 data: self.object_data.0.into(),
-                velocity: velocity_to_packet_units(self.velocity.0),
+                velocity: self.velocity.to_packet_units(),
             }),
         }
 
@@ -982,10 +953,7 @@ fn read_data_in_old_view(
                 if let Some(cell) = instance.partition.get(&pos) {
                     if cell.chunk_removed && cell.chunk.is_none() {
                         // Chunk was previously loaded and is now deleted.
-                        client.write_packet(&UnloadChunkS2c {
-                            chunk_x: pos.x,
-                            chunk_z: pos.z,
-                        });
+                        client.write_packet(&UnloadChunkS2c { pos });
                     }
 
                     if let Some(chunk) = &cell.chunk {
@@ -1099,10 +1067,7 @@ fn update_view(
                         if let Some(cell) = old_instance.partition.get(&pos) {
                             // Unload the chunk at this cell if it was loaded.
                             if cell.chunk.is_some() {
-                                client.write_packet(&UnloadChunkS2c {
-                                    chunk_x: pos.x,
-                                    chunk_z: pos.z,
-                                });
+                                client.write_packet(&UnloadChunkS2c { pos });
                             }
 
                             // Unload all the entities in the cell.
@@ -1159,10 +1124,7 @@ fn update_view(
                         if let Some(cell) = instance.partition.get(&pos) {
                             // Unload the chunk at this cell if it was loaded.
                             if cell.chunk.is_some() {
-                                client.write_packet(&UnloadChunkS2c {
-                                    chunk_x: pos.x,
-                                    chunk_z: pos.z,
-                                });
+                                client.write_packet(&UnloadChunkS2c { pos });
                             }
 
                             // Unload all the entities in the cell.
@@ -1292,104 +1254,5 @@ fn update_op_level(mut clients: Query<(&mut Client, &OpLevel), Changed<OpLevel>>
             entity_id: 0,
             entity_status: 24 + lvl.0,
         });
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::collections::BTreeSet;
-
-    use bevy_app::App;
-    use bevy_ecs::world::EntityMut;
-    use valence_protocol::packet::s2c::play::ChunkDataS2c;
-    use valence_protocol::packet::S2cPlayPacket;
-
-    use super::*;
-    use crate::instance::Chunk;
-    use crate::unit_test::util::scenario_single_client;
-
-    #[test]
-    fn client_chunk_view_change() {
-        let mut app = App::new();
-
-        let (client_ent, mut client_helper) = scenario_single_client(&mut app);
-
-        let mut instance = app
-            .world
-            .query::<&mut Instance>()
-            .single_mut(&mut app.world);
-
-        for z in -15..15 {
-            for x in -15..15 {
-                instance.insert_chunk([x, z], Chunk::default());
-            }
-        }
-
-        let mut client = app.world.entity_mut(client_ent);
-
-        client.get_mut::<Position>().unwrap().set([8.0, 0.0, 8.0]);
-        client.get_mut::<ViewDistance>().unwrap().0 = 6;
-
-        // Tick
-        app.update();
-        let mut client = app.world.entity_mut(client_ent);
-
-        let mut loaded_chunks = BTreeSet::new();
-
-        for pkt in client_helper.collect_sent() {
-            if let S2cPlayPacket::ChunkDataS2c(ChunkDataS2c {
-                chunk_x, chunk_z, ..
-            }) = pkt
-            {
-                assert!(
-                    loaded_chunks.insert(ChunkPos::new(chunk_x, chunk_z)),
-                    "({chunk_x}, {chunk_z})"
-                );
-            }
-        }
-
-        for pos in view(&client).iter() {
-            assert!(loaded_chunks.contains(&pos), "{pos:?}");
-        }
-
-        assert!(!loaded_chunks.is_empty());
-
-        // Move the client to the adjacent chunk.
-        client.get_mut::<Position>().unwrap().set([24.0, 0.0, 24.0]);
-
-        // Tick
-        app.update();
-        let client = app.world.entity_mut(client_ent);
-
-        for pkt in client_helper.collect_sent() {
-            match pkt {
-                S2cPlayPacket::ChunkDataS2c(ChunkDataS2c {
-                    chunk_x, chunk_z, ..
-                }) => {
-                    assert!(
-                        loaded_chunks.insert(ChunkPos::new(chunk_x, chunk_z)),
-                        "({chunk_x}, {chunk_z})"
-                    );
-                }
-                S2cPlayPacket::UnloadChunkS2c(UnloadChunkS2c { chunk_x, chunk_z }) => {
-                    assert!(
-                        loaded_chunks.remove(&ChunkPos::new(chunk_x, chunk_z)),
-                        "({chunk_x}, {chunk_z})"
-                    );
-                }
-                _ => {}
-            }
-        }
-
-        for pos in view(&client).iter() {
-            assert!(loaded_chunks.contains(&pos), "{pos:?}");
-        }
-    }
-
-    fn view(client: &EntityMut) -> ChunkView {
-        let chunk_pos = client.get::<Position>().unwrap().chunk_pos();
-        let view_dist = client.get::<ViewDistance>().unwrap().0;
-
-        ChunkView::new(chunk_pos, view_dist)
     }
 }

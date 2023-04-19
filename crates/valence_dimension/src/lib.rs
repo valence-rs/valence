@@ -13,10 +13,9 @@ use anyhow::{bail, Context};
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use tracing::{error, warn};
-use valence_nbt::{compound, Value};
 use valence_core::ident;
 use valence_core::ident::Ident;
-
+use valence_nbt::{compound, Value};
 use valence_registry::{RegistryCodec, RegistryCodecSet, RegistryValue};
 
 #[derive(Resource)]

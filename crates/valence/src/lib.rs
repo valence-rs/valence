@@ -83,4 +83,3 @@ pub mod prelude {
     use super::*;
     pub use crate::Server;
 }
-

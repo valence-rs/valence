@@ -1,7 +1,7 @@
-use valence_protocol::block_pos::BlockPos;
-use valence_protocol::packet::c2s::play::player_action::Action;
-use valence_protocol::packet::c2s::play::PlayerActionC2s;
-use valence_protocol::types::Direction;
+use valence_core::block_pos::BlockPos;
+use valence_core::direction::Direction;
+use valence_core::packet::c2s::play::player_action::Action;
+use valence_core::packet::c2s::play::PlayerActionC2s;
 
 use super::*;
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};

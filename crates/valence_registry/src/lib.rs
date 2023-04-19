@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use bevy_app::prelude::*;
 pub use bevy_ecs::prelude::*;
 use tracing::error;
-use valence_nbt::{compound, Compound, List, Value};
 use valence_core::ident::Ident;
+use valence_nbt::{compound, Compound, List, Value};
 
 #[doc(hidden)]
 pub struct RegistryCodecPlugin;

@@ -386,7 +386,8 @@ impl Chunk<true> {
 
     /// Writes the chunk data packet for this chunk with the given position.
     /// This will initialize the chunk for the client.
-    pub(crate) fn write_init_packets(
+    #[doc(hidden)]
+    pub fn write_init_packets(
         &self,
         info: &InstanceInfo,
         pos: ChunkPos,

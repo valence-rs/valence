@@ -1,10 +1,10 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-use valence_protocol::packet::c2s::play::client_command::Action;
-use valence_protocol::packet::c2s::play::ClientCommandC2s;
+use valence_core::packet::c2s::play::client_command::Action;
+use valence_core::packet::c2s::play::ClientCommandC2s;
 
-use crate::entity::entity::Flags;
-use crate::entity::{entity, Pose};
+use valence_entity::entity::Flags;
+use valence_entity::{entity, Pose};
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
