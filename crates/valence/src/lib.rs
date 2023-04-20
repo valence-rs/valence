@@ -75,6 +75,7 @@ pub mod prelude {
         EntityAnimation, EntityKind, EntityManager, EntityStatus, HeadYaw, Location, Look,
         OldLocation, OldPosition, Position,
     };
+    pub use game_mode::GameMode;
     pub use glam::*;
     pub use ident::Ident;
     pub use instance::{Block, BlockMut, BlockRef, Chunk, Instance};

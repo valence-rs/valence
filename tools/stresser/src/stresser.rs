@@ -5,15 +5,16 @@ use anyhow::bail;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpStream;
 use uuid::Uuid;
-use valence_protocol::decoder::{decode_packet, PacketDecoder};
-use valence_protocol::encoder::PacketEncoder;
-use valence_protocol::packet::c2s::handshake::handshake::NextState;
-use valence_protocol::packet::c2s::handshake::HandshakeC2s;
-use valence_protocol::packet::c2s::login::LoginHelloC2s;
-use valence_protocol::packet::c2s::play::{KeepAliveC2s, PositionAndOnGround, TeleportConfirmC2s};
-use valence_protocol::packet::{C2sHandshakePacket, S2cLoginPacket, S2cPlayPacket};
-use valence_protocol::var_int::VarInt;
-use valence_protocol::PROTOCOL_VERSION;
+use valence_core::packet::c2s::handshake::handshake::NextState;
+use valence_core::packet::c2s::handshake::{C2sHandshakePacket, HandshakeC2s};
+use valence_core::packet::c2s::login::LoginHelloC2s;
+use valence_core::packet::c2s::play::{KeepAliveC2s, PositionAndOnGround, TeleportConfirmC2s};
+use valence_core::packet::decode::{decode_packet, PacketDecoder};
+use valence_core::packet::encode::PacketEncoder;
+use valence_core::packet::s2c::login::S2cLoginPacket;
+use valence_core::packet::s2c::play::S2cPlayPacket;
+use valence_core::packet::var_int::VarInt;
+use valence_core::PROTOCOL_VERSION;
 
 pub struct SessionParams<'a> {
     pub socket_addr: SocketAddr,
