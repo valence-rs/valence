@@ -34,7 +34,8 @@ use valence_core::Server;
 use valence_dimension::DimensionType;
 use valence_entity::{
     EntityAnimations, EntityId, EntityKind, EntityStatuses, HeadYaw, InitEntitiesSet, Location,
-    Look, OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData, Velocity,
+    Look, OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData,
+    UpdateTrackedDataSet, Velocity,
 };
 
 mod chunk;
@@ -46,7 +47,7 @@ pub struct InstancePlugin;
 /// When Minecraft entity changes are written to the packet buffers of chunks.
 /// Systems that read from the packet buffer of chunks should run _after_ this.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct WriteUpdatesToInstancesSet;
+pub struct WriteUpdatePacketsToInstancesSet;
 
 /// When instances are updated and changes from the current tick are cleared.
 /// Systems that read changes from instances should run _before_ this.
@@ -56,21 +57,25 @@ pub struct ClearInstanceChangesSet;
 impl Plugin for InstancePlugin {
     fn build(&self, app: &mut App) {
         app.configure_sets((
-            WriteUpdatesToInstancesSet.in_base_set(CoreSet::PostUpdate),
+            WriteUpdatePacketsToInstancesSet
+                .in_base_set(CoreSet::PostUpdate)
+                .after(InitEntitiesSet)
+                .after(UpdateTrackedDataSet),
             ClearInstanceChangesSet
-                .after(WriteUpdatesToInstancesSet)
+                .after(WriteUpdatePacketsToInstancesSet)
                 .in_base_set(CoreSet::PostUpdate),
         ))
         .add_system(
             // This can run at the same time as entity init because we're only looking at position
             // + location.
-            update_entity_cell_positions.in_set(WriteUpdatesToInstancesSet),
+            update_entity_cell_positions
+                .in_base_set(CoreSet::PostUpdate)
+                .before(WriteUpdatePacketsToInstancesSet),
         )
         .add_system(
             write_update_packets_to_instances
                 .after(update_entity_cell_positions)
-                .after(InitEntitiesSet)
-                .in_set(WriteUpdatesToInstancesSet),
+                .in_set(WriteUpdatePacketsToInstancesSet),
         )
         .add_system(clear_instance_changes.in_set(ClearInstanceChangesSet));
 

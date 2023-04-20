@@ -13,11 +13,7 @@ pub(super) fn build(app: &mut App) {
                 .in_schedule(EventLoopSchedule)
                 .in_base_set(EventLoopSet::PreUpdate),
         )
-        .add_system(
-            acknowledge_player_actions
-                .in_base_set(CoreSet::PostUpdate)
-                .before(FlushPacketsSet),
-        );
+        .add_system(acknowledge_player_actions.in_set(UpdateClientsSet));
 }
 
 #[derive(Copy, Clone, Debug)]

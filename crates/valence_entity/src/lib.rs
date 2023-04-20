@@ -20,13 +20,17 @@ include!(concat!(env!("OUT_DIR"), "/entity.rs"));
 pub struct EntityPlugin;
 
 /// When new Minecraft entities are initialized and added to
-/// [`EntityManager`]. Also when tracked data changes are written to
-/// [`TrackedData`].
+/// [`EntityManager`].
 ///
 /// Systems that need Minecraft entities to be in a valid state should run
 /// _after_ this set.
 #[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct InitEntitiesSet;
+
+/// When tracked data is written to the entity's [`TrackedData`] component.
+/// Systems that modify tracked data should run _before_ this.
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct UpdateTrackedDataSet;
 
 /// When entities are updated and changes from the current tick are cleared.
 /// Systems that need to observe changes to entities (Such as the difference
@@ -40,8 +44,10 @@ impl Plugin for EntityPlugin {
         app.insert_resource(EntityManager::new())
             .configure_sets((
                 InitEntitiesSet.in_base_set(CoreSet::PostUpdate),
+                UpdateTrackedDataSet.in_base_set(CoreSet::PostUpdate),
                 ClearEntityChangesSet
                     .after(InitEntitiesSet)
+                    .after(UpdateTrackedDataSet)
                     .in_base_set(CoreSet::PostUpdate),
             ))
             .add_systems(

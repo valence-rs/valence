@@ -10,29 +10,25 @@ use valence_core::packet::{Decode, Packet};
 
 use crate::{Client, SpawnClientsSet};
 
-pub struct EventLoopPlugin;
+pub(super) fn build(app: &mut App) {
+    app.configure_set(
+        RunEventLoopSet
+            .in_base_set(CoreSet::PreUpdate)
+            .after(SpawnClientsSet),
+    )
+    .add_system(run_event_loop.in_set(RunEventLoopSet))
+    .add_event::<PacketEvent>();
 
-impl Plugin for EventLoopPlugin {
-    fn build(&self, app: &mut bevy_app::App) {
-        app.configure_set(
-            RunEventLoopSet
-                .in_base_set(CoreSet::PreUpdate)
-                .after(SpawnClientsSet),
-        )
-        .add_system(run_event_loop.in_set(RunEventLoopSet))
-        .add_event::<PacketEvent>();
+    // Add the event loop schedule.
+    let mut event_loop = Schedule::new();
+    event_loop.set_default_base_set(EventLoopSet::Update);
+    event_loop.configure_sets((
+        EventLoopSet::PreUpdate.before(EventLoopSet::Update),
+        EventLoopSet::Update.before(EventLoopSet::PostUpdate),
+        EventLoopSet::PostUpdate,
+    ));
 
-        // Add the event loop schedule.
-        let mut event_loop = Schedule::new();
-        event_loop.set_default_base_set(EventLoopSet::Update);
-        event_loop.configure_sets((
-            EventLoopSet::PreUpdate.before(EventLoopSet::Update),
-            EventLoopSet::Update.before(EventLoopSet::PostUpdate),
-            EventLoopSet::PostUpdate,
-        ));
-
-        app.add_schedule(EventLoopSchedule, event_loop);
-    }
+    app.add_schedule(EventLoopSchedule, event_loop);
 }
 
 /// The [`ScheduleLabel`] for the event loop [`Schedule`].

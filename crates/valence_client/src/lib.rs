@@ -44,9 +44,9 @@ use valence_core::Server;
 use valence_entity::player::PlayerEntityBundle;
 use valence_entity::{
     EntityId, EntityKind, EntityStatus, HeadYaw, Location, Look, ObjectData, OldLocation,
-    OldPosition, OnGround, PacketByteRange, Position, TrackedData, Velocity,
+    OldPosition, OnGround, PacketByteRange, Position, TrackedData, Velocity, ClearEntityChangesSet,
 };
-use valence_instance::{Instance, WriteUpdatesToInstancesSet};
+use valence_instance::{ClearInstanceChangesSet, Instance, WriteUpdatePacketsToInstancesSet};
 use valence_registry::{RegistryCodec, RegistryCodecSet};
 
 pub mod action;
@@ -76,6 +76,9 @@ pub struct FlushPacketsSet;
 
 pub struct SpawnClientsSet;
 
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+struct UpdateClientsSet;
+
 impl Plugin for ClientPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
@@ -83,7 +86,7 @@ impl Plugin for ClientPlugin {
                 initial_join.after(RegistryCodecSet),
                 update_chunk_load_dist,
                 read_data_in_old_view
-                    .after(WriteUpdatesToInstancesSet)
+                    .after(WriteUpdatePacketsToInstancesSet)
                     .after(update_chunk_load_dist),
                 update_view.after(initial_join).after(read_data_in_old_view),
                 respawn.after(update_view),
@@ -91,21 +94,26 @@ impl Plugin for ClientPlugin {
                 update_spawn_position.after(update_view),
                 update_old_view_dist.after(update_view),
                 update_game_mode,
-                update_tracked_data.after(WriteUpdatesToInstancesSet),
-                init_tracked_data.after(WriteUpdatesToInstancesSet),
+                update_tracked_data.after(WriteUpdatePacketsToInstancesSet),
+                init_tracked_data.after(WriteUpdatePacketsToInstancesSet),
                 update_op_level,
             )
-                .in_base_set(CoreSet::PostUpdate)
-                .before(FlushPacketsSet),
+                .in_set(UpdateClientsSet),
         )
         .configure_sets((
             SpawnClientsSet.in_base_set(CoreSet::PreUpdate),
-            FlushPacketsSet
+            UpdateClientsSet
                 .in_base_set(CoreSet::PostUpdate)
-                .after(WriteUpdatesToInstancesSet),
+                .before(FlushPacketsSet),
+            ClearEntityChangesSet.after(UpdateClientsSet),
+            FlushPacketsSet
+                .in_base_set(CoreSet::PostUpdate),
+                // .after(WriteUpdatesToInstancesSet),
+            ClearInstanceChangesSet.after(FlushPacketsSet),
         ))
         .add_system(flush_packets.in_set(FlushPacketsSet));
 
+        event_loop::build(app);
         movement::build(app);
         command::build(app);
         keepalive::build(app);

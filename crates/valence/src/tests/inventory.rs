@@ -117,15 +117,16 @@ fn test_should_remove_invalid_open_inventory() {
 fn test_should_modify_player_inventory_click_slot() {
     let mut app = App::new();
     let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+
+    // Process a tick to get past the "on join" logic.
+    app.update();
+    client_helper.clear_sent();
+
     let mut inventory = app
         .world
         .get_mut::<Inventory>(client_ent)
         .expect("could not find inventory for client");
     inventory.set_slot(20, ItemStack::new(ItemKind::Diamond, 2, None));
-
-    // Process a tick to get past the "on join" logic.
-    app.update();
-    client_helper.clear_sent();
 
     // Make the client click the slot and pick up the item.
     let state_id = app
@@ -178,13 +179,16 @@ fn test_should_modify_player_inventory_click_slot() {
 fn test_should_modify_player_inventory_server_side() {
     let mut app = App::new();
     let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+
+    // Process a tick to get past the "on join" logic.
+    app.update();
+
     let mut inventory = app
         .world
         .get_mut::<Inventory>(client_ent)
         .expect("could not find inventory for client");
     inventory.set_slot(20, ItemStack::new(ItemKind::Diamond, 2, None));
 
-    // Process a tick to get past the "on join" logic.
     app.update();
     client_helper.clear_sent();
 
@@ -493,15 +497,15 @@ fn should_not_increment_state_id_on_cursor_item_change() {
     let mut app = App::new();
     let (client_ent, mut client_helper) = scenario_single_client(&mut app);
 
+    // Process a tick to get past the "on join" logic.
+    app.update();
+    client_helper.clear_sent();
+
     let inv_state = app
         .world
         .get::<ClientInventoryState>(client_ent)
         .expect("could not find client");
     let expected_state_id = inv_state.state_id().0;
-
-    // Process a tick to get past the "on join" logic.
-    app.update();
-    client_helper.clear_sent();
 
     let mut cursor_item = app.world.get_mut::<CursorItem>(client_ent).unwrap();
     cursor_item.0 = Some(ItemStack::new(ItemKind::Diamond, 2, None));
@@ -533,15 +537,16 @@ mod dropping_items {
     fn should_drop_item_player_action() {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
         let mut inventory = app
             .world
             .get_mut::<Inventory>(client_ent)
             .expect("could not find inventory");
         inventory.set_slot(36, ItemStack::new(ItemKind::IronIngot, 3, None));
-
-        // Process a tick to get past the "on join" logic.
-        app.update();
-        client_helper.clear_sent();
 
         client_helper.send(&valence_core::packet::c2s::play::PlayerActionC2s {
             action: Action::DropItem,
@@ -586,15 +591,16 @@ mod dropping_items {
     fn should_drop_item_stack_player_action() {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
         let mut inventory = app
             .world
             .get_mut::<Inventory>(client_ent)
             .expect("could not find inventory");
         inventory.set_slot(36, ItemStack::new(ItemKind::IronIngot, 32, None));
-
-        // Process a tick to get past the "on join" logic.
-        app.update();
-        client_helper.clear_sent();
 
         client_helper.send(&valence_core::packet::c2s::play::PlayerActionC2s {
             action: Action::DropAllItems,
@@ -671,6 +677,11 @@ mod dropping_items {
     fn should_drop_item_stack_click_container_outside() {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
         let mut cursor_item = app
             .world
             .get_mut::<CursorItem>(client_ent)
@@ -681,10 +692,6 @@ mod dropping_items {
             .get_mut::<ClientInventoryState>(client_ent)
             .expect("could not find client");
         let state_id = inv_state.state_id().0;
-
-        // Process a tick to get past the "on join" logic.
-        app.update();
-        client_helper.clear_sent();
 
         client_helper.send(&valence_core::packet::c2s::play::ClickSlotC2s {
             window_id: 0,
@@ -722,6 +729,11 @@ mod dropping_items {
     fn should_drop_item_click_container_with_dropkey_single() {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
         let inv_state = app
             .world
             .get_mut::<ClientInventoryState>(client_ent)
@@ -732,10 +744,6 @@ mod dropping_items {
             .get_mut::<Inventory>(client_ent)
             .expect("could not find inventory");
         inventory.set_slot(40, ItemStack::new(ItemKind::IronIngot, 32, None));
-
-        // Process a tick to get past the "on join" logic.
-        app.update();
-        client_helper.clear_sent();
 
         client_helper.send(&valence_core::packet::c2s::play::ClickSlotC2s {
             window_id: 0,
@@ -771,6 +779,11 @@ mod dropping_items {
     fn should_drop_item_stack_click_container_with_dropkey() {
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+        client_helper.clear_sent();
+
         let inv_state = app
             .world
             .get_mut::<ClientInventoryState>(client_ent)
@@ -781,10 +794,6 @@ mod dropping_items {
             .get_mut::<Inventory>(client_ent)
             .expect("could not find inventory");
         inventory.set_slot(40, ItemStack::new(ItemKind::IronIngot, 32, None));
-
-        // Process a tick to get past the "on join" logic.
-        app.update();
-        client_helper.clear_sent();
 
         client_helper.send(&valence_core::packet::c2s::play::ClickSlotC2s {
             window_id: 0,
@@ -823,6 +832,10 @@ mod dropping_items {
 
         let mut app = App::new();
         let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+
+        // Process a tick to get past the "on join" logic.
+        app.update();
+
         let mut inventory = app
             .world
             .get_mut::<Inventory>(client_ent)
@@ -833,7 +846,6 @@ mod dropping_items {
         );
         let _inventory_ent = set_up_open_inventory(&mut app, client_ent);
 
-        // Process a tick to get past the "on join" logic.
         app.update();
         client_helper.clear_sent();
 
@@ -896,6 +908,10 @@ fn should_drop_item_stack_player_open_inventory_with_dropkey() {
 
     let mut app = App::new();
     let (client_ent, mut client_helper) = scenario_single_client(&mut app);
+
+    // Process a tick to get past the "on join" logic.
+    app.update();
+
     let mut inventory = app
         .world
         .get_mut::<Inventory>(client_ent)
@@ -906,7 +922,6 @@ fn should_drop_item_stack_player_open_inventory_with_dropkey() {
     );
     let _inventory_ent = set_up_open_inventory(&mut app, client_ent);
 
-    // Process a tick to get past the "on join" logic.
     app.update();
     client_helper.clear_sent();
 
@@ -962,12 +977,13 @@ fn should_drop_item_stack_player_open_inventory_with_dropkey() {
 fn dragging_items() {
     let mut app = App::new();
     let (client_ent, mut client_helper) = scenario_single_client(&mut app);
-    app.world.get_mut::<CursorItem>(client_ent).unwrap().0 =
-        Some(ItemStack::new(ItemKind::Diamond, 64, None));
 
     // Process a tick to get past the "on join" logic.
     app.update();
     client_helper.clear_sent();
+
+    app.world.get_mut::<CursorItem>(client_ent).unwrap().0 =
+        Some(ItemStack::new(ItemKind::Diamond, 64, None));
 
     let inv_state = app.world.get::<ClientInventoryState>(client_ent).unwrap();
     let window_id = inv_state.window_id();

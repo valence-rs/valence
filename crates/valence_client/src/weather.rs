@@ -30,7 +30,7 @@ pub(super) fn build(app: &mut App) {
     app.configure_set(
         UpdateWeatherPerInstanceSet
             .in_base_set(CoreSet::PostUpdate)
-            .before(WriteUpdatesToInstancesSet),
+            .before(WriteUpdatePacketsToInstancesSet),
     )
     .configure_set(
         UpdateWeatherPerClientSet

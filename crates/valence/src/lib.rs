@@ -98,6 +98,7 @@ pub mod prelude {
     pub use valence_core::uuid::UniqueId;
     pub use valence_core::{CoreSettings, Server};
 
+    pub use super::DefaultPlugins;
     use super::*;
 }
 
@@ -133,7 +134,7 @@ impl PluginGroup for DefaultPlugins {
 
         #[cfg(feature = "inventory")]
         {
-            group = group.add(valence_player_list::PlayerListPlugin);
+            group = group.add(valence_inventory::InventoryPlugin);
         }
 
         #[cfg(feature = "anvil")]

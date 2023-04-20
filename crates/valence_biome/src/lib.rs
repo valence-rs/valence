@@ -22,16 +22,24 @@ use valence_registry::{RegistryCodec, RegistryCodecSet, RegistryValue};
 
 pub struct BiomePlugin;
 
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+
+struct BiomeSet;
+
 impl Plugin for BiomePlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.insert_resource(BiomeRegistry {
             id_to_biome: vec![],
         })
+        .configure_set(
+            BiomeSet
+                .in_base_set(CoreSet::PostUpdate)
+                .before(RegistryCodecSet),
+        )
         .add_systems(
             (update_biome_registry, remove_biomes_from_registry)
                 .chain()
-                .in_base_set(CoreSet::PostUpdate)
-                .before(RegistryCodecSet),
+                .in_set(BiomeSet),
         )
         .add_startup_system(load_default_biomes.in_base_set(StartupSet::PreStartup));
     }

@@ -37,7 +37,7 @@ use std::ops::Range;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use tracing::{debug, warn};
-use valence_client::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use valence_client::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent, RunEventLoopSet};
 use valence_client::{Client, FlushPacketsSet, SpawnClientsSet};
 use valence_core::game_mode::GameMode;
 use valence_core::item::ItemStack;
@@ -56,14 +56,15 @@ use valence_core::text::Text;
 
 mod validate;
 
-pub(crate) struct InventoryPlugin;
+pub struct InventoryPlugin;
 
 impl Plugin for InventoryPlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.add_system(
             init_new_client_inventories
                 .in_base_set(CoreSet::PreUpdate)
-                .after(SpawnClientsSet),
+                .after(SpawnClientsSet)
+                .before(RunEventLoopSet),
         )
         .add_systems(
             (

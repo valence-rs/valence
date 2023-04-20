@@ -4,17 +4,12 @@ use super::*;
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
-    app.add_system(
-        teleport
-            .after(update_view)
-            .before(FlushPacketsSet)
-            .in_base_set(CoreSet::PostUpdate),
-    )
-    .add_system(
-        handle_teleport_confirmations
-            .in_schedule(EventLoopSchedule)
-            .in_base_set(EventLoopSet::PreUpdate),
-    );
+    app.add_system(teleport.after(update_view).in_set(UpdateClientsSet))
+        .add_system(
+            handle_teleport_confirmations
+                .in_schedule(EventLoopSchedule)
+                .in_base_set(EventLoopSet::PreUpdate),
+        );
 }
 
 #[derive(Component, Debug)]

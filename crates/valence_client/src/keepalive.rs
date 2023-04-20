@@ -5,16 +5,12 @@ use super::*;
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 
 pub(super) fn build(app: &mut App) {
-    app.add_system(
-        send_keepalive
-            .in_base_set(CoreSet::PostUpdate)
-            .before(FlushPacketsSet),
-    )
-    .add_system(
-        handle_keepalive_response
-            .in_base_set(EventLoopSet::PreUpdate)
-            .in_schedule(EventLoopSchedule),
-    );
+    app.add_system(send_keepalive.in_set(UpdateClientsSet))
+        .add_system(
+            handle_keepalive_response
+                .in_base_set(EventLoopSet::PreUpdate)
+                .in_schedule(EventLoopSchedule),
+        );
 }
 
 #[derive(Component, Debug)]

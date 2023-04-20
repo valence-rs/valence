@@ -2,13 +2,12 @@ use std::io;
 use std::io::Write;
 use std::process::{Command, Stdio};
 
-use valence::bevy_app::prelude::*;
-use valence::config::ServerPlugin;
+use valence::prelude::*;
 
 fn main() -> io::Result<()> {
     let mut app = App::new();
 
-    app.add_plugin(ServerPlugin::new(()));
+    app.add_plugins(DefaultPlugins);
 
     let dot_graph = bevy_mod_debugdump::schedule_graph_dot(
         &mut app,

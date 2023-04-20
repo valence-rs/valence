@@ -12,27 +12,36 @@ use valence_core::packet::s2c::play::{PlayerListHeaderS2c, PlayerRemoveS2c};
 use valence_core::text::Text;
 use valence_core::uuid::UniqueId;
 use valence_core::Server;
-use valence_instance::WriteUpdatesToInstancesSet;
+use valence_instance::WriteUpdatePacketsToInstancesSet;
 
 pub struct PlayerListPlugin;
 
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+
+struct PlayerListSet;
+
 impl Plugin for PlayerListPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(PlayerList::new()).add_systems(
-            (
-                update_header_footer,
-                add_new_clients_to_player_list,
-                apply_system_buffers, // So new clients get the packets for their own entry.
-                update_entries,
-                init_player_list_for_clients,
-                remove_despawned_entries,
-                write_player_list_changes,
+        app.insert_resource(PlayerList::new())
+            .add_systems(
+                (
+                    update_header_footer,
+                    add_new_clients_to_player_list,
+                    apply_system_buffers, // So new clients get the packets for their own entry.
+                    update_entries,
+                    init_player_list_for_clients,
+                    remove_despawned_entries,
+                    write_player_list_changes,
+                )
+                    .chain()
+                    .in_set(PlayerListSet),
             )
-                .chain()
-                .in_base_set(CoreSet::PostUpdate)
-                // Needs to happen before player entities are initialized. Otherwise, they will appear invisible.
-                .before(WriteUpdatesToInstancesSet),
-        );
+            .configure_set(
+                PlayerListSet
+                    .in_base_set(CoreSet::PostUpdate)
+                    // Needs to happen before player entities are initialized. Otherwise, they will appear invisible.
+                    .before(WriteUpdatePacketsToInstancesSet),
+            );
     }
 }
 

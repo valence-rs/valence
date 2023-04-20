@@ -20,19 +20,26 @@ use valence_registry::{RegistryCodec, RegistryCodecSet, RegistryValue};
 
 pub struct DimensionPlugin;
 
+#[derive(SystemSet, Copy, Clone, PartialEq, Eq, Hash, Debug)]
+struct DimensionSet;
+
 impl Plugin for DimensionPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(DimensionTypeRegistry {
             name_to_dimension: BTreeMap::new(),
         })
+        .configure_set(
+            DimensionSet
+                .in_base_set(CoreSet::PostUpdate)
+                .before(RegistryCodecSet),
+        )
         .add_systems(
             (
                 update_dimension_type_registry,
                 remove_dimension_types_from_registry,
             )
                 .chain()
-                .in_base_set(CoreSet::PostUpdate)
-                .before(RegistryCodecSet),
+                .in_set(DimensionSet),
         )
         .add_startup_system(load_default_dimension_types.in_base_set(StartupSet::PreStartup));
     }
