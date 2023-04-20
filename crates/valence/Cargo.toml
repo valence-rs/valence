@@ -42,4 +42,6 @@ bytes.workspace = true
 noise.workspace = true
 tracing-subscriber.workspace = true
 rand.workspace = true
-
+tracing.workspace = true
+flume.workspace = true
+clap.workspace = true

@@ -3,6 +3,7 @@
 use rand::Rng;
 use valence::player_list::{DisplayName, PlayerListEntryBundle};
 use valence::prelude::*;
+use valence_client::Ping;
 
 const SPAWN_Y: i32 = 64;
 const PLAYER_UUID_1: Uuid = Uuid::from_u128(1);
@@ -12,7 +13,7 @@ fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(ServerPlugin::new(()))
+        .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .add_systems((
             init_clients,

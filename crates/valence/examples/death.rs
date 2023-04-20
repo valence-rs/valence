@@ -9,7 +9,7 @@ pub fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(ServerPlugin::new(()).with_connection_mode(ConnectionMode::Offline))
+        .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .add_systems((init_clients, squat_and_die, necromancy))
         .add_system(despawn_disconnected_clients)
@@ -75,7 +75,7 @@ fn squat_and_die(mut clients: Query<&mut Client>, mut events: EventReader<Sneaki
 }
 
 fn necromancy(
-    mut clients: Query<(&mut Position, &mut Direction, &mut Location)>,
+    mut clients: Query<(&mut Position, &mut Look, &mut Location)>,
     mut events: EventReader<Respawn>,
     instances: Query<Entity, With<Instance>>,
 ) {

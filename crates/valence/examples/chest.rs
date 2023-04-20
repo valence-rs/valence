@@ -10,7 +10,7 @@ pub fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(ServerPlugin::new(()))
+        .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_systems((toggle_gamemode_on_sneak, open_chest))

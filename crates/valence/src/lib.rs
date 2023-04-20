@@ -65,7 +65,7 @@ pub mod prelude {
     pub use client::{
         despawn_disconnected_clients, Client, CompassPos, DeathLocation, HasRespawnScreen,
         HashedSeed, Ip, IsDebug, IsFlat, IsHardcore, OldView, OldViewDistance, OpLevel,
-        PrevGameMode, ReducedDebugInfo, View, ViewDistance,
+        PrevGameMode, Properties, ReducedDebugInfo, Username, View, ViewDistance,
     };
     pub use despawn::Despawned;
     pub use dimension::{DimensionType, DimensionTypeRegistry};
@@ -77,6 +77,7 @@ pub mod prelude {
     };
     pub use game_mode::GameMode;
     pub use glam::*;
+    pub use hand::Hand;
     pub use ident::Ident;
     pub use instance::{Block, BlockMut, BlockRef, Chunk, Instance};
     #[cfg(feature = "inventory")]
@@ -96,7 +97,7 @@ pub mod prelude {
     pub use text::{Color, Text, TextFormat};
     pub use valence_core::ident; // Export the `ident!` macro.
     pub use valence_core::uuid::UniqueId;
-    pub use valence_core::{CoreSettings, Server};
+    pub use valence_core::{translation_key, CoreSettings, Server};
 
     pub use super::DefaultPlugins;
     use super::*;

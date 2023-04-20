@@ -3,7 +3,6 @@
 use valence::client::misc::{ChatMessage, InteractBlock};
 use valence::nbt::{compound, List};
 use valence::prelude::*;
-use valence::protocol::types::Hand;
 
 const FLOOR_Y: i32 = 64;
 const SIGN_POS: [i32; 3] = [3, FLOOR_Y + 1, 2];
@@ -13,7 +12,7 @@ pub fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(ServerPlugin::new(()))
+        .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .add_systems((event_handler, init_clients, despawn_disconnected_clients))
         .run();
@@ -61,16 +60,13 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<
-        (&mut Location, &mut Position, &mut Direction, &mut GameMode),
-        Added<Client>,
-    >,
+    mut clients: Query<(&mut Location, &mut Position, &mut Look, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
     for (mut loc, mut pos, mut look, mut game_mode) in &mut clients {
         loc.0 = instances.single();
         pos.set([1.5, FLOOR_Y as f64 + 1.0, 1.5]);
-        *look = Direction::new(-90.0, 0.0);
+        *look = Look::new(-90.0, 0.0);
 
         *game_mode = GameMode::Creative;
     }

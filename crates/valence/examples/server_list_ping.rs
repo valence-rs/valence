@@ -3,20 +3,25 @@
 use std::net::SocketAddr;
 
 use valence::prelude::*;
+use valence_network::{async_trait, CleanupFn, ConnectionMode, PlayerSampleEntry, ServerListPing};
 
 pub fn main() {
     App::new()
-        .add_plugin(ServerPlugin::new(MyCallbacks).with_connection_mode(ConnectionMode::Offline))
+        .insert_resource(NetworkSettings {
+            connection_mode: ConnectionMode::Offline,
+            ..Default::default()
+        })
+        .add_plugins(DefaultPlugins)
         .run();
 }
 
 struct MyCallbacks;
 
 #[async_trait]
-impl AsyncCallbacks for MyCallbacks {
+impl NetworkCallbacks for MyCallbacks {
     async fn server_list_ping(
         &self,
-        _shared: &SharedServer,
+        _shared: &SharedNetworkState,
         remote_addr: SocketAddr,
         _protocol_version: i32,
     ) -> ServerListPing {
@@ -33,7 +38,11 @@ impl AsyncCallbacks for MyCallbacks {
         }
     }
 
-    async fn login(&self, _shared: &SharedServer, _info: &NewClientInfo) -> Result<(), Text> {
+    async fn login(
+        &self,
+        _shared: &SharedNetworkState,
+        _info: &NewClientInfo,
+    ) -> Result<CleanupFn, Text> {
         Err("You are not meant to join this example".color(Color::RED))
     }
 }

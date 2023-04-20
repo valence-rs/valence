@@ -6,8 +6,8 @@ use std::thread;
 use clap::Parser;
 use flume::{Receiver, Sender};
 use tracing::warn;
+use valence::anvil::{AnvilChunk, AnvilWorld};
 use valence::prelude::*;
-use valence_anvil::{AnvilChunk, AnvilWorld};
 
 const SPAWN_POS: DVec3 = DVec3::new(0.0, 256.0, 0.0);
 const SECTION_COUNT: usize = 24;
@@ -62,7 +62,7 @@ pub fn main() {
     };
 
     App::new()
-        .add_plugin(ServerPlugin::new(()))
+        .add_plugins(DefaultPlugins)
         .insert_resource(game_state)
         .add_startup_system(setup)
         .add_systems(
