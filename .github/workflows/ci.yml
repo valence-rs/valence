@@ -23,7 +23,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
-      - run: cp crates/playground/src/playground.template.rs crates/playground/src/playground.rs
+      - run: cp tools/playground/src/playground.template.rs tools/playground/src/playground.rs
       - name: Set up cargo cache
         uses: actions/cache@v3
         continue-on-error: false
