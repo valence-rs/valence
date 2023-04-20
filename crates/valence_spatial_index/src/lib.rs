@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 use vek::{Aabb, Vec3};
 
 pub mod bvh;

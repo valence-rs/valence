@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 use std::path::Path;
 use std::process::Command;
 use std::{env, fs};

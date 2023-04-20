@@ -1,10 +1,4 @@
-//! Dimension type configuration and identification.
-//!
-//! **NOTE:**
-//!
-//! - Modifying the dimension type registry after the server has started can
-//! break invariants within instances and clients! Make sure there are no
-//! instances or clients spawned before mutating.
+#![doc = include_str!("../README.md")]
 
 use std::collections::BTreeMap;
 use std::str::FromStr;

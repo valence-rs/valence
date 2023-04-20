@@ -3,8 +3,7 @@ use glam::DVec3;
 use crate::block_pos::BlockPos;
 use crate::packet::{Decode, Encode};
 
-/// The X and Z position of a chunk in an
-/// [`Instance`](crate::instance::Instance).
+/// The X and Z position of a chunk.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash, Debug, Encode, Decode)]
 pub struct ChunkPos {
     /// The X position of the chunk.

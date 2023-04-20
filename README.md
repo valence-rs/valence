@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="assets/logo-full.svg" width="650" align="center">
+    <img src="https://raw.githubusercontent.com/valence-rs/valence/main/assets/logo-full.svg" width="650" align="center">
 </p>
 
 <p align="center">
@@ -27,6 +27,8 @@ Opinionated features like dynamic scripting, dedicated executables, and vanilla 
 built as optional plugins. This level of modularity is desirable for those looking to build highly custom experiences
 in Minecraft such as minigame servers.
 
+⚠️ **Valence is still early in development with many features unimplemented or incomplete. Expect to encounter bugs, limitations, and breaking changes.**
+
 # Goals
 
 Valence aims to be the following:
@@ -45,8 +47,7 @@ Valence aims to be the following:
 
 ## Current Status
 
-⚠️ **Valence is still early in development with many features unimplemented or incomplete. Expect to encounter bugs, limitations, and breaking changes.** Here are some noteworthy achievements:
-
+Here are some noteworthy achievements:
 - `valence_nbt`: A speedy new library for Minecraft's Named Binary Tag (NBT) format.
 - Authentication, encryption, and compression
 - Block states

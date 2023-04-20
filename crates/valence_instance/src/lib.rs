@@ -1,3 +1,5 @@
+#[doc = include_str!("../README.md")]
+
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::collections::BTreeSet;

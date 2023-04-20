@@ -1,13 +1,4 @@
-//! Biome configuration and identification.
-//!
-//! **NOTE:**
-//!
-//! - Modifying the biome registry after the server has started can
-//! break invariants within instances and clients! Make sure there are no
-//! instances or clients spawned before mutating.
-//! - A biome named "minecraft:plains" must exist. Otherwise, vanilla clients
-//!   will be disconnected. A biome named "minecraft:plains" is added by
-//!   default.
+#![doc = include_str!("../README.md")]
 
 use std::ops::Index;
 

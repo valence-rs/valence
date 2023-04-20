@@ -286,6 +286,7 @@ impl Default for ErasedNetworkCallbacks {
     }
 }
 
+/// This trait uses [`mod@async_trait`].
 #[async_trait]
 pub trait NetworkCallbacks: Send + Sync + 'static {
     /// Called when the server receives a Server List Ping query.
@@ -384,7 +385,7 @@ pub trait NetworkCallbacks: Send + Sync + 'static {
     /// Uses the official Minecraft session server. This is formatted as
     /// `https://sessionserver.mojang.com/session/minecraft/hasJoined?username=<username>&serverId=<auth-digest>&ip=<player-ip>`.
     ///
-    /// [online mode]: crate::config::ConnectionMode::Online
+    /// [online mode]: ConnectionMode::Online
     async fn session_server(
         &self,
         shared: &SharedNetworkState,
@@ -417,7 +418,7 @@ impl Drop for CleanupOnDrop {
     }
 }
 
-/// The default async callbacks. Useful as a placeholder.
+/// The default network callbacks. Useful as a placeholder.
 impl NetworkCallbacks for () {}
 
 /// Describes how new connections to the server are handled.
@@ -431,7 +432,7 @@ pub enum ConnectionMode {
     /// This mode should be used by all publicly exposed servers which are not
     /// behind a proxy.
     ///
-    /// [configured session server]: AsyncCallbacks::session_server
+    /// [configured session server]: NetworkCallbacks::session_server
     Online {
         /// Determines if client IP validation should take place during
         /// authentication.
@@ -441,7 +442,7 @@ pub enum ConnectionMode {
         /// IP than the one used to connect to this server.
         ///
         /// This is used by the default implementation of
-        /// [`AsyncCallbacks::session_server`]. A different implementation may
+        /// [`NetworkCallbacks::session_server`]. A different implementation may
         /// choose to ignore this value.
         prevent_proxy_connections: bool,
     },
@@ -490,7 +491,7 @@ pub enum ConnectionMode {
 
 /// The result of the Server List Ping [callback].
 ///
-/// [callback]: crate::config::AsyncCallbacks
+/// [callback]: NetworkCallbacks::server_list_ping
 #[derive(Clone, Default, Debug)]
 pub enum ServerListPing<'a> {
     /// Responds to the server list ping with the given information.

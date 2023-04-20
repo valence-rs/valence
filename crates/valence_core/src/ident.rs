@@ -43,7 +43,6 @@ pub struct Ident<S> {
 ///
 /// ```
 /// # use valence_core::{ident, ident::Ident};
-///
 /// let my_ident: Ident<&'static str> = ident!("apple");
 ///
 /// println!("{my_ident}");

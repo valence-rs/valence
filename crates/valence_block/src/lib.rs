@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 #![allow(clippy::all)] // TODO: block build script creates many warnings.
 
 use std::fmt;

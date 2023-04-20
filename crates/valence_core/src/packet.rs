@@ -172,7 +172,7 @@ pub trait Decode<'a>: Sized {
 /// [`Packet`][macro] derive macro. The trait is implemented by reading or
 /// writing the packet ID provided in the `#[packet_id = ...]` helper attribute
 /// followed by a call to [`Encode::encode`] or [`Decode::decode`]. The target
-/// type must implement [`Encode`], [`Decode`], and [`fmt::Debug`].
+/// type must implement [`Encode`], [`Decode`], and [`std::fmt::Debug`].
 ///
 /// ```
 /// use valence_core::packet::{Decode, Encode, Packet};
@@ -190,7 +190,7 @@ pub trait Decode<'a>: Sized {
 /// println!("{buf:?}");
 /// ```
 ///
-/// [macro]: valence_protocol_macros::Packet
+/// [macro]: valence_core_macros::Packet
 /// [`VarInt`]: var_int::VarInt
 pub trait Packet<'a>: Sized + std::fmt::Debug {
     /// The packet returned by [`Self::packet_id`]. If the packet ID is not
