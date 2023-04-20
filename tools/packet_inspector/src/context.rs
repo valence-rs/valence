@@ -7,13 +7,14 @@ use owo_colors::{OwoColorize, Style};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
-use valence_protocol::decoder::PacketDecoder;
-use valence_protocol::packet::c2s::handshake::HandshakeC2s;
-use valence_protocol::packet::c2s::login::{LoginHelloC2s, LoginKeyC2s};
-use valence_protocol::packet::c2s::status::{QueryPingC2s, QueryRequestC2s};
-use valence_protocol::packet::s2c::login::LoginSuccessS2c;
-use valence_protocol::packet::s2c::status::{QueryPongS2c, QueryResponseS2c};
-use valence_protocol::packet::{C2sPlayPacket, S2cLoginPacket, S2cPlayPacket};
+use valence_core::packet::c2s::handshake::HandshakeC2s;
+use valence_core::packet::c2s::login::{LoginHelloC2s, LoginKeyC2s};
+use valence_core::packet::c2s::play::C2sPlayPacket;
+use valence_core::packet::c2s::status::{QueryPingC2s, QueryRequestC2s};
+use valence_core::packet::decode::PacketDecoder;
+use valence_core::packet::s2c::login::{LoginSuccessS2c, S2cLoginPacket};
+use valence_core::packet::s2c::play::S2cPlayPacket;
+use valence_core::packet::s2c::status::{QueryPongS2c, QueryResponseS2c};
 
 use crate::packet_widget::{systemtime_strftime, PacketDirection};
 use crate::MetaPacket;
@@ -114,9 +115,9 @@ impl Packet {
             ($packet:ident) => {
                 match dec.try_next_packet() {
                     Ok(Some(frame)) => {
-                        if let Ok(pkt) =
-                            <$packet as valence_protocol::Packet>::decode_packet(&mut &frame[..])
-                        {
+                        if let Ok(pkt) = <$packet as valence_core::packet::Packet>::decode_packet(
+                            &mut &frame[..],
+                        ) {
                             if formatted {
                                 format!("{pkt:#?}")
                             } else {

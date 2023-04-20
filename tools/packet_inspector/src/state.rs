@@ -1,13 +1,13 @@
 use std::io::ErrorKind;
 use std::sync::Arc;
 
+use bytes::BytesMut;
 use time::OffsetDateTime;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use valence_protocol::bytes::BytesMut;
-use valence_protocol::decoder::{decode_packet, PacketDecoder};
-use valence_protocol::encoder::PacketEncoder;
-use valence_protocol::Packet as ValencePacket;
+use valence_core::packet::decode::{decode_packet, PacketDecoder};
+use valence_core::packet::encode::PacketEncoder;
+use valence_core::packet::Packet as ValencePacket;
 
 use crate::context::{Context, Packet, Stage};
 use crate::packet_widget::PacketDirection;

@@ -11,6 +11,7 @@ syntax_highlighting = ["syntect"]
 [dependencies]
 anyhow.workspace = true
 atty.workspace = true
+bytes.workspace = true
 clap.workspace = true
 directories.workspace = true
 eframe = { workspace = true, default-features = false, features = [

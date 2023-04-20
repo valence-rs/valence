@@ -45,8 +45,8 @@ use valence_core::uuid::UniqueId;
 use valence_core::Server;
 use valence_entity::player::PlayerEntityBundle;
 use valence_entity::{
-    EntityId, EntityKind, EntityStatus, HeadYaw, Location, Look, ObjectData, OldLocation,
-    OldPosition, OnGround, PacketByteRange, Position, TrackedData, Velocity, ClearEntityChangesSet,
+    ClearEntityChangesSet, EntityId, EntityKind, EntityStatus, HeadYaw, Location, Look, ObjectData,
+    OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData, Velocity,
 };
 use valence_instance::{ClearInstanceChangesSet, Instance, WriteUpdatePacketsToInstancesSet};
 use valence_registry::{RegistryCodec, RegistryCodecSet};
@@ -108,9 +108,8 @@ impl Plugin for ClientPlugin {
                 .in_base_set(CoreSet::PostUpdate)
                 .before(FlushPacketsSet),
             ClearEntityChangesSet.after(UpdateClientsSet),
-            FlushPacketsSet
-                .in_base_set(CoreSet::PostUpdate),
-                // .after(WriteUpdatesToInstancesSet),
+            FlushPacketsSet.in_base_set(CoreSet::PostUpdate),
+            // .after(WriteUpdatesToInstancesSet),
             ClearInstanceChangesSet.after(FlushPacketsSet),
         ))
         .add_system(flush_packets.in_set(FlushPacketsSet));

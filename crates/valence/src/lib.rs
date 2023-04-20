@@ -1,5 +1,4 @@
 #![doc = include_str!("../../../README.md")] // Points to the main project README.
-
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/valence-rs/valence/main/assets/logo.svg",
     html_favicon_url = "https://raw.githubusercontent.com/valence-rs/valence/main/assets/logo.svg"
