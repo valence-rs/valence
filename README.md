@@ -48,8 +48,6 @@ Valence aims to be the following:
 ⚠️ **Valence is still early in development with many features unimplemented or incomplete. Expect to encounter bugs, limitations, and breaking changes.** Here are some noteworthy achievements:
 
 - `valence_nbt`: A speedy new library for Minecraft's Named Binary Tag (NBT) format.
-- `valence_protocol`: A library for working with Minecraft's protocol. Does not depend on Valence and can be used in
-  other projects.
 - Authentication, encryption, and compression
 - Block states
 - Chunks
