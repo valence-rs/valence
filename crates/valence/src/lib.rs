@@ -77,7 +77,7 @@ pub mod prelude {
         OldLocation, OldPosition, Position,
     };
     pub use game_mode::GameMode;
-    pub use glam::{Vec2, Vec3, DVec2, DVec3};
+    pub use glam::{DVec2, DVec3, Vec2, Vec3};
     pub use hand::Hand;
     pub use ident::Ident;
     pub use instance::{Block, BlockMut, BlockRef, Chunk, Instance};
