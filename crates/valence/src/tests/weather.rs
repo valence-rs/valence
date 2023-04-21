@@ -70,10 +70,7 @@ fn test_weather_instance() {
     }
 
     // Alter a rain component of the instance.
-    app.world.entity_mut(instance_ent).insert(Rain(
-        // Invalid value to assert it is clamped.
-        1.0 + 1.0,
-    ));
+    app.world.entity_mut(instance_ent).insert(Rain(1.0));
     app.update();
 
     // Insert a thunder component to the instance.
@@ -81,10 +78,7 @@ fn test_weather_instance() {
     app.update();
 
     // Alter a thunder component of the instance.
-    app.world.entity_mut(instance_ent).insert(Thunder(
-        // Invalid value to assert it is clamped.
-        1.0 + 1.0,
-    ));
+    app.world.entity_mut(instance_ent).insert(Thunder(1.0));
     app.update();
 
     // Remove the rain component from the instance.
@@ -123,10 +117,7 @@ fn test_weather_client() {
     }
 
     // Alter a rain component of the client.
-    app.world.entity_mut(client_ent).insert(Rain(
-        // Invalid value to assert it is clamped.
-        1.0 + 1_f32,
-    ));
+    app.world.entity_mut(client_ent).insert(Rain(1.0));
     app.update();
 
     // Insert a thunder component to the client.
@@ -134,10 +125,7 @@ fn test_weather_client() {
     app.update();
 
     // Alter a thunder component of the client.
-    app.world.entity_mut(client_ent).insert(Thunder(
-        // Invalid value to assert it is clamped.
-        1.0 + 1_f32,
-    ));
+    app.world.entity_mut(client_ent).insert(Thunder(1.0));
     app.update();
 
     // Remove the rain component from the client.
