@@ -97,6 +97,7 @@ impl PacketEvent {
 }
 
 /// An exclusive system for running the event loop schedule.
+#[allow(clippy::type_complexity)]
 fn run_event_loop(
     world: &mut World,
     state: &mut SystemState<(

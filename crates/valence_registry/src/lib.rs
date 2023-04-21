@@ -1,4 +1,21 @@
 #![doc = include_str!("../README.md")]
+#![deny(
+    rustdoc::broken_intra_doc_links,
+    rustdoc::private_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::invalid_codeblock_attributes,
+    rustdoc::invalid_rust_codeblocks,
+    rustdoc::bare_urls,
+    rustdoc::invalid_html_tags
+)]
+#![warn(
+    trivial_casts,
+    trivial_numeric_casts,
+    unused_lifetimes,
+    unused_import_braces,
+    unreachable_pub,
+    clippy::dbg_macro
+)]
 
 use std::collections::BTreeMap;
 

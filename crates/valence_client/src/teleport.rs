@@ -51,6 +51,7 @@ impl TeleportState {
 ///
 /// This should happen after chunks are loaded so the client doesn't fall though
 /// the floor.
+#[allow(clippy::type_complexity)]
 fn teleport(
     mut clients: Query<
         (&mut Client, &mut TeleportState, &Position, &Look),

@@ -8,7 +8,7 @@ use bytes::BytesMut;
 use thiserror::Error;
 use tokio::sync::Notify;
 
-pub fn byte_channel(limit: usize) -> (ByteSender, ByteReceiver) {
+pub(crate) fn byte_channel(limit: usize) -> (ByteSender, ByteReceiver) {
     let shared = Arc::new(Shared {
         mtx: Mutex::new(Inner {
             bytes: BytesMut::new(),
@@ -27,11 +27,11 @@ pub fn byte_channel(limit: usize) -> (ByteSender, ByteReceiver) {
     (sender, receiver)
 }
 
-pub struct ByteSender {
+pub(crate) struct ByteSender {
     shared: Arc<Shared>,
 }
 
-pub struct ByteReceiver {
+pub(crate) struct ByteReceiver {
     shared: Arc<Shared>,
 }
 
@@ -47,7 +47,7 @@ struct Inner {
 }
 
 impl ByteSender {
-    pub fn take_capacity(&mut self, additional: usize) -> BytesMut {
+    pub(crate) fn take_capacity(&mut self, additional: usize) -> BytesMut {
         let mut lck = self.shared.mtx.lock().unwrap();
 
         lck.bytes.reserve(additional);
@@ -56,7 +56,7 @@ impl ByteSender {
         lck.bytes.split_off(len)
     }
 
-    pub fn try_send(&mut self, mut bytes: BytesMut) -> Result<(), TrySendError> {
+    pub(crate) fn try_send(&mut self, mut bytes: BytesMut) -> Result<(), TrySendError> {
         let mut lck = self.shared.mtx.lock().unwrap();
 
         if lck.disconnected {
@@ -84,7 +84,7 @@ impl ByteSender {
         Ok(())
     }
 
-    pub async fn send_async(&mut self, mut bytes: BytesMut) -> Result<(), SendError> {
+    pub(crate) async fn send_async(&mut self, mut bytes: BytesMut) -> Result<(), SendError> {
         loop {
             {
                 let mut lck = self.shared.mtx.lock().unwrap();
@@ -115,18 +115,18 @@ impl ByteSender {
         }
     }
 
-    pub fn is_disconnected(&self) -> bool {
+    pub(crate) fn is_disconnected(&self) -> bool {
         self.shared.mtx.lock().unwrap().disconnected
     }
 
-    pub fn limit(&self) -> usize {
+    pub(crate) fn limit(&self) -> usize {
         self.shared.limit
     }
 }
 
 /// Contains any excess bytes not sent.
 #[derive(Clone, PartialEq, Eq, Debug, Error)]
-pub enum TrySendError {
+pub(crate) enum TrySendError {
     #[error("sender disconnected")]
     Disconnected(BytesMut),
     #[error("channel full (see `Config::outgoing_capacity`)")]
@@ -135,16 +135,16 @@ pub enum TrySendError {
 
 #[derive(Clone, PartialEq, Eq, Debug, Error)]
 #[error("sender disconnected")]
-pub struct SendError(pub BytesMut);
+pub(crate) struct SendError(pub(crate) BytesMut);
 
 impl SendError {
-    pub fn into_inner(self) -> BytesMut {
+    pub(crate) fn into_inner(self) -> BytesMut {
         self.0
     }
 }
 
 impl ByteReceiver {
-    pub fn try_recv(&mut self) -> Result<BytesMut, TryRecvError> {
+    pub(crate) fn try_recv(&mut self) -> Result<BytesMut, TryRecvError> {
         let mut lck = self.shared.mtx.lock().unwrap();
 
         if !lck.bytes.is_empty() {
@@ -159,7 +159,7 @@ impl ByteReceiver {
         Err(TryRecvError::Empty)
     }
 
-    pub async fn recv_async(&mut self) -> Result<BytesMut, RecvError> {
+    pub(crate) async fn recv_async(&mut self) -> Result<BytesMut, RecvError> {
         loop {
             {
                 let mut lck = self.shared.mtx.lock().unwrap();
@@ -178,17 +178,17 @@ impl ByteReceiver {
         }
     }
 
-    pub fn is_disconnected(&self) -> bool {
+    pub(crate) fn is_disconnected(&self) -> bool {
         self.shared.mtx.lock().unwrap().disconnected
     }
 
-    pub fn limit(&self) -> usize {
+    pub(crate) fn limit(&self) -> usize {
         self.shared.limit
     }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Error)]
-pub enum TryRecvError {
+pub(crate) enum TryRecvError {
     #[error("empty channel")]
     Empty,
     #[error("receiver disconnected")]
@@ -196,7 +196,7 @@ pub enum TryRecvError {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Error)]
-pub enum RecvError {
+pub(crate) enum RecvError {
     #[error("receiver disconnected")]
     Disconnected,
 }

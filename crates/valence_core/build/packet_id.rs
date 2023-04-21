@@ -29,7 +29,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
         consts.extend([quote! {
             #[doc = #doc]
             #[allow(non_upper_case_globals)]
-            pub const #name_ident: i32 = #id;
+            pub(crate) const #name_ident: i32 = #id;
         }]);
     }
 

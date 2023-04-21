@@ -1,4 +1,21 @@
 #![doc = include_str!("../README.md")]
+#![deny(
+    rustdoc::broken_intra_doc_links,
+    rustdoc::private_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::invalid_codeblock_attributes,
+    rustdoc::invalid_rust_codeblocks,
+    rustdoc::bare_urls,
+    rustdoc::invalid_html_tags
+)]
+#![warn(
+    trivial_casts,
+    trivial_numeric_casts,
+    unused_lifetimes,
+    unused_import_braces,
+    unreachable_pub,
+    clippy::dbg_macro
+)]
 
 use std::borrow::Cow;
 
@@ -172,6 +189,7 @@ fn add_new_clients_to_player_list(
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn init_player_list_for_clients(
     mut clients: Query<&mut Client, (Added<Client>, Without<Despawned>)>,
     player_list: Res<PlayerList>,
@@ -207,7 +225,7 @@ fn init_player_list_for_clients(
                         chat_data: None,
                         listed: listed.0,
                         ping: ping.0,
-                        game_mode: (*game_mode).into(),
+                        game_mode: *game_mode,
                         display_name: display_name.0.as_ref().map(Cow::Borrowed),
                     },
                 )
@@ -259,6 +277,7 @@ fn remove_despawned_entries(
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn update_entries(
     entries: Query<
         (
@@ -344,7 +363,7 @@ fn update_entries(
             chat_data: None,
             listed: listed.0,
             ping: ping.0,
-            game_mode: (*game_mode).into(),
+            game_mode: *game_mode,
             display_name: display_name.0.as_ref().map(|x| x.into()),
         };
 

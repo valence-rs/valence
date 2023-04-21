@@ -1,4 +1,22 @@
-#[doc = include_str!("../README.md")]
+#![doc = include_str!("../README.md")]
+#![deny(
+    rustdoc::broken_intra_doc_links,
+    rustdoc::private_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::invalid_codeblock_attributes,
+    rustdoc::invalid_rust_codeblocks,
+    rustdoc::bare_urls,
+    rustdoc::invalid_html_tags
+)]
+#![warn(
+    trivial_casts,
+    trivial_numeric_casts,
+    unused_lifetimes,
+    unused_import_braces,
+    unreachable_pub,
+    clippy::dbg_macro
+)]
+
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::collections::BTreeSet;
@@ -86,6 +104,7 @@ impl Plugin for InstancePlugin {
 }
 
 /// Handles entities moving from one chunk to another.
+#[allow(clippy::type_complexity)]
 fn update_entity_cell_positions(
     entities: Query<
         (
@@ -763,8 +782,8 @@ impl Instance {
             &ParticleS2c {
                 particle: Cow::Borrowed(particle),
                 long_distance,
-                position: position.into(),
-                offset: offset.into().into(),
+                position,
+                offset: offset.into(),
                 max_speed,
                 count,
             },
@@ -789,7 +808,7 @@ impl Instance {
             &PlaySoundS2c {
                 id: sound.to_id(),
                 category,
-                position: (position * 8.0).as_ivec3().into(),
+                position: (position * 8.0).as_ivec3(),
                 volume,
                 pitch,
                 seed: rand::random(),

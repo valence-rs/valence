@@ -31,7 +31,7 @@ pub(crate) struct PacketIo {
 const READ_BUF_SIZE: usize = 4096;
 
 impl PacketIo {
-    pub fn new(
+    pub(crate) fn new(
         stream: TcpStream,
         enc: PacketEncoder,
         dec: PacketDecoder,
@@ -46,7 +46,7 @@ impl PacketIo {
         }
     }
 
-    pub async fn send_packet<'a, P>(&mut self, pkt: &P) -> anyhow::Result<()>
+    pub(crate) async fn send_packet<'a, P>(&mut self, pkt: &P) -> anyhow::Result<()>
     where
         P: Packet<'a>,
     {
@@ -56,7 +56,7 @@ impl PacketIo {
         Ok(())
     }
 
-    pub async fn recv_packet<'a, P>(&'a mut self) -> anyhow::Result<P>
+    pub(crate) async fn recv_packet<'a, P>(&'a mut self) -> anyhow::Result<P>
     where
         P: Packet<'a>,
     {
@@ -84,17 +84,17 @@ impl PacketIo {
     }
 
     #[allow(dead_code)]
-    pub fn set_compression(&mut self, threshold: Option<u32>) {
+    pub(crate) fn set_compression(&mut self, threshold: Option<u32>) {
         self.enc.set_compression(threshold);
         self.dec.set_compression(threshold);
     }
 
-    pub fn enable_encryption(&mut self, key: &[u8; 16]) {
+    pub(crate) fn enable_encryption(&mut self, key: &[u8; 16]) {
         self.enc.enable_encryption(key);
         self.dec.enable_encryption(key);
     }
 
-    pub fn into_client_args(
+    pub(crate) fn into_client_args(
         mut self,
         info: NewClientInfo,
         incoming_byte_limit: usize,

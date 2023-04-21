@@ -119,7 +119,7 @@ fn handle_misc_packets(
                 hand: pkt.hand,
                 position: pkt.position,
                 face: pkt.face,
-                cursor_pos: pkt.cursor_pos.into(),
+                cursor_pos: pkt.cursor_pos,
                 head_inside_block: pkt.head_inside_block,
                 sequence: pkt.sequence.0,
             });

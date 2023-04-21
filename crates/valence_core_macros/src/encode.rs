@@ -5,7 +5,7 @@ use syn::{parse2, Data, DeriveInput, Error, Fields, LitInt, Result};
 
 use crate::{add_trait_bounds, pair_variants_with_discriminants};
 
-pub fn derive_encode(item: TokenStream) -> Result<TokenStream> {
+pub(super) fn derive_encode(item: TokenStream) -> Result<TokenStream> {
     let mut input = parse2::<DeriveInput>(item)?;
 
     let input_name = input.ident;

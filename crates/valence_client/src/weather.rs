@@ -173,6 +173,7 @@ fn handle_rain_begin_per_client(mut clients: Query<&mut Client, (Added<Rain>, Wi
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn handle_rain_change_per_client(
     mut clients: Query<(&mut Client, &Rain), (Changed<Rain>, Without<Instance>)>,
 ) {
@@ -198,6 +199,7 @@ fn handle_rain_end_per_client(
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn handle_thunder_change_per_client(
     mut clients: Query<(&mut Client, &Thunder), (Changed<Thunder>, Without<Instance>)>,
 ) {

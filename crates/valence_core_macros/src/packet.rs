@@ -4,7 +4,7 @@ use syn::{parse2, parse_quote, Attribute, DeriveInput, Error, Lit, LitInt, Meta,
 
 use crate::{add_trait_bounds, decode_split_for_impl};
 
-pub fn derive_packet(item: TokenStream) -> Result<TokenStream> {
+pub(super) fn derive_packet(item: TokenStream) -> Result<TokenStream> {
     let mut input = parse2::<DeriveInput>(item)?;
 
     let Some(packet_id) = find_packet_id_attr(&input.attrs)? else {

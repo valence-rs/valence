@@ -1,4 +1,21 @@
 #![doc = include_str!("../README.md")]
+#![deny(
+    rustdoc::broken_intra_doc_links,
+    rustdoc::private_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::invalid_codeblock_attributes,
+    rustdoc::invalid_rust_codeblocks,
+    rustdoc::bare_urls,
+    rustdoc::invalid_html_tags
+)]
+#![warn(
+    trivial_casts,
+    trivial_numeric_casts,
+    unused_lifetimes,
+    unused_import_braces,
+    unreachable_pub,
+    clippy::dbg_macro
+)]
 
 use std::borrow::Cow;
 use std::fmt;
@@ -405,8 +422,8 @@ impl Client {
         self.write_packet(&ParticleS2c {
             particle: Cow::Borrowed(particle),
             long_distance,
-            position: position.into().into(),
-            offset: offset.into().into(),
+            position: position.into(),
+            offset: offset.into(),
             max_speed,
             count,
         })
@@ -431,7 +448,7 @@ impl Client {
         self.write_packet(&PlaySoundS2c {
             id: sound.to_id(),
             category,
-            position: (position * 8.0).as_ivec3().into(),
+            position: (position * 8.0).as_ivec3(),
             volume,
             pitch,
             seed: rand::random(),
@@ -764,7 +781,7 @@ fn initial_join(
         _ = q.client.enc.prepend_packet(&GameJoinS2c {
             entity_id: 0, // We reserve ID 0 for clients.
             is_hardcore: q.is_hardcore.0,
-            game_mode: (*q.game_mode).into(),
+            game_mode: *q.game_mode,
             previous_game_mode: q.prev_game_mode.0.map(|g| g as i8).unwrap_or(-1),
             dimension_names,
             registry_codec: Cow::Borrowed(codec.cached_codec()),
@@ -790,6 +807,7 @@ fn initial_join(
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn respawn(
     mut clients: Query<
         (
@@ -830,7 +848,7 @@ fn respawn(
             dimension_type_name: dimension_name.into(),
             dimension_name: dimension_name.into(),
             hashed_seed: hashed_seed.0,
-            game_mode: (*game_mode).into(),
+            game_mode: *game_mode,
             previous_game_mode: prev_game_mode.0.map(|g| g as i8).unwrap_or(-1),
             is_debug: is_debug.0,
             is_flat: is_flat.0,
@@ -920,6 +938,7 @@ impl EntityInitQueryItem<'_> {
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn read_data_in_old_view(
     mut clients: Query<(
         &mut Client,
@@ -1012,6 +1031,7 @@ fn read_data_in_old_view(
 ///
 /// This handles the situation when a client changes instances or chunk
 /// position. It must run after [`read_data_in_old_view`].
+#[allow(clippy::type_complexity)]
 fn update_view(
     mut clients: Query<
         (

@@ -55,7 +55,7 @@ fn handle_client_movement(
             {
                 let mov = Movement {
                     client: packet.client,
-                    position: pkt.position.into(),
+                    position: pkt.position,
                     old_position: pos.0,
                     look: *look,
                     old_look: *look,
@@ -79,7 +79,7 @@ fn handle_client_movement(
             {
                 let mov = Movement {
                     client: packet.client,
-                    position: pkt.position.into(),
+                    position: pkt.position,
                     old_position: pos.0,
                     look: Look {
                         yaw: pkt.yaw,
@@ -157,7 +157,7 @@ fn handle_client_movement(
             {
                 let mov = Movement {
                     client: packet.client,
-                    position: pkt.position.into(),
+                    position: pkt.position,
                     old_position: pos.0,
                     look: Look {
                         yaw: pkt.yaw,

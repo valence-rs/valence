@@ -1,4 +1,21 @@
 #![doc = include_str!("../README.md")]
+#![deny(
+    rustdoc::broken_intra_doc_links,
+    rustdoc::private_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::invalid_codeblock_attributes,
+    rustdoc::invalid_rust_codeblocks,
+    rustdoc::bare_urls,
+    rustdoc::invalid_html_tags
+)]
+#![warn(
+    trivial_casts,
+    trivial_numeric_casts,
+    unused_lifetimes,
+    unused_import_braces,
+    unreachable_pub,
+    clippy::dbg_macro
+)]
 
 use std::num::Wrapping;
 use std::ops::Range;
@@ -120,6 +137,7 @@ fn init_entities(
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn remove_despawned_from_manager(
     entities: Query<(&EntityId, &UniqueId), (With<EntityKind>, With<Despawned>)>,
     mut manager: ResMut<EntityManager>,
