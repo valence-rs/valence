@@ -47,7 +47,7 @@ fn print_tick_time(
 ) {
     let tick = server.current_tick();
     if tick % (settings.tick_rate.get() as i64 / 2) == 0 {
-        let client_count = clients.iter().count();
+        let client_count = clients.iter().len();
 
         let millis = time.0.elapsed().as_secs_f32() * 1000.0;
         println!("Tick={tick}, MSPT={millis:.04}ms, Clients={client_count}");

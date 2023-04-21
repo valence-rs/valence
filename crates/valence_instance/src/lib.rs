@@ -464,7 +464,7 @@ impl Instance {
                 dimension_type_name,
                 section_count: (dim.height / 16) as usize,
                 min_y: dim.min_y,
-                biome_registry_len: biomes.iter().count(),
+                biome_registry_len: biomes.iter().len(),
                 compression_threshold: server.compression_threshold(),
                 filler_sky_light_mask: sky_light_mask.into(),
                 filler_sky_light_arrays: vec![

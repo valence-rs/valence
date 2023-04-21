@@ -88,7 +88,7 @@ fn necromancy(
             // make the client respawn in another instance
             let idx = instances.iter().position(|i| i == loc.0).unwrap();
 
-            let count = instances.iter().count();
+            let count = instances.iter().len();
 
             loc.0 = instances.into_iter().nth((idx + 1) % count).unwrap();
         }
