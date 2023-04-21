@@ -1,5 +1,5 @@
 use tracing::Level;
-use valence::bevy_app::App;
+use valence::app::App;
 
 #[allow(dead_code)]
 mod extras;

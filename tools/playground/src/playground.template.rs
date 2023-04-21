@@ -1,4 +1,5 @@
 use valence::client::despawn_disconnected_clients;
+use valence::network::ConnectionMode;
 use valence::prelude::*;
 
 #[allow(unused_imports)]
@@ -7,11 +8,15 @@ use crate::extras::*;
 const SPAWN_Y: i32 = 64;
 
 pub fn build_app(app: &mut App) {
-    app.add_plugin(ServerPlugin::new(()).with_connection_mode(ConnectionMode::Offline))
-        .add_startup_system(setup)
-        .add_system(init_clients)
-        .add_system(despawn_disconnected_clients)
-        .add_system(toggle_gamemode_on_sneak.in_schedule(EventLoopSchedule));
+    app.insert_resource(NetworkSettings {
+        connection_mode: ConnectionMode::Offline,
+        ..Default::default()
+    })
+    .add_plugins(DefaultPlugins)
+    .add_startup_system(setup)
+    .add_system(init_clients)
+    .add_system(despawn_disconnected_clients)
+    .add_system(toggle_gamemode_on_sneak.in_schedule(EventLoopSchedule));
 }
 
 fn setup(
