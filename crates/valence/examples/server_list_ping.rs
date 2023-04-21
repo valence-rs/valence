@@ -2,13 +2,17 @@
 
 use std::net::SocketAddr;
 
+use rand::Rng;
 use valence::prelude::*;
 use valence_network::{async_trait, CleanupFn, ConnectionMode, PlayerSampleEntry, ServerListPing};
 
 pub fn main() {
+    tracing_subscriber::fmt().init();
+
     App::new()
         .insert_resource(NetworkSettings {
             connection_mode: ConnectionMode::Offline,
+            callbacks: MyCallbacks.into(),
             ..Default::default()
         })
         .add_plugins(DefaultPlugins)
@@ -25,9 +29,11 @@ impl NetworkCallbacks for MyCallbacks {
         remote_addr: SocketAddr,
         _protocol_version: i32,
     ) -> ServerListPing {
+        let max_players = 420;
+
         ServerListPing::Respond {
-            online_players: 42,
-            max_players: 420,
+            online_players: rand::thread_rng().gen_range(0..=max_players),
+            max_players,
             player_sample: vec![PlayerSampleEntry {
                 name: "foobar".into(),
                 id: Uuid::from_u128(12345),

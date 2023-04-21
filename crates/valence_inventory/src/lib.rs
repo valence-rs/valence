@@ -1329,6 +1329,8 @@ impl Default for InventorySettings {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
     fn test_convert_to_player_slot() {
         assert_eq!(convert_to_player_slot_id(InventoryKind::Generic9x3, 27), 9);

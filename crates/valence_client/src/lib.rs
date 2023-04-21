@@ -109,7 +109,6 @@ impl Plugin for ClientPlugin {
                 .before(FlushPacketsSet),
             ClearEntityChangesSet.after(UpdateClientsSet),
             FlushPacketsSet.in_base_set(CoreSet::PostUpdate),
-            // .after(WriteUpdatesToInstancesSet),
             ClearInstanceChangesSet.after(FlushPacketsSet),
         ))
         .add_system(flush_packets.in_set(FlushPacketsSet));

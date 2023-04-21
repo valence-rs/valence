@@ -286,6 +286,12 @@ impl Default for ErasedNetworkCallbacks {
     }
 }
 
+impl<T: NetworkCallbacks> From<T> for ErasedNetworkCallbacks {
+    fn from(value: T) -> Self {
+        Self::new(value)
+    }
+}
+
 /// This trait uses [`mod@async_trait`].
 #[async_trait]
 pub trait NetworkCallbacks: Send + Sync + 'static {
