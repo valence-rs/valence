@@ -41,8 +41,9 @@ pub use {
     valence_instance as instance, valence_nbt as nbt, valence_registry as registry,
 };
 
-/// Contains the most frequently used items in Valence projects. This should be
-/// glob imported like so:
+/// Contains the most frequently used items in Valence projects.
+///
+/// This is usually glob imported like so:
 ///
 /// ```
 /// use valence::prelude::*; // Glob import.
@@ -76,7 +77,7 @@ pub mod prelude {
         OldLocation, OldPosition, Position,
     };
     pub use game_mode::GameMode;
-    pub use glam::*;
+    pub use glam::{Vec2, Vec3, DVec2, DVec3};
     pub use hand::Hand;
     pub use ident::Ident;
     pub use instance::{Block, BlockMut, BlockRef, Chunk, Instance};
