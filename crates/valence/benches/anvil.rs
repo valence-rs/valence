@@ -1,18 +1,16 @@
 use std::fs::create_dir_all;
+use std::hint::black_box;
 use std::path::{Path, PathBuf};
 
 use anyhow::{ensure, Context};
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::Criterion;
 use fs_extra::dir::CopyOptions;
 use reqwest::IntoUrl;
+use valence::anvil::AnvilWorld;
 use valence::instance::Chunk;
-use valence_anvil::AnvilWorld;
 use zip::ZipArchive;
 
-criterion_group!(benches, criterion_benchmark);
-criterion_main!(benches);
-
-fn criterion_benchmark(c: &mut Criterion) {
+pub fn load(c: &mut Criterion) {
     let world_dir = get_world_asset(
         "https://github.com/valence-rs/valence-test-data/archive/refs/heads/asset/sp_world_1.19.2.zip",
         "1.19.2 benchmark world",
@@ -21,7 +19,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     let mut world = AnvilWorld::new(world_dir);
 
-    c.bench_function("Load square 10x10", |b| {
+    c.bench_function("anvil_load_10x10", |b| {
         b.iter(|| {
             let world = black_box(&mut world);
 

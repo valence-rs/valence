@@ -248,7 +248,7 @@ impl WritePacket for PacketEncoder {
     }
 }
 
-fn encode_packet<'a, P>(buf: &mut Vec<u8>, pkt: &P) -> anyhow::Result<()>
+pub fn encode_packet<'a, P>(buf: &mut Vec<u8>, pkt: &P) -> anyhow::Result<()>
 where
     P: Packet<'a>,
 {
@@ -278,7 +278,7 @@ where
 }
 
 #[cfg(feature = "compression")]
-fn encode_packet_compressed<'a, P>(
+pub fn encode_packet_compressed<'a, P>(
     buf: &mut Vec<u8>,
     pkt: &P,
     threshold: u32,

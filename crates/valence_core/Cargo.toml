@@ -32,7 +32,6 @@ rand.workspace = true
 
 [dev-dependencies]
 rand.workspace = true
-criterion.workspace = true
 valence_core = { workspace = true, features = ["compression"] }
 
 [build-dependencies]
@@ -43,7 +42,3 @@ quote.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 valence_build_utils.workspace = true
-
-[[bench]]
-name = "benches"
-harness = false

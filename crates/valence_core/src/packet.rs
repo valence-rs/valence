@@ -518,7 +518,7 @@ mod tests {
         Fourth(T),
     }
 
-    #[allow(unconditional_recursion)]
+    #[allow(unconditional_recursion, clippy::extra_unused_type_parameters)]
     fn assert_has_impls<'a, T>()
     where
         T: Encode + Decode<'a> + Packet<'a>,

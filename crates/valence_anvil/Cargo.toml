@@ -19,25 +19,3 @@ valence_block.workspace = true
 valence_core.workspace = true
 valence_instance.workspace = true
 valence_nbt.workspace = true
-
-[dev-dependencies]
-anyhow.workspace = true
-bevy_ecs.workspace = true
-clap.workspace = true
-criterion.workspace = true
-flume.workspace = true
-fs_extra.workspace = true
-tempfile.workspace = true
-tracing-subscriber.workspace = true
-tracing.workspace = true
-zip.workspace = true
-
-[dev-dependencies.reqwest]
-workspace = true
-default-features = false
-# Avoid OpenSSL dependency on Linux.
-features = ["rustls-tls", "blocking", "stream"]
-
-[[bench]]
-name = "world_parsing"
-harness = false
