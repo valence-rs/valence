@@ -1,5 +1,4 @@
-//! Valence is a Minecraft server framework written in Rust.
-
+#![doc = include_str!("../../../README.md")] // Points to the main project README.
 #![doc(
     html_logo_url = "https://raw.githubusercontent.com/valence-rs/valence/main/assets/logo.svg",
     html_favicon_url = "https://raw.githubusercontent.com/valence-rs/valence/main/assets/logo.svg"
@@ -18,72 +17,133 @@
     trivial_numeric_casts,
     unused_lifetimes,
     unused_import_braces,
+    unreachable_pub,
     clippy::dbg_macro
 )]
-#![allow(clippy::type_complexity)] // ECS queries are often complicated.
 
+use bevy_app::{PluginGroup, PluginGroupBuilder};
+
+#[cfg(test)]
+mod tests;
+
+#[cfg(feature = "anvil")]
+pub use valence_anvil as anvil;
+pub use valence_core::*;
+#[cfg(feature = "inventory")]
+pub use valence_inventory as inventory;
+#[cfg(feature = "network")]
+pub use valence_network as network;
+#[cfg(feature = "player_list")]
+pub use valence_player_list as player_list;
 pub use {
-    anyhow, async_trait, bevy_app, bevy_ecs, uuid, valence_nbt as nbt, valence_protocol as protocol,
+    bevy_app as app, bevy_ecs as ecs, glam, valence_biome as biome, valence_block as block,
+    valence_client as client, valence_dimension as dimension, valence_entity as entity,
+    valence_instance as instance, valence_nbt as nbt, valence_registry as registry,
 };
 
-pub mod biome;
-pub mod client;
-pub mod component;
-pub mod config;
-pub mod dimension;
-pub mod entity;
-pub mod event_loop;
-pub mod instance;
-pub mod inventory;
-pub mod packet;
-pub mod player_list;
-pub mod player_textures;
-pub mod registry_codec;
-pub mod server;
-#[cfg(any(test, doctest))]
-mod unit_test;
-pub mod util;
-pub mod view;
-pub mod weather;
-
+/// Contains the most frequently used items in Valence projects.
+///
+/// This is usually glob imported like so:
+///
+/// ```
+/// use valence::prelude::*; // Glob import.
+///
+/// let mut app = App::new();
+/// app.add_system(|| println!("yippee!"));
+/// // ...
+/// ```
 pub mod prelude {
-    pub use async_trait::async_trait;
-    pub use bevy_app::prelude::*;
-    pub use bevy_ecs::prelude::*;
+    pub use ::uuid::Uuid;
+    pub use app::prelude::*;
     pub use biome::{Biome, BiomeId, BiomeRegistry};
+    pub use block::{BlockKind, BlockState, PropName, PropValue};
+    pub use block_pos::BlockPos;
+    pub use chunk_pos::{ChunkPos, ChunkView};
     pub use client::action::*;
     pub use client::command::*;
+    pub use client::event_loop::{EventLoopSchedule, EventLoopSet};
     pub use client::interact_entity::*;
     pub use client::{
-        despawn_disconnected_clients, Client, CompassPos, CursorItem, DeathLocation,
-        HasRespawnScreen, HashedSeed, Ip, IsDebug, IsFlat, IsHardcore, OldView, OldViewDistance,
-        OpLevel, PrevGameMode, ReducedDebugInfo, View, ViewDistance,
+        despawn_disconnected_clients, Client, CompassPos, DeathLocation, HasRespawnScreen,
+        HashedSeed, Ip, IsDebug, IsFlat, IsHardcore, OldView, OldViewDistance, OpLevel,
+        PrevGameMode, Properties, ReducedDebugInfo, Username, View, ViewDistance,
     };
-    pub use component::*;
-    pub use config::{
-        AsyncCallbacks, ConnectionMode, PlayerSampleEntry, ServerListPing, ServerPlugin,
-    };
+    pub use despawn::Despawned;
     pub use dimension::{DimensionType, DimensionTypeRegistry};
-    pub use entity::{EntityAnimation, EntityKind, EntityManager, EntityStatus, HeadYaw};
-    pub use event_loop::{EventLoopSchedule, EventLoopSet};
-    pub use glam::DVec3;
-    pub use instance::{Block, BlockMut, BlockRef, Chunk, Instance};
-    pub use inventory::{
-        Inventory, InventoryKind, InventoryWindow, InventoryWindowMut, OpenInventory,
+    pub use direction::Direction;
+    pub use ecs::prelude::*;
+    pub use entity::{
+        EntityAnimation, EntityKind, EntityManager, EntityStatus, HeadYaw, Location, Look,
+        OldLocation, OldPosition, Position,
     };
+    pub use game_mode::GameMode;
+    pub use glam::{DVec2, DVec3, Vec2, Vec3};
+    pub use hand::Hand;
+    pub use ident::Ident;
+    pub use instance::{Block, BlockMut, BlockRef, Chunk, Instance};
+    #[cfg(feature = "inventory")]
+    pub use inventory::{
+        CursorItem, Inventory, InventoryKind, InventoryWindow, InventoryWindowMut, OpenInventory,
+    };
+    pub use item::{ItemKind, ItemStack};
+    pub use nbt::Compound;
+    #[cfg(feature = "network")]
+    pub use network::{
+        ErasedNetworkCallbacks, NetworkCallbacks, NetworkSettings, NewClientInfo,
+        SharedNetworkState,
+    };
+    pub use packet::s2c::play::particle::Particle;
+    #[cfg(feature = "player_list")]
     pub use player_list::{PlayerList, PlayerListEntry};
-    pub use protocol::block::{BlockState, PropName, PropValue};
-    pub use protocol::ident::Ident;
-    pub use protocol::item::{ItemKind, ItemStack};
-    pub use protocol::text::{Color, Text, TextFormat};
-    pub use server::{NewClientInfo, Server, SharedServer};
-    pub use uuid::Uuid;
-    pub use valence_nbt::Compound;
-    pub use valence_protocol::block::BlockKind;
-    pub use valence_protocol::block_pos::BlockPos;
-    pub use valence_protocol::ident;
-    pub use valence_protocol::packet::s2c::play::particle::Particle;
-    pub use view::{ChunkPos, ChunkView};
+    pub use text::{Color, Text, TextFormat};
+    pub use valence_core::ident; // Export the `ident!` macro.
+    pub use valence_core::uuid::UniqueId;
+    pub use valence_core::{translation_key, CoreSettings, Server};
 
+    pub use super::DefaultPlugins;
     use super::*;
+}
+
+/// This plugin group will add all the default plugins for a Valence
+/// application.
+///
+/// [`DefaultPlugins`] obeys Cargo feature flags. Users may exert control over
+/// this plugin group by disabling `default-features` in their `Cargo.toml` and
+/// enabling only those features that they wish to use.
+pub struct DefaultPlugins;
+
+impl PluginGroup for DefaultPlugins {
+    fn build(self) -> PluginGroupBuilder {
+        #[allow(unused_mut)]
+        let mut group = PluginGroupBuilder::start::<Self>()
+            .add(valence_core::CorePlugin)
+            .add(valence_registry::RegistryPlugin)
+            .add(valence_biome::BiomePlugin)
+            .add(valence_dimension::DimensionPlugin)
+            .add(valence_entity::EntityPlugin)
+            .add(valence_instance::InstancePlugin)
+            .add(valence_client::ClientPlugin);
+
+        #[cfg(feature = "network")]
+        {
+            group = group.add(valence_network::NetworkPlugin);
+        }
+
+        #[cfg(feature = "player_list")]
+        {
+            group = group.add(valence_player_list::PlayerListPlugin);
+        }
+
+        #[cfg(feature = "inventory")]
+        {
+            group = group.add(valence_inventory::InventoryPlugin);
+        }
+
+        #[cfg(feature = "anvil")]
+        {
+            // No plugin... yet.
+        }
+
+        group
+    }
 }

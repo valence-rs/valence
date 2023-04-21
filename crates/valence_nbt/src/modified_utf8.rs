@@ -10,7 +10,7 @@ use std::str::from_utf8_unchecked;
 
 use byteorder::{BigEndian, WriteBytesExt};
 
-pub fn write_modified_utf8(mut writer: impl Write, text: &str) -> io::Result<()> {
+pub(crate) fn write_modified_utf8(mut writer: impl Write, text: &str) -> io::Result<()> {
     let bytes = text.as_bytes();
     let mut i = 0;
 
@@ -76,7 +76,7 @@ fn encode_surrogate(surrogate: u16) -> [u8; 3] {
     ]
 }
 
-pub fn encoded_len(text: &str) -> usize {
+pub(crate) fn encoded_len(text: &str) -> usize {
     let mut n = 0;
     let mut i = 0;
     let bytes = text.as_bytes();

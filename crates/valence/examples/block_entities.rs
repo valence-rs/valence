@@ -3,7 +3,6 @@
 use valence::client::misc::{ChatMessage, InteractBlock};
 use valence::nbt::{compound, List};
 use valence::prelude::*;
-use valence::protocol::types::Hand;
 
 const FLOOR_Y: i32 = 64;
 const SIGN_POS: [i32; 3] = [3, FLOOR_Y + 1, 2];
@@ -13,7 +12,7 @@ pub fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(ServerPlugin::new(()))
+        .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .add_systems((event_handler, init_clients, despawn_disconnected_clients))
         .run();

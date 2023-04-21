@@ -9,7 +9,7 @@ pub fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(ServerPlugin::new(()).with_connection_mode(ConnectionMode::Offline))
+        .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .add_systems((init_clients, squat_and_die, necromancy))
         .add_system(despawn_disconnected_clients)
@@ -88,7 +88,7 @@ fn necromancy(
             // make the client respawn in another instance
             let idx = instances.iter().position(|i| i == loc.0).unwrap();
 
-            let count = instances.iter().count();
+            let count = instances.iter().len();
 
             loc.0 = instances.into_iter().nth((idx + 1) % count).unwrap();
         }

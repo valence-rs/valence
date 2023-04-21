@@ -10,7 +10,7 @@ pub fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(ServerPlugin::new(()))
+        .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
@@ -91,8 +91,8 @@ fn create_particle_vec() -> Vec<Particle> {
     vec![
         Particle::AmbientEntityEffect,
         Particle::AngryVillager,
-        Particle::Block(BlockState::OAK_PLANKS),
-        Particle::BlockMarker(BlockState::GOLD_BLOCK),
+        Particle::Block(BlockState::OAK_PLANKS.to_raw() as _),
+        Particle::BlockMarker(BlockState::GOLD_BLOCK.to_raw() as _),
         Particle::Bubble,
         Particle::Cloud,
         Particle::Crit,
@@ -104,13 +104,13 @@ fn create_particle_vec() -> Vec<Particle> {
         Particle::DrippingWater,
         Particle::FallingWater,
         Particle::Dust {
-            rgb: [1.0, 1.0, 0.0],
+            rgb: Vec3::new(1.0, 1.0, 0.0),
             scale: 2.0,
         },
         Particle::DustColorTransition {
-            from_rgb: [1.0, 0.0, 0.0],
+            from_rgb: Vec3::new(1.0, 0.0, 0.0),
             scale: 2.0,
-            to_rgb: [0.0, 1.0, 0.0],
+            to_rgb: Vec3::new(0.0, 1.0, 0.0),
         },
         Particle::Effect,
         Particle::ElderGuardian,
@@ -121,7 +121,7 @@ fn create_particle_vec() -> Vec<Particle> {
         Particle::ExplosionEmitter,
         Particle::Explosion,
         Particle::SonicBoom,
-        Particle::FallingDust(BlockState::RED_SAND),
+        Particle::FallingDust(BlockState::RED_SAND.to_raw() as _),
         Particle::Firework,
         Particle::Fishing,
         Particle::Flame,
