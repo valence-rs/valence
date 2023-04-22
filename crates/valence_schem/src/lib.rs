@@ -957,16 +957,16 @@ impl Schematic {
 mod test {
     use std::fs;
 
+    use valence::prelude::*;
+    use valence_core::ident;
+
     use super::*;
 
     #[test]
     fn schematic_copy_paste() {
         let mut app = App::new();
-        app.add_plugin(ServerPlugin::new(()));
-        let mut instance = app
-            .world
-            .resource::<Server>()
-            .new_instance(DimensionId::default());
+        app.add_plugins(DefaultPlugins);
+        let mut instance = Instance::new_unit_testing(ident!("overworld"), app.world.resource());
 
         for x in -1..=0 {
             for z in -1..=0 {
@@ -981,7 +981,7 @@ mod test {
         instance.set_block([6, 2, -1], BlockState::STONE);
         instance.set_block(
             [5, 3, -1],
-            Block::with_nbt(
+            ValenceBlock::with_nbt(
                 BlockState::OAK_SIGN,
                 compound! {"Text1" => "abc".into_text()},
             ),
@@ -997,7 +997,7 @@ mod test {
             &instance,
             (BlockPos::new(4, 3, -1), BlockPos::new(6, 1, 0)),
             BlockPos::new(5, 3, 0),
-            |_| ident!("minecraft:plains"),
+            |_| ident!("minecraft:plains").to_string_ident(),
         );
 
         schematic.paste(&mut instance, BlockPos::new(15, 18, 16), |_| {
@@ -1068,7 +1068,7 @@ mod test {
                                 "Data" => compound!{
                                     "Text1" => "abc".into_text(),
                                 },
-                                "Id" => "sign",
+                                "Id" => "minecraft:sign",
                                 "Pos" => vec![1, 2, 0],
                             },
                         ]))
