@@ -24,8 +24,8 @@ use std::io::Write;
 use std::iter::FusedIterator;
 use std::str::FromStr;
 
-use thiserror::Error;
 use anyhow::Context;
+use thiserror::Error;
 use valence_core::ident;
 use valence_core::ident::Ident;
 use valence_core::item::ItemKind;
