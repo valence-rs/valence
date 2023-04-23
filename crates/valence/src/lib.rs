@@ -55,6 +55,7 @@ pub use {
 pub mod prelude {
     pub use ::uuid::Uuid;
     pub use app::prelude::*;
+    pub use bevy_ecs; // Needed for bevy_ecs proc macros to function correctly.
     pub use biome::{Biome, BiomeId, BiomeRegistry};
     pub use block::{BlockKind, BlockState, PropName, PropValue};
     pub use block_pos::BlockPos;
