@@ -98,22 +98,6 @@ impl Plugin for CorePlugin {
         app.add_systems(
             (increment_tick_counter, despawn_marked_entities).in_base_set(CoreSet::Last),
         );
-
-        // TODO: do this in `DefaultPlugins`.
-        /*
-        // Add internal plugins.
-        app.add_plugin(EventLoopPlugin)
-            .add_plugin(RegistryCodecPlugin)
-            .add_plugin(BiomePlugin)
-            .add_plugin(DimensionPlugin)
-            .add_plugin(ComponentPlugin)
-            .add_plugin(ClientPlugin)
-            .add_plugin(EntityPlugin)
-            .add_plugin(InstancePlugin)
-            .add_plugin(InventoryPlugin)
-            .add_plugin(PlayerListPlugin)
-            .add_plugin(WeatherPlugin);
-        */
     }
 }
 
