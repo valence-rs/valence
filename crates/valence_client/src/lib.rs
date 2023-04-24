@@ -108,9 +108,9 @@ impl Plugin for ClientPlugin {
                     .after(WriteUpdatePacketsToInstancesSet)
                     .after(update_chunk_load_dist),
                 update_view.after(initial_join).after(read_data_in_old_view),
-                respawn.after(update_view),
+                update_respawn_position.after(update_view),
+                respawn.after(update_respawn_position),
                 remove_entities.after(update_view),
-                update_spawn_position.after(update_view),
                 update_old_view_dist.after(update_view),
                 update_game_mode,
                 update_tracked_data.after(WriteUpdatePacketsToInstancesSet),
@@ -154,7 +154,7 @@ pub struct ClientBundle {
     pub username: Username,
     pub ip: Ip,
     pub properties: Properties,
-    pub compass_pos: CompassPos,
+    pub respawn_pos: RespawnPosition,
     pub game_mode: GameMode,
     pub op_level: OpLevel,
     pub action_sequence: action::ActionSequence,
@@ -187,7 +187,7 @@ impl ClientBundle {
             username: Username(args.username),
             ip: Ip(args.ip),
             properties: Properties(args.properties),
-            compass_pos: CompassPos::default(),
+            respawn_pos: RespawnPosition::default(),
             game_mode: GameMode::default(),
             op_level: OpLevel::default(),
             action_sequence: action::ActionSequence::default(),
@@ -589,9 +589,16 @@ impl Deref for Properties {
 #[derive(Component, Clone, PartialEq, Eq, Debug)]
 pub struct Ip(pub IpAddr);
 
-/// The position that regular compass items will point to.
-#[derive(Component, Copy, Clone, PartialEq, Eq, Default, Debug)]
-pub struct CompassPos(pub BlockPos);
+/// The position and angle that clients will respawn with. Also
+/// controls the position that compasses point towards.
+#[derive(Component, Copy, Clone, PartialEq, Default, Debug)]
+pub struct RespawnPosition {
+    /// The position that clients will respawn at. This can be changed at any
+    /// time to set the position that compasses point towards.
+    pub pos: BlockPos,
+    /// The yaw angle that clients will respawn with (in degrees).
+    pub yaw: f32,
+}
 
 #[derive(Component, Clone, PartialEq, Eq, Default, Debug)]
 pub struct OpLevel(u8);
@@ -948,7 +955,7 @@ fn read_data_in_old_view(
         &Position,
         &OldPosition,
         &OldViewDistance,
-        Option<&PacketByteRange>,
+        &PacketByteRange,
     )>,
     instances: Query<&Instance>,
     entities: Query<(EntityInitQuery, &OldPosition)>,
@@ -1010,15 +1017,12 @@ fn read_data_in_old_view(
                     // Send all data in the chunk's packet buffer to this client. This will update
                     // entities in the cell, spawn or update the chunk in the cell, or send any
                     // other packet data that was added here by users.
-                    match byte_range {
-                        Some(byte_range) if pos == new_chunk_pos && loc == old_loc => {
-                            // Skip range of bytes for the client's own entity.
-                            client.write_packet_bytes(&cell.packet_buf[..byte_range.0.start]);
-                            client.write_packet_bytes(&cell.packet_buf[byte_range.0.end..]);
-                        }
-                        _ => {
-                            client.write_packet_bytes(&cell.packet_buf);
-                        }
+                    if pos == new_chunk_pos && loc == old_loc {
+                        // Skip range of bytes for the client's own entity.
+                        client.write_packet_bytes(&cell.packet_buf[..byte_range.0.start]);
+                        client.write_packet_bytes(&cell.packet_buf[byte_range.0.end..]);
+                    } else {
+                        client.write_packet_bytes(&cell.packet_buf);
                     }
                 }
             });
@@ -1223,15 +1227,17 @@ fn update_old_view_dist(
     }
 }
 
-/// Sets the client's compass position.
+/// Sets the client's respawn and compass position.
 ///
 /// This also closes the "downloading terrain" screen when first joining, so
 /// it should happen after the initial chunks are written.
-fn update_spawn_position(mut clients: Query<(&mut Client, &CompassPos), Changed<CompassPos>>) {
-    for (mut client, compass_pos) in &mut clients {
+fn update_respawn_position(
+    mut clients: Query<(&mut Client, &RespawnPosition), Changed<RespawnPosition>>,
+) {
+    for (mut client, respawn_pos) in &mut clients {
         client.write_packet(&PlayerSpawnPositionS2c {
-            position: compass_pos.0,
-            angle: 0.0, // TODO: does this do anything?
+            position: respawn_pos.pos,
+            angle: respawn_pos.yaw,
         });
     }
 }

@@ -65,7 +65,7 @@ pub mod prelude {
     pub use client::event_loop::{EventLoopSchedule, EventLoopSet};
     pub use client::interact_entity::*;
     pub use client::{
-        despawn_disconnected_clients, Client, CompassPos, DeathLocation, HasRespawnScreen,
+        despawn_disconnected_clients, Client, RespawnPosition, DeathLocation, HasRespawnScreen,
         HashedSeed, Ip, IsDebug, IsFlat, IsHardcore, OldView, OldViewDistance, OpLevel,
         PrevGameMode, Properties, ReducedDebugInfo, Username, View, ViewDistance,
     };
