@@ -86,7 +86,7 @@ fn build() -> anyhow::Result<TokenStream> {
     let kind_to_translation_key_arms = blocks
         .iter()
         .map(|b| {
-            let kind = ident(b.name.replace(".", "_").to_pascal_case());
+            let kind = ident(b.name.replace('.', "_").to_pascal_case());
             let translation_key = &b.translation_key;
             quote! {
                 Self::#kind => #translation_key,
@@ -97,7 +97,7 @@ fn build() -> anyhow::Result<TokenStream> {
     let state_to_kind_arms = blocks
         .iter()
         .map(|b| {
-            let name = ident(b.name.replace(".", "_").to_pascal_case());
+            let name = ident(b.name.replace('.', "_").to_pascal_case());
             let mut token_stream = TokenStream::new();
 
             let min_id = b.min_state_id();
@@ -191,13 +191,13 @@ fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .filter(|&b| !b.properties.is_empty())
         .map(|b| {
-            let block_kind_name = ident(b.name.replace(".", "_").to_pascal_case());
+            let block_kind_name = ident(b.name.replace('.', "_").to_pascal_case());
 
             let arms = b
                 .properties
                 .iter()
                 .map(|p| {
-                    let prop_name = ident(p.name.replace(".", "_").to_pascal_case());
+                    let prop_name = ident(p.name.replace('.', "_").to_pascal_case());
                     let min_state_id = b.min_state_id();
                     let product: u16 = b
                         .properties
@@ -211,7 +211,7 @@ fn build() -> anyhow::Result<TokenStream> {
 
                     let arms = p.values.iter().enumerate().map(|(i, v)| {
                         let value_idx = i as u16;
-                        let value_name = ident(v.replace(".", "_").to_pascal_case());
+                        let value_name = ident(v.replace('.', "_").to_pascal_case());
                         quote! {
                             #value_idx => Some(PropValue::#value_name),
                         }
@@ -239,13 +239,13 @@ fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .filter(|&b| !b.properties.is_empty())
         .map(|b| {
-            let block_kind_name = ident(b.name.replace(".", "_").to_pascal_case());
+            let block_kind_name = ident(b.name.replace('.', "_").to_pascal_case());
 
             let arms = b
                 .properties
                 .iter()
                 .map(|p| {
-                    let prop_name = ident(p.name.replace(".", "_").to_pascal_case());
+                    let prop_name = ident(p.name.replace('.', "_").to_pascal_case());
                     let min_state_id = b.min_state_id();
                     let product: u16 = b
                         .properties
@@ -263,7 +263,7 @@ fn build() -> anyhow::Result<TokenStream> {
                         .enumerate()
                         .map(|(i, v)| {
                             let val_idx = i as u16;
-                            let val_name = ident(v.replace(".", "_").to_pascal_case());
+                            let val_name = ident(v.replace('.', "_").to_pascal_case());
                             quote! {
                                 PropValue::#val_name =>
                                     Self(self.0 - (self.0 - #min_state_id) / #product % #values_count * #product
@@ -293,7 +293,7 @@ fn build() -> anyhow::Result<TokenStream> {
     let default_block_states = blocks
         .iter()
         .map(|b| {
-            let name = ident(b.name.replace(".", "_").to_shouty_snake_case());
+            let name = ident(b.name.replace('.', "_").to_shouty_snake_case());
             let state = b.default_state_id;
             let doc = format!("The default block state for `{}`.", b.name);
             quote! {
@@ -307,11 +307,11 @@ fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .filter(|b| b.wall_variant_id.is_some())
         .map(|b| {
-            let block_name = ident(b.name.replace(".", "_").to_shouty_snake_case());
+            let block_name = ident(b.name.replace('.', "_").to_shouty_snake_case());
             let wall_block_name = ident(
                 blocks[b.wall_variant_id.unwrap() as usize]
                     .name
-                    .replace(".", "_")
+                    .replace('.', "_")
                     .to_shouty_snake_case(),
             );
             quote! {
@@ -336,8 +336,8 @@ fn build() -> anyhow::Result<TokenStream> {
     let kind_to_state_arms = blocks
         .iter()
         .map(|b| {
-            let kind = ident(b.name.replace(".", "_").to_pascal_case());
-            let state = ident(b.name.replace(".", "_").to_shouty_snake_case());
+            let kind = ident(b.name.replace('.', "_").to_pascal_case());
+            let state = ident(b.name.replace('.', "_").to_shouty_snake_case());
             quote! {
                 BlockKind::#kind => BlockState::#state,
             }
@@ -346,14 +346,14 @@ fn build() -> anyhow::Result<TokenStream> {
 
     let block_kind_variants = blocks
         .iter()
-        .map(|b| ident(b.name.replace(".", "_").to_pascal_case()))
+        .map(|b| ident(b.name.replace('.', "_").to_pascal_case()))
         .collect::<Vec<_>>();
 
     let block_kind_from_str_arms = blocks
         .iter()
         .map(|b| {
             let name = &b.name;
-            let name_ident = ident(name.replace(".", "_").to_pascal_case());
+            let name_ident = ident(name.replace('.', "_").to_pascal_case());
             quote! {
                 #name => Some(BlockKind::#name_ident),
             }
@@ -364,7 +364,7 @@ fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .map(|b| {
             let name = &b.name;
-            let name_ident = ident(name.replace(".", "_").to_pascal_case());
+            let name_ident = ident(name.replace('.', "_").to_pascal_case());
             quote! {
                 BlockKind::#name_ident => #name,
             }
@@ -375,11 +375,11 @@ fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .filter(|&b| !b.properties.is_empty())
         .map(|b| {
-            let name = ident(b.name.replace(".", "_").to_pascal_case());
+            let name = ident(b.name.replace('.', "_").to_pascal_case());
             let prop_names = b
                 .properties
                 .iter()
-                .map(|p| ident(p.name.replace(".", "_").to_pascal_case()));
+                .map(|p| ident(p.name.replace('.', "_").to_pascal_case()));
 
             quote! {
                 Self::#name => &[#(PropName::#prop_names,)*],
@@ -390,7 +390,7 @@ fn build() -> anyhow::Result<TokenStream> {
     let block_kind_to_item_kind_arms = blocks
         .iter()
         .map(|block| {
-            let name = ident(block.name.replace(".", "_").to_pascal_case());
+            let name = ident(block.name.replace('.', "_").to_pascal_case());
             let item_id = block.item_id;
 
             quote! {
@@ -403,7 +403,7 @@ fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .filter(|block| block.item_id != 0)
         .map(|block| {
-            let name = ident(block.name.replace(".", "_").to_pascal_case());
+            let name = ident(block.name.replace('.', "_").to_pascal_case());
             let item_id = block.item_id;
 
             quote! {
@@ -415,7 +415,7 @@ fn build() -> anyhow::Result<TokenStream> {
     let block_kind_from_raw_arms = blocks
         .iter()
         .map(|block| {
-            let name = ident(block.name.replace(".", "_").to_pascal_case());
+            let name = ident(block.name.replace('.', "_").to_pascal_case());
             let id = block.id;
 
             quote! {
@@ -427,7 +427,7 @@ fn build() -> anyhow::Result<TokenStream> {
     let block_entity_kind_variants = block_entity_types
         .iter()
         .map(|block_entity| {
-            let name = ident(block_entity.name.replace(".", "_").to_pascal_case());
+            let name = ident(block_entity.name.replace('.', "_").to_pascal_case());
             let doc = format!(
                 "The block entity type `{}` (ID {}).",
                 block_entity.name, block_entity.id
@@ -443,7 +443,7 @@ fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .map(|block_entity| {
             let id = block_entity.id;
-            let name = ident(block_entity.name.replace(".", "_").to_pascal_case());
+            let name = ident(block_entity.name.replace('.', "_").to_pascal_case());
 
             quote! {
                 #id => Some(Self::#name),
@@ -455,7 +455,7 @@ fn build() -> anyhow::Result<TokenStream> {
         .iter()
         .map(|block_entity| {
             let id = block_entity.id;
-            let name = ident(block_entity.name.replace(".", "_").to_pascal_case());
+            let name = ident(block_entity.name.replace('.', "_").to_pascal_case());
 
             quote! {
                 Self::#name => #id,
@@ -466,7 +466,7 @@ fn build() -> anyhow::Result<TokenStream> {
     let block_entity_kind_from_ident_arms = block_entity_types
         .iter()
         .map(|block_entity| {
-            let name = ident(block_entity.name.replace(".", "_").to_pascal_case());
+            let name = ident(block_entity.name.replace('.', "_").to_pascal_case());
             let ident = &block_entity.ident;
 
             quote! {
@@ -478,7 +478,7 @@ fn build() -> anyhow::Result<TokenStream> {
     let block_entity_kind_to_ident_arms = block_entity_types
         .iter()
         .map(|block_entity| {
-            let name = ident(block_entity.name.replace(".", "_").to_pascal_case());
+            let name = ident(block_entity.name.replace('.', "_").to_pascal_case());
             let ident = &block_entity.ident;
 
             quote! {
@@ -496,13 +496,13 @@ fn build() -> anyhow::Result<TokenStream> {
 
     let prop_name_variants = prop_names
         .iter()
-        .map(|&name| ident(name.replace(".", "_").to_pascal_case()))
+        .map(|&name| ident(name.replace('.', "_").to_pascal_case()))
         .collect::<Vec<_>>();
 
     let prop_name_from_str_arms = prop_names
         .iter()
         .map(|&name| {
-            let ident = ident(name.replace(".", "_").to_pascal_case());
+            let ident = ident(name.replace('.', "_").to_pascal_case());
             quote! {
                 #name => Some(PropName::#ident),
             }
@@ -512,7 +512,7 @@ fn build() -> anyhow::Result<TokenStream> {
     let prop_name_to_str_arms = prop_names
         .iter()
         .map(|&name| {
-            let ident = ident(name.replace(".", "_").to_pascal_case());
+            let ident = ident(name.replace('.', "_").to_pascal_case());
             quote! {
                 PropName::#ident => #name,
             }
@@ -529,13 +529,13 @@ fn build() -> anyhow::Result<TokenStream> {
 
     let prop_value_variants = prop_values
         .iter()
-        .map(|val| ident(val.replace(".", "_").to_pascal_case()))
+        .map(|val| ident(val.replace('.', "_").to_pascal_case()))
         .collect::<Vec<_>>();
 
     let prop_value_from_str_arms = prop_values
         .iter()
         .map(|val| {
-            let ident = ident(val.replace(".", "_").to_pascal_case());
+            let ident = ident(val.replace('.', "_").to_pascal_case());
             quote! {
                 #val => Some(PropValue::#ident),
             }
@@ -545,7 +545,7 @@ fn build() -> anyhow::Result<TokenStream> {
     let prop_value_to_str_arms = prop_values
         .iter()
         .map(|val| {
-            let ident = ident(val.replace(".", "_").to_pascal_case());
+            let ident = ident(val.replace('.', "_").to_pascal_case());
             quote! {
                 PropValue::#ident => #val,
             }

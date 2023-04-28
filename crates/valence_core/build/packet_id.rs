@@ -21,7 +21,7 @@ pub fn build() -> anyhow::Result<TokenStream> {
     for packet in packets {
         let stripped_name = packet.name.strip_suffix("Packet").unwrap_or(&packet.name);
 
-        let name_ident = ident(stripped_name.replace(".", "_").to_pascal_case());
+        let name_ident = ident(stripped_name.replace('.', "_").to_pascal_case());
         let id = packet.id;
 
         let doc = format!("Side: {}\nState: {}", packet.side, packet.state);
