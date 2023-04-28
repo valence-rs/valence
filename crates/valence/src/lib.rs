@@ -115,6 +115,7 @@ pub struct DefaultPlugins;
 
 impl PluginGroup for DefaultPlugins {
     fn build(self) -> PluginGroupBuilder {
+        println!("Building default plugins...");
         #[allow(unused_mut)]
         let mut group = PluginGroupBuilder::start::<Self>()
             .add(valence_core::CorePlugin)
