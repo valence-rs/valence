@@ -133,7 +133,7 @@ impl<S> Ident<S> {
 }
 
 impl<'a> Ident<Cow<'a, str>> {
-    pub fn borrowed<'b>(&'b self) -> Ident<Cow<'b, str>> {
+    pub fn borrowed(&self) -> Ident<Cow<str>> {
         Ident::new_unchecked(Cow::Borrowed(self.as_str()))
     }
 }
