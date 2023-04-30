@@ -7,7 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::Context;
 use bevy_app::{CoreSet, Plugin};
 use bevy_ecs::prelude::{Bundle, Component, Entity};
-use bevy_ecs::query::{Added, With};
+use bevy_ecs::query::{Added, Changed, Or, With};
 use bevy_ecs::schedule::{IntoSystemConfig, IntoSystemSetConfig, SystemSet};
 use bevy_ecs::system::{Commands, Query, SystemParam};
 use bevy_ecs::world::Ref;
@@ -15,6 +15,7 @@ use bevy_ecs::world::Ref;
 pub use bevy_hierarchy;
 use bevy_hierarchy::{Children, Parent};
 use event::{handle_advancement_tab_change, AdvancementTabChange};
+use parking_lot::Mutex;
 use rustc_hash::FxHashMap;
 use valence_client::{Client, FlushPacketsSet, SpawnClientsSet};
 use valence_core::__private::VarInt;
@@ -51,12 +52,14 @@ impl Plugin for AdvancementPlugin {
 #[derive(Bundle)]
 pub struct AdvancementBundle {
     pub advancement: Advancement,
+    cached_bytes: AdvancementCachedBytes,
 }
 
 impl AdvancementBundle {
     pub fn new(ident: Ident<Cow<'static, str>>) -> Self {
         Self {
             advancement: Advancement::new(ident),
+            cached_bytes: AdvancementCachedBytes(Mutex::new(vec![])),
         }
     }
 }
@@ -78,6 +81,7 @@ pub(crate) struct SingleAdvancementUpdateQuery<'w, 's> {
         (
             &'static Advancement,
             Ref<'static, AdvancementRequirements>,
+            &'static AdvancementCachedBytes,
             Option<Ref<'static, AdvancementDisplay>>,
             Option<Ref<'static, Children>>,
             Option<&'static Parent>,
@@ -117,69 +121,70 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateS2COE<'w, 's, 'a> {
         {
             VarInt(new_advancements.len() as _).encode(&mut w)?;
             for new_advancement in new_advancements {
-                let Ok((
-                    a_identifier,
-                    a_requirements,
-                    a_display,
-                    a_children,
+                let (a_identifier, a_requirements, a_cached_bytes, a_display, a_children, a_parent) =
+                    advancement_query.get(*new_advancement)?;
+
+                let mut lck = a_cached_bytes.0.lock();
+
+                if lck.is_empty() {
+                    let mut w: &mut Vec<_> = lck.as_mut();
+
+                    // identifier
+                    a_identifier.get().encode(&mut w)?;
+
+                    // parent_id
                     a_parent
-                )) = advancement_query.get(*new_advancement) else { continue; };
+                        .and_then(|a_parent| advancement_id_query.get(a_parent.get()).ok())
+                        .map(|a_id| a_id.get())
+                        .encode(&mut w)?;
 
-                // identifier
-                a_identifier.get().encode(&mut w)?;
-
-                // parent_id
-                a_parent
-                    .and_then(|a_parent| advancement_id_query.get(a_parent.get()).ok())
-                    .map(|a_id| a_id.get())
-                    .encode(&mut w)?;
-
-                // display_data
-                match a_display {
-                    Some(a_display) => {
-                        true.encode(&mut w)?;
-                        // advancement display
-                        {
-                            a_display.title.encode(&mut w)?;
-                            a_display.description.encode(&mut w)?;
-                            a_display.icon.encode(&mut w)?;
-                            VarInt(a_display.frame_type as _).encode(&mut w)?;
-                            a_display.flags().encode(&mut w)?;
-                            if let Some(ref background_texture) = a_display.background_texture {
-                                background_texture.encode(&mut w)?;
+                    // display_data
+                    match a_display {
+                        Some(a_display) => {
+                            true.encode(&mut w)?;
+                            // advancement display
+                            {
+                                a_display.title.encode(&mut w)?;
+                                a_display.description.encode(&mut w)?;
+                                a_display.icon.encode(&mut w)?;
+                                VarInt(a_display.frame_type as _).encode(&mut w)?;
+                                a_display.flags().encode(&mut w)?;
+                                if let Some(ref background_texture) = a_display.background_texture {
+                                    background_texture.encode(&mut w)?;
+                                }
+                                a_display.x_coord.encode(&mut w)?;
+                                a_display.y_coord.encode(&mut w)?
                             }
-                            a_display.x_coord.encode(&mut w)?;
-                            a_display.y_coord.encode(&mut w)?
+                        }
+                        None => false.encode(&mut w)?,
+                    }
+
+                    // criteria
+                    {
+                        let mut criteria = vec![];
+                        if let Some(a_children) = a_children {
+                            for a_child in a_children.iter() {
+                                let Ok(c_identifier) = criteria_query.get(*a_child) else { continue; };
+                                criteria.push(&c_identifier.0);
+                            }
+                        }
+                        criteria.encode(&mut w)?;
+                    }
+
+                    // requirements
+                    {
+                        VarInt(a_requirements.0.len() as _).encode(&mut w)?;
+                        for requirements in a_requirements.0.iter() {
+                            VarInt(requirements.len() as _).encode(&mut w)?;
+                            for requirement in requirements {
+                                let c_identifier = criteria_query.get(*requirement)?;
+                                c_identifier.0.encode(&mut w)?;
+                            }
                         }
                     }
-                    None => false.encode(&mut w)?,
                 }
 
-                // criteria
-                {
-                    let mut criteria = vec![];
-                    if let Some(a_children) = a_children {
-                        for a_child in a_children.iter() {
-                            let Ok(c_identifier) = criteria_query.get(*a_child) else { continue; };
-                            criteria.push(&c_identifier.0);
-                        }
-                    }
-                    criteria.encode(&mut w)?;
-                }
-
-                // requirements
-                {
-                    VarInt(a_requirements.0.len() as _).encode(&mut w)?;
-                    for requirements in a_requirements.0.iter() {
-                        VarInt(requirements.len() as _).encode(&mut w)?;
-                        for requirement in requirements {
-                            let c_identifier = criteria_query
-                                .get(*requirement)
-                                .expect("Requirements's element is not criteria");
-                            c_identifier.0.encode(&mut w)?;
-                        }
-                    }
-                }
+                w.write_all(lck.as_slice())?;
             }
         }
 
@@ -187,9 +192,7 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateS2COE<'w, 's, 'a> {
         {
             VarInt(remove_advancements.len() as _).encode(&mut w)?;
             for a in remove_advancements {
-                let a_identifier = advancement_id_query
-                    .get(*a)
-                    .expect("Remove advancements contains not advancement");
+                let a_identifier = advancement_id_query.get(*a)?;
                 a_identifier.0.encode(&mut w)?;
             }
         }
@@ -199,9 +202,7 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateS2COE<'w, 's, 'a> {
             let mut progress_mapping: FxHashMap<Entity, Vec<(Entity, Option<i64>)>> =
                 FxHashMap::default();
             for progress in progress {
-                let a = parent_query
-                    .get(progress.0)
-                    .expect("criterion does not have a parent");
+                let a = parent_query.get(progress.0)?;
                 progress_mapping
                     .entry(a.get())
                     .and_modify(|v| v.push(*progress))
@@ -210,16 +211,12 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateS2COE<'w, 's, 'a> {
 
             VarInt(progress_mapping.len() as _).encode(&mut w)?;
             for (a, c_progress) in progress_mapping {
-                let a_identifier = advancement_id_query
-                    .get(a)
-                    .expect("criterion's parent is not advancement");
+                let a_identifier = advancement_id_query.get(a)?;
                 a_identifier.0.encode(&mut w)?;
 
                 VarInt(c_progress.len() as _).encode(&mut w)?;
                 for (c, c_progress) in c_progress {
-                    let c_identifier = criteria_query
-                        .get(c)
-                        .expect("progress contains not criteria");
+                    let c_identifier = criteria_query.get(c)?;
                     c_identifier.0.encode(&mut w)?;
                     c_progress.encode(&mut w)?;
                 }
@@ -253,10 +250,23 @@ impl<'w, 's, 'a, 'b> Packet<'b> for AdvancementUpdateS2COE<'w, 's, 'a> {
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn send_advancement_update_packet(
+    cache_clear_query: Query<
+        &AdvancementCachedBytes,
+        Or<(
+            Changed<AdvancementDisplay>,
+            Changed<Children>,
+            Changed<Parent>,
+        )>,
+    >,
     mut client: Query<(&mut AdvancementClientUpdate, &mut Client)>,
     update_single_query: SingleAdvancementUpdateQuery,
 ) {
+    for advancement_cached_bytes in cache_clear_query.iter() {
+        advancement_cached_bytes.0.lock().clear()
+    }
+
     for (mut advancement_client_update, mut client) in client.iter_mut() {
         match advancement_client_update.force_tab_update {
             ForceTabUpdate::None => {}
@@ -350,6 +360,9 @@ impl AdvancementCriteria {
 
 #[derive(Component)]
 pub struct AdvancementRequirements(pub Vec<Vec<Entity>>);
+
+#[derive(Component)]
+pub(crate) struct AdvancementCachedBytes(pub(crate) Mutex<Vec<u8>>);
 
 #[derive(Default, Debug, PartialEq)]
 pub enum ForceTabUpdate {

@@ -11,3 +11,4 @@ bevy_ecs.workspace = true
 bevy_hierarchy.workspace = true
 rustc-hash.workspace = true
 anyhow.workspace = true
+parking_lot.workspace = true
