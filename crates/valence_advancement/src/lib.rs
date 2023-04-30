@@ -70,6 +70,7 @@ fn init_clients(mut commands: Commands, query: Query<Entity, Added<Client>>) {
 }
 
 #[derive(SystemParam, Debug)]
+#[allow(clippy::type_complexity)]
 pub(crate) struct SingleAdvancementUpdateQuery<'w, 's> {
     advancement_query: Query<
         'w,
@@ -378,7 +379,7 @@ impl AdvancementClientUpdate {
         if let Ok(children) = children_query.get(root) {
             for child in children.iter() {
                 let child = *child;
-                if let Ok(_) = advancement_check_query.get(child) {
+                if advancement_check_query.get(child).is_ok() {
                     Self::walk_advancements(child, children_query, advancement_check_query, func);
                 }
             }
