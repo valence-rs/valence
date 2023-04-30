@@ -1,5 +1,6 @@
 use valence::prelude::*;
-use valence_advancement::{bevy_hierarchy::{BuildChildren, Children, Parent}, ForceTabUpdate};
+use valence_advancement::bevy_hierarchy::{BuildChildren, Children, Parent};
+use valence_advancement::ForceTabUpdate;
 
 #[derive(Component)]
 struct RootCriteria;
@@ -109,26 +110,30 @@ fn setup(
         ))
         .set_parent(root_advancement);
 
-    let root2_criteria = commands.spawn((
-        AdvancementCriteria::new(Ident::new("custom:root2_criteria").unwrap()),
-        Root2Criteria,
-    )).id();
+    let root2_criteria = commands
+        .spawn((
+            AdvancementCriteria::new(Ident::new("custom:root2_criteria").unwrap()),
+            Root2Criteria,
+        ))
+        .id();
 
-    commands.spawn((
-        AdvancementBundle::new(Ident::new("custom:root2").unwrap()),
-        AdvancementDisplay {
-            title: "Root2".into(),
-            description: "Go to this tab 5 times to earn this advancement".into(),
-            icon: Some(ItemStack::new(ItemKind::IronSword, 1, None)),
-            frame_type: AdvancementFrameType::Challenge,
-            show_toast: false,
-            hidden: false,
-            background_texture: Some(Ident::new("textures/block/andesite.png").unwrap()),
-            x_coord: 0.0,
-            y_coord: 0.0,
-        },
-        AdvancementRequirements(vec![vec![root2_criteria]]),
-    )).add_child(root2_criteria);
+    commands
+        .spawn((
+            AdvancementBundle::new(Ident::new("custom:root2").unwrap()),
+            AdvancementDisplay {
+                title: "Root2".into(),
+                description: "Go to this tab 5 times to earn this advancement".into(),
+                icon: Some(ItemStack::new(ItemKind::IronSword, 1, None)),
+                frame_type: AdvancementFrameType::Challenge,
+                show_toast: false,
+                hidden: false,
+                background_texture: Some(Ident::new("textures/block/andesite.png").unwrap()),
+                x_coord: 0.0,
+                y_coord: 0.0,
+            },
+            AdvancementRequirements(vec![vec![root2_criteria]]),
+        ))
+        .add_child(root2_criteria);
 }
 
 fn init_clients(
@@ -140,7 +145,9 @@ fn init_clients(
         loc.0 = instances.single();
         pos.set([0.5, 65.0, 0.5]);
         *game_mode = GameMode::Creative;
-        commands.entity(client).insert((RootCriteriaDone(false), TabChangeCount(0)));
+        commands
+            .entity(client)
+            .insert((RootCriteriaDone(false), TabChangeCount(0)));
     }
 }
 
@@ -184,7 +191,7 @@ fn tab_change(
     mut tab_change: EventReader<AdvancementTabChange>,
     mut client: Query<(&mut AdvancementClientUpdate, &mut TabChangeCount)>,
     root2_criteria: Query<Entity, With<Root2Criteria>>,
-    root: Query<Entity, With<RootAdvancement>>
+    root: Query<Entity, With<RootAdvancement>>,
 ) {
     let root2_criteria = root2_criteria.single();
     let root = root.single();

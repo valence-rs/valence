@@ -257,7 +257,6 @@ fn send_advancement_update_packet(
     update_single_query: SingleAdvancementUpdateQuery,
 ) {
     for (mut advancement_client_update, mut client) in client.iter_mut() {
-
         match advancement_client_update.force_tab_update {
             ForceTabUpdate::None => {}
             ForceTabUpdate::First => {

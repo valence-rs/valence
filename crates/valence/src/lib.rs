@@ -99,8 +99,8 @@ pub mod prelude {
     pub use text::{Color, Text, TextFormat};
     #[cfg(feature = "advancement")]
     pub use valence_advancement::{
-        Advancement, AdvancementBundle, AdvancementClientUpdate, AdvancementCriteria,
-        AdvancementDisplay, AdvancementRequirements, AdvancementFrameType, event::AdvancementTabChange
+        event::AdvancementTabChange, Advancement, AdvancementBundle, AdvancementClientUpdate,
+        AdvancementCriteria, AdvancementDisplay, AdvancementFrameType, AdvancementRequirements,
     };
     pub use valence_core::ident; // Export the `ident!` macro.
     pub use valence_core::uuid::UniqueId;

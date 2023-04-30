@@ -19,7 +19,9 @@ pub(crate) fn handle_advancement_tab_change(
                 client: packet.client,
                 opened_tab: match pkt {
                     AdvancementTabC2s::ClosedScreen => None,
-                    AdvancementTabC2s::OpenedTab { tab_id } => Some(Ident::new_unchecked(tab_id.to_string())),
+                    AdvancementTabC2s::OpenedTab { tab_id } => {
+                        Some(Ident::new_unchecked(tab_id.to_string()))
+                    }
                 },
             })
         }
