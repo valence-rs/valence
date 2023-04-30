@@ -1,3 +1,5 @@
+pub mod event;
+
 use std::borrow::Cow;
 use std::io::Write;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -12,6 +14,7 @@ use bevy_ecs::world::Ref;
 #[doc(hidden)]
 pub use bevy_hierarchy;
 use bevy_hierarchy::{Children, Parent};
+use event::{handle_advancement_tab_change, AdvancementTabChange};
 use rustc_hash::FxHashMap;
 use valence_client::{Client, FlushPacketsSet, SpawnClientsSet};
 use valence_core::__private::VarInt;
@@ -34,9 +37,14 @@ impl Plugin for AdvancementPlugin {
                 .in_base_set(CoreSet::PostUpdate)
                 .before(FlushPacketsSet),
         )
+        .add_event::<AdvancementTabChange>()
         .add_system(
             init_clients
                 .after(SpawnClientsSet)
+                .in_base_set(CoreSet::PreUpdate),
+        )
+        .add_system(
+            handle_advancement_tab_change
                 .in_base_set(CoreSet::PreUpdate),
         )
         .add_system(send_advancement_update_packet.in_set(WriteAdvancementPacketToClientsSet));

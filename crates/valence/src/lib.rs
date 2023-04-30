@@ -100,7 +100,7 @@ pub mod prelude {
     #[cfg(feature = "advancement")]
     pub use valence_advancement::{
         Advancement, AdvancementBundle, AdvancementClientUpdate, AdvancementCriteria,
-        AdvancementDisplay, AdvancementRequirements, AdvancementFrameType
+        AdvancementDisplay, AdvancementRequirements, AdvancementFrameType, event::AdvancementTabChange
     };
     pub use valence_core::ident; // Export the `ident!` macro.
     pub use valence_core::uuid::UniqueId;
