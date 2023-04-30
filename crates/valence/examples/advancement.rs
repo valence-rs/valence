@@ -19,10 +19,6 @@ struct TabChangeCount(u8);
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .insert_resource(CoreSettings {
-            compression_threshold: None,
-            ..Default::default()
-        })
         .add_startup_system(setup)
         .add_systems((init_clients, init_advancements, sneak, tab_change))
         .run();
