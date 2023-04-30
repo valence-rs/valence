@@ -97,6 +97,11 @@ pub mod prelude {
     #[cfg(feature = "player_list")]
     pub use player_list::{PlayerList, PlayerListEntry};
     pub use text::{Color, Text, TextFormat};
+    #[cfg(feature = "advancement")]
+    pub use valence_advancement::{
+        Advancement, AdvancementBundle, AdvancementClientUpdate, AdvancementCriteria,
+        AdvancementDisplay, AdvancementRequirements, AdvancementFrameType
+    };
     pub use valence_core::ident; // Export the `ident!` macro.
     pub use valence_core::uuid::UniqueId;
     pub use valence_core::{translation_key, CoreSettings, Server};
@@ -143,6 +148,13 @@ impl PluginGroup for DefaultPlugins {
         #[cfg(feature = "anvil")]
         {
             // No plugin... yet.
+        }
+
+        #[cfg(feature = "advancement")]
+        {
+            group = group
+                .add(valence_advancement::AdvancementPlugin)
+                .add(valence_advancement::bevy_hierarchy::HierarchyPlugin);
         }
 
         group
