@@ -1,11 +1,20 @@
 use valence::prelude::*;
-use valence_advancement::bevy_hierarchy::{BuildChildren, Children, Parent};
+use valence_advancement::{bevy_hierarchy::{BuildChildren, Children, Parent}, ForceTabUpdate};
 
 #[derive(Component)]
 struct RootCriteria;
 
 #[derive(Component)]
+struct Root2Criteria;
+
+#[derive(Component)]
+struct RootAdvancement;
+
+#[derive(Component)]
 struct RootCriteriaDone(bool);
+
+#[derive(Component)]
+struct TabChangeCount(u8);
 
 fn main() {
     App::new()
@@ -15,7 +24,7 @@ fn main() {
             ..Default::default()
         })
         .add_startup_system(setup)
-        .add_systems((init_clients, init_advancements, sneak))
+        .add_systems((init_clients, init_advancements, sneak, tab_change))
         .run();
 }
 
@@ -63,6 +72,7 @@ fn setup(
                 y_coord: 0.0,
             },
             AdvancementRequirements(vec![vec![root_criteria]]),
+            RootAdvancement,
         ))
         .add_child(root_criteria)
         .id();
@@ -102,6 +112,27 @@ fn setup(
             AdvancementRequirements(vec![]),
         ))
         .set_parent(root_advancement);
+
+    let root2_criteria = commands.spawn((
+        AdvancementCriteria::new(Ident::new("custom:root2_criteria").unwrap()),
+        Root2Criteria,
+    )).id();
+
+    commands.spawn((
+        AdvancementBundle::new(Ident::new("custom:root2").unwrap()),
+        AdvancementDisplay {
+            title: "Root2".into(),
+            description: "Go to this tab 5 times to earn this advancement".into(),
+            icon: Some(ItemStack::new(ItemKind::IronSword, 1, None)),
+            frame_type: AdvancementFrameType::Challenge,
+            show_toast: false,
+            hidden: false,
+            background_texture: Some(Ident::new("textures/block/andesite.png").unwrap()),
+            x_coord: 0.0,
+            y_coord: 0.0,
+        },
+        AdvancementRequirements(vec![vec![root2_criteria]]),
+    )).add_child(root2_criteria);
 }
 
 fn init_clients(
@@ -113,7 +144,7 @@ fn init_clients(
         loc.0 = instances.single();
         pos.set([0.5, 65.0, 0.5]);
         *game_mode = GameMode::Creative;
-        commands.entity(client).insert(RootCriteriaDone(false));
+        commands.entity(client).insert((RootCriteriaDone(false), TabChangeCount(0)));
     }
 }
 
@@ -123,13 +154,14 @@ fn init_advancements(
     children_query: Query<&Children>,
     advancement_check_query: Query<(), With<Advancement>>,
 ) {
-    let root_advancement = root_advancement_query.get_single().unwrap();
     for mut advancement_client_update in clients.iter_mut() {
-        advancement_client_update.send_advancements(
-            root_advancement,
-            &children_query,
-            &advancement_check_query,
-        );
+        for root_advancement in root_advancement_query.iter() {
+            advancement_client_update.send_advancements(
+                root_advancement,
+                &children_query,
+                &advancement_check_query,
+            );
+        }
     }
 }
 
@@ -148,6 +180,33 @@ fn sneak(
         match root_criteria_done.0 {
             true => advancement_client_update.criteria_done(root_criteria),
             false => advancement_client_update.criteria_undone(root_criteria),
+        }
+    }
+}
+
+fn tab_change(
+    mut tab_change: EventReader<AdvancementTabChange>,
+    mut client: Query<(&mut AdvancementClientUpdate, &mut TabChangeCount)>,
+    root2_criteria: Query<Entity, With<Root2Criteria>>,
+    root: Query<Entity, With<RootAdvancement>>
+) {
+    let root2_criteria = root2_criteria.single();
+    let root = root.single();
+    for tab_change in tab_change.iter() {
+        let Ok((mut advancement_client_update, mut tab_change_count)) = client.get_mut(tab_change.client) else { continue; };
+        if let Some(ref opened) = tab_change.opened_tab {
+            if opened.as_str() == "custom:root2" {
+                tab_change_count.0 += 1;
+            } else {
+                continue;
+            }
+        } else {
+            continue;
+        }
+        if tab_change_count.0 == 5 {
+            advancement_client_update.criteria_done(root2_criteria);
+        } else if tab_change_count.0 >= 10 {
+            advancement_client_update.force_tab_update = ForceTabUpdate::Spec(root);
         }
     }
 }

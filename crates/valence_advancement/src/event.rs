@@ -1,11 +1,12 @@
-use bevy_ecs::prelude::{EventReader, EventWriter};
+use bevy_ecs::prelude::{Entity, EventReader, EventWriter};
 use valence_client::event_loop::PacketEvent;
-use valence_core::{packet::c2s::play::AdvancementTabC2s, ident::Ident};
+use valence_core::ident::Ident;
+use valence_core::packet::c2s::play::AdvancementTabC2s;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub enum AdvancementTabChange {
-    OpenedTab { tab_id: Ident<String> },
-    Closed,
+pub struct AdvancementTabChange {
+    pub client: Entity,
+    pub opened_tab: Option<Ident<String>>,
 }
 
 pub(crate) fn handle_advancement_tab_change(
@@ -14,12 +15,13 @@ pub(crate) fn handle_advancement_tab_change(
 ) {
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<AdvancementTabC2s>() {
-            advancement_tab_change_events.send(match pkt {
-                AdvancementTabC2s::ClosedScreen => AdvancementTabChange::Closed,
-                AdvancementTabC2s::OpenedTab { tab_id } => AdvancementTabChange::OpenedTab { 
-                    tab_id: Ident::new_unchecked(tab_id.into_inner().to_string()) 
-                }
+            advancement_tab_change_events.send(AdvancementTabChange {
+                client: packet.client,
+                opened_tab: match pkt {
+                    AdvancementTabC2s::ClosedScreen => None,
+                    AdvancementTabC2s::OpenedTab { tab_id } => Some(Ident::new_unchecked(tab_id.to_string())),
+                },
             })
         }
     }
-} 
+}

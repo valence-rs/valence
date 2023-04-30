@@ -21,7 +21,7 @@ use valence_core::__private::VarInt;
 use valence_core::ident::Ident;
 use valence_core::item::ItemStack;
 use valence_core::packet::encode::WritePacket;
-use valence_core::packet::s2c::play::AdvancementUpdateS2c;
+use valence_core::packet::s2c::play::{AdvancementUpdateS2c, SelectAdvancementTabS2c};
 use valence_core::packet::{Encode, Packet};
 use valence_core::text::Text;
 
@@ -43,10 +43,7 @@ impl Plugin for AdvancementPlugin {
                 .after(SpawnClientsSet)
                 .in_base_set(CoreSet::PreUpdate),
         )
-        .add_system(
-            handle_advancement_tab_change
-                .in_base_set(CoreSet::PreUpdate),
-        )
+        .add_system(handle_advancement_tab_change.in_base_set(CoreSet::PreUpdate))
         .add_system(send_advancement_update_packet.in_set(WriteAdvancementPacketToClientsSet));
     }
 }
@@ -109,6 +106,7 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateS2COE<'w, 's, 'a> {
             new_advancements,
             remove_advancements,
             progress,
+            force_tab_update: _,
         } = &self.client_update;
 
         // reset/clear
@@ -259,6 +257,25 @@ fn send_advancement_update_packet(
     update_single_query: SingleAdvancementUpdateQuery,
 ) {
     for (mut advancement_client_update, mut client) in client.iter_mut() {
+
+        match advancement_client_update.force_tab_update {
+            ForceTabUpdate::None => {}
+            ForceTabUpdate::First => {
+                client.write_packet(&SelectAdvancementTabS2c { identifier: None })
+            }
+            ForceTabUpdate::Spec(spec) => {
+                if let Ok(a_identifier) = update_single_query.advancement_id_query.get(spec) {
+                    client.write_packet(&SelectAdvancementTabS2c {
+                        identifier: Some(a_identifier.0.borrowed()),
+                    });
+                }
+            }
+        }
+
+        if ForceTabUpdate::None != advancement_client_update.force_tab_update {
+            advancement_client_update.force_tab_update = ForceTabUpdate::None;
+        }
+
         if advancement_client_update.new_advancements.is_empty()
             && advancement_client_update.progress.is_empty()
             && advancement_client_update.remove_advancements.is_empty()
@@ -334,11 +351,21 @@ impl AdvancementCriteria {
 #[derive(Component)]
 pub struct AdvancementRequirements(pub Vec<Vec<Entity>>);
 
+#[derive(Default, Debug, PartialEq)]
+pub enum ForceTabUpdate {
+    #[default]
+    None,
+    First,
+    /// Should contain only root advancement otherwise the first will be chosen
+    Spec(Entity),
+}
+
 #[derive(Component, Default, Debug)]
 pub struct AdvancementClientUpdate {
     pub new_advancements: Vec<Entity>,
     pub remove_advancements: Vec<Entity>,
     pub progress: Vec<(Entity, Option<i64>)>,
+    pub force_tab_update: ForceTabUpdate,
 }
 
 impl AdvancementClientUpdate {
@@ -388,7 +415,7 @@ impl AdvancementClientUpdate {
                 SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .unwrap()
-                    .as_millis() as i64
+                    .as_millis() as i64,
             ),
         ))
     }
