@@ -1,3 +1,5 @@
+#[doc = include_str!("../README.md")]
+
 pub mod event;
 
 use std::borrow::Cow;
