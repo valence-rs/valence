@@ -118,7 +118,7 @@ impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
             pkt.display_data = Some(protocol::AdvancementDisplay {
                 title: Cow::Borrowed(&a_display.title),
                 description: Cow::Borrowed(&a_display.description),
-                icon: a_display.icon.clone(),
+                icon: &a_display.icon,
                 frame_type: VarInt(a_display.frame_type as _),
                 flags: a_display.flags(),
                 background_texture: a_display.background_texture.as_ref().map(|v| v.borrowed()),
