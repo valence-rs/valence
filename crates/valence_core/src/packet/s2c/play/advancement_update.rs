@@ -7,7 +7,8 @@ use crate::packet::var_int::VarInt;
 use crate::packet::{Decode, Encode};
 use crate::text::Text;
 
-pub type AdvancementUpdateS2c<'a> = GenericAdvancementUpdateS2c<'a, (Ident<Cow<'a, str>>, Advancement<'a>)>;
+pub type AdvancementUpdateS2c<'a> =
+    GenericAdvancementUpdateS2c<'a, (Ident<Cow<'a, str>>, Advancement<'a>)>;
 
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct GenericAdvancementUpdateS2c<'a, AM: 'a> {

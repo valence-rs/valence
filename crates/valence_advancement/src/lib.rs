@@ -1,5 +1,4 @@
 #[doc = include_str!("../README.md")]
-
 pub mod event;
 
 use std::borrow::Cow;
@@ -142,7 +141,7 @@ impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
                 requirements_p.push(c_identifier.0.as_str());
             }
             pkt.requirements.push(protocol::AdvancementRequirements {
-                requirement: requirements_p
+                requirement: requirements_p,
             });
         }
 
@@ -327,7 +326,7 @@ fn send_advancement_update_packet(
     }
 }
 
-/// Advancement's id. May not be updated. 
+/// Advancement's id. May not be updated.
 #[derive(Component)]
 pub struct Advancement(Ident<Cow<'static, str>>);
 
@@ -387,7 +386,8 @@ impl AdvancementCriteria {
 }
 
 /// Requirements for advancement to be completed.
-/// All columns should be completed, column is completed when any of criteria in this column is completed.
+/// All columns should be completed, column is completed when any of criteria in
+/// this column is completed.
 #[derive(Component, Default)]
 pub struct AdvancementRequirements(pub Vec<Vec<Entity>>);
 
