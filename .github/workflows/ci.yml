@@ -1,53 +1,110 @@
 name: Rust
 
 on:
-  push:
-    branches: ["main"]
   pull_request:
-    branches: ["main"]
+  push: # Run CI on the main branch after every merge. This is important to fill the GitHub Actions cache in a way that pull requests can see it
+    branches:
+      - main
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  valence-fmt-clippy:
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-11]
+        platform: [windows-latest, macos-latest, ubuntu-latest]
+        style: [default]
+        rust:
+          - stable
+        include:
+          - style: default
+            flags: ""
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.platform }}
 
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Rust toolchain and cache
+        uses: actions-rust-lang/setup-rust-toolchain@v1.4.4
         with:
-          components: clippy, rustfmt
-      - run: cp tools/playground/src/playground.template.rs tools/playground/src/playground.rs
-      - name: Set up cargo cache
-        uses: actions/cache@v3
-        continue-on-error: false
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-target-${{ hashFiles('**/Cargo.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-target-${{ hashFiles('**/Cargo.toml') }}
-            ${{ runner.os }}-cargo-target
+          toolchain: "stable"
+          components: "clippy, rustfmt"
+
+      - name: "Copy playground"
+        run: cp tools/playground/src/playground.template.rs tools/playground/src/playground.rs
+
       - name: Install Dependencies (Linux)
         run: sudo apt-get update && sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libclang-dev libgtk-3-dev
-        if: matrix.os == 'ubuntu-latest'
-      - name: Validate formatting
+        if: matrix.platform == 'ubuntu-latest'
+
+      - name: cargo fmt
         run: cargo fmt --all -- --check
-      - name: Validate documentation
-        run: cargo doc --workspace --no-deps --all-features --document-private-items
-      - name: Run clippy lints
-        run: cargo clippy --workspace --no-deps --all-features --all-targets -- -D warnings
+
+      - name: Clippy
+        run: cargo clippy --workspace ${{ matrix.flags }}--no-deps --all-features --all-targets -- -D warnings
+
+  valence-tests:
+    strategy:
+      fail-fast: true
+      matrix:
+        platform: [windows-latest, macos-latest, ubuntu-latest]
+        style: [default]
+        rust:
+          - stable
+        include:
+          - style: default
+            flags: ""
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Rust toolchain and cache
+        uses: actions-rust-lang/setup-rust-toolchain@v1.4.4
+
+      - name: "Copy playground"
+        run: cp tools/playground/src/playground.template.rs tools/playground/src/playground.rs
+
+      - name: Install Dependencies (Linux)
+        run: sudo apt-get update && sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libclang-dev libgtk-3-dev
+        if: matrix.platform == 'ubuntu-latest'
+
       - name: Run tests
-        run: cargo test --workspace --all-features --all-targets
+        run: cargo test --workspace ${{ matrix.flags }}--all-features --all-targets
+
       - name: Run valence_nbt tests without preserve_order feature
         run: cargo test -p valence_nbt --all-targets
+
+  valence-docs:
+    strategy:
+      fail-fast: true
+      matrix:
+        platform: [windows-latest, macos-latest, ubuntu-latest]
+        style: [default]
+        rust:
+          - stable
+        include:
+          - style: default
+            flags: ""
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Rust toolchain and cache
+        uses: actions-rust-lang/setup-rust-toolchain@v1.4.4
+
+      - name: "Copy playground"
+        run: cp tools/playground/src/playground.template.rs tools/playground/src/playground.rs
+
+      - name: Install Dependencies (Linux)
+        run: sudo apt-get update && sudo apt-get install -y libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libclang-dev libgtk-3-dev
+        if: matrix.platform == 'ubuntu-latest'
+
+      - name: Validate documentation
+        run: cargo doc --workspace ${{ matrix.flags }}--no-deps --all-features --document-private-items
