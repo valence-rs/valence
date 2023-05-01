@@ -3,9 +3,11 @@ use valence_client::event_loop::PacketEvent;
 use valence_core::ident::Ident;
 use valence_core::packet::c2s::play::AdvancementTabC2s;
 
+/// This event sends when the client changes or closes advancement's tab.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct AdvancementTabChange {
     pub client: Entity,
+    /// If None then the client has closed advancement's tabs.
     pub opened_tab: Option<Ident<String>>,
 }
 
@@ -20,7 +22,7 @@ pub(crate) fn handle_advancement_tab_change(
                 opened_tab: match pkt {
                     AdvancementTabC2s::ClosedScreen => None,
                     AdvancementTabC2s::OpenedTab { tab_id } => {
-                        Some(Ident::new_unchecked(tab_id.to_string()))
+                        Some(tab_id.into())
                     }
                 },
             })

@@ -49,26 +49,29 @@ fn setup(
 
     let root_criteria = commands
         .spawn((
-            AdvancementCriteria::new(Ident::new("custom:root_criteria").unwrap()),
+            AdvancementCriteria::new(ident!("custom:root_criteria").into()),
             RootCriteria,
         ))
         .id();
 
     let root_advancement = commands
         .spawn((
-            AdvancementBundle::new(Ident::new("custom:root").unwrap()),
+            AdvancementBundle {
+                advancement: Advancement::new(ident!("custom:root").into()),
+                requirements: AdvancementRequirements(vec![vec![root_criteria]]),
+                cached_bytes: Default::default(),
+            },
             AdvancementDisplay {
                 title: "Root".into(),
                 description: "Toggles when you sneak".into(),
                 icon: Some(ItemStack::new(ItemKind::Stone, 1, None)),
                 frame_type: AdvancementFrameType::Task,
-                show_toast: false,
+                show_toast: true,
                 hidden: false,
-                background_texture: Some(Ident::new("textures/block/stone.png").unwrap()),
+                background_texture: Some(ident!("textures/block/stone.png").into()),
                 x_coord: 0.0,
                 y_coord: 0.0,
             },
-            AdvancementRequirements(vec![vec![root_criteria]]),
             RootAdvancement,
         ))
         .add_child(root_criteria)
@@ -76,7 +79,11 @@ fn setup(
 
     commands
         .spawn((
-            AdvancementBundle::new(Ident::new("custom:first").unwrap()),
+            AdvancementBundle {
+                advancement: Advancement::new(ident!("custom:first").into()),
+                requirements: AdvancementRequirements::default(),
+                cached_bytes: Default::default(),
+            },
             AdvancementDisplay {
                 title: "First".into(),
                 description: "First advancement".into(),
@@ -88,13 +95,16 @@ fn setup(
                 x_coord: 1.0,
                 y_coord: -0.5,
             },
-            AdvancementRequirements(vec![]),
         ))
         .set_parent(root_advancement);
 
     commands
         .spawn((
-            AdvancementBundle::new(Ident::new("custom:second").unwrap()),
+            AdvancementBundle {
+                advancement: Advancement::new(ident!("custom:second").into()),
+                requirements: AdvancementRequirements::default(),
+                cached_bytes: Default::default(),
+            },
             AdvancementDisplay {
                 title: "Second".into(),
                 description: "Second advancement".into(),
@@ -106,20 +116,23 @@ fn setup(
                 x_coord: 1.0,
                 y_coord: 0.5,
             },
-            AdvancementRequirements(vec![]),
         ))
         .set_parent(root_advancement);
 
     let root2_criteria = commands
         .spawn((
-            AdvancementCriteria::new(Ident::new("custom:root2_criteria").unwrap()),
+            AdvancementCriteria::new(ident!("custom:root2_criteria").into()),
             Root2Criteria,
         ))
         .id();
 
     commands
         .spawn((
-            AdvancementBundle::new(Ident::new("custom:root2").unwrap()),
+            AdvancementBundle {
+                advancement: Advancement::new(ident!("custom:root2").into()),
+                requirements: AdvancementRequirements(vec![vec![root2_criteria]]),
+                cached_bytes: Default::default(),
+            },
             AdvancementDisplay {
                 title: "Root2".into(),
                 description: "Go to this tab 5 times to earn this advancement".into(),
@@ -131,7 +144,6 @@ fn setup(
                 x_coord: 0.0,
                 y_coord: 0.0,
             },
-            AdvancementRequirements(vec![vec![root2_criteria]]),
         ))
         .add_child(root2_criteria);
 }

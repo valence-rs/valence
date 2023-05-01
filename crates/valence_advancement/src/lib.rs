@@ -10,19 +10,20 @@ use bevy_ecs::prelude::{Bundle, Component, Entity};
 use bevy_ecs::query::{Added, Changed, Or, With};
 use bevy_ecs::schedule::{IntoSystemConfig, IntoSystemSetConfig, SystemSet};
 use bevy_ecs::system::{Commands, Query, SystemParam};
-use bevy_ecs::world::Ref;
-#[doc(hidden)]
 pub use bevy_hierarchy;
 use bevy_hierarchy::{Children, Parent};
 use event::{handle_advancement_tab_change, AdvancementTabChange};
-use parking_lot::Mutex;
 use rustc_hash::FxHashMap;
 use valence_client::{Client, FlushPacketsSet, SpawnClientsSet};
-use valence_core::__private::VarInt;
 use valence_core::ident::Ident;
 use valence_core::item::ItemStack;
 use valence_core::packet::encode::WritePacket;
-use valence_core::packet::s2c::play::{AdvancementUpdateS2c, SelectAdvancementTabS2c};
+use valence_core::packet::raw::RawBytes;
+use valence_core::packet::s2c::play::advancement_update::GenericAdvancementUpdateS2c;
+use valence_core::packet::s2c::play::{
+    advancement_update as protocol, AdvancementUpdateS2c, SelectAdvancementTabS2c,
+};
+use valence_core::packet::var_int::VarInt;
 use valence_core::packet::{Encode, Packet};
 use valence_core::text::Text;
 
@@ -31,40 +32,46 @@ pub struct AdvancementPlugin;
 #[derive(SystemSet, Clone, Copy, Eq, PartialEq, Hash, Debug)]
 pub struct WriteAdvancementPacketToClientsSet;
 
+#[derive(SystemSet, Clone, Copy, Eq, PartialEq, Hash, Debug)]
+pub struct WriteAdvancementToCacheSet;
+
 impl Plugin for AdvancementPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.configure_set(
+        app.configure_sets((
             WriteAdvancementPacketToClientsSet
                 .in_base_set(CoreSet::PostUpdate)
                 .before(FlushPacketsSet),
-        )
+            WriteAdvancementToCacheSet
+                .in_base_set(CoreSet::PostUpdate)
+                .before(WriteAdvancementPacketToClientsSet),
+        ))
         .add_event::<AdvancementTabChange>()
         .add_system(
-            init_clients
+            add_advancement_update_component_to_new_clients
                 .after(SpawnClientsSet)
                 .in_base_set(CoreSet::PreUpdate),
         )
         .add_system(handle_advancement_tab_change.in_base_set(CoreSet::PreUpdate))
+        .add_system(update_advancement_cached_bytes.in_set(WriteAdvancementToCacheSet))
         .add_system(send_advancement_update_packet.in_set(WriteAdvancementPacketToClientsSet));
     }
 }
 
+/// Components for advancement that are required
+/// Optional components:
+/// [AdvancementDisplay]
+/// [Parent] - parent advancement
 #[derive(Bundle)]
 pub struct AdvancementBundle {
     pub advancement: Advancement,
-    cached_bytes: AdvancementCachedBytes,
+    pub requirements: AdvancementRequirements,
+    pub cached_bytes: AdvancementCachedBytes,
 }
 
-impl AdvancementBundle {
-    pub fn new(ident: Ident<Cow<'static, str>>) -> Self {
-        Self {
-            advancement: Advancement::new(ident),
-            cached_bytes: AdvancementCachedBytes(Mutex::new(vec![])),
-        }
-    }
-}
-
-fn init_clients(mut commands: Commands, query: Query<Entity, Added<Client>>) {
+fn add_advancement_update_component_to_new_clients(
+    mut commands: Commands,
+    query: Query<Entity, Added<Client>>,
+) {
     for client in query.iter() {
         commands
             .entity(client)
@@ -74,34 +81,129 @@ fn init_clients(mut commands: Commands, query: Query<Entity, Added<Client>>) {
 
 #[derive(SystemParam, Debug)]
 #[allow(clippy::type_complexity)]
-pub(crate) struct SingleAdvancementUpdateQuery<'w, 's> {
-    advancement_query: Query<
-        'w,
-        's,
+struct UpdateAdvancementCachedBytesQuery<'w, 's> {
+    advancement_id_query: Query<'w, 's, &'static Advancement>,
+    criteria_query: Query<'w, 's, &'static AdvancementCriteria>,
+}
+
+impl<'w, 's> UpdateAdvancementCachedBytesQuery<'w, 's> {
+    fn write(
+        &self,
+        a_identifier: &Advancement,
+        a_requirements: &AdvancementRequirements,
+        a_display: Option<&AdvancementDisplay>,
+        a_children: Option<&Children>,
+        a_parent: Option<&Parent>,
+        w: impl Write,
+    ) -> anyhow::Result<()> {
+        let Self {
+            advancement_id_query,
+            criteria_query,
+        } = self;
+
+        let mut pkt = protocol::Advancement {
+            parent_id: None,
+            display_data: None,
+            criteria: vec![],
+            requirements: vec![],
+        };
+
+        if let Some(a_parent) = a_parent {
+            let a_identifier = advancement_id_query.get(a_parent.get())?;
+            pkt.parent_id = Some(a_identifier.0.borrowed());
+        }
+
+        if let Some(a_display) = a_display {
+            pkt.display_data = Some(protocol::AdvancementDisplay {
+                title: Cow::Borrowed(&a_display.title),
+                description: Cow::Borrowed(&a_display.description),
+                icon: a_display.icon.clone(),
+                frame_type: VarInt(a_display.frame_type as _),
+                flags: a_display.flags(),
+                background_texture: a_display.background_texture.as_ref().map(|v| v.borrowed()),
+                x_coord: a_display.x_coord,
+                y_coord: a_display.y_coord,
+            });
+        }
+
+        if let Some(a_children) = a_children {
+            for a_child in a_children.iter() {
+                let Ok(c_identifier) = criteria_query.get(*a_child) else { continue; };
+                pkt.criteria.push((c_identifier.0.borrowed(), ()));
+            }
+        }
+
+        for requirements in a_requirements.0.iter() {
+            let mut requirements_p = vec![];
+            for requirement in requirements {
+                let c_identifier = criteria_query.get(*requirement)?;
+                requirements_p.push(c_identifier.0.as_str());
+            }
+            pkt.requirements.push(protocol::AdvancementRequirements {
+                requirement: requirements_p
+            });
+        }
+
+        (&a_identifier.0, pkt).encode(w)
+    }
+}
+
+#[allow(clippy::type_complexity)]
+fn update_advancement_cached_bytes(
+    mut query: Query<
         (
-            &'static Advancement,
-            Ref<'static, AdvancementRequirements>,
-            &'static AdvancementCachedBytes,
-            Option<Ref<'static, AdvancementDisplay>>,
-            Option<Ref<'static, Children>>,
-            Option<&'static Parent>,
+            &Advancement,
+            &AdvancementRequirements,
+            &mut AdvancementCachedBytes,
+            Option<&AdvancementDisplay>,
+            Option<&Children>,
+            Option<&Parent>,
         ),
+        Or<(
+            Changed<AdvancementDisplay>,
+            Changed<Children>,
+            Changed<Parent>,
+            Changed<AdvancementRequirements>,
+        )>,
     >,
+    update_advancement_cached_bytes_query: UpdateAdvancementCachedBytesQuery,
+) {
+    for (a_identifier, a_requirements, mut a_bytes, a_display, a_children, a_parent) in
+        query.iter_mut()
+    {
+        a_bytes.0.clear();
+        update_advancement_cached_bytes_query
+            .write(
+                a_identifier,
+                a_requirements,
+                a_display,
+                a_children,
+                a_parent,
+                &mut a_bytes.0,
+            )
+            .expect("Failed to write an advancement");
+    }
+}
+
+#[derive(SystemParam, Debug)]
+#[allow(clippy::type_complexity)]
+pub(crate) struct SingleAdvancementUpdateQuery<'w, 's> {
+    advancement_bytes_query: Query<'w, 's, &'static AdvancementCachedBytes>,
     advancement_id_query: Query<'w, 's, &'static Advancement>,
     criteria_query: Query<'w, 's, &'static AdvancementCriteria>,
     parent_query: Query<'w, 's, &'static Parent>,
 }
 
 #[derive(Debug)]
-pub(crate) struct AdvancementUpdateS2COE<'w, 's, 'a> {
+pub(crate) struct AdvancementUpdateEncodeS2c<'w, 's, 'a> {
     client_update: AdvancementClientUpdate,
     queries: &'a SingleAdvancementUpdateQuery<'w, 's>,
 }
 
-impl<'w, 's, 'a> Encode for AdvancementUpdateS2COE<'w, 's, 'a> {
-    fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
+impl<'w, 's, 'a> Encode for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
+    fn encode(&self, w: impl Write) -> anyhow::Result<()> {
         let SingleAdvancementUpdateQuery {
-            advancement_query,
+            advancement_bytes_query,
             advancement_id_query,
             criteria_query,
             parent_query,
@@ -114,120 +216,53 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateS2COE<'w, 's, 'a> {
             force_tab_update: _,
         } = &self.client_update;
 
-        // reset/clear
-        false.encode(&mut w)?;
+        let mut pkt = GenericAdvancementUpdateS2c {
+            reset: false,
+            advancement_mapping: vec![],
+            identifiers: vec![],
+            progress_mapping: vec![],
+        };
 
-        // advancement_mapping
-        {
-            VarInt(new_advancements.len() as _).encode(&mut w)?;
-            for new_advancement in new_advancements {
-                let (a_identifier, a_requirements, a_cached_bytes, a_display, a_children, a_parent) =
-                    advancement_query.get(*new_advancement)?;
-
-                let mut lck = a_cached_bytes.0.lock();
-
-                if lck.is_empty() {
-                    let mut w: &mut Vec<_> = lck.as_mut();
-
-                    // identifier
-                    a_identifier.get().encode(&mut w)?;
-
-                    // parent_id
-                    a_parent
-                        .and_then(|a_parent| advancement_id_query.get(a_parent.get()).ok())
-                        .map(|a_id| a_id.get())
-                        .encode(&mut w)?;
-
-                    // display_data
-                    match a_display {
-                        Some(a_display) => {
-                            true.encode(&mut w)?;
-                            // advancement display
-                            {
-                                a_display.title.encode(&mut w)?;
-                                a_display.description.encode(&mut w)?;
-                                a_display.icon.encode(&mut w)?;
-                                VarInt(a_display.frame_type as _).encode(&mut w)?;
-                                a_display.flags().encode(&mut w)?;
-                                if let Some(ref background_texture) = a_display.background_texture {
-                                    background_texture.encode(&mut w)?;
-                                }
-                                a_display.x_coord.encode(&mut w)?;
-                                a_display.y_coord.encode(&mut w)?
-                            }
-                        }
-                        None => false.encode(&mut w)?,
-                    }
-
-                    // criteria
-                    {
-                        let mut criteria = vec![];
-                        if let Some(a_children) = a_children {
-                            for a_child in a_children.iter() {
-                                let Ok(c_identifier) = criteria_query.get(*a_child) else { continue; };
-                                criteria.push(&c_identifier.0);
-                            }
-                        }
-                        criteria.encode(&mut w)?;
-                    }
-
-                    // requirements
-                    {
-                        VarInt(a_requirements.0.len() as _).encode(&mut w)?;
-                        for requirements in a_requirements.0.iter() {
-                            VarInt(requirements.len() as _).encode(&mut w)?;
-                            for requirement in requirements {
-                                let c_identifier = criteria_query.get(*requirement)?;
-                                c_identifier.0.encode(&mut w)?;
-                            }
-                        }
-                    }
-                }
-
-                w.write_all(lck.as_slice())?;
-            }
+        for new_advancement in new_advancements {
+            let a_cached_bytes = advancement_bytes_query.get(*new_advancement)?;
+            pkt.advancement_mapping
+                .push(RawBytes(a_cached_bytes.0.as_slice()));
         }
 
-        // identifiers
-        {
-            VarInt(remove_advancements.len() as _).encode(&mut w)?;
-            for a in remove_advancements {
-                let a_identifier = advancement_id_query.get(*a)?;
-                a_identifier.0.encode(&mut w)?;
-            }
+        for remove_advancement in remove_advancements {
+            let a_identifier = advancement_id_query.get(*remove_advancement)?;
+            pkt.identifiers.push(a_identifier.0.borrowed());
         }
 
-        // progress_mapping
-        {
-            let mut progress_mapping: FxHashMap<Entity, Vec<(Entity, Option<i64>)>> =
-                FxHashMap::default();
-            for progress in progress {
-                let a = parent_query.get(progress.0)?;
-                progress_mapping
-                    .entry(a.get())
-                    .and_modify(|v| v.push(*progress))
-                    .or_insert(vec![*progress]);
-            }
-
-            VarInt(progress_mapping.len() as _).encode(&mut w)?;
-            for (a, c_progress) in progress_mapping {
-                let a_identifier = advancement_id_query.get(a)?;
-                a_identifier.0.encode(&mut w)?;
-
-                VarInt(c_progress.len() as _).encode(&mut w)?;
-                for (c, c_progress) in c_progress {
-                    let c_identifier = criteria_query.get(c)?;
-                    c_identifier.0.encode(&mut w)?;
-                    c_progress.encode(&mut w)?;
-                }
-            }
+        let mut progress_mapping: FxHashMap<Entity, Vec<(Entity, Option<i64>)>> =
+            FxHashMap::default();
+        for progress in progress {
+            let a = parent_query.get(progress.0)?;
+            progress_mapping
+                .entry(a.get())
+                .and_modify(|v| v.push(*progress))
+                .or_insert(vec![*progress]);
         }
 
-        Ok(())
+        for (a, c_progresses) in progress_mapping {
+            let a_identifier = advancement_id_query.get(a)?;
+            let mut c_progresses_p = vec![];
+            for (c, c_progress) in c_progresses {
+                let c_identifier = criteria_query.get(c)?;
+                c_progresses_p.push(protocol::AdvancementCriteria {
+                    criterion_identifier: c_identifier.0.borrowed(),
+                    criterion_progress: c_progress,
+                });
+            }
+            pkt.progress_mapping
+                .push((a_identifier.0.borrowed(), c_progresses_p));
+        }
+
+        pkt.encode(w)
     }
 }
 
-impl<'w, 's, 'a, 'b> Packet<'b> for AdvancementUpdateS2COE<'w, 's, 'a> {
+impl<'w, 's, 'a, 'b> Packet<'b> for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
     const PACKET_ID: i32 = AdvancementUpdateS2c::PACKET_ID;
 
     fn packet_id(&self) -> i32 {
@@ -235,7 +270,7 @@ impl<'w, 's, 'a, 'b> Packet<'b> for AdvancementUpdateS2COE<'w, 's, 'a> {
     }
 
     fn packet_name(&self) -> &str {
-        "AdvancementUpdateS2c_OnlyEncode"
+        "AdvancementUpdateEncodeS2c"
     }
 
     fn encode_packet(&self, mut w: impl Write) -> anyhow::Result<()> {
@@ -252,21 +287,9 @@ impl<'w, 's, 'a, 'b> Packet<'b> for AdvancementUpdateS2COE<'w, 's, 'a> {
 
 #[allow(clippy::type_complexity)]
 fn send_advancement_update_packet(
-    cache_clear_query: Query<
-        &AdvancementCachedBytes,
-        Or<(
-            Changed<AdvancementDisplay>,
-            Changed<Children>,
-            Changed<Parent>,
-        )>,
-    >,
     mut client: Query<(&mut AdvancementClientUpdate, &mut Client)>,
     update_single_query: SingleAdvancementUpdateQuery,
 ) {
-    for advancement_cached_bytes in cache_clear_query.iter() {
-        advancement_cached_bytes.0.lock().clear()
-    }
-
     for (mut advancement_client_update, mut client) in client.iter_mut() {
         match advancement_client_update.force_tab_update {
             ForceTabUpdate::None => {}
@@ -295,13 +318,14 @@ fn send_advancement_update_packet(
 
         let advancement_client_update = std::mem::take(advancement_client_update.as_mut());
 
-        client.write_packet(&AdvancementUpdateS2COE {
+        client.write_packet(&AdvancementUpdateEncodeS2c {
             queries: &update_single_query,
             client_update: advancement_client_update,
         });
     }
 }
 
+/// Advancement's id. May not be updated. 
 #[derive(Component)]
 pub struct Advancement(Ident<Cow<'static, str>>);
 
@@ -322,6 +346,7 @@ pub enum AdvancementFrameType {
     Goal,
 }
 
+/// Advancement display. Optional component
 #[derive(Component)]
 pub struct AdvancementDisplay {
     pub title: Text,
@@ -345,6 +370,7 @@ impl AdvancementDisplay {
     }
 }
 
+/// Criteria's identifier. May not be updated
 #[derive(Component)]
 pub struct AdvancementCriteria(Ident<Cow<'static, str>>);
 
@@ -358,11 +384,13 @@ impl AdvancementCriteria {
     }
 }
 
-#[derive(Component)]
+/// Requirements for advancement to be completed.
+/// All columns should be completed, column is completed when any of criteria in this column is completed.
+#[derive(Component, Default)]
 pub struct AdvancementRequirements(pub Vec<Vec<Entity>>);
 
-#[derive(Component)]
-pub(crate) struct AdvancementCachedBytes(pub(crate) Mutex<Vec<u8>>);
+#[derive(Component, Default)]
+pub struct AdvancementCachedBytes(pub(crate) Vec<u8>);
 
 #[derive(Default, Debug, PartialEq)]
 pub enum ForceTabUpdate {
@@ -375,9 +403,14 @@ pub enum ForceTabUpdate {
 
 #[derive(Component, Default, Debug)]
 pub struct AdvancementClientUpdate {
+    /// Which advancement's descriptions send to client
     pub new_advancements: Vec<Entity>,
+    /// Which advancements remove from client
     pub remove_advancements: Vec<Entity>,
+    /// Criteria progress update.
+    /// If None then criteria is not done otherwise it is done
     pub progress: Vec<(Entity, Option<i64>)>,
+    /// Forces client to open a tab
     pub force_tab_update: ForceTabUpdate,
 }
 
@@ -399,6 +432,7 @@ impl AdvancementClientUpdate {
         }
     }
 
+    /// Sends all advancements from the root
     pub fn send_advancements(
         &mut self,
         root: Entity,
@@ -410,6 +444,7 @@ impl AdvancementClientUpdate {
         });
     }
 
+    /// Removes all advancements from the root
     pub fn remove_advancements(
         &mut self,
         root: Entity,
@@ -421,6 +456,7 @@ impl AdvancementClientUpdate {
         });
     }
 
+    /// Marks criteria as done
     pub fn criteria_done(&mut self, criteria: Entity) {
         self.progress.push((
             criteria,
@@ -433,6 +469,7 @@ impl AdvancementClientUpdate {
         ))
     }
 
+    /// Marks criteria as undone
     pub fn criteria_undone(&mut self, criteria: Entity) {
         self.progress.push((criteria, None))
     }

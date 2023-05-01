@@ -7,10 +7,12 @@ use crate::packet::var_int::VarInt;
 use crate::packet::{Decode, Encode};
 use crate::text::Text;
 
+pub type AdvancementUpdateS2c<'a> = GenericAdvancementUpdateS2c<'a, (Ident<Cow<'a, str>>, Advancement<'a>)>;
+
 #[derive(Clone, Debug, Encode, Decode)]
-pub struct AdvancementUpdateS2c<'a> {
+pub struct GenericAdvancementUpdateS2c<'a, AM: 'a> {
     pub reset: bool,
-    pub advancement_mapping: Vec<(Ident<Cow<'a, str>>, Advancement<'a>)>,
+    pub advancement_mapping: Vec<AM>,
     pub identifiers: Vec<Ident<Cow<'a, str>>>,
     pub progress_mapping: Vec<(Ident<Cow<'a, str>>, Vec<AdvancementCriteria<'a>>)>,
 }
