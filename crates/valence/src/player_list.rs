@@ -181,6 +181,7 @@ fn init_player_list_for_clients(
             &Ping,
             &DisplayName,
             &Listed,
+            Option<&ChatSession>,
         ),
         With<PlayerListEntry>,
     >,
@@ -192,16 +193,26 @@ fn init_player_list_for_clients(
                 .with_update_game_mode(true)
                 .with_update_listed(true)
                 .with_update_latency(true)
-                .with_update_display_name(true);
+                .with_update_display_name(true)
+                .with_initialize_chat(true);
 
             let entries: Vec<_> = entries
                 .iter()
                 .map(
-                    |(uuid, username, props, game_mode, ping, display_name, listed)| Entry {
+                    |(
+                        uuid,
+                        username,
+                        props,
+                        game_mode,
+                        ping,
+                        display_name,
+                        listed,
+                        chat_session,
+                    )| Entry {
                         player_uuid: uuid.0,
                         username: &username.0,
                         properties: Cow::Borrowed(&props.0),
-                        chat_data: None,
+                        chat_data: chat_session.map(|s| s.session_data.clone().into()),
                         listed: listed.0,
                         ping: ping.0,
                         game_mode: (*game_mode).into(),

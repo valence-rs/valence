@@ -27,7 +27,7 @@ use crate::client::misc::{ChatMessage, MessageAcknowledgment, PlayerSession};
 use crate::client::settings::ClientSettings;
 use crate::client::{Client, DisconnectClient, FlushPacketsSet};
 use crate::component::{UniqueId, Username};
-use crate::instance::Instance;
+use crate::packet::WritePacket;
 use crate::player_list::{ChatSession, PlayerListEntry};
 
 const MOJANG_KEY_DATA: &[u8] = include_bytes!("../../../assets/yggdrasil_session_pubkey.der");
@@ -68,10 +68,11 @@ impl Default for ChatState {
 impl ChatState {
     /// Updates the chat state's previously seen signatures with a new one
     /// `signature`.
-    pub fn add_pending(&mut self, last_seen: &VecDeque<[u8; 256]>, signature: &[u8; 256]) {
+    /// Warning this modifies `last_seen`.
+    pub fn add_pending(&mut self, last_seen: &mut VecDeque<[u8; 256]>, signature: [u8; 256]) {
         self.signature_storage
-            .add(&mut last_seen.clone(), signature);
-        self.validator.add_pending(signature);
+            .add(last_seen, &signature);
+        self.validator.add_pending(&signature);
     }
 }
 
@@ -437,18 +438,17 @@ fn handle_message_acknowledgement(
 }
 
 fn handle_message_events(
-    mut clients: Query<(&Username, &ClientSettings, &mut Client), With<PlayerListEntry>>,
+    mut clients: Query<
+        (&mut Client, &mut ChatState, &Username, &ClientSettings),
+        With<PlayerListEntry>,
+    >,
     sessions: Query<&ChatSession, With<PlayerListEntry>>,
-    mut states: Query<&mut ChatState, With<Client>>,
     mut messages: EventReader<ChatMessage>,
-    mut instances: Query<&mut Instance>,
     mut commands: Commands,
 ) {
-    let mut instance = instances.single_mut();
-
     for message in messages.iter() {
-        let Ok((username, settings, mut client)) = clients.get_mut(message.client) else {
-            warn!("Unable to find client in player list for message '{:?}'", message);
+        let Ok((mut client, mut state, username, settings)) = clients.get_mut(message.client) else {
+            warn!("Unable to find client for message '{:?}'", message);
             continue;
         };
 
@@ -458,11 +458,6 @@ fn handle_message_events(
                 client: message.client,
                 reason: Text::translate(CHAT_DISABLED_MISSING_PROFILE_KEY, [])
             });
-            continue;
-        };
-
-        let Ok(mut state) = states.get_component_mut::<ChatState>(message.client) else {
-            warn!("Unable to find chat state for client '{:?}'", username.0);
             continue;
         };
 
@@ -489,7 +484,7 @@ fn handle_message_events(
         state.last_message_timestamp = message.timestamp;
 
         // Validate the message acknowledgements.
-        match state
+        let last_seen = match state
             .validator
             .validate(&message.acknowledgements, message.message_index)
         {
@@ -501,118 +496,117 @@ fn handle_message_events(
                 });
                 continue;
             }
-            Some(last_seen) => {
-                let Some(link) = &state.chain.next_link() else {
-                    client.send_message(Text::translate(
-                        CHAT_DISABLED_CHAIN_BROKEN,
-                        [],
-                    ).color(Color::RED));
-                    continue;
-                };
+            Some(last_seen) => last_seen,
+        };
 
-                // Verify that the player's session has not expired.
-                if SystemTime::now()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .expect("Unable to get Unix time")
-                    .as_millis()
-                    >= chat_session.session_data.expires_at as u128
-                {
-                    warn!("Player `{}` has an expired chat session", username.0);
-                    commands.add(DisconnectClient {
-                        client: message.client,
-                        reason: Text::translate(CHAT_DISABLED_EXPIRED_PROFILE_KEY, []),
-                    });
-                    continue;
-                }
+        let Some(link) = &state.chain.next_link() else {
+            client.send_message(Text::translate(
+                CHAT_DISABLED_CHAIN_BROKEN,
+                [],
+            ).color(Color::RED));
+            continue;
+        };
 
-                // Verify that the chat message is signed.
-                let Some(message_signature) = &message.signature else {
-                    warn!("Received unsigned chat message from `{}`", username.0);
-                    commands.add(DisconnectClient {
-                        client: message.client,
-                        reason: Text::translate(MULTIPLAYER_DISCONNECT_UNSIGNED_CHAT, [])
-                    });
-                    continue;
-                };
+        // Verify that the player's session has not expired.
+        if SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("Unable to get Unix time")
+            .as_millis()
+            >= chat_session.session_data.expires_at as u128
+        {
+            warn!("Player `{}` has an expired chat session", username.0);
+            commands.add(DisconnectClient {
+                client: message.client,
+                reason: Text::translate(CHAT_DISABLED_EXPIRED_PROFILE_KEY, []),
+            });
+            continue;
+        }
 
-                // Create the hash digest used to verify the chat message.
-                let mut hasher = Sha256::new_with_prefix([0u8, 0, 0, 1]);
+        // Verify that the chat message is signed.
+        let Some(message_signature) = &message.signature else {
+            warn!("Received unsigned chat message from `{}`", username.0);
+            commands.add(DisconnectClient {
+                client: message.client,
+                reason: Text::translate(MULTIPLAYER_DISCONNECT_UNSIGNED_CHAT, [])
+            });
+            continue;
+        };
 
-                // Update the hash with the player's message chain state.
-                link.update_hash(&mut hasher);
+        // Create the hash digest used to verify the chat message.
+        let mut hasher = Sha256::new_with_prefix([0u8, 0, 0, 1]);
 
-                // Update the hash with the message contents.
-                hasher.update(message.salt.to_be_bytes());
-                hasher.update((message.timestamp / 1000).to_be_bytes());
-                let bytes = message.message.as_bytes();
-                hasher.update((bytes.len() as u32).to_be_bytes());
-                hasher.update(bytes);
-                hasher.update((last_seen.len() as u32).to_be_bytes());
-                for sig in last_seen.iter() {
-                    hasher.update(sig);
-                }
-                let hashed = hasher.finalize();
+        // Update the hash with the player's message chain state.
+        link.update_hash(&mut hasher);
 
-                // Verify the chat message using the player's session public key and hashed data
-                // against the message signature.
-                if chat_session
-                    .public_key
-                    .verify(
-                        PaddingScheme::new_pkcs1v15_sign::<Sha256>(),
-                        &hashed,
-                        message_signature.as_ref(),
-                    )
-                    .is_err()
-                {
-                    warn!("Failed to verify chat message from `{}`", username.0);
-                    commands.add(DisconnectClient {
-                        client: message.client,
-                        reason: Text::translate(MULTIPLAYER_DISCONNECT_UNSIGNED_CHAT, []),
-                    });
-                    continue;
-                }
+        // Update the hash with the message contents.
+        hasher.update(message.salt.to_be_bytes());
+        hasher.update((message.timestamp / 1000).to_be_bytes());
+        let bytes = message.message.as_bytes();
+        hasher.update((bytes.len() as u32).to_be_bytes());
+        hasher.update(bytes);
+        hasher.update((last_seen.len() as u32).to_be_bytes());
+        for sig in last_seen.iter() {
+            hasher.update(sig);
+        }
+        let hashed = hasher.finalize();
 
-                // Create a list of messages that have been seen by the client.
-                let previous = last_seen
-                    .iter()
-                    .map(|sig| match state.signature_storage.index_of(sig) {
-                        Some(index) => MessageSignature::ByIndex(index),
-                        None => MessageSignature::BySignature(sig),
-                    })
-                    .collect::<Vec<_>>();
+        // Verify the chat message using the player's session public key and hashed data
+        // against the message signature.
+        if chat_session
+            .public_key
+            .verify(
+                PaddingScheme::new_pkcs1v15_sign::<Sha256>(),
+                &hashed,
+                message_signature.as_ref(),
+            )
+            .is_err()
+        {
+            warn!("Failed to verify chat message from `{}`", username.0);
+            commands.add(DisconnectClient {
+                client: message.client,
+                reason: Text::translate(MULTIPLAYER_DISCONNECT_UNSIGNED_CHAT, []),
+            });
+            continue;
+        }
 
-                info!("{}: {}", username.0, message.message.as_ref());
+        info!("{}: {}", username.0, message.message.as_ref());
 
-                instance.write_packet(&ChatMessageS2c {
-                    sender: link.sender,
-                    index: link.index.into(),
-                    message_signature: Some(message_signature.as_ref()),
-                    message: message.message.as_ref(),
-                    time_stamp: message.timestamp,
-                    salt: message.salt,
-                    previous_messages: previous,
-                    unsigned_content: None,
-                    filter_type: MessageFilterType::PassThrough,
-                    chat_type: 0.into(),
-                    network_name: Text::from(username.0.clone()).into(),
-                    network_target_name: None,
+        let username = username.0.clone();
+
+        // Broadcast the chat message to other clients.
+        for (mut client, mut state, ..) in clients.iter_mut() {
+            // Create a list of messages that have been seen by the client.
+            let previous = last_seen
+                .iter()
+                .map(|sig| match state.signature_storage.index_of(sig) {
+                    Some(index) => MessageSignature::ByIndex(index),
+                    None => MessageSignature::BySignature(sig),
+                })
+                .collect::<Vec<_>>();
+
+            client.write_packet(&ChatMessageS2c {
+                sender: link.sender,
+                index: link.index.into(),
+                message_signature: Some(message_signature.as_ref()),
+                message: message.message.as_ref(),
+                time_stamp: message.timestamp,
+                salt: message.salt,
+                previous_messages: previous,
+                unsigned_content: None,
+                filter_type: MessageFilterType::PassThrough,
+                chat_type: 0.into(),
+                network_name: Text::from(username.clone()).into(),
+                network_target_name: None,
+            });
+            // Add pending acknowledgement.
+            state.add_pending(&mut last_seen.clone(), *message_signature.as_ref());
+            if state.validator.message_count() > 4096 {
+                warn!("User has too many pending chats `{}`", username);
+                commands.add(DisconnectClient {
+                    client: message.client,
+                    reason: Text::translate(MULTIPLAYER_DISCONNECT_TOO_MANY_PENDING_CHATS, []),
                 });
-
-                // Update the other clients' chat states.
-                for mut state in states.iter_mut() {
-                    // Add pending acknowledgement.
-                    state.add_pending(&last_seen, message_signature.as_ref());
-                    if state.validator.message_count() > 4096 {
-                        commands.add(DisconnectClient {
-                            client: message.client,
-                            reason: Text::translate(
-                                MULTIPLAYER_DISCONNECT_TOO_MANY_PENDING_CHATS,
-                                [],
-                            ),
-                        });
-                        continue;
-                    }
-                }
+                continue;
             }
         }
     }
