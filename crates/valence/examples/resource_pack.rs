@@ -3,8 +3,8 @@
 use valence::client::misc::{ResourcePackStatus, ResourcePackStatusChange};
 use valence::entity::player::PlayerEntityBundle;
 use valence::entity::sheep::SheepEntityBundle;
+use valence::packet::c2s::play::player_interact_entity::EntityInteraction;
 use valence::prelude::*;
-use valence::protocol::packet::c2s::play::player_interact_entity::EntityInteraction;
 
 const SPAWN_Y: i32 = 64;
 
@@ -12,7 +12,7 @@ pub fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(ServerPlugin::new(()))
+        .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .add_systems((init_clients, prompt_on_punch, on_resource_pack_status))
         .add_system(despawn_disconnected_clients)

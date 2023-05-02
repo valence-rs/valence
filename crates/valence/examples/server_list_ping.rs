@@ -2,27 +2,38 @@
 
 use std::net::SocketAddr;
 
+use rand::Rng;
 use valence::prelude::*;
+use valence_network::{async_trait, CleanupFn, ConnectionMode, PlayerSampleEntry, ServerListPing};
 
 pub fn main() {
+    tracing_subscriber::fmt().init();
+
     App::new()
-        .add_plugin(ServerPlugin::new(MyCallbacks).with_connection_mode(ConnectionMode::Offline))
+        .insert_resource(NetworkSettings {
+            connection_mode: ConnectionMode::Offline,
+            callbacks: MyCallbacks.into(),
+            ..Default::default()
+        })
+        .add_plugins(DefaultPlugins)
         .run();
 }
 
 struct MyCallbacks;
 
 #[async_trait]
-impl AsyncCallbacks for MyCallbacks {
+impl NetworkCallbacks for MyCallbacks {
     async fn server_list_ping(
         &self,
-        _shared: &SharedServer,
+        _shared: &SharedNetworkState,
         remote_addr: SocketAddr,
         _protocol_version: i32,
     ) -> ServerListPing {
+        let max_players = 420;
+
         ServerListPing::Respond {
-            online_players: 42,
-            max_players: 420,
+            online_players: rand::thread_rng().gen_range(0..=max_players),
+            max_players,
             player_sample: vec![PlayerSampleEntry {
                 name: "foobar".into(),
                 id: Uuid::from_u128(12345),
@@ -33,7 +44,11 @@ impl AsyncCallbacks for MyCallbacks {
         }
     }
 
-    async fn login(&self, _shared: &SharedServer, _info: &NewClientInfo) -> Result<(), Text> {
+    async fn login(
+        &self,
+        _shared: &SharedNetworkState,
+        _info: &NewClientInfo,
+    ) -> Result<CleanupFn, Text> {
         Err("You are not meant to join this example".color(Color::RED))
     }
 }

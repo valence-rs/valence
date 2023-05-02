@@ -1,0 +1,11 @@
+[package]
+name = "valence_registry"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tracing.workspace = true
+valence_core.workspace = true
+valence_nbt.workspace = true
+bevy_ecs.workspace = true
+bevy_app.workspace = true

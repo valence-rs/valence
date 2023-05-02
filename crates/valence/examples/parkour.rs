@@ -5,10 +5,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use rand::seq::SliceRandom;
 use rand::Rng;
+use valence::packet::s2c::play::TitleFadeS2c;
 use valence::prelude::*;
-use valence::protocol::packet::s2c::play::TitleFadeS2c;
-use valence::protocol::sound::Sound;
-use valence::protocol::types::SoundCategory;
+use valence::sound::{Sound, SoundCategory};
 
 const START_POS: BlockPos = BlockPos::new(0, 100, 0);
 const VIEW_DIST: u8 = 10;
@@ -27,7 +26,7 @@ pub fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(ServerPlugin::new(()))
+        .add_plugins(DefaultPlugins)
         .add_system(init_clients)
         .add_systems((
             reset_clients.after(init_clients),

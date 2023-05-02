@@ -1,0 +1,35 @@
+[package]
+name = "packet_inspector"
+version.workspace = true
+edition.workspace = true
+description = "A simple Minecraft proxy for inspecting packets."
+
+[features]
+default = ["syntax_highlighting"]
+syntax_highlighting = ["syntect"]
+
+[dependencies]
+anyhow.workspace = true
+atty.workspace = true
+bytes.workspace = true
+clap.workspace = true
+directories.workspace = true
+eframe = { workspace = true, default-features = false, features = [
+    "default_fonts", # Embed the default egui fonts.
+    "glow",          # Use the glow rendering backend. Alternative: "wgpu".
+] }
+egui.workspace = true
+enum-map.workspace = true
+owo-colors.workspace = true
+regex.workspace = true
+rfd.workspace = true
+serde = { workspace = true, features = ["derive"] }
+syntect = { workspace = true, optional = true, default-features = false, features = [
+    "default-fancy",
+] }
+time = { workspace = true, features = ["local-offset"] }
+tokio.workspace = true
+toml.workspace = true
+tracing-subscriber.workspace = true
+valence_nbt = { workspace = true, features = ["preserve_order"] }
+valence_core = { workspace = true, features = ["compression"] }

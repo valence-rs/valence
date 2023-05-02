@@ -1,0 +1,9 @@
+[package]
+name = "valence_build_utils"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+syn.workspace = true
+proc-macro2.workspace = true

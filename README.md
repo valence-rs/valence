@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="assets/logo-full.svg" width="650" align="center">
+    <img src="https://raw.githubusercontent.com/valence-rs/valence/main/assets/logo-full.svg" width="650" align="center">
 </p>
 
 <p align="center">
@@ -27,6 +27,8 @@ Opinionated features like dynamic scripting, dedicated executables, and vanilla 
 built as optional plugins. This level of modularity is desirable for those looking to build highly custom experiences
 in Minecraft such as minigame servers.
 
+⚠️ **Valence is still early in development with many features unimplemented or incomplete. Expect to encounter bugs, limitations, and breaking changes.**
+
 # Goals
 
 Valence aims to be the following:
@@ -45,11 +47,8 @@ Valence aims to be the following:
 
 ## Current Status
 
-⚠️ **Valence is still early in development with many features unimplemented or incomplete. Expect to encounter bugs, limitations, and breaking changes.** Here are some noteworthy achievements:
-
+Here are some noteworthy achievements:
 - `valence_nbt`: A speedy new library for Minecraft's Named Binary Tag (NBT) format.
-- `valence_protocol`: A library for working with Minecraft's protocol. Does not depend on Valence and can be used in
-  other projects.
 - Authentication, encryption, and compression
 - Block states
 - Chunks
@@ -67,7 +66,7 @@ Valence aims to be the following:
 - Proxy support ([Velocity](https://velocitypowered.com/), [Bungeecord](https://www.spigotmc.org/wiki/bungeecord/)
   and [Waterfall](https://docs.papermc.io/waterfall))
 
-Here is a [short video](https://www.youtube.com/watch?v=6P072lKE01s) (outdated) showing the examples and some of
+Here is a [short video](https://www.youtube.com/watch?v=jkw9fZx9Etg) showing the examples and some of
 Valence's capabilities.
 
 # Getting Started

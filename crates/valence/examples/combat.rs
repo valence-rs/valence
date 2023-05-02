@@ -20,7 +20,7 @@ pub fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(ServerPlugin::new(()))
+        .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(handle_combat_events.in_schedule(EventLoopSchedule))

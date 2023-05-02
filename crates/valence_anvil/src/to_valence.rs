@@ -2,10 +2,10 @@ use std::borrow::Cow;
 
 use num_integer::{div_ceil, Integer};
 use thiserror::Error;
-use valence::biome::BiomeId;
-use valence::instance::{BlockEntity, Chunk};
-use valence::protocol::block::{BlockEntityKind, BlockKind, PropName, PropValue};
-use valence::protocol::ident::Ident;
+use valence_biome::BiomeId;
+use valence_block::{BlockEntityKind, BlockKind, PropName, PropValue};
+use valence_core::ident::Ident;
+use valence_instance::{BlockEntity, Chunk};
 use valence_nbt::{Compound, List, Value};
 
 #[derive(Clone, Debug, Error)]

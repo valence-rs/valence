@@ -1,7 +1,6 @@
 #![allow(clippy::type_complexity)]
 
 use valence::prelude::*;
-use valence::protocol::translation_key;
 
 const SPAWN_Y: i32 = 64;
 
@@ -9,7 +8,7 @@ pub fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(ServerPlugin::new(()))
+        .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)

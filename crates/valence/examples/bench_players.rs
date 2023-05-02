@@ -4,6 +4,7 @@ use std::time::Instant;
 
 use valence::instance::{Chunk, Instance};
 use valence::prelude::*;
+use valence_network::ConnectionMode;
 
 const SPAWN_Y: i32 = 64;
 
@@ -14,16 +15,20 @@ fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(
-            ServerPlugin::new(())
-                .with_connection_mode(ConnectionMode::Offline)
-                .with_compression_threshold(None)
-                .with_max_connections(50_000),
-        )
+        .insert_resource(CoreSettings {
+            compression_threshold: None,
+            ..Default::default()
+        })
+        .insert_resource(NetworkSettings {
+            connection_mode: ConnectionMode::Offline,
+            max_connections: 50_000,
+            ..Default::default()
+        })
+        .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .add_systems((
             record_tick_start_time.in_base_set(CoreSet::First),
-            print_tick_time.in_base_set(CoreSet::Last),
+            print_tick_time.in_base_set(CoreSet::LastFlush),
             init_clients,
             despawn_disconnected_clients,
         ))
@@ -34,10 +39,15 @@ fn record_tick_start_time(mut commands: Commands) {
     commands.insert_resource(TickStart(Instant::now()));
 }
 
-fn print_tick_time(server: Res<Server>, time: Res<TickStart>, clients: Query<(), With<Client>>) {
+fn print_tick_time(
+    server: Res<Server>,
+    settings: Res<CoreSettings>,
+    time: Res<TickStart>,
+    clients: Query<(), With<Client>>,
+) {
     let tick = server.current_tick();
-    if tick % (server.tps() / 2) == 0 {
-        let client_count = clients.iter().count();
+    if tick % (settings.tick_rate.get() as i64 / 2) == 0 {
+        let client_count = clients.iter().len();
 
         let millis = time.0.elapsed().as_secs_f32() * 1000.0;
         println!("Tick={tick}, MSPT={millis:.04}ms, Clients={client_count}");

@@ -1,9 +1,8 @@
 #![allow(clippy::type_complexity)]
 
 use valence::client::misc::InteractBlock;
-use valence::client::ClientInventoryState;
+use valence::inventory::ClientInventoryState;
 use valence::prelude::*;
-use valence::protocol::types::Hand;
 
 const SPAWN_Y: i32 = 64;
 
@@ -11,7 +10,7 @@ pub fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(ServerPlugin::new(()))
+        .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .add_system(init_clients)
         .add_system(despawn_disconnected_clients)
@@ -131,7 +130,7 @@ fn place_blocks(
             continue;
         };
 
-        let Some(block_kind) = stack.item.to_block_kind() else {
+        let Some(block_kind) = BlockKind::from_item_kind(stack.item) else {
             // can't place this item as a block
             continue;
         };
