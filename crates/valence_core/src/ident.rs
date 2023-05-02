@@ -132,6 +132,12 @@ impl<S> Ident<S> {
     }
 }
 
+impl<'a> Ident<Cow<'a, str>> {
+    pub fn borrowed(&self) -> Ident<Cow<str>> {
+        Ident::new_unchecked(Cow::Borrowed(self.as_str()))
+    }
+}
+
 fn parse(string: Cow<str>) -> Result<Ident<Cow<str>>, IdentError> {
     let check_namespace = |s: &str| {
         !s.is_empty()

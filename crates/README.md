@@ -21,4 +21,5 @@ graph TD
 	inventory --> client
 	anvil --> instance
 	entity --> block
+	advancement --> client
 ```
