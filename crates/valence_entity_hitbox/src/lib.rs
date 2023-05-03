@@ -50,6 +50,18 @@ impl Plugin for HitboxPlugin {
     }
 }
 
+#[cfg(not(feature = "hitbox_add"))]
+type HitboxFilter<T> = Or<(T, Added<Hitbox>)>; 
+
+#[cfg(not(feature = "hitbox_add"))]
+type HitboxFilterSingle<T> = Or<T, Added<Hitbox>>;
+
+#[cfg(feature = "hitbox_add")]
+type HitboxFilter<T> = Or<T>;
+
+#[cfg(feature = "hitbox_add")]
+type HitboxFilterSingle<T> = T;
+
 #[derive(Component, Debug)]
 pub struct Hitbox(Aabb);
 
@@ -94,7 +106,7 @@ fn add_hitbox_component(mut commands: Commands, query: Query<Entity, Added<entit
 fn update_constant_hitbox(
     mut hitbox_query: Query<
         (HitboxQueryParam, &EntityKind),
-        Or<(Changed<EntityKind>, Added<Hitbox>)>,
+        HitboxFilterSingle<Changed<EntityKind>>,
     >,
 ) {
     for (hitbox, entity_kind) in hitbox_query.iter_mut() {
@@ -182,7 +194,7 @@ fn update_warden_hitbox(
     mut query: Query<
         (HitboxQueryParam, &entity::Pose),
         (
-            Or<(Changed<entity::Pose>, Added<Hitbox>)>,
+            HitboxFilterSingle<Changed<entity::Pose>>,
             With<warden::WardenEntity>,
         ),
     >,
@@ -201,7 +213,7 @@ fn update_warden_hitbox(
 fn update_area_effect_cloud_hitbox(
     mut query: Query<
         (HitboxQueryParam, &area_effect_cloud::Radius),
-        Or<(Changed<area_effect_cloud::Radius>, Added<Hitbox>)>,
+        HitboxFilterSingle<Changed<area_effect_cloud::Radius>>,
     >,
 ) {
     for (hitbox, cloud_radius) in query.iter_mut() {
@@ -213,7 +225,7 @@ fn update_area_effect_cloud_hitbox(
 fn update_armor_stand_hitbox(
     mut query: Query<
         (HitboxQueryParam, &armor_stand::ArmorStandFlags),
-        Or<(Changed<armor_stand::ArmorStandFlags>, Added<Hitbox>)>,
+        HitboxFilterSingle<Changed<armor_stand::ArmorStandFlags>>,
     >,
 ) {
     for (hitbox, stand_flags) in query.iter_mut() {
@@ -243,7 +255,7 @@ fn child_hitbox(child: bool, v: DVec3) -> DVec3 {
 fn update_passive_child_hitbox(
     mut query: Query<
         (Entity, HitboxQueryParam, &EntityKind, &passive::Child),
-        Or<(Changed<passive::Child>, Added<Hitbox>)>,
+        HitboxFilterSingle<Changed<passive::Child>>,
     >,
     pose_query: Query<&entity::Pose>,
 ) {
@@ -301,7 +313,7 @@ fn update_passive_child_hitbox(
 }
 
 fn update_zombie_hitbox(
-    mut query: Query<(HitboxQueryParam, &zombie::Baby), Or<(Changed<zombie::Baby>, Added<Hitbox>)>>,
+    mut query: Query<(HitboxQueryParam, &zombie::Baby), HitboxFilterSingle<Changed<zombie::Baby>>>,
 ) {
     for (hitbox, baby) in query.iter_mut() {
         hitbox
@@ -311,7 +323,7 @@ fn update_zombie_hitbox(
 }
 
 fn update_piglin_hitbox(
-    mut query: Query<(HitboxQueryParam, &piglin::Baby), Or<(Changed<piglin::Baby>, Added<Hitbox>)>>,
+    mut query: Query<(HitboxQueryParam, &piglin::Baby), HitboxFilterSingle<Changed<piglin::Baby>>>,
 ) {
     for (hitbox, baby) in query.iter_mut() {
         hitbox
@@ -321,7 +333,7 @@ fn update_piglin_hitbox(
 }
 
 fn update_zoglin_hitbox(
-    mut query: Query<(HitboxQueryParam, &zoglin::Baby), Or<(Changed<zoglin::Baby>, Added<Hitbox>)>>,
+    mut query: Query<(HitboxQueryParam, &zoglin::Baby), HitboxFilterSingle<Changed<zoglin::Baby>>>,
 ) {
     for (hitbox, baby) in query.iter_mut() {
         hitbox
@@ -355,7 +367,7 @@ fn update_player_hitbox(
 fn update_item_frame_hitbox(
     mut query: Query<
         (HitboxQueryParam, &item_frame::Rotation),
-        Or<(Changed<item_frame::Rotation>, Added<Hitbox>)>,
+        HitboxFilterSingle<Changed<item_frame::Rotation>>,
     >,
 ) {
     for (hitbox, rotation) in query.iter_mut() {
@@ -391,7 +403,7 @@ fn update_item_frame_hitbox(
 fn update_slime_hitbox(
     mut query: Query<
         (HitboxQueryParam, &slime::SlimeSize),
-        Or<(Changed<slime::SlimeSize>, Added<Hitbox>)>,
+        HitboxFilterSingle<Changed<slime::SlimeSize>>,
     >,
 ) {
     for (hitbox, slime_size) in query.iter_mut() {
@@ -403,7 +415,7 @@ fn update_slime_hitbox(
 fn update_painting_hitbox(
     mut query: Query<
         (HitboxQueryParam, &painting::Variant, &Look),
-        Or<(Changed<Look>, Changed<painting::Variant>, Added<Hitbox>)>,
+        HitboxFilter<(Changed<Look>, Changed<painting::Variant>)>,
     >,
 ) {
     for (hitbox, painting_variant, look) in query.iter_mut() {
@@ -477,10 +489,9 @@ fn update_shulker_hitbox(
             &shulker::PeekAmount,
             &shulker::AttachedFace,
         ),
-        Or<(
+        HitboxFilter<(
             Changed<shulker::PeekAmount>,
             Changed<shulker::AttachedFace>,
-            Added<Hitbox>,
         )>,
     >,
 ) {
