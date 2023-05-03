@@ -30,7 +30,7 @@ use rsa::{PaddingScheme, PublicKey, RsaPublicKey};
 use rustc_hash::{FxHashMap, FxHashSet};
 use sha1::{Digest, Sha1};
 use sha2::Sha256;
-use tracing::{debug, info, warn};
+use tracing::{info, trace, warn};
 use uuid::Uuid;
 use valence_client::misc::{ChatMessage, MessageAcknowledgment, PlayerSession};
 use valence_client::settings::ClientSettings;
@@ -181,7 +181,7 @@ impl AcknowledgementValidator {
                     list.push_back(m.signature);
                 } else {
                     // Client has acknowledged a non-existing message
-                    warn!("Client has acknowledged a non-existing message");
+                    trace!("Client has acknowledged a non-existing message");
                     return None;
                 }
             } else {
@@ -189,7 +189,7 @@ impl AcknowledgementValidator {
                 if matches!(acknowledged_message, Some(m) if !m.pending) {
                     // The validator has an i-th message that has been validated but the client
                     // claims that it hasn't been validated yet
-                    warn!(
+                    trace!(
                         "The validator has an i-th message that has been validated but the client \
                          claims that it hasn't been validated yet"
                     );
@@ -453,8 +453,6 @@ fn handle_message_acknowledgement(
             });
             continue;
         }
-
-        debug!("Acknowledgement from '{:?}'", username.0);
     }
 }
 
