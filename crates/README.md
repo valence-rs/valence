@@ -22,4 +22,5 @@ graph TD
 	anvil --> instance
 	entity --> block
 	advancement --> client
+	entity_hitbox --> client
 ```

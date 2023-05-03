@@ -82,6 +82,7 @@ valence_core_macros.path = "crates/valence_core_macros"
 valence_core.path = "crates/valence_core"
 valence_dimension.path = "crates/valence_dimension"
 valence_entity.path = "crates/valence_entity"
+valence_entity_hitbox.path = "crates/valence_entity_hitbox"
 valence_instance.path = "crates/valence_instance"
 valence_inventory.path = "crates/valence_inventory"
 valence_nbt = { path = "crates/valence_nbt", features = ["uuid"] }

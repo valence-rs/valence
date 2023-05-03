@@ -1,0 +1,17 @@
+[package]
+name = "valence_entity_hitbox"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+bevy_app.workspace = true
+bevy_ecs.workspace = true
+valence_entity.workspace = true
+valence_core.workspace = true
+glam.workspace = true
+
+[features]
+default = ["hitbox_add"]
+# Controls the system which adds hitbox to new entities
+# Can be disabled to disable hitbox update for some entities
+hitbox_add = []

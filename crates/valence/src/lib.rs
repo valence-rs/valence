@@ -105,6 +105,8 @@ pub mod prelude {
     pub use valence_core::ident; // Export the `ident!` macro.
     pub use valence_core::uuid::UniqueId;
     pub use valence_core::{translation_key, CoreSettings, Server};
+    #[cfg(feature = "entity_hitbox")]
+    pub use valence_entity_hitbox::Hitbox;
 
     pub use super::DefaultPlugins;
     use super::*;
@@ -155,6 +157,11 @@ impl PluginGroup for DefaultPlugins {
             group = group
                 .add(valence_advancement::AdvancementPlugin)
                 .add(valence_advancement::bevy_hierarchy::HierarchyPlugin);
+        }
+
+        #[cfg(feature = "entity_hitbox")]
+        {
+            group = group.add(valence_entity_hitbox::HitboxPlugin);
         }
 
         group

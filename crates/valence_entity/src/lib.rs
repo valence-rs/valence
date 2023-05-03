@@ -35,7 +35,6 @@ use valence_core::uuid::UniqueId;
 use valence_core::DEFAULT_TPS;
 
 include!(concat!(env!("OUT_DIR"), "/entity.rs"));
-
 pub struct EntityPlugin;
 
 /// When new Minecraft entities are initialized and added to
