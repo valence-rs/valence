@@ -51,7 +51,7 @@ impl Plugin for HitboxPlugin {
 }
 
 #[cfg(not(feature = "hitbox_add"))]
-type HitboxFilter<T> = Or<(T, Added<Hitbox>)>; 
+type HitboxFilter<T> = Or<(T, Added<Hitbox>)>;
 
 #[cfg(not(feature = "hitbox_add"))]
 type HitboxFilterSingle<T> = Or<T, Added<Hitbox>>;
@@ -489,10 +489,7 @@ fn update_shulker_hitbox(
             &shulker::PeekAmount,
             &shulker::AttachedFace,
         ),
-        HitboxFilter<(
-            Changed<shulker::PeekAmount>,
-            Changed<shulker::AttachedFace>,
-        )>,
+        HitboxFilter<(Changed<shulker::PeekAmount>, Changed<shulker::AttachedFace>)>,
     >,
 ) {
     use std::f64::consts::PI;
