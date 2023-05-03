@@ -7,18 +7,21 @@ use crate::packet::var_int::VarInt;
 use crate::packet::{Decode, Encode};
 use crate::text::Text;
 
+pub type AdvancementUpdateS2c<'a> =
+    GenericAdvancementUpdateS2c<'a, (Ident<Cow<'a, str>>, Advancement<'a, Option<ItemStack>>)>;
+
 #[derive(Clone, Debug, Encode, Decode)]
-pub struct AdvancementUpdateS2c<'a> {
+pub struct GenericAdvancementUpdateS2c<'a, AM: 'a> {
     pub reset: bool,
-    pub advancement_mapping: Vec<(Ident<Cow<'a, str>>, Advancement<'a>)>,
+    pub advancement_mapping: Vec<AM>,
     pub identifiers: Vec<Ident<Cow<'a, str>>>,
     pub progress_mapping: Vec<(Ident<Cow<'a, str>>, Vec<AdvancementCriteria<'a>>)>,
 }
 
 #[derive(Clone, PartialEq, Debug, Encode, Decode)]
-pub struct Advancement<'a> {
+pub struct Advancement<'a, I> {
     pub parent_id: Option<Ident<Cow<'a, str>>>,
-    pub display_data: Option<AdvancementDisplay<'a>>,
+    pub display_data: Option<AdvancementDisplay<'a, I>>,
     pub criteria: Vec<(Ident<Cow<'a, str>>, ())>,
     pub requirements: Vec<AdvancementRequirements<'a>>,
 }
@@ -29,10 +32,10 @@ pub struct AdvancementRequirements<'a> {
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub struct AdvancementDisplay<'a> {
+pub struct AdvancementDisplay<'a, I> {
     pub title: Cow<'a, Text>,
     pub description: Cow<'a, Text>,
-    pub icon: Option<ItemStack>,
+    pub icon: I,
     pub frame_type: VarInt,
     pub flags: i32,
     pub background_texture: Option<Ident<Cow<'a, str>>>,
@@ -48,7 +51,7 @@ pub struct AdvancementCriteria<'a> {
     pub criterion_progress: Option<i64>,
 }
 
-impl Encode for AdvancementDisplay<'_> {
+impl<I: Encode> Encode for AdvancementDisplay<'_, I> {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
         self.title.encode(&mut w)?;
         self.description.encode(&mut w)?;
@@ -68,11 +71,11 @@ impl Encode for AdvancementDisplay<'_> {
     }
 }
 
-impl<'a> Decode<'a> for AdvancementDisplay<'a> {
+impl<'a, I: Decode<'a>> Decode<'a> for AdvancementDisplay<'a, I> {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
         let title = <Cow<'a, Text>>::decode(r)?;
         let description = <Cow<'a, Text>>::decode(r)?;
-        let icon = Option::<ItemStack>::decode(r)?;
+        let icon = I::decode(r)?;
         let frame_type = VarInt::decode(r)?;
         let flags = i32::decode(r)?;
 

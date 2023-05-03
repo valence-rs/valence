@@ -11,11 +11,12 @@ keywords = ["minecraft", "gamedev", "server", "ecs"]
 categories = ["game-engines"]
 
 [features]
-default = ["network", "player_list", "inventory", "anvil", "chat"]
+default = ["network", "player_list", "inventory", "anvil", "advancement", "chat"]
 network = ["dep:valence_network"]
 player_list = ["dep:valence_player_list"]
 inventory = ["dep:valence_inventory"]
 anvil = ["dep:valence_anvil"]
+advancement = ["dep:valence_advancement"]
 chat = ["dep:valence_chat"]
 
 [dependencies]
@@ -36,6 +37,7 @@ valence_network = { workspace = true, optional = true }
 valence_player_list = { workspace = true, optional = true }
 valence_inventory = { workspace = true, optional = true }
 valence_anvil = { workspace = true, optional = true }
+valence_advancement = { workspace = true, optional = true }
 valence_chat = { workspace = true, optional = true }
 
 [dev-dependencies]
