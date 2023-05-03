@@ -1,8 +1,30 @@
+#![doc = include_str!("../README.md")]
+#![deny(
+    rustdoc::broken_intra_doc_links,
+    rustdoc::private_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::invalid_codeblock_attributes,
+    rustdoc::invalid_rust_codeblocks,
+    rustdoc::bare_urls,
+    rustdoc::invalid_html_tags
+)]
+#![warn(
+    trivial_casts,
+    trivial_numeric_casts,
+    unused_lifetimes,
+    unused_import_braces,
+    unreachable_pub,
+    clippy::dbg_macro
+)]
+
+pub mod chat_type;
+
 use std::collections::VecDeque;
 use std::time::SystemTime;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use chat_type::ChatTypePlugin;
 use rsa::pkcs8::DecodePublicKey;
 use rsa::{PaddingScheme, PublicKey, RsaPublicKey};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -10,25 +32,24 @@ use sha1::{Digest, Sha1};
 use sha2::Sha256;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
-use valence_protocol::packet::c2s::play::client_settings::ChatMode;
-use valence_protocol::packet::s2c::play::chat_message::MessageFilterType;
-use valence_protocol::packet::s2c::play::ChatMessageS2c;
-use valence_protocol::text::{Color, Text, TextFormat};
-use valence_protocol::translation_key::{
+use valence_client::misc::{ChatMessage, MessageAcknowledgment, PlayerSession};
+use valence_client::settings::ClientSettings;
+use valence_client::{Client, DisconnectClient, FlushPacketsSet, Username};
+use valence_core::packet::c2s::play::client_settings::ChatMode;
+use valence_core::packet::encode::WritePacket;
+use valence_core::packet::message_signature::MessageSignature;
+use valence_core::packet::s2c::play::chat_message::MessageFilterType;
+use valence_core::packet::s2c::play::ChatMessageS2c;
+use valence_core::text::{Color, Text, TextFormat};
+use valence_core::translation_key::{
     CHAT_DISABLED_CHAIN_BROKEN, CHAT_DISABLED_EXPIRED_PROFILE_KEY,
     CHAT_DISABLED_MISSING_PROFILE_KEY, CHAT_DISABLED_OPTIONS,
     MULTIPLAYER_DISCONNECT_CHAT_VALIDATION_FAILED, MULTIPLAYER_DISCONNECT_EXPIRED_PUBLIC_KEY,
     MULTIPLAYER_DISCONNECT_INVALID_PUBLIC_KEY_SIGNATURE, MULTIPLAYER_DISCONNECT_OUT_OF_ORDER_CHAT,
     MULTIPLAYER_DISCONNECT_TOO_MANY_PENDING_CHATS, MULTIPLAYER_DISCONNECT_UNSIGNED_CHAT,
 };
-use valence_protocol::types::MessageSignature;
-
-use crate::client::misc::{ChatMessage, MessageAcknowledgment, PlayerSession};
-use crate::client::settings::ClientSettings;
-use crate::client::{Client, DisconnectClient, FlushPacketsSet};
-use crate::component::{UniqueId, Username};
-use crate::packet::WritePacket;
-use crate::player_list::{ChatSession, PlayerListEntry};
+use valence_core::uuid::UniqueId;
+use valence_player_list::{ChatSession, PlayerListEntry};
 
 const MOJANG_KEY_DATA: &[u8] = include_bytes!("../../../assets/yggdrasil_session_pubkey.der");
 
@@ -38,7 +59,7 @@ struct MojangServicesState {
 }
 
 impl MojangServicesState {
-    pub fn new(public_key: RsaPublicKey) -> Self {
+    fn new(public_key: RsaPublicKey) -> Self {
         Self { public_key }
     }
 }
@@ -69,9 +90,8 @@ impl ChatState {
     /// Updates the chat state's previously seen signatures with a new one
     /// `signature`.
     /// Warning this modifies `last_seen`.
-    pub fn add_pending(&mut self, last_seen: &mut VecDeque<[u8; 256]>, signature: [u8; 256]) {
-        self.signature_storage
-            .add(last_seen, &signature);
+    fn add_pending(&mut self, last_seen: &mut VecDeque<[u8; 256]>, signature: [u8; 256]) {
+        self.signature_storage.add(last_seen, &signature);
         self.validator.add_pending(&signature);
     }
 }
@@ -83,7 +103,7 @@ struct AcknowledgementValidator {
 }
 
 impl AcknowledgementValidator {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             messages: vec![None; 20],
             last_signature: None,
@@ -91,7 +111,7 @@ impl AcknowledgementValidator {
     }
 
     /// Add a message pending acknowledgement via its `signature`.
-    pub fn add_pending(&mut self, signature: &[u8; 256]) {
+    fn add_pending(&mut self, signature: &[u8; 256]) {
         // Attempting to add the last signature again.
         if matches!(&self.last_signature, Some(last_sig) if signature == last_sig.as_ref()) {
             return;
@@ -108,7 +128,7 @@ impl AcknowledgementValidator {
     /// Message signatures will only be removed if the result leaves the
     /// validator with at least 20 messages. Returns `true` if messages are
     /// removed and `false` if they are not.
-    pub fn remove_until(&mut self, index: i32) -> bool {
+    fn remove_until(&mut self, index: i32) -> bool {
         // Ensure that there will still be 20 messages in the array.
         if index >= 0 && index <= (self.messages.len() - 20) as i32 {
             self.messages.drain(0..index as usize);
@@ -125,7 +145,7 @@ impl AcknowledgementValidator {
     ///
     /// Returns a [`VecDeque`] of acknowledged message signatures if the
     /// `acknowledgements` are valid and `None` if they are invalid.
-    pub fn validate(
+    fn validate(
         &mut self,
         acknowledgements: &[u8; 3],
         message_index: i32,
@@ -185,15 +205,15 @@ impl AcknowledgementValidator {
     }
 
     /// The number of pending messages in the validator.
-    pub fn message_count(&self) -> usize {
+    fn message_count(&self) -> usize {
         self.messages.len()
     }
 }
 
 #[derive(Clone, Debug)]
 struct AcknowledgedMessage {
-    pub signature: [u8; 256],
-    pub pending: bool,
+    signature: [u8; 256],
+    pending: bool,
 }
 
 #[derive(Clone, Default, Debug)]
@@ -202,11 +222,11 @@ struct MessageChain {
 }
 
 impl MessageChain {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self::default()
     }
 
-    pub fn next_link(&mut self) -> Option<MessageLink> {
+    fn next_link(&mut self) -> Option<MessageLink> {
         match &mut self.link {
             None => self.link,
             Some(current) => {
@@ -226,7 +246,7 @@ struct MessageLink {
 }
 
 impl MessageLink {
-    pub fn update_hash(&self, hasher: &mut impl Digest) {
+    fn update_hash(&self, hasher: &mut impl Digest) {
         hasher.update(self.sender.into_bytes());
         hasher.update(self.session_id.into_bytes());
         hasher.update(self.index.to_be_bytes());
@@ -249,12 +269,12 @@ impl Default for MessageSignatureStorage {
 }
 
 impl MessageSignatureStorage {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self::default()
     }
 
     /// Get the index of the `signature` in the storage if it exists.
-    pub fn index_of(&self, signature: &[u8; 256]) -> Option<i32> {
+    fn index_of(&self, signature: &[u8; 256]) -> Option<i32> {
         self.indices.get(signature).copied()
     }
 
@@ -262,7 +282,7 @@ impl MessageSignatureStorage {
     /// `signature` to the storage.
     ///
     /// Warning: this consumes `last_seen`.
-    pub fn add(&mut self, last_seen: &mut VecDeque<[u8; 256]>, signature: &[u8; 256]) {
+    fn add(&mut self, last_seen: &mut VecDeque<[u8; 256]>, signature: &[u8; 256]) {
         last_seen.push_back(*signature);
         let mut sig_set = FxHashSet::default();
         for sig in last_seen.iter() {
@@ -297,7 +317,8 @@ impl Plugin for SecureChatPlugin {
         let mojang_pub_key = RsaPublicKey::from_public_key_der(MOJANG_KEY_DATA)
             .expect("Error creating Mojang public key");
 
-        app.insert_resource(MojangServicesState::new(mojang_pub_key))
+        app.add_plugin(ChatTypePlugin)
+            .insert_resource(MojangServicesState::new(mojang_pub_key))
             .add_systems(
                 (
                     init_chat_states,
@@ -594,7 +615,7 @@ fn handle_message_events(
                 previous_messages: previous,
                 unsigned_content: None,
                 filter_type: MessageFilterType::PassThrough,
-                chat_type: 0.into(),
+                chat_type: 0.into(), // TODO: Make chat type for player messages selectable
                 network_name: Text::from(username.clone()).into(),
                 network_target_name: None,
             });

@@ -4,18 +4,19 @@ use super::var_int::VarInt;
 use super::{Decode, Encode};
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct MessageSignature<'a> {
-    pub message_id: i32,
-    pub signature: Option<&'a [u8; 256]>,
+pub enum MessageSignature<'a> {
+    ByIndex(i32),
+    BySignature(&'a [u8; 256]),
 }
 
 impl<'a> Encode for MessageSignature<'a> {
     fn encode(&self, mut w: impl Write) -> anyhow::Result<()> {
-        VarInt(self.message_id + 1).encode(&mut w)?;
-
-        match self.signature {
-            None => {}
-            Some(signature) => signature.encode(&mut w)?,
+        match self {
+            MessageSignature::ByIndex(index) => VarInt(index + 1).encode(&mut w)?,
+            MessageSignature::BySignature(signature) => {
+                VarInt(0).encode(&mut w)?;
+                signature.encode(&mut w)?;
+            }
         }
 
         Ok(())
@@ -24,17 +25,12 @@ impl<'a> Encode for MessageSignature<'a> {
 
 impl<'a> Decode<'a> for MessageSignature<'a> {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
-        let message_id = VarInt::decode(r)?.0 - 1; // TODO: this can underflow.
+        let index = VarInt::decode(r)?.0.saturating_sub(1);
 
-        let signature = if message_id == -1 {
-            Some(<&[u8; 256]>::decode(r)?)
+        if index == -1 {
+            Ok(MessageSignature::BySignature(<&[u8; 256]>::decode(r)?))
         } else {
-            None
-        };
-
-        Ok(Self {
-            message_id,
-            signature,
-        })
+            Ok(MessageSignature::ByIndex(index))
+        }
     }
 }

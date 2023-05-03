@@ -4,8 +4,8 @@ use std::io::Write;
 use bitfield_struct::bitfield;
 use uuid::Uuid;
 
-use crate::packet::c2s::play::player_session::PlayerSessionData;
 use crate::game_mode::GameMode;
+use crate::packet::c2s::play::player_session::PlayerSessionData;
 use crate::packet::var_int::VarInt;
 use crate::packet::{Decode, Encode};
 use crate::property::Property;

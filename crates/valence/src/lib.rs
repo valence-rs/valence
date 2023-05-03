@@ -28,6 +28,8 @@ mod tests;
 
 #[cfg(feature = "anvil")]
 pub use valence_anvil as anvil;
+#[cfg(feature = "chat")]
+pub use valence_chat as secure_chat;
 pub use valence_core::*;
 #[cfg(feature = "inventory")]
 pub use valence_inventory as inventory;
@@ -35,8 +37,6 @@ pub use valence_inventory as inventory;
 pub use valence_network as network;
 #[cfg(feature = "player_list")]
 pub use valence_player_list as player_list;
-#[cfg(feature = "chat")]
-pub use valence_chat as chat;
 pub use {
     bevy_app as app, bevy_ecs as ecs, glam, valence_biome as biome, valence_block as block,
     valence_client as client, valence_dimension as dimension, valence_entity as entity,
@@ -99,7 +99,7 @@ pub mod prelude {
     #[cfg(feature = "player_list")]
     pub use player_list::{PlayerList, PlayerListEntry};
     #[cfg(feature = "chat")]
-    pub use chat::{ChatType, ChatTypeRegistry};
+    pub use secure_chat::chat_type::{ChatType, ChatTypeRegistry};
     pub use text::{Color, Text, TextFormat};
     pub use valence_core::ident; // Export the `ident!` macro.
     pub use valence_core::uuid::UniqueId;
@@ -144,16 +144,14 @@ impl PluginGroup for DefaultPlugins {
             group = group.add(valence_inventory::InventoryPlugin);
         }
 
-        #[cfg(feature = "chat")]
-        {
-            group = group
-                .add(valence_chat::SecureChatPlugin)
-                .add(valence_chat::chat_type::ChatTypePlugin);
-        }
-
         #[cfg(feature = "anvil")]
         {
             // No plugin... yet.
+        }
+
+        #[cfg(feature = "chat")]
+        {
+            group = group.add(valence_chat::SecureChatPlugin);
         }
 
         group

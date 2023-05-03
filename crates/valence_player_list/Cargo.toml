@@ -6,6 +6,7 @@ edition.workspace = true
 [dependencies]
 bevy_app.workspace = true
 bevy_ecs.workspace = true
+rsa.workspace = true
 valence_core.workspace = true
 valence_client.workspace = true
 valence_instance.workspace = true

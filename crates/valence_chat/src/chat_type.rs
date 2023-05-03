@@ -12,12 +12,11 @@ use anyhow::{bail, Context};
 use bevy_app::{CoreSet, Plugin, StartupSet};
 use bevy_ecs::prelude::*;
 use tracing::error;
+use valence_core::ident;
+use valence_core::ident::Ident;
+use valence_core::text::Color;
 use valence_nbt::{compound, Compound, List, Value};
-use valence_protocol::ident;
-use valence_protocol::ident::Ident;
-use valence_protocol::text::Color;
-
-use crate::registry_codec::{RegistryCodec, RegistryCodecSet, RegistryValue};
+use valence_registry::{RegistryCodec, RegistryCodecSet, RegistryValue};
 
 #[derive(Resource)]
 pub struct ChatTypeRegistry {

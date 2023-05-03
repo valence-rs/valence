@@ -26,6 +26,7 @@ use uuid::Uuid;
 use valence_client::{Client, Ping, Properties, Username};
 use valence_core::despawn::Despawned;
 use valence_core::game_mode::GameMode;
+use valence_core::packet::c2s::play::player_session::PlayerSessionData;
 use valence_core::packet::encode::{PacketWriter, WritePacket};
 use valence_core::packet::s2c::play::player_list::{Actions, Entry, PlayerListS2c};
 use valence_core::packet::s2c::play::{PlayerListHeaderS2c, PlayerRemoveS2c};

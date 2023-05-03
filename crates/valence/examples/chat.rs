@@ -5,7 +5,6 @@ use valence::client::despawn_disconnected_clients;
 use valence::client::misc::CommandExecution;
 use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
-use valence::secure_chat::SecureChatPlugin;
 
 const SPAWN_Y: i32 = 64;
 
@@ -13,12 +12,13 @@ pub fn main() {
     tracing_subscriber::fmt().init();
 
     App::new()
-        .add_plugin(ServerPlugin::new(()))
-        .add_plugin(SecureChatPlugin)
+        .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
-        .add_system(init_clients)
-        .add_system(despawn_disconnected_clients)
-        .add_system(handle_command_events.in_schedule(EventLoopSchedule))
+        .add_systems((
+            init_clients,
+            despawn_disconnected_clients,
+            handle_command_events.in_schedule(EventLoopSchedule),
+        ))
         .run();
 }
 

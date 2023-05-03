@@ -11,7 +11,7 @@ keywords = ["minecraft", "gamedev", "server", "ecs"]
 categories = ["game-engines"]
 
 [features]
-default = ["network", "player_list", "inventory", "anvil"]
+default = ["network", "player_list", "inventory", "anvil", "chat"]
 network = ["dep:valence_network"]
 player_list = ["dep:valence_player_list"]
 inventory = ["dep:valence_inventory"]
