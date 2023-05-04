@@ -66,6 +66,14 @@ type HitboxFilterSingle<T> = T;
 pub struct Hitbox(Aabb);
 
 impl Hitbox {
+    #[cfg(not(feature = "hitbox_add"))]
+    pub fn zero() -> Hitbox {
+        Hitbox(Aabb {
+            min: DVec3::ZERO,
+            max: DVec3::ZERO,
+        })
+    }
+
     pub fn get(&self) -> Aabb {
         self.0
     }
