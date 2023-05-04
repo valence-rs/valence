@@ -22,6 +22,7 @@ pub mod chat_type;
 use std::collections::VecDeque;
 use std::time::SystemTime;
 
+use anyhow::bail;
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use chat_type::ChatTypePlugin;
@@ -30,7 +31,7 @@ use rsa::{PaddingScheme, PublicKey, RsaPublicKey};
 use rustc_hash::{FxHashMap, FxHashSet};
 use sha1::{Digest, Sha1};
 use sha2::Sha256;
-use tracing::{info, trace, warn};
+use tracing::{info, warn};
 use uuid::Uuid;
 use valence_client::misc::{ChatMessage, MessageAcknowledgment, PlayerSession};
 use valence_client::settings::ClientSettings;
@@ -51,7 +52,33 @@ use valence_core::translation_key::{
 use valence_core::uuid::UniqueId;
 use valence_player_list::{ChatSession, PlayerListEntry};
 
-const MOJANG_KEY_DATA: &[u8] = include_bytes!("../../../assets/yggdrasil_session_pubkey.der");
+const MOJANG_KEY_DATA: &[u8] = include_bytes!("../yggdrasil_session_pubkey.der");
+
+pub struct ChatPlugin;
+
+impl Plugin for ChatPlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        let mojang_pub_key = RsaPublicKey::from_public_key_der(MOJANG_KEY_DATA)
+            .expect("Error creating Mojang public key");
+
+        app.add_plugin(ChatTypePlugin)
+            .insert_resource(MojangServicesState::new(mojang_pub_key))
+            .add_systems(
+                (
+                    init_chat_states,
+                    handle_session_events
+                        .after(init_chat_states)
+                        .before(handle_message_events),
+                    handle_message_acknowledgement
+                        .after(init_chat_states)
+                        .before(handle_message_events),
+                    handle_message_events.after(init_chat_states),
+                )
+                    .in_base_set(CoreSet::PostUpdate)
+                    .before(FlushPacketsSet),
+            );
+    }
+}
 
 #[derive(Resource)]
 struct MojangServicesState {
@@ -149,10 +176,9 @@ impl AcknowledgementValidator {
         &mut self,
         acknowledgements: &[u8; 3],
         message_index: i32,
-    ) -> Option<VecDeque<[u8; 256]>> {
+    ) -> anyhow::Result<VecDeque<[u8; 256]>> {
         if !self.remove_until(message_index) {
-            // Invalid message index
-            return None;
+            bail!("Invalid message index");
         }
 
         let acknowledged_count = {
@@ -164,15 +190,13 @@ impl AcknowledgementValidator {
         };
 
         if acknowledged_count > 20 {
-            // Too many message acknowledgements, protocol error?
-            return None;
+            bail!("Too many message acknowledgements, protocol error?");
         }
 
         let mut list = VecDeque::with_capacity(acknowledged_count);
         for i in 0..20 {
             let acknowledgement = acknowledgements[i >> 3] & (0b1 << (i % 8)) != 0;
-            // SAFETY: The length of messages is never less than 20
-            let acknowledged_message = unsafe { self.messages.get_unchecked_mut(i) };
+            let acknowledged_message = &mut self.messages[i];
             // Client has acknowledged the i-th message
             if acknowledgement {
                 // The validator has the i-th message
@@ -181,27 +205,23 @@ impl AcknowledgementValidator {
                     list.push_back(m.signature);
                 } else {
                     // Client has acknowledged a non-existing message
-                    trace!("Client has acknowledged a non-existing message");
-                    return None;
+                    bail!("Client has acknowledged a non-existing message");
                 }
             } else {
                 // Client has not acknowledged the i-th message
                 if matches!(acknowledged_message, Some(m) if !m.pending) {
                     // The validator has an i-th message that has been validated but the client
                     // claims that it hasn't been validated yet
-                    trace!(
+                    bail!(
                         "The validator has an i-th message that has been validated but the client \
                          claims that it hasn't been validated yet"
                     );
-                    return None;
                 }
                 // Honestly not entirely sure why this is done
-                if acknowledged_message.is_some() {
-                    *acknowledged_message = None;
-                }
+                *acknowledged_message = None;
             }
         }
-        Some(list)
+        Ok(list)
     }
 
     /// The number of pending messages in the validator.
@@ -310,32 +330,6 @@ impl MessageSignatureStorage {
     }
 }
 
-pub struct SecureChatPlugin;
-
-impl Plugin for SecureChatPlugin {
-    fn build(&self, app: &mut bevy_app::App) {
-        let mojang_pub_key = RsaPublicKey::from_public_key_der(MOJANG_KEY_DATA)
-            .expect("Error creating Mojang public key");
-
-        app.add_plugin(ChatTypePlugin)
-            .insert_resource(MojangServicesState::new(mojang_pub_key))
-            .add_systems(
-                (
-                    init_chat_states,
-                    handle_session_events
-                        .after(init_chat_states)
-                        .before(handle_message_events),
-                    handle_message_acknowledgement
-                        .after(init_chat_states)
-                        .before(handle_message_events),
-                    handle_message_events.after(init_chat_states),
-                )
-                    .in_base_set(CoreSet::PostUpdate)
-                    .before(FlushPacketsSet),
-            );
-    }
-}
-
 fn init_chat_states(clients: Query<Entity, Added<Client>>, mut commands: Commands) {
     for entity in clients.iter() {
         commands.entity(entity).insert(ChatState::default());
@@ -369,15 +363,11 @@ fn handle_session_events(
             continue;
         }
 
-        // Serialize the session data.
-        let mut serialized = Vec::with_capacity(318);
-        serialized.extend_from_slice(uuid.0.into_bytes().as_slice());
-        serialized.extend_from_slice(session.session_data.expires_at.to_be_bytes().as_ref());
-        serialized.extend_from_slice(session.session_data.public_key_data.as_ref());
-
         // Hash the session data using the SHA-1 algorithm.
         let mut hasher = Sha1::new();
-        hasher.update(&serialized);
+        hasher.update(uuid.0.into_bytes());
+        hasher.update(session.session_data.expires_at.to_be_bytes());
+        hasher.update(&session.session_data.public_key_data);
         let hash = hasher.finalize();
 
         // Verify the session data using Mojang's public key and the hashed session data
@@ -507,15 +497,18 @@ fn handle_message_events(
             .validator
             .validate(&message.acknowledgements, message.message_index)
         {
-            None => {
-                warn!("Failed to validate acknowledgements from `{}`", username.0);
+            Err(error) => {
+                warn!(
+                    "Failed to validate acknowledgements from `{}`: {}",
+                    username.0, error
+                );
                 commands.add(DisconnectClient {
                     client: message.client,
                     reason: Text::translate(MULTIPLAYER_DISCONNECT_CHAT_VALIDATION_FAILED, []),
                 });
                 continue;
             }
-            Some(last_seen) => last_seen,
+            Ok(last_seen) => last_seen,
         };
 
         let Some(link) = &state.chain.next_link() else {

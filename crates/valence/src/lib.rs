@@ -29,7 +29,7 @@ mod tests;
 #[cfg(feature = "anvil")]
 pub use valence_anvil as anvil;
 #[cfg(feature = "chat")]
-pub use valence_chat as secure_chat;
+pub use valence_chat as chat;
 pub use valence_core::*;
 #[cfg(feature = "inventory")]
 pub use valence_inventory as inventory;
@@ -61,6 +61,8 @@ pub mod prelude {
     pub use biome::{Biome, BiomeId, BiomeRegistry};
     pub use block::{BlockKind, BlockState, PropName, PropValue};
     pub use block_pos::BlockPos;
+    #[cfg(feature = "chat")]
+    pub use chat::chat_type::{ChatType, ChatTypeRegistry};
     pub use chunk_pos::{ChunkPos, ChunkView};
     pub use client::action::*;
     pub use client::command::*;
@@ -98,8 +100,6 @@ pub mod prelude {
     pub use packet::s2c::play::particle::Particle;
     #[cfg(feature = "player_list")]
     pub use player_list::{PlayerList, PlayerListEntry};
-    #[cfg(feature = "chat")]
-    pub use secure_chat::chat_type::{ChatType, ChatTypeRegistry};
     pub use text::{Color, Text, TextFormat};
     #[cfg(feature = "advancement")]
     pub use valence_advancement::{
@@ -163,7 +163,7 @@ impl PluginGroup for DefaultPlugins {
 
         #[cfg(feature = "chat")]
         {
-            group = group.add(valence_chat::SecureChatPlugin);
+            group = group.add(valence_chat::ChatPlugin);
         }
 
         group

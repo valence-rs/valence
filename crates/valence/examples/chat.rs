@@ -3,7 +3,6 @@
 use tracing::warn;
 use valence::client::despawn_disconnected_clients;
 use valence::client::misc::CommandExecution;
-use valence::entity::player::PlayerEntityBundle;
 use valence::prelude::*;
 
 const SPAWN_Y: i32 = 64;
@@ -46,20 +45,15 @@ fn setup(
 }
 
 fn init_clients(
-    mut clients: Query<(Entity, &UniqueId, &mut Client, &mut GameMode), Added<Client>>,
+    mut clients: Query<(&mut Client, &mut Location, &mut Position, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
-    mut commands: Commands,
 ) {
-    for (entity, uuid, mut client, mut game_mode) in &mut clients {
+    for (mut client, mut loc, mut pos, mut game_mode) in &mut clients {
         *game_mode = GameMode::Creative;
-        client.send_message("Welcome to Valence! Say something.".italic());
+        loc.0 = instances.single();
+        pos.set([0.0, SPAWN_Y as f64 + 1.0, 0.0]);
 
-        commands.entity(entity).insert(PlayerEntityBundle {
-            location: Location(instances.single()),
-            position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 0.0]),
-            uuid: *uuid,
-            ..Default::default()
-        });
+        client.send_message("Welcome to Valence! Say something.".italic());
     }
 }
 
