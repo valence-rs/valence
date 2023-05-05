@@ -17,6 +17,8 @@
     clippy::dbg_macro
 )]
 
+pub mod hitbox;
+
 use std::num::Wrapping;
 use std::ops::Range;
 

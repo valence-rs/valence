@@ -3,14 +3,21 @@ use std::collections::HashMap;
 use bevy_app::App;
 use bevy_ecs::prelude::Entity;
 use valence::prelude::*;
-use valence_entity::sheep::{self, SheepEntityBundle};
+use valence_entity::entity::NameVisible;
+use valence_entity::hoglin::HoglinEntityBundle;
+use valence_entity::pig::PigEntityBundle;
+use valence_entity::sheep::SheepEntityBundle;
+use valence_entity::warden::WardenEntityBundle;
+use valence_entity::zombie::ZombieEntityBundle;
+use valence_entity::zombie_horse::ZombieHorseEntityBundle;
+use valence_entity::{entity, Pose};
 
 pub fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .add_system(init_clients)
-        .add_systems((spawn_sheep, intersections))
+        .add_systems((spawn_entity, intersections))
         .run();
 }
 
@@ -45,14 +52,11 @@ fn init_clients(
         loc.0 = instances.single();
         pos.set([0.5, 65.0, 0.5]);
         *game_mode = GameMode::Creative;
-        client.send_message(
-            "To spawn a sheep sneak. The color of sheep depends on their count of intersections \
-             with other hitboxes (with your also). Use F3 + B to activate hitboxes",
-        );
+        client.send_message("To spawn an entity, press shift. F3 + B to activate hitboxes");
     }
 }
 
-fn spawn_sheep(
+fn spawn_entity(
     mut commands: Commands,
     mut sneaking: EventReader<Sneaking>,
     client_query: Query<(&Position, &Location)>,
@@ -62,19 +66,64 @@ fn spawn_sheep(
             continue;
         }
 
-        let (pos, loc) = client_query.get(sneaking.client).unwrap();
+        let (position, location) = client_query.get(sneaking.client).unwrap();
 
-        commands.spawn(SheepEntityBundle {
-            location: *loc,
-            position: *pos,
-            ..Default::default()
-        });
+        let position = *position;
+        let location = *location;
+
+        match rand::random::<i32>().rem_euclid(7) {
+            0 => commands.spawn(SheepEntityBundle {
+                position,
+                location,
+                entity_name_visible: NameVisible(true),
+                ..Default::default()
+            }),
+            1 => commands.spawn(PigEntityBundle {
+                position,
+                location,
+                entity_name_visible: NameVisible(true),
+                ..Default::default()
+            }),
+            2 => commands.spawn(ZombieEntityBundle {
+                position,
+                location,
+                entity_name_visible: NameVisible(true),
+                ..Default::default()
+            }),
+            3 => commands.spawn(ZombieHorseEntityBundle {
+                position,
+                location,
+                entity_name_visible: NameVisible(true),
+                ..Default::default()
+            }),
+            4 => commands.spawn(WardenEntityBundle {
+                position,
+                location,
+                entity_name_visible: NameVisible(true),
+                entity_pose: entity::Pose(Pose::Digging),
+                ..Default::default()
+            }),
+            5 => commands.spawn(WardenEntityBundle {
+                position,
+                location,
+                entity_name_visible: NameVisible(true),
+                ..Default::default()
+            }),
+            6 => commands.spawn(HoglinEntityBundle {
+                position,
+                location,
+                entity_name_visible: NameVisible(true),
+
+                ..Default::default()
+            }),
+            _ => unreachable!(),
+        };
     }
 }
 
 fn intersections(
     query: Query<(Entity, &Hitbox, &Position)>,
-    mut sheep_color_query: Query<&mut sheep::Color>,
+    mut name_query: Query<&mut entity::CustomName>,
 ) {
     // This code only to show how hitboxes can be used
     let mut intersections = HashMap::new();
@@ -93,7 +142,7 @@ fn intersections(
     }
 
     for (entity, value) in intersections {
-        let Ok(mut color) = sheep_color_query.get_mut(entity) else { continue; };
-        color.0 = value;
+        let Ok(mut name) = name_query.get_mut(entity) else { continue; };
+        name.0 = Some(format!("{value}").into());
     }
 }
