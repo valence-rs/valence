@@ -11,8 +11,8 @@ pub struct HandshakeC2s<'a> {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Encode, Decode)]
 pub enum NextState {
-    #[tag = 1]
+    #[packet(tag = 1)]
     Status,
-    #[tag = 2]
+    #[packet(tag = 2)]
     Login,
 }

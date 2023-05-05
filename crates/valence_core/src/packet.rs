@@ -51,7 +51,7 @@ pub const MAX_PACKET_SIZE: i32 = 2097152;
 /// enum MyEnum {
 ///     First,  // tag = 0
 ///     Second, // tag = 1
-///     #[tag = 25]
+///     #[packet(tag = 25)]
 ///     Third, // tag = 25
 ///     Fourth, // tag = 26
 /// }
@@ -136,7 +136,7 @@ pub trait Encode {
 /// enum MyEnum {
 ///     First,  // tag = 0
 ///     Second, // tag = 1
-///     #[tag = 25]
+///     #[packet(tag = 25)]
 ///     Third, // tag = 25
 ///     Fourth, // tag = 26
 /// }
@@ -170,7 +170,7 @@ pub trait Decode<'a>: Sized {
 ///
 /// This trait can be implemented automatically by using the
 /// [`Packet`][macro] derive macro. The trait is implemented by reading or
-/// writing the packet ID provided in the `#[packet_id = ...]` helper attribute
+/// writing the packet ID provided in the `#[packet(id = ...)]` helper attribute
 /// followed by a call to [`Encode::encode`] or [`Decode::decode`]. The target
 /// type must implement [`Encode`], [`Decode`], and [`std::fmt::Debug`].
 ///
@@ -178,7 +178,7 @@ pub trait Decode<'a>: Sized {
 /// use valence_core::packet::{Decode, Encode, Packet};
 ///
 /// #[derive(Encode, Decode, Packet, Debug)]
-/// #[packet_id = 42]
+/// #[packet(id = 42)]
 /// struct MyStruct {
 ///     first: i32,
 /// }
@@ -462,7 +462,7 @@ mod tests {
     use crate::packet::encode::PacketEncoder;
 
     #[derive(Encode, Decode, Packet, Debug)]
-    #[packet_id = 1]
+    #[packet(id = 1)]
     struct RegularStruct {
         foo: i32,
         bar: bool,
@@ -470,30 +470,30 @@ mod tests {
     }
 
     #[derive(Encode, Decode, Packet, Debug)]
-    #[packet_id = 2]
+    #[packet(id = 2)]
     struct UnitStruct;
 
     #[derive(Encode, Decode, Packet, Debug)]
-    #[packet_id = 3]
+    #[packet(id = 3)]
     struct EmptyStruct {}
 
     #[derive(Encode, Decode, Packet, Debug)]
-    #[packet_id = 4]
+    #[packet(id = 4)]
     struct TupleStruct(i32, bool, f64);
 
     #[derive(Encode, Decode, Packet, Debug)]
-    #[packet_id = 5]
+    #[packet(id = 5)]
     struct StructWithGenerics<'z, T = ()> {
         foo: &'z str,
         bar: T,
     }
 
     #[derive(Encode, Decode, Packet, Debug)]
-    #[packet_id = 6]
+    #[packet(id = 6)]
     struct TupleStructWithGenerics<'z, T = ()>(&'z str, i32, T);
 
     #[derive(Encode, Decode, Packet, Debug)]
-    #[packet_id = 7]
+    #[packet(id = 7)]
     enum RegularEnum {
         Empty,
         Tuple(i32, bool, f64),
@@ -501,20 +501,20 @@ mod tests {
     }
 
     #[derive(Encode, Decode, Packet, Debug)]
-    #[packet_id = 8]
+    #[packet(id = 8)]
     enum EmptyEnum {}
 
     #[derive(Encode, Decode, Packet, Debug)]
-    #[packet_id = 0xbeef]
+    #[packet(id = 0xbeef)]
     enum EnumWithGenericsAndTags<'z, T = ()> {
-        #[tag = 5]
+        #[packet(tag = 5)]
         First {
             foo: &'z str,
         },
         Second(&'z str),
-        #[tag = 0xff]
+        #[packet(tag = 0xff)]
         Third,
-        #[tag = 0]
+        #[packet(tag = 0)]
         Fourth(T),
     }
 
@@ -567,7 +567,7 @@ mod tests {
     const CRYPT_KEY: [u8; 16] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 
     #[derive(PartialEq, Debug, Encode, Decode, Packet)]
-    #[packet_id = 42]
+    #[packet(id = 42)]
     struct TestPacket<'a> {
         a: bool,
         b: u8,

@@ -1,17 +1,19 @@
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
-use syn::{parse2, parse_quote, Attribute, DeriveInput, Error, Lit, LitInt, Meta, Result};
+use syn::spanned::Spanned;
+use syn::{parse2, parse_quote, Attribute, DeriveInput, Error, Expr, LitInt, Result};
 
 use crate::{add_trait_bounds, decode_split_for_impl};
 
 pub(super) fn derive_packet(item: TokenStream) -> Result<TokenStream> {
     let mut input = parse2::<DeriveInput>(item)?;
 
-    let Some(packet_id) = find_packet_id_attr(&input.attrs)? else {
-        return Err(Error::new(
-            input.ident.span(),
-            "cannot derive `Packet` without `#[packet_id = ...]` helper attribute",
-        ))
+    let Some(packet_attr) = parse_packet_helper_attr(&input.attrs)? else {
+        return Err(Error::new(input.span(), "missing `packet` attribute"));
+    };
+
+    let Some(packet_id) = packet_attr.id else {
+        return Err(Error::new(packet_attr.span, "missing `id = ...` value from packet attribute"));
     };
 
     let lifetime = input
@@ -77,16 +79,34 @@ pub(super) fn derive_packet(item: TokenStream) -> Result<TokenStream> {
     })
 }
 
-fn find_packet_id_attr(attrs: &[Attribute]) -> Result<Option<LitInt>> {
+struct PacketAttr {
+    span: Span,
+    id: Option<Expr>,
+    tag: Option<i32>,
+}
+
+fn parse_packet_helper_attr(attrs: &[Attribute]) -> Result<Option<PacketAttr>> {
     for attr in attrs {
-        if let Meta::NameValue(nv) = attr.parse_meta()? {
-            if nv.path.is_ident("packet_id") {
-                let span = nv.lit.span();
-                return match nv.lit {
-                    Lit::Int(i) => Ok(Some(i)),
-                    _ => Err(Error::new(span, "packet ID must be an integer literal")),
-                };
-            }
+        if attr.path().is_ident("packet") {
+            let mut res = PacketAttr {
+                span: attr.span(),
+                id: None,
+                tag: None,
+            };
+
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("id") {
+                    res.id = Some(meta.value()?.parse::<Expr>()?);
+                    Ok(())
+                } else if meta.path.is_ident("tag") {
+                    res.tag = Some(meta.value()?.parse::<LitInt>()?.base10_parse::<i32>()?);
+                    Ok(())
+                } else {
+                    Err(meta.error("unrecognized packet argument"))
+                }
+            })?;
+
+            return Ok(Some(res));
         }
     }
 
