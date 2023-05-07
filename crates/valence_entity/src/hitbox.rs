@@ -112,16 +112,21 @@ fn add_hitbox_component(
     settings: Res<EntityHitboxSettings>,
     mut commands: Commands,
     query: Query<(Entity, &Position), Added<entity::Entity>>,
+    alt_query: Query<(Entity, &Position, &Hitbox), Added<Hitbox>>,
 ) {
-    if !settings.add_hitbox_component {
-        return;
-    }
-
-    for (entity, pos) in query.iter() {
-        commands
-            .entity(entity)
-            .insert(Hitbox::ZERO)
-            .insert(InWorldHitbox(Hitbox::ZERO.in_world(pos.0)));
+    if settings.add_hitbox_component {
+        for (entity, pos) in query.iter() {
+            commands
+                .entity(entity)
+                .insert(Hitbox::ZERO)
+                .insert(InWorldHitbox(Hitbox::ZERO.in_world(pos.0)));
+        }
+    } else {
+        for (entity, pos, hitbox) in alt_query.iter() {
+            commands
+                .entity(entity)
+                .insert(InWorldHitbox(hitbox.in_world(pos.0)));
+        }
     }
 }
 
