@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use bevy_app::App;
 use bevy_ecs::prelude::Entity;
+use rand::Rng;
 use valence::prelude::*;
 use valence_entity::entity::NameVisible;
 use valence_entity::hoglin::HoglinEntityBundle;
@@ -71,7 +72,7 @@ fn spawn_entity(
         let position = *position;
         let location = *location;
 
-        match rand::random::<i32>().rem_euclid(7) {
+        match rand::thread_rng().gen_range(0..7) {
             0 => commands.spawn(SheepEntityBundle {
                 position,
                 location,
@@ -122,15 +123,15 @@ fn spawn_entity(
 }
 
 fn intersections(
-    query: Query<(Entity, &Hitbox, &Position)>,
+    query: Query<(Entity, &InWorldHitbox)>,
     mut name_query: Query<&mut entity::CustomName>,
 ) {
     // This code only to show how hitboxes can be used
     let mut intersections = HashMap::new();
 
-    for [(entity1, hitbox1, pos1), (entity2, hitbox2, pos2)] in query.iter_combinations() {
-        let aabb1 = hitbox1.in_world(pos1.0);
-        let aabb2 = hitbox2.in_world(pos2.0);
+    for [(entity1, hitbox1), (entity2, hitbox2)] in query.iter_combinations() {
+        let aabb1 = hitbox1.get();
+        let aabb2 = hitbox2.get();
 
         let _ = *intersections.entry(entity1).or_insert(0);
         let _ = *intersections.entry(entity2).or_insert(0);

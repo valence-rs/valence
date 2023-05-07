@@ -17,6 +17,9 @@ pub struct HitboxUpdateSet;
 #[derive(SystemSet, Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub struct HitboxComponentAddSet;
 
+#[derive(SystemSet, Clone, Copy, Debug, Hash, PartialEq, Eq)]
+pub struct InWorldHitboxUpdateSet;
+
 pub struct HitboxPlugin;
 
 #[derive(Resource)]
@@ -38,8 +41,8 @@ impl Default for EntityHitboxSettings {
 
 impl Plugin for HitboxPlugin {
     fn build(&self, app: &mut App) {
-        app.configure_set(HitboxUpdateSet.in_base_set(CoreSet::PreUpdate))
-            .init_resource::<EntityHitboxSettings>()
+        app.init_resource::<EntityHitboxSettings>()
+            .configure_set(HitboxUpdateSet.in_base_set(CoreSet::PreUpdate))
             .add_systems(
                 (
                     update_constant_hitbox,
@@ -59,12 +62,26 @@ impl Plugin for HitboxPlugin {
                     .in_set(HitboxUpdateSet),
             )
             .configure_set(HitboxComponentAddSet.in_base_set(CoreSet::PostUpdate))
-            .add_system(add_hitbox_component.in_set(HitboxComponentAddSet));
+            .add_system(add_hitbox_component.in_set(HitboxComponentAddSet))
+            .configure_set(
+                InWorldHitboxUpdateSet
+                    .in_base_set(CoreSet::PreUpdate)
+                    .after(HitboxUpdateSet),
+            )
+            .add_system(update_in_world_hitbox.in_set(InWorldHitboxUpdateSet));
     }
 }
 
+/// Size of hitbox. The only way to manipulate it without losing it on the next
+/// tick is using a marker entity. Marker entity's hitbox is never updated.
 #[derive(Component, Debug, PartialEq)]
-pub struct Hitbox(Aabb);
+pub struct Hitbox(pub Aabb);
+
+#[derive(Component, Debug)]
+/// Hitbox, aabb of which is calculated each tick using it's position and
+/// [`Hitbox`]. In order to change size of this hitbox you need to change
+/// [`Hitbox`]
+pub struct InWorldHitbox(Aabb);
 
 impl Hitbox {
     pub const ZERO: Hitbox = Hitbox(Aabb {
@@ -80,25 +97,42 @@ impl Hitbox {
         self.0 = Aabb::from_bottom_size(DVec3::ZERO, size);
     }
 
-    pub fn in_world(&self, pos: DVec3) -> Aabb {
-        Aabb {
-            min: self.0.min + pos,
-            max: self.0.max + pos,
-        }
+    pub(crate) fn in_world(&self, pos: DVec3) -> Aabb {
+        self.0 + pos
+    }
+}
+
+impl InWorldHitbox {
+    pub fn get(&self) -> Aabb {
+        self.0
     }
 }
 
 fn add_hitbox_component(
     settings: Res<EntityHitboxSettings>,
     mut commands: Commands,
-    query: Query<Entity, Added<entity::Entity>>,
+    query: Query<(Entity, &Position), Added<entity::Entity>>,
 ) {
     if !settings.add_hitbox_component {
         return;
     }
 
-    for entity in query.iter() {
-        commands.entity(entity).insert(Hitbox::ZERO);
+    for (entity, pos) in query.iter() {
+        commands
+            .entity(entity)
+            .insert(Hitbox::ZERO)
+            .insert(InWorldHitbox(Hitbox::ZERO.in_world(pos.0)));
+    }
+}
+
+fn update_in_world_hitbox(
+    mut hitbox_query: Query<
+        (&mut InWorldHitbox, &Hitbox, &Position),
+        Or<(Changed<Hitbox>, Changed<Position>)>,
+    >,
+) {
+    for (mut in_world, hitbox, pos) in hitbox_query.iter_mut() {
+        in_world.0 = hitbox.in_world(pos.0);
     }
 }
 
@@ -141,7 +175,7 @@ fn update_constant_hitbox(
             EntityKind::ITEM => [0.25, 0.25, 0.25],
             EntityKind::FIREBALL => [1.0, 1.0, 1.0],
             EntityKind::LEASH_KNOT => [0.375, 0.5, 0.375],
-            EntityKind::LIGHTNING | EntityKind::MARKER => [0.0; 3],
+            EntityKind::LIGHTNING /* | EntityKind::MARKER - marker hitbox */ => [0.0; 3],
             EntityKind::LLAMA_SPIT => [0.25, 0.25, 0.25],
             EntityKind::MINECART
             | EntityKind::CHEST_MINECART
