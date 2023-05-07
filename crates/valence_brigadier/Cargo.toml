@@ -1,0 +1,8 @@
+[package]
+name = "valence_brigadier"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+bevy_ecs.workspace = true
+valence_core.workspace = true
