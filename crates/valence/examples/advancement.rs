@@ -1,6 +1,9 @@
+use std::collections::HashMap;
+
 use valence::prelude::*;
 use valence_advancement::bevy_hierarchy::{BuildChildren, Children, Parent};
 use valence_advancement::ForceTabUpdate;
+use valence_client::SpawnClientsSet;
 
 #[derive(Component)]
 struct RootCriteria;
@@ -17,11 +20,23 @@ struct RootCriteriaDone(bool);
 #[derive(Component)]
 struct TabChangeCount(u8);
 
+#[derive(Resource, Default)]
+struct ClientSave(HashMap<Uuid, (bool, u8)>);
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
+        .init_resource::<ClientSave>()
         .add_startup_system(setup)
-        .add_systems((init_clients, init_advancements, sneak, tab_change))
+        .add_systems((
+            init_clients,
+            init_advancements,
+            sneak,
+            tab_change,
+            load_clients
+                .after(SpawnClientsSet)
+                .in_base_set(CoreSet::PreUpdate),
+        ))
         .run();
 }
 
@@ -149,33 +164,62 @@ fn setup(
 }
 
 fn init_clients(
-    mut commands: Commands,
-    mut clients: Query<(Entity, &mut Location, &mut Position, &mut GameMode), Added<Client>>,
+    mut clients: Query<(&mut Location, &mut Position, &mut GameMode), Added<Client>>,
     instances: Query<Entity, With<Instance>>,
 ) {
-    for (client, mut loc, mut pos, mut game_mode) in &mut clients {
+    for (mut loc, mut pos, mut game_mode) in &mut clients {
         loc.0 = instances.single();
         pos.set([0.5, 65.0, 0.5]);
         *game_mode = GameMode::Creative;
-        commands
-            .entity(client)
-            .insert((RootCriteriaDone(false), TabChangeCount(0)));
+    }
+}
+
+fn load_clients(
+    mut commands: Commands,
+    clients: Query<(Entity, &UniqueId), Added<Client>>,
+    mut client_save: ResMut<ClientSave>,
+) {
+    for (client, uuid) in clients.iter() {
+        let (root_criteria_done, tab_change_count) =
+            client_save.0.entry(uuid.0).or_insert((false, 0));
+
+        commands.entity(client).insert((
+            RootCriteriaDone(*root_criteria_done),
+            TabChangeCount(*tab_change_count),
+        ));
     }
 }
 
 fn init_advancements(
-    mut clients: Query<&mut AdvancementClientUpdate, Added<AdvancementClientUpdate>>,
+    mut clients: Query<
+        (
+            &mut AdvancementClientUpdate,
+            &RootCriteriaDone,
+            &TabChangeCount,
+        ),
+        Added<AdvancementClientUpdate>,
+    >,
     root_advancement_query: Query<Entity, (Without<Parent>, With<Advancement>)>,
     children_query: Query<&Children>,
     advancement_check_query: Query<(), With<Advancement>>,
+    root2_criteria: Query<Entity, With<Root2Criteria>>,
+    root_criteria: Query<Entity, With<RootCriteria>>,
 ) {
-    for mut advancement_client_update in clients.iter_mut() {
+    let root_c = root_criteria.single();
+    let root2_c = root2_criteria.single();
+    for (mut advancement_client_update, root_criteria, tab_change) in clients.iter_mut() {
         for root_advancement in root_advancement_query.iter() {
             advancement_client_update.send_advancements(
                 root_advancement,
                 &children_query,
                 &advancement_check_query,
             );
+            if root_criteria.0 {
+                advancement_client_update.criteria_done(root_c);
+            }
+            if tab_change.0 > 5 {
+                advancement_client_update.criteria_done(root2_c);
+            }
         }
     }
 }
@@ -184,6 +228,8 @@ fn sneak(
     mut sneaking: EventReader<Sneaking>,
     mut client: Query<(&mut AdvancementClientUpdate, &mut RootCriteriaDone)>,
     root_criteria: Query<Entity, With<RootCriteria>>,
+    client_uuid: Query<&UniqueId>,
+    mut client_save: ResMut<ClientSave>,
 ) {
     let root_criteria = root_criteria.single();
     for sneaking in sneaking.iter() {
@@ -196,6 +242,11 @@ fn sneak(
             true => advancement_client_update.criteria_done(root_criteria),
             false => advancement_client_update.criteria_undone(root_criteria),
         }
+        client_save
+            .0
+            .get_mut(&client_uuid.get(sneaking.client).unwrap().0)
+            .unwrap()
+            .0 = root_criteria_done.0;
     }
 }
 
@@ -204,6 +255,8 @@ fn tab_change(
     mut client: Query<(&mut AdvancementClientUpdate, &mut TabChangeCount)>,
     root2_criteria: Query<Entity, With<Root2Criteria>>,
     root: Query<Entity, With<RootAdvancement>>,
+    client_uuid: Query<&UniqueId>,
+    mut client_save: ResMut<ClientSave>,
 ) {
     let root2_criteria = root2_criteria.single();
     let root = root.single();
@@ -223,5 +276,10 @@ fn tab_change(
         } else if tab_change_count.0 >= 10 {
             advancement_client_update.force_tab_update = ForceTabUpdate::Spec(root);
         }
+        client_save
+            .0
+            .get_mut(&client_uuid.get(tab_change.client).unwrap().0)
+            .unwrap()
+            .1 = tab_change_count.0;
     }
 }

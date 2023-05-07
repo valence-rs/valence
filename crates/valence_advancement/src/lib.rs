@@ -215,10 +215,11 @@ impl<'w, 's, 'a> Encode for AdvancementUpdateEncodeS2c<'w, 's, 'a> {
             remove_advancements,
             progress,
             force_tab_update: _,
+            reset,
         } = &self.client_update;
 
         let mut pkt = GenericAdvancementUpdateS2c {
-            reset: false,
+            reset: *reset,
             advancement_mapping: vec![],
             identifiers: vec![],
             progress_mapping: vec![],
@@ -313,11 +314,18 @@ fn send_advancement_update_packet(
         if advancement_client_update.new_advancements.is_empty()
             && advancement_client_update.progress.is_empty()
             && advancement_client_update.remove_advancements.is_empty()
+            && !advancement_client_update.reset
         {
             continue;
         }
 
-        let advancement_client_update = std::mem::take(advancement_client_update.as_mut());
+        let advancement_client_update = std::mem::replace(
+            advancement_client_update.as_mut(),
+            AdvancementClientUpdate {
+                reset: false,
+                ..Default::default()
+            },
+        );
 
         client.write_packet(&AdvancementUpdateEncodeS2c {
             queries: &update_single_query,
@@ -403,7 +411,7 @@ pub enum ForceTabUpdate {
     Spec(Entity),
 }
 
-#[derive(Component, Default, Debug)]
+#[derive(Component, Debug)]
 pub struct AdvancementClientUpdate {
     /// Which advancement's descriptions send to client
     pub new_advancements: Vec<Entity>,
@@ -414,6 +422,22 @@ pub struct AdvancementClientUpdate {
     pub progress: Vec<(Entity, Option<i64>)>,
     /// Forces client to open a tab
     pub force_tab_update: ForceTabUpdate,
+    /// Defines if other advancements should be removed.
+    /// Also with this flag, client will not show a toast for advancements,
+    /// which are completed. When the packet is sent, turns to false
+    pub reset: bool,
+}
+
+impl Default for AdvancementClientUpdate {
+    fn default() -> Self {
+        Self {
+            new_advancements: vec![],
+            remove_advancements: vec![],
+            progress: vec![],
+            force_tab_update: ForceTabUpdate::default(),
+            reset: true,
+        }
+    }
 }
 
 impl AdvancementClientUpdate {
