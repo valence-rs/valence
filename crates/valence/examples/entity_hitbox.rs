@@ -122,10 +122,7 @@ fn spawn_entity(
     }
 }
 
-fn intersections(
-    query: Query<(Entity, &InWorldHitbox)>,
-    mut name_query: Query<&mut entity::CustomName>,
-) {
+fn intersections(query: Query<(Entity, &Hitbox)>, mut name_query: Query<&mut entity::CustomName>) {
     // This code only to show how hitboxes can be used
     let mut intersections = HashMap::new();
 

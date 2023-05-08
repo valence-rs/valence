@@ -12,13 +12,13 @@ use valence_core::direction::Direction;
 use crate::*;
 
 #[derive(SystemSet, Clone, Copy, Debug, Hash, PartialEq, Eq)]
+pub struct HitboxShapeUpdateSet;
+
+#[derive(SystemSet, Clone, Copy, Debug, Hash, PartialEq, Eq)]
+pub struct HitboxComponentsAddSet;
+
+#[derive(SystemSet, Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub struct HitboxUpdateSet;
-
-#[derive(SystemSet, Clone, Copy, Debug, Hash, PartialEq, Eq)]
-pub struct HitboxComponentAddSet;
-
-#[derive(SystemSet, Clone, Copy, Debug, Hash, PartialEq, Eq)]
-pub struct InWorldHitboxUpdateSet;
 
 pub struct HitboxPlugin;
 
@@ -42,7 +42,7 @@ impl Default for EntityHitboxSettings {
 impl Plugin for HitboxPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<EntityHitboxSettings>()
-            .configure_set(HitboxUpdateSet.in_base_set(CoreSet::PreUpdate))
+            .configure_set(HitboxShapeUpdateSet.in_base_set(CoreSet::PreUpdate))
             .add_systems(
                 (
                     update_constant_hitbox,
@@ -59,32 +59,32 @@ impl Plugin for HitboxPlugin {
                     update_painting_hitbox,
                     update_shulker_hitbox,
                 )
-                    .in_set(HitboxUpdateSet),
+                    .in_set(HitboxShapeUpdateSet),
             )
-            .configure_set(HitboxComponentAddSet.in_base_set(CoreSet::PostUpdate))
-            .add_system(add_hitbox_component.in_set(HitboxComponentAddSet))
+            .configure_set(HitboxComponentsAddSet.in_base_set(CoreSet::PostUpdate))
+            .add_system(add_hitbox_component.in_set(HitboxComponentsAddSet))
             .configure_set(
-                InWorldHitboxUpdateSet
+                HitboxUpdateSet
                     .in_base_set(CoreSet::PreUpdate)
-                    .after(HitboxUpdateSet),
+                    .after(HitboxShapeUpdateSet),
             )
-            .add_system(update_in_world_hitbox.in_set(InWorldHitboxUpdateSet));
+            .add_system(update_hitbox.in_set(HitboxUpdateSet));
     }
 }
 
 /// Size of hitbox. The only way to manipulate it without losing it on the next
 /// tick is using a marker entity. Marker entity's hitbox is never updated.
 #[derive(Component, Debug, PartialEq)]
-pub struct Hitbox(pub Aabb);
+pub struct HitboxShape(pub Aabb);
 
 #[derive(Component, Debug)]
 /// Hitbox, aabb of which is calculated each tick using it's position and
 /// [`Hitbox`]. In order to change size of this hitbox you need to change
 /// [`Hitbox`]
-pub struct InWorldHitbox(Aabb);
+pub struct Hitbox(Aabb);
 
-impl Hitbox {
-    pub const ZERO: Hitbox = Hitbox(Aabb {
+impl HitboxShape {
+    pub const ZERO: HitboxShape = HitboxShape(Aabb {
         min: DVec3::ZERO,
         max: DVec3::ZERO,
     });
@@ -102,7 +102,7 @@ impl Hitbox {
     }
 }
 
-impl InWorldHitbox {
+impl Hitbox {
     pub fn get(&self) -> Aabb {
         self.0
     }
@@ -112,28 +112,28 @@ fn add_hitbox_component(
     settings: Res<EntityHitboxSettings>,
     mut commands: Commands,
     query: Query<(Entity, &Position), Added<entity::Entity>>,
-    alt_query: Query<(Entity, &Position, &Hitbox), Added<Hitbox>>,
+    alt_query: Query<(Entity, &Position, &HitboxShape), Added<HitboxShape>>,
 ) {
     if settings.add_hitbox_component {
         for (entity, pos) in query.iter() {
             commands
                 .entity(entity)
-                .insert(Hitbox::ZERO)
-                .insert(InWorldHitbox(Hitbox::ZERO.in_world(pos.0)));
+                .insert(HitboxShape::ZERO)
+                .insert(Hitbox(HitboxShape::ZERO.in_world(pos.0)));
         }
     } else {
         for (entity, pos, hitbox) in alt_query.iter() {
             commands
                 .entity(entity)
-                .insert(InWorldHitbox(hitbox.in_world(pos.0)));
+                .insert(Hitbox(hitbox.in_world(pos.0)));
         }
     }
 }
 
-fn update_in_world_hitbox(
+fn update_hitbox(
     mut hitbox_query: Query<
-        (&mut InWorldHitbox, &Hitbox, &Position),
-        Or<(Changed<Hitbox>, Changed<Position>)>,
+        (&mut Hitbox, &HitboxShape, &Position),
+        Or<(Changed<HitboxShape>, Changed<Position>)>,
     >,
 ) {
     for (mut in_world, hitbox, pos) in hitbox_query.iter_mut() {
@@ -142,7 +142,10 @@ fn update_in_world_hitbox(
 }
 
 fn update_constant_hitbox(
-    mut hitbox_query: Query<(&mut Hitbox, &EntityKind), Or<(Changed<EntityKind>, Added<Hitbox>)>>,
+    mut hitbox_query: Query<
+        (&mut HitboxShape, &EntityKind),
+        Or<(Changed<EntityKind>, Added<HitboxShape>)>,
+    >,
 ) {
     for (mut hitbox, entity_kind) in hitbox_query.iter_mut() {
         let size = match *entity_kind {
@@ -227,9 +230,9 @@ fn update_constant_hitbox(
 
 fn update_warden_hitbox(
     mut query: Query<
-        (&mut Hitbox, &entity::Pose),
+        (&mut HitboxShape, &entity::Pose),
         (
-            Or<(Changed<entity::Pose>, Added<Hitbox>)>,
+            Or<(Changed<entity::Pose>, Added<HitboxShape>)>,
             With<warden::WardenEntity>,
         ),
     >,
@@ -247,8 +250,8 @@ fn update_warden_hitbox(
 
 fn update_area_effect_cloud_hitbox(
     mut query: Query<
-        (&mut Hitbox, &area_effect_cloud::Radius),
-        Or<(Changed<area_effect_cloud::Radius>, Added<Hitbox>)>,
+        (&mut HitboxShape, &area_effect_cloud::Radius),
+        Or<(Changed<area_effect_cloud::Radius>, Added<HitboxShape>)>,
     >,
 ) {
     for (mut hitbox, cloud_radius) in query.iter_mut() {
@@ -259,8 +262,8 @@ fn update_area_effect_cloud_hitbox(
 
 fn update_armor_stand_hitbox(
     mut query: Query<
-        (&mut Hitbox, &armor_stand::ArmorStandFlags),
-        Or<(Changed<armor_stand::ArmorStandFlags>, Added<Hitbox>)>,
+        (&mut HitboxShape, &armor_stand::ArmorStandFlags),
+        Or<(Changed<armor_stand::ArmorStandFlags>, Added<HitboxShape>)>,
     >,
 ) {
     for (mut hitbox, stand_flags) in query.iter_mut() {
@@ -289,8 +292,8 @@ fn child_hitbox(child: bool, v: DVec3) -> DVec3 {
 
 fn update_passive_child_hitbox(
     mut query: Query<
-        (Entity, &mut Hitbox, &EntityKind, &passive::Child),
-        Or<(Changed<passive::Child>, Added<Hitbox>)>,
+        (Entity, &mut HitboxShape, &EntityKind, &passive::Child),
+        Or<(Changed<passive::Child>, Added<HitboxShape>)>,
     >,
     pose_query: Query<&entity::Pose>,
 ) {
@@ -346,7 +349,10 @@ fn update_passive_child_hitbox(
 }
 
 fn update_zombie_hitbox(
-    mut query: Query<(&mut Hitbox, &zombie::Baby), Or<(Changed<zombie::Baby>, Added<Hitbox>)>>,
+    mut query: Query<
+        (&mut HitboxShape, &zombie::Baby),
+        Or<(Changed<zombie::Baby>, Added<HitboxShape>)>,
+    >,
 ) {
     for (mut hitbox, baby) in query.iter_mut() {
         hitbox.centered(child_hitbox(baby.0, [0.6, 1.95, 0.6].into()));
@@ -354,7 +360,10 @@ fn update_zombie_hitbox(
 }
 
 fn update_piglin_hitbox(
-    mut query: Query<(&mut Hitbox, &piglin::Baby), Or<(Changed<piglin::Baby>, Added<Hitbox>)>>,
+    mut query: Query<
+        (&mut HitboxShape, &piglin::Baby),
+        Or<(Changed<piglin::Baby>, Added<HitboxShape>)>,
+    >,
 ) {
     for (mut hitbox, baby) in query.iter_mut() {
         hitbox.centered(child_hitbox(baby.0, [0.6, 1.95, 0.6].into()));
@@ -362,7 +371,10 @@ fn update_piglin_hitbox(
 }
 
 fn update_zoglin_hitbox(
-    mut query: Query<(&mut Hitbox, &zoglin::Baby), Or<(Changed<zoglin::Baby>, Added<Hitbox>)>>,
+    mut query: Query<
+        (&mut HitboxShape, &zoglin::Baby),
+        Or<(Changed<zoglin::Baby>, Added<HitboxShape>)>,
+    >,
 ) {
     for (mut hitbox, baby) in query.iter_mut() {
         hitbox.centered(child_hitbox(baby.0, [1.39648, 1.4, 1.39648].into()));
@@ -371,9 +383,9 @@ fn update_zoglin_hitbox(
 
 fn update_player_hitbox(
     mut query: Query<
-        (&mut Hitbox, &entity::Pose),
+        (&mut HitboxShape, &entity::Pose),
         (
-            Or<(Changed<entity::Pose>, Added<Hitbox>)>,
+            Or<(Changed<entity::Pose>, Added<HitboxShape>)>,
             With<player::PlayerEntity>,
         ),
     >,
@@ -393,8 +405,8 @@ fn update_player_hitbox(
 
 fn update_item_frame_hitbox(
     mut query: Query<
-        (&mut Hitbox, &item_frame::Rotation),
-        Or<(Changed<item_frame::Rotation>, Added<Hitbox>)>,
+        (&mut HitboxShape, &item_frame::Rotation),
+        Or<(Changed<item_frame::Rotation>, Added<HitboxShape>)>,
     >,
 ) {
     for (mut hitbox, rotation) in query.iter_mut() {
@@ -429,8 +441,8 @@ fn update_item_frame_hitbox(
 
 fn update_slime_hitbox(
     mut query: Query<
-        (&mut Hitbox, &slime::SlimeSize),
-        Or<(Changed<slime::SlimeSize>, Added<Hitbox>)>,
+        (&mut HitboxShape, &slime::SlimeSize),
+        Or<(Changed<slime::SlimeSize>, Added<HitboxShape>)>,
     >,
 ) {
     for (mut hitbox, slime_size) in query.iter_mut() {
@@ -441,8 +453,12 @@ fn update_slime_hitbox(
 
 fn update_painting_hitbox(
     mut query: Query<
-        (&mut Hitbox, &painting::Variant, &Look),
-        Or<(Changed<Look>, Changed<painting::Variant>, Added<Hitbox>)>,
+        (&mut HitboxShape, &painting::Variant, &Look),
+        Or<(
+            Changed<Look>,
+            Changed<painting::Variant>,
+            Added<HitboxShape>,
+        )>,
     >,
 ) {
     for (mut hitbox, painting_variant, look) in query.iter_mut() {
@@ -511,11 +527,15 @@ fn update_painting_hitbox(
 
 fn update_shulker_hitbox(
     mut query: Query<
-        (&mut Hitbox, &shulker::PeekAmount, &shulker::AttachedFace),
+        (
+            &mut HitboxShape,
+            &shulker::PeekAmount,
+            &shulker::AttachedFace,
+        ),
         Or<(
             Changed<shulker::PeekAmount>,
             Changed<shulker::AttachedFace>,
-            Added<Hitbox>,
+            Added<HitboxShape>,
         )>,
     >,
 ) {

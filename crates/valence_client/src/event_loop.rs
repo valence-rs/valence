@@ -7,7 +7,7 @@ use bevy_ecs::system::SystemState;
 use bytes::Bytes;
 use tracing::{debug, warn};
 use valence_core::packet::{Decode, Packet};
-use valence_entity::hitbox::InWorldHitboxUpdateSet;
+use valence_entity::hitbox::HitboxUpdateSet;
 
 use crate::{Client, SpawnClientsSet};
 
@@ -16,7 +16,7 @@ pub(super) fn build(app: &mut App) {
         RunEventLoopSet
             .in_base_set(CoreSet::PreUpdate)
             .after(SpawnClientsSet)
-            .after(InWorldHitboxUpdateSet),
+            .after(HitboxUpdateSet),
     )
     .add_system(run_event_loop.in_set(RunEventLoopSet))
     .add_event::<PacketEvent>();
