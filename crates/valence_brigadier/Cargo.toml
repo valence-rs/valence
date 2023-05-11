@@ -6,3 +6,5 @@ edition.workspace = true
 [dependencies]
 bevy_ecs.workspace = true
 valence_core.workspace = true
+anyhow.workspace = true
+glam.workspace = true
