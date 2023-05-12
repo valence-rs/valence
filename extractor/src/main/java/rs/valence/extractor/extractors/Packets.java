@@ -18,29 +18,23 @@ public class Packets implements Main.Extractor {
 
     @Override
     public JsonElement extract() {
-        var packetsJson = new JsonObject();
+        var packetsJson = new JsonArray();
 
         for (var side : NetworkSide.values()) {
-            var sideJson = new JsonObject();
-
             for (var state : NetworkState.values()) {
-                var stateJson = new JsonArray();
-
                 var map = state.getPacketIdToPacketMap(side);
 
                 for (var id : new TreeSet<>(map.keySet())) {
                     var packetJson = new JsonObject();
 
                     packetJson.addProperty("name", map.get(id.intValue()).getSimpleName());
+                    packetJson.addProperty("side", side.name().toLowerCase(Locale.ROOT));
+                    packetJson.addProperty("state", state.name().toLowerCase(Locale.ROOT));
                     packetJson.addProperty("id", id);
 
-                    stateJson.add(packetJson);
+                    packetsJson.add(packetJson);
                 }
-
-                sideJson.add(state.name().toLowerCase(Locale.ROOT), stateJson);
             }
-
-            packetsJson.add(side.name().toLowerCase(Locale.ROOT), sideJson);
         }
 
         return packetsJson;

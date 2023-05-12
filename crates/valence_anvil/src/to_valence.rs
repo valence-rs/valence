@@ -1,9 +1,11 @@
-use num_integer::div_ceil;
+use std::borrow::Cow;
+
+use num_integer::{div_ceil, Integer};
 use thiserror::Error;
-use valence::biome::BiomeId;
-use valence::chunk::Chunk;
-use valence::protocol::block::{BlockKind, PropName, PropValue};
-use valence::protocol::Ident;
+use valence_biome::BiomeId;
+use valence_block::{BlockEntityKind, BlockKind, PropName, PropValue};
+use valence_core::ident::Ident;
+use valence_instance::{BlockEntity, Chunk};
 use valence_nbt::{Compound, List, Value};
 
 #[derive(Clone, Debug, Error)]
@@ -51,16 +53,24 @@ pub enum ToValenceError {
     BadBiomeLongCount,
     #[error("invalid biome palette index")]
     BadBiomePaletteIndex,
+    #[error("missing block entities")]
+    MissingBlockEntity,
+    #[error("missing block entity ident")]
+    MissingBlockEntityIdent,
+    #[error("invalid block entity ident of \"{0}\"")]
+    UnknownBlockEntityIdent(String),
+    #[error("invalid block entity position")]
+    InvalidBlockEntityPosition,
 }
 
-/// Reads an Anvil chunk in NBT form and writes its data to a Valence [`Chunk`].
+/// Takes an Anvil chunk in NBT form and writes its data to a Valence [`Chunk`].
 /// An error is returned if the NBT data does not match the expected structure
 /// for an Anvil chunk.
 ///
 /// # Arguments
 ///
 /// - `nbt`: The Anvil chunk to read from. This is usually the value returned by
-///   [`read_chunk`].
+///   [`AnvilWorld::read_chunk`].
 /// - `chunk`: The Valence chunk to write to.
 /// - `sect_offset`: A constant to add to all sector Y positions in `nbt`. After
 ///   applying the offset, only the sectors in the range
@@ -68,15 +78,14 @@ pub enum ToValenceError {
 /// - `map_biome`: A function to map biome resource identifiers in the NBT data
 ///   to Valence [`BiomeId`]s.
 ///
-/// [`read_chunk`]: crate::AnvilWorld::read_chunk
-pub fn to_valence<C, F>(
+/// [`AnvilWorld::read_chunk`]: crate::AnvilWorld::read_chunk
+pub fn to_valence<F, const LOADED: bool>(
     nbt: &Compound,
-    chunk: &mut C,
+    chunk: &mut Chunk<LOADED>,
     sect_offset: i32,
     mut map_biome: F,
 ) -> Result<(), ToValenceError>
 where
-    C: Chunk,
     F: FnMut(Ident<&str>) -> BiomeId,
 {
     let Some(Value::List(List::Compound(sections))) = nbt.get("sections") else {
@@ -203,11 +212,11 @@ where
         converted_biome_palette.clear();
 
         for biome_name in palette {
-            let Ok(ident) = Ident::new(biome_name.as_str()) else {
+            let Ok(ident) = Ident::<Cow<str>>::new(biome_name) else {
                 return Err(ToValenceError::BadBiomeName)
             };
 
-            converted_biome_palette.push(map_biome(ident));
+            converted_biome_palette.push(map_biome(ident.as_str_ident()));
         }
 
         if converted_biome_palette.len() == 1 {
@@ -252,6 +261,48 @@ where
                     i += 1;
                 }
             }
+        }
+    }
+
+    let Some(Value::List(block_entities)) = nbt.get("block_entities") else {
+        return Err(ToValenceError::MissingBlockEntity);
+    };
+
+    if let List::Compound(block_entities) = block_entities {
+        for comp in block_entities {
+            let Some(Value::String(ident)) = comp.get("id") else {
+                return Err(ToValenceError::MissingBlockEntityIdent);
+            };
+            let Ok(ident) = Ident::new(&ident[..]) else {
+                return Err(ToValenceError::UnknownBlockEntityIdent(ident.clone()));
+            };
+            let Some(kind) = BlockEntityKind::from_ident(ident.as_str_ident()) else {
+                return Err(ToValenceError::UnknownBlockEntityIdent(ident.as_str().to_string()));
+            };
+            let block_entity = BlockEntity {
+                kind,
+                nbt: comp.clone(),
+            };
+            let Some(Value::Int(x)) = comp.get("x") else {
+                return Err(ToValenceError::InvalidBlockEntityPosition);
+            };
+            let Ok(x) = usize::try_from(x.mod_floor(&16)) else {
+                return Err(ToValenceError::InvalidBlockEntityPosition);
+            };
+            let Some(Value::Int(y)) = comp.get("y") else {
+                return Err(ToValenceError::InvalidBlockEntityPosition);
+            };
+            let Ok(y) = usize::try_from(y + sect_offset * 16) else {
+                return Err(ToValenceError::InvalidBlockEntityPosition);
+            };
+            let Some(Value::Int(z)) = comp.get("z") else {
+                return Err(ToValenceError::InvalidBlockEntityPosition);
+            };
+            let Ok(z) = usize::try_from(z.mod_floor(&16)) else {
+                return Err(ToValenceError::InvalidBlockEntityPosition);
+            };
+
+            chunk.set_block_entity(x, y, z, block_entity);
         }
     }
 

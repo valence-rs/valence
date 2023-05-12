@@ -1,268 +1,90 @@
-pub fn main() {
-    todo!("reimplement when inventories are re-added");
-}
+#![allow(clippy::type_complexity)]
 
-/*
-use std::net::SocketAddr;
-use std::sync::atomic::{AtomicUsize, Ordering};
-
-use num::Integer;
+use valence::client::misc::InteractBlock;
 use valence::prelude::*;
-use valence::protocol::VarInt;
 
-pub fn main() -> ShutdownResult {
+const SPAWN_Y: i32 = 64;
+const CHEST_POS: [i32; 3] = [0, SPAWN_Y + 1, 3];
+
+pub fn main() {
     tracing_subscriber::fmt().init();
 
-    valence::start_server(
-        Game {
-            player_count: AtomicUsize::new(0),
-        },
-        ServerState {
-            player_list: None,
-            chest: Default::default(),
-            tick: 0,
-        },
-    )
+    App::new()
+        .add_plugins(DefaultPlugins)
+        .add_startup_system(setup)
+        .add_system(init_clients)
+        .add_systems((toggle_gamemode_on_sneak, open_chest))
+        .add_system(despawn_disconnected_clients)
+        .run();
 }
 
-struct Game {
-    player_count: AtomicUsize,
-}
+fn setup(
+    mut commands: Commands,
+    server: Res<Server>,
+    dimensions: Query<&DimensionType>,
+    biomes: Query<&Biome>,
+) {
+    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
-struct ServerState {
-    player_list: Option<PlayerListId>,
-    chest: InventoryId,
-    tick: u32,
-}
-
-#[derive(Default)]
-struct ClientState {
-    entity_id: EntityId,
-    // open_inventory: Option<WindowInventory>,
-}
-
-const MAX_PLAYERS: usize = 10;
-
-const SIZE_X: usize = 100;
-const SIZE_Z: usize = 100;
-
-#[async_trait]
-impl Config for Game {
-    type ServerState = ServerState;
-    type ClientState = ClientState;
-    type EntityState = ();
-    type WorldState = ();
-    type ChunkState = ();
-    type PlayerListState = ();
-    type InventoryState = ();
-
-    fn dimensions(&self) -> Vec<Dimension> {
-        vec![Dimension {
-            fixed_time: Some(6000),
-            ..Dimension::default()
-        }]
-    }
-
-    async fn server_list_ping(
-        &self,
-        _server: &SharedServer<Self>,
-        _remote_addr: SocketAddr,
-        _protocol_version: i32,
-    ) -> ServerListPing {
-        ServerListPing::Respond {
-            online_players: self.player_count.load(Ordering::SeqCst) as i32,
-            max_players: MAX_PLAYERS as i32,
-            player_sample: Default::default(),
-            description: "Hello Valence!".color(Color::AQUA),
-            favicon_png: Some(include_bytes!("../assets/logo-64x64.png").as_slice().into()),
+    for z in -5..5 {
+        for x in -5..5 {
+            instance.insert_chunk([x, z], Chunk::default());
         }
     }
 
-    fn init(&self, server: &mut Server<Self>) {
-        let world = server.worlds.insert(DimensionId::default(), ()).1;
-        server.state.player_list = Some(server.player_lists.insert(()).0);
-
-        // initialize chunks
-        for chunk_z in -2..Integer::div_ceil(&(SIZE_Z as i32), &16) + 2 {
-            for chunk_x in -2..Integer::div_ceil(&(SIZE_X as i32), &16) + 2 {
-                world.chunks.insert(
-                    [chunk_x, chunk_z],
-                    UnloadedChunk::default(),
-                    (),
-                );
-            }
+    for z in -25..25 {
+        for x in -25..25 {
+            instance.set_block([x, SPAWN_Y, z], BlockState::GRASS_BLOCK);
         }
-
-        // initialize blocks in the chunks
-        for x in 0..SIZE_X {
-            for z in 0..SIZE_Z {
-                world
-                    .chunks
-                    .set_block_state((x as i32, 0, z as i32), BlockState::GRASS_BLOCK);
-            }
-        }
-
-        world.chunks.set_block_state((50, 0, 54), BlockState::STONE);
-        world.chunks.set_block_state((50, 1, 54), BlockState::CHEST);
-
-        // create chest inventory
-        let inv = ConfigurableInventory::new(27, VarInt(2), None);
-        let title = "Extra".italic()
-            + " Chesty".not_italic().bold().color(Color::RED)
-            + " Chest".not_italic();
-
-        let (id, _inv) = server.inventories.insert(inv, title, ());
-        server.state.chest = id;
     }
+    instance.set_block(CHEST_POS, BlockState::CHEST);
 
-    fn update(&self, server: &mut Server<Self>) {
-        server.state.tick += 1;
-        if server.state.tick > 10 {
-            server.state.tick = 0;
-        }
-        let (world_id, world) = server.worlds.iter_mut().next().unwrap();
+    commands.spawn(instance);
 
-        let spawn_pos = [SIZE_X as f64 / 2.0, 1.0, SIZE_Z as f64 / 2.0];
+    let inventory = Inventory::with_title(
+        InventoryKind::Generic9x3,
+        "Extra".italic() + " Chesty".not_italic().bold().color(Color::RED) + " Chest".not_italic(),
+    );
+    commands.spawn(inventory);
+}
 
-        if let Some(inv) = server.inventories.get_mut(server.state.chest) {
-            if server.state.tick == 0 {
-                rotate_items(inv);
-            }
-        }
-
-        server.clients.retain(|_, client| {
-            if client.created_this_tick() {
-                if self
-                    .player_count
-                    .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
-                        (count < MAX_PLAYERS).then_some(count + 1)
-                    })
-                    .is_err()
-                {
-                    client.disconnect("The server is full!".color(Color::RED));
-                    return false;
-                }
-
-                match server
-                    .entities
-                    .insert_with_uuid(EntityKind::Player, client.uuid(), ())
-                {
-                    Some((id, entity)) => {
-                        entity.set_world(world_id);
-                        client.state.entity_id = id
-                    }
-                    None => {
-                        client.disconnect("Conflicting UUID");
-                        return false;
-                    }
-                }
-
-                client.respawn(world_id);
-                client.set_flat(true);
-                client.teleport(spawn_pos, 0.0, 0.0);
-                client.set_player_list(server.state.player_list.clone());
-
-                if let Some(id) = &server.state.player_list {
-                    server.player_lists[id].insert(
-                        client.uuid(),
-                        client.username(),
-                        client.textures().cloned(),
-                        client.game_mode(),
-                        0,
-                        None,
-                    );
-                }
-
-                client.send_message("Welcome to Valence! Sneak to give yourself an item.".italic());
-            }
-
-            let player = server.entities.get_mut(client.state.entity_id).unwrap();
-
-            while let Some(event) = client.next_event() {
-                event.handle_default(client, player);
-                match event {
-                    ClientEvent::UseItemOnBlock { hand, position, .. } => {
-                        if hand == Hand::Main
-                            && world.chunks.block_state(position) == Some(BlockState::CHEST)
-                        {
-                            client.send_message("Opening chest!");
-                            client.open_inventory(server.state.chest);
-                        }
-                    }
-                    ClientEvent::CloseScreen { window_id } => {
-                        if window_id > 0 {
-                            client.send_message(format!("Window closed: {}", window_id));
-                            client.send_message(format!("Chest: {:?}", server.state.chest));
-                        }
-                    }
-                    ClientEvent::ClickContainer {
-                        window_id,
-                        state_id,
-                        slot_id,
-                        mode,
-                        slot_changes,
-                        carried_item,
-                        ..
-                    } => {
-                        println!(
-                            "window_id: {:?}, state_id: {:?}, slot_id: {:?}, mode: {:?}, \
-                             slot_changes: {:?}, carried_item: {:?}",
-                            window_id, state_id, slot_id, mode, slot_changes, carried_item
-                        );
-                        client.cursor_held_item = carried_item;
-                        if let Some(window) = client.open_inventory.as_mut() {
-                            if let Some(obj_inv) =
-                                server.inventories.get_mut(window.object_inventory)
-                            {
-                                for (slot_id, slot) in slot_changes {
-                                    if slot_id < obj_inv.slot_count() as SlotId {
-                                        obj_inv.set_slot(slot_id, slot);
-                                    } else {
-                                        let offset = obj_inv.slot_count() as SlotId;
-                                        client.inventory.set_slot(
-                                            slot_id - offset + PlayerInventory::GENERAL_SLOTS.start,
-                                            slot,
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    ClientEvent::StartSneaking => {
-                        let slot_id: SlotId = PlayerInventory::HOTBAR_SLOTS.start;
-                        let stack = match client.inventory.slot(slot_id) {
-                            None => ItemStack::new(ItemKind::Stone, 1, None),
-                            Some(s) => ItemStack::new(s.item, s.count() + 1, None),
-                        };
-                        client.inventory.set_slot(slot_id, Some(stack));
-                    }
-                    _ => {}
-                }
-            }
-
-            if client.is_disconnected() {
-                self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities.remove(client.state.entity_id);
-                if let Some(id) = &server.state.player_list {
-                    server.player_lists[id].remove(client.uuid());
-                }
-                return false;
-            }
-
-            if client.position().y <= -20.0 {
-                client.teleport(spawn_pos, client.yaw(), client.pitch());
-            }
-
-            true
-        });
+fn init_clients(
+    mut clients: Query<(&mut Location, &mut Position, &mut GameMode), Added<Client>>,
+    instances: Query<Entity, With<Instance>>,
+) {
+    for (mut loc, mut pos, mut game_mode) in &mut clients {
+        loc.0 = instances.single();
+        pos.set([0.5, SPAWN_Y as f64 + 1.0, 0.5]);
+        *game_mode = GameMode::Creative;
     }
 }
 
-fn rotate_items(inv: &mut ConfigurableInventory) {
-    for i in 1..inv.slot_count() {
-        let a = inv.slot((i - 1) as SlotId);
-        let b = inv.set_slot(i as SlotId, a.cloned());
-        inv.set_slot((i - 1) as SlotId, b);
+fn toggle_gamemode_on_sneak(mut clients: Query<&mut GameMode>, mut events: EventReader<Sneaking>) {
+    for event in events.iter() {
+        let Ok(mut mode) = clients.get_mut(event.client) else {
+            continue;
+        };
+
+        if event.state == SneakState::Start {
+            *mode = match *mode {
+                GameMode::Survival => GameMode::Creative,
+                GameMode::Creative => GameMode::Survival,
+                _ => GameMode::Creative,
+            };
+        }
     }
 }
-*/
+
+fn open_chest(
+    mut commands: Commands,
+    inventories: Query<Entity, (With<Inventory>, Without<Client>)>,
+    mut events: EventReader<InteractBlock>,
+) {
+    for event in events.iter() {
+        if event.position != CHEST_POS.into() {
+            continue;
+        }
+        let open_inventory = OpenInventory::new(inventories.single());
+        commands.entity(event.client).insert(open_inventory);
+    }
+}

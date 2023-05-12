@@ -1,207 +1,110 @@
-use std::net::SocketAddr;
-use std::sync::atomic::{AtomicUsize, Ordering};
+#![allow(clippy::type_complexity)]
 
+use valence::client::misc::{ResourcePackStatus, ResourcePackStatusChange};
+use valence::entity::player::PlayerEntityBundle;
+use valence::entity::sheep::SheepEntityBundle;
+use valence::packet::c2s::play::player_interact_entity::EntityInteraction;
 use valence::prelude::*;
-use valence_protocol::types::EntityInteraction;
 
-pub fn main() -> ShutdownResult {
+const SPAWN_Y: i32 = 64;
+
+pub fn main() {
     tracing_subscriber::fmt().init();
 
-    valence::start_server(
-        Game {
-            player_count: AtomicUsize::new(0),
-        },
-        ServerState {
-            player_list: None,
-            sheep_id: EntityId::NULL,
-        },
-    )
+    App::new()
+        .add_plugins(DefaultPlugins)
+        .add_startup_system(setup)
+        .add_systems((init_clients, prompt_on_punch, on_resource_pack_status))
+        .add_system(despawn_disconnected_clients)
+        .run();
 }
 
-struct Game {
-    player_count: AtomicUsize,
-}
+fn setup(
+    mut commands: Commands,
+    server: Res<Server>,
+    dimensions: Query<&DimensionType>,
+    biomes: Query<&Biome>,
+) {
+    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
-struct ServerState {
-    player_list: Option<PlayerListId>,
-    sheep_id: EntityId,
-}
-
-#[derive(Default)]
-struct ClientState {
-    entity_id: EntityId,
-}
-
-const MAX_PLAYERS: usize = 10;
-
-const SPAWN_POS: BlockPos = BlockPos::new(0, 100, 0);
-
-#[async_trait]
-impl Config for Game {
-    type ServerState = ServerState;
-    type ClientState = ClientState;
-    type EntityState = ();
-    type WorldState = ();
-    type ChunkState = ();
-    type PlayerListState = ();
-    type InventoryState = ();
-
-    async fn server_list_ping(
-        &self,
-        _server: &SharedServer<Self>,
-        _remote_addr: SocketAddr,
-        _protocol_version: i32,
-    ) -> ServerListPing {
-        ServerListPing::Respond {
-            online_players: self.player_count.load(Ordering::SeqCst) as i32,
-            max_players: MAX_PLAYERS as i32,
-            player_sample: Default::default(),
-            description: "Hello Valence!".color(Color::AQUA),
-            favicon_png: Some(
-                include_bytes!("../../../assets/logo-64x64.png")
-                    .as_slice()
-                    .into(),
-            ),
+    for z in -5..5 {
+        for x in -5..5 {
+            instance.insert_chunk([x, z], Chunk::default());
         }
     }
 
-    fn init(&self, server: &mut Server<Self>) {
-        let (world_id, world) = server.worlds.insert(DimensionId::default(), ());
-        server.state.player_list = Some(server.player_lists.insert(()).0);
-
-        let size = 5;
-        for z in -size..size {
-            for x in -size..size {
-                world.chunks.insert([x, z], UnloadedChunk::default(), ());
-            }
+    for z in -25..25 {
+        for x in -25..25 {
+            instance.set_block([x, SPAWN_Y, z], BlockState::BEDROCK);
         }
-
-        let (sheep_id, sheep) = server.entities.insert(EntityKind::Sheep, ());
-        server.state.sheep_id = sheep_id;
-        sheep.set_world(world_id);
-        sheep.set_position([
-            SPAWN_POS.x as f64 + 0.5,
-            SPAWN_POS.y as f64 + 4.0,
-            SPAWN_POS.z as f64 + 0.5,
-        ]);
-
-        if let TrackedData::Sheep(sheep_data) = sheep.data_mut() {
-            sheep_data.set_custom_name("Hit me".color(Color::GREEN));
-        }
-
-        world.chunks.set_block_state(SPAWN_POS, BlockState::BEDROCK);
     }
 
-    fn update(&self, server: &mut Server<Self>) {
-        let (world_id, _) = server.worlds.iter_mut().next().expect("missing world");
+    let instance_ent = commands.spawn(instance).id();
 
-        server.clients.retain(|_, client| {
-            if client.created_this_tick() {
-                if self
-                    .player_count
-                    .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
-                        (count < MAX_PLAYERS).then_some(count + 1)
-                    })
-                    .is_err()
-                {
-                    client.disconnect("The server is full!".color(Color::RED));
-                    return false;
-                }
+    commands.spawn(SheepEntityBundle {
+        location: Location(instance_ent),
+        position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 2.0]),
+        look: Look::new(180.0, 0.0),
+        head_yaw: HeadYaw(180.0),
+        ..Default::default()
+    });
+}
 
-                match server
-                    .entities
-                    .insert_with_uuid(EntityKind::Player, client.uuid(), ())
-                {
-                    Some((id, _)) => client.entity_id = id,
-                    None => {
-                        client.disconnect("Conflicting UUID");
-                        return false;
-                    }
-                }
+fn init_clients(
+    mut clients: Query<(Entity, &UniqueId, &mut Client, &mut GameMode), Added<Client>>,
+    instances: Query<Entity, With<Instance>>,
+    mut commands: Commands,
+) {
+    for (entity, uuid, mut client, mut game_mode) in &mut clients {
+        *game_mode = GameMode::Creative;
 
-                client.respawn(world_id);
-                client.set_flat(true);
-                client.set_game_mode(GameMode::Creative);
-                client.teleport(
-                    [
-                        SPAWN_POS.x as f64 + 0.5,
-                        SPAWN_POS.y as f64 + 1.0,
-                        SPAWN_POS.z as f64 + 0.5,
-                    ],
-                    0.0,
-                    0.0,
-                );
-                client.set_player_list(server.state.player_list.clone());
+        client.send_message("Hit the sheep to prompt for the resource pack.".italic());
 
-                if let Some(id) = &server.state.player_list {
-                    server.player_lists[id].insert(
-                        client.uuid(),
-                        client.username(),
-                        client.textures().cloned(),
-                        client.game_mode(),
-                        0,
-                        None,
-                        true,
-                    );
-                }
-
-                client.send_message(
-                    "Hit the sheep above you to prompt for the resource pack again.".italic(),
-                );
-
-                set_example_pack(client);
-            }
-
-            let player = &mut server.entities[client.entity_id];
-
-            if client.is_disconnected() {
-                self.player_count.fetch_sub(1, Ordering::SeqCst);
-                if let Some(id) = &server.state.player_list {
-                    server.player_lists[id].remove(client.uuid());
-                }
-                player.set_deleted(true);
-
-                return false;
-            }
-
-            while let Some(event) = client.next_event() {
-                event.handle_default(client, player);
-                match event {
-                    ClientEvent::InteractWithEntity {
-                        entity_id,
-                        interact,
-                        ..
-                    } => {
-                        if interact == EntityInteraction::Attack
-                            && entity_id == server.state.sheep_id.to_raw()
-                        {
-                            set_example_pack(client);
-                        }
-                    }
-                    ClientEvent::ResourcePackLoaded => {
-                        client.send_message("Resource pack loaded!".color(Color::GREEN));
-                    }
-                    ClientEvent::ResourcePackDeclined => {
-                        client.send_message("Resource pack declined.".color(Color::RED));
-                    }
-                    ClientEvent::ResourcePackFailedDownload => {
-                        client.send_message("Resource pack download failed.".color(Color::RED));
-                    }
-                    _ => {}
-                }
-            }
-
-            true
+        commands.entity(entity).insert(PlayerEntityBundle {
+            location: Location(instances.single()),
+            position: Position::new([0.0, SPAWN_Y as f64 + 1.0, 0.0]),
+            uuid: *uuid,
+            ..Default::default()
         });
     }
 }
 
-/// Sends the resource pack prompt.
-fn set_example_pack(client: &mut Client<Game>) {
-    client.set_resource_pack(
-        "https://github.com/valence-rs/valence/raw/main/assets/example_pack.zip",
-        "d7c6108849fb190ec2a49f2d38b7f1f897d9ce9f",
-        false,
-        None,
-    );
+fn prompt_on_punch(mut clients: Query<&mut Client>, mut events: EventReader<InteractEntity>) {
+    for event in events.iter() {
+        if let Ok(mut client) = clients.get_mut(event.client) {
+            if event.interact == EntityInteraction::Attack {
+                client.set_resource_pack(
+                    "https://github.com/valence-rs/valence/raw/main/assets/example_pack.zip",
+                    "d7c6108849fb190ec2a49f2d38b7f1f897d9ce9f",
+                    false,
+                    None,
+                );
+            }
+        };
+    }
+}
+
+fn on_resource_pack_status(
+    mut clients: Query<&mut Client>,
+    mut events: EventReader<ResourcePackStatusChange>,
+) {
+    for event in events.iter() {
+        if let Ok(mut client) = clients.get_mut(event.client) {
+            match event.status {
+                ResourcePackStatus::Accepted => {
+                    client.send_message("Resource pack accepted.".color(Color::GREEN));
+                }
+                ResourcePackStatus::Declined => {
+                    client.send_message("Resource pack declined.".color(Color::RED));
+                }
+                ResourcePackStatus::FailedDownload => {
+                    client.send_message("Resource pack failed to download.".color(Color::RED));
+                }
+                ResourcePackStatus::Loaded => {
+                    client
+                        .send_message("Resource pack successfully downloaded.".color(Color::BLUE));
+                }
+            }
+        };
+    }
 }

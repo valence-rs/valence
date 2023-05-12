@@ -1,222 +1,112 @@
-use std::borrow::Cow;
-use std::f64::consts::TAU;
-use std::net::SocketAddr;
-use std::sync::atomic::{AtomicUsize, Ordering};
+#![allow(clippy::type_complexity)]
 
+use std::f64::consts::TAU;
+
+use glam::{DQuat, EulerRot};
 use valence::prelude::*;
 
-pub fn main() -> ShutdownResult {
+type SpherePartBundle = valence::entity::cow::CowEntityBundle;
+
+const SPHERE_CENTER: DVec3 = DVec3::new(0.5, SPAWN_POS.y as f64 + 2.0, 0.5);
+const SPHERE_AMOUNT: usize = 200;
+const SPHERE_MIN_RADIUS: f64 = 6.0;
+const SPHERE_MAX_RADIUS: f64 = 12.0;
+const SPHERE_FREQ: f64 = 0.5;
+
+const SPAWN_POS: BlockPos = BlockPos::new(0, 100, -16);
+
+/// Marker component for entities that are part of the sphere.
+#[derive(Component)]
+struct SpherePart;
+
+fn main() {
     tracing_subscriber::fmt().init();
 
-    valence::start_server(
-        Game {
-            player_count: AtomicUsize::new(0),
-        },
-        ServerState {
-            player_list: None,
-            cows: vec![],
-        },
-    )
+    App::new()
+        .add_plugins(DefaultPlugins)
+        .add_startup_system(setup)
+        .add_system(init_clients)
+        .add_system(update_sphere)
+        .add_system(despawn_disconnected_clients)
+        .run();
 }
 
-struct Game {
-    player_count: AtomicUsize,
-}
+fn setup(
+    mut commands: Commands,
+    server: Res<Server>,
+    dimensions: Query<&DimensionType>,
+    biomes: Query<&Biome>,
+) {
+    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
-struct ServerState {
-    player_list: Option<PlayerListId>,
-    cows: Vec<EntityId>,
-}
-
-#[derive(Default)]
-struct ClientState {
-    entity_id: EntityId,
-}
-
-const MAX_PLAYERS: usize = 10;
-
-const SPAWN_POS: BlockPos = BlockPos::new(0, 100, -25);
-
-#[async_trait]
-impl Config for Game {
-    type ServerState = ServerState;
-    type ClientState = ClientState;
-    type EntityState = ();
-    type WorldState = ();
-    type ChunkState = ();
-    type PlayerListState = ();
-    type InventoryState = ();
-
-    async fn server_list_ping(
-        &self,
-        _server: &SharedServer<Self>,
-        _remote_addr: SocketAddr,
-        _protocol_version: i32,
-    ) -> ServerListPing {
-        const SAMPLE: &[PlayerSampleEntry] = &[
-            PlayerSampleEntry {
-                name: Cow::Borrowed("§cFirst Entry"),
-                id: Uuid::nil(),
-            },
-            PlayerSampleEntry {
-                name: Cow::Borrowed("§6§oSecond Entry"),
-                id: Uuid::nil(),
-            },
-        ];
-
-        ServerListPing::Respond {
-            online_players: self.player_count.load(Ordering::SeqCst) as i32,
-            max_players: MAX_PLAYERS as i32,
-            player_sample: SAMPLE.into(),
-            description: "Hello Valence!".color(Color::AQUA),
-            favicon_png: Some(
-                include_bytes!("../../../assets/logo-64x64.png")
-                    .as_slice()
-                    .into(),
-            ),
+    for z in -5..5 {
+        for x in -5..5 {
+            instance.insert_chunk([x, z], Chunk::default());
         }
     }
 
-    fn init(&self, server: &mut Server<Self>) {
-        let (world_id, world) = server.worlds.insert(DimensionId::default(), ());
-        server.state.player_list = Some(server.player_lists.insert(()).0);
+    instance.set_block(SPAWN_POS, BlockState::BEDROCK);
 
-        let size = 5;
-        for z in -size..size {
-            for x in -size..size {
-                world.chunks.insert([x, z], UnloadedChunk::default(), ());
-            }
-        }
+    let instance_id = commands.spawn(instance).id();
 
-        world.chunks.set_block_state(SPAWN_POS, BlockState::BEDROCK);
+    commands.spawn_batch([0; SPHERE_AMOUNT].map(|_| {
+        (
+            SpherePartBundle {
+                location: Location(instance_id),
+                ..Default::default()
+            },
+            SpherePart,
+        )
+    }));
+}
 
-        server.state.cows.extend((0..200).map(|_| {
-            let (id, e) = server.entities.insert(EntityKind::Cow, ());
-            e.set_world(world_id);
-            id
-        }));
+fn init_clients(
+    mut clients: Query<(&mut Location, &mut Position, &mut GameMode), Added<Client>>,
+    instances: Query<Entity, With<Instance>>,
+) {
+    for (mut loc, mut pos, mut game_mode) in &mut clients {
+        loc.0 = instances.single();
+        pos.set([
+            SPAWN_POS.x as f64 + 0.5,
+            SPAWN_POS.y as f64 + 1.0,
+            SPAWN_POS.z as f64 + 0.5,
+        ]);
+
+        *game_mode = GameMode::Creative;
     }
+}
 
-    fn update(&self, server: &mut Server<Self>) {
-        let current_tick = server.current_tick();
-        let (world_id, _) = server.worlds.iter_mut().next().expect("missing world");
+fn update_sphere(
+    settings: Res<CoreSettings>,
+    server: Res<Server>,
+    mut parts: Query<(&mut Position, &mut Look, &mut HeadYaw), With<SpherePart>>,
+) {
+    let time = server.current_tick() as f64 / settings.tick_rate.get() as f64;
 
-        server.clients.retain(|_, client| {
-            if client.created_this_tick() {
-                if self
-                    .player_count
-                    .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
-                        (count < MAX_PLAYERS).then_some(count + 1)
-                    })
-                    .is_err()
-                {
-                    client.disconnect("The server is full!".color(Color::RED));
-                    return false;
-                }
+    let rot_angles = DVec3::new(0.2, 0.4, 0.6) * SPHERE_FREQ * time * TAU % TAU;
+    let rot = DQuat::from_euler(EulerRot::XYZ, rot_angles.x, rot_angles.y, rot_angles.z);
 
-                match server
-                    .entities
-                    .insert_with_uuid(EntityKind::Player, client.uuid(), ())
-                {
-                    Some((id, entity)) => {
-                        entity.set_world(world_id);
-                        client.entity_id = id
-                    }
-                    None => {
-                        client.disconnect("Conflicting UUID");
-                        return false;
-                    }
-                }
+    let radius = lerp(
+        SPHERE_MIN_RADIUS,
+        SPHERE_MAX_RADIUS,
+        ((time * SPHERE_FREQ * TAU).sin() + 1.0) / 2.0,
+    );
 
-                client.respawn(world_id);
-                client.set_flat(true);
-                client.set_game_mode(GameMode::Creative);
-                client.teleport(
-                    [
-                        SPAWN_POS.x as f64 + 0.5,
-                        SPAWN_POS.y as f64 + 1.0,
-                        SPAWN_POS.z as f64 + 0.5,
-                    ],
-                    0.0,
-                    0.0,
-                );
-                client.set_player_list(server.state.player_list.clone());
+    for ((mut pos, mut look, mut head_yaw), p) in
+        parts.iter_mut().zip(fibonacci_spiral(SPHERE_AMOUNT))
+    {
+        debug_assert!(p.is_normalized());
 
-                if let Some(id) = &server.state.player_list {
-                    server.player_lists[id].insert(
-                        client.uuid(),
-                        client.username(),
-                        client.textures().cloned(),
-                        client.game_mode(),
-                        0,
-                        None,
-                        true,
-                    );
-                }
-            }
+        let dir = rot * p;
 
-            let entity = &mut server.entities[client.entity_id];
-
-            if client.is_disconnected() {
-                self.player_count.fetch_sub(1, Ordering::SeqCst);
-                if let Some(id) = &server.state.player_list {
-                    server.player_lists[id].remove(client.uuid());
-                }
-                entity.set_deleted(true);
-
-                return false;
-            }
-
-            while let Some(event) = client.next_event() {
-                event.handle_default(client, entity);
-            }
-
-            true
-        });
-
-        let time = current_tick as f64 / server.shared.tick_rate() as f64;
-
-        let rot = Mat3::rotation_x(time * TAU * 0.1)
-            .rotated_y(time * TAU * 0.2)
-            .rotated_z(time * TAU * 0.3);
-
-        let radius = 6.0 + ((time * TAU / 2.5).sin() + 1.0) / 2.0 * 10.0;
-
-        let player_pos = server
-            .clients
-            .iter()
-            .next()
-            .map(|c| c.1.position())
-            .unwrap_or_default();
-
-        // TODO: remove hardcoded eye pos.
-        let eye_pos = Vec3::new(player_pos.x, player_pos.y + 1.6, player_pos.z);
-
-        for (cow_id, p) in server
-            .state
-            .cows
-            .iter()
-            .cloned()
-            .zip(fibonacci_spiral(server.state.cows.len()))
-        {
-            let cow = server.entities.get_mut(cow_id).expect("missing cow");
-            let rotated = p * rot;
-            let transformed = rotated * radius + [0.5, SPAWN_POS.y as f64 + 2.0, 0.5];
-
-            let yaw = f32::atan2(rotated.z as f32, rotated.x as f32).to_degrees() - 90.0;
-            let (looking_yaw, looking_pitch) =
-                to_yaw_and_pitch((eye_pos - transformed).normalized());
-
-            cow.set_position(transformed);
-            cow.set_yaw(yaw);
-            cow.set_pitch(looking_pitch as f32);
-            cow.set_head_yaw(looking_yaw as f32);
-        }
+        pos.0 = SPHERE_CENTER + dir * radius;
+        look.set_vec(dir.as_vec3());
+        head_yaw.0 = look.yaw;
     }
 }
 
 /// Distributes N points on the surface of a unit sphere.
-fn fibonacci_spiral(n: usize) -> impl Iterator<Item = Vec3<f64>> {
+fn fibonacci_spiral(n: usize) -> impl Iterator<Item = DVec3> {
     let golden_ratio = (1.0 + 5_f64.sqrt()) / 2.0;
 
     (0..n).map(move |i| {
@@ -227,6 +117,10 @@ fn fibonacci_spiral(n: usize) -> impl Iterator<Item = Vec3<f64>> {
         // Map from unit square to unit sphere.
         let theta = x * TAU;
         let phi = (1.0 - 2.0 * y).acos();
-        Vec3::new(theta.cos() * phi.sin(), theta.sin() * phi.sin(), phi.cos())
+        DVec3::new(theta.cos() * phi.sin(), theta.sin() * phi.sin(), phi.cos())
     })
+}
+
+fn lerp(a: f64, b: f64, t: f64) -> f64 {
+    a * (1.0 - t) + b * t
 }

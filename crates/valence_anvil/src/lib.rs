@@ -1,3 +1,22 @@
+#![doc = include_str!("../README.md")]
+#![deny(
+    rustdoc::broken_intra_doc_links,
+    rustdoc::private_intra_doc_links,
+    rustdoc::missing_crate_level_docs,
+    rustdoc::invalid_codeblock_attributes,
+    rustdoc::invalid_rust_codeblocks,
+    rustdoc::bare_urls,
+    rustdoc::invalid_html_tags
+)]
+#![warn(
+    trivial_casts,
+    trivial_numeric_casts,
+    unused_lifetimes,
+    unused_import_braces,
+    unreachable_pub,
+    clippy::dbg_macro
+)]
+
 use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 use std::fs::File;
@@ -8,17 +27,16 @@ use std::path::PathBuf;
 use byteorder::{BigEndian, ReadBytesExt};
 use flate2::bufread::{GzDecoder, ZlibDecoder};
 use thiserror::Error;
-#[cfg(feature = "valence")]
 pub use to_valence::*;
 use valence_nbt::Compound;
 
-#[cfg(feature = "valence")]
 mod to_valence;
 
 #[derive(Debug)]
 pub struct AnvilWorld {
     /// Path to the "region" subdirectory in the world root.
     region_root: PathBuf,
+    // TODO: LRU cache for region file handles.
     /// Maps region (x, z) positions to region files.
     regions: BTreeMap<(i32, i32), Region>,
 }
@@ -82,6 +100,8 @@ impl AnvilWorld {
         let region = match self.regions.entry((region_x, region_z)) {
             Entry::Vacant(ve) => {
                 // Load the region file if it exists. Otherwise, the chunk is considered absent.
+
+                // TODO: Add tombstone for missing region file in `regions`.
 
                 let path = self
                     .region_root

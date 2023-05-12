@@ -1,67 +1,63 @@
 [package]
 name = "valence"
-version = "0.2.0+mc1.19.3"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "A framework for building Minecraft servers in Rust."
-repository = "https://github.com/rj00a/valence"
+documentation.workspace = true
+repository.workspace = true
 readme = "README.md"
-license = "MIT"
-keywords = ["minecraft", "gamedev", "server"]
+license.workspace = true
+keywords = ["minecraft", "gamedev", "server", "ecs"]
 categories = ["game-engines"]
-build = "build/main.rs"
-authors = ["Ryan Johnson <ryanj00a@gmail.com>"]
+
+[features]
+default = ["network", "player_list", "inventory", "anvil", "advancement"]
+network = ["dep:valence_network"]
+player_list = ["dep:valence_player_list"]
+inventory = ["dep:valence_inventory"]
+anvil = ["dep:valence_anvil"]
+advancement = ["dep:valence_advancement"]
 
 [dependencies]
-anyhow = "1.0.65"
-arrayvec = "0.7.2"
-async-trait = "0.1.57"
-base64 = "0.13.0"
-bitfield-struct = "0.1.8"
-bytes = "1.2.1"
-flume = "0.10.14"
-futures = "0.3.24"
-hmac = "0.12.1"
-num = "0.4.0"
-paste = "1.0.9"
-rand = "0.8.5"
-rayon = "1.5.3"
-rsa = "0.6.1"
-rsa-der = "0.3.0"
-rustc-hash = "1.1.0"
-serde = { version = "1.0.145", features = ["derive"] }
-serde_json = "1.0.85"
-sha1 = "0.10.5"
-sha2 = "0.10.6"
-thiserror = "1.0.35"
-tracing = "0.1.37"
-url = { version = "2.2.2", features = ["serde"] }
-uuid = { version = "1.1.2", features = ["serde"] }
-valence_nbt = { version = "0.5.0", path = "../valence_nbt" }
-valence_protocol = { version = "0.1.0", path = "../valence_protocol", features = ["encryption", "compression"] }
-vek = "0.15.8"
-
-[dependencies.tokio]
-version = "1.21.2"
-features = ["macros", "rt-multi-thread", "net", "io-util", "sync", "time"]
-
-[dependencies.reqwest]
-version = "0.11.12"
-default-features = false
-# Avoid OpenSSL dependency on Linux.
-features = ["rustls-tls", "json"]
+bevy_app.workspace = true
+bevy_ecs.workspace = true
+glam.workspace = true
+uuid.workspace = true
+valence_nbt.workspace = true
+valence_core.workspace = true
+valence_registry.workspace = true
+valence_block.workspace = true
+valence_biome.workspace = true
+valence_dimension.workspace = true
+valence_entity.workspace = true
+valence_instance.workspace = true
+valence_client.workspace = true
+valence_network = { workspace = true, optional = true }
+valence_player_list = { workspace = true, optional = true }
+valence_inventory = { workspace = true, optional = true }
+valence_anvil = { workspace = true, optional = true }
+valence_advancement = { workspace = true, optional = true }
 
 [dev-dependencies]
-approx = "0.5.1"
-tracing-subscriber = "0.3.16"
-noise = "0.8.2"
-valence_spatial_index = { path = "../valence_spatial_index", version = "0.1.0" }
+anyhow.workspace = true
+bytes.workspace = true
+noise.workspace = true
+tracing-subscriber.workspace = true
+rand.workspace = true
+tracing.workspace = true
+flume.workspace = true
+clap.workspace = true
+criterion.workspace = true
+fs_extra.workspace = true
+tempfile.workspace = true
+zip.workspace = true
 
-[build-dependencies]
-anyhow = "1.0.65"
-heck = "0.4.0"
-proc-macro2 = "1.0.43"
-quote = "1.0.21"
-serde = { version = "1.0.145", features = ["derive"] }
-serde_json = "1.0.85"
-rayon = "1.5.3"
-num = "0.4.0"
+[dev-dependencies.reqwest]
+workspace = true
+default-features = false
+# Avoid OpenSSL dependency on Linux.
+features = ["rustls-tls", "blocking", "stream"]
+
+[[bench]]
+name = "main"
+harness = false

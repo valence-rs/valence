@@ -1,0 +1,12 @@
+[package]
+name = "valence_player_list"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+bevy_app.workspace = true
+bevy_ecs.workspace = true
+valence_core.workspace = true
+valence_client.workspace = true
+valence_instance.workspace = true
+uuid.workspace = true

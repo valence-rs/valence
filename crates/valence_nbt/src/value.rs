@@ -1,5 +1,8 @@
 use std::borrow::Cow;
 
+#[cfg(feature = "uuid")]
+use uuid::Uuid;
+
 use crate::tag::Tag;
 use crate::Compound;
 
@@ -95,8 +98,6 @@ impl List {
     }
 }
 
-/// We can not create new identities in stable Rust using macros, so we provide
-/// them in the macro invocation itself.
 macro_rules! nbt_conversion {
     ( $($nbt_type:ident = $value_type:ty => $is_function:ident $as_function:ident $as_mut_function:ident $into_function:ident)+ ) => {
         $(
@@ -218,6 +219,12 @@ impl From<String> for Value {
     }
 }
 
+impl From<&String> for Value {
+    fn from(value: &String) -> Self {
+        Self::String(value.clone())
+    }
+}
+
 impl<'a> From<&'a str> for Value {
     fn from(v: &'a str) -> Self {
         Self::String(v.to_owned())
@@ -251,6 +258,20 @@ impl From<Vec<i32>> for Value {
 impl From<Vec<i64>> for Value {
     fn from(v: Vec<i64>) -> Self {
         Self::LongArray(v)
+    }
+}
+
+#[cfg(feature = "uuid")]
+impl From<Uuid> for Value {
+    fn from(value: Uuid) -> Self {
+        let (most, least) = value.as_u64_pair();
+
+        let first = (most >> 32) as i32;
+        let second = most as i32;
+        let third = (least >> 32) as i32;
+        let fourth = least as i32;
+
+        Value::IntArray(vec![first, second, third, fourth])
     }
 }
 

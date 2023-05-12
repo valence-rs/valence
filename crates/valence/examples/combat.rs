@@ -1,252 +1,159 @@
-use std::net::SocketAddr;
-use std::sync::atomic::{AtomicUsize, Ordering};
+#![allow(clippy::type_complexity)]
 
+use bevy_ecs::query::WorldQuery;
+use glam::Vec3Swizzles;
+use valence::entity::EntityStatuses;
 use valence::prelude::*;
 
-pub fn main() -> ShutdownResult {
+const SPAWN_Y: i32 = 64;
+const ARENA_RADIUS: i32 = 32;
+
+/// Attached to every client.
+#[derive(Component)]
+struct CombatState {
+    /// The tick the client was last attacked.
+    last_attacked_tick: i64,
+    has_bonus_knockback: bool,
+}
+
+pub fn main() {
     tracing_subscriber::fmt().init();
 
-    valence::start_server(
-        Game {
-            player_count: AtomicUsize::new(0),
-        },
-        None,
-    )
+    App::new()
+        .add_plugins(DefaultPlugins)
+        .add_startup_system(setup)
+        .add_system(init_clients)
+        .add_system(handle_combat_events.in_schedule(EventLoopSchedule))
+        .add_system(despawn_disconnected_clients)
+        .add_system(teleport_oob_clients)
+        .run();
 }
 
-struct Game {
-    player_count: AtomicUsize,
-}
+fn setup(
+    mut commands: Commands,
+    server: Res<Server>,
+    dimensions: Query<&DimensionType>,
+    biomes: Query<&Biome>,
+) {
+    let mut instance = Instance::new(ident!("overworld"), &dimensions, &biomes, &server);
 
-#[derive(Default)]
-struct ClientState {
-    /// The client's player entity.
-    player: EntityId,
-    /// The extra knockback on the first hit while sprinting.
-    extra_knockback: bool,
-}
-
-#[derive(Default)]
-struct EntityState {
-    client: ClientId,
-    attacked: bool,
-    attacker_pos: Vec3<f64>,
-    extra_knockback: bool,
-    last_attack_time: Ticks,
-}
-
-const MAX_PLAYERS: usize = 10;
-
-const SPAWN_POS: BlockPos = BlockPos::new(0, 20, 0);
-
-#[async_trait]
-impl Config for Game {
-    type ServerState = Option<PlayerListId>;
-    type ClientState = ClientState;
-    type EntityState = EntityState;
-    type WorldState = ();
-    type ChunkState = ();
-    type PlayerListState = ();
-    type InventoryState = ();
-
-    async fn server_list_ping(
-        &self,
-        _server: &SharedServer<Self>,
-        _remote_addr: SocketAddr,
-        _protocol_version: i32,
-    ) -> ServerListPing {
-        ServerListPing::Respond {
-            online_players: self.player_count.load(Ordering::SeqCst) as i32,
-            max_players: MAX_PLAYERS as i32,
-            player_sample: Default::default(),
-            description: "Hello Valence!".color(Color::AQUA),
-            favicon_png: Some(
-                include_bytes!("../../../assets/logo-64x64.png")
-                    .as_slice()
-                    .into(),
-            ),
+    for z in -5..5 {
+        for x in -5..5 {
+            instance.insert_chunk([x, z], Chunk::default());
         }
     }
 
-    fn init(&self, server: &mut Server<Self>) {
-        let (_, world) = server.worlds.insert(DimensionId::default(), ());
-        server.state = Some(server.player_lists.insert(()).0);
+    // Create circular arena.
+    for z in -ARENA_RADIUS..ARENA_RADIUS {
+        for x in -ARENA_RADIUS..ARENA_RADIUS {
+            let dist = f64::hypot(x as _, z as _) / ARENA_RADIUS as f64;
 
-        let min_y = world.chunks.min_y();
-        let height = world.chunks.height();
+            if dist > 1.0 {
+                continue;
+            }
 
-        // Create circular arena.
-        let size = 2;
-        for chunk_z in -size - 2..size + 2 {
-            for chunk_x in -size - 2..size + 2 {
-                let mut chunk = UnloadedChunk::new(height);
+            let block = if rand::random::<f64>() < dist {
+                BlockState::STONE
+            } else {
+                BlockState::DEEPSLATE
+            };
 
-                let r = -size..size;
-                if r.contains(&chunk_x) && r.contains(&chunk_z) {
-                    for z in 0..16 {
-                        for x in 0..16 {
-                            let block_x = chunk_x * 16 + x as i32;
-                            let block_z = chunk_z * 16 + z as i32;
-                            if f64::hypot(block_x as f64, block_z as f64) <= size as f64 * 16.0 {
-                                for y in 0..(SPAWN_POS.y - min_y + 1) as usize {
-                                    chunk.set_block_state(x, y, z, BlockState::STONE);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                world.chunks.insert([chunk_x, chunk_z], chunk, ());
+            for y in 0..SPAWN_Y {
+                instance.set_block([x, y, z], block);
             }
         }
-
-        world.chunks.set_block_state(SPAWN_POS, BlockState::BEDROCK);
     }
 
-    fn update(&self, server: &mut Server<Self>) {
-        let current_tick = server.current_tick();
-        let (world_id, _) = server.worlds.iter_mut().next().unwrap();
+    commands.spawn(instance);
+}
 
-        server.clients.retain(|client_id, client| {
-            if client.created_this_tick() {
-                if self
-                    .player_count
-                    .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |count| {
-                        (count < MAX_PLAYERS).then_some(count + 1)
-                    })
-                    .is_err()
-                {
-                    client.disconnect("The server is full!".color(Color::RED));
-                    return false;
-                }
+fn init_clients(
+    mut clients: Query<(Entity, &mut Location, &mut Position), Added<Client>>,
+    instances: Query<Entity, With<Instance>>,
+    mut commands: Commands,
+) {
+    for (entity, mut loc, mut pos) in &mut clients {
+        loc.0 = instances.single();
+        pos.set([0.5, SPAWN_Y as f64, 0.5]);
 
-                let (player_id, player) = match server.entities.insert_with_uuid(
-                    EntityKind::Player,
-                    client.uuid(),
-                    EntityState::default(),
-                ) {
-                    Some(e) => e,
-                    None => {
-                        client.disconnect("Conflicting UUID");
-                        return false;
-                    }
-                };
+        commands.entity(entity).insert((CombatState {
+            last_attacked_tick: 0,
+            has_bonus_knockback: false,
+        },));
+    }
+}
 
-                player.set_world(world_id);
-                player.client = client_id;
+#[derive(WorldQuery)]
+#[world_query(mutable)]
+struct CombatQuery {
+    client: &'static mut Client,
+    pos: &'static Position,
+    state: &'static mut CombatState,
+    statuses: &'static mut EntityStatuses,
+}
 
-                client.player = player_id;
+fn handle_combat_events(
+    server: Res<Server>,
+    mut clients: Query<CombatQuery>,
+    mut sprinting: EventReader<Sprinting>,
+    mut interact_entity: EventReader<InteractEntity>,
+) {
+    for &Sprinting { client, state } in sprinting.iter() {
+        if let Ok(mut client) = clients.get_mut(client) {
+            client.state.has_bonus_knockback = state == SprintState::Start;
+        }
+    }
 
-                client.respawn(world_id);
-                client.set_flat(true);
-                client.set_game_mode(GameMode::Survival);
-                client.teleport(
-                    [
-                        SPAWN_POS.x as f64 + 0.5,
-                        SPAWN_POS.y as f64 + 1.0,
-                        SPAWN_POS.z as f64 + 0.5,
-                    ],
-                    0.0,
-                    0.0,
-                );
-                client.set_player_list(server.state.clone());
+    for &InteractEntity {
+        client: attacker_client,
+        entity: victim_client,
+        ..
+    } in interact_entity.iter()
+    {
+        let Ok([mut attacker, mut victim]) = clients.get_many_mut([attacker_client, victim_client]) else {
+            // Victim or attacker does not exist, or the attacker is attacking itself.
+            continue
+        };
 
-                if let Some(id) = &server.state {
-                    server.player_lists[id].insert(
-                        client.uuid(),
-                        client.username(),
-                        client.textures().cloned(),
-                        client.game_mode(),
-                        0,
-                        None,
-                        true,
-                    );
-                }
+        if server.current_tick() - victim.state.last_attacked_tick < 10 {
+            // Victim is still on attack cooldown.
+            continue;
+        }
 
-                client.send_message("Welcome to the arena.".italic());
-                if self.player_count.load(Ordering::SeqCst) <= 1 {
-                    client.send_message("Have another player join the game with you.".italic());
-                }
-            }
+        victim.state.last_attacked_tick = server.current_tick();
 
-            while let Some(event) = client.next_event() {
-                let player = server
-                    .entities
-                    .get_mut(client.player)
-                    .expect("missing player entity");
+        let victim_pos = victim.pos.0.xz();
+        let attacker_pos = attacker.pos.0.xz();
 
-                event.handle_default(client, player);
-                match event {
-                    ClientEvent::StartSprinting => {
-                        client.extra_knockback = true;
-                    }
-                    ClientEvent::StopSprinting => {
-                        client.extra_knockback = false;
-                    }
-                    ClientEvent::InteractWithEntity { entity_id, .. } => {
-                        if let Some((id, target)) = server.entities.get_with_raw_id_mut(entity_id) {
-                            if !target.attacked
-                                && current_tick - target.last_attack_time >= 10
-                                && id != client.player
-                            {
-                                target.attacked = true;
-                                target.attacker_pos = client.position();
-                                target.extra_knockback = client.extra_knockback;
-                                target.last_attack_time = current_tick;
+        let dir = (victim_pos - attacker_pos).normalize().as_vec2();
 
-                                client.extra_knockback = false;
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
+        let knockback_xz = if attacker.state.has_bonus_knockback {
+            18.0
+        } else {
+            8.0
+        };
+        let knockback_y = if attacker.state.has_bonus_knockback {
+            8.432
+        } else {
+            6.432
+        };
 
-            if client.is_disconnected() {
-                self.player_count.fetch_sub(1, Ordering::SeqCst);
-                server.entities[client.player].set_deleted(true);
-                if let Some(id) = &server.state {
-                    server.player_lists[id].remove(client.uuid());
-                }
-                return false;
-            }
+        victim
+            .client
+            .set_velocity([dir.x * knockback_xz, knockback_y, dir.y * knockback_xz]);
 
-            if client.position().y <= 0.0 {
-                client.teleport(
-                    [
-                        SPAWN_POS.x as f64 + 0.5,
-                        SPAWN_POS.y as f64 + 1.0,
-                        SPAWN_POS.z as f64 + 0.5,
-                    ],
-                    client.yaw(),
-                    client.pitch(),
-                );
-            }
+        attacker.state.has_bonus_knockback = false;
 
-            true
-        });
+        victim.client.trigger_status(EntityStatus::PlayAttackSound);
 
-        for (_, entity) in server.entities.iter_mut() {
-            if entity.attacked {
-                entity.attacked = false;
-                if let Some(victim) = server.clients.get_mut(entity.client) {
-                    let victim_pos = Vec2::new(victim.position().x, victim.position().z);
-                    let attacker_pos = Vec2::new(entity.attacker_pos.x, entity.attacker_pos.z);
+        victim.statuses.trigger(EntityStatus::PlayAttackSound);
+    }
+}
 
-                    let dir = (victim_pos - attacker_pos).normalized();
-
-                    let knockback_xz = if entity.extra_knockback { 18.0 } else { 8.0 };
-                    let knockback_y = if entity.extra_knockback { 8.432 } else { 6.432 };
-
-                    let vel = Vec3::new(dir.x * knockback_xz, knockback_y, dir.y * knockback_xz);
-                    victim.set_velocity(vel.as_());
-
-                    entity.push_event(EntityEvent::DamageFromGenericSource);
-                    entity.push_event(EntityEvent::Damage);
-                    victim.send_entity_event(EntityEvent::DamageFromGenericSource);
-                    victim.send_entity_event(EntityEvent::Damage);
-                }
-            }
+fn teleport_oob_clients(mut clients: Query<&mut Position, With<Client>>) {
+    for mut pos in &mut clients {
+        if pos.0.y < 0.0 {
+            pos.set([0.0, SPAWN_Y as _, 0.0]);
         }
     }
 }
