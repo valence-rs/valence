@@ -1,4 +1,4 @@
-use crate::packet::{Decode, Encode};
+use crate::protocol::{Decode, Encode};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
 pub enum Difficulty {

@@ -30,11 +30,7 @@ use valence_client::{Client, FlushPacketsSet, SpawnClientsSet};
 use valence_core::game_mode::GameMode;
 use valence_core::item::ItemStack;
 use valence_core::packet::c2s::play::click_slot::{ClickMode, Slot};
-use valence_core::packet::c2s::play::{
-    ClickSlotC2s, CloseHandledScreenC2s, CreativeInventoryActionC2s, PlayerActionC2s,
-    UpdateSelectedSlotC2s,
-};
-use valence_core::packet::encode::WritePacket;
+use valence_core::protocol::encode::WritePacket;
 use valence_core::packet::s2c::play::open_screen::WindowType;
 use valence_core::packet::s2c::play::{
     CloseScreenS2c, InventoryS2c, OpenScreenS2c, ScreenHandlerSlotUpdateS2c,
@@ -43,6 +39,7 @@ use valence_core::packet::var_int::VarInt;
 use valence_core::text::Text;
 
 mod validate;
+pub mod packet;
 
 pub struct InventoryPlugin;
 

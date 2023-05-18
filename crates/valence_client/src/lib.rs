@@ -78,6 +78,7 @@ pub mod movement;
 pub mod settings;
 pub mod teleport;
 pub mod weather;
+pub mod packet;
 
 pub struct ClientPlugin;
 

@@ -140,7 +140,7 @@ impl Value {
             Value::BlockState(_) => quote!(valence_block::BlockState),
             Value::OptionalBlockState(_) => quote!(valence_block::BlockState),
             Value::NbtCompound(_) => quote!(valence_nbt::Compound),
-            Value::Particle(_) => quote!(valence_core::packet::s2c::play::particle::Particle),
+            Value::Particle(_) => quote!(valence_core::particle::Particle),
             Value::VillagerData { .. } => quote!(crate::VillagerData),
             Value::OptionalInt(_) => quote!(Option<i32>),
             Value::EntityPose(_) => quote!(crate::Pose),
@@ -209,7 +209,7 @@ impl Value {
             }
             Value::Particle(p) => {
                 let variant = ident(p.replace('.', "_").to_pascal_case());
-                quote!(valence_core::packet::s2c::play::particle::Particle::#variant)
+                quote!(valence_core::particle::Particle::#variant)
             }
             Value::VillagerData {
                 typ,

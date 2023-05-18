@@ -60,6 +60,7 @@ use valence_entity::{
 mod chunk;
 mod chunk_entry;
 mod paletted_container;
+pub mod packet;
 
 pub struct InstancePlugin;
 

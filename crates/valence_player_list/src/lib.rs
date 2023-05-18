@@ -17,6 +17,8 @@
     clippy::dbg_macro
 )]
 
+pub mod packet;
+
 use std::borrow::Cow;
 
 use bevy_app::prelude::*;

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::packet::{Decode, Encode};
+use crate::protocol::{Decode, Encode};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Serialize, Deserialize)]
 pub struct Property<S = String> {

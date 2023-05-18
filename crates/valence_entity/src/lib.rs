@@ -17,6 +17,8 @@
     clippy::dbg_macro
 )]
 
+pub mod packet;
+
 use std::num::Wrapping;
 use std::ops::Range;
 
@@ -29,8 +31,8 @@ use tracing::warn;
 use uuid::Uuid;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::despawn::Despawned;
-use valence_core::packet::var_int::VarInt;
-use valence_core::packet::{Decode, Encode};
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::{Decode, Encode};
 use valence_core::uuid::UniqueId;
 use valence_core::DEFAULT_TPS;
 
@@ -402,7 +404,7 @@ pub struct PacketByteRange(pub Range<usize>);
 /// Cache for all the tracked data of an entity. Used for the
 /// [`EntityTrackerUpdateS2c`][packet] packet.
 ///
-/// [packet]: valence_core::packet::s2c::play::EntityTrackerUpdateS2c
+/// [packet]: crate::EntityTrackerUpdateS2c
 #[derive(Component, Default, Debug)]
 pub struct TrackedData {
     init_data: Vec<u8>,
