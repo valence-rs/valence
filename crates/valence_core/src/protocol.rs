@@ -10,10 +10,10 @@ pub mod decode;
 pub mod encode;
 pub mod global_pos;
 pub mod impls;
+pub mod packet;
 pub mod raw;
 pub mod var_int;
 pub mod var_long;
-pub mod packet;
 
 use std::io::Write;
 
@@ -215,7 +215,7 @@ pub trait Packet<'a>: Sized + std::fmt::Debug {
 
 /// Defines an enum of packets and implements [`Packet`] for the whole enum.
 /// Each variant of the packet must implement [`Packet`].
-/// 
+///
 /// TODO: example.
 #[macro_export]
 macro_rules! packet_group {

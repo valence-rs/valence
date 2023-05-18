@@ -36,21 +36,20 @@ use valence_core::block_pos::BlockPos;
 use valence_core::chunk_pos::ChunkPos;
 use valence_core::despawn::Despawned;
 use valence_core::ident::Ident;
-use valence_core::packet::array::LengthPrefixedArray;
-use valence_core::packet::byte_angle::ByteAngle;
-use valence_core::packet::encode::{PacketWriter, WritePacket};
-use valence_core::packet::s2c::play::particle::Particle;
-use valence_core::packet::s2c::play::{
-    EntityAnimationS2c, EntityPositionS2c, EntitySetHeadYawS2c, EntityStatusS2c,
-    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, MoveRelative, OverlayMessageS2c, ParticleS2c,
-    PlaySoundS2c, Rotate, RotateAndMoveRelative,
-};
-use valence_core::packet::var_int::VarInt;
-use valence_core::packet::Packet;
-use valence_core::sound::{Sound, SoundCategory};
-use valence_core::text::Text;
+use valence_core::particle::{Particle, ParticleS2c};
+use valence_core::protocol::array::LengthPrefixedArray;
+use valence_core::protocol::byte_angle::ByteAngle;
+use valence_core::protocol::encode::{PacketWriter, WritePacket};
+use valence_core::protocol::packet::sound::{PlaySoundS2c, Sound, SoundCategory};
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::Packet;
 use valence_core::Server;
 use valence_dimension::DimensionType;
+use valence_entity::packet::{
+    EntityAnimationS2c, EntityPositionS2c, EntitySetHeadYawS2c, EntityStatusS2c,
+    EntityTrackerUpdateS2c, EntityVelocityUpdateS2c, MoveRelativeS2c, RotateAndMoveRelativeS2c,
+    RotateS2c,
+};
 use valence_entity::{
     EntityAnimations, EntityId, EntityKind, EntityStatuses, HeadYaw, InitEntitiesSet, Location,
     Look, OldLocation, OldPosition, OnGround, PacketByteRange, Position, TrackedData,
@@ -59,8 +58,8 @@ use valence_entity::{
 
 mod chunk;
 mod chunk_entry;
-mod paletted_container;
 pub mod packet;
+mod paletted_container;
 
 pub struct InstancePlugin;
 
@@ -287,7 +286,7 @@ impl UpdateEntityQueryItem<'_> {
         let changed_position = self.pos.0 != self.old_pos.get();
 
         if changed_position && !needs_teleport && self.look.is_changed() {
-            writer.write_packet(&RotateAndMoveRelative {
+            writer.write_packet(&RotateAndMoveRelativeS2c {
                 entity_id,
                 delta: (position_delta * 4096.0).to_array().map(|v| v as i16),
                 yaw: ByteAngle::from_degrees(self.look.yaw),
@@ -296,7 +295,7 @@ impl UpdateEntityQueryItem<'_> {
             });
         } else {
             if changed_position && !needs_teleport {
-                writer.write_packet(&MoveRelative {
+                writer.write_packet(&MoveRelativeS2c {
                     entity_id,
                     delta: (position_delta * 4096.0).to_array().map(|v| v as i16),
                     on_ground: self.on_ground.0,
@@ -304,7 +303,7 @@ impl UpdateEntityQueryItem<'_> {
             }
 
             if self.look.is_changed() {
-                writer.write_packet(&Rotate {
+                writer.write_packet(&RotateS2c {
                     entity_id,
                     yaw: ByteAngle::from_degrees(self.look.yaw),
                     pitch: ByteAngle::from_degrees(self.look.pitch),
@@ -818,12 +817,12 @@ impl Instance {
         );
     }
 
-    /// Sets the action bar text of all players in the instance.
-    pub fn set_action_bar(&mut self, text: impl Into<Text>) {
-        self.write_packet(&OverlayMessageS2c {
-            action_bar_text: text.into().into(),
-        });
-    }
+    // /// Sets the action bar text of all players in the instance.
+    // pub fn set_action_bar(&mut self, text: impl Into<Text>) {
+    //     self.write_packet(&OverlayMessageS2c {
+    //         action_bar_text: text.into().into(),
+    //     });
+    // }
 }
 
 /// Returns the minimum number of bits needed to represent the integer `n`.

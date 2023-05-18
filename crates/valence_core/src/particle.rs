@@ -7,17 +7,7 @@ use glam::{DVec3, Vec3};
 use crate::block_pos::BlockPos;
 use crate::item::ItemStack;
 use crate::protocol::var_int::VarInt;
-use crate::protocol::{Decode, Encode};
-
-#[derive(Clone, Debug)]
-pub struct ParticleS2c<'a> {
-    pub particle: Cow<'a, Particle>,
-    pub long_distance: bool,
-    pub position: DVec3,
-    pub offset: Vec3,
-    pub max_speed: f32,
-    pub count: i32,
-}
+use crate::protocol::{packet_id, Decode, Encode, Packet};
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Particle {
@@ -367,6 +357,17 @@ impl Particle {
             id => bail!("invalid particle ID of {id}"),
         })
     }
+}
+
+#[derive(Clone, Debug, Packet)]
+#[packet(id = packet_id::PARTICLE_S2C)]
+pub struct ParticleS2c<'a> {
+    pub particle: Cow<'a, Particle>,
+    pub long_distance: bool,
+    pub position: DVec3,
+    pub offset: Vec3,
+    pub max_speed: f32,
+    pub count: i32,
 }
 
 impl Encode for ParticleS2c<'_> {

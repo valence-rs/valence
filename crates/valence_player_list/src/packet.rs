@@ -5,9 +5,9 @@ use bitfield_struct::bitfield;
 use uuid::Uuid;
 
 use crate::game_mode::GameMode;
+use crate::property::Property;
 use crate::protocol::var_int::VarInt;
 use crate::protocol::{Decode, Encode};
-use crate::property::Property;
 use crate::text::Text;
 
 #[derive(Clone, Debug, Encode, Decode)]

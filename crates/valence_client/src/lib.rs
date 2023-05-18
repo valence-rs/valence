@@ -75,10 +75,10 @@ pub mod interact_entity;
 pub mod keepalive;
 pub mod misc;
 pub mod movement;
+pub mod packet;
 pub mod settings;
 pub mod teleport;
 pub mod weather;
-pub mod packet;
 
 pub struct ClientPlugin;
 

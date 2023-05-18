@@ -1,5 +1,6 @@
 use uuid::Uuid;
-use valence_core::packet::{var_int::VarInt, Packet};
+use valence_core::packet::var_int::VarInt;
+use valence_core::packet::Packet;
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = )]
