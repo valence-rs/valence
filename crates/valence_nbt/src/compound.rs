@@ -241,6 +241,24 @@ impl Compound {
     {
         self.map.retain(f)
     }
+
+    /// Checks if merging self compound with other compound will give any
+    /// results.
+    pub fn contains_compound(&self, other: &Compound) -> bool {
+        for (name, value) in self.iter() {
+            if let Some(other_value) = other.get(name) {
+                if !match (value, other_value) {
+                    (Value::Compound(this), Value::Compound(other)) => {
+                        this.contains_compound(other)
+                    }
+                    (v, o) => v == o,
+                } {
+                    return false;
+                }
+            }
+        }
+        true
+    }
 }
 
 impl Extend<(String, Value)> for Compound {
