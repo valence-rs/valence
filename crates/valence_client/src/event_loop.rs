@@ -6,7 +6,7 @@ use bevy_ecs::schedule::ScheduleLabel;
 use bevy_ecs::system::SystemState;
 use bytes::Bytes;
 use tracing::{debug, warn};
-use valence_core::packet::{Decode, Packet};
+use valence_core::protocol::{Decode, Packet};
 
 use crate::{Client, SpawnClientsSet};
 

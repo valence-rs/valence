@@ -20,8 +20,15 @@ use crate::text::Text;
 
 // TODO: move module contents to valence_chat.
 pub mod chat {
-
     pub use super::*;
+
+    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[packet(id = packet_id::GAME_MESSAGE_S2C)]
+    pub struct GameMessageS2c<'a> {
+        pub chat: Cow<'a, Text>,
+        /// Whether the message is in the actionbar or the chat.
+        pub overlay: bool,
+    }
 
     #[derive(Copy, Clone, PartialEq, Debug)]
     pub struct MessageSignature<'a> {

@@ -1,9 +1,11 @@
-pub use valence_core::packet::c2s::play::client_settings::ChatMode;
-use valence_core::packet::c2s::play::ClientSettingsC2s;
+use bevy_app::prelude::*;
+use bevy_ecs::prelude::*;
+pub use packet::ChatMode;
 pub use valence_entity::player::{MainArm, PlayerModelParts};
 
-use super::*;
+use self::packet::ClientSettingsC2s;
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
+use crate::ViewDistance;
 
 pub(super) fn build(app: &mut App) {
     app.add_system(
@@ -13,6 +15,7 @@ pub(super) fn build(app: &mut App) {
     );
 }
 
+/// Component containing client-controlled settings about a client.
 #[derive(Component, Default, Debug)]
 pub struct ClientSettings {
     pub locale: Box<str>,
@@ -48,5 +51,39 @@ fn handle_client_settings(
                 main_arm.set_if_neq(MainArm(pkt.main_arm as i8));
             }
         }
+    }
+}
+
+pub mod packet {
+    use valence_core::protocol::{packet_id, Decode, Encode, Packet};
+
+    use crate::packet::DisplayedSkinParts;
+
+    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[packet(id = packet_id::CLIENT_SETTINGS_C2S)]
+    pub struct ClientSettingsC2s<'a> {
+        pub locale: &'a str,
+        pub view_distance: u8,
+        pub chat_mode: ChatMode,
+        pub chat_colors: bool,
+        pub displayed_skin_parts: DisplayedSkinParts,
+        pub main_arm: MainArm,
+        pub enable_text_filtering: bool,
+        pub allow_server_listings: bool,
+    }
+
+    #[derive(Copy, Clone, PartialEq, Eq, Default, Debug, Encode, Decode)]
+    pub enum ChatMode {
+        Enabled,
+        CommandsOnly,
+        #[default]
+        Hidden,
+    }
+
+    #[derive(Copy, Clone, PartialEq, Eq, Debug, Default, Encode, Decode)]
+    pub enum MainArm {
+        Left,
+        #[default]
+        Right,
     }
 }

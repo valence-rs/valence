@@ -169,12 +169,6 @@ pub struct ButtonClickC2s {
     pub button_id: i8,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
-pub struct PlayerInteractItemC2s {
-    pub hand: Hand,
-    pub sequence: VarInt,
-}
-
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct RecipeBookDataC2s<'a> {
     pub recipe_id: Ident<Cow<'a, str>>,

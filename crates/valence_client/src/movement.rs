@@ -1,9 +1,7 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
 use glam::DVec3;
-use valence_core::packet::c2s::play::{
-    Full, LookAndOnGround, OnGroundOnly, PositionAndOnGround, VehicleMoveC2s,
-};
+use packet::*;
 use valence_entity::{HeadYaw, Look, OnGround, Position};
 
 use super::teleport::TeleportState;
@@ -49,7 +47,7 @@ fn handle_client_movement(
     mut movement_events: EventWriter<Movement>,
 ) {
     for packet in packets.iter() {
-        if let Some(pkt) = packet.decode::<PositionAndOnGround>() {
+        if let Some(pkt) = packet.decode::<PositionAndOnGroundC2s>() {
             if let Ok((pos, look, head_yaw, on_ground, teleport_state)) =
                 clients.get_mut(packet.client)
             {
@@ -73,7 +71,7 @@ fn handle_client_movement(
                     &mut movement_events,
                 );
             }
-        } else if let Some(pkt) = packet.decode::<Full>() {
+        } else if let Some(pkt) = packet.decode::<FullC2s>() {
             if let Ok((pos, look, head_yaw, on_ground, teleport_state)) =
                 clients.get_mut(packet.client)
             {
@@ -100,7 +98,7 @@ fn handle_client_movement(
                     &mut movement_events,
                 );
             }
-        } else if let Some(pkt) = packet.decode::<LookAndOnGround>() {
+        } else if let Some(pkt) = packet.decode::<LookAndOnGroundC2s>() {
             if let Ok((pos, look, head_yaw, on_ground, teleport_state)) =
                 clients.get_mut(packet.client)
             {
@@ -127,7 +125,7 @@ fn handle_client_movement(
                     &mut movement_events,
                 );
             }
-        } else if let Some(pkt) = packet.decode::<OnGroundOnly>() {
+        } else if let Some(pkt) = packet.decode::<OnGroundOnlyC2s>() {
             if let Ok((pos, look, head_yaw, on_ground, teleport_state)) =
                 clients.get_mut(packet.client)
             {
@@ -206,4 +204,47 @@ fn handle(
     on_ground.set_if_neq(OnGround(mov.on_ground));
 
     movement_events.send(mov);
+}
+
+pub mod packet {
+    use glam::DVec3;
+    use valence_core::protocol::{packet_id, Decode, Encode, Packet};
+
+    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[packet(id = packet_id::POSITION_AND_ON_GROUND)]
+    pub struct PositionAndOnGroundC2s {
+        pub position: DVec3,
+        pub on_ground: bool,
+    }
+
+    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[packet(id = packet_id::FULL)]
+    pub struct FullC2s {
+        pub position: DVec3,
+        pub yaw: f32,
+        pub pitch: f32,
+        pub on_ground: bool,
+    }
+
+    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[packet(id = packet_id::LOOK_AND_ON_GROUND)]
+    pub struct LookAndOnGroundC2s {
+        pub yaw: f32,
+        pub pitch: f32,
+        pub on_ground: bool,
+    }
+
+    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[packet(id = packet_id::ON_GROUND_ONLY)]
+    pub struct OnGroundOnlyC2s {
+        pub on_ground: bool,
+    }
+
+    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[packet(id = packet_id::VEHICLE_MOVE_C2S)]
+    pub struct VehicleMoveC2s {
+        pub position: DVec3,
+        pub yaw: f32,
+        pub pitch: f32,
+    }
 }

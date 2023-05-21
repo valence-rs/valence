@@ -1,68 +1,41 @@
+//! Common packets for this crate.
+
 use std::borrow::Cow;
 
+use bitfield_struct::bitfield;
+use glam::DVec3;
+use uuid::Uuid;
 use valence_core::block_pos::BlockPos;
+use valence_core::difficulty::Difficulty;
 use valence_core::direction::Direction;
 use valence_core::game_mode::GameMode;
 use valence_core::hand::Hand;
 use valence_core::ident::Ident;
+use valence_core::protocol::byte_angle::ByteAngle;
 use valence_core::protocol::global_pos::GlobalPos;
 use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{Decode, Encode, Packet};
+use valence_core::protocol::var_long::VarLong;
+use valence_core::protocol::{packet_id, Decode, Encode, Packet};
+use valence_core::text::Text;
+use valence_nbt::Compound;
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
-pub struct BundleSplitter;
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::BUNDLE_SPLITTER)]
+pub struct BundleSplitterS2c;
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::BOAT_PADDLE_STATE_C2S)]
 pub struct BoatPaddleStateC2s {
     pub left_paddle_turning: bool,
     pub right_paddle_turning: bool,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::BOOK_UPDATE_C2S)]
 pub struct BookUpdateC2s<'a> {
     pub slot: VarInt,
     pub entries: Vec<&'a str>,
     pub title: Option<&'a str>,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode)]
-pub struct ClientCommandC2s {
-    pub entity_id: VarInt,
-    pub action: ClientCommand,
-    pub jump_boost: VarInt,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
-pub enum ClientCommand {
-    StartSneaking,
-    StopSneaking,
-    LeaveBed,
-    StartSprinting,
-    StopSprinting,
-    StartJumpWithHorse,
-    StopJumpWithHorse,
-    OpenHorseInventory,
-    StartFlyingWithElytra,
-}
-
-#[derive(Clone, Debug, Encode, Decode)]
-pub struct ClientSettingsC2s<'a> {
-    pub locale: &'a str,
-    pub view_distance: u8,
-    pub chat_mode: ChatMode,
-    pub chat_colors: bool,
-    pub displayed_skin_parts: DisplayedSkinParts,
-    pub main_arm: MainArm,
-    pub enable_text_filtering: bool,
-    pub allow_server_listings: bool,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Default, Debug, Encode, Decode)]
-pub enum ChatMode {
-    Enabled,
-    CommandsOnly,
-    #[default]
-    Hidden,
 }
 
 #[bitfield(u8)]
@@ -78,48 +51,22 @@ pub struct DisplayedSkinParts {
     _pad: bool,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Default, Encode, Decode)]
-pub enum MainArm {
-    Left,
-    #[default]
-    Right,
-}
-
-#[derive(Clone, Debug, Encode, Decode)]
-pub enum ClientStatusC2s {
-    PerformRespawn,
-    RequestStats,
-}
-
-#[derive(Clone, Debug, Encode, Decode)]
-pub struct CustomPayloadC2s<'a> {
-    pub channel: Ident<Cow<'a, str>>,
-    pub data: RawBytes<'a>,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode)]
-pub struct HandSwingC2s {
-    pub hand: Hand,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::JIGSAW_GENERATING_C2S)]
 pub struct JigsawGeneratingC2s {
     pub position: BlockPos,
     pub levels: VarInt,
     pub keep_jigsaws: bool,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
-pub struct KeepAliveC2s {
-    pub id: u64,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::PLAY_PONG_C2S)]
 pub struct PlayPongC2s {
     pub id: i32,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::PLAYER_ACTION_C2S)]
 pub struct PlayerActionC2s {
     pub action: PlayerAction,
     pub position: BlockPos,
@@ -138,7 +85,8 @@ pub enum PlayerAction {
     SwapItemWithOffhand,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::PLAYER_INPUT_C2S)]
 pub struct PlayerInputC2s {
     pub sideways: f32,
     pub forward: f32,
@@ -154,105 +102,36 @@ pub struct PlayerInputFlags {
     _pad: u8,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
-pub struct PlayerInteractBlockC2s {
-    pub hand: Hand,
-    pub position: BlockPos,
-    pub face: Direction,
-    pub cursor_pos: Vec3,
-    pub head_inside_block: bool,
-    pub sequence: VarInt,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode)]
-pub struct PlayerInteractEntityC2s {
-    pub entity_id: VarInt,
-    pub interact: EntityInteraction,
-    pub sneaking: bool,
-}
-
-#[derive(Copy, Clone, PartialEq, Debug, Encode, Decode)]
-pub enum EntityInteraction {
-    Interact(Hand),
-    Attack,
-    InteractAt { target: Vec3, hand: Hand },
-}
-
-pub mod movement {
-    use super::*;
-
-    #[derive(Copy, Clone, Debug, Encode, Decode)]
-    pub struct PositionAndOnGround {
-        pub position: DVec3,
-        pub on_ground: bool,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, Decode)]
-    pub struct Full {
-        pub position: DVec3,
-        pub yaw: f32,
-        pub pitch: f32,
-        pub on_ground: bool,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, Decode)]
-    pub struct LookAndOnGround {
-        pub yaw: f32,
-        pub pitch: f32,
-        pub on_ground: bool,
-    }
-
-    #[derive(Copy, Clone, Debug, Encode, Decode)]
-    pub struct OnGroundOnly {
-        pub on_ground: bool,
-    }
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::QUERY_BLOCK_NBT_C2S)]
 pub struct QueryBlockNbtC2s {
     pub transaction_id: VarInt,
     pub position: BlockPos,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::QUERY_ENTITY_NBT_C2S)]
 pub struct QueryEntityNbtC2s {
     pub transaction_id: VarInt,
     pub entity_id: VarInt,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
-pub enum ResourcePackStatusC2s {
-    SuccessfullyLoaded,
-    Declined,
-    FailedDownload,
-    Accepted,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::SPECTATOR_TELEPORT_C2S)]
 pub struct SpectatorTeleportC2s {
     pub target: Uuid,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
-pub struct TeleportConfirmC2s {
-    pub teleport_id: VarInt,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode)]
-pub struct VehicleMoveC2s {
-    pub position: DVec3,
-    pub yaw: f32,
-    pub pitch: f32,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::UPDATE_COMMAND_BLOCK_MINECART_C2S)]
 pub struct UpdateCommandBlockMinecartC2s<'a> {
     pub entity_id: VarInt,
     pub command: &'a str,
     pub track_output: bool,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::UPDATE_COMMAND_BLOCK_C2S)]
 pub struct UpdateCommandBlockC2s<'a> {
     pub position: BlockPos,
     pub command: &'a str,
@@ -277,17 +156,20 @@ pub struct UpdateCommandBlockFlags {
     _pad: u8,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::UPDATE_DIFFICULTY_LOCK_C2S)]
 pub struct UpdateDifficultyLockC2s {
     pub locked: bool,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::UPDATE_DIFFICULTY_C2S)]
 pub struct UpdateDifficultyC2s {
     pub difficulty: Difficulty,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::UPDATE_JIGSAW_C2S)]
 pub struct UpdateJigsawC2s<'a> {
     pub position: BlockPos,
     pub name: Ident<Cow<'a, str>>,
@@ -297,7 +179,8 @@ pub struct UpdateJigsawC2s<'a> {
     pub joint_type: &'a str,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::UPDATE_PLAYER_ABILITIES_C2S)]
 pub enum UpdatePlayerAbilitiesC2s {
     #[packet(tag = 0b00)]
     StopFlying,
@@ -305,14 +188,19 @@ pub enum UpdatePlayerAbilitiesC2s {
     StartFlying,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::UPDATE_SIGN_C2S)]
 pub struct UpdateSignC2s<'a> {
     pub position: BlockPos,
     pub lines: [&'a str; 4],
 }
 
 pub mod structure_block {
-    #[derive(Copy, Clone, Debug, Encode, Decode)]
+
+    use super::*;
+
+    #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+    #[packet(id = packet_id::UPDATE_STRUCTURE_BLOCK_C2S)]
     pub struct UpdateStructureBlockC2s<'a> {
         pub position: BlockPos,
         pub action: Action,
@@ -370,12 +258,8 @@ pub mod structure_block {
     }
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
-pub struct KeepAliveS2c {
-    pub id: u64,
-}
-
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::DEATH_MESSAGE_S2C)]
 pub struct DeathMessageS2c<'a> {
     pub player_id: VarInt,
     /// Killer's entity ID, -1 if no killer
@@ -383,18 +267,14 @@ pub struct DeathMessageS2c<'a> {
     pub message: Cow<'a, Text>,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
-pub struct CustomPayloadS2c<'a> {
-    pub channel: Ident<Cow<'a, str>>,
-    pub data: RawBytes<'a>,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::CLEAR_TITLE_S2C)]
 pub struct ClearTitleS2c {
     pub reset: bool,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::DAMAGE_TILT_S2C)]
 pub struct DamageTiltS2c {
     /// The ID of the entity taking damage.
     pub entity_id: VarInt,
@@ -402,41 +282,48 @@ pub struct DamageTiltS2c {
     pub yaw: f32,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::DIFFICULTY_S2C)]
 pub struct DifficultyS2c {
     pub difficulty: Difficulty,
     pub locked: bool,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::DISCONNECT_S2C)]
 pub struct DisconnectS2c<'a> {
     pub reason: Cow<'a, Text>,
 }
 
 /// Unused by notchian clients.
-#[derive(Copy, Clone, PartialEq, Debug, Encode, Decode)]
+#[derive(Copy, Clone, PartialEq, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::ENTER_COMBAT_S2C)]
 pub struct EnterCombatS2c;
 
 /// Unused by notchian clients.
-#[derive(Copy, Clone, PartialEq, Debug, Encode, Decode)]
+#[derive(Copy, Clone, PartialEq, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::END_COMBAT_S2C)]
 pub struct EndCombatS2c {
     pub duration: VarInt,
     pub entity_id: i32,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::EXPERIENCE_BAR_UPDATE_S2C)]
 pub struct ExperienceBarUpdateS2c {
     pub bar: f32,
     pub level: VarInt,
     pub total_xp: VarInt,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::FEATURES_S2C)]
 pub struct FeaturesS2c<'a> {
     pub features: Vec<Ident<Cow<'a, str>>>,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::GAME_JOIN_S2C)]
 pub struct GameJoinS2c<'a> {
     pub entity_id: i32,
     pub is_hardcore: bool,
@@ -458,14 +345,8 @@ pub struct GameJoinS2c<'a> {
     pub last_death_location: Option<GlobalPos<'a>>,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
-pub struct GameMessageS2c<'a> {
-    pub chat: Cow<'a, Text>,
-    /// Whether the message is in the actionbar or the chat.
-    pub overlay: bool,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::GAME_STATE_CHANGE_S2C)]
 pub struct GameStateChangeS2c {
     pub kind: GameEventKind,
     pub value: f32,
@@ -487,14 +368,16 @@ pub enum GameEventKind {
     EnableRespawnScreen,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::HEALTH_UPDATE_S2C)]
 pub struct HealthUpdateS2c {
     pub health: f32,
     pub food: VarInt,
     pub food_saturation: f32,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::PLAYER_ABILITIES_S2C)]
 pub struct PlayerAbilitiesS2c {
     pub flags: PlayerAbilitiesFlags,
     pub flying_speed: f32,
@@ -512,33 +395,8 @@ pub struct PlayerAbilitiesFlags {
     _pad: u8,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
-pub struct PlayerActionResponseS2c {
-    pub sequence: VarInt,
-}
-
-#[derive(Copy, Clone, PartialEq, Debug, Encode, Decode)]
-pub struct PlayerPositionLookS2c {
-    pub position: DVec3,
-    pub yaw: f32,
-    pub pitch: f32,
-    pub flags: PlayerPositionLookFlags,
-    pub teleport_id: VarInt,
-}
-
-#[bitfield(u8)]
-#[derive(PartialEq, Eq, Encode, Decode)]
-pub struct PlayerPositionLookFlags {
-    pub x: bool,
-    pub y: bool,
-    pub z: bool,
-    pub y_rot: bool,
-    pub x_rot: bool,
-    #[bits(3)]
-    _pad: u8,
-}
-
-#[derive(Clone, PartialEq, Debug, Encode, Decode)]
+#[derive(Clone, PartialEq, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::PLAYER_RESPAWN_S2C)]
 pub struct PlayerRespawnS2c<'a> {
     pub dimension_type_name: Ident<Cow<'a, str>>,
     pub dimension_name: Ident<Cow<'a, str>>,
@@ -551,13 +409,15 @@ pub struct PlayerRespawnS2c<'a> {
     pub last_death_location: Option<GlobalPos<'a>>,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::PLAYER_SPAWN_POSITION_S2C)]
 pub struct PlayerSpawnPositionS2c {
     pub position: BlockPos,
     pub angle: f32,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::PLAYER_SPAWN_S2C)]
 pub struct PlayerSpawnS2c {
     pub entity_id: VarInt,
     pub player_uuid: Uuid,
@@ -566,32 +426,28 @@ pub struct PlayerSpawnS2c {
     pub pitch: ByteAngle,
 }
 
-#[derive(Clone, PartialEq, Debug, Encode, Decode)]
-pub struct ResourcePackSendS2c<'a> {
-    pub url: &'a str,
-    pub hash: &'a str,
-    pub forced: bool,
-    pub prompt_message: Option<Cow<'a, Text>>,
-}
-
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::SERVER_METADATA_S2C)]
 pub struct ServerMetadataS2c<'a> {
     pub motd: Cow<'a, Text>,
     pub icon: Option<&'a [u8]>,
     pub enforce_secure_chat: bool,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::SIGN_EDITOR_OPEN_S2C)]
 pub struct SignEditorOpenS2c {
     pub location: BlockPos,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::SIMULATION_DISTANCE_S2C)]
 pub struct SimulationDistanceS2c {
     pub simulation_distance: VarInt,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::STATISTICS_S2C)]
 pub struct StatisticsS2c {
     pub statistics: Vec<Statistic>,
 }
@@ -603,39 +459,46 @@ pub struct Statistic {
     pub value: VarInt,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::VEHICLE_MOVE_S2C)]
 pub struct VehicleMoveS2c {
     pub position: DVec3,
     pub yaw: f32,
     pub pitch: f32,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::OPEN_WRITTEN_BOOK_S2C)]
 pub struct OpenWrittenBookS2c {
     pub hand: Hand,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::OVERLAY_MESSAGE_S2C)]
 pub struct OverlayMessageS2c<'a> {
     pub action_bar_text: Cow<'a, Text>,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::PLAY_PING_S2C)]
 pub struct PlayPingS2c {
     pub id: i32,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::TITLE_S2C)]
 pub struct TitleS2c<'a> {
     pub title_text: Cow<'a, Text>,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::SUBTITLE_S2C)]
 pub struct SubtitleS2c<'a> {
     pub subtitle_text: Cow<'a, Text>,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::TITLE_FADE_S2C)]
 pub struct TitleFadeS2c {
     /// Ticks to spend fading in.
     pub fade_in: i32,
@@ -645,7 +508,8 @@ pub struct TitleFadeS2c {
     pub fade_out: i32,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::NBT_QUERY_RESPONSE_S2C)]
 pub struct NbtQueryResponseS2c {
     pub transaction_id: VarInt,
     pub nbt: Compound,
