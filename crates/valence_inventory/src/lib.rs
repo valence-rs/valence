@@ -16,6 +16,7 @@
     unreachable_pub,
     clippy::dbg_macro
 )]
+#![allow(clippy::type_complexity)]
 
 use std::borrow::Cow;
 use std::iter::FusedIterator;
@@ -24,18 +25,19 @@ use std::ops::Range;
 
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
+use packet::{
+    ClickMode, ClickSlotC2s, CloseHandledScreenC2s, CloseScreenS2c, CreativeInventoryActionC2s,
+    InventoryS2c, OpenScreenS2c, ScreenHandlerSlotUpdateS2c, SlotChange, UpdateSelectedSlotC2s,
+    WindowType,
+};
 use tracing::{debug, warn};
 use valence_client::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent, RunEventLoopSet};
+use valence_client::packet::{PlayerAction, PlayerActionC2s};
 use valence_client::{Client, FlushPacketsSet, SpawnClientsSet};
 use valence_core::game_mode::GameMode;
 use valence_core::item::ItemStack;
-use valence_core::packet::c2s::play::click_slot::{ClickMode, Slot};
-use valence_core::packet::s2c::play::open_screen::WindowType;
-use valence_core::packet::s2c::play::{
-    CloseScreenS2c, InventoryS2c, OpenScreenS2c, ScreenHandlerSlotUpdateS2c,
-};
-use valence_core::packet::var_int::VarInt;
 use valence_core::protocol::encode::WritePacket;
+use valence_core::protocol::var_int::VarInt;
 use valence_core::text::Text;
 
 pub mod packet;
@@ -741,7 +743,7 @@ pub struct ClickSlot {
     pub slot_id: i16,
     pub button: i8,
     pub mode: ClickMode,
-    pub slot_changes: Vec<Slot>,
+    pub slot_changes: Vec<SlotChange>,
     pub carried_item: Option<ItemStack>,
 }
 
@@ -1042,10 +1044,8 @@ fn handle_player_actions(
 ) {
     for packet in packets.iter() {
         if let Some(pkt) = packet.decode::<PlayerActionC2s>() {
-            use valence_core::packet::c2s::play::player_action::Action;
-
             match pkt.action {
-                Action::DropAllItems => {
+                PlayerAction::DropAllItems => {
                     if let Ok((mut inv, mut inv_state)) = clients.get_mut(packet.client) {
                         if let Some(stack) = inv.replace_slot(inv_state.held_item_slot, None) {
                             inv_state.slots_changed |= 1 << inv_state.held_item_slot;
@@ -1058,7 +1058,7 @@ fn handle_player_actions(
                         }
                     }
                 }
-                Action::DropItem => {
+                PlayerAction::DropItem => {
                     if let Ok((mut inv, mut inv_state)) = clients.get_mut(packet.client) {
                         if let Some(mut stack) = inv.replace_slot(inv_state.held_item_slot(), None)
                         {
@@ -1081,7 +1081,7 @@ fn handle_player_actions(
                         }
                     }
                 }
-                Action::SwapItemWithOffhand => {
+                PlayerAction::SwapItemWithOffhand => {
                     // TODO
                 }
                 _ => {}

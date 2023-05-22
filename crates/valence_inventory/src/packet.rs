@@ -1,10 +1,17 @@
 //! Inventory packets
 
+use std::borrow::Cow;
+use std::io::Write;
+
+use anyhow::bail;
+use valence_core::ident::Ident;
 use valence_core::item::ItemStack;
 use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::{packet_id, Decode, Encode, Packet};
 use valence_core::text::Text;
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::CLICK_SLOT_C2S)]
 pub struct ClickSlotC2s {
     pub window_id: u8,
     pub state_id: VarInt,
@@ -34,29 +41,34 @@ pub struct SlotChange {
     pub item: Option<ItemStack>,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::CLOSE_HANDLED_SCREEN_C2S)]
 pub struct CloseHandledScreenC2s {
     pub window_id: i8,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::CREATIVE_INVENTORY_ACTION_C2S)]
 pub struct CreativeInventoryActionC2s {
     pub slot: i16,
     pub clicked_item: Option<ItemStack>,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::UPDATE_SELECTED_SLOT_C2S)]
 pub struct UpdateSelectedSlotC2s {
     pub slot: i16,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::CLOSE_SCREEN_S2C)]
 pub struct CloseScreenS2c {
     /// Ignored by notchian clients.
     pub window_id: u8,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::INVENTORY_S2C)]
 pub struct InventoryS2c<'a> {
     pub window_id: u8,
     pub state_id: VarInt,
@@ -92,21 +104,24 @@ pub enum WindowType {
     Stonecutter,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::OPEN_SCREEN_S2C)]
 pub struct OpenScreenS2c<'a> {
     pub window_id: VarInt,
     pub window_type: WindowType,
     pub window_title: Cow<'a, Text>,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::OPEN_HORSE_SCREEN_S2C)]
 pub struct OpenHorseScreenS2c {
     pub window_id: u8,
     pub slot_count: VarInt,
     pub entity_id: i32,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::SCREEN_HANDLER_SLOT_UPDATE_S2C)]
 pub struct ScreenHandlerSlotUpdateS2c<'a> {
     pub window_id: i8,
     pub state_id: VarInt,
@@ -114,32 +129,37 @@ pub struct ScreenHandlerSlotUpdateS2c<'a> {
     pub slot_data: Cow<'a, Option<ItemStack>>,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::SCREEN_HANDLER_PROPERTY_UPDATE_S2C)]
 pub struct ScreenHandlerPropertyUpdateS2c {
     pub window_id: u8,
     pub property: i16,
     pub value: i16,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::CRAFT_REQUEST_C2S)]
 pub struct CraftRequestC2s<'a> {
     pub window_id: i8,
     pub recipe: Ident<Cow<'a, str>>,
     pub make_all: bool,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::CRAFT_FAILED_RESPONSE_S2C)]
 pub struct CraftFailedResponseS2c<'a> {
     pub window_id: u8,
     pub recipe: Ident<Cow<'a, str>>,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::PICK_FROM_INVENTORY_C2S)]
 pub struct PickFromInventoryC2s {
     pub slot_to_use: VarInt,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::SET_TRADE_OFFERS_S2C)]
 pub struct SetTradeOffersS2c {
     pub window_id: VarInt,
     pub trades: Vec<TradeOffer>,
@@ -163,23 +183,27 @@ pub struct TradeOffer {
     pub demand: i32,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::BUTTON_CLICK_C2S)]
 pub struct ButtonClickC2s {
     pub window_id: i8,
     pub button_id: i8,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::RECIPE_BOOK_DATA_C2S)]
 pub struct RecipeBookDataC2s<'a> {
     pub recipe_id: Ident<Cow<'a, str>>,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::RENAME_ITEM_C2S)]
 pub struct RenameItemC2s<'a> {
     pub item_name: &'a str,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::RECIPE_CATEGORY_OPTIONS_C2S)]
 pub struct RecipeCategoryOptionsC2s {
     pub book_id: RecipeBookId,
     pub book_open: bool,
@@ -194,18 +218,21 @@ pub enum RecipeBookId {
     Smoker,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::SELECT_MERCHANT_TRADE_C2S)]
 pub struct SelectMerchantTradeC2s {
     pub selected_slot: VarInt,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::UPDATE_BEACON_C2S)]
 pub struct UpdateBeaconC2s {
     pub primary_effect: Option<VarInt>,
     pub secondary_effect: Option<VarInt>,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Packet)]
+#[packet(id = packet_id::UNLOCK_RECIPES_S2C)]
 pub struct UnlockRecipesS2c<'a> {
     pub action: UpdateRecipeBookAction<'a>,
     pub crafting_recipe_book_open: bool,
@@ -292,10 +319,14 @@ impl<'a> Decode<'a> for UnlockRecipesS2c<'a> {
 }
 
 pub mod synchronize_recipes {
+    use anyhow::ensure;
+
+    use super::*;
+
     #[derive(Clone, Debug, Encode, Decode)]
     pub struct SynchronizeRecipesS2c<'a> {
         // TODO: this should be a Vec<Recipe<'a>>
-        pub recipes: crate::protocol::raw::RawBytes<'a>,
+        pub recipes: valence_core::protocol::raw::RawBytes<'a>,
     }
 
     #[derive(Clone, PartialEq, Debug)]
