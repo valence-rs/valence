@@ -161,14 +161,10 @@ fn build() -> anyhow::Result<TokenStream> {
         let max_y = s.max_y;
         let max_z = s.max_z;
         quote! {
-            [
-                #min_x,
-                #min_y,
-                #min_z,
-                #max_x,
-                #max_y,
-                #max_z,
-            ]
+            Aabb {
+                min: dvec3(#min_x, #min_y, #min_z),
+                max: dvec3(#max_x, #max_y, #max_z),
+            }
         }
     });
 
@@ -577,6 +573,9 @@ fn build() -> anyhow::Result<TokenStream> {
     let prop_value_count = prop_values.len();
 
     Ok(quote! {
+        use valence_core::aabb::Aabb;
+        use glam::dvec3;
+
         /// Represents the state of a block. This does not include block entity data such as
         /// the text on a sign, the design on a banner, or the content of a spawner.
         #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
@@ -682,11 +681,11 @@ fn build() -> anyhow::Result<TokenStream> {
                 }
             }
 
-            const SHAPES: [[f64; 6]; #shape_count] = [
+            const SHAPES: [Aabb; #shape_count] = [
                 #(#shapes,)*
             ];
 
-            pub fn collision_shapes(self) -> impl ExactSizeIterator<Item = [f64; 6]> + FusedIterator + Clone {
+            pub fn collision_shapes(self) -> impl ExactSizeIterator<Item = Aabb> + FusedIterator + Clone {
                 let shape_idxs: &'static [u16] = match self.0 {
                     #state_to_collision_shapes_arms
                     _ => &[],
