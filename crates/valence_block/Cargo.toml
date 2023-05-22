@@ -6,6 +6,7 @@ edition.workspace = true
 [dependencies]
 valence_core.workspace = true
 anyhow.workspace = true
+glam.workspace = true
 
 [build-dependencies]
 anyhow.workspace = true
