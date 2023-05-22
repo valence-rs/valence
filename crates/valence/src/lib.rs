@@ -66,8 +66,8 @@ pub mod prelude {
     pub use client::interact_entity::*;
     pub use client::{
         despawn_disconnected_clients, Client, CompassPos, DeathLocation, HasRespawnScreen,
-        HashedSeed, Ip, IsDebug, IsFlat, IsHardcore, OldView, OldViewDistance, OpLevel,
-        PrevGameMode, Properties, ReducedDebugInfo, Username, View, ViewDistance,
+        HashedSeed, Ip, IsDebug, IsFlat, IsHardcore, OldView, OldViewDistance, PrevGameMode,
+        Properties, ReducedDebugInfo, Username, View, ViewDistance,
     };
     pub use despawn::Despawned;
     pub use dimension::{DimensionType, DimensionTypeRegistry};
@@ -93,7 +93,7 @@ pub mod prelude {
         ErasedNetworkCallbacks, NetworkCallbacks, NetworkSettings, NewClientInfo,
         SharedNetworkState,
     };
-    pub use packet::s2c::play::particle::Particle;
+    pub use particle::Particle;
     #[cfg(feature = "player_list")]
     pub use player_list::{PlayerList, PlayerListEntry};
     pub use text::{Color, Text, TextFormat};
