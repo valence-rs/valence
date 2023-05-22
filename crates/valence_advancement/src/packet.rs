@@ -1,7 +1,17 @@
+use std::borrow::Cow;
+use std::io::Write;
+
+use valence_core::ident::Ident;
+use valence_core::item::ItemStack;
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::{packet_id, Decode, Encode, Packet};
+use valence_core::text::Text;
+
 pub type AdvancementUpdateS2c<'a> =
     GenericAdvancementUpdateS2c<'a, (Ident<Cow<'a, str>>, Advancement<'a, Option<ItemStack>>)>;
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::ADVANCEMENT_UPDATE_S2C)]
 pub struct GenericAdvancementUpdateS2c<'a, AM: 'a> {
     pub reset: bool,
     pub advancement_mapping: Vec<AM>,
@@ -92,13 +102,15 @@ impl<'a, I: Decode<'a>> Decode<'a> for AdvancementDisplay<'a, I> {
     }
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::ADVANCEMENT_TAB_C2S)]
 pub enum AdvancementTabC2s<'a> {
     OpenedTab { tab_id: Ident<Cow<'a, str>> },
     ClosedScreen,
 }
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::SELECT_ADVANCEMENT_TAB_S2C)]
 pub struct SelectAdvancementTabS2c<'a> {
     pub identifier: Option<Ident<Cow<'a, str>>>,
 }
