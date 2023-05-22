@@ -1,6 +1,7 @@
 use bevy_ecs::prelude::{Entity, EventReader, EventWriter};
 use valence_client::event_loop::PacketEvent;
 use valence_core::ident::Ident;
+
 use crate::packet::AdvancementTabC2s;
 
 /// This event sends when the client changes or closes advancement's tab.

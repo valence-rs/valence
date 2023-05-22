@@ -25,9 +25,8 @@ use valence_core::item::ItemStack;
 use valence_core::protocol::encode::WritePacket;
 use valence_core::protocol::raw::RawBytes;
 use valence_core::protocol::var_int::VarInt;
-use valence_core::protocol::{Encode, Packet, packet_id};
+use valence_core::protocol::{packet_id, Encode, Packet};
 use valence_core::text::Text;
-
 
 pub struct AdvancementPlugin;
 

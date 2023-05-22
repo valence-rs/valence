@@ -3,27 +3,28 @@ use std::io::Write;
 
 use bitfield_struct::bitfield;
 use uuid::Uuid;
+use valence_core::game_mode::GameMode;
+use valence_core::property::Property;
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::{packet_id, Decode, Encode, Packet};
+use valence_core::text::Text;
 
-use crate::game_mode::GameMode;
-use crate::property::Property;
-use crate::protocol::var_int::VarInt;
-use crate::protocol::{Decode, Encode};
-use crate::text::Text;
-
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::PLAYER_LIST_HEADER_S2C)]
 pub struct PlayerListHeaderS2c<'a> {
     pub header: Cow<'a, Text>,
     pub footer: Cow<'a, Text>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Packet)]
+#[packet(id = packet_id::PLAYER_LIST_S2C)]
 pub struct PlayerListS2c<'a> {
-    pub actions: Actions,
-    pub entries: Cow<'a, [Entry<'a>]>,
+    pub actions: PlayerListActions,
+    pub entries: Cow<'a, [PlayerListEntry<'a>]>,
 }
 
 #[bitfield(u8)]
-pub struct Actions {
+pub struct PlayerListActions {
     pub add_player: bool,
     pub initialize_chat: bool,
     pub update_game_mode: bool,
@@ -35,7 +36,7 @@ pub struct Actions {
 }
 
 #[derive(Clone, Default, Debug)]
-pub struct Entry<'a> {
+pub struct PlayerListEntry<'a> {
     pub player_uuid: Uuid,
     pub username: &'a str,
     pub properties: Cow<'a, [Property]>,
@@ -97,12 +98,12 @@ impl<'a> Encode for PlayerListS2c<'a> {
 
 impl<'a> Decode<'a> for PlayerListS2c<'a> {
     fn decode(r: &mut &'a [u8]) -> anyhow::Result<Self> {
-        let actions = Actions(u8::decode(r)?);
+        let actions = PlayerListActions(u8::decode(r)?);
 
         let mut entries = vec![];
 
         for _ in 0..VarInt::decode(r)?.0 {
-            let mut entry = Entry {
+            let mut entry = PlayerListEntry {
                 player_uuid: Uuid::decode(r)?,
                 ..Default::default()
             };
@@ -142,7 +143,8 @@ impl<'a> Decode<'a> for PlayerListS2c<'a> {
     }
 }
 
-#[derive(Clone, PartialEq, Debug, Encode, Decode)]
+#[derive(Clone, PartialEq, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::PLAYER_REMOVE_S2C)]
 pub struct PlayerRemoveS2c<'a> {
     pub uuids: Cow<'a, [Uuid]>,
 }
