@@ -19,23 +19,20 @@ use tokio::net::{TcpListener, TcpStream};
 use tracing::{error, info, trace, warn};
 use uuid::Uuid;
 use valence_client::is_valid_username;
-use valence_core::packet::c2s::handshake::handshake::NextState;
-use valence_core::packet::c2s::handshake::HandshakeC2s;
-use valence_core::packet::c2s::login::{LoginHelloC2s, LoginKeyC2s, LoginQueryResponseC2s};
-use valence_core::packet::c2s::status::{QueryPingC2s, QueryRequestC2s};
-use valence_core::packet::decode::PacketDecoder;
-use valence_core::packet::encode::PacketEncoder;
-use valence_core::packet::raw::RawBytes;
-use valence_core::packet::s2c::login::{
-    LoginCompressionS2c, LoginDisconnectS2c, LoginHelloS2c, LoginQueryRequestS2c, LoginSuccessS2c,
-};
-use valence_core::packet::s2c::status::{QueryPongS2c, QueryResponseS2c};
-use valence_core::packet::var_int::VarInt;
-use valence_core::packet::Decode;
 use valence_core::property::Property;
+use valence_core::protocol::decode::PacketDecoder;
+use valence_core::protocol::encode::PacketEncoder;
+use valence_core::protocol::raw::RawBytes;
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::Decode;
 use valence_core::text::Text;
 use valence_core::{ident, translation_key, MINECRAFT_VERSION, PROTOCOL_VERSION};
 
+use crate::packet::{
+    HandshakeC2s, HandshakeNextState, LoginCompressionS2c, LoginDisconnectS2c, LoginHelloC2s,
+    LoginHelloS2c, LoginKeyC2s, LoginQueryRequestS2c, LoginQueryResponseC2s, LoginSuccessS2c,
+    QueryPingC2s, QueryPongS2c, QueryRequestC2s, QueryResponseS2c,
+};
 use crate::packet_io::PacketIo;
 use crate::{CleanupOnDrop, ConnectionMode, NewClientInfo, ServerListPing, SharedNetworkState};
 
@@ -101,7 +98,7 @@ async fn handle_connection(shared: SharedNetworkState, stream: TcpStream, remote
 struct HandshakeData {
     protocol_version: i32,
     server_address: String,
-    next_state: NextState,
+    next_state: HandshakeNextState,
 }
 
 async fn handle_handshake(
@@ -124,10 +121,10 @@ async fn handle_handshake(
     );
 
     match handshake.next_state {
-        NextState::Status => handle_status(shared, io, remote_addr, handshake)
+        HandshakeNextState::Status => handle_status(shared, io, remote_addr, handshake)
             .await
             .context("error handling status"),
-        NextState::Login => {
+        HandshakeNextState::Login => {
             match handle_login(&shared, &mut io, remote_addr, handshake)
                 .await
                 .context("error handling login")?

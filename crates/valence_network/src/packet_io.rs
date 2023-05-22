@@ -12,10 +12,10 @@ use tokio::task::JoinHandle;
 use tokio::time::timeout;
 use tracing::{debug, warn};
 use valence_client::{ClientBundleArgs, ClientConnection, ReceivedPacket};
-use valence_core::packet::decode::{decode_packet, PacketDecoder};
-use valence_core::packet::encode::PacketEncoder;
-use valence_core::packet::var_int::VarInt;
-use valence_core::packet::{Decode, Packet};
+use valence_core::protocol::decode::{decode_packet, PacketDecoder};
+use valence_core::protocol::encode::PacketEncoder;
+use valence_core::protocol::var_int::VarInt;
+use valence_core::protocol::{Decode, Packet};
 
 use crate::byte_channel::{byte_channel, ByteSender, TrySendError};
 use crate::{CleanupOnDrop, NewClientInfo};
