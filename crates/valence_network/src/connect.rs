@@ -308,7 +308,7 @@ async fn login_online(
         .try_into()
         .context("shared secret has the wrong length")?;
 
-    conn.enable_encryption(&crypt_key);
+    conn.enable_encryption(&crypt_key)?;
 
     let hash = Sha1::new()
         .chain(&shared_secret)
