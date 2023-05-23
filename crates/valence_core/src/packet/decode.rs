@@ -1,5 +1,7 @@
 #[cfg(feature = "encryption")]
-use aes::cipher::{AsyncStreamCipher, NewCipher};
+use aes::cipher::generic_array::GenericArray;
+#[cfg(feature = "encryption")]
+use aes::cipher::{AsyncStreamCipher, BlockDecryptMut, KeyIvInit};
 use anyhow::{bail, ensure};
 use bytes::{Buf, BytesMut};
 
@@ -9,7 +11,7 @@ use crate::packet::{Packet, MAX_PACKET_SIZE};
 /// The AES block cipher with a 128 bit key, using the CFB-8 mode of
 /// operation.
 #[cfg(feature = "encryption")]
-type Cipher = cfb8::Cfb8<aes::Aes128>;
+type Cipher = cfb8::Decryptor<aes::Aes128>;
 
 #[derive(Default)]
 pub struct PacketDecoder {
@@ -125,15 +127,18 @@ impl PacketDecoder {
     }
 
     #[cfg(feature = "encryption")]
-    pub fn enable_encryption(&mut self, key: &[u8; 16]) {
+    pub fn enable_encryption(&mut self, key: &[u8; 16]) -> anyhow::Result<()> {
         assert!(self.cipher.is_none(), "encryption is already enabled");
 
-        let mut cipher = Cipher::new(key.into(), key.into());
+        let mut cipher = Cipher::new_from_slices(key, key)?;
 
         // Don't forget to decrypt the data we already have.
-        cipher.decrypt(&mut self.buf);
+        let gen_arr = GenericArray::from_mut_slice(self.buf.as_mut());
+        cipher.decrypt_blocks_mut(&mut [*gen_arr]);
 
         self.cipher = Some(cipher);
+
+        Ok(())
     }
 
     pub fn queue_bytes(&mut self, mut bytes: BytesMut) {
@@ -141,7 +146,8 @@ impl PacketDecoder {
 
         #[cfg(feature = "encryption")]
         if let Some(cipher) = &mut self.cipher {
-            cipher.decrypt(&mut bytes);
+            let mut gen_arr = GenericArray::from_mut_slice(bytes.as_mut());
+            cipher.decrypt_blocks_mut(&mut [*gen_arr]);
         }
 
         self.buf.unsplit(bytes);
@@ -155,7 +161,8 @@ impl PacketDecoder {
 
         #[cfg(feature = "encryption")]
         if let Some(cipher) = &mut self.cipher {
-            cipher.decrypt(&mut self.buf[len..]);
+            let gen_arr = GenericArray::from_mut_slice(self.buf[len..].as_mut());
+            cipher.decrypt_blocks_mut(&mut [*gen_arr]);
         }
     }
 
