@@ -1,7 +1,7 @@
 #[cfg(feature = "encryption")]
 use aes::cipher::generic_array::GenericArray;
 #[cfg(feature = "encryption")]
-use aes::cipher::{AsyncStreamCipher, BlockDecryptMut, BlockSizeUser, KeyIvInit};
+use aes::cipher::{BlockDecryptMut, BlockSizeUser, KeyIvInit};
 use anyhow::{bail, ensure};
 use bytes::{Buf, BytesMut};
 
@@ -141,23 +141,12 @@ impl PacketDecoder {
         Ok(())
     }
 
-    /// Decrypts the provided byte slice in place using the configured cipher, without consuming the cipher.
+    /// Decrypts the provided byte slice in place using the cipher, without consuming the cipher.
     #[cfg(feature = "encryption")]
-    fn decrypt_bytes(&mut self, bytes: &mut [u8]) {
+    fn decrypt_bytes(cipher: &mut Cipher, bytes: &mut [u8]) {
         for chunk in bytes.chunks_mut(Cipher::block_size()) {
             let gen_arr = GenericArray::from_mut_slice(chunk);
-            self.cipher.as_mut().unwrap().decrypt_block_mut(gen_arr);
-        }
-    }
-
-    #[cfg(feature = "encryption")]
-    fn decrypt_bytes_in_buf(&mut self, start: usize) {
-        if let Some(cipher) = &mut self.cipher {
-            let slice = &mut self.buf[start..];
-            for chunk in slice.chunks_mut(Cipher::block_size()) {
-                let gen_arr = GenericArray::from_mut_slice(chunk);
-                self.cipher.as_mut().unwrap().decrypt_block_mut(gen_arr);
-            }
+            cipher.decrypt_block_mut(gen_arr);
         }
     }
 
@@ -166,7 +155,7 @@ impl PacketDecoder {
 
         #[cfg(feature = "encryption")]
         if let Some(cipher) = &mut self.cipher {
-            self.decrypt_bytes(&mut bytes);
+            Self::decrypt_bytes(cipher, &mut bytes);
         }
 
         self.buf.unsplit(bytes);
@@ -179,8 +168,9 @@ impl PacketDecoder {
         self.buf.extend_from_slice(bytes);
 
         #[cfg(feature = "encryption")]
-        if let Some(_) = &mut self.cipher {
-            self.decrypt_bytes_in_buf(len);
+        if let Some(cipher) = &mut self.cipher {
+            let slice = &mut self.buf[len..];
+            Self::decrypt_bytes(cipher, slice);
         }
     }
 
