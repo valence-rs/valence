@@ -43,7 +43,7 @@ If an error does occur, it must be fixed before the pull request can be merged.
 
 Here are some rules you should follow for your code. Generally the goal here is to be consistent with existing code, the
 standard library, and the Rust ecosystem as a whole. Nonconforming code is not necessarily a blocker for accepting your
-contribution. It's just nice to have.
+contribution, but conformance is advised.
 
 These guidelines are intended to complement
 the [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/naming.html).
@@ -111,10 +111,43 @@ this.
 If a `bar` field exists and no invariants need to be maintained by the getters and setters, it is usually better to make
 the `bar` field public.
 
-## Naming Quantities
+## Bevy `Event` naming conventions
 
-Quantities of something should be named `foo_count` where `foo` is the thing you're quantifying. It would be incorrect
-to name this variable `num_foos`.
+Types intended to be used as events in [`EventReader`] and [`EventWriter`] should end in the `Event` suffix.
+This is helpful for readers trying to distinguish events from other types in the program.
+
+Good:
+```rust
+struct CollisionEvent { ... }
+
+fn handle_collisions(mut events: EventReader<CollisionEvent>) { ... }
+```
+
+Bad:
+```rust
+struct Collision { ... }
+
+fn handle_collisions(mut events: EventReader<Collision>) { ... }
+```
+
+[`EventReader`]: https://docs.rs/bevy_ecs/latest/bevy_ecs/event/struct.EventReader.html
+[`EventWriter`]: https://docs.rs/bevy_ecs/latest/bevy_ecs/event/struct.EventWriter.html
+
+## Specifying Dependencies
+
+When adding a new dependency to a crate, make sure you specify the full semver version.
+
+Do this:
+```toml
+[dependencies]
+serde_json = "1.0.96"
+```
+
+And _not_ this:
+```toml
+[dependencies]
+serde_json = "1"
+```
 
 ## Documentation
 
@@ -127,4 +160,9 @@ where appropriate.
 Unit tests help your contributions last! They ensure that your code works as expected and that it continues to work in
 the future.
 
-You can find examples of unit tests in the `unit_test/example.rs` module.
+whole-server unit tests can be found in [`crates/valence/src/tests/`](crates/valence/src/tests).
+
+## Naming Quantities
+
+Quantities of something should be named `foo_count` where `foo` is the thing you're quantifying. It would be incorrect
+to name this variable `num_foos`.
