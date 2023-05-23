@@ -31,8 +31,7 @@ use bytes::{Bytes, BytesMut};
 use glam::{DVec3, Vec3};
 use packet::{
     DeathMessageS2c, DisconnectS2c, GameEventKind, GameJoinS2c, GameStateChangeS2c,
-    OverlayMessageS2c, PlayerRespawnS2c, PlayerSpawnPositionS2c, PlayerSpawnS2c, SubtitleS2c,
-    TitleFadeS2c, TitleS2c,
+    PlayerRespawnS2c, PlayerSpawnPositionS2c, PlayerSpawnS2c,
 };
 use rand::Rng;
 use tracing::warn;
@@ -87,6 +86,7 @@ pub mod resource_pack;
 pub mod settings;
 pub mod status;
 pub mod teleport;
+pub mod title;
 pub mod weather;
 
 pub struct ClientPlugin;
@@ -338,44 +338,6 @@ impl Client {
         self.write_packet(&GameStateChangeS2c {
             kind: GameEventKind::WinGame,
             value: if show_credits { 1.0 } else { 0.0 },
-        });
-    }
-
-    /// Sets the title this client sees.
-    ///
-    /// A title is a large piece of text displayed in the center of the screen
-    /// which may also include a subtitle underneath it. The title can be
-    /// configured to fade in and out using the [`TitleFadeS2c`]
-    /// struct.
-    pub fn set_title(
-        &mut self,
-        title: impl Into<Text>,
-        subtitle: impl Into<Text>,
-        animation: impl Into<Option<TitleFadeS2c>>,
-    ) {
-        let title = title.into().into();
-        let subtitle = subtitle.into();
-
-        self.write_packet(&TitleS2c { title_text: title });
-
-        if !subtitle.is_empty() {
-            self.write_packet(&SubtitleS2c {
-                subtitle_text: subtitle.into(),
-            });
-        }
-
-        if let Some(anim) = animation.into() {
-            self.write_packet(&anim);
-        }
-    }
-
-    /// Sets the action bar for this client.
-    ///
-    /// The action bar is a small piece of text displayed at the bottom of the
-    /// screen, above the hotbar.
-    pub fn set_action_bar(&mut self, text: impl Into<Text>) {
-        self.write_packet(&OverlayMessageS2c {
-            action_bar_text: text.into().into(),
         });
     }
 

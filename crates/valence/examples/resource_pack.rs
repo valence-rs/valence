@@ -1,10 +1,9 @@
 #![allow(clippy::type_complexity)]
 
-use valence::client::misc::{ResourcePackStatus, ResourcePackStatusChange};
 use valence::entity::player::PlayerEntityBundle;
 use valence::entity::sheep::SheepEntityBundle;
-use valence::packet::c2s::play::player_interact_entity::EntityInteraction;
 use valence::prelude::*;
+use valence_client::resource_pack::{ResourcePackStatus, ResourcePackStatusEvent};
 
 const SPAWN_Y: i32 = 64;
 
@@ -86,7 +85,7 @@ fn prompt_on_punch(mut clients: Query<&mut Client>, mut events: EventReader<Inte
 
 fn on_resource_pack_status(
     mut clients: Query<&mut Client>,
-    mut events: EventReader<ResourcePackStatusChange>,
+    mut events: EventReader<ResourcePackStatusEvent>,
 ) {
     for event in events.iter() {
         if let Ok(mut client) = clients.get_mut(event.client) {
@@ -100,7 +99,7 @@ fn on_resource_pack_status(
                 ResourcePackStatus::FailedDownload => {
                     client.send_message("Resource pack failed to download.".color(Color::RED));
                 }
-                ResourcePackStatus::Loaded => {
+                ResourcePackStatus::SuccessfullyLoaded => {
                     client
                         .send_message("Resource pack successfully downloaded.".color(Color::BLUE));
                 }

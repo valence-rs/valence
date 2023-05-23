@@ -1,8 +1,9 @@
 #![allow(clippy::type_complexity)]
 
-use valence::client::misc::{ChatMessage, InteractBlock};
 use valence::nbt::{compound, List};
 use valence::prelude::*;
+use valence_client::chat::ChatMessageEvent;
+use valence_client::interact_block::InteractBlockEvent;
 
 const FLOOR_Y: i32 = 64;
 const SIGN_POS: [i32; 3] = [3, FLOOR_Y + 1, 2];
@@ -74,12 +75,12 @@ fn init_clients(
 
 fn event_handler(
     clients: Query<(&Username, &Properties, &UniqueId)>,
-    mut messages: EventReader<ChatMessage>,
-    mut block_interacts: EventReader<InteractBlock>,
+    mut messages: EventReader<ChatMessageEvent>,
+    mut block_interacts: EventReader<InteractBlockEvent>,
     mut instances: Query<&mut Instance>,
 ) {
     let mut instance = instances.single_mut();
-    for ChatMessage {
+    for ChatMessageEvent {
         client, message, ..
     } in messages.iter()
     {
@@ -93,7 +94,7 @@ fn event_handler(
         nbt.insert("Text3", format!("~{}", username).italic());
     }
 
-    for InteractBlock {
+    for InteractBlockEvent {
         client,
         position,
         hand,

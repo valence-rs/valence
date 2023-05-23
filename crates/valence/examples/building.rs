@@ -1,8 +1,8 @@
 #![allow(clippy::type_complexity)]
 
-use valence::client::misc::InteractBlock;
 use valence::inventory::ClientInventoryState;
 use valence::prelude::*;
+use valence_client::interact_block::InteractBlockEvent;
 
 const SPAWN_Y: i32 = 64;
 
@@ -77,7 +77,7 @@ fn toggle_gamemode_on_sneak(mut clients: Query<&mut GameMode>, mut events: Event
 fn digging_creative_mode(
     clients: Query<&GameMode>,
     mut instances: Query<&mut Instance>,
-    mut events: EventReader<Digging>,
+    mut events: EventReader<DiggingEvent>,
 ) {
     let mut instance = instances.single_mut();
 
@@ -94,7 +94,7 @@ fn digging_creative_mode(
 fn digging_survival_mode(
     clients: Query<&GameMode>,
     mut instances: Query<&mut Instance>,
-    mut events: EventReader<Digging>,
+    mut events: EventReader<DiggingEvent>,
 ) {
     let mut instance = instances.single_mut();
 
@@ -111,7 +111,7 @@ fn digging_survival_mode(
 fn place_blocks(
     mut clients: Query<(&mut Inventory, &GameMode, &ClientInventoryState)>,
     mut instances: Query<&mut Instance>,
-    mut events: EventReader<InteractBlock>,
+    mut events: EventReader<InteractBlockEvent>,
 ) {
     let mut instance = instances.single_mut();
 

@@ -700,33 +700,6 @@ impl Instance {
         ))
     }
 
-    /// Writes a packet into the global packet buffer of this instance. All
-    /// clients in the instance will receive the packet.
-    ///
-    /// This is more efficient than sending the packet to each client
-    /// individually.
-    pub fn write_packet<'a, P>(&mut self, pkt: &P)
-    where
-        P: Packet<'a>,
-    {
-        PacketWriter::new(
-            &mut self.packet_buf,
-            self.info.compression_threshold,
-            &mut self.scratch,
-        )
-        .write_packet(pkt);
-    }
-
-    /// Writes arbitrary packet data into the global packet buffer of this
-    /// instance. All clients in the instance will receive the packet data.
-    ///
-    /// The packet data must be properly compressed for the current compression
-    /// threshold but never encrypted. Don't use this function unless you know
-    /// what you're doing. Consider using [`Self::write_packet`] instead.
-    pub fn write_packet_bytes(&mut self, bytes: &[u8]) {
-        self.packet_buf.extend_from_slice(bytes)
-    }
-
     /// Writes a packet to all clients in view of `pos` in this instance. Has no
     /// effect if there is no chunk at `pos`.
     ///
@@ -816,13 +789,28 @@ impl Instance {
             ChunkPos::from_dvec3(position),
         );
     }
+}
 
-    // /// Sets the action bar text of all players in the instance.
-    // pub fn set_action_bar(&mut self, text: impl Into<Text>) {
-    //     self.write_packet(&OverlayMessageS2c {
-    //         action_bar_text: text.into().into(),
-    //     });
-    // }
+/// Writing packets to the instance writes to the instance's global packet
+/// buffer. All clients in the instance will receive the packet at the end of
+/// the tick.
+///
+/// This is more efficient than sending the packet to each client individually.
+impl WritePacket for Instance {
+    #[inline]
+    fn write_packet<'a>(&mut self, packet: &impl Packet<'a>) {
+        PacketWriter::new(
+            &mut self.packet_buf,
+            self.info.compression_threshold,
+            &mut self.scratch,
+        )
+        .write_packet(packet)
+    }
+
+    #[inline]
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        self.packet_buf.extend_from_slice(bytes)
+    }
 }
 
 /// Returns the minimum number of bits needed to represent the integer `n`.

@@ -1,6 +1,7 @@
 use std::io::Write;
 
 use anyhow::ensure;
+use bevy_ecs::world::Mut;
 use bytes::{BufMut, BytesMut};
 use tracing::warn;
 
@@ -192,6 +193,16 @@ impl<W: WritePacket> WritePacket for &mut W {
 
     fn write_packet_bytes(&mut self, bytes: &[u8]) {
         (*self).write_packet_bytes(bytes)
+    }
+}
+
+impl<T: WritePacket> WritePacket for Mut<'_, T> {
+    fn write_packet<'a>(&mut self, packet: &impl Packet<'a>) {
+        self.as_mut().write_packet(packet)
+    }
+
+    fn write_packet_bytes(&mut self, bytes: &[u8]) {
+        self.as_mut().write_packet_bytes(bytes)
     }
 }
 

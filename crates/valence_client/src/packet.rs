@@ -268,12 +268,6 @@ pub struct DeathMessageS2c<'a> {
 }
 
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::CLEAR_TITLE_S2C)]
-pub struct ClearTitleS2c {
-    pub reset: bool,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::DAMAGE_TILT_S2C)]
 pub struct DamageTiltS2c {
     /// The ID of the entity taking damage.
@@ -473,39 +467,10 @@ pub struct OpenWrittenBookS2c {
     pub hand: Hand,
 }
 
-#[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::OVERLAY_MESSAGE_S2C)]
-pub struct OverlayMessageS2c<'a> {
-    pub action_bar_text: Cow<'a, Text>,
-}
-
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::PLAY_PING_S2C)]
 pub struct PlayPingS2c {
     pub id: i32,
-}
-
-#[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::TITLE_S2C)]
-pub struct TitleS2c<'a> {
-    pub title_text: Cow<'a, Text>,
-}
-
-#[derive(Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::SUBTITLE_S2C)]
-pub struct SubtitleS2c<'a> {
-    pub subtitle_text: Cow<'a, Text>,
-}
-
-#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
-#[packet(id = packet_id::TITLE_FADE_S2C)]
-pub struct TitleFadeS2c {
-    /// Ticks to spend fading in.
-    pub fade_in: i32,
-    /// Ticks to keep the title displayed.
-    pub stay: i32,
-    /// Ticks to spend fading out.
-    pub fade_out: i32,
 }
 
 #[derive(Clone, Debug, Encode, Decode, Packet)]

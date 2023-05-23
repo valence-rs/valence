@@ -13,6 +13,7 @@ use valence_core::packet::encode::PacketEncoder;
 use valence_core::packet::s2c::play::S2cPlayPacket;
 use valence_core::packet::var_int::VarInt;
 use valence_core::packet::Packet;
+use valence_core::protocol::decode::decode_packet;
 use valence_core::{ident, CoreSettings, Server};
 use valence_entity::Location;
 use valence_network::{ConnectionMode, NetworkSettings};
