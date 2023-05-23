@@ -111,6 +111,28 @@ this.
 If a `bar` field exists and no invariants need to be maintained by the getters and setters, it is usually better to make
 the `bar` field public.
 
+## Bevy `Event` naming conventions
+
+Types intended to be used as events in [`EventReader`] and [`EventWriter`] should end in the `Event` suffix.
+This is helpful for readers trying to distinguish events from other types in the program.
+
+Good:
+```rust
+struct CollisionEvent { ... }
+
+fn handle_collisions(mut events: EventReader<CollisionEvent>) { ... }
+```
+
+Bad:
+```rust
+struct Collision { ... }
+
+fn handle_collisions(mut events: EventReader<Collision>) { ... }
+```
+
+[`EventReader`]: https://docs.rs/bevy_ecs/latest/bevy_ecs/event/struct.EventReader.html
+[`EventWriter`]: https://docs.rs/bevy_ecs/latest/bevy_ecs/event/struct.EventWriter.html
+
 ## Specifying Dependencies
 
 When adding a new dependency to a crate, make sure you specify the full semver version.
