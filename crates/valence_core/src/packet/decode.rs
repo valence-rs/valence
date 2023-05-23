@@ -133,8 +133,7 @@ impl PacketDecoder {
         let mut cipher = Cipher::new_from_slices(key, key)?;
 
         // Don't forget to decrypt the data we already have.
-        let gen_arr = GenericArray::from_mut_slice(self.buf.as_mut());
-        cipher.decrypt_blocks_mut(&mut [*gen_arr]);
+        Self::decrypt_bytes(&mut cipher, &mut self.buf);
 
         self.cipher = Some(cipher);
 
