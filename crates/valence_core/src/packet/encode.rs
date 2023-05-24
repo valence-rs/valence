@@ -172,10 +172,9 @@ impl PacketEncoder {
     ///
     /// [taken]: Self::take
     #[cfg(feature = "encryption")]
-    pub fn enable_encryption(&mut self, key: &[u8; 16]) -> anyhow::Result<()> {
+    pub fn enable_encryption(&mut self, key: &[u8; 16]) {
         assert!(self.cipher.is_none(), "encryption is already enabled");
-        self.cipher = Some(Cipher::new_from_slices(key, key)?);
-        Ok(())
+        self.cipher = Some(Cipher::new_from_slices(key, key).expect("invalid key"));
     }
 }
 

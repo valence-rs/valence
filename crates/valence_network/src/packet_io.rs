@@ -89,11 +89,9 @@ impl PacketIo {
         self.dec.set_compression(threshold);
     }
 
-    pub(crate) fn enable_encryption(&mut self, key: &[u8; 16]) -> anyhow::Result<()> {
-        self.enc.enable_encryption(key)?;
-        self.dec.enable_encryption(key)?;
-
-        Ok(())
+    pub(crate) fn enable_encryption(&mut self, key: &[u8; 16]) {
+        self.enc.enable_encryption(key);
+        self.dec.enable_encryption(key);
     }
 
     pub(crate) fn into_client_args(

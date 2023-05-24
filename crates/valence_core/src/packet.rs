@@ -617,7 +617,7 @@ mod tests {
     }
 
     #[test]
-    fn packets_round_trip() -> anyhow::Result<()> {
+    fn packets_round_trip() {
         let mut buf = BytesMut::new();
 
         let mut enc = PacketEncoder::new();
@@ -628,7 +628,7 @@ mod tests {
         enc.append_packet(&TestPacket::new("second")).unwrap();
         buf.unsplit(enc.take());
         #[cfg(feature = "encryption")]
-        enc.enable_encryption(&CRYPT_KEY)?;
+        enc.enable_encryption(&CRYPT_KEY);
         enc.append_packet(&TestPacket::new("third")).unwrap();
         enc.prepend_packet(&TestPacket::new("fourth")).unwrap();
 
@@ -646,11 +646,9 @@ mod tests {
         check_test_packet(&mut dec, "second");
 
         #[cfg(feature = "encryption")]
-        dec.enable_encryption(&CRYPT_KEY)?;
+        dec.enable_encryption(&CRYPT_KEY);
 
         check_test_packet(&mut dec, "fourth");
         check_test_packet(&mut dec, "third");
-
-        Ok(())
     }
 }
