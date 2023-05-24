@@ -1,5 +1,7 @@
 #[cfg(feature = "encryption")]
-use aes::cipher::{AsyncStreamCipher, NewCipher};
+use aes::cipher::generic_array::GenericArray;
+#[cfg(feature = "encryption")]
+use aes::cipher::{BlockDecryptMut, BlockSizeUser, KeyIvInit};
 use anyhow::{bail, ensure};
 use bytes::{Buf, BytesMut};
 
@@ -9,7 +11,7 @@ use crate::packet::{Packet, MAX_PACKET_SIZE};
 /// The AES block cipher with a 128 bit key, using the CFB-8 mode of
 /// operation.
 #[cfg(feature = "encryption")]
-type Cipher = cfb8::Cfb8<aes::Aes128>;
+type Cipher = cfb8::Decryptor<aes::Aes128>;
 
 #[derive(Default)]
 pub struct PacketDecoder {
@@ -128,12 +130,21 @@ impl PacketDecoder {
     pub fn enable_encryption(&mut self, key: &[u8; 16]) {
         assert!(self.cipher.is_none(), "encryption is already enabled");
 
-        let mut cipher = Cipher::new(key.into(), key.into());
+        let mut cipher = Cipher::new_from_slices(key, key).expect("invalid key");
 
         // Don't forget to decrypt the data we already have.
-        cipher.decrypt(&mut self.buf);
+        Self::decrypt_bytes(&mut cipher, &mut self.buf);
 
         self.cipher = Some(cipher);
+    }
+
+    /// Decrypts the provided byte slice in place using the cipher, without consuming the cipher.
+    #[cfg(feature = "encryption")]
+    fn decrypt_bytes(cipher: &mut Cipher, bytes: &mut [u8]) {
+        for chunk in bytes.chunks_mut(Cipher::block_size()) {
+            let gen_arr = GenericArray::from_mut_slice(chunk);
+            cipher.decrypt_block_mut(gen_arr);
+        }
     }
 
     pub fn queue_bytes(&mut self, mut bytes: BytesMut) {
@@ -141,7 +152,7 @@ impl PacketDecoder {
 
         #[cfg(feature = "encryption")]
         if let Some(cipher) = &mut self.cipher {
-            cipher.decrypt(&mut bytes);
+            Self::decrypt_bytes(cipher, &mut bytes);
         }
 
         self.buf.unsplit(bytes);
@@ -155,7 +166,8 @@ impl PacketDecoder {
 
         #[cfg(feature = "encryption")]
         if let Some(cipher) = &mut self.cipher {
-            cipher.decrypt(&mut self.buf[len..]);
+            let slice = &mut self.buf[len..];
+            Self::decrypt_bytes(cipher, slice);
         }
     }
 
