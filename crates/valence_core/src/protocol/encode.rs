@@ -1,5 +1,9 @@
 use std::io::Write;
 
+#[cfg(feature = "encryption")]
+use aes::cipher::generic_array::GenericArray;
+#[cfg(feature = "encryption")]
+use aes::cipher::{BlockEncryptMut, BlockSizeUser, KeyIvInit};
 use anyhow::ensure;
 use bevy_ecs::world::Mut;
 use bytes::{BufMut, BytesMut};
@@ -11,7 +15,7 @@ use crate::protocol::{Encode, Packet, MAX_PACKET_SIZE};
 /// The AES block cipher with a 128 bit key, using the CFB-8 mode of
 /// operation.
 #[cfg(feature = "encryption")]
-type Cipher = cfb8::Cfb8<aes::Aes128>;
+type Cipher = cfb8::Encryptor<aes::Aes128>;
 
 #[derive(Default)]
 pub struct PacketEncoder {
@@ -146,9 +150,10 @@ impl PacketEncoder {
     pub fn take(&mut self) -> BytesMut {
         #[cfg(feature = "encryption")]
         if let Some(cipher) = &mut self.cipher {
-            use aes::cipher::AsyncStreamCipher;
-
-            cipher.encrypt(&mut self.buf);
+            for chunk in self.buf.chunks_mut(Cipher::block_size()) {
+                let gen_arr = GenericArray::from_mut_slice(chunk);
+                cipher.encrypt_block_mut(gen_arr);
+            }
         }
 
         self.buf.split()
@@ -169,10 +174,8 @@ impl PacketEncoder {
     /// [taken]: Self::take
     #[cfg(feature = "encryption")]
     pub fn enable_encryption(&mut self, key: &[u8; 16]) {
-        use aes::cipher::NewCipher;
-
         assert!(self.cipher.is_none(), "encryption is already enabled");
-        self.cipher = Some(NewCipher::new(key.into(), key.into()));
+        self.cipher = Some(Cipher::new_from_slices(key, key).expect("invalid key"));
     }
 }
 
