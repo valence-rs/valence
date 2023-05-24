@@ -80,7 +80,7 @@ pub mod chat {
         pub acknowledgement: [u8; 3],
     }
 
-    #[derive(Clone, Debug, Encode, Decode)]
+    #[derive(Clone, Debug, Encode, Decode, Packet)]
     #[packet(id = packet_id::COMMAND_EXECUTION_C2S)]
     pub struct CommandExecutionC2s<'a> {
         pub command: &'a str,

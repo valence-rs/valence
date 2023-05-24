@@ -250,6 +250,8 @@ macro_rules! packet_group {
             }
 
             fn packet_name(&self) -> &str {
+                use $crate::protocol::Packet;
+
                 match self {
                     $(
                         Self::$packet(pkt) => pkt.packet_name(),
@@ -330,6 +332,8 @@ macro_rules! packet_group {
             }
 
             fn packet_name(&self) -> &str {
+                use $crate::__private::*;
+
                 match self {
                     $(
                         Self::$packet(pkt) => pkt.packet_name(),

@@ -323,7 +323,8 @@ pub mod synchronize_recipes {
 
     use super::*;
 
-    #[derive(Clone, Debug, Encode, Decode)]
+    #[derive(Clone, Debug, Encode, Decode, Packet)]
+    #[packet(id = packet_id::SYNCHRONIZE_RECIPES_S2C)]
     pub struct SynchronizeRecipesS2c<'a> {
         // TODO: this should be a Vec<Recipe<'a>>
         pub recipes: valence_core::protocol::raw::RawBytes<'a>,
@@ -743,13 +744,15 @@ pub mod synchronize_recipes {
     }
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::COOLDOWN_UPDATE_S2C)]
 pub struct CooldownUpdateS2c {
     pub item_id: VarInt,
     pub cooldown_ticks: VarInt,
 }
 
-#[derive(Copy, Clone, Debug, Encode, Decode)]
+#[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::UPDATE_SELECTED_SLOT_S2C)]
 pub struct UpdateSelectedSlotS2c {
     pub slot: u8,
 }

@@ -38,19 +38,6 @@ pub struct BookUpdateC2s<'a> {
     pub title: Option<&'a str>,
 }
 
-#[bitfield(u8)]
-#[derive(PartialEq, Eq, Encode, Decode)]
-pub struct DisplayedSkinParts {
-    pub cape: bool,
-    pub jacket: bool,
-    pub left_sleeve: bool,
-    pub right_sleeve: bool,
-    pub left_pants_leg: bool,
-    pub right_pants_leg: bool,
-    pub hat: bool,
-    _pad: bool,
-}
-
 #[derive(Copy, Clone, Debug, Encode, Decode, Packet)]
 #[packet(id = packet_id::JIGSAW_GENERATING_C2S)]
 pub struct JigsawGeneratingC2s {

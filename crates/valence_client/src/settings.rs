@@ -1,9 +1,9 @@
 use bevy_app::prelude::*;
 use bevy_ecs::prelude::*;
-pub use packet::ChatMode;
-pub use valence_entity::player::{MainArm, PlayerModelParts};
+use bitfield_struct::bitfield;
+use valence_core::protocol::{packet_id, Decode, Encode, Packet};
+use valence_entity::player::{self, PlayerModelParts};
 
-use self::packet::ClientSettingsC2s;
 use crate::event_loop::{EventLoopSchedule, EventLoopSet, PacketEvent};
 use crate::ViewDistance;
 
@@ -31,7 +31,7 @@ fn handle_client_settings(
         &mut ViewDistance,
         &mut ClientSettings,
         &mut PlayerModelParts,
-        &mut MainArm,
+        &mut player::MainArm,
     )>,
 ) {
     for packet in packets.iter() {
@@ -48,42 +48,55 @@ fn handle_client_settings(
                 settings.allow_server_listings = pkt.allow_server_listings;
 
                 model_parts.set_if_neq(PlayerModelParts(u8::from(pkt.displayed_skin_parts) as i8));
-                main_arm.set_if_neq(MainArm(pkt.main_arm as i8));
+                main_arm.set_if_neq(player::MainArm(pkt.main_arm as i8));
             }
         }
     }
 }
 
-pub mod packet {
-    use valence_core::protocol::{packet_id, Decode, Encode, Packet};
+#[derive(Clone, Debug, Encode, Decode, Packet)]
+#[packet(id = packet_id::CLIENT_SETTINGS_C2S)]
+pub struct ClientSettingsC2s<'a> {
+    pub locale: &'a str,
+    pub view_distance: u8,
+    pub chat_mode: ChatMode,
+    pub chat_colors: bool,
+    pub displayed_skin_parts: DisplayedSkinParts,
+    pub main_arm: MainArm,
+    pub enable_text_filtering: bool,
+    pub allow_server_listings: bool,
+}
 
-    use crate::packet::DisplayedSkinParts;
+#[bitfield(u8)]
+#[derive(PartialEq, Eq, Encode, Decode)]
+pub struct DisplayedSkinParts {
+    pub cape: bool,
+    pub jacket: bool,
+    pub left_sleeve: bool,
+    pub right_sleeve: bool,
+    pub left_pants_leg: bool,
+    pub right_pants_leg: bool,
+    pub hat: bool,
+    _pad: bool,
+}
 
-    #[derive(Clone, Debug, Encode, Decode, Packet)]
-    #[packet(id = packet_id::CLIENT_SETTINGS_C2S)]
-    pub struct ClientSettingsC2s<'a> {
-        pub locale: &'a str,
-        pub view_distance: u8,
-        pub chat_mode: ChatMode,
-        pub chat_colors: bool,
-        pub displayed_skin_parts: DisplayedSkinParts,
-        pub main_arm: MainArm,
-        pub enable_text_filtering: bool,
-        pub allow_server_listings: bool,
-    }
+#[derive(Copy, Clone, PartialEq, Eq, Default, Debug, Encode, Decode)]
+pub enum ChatMode {
+    Enabled,
+    CommandsOnly,
+    #[default]
+    Hidden,
+}
 
-    #[derive(Copy, Clone, PartialEq, Eq, Default, Debug, Encode, Decode)]
-    pub enum ChatMode {
-        Enabled,
-        CommandsOnly,
-        #[default]
-        Hidden,
-    }
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default, Encode, Decode)]
+pub enum MainArm {
+    Left,
+    #[default]
+    Right,
+}
 
-    #[derive(Copy, Clone, PartialEq, Eq, Debug, Default, Encode, Decode)]
-    pub enum MainArm {
-        Left,
-        #[default]
-        Right,
+impl From<MainArm> for player::MainArm {
+    fn from(value: MainArm) -> Self {
+        Self(value as i8)
     }
 }
