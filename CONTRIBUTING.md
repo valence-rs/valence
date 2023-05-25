@@ -1,4 +1,4 @@
-Valence has a public Discord server [here](https://discord.gg/8Fqqy9XrYb). Check it out if you have additional questions
+Valence has a public Discord server [here](https://discord.gg/8Fqqy9XrYb) and GitHub discussions [here](https://github.com/valence-rs/valence/discussions). Check those out if you have additional questions
 or comments.
 
 # What version of Rust should I use?
