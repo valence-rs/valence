@@ -7,11 +7,11 @@ To _use_ Valence, only the most recent stable version of Rust is required. Howev
 unstable `rustfmt` settings are enabled in the project. To run `rustfmt` with the nightly toolchain, use
 the `cargo +nightly fmt` command.
 
-# What issues can I work on?
+# What issues should I work on?
 
 Issues
 labelled [good first issue](https://github.com/valence-rs/valence/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
-are a good place to start. This label is reserved for issues that shouldn't require too much specialized domain
+are a good place to start. This label is reserved for issues that are relatively uncontroversial and shouldn't require too much specialized domain
 knowledge to complete. New contributors are not required to start with these issues.
 
 If you plan to work on something that's not an open issue, consider making one first so that it can be discussed. This
@@ -83,7 +83,15 @@ struct Bar {
 
 ## Getters and Setters
 
-Getters and setters should be named like this:
+Getters should not start with a `get_` prefix.
+
+<table>
+<tr>
+<th>Good</th>
+<th>Bad</th>
+</tr>
+<tr>
+<td>
 
 ```rust
 impl Foo {
@@ -91,8 +99,8 @@ impl Foo {
     fn set_bar(&mut self, bar: Bar) { ... }
 }
 ```
-
-And **not** like this:
+</td>
+<td>
 
 ```rust
 impl Foo {
@@ -100,6 +108,9 @@ impl Foo {
     fn set_bar(&mut self, bar: Bar) { ... }
 }
 ```
+</td>
+</tr>
+</table>
 
 See [`SocketAddr`](https://doc.rust-lang.org/stable/std/net/enum.SocketAddr.html) for an example of a standard library
 type that uses this convention.
@@ -111,24 +122,35 @@ this.
 If a `bar` field exists and no invariants need to be maintained by the getters and setters, it is usually better to make
 the `bar` field public.
 
-## Bevy `Event` naming conventions
+## Bevy `Event`s
 
 Types intended to be used as events in [`EventReader`] and [`EventWriter`] should end in the `Event` suffix.
 This is helpful for readers trying to distinguish events from other types in the program.
 
-Good:
+<table>
+<tr>
+<th>Good</th>
+<th>Bad</th>
+</tr>
+<tr>
+<td>
+
 ```rust
 struct CollisionEvent { ... }
 
 fn handle_collisions(mut events: EventReader<CollisionEvent>) { ... }
 ```
+</td>
+<td>
 
-Bad:
 ```rust
 struct Collision { ... }
 
 fn handle_collisions(mut events: EventReader<Collision>) { ... }
 ```
+</td>
+</tr>
+</table>
 
 [`EventReader`]: https://docs.rs/bevy_ecs/latest/bevy_ecs/event/struct.EventReader.html
 [`EventWriter`]: https://docs.rs/bevy_ecs/latest/bevy_ecs/event/struct.EventWriter.html
@@ -137,17 +159,62 @@ fn handle_collisions(mut events: EventReader<Collision>) { ... }
 
 When adding a new dependency to a crate, make sure you specify the full semver version.
 
-Do this:
+<table>
+<tr>
+<th>Good</th>
+<th>Bad</th>
+</tr>
+<tr>
+<td>
+
 ```toml
 [dependencies]
 serde_json = "1.0.96"
 ```
+</td>
+<td>
 
-And _not_ this:
 ```toml
 [dependencies]
 serde_json = "1"
 ```
+</td>
+</tr>
+</table>
+
+## Writing Unit Tests
+When writing unit tests, unwrap errors instead of returning them.
+Panicking displays the line and column of the error, which is useful for debugging.
+This information is lost when the error is returned.
+
+<table>
+<tr>
+<th>Good</th>
+<th>Bad</th>
+</tr>
+<tr>
+<td>
+
+```rust
+#[test]
+fn my_test() {
+    some_fallible_func().unwrap();
+}
+```
+</td>
+<td>
+
+```rust
+#[test]
+fn my_test() -> anyhow::Result<()> {
+    some_fallible_func()?;
+    // ...
+    Ok(())
+}
+```
+</td>
+</tr>
+</table>
 
 ## Documentation
 
@@ -164,5 +231,25 @@ whole-server unit tests can be found in [`crates/valence/src/tests/`](crates/val
 
 ## Naming Quantities
 
-Quantities of something should be named `foo_count` where `foo` is the thing you're quantifying. It would be incorrect
-to name this variable `num_foos`.
+Variables intended to hold quantities should be written with the `_count` suffix instead of the `num_` prefix.
+
+<table>
+<tr>
+<th>Good</th>
+<th>Bad</th>
+</tr>
+<tr>
+<td>
+
+```rust
+let block_count = ...;
+```
+</td>
+<td>
+
+```rust
+let num_blocks = ...;
+```
+</td>
+</tr>
+</table>
